@@ -1,0 +1,66 @@
+# Recommended Git Configuration for SaaS Workspace
+#
+# To apply these settings, run:
+#   git config --local include.path ../.gitconfig-workspace
+#
+# Or manually copy the settings you want to your .git/config
+
+# Branch naming conventions
+[init]
+    defaultBranch = main
+
+# Pull behavior: rebase by default (cleaner history)
+[pull]
+    rebase = false
+
+# Push behavior: push current branch by default
+[push]
+    default = current
+
+# Rebase behavior
+[rebase]
+    autoStash = true
+
+# Diff settings - use better diff tools if available
+[diff]
+    tool = default
+    algorithm = histogram
+
+# Merge settings
+[merge]
+    tool = default
+    conflictstyle = diff3
+
+# Better colored output
+[color]
+    ui = true
+    branch = auto
+    diff = auto
+    interactive = auto
+    status = auto
+
+# Handle whitespace in diffs
+[core]
+    whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+
+# Fast-forward merges only (for local feature branches)
+[branch "main"]
+    rebase = true
+
+# Show summary of commits after merge
+[merge]
+    summary = true
+
+# Ignore file modes (useful for cross-platform teams)
+[core]
+    fileMode = false
+
+# Submodules (if added in future)
+[submodule]
+    fetchJobs = 4
+
+# GPG signing (optional - uncomment if you use GPG)
+# [commit]
+#     gpgsign = true
+# [tag]
+#     gpgsign = true

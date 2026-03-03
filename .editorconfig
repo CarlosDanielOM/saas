@@ -1,0 +1,51 @@
+# Editor configuration, see https://editorconfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+end_of_line = lf
+
+# TypeScript/JavaScript files
+[*.{ts,tsx,js,jsx}]
+indent_size = 2
+quote_type = single
+
+# HTML/CSS files
+[*.{html,css,scss,less}]
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# Markdown files - don't trim trailing whitespace for line breaks
+[*.md]
+max_line_length = off
+trim_trailing_whitespace = false
+
+# Shell scripts
+[*.sh]
+indent_size = 2
+
+# Makefiles use tabs
+[Makefile]
+indent_style = tab
+
+# Dockerfiles
+[Dockerfile*]
+indent_size = 2
+
+# Package files (allow larger indentation)
+[*.{lock,bun.lock}]
+indent_size = 4
