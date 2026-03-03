@@ -73,11 +73,35 @@ All text files use LF (`\n`) line endings enforced by `.gitattributes`.
 
 Editor configuration is provided in `.editorconfig`. Ensure your editor supports it for consistent formatting.
 
+## Project Structure
+
+```
+saas/
+├── dimabot/         # Main backend + bot (TypeScript)
+├── dimasite/         # Main frontend (Angular)
+├── dimadocs/         # Documentation
+├── olddimabot/       # Reference: Old JS build (Mar 2)
+└── olddimasite/       # Reference: Minified JS build (Mar 3)
+```
+
 ## Initial Commit
 
 After reviewing the configuration, make your initial commit:
 
 ```bash
 git add .
-git commit -m "Initial commit: Set up workspace with dimabot, dimasite, dimadocs"
+git commit -m "Initial commit: Set up workspace configuration and reference folders"
 ```
+
+## Recovery Summary
+
+**Recent data loss recovery:** Due to a catastrophic error, TypeScript source files were lost. Recovered code is now in the `olddimabot` and `olddimasite` reference folders.
+
+**Recovery status:**
+- **olddimabot/** - 271 readable JS files (4MB, Mar 2 build) - Full functionality intact
+- **olddimasite/** - 2 JS files (minified main.js, styles.css, Mar 3 build) - Minified but usable for reference
+
+**Next steps:**
+1. Gradually reconstruct TypeScript code using reference folders
+2. Add proper type annotations
+3. Rebuild component by component
