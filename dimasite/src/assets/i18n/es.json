@@ -1,0 +1,384 @@
+{
+  "navbar": {
+    "dashboard": "Panel",
+    "commands": "Comandos",
+    "modules": "Modulos",
+    "settings": "Configuracion",
+    "adminHub": "Hub Admin",
+    "activateBot": "Activar Bot",
+    "reauthenticate": "Reautenticar",
+    "updatePermissions": "Actualizar Permisos",
+    "dark": "Oscuro",
+    "light": "Claro",
+    "logout": "Cerrar sesion",
+    "profileSettings": "Configuracion de Perfil",
+    "planFree": "Gratis",
+    "planPremium": "Premium",
+    "planPro": "Pro"
+  },
+  "modules": {
+    "title": "Modulos",
+    "subtitle": "Gestion de modulos proximamente."
+  },
+  "profile": {
+    "title": "Configuracion de Perfil",
+    "subtitle": "Gestiona la configuracion de tu cuenta y preferencias."
+  },
+  "adminHub": {
+    "title": "Hub de Admin",
+    "subtitle": "Cambia entre canales propios o que administras.",
+    "labels": {
+      "owner": "Owner",
+      "admin": "Admin"
+    },
+    "actions": {
+      "openDashboard": "Abrir panel",
+      "opening": "Abriendo..."
+    },
+    "errors": {
+      "noAccess": "No tienes acceso al panel para este canal.",
+      "failed": "No se pudo cambiar de canal en este momento."
+    }
+  },
+  "dashboard": {
+    "pageLabel": "Centro de Control",
+    "title": "Panel del Canal",
+    "subtitle": "Una vista clara del crecimiento, rendimiento y el historial reciente.",
+    "loading": "Cargando tu panel...",
+    "empty": "Todavia no hay datos para mostrar.",
+    "connection": {
+      "connected": "Conectado",
+      "connecting": "Conectando",
+      "disconnected": "Desconectado"
+    },
+    "connectionTooltip": {
+      "connected": "Actualizaciones en vivo",
+      "connecting": "Conectando actualizaciones en vivo",
+      "disconnected": "Sin actualizaciones en vivo"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin"
+    },
+    "errors": {
+      "missingChannel": "Se requiere un canal para cargar el panel.",
+      "loadFailed": "No se pudo cargar el panel en este momento."
+    },
+    "kpis": {
+      "sectionLabel": "Metricas principales del panel",
+      "avgHoursPerStream": "Horas Promedio / Stream",
+      "averageViewers30d": "Promedio de Viewers (30d)",
+      "bits30d": "Bits (30d)",
+      "donations30d": "Donaciones (30d)",
+      "featureSpotlight": "Feature Destacado",
+      "featureSpotlightValue": "Mapa de Calor de Eventos",
+      "featureSpotlightHint": "Reservado para tu proxima feature."
+    },
+    "charts": {
+      "sectionLabel": "Grafico de rendimiento",
+      "title": "Tendencia de Rendimiento",
+      "countAxisLabel": "Cantidad",
+      "series": {
+        "bits": "Bits",
+        "subs": "Subs",
+        "hours": "Horas",
+        "avgViewers": "Viewers Promedio",
+        "follows": "Follows"
+      }
+    },
+    "timeRange": {
+      "title": "Elegir rango de tiempo",
+      "7d": "7d",
+      "15d": "15d",
+      "30d": "30d",
+      "90d": "90d",
+      "all": "Todo"
+    },
+    "goals": {
+      "sectionLabel": "Objetivos y totales",
+      "title": "Objetivos de Followers y Subs",
+      "totalFollowers": "Followers Totales",
+      "totalSubs": "Subs Totales",
+      "followersGoal": "Meta de Followers",
+      "subsGoal": "Meta de Subs"
+    },
+    "history": {
+      "sectionLabel": "Tabla de historial de streams",
+      "title": "Historial de Streams de los Ultimos 30 Dias",
+      "subtitle": "Streams mas recientes primero.",
+      "live": "EN VIVO",
+      "columns": {
+        "date": "Fecha",
+        "hours": "Horas",
+        "avgViewers": "Viewers Promedio",
+        "bits": "Bits",
+        "subs": "Subs",
+        "follows": "Follows",
+        "donations": "Donaciones"
+      },
+      "empty": "No se encontraron sesiones en este rango."
+    },
+    "mobile": {
+      "sectionLabel": "Selector movil del panel",
+      "showChart": "Grafico",
+      "showGoals": "Metas"
+    },
+    "live": {
+      "title": "Estado en Vivo",
+      "liveNow": "En Vivo",
+      "offline": "Offline",
+      "offlineDescription": "No hay stream activo para este canal.",
+      "viewers": "viewers"
+    },
+    "liveStream": {
+      "statusLive": "Transmitiendo en vivo",
+      "statusOffline": "Actualmente offline",
+      "live": "EN VIVO",
+      "offline": "Offline",
+      "offlineHint": "Comienza a transmitir para ver estadísticas",
+      "viewers": "espectadores",
+      "duration": "Duración",
+      "notStarted": "No iniciado",
+      "thumbnailAlt": "Miniatura del stream",
+      "noTitle": "Stream sin título"
+    },
+    "quickActions": {
+      "title": "Acciones Rápidas",
+      "joinBot": "Unir Bot",
+      "leaveChat": "Salir del Chat",
+      "statusActive": "Bot está activo en el chat",
+      "statusInactive": "Bot no está en el chat",
+      "error": "Error al actualizar estado del bot"
+    },
+    "activity": {
+      "title": "Actividad en Vivo",
+      "follows": "Seguidores",
+      "subs": "Subs",
+      "bits": "Bits",
+      "donations": "Donaciones",
+      "messages": "Mensajes",
+      "commands": "Comandos"
+    },
+    "health": {
+      "title": "Salud del Stream",
+      "connection": "Conexión",
+      "responseTime": "Tiempo de Respuesta",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "lastChecked": "Última verificación"
+    }
+  },
+  "login": {
+    "title": "Inicia sesion en DomDimaBot",
+    "subtitle": "Estamos preparando tu cuenta, permisos y panel.",
+    "actions": {
+      "continue": "Continuar con Twitch",
+      "tryAgain": "Intentar de nuevo"
+    },
+    "stages": {
+      "idle": "Listo para autenticar",
+      "validating": "Validando autenticacion de Twitch",
+      "syncing": "Sincronizando tus datos",
+      "permissions": "Cargando permisos del canal",
+      "dashboard": "Preparando datos del panel",
+      "redirecting": "Redirigiendo a tu panel",
+      "error": "Error de inicio de sesion"
+    },
+    "errors": {
+      "denied": "La autenticacion fue cancelada en Twitch.",
+      "stateMismatch": "La validacion de seguridad fallo. Intenta iniciar sesion de nuevo.",
+      "exchangeFailed": "No se pudo intercambiar el codigo de autorizacion de Twitch.",
+      "syncFailed": "No se pudieron sincronizar tus datos con DomDimaBot.",
+      "noPrimaryChannel": "No se devolvio un canal principal para esta cuenta.",
+      "noDashboardAccess": "Estas autenticado pero no tienes acceso al panel.",
+      "dashboardFailed": "No se pudo precargar el panel.",
+      "unexpected": "Error inesperado al iniciar sesion. Intenta de nuevo."
+    }
+  },
+  "commands": {
+    "title": "Comandos",
+    "subtitle": "La gestion de comandos usa permisos del servidor y se expandira aqui.",
+    "heading": "Comandos",
+    "addCommand": "Agregar Comando",
+    "loading": "Cargando comandos...",
+    "refresh": "Recarga fuerte",
+    "refreshing": "Recargando...",
+    "refreshCooldown": "Recarga en {{seconds}}s",
+    "deleteTitle": "Eliminar Comando",
+    "deleteMessage": "¿Estas seguro de que quieres eliminar este comando? Esta accion no se puede deshacer.",
+    "viewTable": "Vista de tabla",
+    "viewCard": "Vista de tarjetas",
+    "pending": {
+      "creating": "Creando",
+      "saving": "Guardando",
+      "deleting": "Eliminando",
+      "enabling": "Habilitando",
+      "disabling": "Deshabilitando"
+    },
+    "toast": {
+      "loadErrorTitle": "No se pudieron cargar los comandos",
+      "missingChannel": "Todavia no pudimos resolver este canal.",
+      "refreshSuccessTitle": "Comandos actualizados",
+      "refreshSuccessMessage": "Se cargaron {{count}} comandos desde el servidor.",
+      "refreshCooldownTitle": "La recarga esta en espera",
+      "refreshCooldownMessage": "Espera {{seconds}} segundos antes de volver a recargar.",
+      "emptyTitle": "Aun no hay comandos",
+      "emptyMessage": "No encontramos comandos para este canal despues de recargar desde el servidor.",
+      "recoveredTitle": "Comandos recuperados",
+      "savedTitle": "Cambios guardados",
+      "savedMessage": "La actualizacion del comando ya esta activa.",
+      "saveErrorTitle": "No se pudieron guardar los cambios",
+      "saveErrorMessage": "Vuelve a intentar esa edicion.",
+      "enabledTitle": "Comando habilitado",
+      "enabledMessage": "Este comando volvio a quedar activo.",
+      "disabledTitle": "Comando deshabilitado",
+      "disabledMessage": "Este comando seguira apagado hasta que lo habilites otra vez.",
+      "deletedTitle": "Comando eliminado",
+      "deletedMessage": "El comando fue eliminado.",
+      "deleteErrorTitle": "No se pudo eliminar el comando",
+      "deleteErrorMessage": "Vuelve a intentar eliminar este comando.",
+      "createdTitle": "Comando creado",
+      "createdMessage": "Tu nuevo comando ya esta listo para usarse.",
+      "createErrorTitle": "No se pudo crear el comando",
+      "createErrorMessage": "Revisa el formulario y vuelve a intentarlo.",
+      "rateLimitTitle": "Espera un momento",
+      "rateLimitMessage": "Espera {{seconds}} segundos antes de hacer mas cambios en comandos."
+    },
+    "placeholder": {
+      "name": "Nombre",
+      "command": "Comando",
+      "function": "Funcion",
+      "description": "Descripcion",
+      "cooldown": "Enfriamiento",
+      "userLevel": "Nivel de Usuario",
+      "status": "Estado",
+      "actions": "Acciones",
+      "reservedCommand": "Comando Reservado",
+      "public": "Publico",
+      "noCommandsFound": "No se encontraron comandos. ¡Crea tu primer comando!"
+    },
+    "userLevels": {
+      "everyone": "Todos",
+      "tier1": "Tier 1",
+      "tier2": "Tier 2",
+      "tier3": "Tier 3",
+      "founders": "Fundadores",
+      "vip": "VIP",
+      "mod": "Mod",
+      "editor": "Editor",
+      "admin": "Admin",
+      "streamer": "Streamer"
+    }
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "enable": "Habilitar",
+    "disable": "Deshabilitar",
+    "enabled": "Habilitado",
+    "statusOn": "On",
+    "statusOff": "Off",
+    "show": "Mostrar",
+    "entries": "entradas",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "retry": "Reintentar",
+    "notAvailable": "N/D",
+    "seconds": "segundos"
+  },
+  "settings": {
+    "title": "Configuracion",
+    "subtitle": "La configuracion esta protegida por permisos y lista para nuevas funciones."
+  },
+  "landing": {
+    "nav": {
+      "features": "Caracteristicas",
+      "pricing": "Precios",
+      "contact": "Contacto"
+    },
+    "hero": {
+      "title": "Conoce DomDimaBot: Tu companero definitivo para el chat de Twitch",
+      "description": "Mejora tu experiencia de streaming en Twitch con DomDimaBot. Conecta con tu audiencia, modera chats y aumenta la interaccion de tu canal.",
+      "loginWith": "Iniciar sesion con Twitch",
+      "learnMore": "Aprender mas",
+      "join": "Unirse a Discord"
+    },
+    "analytics": {
+      "title": "Analiticas",
+      "registeredUsers": "Usuarios registrados",
+      "liveUsers": "Usuarios en vivo",
+      "botActiveAccounts": "Cuentas activas del bot",
+      "messagesReceived": "Mensajes recibidos",
+      "totalCommands": "Comandos totales",
+      "totalLiveViewer": "Total de viewers en vivo"
+    },
+    "analyticsConnection": {
+      "connected": "Conectado",
+      "reconnecting": "Reconectando",
+      "disconnected": "Desconectado"
+    },
+    "features": {
+      "title": "Caracteristicas",
+      "subtitle": "Un resumen claro de funciones conectado directamente con la comparacion de planes.",
+      "aiModerationTitle": "Moderacion con IA",
+      "aiModerationDescription": "Escala de filtros basicos a moderacion inteligente con contexto para chats rapidos.",
+      "automationTitle": "Comandos y automatizacion",
+      "automationDescription": "Usa comandos ilimitados, variables y flujos avanzados de triggers para tu canal.",
+      "analyticsTitle": "Analiticas avanzadas",
+      "analyticsDescription": "Mide actividad de usuarios, uso de comandos y tendencias de engagement con mayor retencion.",
+      "ttsTitle": "TTS y funciones de voz",
+      "ttsDescription": "Desde TTS basico hasta voces premium mas naturales y capacidades avanzadas.",
+      "comparePlansCta": "Comparar planes"
+    },
+    "pricing": {
+      "title": "Precios",
+      "description": "Elige tu plan y comienza a conectar con tu audiencia hoy.",
+      "monthly": "Mensual",
+      "annually": "Anual",
+      "choosePlan": "Elegir plan",
+      "showMoreFeatures": "Mostrar mas funciones",
+      "showLessFeatures": "Mostrar menos funciones",
+      "basic": {
+        "title": "Basico",
+        "description": "Gratis para siempre, con funciones limitadas.",
+        "features": {
+          "smartChatModeration": "Moderacion inteligente",
+          "unlimitedSimpleCustomCommands": "Comandos simples ilimitados",
+          "basicAnalytics": "Analiticas basicas"
+        }
+      },
+      "premium": {
+        "title": "Premium",
+        "description": "Plan premium con todas las funciones y limites mas altos."
+      },
+      "ai": {
+        "title": "AI",
+        "description": "Moderacion mas automatizada e integracion con IA."
+      }
+    },
+    "liveNow": {
+      "title": "Quien esta en vivo ahora",
+      "subtitle": "Canales principales por viewers. Desplazate para explorar todos.",
+      "viewers": "viewers",
+      "empty": "No hay canales en vivo en este momento.",
+      "platforms": {
+        "twitch": "Twitch",
+        "kick": "Kick",
+        "none": "None"
+      }
+    },
+    "callToAction": {
+      "title": "Listo para elevar tu stream en Twitch?",
+      "description": "Unete a miles de streamers que ya transformaron sus canales con DomDimaBot.",
+      "button": "Iniciar con Twitch",
+      "terms": "Al registrarte, aceptas nuestros terminos y condiciones."
+    },
+    "footer": {
+      "copyright": "© 2024 DomDimaBot. Todos los derechos reservados.",
+      "terms": "Terminos de servicio",
+      "privacy": "Privacidad"
+    }
+  }
+}

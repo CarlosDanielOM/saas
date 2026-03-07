@@ -1,0 +1,384 @@
+{
+  "navbar": {
+    "dashboard": "Dashboard",
+    "commands": "Commands",
+    "modules": "Modules",
+    "settings": "Settings",
+    "adminHub": "Admin Hub",
+    "activateBot": "Activate Bot",
+    "reauthenticate": "Reauthenticate",
+    "updatePermissions": "Update Permissions",
+    "dark": "Dark",
+    "light": "Light",
+    "logout": "Logout",
+    "profileSettings": "Profile Settings",
+    "planFree": "Free",
+    "planPremium": "Premium",
+    "planPro": "Pro"
+  },
+  "modules": {
+    "title": "Modules",
+    "subtitle": "Module management coming soon."
+  },
+  "profile": {
+    "title": "Profile Settings",
+    "subtitle": "Manage your account settings and preferences."
+  },
+  "adminHub": {
+    "title": "Admin Hub",
+    "subtitle": "Switch between channels you own or manage as admin.",
+    "labels": {
+      "owner": "Owner",
+      "admin": "Admin"
+    },
+    "actions": {
+      "openDashboard": "Open dashboard",
+      "opening": "Opening..."
+    },
+    "errors": {
+      "noAccess": "You do not have dashboard access for this channel.",
+      "failed": "Unable to switch channel right now."
+    }
+  },
+  "dashboard": {
+    "pageLabel": "Control Center",
+    "title": "Channel Dashboard",
+    "subtitle": "A clean view of growth, stream performance, and recent history.",
+    "loading": "Loading your dashboard...",
+    "empty": "No dashboard data is available yet.",
+    "connection": {
+      "connected": "Connected",
+      "connecting": "Connecting",
+      "disconnected": "Disconnected"
+    },
+    "connectionTooltip": {
+      "connected": "Live updates",
+      "connecting": "Connecting to live updates",
+      "disconnected": "No live updates"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin"
+    },
+    "errors": {
+      "missingChannel": "A streamer channel is required to load the dashboard.",
+      "loadFailed": "Unable to load dashboard data right now."
+    },
+    "kpis": {
+      "sectionLabel": "Top dashboard metrics",
+      "avgHoursPerStream": "Avg Hours / Stream",
+      "averageViewers30d": "Average Viewers (30d)",
+      "bits30d": "Bits (30d)",
+      "donations30d": "Donations (30d)",
+      "featureSpotlight": "Feature Spotlight",
+      "featureSpotlightValue": "Event Heatmap",
+      "featureSpotlightHint": "Reserved for your next feature."
+    },
+    "charts": {
+      "sectionLabel": "Performance chart",
+      "title": "Performance Trend",
+      "countAxisLabel": "Count",
+      "series": {
+        "bits": "Bits",
+        "subs": "Subs",
+        "hours": "Hours",
+        "avgViewers": "Avg Viewers",
+        "follows": "Follows"
+      }
+    },
+    "timeRange": {
+      "title": "Choose time range",
+      "7d": "7d",
+      "15d": "15d",
+      "30d": "30d",
+      "90d": "90d",
+      "all": "All"
+    },
+    "goals": {
+      "sectionLabel": "Goals and totals",
+      "title": "Followers & Subs Goals",
+      "totalFollowers": "Total Followers",
+      "totalSubs": "Total Subs",
+      "followersGoal": "Followers Goal",
+      "subsGoal": "Subs Goal"
+    },
+    "history": {
+      "sectionLabel": "Stream history table",
+      "title": "Last 30 Days Stream History",
+      "subtitle": "Newest streams first.",
+      "live": "LIVE",
+      "columns": {
+        "date": "Date",
+        "hours": "Hours",
+        "avgViewers": "Avg Viewers",
+        "bits": "Bits",
+        "subs": "Subs",
+        "follows": "Follows",
+        "donations": "Donations"
+      },
+      "empty": "No stream sessions found for this range."
+    },
+    "mobile": {
+      "sectionLabel": "Mobile dashboard panel switch",
+      "showChart": "Chart",
+      "showGoals": "Goals"
+    },
+    "live": {
+      "title": "Live Status",
+      "liveNow": "Live Now",
+      "offline": "Offline",
+      "offlineDescription": "No active stream detected for this channel.",
+      "viewers": "viewers"
+    },
+    "liveStream": {
+      "statusLive": "Currently streaming live",
+      "statusOffline": "Currently offline",
+      "live": "LIVE",
+      "offline": "Offline",
+      "offlineHint": "Start streaming to see live stats",
+      "viewers": "viewers",
+      "duration": "Duration",
+      "notStarted": "Not started",
+      "thumbnailAlt": "Stream thumbnail",
+      "noTitle": "Untitled Stream"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "joinBot": "Join Bot",
+      "leaveChat": "Leave Chat",
+      "statusActive": "Bot is active in chat",
+      "statusInactive": "Bot is not in chat",
+      "error": "Failed to update bot status"
+    },
+    "activity": {
+      "title": "Live Activity",
+      "follows": "Follows",
+      "subs": "Subs",
+      "bits": "Bits",
+      "donations": "Donations",
+      "messages": "Messages",
+      "commands": "Commands"
+    },
+    "health": {
+      "title": "Stream Health",
+      "connection": "Connection",
+      "responseTime": "Response Time",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "lastChecked": "Last checked"
+    }
+  },
+  "login": {
+    "title": "Sign in to DomDimaBot",
+    "subtitle": "We are preparing your account, permissions, and dashboard.",
+    "actions": {
+      "continue": "Continue with Twitch",
+      "tryAgain": "Try again"
+    },
+    "stages": {
+      "idle": "Ready to authenticate",
+      "validating": "Validating Twitch authentication",
+      "syncing": "Syncing your account data",
+      "permissions": "Loading channel permissions",
+      "dashboard": "Preparing dashboard data",
+      "redirecting": "Redirecting to your dashboard",
+      "error": "Login failed"
+    },
+    "errors": {
+      "denied": "Authentication was cancelled on Twitch.",
+      "stateMismatch": "Security validation failed. Please try logging in again.",
+      "exchangeFailed": "Could not exchange Twitch authorization code.",
+      "syncFailed": "Could not sync your user data with DomDimaBot.",
+      "noPrimaryChannel": "No primary channel was returned for this account.",
+      "noDashboardAccess": "You are authenticated but do not have dashboard access.",
+      "dashboardFailed": "Unable to preload dashboard data.",
+      "unexpected": "Unexpected login error. Please try again."
+    }
+  },
+  "commands": {
+    "title": "Commands",
+    "subtitle": "Command management is protected by server-side permissions and will be expanded here.",
+    "heading": "Commands",
+    "addCommand": "Add Command",
+    "loading": "Loading commands...",
+    "refresh": "Hard refresh",
+    "refreshing": "Refreshing...",
+    "refreshCooldown": "Refresh in {{seconds}}s",
+    "deleteTitle": "Delete Command",
+    "deleteMessage": "Are you sure you want to delete this command? This action cannot be undone.",
+    "viewTable": "Table view",
+    "viewCard": "Card view",
+    "pending": {
+      "creating": "Creating",
+      "saving": "Saving",
+      "deleting": "Deleting",
+      "enabling": "Enabling",
+      "disabling": "Disabling"
+    },
+    "toast": {
+      "loadErrorTitle": "Could not load commands",
+      "missingChannel": "We could not resolve this channel yet.",
+      "refreshSuccessTitle": "Commands refreshed",
+      "refreshSuccessMessage": "Loaded {{count}} commands from the server.",
+      "refreshCooldownTitle": "Refresh cooling down",
+      "refreshCooldownMessage": "Please wait {{seconds}} seconds before refreshing again.",
+      "emptyTitle": "No commands yet",
+      "emptyMessage": "We did not find commands for this channel after a server refresh.",
+      "recoveredTitle": "Commands recovered",
+      "savedTitle": "Changes saved",
+      "savedMessage": "Your command update is live.",
+      "saveErrorTitle": "Could not save changes",
+      "saveErrorMessage": "Please try that edit again.",
+      "enabledTitle": "Command enabled",
+      "enabledMessage": "This command is active again.",
+      "disabledTitle": "Command disabled",
+      "disabledMessage": "This command will stay off until you enable it again.",
+      "deletedTitle": "Command deleted",
+      "deletedMessage": "The command has been removed.",
+      "deleteErrorTitle": "Could not delete command",
+      "deleteErrorMessage": "Please try deleting this command again.",
+      "createdTitle": "Command created",
+      "createdMessage": "Your new command is ready to use.",
+      "createErrorTitle": "Could not create command",
+      "createErrorMessage": "Please review the form and try again.",
+      "rateLimitTitle": "Slow down a bit",
+      "rateLimitMessage": "Please wait {{seconds}} seconds before making more command changes."
+    },
+    "placeholder": {
+      "name": "Name",
+      "command": "Command",
+      "function": "Function",
+      "description": "Description",
+      "cooldown": "Cooldown",
+      "userLevel": "User Level",
+      "status": "Status",
+      "actions": "Actions",
+      "reservedCommand": "Reserved Command",
+      "public": "Public",
+      "noCommandsFound": "No commands found. Create your first command!"
+    },
+    "userLevels": {
+      "everyone": "Everyone",
+      "tier1": "Tier 1",
+      "tier2": "Tier 2",
+      "tier3": "Tier 3",
+      "founders": "Founders",
+      "vip": "VIP",
+      "mod": "Mod",
+      "editor": "Editor",
+      "admin": "Admin",
+      "streamer": "Streamer"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Enabled",
+    "statusOn": "On",
+    "statusOff": "Off",
+    "show": "Show",
+    "entries": "entries",
+    "previous": "Previous",
+    "next": "Next",
+    "retry": "Retry",
+    "notAvailable": "N/A",
+    "seconds": "seconds"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Settings are permission-protected and ready for feature wiring."
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "contact": "Contact"
+    },
+    "hero": {
+      "title": "Meet DomDimaBot: Your Ultimate Twitch Chat Companion",
+      "description": "Enhance your Twitch streaming experience with DomDimaBot. Engage your audience, moderate chats, and boost your channel's interactivity.",
+      "loginWith": "Login with Twitch",
+      "learnMore": "Learn More",
+      "join": "Join Discord"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "registeredUsers": "Registered Users",
+      "liveUsers": "Live Users",
+      "botActiveAccounts": "Bot Active Accounts",
+      "messagesReceived": "Messages Received",
+      "totalCommands": "Total Commands",
+      "totalLiveViewer": "Total Live Viewer"
+    },
+    "analyticsConnection": {
+      "connected": "Connected",
+      "reconnecting": "Reconnecting",
+      "disconnected": "Disconnected"
+    },
+    "features": {
+      "title": "Features",
+      "subtitle": "A focused feature spotlight that maps directly to our plan comparison.",
+      "aiModerationTitle": "AI-Powered Moderation",
+      "aiModerationDescription": "Scale from basic filtering to smart, context-aware moderation for fast chats.",
+      "automationTitle": "Commands & Automation",
+      "automationDescription": "Run unlimited commands, variables, and advanced trigger flows for your channel.",
+      "analyticsTitle": "Advanced Analytics",
+      "analyticsDescription": "Track user activity, command usage, and engagement trends with deeper retention.",
+      "ttsTitle": "TTS & Voice Features",
+      "ttsDescription": "From basic TTS to premium human-like voices and pro-level voice capabilities.",
+      "comparePlansCta": "Compare plans"
+    },
+    "pricing": {
+      "title": "Pricing",
+      "description": "Choose your plan and start engaging your audience today.",
+      "monthly": "Monthly",
+      "annually": "Annually",
+      "choosePlan": "Choose Plan",
+      "showMoreFeatures": "Show more features",
+      "showLessFeatures": "Show less features",
+      "basic": {
+        "title": "Basic",
+        "description": "Free forever, with limited features.",
+        "features": {
+          "smartChatModeration": "Smart Chat Moderation",
+          "unlimitedSimpleCustomCommands": "Unlimited Simple Custom Commands",
+          "basicAnalytics": "Basic Analytics"
+        }
+      },
+      "premium": {
+        "title": "Premium",
+        "description": "Premium plan with all features, and more limits."
+      },
+      "ai": {
+        "title": "AI",
+        "description": "More automated chat moderation and AI integration."
+      }
+    },
+    "liveNow": {
+      "title": "Who Is Live Right Now",
+      "subtitle": "Top channels by viewers. Scroll to explore all live creators.",
+      "viewers": "viewers",
+      "empty": "No channels are live right now.",
+      "platforms": {
+        "twitch": "Twitch",
+        "kick": "Kick",
+        "none": "None"
+      }
+    },
+    "callToAction": {
+      "title": "Ready to Elevate Your Twitch Stream?",
+      "description": "Join thousands of streamers who have transformed their channels with DomDimaBot.",
+      "button": "Sign Up with Twitch",
+      "terms": "By signing up, you agree to our Terms & Conditions."
+    },
+    "footer": {
+      "copyright": "© 2024 DomDimaBot. All rights reserved.",
+      "terms": "Terms of Service",
+      "privacy": "Privacy"
+    }
+  }
+}
