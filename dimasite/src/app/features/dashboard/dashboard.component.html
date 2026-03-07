@@ -1,0 +1,257 @@
+<section class="dashboard-shell" [attr.data-plan-tier]="planTier()" aria-live="polite">
+  <header class="dashboard-header">
+    <app-dashboard-ambient class="dashboard-ambient"></app-dashboard-ambient>
+    <div>
+      <p class="dashboard-eyebrow">{{ t('dashboard.pageLabel') }}</p>
+      <h1 class="dashboard-title">{{ t('dashboard.title') }}</h1>
+
+      @if (channelName()) {
+        <div class="dashboard-channel-row">
+          <p class="dashboard-channel-name">{{ channelName() }}</p>
+          @if (viewerRoleLabel()) {
+            <span class="dashboard-role-badge">{{ viewerRoleLabel() }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    <div
+      class="dashboard-status"
+      [class.dashboard-status--offline]="connectionStatus() === 'disconnected'"
+      [attr.title]="connectionTooltip()"
+      [attr.aria-label]="connectionTooltip()"
+    >
+      <span class="dashboard-status__dot" aria-hidden="true"></span>
+      <span>{{ t('dashboard.connection.' + connectionStatus()) }}</span>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="dashboard-error" role="alert">
+      <p>{{ errorMessage() }}</p>
+    </div>
+  } @else if (loading() && !bootstrap()) {
+    <div class="dashboard-loading" role="status">
+      <div class="dashboard-spinner" aria-hidden="true"></div>
+      <p>{{ t('dashboard.loading') }}</p>
+    </div>
+  } @else if (!bootstrap()) {
+    <div class="dashboard-empty">
+      <p>{{ t('dashboard.empty') }}</p>
+    </div>
+  } @else {
+    <!-- Compact Header Section for Mobile -->
+    <section class="dashboard-compact-header">
+      <div class="dashboard-compact-status">
+        <div class="dashboard-compact-live" [class.dashboard-compact-live--active]="isLive()">
+          <span class="dashboard-compact-live-dot" aria-hidden="true"></span>
+          <span class="dashboard-compact-live-text">{{ isLive() ? t('dashboard.liveStream.live') : t('dashboard.liveStream.offline') }}</span>
+          @if (isLive() && liveStream()?.viewer_count) {
+            <span class="dashboard-compact-viewers">{{ formatNumber(liveStream()!.viewer_count) }}</span>
+          }
+        </div>
+
+        <button
+          type="button"
+          class="dashboard-compact-action-btn"
+          [class.dashboard-compact-action-btn--active]="chatEnabled()"
+          [class.dashboard-compact-action-btn--join]="!chatEnabled()"
+          [class.dashboard-compact-action-btn--leave]="chatEnabled()"
+          (click)="toggleChatCompact()"
+          [disabled]="isTogglingChat()"
+        >
+          @if (isTogglingChat()) {
+            <span class="dashboard-compact-spinner"></span>
+          } @else {
+            <span>{{ chatEnabled() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}</span>
+          }
+        </button>
+      </div>
+    </section>
+
+    <!-- Desktop: Full Components -->
+    <section class="dashboard-live-section desktop-only">
+      <app-live-stream-card 
+        [stream]="liveStream()" 
+        [isLive]="isLive()">
+      </app-live-stream-card>
+    </section>
+
+    <section class="dashboard-actions-section desktop-only">
+      <div class="dashboard-actions-grid">
+        <app-quick-actions
+          [channelID]="channelID()!"
+          [chatEnabled]="chatEnabled()"
+          (chatEnabledChange)="onChatEnabledChange($event)">
+        </app-quick-actions>
+
+        <app-stream-health [health]="streamHealth()"></app-stream-health>
+      </div>
+    </section>
+
+    <!-- Activity Feed -->
+    <section class="dashboard-activity-section">
+      <app-activity-feed [counters]="activityCounters()" [isLive]="isLive()"></app-activity-feed>
+    </section>
+
+    <section class="dashboard-kpis" [attr.aria-label]="t('dashboard.kpis.sectionLabel')">
+      <article class="dashboard-kpi-card">
+        <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.avgHoursPerStream') }}</p>
+        <p class="dashboard-kpi-card__value">{{ formatHours(kpis().averageHoursPerStream) }}</p>
+      </article>
+
+      <article class="dashboard-kpi-card">
+        <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.averageViewers30d') }}</p>
+        <p class="dashboard-kpi-card__value" [countUp]="kpis().monthlyAverageViewers">0</p>
+      </article>
+
+      <article class="dashboard-kpi-card dashboard-kpi-card--bits">
+        <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.bits30d') }}</p>
+        <p class="dashboard-kpi-card__value" [countUp]="kpis().totalBits">0</p>
+      </article>
+
+      <article class="dashboard-kpi-card dashboard-kpi-card--donations">
+        <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.donations30d') }}</p>
+        <p class="dashboard-kpi-card__value">{{ formatCurrency(kpis().totalDonations) }}</p>
+      </article>
+
+      <article class="dashboard-kpi-card dashboard-kpi-card--feature">
+        <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.featureSpotlight') }}</p>
+        <p class="dashboard-kpi-card__value">{{ t('dashboard.kpis.featureSpotlightValue') }}</p>
+        <p class="dashboard-kpi-card__meta">{{ t('dashboard.kpis.featureSpotlightHint') }}</p>
+      </article>
+    </section>
+
+    <section class="dashboard-mobile-toggle" [attr.aria-label]="t('dashboard.mobile.sectionLabel')">
+      <button
+        type="button"
+        class="dashboard-mobile-toggle__button"
+        [class.dashboard-mobile-toggle__button--active]="selectedMobilePanel() === 'chart'"
+        [attr.aria-pressed]="selectedMobilePanel() === 'chart'"
+        (click)="selectMobilePanel('chart')"
+      >
+        {{ t('dashboard.mobile.showChart') }}
+      </button>
+      <button
+        type="button"
+        class="dashboard-mobile-toggle__button"
+        [class.dashboard-mobile-toggle__button--active]="selectedMobilePanel() === 'goals'"
+        [attr.aria-pressed]="selectedMobilePanel() === 'goals'"
+        (click)="selectMobilePanel('goals')"
+      >
+        {{ t('dashboard.mobile.showGoals') }}
+      </button>
+    </section>
+
+    <section class="dashboard-middle" [attr.aria-label]="t('dashboard.charts.sectionLabel')">
+      <article class="dashboard-chart-panel" [class.dashboard-panel--hidden-mobile]="selectedMobilePanel() !== 'chart'">
+        <div class="dashboard-chart-panel__header">
+        <h2>{{ t('dashboard.charts.title') }}</h2>
+        <div class="dashboard-ranges" role="tablist" [attr.aria-label]="t('dashboard.timeRange.title')">
+          @for (range of timeRanges; track range) {
+            <button
+              type="button"
+              class="dashboard-range-button"
+              [class.dashboard-range-button--active]="selectedTimeRange() === range"
+              (click)="selectTimeRange(range)"
+            >
+              {{ timeRangeLabel(range) }}
+            </button>
+          }
+        </div>
+        </div>
+
+        <div echarts class="dashboard-chart" [options]="overviewChartOption()"></div>
+      </article>
+
+      <aside class="dashboard-goals" [attr.aria-label]="t('dashboard.goals.sectionLabel')" [class.dashboard-panel--hidden-mobile]="selectedMobilePanel() !== 'goals'">
+        <h2>{{ t('dashboard.goals.title') }}</h2>
+
+        <div class="dashboard-goals__stats">
+          <article class="dashboard-goals__stat">
+            <p class="dashboard-goals__stat-label">{{ t('dashboard.goals.totalFollowers') }}</p>
+            <p class="dashboard-goals__stat-value">{{ formatNumber(totalFollowers()) }}</p>
+          </article>
+
+          <article class="dashboard-goals__stat">
+            <p class="dashboard-goals__stat-label">{{ t('dashboard.goals.totalSubs') }}</p>
+            <p class="dashboard-goals__stat-value">{{ formatNumber(totalSubs()) }}</p>
+          </article>
+        </div>
+
+        <article class="dashboard-goal-card">
+          <div class="dashboard-goal-card__head">
+            <p class="dashboard-goal-card__label">{{ t('dashboard.goals.followersGoal') }}</p>
+            <p class="dashboard-goal-card__percent">{{ formatPercent(followersGoalPercent()) }}</p>
+          </div>
+          <p class="dashboard-goal-card__value">
+            {{ formatNumber(monthlyGoals().followersCurrent) }} / {{ formatNumber(monthlyGoals().followersGoal) }}
+          </p>
+          <div class="dashboard-goal-card__progress" role="progressbar" [attr.aria-label]="t('dashboard.goals.followersGoal')" [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="followersGoalPercent()">
+            <span class="dashboard-goal-card__fill" [style.width.%]="followersGoalPercent()"></span>
+          </div>
+        </article>
+
+        <article class="dashboard-goal-card">
+          <div class="dashboard-goal-card__head">
+            <p class="dashboard-goal-card__label">{{ t('dashboard.goals.subsGoal') }}</p>
+            <p class="dashboard-goal-card__percent">{{ formatPercent(subsGoalPercent()) }}</p>
+          </div>
+          <p class="dashboard-goal-card__value">
+            {{ formatNumber(monthlyGoals().subsCurrent) }} / {{ formatNumber(monthlyGoals().subsGoal) }}
+          </p>
+          <div class="dashboard-goal-card__progress" role="progressbar" [attr.aria-label]="t('dashboard.goals.subsGoal')" [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="subsGoalPercent()">
+            <span class="dashboard-goal-card__fill dashboard-goal-card__fill--subs" [style.width.%]="subsGoalPercent()"></span>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <section class="dashboard-history" [attr.aria-label]="t('dashboard.history.sectionLabel')">
+      <div class="dashboard-history__head">
+        <h2>{{ t('dashboard.history.title') }}</h2>
+        <p>{{ t('dashboard.history.subtitle') }}</p>
+      </div>
+
+      <div class="dashboard-history__table-wrap">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ t('dashboard.history.columns.date') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.hours') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.avgViewers') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.bits') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.subs') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.follows') }}</th>
+              <th scope="col">{{ t('dashboard.history.columns.donations') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (stream of streamHistoryRows(); track $index) {
+              <tr [class.dashboard-table__live-row]="isStreamLiveToday(stream)">
+                <td>
+                  @if (isStreamLiveToday(stream)) {
+                    <span class="dashboard-live-badge">{{ t('dashboard.history.live') }}</span>
+                  }
+                  {{ formatHistoryDate(stream.date) }}
+                </td>
+                <td>{{ formatHours(stream.hours) }}</td>
+                <td>{{ formatNumber(stream.viewers) }}</td>
+                <td>{{ formatNumber(stream.bits) }}</td>
+                <td>{{ formatNumber(stream.subs) }}</td>
+                <td>{{ formatNumber(stream.follows) }}</td>
+                <td>{{ formatCurrency(stream.donations) }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="dashboard-table__empty" colspan="7">
+                  {{ t('dashboard.history.empty') }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</section>

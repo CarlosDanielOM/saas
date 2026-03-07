@@ -1,0 +1,86 @@
+:host {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1100;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.perf-toggle,
+.mode-btn,
+.quality-btn {
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  font: 600 0.72rem/1.1 'DM Sans', 'Segoe UI', sans-serif;
+  letter-spacing: 0.02em;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.perf-toggle:hover,
+.mode-btn:hover,
+.quality-btn:hover {
+  border-color: rgba(148, 163, 184, 0.8);
+}
+
+.performance-monitor {
+  width: min(22rem, calc(100vw - 2rem));
+  background: rgba(2, 6, 23, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.85rem;
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.45);
+  color: #e2e8f0;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.perf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.65rem;
+}
+
+.perf-grid p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+}
+
+.perf-grid span {
+  color: #94a3b8;
+}
+
+.perf-grid strong {
+  color: #f8fafc;
+}
+
+.fps-good {
+  color: #22c55e;
+}
+
+.fps-warning {
+  color: #f59e0b;
+}
+
+.fps-critical {
+  color: #ef4444;
+}
+
+.perf-controls,
+.quality-buttons {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.quality-btn.is-active {
+  border-color: rgba(56, 189, 248, 0.8);
+  background: rgba(14, 116, 144, 0.8);
+}

@@ -1,0 +1,37 @@
+<section class="admin-hub">
+  <header class="admin-hub__header">
+    <h1>{{ t('adminHub.title') }}</h1>
+    <p>{{ t('adminHub.subtitle') }}</p>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="admin-hub__error" role="alert">{{ errorMessage() }}</div>
+  }
+
+  <div class="admin-hub__grid">
+    @for (channel of channels(); track channel.channelID) {
+      <article class="admin-hub__card">
+        <p class="admin-hub__name">{{ channel.channelName }}</p>
+        <p class="admin-hub__meta">
+          @if (channel.kind === 'owner') {
+            {{ t('adminHub.labels.owner') }}
+          } @else {
+            {{ t('adminHub.labels.admin') }}
+          }
+        </p>
+        <button
+          type="button"
+          class="admin-hub__button"
+          [disabled]="switchingChannelID() === channel.channelID"
+          (click)="openChannel(channel)"
+        >
+          @if (switchingChannelID() === channel.channelID) {
+            {{ t('adminHub.actions.opening') }}
+          } @else {
+            {{ t('adminHub.actions.openDashboard') }}
+          }
+        </button>
+      </article>
+    }
+  </div>
+</section>

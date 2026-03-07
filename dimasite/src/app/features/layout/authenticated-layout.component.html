@@ -1,0 +1,194 @@
+<div class="auth-layout">
+  <header class="auth-navbar">
+    <a class="auth-navbar__brand" routerLink="/">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <span>DomDimaBot</span>
+    </a>
+
+    <nav class="auth-navbar__nav" aria-label="Primary">
+      <a
+        class="auth-navbar__link"
+        [routerLink]="['/', streamer(), 'dashboard']"
+        routerLinkActive
+        #dashboardLink="routerLinkActive"
+        [class.auth-navbar__link--active]="dashboardLink.isActive"
+      >
+        {{ t('navbar.dashboard') }}
+      </a>
+      <a
+        class="auth-navbar__link"
+        [routerLink]="['/', streamer(), 'commands']"
+        routerLinkActive
+        #commandsLink="routerLinkActive"
+        [class.auth-navbar__link--active]="commandsLink.isActive"
+      >
+        {{ t('navbar.commands') }}
+      </a>
+      <a
+        class="auth-navbar__link"
+        [routerLink]="['/', streamer(), 'modules']"
+        routerLinkActive
+        #modulesLink="routerLinkActive"
+        [class.auth-navbar__link--active]="modulesLink.isActive"
+      >
+        {{ t('navbar.modules') }}
+      </a>
+      <a
+        class="auth-navbar__link"
+        [routerLink]="['/', streamer(), 'settings']"
+        routerLinkActive
+        #settingsLink="routerLinkActive"
+        [class.auth-navbar__link--active]="settingsLink.isActive"
+      >
+        {{ t('navbar.settings') }}
+      </a>
+      <a
+        class="auth-navbar__link"
+        [routerLink]="['/', streamer(), 'admin-hub']"
+        routerLinkActive
+        #adminHubLink="routerLinkActive"
+        [class.auth-navbar__link--active]="adminHubLink.isActive"
+      >
+        {{ t('navbar.adminHub') }}
+      </a>
+    </nav>
+
+    @if (hasPermissionCta()) {
+      <div class="auth-navbar__cta">
+        <div class="auth-navbar__cta-particles" aria-hidden="true">
+          <span class="cta-particle"></span>
+          <span class="cta-particle"></span>
+          <span class="cta-particle"></span>
+          <span class="cta-particle"></span>
+          <span class="cta-particle"></span>
+        </div>
+        <button type="button" [class]="permissionCtaButtonClass()" (click)="openPermissionCta()">
+          <lucide-icon [name]="permissionCtaIcon()" class="auth-navbar__cta-icon"></lucide-icon>
+          <span>{{ permissionCtaLabel() }}</span>
+        </button>
+      </div>
+    }
+
+    <div class="auth-navbar__profile" #profileMenu>
+      <button
+        type="button"
+        class="auth-navbar__avatar-btn"
+        [attr.aria-expanded]="isProfileMenuOpen()"
+        aria-haspopup="menu"
+        [attr.aria-label]="userName()"
+        (click)="toggleProfileMenu($event)"
+      >
+        @if (userAvatar()) {
+          <img class="auth-navbar__avatar-img" [src]="userAvatar()" [alt]="userName()" />
+        } @else {
+          <span class="auth-navbar__avatar-fallback" aria-hidden="true">{{ userInitial() }}</span>
+        }
+      </button>
+
+      @if (isProfileMenuOpen()) {
+        <div class="auth-navbar__dropdown" role="menu">
+          <div class="auth-navbar__dropdown-header">
+            <span class="auth-navbar__username">{{ userName() }}</span>
+            <span [class]="planBadgeClass()">{{ planTierLabel() }}</span>
+          </div>
+
+          <div class="auth-navbar__divider" aria-hidden="true"></div>
+
+          <a
+            class="auth-navbar__dropdown-item"
+            [routerLink]="['/', streamer(), 'profile']"
+            role="menuitem"
+            (click)="closeProfileMenu()"
+          >
+            {{ t('navbar.profileSettings') }}
+          </a>
+
+          <button type="button" class="auth-navbar__dropdown-item" role="menuitem" (click)="toggleThemeFromMenu()">
+            <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
+            <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
+          </button>
+          <button type="button" class="auth-navbar__dropdown-item" role="menuitem" (click)="toggleLanguageFromMenu()">
+            {{ languageLabel() }}
+          </button>
+
+          <div class="auth-navbar__divider" aria-hidden="true"></div>
+
+          <button
+            type="button"
+            class="auth-navbar__dropdown-item auth-navbar__dropdown-item--danger"
+            role="menuitem"
+            (click)="logout()"
+          >
+            {{ t('navbar.logout') }}
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="auth-navbar__mobile" #mobileMenu>
+      <button
+        type="button"
+        class="auth-navbar__mobile-toggle"
+        [attr.aria-expanded]="isMobileMenuOpen()"
+        aria-haspopup="menu"
+        aria-label="Open menu"
+        (click)="toggleMobileMenu($event)"
+      >
+        <span class="auth-navbar__mobile-toggle-bar" aria-hidden="true"></span>
+        <span class="auth-navbar__mobile-toggle-bar" aria-hidden="true"></span>
+        <span class="auth-navbar__mobile-toggle-bar" aria-hidden="true"></span>
+      </button>
+
+      @if (isMobileMenuOpen()) {
+        <div class="auth-navbar__mobile-panel" role="menu">
+          <section class="auth-navbar__mobile-section auth-navbar__mobile-section--identity">
+            <span class="auth-navbar__username">{{ userName() }}</span>
+            <span [class]="planBadgeClass()">{{ planTierLabel() }}</span>
+          </section>
+
+          <div class="auth-navbar__divider" aria-hidden="true"></div>
+
+          <nav class="auth-navbar__mobile-section" aria-label="Mobile primary">
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'dashboard']" (click)="closeMobileMenu()">
+              {{ t('navbar.dashboard') }}
+            </a>
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'commands']" (click)="closeMobileMenu()">
+              {{ t('navbar.commands') }}
+            </a>
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'modules']" (click)="closeMobileMenu()">
+              {{ t('navbar.modules') }}
+            </a>
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'settings']" (click)="closeMobileMenu()">
+              {{ t('navbar.settings') }}
+            </a>
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'admin-hub']" (click)="closeMobileMenu()">
+              {{ t('navbar.adminHub') }}
+            </a>
+          </nav>
+
+          <div class="auth-navbar__divider" aria-hidden="true"></div>
+
+          <section class="auth-navbar__mobile-section">
+            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'profile']" (click)="closeMobileMenu()">
+              {{ t('navbar.profileSettings') }}
+            </a>
+            <button type="button" class="auth-navbar__mobile-link" (click)="toggleThemeFromMobileMenu()">
+              <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
+              <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
+            </button>
+            <button type="button" class="auth-navbar__mobile-link" (click)="toggleLanguageFromMobileMenu()">
+              {{ languageLabel() }}
+            </button>
+            <button type="button" class="auth-navbar__mobile-link auth-navbar__mobile-link--danger" (click)="logout()">
+              {{ t('navbar.logout') }}
+            </button>
+          </section>
+        </div>
+      }
+    </div>
+  </header>
+
+  <main class="auth-layout__content">
+    <router-outlet />
+  </main>
+</div>

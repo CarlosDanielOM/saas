@@ -1,0 +1,317 @@
+<div class="landing-shell">
+  <div class="parallax-layer" data-depth="0.03"><div class="aurora-blob blob-1"></div></div>
+  <div class="parallax-layer" data-depth="0.06"><div class="aurora-blob blob-2"></div></div>
+  <div class="parallax-layer" data-depth="0.08"><div class="aurora-blob blob-3"></div></div>
+
+  <header class="sticky-navbar">
+    <div class="container mx-auto flex h-16 items-center px-4 md:px-6">
+      <a class="flex items-center gap-3" href="#home" aria-label="DomDimaBot home">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">DomDimaBot</span>
+      </a>
+
+      <nav class="ml-auto flex items-center gap-2">
+        <a class="nav-pill nav-link-desktop" href="#features">{{ t('landing.nav.features') }}</a>
+        <a class="nav-pill nav-link-desktop" href="#pricing">{{ t('landing.nav.pricing') }}</a>
+        <button
+          type="button"
+          class="nav-pill nav-pill--icon"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? 'Dark mode active' : 'Light mode active'"
+          [title]="isDarkMode() ? 'Dark mode active' : 'Light mode active'"
+        >
+          <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+        </button>
+        <button type="button" class="header-login-btn lg:hidden" (click)="loginWithTwitch()">
+          {{ t('landing.hero.loginWith') }}
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="home" class="landing-main">
+    <section class="hero-section reveal-init">
+      <app-hero-orb class="hero-orb" />
+
+      <div class="container relative z-10 mx-auto px-4 md:px-6">
+        <div class="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <p class="hero-eyebrow">Live moderation + automation</p>
+          <h1 class="hero-title">{{ t('landing.hero.title') }}</h1>
+          <p class="hero-copy">{{ t('landing.hero.description') }}</p>
+          <div class="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <button type="button" class="btn-gradient w-full sm:w-auto" (click)="loginWithTwitch()">
+              {{ t('landing.hero.loginWith') }}
+            </button>
+            <button type="button" class="btn-outline-gradient w-full sm:w-auto" (click)="openDiscord()">
+              {{ t('landing.hero.join') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats-section reveal-init">
+      <div class="container mx-auto px-4 md:px-6">
+        <div class="analytics-header">
+          <h2 class="section-title analytics-title">{{ t('landing.analytics.title') }}</h2>
+          <p class="analytics-connection"
+             [class.analytics-connection--connected]="analyticsConnectionStatus() === 'connected'"
+             [class.analytics-connection--reconnecting]="analyticsConnectionStatus() === 'reconnecting'"
+             [class.analytics-connection--disconnected]="analyticsConnectionStatus() === 'disconnected'">
+            <span class="analytics-connection__dot" aria-hidden="true"></span>
+            <span>{{ getAnalyticsConnectionText() }}</span>
+          </p>
+        </div>
+        <div class="metrics-grid">
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="usersIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.registeredUsers') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().registeredUsers) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().registeredUsers) >= 10"
+               [countUp]="siteStats().registeredUsers">0</p>
+          </article>
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="tvIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.liveUsers') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().liveUsers) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().liveUsers) >= 10"
+               [countUp]="siteStats().liveUsers">0</p>
+          </article>
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="activityIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.botActiveAccounts') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().botActiveAccounts) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().botActiveAccounts) >= 10"
+               [countUp]="siteStats().botActiveAccounts">0</p>
+          </article>
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="messageCircleIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.messagesReceived') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().messagesReceived) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().messagesReceived) >= 10"
+               [countUp]="siteStats().messagesReceived">0</p>
+          </article>
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="zapIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.totalCommands') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().totalCommands) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().totalCommands) >= 10"
+               [countUp]="siteStats().totalCommands">0</p>
+          </article>
+          <article class="glass-card card-hover metric-card text-center">
+            <lucide-icon [name]="settingsIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
+            <p class="metric-label">{{ t('landing.analytics.totalLiveViewer') }}</p>
+            <p class="metric-value"
+               [class.metric-value--compact]="digitCount(siteStats().totalLiveViewer) > 9"
+               [class.metric-value--wrap]="digitCount(siteStats().totalLiveViewer) >= 10"
+               [countUp]="siteStats().totalLiveViewer">0</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="reveal-init py-20 md:py-28">
+      <div class="container mx-auto px-4 md:px-6">
+        <h2 class="section-title mb-2">{{ t('landing.features.title') }}</h2>
+        <p class="features-subtitle">
+          {{ t('landing.features.subtitle') }}
+        </p>
+        <div class="features-grid mt-8">
+          <article class="glass-card card-hover feature-card text-center">
+            <span class="feature-badge">AI</span>
+            <lucide-icon [name]="messageCircleIcon" class="mx-auto h-10 w-10 glow-icon"></lucide-icon>
+            <h3 class="feature-title">{{ t('landing.features.aiModerationTitle') }}</h3>
+            <p class="feature-copy">{{ t('landing.features.aiModerationDescription') }}</p>
+            <a class="feature-cta" href="#pricing">{{ t('landing.features.comparePlansCta') }}</a>
+          </article>
+
+          <article class="glass-card card-hover feature-card text-center">
+            <span class="feature-badge">Automation</span>
+            <lucide-icon [name]="zapIcon" class="mx-auto h-10 w-10 glow-icon"></lucide-icon>
+            <h3 class="feature-title">{{ t('landing.features.automationTitle') }}</h3>
+            <p class="feature-copy">{{ t('landing.features.automationDescription') }}</p>
+            <a class="feature-cta" href="#pricing">{{ t('landing.features.comparePlansCta') }}</a>
+          </article>
+
+          <article class="glass-card card-hover feature-card text-center">
+            <span class="feature-badge">Insights</span>
+            <lucide-icon [name]="activityIcon" class="mx-auto h-10 w-10 glow-icon"></lucide-icon>
+            <h3 class="feature-title">{{ t('landing.features.analyticsTitle') }}</h3>
+            <p class="feature-copy">{{ t('landing.features.analyticsDescription') }}</p>
+            <a class="feature-cta" href="#pricing">{{ t('landing.features.comparePlansCta') }}</a>
+          </article>
+
+          <article class="glass-card card-hover feature-card text-center">
+            <span class="feature-badge">Voice</span>
+            <lucide-icon [name]="tvIcon" class="mx-auto h-10 w-10 glow-icon"></lucide-icon>
+            <h3 class="feature-title">{{ t('landing.features.ttsTitle') }}</h3>
+            <p class="feature-copy">{{ t('landing.features.ttsDescription') }}</p>
+            <a class="feature-cta" href="#pricing">{{ t('landing.features.comparePlansCta') }}</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="stats-section reveal-init">
+      <div class="container mx-auto px-4 md:px-6">
+        <h2 class="section-title">{{ t('landing.pricing.title') }}</h2>
+        <article class="glass-card pricing-matrix">
+          <div class="pricing-matrix__mobile-tabs">
+            @for (tier of pricingTiers; track tier.key) {
+              <button
+                type="button"
+                class="pricing-tab"
+                [class.pricing-tab--active]="activePricingTier() === tier.key"
+                (click)="setActivePricingTier(tier.key)"
+              >
+                {{ tier.label }}
+              </button>
+            }
+          </div>
+
+          <div class="pricing-matrix__head">
+            <div class="pricing-matrix__cell pricing-matrix__cell--label pricing-matrix__head-spacer"></div>
+            @for (tier of pricingTiers; track tier.key) {
+                <div
+                  class="pricing-matrix__cell pricing-tier"
+                  [class.pricing-tier--recommended]="tier.key === 'premium'"
+                  [class.pricing-tier--mobile-hidden]="activePricingTier() !== tier.key"
+                >
+                  @if (tier.key === 'premium') {
+                    <span class="pricing-tier__badge">Most Popular</span>
+                  }
+                  <p class="pricing-tier__name">{{ tier.label }}</p>
+                  <p class="pricing-tier__price">{{ tier.monthlyPriceLabel }}</p>
+                  <p class="pricing-tier__description">{{ tier.description }}</p>
+                  <button type="button" class="btn-gradient pricing-tier__cta" (click)="loginWithTwitch()">
+                    {{ tier.ctaLabel }}
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="pricing-matrix__section-title">Capabilities</div>
+          @for (row of visibleCapabilities(); track row.label) {
+            <div class="pricing-matrix__row">
+              <div class="pricing-matrix__cell pricing-matrix__cell--label">{{ row.label }}</div>
+              @for (tier of pricingTiers; track tier.key) {
+                <div
+                  class="pricing-matrix__cell pricing-value"
+                  [class.pricing-value--recommended]="tier.key === 'premium'"
+                  [class.pricing-tier--mobile-hidden]="activePricingTier() !== tier.key"
+                >
+                  @if (isCheckValue(pricingValue(row, tier.key))) {
+                    <lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon>
+                  } @else {
+                    <span>{{ pricingValue(row, tier.key) }}</span>
+                  }
+                </div>
+              }
+            </div>
+            @if (row.note) {
+              <p class="pricing-matrix__note">{{ row.note }}</p>
+            }
+          }
+
+          <div class="pricing-matrix__section-title">Limits & Retentions</div>
+          @for (row of visibleLimits(); track row.label) {
+            <div class="pricing-matrix__row">
+              <div class="pricing-matrix__cell pricing-matrix__cell--label">{{ row.label }}</div>
+              @for (tier of pricingTiers; track tier.key) {
+                <div
+                  class="pricing-matrix__cell pricing-value"
+                  [class.pricing-value--recommended]="tier.key === 'premium'"
+                  [class.pricing-tier--mobile-hidden]="activePricingTier() !== tier.key"
+                >
+                  <span>{{ pricingValue(row, tier.key) }}</span>
+                </div>
+              }
+            </div>
+            @if (row.note) {
+              <p class="pricing-matrix__note">{{ row.note }}</p>
+            }
+          }
+
+          <div class="pricing-matrix__toggle-wrap">
+            <button type="button" class="btn-outline-gradient pricing-matrix__toggle" (click)="togglePricingRows()">
+              {{ showAllPricingRows() ? t('landing.pricing.showLessFeatures') : t('landing.pricing.showMoreFeatures') }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="live-now" class="reveal-init py-16 md:py-20">
+      <div class="container mx-auto px-4 md:px-6">
+        <article class="glass-card live-now-board">
+          <div class="live-now-board__header">
+            <h3 class="live-now-board__title">{{ t('landing.liveNow.title') }}</h3>
+            <p class="live-now-board__subtitle">
+              {{ t('landing.liveNow.subtitle') }}
+            </p>
+          </div>
+
+          @if (liveChannels().length > 0) {
+            <div class="live-now-board__scroll">
+              <div class="live-now-board__grid">
+                @for (channel of liveChannels(); track channel.channelID) {
+                  <article class="live-now-card">
+                    <img
+                      class="live-now-card__avatar"
+                      [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                      [alt]="channel.channel + ' avatar'"
+                      loading="lazy"
+                    />
+                    <p class="live-now-card__name">{{ channel.channel }}</p>
+                    <p class="live-now-card__viewers">{{ channel.viewers }} {{ t('landing.liveNow.viewers') }}</p>
+                    <div class="live-now-card__platforms" aria-label="Active bot platforms">
+                      @if (channel.botPlatforms.length > 0) {
+                        @for (platform of channel.botPlatforms; track platform) {
+                          <span
+                            class="live-platform-badge"
+                            [class.live-platform-badge--twitch]="platform === 'twitch'"
+                            [class.live-platform-badge--kick]="platform === 'kick'"
+                          >
+                            {{ platform === 'twitch' ? t('landing.liveNow.platforms.twitch') : t('landing.liveNow.platforms.kick') }}
+                          </span>
+                        }
+                      } @else {
+                        <span class="live-platform-badge live-platform-badge--none">
+                          {{ t('landing.liveNow.platforms.none') }}
+                        </span>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            </div>
+          } @else {
+            <p class="live-now-board__empty">{{ t('landing.liveNow.empty') }}</p>
+          }
+        </article>
+      </div>
+    </section>
+
+    <section class="reveal-init py-20 md:py-28">
+      <div class="container mx-auto px-4 md:px-6 text-center">
+        <h2 class="section-title">{{ t('landing.callToAction.title') }}</h2>
+        <p class="mx-auto mt-3 max-w-2xl text-lg text-violet-900/80 dark:text-violet-100/80">
+          {{ t('landing.callToAction.description') }}
+        </p>
+        <button type="button" class="btn-gradient mt-8" (click)="loginWithTwitch()">
+          {{ t('landing.callToAction.button') }}
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-violet-300/50 py-6 text-center text-sm text-violet-900/70 dark:border-violet-400/20 dark:text-violet-100/70">
+    {{ t('landing.footer.copyright') }}
+  </footer>
+</div>
