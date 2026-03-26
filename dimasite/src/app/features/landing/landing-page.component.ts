@@ -8,6 +8,7 @@ import {
   inject,
   signal
 } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   LucideAngularModule,
   Activity,
@@ -24,6 +25,8 @@ import { environment } from '../../../environments/environment';
 
 import { SiteStats } from '../../models/site-stats.model';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
+import { AnalyticsService } from '../../services/analytics.service';
+import { CheckoutIntentService } from '../../services/checkout-intent.service';
 import { SupportedLanguage, LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -79,9 +82,12 @@ interface PricingRow {
 })
 export class LandingPageComponent implements OnInit, OnDestroy {
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly router = inject(Router);
+  private readonly analytics = inject(AnalyticsService);
   private readonly linksService = inject(LinksService);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
+  private readonly checkoutIntent = inject(CheckoutIntentService);
   private readonly themeService = inject(ThemeService);
 
   readonly siteStats = signal<SiteStats>({
@@ -245,10 +251,40 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   }
 
   loginWithTwitch(): void {
-    this.sessionAuth.startTwitchLogin();
+    this.checkoutIntent.clearPendingPlan();
+    this.analytics.capture('landing_cta_clicked', {
+      action: 'login',
+      source: 'landing',
+    });
+    this.analytics.capture('auth_started', {
+      source: 'landing',
+    });
+    this.beginAuthFlow();
+  }
+
+  choosePlan(plan: PlanKey): void {
+    this.analytics.capture('checkout_intent_selected', {
+      source: 'landing_pricing',
+      target_plan: plan,
+    });
+    this.analytics.capture('auth_started', {
+      source: 'landing_pricing',
+      target_plan: plan,
+    });
+
+    if (plan === 'premium' || plan === 'pro') {
+      this.checkoutIntent.setPendingPlan(plan);
+    } else {
+      this.checkoutIntent.clearPendingPlan();
+    }
+
+    this.beginAuthFlow();
   }
 
   openDiscord(): void {
+    this.analytics.capture('discord_opened', {
+      source: 'landing',
+    });
     window.open(this.linksService.getDiscordUrl(), '_blank', 'noopener,noreferrer');
   }
 
@@ -444,5 +480,14 @@ export class LandingPageComponent implements OnInit, OnDestroy {
       })
       .filter((entry): entry is LiveChannelBoardEntry => Boolean(entry && entry.channel))
       .sort((a, b) => b.viewers - a.viewers);
+  }
+
+  private beginAuthFlow(): void {
+    if (this.sessionAuth.hasValidSession()) {
+      void this.router.navigate(['/login']);
+      return;
+    }
+
+    this.sessionAuth.startTwitchLogin();
   }
 }

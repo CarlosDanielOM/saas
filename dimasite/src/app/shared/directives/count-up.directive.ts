@@ -14,8 +14,9 @@ import {
 })
 export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
   @Input() countUp = 0;
-  @Input() duration = 800;
-  @Input() minDuration = 300;
+  @Input() duration = 2500;
+  @Input() minDuration = 800;
+  @Input() staggerDelay = 0;
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private observer: IntersectionObserver | null = null;
@@ -78,7 +79,6 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
   private animateTo(target: number, fromValue?: number): void {
     this.animationStartValue = fromValue ?? this.current;
     this.animationTarget = target;
-    this.animationStartTime = performance.now();
     
     const distance = Math.abs(target - this.animationStartValue);
     const adjustedDuration = Math.max(
@@ -90,28 +90,40 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
       cancelAnimationFrame(this.frameId);
     }
 
-    const animate = (now: number) => {
-      const elapsed = now - this.animationStartTime;
-      const progress = Math.min(elapsed / adjustedDuration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      const value = Math.floor(this.animationStartValue + (target - this.animationStartValue) * eased);
+    const startAnimation = () => {
+      this.animationStartTime = performance.now();
 
-      if (value !== this.current) {
-        this.current = value;
-        this.elementRef.nativeElement.textContent = value.toLocaleString();
-      }
+      const animate = (now: number) => {
+        const elapsed = now - this.animationStartTime;
+        const progress = Math.min(elapsed / adjustedDuration, 1);
+        // easeOutCubic for smoother, more cinematic feel
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = Math.floor(this.animationStartValue + (target - this.animationStartValue) * eased);
 
-      if (progress < 1) {
-        this.frameId = requestAnimationFrame(animate);
-      } else {
-        this.frameId = 0;
-        if (this.current !== target) {
-          this.current = target;
-          this.elementRef.nativeElement.textContent = target.toLocaleString();
+        if (value !== this.current) {
+          this.current = value;
+          this.elementRef.nativeElement.textContent = value.toLocaleString();
         }
-      }
+
+        if (progress < 1) {
+          this.frameId = requestAnimationFrame(animate);
+        } else {
+          this.frameId = 0;
+          if (this.current !== target) {
+            this.current = target;
+            this.elementRef.nativeElement.textContent = target.toLocaleString();
+          }
+        }
+      };
+
+      this.frameId = requestAnimationFrame(animate);
     };
 
-    this.frameId = requestAnimationFrame(animate);
+    // Apply stagger delay if specified
+    if (this.staggerDelay > 0) {
+      setTimeout(startAnimation, this.staggerDelay);
+    } else {
+      startAnimation();
+    }
   }
 }

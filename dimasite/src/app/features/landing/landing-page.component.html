@@ -70,7 +70,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().registeredUsers) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().registeredUsers) >= 10"
-               [countUp]="siteStats().registeredUsers">0</p>
+               [countUp]="siteStats().registeredUsers"
+               [staggerDelay]="0">0</p>
           </article>
           <article class="glass-card card-hover metric-card text-center">
             <lucide-icon [name]="tvIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
@@ -78,7 +79,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().liveUsers) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().liveUsers) >= 10"
-               [countUp]="siteStats().liveUsers">0</p>
+               [countUp]="siteStats().liveUsers"
+               [staggerDelay]="150">0</p>
           </article>
           <article class="glass-card card-hover metric-card text-center">
             <lucide-icon [name]="activityIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
@@ -86,7 +88,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().botActiveAccounts) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().botActiveAccounts) >= 10"
-               [countUp]="siteStats().botActiveAccounts">0</p>
+               [countUp]="siteStats().botActiveAccounts"
+               [staggerDelay]="300">0</p>
           </article>
           <article class="glass-card card-hover metric-card text-center">
             <lucide-icon [name]="messageCircleIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
@@ -94,7 +97,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().messagesReceived) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().messagesReceived) >= 10"
-               [countUp]="siteStats().messagesReceived">0</p>
+               [countUp]="siteStats().messagesReceived"
+               [staggerDelay]="450">0</p>
           </article>
           <article class="glass-card card-hover metric-card text-center">
             <lucide-icon [name]="zapIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
@@ -102,7 +106,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().totalCommands) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().totalCommands) >= 10"
-               [countUp]="siteStats().totalCommands">0</p>
+               [countUp]="siteStats().totalCommands"
+               [staggerDelay]="600">0</p>
           </article>
           <article class="glass-card card-hover metric-card text-center">
             <lucide-icon [name]="settingsIcon" class="mx-auto h-7 w-7 glow-icon"></lucide-icon>
@@ -110,7 +115,8 @@
             <p class="metric-value"
                [class.metric-value--compact]="digitCount(siteStats().totalLiveViewer) > 9"
                [class.metric-value--wrap]="digitCount(siteStats().totalLiveViewer) >= 10"
-               [countUp]="siteStats().totalLiveViewer">0</p>
+               [countUp]="siteStats().totalLiveViewer"
+               [staggerDelay]="750">0</p>
           </article>
         </div>
       </div>
@@ -189,9 +195,9 @@
                   <p class="pricing-tier__name">{{ tier.label }}</p>
                   <p class="pricing-tier__price">{{ tier.monthlyPriceLabel }}</p>
                   <p class="pricing-tier__description">{{ tier.description }}</p>
-                  <button type="button" class="btn-gradient pricing-tier__cta" (click)="loginWithTwitch()">
-                    {{ tier.ctaLabel }}
-                </button>
+                  <button type="button" class="btn-gradient pricing-tier__cta" (click)="choosePlan(tier.key)">
+                     {{ tier.ctaLabel }}
+                 </button>
               </div>
             }
           </div>

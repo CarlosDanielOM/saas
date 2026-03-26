@@ -1,4 +1,136 @@
-<div class="placeholder-page">
-  <h1>{{ t('modules.title') }}</h1>
-  <p>{{ t('modules.subtitle') }}</p>
+<div class="modules-page">
+  <!-- Three.js Particle Background -->
+  <app-particle-field></app-particle-field>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <lucide-icon [name]="sparklesIcon" class="badge-icon"></lucide-icon>
+        <span>{{ t('modules.hero.badge') }}</span>
+      </div>
+
+      <h1 class="hero-title">
+        <span class="gradient-text">{{ t('modules.title') }}</span>
+      </h1>
+
+      <p class="hero-description">
+        {{ t('modules.subtitle') }}
+      </p>
+
+      <!-- Search Bar -->
+      <div class="search-container">
+        <div class="search-wrapper"
+          [class.focused]="searchQuery()"
+        >
+          <lucide-icon [name]="searchIcon" class="search-icon"></lucide-icon>
+          <input
+            type="text"
+            class="search-input"
+            [placeholder]="t('modules.searchPlaceholder')"
+            [value]="searchQuery()"
+            (input)="onSearchChange($event)"
+          >
+          @if (searchQuery()) {
+            <button type="button" class="search-clear" (click)="searchQuery.set('')">
+              <lucide-icon [name]="clearIcon" class="clear-icon"></lucide-icon>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Category Filter -->
+      <div class="category-filter">
+        @for (category of categories; track category.id) {
+          <button
+            type="button"
+            class="category-chip"
+            [class.active]="selectedCategory() === category.id"
+            (click)="onCategoryChange(category.id)"
+          >
+            <lucide-icon [name]="category.icon" class="chip-icon"></lucide-icon>
+            <span>{{ t(category.labelKey) }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Decorative floating shapes -->
+    <div class="hero-decoration">
+      <div class="floating-shape shape-1"></div>
+      <div class="floating-shape shape-2"></div>
+      <div class="floating-shape shape-3"></div>
+    </div>
+  </section>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <loading-indicator
+      [loading]="true"
+      size="fullscreen"
+      message="common.loading" />
+  }
+
+  <!-- Modules Grid -->
+  @if (!isLoading()) {
+    <section class="modules-section">
+      <!-- Featured Module -->
+      @if (featuredModule() && !searchQuery() && selectedCategory() === 'all') {
+        <div class="featured-section">
+          <div class="section-header">
+            <lucide-icon [name]="featuredIcon" class="section-icon"></lucide-icon>
+            <h2>{{ t('modules.featured') }}</h2>
+          </div>
+
+          <div class="featured-card-wrapper">
+            <app-module-card
+              [module]="featuredModule()!"
+              [featured]="true"
+              [accessText]="getAccessText(featuredModule()!)"
+              (upgradeClick)="onUpgradeClick($event)"
+            ></app-module-card>
+          </div>
+        </div>
+      }
+
+      <!-- All Modules Grid -->
+      <div class="section-header">
+        <lucide-icon [name]="gridIcon" class="section-icon"></lucide-icon>
+        <h2>{{ t('modules.allModules') }}</h2>
+        <span class="module-count">
+          {{ filteredModules().length }} {{ t('modules.moduleCount') }}
+        </span>
+      </div>
+
+      <div class="modules-grid"
+        [class.empty]="filteredModules().length === 0"
+      >
+        @for (module of displayedModules(); track module.id; let i = $index) {
+          <app-module-card
+            [module]="module"
+            [staggerDelay]="i * 100"
+            [accessText]="getAccessText(module)"
+            (upgradeClick)="onUpgradeClick($event)"
+          ></app-module-card>
+        }
+      </div>
+
+      <!-- Empty State -->
+      @if (filteredModules().length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon">
+            <lucide-icon [name]="emptyIcon" class="empty-search-icon"></lucide-icon>
+          </div>
+          <h3>{{ t('modules.noResults') }}</h3>
+          <p>{{ t('modules.adjustFilters') }}</p>
+          <button type="button" class="reset-button" (click)="resetFilters()">
+            {{ t('modules.resetFilters') }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Background Pattern -->
+  <div class="background-pattern"></div>
 </div>

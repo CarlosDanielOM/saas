@@ -1,6 +1,7 @@
 <div class="auth-layout">
+  <app-toast-container />
   <header class="auth-navbar">
-    <a class="auth-navbar__brand" routerLink="/">
+    <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']">
       <span class="brand-dot" aria-hidden="true"></span>
       <span>DomDimaBot</span>
     </a>
@@ -8,13 +9,18 @@
     <nav class="auth-navbar__nav" aria-label="Primary">
       <a
         class="auth-navbar__link"
-        [routerLink]="['/', streamer(), 'dashboard']"
+        [routerLink]="currentDashboardLink()"
         routerLinkActive
-        #dashboardLink="routerLinkActive"
-        [class.auth-navbar__link--active]="dashboardLink.isActive"
+        #dashboardLinkState="routerLinkActive"
+        [class.auth-navbar__link--active]="dashboardLinkState.isActive"
       >
         {{ t('navbar.dashboard') }}
       </a>
+      @if (isViewingManagedChannel()) {
+        <a class="auth-navbar__link" [routerLink]="myDashboardLink()">
+          {{ t('navbar.myDashboard') }}
+        </a>
+      }
       <a
         class="auth-navbar__link"
         [routerLink]="['/', streamer(), 'commands']"
@@ -149,9 +155,14 @@
           <div class="auth-navbar__divider" aria-hidden="true"></div>
 
           <nav class="auth-navbar__mobile-section" aria-label="Mobile primary">
-            <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'dashboard']" (click)="closeMobileMenu()">
+            <a class="auth-navbar__mobile-link" [routerLink]="currentDashboardLink()" (click)="closeMobileMenu()">
               {{ t('navbar.dashboard') }}
             </a>
+            @if (isViewingManagedChannel()) {
+              <a class="auth-navbar__mobile-link" [routerLink]="myDashboardLink()" (click)="closeMobileMenu()">
+                {{ t('navbar.myDashboard') }}
+              </a>
+            }
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'commands']" (click)="closeMobileMenu()">
               {{ t('navbar.commands') }}
             </a>

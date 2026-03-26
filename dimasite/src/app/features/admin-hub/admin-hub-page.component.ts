@@ -8,7 +8,6 @@ import { SessionAuthService } from '../../services/session-auth.service';
 interface ChannelOption {
   channelID: string;
   channelName: string;
-  kind: 'owner' | 'admin';
 }
 
 @Component({
@@ -31,24 +30,17 @@ export class AdminHubPageComponent {
     }
 
     const ownerChannelID = current.appUser.twitch_user_id;
-    const ownerChannelName = current.twitchUser.display_name || current.twitchUser.login || ownerChannelID;
-
     const merged = new Map<string, ChannelOption>();
-    merged.set(ownerChannelID, {
-      channelID: ownerChannelID,
-      channelName: ownerChannelName,
-      kind: 'owner'
-    });
 
     for (const adminChannel of current.appUser.administrating) {
-      if (!adminChannel.channelID) {
+      const channelID = adminChannel.channelID?.trim();
+      if (!channelID || channelID === ownerChannelID) {
         continue;
       }
 
-      merged.set(adminChannel.channelID, {
-        channelID: adminChannel.channelID,
-        channelName: adminChannel.channelName || adminChannel.channelID,
-        kind: adminChannel.channelID === ownerChannelID ? 'owner' : 'admin'
+      merged.set(channelID, {
+        channelID,
+        channelName: adminChannel.channelName || channelID
       });
     }
 

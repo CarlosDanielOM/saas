@@ -1,0 +1,572 @@
+<div class="triggers-shell">
+  <section class="triggers-hero">
+    <div class="triggers-hero__content">
+      <a [routerLink]="['/', streamer(), 'modules']" class="triggers-back-link">
+        <lucide-icon [name]="backIcon" class="triggers-back-link__icon"></lucide-icon>
+        <span>{{ t('triggers.backToModules') }}</span>
+      </a>
+
+      <div class="triggers-hero__badge">
+        <lucide-icon [name]="sparklesIcon" class="triggers-hero__badge-icon"></lucide-icon>
+        <span>{{ t('triggers.heroBadge') }}</span>
+      </div>
+
+      <div class="triggers-hero__copy">
+        <div>
+          <h1 class="triggers-title">{{ t('triggers.title') }}</h1>
+          <p class="triggers-subtitle">{{ t('triggers.subtitle') }}</p>
+        </div>
+
+        <div class="triggers-actions">
+          <button type="button" class="triggers-action triggers-action--ghost" (click)="copyObsLink()">
+            <lucide-icon [name]="copiedObsLink() ? copiedIcon : copyIcon" class="triggers-action__icon"></lucide-icon>
+            <span>{{ copiedObsLink() ? t('triggers.obsCopiedCta') : t('triggers.copyObsLink') }}</span>
+          </button>
+          <button type="button" class="triggers-action triggers-action--ghost" [disabled]="refreshCooldown() > 0" (click)="refreshAll()">
+            <lucide-icon [name]="refreshIcon" class="triggers-action__icon" [class.triggers-spin]="isLoadingTriggers() || isLoadingLibrary()"></lucide-icon>
+            <span>
+              @if (refreshCooldown() > 0) {
+                {{ t('triggers.refreshCooldown', { seconds: refreshCooldown() }) }}
+              } @else {
+                {{ t('common.refresh') }}
+              }
+            </span>
+          </button>
+          <button type="button" class="triggers-action triggers-action--secondary" (click)="openUploadModal()">
+            <lucide-icon [name]="uploadIcon" class="triggers-action__icon"></lucide-icon>
+            <span>{{ t('triggers.uploadMedia') }}</span>
+          </button>
+          <button type="button" class="triggers-action triggers-action--primary" (click)="openCreateModal()">
+            <lucide-icon [name]="plusIcon" class="triggers-action__icon"></lucide-icon>
+            <span>{{ t('triggers.createTrigger') }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (pageError() && !triggers().length && !libraryItems().length && !isLoadingTriggers() && !isLoadingLibrary()) {
+    <section class="triggers-empty-state triggers-empty-state--error">
+      <lucide-icon [name]="alertIcon" class="triggers-empty-state__icon"></lucide-icon>
+      <h2>{{ t('triggers.errors.loadTitle') }}</h2>
+      <p>{{ pageError() }}</p>
+      <button type="button" class="triggers-action triggers-action--primary" (click)="refreshAll()">
+        {{ t('common.retry') }}
+      </button>
+    </section>
+  } @else {
+    <section class="triggers-layout">
+      <div class="triggers-main-panel">
+        <section class="triggers-metrics">
+          <article class="triggers-metric-card">
+            <div class="triggers-metric-card__label">{{ t('triggers.stats.activeTriggers') }}</div>
+            <div class="triggers-metric-card__value">{{ triggers().length }}</div>
+            <div class="triggers-metric-card__meta">{{ t('triggers.stats.liveAutomation') }}</div>
+          </article>
+          <article class="triggers-metric-card">
+            <div class="triggers-metric-card__label">{{ t('triggers.stats.libraryItems') }}</div>
+            <div class="triggers-metric-card__value">{{ libraryCount() }}</div>
+            <div class="triggers-metric-card__meta">{{ t('triggers.stats.readyAssets') }}</div>
+          </article>
+          <article class="triggers-metric-card triggers-metric-card--quota">
+            <div class="triggers-metric-card__head">
+              <div class="triggers-metric-card__label">{{ t('triggers.stats.storageQuota') }}</div>
+              <div class="triggers-metric-card__tier">{{ planTierLabel() }}</div>
+            </div>
+            <div class="triggers-metric-card__value triggers-metric-card__value--quota">
+              {{ formatBytes(libraryMeta().quotaBytesUsed) }}
+              <span>{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
+            </div>
+            <div class="triggers-quota-bar" aria-hidden="true">
+              <div class="triggers-quota-bar__fill" [style.width.%]="quotaPercent()"></div>
+            </div>
+            <div class="triggers-metric-card__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</div>
+          </article>
+        </section>
+
+        <div class="triggers-section-head">
+          <div>
+            <p class="triggers-section-head__eyebrow">{{ t('triggers.triggersEyebrow') }}</p>
+            <h2>{{ t('triggers.activeSectionTitle') }}</h2>
+          </div>
+          <p class="triggers-section-head__caption">{{ t('triggers.activeSectionCaption') }}</p>
+        </div>
+
+        @if (isLoadingTriggers() && !triggers().length) {
+          <div class="triggers-panel-state">
+            <loading-indicator [loading]="true" size="lg" [message]="'triggers.loading'" />
+          </div>
+        } @else if (!triggers().length) {
+          <div class="triggers-empty-state">
+            <lucide-icon [name]="triggerIcon" class="triggers-empty-state__icon"></lucide-icon>
+            <h3>{{ t('triggers.emptyTitle') }}</h3>
+            <p>{{ t('triggers.emptyMessage') }}</p>
+            <button type="button" class="triggers-action triggers-action--primary" (click)="openCreateModal()">
+              {{ t('triggers.createFirstTrigger') }}
+            </button>
+          </div>
+        } @else {
+          <div class="triggers-grid">
+            @for (trigger of triggers(); track trigger._id) {
+              <article class="trigger-card" [class.trigger-card--disabled]="!trigger.isEnabled">
+                <div class="trigger-card__head">
+                  <div>
+                    <h3 class="trigger-card__title">{{ trigger.name }}</h3>
+                    <p class="trigger-card__media">{{ trigger.file }}</p>
+                  </div>
+                  <span class="trigger-card__badge" [class.trigger-card__badge--off]="!trigger.isEnabled">
+                    {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
+                  </span>
+                </div>
+
+                <p class="trigger-card__prompt">
+                  @if (trigger.reward) {
+                    {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
+                  } @else {
+                    {{ t('triggers.noLinkedReward') }}
+                  }
+                </p>
+
+                <div class="trigger-card__stats">
+                  <div>
+                    <span>{{ t('triggers.assetLabel') }}</span>
+                    <strong>{{ trigger.file }}</strong>
+                  </div>
+                  <div>
+                    <span>{{ t('triggers.rewardState') }}</span>
+                    <strong>{{ trigger.reward ? t('triggers.rewardLinked') : t('triggers.rewardless') }}</strong>
+                  </div>
+                  <div>
+                    <span>{{ t('triggers.volume') }}</span>
+                    <strong>{{ trigger.volume }}%</strong>
+                  </div>
+                </div>
+
+                <div class="trigger-card__actions">
+                  <button type="button" class="trigger-card__action" (click)="openTestModal(trigger)">
+                    <lucide-icon [name]="playIcon" class="trigger-card__action-icon"></lucide-icon>
+                    <span>{{ t('triggers.testAction') }}</span>
+                  </button>
+                  <button type="button" class="trigger-card__action" (click)="openEditModal(trigger)">
+                    <lucide-icon [name]="editIcon" class="trigger-card__action-icon"></lucide-icon>
+                    <span>{{ t('common.edit') }}</span>
+                  </button>
+                  <button type="button" class="trigger-card__action" (click)="toggleTrigger(trigger)">
+                    <lucide-icon [name]="triggerIcon" class="trigger-card__action-icon"></lucide-icon>
+                    <span>{{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}</span>
+                  </button>
+                  <button type="button" class="trigger-card__action trigger-card__action--danger" (click)="openDeleteTrigger(trigger)">
+                    <lucide-icon [name]="deleteIcon" class="trigger-card__action-icon"></lucide-icon>
+                    <span>{{ t('common.delete') }}</span>
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </div>
+
+      <aside class="triggers-side-panel">
+        <div class="triggers-rail-panel">
+          <div class="triggers-rail-panel__head">
+            <div>
+              <h2>{{ t('triggers.myLibrary') }}</h2>
+              <p>{{ t('triggers.libraryDescription') }}</p>
+            </div>
+            <div class="triggers-rail-panel__actions">
+              <button type="button" class="triggers-mini-button" (click)="openPublicLibraryModal()">
+                <lucide-icon [name]="marketplaceIcon" class="triggers-mini-button__icon"></lucide-icon>
+                <span>{{ t('triggers.browsePublicLibrary') }}</span>
+              </button>
+              <button type="button" class="triggers-mini-button" (click)="openUploadModal()">
+                <lucide-icon [name]="uploadIcon" class="triggers-mini-button__icon"></lucide-icon>
+                <span>{{ t('triggers.uploadMedia') }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="triggers-toolbar">
+            <label class="triggers-search-field">
+              <lucide-icon [name]="searchIcon" class="triggers-search-field__icon"></lucide-icon>
+              <input type="search" [placeholder]="t('triggers.searchLibrary')" [value]="librarySearch()" (input)="updateLibrarySearch($event)">
+            </label>
+            <div class="triggers-filter-chips">
+              @for (filter of filterOptions; track filter) {
+                <button type="button" class="triggers-filter-chip" [class.triggers-filter-chip--active]="mediaFilter() === filter" (click)="setMediaFilter(filter)">
+                  {{ t('triggers.filters.' + filter) }}
+                </button>
+              }
+            </div>
+          </div>
+
+          @if (isLoadingLibrary() && !libraryItems().length) {
+            <div class="triggers-panel-state triggers-panel-state--compact">
+              <loading-indicator [loading]="true" size="md" [message]="'triggers.loadingLibrary'" />
+            </div>
+          } @else {
+            <div class="media-list">
+              @for (item of displayedLibraryItems(); track item._id) {
+                <article class="media-card" [class.media-card--muted]="!canAttachItem(item)">
+                  <div class="media-card__icon-wrap">
+                    <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="media-card__icon"></lucide-icon>
+                  </div>
+                  <div class="media-card__body">
+                    <div class="media-card__head">
+                      <h3>{{ item.localAlias || item.asset?.displayName || item.asset?.fileName }}</h3>
+                      <span class="media-card__scope" [class.media-card__scope--public]="item.assetScope === 'public'">
+                        {{ t('triggers.scope.' + item.assetScope) }}
+                      </span>
+                    </div>
+                    <p>{{ item.asset?.ownerChannelName }} - {{ formatBytes(item.quotaBytesCharged) }}</p>
+                    <div class="media-card__meta">
+                      <span>{{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }}</span>
+                      <span>{{ formatDate(item.createdAt) }}</span>
+                      @if (!canAttachItem(item)) {
+                        <span>{{ t('triggers.mediaComingSoon') }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="media-card__actions">
+                    <button type="button" class="media-card__button media-card__button--danger" (click)="openDeleteLibraryItem(item)">
+                      <lucide-icon [name]="deleteIcon" class="media-card__button-icon"></lucide-icon>
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <div class="triggers-empty-state triggers-empty-state--compact">
+                  <lucide-icon [name]="libraryIcon" class="triggers-empty-state__icon"></lucide-icon>
+                  <h3>{{ t('triggers.libraryEmptyTitle') }}</h3>
+                  <p>{{ t('triggers.libraryEmptyMessage') }}</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </aside>
+    </section>
+  }
+
+  @if (isTriggerModalOpen()) {
+    <div class="triggers-modal-backdrop" (click)="closeTriggerModal()">
+      <section class="triggers-modal" (click)="$event.stopPropagation()">
+        <div class="triggers-modal__head">
+          <div>
+            <p class="triggers-modal__eyebrow">{{ triggerFormMode() === 'create' ? t('triggers.modalCreateEyebrow') : t('triggers.modalEditEyebrow') }}</p>
+            <h2>{{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('triggers.editTrigger') }}</h2>
+          </div>
+          <button type="button" class="triggers-icon-button" (click)="closeTriggerModal()">
+            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="triggers-form-grid">
+          <label class="triggers-field">
+            <span>{{ t('triggers.form.nameLabel') }}</span>
+            <input type="text" [value]="triggerForm().name" (input)="updateTriggerForm('name', $any($event.target).value)" [placeholder]="t('triggers.form.namePlaceholder')" pattern="[A-Za-z0-9_]+" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+          </label>
+
+          <label class="triggers-field">
+            <span>{{ t('triggers.volume') }}</span>
+            <div class="triggers-volume-control">
+              <input
+                type="range"
+                class="triggers-volume-slider"
+                min="0"
+                max="100"
+                [value]="triggerForm().volume"
+                [attr.aria-label]="t('triggers.volume')"
+                (input)="updateTriggerForm('volume', $any($event.target).value)"
+              >
+              <div class="triggers-volume-display" aria-live="polite">
+                <span class="triggers-volume-display__value">{{ triggerForm().volume }}</span>
+                <span class="triggers-volume-display__unit">%</span>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        @if (triggerFormMode() === 'create') {
+          <div class="triggers-media-picker">
+            <div class="triggers-media-picker__head">
+              <div>
+                <h3>{{ t('triggers.form.mediaLabel') }}</h3>
+                <p>{{ t('triggers.form.mediaHint') }}</p>
+              </div>
+            </div>
+
+            <div class="triggers-media-picker__list">
+              @for (item of triggerCapableLibraryItems(); track item._id) {
+                <button
+                  type="button"
+                  class="triggers-media-picker__item"
+                  [class.triggers-media-picker__item--selected]="triggerForm().libraryItemID === item._id"
+                  (click)="updateTriggerForm('libraryItemID', item._id)"
+                >
+                  <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="triggers-media-picker__icon"></lucide-icon>
+                  <div>
+                    <strong>{{ item.localAlias || item.asset?.displayName }}</strong>
+                    <span>{{ formatBytes(item.quotaBytesCharged) }} - {{ t('triggers.scope.' + item.assetScope) }}</span>
+                  </div>
+                </button>
+              } @empty {
+                <div class="triggers-empty-state triggers-empty-state--compact">
+                  <lucide-icon [name]="uploadIcon" class="triggers-empty-state__icon"></lucide-icon>
+                  <h3>{{ t('triggers.form.noMediaTitle') }}</h3>
+                  <p>{{ t('triggers.form.noMediaMessage') }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        } @else if (selectedTriggerFormItem()) {
+          <div class="triggers-form-locked-media">
+            <lucide-icon [name]="getMediaIcon(selectedTriggerFormItem()!.asset?.mediaType || 'video')" class="triggers-form-locked-media__icon"></lucide-icon>
+            <div>
+              <strong>{{ selectedTriggerFormItem()!.localAlias || selectedTriggerFormItem()!.asset?.displayName }}</strong>
+              <p>{{ t('triggers.form.mediaLockedMessage') }}</p>
+            </div>
+          </div>
+        }
+
+        <div class="triggers-reward-builder">
+          <div class="triggers-reward-builder__head">
+            <div>
+              <h3>{{ t('triggers.rewardBuilderTitle') }}</h3>
+              <p>
+                @if (hasLinkedRewardInEditor()) {
+                  {{ t('triggers.rewardBuilderLinkedHint') }}
+                } @else {
+                  {{ t('triggers.rewardBuilderHint') }}
+                }
+              </p>
+            </div>
+
+            @if (!hasLinkedRewardInEditor()) {
+              <div class="triggers-scope-toggle">
+                <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="!triggerForm().reward.enabled" (click)="toggleRewardSection(false)">
+                  {{ t('triggers.rewardless') }}
+                </button>
+                <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="triggerForm().reward.enabled" (click)="toggleRewardSection(true)">
+                  {{ t('triggers.rewardLinked') }}
+                </button>
+              </div>
+            }
+          </div>
+
+          @if (triggerForm().reward.enabled) {
+            <div class="triggers-form-grid triggers-form-grid--reward">
+              <label class="triggers-field">
+                <span>{{ t('triggers.rewardFields.title') }}</span>
+                <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)">
+              </label>
+
+              <label class="triggers-field">
+                <span>{{ t('common.cost') }}</span>
+                <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))">
+              </label>
+
+              <label class="triggers-field">
+                <span>{{ t('common.cooldown') }}</span>
+                <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))">
+              </label>
+
+              <label class="triggers-field">
+                <span>{{ t('triggers.rewardFields.duration') }}</span>
+                <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))">
+              </label>
+
+              <label class="triggers-field">
+                <span>{{ t('triggers.rewardFields.costChange') }}</span>
+                <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))">
+              </label>
+
+              <label class="triggers-field">
+                <span>{{ t('triggers.rewardFields.background') }}</span>
+                <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb">
+              </label>
+            </div>
+
+            <label class="triggers-field triggers-field--full">
+              <span>{{ t('triggers.rewardFields.prompt') }}</span>
+              <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
+            </label>
+
+            <label class="triggers-field triggers-field--full">
+              <span>{{ t('triggers.rewardFields.message') }}</span>
+              <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
+            </label>
+
+            <div class="triggers-checkbox-row">
+              <label class="triggers-checkbox-pill">
+                <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)">
+                <span>{{ t('triggers.rewardFields.userInput') }}</span>
+              </label>
+              <label class="triggers-checkbox-pill">
+                <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)">
+                <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
+              </label>
+              <label class="triggers-checkbox-pill">
+                <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)">
+                <span>{{ t('triggers.rewardFields.resetCost') }}</span>
+              </label>
+            </div>
+          }
+        </div>
+
+        <div class="triggers-modal__actions">
+          <button type="button" class="triggers-action triggers-action--ghost" (click)="closeTriggerModal()">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="button" class="triggers-action triggers-action--primary" [disabled]="isSubmittingTrigger()" (click)="submitTriggerForm()">
+            @if (isSubmittingTrigger()) {
+              {{ t('triggers.saving') }}
+            } @else {
+              {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('common.save') }}
+            }
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isUploadModalOpen()) {
+    <div class="triggers-modal-backdrop" (click)="closeUploadModal()">
+      <section class="triggers-modal triggers-modal--upload" (click)="$event.stopPropagation()">
+        <div class="triggers-modal__head">
+          <div>
+            <p class="triggers-modal__eyebrow">{{ t('triggers.upload.kicker') }}</p>
+            <h2>{{ t('triggers.uploadMedia') }}</h2>
+          </div>
+          <button type="button" class="triggers-icon-button" (click)="closeUploadModal()">
+            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="triggers-upload-note">
+          <lucide-icon [name]="infoIcon" class="triggers-upload-note__icon"></lucide-icon>
+          <div>
+            <strong>{{ t('triggers.upload.limitTitle') }}</strong>
+            <p>{{ t('triggers.upload.limitMessage', { size: uploadLimitLabel() }) }}</p>
+          </div>
+        </div>
+
+        @if (planTier() === 'free') {
+          <div class="triggers-upload-note triggers-upload-note--accent">
+            <lucide-icon [name]="marketplaceIcon" class="triggers-upload-note__icon"></lucide-icon>
+            <div>
+              <strong>{{ t('triggers.upload.freePlanTitle') }}</strong>
+              <p>{{ t('triggers.upload.freePlanMessage') }}</p>
+            </div>
+          </div>
+        } @else {
+          <div class="triggers-scope-toggle">
+            <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="uploadForm().scope === 'private'" (click)="updateUploadScope('private')">
+              {{ t('triggers.scope.private') }}
+            </button>
+            <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="uploadForm().scope === 'public'" (click)="updateUploadScope('public')">
+              {{ t('triggers.scope.public') }}
+            </button>
+          </div>
+        }
+
+        <label class="triggers-field triggers-field--full">
+          <span>{{ t('triggers.upload.nameLabel') }}</span>
+          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)" [placeholder]="t('triggers.upload.namePlaceholder')" pattern="[A-Za-z0-9_]+" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+        </label>
+
+        <label
+          class="triggers-file-drop"
+          [class.triggers-file-drop--dragging]="isDraggingUpload()"
+          (dragover)="handleUploadDragOver($event)"
+          (dragleave)="handleUploadDragLeave($event)"
+          (drop)="handleUploadDrop($event)"
+        >
+          <input #uploadFileInput type="file" class="triggers-file-drop__input" accept="video/*,audio/*" (change)="onUploadFileChange($event)">
+          <div class="triggers-file-drop__content">
+            <lucide-icon [name]="uploadIcon" class="triggers-file-drop__icon"></lucide-icon>
+            <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
+            <span>
+              @if (isDraggingUpload() && !uploadForm().file) {
+                {{ t('triggers.upload.dropNow') }}
+              } @else {
+                {{ uploadForm().file ? formatBytes(uploadForm().file?.size || 0) : t('triggers.upload.fileHint') }}
+              }
+            </span>
+          </div>
+        </label>
+
+        <div class="triggers-modal__actions">
+          <button type="button" class="triggers-action triggers-action--ghost" (click)="closeUploadModal()">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="button" class="triggers-action triggers-action--secondary" [disabled]="isUploadingMedia()" (click)="submitUpload()">
+            @if (isUploadingMedia()) {
+              {{ t('triggers.upload.uploading') }}
+            } @else {
+              {{ t('triggers.upload.submit') }}
+            }
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isTestModalOpen()) {
+    <div class="triggers-modal-backdrop" (click)="closeTestModal()">
+      <section class="triggers-modal triggers-modal--test" (click)="$event.stopPropagation()">
+        <div class="triggers-modal__head">
+          <div>
+            <p class="triggers-modal__eyebrow">{{ t('triggers.test.kicker') }}</p>
+            <h2>{{ testingTrigger()?.name }}</h2>
+          </div>
+          <button type="button" class="triggers-icon-button" (click)="closeTestModal()">
+            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="triggers-test-frame">
+          @if (testPreviewOverlayUrl()) {
+            <iframe
+              #testPreviewFrame
+              [src]="testPreviewOverlayUrl() | safeUrl"
+              (load)="handleTestPreviewLoad()"
+              allow="autoplay"
+              class="triggers-test-frame__iframe"
+            ></iframe>
+          }
+        </div>
+
+        <div class="triggers-test-actions">
+          <p>{{ t('triggers.test.description') }}</p>
+          <button type="button" class="triggers-action triggers-action--primary" [disabled]="isSendingTest()" (click)="fireTriggerTest()">
+            @if (isSendingTest()) {
+              {{ t('triggers.test.sending') }}
+            } @else {
+              {{ t('triggers.test.sendAgain') }}
+            }
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (isPublicLibraryModalOpen() && channelID()) {
+    <app-public-library-modal
+      [channelId]="channelID()!"
+      [libraryMeta]="libraryMeta()"
+      [ownedAssetIds]="libraryAssetIds()"
+      (close)="closePublicLibraryModal()"
+      (assetAdded)="handlePublicLibraryAssetAdded($event)"
+    />
+  }
+
+  <app-confirmation-modal
+    [isOpen]="isDeleteModalOpen()"
+    [title]="pendingDelete()?.type === 'trigger' ? t('triggers.deleteTriggerTitle') : t('triggers.deleteMediaTitle')"
+    [message]="getDeleteMessage()"
+    [confirmText]="t('common.delete')"
+    [cancelText]="t('common.cancel')"
+    variant="danger"
+    (confirm)="confirmDelete()"
+    (cancel)="closeDeleteModal()"
+  />
+</div>

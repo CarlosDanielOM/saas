@@ -60,6 +60,7 @@ export interface DashboardBootstrapData {
   channel: DashboardChannel;
   isLive: boolean;
   liveStream: TwitchStream | null;
+  liveSession: LiveSessionMetrics | null;
   kpis: DashboardKpis;
   trend: DashboardTrendPoint[];
   streamHistory: DashboardStreamHistoryPoint[];
@@ -84,6 +85,8 @@ export interface LiveSessionMetrics {
   subs: number;
   bits: number;
   donations: number;
+  messages: number;
+  commands: number;
 }
 
 export interface DashboardLiveStatusData {

@@ -66,8 +66,8 @@ import { LanguageService } from '../../../services/language.service';
   `,
   styles: `
     .live-stream-card {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: color-mix(in srgb, #ef4444 8%, var(--dash-panel));
+      border: 1px solid color-mix(in srgb, #ef4444 35%, var(--dash-border));
       border-radius: 16px;
       padding: 20px;
       position: relative;
@@ -92,12 +92,12 @@ import { LanguageService } from '../../../services/language.service';
     }
 
     .live-stream-card--offline {
-      background: linear-gradient(135deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.05) 100%);
-      border-color: rgba(148, 163, 184, 0.3);
+      background: color-mix(in srgb, var(--dash-panel-2) 60%, var(--dash-panel));
+      border-color: color-mix(in srgb, var(--dash-border) 75%, transparent);
     }
 
     .live-stream-card--offline::before {
-      background: linear-gradient(90deg, #94a3b8, #cbd5e1, #94a3b8);
+      background: linear-gradient(90deg, var(--dash-text-soft), color-mix(in srgb, var(--dash-text-soft) 70%, var(--dash-text)), var(--dash-text-soft));
       animation: none;
     }
 
@@ -112,7 +112,7 @@ import { LanguageService } from '../../../services/language.service';
       display: flex;
       align-items: center;
       gap: 8px;
-      background: rgba(239, 68, 68, 0.15);
+      background: color-mix(in srgb, #ef4444 18%, transparent);
       padding: 6px 12px;
       border-radius: 20px;
     }
@@ -154,7 +154,8 @@ import { LanguageService } from '../../../services/language.service';
       display: flex;
       align-items: center;
       gap: 6px;
-      background: rgba(0, 0, 0, 0.2);
+      background: color-mix(in srgb, var(--dash-panel-2) 70%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dash-border) 50%, transparent);
       padding: 6px 12px;
       border-radius: 20px;
     }
@@ -194,7 +195,7 @@ import { LanguageService } from '../../../services/language.service';
     .live-stream-card__title {
       font-size: 16px;
       font-weight: 600;
-      color: #f8fafc;
+      color: var(--dash-text);
       margin: 0;
       line-height: 1.4;
       display: -webkit-box;
@@ -209,14 +210,14 @@ import { LanguageService } from '../../../services/language.service';
       align-items: center;
       gap: 6px;
       font-size: 13px;
-      color: #94a3b8;
+      color: var(--dash-text-soft);
     }
 
     .live-stream-card__game-icon,
     .live-stream-card__duration-icon {
       width: 14px;
       height: 14px;
-      color: #64748b;
+      color: var(--dash-text-soft);
     }
 
     .live-stream-card__offline-content {
@@ -231,47 +232,20 @@ import { LanguageService } from '../../../services/language.service';
     .live-stream-card__offline-icon {
       width: 32px;
       height: 32px;
-      color: #64748b;
+      color: var(--dash-text-soft);
     }
 
     .live-stream-card__offline-text {
       font-size: 16px;
       font-weight: 600;
-      color: #94a3b8;
+      color: var(--dash-text);
       margin: 0;
     }
 
     .live-stream-card__offline-hint {
       font-size: 13px;
-      color: #64748b;
+      color: var(--dash-text-soft);
       margin: 0;
-    }
-
-    /* Dark mode adjustments */
-    :host-context(.dark) .live-stream-card__title {
-      color: #f8fafc;
-    }
-
-    :host-context(.dark) .live-stream-card__game,
-    :host-context(.dark) .live-stream-card__duration {
-      color: #94a3b8;
-    }
-
-    /* Light mode */
-    :host-context(:not(.dark)) .live-stream-card {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.03) 100%);
-    }
-
-    :host-context(:not(.dark)) .live-stream-card--offline {
-      background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, rgba(148, 163, 184, 0.03) 100%);
-    }
-
-    :host-context(:not(.dark)) .live-stream-card__title {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .live-stream-card__viewers {
-      background: rgba(0, 0, 0, 0.05);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

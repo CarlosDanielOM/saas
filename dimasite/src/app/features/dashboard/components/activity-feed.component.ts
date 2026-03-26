@@ -108,8 +108,8 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
   `,
   styles: `
     .activity-feed {
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      background: color-mix(in srgb, var(--dash-panel) 90%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dash-border) 55%, transparent);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -127,20 +127,20 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
     }
 
     .activity-feed__header:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: color-mix(in srgb, var(--dash-panel-2) 60%, transparent);
     }
 
     .activity-feed__title {
       font-size: 14px;
       font-weight: 600;
-      color: #f8fafc;
+      color: var(--dash-text);
       margin: 0;
     }
 
     .activity-feed__toggle-icon {
       width: 20px;
       height: 20px;
-      color: #94a3b8;
+      color: var(--dash-text-soft);
       transition: transform 0.2s ease;
     }
 
@@ -177,13 +177,16 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
       align-items: center;
       gap: 10px;
       padding: 10px;
-      background: rgba(255, 255, 255, 0.03);
+      background: color-mix(in srgb, var(--dash-panel-2) 95%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dash-border) 65%, transparent);
       border-radius: 8px;
-      transition: background 0.2s ease;
+      transition: all 0.2s ease;
     }
 
     .activity-feed__item:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: color-mix(in srgb, var(--dash-panel-2) 100%, transparent);
+      border-color: color-mix(in srgb, var(--dash-border) 85%, transparent);
+      transform: translateY(-1px);
     }
 
     .activity-feed__icon-wrapper {
@@ -197,32 +200,32 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
     }
 
     .activity-feed__icon-wrapper--follows {
-      background: rgba(59, 130, 246, 0.15);
+      background: color-mix(in srgb, #3b82f6 28%, var(--dash-panel));
       color: #60a5fa;
     }
 
     .activity-feed__icon-wrapper--subs {
-      background: rgba(245, 158, 11, 0.15);
+      background: color-mix(in srgb, #f59e0b 28%, var(--dash-panel));
       color: #fbbf24;
     }
 
     .activity-feed__icon-wrapper--bits {
-      background: rgba(168, 85, 247, 0.15);
+      background: color-mix(in srgb, #a855f7 28%, var(--dash-panel));
       color: #c084fc;
     }
 
     .activity-feed__icon-wrapper--donations {
-      background: rgba(236, 72, 153, 0.15);
+      background: color-mix(in srgb, #ec4899 28%, var(--dash-panel));
       color: #f472b6;
     }
 
     .activity-feed__icon-wrapper--messages {
-      background: rgba(16, 185, 129, 0.15);
+      background: color-mix(in srgb, #10b981 28%, var(--dash-panel));
       color: #34d399;
     }
 
     .activity-feed__icon-wrapper--commands {
-      background: rgba(99, 102, 241, 0.15);
+      background: color-mix(in srgb, #6366f1 28%, var(--dash-panel));
       color: #818cf8;
     }
 
@@ -239,7 +242,7 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
 
     .activity-feed__label {
       font-size: 11px;
-      color: #64748b;
+      color: var(--dash-text-soft);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -247,30 +250,8 @@ import { CountUpDirective } from '../../../shared/directives/count-up.directive'
     .activity-feed__count {
       font-size: 18px;
       font-weight: 700;
-      color: #f8fafc;
+      color: var(--dash-text);
       line-height: 1.2;
-    }
-
-    /* Light mode */
-    :host-context(:not(.dark)) .activity-feed {
-      background: rgba(255, 255, 255, 0.7);
-      border-color: rgba(148, 163, 184, 0.2);
-    }
-
-    :host-context(:not(.dark)) .activity-feed__title {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .activity-feed__count {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .activity-feed__item {
-      background: rgba(0, 0, 0, 0.02);
-    }
-
-    :host-context(:not(.dark)) .activity-feed__item:hover {
-      background: rgba(0, 0, 0, 0.04);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

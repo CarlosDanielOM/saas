@@ -69,8 +69,8 @@ import { LanguageService } from '../../../services/language.service';
   `,
   styles: `
     .quick-actions {
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      background: color-mix(in srgb, var(--dash-panel) 90%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dash-border) 55%, transparent);
       border-radius: 12px;
       padding: 16px;
     }
@@ -78,7 +78,7 @@ import { LanguageService } from '../../../services/language.service';
     .quick-actions__title {
       font-size: 14px;
       font-weight: 600;
-      color: #f8fafc;
+      color: var(--dash-text);
       margin: 0 0 12px 0;
     }
 
@@ -103,22 +103,24 @@ import { LanguageService } from '../../../services/language.service';
     }
 
     .quick-actions__btn--join {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
+      background: color-mix(in srgb, #10b981 22%, var(--dash-panel-2));
+      border: 1px solid color-mix(in srgb, #10b981 45%, transparent);
+      color: #34d399;
     }
 
     .quick-actions__btn--join:hover:not(:disabled) {
-      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+      background: color-mix(in srgb, #10b981 32%, var(--dash-panel-2));
       transform: translateY(-1px);
     }
 
     .quick-actions__btn--leave {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
+      background: color-mix(in srgb, #ef4444 22%, var(--dash-panel-2));
+      border: 1px solid color-mix(in srgb, #ef4444 45%, transparent);
+      color: #f87171;
     }
 
     .quick-actions__btn--leave:hover:not(:disabled) {
-      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      background: color-mix(in srgb, #ef4444 32%, var(--dash-panel-2));
       transform: translateY(-1px);
     }
 
@@ -145,8 +147,8 @@ import { LanguageService } from '../../../services/language.service';
     .quick-actions__error {
       margin: 12px 0 0 0;
       padding: 8px 12px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: color-mix(in srgb, #ef4444 10%, transparent);
+      border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
       border-radius: 6px;
       font-size: 13px;
       color: #f87171;
@@ -158,14 +160,14 @@ import { LanguageService } from '../../../services/language.service';
       gap: 8px;
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid rgba(148, 163, 184, 0.1);
+      border-top: 1px solid color-mix(in srgb, var(--dash-border) 50%, transparent);
     }
 
     .quick-actions__status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #64748b;
+      background: var(--dash-text-soft);
       transition: background 0.3s ease;
     }
 
@@ -176,21 +178,7 @@ import { LanguageService } from '../../../services/language.service';
 
     .quick-actions__status-text {
       font-size: 13px;
-      color: #94a3b8;
-    }
-
-    /* Light mode */
-    :host-context(:not(.dark)) .quick-actions {
-      background: rgba(255, 255, 255, 0.7);
-      border-color: rgba(148, 163, 184, 0.2);
-    }
-
-    :host-context(:not(.dark)) .quick-actions__title {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .quick-actions__status-text {
-      color: #64748b;
+      color: var(--dash-text-soft);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

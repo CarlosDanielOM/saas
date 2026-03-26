@@ -1,26 +1,21 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+
+import { SessionAuthService } from '../services/session-auth.service';
 
 export const authHeaderInterceptor: HttpInterceptorFn = (req, next) => {
-  const raw = localStorage.getItem('dimasite.session.v1');
+  const sessionAuth = inject(SessionAuthService);
+  const token = sessionAuth.getSessionSnapshot()?.token;
 
-  if (!raw) {
+  if (!token) {
     return next(req);
   }
 
-  try {
-    const parsed = JSON.parse(raw) as { token?: string };
-    if (!parsed.token) {
-      return next(req);
+  const clone = req.clone({
+    setHeaders: {
+      Authorization: `Bearer ${token}`
     }
+  });
 
-    const clone = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${parsed.token}`
-      }
-    });
-
-    return next(clone);
-  } catch {
-    return next(req);
-  }
+  return next(clone);
 };

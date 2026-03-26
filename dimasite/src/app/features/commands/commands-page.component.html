@@ -38,14 +38,6 @@
     </div>
   </header>
 
-  <!-- Loading State -->
-  @if (showInitialLoading()) {
-    <div class="commands-loading">
-      <div class="commands-loading__spinner"></div>
-      <p>{{ t('commands.loading') }}</p>
-    </div>
-  }
-
   <!-- Error State -->
   @if (showLoadError()) {
     <div class="commands-error">

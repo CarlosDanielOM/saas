@@ -1,17 +1,19 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 import { LucideAngularModule, Moon, RefreshCw, ShieldAlert, Zap, Sun } from 'lucide-angular';
 
+import { AnalyticsService } from '../../services/analytics.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
 
 @Component({
   selector: 'app-authenticated-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent],
   templateUrl: './authenticated-layout.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -20,6 +22,7 @@ import { ThemeService } from '../../services/theme.service';
   }
 })
 export class AuthenticatedLayoutComponent {
+  private readonly analytics = inject(AnalyticsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly languageService = inject(LanguageService);
@@ -37,6 +40,33 @@ export class AuthenticatedLayoutComponent {
   readonly userName = computed(() => {
     const current = this.session();
     return current?.twitchUser.display_name || current?.twitchUser.login || 'Streamer';
+  });
+  readonly ownerStreamer = computed(() => {
+    const current = this.session();
+    const login = current?.twitchUser.login?.trim().toLowerCase();
+    return login || current?.appUser.twitch_user_id || '';
+  });
+  readonly isViewingManagedChannel = computed(() => {
+    const current = this.session();
+    const routeStreamer = this.streamer().trim().toLowerCase();
+    if (!current || !routeStreamer) {
+      return false;
+    }
+
+    const ownerLogin = current.twitchUser.login?.trim().toLowerCase() || '';
+    const ownerChannelID = current.appUser.twitch_user_id?.trim().toLowerCase() || '';
+
+    return routeStreamer !== ownerLogin && routeStreamer !== ownerChannelID;
+  });
+  readonly currentDashboardLink = computed(() => {
+    const activeStreamer = this.streamer().trim();
+
+    return ['/', activeStreamer, 'dashboard'];
+  });
+  readonly myDashboardLink = computed(() => {
+    const ownerStreamer = this.ownerStreamer();
+
+    return ['/', ownerStreamer, 'dashboard'];
   });
   readonly userAvatar = computed(() => this.session()?.twitchUser.profile_image_url ?? '');
   readonly planTier = computed(() => this.session()?.appUser.plan_tier ?? 'free');
@@ -67,6 +97,8 @@ export class AuthenticatedLayoutComponent {
   });
   readonly hasPermissionCta = computed(() => this.permissionCtaState() !== null);
   readonly permissionCtaLabel = computed(() => {
+    // Access currentLanguage to create dependency for re-computation
+    this.languageService.currentLanguage();
     const state = this.permissionCtaState();
     if (state === 'activate') {
       return this.t('navbar.activateBot');
@@ -114,6 +146,25 @@ export class AuthenticatedLayoutComponent {
   readonly activateIcon = Zap;
   readonly reauthenticateIcon = ShieldAlert;
   readonly updatePermissionsIcon = RefreshCw;
+
+  constructor() {
+    effect(() => {
+      const tier = this.planTier();
+      if (typeof document !== 'undefined') {
+        document.documentElement.setAttribute('data-plan-tier', tier);
+      }
+    });
+
+    effect(() => {
+      const current = this.session();
+      const streamer = this.streamer().trim().toLowerCase();
+      if (!current || !streamer) {
+        return;
+      }
+
+      this.sessionAuth.setLastViewedStreamer(streamer);
+    });
+  }
 
   t(key: string): string {
     return this.languageService.translate(key);
@@ -224,6 +275,11 @@ export class AuthenticatedLayoutComponent {
       return;
     }
 
+    this.analytics.capture('permission_cta_clicked', {
+      action,
+      streamer: this.streamer(),
+    });
+
     const params = new URLSearchParams({
       state: username,
       action
@@ -237,6 +293,9 @@ export class AuthenticatedLayoutComponent {
   logout(): void {
     this.closeProfileMenu();
     this.closeMobileMenu();
+    this.analytics.capture('logout_clicked', {
+      streamer: this.streamer(),
+    });
     this.sessionAuth.clearSession();
     void this.router.navigateByUrl('/');
   }

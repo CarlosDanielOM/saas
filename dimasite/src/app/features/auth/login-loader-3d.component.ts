@@ -27,23 +27,27 @@ interface ParticleSystem {
   selector: 'app-login-loader-3d',
   template: `
     <div class="loader-3d-container" [attr.data-quality]="qualityTier()">
-      <canvas #canvas class="loader-3d-canvas"></canvas>
+      <!-- Three.js canvas - only shown when initialized and supported -->
+      <canvas #canvas 
+              class="loader-3d-canvas" 
+              [class.loader-3d-canvas--visible]="isThreeJsReady()"></canvas>
       
-      @if (shouldUseCSSFallback()) {
-        <div class="loader-css-fallback">
-          <div class="css-core">
-            <div class="css-core__inner"></div>
-            <div class="css-core__ring css-core__ring--1"></div>
-            <div class="css-core__ring css-core__ring--2"></div>
-            <div class="css-core__ring css-core__ring--3"></div>
-          </div>
-          <div class="css-particles">
-            @for (i of cssParticles(); track i) {
-              <div class="css-particle" [style."--i"]="i"></div>
-            }
-          </div>
+      <!-- CSS fallback - always visible while initializing or when Three.js not supported -->
+      <div class="loader-css-fallback" 
+           [class.loader-css-fallback--fading]="isThreeJsReady()"
+           [class.loader-css-fallback--visible]="!isThreeJsReady() || shouldUseCSSFallback()">
+        <div class="css-core">
+          <div class="css-core__inner"></div>
+          <div class="css-core__ring css-core__ring--1"></div>
+          <div class="css-core__ring css-core__ring--2"></div>
+          <div class="css-core__ring css-core__ring--3"></div>
         </div>
-      }
+        <div class="css-particles">
+          @for (i of cssParticles(); track i) {
+            <div class="css-particle" [style."--i"]="i"></div>
+          }
+        </div>
+      </div>
       
       <div class="loader-3d-overlay">
         <div class="loader-3d-glow" [class.loader-3d-glow--pulse]="isPulsing()"></div>
@@ -63,6 +67,10 @@ export class LoginLoader3DComponent implements AfterViewInit, OnDestroy {
   readonly shouldUseCSSFallback = computed(() => this.deviceCapability.shouldUseCSSFallback());
   readonly isPulsing = signal(true);
   readonly cssParticles = signal(Array.from({ length: 12 }, (_, i) => i));
+  
+  // Track Three.js initialization state
+  readonly isThreeJsReady = signal(false);
+  readonly isInitializing = signal(true);
 
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
@@ -92,9 +100,21 @@ export class LoginLoader3DComponent implements AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (!this.shouldUseCSSFallback()) {
-      this.initThreeJS();
-    }
+    // Wait for capability detection, then initialize Three.js if supported
+    const checkCapability = () => {
+      const caps = this.deviceCapability.getCapabilities();
+      if (caps) {
+        // Capabilities detected
+        this.isInitializing.set(false);
+        if (!this.shouldUseCSSFallback()) {
+          this.initThreeJS();
+        }
+      } else {
+        // Still detecting, check again in 100ms
+        setTimeout(checkCapability, 100);
+      }
+    };
+    checkCapability();
   }
 
   ngOnDestroy(): void {
@@ -141,6 +161,9 @@ export class LoginLoader3DComponent implements AfterViewInit, OnDestroy {
     
     // Start animation loop
     this.animate();
+    
+    // Mark Three.js as ready
+    this.isThreeJsReady.set(true);
     
     // Handle resize
     window.addEventListener('resize', this.handleResize.bind(this));

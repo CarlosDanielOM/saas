@@ -5,6 +5,7 @@
     "modules": "Modules",
     "settings": "Settings",
     "adminHub": "Admin Hub",
+    "myDashboard": "My Dashboard",
     "activateBot": "Activate Bot",
     "reauthenticate": "Reauthenticate",
     "updatePermissions": "Update Permissions",
@@ -18,15 +19,245 @@
   },
   "modules": {
     "title": "Modules",
-    "subtitle": "Module management coming soon."
+    "subtitle": "Discover powerful modules to enhance your streaming experience. From chat automation to clip management, everything you need in one place.",
+    "hero": {
+      "badge": "Power Your Stream"
+    },
+    "searchPlaceholder": "Search modules...",
+    "categories": {
+      "all": "All Modules",
+      "engagement": "Engagement",
+      "automation": "Automation",
+      "content": "Content"
+    },
+    "featured": "Featured Module",
+    "allModules": "All Modules",
+    "moduleCount": "modules",
+    "clips": {
+      "description": "Select a clip viewer design and adjust settings for your stream overlays."
+    },
+    "chatEvents": {
+      "description": "Enable or disable chat events like follows, bits, subs, and set their messages and thresholds."
+    },
+    "triggers": {
+      "description": "Build trigger moments with your private library, public assets, and channel point rewards while staying inside your plan limits."
+    },
+    "referrals": {
+      "description": "Create referral codes, track conversions, and manage the card-style campaigns connected to your channel."
+    },
+    "redemptions": {
+      "description": "Create, edit, and manage redemptions for your content. Rewards that viewers can redeem."
+    },
+    "aiPersonality": {
+      "description": "Configure your AI bot's personality, behavior, and responses for smarter chat interactions."
+    },
+    "analytics": {
+      "description": "Open the analytics hub for follower intelligence, mutual highlights, and future audience insights."
+    },
+    "openModule": "Open Module",
+    "upgradeToAccess": "Upgrade to Access",
+    "comingSoon": "Coming Soon",
+    "unavailable": "Unavailable",
+    "noResults": "No modules found",
+    "adjustFilters": "Try adjusting your search or filters",
+    "resetFilters": "Reset Filters"
+  },
+  "analyticsHub": {
+    "badge": "Audience Intelligence",
+    "title": "Analytics Hub",
+    "subtitle": "A focused home for audience visibility. Start with active follow tracking now, then layer richer analytics here over time.",
+    "chips": {
+      "activeFollowers": "Active follow tracking",
+      "mutualHighlights": "Mutual spotlight",
+      "futureHistory": "Ended follow history later"
+    },
+    "panel": {
+      "kicker": "Current release",
+      "title": "Follow Ledger is live here first",
+      "description": "We are rebuilding analytics as dedicated modules. The first module is the Follow Ledger, built for premium and pro channels.",
+      "paidPlan": "Premium unlocked",
+      "freePlan": "Free preview"
+    },
+    "followLedger": {
+      "activeOnly": "Active follows only",
+      "eyebrow": "Premium analytics module",
+      "title": "Follow Ledger",
+      "description": "Search your active followers, isolate mutuals, and scan the people currently following your channel with a cleaner visual ledger.",
+      "open": "Open Follow Ledger",
+      "lockedCta": "Premium required"
+    },
+    "roadmap": {
+      "badge": "Roadmap",
+      "eyebrow": "What grows next",
+      "title": "This hub is ready for more analytics",
+      "description": "The structure is now in place so we can expand beyond active follows without hiding analytics inside the main navbar again.",
+      "items": {
+        "endedHistory": "Ended follow history for paying plans",
+        "retentionViews": "Retention and loyalty slices",
+        "moreModules": "Additional audience analytics modules"
+      }
+    }
+  },
+  "analytics": {
+    "follows": {
+      "title": "Follow Ledger",
+      "subtitle": "Track your active followers, spotlight mutuals, and search the channel audience without leaving the analytics flow.",
+      "backToAnalytics": "Back to analytics",
+      "activeOnly": "Active follows only",
+      "filters": "Follow filters",
+      "sort": "Sort order",
+      "searchLabel": "Search followers",
+      "searchPlaceholder": "Search by follower name, login, or ID",
+      "clearSearchAriaLabel": "Clear follower search",
+      "all": "All",
+      "mutuals": "Mutuals",
+      "nonMutuals": "Non-mutual",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "activeTotal": "Active follows",
+      "mutualTotal": "Mutual follows",
+      "nonMutualTotal": "Non-mutual follows",
+      "followedAt": "Followed at",
+      "followAge": "Follow age",
+      "mutualBadge": "Mutual",
+      "loading": "Loading active follows...",
+      "empty": "No active follows found for this filter.",
+      "emptyHint": "Try a different search term or filter combination.",
+      "loadError": "Failed to load follow ledger.",
+      "missingStreamer": "Streamer context not found. Please refresh and try again.",
+      "pagination": "Follow ledger pagination",
+      "searchNoResults": "No active followers match \"{{query}}\".",
+      "resultsTitle": "Active follower results",
+      "showingResults": "Showing {{start}}-{{end}} of {{total}} active follows",
+      "refreshing": "Refreshing results...",
+      "ownerView": "Owner view",
+      "adminView": "Admin view",
+      "lockedTitle": "Follow Ledger is a premium analytics module",
+      "lockedDescription": "Free channels can see the analytics hub, but active follow tracking currently unlocks on premium and pro plans.",
+      "lockedCta": "See premium access",
+      "durationYears": "{{count}} year(s)",
+      "durationMonths": "{{count}} month(s)",
+      "durationDays": "{{count}} day(s)",
+      "durationPair": "{{first}} and {{second}}",
+      "durationUnknown": "Unknown"
+    }
+  },
+  "clips": {
+    "title": "Clip Overlay Designs",
+    "description": "Choose from stunning clip overlay designs to showcase your best moments in style. Configure settings and preview in real-time.",
+    "headerBadge": "Clip Overlays",
+    "backToModules": "Back to Modules",
+    "chooseDesign": "Choose Your Design",
+    "configuration": "Configuration",
+    "preview": "Live Preview",
+    "livePreview": "Live Preview",
+    "timeoutLabel": "Clip Duration",
+    "seconds": "seconds",
+    "copyUrl": "Copy Overlay URL",
+    "copied": "Copied!",
+    "testDesign": "Test Clip",
+    "openInNewTab": "Open in New Tab",
+    "selectDesignTitle": "Select a Design",
+    "selectDesignDescription": "Choose a clip overlay design from above to get started",
+    "premiumRequired": "Premium Required",
+    "upgradeToAccess": "Upgrade your plan to access this design",
+    "testWarning": "Open the clip overlay URL in OBS or browser first to enable testing",
+    "copiedTitle": "URL Copied",
+    "copiedMessage": "The clip overlay URL has been copied to your clipboard",
+    "copyFailed": "Copy Failed",
+    "copyFailedMessage": "Unable to copy URL. Please try again."
   },
   "profile": {
     "title": "Profile Settings",
     "subtitle": "Manage your account settings and preferences."
   },
+  "referrals": {
+    "eyebrow": "Referral campaigns",
+    "title": "Referral Codes",
+    "subtitleOwner": "Create polished referral cards, monitor conversions, and manage how your channel invites new signups.",
+    "subtitleAdmin": "Review this channel's referral performance and active codes. Only the owner can create or delete codes.",
+    "backToModules": "Back to modules",
+    "viewer": {
+      "owner": "Owner controls",
+      "admin": "Admin read only"
+    },
+    "plan": {
+      "free": "Free plan",
+      "premium": "Premium plan",
+      "pro": "Pro plan"
+    },
+    "summary": {
+      "currentBalance": "Current balance",
+      "totalEarned": "Total earned",
+      "totalConversions": "Total conversions",
+      "codesUsed": "Codes used"
+    },
+    "readOnly": {
+      "title": "View only access",
+      "description": "Admins can inspect referral performance here, but only the channel owner can create or delete referral codes."
+    },
+    "manage": {
+      "kicker": "Create a new card",
+      "title": "Launch another referral code",
+      "description": "Each code keeps its own campaign card and stable color treatment, so your referral lineup stays recognizable every time you return.",
+      "openModal": "Add referral code",
+      "modalTitle": "Create referral code",
+      "modalDescription": "Spin up a new referral card with a clean code and optional campaign label. The color treatment stays consistent from the hashed card identity.",
+      "codeLabel": "Referral code",
+      "codePlaceholder": "Enter a short code",
+      "labelLabel": "Card label",
+      "labelPlaceholder": "Optional campaign name",
+      "codeHint": "Use 1-16 letters, numbers, or underscores.",
+      "slotsRemaining": "{{count}} slots remaining out of {{limit}}",
+      "limitReached": "You are currently at your referral code limit for this plan.",
+      "submit": "Create referral code",
+      "submitting": "Creating..."
+    },
+    "cards": {
+      "kicker": "Active lineup",
+      "title": "Referral cards",
+      "description": "Every code below stays color-consistent from its hashed card name, so the visual identity remains stable across refreshes.",
+      "countSuffix": "cards"
+    },
+    "card": {
+      "conversions": "Conversions",
+      "created": "Created"
+    },
+    "empty": {
+      "ownerTitle": "Your referral deck is empty",
+      "ownerDescription": "Create your first referral code to start tracking signups and earning rewards from new subscribers.",
+      "adminTitle": "No active referral codes",
+      "adminDescription": "This channel has not created any active referral codes yet."
+    },
+    "actions": {
+      "copyLink": "Copy referral link for {{code}}",
+      "deleting": "Deleting...",
+      "deleteConfirm": "Delete referral code {{code}}?"
+    },
+    "toasts": {
+      "copiedTitle": "Referral link copied",
+      "copiedMessage": "{{code}} was copied as a shareable referral URL.",
+      "createdTitle": "Referral code created",
+      "createdMessage": "{{code}} is now live and ready to share.",
+      "deletedTitle": "Referral code deleted",
+      "deletedMessage": "{{code}} has been removed from the active lineup.",
+      "errorTitle": "Referral update failed"
+    },
+    "errors": {
+      "loadTitle": "Unable to load referrals",
+      "loadFailed": "We could not load referral data right now.",
+      "channelNotResolved": "A valid channel is required to load referral data.",
+      "ownerOnly": "Only the channel owner can manage referral codes.",
+      "invalidCode": "Referral codes must use 1-16 letters, numbers, or underscores.",
+      "limitReached": "You have reached the referral code limit for this plan.",
+      "copyFailed": "We could not copy that referral link right now.",
+      "createFailed": "We could not create that referral code right now.",
+      "deleteFailed": "We could not delete that referral code right now."
+    }
+  },
   "adminHub": {
     "title": "Admin Hub",
-    "subtitle": "Switch between channels you own or manage as admin.",
+    "subtitle": "Switch between channels you manage as admin.",
     "labels": {
       "owner": "Owner",
       "admin": "Admin"
@@ -34,6 +265,10 @@
     "actions": {
       "openDashboard": "Open dashboard",
       "opening": "Opening..."
+    },
+    "empty": {
+      "title": "No admin channels yet",
+      "description": "When another streamer gives you admin access, their channel will appear here for quick switching."
     },
     "errors": {
       "noAccess": "You do not have dashboard access for this channel.",
@@ -78,8 +313,20 @@
       "sectionLabel": "Performance chart",
       "title": "Performance Trend",
       "countAxisLabel": "Count",
+      "timeContext": {
+        "note": "Chart uses server day (UTC).",
+        "server": "Server time: {{time}}",
+        "local": "Local time: {{time}}"
+      },
+      "axes": {
+        "engagement": "Engagement",
+        "bits": "Bits",
+        "hours": "Hours",
+        "donations": "Donations"
+      },
       "series": {
         "bits": "Bits",
+        "donations": "Donations",
         "subs": "Subs",
         "hours": "Hours",
         "avgViewers": "Avg Viewers",
@@ -184,6 +431,10 @@
       "redirecting": "Redirecting to your dashboard",
       "error": "Login failed"
     },
+    "toast": {
+      "sessionExpiredTitle": "Session expired",
+      "sessionExpiredMessage": "Your Twitch session expired or became invalid. Redirecting you back to login..."
+    },
     "errors": {
       "denied": "Authentication was cancelled on Twitch.",
       "stateMismatch": "Security validation failed. Please try logging in again.",
@@ -192,13 +443,65 @@
       "noPrimaryChannel": "No primary channel was returned for this account.",
       "noDashboardAccess": "You are authenticated but do not have dashboard access.",
       "dashboardFailed": "Unable to preload dashboard data.",
+      "sessionExpired": "Your session expired. Please sign in again.",
+      "permissionRedirectFailed": "Your session loaded, but we could not confirm dashboard access for that route.",
+      "navigationFailed": "We could not finish redirecting you to the dashboard. Please try again.",
       "unexpected": "Unexpected login error. Please try again."
+    }
+  },
+  "notFound": {
+    "eyebrow": "Signal corrupted",
+    "title": "You hit a dead zone.",
+    "message": "This route is ripped out, broken, or never existed. The map ends in static here. Get back to login, punch back in, and take the right gate before the trail goes cold.",
+    "messageAuthenticated": "This route is ripped out, broken, or never existed. The map ends in static here. Get back to your dashboard and pick a valid route before the trail goes cold.",
+    "messageAdminAuthenticated": "This route is ripped out, broken, or never existed. The map ends in static here. Jump back to the last channel you were managing or head to your own dashboard and pick a valid route.",
+    "actions": {
+      "login": "Re-enter via Login",
+      "dashboard": "Return to Dashboard",
+      "dashboardNamed": "Return to {{name}} Dashboard",
+      "lastViewedDashboard": "Last Viewed Dashboard",
+      "lastViewedDashboardNamed": "Last Viewed: {{name}}",
+      "myDashboard": "My Dashboard",
+      "myDashboardNamed": "My Dashboard: {{name}}"
+    }
+  },
+  "forbidden": {
+    "eyebrow": "Access restricted",
+    "badge": "Requires",
+    "title": "You do not have clearance for this area.",
+    "message": "This route is real, but your current role is not allowed to open it. Head back to the dashboard or switch accounts and try again with the right level of access.",
+    "messageAdminAuthenticated": "This route is real, but your current role is not allowed to open it. Jump back to the last channel you were managing or head to your own dashboard and try again from a route you can access.",
+    "requestedRoute": "Requested route:",
+    "actions": {
+      "dashboard": "Back to Dashboard",
+      "dashboardNamed": "Back to {{name}} Dashboard",
+      "home": "Back to Home",
+      "login": "Switch via Login",
+      "lastViewedDashboard": "Last Viewed Dashboard",
+      "lastViewedDashboardNamed": "Last Viewed: {{name}}",
+      "myDashboard": "My Dashboard",
+      "myDashboardNamed": "My Dashboard: {{name}}"
     }
   },
   "commands": {
     "title": "Commands",
     "subtitle": "Command management is protected by server-side permissions and will be expanded here.",
     "heading": "Commands",
+    "public": {
+      "eyebrow": "Read-only channel commands",
+      "title": "{{streamer}} commands",
+      "subtitle": "Browse every command configured for this channel, including status, cooldowns, and required user levels.",
+      "languageToggle": "Toggle language",
+      "total": "{{count}} total",
+      "enabled": "{{count}} enabled",
+      "disabled": "{{count}} disabled",
+      "emptyTitle": "No commands yet",
+      "empty": "This channel has no commands available right now.",
+      "errors": {
+        "streamerNotFound": "We could not find that streamer.",
+        "loadFailed": "We could not load commands for this channel right now."
+      }
+    },
     "addCommand": "Add Command",
     "loading": "Loading commands...",
     "refresh": "Hard refresh",
@@ -271,13 +574,16 @@
     }
   },
   "common": {
+    "refresh": "Refresh",
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
     "enable": "Enable",
     "disable": "Disable",
     "enabled": "Enabled",
+    "disabled": "Disabled",
     "statusOn": "On",
     "statusOff": "Off",
     "show": "Show",
@@ -286,11 +592,169 @@
     "next": "Next",
     "retry": "Retry",
     "notAvailable": "N/A",
-    "seconds": "seconds"
+    "seconds": "seconds",
+    "loading": "Loading...",
+    "cost": "Cost",
+    "cooldown": "Cooldown",
+    "message": "Message",
+    "premiumFeature": "Premium Feature",
+    "premiumSubscriptionRequired": "Premium subscription required"
   },
   "settings": {
-    "title": "Settings",
-    "subtitle": "Settings are permission-protected and ready for feature wiring."
+    "title": "Bot settings",
+    "subtitle": "Settings are permission-protected and ready for feature wiring.",
+    "hero": {
+      "eyebrow": "Channel bot controls",
+      "subtitle": "Manage bot access and channel-specific behavior for this streamer. Personal account preferences live in Profile."
+    },
+    "admins": {
+      "eyebrow": "Admin access",
+      "subtitle": "Manage who can help run this channel. Current admins are listed here, and owners can add more from the registered user directory.",
+      "ownerMode": "Owner controls enabled",
+      "adminMode": "Read-only admin view",
+      "current": {
+        "kicker": "Current admins",
+        "title": "Channel admin list",
+        "subtitle": "These users already have admin access for this channel.",
+        "countLabel": "admins"
+      },
+      "search": {
+        "kicker": "Add admins",
+        "title": "Search registered users",
+        "ownerSubtitle": "This list is preloaded once, then filtered locally on each keystroke so search feels instant without hammering the API.",
+        "adminSubtitle": "Only the channel owner can add or remove admins. You can still review the current access list.",
+        "inputLabel": "Search registered users to add as admins",
+        "dropdownLabel": "Admin search results",
+        "placeholder": "Search by login or user ID",
+        "clearAriaLabel": "Clear admin search",
+        "resultsMeta": "{{count}} eligible users ready for local search",
+        "matchesMeta": "{{count}} matching users",
+        "ownerHint": "Search for a registered user to add them as an admin. Results appear in a dropdown only after you start typing."
+      },
+      "actions": {
+        "add": "Add as admin",
+        "adding": "Adding...",
+        "remove": "Remove",
+        "removing": "Removing..."
+      },
+      "states": {
+        "loadingAdmins": "Loading current admins...",
+        "loadingCandidates": "Loading eligible users...",
+        "resolvingViewer": "Resolving your channel access...",
+        "noAdmins": "No admins have been added yet.",
+        "noSearchMatches": "No registered users match that search.",
+        "adminReadOnly": "You are viewing this page as an admin. Only the channel owner can change the admin list."
+      },
+      "errors": {
+        "channelNotResolved": "We could not resolve this channel for admin settings.",
+        "loadFailed": "Failed to load admin settings.",
+        "addFailed": "Failed to add admin.",
+        "deleteFailed": "Failed to remove admin."
+      },
+      "toasts": {
+        "addedTitle": "Admin added",
+        "addedMessage": "{{name}} now has admin access.",
+        "deletedTitle": "Admin removed",
+        "deletedMessage": "{{name}} no longer has admin access.",
+        "errorTitle": "Admin update failed"
+      }
+    },
+    "tts": {
+      "kicker": "Voice output",
+      "title": "Text to speech",
+      "subtitle": "Tune the live TTS queue that powers `!s` now and AST-driven speech later.",
+      "providerPill": "Piper on this VPS",
+      "readOnlyPill": "Read only",
+      "cards": {
+        "behaviorKicker": "Speech rules",
+        "behaviorTitle": "Queue and cleanup defaults",
+        "voiceKicker": "Voice map",
+        "voiceTitle": "Current live voices"
+      },
+      "fields": {
+        "enabledLabel": "Enable channel TTS",
+        "enabledHint": "When disabled, `!s` and `$(tts ...)` requests are rejected for this channel.",
+        "defaultLanguageLabel": "Default spoken language",
+        "languageSpanish": "Spanish",
+        "languageEnglish": "English",
+        "maxLengthLabel": "Max normalized length",
+        "skipEmotesLabel": "Skip emotes by default",
+        "skipEmotesHint": "Emote tokens are removed before the message reaches Piper.",
+        "stripLinksLabel": "Replace links",
+        "stripLinksHint": "URLs become `[link]` so the stream does not get link spam.",
+        "normalizeWhitespaceLabel": "Normalize whitespace",
+        "normalizeWhitespaceHint": "Collapses repeated spaces and trims noisy input.",
+        "englishVoiceLabel": "English Piper voice",
+        "spanishVoiceLabel": "Spanish Piper voice"
+      },
+      "future": {
+        "title": "Reserved for premium voice tiers",
+        "copy": "`tts.ai` and `tts.clone` are wired into the contract now, but they will stay unavailable until the future Runpod voice providers are added."
+      },
+      "footer": {
+        "owner": "Owners can change these defaults now. Admins can still review the current setup without editing it.",
+        "readOnly": "You are viewing the live TTS setup in read-only mode. Only the channel owner can change it."
+      },
+      "actions": {
+        "save": "Save TTS settings",
+        "saving": "Saving..."
+      },
+      "states": {
+        "loading": "Loading TTS settings...",
+        "empty": "No TTS settings are available yet."
+      },
+      "errors": {
+        "loadFailed": "Failed to load TTS settings.",
+        "saveFailed": "Failed to save TTS settings."
+      },
+      "toasts": {
+        "savedTitle": "TTS settings saved",
+        "savedMessage": "The speech queue defaults are updated for this channel.",
+        "errorTitle": "TTS update failed"
+      }
+    }
+  },
+  "tip": {
+    "eyebrow": "Send a tip",
+    "title": "Tip {{streamer}}",
+    "subtitle": "A polished first pass for the donation page. Payments and live streamer settings will plug into this later.",
+    "form": {
+      "nameLabel": "Your name or nickname",
+      "namePlaceholder": "How should the streamer see you?",
+      "amountLabel": "Amount",
+      "amountPlaceholder": "25.00",
+      "currencyLabel": "Currency",
+      "currencyHint": "Currency follows streamer settings. Invalid or missing values fall back to {{currency}}.",
+      "messageLabel": "Message",
+      "messageEyebrow": "Optional note",
+      "messagePlaceholder": "Leave a message that can show alongside the donation.",
+      "messageHint": "{{count}} characters remaining.",
+      "submit": "Donate with",
+      "footnote": "Mock design only for now. PayPal flow, streamer settings, and validation rules will be wired next."
+    },
+    "preview": {
+      "label": "Donation preview",
+      "copy": "This mock card helps visualize the experience for {{streamer}}'s community."
+    },
+    "sidebar": {
+      "aria": "Streamer tip overview",
+      "streamerEyebrow": "Featured creator",
+      "streamerCopy": "A cinematic hero panel for the streamer identity, with room for alerts, branding, and future goal data.",
+      "monthlyTotal": "Monthly support",
+      "currency": "Default currency"
+    },
+    "leaderboard": {
+      "eyebrow": "Top supporters",
+      "title": "Monthly leaderboard",
+      "period": "This month"
+    },
+    "mockNotes": {
+      "one": "For the late-night streams and all the chaos.",
+      "two": "Always showing up with immaculate timing.",
+      "three": "Best collab week so far. More soon.",
+      "four": "Keep the marathon energy going.",
+      "five": "Saving this spot before the next big session."
+    }
   },
   "landing": {
     "nav": {
@@ -379,6 +843,349 @@
       "copyright": "© 2024 DomDimaBot. All rights reserved.",
       "terms": "Terms of Service",
       "privacy": "Privacy"
+    }
+  },
+  "chatEvents": {
+    "title": "Chat Events",
+    "subtitle": "Manage your channel's automated chat responses for follows, subscriptions, bits, and more.",
+    "heroBadge": "Engagement Automation",
+    "backToModules": "Back to Modules",
+    "loading": "Loading chat events...",
+    "configure": "Configure",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Enabled",
+    "saveChanges": "Save Changes",
+    "deleteEvent": "Delete Event",
+    "upgrade": "Upgrade",
+    "configuration": "Configuration",
+    "pending": {
+      "saving": "Saving...",
+      "deleting": "Deleting...",
+      "enabling": "Enabling...",
+      "disabling": "Disabling..."
+    },
+    "tierName": "Tier Name",
+    "tierNamePlaceholder": "e.g., Bronze, Silver, Gold",
+    "minBits": "Min Bits",
+    "maxBits": "Max Bits",
+    "message": "Message",
+    "messagePlaceholder": "Enter the chat message...",
+    "addMessageTier": "Add Message Tier",
+    "newTier": "New Tier",
+    "tierRemoveAria": "Remove tier {{name}}",
+    "status": {
+      "notCreated": "Not Created",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "betaEnabled": "Beta Enabled",
+      "tryTheBeta": "Try the Beta!",
+      "alphaEnabled": "Alpha Enabled",
+      "tryTheAlpha": "Try the Alpha!"
+    },
+    "stage": {
+      "comingSoon": "Coming Soon",
+      "maintenance": "Under Maintenance",
+      "unavailable": "Unavailable",
+      "deprecated": "Deprecated",
+      "betaAccess": "Beta Access",
+      "alphaAccess": "Alpha Access"
+    },
+    "permissionMessages": {
+      "needsPremium": "Requires Premium",
+      "needsPro": "Requires Pro"
+    },
+    "tooltips": {
+      "disableNotAllowed": "This event cannot be disabled. To turn it off, clear the message in its configuration.",
+      "deleteNotAllowed": "This event cannot be deleted because it is essential for the bot to work properly.",
+      "addTierDefault": "Add a new message tier",
+      "addTierRequiresPremium": "Upgrade to Premium to add more tiers",
+      "addTierUpgradePrompt": "Upgrade to Pro for up to {{limit}} tiers",
+      "addTierMaxReached": "Maximum of {{limit}} tiers reached"
+    },
+    "tierInfo": {
+      "premiumFeature": "Premium feature - Upgrade to add tiers",
+      "upgradePrompt": "Upgrade to Pro for up to {{limit}} tiers",
+      "maxReached": "Maximum of {{limit}} tiers reached"
+    },
+    "deleteConfirmation": {
+      "title": "Confirm Deletion",
+      "areYouSure": "Are you sure you want to delete the event",
+      "warning": "All associated data will be erased and it will need to be reconfigured if you want to use it again."
+    },
+    "toasts": {
+      "noConfigurationTitle": "No Configuration",
+      "noConfigurationMsg": "There is no configuration to save for this event.",
+      "configurationSavedTitle": "Configuration Saved",
+      "configurationSavedMsg": "Your changes have been saved successfully.",
+      "eventUnsubscribedTitle": "Event Deleted",
+      "eventUnsubscribedMsg": "The event \"{{eventName}}\" has been deleted.",
+      "limitReachedTitle": "Tier Limit Reached",
+      "tierAddedTitle": "Tier Added",
+      "tierAddedMsg": "A new message tier has been added.",
+      "tierRemovedTitle": "Tier Removed",
+      "tierRemovedMsg": "The tier has been removed."
+    }
+  },
+  "chatErrors": {
+    "loadTitle": "Failed to Load",
+    "loadMessage": "Unable to load chat events. Please try again."
+  },
+  "redemptions": {
+    "title": "Channel Point Redemptions",
+    "subtitle": "Create and manage custom channel point rewards for your viewers to redeem during streams.",
+    "heroBadge": "Engage Your Audience",
+    "backToModules": "Back to Modules",
+    "createRewardButton": "Create Reward",
+    "createFirstReward": "Create Your First Reward",
+    "customTag": "Custom",
+    "customRedemptions": "Custom Redemptions",
+    "twitchRedemptions": "Twitch Native Rewards",
+    "loading": "Loading redemptions...",
+    "loadingTwitch": "Loading Twitch rewards...",
+    "noCustomRedemptions": "You haven't created any custom redemptions yet.",
+    "noTwitchRedemptions": "No Twitch native rewards found for this channel.",
+    "noUniqueTwitchRedemptions": "All Twitch rewards that match your custom rewards are hidden here.",
+    "doubleClickToEdit": "Double-click to edit",
+    "doubleClickToChangeColor": "Double-click to change color",
+    "editAll": "Edit all fields",
+    "noPrompt": "No prompt set",
+    "noMessage": "No message set",
+    "readOnly": "Read-Only",
+    "manageOnTwitch": "Manage on Twitch Dashboard",
+    "originalCost": "Original Cost",
+    "costChange": "Cost Change",
+    "returnToOriginalCost": "Return to Original Cost",
+    "selectColor": "Select a color",
+    "cooldown": "Cooldown ({{seconds}}s)",
+    "cooldownTitle": "Please Wait",
+    "cooldownMessage": "Please wait {{seconds}} seconds before refreshing again.",
+    "refreshSuccessTitle": "Refreshed",
+    "refreshSuccessMessage": "Redemptions have been refreshed successfully.",
+    "createSuccessTitle": "Reward Created",
+    "createSuccessMessage": "Your new reward has been created successfully.",
+    "updateSuccessTitle": "Updated",
+    "updateSuccessMessage": "Changes have been saved successfully.",
+    "deleteSuccessTitle": "Deleted",
+    "deleteSuccessMessage": "The reward has been deleted.",
+    "enabledTitle": "Enabled",
+    "enabledMessage": "The reward is now active.",
+    "disabledTitle": "Disabled",
+    "disabledMessage": "The reward has been disabled.",
+    "colorUpdateSuccessTitle": "Color Updated",
+    "colorUpdateSuccessMessage": "The reward color has been updated.",
+    "invalidColorTitle": "Invalid Color",
+    "invalidColorMessage": "Please enter a valid color (hex, rgb, or rgba).",
+    "deleteFallback": "Are you sure you want to delete this reward?",
+    "deleteConfirmation": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone.",
+    "deleteModal": {
+      "title": "Delete Reward"
+    },
+    "errors": {
+      "loadTitle": "Failed to Load",
+      "loadMessage": "Unable to load redemptions. Please try again.",
+      "loadTwitchTitle": "Failed to Load Twitch Rewards",
+      "loadTwitchMessage": "Unable to load Twitch native rewards. Please try again."
+    },
+    "createRewardModal": {
+      "title": "Create New Reward",
+      "titleLabel": "Reward Title",
+      "titlePlaceholder": "Enter reward title...",
+      "titleRequired": "Title is required",
+      "costLabel": "Cost (Channel Points)",
+      "costRequired": "Cost must be at least 1",
+      "promptLabel": "Prompt (Description)",
+      "promptPlaceholder": "What should viewers know about this reward?",
+      "messageLabel": "Bot Message",
+      "messagePlaceholder": "Message to send when redeemed...",
+      "cooldownLabel": "Cooldown",
+      "durationLabel": "Duration",
+      "backgroundColorLabel": "Background Color",
+      "extraOptionsLabel": "Extra Redemption Options",
+      "userInputLabel": "Require viewer input",
+      "skipQueueLabel": "Skip redemption queue",
+      "originalCostLabel": "Original Cost",
+      "costChangeLabel": "Cost Change",
+      "returnToOriginalCostLabel": "Automatically return to original cost",
+      "createButton": "Create Reward",
+      "selectColor": "Select color {{color}}"
+    }
+  },
+  "triggers": {
+    "title": "Triggers Studio",
+    "subtitle": "Compose reward-driven moments with a cleaner trigger board, a channel media library, and a shared public catalog.",
+    "heroBadge": "Layered Stream Moments",
+    "backToModules": "Back to Modules",
+    "copyObsLink": "Copy OBS Overlay URL",
+    "obsCopiedCta": "Overlay Copied",
+    "obsCopiedTitle": "Overlay URL Copied",
+    "obsCopiedMessage": "Your trigger overlay URL is ready for OBS or a browser source.",
+    "createTrigger": "Create Trigger",
+    "createFirstTrigger": "Create Your First Trigger",
+    "editTrigger": "Edit Trigger",
+    "uploadMedia": "Upload Media",
+    "loading": "Loading triggers...",
+    "loadingLibrary": "Loading your media library...",
+    "loadingMarketplace": "Loading public assets...",
+    "saving": "Saving...",
+    "volume": "Volume",
+    "noPrompt": "No prompt configured yet.",
+    "noLinkedReward": "This trigger stands on its own. Call it from rewards, commands, or AST with $(trigger.send triggername).",
+    "linkedRewardSummary": "Linked reward: {{title}}",
+    "assetLabel": "Asset",
+    "rewardState": "Reward state",
+    "rewardLinked": "Linked",
+    "rewardless": "Standalone",
+    "triggersEyebrow": "Channel triggers",
+    "activeSectionTitle": "Live trigger board",
+    "activeSectionCaption": "Quickly test, tune, and keep your on-stream automations organized.",
+    "emptyTitle": "No triggers yet",
+    "emptyMessage": "Pick a media item from your library, connect it to a reward, and your first trigger is ready.",
+    "myLibrary": "My Library",
+    "publicLibrary": "Public Library",
+    "browsePublicLibrary": "Browse Public Library",
+    "libraryDescription": "Everything currently assigned to your channel quota lives here. Use these assets when creating triggers.",
+    "libraryTabs": "Trigger media tabs",
+    "libraryEmptyTitle": "Your library is empty",
+    "libraryEmptyMessage": "Upload a media file or add something from the public library to start building triggers.",
+    "searchLibrary": "Search your library",
+    "searchMarketplace": "Search public assets",
+    "mediaComingSoon": "Visual support soon",
+    "scope": {
+      "private": "Private",
+      "public": "Public"
+    },
+    "filters": {
+      "all": "All",
+      "video": "Video",
+      "audio": "Audio",
+      "image": "Image",
+      "gif": "GIF"
+    },
+    "stats": {
+      "activeTriggers": "Active triggers",
+      "liveAutomation": "Ready for reward-driven moments",
+      "libraryItems": "Library items",
+      "readyAssets": "Assets charging your channel quota",
+      "storageQuota": "Storage quota",
+      "of": "of",
+      "perUploadLimit": "Per-upload limit: {{size}}"
+    },
+    "cooldownTitle": "Refresh cooldown",
+    "cooldownMessage": "Please wait {{seconds}} seconds before refreshing again.",
+    "refreshCooldown": "Refresh in {{seconds}}s",
+    "refreshTitle": "Triggers refreshed",
+    "refreshMessage": "The trigger board and media library are refreshing now.",
+    "validationTitle": "Check the form",
+    "validationMessage": "Complete the required trigger fields before saving.",
+    "validationNameMessage": "Trigger names can only use letters, numbers, and underscores.",
+    "createSuccessTitle": "Trigger created",
+    "createSuccessMessage": "Your trigger is now ready on the board.",
+    "updateSuccessTitle": "Trigger updated",
+    "updateSuccessMessage": "Your trigger changes were saved.",
+    "enabledTitle": "Trigger enabled",
+    "enabledMessage": "The trigger is ready to fire again.",
+    "disabledTitle": "Trigger disabled",
+    "disabledMessage": "The trigger is paused until you re-enable it.",
+    "deleteTriggerTitle": "Delete Trigger",
+    "deleteTriggerMessage": "The selected trigger has been removed.",
+    "deleteTriggerConfirmation": "Delete \"{{name}}\"? The reward connection will be removed from this trigger board.",
+    "deleteMediaTitle": "Remove Media Item",
+    "deleteMediaMessage": "The media item was removed from your library.",
+    "deleteMediaConfirmation": "Remove \"{{name}}\" from your library? Public assets stay in the marketplace, but private assets may be removed permanently.",
+    "testAction": "Test",
+    "test": {
+      "kicker": "OBS preview",
+      "description": "This preview opens the trigger overlay and fires the selected trigger through the new redirect-based media path.",
+      "sending": "Sending...",
+      "sendAgain": "Send Again",
+      "successTitle": "Test sent",
+      "successMessage": "The trigger test was sent to your overlay.",
+      "errorTitle": "Trigger test failed",
+      "errorMessage": "We could not send the trigger to the overlay.",
+      "missingAssetMessage": "This trigger no longer has a playable library asset attached."
+    },
+    "form": {
+      "nameLabel": "Trigger name",
+      "namePlaceholder": "HydrateHero or StreamBoom",
+      "promptLabel": "Prompt or note",
+      "promptPlaceholder": "Optional instructions for the moment or bot reply.",
+      "mediaLabel": "Attach media",
+      "mediaHint": "Choose a trigger-ready item from your library. Video and audio are supported first.",
+      "noMediaTitle": "No trigger-ready media yet",
+      "noMediaMessage": "Upload a video or audio asset first, then come back to create the trigger.",
+      "mediaLockedMessage": "Media swapping comes next. For now, edit the trigger details here and create a new trigger if you want a different asset."
+    },
+    "rewardBuilderTitle": "Optional linked reward",
+    "rewardBuilderHint": "Create the trigger by itself, or also generate a channel point reward that calls $(trigger.send triggername).",
+    "rewardBuilderLinkedHint": "This trigger already has a linked reward. Renaming the trigger only updates the $(trigger.send ...) part of the reward message.",
+    "rewardFields": {
+      "title": "Reward title",
+      "prompt": "Reward prompt",
+      "message": "Reward message",
+      "duration": "Duration",
+      "costChange": "Cost change",
+      "background": "Background color",
+      "userInput": "Require viewer input",
+      "skipQueue": "Skip redemption queue",
+      "resetCost": "Return to original cost"
+    },
+    "modalCreateEyebrow": "New automation",
+    "modalEditEyebrow": "Update details",
+    "upload": {
+      "kicker": "Channel media",
+      "limitTitle": "Plan-aware uploads",
+      "limitMessage": "Uploads follow your plan quota and per-upload file limit of {{size}}.",
+      "freePlanTitle": "Free plan uploads are public",
+      "freePlanMessage": "Free channels publish uploads to the shared library automatically. They still count against your quota when added to your library.",
+      "nameLabel": "Media name",
+      "namePlaceholder": "Only letters, numbers, and underscores",
+      "pickFile": "Choose a media file",
+      "dropNow": "Drop the file here",
+      "fileHint": "Video and audio are trigger-ready first. Images and GIFs stay reserved for the next pass.",
+      "submit": "Upload to Library",
+      "uploading": "Uploading...",
+      "successTitle": "Media uploaded",
+      "successMessage": "The new asset is now available in your library.",
+      "errorTitle": "Upload failed",
+      "errorMessage": "We could not upload that media file.",
+      "validationMessage": "Pick a file and give it a valid name before uploading."
+    },
+    "marketplace": {
+      "kicker": "Storefront",
+      "storeBadge": "Shared creator catalog",
+      "title": "Browse shared public media",
+      "description": "Browse public media already uploaded by the community and add what you want to your own library quota.",
+      "remainingQuota": "Remaining space: {{size}}",
+      "publicTag": "Marketplace",
+      "creatorLabel": "Creator",
+      "typeLabel": "Type",
+      "sizeLabel": "Size",
+      "add": "Add",
+      "adding": "Adding...",
+      "added": "Added",
+      "addTitle": "Asset added",
+      "addMessage": "The public asset now lives in your library quota.",
+      "emptyTitle": "No public assets found",
+      "emptyMessage": "Try a different search or check back after more uploads land.",
+      "errorTitle": "Marketplace error",
+      "errorMessage": "We could not load the public asset catalog."
+    },
+    "errors": {
+      "loadTitle": "Failed to load triggers",
+      "loadMessage": "We could not load the trigger board for this channel.",
+      "libraryTitle": "Failed to load library",
+      "libraryMessage": "We could not load your channel media library.",
+      "createTitle": "Failed to create trigger",
+      "createMessage": "The trigger could not be created.",
+      "updateTitle": "Failed to update trigger",
+      "updateMessage": "The trigger changes could not be saved.",
+      "deleteTitle": "Delete failed",
+      "deleteTriggerMessage": "The trigger could not be deleted.",
+      "deleteMediaMessage": "The media item could not be removed.",
+      "copyTitle": "Copy failed",
+      "copyMessage": "We could not copy the overlay URL for you.",
+      "missingStreamer": "Streamer context is missing. Refresh and try again."
     }
   }
 }

@@ -8,7 +8,7 @@ export const authenticatedGuard: CanActivateFn = () => {
   const sessionAuth = inject(SessionAuthService);
   const router = inject(Router);
 
-  if (!sessionAuth.isAuthenticated()) {
+  if (!sessionAuth.hasValidSession()) {
     return router.createUrlTree(['/login'], {
       queryParams: {
         debug: 'not_authenticated'
@@ -17,15 +17,18 @@ export const authenticatedGuard: CanActivateFn = () => {
   }
 
   return sessionAuth.validateSession().pipe(
-    map((valid) =>
-      valid
-        ? true
-        : router.createUrlTree(['/login'], {
-            queryParams: {
-              debug: 'session_invalid'
-            }
-          })
-    ),
+    map((valid) => {
+      if (valid) {
+        return true;
+      }
+
+      sessionAuth.clearSession();
+      return router.createUrlTree(['/login'], {
+        queryParams: {
+          debug: 'session_invalid'
+        }
+      });
+    }),
     catchError(() => {
       sessionAuth.clearSession();
       return of(

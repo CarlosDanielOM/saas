@@ -42,6 +42,81 @@ export class DashboardApiService implements OnDestroy {
   readonly loading = signal(false);
   readonly connectionStatus = signal<'connected' | 'connecting' | 'disconnected'>('disconnected');
 
+  resetState(): void {
+    this.bootstrapData.set(null);
+    this.liveStatus.set(null);
+    this.liveSessionMetrics.set(null);
+    this.loading.set(false);
+    this.connectionStatus.set('disconnected');
+  }
+
+  private syncBootstrapHistory(isLive: boolean, liveSession: LiveSessionMetrics | null): void {
+    const current = this.bootstrapData();
+    if (!current?.data) {
+      return;
+    }
+
+    this.bootstrapData.set({
+      ...current,
+      data: {
+        ...current.data,
+        isLive,
+        liveSession,
+        streamHistory: current.data.streamHistory
+      }
+    });
+  }
+
+  private refreshBootstrap(channelID: string): void {
+    this.http
+      .get<DashboardBootstrapResponse>(`${this.linksService.getApiUrl()}/dashboard/${channelID}/bootstrap`)
+      .pipe(
+        catchError(() => of(null))
+      )
+      .subscribe((response) => {
+        if (!response?.data) {
+          return;
+        }
+
+        this.bootstrapData.set(response);
+        this.liveStatus.set({
+          error: response.error,
+          status: response.status,
+          message: response.message,
+          data: {
+            isLive: response.data.isLive,
+            checkedAt: new Date().toISOString(),
+            stream: response.data.liveStream,
+            liveSession: response.data.liveSession
+          }
+        });
+        this.liveSessionMetrics.set(response.data.liveSession ?? null);
+      });
+  }
+
+  private applyLiveUpdate(channelID: string, payload: { isLive: boolean; checkedAt?: string; liveSession?: LiveSessionMetrics | null }): void {
+    const previousIsLive = this.liveStatus()?.data?.isLive ?? this.bootstrapData()?.data?.isLive ?? false;
+    const liveSession = payload.liveSession ?? null;
+
+    this.liveStatus.set({
+      error: false,
+      status: 200,
+      message: 'Live status updated',
+      data: {
+        isLive: payload.isLive,
+        checkedAt: payload.checkedAt ?? new Date().toISOString(),
+        stream: this.liveStatus()?.data?.stream ?? this.bootstrapData()?.data?.liveStream ?? null,
+        liveSession
+      }
+    });
+    this.liveSessionMetrics.set(liveSession);
+    this.syncBootstrapHistory(payload.isLive, liveSession);
+
+    if (previousIsLive && !payload.isLive) {
+      this.refreshBootstrap(channelID);
+    }
+  }
+
   getBootstrap(channelID: string) {
     this.loading.set(true);
     this.connectionStatus.set('connecting');
@@ -51,6 +126,20 @@ export class DashboardApiService implements OnDestroy {
       .pipe(
         tap((response) => {
           this.bootstrapData.set(response);
+          this.liveStatus.set({
+            error: response.error,
+            status: response.status,
+            message: response.message,
+            data: response.data
+              ? {
+                  isLive: response.data.isLive,
+                  checkedAt: new Date().toISOString(),
+                  stream: response.data.liveStream,
+                  liveSession: response.data.liveSession
+                }
+              : undefined
+          });
+          this.liveSessionMetrics.set(response.data?.liveSession ?? null);
           this.connectionStatus.set('connected');
           this.loading.set(false);
         }),
@@ -93,9 +182,11 @@ export class DashboardApiService implements OnDestroy {
         switchMap(() => this.getLiveStatus(channelID)),
         tap((response) => {
           this.liveStatus.set(response);
-          if (response.data?.liveSession) {
-            this.liveSessionMetrics.set(response.data.liveSession);
-          }
+          this.applyLiveUpdate(channelID, {
+            isLive: response.data?.isLive ?? false,
+            checkedAt: response.data?.checkedAt,
+            liveSession: response.data?.liveSession ?? null
+          });
           this.connectionStatus.set('connected');
         }),
         catchError(() => {
@@ -115,20 +206,29 @@ export class DashboardApiService implements OnDestroy {
     }
 
     const namespace = `/dashboard/${channelID}`;
+    const unsubscribers: Array<() => void> = [];
 
     // Listen for dashboard snapshot (initial connection)
-    this.websocketService.on<DashboardSnapshotPayload>(namespace, 'dashboard-snapshot', (data) => {
-      if (data.liveSession) {
-        this.liveSessionMetrics.set(data.liveSession);
-      }
-    });
+    unsubscribers.push(this.websocketService.on<DashboardSnapshotPayload>(namespace, 'dashboard-snapshot', (data) => {
+      this.applyLiveUpdate(channelID, {
+        isLive: data.isLive,
+        checkedAt: data.connectedAt,
+        liveSession: data.liveSession ?? null
+      });
+    }));
 
     // Listen for stream status updates
-    this.websocketService.on<StreamStatusPayload>(namespace, 'stream-status', (data) => {
-      if (data.liveSession) {
-        this.liveSessionMetrics.set(data.liveSession);
-      }
-    });
+    unsubscribers.push(this.websocketService.on<StreamStatusPayload>(namespace, 'stream-status', (data) => {
+      this.applyLiveUpdate(channelID, {
+        isLive: data.isLive,
+        checkedAt: data.checkedAt,
+        liveSession: data.liveSession ?? null
+      });
+    }));
+
+    this.wsUnsubscribe = () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
   }
 
   stopLiveStatusPolling(): void {

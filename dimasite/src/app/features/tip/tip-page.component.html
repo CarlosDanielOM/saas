@@ -1,0 +1,210 @@
+<div class="public-commands-shell tip-page-shell">
+  <header class="sticky-navbar public-commands-navbar">
+    <div class="public-commands-navbar__inner">
+      <a class="public-commands-navbar__brand" routerLink="/" aria-label="DomDimaBot home">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">DomDimaBot</span>
+      </a>
+
+      <nav class="public-commands-navbar__actions" aria-label="Tip page actions">
+        <button type="button" class="nav-pill" (click)="toggleLanguage()" [attr.aria-label]="t('commands.public.languageToggle')">
+          {{ languageLabel() }}
+        </button>
+        <button
+          type="button"
+          class="nav-pill nav-pill--icon"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
+          [title]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
+        >
+          <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
+        </button>
+        <button type="button" class="nav-pill nav-pill--login" (click)="loginWithTwitch()">
+          {{ t('landing.hero.loginWith') }}
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="public-commands-main tip-page-main">
+    <section class="tip-page">
+      <div class="tip-page__backdrop" aria-hidden="true">
+        <span class="tip-page__mesh tip-page__mesh--violet"></span>
+        <span class="tip-page__mesh tip-page__mesh--cyan"></span>
+        <span class="tip-page__mesh tip-page__mesh--gold"></span>
+      </div>
+
+      <div class="tip-page__container">
+        <div class="tip-page__grid">
+          <article class="tip-card tip-card--form glass-card">
+            <div class="tip-card__intro">
+              <p class="tip-card__eyebrow">
+                <lucide-icon [name]="heartIcon" class="tip-card__eyebrow-icon"></lucide-icon>
+                {{ t('tip.eyebrow') }}
+              </p>
+              <h1 class="tip-card__title">{{ t('tip.title', { streamer: streamerName() }) }}</h1>
+              <p class="tip-card__copy">{{ t('tip.subtitle') }}</p>
+            </div>
+
+            <form class="tip-form" novalidate>
+              <label class="tip-form__field" for="tip-donor-name">
+                <span class="tip-form__label">{{ t('tip.form.nameLabel') }}</span>
+                <div class="tip-form__control">
+                  <lucide-icon [name]="userIcon" class="tip-form__control-icon"></lucide-icon>
+                  <input
+                    id="tip-donor-name"
+                    class="tip-form__input"
+                    type="text"
+                    [value]="donorName()"
+                    [placeholder]="t('tip.form.namePlaceholder')"
+                    autocomplete="nickname"
+                    (input)="updateDonorName($event)"
+                  />
+                </div>
+              </label>
+
+              <div class="tip-form__field">
+                <span class="tip-form__label">{{ t('tip.form.amountLabel') }}</span>
+                <div class="tip-form__control tip-form__control--amount-with-currency">
+                  <span class="tip-form__icon-tab" aria-hidden="true">
+                    <lucide-icon [name]="walletIcon" class="tip-form__control-icon"></lucide-icon>
+                  </span>
+                  <div class="tip-form__currency-divider tip-form__currency-divider--leading"></div>
+                  <input
+                    id="tip-donation-amount"
+                    class="tip-form__input tip-form__input--amount"
+                    type="text"
+                    inputmode="decimal"
+                    pattern="^\d*\.?\d*$"
+                    [value]="donationAmount()"
+                    [placeholder]="t('tip.form.amountPlaceholder')"
+                    (input)="updateDonationAmount($event)"
+                  />
+                  <div class="tip-form__currency-divider"></div>
+                  <label class="tip-form__currency-select-wrapper" for="tip-currency">
+                    <span class="tip-form__sr-only">{{ t('tip.form.currencyLabel') }}</span>
+                    <select
+                      id="tip-currency"
+                      class="tip-form__currency-select"
+                      [value]="selectedCurrency()"
+                      (change)="updateCurrency($event)"
+                      [attr.aria-label]="t('tip.form.currencyLabel')"
+                    >
+                      <option [value]="selectedCurrency()" selected>{{ selectedCurrency() }}</option>
+                      @for (currency of currencyOptions(); track currency) {
+                        <option [value]="currency">{{ currency }}</option>
+                      }
+                    </select>
+                    <lucide-icon [name]="chevronDownIcon" class="tip-form__currency-chevron"></lucide-icon>
+                  </label>
+                </div>
+                <p class="tip-form__hint">{{ t('tip.form.currencyHint', { currency: selectedCurrency() }) }}</p>
+              </div>
+
+              <label class="tip-form__field" for="tip-message">
+                <span class="tip-form__label">{{ t('tip.form.messageLabel') }}</span>
+                <div class="tip-form__textarea-shell">
+                  <div class="tip-form__textarea-header">
+                    <span class="tip-form__textarea-pill">
+                      <lucide-icon [name]="messageIcon" class="tip-form__textarea-pill-icon"></lucide-icon>
+                      {{ t('tip.form.messageEyebrow') }}
+                    </span>
+                    <span class="tip-form__counter">{{ message().length }}/{{ messageLimit() }}</span>
+                  </div>
+                  <textarea
+                    id="tip-message"
+                    class="tip-form__textarea"
+                    [value]="message()"
+                    [attr.maxlength]="messageLimit()"
+                    [placeholder]="t('tip.form.messagePlaceholder')"
+                    [attr.aria-describedby]="'tip-message-limit'"
+                    (input)="updateMessage($event)"
+                  ></textarea>
+                </div>
+                <p id="tip-message-limit" class="tip-form__hint">
+                  {{ t('tip.form.messageHint', { count: remainingCharacters() }) }}
+                </p>
+              </label>
+
+              <div class="tip-form__preview">
+                <div>
+                  <p class="tip-form__preview-label">{{ t('tip.preview.label') }}</p>
+                  <p class="tip-form__preview-value">{{ formatAmount(donationPreview()) }}</p>
+                </div>
+                <p class="tip-form__preview-copy">{{ t('tip.preview.copy', { streamer: streamerName() }) }}</p>
+              </div>
+
+              <button class="tip-form__submit" type="button">
+                <span class="tip-form__submit-text">{{ t('tip.form.submit') }}</span>
+                <span class="tip-form__submit-brand">PayPal</span>
+                <lucide-icon [name]="arrowRightIcon" class="tip-form__submit-icon"></lucide-icon>
+              </button>
+
+              <p class="tip-form__footnote">{{ t('tip.form.footnote') }}</p>
+            </form>
+          </article>
+
+          <aside class="tip-side" [attr.aria-label]="t('tip.sidebar.aria')">
+            <article class="tip-card tip-card--streamer glass-card">
+              <div class="tip-streamer__aurora" aria-hidden="true">
+                <span class="tip-streamer__orb tip-streamer__orb--violet"></span>
+                <span class="tip-streamer__orb tip-streamer__orb--cyan"></span>
+                <span class="tip-streamer__orb tip-streamer__orb--gold"></span>
+                <span class="tip-streamer__grid"></span>
+              </div>
+
+              <div class="tip-streamer__content">
+                <p class="tip-streamer__eyebrow">
+                  <lucide-icon [name]="sparklesIcon" class="tip-streamer__eyebrow-icon"></lucide-icon>
+                  {{ t('tip.sidebar.streamerEyebrow') }}
+                </p>
+                <h2 class="tip-streamer__name">{{ streamerName() }}</h2>
+                <p class="tip-streamer__copy">{{ t('tip.sidebar.streamerCopy') }}</p>
+
+                <div class="tip-streamer__stats">
+                  <div class="tip-streamer__stat">
+                    <span class="tip-streamer__stat-label">{{ t('tip.sidebar.monthlyTotal') }}</span>
+                    <strong class="tip-streamer__stat-value">{{ formatAmount(monthlyTotal()) }}</strong>
+                  </div>
+                  <div class="tip-streamer__stat">
+                    <span class="tip-streamer__stat-label">{{ t('tip.sidebar.currency') }}</span>
+                    <strong class="tip-streamer__stat-value">{{ selectedCurrency() }}</strong>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="tip-card tip-card--leaderboard glass-card">
+              <div class="tip-leaderboard__header">
+                <div>
+                  <p class="tip-leaderboard__eyebrow">
+                    <lucide-icon [name]="trophyIcon" class="tip-leaderboard__eyebrow-icon"></lucide-icon>
+                    {{ t('tip.leaderboard.eyebrow') }}
+                  </p>
+                  <h2 class="tip-leaderboard__title">{{ t('tip.leaderboard.title') }}</h2>
+                </div>
+                <p class="tip-leaderboard__period">{{ t('tip.leaderboard.period') }}</p>
+              </div>
+
+              <div class="tip-leaderboard__list" role="list">
+                @for (entry of monthlyLeaderboard(); track entry.rank) {
+                  <div class="tip-leaderboard__item" role="listitem">
+                    <div class="tip-leaderboard__rank">#{{ entry.rank }}</div>
+                    <div class="tip-leaderboard__body">
+                      <div class="tip-leaderboard__header-row">
+                        <strong class="tip-leaderboard__name">{{ entry.donor }}</strong>
+                        <span class="tip-leaderboard__amount">{{ formatAmount(entry.amount) }}</span>
+                      </div>
+                      <p class="tip-leaderboard__note" [attr.title]="entry.note">{{ entry.note }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            </article>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

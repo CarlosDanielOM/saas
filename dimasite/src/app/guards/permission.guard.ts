@@ -3,11 +3,12 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of, switchMap } from 'rxjs';
 
 import { SessionAuthService } from '../services/session-auth.service';
+import { getRouteParamFromSnapshot } from '../shared/utils/route-param.util';
 
-export const permissionGuard: CanActivateFn = (route) => {
+export const permissionGuard: CanActivateFn = (route, state) => {
   const sessionAuth = inject(SessionAuthService);
   const router = inject(Router);
-  const streamerParam = route.paramMap.get('streamer') || route.parent?.paramMap.get('streamer');
+  const streamerParam = getRouteParamFromSnapshot(route, 'streamer');
   const permission = (route.data?.['permission'] as string | undefined) ?? 'dashboard:view';
 
   if (!streamerParam) {
@@ -36,12 +37,10 @@ export const permissionGuard: CanActivateFn = (route) => {
         map((allowed) =>
           allowed
             ? true
-            : router.createUrlTree(['/login'], {
+            : router.createUrlTree(['/', streamerParam, '403'], {
                 queryParams: {
-                  debug: 'permission_denied',
-                  streamer: streamerParam,
-                  channelID,
-                  permission
+                  permission,
+                  from: state.url
                 }
               })
         )

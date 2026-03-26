@@ -24,6 +24,7 @@ type ViewMode = 'table' | 'card';
 type EditMode = { type: 'cell'; commandId: string; field: string } | { type: 'row'; commandId: string } | { type: 'card'; commandId: string } | null;
 type PendingOperation = 'create' | 'update' | 'enable' | 'disable' | 'delete';
 type CommandFeedbackState = 'success' | 'error';
+type CommandLoadSource = 'initial' | 'retry' | 'manual' | 'empty-retry' | 'language';
 
 interface CommandListItem extends Command {
   pendingOperation?: PendingOperation;
@@ -151,7 +152,27 @@ export class CommandsPageComponent {
 
   readonly pages = computed(() => {
     const total = this.totalPages();
-    return Array.from({ length: total }, (_, i) => i + 1);
+    const current = this.currentPage();
+
+    // If 5 or fewer pages, show all
+    if (total <= 5) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    // For more than 5 pages, show sliding window of 5 pages
+    let start = current - 2;
+    let end = current + 2;
+
+    // Adjust window to stay within bounds
+    if (start < 1) {
+      start = 1;
+      end = 5;
+    } else if (end > total) {
+      end = total;
+      start = total - 4;
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   });
 
   // Effects
@@ -166,8 +187,10 @@ export class CommandsPageComponent {
 
   private readonly loadCommandsEffect = effect(() => {
     const channelID = this.channelID();
+    this.languageService.currentLanguage();
+
     if (channelID) {
-      this.loadCommands(channelID, { source: 'initial' });
+      this.loadCommands(channelID, { source: 'initial', silent: true });
     }
   });
 
@@ -389,10 +412,11 @@ export class CommandsPageComponent {
     }
   }
 
-  loadCommands(channelID: string, options: { hardRefresh?: boolean; silent?: boolean; source?: 'initial' | 'retry' | 'manual' | 'empty-retry' } = {}) {
+  loadCommands(channelID: string, options: { hardRefresh?: boolean; silent?: boolean; source?: CommandLoadSource } = {}) {
     const request$ = options.hardRefresh
       ? this.commandsApi.refreshCommands(channelID)
       : this.commandsApi.getCommands(channelID);
+    const autoRefreshKey = `${channelID}:${this.languageService.getCurrentLanguage()}`;
 
     request$.subscribe((commands) => {
       const errorMessage = this.commandsApi.listError();
@@ -407,8 +431,8 @@ export class CommandsPageComponent {
         return;
       }
 
-      if (commands.length === 0 && !options.hardRefresh && !this.autoRefreshAttempted.has(channelID)) {
-        this.autoRefreshAttempted.add(channelID);
+      if (commands.length === 0 && !options.hardRefresh && !this.autoRefreshAttempted.has(autoRefreshKey)) {
+        this.autoRefreshAttempted.add(autoRefreshKey);
         this.loadCommands(channelID, {
           hardRefresh: true,
           silent: true,
@@ -615,8 +639,8 @@ export class CommandsPageComponent {
     if (this.isPending(commandId)) return;
 
     const command = this.commands().find((c) => c.id === commandId || c._id === commandId);
-    if (command?.reserved && field === 'message') {
-      return; // Can't edit message for reserved commands
+    if (command && !this.canEditField(commandId, field)) {
+      return;
     }
 
     this.editMode.set({ type: 'cell', commandId, field });
@@ -882,7 +906,7 @@ export class CommandsPageComponent {
   // Command actions
   canEditField(commandId: string, field: string): boolean {
     const command = this.commands().find((c) => c.id === commandId || c._id === commandId);
-    if (command?.reserved && field === 'message') {
+    if (command?.reserved && (field === 'message' || field === 'description')) {
       return false;
     }
     return true;

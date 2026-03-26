@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { catchError, map, of, tap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest } from '../models/command.model';
+import { LanguageService } from './language.service';
 import { LinksService } from './links.service';
 
 interface ApiEnvelope<T> {
@@ -32,6 +33,7 @@ interface CacheEntry<T> {
 export class CommandsApiService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
+  private readonly languageService = inject(LanguageService);
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
   private readonly cache = new Map<string, CacheEntry<unknown>>();
 
@@ -68,8 +70,8 @@ export class CommandsApiService {
     return command;
   }
 
-  private getCacheKey(channelID: string): string {
-    return `commands:${channelID}`;
+  private getCacheKey(channelID: string, language: string): string {
+    return `commands:${channelID}:${language}`;
   }
 
   private isCacheValid(key: string): boolean {
@@ -90,18 +92,25 @@ export class CommandsApiService {
   }
 
   private updateCachedCommands(channelID: string, updater: (commands: Command[]) => Command[]): void {
-    const cacheKey = this.getCacheKey(channelID);
-    const cached = this.getFromCache<Command[]>(cacheKey);
+    const cachePrefix = `commands:${channelID}:`;
 
-    if (!cached) {
-      return;
+    for (const [cacheKey] of this.cache.entries()) {
+      if (!cacheKey.startsWith(cachePrefix)) {
+        continue;
+      }
+
+      const cached = this.getFromCache<Command[]>(cacheKey);
+      if (!cached) {
+        continue;
+      }
+
+      this.setCache(cacheKey, updater(cached));
     }
-
-    this.setCache(cacheKey, updater(cached));
   }
 
   getCommands(channelID: string, skipCache = false) {
-    const cacheKey = this.getCacheKey(channelID);
+    const language = this.languageService.getCurrentLanguage();
+    const cacheKey = this.getCacheKey(channelID, language);
 
     if (!skipCache) {
       const cached = this.getFromCache<Command[]>(cacheKey);
@@ -115,7 +124,7 @@ export class CommandsApiService {
 
     return this.http
       .get<ApiEnvelope<CommandsListResponse> & LegacyCommandsResponse>(
-        `${this.linksService.getApiUrl()}/commands/${channelID}`
+        `${this.linksService.getApiUrl()}/commands/${channelID}?language=${encodeURIComponent(language)}`
       )
       .pipe(
         map((response) => this.extractCommands(response)),
@@ -147,9 +156,11 @@ export class CommandsApiService {
   }
 
   updateCommand(channelID: string, commandID: string, updates: UpdateCommandRequest) {
+    const language = this.languageService.getCurrentLanguage();
+
     return this.http
       .put<ApiEnvelope<{ command: Command }> & LegacyCommandsResponse>(
-        `${this.linksService.getApiUrl()}/commands/${channelID}/${commandID}`,
+        `${this.linksService.getApiUrl()}/commands/${channelID}/${commandID}?language=${encodeURIComponent(language)}`,
         updates
       )
       .pipe(

@@ -88,8 +88,8 @@ export interface StreamHealthStatus {
   `,
   styles: `
     .stream-health {
-      background: rgba(30, 41, 59, 0.5);
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      background: color-mix(in srgb, var(--dash-panel) 90%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dash-border) 55%, transparent);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -107,7 +107,7 @@ export interface StreamHealthStatus {
     }
 
     .stream-health__header:hover {
-      background: rgba(255, 255, 255, 0.05);
+      background: color-mix(in srgb, var(--dash-panel-2) 60%, transparent);
     }
 
     .stream-health__header-left {
@@ -136,14 +136,14 @@ export interface StreamHealthStatus {
     .stream-health__title {
       font-size: 14px;
       font-weight: 600;
-      color: #f8fafc;
+      color: var(--dash-text);
       margin: 0;
     }
 
     .stream-health__toggle-icon {
       width: 20px;
       height: 20px;
-      color: #94a3b8;
+      color: var(--dash-text-soft);
     }
 
     .stream-health__content {
@@ -173,7 +173,7 @@ export interface StreamHealthStatus {
       align-items: center;
       gap: 12px;
       padding: 12px;
-      background: rgba(255, 255, 255, 0.03);
+      background: color-mix(in srgb, var(--dash-panel-2) 70%, transparent);
       border-radius: 8px;
     }
 
@@ -183,7 +183,7 @@ export interface StreamHealthStatus {
       justify-content: center;
       width: 40px;
       height: 40px;
-      background: rgba(99, 102, 241, 0.15);
+      background: color-mix(in srgb, var(--dash-violet) 22%, transparent);
       border-radius: 10px;
       flex-shrink: 0;
     }
@@ -191,7 +191,7 @@ export interface StreamHealthStatus {
     .stream-health__metric-icon {
       width: 20px;
       height: 20px;
-      color: #818cf8;
+      color: var(--dash-violet);
     }
 
     .stream-health__metric-info {
@@ -202,13 +202,13 @@ export interface StreamHealthStatus {
 
     .stream-health__metric-label {
       font-size: 12px;
-      color: #64748b;
+      color: var(--dash-text-soft);
     }
 
     .stream-health__metric-value {
       font-size: 15px;
       font-weight: 600;
-      color: #f8fafc;
+      color: var(--dash-text);
     }
 
     .stream-health__metric-value--good {
@@ -226,30 +226,12 @@ export interface StreamHealthStatus {
     .stream-health__footer {
       margin-top: 12px;
       padding-top: 12px;
-      border-top: 1px solid rgba(148, 163, 184, 0.1);
+      border-top: 1px solid color-mix(in srgb, var(--dash-border) 50%, transparent);
     }
 
     .stream-health__last-checked {
       font-size: 12px;
-      color: #64748b;
-    }
-
-    /* Light mode */
-    :host-context(:not(.dark)) .stream-health {
-      background: rgba(255, 255, 255, 0.7);
-      border-color: rgba(148, 163, 184, 0.2);
-    }
-
-    :host-context(:not(.dark)) .stream-health__title {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .stream-health__metric-value {
-      color: #0f172a;
-    }
-
-    :host-context(:not(.dark)) .stream-health__metric {
-      background: rgba(0, 0, 0, 0.02);
+      color: var(--dash-text-soft);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush

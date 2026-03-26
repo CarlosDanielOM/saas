@@ -5,6 +5,7 @@
     "modules": "Modulos",
     "settings": "Configuracion",
     "adminHub": "Hub Admin",
+    "myDashboard": "Mi Panel",
     "activateBot": "Activar Bot",
     "reauthenticate": "Reautenticar",
     "updatePermissions": "Actualizar Permisos",
@@ -18,15 +19,245 @@
   },
   "modules": {
     "title": "Modulos",
-    "subtitle": "Gestion de modulos proximamente."
+    "subtitle": "Descubre modulos potentes para mejorar tu experiencia de streaming. Desde automatizacion de chat hasta gestion de clips, todo lo que necesitas en un solo lugar.",
+    "hero": {
+      "badge": "Potencia tu Stream"
+    },
+    "searchPlaceholder": "Buscar modulos...",
+    "categories": {
+      "all": "Todos los Modulos",
+      "engagement": "Interaccion",
+      "automation": "Automatizacion",
+      "content": "Contenido"
+    },
+    "featured": "Modulo Destacado",
+    "allModules": "Todos los Modulos",
+    "moduleCount": "modulos",
+    "clips": {
+      "description": "Selecciona un diseno de visualizador de clips y ajusta la configuracion para tus overlays de stream."
+    },
+    "chatEvents": {
+      "description": "Activa o desactiva eventos de chat como follows, bits, subs y establece sus mensajes y umbrales."
+    },
+    "triggers": {
+      "description": "Construye momentos con triggers usando tu biblioteca privada, assets publicos y recompensas del canal sin salir de los limites de tu plan."
+    },
+    "referrals": {
+      "description": "Crea codigos de referido, sigue conversiones y administra las campanas con tarjetas conectadas a tu canal."
+    },
+    "redemptions": {
+      "description": "Crea, edita y gestiona redemptions para tu contenido. Recompensas que los espectadores pueden canjear."
+    },
+    "aiPersonality": {
+      "description": "Configura la personalidad, comportamiento y respuestas de tu bot IA para interacciones mas inteligentes en el chat."
+    },
+    "analytics": {
+      "description": "Abre el hub de analiticas para ver inteligencia de seguidores, mutuos destacados y futuras vistas de audiencia."
+    },
+    "openModule": "Abrir Modulo",
+    "upgradeToAccess": "Actualizar para Acceder",
+    "comingSoon": "Proximamente",
+    "unavailable": "No disponible",
+    "noResults": "No se encontraron modulos",
+    "adjustFilters": "Intenta ajustar tu busqueda o filtros",
+    "resetFilters": "Restablecer Filtros"
+  },
+  "analyticsHub": {
+    "badge": "Inteligencia de Audiencia",
+    "title": "Hub de Analiticas",
+    "subtitle": "Un hogar enfocado para entender tu audiencia. Empieza con el seguimiento de follows activos y luego ampliamos este hub con mas analiticas.",
+    "chips": {
+      "activeFollowers": "Seguimiento de follows activos",
+      "mutualHighlights": "Destacado de mutuos",
+      "futureHistory": "Historial de unfollows despues"
+    },
+    "panel": {
+      "kicker": "Lanzamiento actual",
+      "title": "Follow Ledger vive aqui primero",
+      "description": "Estamos reconstruyendo analiticas como modulos dedicados. El primer modulo es Follow Ledger, pensado para canales premium y pro.",
+      "paidPlan": "Premium desbloqueado",
+      "freePlan": "Vista gratis"
+    },
+    "followLedger": {
+      "activeOnly": "Solo follows activos",
+      "eyebrow": "Modulo premium de analiticas",
+      "title": "Registro de Seguidores",
+      "description": "Busca tus seguidores activos, aisla mutuos y revisa quien sigue tu canal actualmente con un ledger visual mas limpio.",
+      "open": "Abrir Follow Ledger",
+      "lockedCta": "Requiere premium"
+    },
+    "roadmap": {
+      "badge": "Roadmap",
+      "eyebrow": "Lo que sigue",
+      "title": "Este hub ya esta listo para mas analiticas",
+      "description": "La estructura ya existe para crecer mas alla de follows activos sin esconder analiticas otra vez en el navbar principal.",
+      "items": {
+        "endedHistory": "Historial de unfollows para planes pagos",
+        "retentionViews": "Vistas de retencion y lealtad",
+        "moreModules": "Mas modulos de analiticas de audiencia"
+      }
+    }
+  },
+  "analytics": {
+    "follows": {
+      "title": "Registro de Seguidores",
+      "subtitle": "Sigue a tus followers activos, destaca mutuos y busca dentro de la audiencia del canal sin salir del flujo de analiticas.",
+      "backToAnalytics": "Volver a analiticas",
+      "activeOnly": "Solo follows activos",
+      "filters": "Filtros de seguidores",
+      "sort": "Orden",
+      "searchLabel": "Buscar seguidores",
+      "searchPlaceholder": "Buscar por nombre, login o ID",
+      "clearSearchAriaLabel": "Limpiar busqueda de seguidores",
+      "all": "Todos",
+      "mutuals": "Mutuos",
+      "nonMutuals": "No mutuos",
+      "newest": "Mas nuevos",
+      "oldest": "Mas antiguos",
+      "activeTotal": "Follows activos",
+      "mutualTotal": "Follows mutuos",
+      "nonMutualTotal": "Follows no mutuos",
+      "followedAt": "Siguio el",
+      "followAge": "Antiguedad",
+      "mutualBadge": "Mutuo",
+      "loading": "Cargando seguidores activos...",
+      "empty": "No se encontraron seguidores activos para este filtro.",
+      "emptyHint": "Prueba otra busqueda o combinacion de filtros.",
+      "loadError": "No se pudo cargar el registro de seguidores.",
+      "missingStreamer": "No se encontro el contexto del streamer. Actualiza e intenta de nuevo.",
+      "pagination": "Paginacion de seguidores",
+      "searchNoResults": "No hay seguidores activos que coincidan con \"{{query}}\".",
+      "resultsTitle": "Resultados de seguidores activos",
+      "showingResults": "Mostrando {{start}}-{{end}} de {{total}} follows activos",
+      "refreshing": "Actualizando resultados...",
+      "ownerView": "Vista owner",
+      "adminView": "Vista admin",
+      "lockedTitle": "Follow Ledger es un modulo premium de analiticas",
+      "lockedDescription": "Los canales gratis pueden ver el hub de analiticas, pero el seguimiento de follows activos por ahora se desbloquea en premium y pro.",
+      "lockedCta": "Ver acceso premium",
+      "durationYears": "{{count}} año(s)",
+      "durationMonths": "{{count}} mes(es)",
+      "durationDays": "{{count}} dia(s)",
+      "durationPair": "{{first}} y {{second}}",
+      "durationUnknown": "Desconocido"
+    }
+  },
+  "clips": {
+    "title": "Diseños de Overlay de Clips",
+    "description": "Elige entre impresionantes diseños de overlay para mostrar tus mejores momentos con estilo. Configura y visualiza en tiempo real.",
+    "headerBadge": "Overlays de Clips",
+    "backToModules": "Volver a Módulos",
+    "chooseDesign": "Elige tu Diseño",
+    "configuration": "Configuración",
+    "preview": "Vista Previa en Vivo",
+    "livePreview": "Vista Previa en Vivo",
+    "timeoutLabel": "Duración del Clip",
+    "seconds": "segundos",
+    "copyUrl": "Copiar URL del Overlay",
+    "copied": "¡Copiado!",
+    "testDesign": "Probar Clip",
+    "openInNewTab": "Abrir en Nueva Pestaña",
+    "selectDesignTitle": "Selecciona un Diseño",
+    "selectDesignDescription": "Elige un diseño de overlay de clips de arriba para comenzar",
+    "premiumRequired": "Premium Requerido",
+    "upgradeToAccess": "Actualiza tu plan para acceder a este diseño",
+    "testWarning": "Abre primero la URL del overlay de clips en OBS o navegador para habilitar las pruebas",
+    "copiedTitle": "URL Copiada",
+    "copiedMessage": "La URL del overlay de clips se ha copiado al portapapeles",
+    "copyFailed": "Error al Copiar",
+    "copyFailedMessage": "No se pudo copiar la URL. Por favor, inténtalo de nuevo."
   },
   "profile": {
     "title": "Configuracion de Perfil",
     "subtitle": "Gestiona la configuracion de tu cuenta y preferencias."
   },
+  "referrals": {
+    "eyebrow": "Campanas de referido",
+    "title": "Codigos de Referido",
+    "subtitleOwner": "Crea tarjetas de referido, monitorea conversiones y administra como tu canal invita nuevos registros.",
+    "subtitleAdmin": "Revisa el rendimiento de referidos y los codigos activos de este canal. Solo el owner puede crear o eliminar codigos.",
+    "backToModules": "Volver a modulos",
+    "viewer": {
+      "owner": "Controles owner",
+      "admin": "Admin solo lectura"
+    },
+    "plan": {
+      "free": "Plan gratis",
+      "premium": "Plan premium",
+      "pro": "Plan pro"
+    },
+    "summary": {
+      "currentBalance": "Balance actual",
+      "totalEarned": "Total ganado",
+      "totalConversions": "Conversiones totales",
+      "codesUsed": "Codigos usados"
+    },
+    "readOnly": {
+      "title": "Acceso solo lectura",
+      "description": "Los admins pueden revisar el rendimiento de referidos aqui, pero solo el owner del canal puede crear o eliminar codigos."
+    },
+    "manage": {
+      "kicker": "Crear nueva tarjeta",
+      "title": "Lanza otro codigo de referido",
+      "description": "Cada codigo mantiene su propia tarjeta de campana y un color estable, asi tu lineup de referidos sigue siendo reconocible cada vez que vuelves.",
+      "openModal": "Agregar codigo de referido",
+      "modalTitle": "Crear codigo de referido",
+      "modalDescription": "Crea una nueva tarjeta de referido con un codigo limpio y un nombre opcional de campana. El color se mantiene consistente usando el hash de la identidad de la tarjeta.",
+      "codeLabel": "Codigo de referido",
+      "codePlaceholder": "Escribe un codigo corto",
+      "labelLabel": "Nombre de la tarjeta",
+      "labelPlaceholder": "Nombre opcional de campana",
+      "codeHint": "Usa 1-16 letras, numeros o guiones bajos.",
+      "slotsRemaining": "{{count}} espacios restantes de {{limit}}",
+      "limitReached": "Ya llegaste al limite de codigos de referido para este plan.",
+      "submit": "Crear codigo de referido",
+      "submitting": "Creando..."
+    },
+    "cards": {
+      "kicker": "Lineup activo",
+      "title": "Tarjetas de referido",
+      "description": "Cada codigo mantiene un color consistente desde el hash del nombre de la tarjeta, para que la identidad visual siga estable despues de refrescar.",
+      "countSuffix": "tarjetas"
+    },
+    "card": {
+      "conversions": "Conversiones",
+      "created": "Creado"
+    },
+    "empty": {
+      "ownerTitle": "Tu deck de referidos esta vacio",
+      "ownerDescription": "Crea tu primer codigo de referido para empezar a seguir registros y ganar recompensas de nuevas suscripciones.",
+      "adminTitle": "No hay codigos activos",
+      "adminDescription": "Este canal todavia no ha creado codigos de referido activos."
+    },
+    "actions": {
+      "copyLink": "Copiar enlace de referido para {{code}}",
+      "deleting": "Eliminando...",
+      "deleteConfirm": "Eliminar el codigo de referido {{code}}?"
+    },
+    "toasts": {
+      "copiedTitle": "Enlace de referido copiado",
+      "copiedMessage": "{{code}} fue copiado como URL de referido para compartir.",
+      "createdTitle": "Codigo de referido creado",
+      "createdMessage": "{{code}} ya esta listo para compartirse.",
+      "deletedTitle": "Codigo de referido eliminado",
+      "deletedMessage": "{{code}} fue removido del lineup activo.",
+      "errorTitle": "Fallo la actualizacion de referidos"
+    },
+    "errors": {
+      "loadTitle": "No se pudieron cargar los referidos",
+      "loadFailed": "No pudimos cargar los datos de referidos en este momento.",
+      "channelNotResolved": "Se necesita un canal valido para cargar los datos de referidos.",
+      "ownerOnly": "Solo el owner del canal puede administrar codigos de referido.",
+      "invalidCode": "Los codigos de referido deben usar 1-16 letras, numeros o guiones bajos.",
+      "limitReached": "Ya alcanzaste el limite de codigos de referido para este plan.",
+      "copyFailed": "No pudimos copiar ese enlace de referido en este momento.",
+      "createFailed": "No pudimos crear ese codigo de referido en este momento.",
+      "deleteFailed": "No pudimos eliminar ese codigo de referido en este momento."
+    }
+  },
   "adminHub": {
     "title": "Hub de Admin",
-    "subtitle": "Cambia entre canales propios o que administras.",
+    "subtitle": "Cambia entre canales que administras como admin.",
     "labels": {
       "owner": "Owner",
       "admin": "Admin"
@@ -34,6 +265,10 @@
     "actions": {
       "openDashboard": "Abrir panel",
       "opening": "Abriendo..."
+    },
+    "empty": {
+      "title": "Aun no tienes canales admin",
+      "description": "Cuando otro streamer te de acceso de admin, su canal aparecera aqui para cambiar rapido."
     },
     "errors": {
       "noAccess": "No tienes acceso al panel para este canal.",
@@ -78,8 +313,20 @@
       "sectionLabel": "Grafico de rendimiento",
       "title": "Tendencia de Rendimiento",
       "countAxisLabel": "Cantidad",
+      "timeContext": {
+        "note": "El grafico usa el dia del servidor (UTC).",
+        "server": "Hora del servidor: {{time}}",
+        "local": "Hora local: {{time}}"
+      },
+      "axes": {
+        "engagement": "Interaccion",
+        "bits": "Bits",
+        "hours": "Horas",
+        "donations": "Donaciones"
+      },
       "series": {
         "bits": "Bits",
+        "donations": "Donaciones",
         "subs": "Subs",
         "hours": "Horas",
         "avgViewers": "Viewers Promedio",
@@ -184,6 +431,10 @@
       "redirecting": "Redirigiendo a tu panel",
       "error": "Error de inicio de sesion"
     },
+    "toast": {
+      "sessionExpiredTitle": "Sesion expirada",
+      "sessionExpiredMessage": "Tu sesion de Twitch expiro o ya no es valida. Te redirigimos al login..."
+    },
     "errors": {
       "denied": "La autenticacion fue cancelada en Twitch.",
       "stateMismatch": "La validacion de seguridad fallo. Intenta iniciar sesion de nuevo.",
@@ -192,13 +443,65 @@
       "noPrimaryChannel": "No se devolvio un canal principal para esta cuenta.",
       "noDashboardAccess": "Estas autenticado pero no tienes acceso al panel.",
       "dashboardFailed": "No se pudo precargar el panel.",
+      "sessionExpired": "Tu sesion expiro. Inicia sesion de nuevo.",
+      "permissionRedirectFailed": "Tu sesion se cargo, pero no pudimos confirmar acceso al panel para esa ruta.",
+      "navigationFailed": "No pudimos completar la redireccion al panel. Intenta de nuevo.",
       "unexpected": "Error inesperado al iniciar sesion. Intenta de nuevo."
+    }
+  },
+  "notFound": {
+    "eyebrow": "Senal corrupta",
+    "title": "Caiste en una zona muerta.",
+    "message": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve al login, entra de nuevo y toma la puerta correcta antes de que el rastro se enfrie.",
+    "messageAuthenticated": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve a tu dashboard y elige una ruta valida antes de que el rastro se enfrie.",
+    "messageAdminAuthenticated": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve al ultimo canal que estabas gestionando o entra a tu propio dashboard y elige una ruta valida.",
+    "actions": {
+      "login": "Reingresar por Login",
+      "dashboard": "Volver al Dashboard",
+      "dashboardNamed": "Volver al Dashboard de {{name}}",
+      "lastViewedDashboard": "Ultimo Dashboard visto",
+      "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
+      "myDashboard": "Mi Dashboard",
+      "myDashboardNamed": "Mi Dashboard: {{name}}"
+    }
+  },
+  "forbidden": {
+    "eyebrow": "Acceso restringido",
+    "badge": "Requiere",
+    "title": "No tienes autorizacion para esta area.",
+    "message": "Esta ruta si existe, pero tu rol actual no tiene permiso para abrirla. Vuelve al dashboard o cambia de cuenta e intentalo otra vez con el nivel de acceso correcto.",
+    "messageAdminAuthenticated": "Esta ruta si existe, pero tu rol actual no tiene permiso para abrirla. Vuelve al ultimo canal que estabas gestionando o entra a tu propio dashboard e intentalo desde una ruta que si puedas abrir.",
+    "requestedRoute": "Ruta solicitada:",
+    "actions": {
+      "dashboard": "Volver al Dashboard",
+      "dashboardNamed": "Volver al Dashboard de {{name}}",
+      "home": "Volver al Inicio",
+      "login": "Cambiar por Login",
+      "lastViewedDashboard": "Ultimo Dashboard visto",
+      "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
+      "myDashboard": "Mi Dashboard",
+      "myDashboardNamed": "Mi Dashboard: {{name}}"
     }
   },
   "commands": {
     "title": "Comandos",
     "subtitle": "La gestion de comandos usa permisos del servidor y se expandira aqui.",
     "heading": "Comandos",
+    "public": {
+      "eyebrow": "Comandos del canal en solo lectura",
+      "title": "Comandos de {{streamer}}",
+      "subtitle": "Explora todos los comandos configurados para este canal, incluyendo estado, enfriamiento y nivel de usuario requerido.",
+      "languageToggle": "Cambiar idioma",
+      "total": "{{count}} totales",
+      "enabled": "{{count}} habilitados",
+      "disabled": "{{count}} deshabilitados",
+      "emptyTitle": "Aun no hay comandos",
+      "empty": "Este canal no tiene comandos disponibles en este momento.",
+      "errors": {
+        "streamerNotFound": "No pudimos encontrar a ese streamer.",
+        "loadFailed": "No pudimos cargar los comandos de este canal en este momento."
+      }
+    },
     "addCommand": "Agregar Comando",
     "loading": "Cargando comandos...",
     "refresh": "Recarga fuerte",
@@ -271,13 +574,16 @@
     }
   },
   "common": {
+    "refresh": "Actualizar",
     "save": "Guardar",
     "cancel": "Cancelar",
+    "close": "Cerrar",
     "delete": "Eliminar",
     "edit": "Editar",
     "enable": "Habilitar",
     "disable": "Deshabilitar",
     "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
     "statusOn": "On",
     "statusOff": "Off",
     "show": "Mostrar",
@@ -286,11 +592,169 @@
     "next": "Siguiente",
     "retry": "Reintentar",
     "notAvailable": "N/D",
-    "seconds": "segundos"
+    "seconds": "segundos",
+    "loading": "Cargando...",
+    "cost": "Costo",
+    "cooldown": "Enfriamiento",
+    "message": "Mensaje",
+    "premiumFeature": "Funcion Premium",
+    "premiumSubscriptionRequired": "Se requiere suscripcion Premium"
   },
   "settings": {
-    "title": "Configuracion",
-    "subtitle": "La configuracion esta protegida por permisos y lista para nuevas funciones."
+    "title": "Configuracion del bot",
+    "subtitle": "La configuracion esta protegida por permisos y lista para nuevas funciones.",
+    "hero": {
+      "eyebrow": "Controles del bot del canal",
+      "subtitle": "Administra el acceso del bot y el comportamiento especifico de este canal. Las preferencias personales de la cuenta viven en Profile."
+    },
+    "admins": {
+      "eyebrow": "Acceso admin",
+      "subtitle": "Administra quien puede ayudar a gestionar este canal. Los admins actuales aparecen aqui y el owner puede agregar mas desde el directorio de usuarios registrados.",
+      "ownerMode": "Controles de owner activos",
+      "adminMode": "Vista admin de solo lectura",
+      "current": {
+        "kicker": "Admins actuales",
+        "title": "Lista de admins del canal",
+        "subtitle": "Estos usuarios ya tienen acceso admin para este canal.",
+        "countLabel": "admins"
+      },
+      "search": {
+        "kicker": "Agregar admins",
+        "title": "Buscar usuarios registrados",
+        "ownerSubtitle": "Esta lista se precarga una sola vez y luego se filtra localmente en cada tecla para que la busqueda sea instantanea sin saturar la API.",
+        "adminSubtitle": "Solo el owner del canal puede agregar o quitar admins. Tu igual puedes revisar la lista actual de acceso.",
+        "inputLabel": "Buscar usuarios registrados para agregarlos como admins",
+        "dropdownLabel": "Resultados de la busqueda de admins",
+        "placeholder": "Busca por login o ID de usuario",
+        "clearAriaLabel": "Limpiar busqueda de admin",
+        "resultsMeta": "{{count}} usuarios elegibles listos para busqueda local",
+        "matchesMeta": "{{count}} usuarios coinciden",
+        "ownerHint": "Busca un usuario registrado para agregarlo como admin. Los resultados aparecen en un dropdown solo despues de empezar a escribir."
+      },
+      "actions": {
+        "add": "Agregar como admin",
+        "adding": "Agregando...",
+        "remove": "Quitar",
+        "removing": "Quitando..."
+      },
+      "states": {
+        "loadingAdmins": "Cargando admins actuales...",
+        "loadingCandidates": "Cargando usuarios elegibles...",
+        "resolvingViewer": "Resolviendo tu acceso al canal...",
+        "noAdmins": "Todavia no se agrego ningun admin.",
+        "noSearchMatches": "Ningun usuario registrado coincide con esa busqueda.",
+        "adminReadOnly": "Estas viendo esta pagina como admin. Solo el owner del canal puede cambiar la lista de admins."
+      },
+      "errors": {
+        "channelNotResolved": "No pudimos resolver este canal para la configuracion de admins.",
+        "loadFailed": "No se pudo cargar la configuracion de admins.",
+        "addFailed": "No se pudo agregar el admin.",
+        "deleteFailed": "No se pudo quitar el admin."
+      },
+      "toasts": {
+        "addedTitle": "Admin agregado",
+        "addedMessage": "{{name}} ahora tiene acceso admin.",
+        "deletedTitle": "Admin quitado",
+        "deletedMessage": "{{name}} ya no tiene acceso admin.",
+        "errorTitle": "Fallo al actualizar admins"
+      }
+    },
+    "tts": {
+      "kicker": "Salida de voz",
+      "title": "Texto a voz",
+      "subtitle": "Ajusta la cola de TTS en vivo que mueve `!s` ahora y la voz disparada por AST despues.",
+      "providerPill": "Piper en este VPS",
+      "readOnlyPill": "Solo lectura",
+      "cards": {
+        "behaviorKicker": "Reglas de voz",
+        "behaviorTitle": "Defaults de cola y limpieza",
+        "voiceKicker": "Mapa de voces",
+        "voiceTitle": "Voces activas actuales"
+      },
+      "fields": {
+        "enabledLabel": "Activar TTS del canal",
+        "enabledHint": "Si esta apagado, `!s` y `$(tts ...)` se rechazan para este canal.",
+        "defaultLanguageLabel": "Idioma hablado por default",
+        "languageSpanish": "Español",
+        "languageEnglish": "Ingles",
+        "maxLengthLabel": "Longitud maxima normalizada",
+        "skipEmotesLabel": "Saltar emotes por default",
+        "skipEmotesHint": "Los tokens de emotes se quitan antes de mandar el mensaje a Piper.",
+        "stripLinksLabel": "Reemplazar links",
+        "stripLinksHint": "Las URLs se convierten en `[link]` para evitar spam de links en stream.",
+        "normalizeWhitespaceLabel": "Normalizar espacios",
+        "normalizeWhitespaceHint": "Colapsa espacios repetidos y limpia input ruidoso.",
+        "englishVoiceLabel": "Voz Piper en ingles",
+        "spanishVoiceLabel": "Voz Piper en español"
+      },
+      "future": {
+        "title": "Reservado para tiers de voz premium",
+        "copy": "`tts.ai` y `tts.clone` ya estan conectados al contrato, pero seguiran no disponibles hasta agregar los providers futuros de voz en Runpod."
+      },
+      "footer": {
+        "owner": "El owner ya puede cambiar estos defaults. Los admins igual pueden revisar la configuracion actual sin editarla.",
+        "readOnly": "Estas viendo la configuracion activa de TTS en modo solo lectura. Solo el owner del canal puede cambiarla."
+      },
+      "actions": {
+        "save": "Guardar configuracion TTS",
+        "saving": "Guardando..."
+      },
+      "states": {
+        "loading": "Cargando configuracion TTS...",
+        "empty": "Todavia no hay configuracion TTS disponible."
+      },
+      "errors": {
+        "loadFailed": "No se pudo cargar la configuracion TTS.",
+        "saveFailed": "No se pudo guardar la configuracion TTS."
+      },
+      "toasts": {
+        "savedTitle": "Configuracion TTS guardada",
+        "savedMessage": "Los defaults de la cola de voz ya quedaron actualizados para este canal.",
+        "errorTitle": "Fallo al actualizar TTS"
+      }
+    }
+  },
+  "tip": {
+    "eyebrow": "Enviar tip",
+    "title": "Tip para {{streamer}}",
+    "subtitle": "Una primera version visual de la pagina de donaciones. Luego conectaremos pagos y configuracion real del streamer.",
+    "form": {
+      "nameLabel": "Tu nombre o apodo",
+      "namePlaceholder": "Como quieres que te vea el streamer?",
+      "amountLabel": "Monto",
+      "amountPlaceholder": "25.00",
+      "currencyLabel": "Moneda",
+      "currencyHint": "La moneda sigue la configuracion del streamer. Si falta o es invalida, usamos {{currency}}.",
+      "messageLabel": "Mensaje",
+      "messageEyebrow": "Nota opcional",
+      "messagePlaceholder": "Deja un mensaje para acompanar la donacion.",
+      "messageHint": "Quedan {{count}} caracteres.",
+      "submit": "Donar con",
+      "footnote": "Diseno mock por ahora. El flujo real de PayPal, la configuracion del streamer y las validaciones llegaran despues."
+    },
+    "preview": {
+      "label": "Vista previa",
+      "copy": "Esta tarjeta mock ayuda a visualizar la experiencia para la comunidad de {{streamer}}."
+    },
+    "sidebar": {
+      "aria": "Resumen de tips del streamer",
+      "streamerEyebrow": "Creador destacado",
+      "streamerCopy": "Un panel hero cinematografico para la identidad del streamer, con espacio para alertas, branding y futuras metas.",
+      "monthlyTotal": "Apoyo del mes",
+      "currency": "Moneda por defecto"
+    },
+    "leaderboard": {
+      "eyebrow": "Top supporters",
+      "title": "Leaderboard mensual",
+      "period": "Este mes"
+    },
+    "mockNotes": {
+      "one": "Por los streams nocturnos y todo el caos.",
+      "two": "Siempre apareciendo con timing perfecto.",
+      "three": "La mejor semana de collabs hasta ahora.",
+      "four": "Que siga la energia del maraton.",
+      "five": "Guardando mi lugar antes de la proxima gran sesion."
+    }
   },
   "landing": {
     "nav": {
@@ -379,6 +843,349 @@
       "copyright": "© 2024 DomDimaBot. Todos los derechos reservados.",
       "terms": "Terminos de servicio",
       "privacy": "Privacidad"
+    }
+  },
+  "chatEvents": {
+    "title": "Eventos de Chat",
+    "subtitle": "Gestiona las respuestas automaticas de tu canal para follows, suscripciones, bits y mas.",
+    "heroBadge": "Automatizacion de Interaccion",
+    "backToModules": "Volver a Modulos",
+    "loading": "Cargando eventos de chat...",
+    "configure": "Configurar",
+    "enable": "Habilitar",
+    "disable": "Deshabilitar",
+    "enabled": "Habilitado",
+    "saveChanges": "Guardar Cambios",
+    "deleteEvent": "Eliminar Evento",
+    "upgrade": "Actualizar",
+    "configuration": "Configuracion",
+    "pending": {
+      "saving": "Guardando...",
+      "deleting": "Eliminando...",
+      "enabling": "Habilitando...",
+      "disabling": "Deshabilitando..."
+    },
+    "tierName": "Nombre del Tier",
+    "tierNamePlaceholder": "ej. Bronce, Plata, Oro",
+    "minBits": "Bits Minimos",
+    "maxBits": "Bits Maximos",
+    "message": "Mensaje",
+    "messagePlaceholder": "Escribe el mensaje del chat...",
+    "addMessageTier": "Agregar Tier de Mensaje",
+    "newTier": "Nuevo Tier",
+    "tierRemoveAria": "Eliminar tier {{name}}",
+    "status": {
+      "notCreated": "No Creado",
+      "enabled": "Activado",
+      "disabled": "Desactivado",
+      "betaEnabled": "Beta Activada",
+      "tryTheBeta": "¡Prueba la Beta!",
+      "alphaEnabled": "Alfa Activada",
+      "tryTheAlpha": "¡Prueba la Alfa!"
+    },
+    "stage": {
+      "comingSoon": "Proximamente",
+      "maintenance": "En Mantenimiento",
+      "unavailable": "No Disponible",
+      "deprecated": "Obsoleto",
+      "betaAccess": "Acceso Beta",
+      "alphaAccess": "Acceso Alfa"
+    },
+    "permissionMessages": {
+      "needsPremium": "Requiere Premium",
+      "needsPro": "Requiere Pro"
+    },
+    "tooltips": {
+      "disableNotAllowed": "Este evento no se puede desactivar. Para apagarlo, borra el contenido del mensaje en su configuracion.",
+      "deleteNotAllowed": "Este evento no se puede eliminar porque es esencial para el funcionamiento del bot.",
+      "addTierDefault": "Agregar un nuevo tier de mensaje",
+      "addTierRequiresPremium": "Actualiza a Premium para agregar mas tiers",
+      "addTierUpgradePrompt": "Actualiza a Pro para hasta {{limit}} tiers",
+      "addTierMaxReached": "Se alcanzo el maximo de {{limit}} tiers"
+    },
+    "tierInfo": {
+      "premiumFeature": "Funcion Premium - Actualiza para agregar tiers",
+      "upgradePrompt": "Actualiza a Pro para hasta {{limit}} tiers",
+      "maxReached": "Se alcanzo el maximo de {{limit}} tiers"
+    },
+    "deleteConfirmation": {
+      "title": "Confirmar Eliminacion",
+      "areYouSure": "¿Estas seguro de que quieres eliminar el evento",
+      "warning": "Todos los datos asociados se borraran y debera reconfigurarse si quieres volver a usarlo."
+    },
+    "toasts": {
+      "noConfigurationTitle": "Sin Configuracion",
+      "noConfigurationMsg": "No hay configuracion para guardar en este evento.",
+      "configurationSavedTitle": "Configuracion Guardada",
+      "configurationSavedMsg": "Tus cambios se han guardado correctamente.",
+      "eventUnsubscribedTitle": "Evento Eliminado",
+      "eventUnsubscribedMsg": "El evento \"{{eventName}}\" ha sido eliminado.",
+      "limitReachedTitle": "Limite de Tiers Alcanzado",
+      "tierAddedTitle": "Tier Agregado",
+      "tierAddedMsg": "Se ha agregado un nuevo tier de mensaje.",
+      "tierRemovedTitle": "Tier Eliminado",
+      "tierRemovedMsg": "El tier ha sido eliminado."
+    }
+  },
+  "chatErrors": {
+    "loadTitle": "Error al Cargar",
+    "loadMessage": "No se pudieron cargar los eventos de chat. Por favor, intenta de nuevo."
+  },
+  "redemptions": {
+    "title": "Canjeos de Puntos del Canal",
+    "subtitle": "Crea y gestiona recompensas de puntos del canal personalizadas para que tus espectadores las canjeen durante los streams.",
+    "heroBadge": "Involucra a Tu Audiencia",
+    "backToModules": "Volver a Modulos",
+    "createRewardButton": "Crear Recompensa",
+    "createFirstReward": "Crea Tu Primera Recompensa",
+    "customTag": "Personalizada",
+    "customRedemptions": "Canjeos Personalizados",
+    "twitchRedemptions": "Recompensas Nativas de Twitch",
+    "loading": "Cargando canjeos...",
+    "loadingTwitch": "Cargando recompensas de Twitch...",
+    "noCustomRedemptions": "Aun no has creado ningun canjeo personalizado.",
+    "noTwitchRedemptions": "No se encontraron recompensas nativas de Twitch para este canal.",
+    "noUniqueTwitchRedemptions": "Las recompensas de Twitch que ya coinciden con tus recompensas personalizadas se ocultan aqui.",
+    "doubleClickToEdit": "Doble clic para editar",
+    "doubleClickToChangeColor": "Doble clic para cambiar el color",
+    "editAll": "Editar todos los campos",
+    "noPrompt": "Sin descripcion",
+    "noMessage": "Sin mensaje",
+    "readOnly": "Solo Lectura",
+    "manageOnTwitch": "Gestionar en el Panel de Twitch",
+    "originalCost": "Costo Original",
+    "costChange": "Cambio de Costo",
+    "returnToOriginalCost": "Volver al Costo Original",
+    "selectColor": "Selecciona un color",
+    "cooldown": "Enfriamiento ({{seconds}}s)",
+    "cooldownTitle": "Por Favor Espera",
+    "cooldownMessage": "Por favor espera {{seconds}} segundos antes de actualizar de nuevo.",
+    "refreshSuccessTitle": "Actualizado",
+    "refreshSuccessMessage": "Los canjeos se han actualizado correctamente.",
+    "createSuccessTitle": "Recompensa Creada",
+    "createSuccessMessage": "Tu nueva recompensa ha sido creada correctamente.",
+    "updateSuccessTitle": "Actualizado",
+    "updateSuccessMessage": "Los cambios se han guardado correctamente.",
+    "deleteSuccessTitle": "Eliminado",
+    "deleteSuccessMessage": "La recompensa ha sido eliminada.",
+    "enabledTitle": "Habilitado",
+    "enabledMessage": "La recompensa ahora esta activa.",
+    "disabledTitle": "Deshabilitado",
+    "disabledMessage": "La recompensa ha sido deshabilitada.",
+    "colorUpdateSuccessTitle": "Color Actualizado",
+    "colorUpdateSuccessMessage": "El color de la recompensa ha sido actualizado.",
+    "invalidColorTitle": "Color Invalido",
+    "invalidColorMessage": "Por favor ingresa un color valido (hex, rgb o rgba).",
+    "deleteFallback": "Estas seguro de que quieres eliminar esta recompensa?",
+    "deleteConfirmation": "Estas seguro de que quieres eliminar \"{{title}}\"? Esta accion no se puede deshacer.",
+    "deleteModal": {
+      "title": "Eliminar Recompensa"
+    },
+    "errors": {
+      "loadTitle": "Error al Cargar",
+      "loadMessage": "No se pudieron cargar los canjeos. Por favor, intenta de nuevo.",
+      "loadTwitchTitle": "Error al Cargar Recompensas de Twitch",
+      "loadTwitchMessage": "No se pudieron cargar las recompensas nativas de Twitch. Por favor, intenta de nuevo."
+    },
+    "createRewardModal": {
+      "title": "Crear Nueva Recompensa",
+      "titleLabel": "Titulo de la Recompensa",
+      "titlePlaceholder": "Ingresa el titulo de la recompensa...",
+      "titleRequired": "El titulo es obligatorio",
+      "costLabel": "Costo (Puntos del Canal)",
+      "costRequired": "El costo debe ser al menos 1",
+      "promptLabel": "Descripcion",
+      "promptPlaceholder": "Que deberian saber los espectadores sobre esta recompensa?",
+      "messageLabel": "Mensaje del Bot",
+      "messagePlaceholder": "Mensaje a enviar cuando se canjee...",
+      "cooldownLabel": "Enfriamiento",
+      "durationLabel": "Duracion",
+      "backgroundColorLabel": "Color de Fondo",
+      "extraOptionsLabel": "Opciones Extra del Canje",
+      "userInputLabel": "Requerir input del espectador",
+      "skipQueueLabel": "Saltar cola de canjeo",
+      "originalCostLabel": "Costo Original",
+      "costChangeLabel": "Cambio de Costo",
+      "returnToOriginalCostLabel": "Volver automaticamente al costo original",
+      "createButton": "Crear Recompensa",
+      "selectColor": "Seleccionar color {{color}}"
+    }
+  },
+  "triggers": {
+    "title": "Studio de Triggers",
+    "subtitle": "Compone momentos activados por recompensas con un tablero mas limpio, una biblioteca del canal y un catalogo publico compartido.",
+    "heroBadge": "Momentos en Capas",
+    "backToModules": "Volver a Modulos",
+    "copyObsLink": "Copiar URL del Overlay OBS",
+    "obsCopiedCta": "Overlay Copiado",
+    "obsCopiedTitle": "URL del Overlay Copiada",
+    "obsCopiedMessage": "La URL del overlay de triggers ya esta lista para OBS o un browser source.",
+    "createTrigger": "Crear Trigger",
+    "createFirstTrigger": "Crear Tu Primer Trigger",
+    "editTrigger": "Editar Trigger",
+    "uploadMedia": "Subir Media",
+    "loading": "Cargando triggers...",
+    "loadingLibrary": "Cargando tu biblioteca de media...",
+    "loadingMarketplace": "Cargando assets publicos...",
+    "saving": "Guardando...",
+    "volume": "Volumen",
+    "noPrompt": "Todavia no hay prompt configurado.",
+    "noLinkedReward": "Este trigger funciona por si solo. Puedes llamarlo desde recompensas, comandos o AST con $(trigger.send nombredeltrigger).",
+    "linkedRewardSummary": "Recompensa vinculada: {{title}}",
+    "assetLabel": "Asset",
+    "rewardState": "Estado de recompensa",
+    "rewardLinked": "Vinculada",
+    "rewardless": "Independiente",
+    "triggersEyebrow": "Triggers del canal",
+    "activeSectionTitle": "Tablero activo de triggers",
+    "activeSectionCaption": "Prueba, ajusta y manten organizadas tus automatizaciones visuales para stream.",
+    "emptyTitle": "Todavia no hay triggers",
+    "emptyMessage": "Elige un media de tu biblioteca, conectalo a una recompensa y tu primer trigger queda listo.",
+    "myLibrary": "Mi Biblioteca",
+    "publicLibrary": "Biblioteca Publica",
+    "browsePublicLibrary": "Explorar Biblioteca Publica",
+    "libraryDescription": "Todo lo que ya consume cuota de tu canal vive aqui. Usa estos assets al crear triggers.",
+    "libraryTabs": "Pestanas de media para triggers",
+    "libraryEmptyTitle": "Tu biblioteca esta vacia",
+    "libraryEmptyMessage": "Sube un archivo o agrega algo de la biblioteca publica para empezar a construir triggers.",
+    "searchLibrary": "Buscar en tu biblioteca",
+    "searchMarketplace": "Buscar assets publicos",
+    "mediaComingSoon": "Soporte visual pronto",
+    "scope": {
+      "private": "Privado",
+      "public": "Publico"
+    },
+    "filters": {
+      "all": "Todo",
+      "video": "Video",
+      "audio": "Audio",
+      "image": "Imagen",
+      "gif": "GIF"
+    },
+    "stats": {
+      "activeTriggers": "Triggers activos",
+      "liveAutomation": "Listos para momentos activados por recompensas",
+      "libraryItems": "Items en biblioteca",
+      "readyAssets": "Assets que consumen cuota del canal",
+      "storageQuota": "Cuota de almacenamiento",
+      "of": "de",
+      "perUploadLimit": "Limite por subida: {{size}}"
+    },
+    "cooldownTitle": "Enfriamiento de actualizacion",
+    "cooldownMessage": "Espera {{seconds}} segundos antes de actualizar otra vez.",
+    "refreshCooldown": "Actualizar en {{seconds}}s",
+    "refreshTitle": "Triggers actualizados",
+    "refreshMessage": "El tablero y la biblioteca de media se estan refrescando ahora.",
+    "validationTitle": "Revisa el formulario",
+    "validationMessage": "Completa los campos requeridos del trigger antes de guardar.",
+    "validationNameMessage": "Los nombres de trigger solo pueden usar letras, numeros y guion bajo.",
+    "createSuccessTitle": "Trigger creado",
+    "createSuccessMessage": "Tu trigger ya esta listo en el tablero.",
+    "updateSuccessTitle": "Trigger actualizado",
+    "updateSuccessMessage": "Los cambios del trigger fueron guardados.",
+    "enabledTitle": "Trigger habilitado",
+    "enabledMessage": "El trigger vuelve a estar listo para dispararse.",
+    "disabledTitle": "Trigger deshabilitado",
+    "disabledMessage": "El trigger queda en pausa hasta que lo vuelvas a habilitar.",
+    "deleteTriggerTitle": "Eliminar Trigger",
+    "deleteTriggerMessage": "El trigger seleccionado fue eliminado.",
+    "deleteTriggerConfirmation": "Eliminar \"{{name}}\"? La conexion con la recompensa se quitara de este tablero.",
+    "deleteMediaTitle": "Quitar Media",
+    "deleteMediaMessage": "El media fue removido de tu biblioteca.",
+    "deleteMediaConfirmation": "Quitar \"{{name}}\" de tu biblioteca? Los assets publicos siguen en el marketplace, pero los privados pueden borrarse permanentemente.",
+    "testAction": "Probar",
+    "test": {
+      "kicker": "Preview OBS",
+      "description": "Este preview abre el overlay de triggers y dispara el trigger seleccionado usando la nueva ruta basada en redirect.",
+      "sending": "Enviando...",
+      "sendAgain": "Enviar Otra Vez",
+      "successTitle": "Prueba enviada",
+      "successMessage": "La prueba del trigger fue enviada al overlay.",
+      "errorTitle": "Fallo la prueba",
+      "errorMessage": "No pudimos enviar el trigger al overlay.",
+      "missingAssetMessage": "Este trigger ya no tiene un asset reproducible conectado en la biblioteca."
+    },
+    "form": {
+      "nameLabel": "Nombre del trigger",
+      "namePlaceholder": "HydrateHero o StreamBoom",
+      "promptLabel": "Prompt o nota",
+      "promptPlaceholder": "Instrucciones opcionales para el momento o la respuesta del bot.",
+      "mediaLabel": "Adjuntar media",
+      "mediaHint": "Elige un item listo para triggers desde tu biblioteca. Video y audio son los primeros soportados.",
+      "noMediaTitle": "Todavia no hay media lista para triggers",
+      "noMediaMessage": "Sube primero un asset de video o audio y luego vuelve para crear el trigger.",
+      "mediaLockedMessage": "Cambiar el media viene en la siguiente pasada. Por ahora edita aqui los detalles y crea un trigger nuevo si quieres otro asset."
+    },
+    "rewardBuilderTitle": "Recompensa vinculada opcional",
+    "rewardBuilderHint": "Crea el trigger por si solo o tambien genera una recompensa de puntos que llame a $(trigger.send nombredeltrigger).",
+    "rewardBuilderLinkedHint": "Este trigger ya tiene una recompensa vinculada. Renombrar el trigger solo actualiza la parte $(trigger.send ...) del mensaje de la recompensa.",
+    "rewardFields": {
+      "title": "Titulo de la recompensa",
+      "prompt": "Prompt de la recompensa",
+      "message": "Mensaje de la recompensa",
+      "duration": "Duracion",
+      "costChange": "Cambio de costo",
+      "background": "Color de fondo",
+      "userInput": "Requerir input del espectador",
+      "skipQueue": "Saltar cola de canjeo",
+      "resetCost": "Volver al costo original"
+    },
+    "modalCreateEyebrow": "Nueva automatizacion",
+    "modalEditEyebrow": "Actualizar detalles",
+    "upload": {
+      "kicker": "Media del canal",
+      "limitTitle": "Subidas segun tu plan",
+      "limitMessage": "Las subidas respetan tu cuota del plan y el limite por archivo de {{size}}.",
+      "freePlanTitle": "Las subidas del plan gratis son publicas",
+      "freePlanMessage": "Los canales gratis publican sus subidas en la biblioteca compartida automaticamente. Aun asi cuentan contra tu cuota cuando las tienes en tu biblioteca.",
+      "nameLabel": "Nombre del media",
+      "namePlaceholder": "Solo letras, numeros y guiones bajos",
+      "pickFile": "Elige un archivo de media",
+      "dropNow": "Suelta el archivo aqui",
+      "fileHint": "Video y audio son los primeros listos para triggers. Imagenes y GIFs quedan reservados para la siguiente pasada.",
+      "submit": "Subir a la Biblioteca",
+      "uploading": "Subiendo...",
+      "successTitle": "Media subido",
+      "successMessage": "El nuevo asset ya esta disponible en tu biblioteca.",
+      "errorTitle": "Fallo la subida",
+      "errorMessage": "No pudimos subir ese archivo de media.",
+      "validationMessage": "Elige un archivo y dale un nombre valido antes de subirlo."
+    },
+    "marketplace": {
+      "kicker": "Tienda",
+      "storeBadge": "Catalogo compartido de creadores",
+      "title": "Explora media publico compartido",
+      "description": "Explora media publico ya subido por la comunidad y agrega lo que quieras a la cuota de tu propia biblioteca.",
+      "remainingQuota": "Espacio restante: {{size}}",
+      "publicTag": "Marketplace",
+      "creatorLabel": "Creador",
+      "typeLabel": "Tipo",
+      "sizeLabel": "Tamano",
+      "add": "Agregar",
+      "adding": "Agregando...",
+      "added": "Agregado",
+      "addTitle": "Asset agregado",
+      "addMessage": "El asset publico ahora vive dentro de la cuota de tu biblioteca.",
+      "emptyTitle": "No se encontraron assets publicos",
+      "emptyMessage": "Prueba otra busqueda o vuelve despues cuando entren mas subidas.",
+      "errorTitle": "Error del marketplace",
+      "errorMessage": "No pudimos cargar el catalogo publico de assets."
+    },
+    "errors": {
+      "loadTitle": "Error al cargar triggers",
+      "loadMessage": "No pudimos cargar el tablero de triggers para este canal.",
+      "libraryTitle": "Error al cargar biblioteca",
+      "libraryMessage": "No pudimos cargar la biblioteca de media del canal.",
+      "createTitle": "Error al crear trigger",
+      "createMessage": "No se pudo crear el trigger.",
+      "updateTitle": "Error al actualizar trigger",
+      "updateMessage": "No se pudieron guardar los cambios del trigger.",
+      "deleteTitle": "Error al eliminar",
+      "deleteTriggerMessage": "No se pudo eliminar el trigger.",
+      "deleteMediaMessage": "No se pudo quitar el media.",
+      "copyTitle": "Error al copiar",
+      "copyMessage": "No pudimos copiar la URL del overlay por ti.",
+      "missingStreamer": "Falta el contexto del streamer. Actualiza e intenta de nuevo."
     }
   }
 }

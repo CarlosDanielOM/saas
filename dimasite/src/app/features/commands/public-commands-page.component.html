@@ -1,0 +1,279 @@
+<div class="public-commands-shell">
+  <header class="sticky-navbar public-commands-navbar">
+    <div class="public-commands-navbar__inner">
+      <a class="public-commands-navbar__brand" routerLink="/" aria-label="DomDimaBot home">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">DomDimaBot</span>
+      </a>
+
+      <nav class="public-commands-navbar__actions" aria-label="Public commands page actions">
+        <button type="button" class="nav-pill" (click)="toggleLanguage()" [attr.aria-label]="t('commands.public.languageToggle')">
+          {{ languageLabel() }}
+        </button>
+        <button
+          type="button"
+          class="nav-pill nav-pill--icon"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
+          [title]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
+        >
+          <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
+        </button>
+        <button type="button" class="nav-pill nav-pill--login" (click)="loginWithTwitch()">
+          {{ t('landing.hero.loginWith') }}
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="public-commands-main">
+    <section class="commands-page commands-page--public">
+      <header class="commands-header commands-header--public">
+        <div class="commands-header__content">
+          <p class="commands-header__eyebrow">{{ t('commands.public.eyebrow') }}</p>
+          <h1 class="commands-header__title">{{ t('commands.public.title', { streamer: streamer() }) }}</h1>
+          <p class="commands-header__subtitle">{{ t('commands.public.subtitle') }}</p>
+          <div class="commands-summary" aria-label="Commands summary">
+            <span class="commands-summary__item">{{ t('commands.public.total', { count: totalCommands() }) }}</span>
+            <span class="commands-summary__item">{{ t('commands.public.enabled', { count: enabledCommands() }) }}</span>
+            <span class="commands-summary__item">{{ t('commands.public.disabled', { count: disabledCommands() }) }}</span>
+          </div>
+          <div class="commands-header__underline"></div>
+        </div>
+
+        <div class="commands-header__actions">
+          <button type="button" class="commands-btn commands-btn--secondary" (click)="hardRefreshCommands()" [disabled]="loading() || !channelID()">
+            {{ refreshButtonLabel() }}
+          </button>
+
+          <div class="commands-view-toggle">
+            <button
+              type="button"
+              class="commands-view-toggle__btn"
+              [class.commands-view-toggle__btn--active]="viewMode() === 'table'"
+              (click)="setViewMode('table')"
+              [attr.aria-label]="t('commands.viewTable')"
+            >
+              <lucide-icon [name]="listIcon" class="commands-view-toggle__icon"></lucide-icon>
+            </button>
+            <button
+              type="button"
+              class="commands-view-toggle__btn"
+              [class.commands-view-toggle__btn--active]="viewMode() === 'card'"
+              (click)="setViewMode('card')"
+              [attr.aria-label]="t('commands.viewCard')"
+            >
+              <lucide-icon [name]="gridIcon" class="commands-view-toggle__icon"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      @if (showInitialLoading()) {
+        <div class="commands-loading" role="status" aria-live="polite">
+          <div class="commands-loading__spinner" aria-hidden="true"></div>
+          <p>{{ t('commands.loading') }}</p>
+        </div>
+      }
+
+      @if (showLoadError()) {
+        <div class="commands-error" role="alert">
+          <p>{{ loadErrorMessage() }}</p>
+          <button type="button" class="commands-btn commands-btn--secondary" (click)="hardRefreshCommands()" [disabled]="!channelID() || loading()">
+            {{ t('common.retry') }}
+          </button>
+        </div>
+      }
+
+      @if (viewMode() === 'table' && !showInitialLoading() && !showLoadError()) {
+        <div class="commands-table-container">
+          <div class="commands-table-wrapper">
+            <table class="commands-table">
+              <colgroup>
+                <col class="w-[14%]" />
+                <col class="w-[12%]" />
+                <col class="w-[28%]" />
+                <col class="w-[18%]" />
+                <col class="w-[10%]" />
+                <col class="w-[10%]" />
+                <col class="w-[8%]" />
+              </colgroup>
+
+              <thead>
+                <tr>
+                  <th>{{ t('commands.placeholder.name') }}</th>
+                  <th>{{ t('commands.placeholder.command') }}</th>
+                  <th>{{ t('commands.placeholder.function') }}</th>
+                  <th>{{ t('commands.placeholder.description') }}</th>
+                  <th>{{ t('commands.placeholder.cooldown') }}</th>
+                  <th>{{ t('commands.placeholder.userLevel') }}</th>
+                  <th>{{ t('commands.placeholder.status') }}</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                @if (paginatedCommands().length === 0) {
+                  <tr>
+                    <td colspan="7" class="commands-table__empty">
+                      <div class="commands-empty-state">
+                        <p>{{ t('commands.public.empty') }}</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+
+                @for (command of paginatedCommands(); track commandTrackId(command)) {
+                  <tr class="commands-table__row" [class.commands-table__row--disabled]="command.enabled === false">
+                    <td>
+                      <span class="commands-table__text">{{ command.name }}</span>
+                    </td>
+                    <td class="commands-table__cell--mono">
+                      <span class="commands-table__text">!{{ command.cmd }}</span>
+                    </td>
+                    <td class="commands-table__cell--mono">
+                      <span class="commands-table__text">
+                        @if (command.reserved) {
+                          {{ t('commands.placeholder.reservedCommand') }}
+                        } @else {
+                          {{ command.message || t('commands.placeholder.public') }}
+                        }
+                      </span>
+                    </td>
+                    <td>
+                      <span class="commands-table__text">{{ command.description || t('common.notAvailable') }}</span>
+                    </td>
+                    <td>
+                      <span class="commands-table__text">{{ command.cooldown }}s</span>
+                    </td>
+                    <td>
+                      <span class="commands-table__text">{{ command.userLevel }} - {{ getUserLevelLabel(command) }}</span>
+                    </td>
+                    <td>
+                      <span
+                        class="commands-status"
+                        [class.commands-status--enabled]="command.enabled !== false"
+                        [class.commands-status--disabled]="command.enabled === false"
+                      >
+                        {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (totalPages() > 1) {
+            <div class="commands-pagination">
+              <div class="commands-pagination__info">
+                <span>{{ t('common.show') }}</span>
+                <select class="commands-select commands-select--small" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                  @for (option of itemsPerPageOptions; track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+                <span>{{ t('common.entries') }}</span>
+              </div>
+
+              <nav class="commands-pagination__nav" aria-label="Pagination">
+                <button type="button" class="commands-pagination__btn" [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)">
+                  {{ t('common.previous') }}
+                </button>
+
+                @for (page of pages(); track page) {
+                  <button
+                    type="button"
+                    class="commands-pagination__btn"
+                    [class.commands-pagination__btn--active]="currentPage() === page"
+                    (click)="changePage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                }
+
+                <button
+                  type="button"
+                  class="commands-pagination__btn"
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="changePage(currentPage() + 1)"
+                >
+                  {{ t('common.next') }}
+                </button>
+              </nav>
+            </div>
+          }
+        </div>
+      }
+
+      @if (viewMode() === 'card' && !showInitialLoading() && !showLoadError()) {
+        <div class="commands-cards">
+          @if (commands().length === 0) {
+            <div class="commands-card commands-card--new commands-card--empty">
+              <div class="commands-card__header">
+                <div class="commands-card__gradient"></div>
+                <h3 class="commands-card__title">{{ t('commands.public.emptyTitle') }}</h3>
+              </div>
+
+              <div class="commands-card__body">
+                <p class="commands-card__value">{{ t('commands.public.empty') }}</p>
+              </div>
+            </div>
+          }
+
+          @for (command of commands(); track commandTrackId(command)) {
+            <div class="commands-card" [class.commands-card--disabled]="command.enabled === false">
+              <div class="commands-card__header">
+                <div class="commands-card__gradient"></div>
+
+                <div class="commands-card__header-content">
+                  <h3 class="commands-card__title">{{ command.name }}</h3>
+                  <span
+                    class="commands-status"
+                    [class.commands-status--enabled]="command.enabled !== false"
+                    [class.commands-status--disabled]="command.enabled === false"
+                  >
+                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="commands-card__body">
+                <div class="commands-card__field">
+                  <label>{{ t('commands.placeholder.command') }}</label>
+                  <p class="commands-card__value commands-card__value--mono">!{{ command.cmd }}</p>
+                </div>
+
+                <div class="commands-card__field">
+                  <label>{{ t('commands.placeholder.function') }}</label>
+                  <p class="commands-card__value commands-card__value--mono">
+                    @if (command.reserved) {
+                      {{ t('commands.placeholder.reservedCommand') }}
+                    } @else {
+                      {{ command.message || t('commands.placeholder.public') }}
+                    }
+                  </p>
+                </div>
+
+                <div class="commands-card__field">
+                  <label>{{ t('commands.placeholder.description') }}</label>
+                  <p class="commands-card__value">{{ command.description || t('common.notAvailable') }}</p>
+                </div>
+
+                <div class="commands-card__field commands-card__field--half">
+                  <label>{{ t('commands.placeholder.cooldown') }}</label>
+                  <p class="commands-card__value">{{ command.cooldown }}s</p>
+                </div>
+
+                <div class="commands-card__field commands-card__field--half">
+                  <label>{{ t('commands.placeholder.userLevel') }}</label>
+                  <p class="commands-card__value">{{ command.userLevel }} - {{ getUserLevelLabel(command) }}</p>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </main>
+</div>

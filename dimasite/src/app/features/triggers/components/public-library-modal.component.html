@@ -1,0 +1,153 @@
+<div class="triggers-modal-backdrop" (click)="requestClose()">
+  <section
+    class="triggers-modal triggers-modal--public-library"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="public-library-title"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="triggers-modal__head">
+      <div>
+        <p class="triggers-modal__eyebrow">{{ t('triggers.marketplace.kicker') }}</p>
+        <h2 id="public-library-title">{{ t('triggers.publicLibrary') }}</h2>
+      </div>
+      <button type="button" class="triggers-icon-button" (click)="requestClose()" [attr.aria-label]="t('common.close')">
+        <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
+      </button>
+    </div>
+
+    <section class="public-library-modal__hero">
+      <div class="public-library-modal__hero-copy">
+        <div class="public-library-modal__badge">
+          <lucide-icon [name]="marketplaceIcon" class="public-library-modal__badge-icon"></lucide-icon>
+          <span>{{ t('triggers.marketplace.storeBadge') }}</span>
+        </div>
+        <h3>{{ t('triggers.marketplace.title') }}</h3>
+        <p>{{ t('triggers.marketplace.description') }}</p>
+      </div>
+
+      <div class="public-library-modal__quota-card">
+        <div class="public-library-modal__quota-head">
+          <span>{{ t('triggers.stats.storageQuota') }}</span>
+          <lucide-icon [name]="storageIcon" class="public-library-modal__quota-icon"></lucide-icon>
+        </div>
+        <strong>
+          {{ formatBytes(libraryMeta().quotaBytesUsed) }}
+          <span>{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
+        </strong>
+        <div class="triggers-quota-bar" aria-hidden="true">
+          <div class="triggers-quota-bar__fill" [style.width.%]="quotaPercent()"></div>
+        </div>
+        <p>{{ t('triggers.marketplace.remainingQuota', { size: formatBytes(remainingQuotaBytes()) }) }}</p>
+      </div>
+    </section>
+
+    <div class="triggers-toolbar public-library-modal__toolbar">
+      <label class="triggers-search-field">
+        <lucide-icon [name]="searchIcon" class="triggers-search-field__icon"></lucide-icon>
+        <input
+          type="search"
+          [placeholder]="t('triggers.searchMarketplace')"
+          [value]="searchQuery()"
+          (input)="updateSearchQuery($event)"
+        >
+      </label>
+
+      <div class="public-library-modal__toolbar-row">
+        <div class="triggers-filter-chips">
+          @for (filter of filterOptions; track filter) {
+            <button
+              type="button"
+              class="triggers-filter-chip"
+              [class.triggers-filter-chip--active]="mediaFilter() === filter"
+              (click)="setMediaFilter(filter)"
+            >
+              {{ t('triggers.filters.' + filter) }}
+            </button>
+          }
+        </div>
+
+        <button type="button" class="triggers-mini-button" (click)="refreshAssets()">
+          <lucide-icon [name]="refreshIcon" class="triggers-mini-button__icon"></lucide-icon>
+          <span>{{ t('common.refresh') }}</span>
+        </button>
+      </div>
+    </div>
+
+    @if (errorMessage() && !assets().length && !isLoading()) {
+      <div class="triggers-empty-state triggers-empty-state--compact">
+        <lucide-icon [name]="marketplaceIcon" class="triggers-empty-state__icon"></lucide-icon>
+        <h3>{{ t('triggers.marketplace.errorTitle') }}</h3>
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="triggers-action triggers-action--primary" (click)="refreshAssets()">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+    } @else if (isLoading() && !assets().length) {
+      <div class="triggers-panel-state triggers-panel-state--compact">
+        <loading-indicator [loading]="true" size="md" [message]="'triggers.loadingMarketplace'" />
+      </div>
+    } @else {
+      <div class="public-library-modal__results">
+        @for (asset of assets(); track asset._id) {
+          <article class="media-card media-card--marketplace-detail">
+            <div class="media-card__icon-wrap media-card__icon-wrap--marketplace">
+              <lucide-icon [name]="getMediaIcon(asset.mediaType)" class="media-card__icon"></lucide-icon>
+            </div>
+
+            <div class="media-card__body">
+              <div class="media-card__head">
+                <div>
+                  <h3>{{ asset.displayName }}</h3>
+                  <p class="public-library-modal__creator">{{ asset.ownerChannelName }}</p>
+                </div>
+                <span class="media-card__scope media-card__scope--public">{{ t('triggers.marketplace.publicTag') }}</span>
+              </div>
+
+              <div class="public-library-modal__meta-grid">
+                <div class="public-library-modal__meta-pill">
+                  <span>{{ t('triggers.marketplace.creatorLabel') }}</span>
+                  <strong>{{ asset.ownerChannelName }}</strong>
+                </div>
+                <div class="public-library-modal__meta-pill">
+                  <span>{{ t('triggers.marketplace.typeLabel') }}</span>
+                  <strong>{{ t('triggers.filters.' + asset.mediaType) }}</strong>
+                </div>
+                <div class="public-library-modal__meta-pill">
+                  <span>{{ t('triggers.marketplace.sizeLabel') }}</span>
+                  <strong>{{ formatBytes(asset.bytes) }}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="media-card__actions">
+              <button
+                type="button"
+                class="media-card__button media-card__button--add"
+                [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
+                (click)="addAsset(asset)"
+              >
+                @if (isAddingAsset(asset._id)) {
+                  <lucide-icon [name]="refreshIcon" class="media-card__button-icon triggers-spin"></lucide-icon>
+                  <span>{{ t('triggers.marketplace.adding') }}</span>
+                } @else if (isAssetAdded(asset._id)) {
+                  <lucide-icon [name]="checkIcon" class="media-card__button-icon"></lucide-icon>
+                  <span>{{ t('triggers.marketplace.added') }}</span>
+                } @else {
+                  <lucide-icon [name]="plusIcon" class="media-card__button-icon"></lucide-icon>
+                  <span>{{ t('triggers.marketplace.add') }}</span>
+                }
+              </button>
+            </div>
+          </article>
+        } @empty {
+          <div class="triggers-empty-state triggers-empty-state--compact">
+            <lucide-icon [name]="marketplaceIcon" class="triggers-empty-state__icon"></lucide-icon>
+            <h3>{{ t('triggers.marketplace.emptyTitle') }}</h3>
+            <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</div>

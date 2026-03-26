@@ -1,0 +1,93 @@
+<section
+  #shell
+  class="forbidden-shell"
+  [class.forbidden-shell--embedded]="isEmbeddedLayout()"
+  [attr.data-scene-mode]="sceneMode()"
+  aria-labelledby="forbidden-title"
+>
+  <canvas
+    #canvas
+    class="forbidden-canvas"
+    [class.forbidden-canvas--visible]="isThreeJsReady()"
+    aria-hidden="true"
+  ></canvas>
+
+  <div class="forbidden-backdrop" aria-hidden="true">
+    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--left"></div>
+    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--right"></div>
+    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--core"></div>
+    <div class="forbidden-grid"></div>
+    <div class="forbidden-scanline"></div>
+
+    <div
+      class="forbidden-css-shield"
+      [class.forbidden-css-shield--visible]="!isThreeJsReady() || shouldUseCSSFallback()"
+    >
+      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--one"></span>
+      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--two"></span>
+      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--three"></span>
+      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--one"></span>
+      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--two"></span>
+      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--three"></span>
+    </div>
+
+    <div class="forbidden-particles">
+      @for (particle of particleIndexes; track particle) {
+        <span class="forbidden-particle" [style.--particle-index]="particle"></span>
+      }
+    </div>
+  </div>
+
+  <div class="forbidden-content">
+    <p class="forbidden-eyebrow">{{ t('forbidden.eyebrow') }}</p>
+
+    <div class="forbidden-code" aria-hidden="true">
+      <span class="forbidden-digit forbidden-digit--left" data-digit="4">4</span>
+      <span class="forbidden-digit forbidden-digit--center" data-digit="0">0</span>
+      <span class="forbidden-digit forbidden-digit--right" data-digit="3">3</span>
+    </div>
+
+    <div class="forbidden-panel glass-card">
+      @if (showPermissionBadge()) {
+        <div class="forbidden-badge">
+          <span class="forbidden-badge__label">{{ t('forbidden.badge') }}</span>
+          <span class="forbidden-badge__value">{{ requestedPermissionLabel() }}</span>
+        </div>
+      }
+
+      <h1 id="forbidden-title" class="forbidden-title">{{ t('forbidden.title') }}</h1>
+      <p class="forbidden-copy">{{ t(messageKey()) }}</p>
+
+      @if (requestedRouteLabel()) {
+        <p class="forbidden-meta">
+          {{ t('forbidden.requestedRoute') }}
+          <span class="forbidden-meta__path">{{ requestedRouteLabel() }}</span>
+        </p>
+      }
+
+      <div class="forbidden-actions">
+        @if (session()) {
+          @if (hasSeparateLastViewedDashboard()) {
+            <a class="forbidden-button forbidden-button--primary" [routerLink]="lastViewedDashboardLink()">
+              {{ lastViewedDashboardLabel() }}
+            </a>
+            <a class="forbidden-button forbidden-button--secondary" [routerLink]="ownDashboardLink()">
+              {{ myDashboardLabel() }}
+            </a>
+          } @else {
+            <a class="forbidden-button forbidden-button--primary" [routerLink]="primaryActionLink()">
+              {{ primaryDashboardLabel() }}
+            </a>
+          }
+        } @else {
+          <a class="forbidden-button forbidden-button--primary" [routerLink]="primaryActionLink()">
+            {{ primaryDashboardLabel() }}
+          </a>
+          <a class="forbidden-button forbidden-button--secondary" routerLink="/login">
+            {{ t('forbidden.actions.login') }}
+          </a>
+        }
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, input, output, signal, viewChild } from '@angular/core';
 import * as THREE from 'three';
 
 export interface ConfirmationModalData {
@@ -14,7 +14,7 @@ export interface ConfirmationModalData {
   template: `
     @if (isOpen()) {
       <div class="modal-overlay" (click)="onOverlayClick($event)">
-        <div class="modal-container" #modalContainer>
+        <div class="modal-container" [class.modal-visible]="isVisible()" #modalContainer>
           <div class="modal-canvas-container">
             <canvas #particleCanvas class="particle-canvas"></canvas>
           </div>
@@ -68,22 +68,29 @@ export class ConfirmationModalComponent {
   readonly confirm = output<void>();
   readonly cancel = output<void>();
 
+  readonly isVisible = signal(false);
+
   ngAfterViewInit() {
     if (this.isOpen()) {
       this.initThreeJS();
-      this.animateModalEntry();
+      this.showModal();
     }
   }
 
   ngOnChanges() {
     if (this.isOpen()) {
-      setTimeout(() => {
-        this.initThreeJS();
-        this.animateModalEntry();
-      }, 0);
+      this.initThreeJS();
+      queueMicrotask(() => this.showModal());
     } else {
+      this.isVisible.set(false);
       this.cleanupThreeJS();
     }
+  }
+
+  private showModal() {
+    requestAnimationFrame(() => {
+      this.isVisible.set(true);
+    });
   }
 
   ngOnDestroy() {
@@ -168,20 +175,6 @@ export class ConfirmationModalComponent {
     this.particles.geometry.attributes['position'].needsUpdate = true;
 
     this.renderer.render(this.scene, this.camera);
-  }
-
-  private animateModalEntry() {
-    const container = this.modalContainer()?.nativeElement;
-    if (!container) return;
-
-    container.style.opacity = '0';
-    container.style.transform = 'scale(0.9) translateY(20px)';
-
-    requestAnimationFrame(() => {
-      container.style.transition = 'opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
-      container.style.opacity = '1';
-      container.style.transform = 'scale(1) translateY(0)';
-    });
   }
 
   private cleanupThreeJS() {
