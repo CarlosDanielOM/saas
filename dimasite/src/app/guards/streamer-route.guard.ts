@@ -23,8 +23,14 @@ const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['clips', null],
   ['chat-events', null],
   ['triggers', null],
+  ['dimafx', null],
+  ['ai-personality', null],
+  ['memories', null],
   ['referrals', null],
   ['redemptions', null],
+  ['tts', null],
+  ['follow-defense', null],
+  ['stream-summaries', null],
   ['analytics', new Set(['follows'])]
 ]);
 

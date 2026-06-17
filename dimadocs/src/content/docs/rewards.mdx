@@ -1,0 +1,55 @@
+---
+title: Channel Rewards
+description: Manage and automate your Twitch channel point rewards.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Channel point rewards let your viewers spend their accumulated points on special experiences and interactions.
+
+## Setting Up Rewards
+
+Navigate to **Rewards** in your dashboard to create and manage channel point rewards.
+
+### Reward Properties
+
+| Property | Description |
+|----------|-------------|
+| `title` | Display name shown to viewers |
+| `cost` | Points required to redeem |
+| `prompt` | Instructions shown when redeeming |
+| `enabled` | Whether viewers can currently redeem |
+
+## Automated vs Manual Rewards
+
+<Aside type="tip">
+DomDimaBot supports both automated rewards (handled entirely by the bot) and manual rewards (require your approval).
+</Aside>
+
+### Automated Rewards
+
+These rewards are processed immediately when redeemed:
+
+- **Text to Speech** — Read viewer messages aloud
+- **Sound Effects** — Play audio clips in stream
+- **Overlay Triggers** — Show animations/graphics on stream
+- **Bot Commands** — Execute custom command sequences
+
+### Manual Rewards
+
+These rewards require your approval before action:
+
+- **Shoutouts** — Get a personalized on-stream shoutout
+- **Queen/King of the Chat** — Special recognition role
+- **Custom Requests** — Special interactions you approve
+
+## Reward Cooldowns
+
+Set global or per-reward cooldowns to prevent spam:
+
+```
+Global Cooldown: 30 seconds (applies to all rewards)
+Sound Effects: 60 second cooldown per viewer
+```

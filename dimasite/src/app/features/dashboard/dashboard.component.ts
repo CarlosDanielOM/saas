@@ -19,7 +19,8 @@ import { ActivityCounters } from '../../models/activity.model';
 import {
   DashboardKpis,
   DashboardStreamHistoryPoint,
-  LiveSessionMetrics
+  LiveSessionMetrics,
+  AiCreditsData
 } from '../../models/dashboard.model';
 import { DashboardAmbientComponent } from './dashboard-ambient.component';
 import { DashboardApiService } from '../../services/dashboard-api.service';
@@ -34,6 +35,7 @@ import { LiveStreamCardComponent } from './components/live-stream-card.component
 import { QuickActionsComponent } from './components/quick-actions.component';
 import { StreamHealthComponent, StreamHealthStatus } from './components/stream-health.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
+import { ReferralPromoBannerComponent } from '../../shared/referral-promo-banner/referral-promo-banner.component';
 
 type TimeRange = '7d' | '15d' | '30d';
 type MobilePanel = 'chart' | 'goals';
@@ -60,7 +62,8 @@ type DashboardViewerRole = 'owner' | 'admin' | 'viewer';
     QuickActionsComponent,
     ActivityFeedComponent,
     StreamHealthComponent,
-    LoadingIndicatorComponent
+    LoadingIndicatorComponent,
+    ReferralPromoBannerComponent
   ],
   templateUrl: './dashboard.component.html',
   providers: [provideEchartsCore({ echarts })],
@@ -162,6 +165,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly subsGoalPercent = computed(() =>
     this.calculateGoalPercent(this.monthlyGoals().subsCurrent, this.monthlyGoals().subsGoal)
   );
+
+  // AI Credits (5th KPI tile)
+  readonly aiCreditsData = computed(() => this.dashboardApi.aiCredits());
+  readonly aiCreditsAvailable = computed(() => this.aiCreditsData()?.available ?? false);
+  readonly aiCreditsUsed = computed(() => this.aiCreditsData()?.used ?? 0);
+  readonly aiCreditsLimit = computed(() => this.aiCreditsData()?.limit ?? 0);
+  readonly aiCreditsPercent = computed(() => {
+    const used = this.aiCreditsUsed();
+    const limit = this.aiCreditsLimit();
+    if (!limit || limit <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((used / limit) * 100)));
+  });
+  readonly aiCreditsExhausted = computed(() => {
+    const data = this.aiCreditsData();
+    if (!data) return false;
+    return data.available && data.balance <= 0;
+  });
+  readonly aiCreditsLabel = computed(() => {
+    const used = this.formatAiCredits(this.aiCreditsUsed());
+    const limit = this.formatAiCredits(this.aiCreditsLimit());
+    return `${used} / ${limit}`;
+  });
+  readonly aiCreditsUpsell = computed(() => {
+    if (!this.aiCreditsExhausted()) return '';
+    const tier = this.planTier();
+    if (tier === 'free') return this.t('dashboard.kpis.aiCreditsExhaustedFree');
+    if (tier === 'premium') return this.t('dashboard.kpis.aiCreditsExhaustedPremium');
+    return this.t('dashboard.kpis.aiCreditsExhaustedPro');
+  });
+  readonly aiCreditsNotAvailableLabel = computed(() =>
+    this.t('dashboard.kpis.aiCreditsNotAvailable')
+  );
+
   readonly currentTimeContext = signal(new Date());
   readonly serverTimeDisplay = computed(() => this.formatTimeContext(this.currentTimeContext(), 'UTC'));
   readonly localTimeDisplay = computed(() => this.formatTimeContext(this.currentTimeContext()));
@@ -195,6 +231,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     responseTimeMs: 0,
     lastChecked: new Date().toISOString()
   });
+
+  private readonly REFERRAL_PROMO_DISMISS_KEY = 'dimasite.referral_promo.dismissed_at';
+  private readonly REFERRAL_PROMO_DAILY_KEY = 'dimasite.referral_promo.last_shown_at';
+  private readonly REFERRAL_PROMO_DAILY_TTL_MS = 24 * 60 * 60 * 1000;
+  private readonly REFERRAL_PROMO_DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  readonly showReferralPromo = signal(false);
+  readonly referralPromoTitle = signal('');
+  readonly referralPromoMessage = signal('');
+  readonly referralPromoCta = signal('');
+  readonly referralPromoLink = signal('');
 
   constructor() {
     effect(() => {
@@ -261,10 +307,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
             return;
           }
 
-          this.errorMessage.set(null);
-          this.dashboardApi.startLiveStatusPolling(channelID);
-          this.updateStreamHealth();
-          this.startStreamHealthMonitoring();
+           this.errorMessage.set(null);
+           this.dashboardApi.startLiveStatusPolling(channelID);
+           this.dashboardApi.startAiCreditsPolling(channelID);
+           this.updateStreamHealth();
+           this.startStreamHealthMonitoring();
+           this.checkAndShowReferralPromo();
         },
         error: () => {
           this.errorMessage.set(this.t('dashboard.errors.loadFailed'));
@@ -337,6 +385,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   formatPercent(value: number): string {
     return `${value}%`;
+  }
+
+  formatAiCredits(value: number): string {
+    if (!value || value <= 0) return '0';
+    if (value >= 1000) {
+      const k = value / 1000;
+      return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+    }
+    return Math.round(value).toString();
   }
 
   selectTimeRange(range: TimeRange): void {
@@ -1052,5 +1109,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
       responseTimeMs: 0,
       lastChecked: new Date().toISOString()
     });
+  }
+
+  private shouldShowReferralPromoToday(): boolean {
+    if (typeof localStorage === 'undefined') {
+      return false;
+    }
+
+    const dismissedAt = localStorage.getItem(this.REFERRAL_PROMO_DISMISS_KEY);
+    if (dismissedAt) {
+      const elapsed = Date.now() - Number(dismissedAt);
+      if (elapsed < this.REFERRAL_PROMO_DISMISS_TTL_MS) {
+        return false;
+      }
+    }
+
+    const lastShownAt = localStorage.getItem(this.REFERRAL_PROMO_DAILY_KEY);
+    if (lastShownAt) {
+      const elapsed = Date.now() - Number(lastShownAt);
+      if (elapsed < this.REFERRAL_PROMO_DAILY_TTL_MS) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  protected dismissReferralPromo(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.REFERRAL_PROMO_DISMISS_KEY, Date.now().toString());
+    }
+    this.showReferralPromo.set(false);
+  }
+
+  private markReferralPromoShown(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.REFERRAL_PROMO_DAILY_KEY, Date.now().toString());
+    }
+  }
+
+  private checkAndShowReferralPromo(): void {
+    const role = this.viewerRole();
+    if (role === 'viewer' || role === null) {
+      return;
+    }
+
+    if (!this.shouldShowReferralPromoToday()) {
+      return;
+    }
+
+    const streamer = this.streamer();
+    this.referralPromoTitle.set(this.t('dashboard.referralPromo.title'));
+    this.referralPromoMessage.set(this.t('dashboard.referralPromo.message'));
+    this.referralPromoCta.set(this.t('dashboard.referralPromo.cta'));
+    this.referralPromoLink.set(`/${streamer}/modules/referrals`);
+
+    this.showReferralPromo.set(true);
+    this.markReferralPromoShown();
   }
 }

@@ -1,0 +1,11 @@
+{
+  "active_plan": "/home/cdom/saas/.sisyphus/plans/cron-workers-migration.md",
+  "started_at": "2026-03-04T01:46:44.509Z",
+  "session_ids": [
+    "ses_34a1cfd4bffeZLS9N8roHrn3Zu",
+    "ses_345942c08ffepnIxOlEiIINbP3"
+  ],
+  "plan_name": "cron-workers-migration",
+  "agent": "atlas",
+  "worktree_path": "/home/cdom/saas"
+}

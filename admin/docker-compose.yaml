@@ -1,0 +1,16 @@
+services:
+  dima-admin:
+    image: nginx:alpine
+    container_name: dima-admin
+    restart: unless-stopped
+    volumes:
+      - ./dist/admin/browser:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    expose:
+      - "80"
+    networks:
+      - web-proxy
+
+networks:
+  web-proxy:
+    external: true

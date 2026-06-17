@@ -1,0 +1,57 @@
+---
+title: AI Personality
+description: Give your bot a unique personality powered by AI.
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+DomDimaBot's AI personality feature gives your bot the ability to engage in natural conversation, respond to context, and develop a unique character.
+
+## Personality Settings
+
+Configure your bot's character through these settings:
+
+| Setting | Description |
+|---------|-------------|
+| **Name** | What viewers call your bot |
+| **Personality** | Core traits and behavior patterns |
+| **Greeting** | How the bot greets new chatters |
+| **Response Style** | Casual, formal, funny, etc. |
+
+## Known Users
+
+You can teach DomDimaBot about specific community members:
+
+```json
+{
+  "username": "superfan123",
+  "description": "Long-time community member, plays RPGs",
+  "relationship": "friend"
+}
+```
+
+The bot will use this context to personalize interactions.
+
+## Response Behavior
+
+<Aside type="note">
+AI responses are probabilistic. The bot may occasionally say unexpected things. Use content moderation settings to filter inappropriate messages.
+</Aside>
+
+### Configuration Options
+
+- **Response frequency** — How often the bot talks unprompted
+- **Max message length** — Limit response size
+- **Conversation memory** — How many past messages the bot considers
+- **Ignore list** — Users the bot won't respond to
+
+## Content Safety
+
+Enable moderation features to filter:
+
+- Spam and excessive caps
+- Links (configurable per-user)
+- Custom word filters
+- Rate limiting

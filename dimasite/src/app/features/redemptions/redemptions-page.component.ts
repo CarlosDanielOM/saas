@@ -57,6 +57,7 @@ import { getRouteParam } from '../../shared/utils/route-param.util';
     CreateRewardModalComponent,
     ConfirmationModalComponent,
   ],
+  styleUrl: './redemptions-page.component.css',
   template: `
     <div class="redemptions-page">
       <div class="redemptions-hero">

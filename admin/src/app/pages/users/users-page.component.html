@@ -1,0 +1,272 @@
+<div class="users-page">
+  <!-- Header -->
+  <section class="users-page__header">
+    <div class="users-page__header-top">
+      <div>
+        <h1 class="users-page__title">Users</h1>
+        <p class="users-page__subtitle">Manage registered streamers and their accounts</p>
+      </div>
+      <button type="button" class="refresh-btn" (click)="onRefresh()" [disabled]="isLoading()">
+        <svg class="refresh-btn__icon" [class.refresh-btn__icon--spinning]="isLoading()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  @if (isLoading()) {
+    <section class="users-page__stats">
+      @for (item of [1,2,3,4]; track item) {
+        <div class="stat-mini stat-mini--skeleton">
+          <app-skeleton variant="bar" height="1.5rem" width="60%" />
+          <app-skeleton variant="bar" height="0.75rem" width="80%" />
+        </div>
+      }
+    </section>
+  } @else if (stats(); as s) {
+    <section class="users-page__stats">
+      @for (stat of s; track stat.label) {
+        <div class="stat-mini">
+          <span class="stat-mini__value">{{ formatNumber(stat.value) }}</span>
+          <span class="stat-mini__label">{{ stat.label }}</span>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Search -->
+  <section class="users-page__search">
+    @if (isLoading()) {
+      <div class="search-box search-box--skeleton">
+        <app-skeleton variant="bar" height="2.5rem" width="100%" />
+      </div>
+    } @else {
+      <div class="search-box">
+        <svg class="search-box__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input
+          type="text"
+          class="search-box__input"
+          placeholder="Search users..."
+          [value]="searchInput()"
+          (input)="onSearchInput($any($event.target).value)"
+          (keyup.enter)="onSearchSubmit()"
+        />
+        @if (searchInput()) {
+          <button type="button" class="search-box__clear" (click)="onClearSearch()">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        }
+        <button type="button" class="search-box__button" (click)="onSearchSubmit()">
+          @if (isSearching()) {
+            <span class="search-spinner"></span>
+          } @else {
+            Search
+          }
+        </button>
+      </div>
+    }
+    @if (searchInput() && searchMode() === 'cache' && searchResults().length === 0) {
+      <p class="users-page__search-hint">
+        No users found in cached data. Click "Search" to query the API.
+      </p>
+    }
+  </section>
+
+  <!-- Table -->
+  <section class="users-page__table-section">
+    @if (isLoading() && displayedUsers().length === 0) {
+      <div class="users-page__loading">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Live</th>
+                <th>Viewers</th>
+                <th>Commands</th>
+                <th>Permissions</th>
+                <th>Joined</th>
+                <th>Last Reminded</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+          <tbody>
+            @for (row of [1,2,3,4,5,6,7,8]; track row) {
+              <tr class="skeleton-row">
+                <td>
+                  <div class="skeleton-cell skeleton-cell--user">
+                    <app-skeleton variant="bar" height="1rem" width="80px" />
+                    <app-skeleton variant="bar" height="0.75rem" width="60px" />
+                  </div>
+                </td>
+                <td><app-skeleton variant="bar" height="1rem" width="120px" /></td>
+                <td><app-skeleton variant="bar" height="1.5rem" width="50px" /></td>
+                <td><app-skeleton variant="bar" height="1.5rem" width="60px" /></td>
+                <td><app-skeleton variant="bar" height="1.5rem" width="50px" /></td>
+                <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+                <td><app-skeleton variant="bar" height="1rem" width="30px" /></td>
+                <td><app-skeleton variant="bar" height="1.5rem" width="60px" /></td>
+                <td><app-skeleton variant="bar" height="1rem" width="70px" /></td>
+                <td><app-skeleton variant="bar" height="1rem" width="70px" /></td>
+                <td><app-skeleton variant="bar" height="1.5rem" width="90px" /></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (error() && displayedUsers().length === 0) {
+      <div class="users-page__error">
+        <p>{{ error() }}</p>
+        <button type="button" class="btn btn--secondary" (click)="onRefresh()">Retry</button>
+      </div>
+    } @else if (displayedUsers().length === 0) {
+      <div class="users-page__empty">
+        <p>No users found</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th class="sortable" (click)="onSort('channel')">
+                User {{ getSortIcon('channel') }}
+              </th>
+              <th class="sortable" (click)="onSort('email')">
+                Email {{ getSortIcon('email') }}
+              </th>
+              <th class="sortable" (click)="onSort('plan_tier')">
+                Plan {{ getSortIcon('plan_tier') }}
+              </th>
+              <th class="sortable" (click)="onSort('actived')">
+                Status {{ getSortIcon('actived') }}
+              </th>
+              <th class="sortable" (click)="onSort('isLive')">
+                Live {{ getSortIcon('isLive') }}
+              </th>
+              <th class="sortable" (click)="onSort('liveViewers')">
+                Viewers {{ getSortIcon('liveViewers') }}
+              </th>
+              <th class="sortable" (click)="onSort('commandsCount')">
+                Commands {{ getSortIcon('commandsCount') }}
+              </th>
+              <th class="sortable" (click)="onSort('has_permissions')">
+                Permissions {{ getSortIcon('has_permissions') }}
+              </th>
+              <th class="sortable" (click)="onSort('created_at')">
+                Joined {{ getSortIcon('created_at') }}
+              </th>
+              <th>Last Reminded</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of displayedUsers(); track user.channelID) {
+              <tr>
+                <td class="users-table__user">
+                  <a [routerLink]="['/channels', user.channelID]" class="users-table__name users-table__name--link">{{ user.channel }}</a>
+                  <span class="users-table__id">{{ user.channelID }}</span>
+                </td>
+                <td class="users-table__email">{{ user.email || '-' }}</td>
+                <td>
+                  <span class="plan-badge" [class]="'plan-badge--' + user.plan_tier">
+                    {{ user.plan_tier }}
+                  </span>
+                </td>
+                <td>
+                  @if (user.actived) {
+                    <span class="status-badge status-badge--active">Active</span>
+                  } @else {
+                    <span class="status-badge status-badge--inactive">Inactive</span>
+                  }
+                </td>
+                <td>
+                  @if (user.isLive) {
+                    <span class="live-badge">
+                      <span class="live-badge__dot"></span>
+                      Live
+                    </span>
+                  } @else {
+                    <span class="status-badge status-badge--offline">Offline</span>
+                  }
+                </td>
+                <td>{{ user.isLive ? formatNumber(user.liveViewers) : '-' }}</td>
+                <td>{{ user.commandsCount }}</td>
+                <td>
+                  @if (user.has_permissions && user.up_to_date_permissions) {
+                    <span class="status-badge status-badge--ok">OK</span>
+                  } @else if (user.has_permissions) {
+                    <span class="status-badge status-badge--warning">Update</span>
+                  } @else {
+                    <span class="status-badge status-badge--error">Missing</span>
+                  }
+                </td>
+                <td class="users-table__date">{{ formatDate(user.created_at) }}</td>
+                <td class="users-table__date">{{ getReminderLabel(user) }}</td>
+                <td class="users-table__actions">
+                  <button
+                    type="button"
+                    class="btn btn--small"
+                    [class.btn--primary]="!user.actived"
+                    [class.btn--warning]="user.actived"
+                    (click)="openSendReminder(user)"
+                    [disabled]="isSendingReminder()"
+                    [title]="user.actived ? 'User is active — click to force send reminder' : 'Send activation reminder email'"
+                  >
+                    Send Reminder
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      @if (!searchInput()) {
+        <div class="pagination">
+          <button
+            type="button"
+            class="pagination__btn"
+            [disabled]="currentPage() === 1"
+            (click)="onPageChange(currentPage() - 1)"
+          >
+            Previous
+          </button>
+          <span class="pagination__info">
+            Page {{ currentPage() }} of {{ totalPages() }} ({{ totalUsers() }} users)
+          </span>
+          <button
+            type="button"
+            class="pagination__btn"
+            [disabled]="currentPage() === totalPages()"
+            (click)="onPageChange(currentPage() + 1)"
+          >
+            Next
+          </button>
+        </div>
+      }
+    }
+  </section>
+
+  <!-- Send Reminder Confirmation Modal -->
+  <app-confirm-modal
+    [open]="showReminderModal()"
+    [title]="reminderTarget() ? 'Send Activation Reminder' : ''"
+    [message]="reminderTarget() ? 'Send a real production activation reminder email to ' + (reminderTarget()?.channel || '') + ' (' + (reminderTarget()?.email || 'no email') + ')?' : ''"
+    [warning]="reminderTarget()?.actived ? 'This user is already active. The email will still be sent (override).' : null"
+    [confirmLabel]="'Send Reminder'"
+    [cancelLabel]="'Cancel'"
+    [isDanger]="false"
+    [loading]="isSendingReminder()"
+    (confirmed)="confirmSendReminder()"
+    (cancelled)="closeReminderModal()"
+  />
+</div>

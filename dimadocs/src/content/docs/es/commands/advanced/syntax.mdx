@@ -1,0 +1,263 @@
+---
+title: Sintaxis y Datos de AST
+description: "Bloques base de AST: prefijos, almacenamiento, argumentos, arrays, expresiones, condicionales, bucles y referencias a comandos."
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Esta página cubre la sintaxis principal que usarás para construir comandos AST.
+
+## Prefijos principales
+
+El parser entiende 5 prefijos importantes:
+
+| Prefijo | Sintaxis | Propósito | Ejemplo |
+|--------|----------|-----------|---------|
+| ``$( `` | `$(funcName arg1 arg2)` | Llamar una función | `$(random 10)` |
+| ``%( `` | `%(name)` o `%(name value)` | Leer o escribir una variable | `%(wins)`, `%(wins 5)` |
+| ``*( `` | `*(condition ? yes : no)` | Calcular lógica o matemáticas | `*(5 > 3 ? "yes" : "no")` |
+| ``^( `` | `^(variableName)` | Comprobar existencia | `^(#wins)` |
+| ``#( `` | `#(commandName args...)` | Llamar otro comando | `#(othercmd arg1)` |
+
+## Variables y almacenamiento
+
+Las variables las creas tú. Pueden ser temporales o persistentes según el prefijo que uses.
+
+| Prefijo | Almacenamiento | Persistencia | Plan | Ejemplo |
+|--------|----------------|--------------|------|---------|
+| ninguno | Memoria | Solo la ejecución actual | Free | `%(temp)` |
+| `#` | Caché | Hasta 24 horas | Free | `%(#wins)` |
+| `##` | Caché + por usuario | Hasta 24 horas | Free | `%(##chips)` |
+| `*` | Base de datos | Permanente | Premium / Pro | `%(*wins)` |
+| `**` | Base de datos + por usuario | Permanente | Premium / Pro | `%(**rank)` |
+
+### Comportamientos importantes
+
+1. Las variables de caché expiran después de unas 24 horas.
+2. Si una variable de caché expiró, vuelve **vacía**, no con `0`.
+3. La asignación sobrescribe.
+
+```bash
+%(#wins 1)
+```
+
+Ese ejemplo **pone** el valor en `1`. No suma 1.
+
+### Patrón correcto para incrementar
+
+```bash
+%(#wins *(%(#wins) + 1))
+```
+
+### Selectores por usuario
+
+Los valores por usuario pueden apuntar a otro usuario:
+
+```bash
+%(##rank)
+%(##rank(&p1))
+%(**rank)
+%(**rank(&p1))
+```
+
+## Placeholders de argumentos
+
+Cuando un viewer usa un comando, sus argumentos se pueden acceder con placeholders.
+
+| Placeholder | Significado | Ejemplo |
+|-------------|-------------|---------|
+| `&p1`, `&p2`, `&p3`... | Argumentos posicionales | `&p1` = primer argumento |
+| `&t` | Todo el texto restante | `&t` = todo lo que queda |
+
+### Reglas
+
+- `&t` debe ir al final
+- no puedes crear nuevos `&pN` después de `&t`
+
+### Ejemplos
+
+```bash
+Comando: !greet Hello World
+Mensaje: Hello &p1 and &p2!
+→ Hello Hello and World!
+```
+
+```bash
+Comando: !echo lots of args here
+Mensaje: &p1 &p2 &t
+→ lots of args here
+```
+
+```bash
+Mensaje: &t &p1
+→ Error: cannot create new &pN after &t
+```
+
+## Template strings
+
+Usa comillas dobles y `${}` cuando quieras interpolación dentro de un string.
+
+```bash
+"Hola ${$(user)}!"
+"Has ganado ${%(#wins)} veces!"
+```
+
+## Arrays
+
+### Arrays literales
+
+```bash
+%[item1, item2, item3]
+%[1, 2, 3, 4, 5]
+```
+
+### Accesores de array
+
+| Sintaxis | Significado | Ejemplo |
+|----------|-------------|---------|
+| `%(arr[0])` | Acceder por índice | `%(items[0])` |
+| `%(arr[random])` | Elemento aleatorio | `%(items[random])` |
+| `%(arr[].length)` | Longitud del array | `%(items[].length)` |
+| `%(arr[] value)` | Agregar valor | `%(items[] extra)` |
+| `%(arr[2] value)` | Reemplazar por índice | `%(items[2] updated)` |
+
+### Ejemplos
+
+```bash
+%(items[0])
+%(items[random])
+%(items[].length)
+%(items[] extra)
+%(items[1] replacement)
+%[1, 2, 3][random]
+```
+
+## Operadores y expresiones
+
+### Comparación
+
+| Operador | Significado | Ejemplo |
+|----------|-------------|---------|
+| `==` o `=` | Igual | `%(wins) == 5` |
+| `!=` o `<>` | Distinto | `%(status) != "offline"` |
+| `>` | Mayor que | `%(level) > 3` |
+| `<` | Menor que | `%(age) < 18` |
+| `>=` | Mayor o igual | `%(wins) >= 10` |
+| `<=` | Menor o igual | `%(wins) <= 5` |
+| `~=` | Contiene | `%(tags) ~= "gaming"` |
+
+### Aritmética
+
+| Operador | Significado | Ejemplo |
+|----------|-------------|---------|
+| `+` | Sumar | `*(%(#wins) + 1)` |
+| `-` | Restar | `*(%(#wins) - 1)` |
+| `*` | Multiplicar | `*(%(x) * 2)` |
+| `/` | Dividir | `*(%(total) / 2)` |
+| `%` | Módulo | `*(%(count) % 10)` |
+
+### Operadores unarios
+
+| Operador | Significado |
+|----------|-------------|
+| `+` | Más unario |
+| `-` | Negación |
+
+### Operadores de asignación
+
+Estos son para **variables de bucle solamente**:
+
+| Operador | Significado |
+|----------|-------------|
+| `=` | Asignar |
+| `++` | Incrementar en 1 |
+| `--` | Decrementar en 1 |
+| `+=` | Sumar y asignar |
+| `-=` | Restar y asignar |
+| `*=` | Multiplicar y asignar |
+| `/=` | Dividir y asignar |
+| `%=` | Módulo y asignar |
+
+## Condicionales
+
+AST usa expresiones ternarias para ramificar lógica:
+
+```bash
+*(condition ? trueValue : falseValue)
+*(%(#wins) > 10 ? "Champion" : "Keep trying")
+*(%(islive) == 1 ? "Stream is live!" : "Stream is offline")
+```
+
+## Bucles
+
+### Bucle de rango
+
+```bash
+*(for #i = 0; #i < 3; #i++ {
+  %(out[] #i)
+})
+```
+
+### Bucle foreach
+
+```bash
+*(for #item in %(#items[]) {
+  %(result[] %(#item))
+})
+```
+
+### Control de bucle
+
+| Función | Propósito |
+|---------|-----------|
+| `$(break)` | Salir del bucle inmediatamente |
+| `$(continue)` | Saltar la iteración actual |
+
+### Límites por plan
+
+| Plan | Máx. profundidad de anidación | Máx. iteraciones |
+|------|-------------------------------|------------------|
+| Free | 2 | 25 |
+| Premium | 3 | 50 |
+| Pro | 4 | 100 |
+
+### Ejemplo de bucle
+
+```bash
+*(for #i = 0; #i < %(#count); #i++ {
+  %(output[] #i)
+})
+"Tus números: ${%(output[])}"
+```
+
+## Referencias a comandos
+
+Puedes ejecutar un comando dentro de otro:
+
+```bash
+#(othercmd arg1 arg2)
+```
+
+### Reglas
+
+- profundidad máxima de recursión: `5`
+- los ciclos se detectan y bloquean
+- la salida del comando referenciado se parsea y se inserta de vuelta
+
+## Verificación de existencia
+
+Usa `^()` para preguntar si algo existe:
+
+```bash
+^(#wins)
+^(#items[0])
+^(##balance)
+```
+
+Esto devuelve `true` o `false`.
+
+<Aside type="tip">
+Si estás escribiendo un comando que guarda estado, `^()` suele ser la forma más limpia de decidir entre “inicializar” y “actualizar”.
+</Aside>

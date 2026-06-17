@@ -26,6 +26,18 @@
       </div>
     </header>
 
+    @if (showReferralPromo()) {
+      <div class="referral-promo-container">
+        <app-referral-promo-banner
+          [title]="referralPromoTitle()"
+          [message]="referralPromoMessage()"
+          [cta]="referralPromoCta()"
+          [ctaLink]="referralPromoLink()"
+          (dismissed)="dismissReferralPromo()"
+        ></app-referral-promo-banner>
+      </div>
+    }
+
     @if (errorMessage()) {
       <div class="dashboard-error" role="alert">
         <p>{{ errorMessage() }}</p>
@@ -113,10 +125,31 @@
           <p class="dashboard-kpi-card__value">{{ formatCurrency(kpis().totalDonations) }}</p>
         </article>
 
-        <article class="dashboard-kpi-card dashboard-kpi-card--feature">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.featureSpotlight') }}</p>
-          <p class="dashboard-kpi-card__value">{{ t('dashboard.kpis.featureSpotlightValue') }}</p>
-          <p class="dashboard-kpi-card__meta">{{ t('dashboard.kpis.featureSpotlightHint') }}</p>
+        <article class="dashboard-kpi-card dashboard-kpi-card--ai-credits"
+                 [class.dashboard-kpi-card--exhausted]="aiCreditsExhausted()">
+          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.aiCredits') }}</p>
+
+          @if (aiCreditsAvailable()) {
+            <p class="dashboard-kpi-card__value">{{ aiCreditsLabel() }}</p>
+
+            <div class="dashboard-goal-card__progress dashboard-kpi-card__progress" role="progressbar"
+                 [attr.aria-label]="t('dashboard.kpis.aiCredits')"
+                 [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="aiCreditsPercent()">
+              <span class="dashboard-goal-card__fill"
+                    [class.dashboard-goal-card__fill--exhausted]="aiCreditsExhausted()"
+                    [style.width.%]="aiCreditsPercent()"></span>
+            </div>
+
+            @if (aiCreditsExhausted()) {
+              <p class="dashboard-kpi-card__meta dashboard-kpi-card__meta--warning">
+                {{ aiCreditsUpsell() }}
+              </p>
+            }
+          } @else {
+            <p class="dashboard-kpi-card__value dashboard-kpi-card__value--muted">
+              {{ aiCreditsNotAvailableLabel() }}
+            </p>
+          }
         </article>
       </section>
 

@@ -1,19 +1,23 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { map } from 'rxjs';
-import { LucideAngularModule, Moon, RefreshCw, ShieldAlert, Zap, Sun } from 'lucide-angular';
+import { distinctUntilChanged, map } from 'rxjs';
+import { LucideAngularModule, Moon, RefreshCw, ShieldAlert, Sparkles, Sun, Zap } from 'lucide-angular';
 
 import { AnalyticsService } from '../../services/analytics.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { ToastService } from '../../services/toast.service';
+import { UpgradeService } from '../../services/upgrade.service';
+import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
+import { UpgradeModalComponent } from '../../shared/upgrade-modal/upgrade-modal.component';
 
 @Component({
   selector: 'app-authenticated-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent],
   templateUrl: './authenticated-layout.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -29,8 +33,24 @@ export class AuthenticatedLayoutComponent {
   private readonly linksService = inject(LinksService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly themeService = inject(ThemeService);
+  private readonly toastService = inject(ToastService);
+  private readonly upgradeService = inject(UpgradeService);
+  private readonly pendingActionsQueue = inject(PendingActionsQueueService);
   private readonly profileMenu = viewChild<ElementRef<HTMLElement>>('profileMenu');
   private readonly mobileMenu = viewChild<ElementRef<HTMLElement>>('mobileMenu');
+
+  private readonly queryParams = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => ({
+        upgrade: params.get('upgrade'),
+        tier: params.get('tier')
+      })),
+      distinctUntilChanged((prev, next) =>
+        prev.upgrade === next.upgrade && prev.tier === next.tier
+      )
+    ),
+    { initialValue: { upgrade: null, tier: null } }
+  );
 
   readonly session = this.sessionAuth.session;
   readonly streamer = toSignal(
@@ -140,12 +160,20 @@ export class AuthenticatedLayoutComponent {
 
     return this.updatePermissionsIcon;
   });
+  readonly showUpgradeOption = computed(() => this.planTier() !== 'pro');
+  readonly upgradeMenuLabel = computed(() => {
+    this.languageService.currentLanguage();
+    return this.planTier() === 'free'
+      ? this.t('navbar.upgrade')
+      : this.t('navbar.upgradeToPro');
+  });
 
   readonly moonIcon = Moon;
   readonly sunIcon = Sun;
   readonly activateIcon = Zap;
   readonly reauthenticateIcon = ShieldAlert;
   readonly updatePermissionsIcon = RefreshCw;
+  readonly sparklesIcon = Sparkles;
 
   constructor() {
     effect(() => {
@@ -164,10 +192,63 @@ export class AuthenticatedLayoutComponent {
 
       this.sessionAuth.setLastViewedStreamer(streamer);
     });
+
+    effect(() => {
+      const params = this.queryParams();
+      if (params.upgrade !== 'success') {
+        return;
+      }
+
+      const tier = params.tier === 'premium' || params.tier === 'pro' ? params.tier : 'pro';
+      const tierLabel = tier === 'pro'
+        ? this.t('navbar.planPro')
+        : this.t('navbar.planPremium');
+
+      this.analytics.capture('upgrade_completed_returned', { tier });
+      this.toastService.success(
+        this.t('upgradeModal.successToast.title'),
+        this.t('upgradeModal.successToast.body', { tier: tierLabel })
+      );
+
+      this.sessionAuth.validateSession().subscribe({
+        error: () => undefined
+      });
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { upgrade: null, tier: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    });
+
+    // Consume the standardized pending actions queue once a valid session exists.
+    // The queue is sessionStorage-backed and survives reloads / OAuth round-trips.
+    // Producers (login page, future email flows, etc.) push typed actions (toast, redirect, ...).
+    // We drain the queue exactly once per layout instance.
+    effect(() => {
+      const currentSession = this.session();
+      if (!currentSession) {
+        return;
+      }
+
+      // Only process once per layout instance (after we have a real session)
+      if ((this as any).__pendingQueueProcessed) {
+        return;
+      }
+      (this as any).__pendingQueueProcessed = true;
+
+      // This will also migrate any legacy 'dimasite.pendingEmailAction' entries
+      // and then clear the queue after processing.
+      this.pendingActionsQueue.processQueue(
+        this.router,
+        this.toastService,
+        this.languageService
+      );
+    });
   }
 
-  t(key: string): string {
-    return this.languageService.translate(key);
+  t(key: string, params?: Record<string, string | number>): string {
+    return this.languageService.translate(key, params);
   }
 
   planTierLabel(): string {
@@ -288,6 +369,12 @@ export class AuthenticatedLayoutComponent {
     this.closeProfileMenu();
     this.closeMobileMenu();
     window.location.href = `${this.linksService.getApiUrl()}/auth/authorize?${params.toString()}`;
+  }
+
+  openUpgradeFromMenu(): void {
+    this.closeProfileMenu();
+    this.closeMobileMenu();
+    void this.upgradeService.promptUpgradeForAnyPlan('profile_dropdown');
   }
 
   logout(): void {

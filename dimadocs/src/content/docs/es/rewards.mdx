@@ -1,0 +1,55 @@
+---
+title: Recompensas del Canal
+description: Gestiona y automatiza las recompensas de puntos de tu canal de Twitch.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Las recompensas de puntos del canal permiten a tus espectadores gastar sus puntos acumulados en experiencias e interacciones especiales.
+
+## Configurar Recompensas
+
+Ve a **Recompensas** en tu panel para crear y gestionar las recompensas de puntos del canal.
+
+### Propiedades de las Recompensas
+
+| Propiedad | Descripción |
+|-----------|-------------|
+| `title` | Nombre mostrado a los espectadores |
+| `cost` | Puntos requeridos para canjear |
+| `prompt` | Instrucciones mostradas al canjear |
+| `enabled` | Si los espectadores pueden canjear actualmente |
+
+## Recompensas Automáticas vs Manuales
+
+<Aside type="tip">
+DomDimaBot soporta tanto recompensas automatizadas (manejadas enteramente por el bot) como recompensas manuales (requieren tu aprobación).
+</Aside>
+
+### Recompensas Automatizadas
+
+Estas recompensas se procesan inmediatamente cuando se canjean:
+
+- **Texto a Voz** — Leer mensajes de espectadores en voz alta
+- **Efectos de Sonido** — Reproducir clips de audio en la transmisión
+- **Disparadores de Overlay** — Mostrar animaciones/gráficos en la transmisión
+- **Comandos del Bot** — Ejecutar secuencias de comandos personalizados
+
+### Recompensas Manuales
+
+Estas recompensas requieren tu aprobación antes de ejecutar:
+
+- **Shoutouts** — Obtener un shoutout personalizado en transmisión
+- **Rey/Reina del Chat** — Rol de reconocimiento especial
+- **Solicitudes Personalizadas** — Interacciones especiales que apruebes
+
+## Enfriamientos de Recompensas
+
+Configura enfriamientos globales o por recompensa para prevenir spam:
+
+```
+Enfriamiento Global: 30 segundos (aplica a todas las recompensas)
+Efectos de Sonido: 60 segundos de enfriamiento por espectador
+```

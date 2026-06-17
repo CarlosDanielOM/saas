@@ -4,9 +4,10 @@ import enDictionary from '../../assets/i18n/en.json';
 import esDictionary from '../../assets/i18n/es.json';
 
 export type SupportedLanguage = 'en' | 'es';
-interface TranslationRecord {
-  [key: string]: string | number | boolean | TranslationRecord;
-}
+type TranslationLeaf = string | number | boolean | readonly unknown[];
+type TranslationRecord = {
+  [key: string]: TranslationLeaf | TranslationRecord;
+};
 
 @Injectable({
   providedIn: 'root'
@@ -17,8 +18,8 @@ export class LanguageService {
 
   readonly currentLanguage = signal<SupportedLanguage>(this.defaultLanguage);
   private readonly dictionaries = signal<Record<SupportedLanguage, TranslationRecord>>({
-    en: enDictionary as TranslationRecord,
-    es: esDictionary as TranslationRecord
+    en: enDictionary as unknown as TranslationRecord,
+    es: esDictionary as unknown as TranslationRecord
   });
 
   readonly availableLanguages = {

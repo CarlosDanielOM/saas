@@ -21,6 +21,11 @@ import {
   Search,
   Video,
   X,
+  LayoutGrid,
+  List,
+  Eye,
+  Play,
+  Pause,
   type LucideIconData
 } from 'lucide-angular';
 
@@ -40,6 +45,7 @@ type MediaFilter = 'all' | MediaType;
 @Component({
   selector: 'app-public-library-modal',
   imports: [LucideAngularModule, LoadingIndicatorComponent],
+  styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -71,6 +77,11 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   readonly videoIcon = Video;
   readonly audioIcon = AudioLines;
   readonly imageIcon = Image;
+  readonly layoutGridIcon = LayoutGrid;
+  readonly listIcon = List;
+  readonly previewIcon = Eye;
+  readonly playIcon = Play;
+  readonly pauseIcon = Pause;
 
   readonly assets = signal<MediaAsset[]>([]);
   readonly isLoading = signal(true);
@@ -78,6 +89,10 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   readonly searchQuery = signal('');
   readonly mediaFilter = signal<MediaFilter>('all');
   readonly addingAssetIds = signal<string[]>([]);
+  readonly modalViewMode = signal<'grid' | 'list'>('grid');
+  readonly activePreviewAsset = signal<MediaAsset | null>(null);
+  readonly isAudioPlaying = signal(false);
+  private previewAudio: HTMLAudioElement | null = null;
 
   readonly filterOptions: MediaFilter[] = ['all', 'video', 'audio', 'image', 'gif'];
   readonly ownedAssetIdSet = computed(() => new Set(this.ownedAssetIds()));
@@ -96,6 +111,7 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopPreview();
     if (this.searchDebounceTimer !== null) {
       window.clearTimeout(this.searchDebounceTimer);
       this.searchDebounceTimer = null;
@@ -108,6 +124,65 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   requestClose(): void {
     this.close.emit();
+  }
+
+  openPreviewModal(event: MouseEvent, asset: MediaAsset): void {
+    event.stopPropagation();
+    this.stopPreview();
+    this.activePreviewAsset.set(asset);
+    if (asset.mediaType === 'audio' && asset.playbackUrl) {
+      this.playAudioPreview(asset.playbackUrl);
+    }
+  }
+
+  closePreviewModal(): void {
+    this.stopPreview();
+    this.activePreviewAsset.set(null);
+  }
+
+  toggleAudioPlayPause(): void {
+    if (!this.previewAudio) {
+      const asset = this.activePreviewAsset();
+      if (asset && asset.playbackUrl) {
+        this.playAudioPreview(asset.playbackUrl);
+      }
+      return;
+    }
+    if (this.previewAudio.paused) {
+      this.previewAudio.play();
+    } else {
+      this.previewAudio.pause();
+    }
+  }
+
+  stopPreview(): void {
+    if (this.previewAudio) {
+      this.previewAudio.pause();
+      this.previewAudio = null;
+    }
+    this.isAudioPlaying.set(false);
+  }
+
+  private playAudioPreview(url: string): void {
+    try {
+      this.previewAudio = new Audio(url);
+      this.previewAudio.volume = 0.5;
+      this.previewAudio.addEventListener('play', () => this.isAudioPlaying.set(true));
+      this.previewAudio.addEventListener('pause', () => this.isAudioPlaying.set(false));
+      this.previewAudio.addEventListener('ended', () => {
+        this.isAudioPlaying.set(false);
+        this.previewAudio = null;
+      });
+      this.previewAudio.addEventListener('error', () => {
+        this.isAudioPlaying.set(false);
+        this.previewAudio = null;
+        this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
+      });
+      this.previewAudio.play();
+    } catch (err) {
+      this.isAudioPlaying.set(false);
+      this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
+    }
   }
 
   refreshAssets(): void {

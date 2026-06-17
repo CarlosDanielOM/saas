@@ -1,0 +1,263 @@
+---
+title: AST Syntax & Data
+description: "Core AST building blocks: prefixes, storage, arguments, arrays, expressions, conditionals, loops, and command references."
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This page covers the core syntax you use to build AST commands.
+
+## Core prefixes
+
+The parser understands 5 main prefixes:
+
+| Prefix | Syntax | Purpose | Example |
+|--------|--------|---------|---------|
+| ``$( `` | `$(funcName arg1 arg2)` | Call a function | `$(random 10)` |
+| ``%( `` | `%(name)` or `%(name value)` | Read or write a variable | `%(wins)`, `%(wins 5)` |
+| ``*( `` | `*(condition ? yes : no)` | Compute logic or math | `*(5 > 3 ? "yes" : "no")` |
+| ``^( `` | `^(variableName)` | Check existence | `^(#wins)` |
+| ``#( `` | `#(commandName args...)` | Call another command | `#(othercmd arg1)` |
+
+## Variables and storage
+
+Variables are created by you. They can be temporary or persistent depending on the prefix you choose.
+
+| Prefix | Storage | Persistence | Plan | Example |
+|--------|---------|-------------|------|---------|
+| none | Memory | Current execution only | Free | `%(temp)` |
+| `#` | Cache | Up to 24 hours | Free | `%(#wins)` |
+| `##` | Cache + user-scoped | Up to 24 hours | Free | `%(##chips)` |
+| `*` | Database | Permanent | Premium / Pro | `%(*wins)` |
+| `**` | Database + user-scoped | Permanent | Premium / Pro | `%(**rank)` |
+
+### Important behavior
+
+1. Cache variables expire after about 24 hours.
+2. Expired cache values come back **blank**, not `0`.
+3. Assignment overwrites.
+
+```bash
+%(#wins 1)
+```
+
+The example above **sets** the value to `1`. It does not add 1.
+
+### Correct increment pattern
+
+```bash
+%(#wins *(%(#wins) + 1))
+```
+
+### User-scoped selectors
+
+User-scoped values can target another user:
+
+```bash
+%(##rank)
+%(##rank(&p1))
+%(**rank)
+%(**rank(&p1))
+```
+
+## Argument placeholders
+
+When a viewer uses a command, their arguments can be accessed with placeholders.
+
+| Placeholder | Meaning | Example |
+|-------------|---------|---------|
+| `&p1`, `&p2`, `&p3`... | Positional arguments | `&p1` = first argument |
+| `&t` | All remaining trailing text | `&t` = everything left |
+
+### Rules
+
+- `&t` must come last
+- you cannot create new `&pN` placeholders after `&t`
+
+### Examples
+
+```bash
+Command: !greet Hello World
+Message: Hello &p1 and &p2!
+→ Hello Hello and World!
+```
+
+```bash
+Command: !echo lots of args here
+Message: &p1 &p2 &t
+→ lots of args here
+```
+
+```bash
+Message: &t &p1
+→ Error: cannot create new &pN after &t
+```
+
+## Template strings
+
+Use double quotes and `${}` when you want interpolation inside a string.
+
+```bash
+"Hello ${$(user)}!"
+"You've won ${%(#wins)} times!"
+```
+
+## Arrays
+
+### Literal arrays
+
+```bash
+%[item1, item2, item3]
+%[1, 2, 3, 4, 5]
+```
+
+### Array accessors
+
+| Syntax | Meaning | Example |
+|--------|---------|---------|
+| `%(arr[0])` | Access by index | `%(items[0])` |
+| `%(arr[random])` | Random element | `%(items[random])` |
+| `%(arr[].length)` | Array length | `%(items[].length)` |
+| `%(arr[] value)` | Append value | `%(items[] extra)` |
+| `%(arr[2] value)` | Replace by index | `%(items[2] updated)` |
+
+### Examples
+
+```bash
+%(items[0])
+%(items[random])
+%(items[].length)
+%(items[] extra)
+%(items[1] replacement)
+%[1, 2, 3][random]
+```
+
+## Operators and expressions
+
+### Comparison
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `==` or `=` | Equals | `%(wins) == 5` |
+| `!=` or `<>` | Not equals | `%(status) != "offline"` |
+| `>` | Greater than | `%(level) > 3` |
+| `<` | Less than | `%(age) < 18` |
+| `>=` | Greater than or equal | `%(wins) >= 10` |
+| `<=` | Less than or equal | `%(wins) <= 5` |
+| `~=` | Contains | `%(tags) ~= "gaming"` |
+
+### Arithmetic
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `+` | Add | `*(%(#wins) + 1)` |
+| `-` | Subtract | `*(%(#wins) - 1)` |
+| `*` | Multiply | `*(%(x) * 2)` |
+| `/` | Divide | `*(%(total) / 2)` |
+| `%` | Modulo | `*(%(count) % 10)` |
+
+### Unary operators
+
+| Operator | Meaning |
+|----------|---------|
+| `+` | Unary plus |
+| `-` | Negation |
+
+### Assignment operators
+
+These are for **loop variables only**:
+
+| Operator | Meaning |
+|----------|---------|
+| `=` | Assign |
+| `++` | Increment by 1 |
+| `--` | Decrement by 1 |
+| `+=` | Add and assign |
+| `-=` | Subtract and assign |
+| `*=` | Multiply and assign |
+| `/=` | Divide and assign |
+| `%=` | Modulo and assign |
+
+## Conditionals
+
+AST uses ternary expressions for branching:
+
+```bash
+*(condition ? trueValue : falseValue)
+*(%(#wins) > 10 ? "Champion" : "Keep trying")
+*(%(islive) == 1 ? "Stream is live!" : "Stream is offline")
+```
+
+## Loops
+
+### Range loop
+
+```bash
+*(for #i = 0; #i < 3; #i++ {
+  %(out[] #i)
+})
+```
+
+### Foreach loop
+
+```bash
+*(for #item in %(#items[]) {
+  %(result[] %(#item))
+})
+```
+
+### Loop control
+
+| Function | Purpose |
+|----------|---------|
+| `$(break)` | Exit the loop immediately |
+| `$(continue)` | Skip the current iteration |
+
+### Plan limits
+
+| Plan | Max nesting depth | Max iterations |
+|------|-------------------|----------------|
+| Free | 2 | 25 |
+| Premium | 3 | 50 |
+| Pro | 4 | 100 |
+
+### Loop example
+
+```bash
+*(for #i = 0; #i < %(#count); #i++ {
+  %(output[] #i)
+})
+"Your numbers: ${%(output[])}"
+```
+
+## Command references
+
+You can run one command from inside another:
+
+```bash
+#(othercmd arg1 arg2)
+```
+
+### Rules
+
+- max recursion depth: `5`
+- cycles are detected and blocked
+- referenced output is parsed and substituted back in
+
+## Exists checks
+
+Use `^()` to ask if something exists:
+
+```bash
+^(#wins)
+^(#items[0])
+^(##balance)
+```
+
+This returns `true` or `false`.
+
+<Aside type="tip">
+If you are writing a command that stores state, `^()` is often the cleanest way to decide between “initialize” and “update”.
+</Aside>

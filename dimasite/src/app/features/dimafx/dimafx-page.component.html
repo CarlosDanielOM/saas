@@ -1,0 +1,509 @@
+<div class="dimafx-shell">
+  <section class="dimafx-hero">
+    <div class="dimafx-hero__content">
+      <a [routerLink]="['/', streamer(), 'modules']" class="dimafx-back-link">
+        <lucide-icon [img]="arrowLeftIcon" class="dimafx-back-link__icon" />
+        <span>{{ t('modules.dimafx.backToModules') }}</span>
+      </a>
+      
+      <div class="dimafx-hero__badge">
+        <lucide-icon [img]="zapIcon" class="dimafx-hero__badge-icon" />
+        <span>{{ t('modules.dimafx.heroBadge') }}</span>
+      </div>
+
+      <div class="dimafx-hero__copy">
+        <div>
+          <h1 class="dimafx-title">{{ t('modules.dimafx.title') }}</h1>
+          <p class="dimafx-subtitle">{{ t('modules.dimafx.subtitle') }}</p>
+        </div>
+        
+        <button type="button" class="dimafx-btn dimafx-btn--secondary" [disabled]="loading()" (click)="load()">
+          <lucide-icon [img]="refreshIcon" class="h-4 w-4" />
+          <span>{{ t('common.refresh') }}</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  @if (error()) {
+    <div class="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-750 dark:text-red-200 mb-6 max-w-7xl mx-auto">
+      {{ error() }}
+    </div>
+  }
+
+  <!-- Main Grid Layout -->
+  <div class="dimafx-layout">
+    <!-- Storefront Items Panel (Left) -->
+    <div class="dimafx-main-panel">
+      <div class="dimafx-section-head">
+        <div>
+          <p class="dimafx-section-head__eyebrow">{{ t('modules.dimafx.heroBadge') }}</p>
+          <h2>{{ t('modules.dimafx.storefrontItems') }}</h2>
+        </div>
+        <span class="dimafx-badge">
+          {{ t('modules.dimafx.configured', { count: items().length }) }}
+        </span>
+      </div>
+
+      @if (loading() && !items().length) {
+        <div class="grid gap-4 md:grid-cols-2">
+          @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+            <div class="h-36 animate-pulse rounded-2xl bg-purple-500/5 border border-purple-500/10"></div>
+          }
+        </div>
+      } @else {
+        <div class="dimafx-grid">
+          @for (item of items(); track item.id) {
+            <article class="dimafx-item-card">
+              <div class="dimafx-item-card__main">
+                <div class="dimafx-item-card__thumb-container">
+                  @if (item.mediaType === 'video' && item.mediaUrl) {
+                    <video [src]="item.mediaUrl" muted preload="metadata" class="dimafx-item-card__thumb dimafx-item-card__thumb--video"></video>
+                  } @else if (item.mediaType === 'audio') {
+                    <div class="dimafx-item-card__thumb dimafx-item-card__thumb--audio">
+                      <div class="dimafx-mini-wave">
+                        <div class="dimafx-mini-wave-bar"></div>
+                        <div class="dimafx-mini-wave-bar"></div>
+                        <div class="dimafx-mini-wave-bar"></div>
+                      </div>
+                      <lucide-icon [img]="volumeIcon" class="h-5 w-5 text-purple-400" />
+                    </div>
+                  } @else {
+                    <img class="dimafx-item-card__thumb" [src]="item.thumbnailUrl || item.mediaUrl || '/assets/logo.png'" [alt]="item.name" />
+                  }
+                </div>
+                <div class="dimafx-item-card__info">
+                  <div class="dimafx-item-card__header-row">
+                    <h3 class="dimafx-item-card__title" [title]="item.name">{{ item.name }}</h3>
+                    <span class="dimafx-item-card__category">{{ item.category }}</span>
+                  </div>
+                  <p class="dimafx-item-card__desc">{{ item.description || 'No description yet.' }}</p>
+                  
+                  <div class="dimafx-item-card__meta-strip">
+                    <span class="dimafx-item-card__price-badge">
+                      {{ item.bitsPrice }} Bits
+                    </span>
+                    <span class="dimafx-item-card__status-badge" [class.dimafx-item-card__status-badge--active]="item.isEnabled" [class.dimafx-item-card__status-badge--disabled]="!item.isEnabled">
+                      {{ item.isEnabled ? t('modules.dimafx.active') : t('modules.dimafx.disabled') }}
+                    </span>
+                    <span class="dimafx-item-card__dot">•</span>
+                    <span class="dimafx-item-card__meta-pill capitalize">{{ item.mediaType }}</span>
+                    <span class="dimafx-item-card__dot">•</span>
+                    <span class="dimafx-item-card__meta-pill">
+                      <lucide-icon [img]="volumeIcon" class="h-3.5 w-3.5" />
+                      {{ item.volume }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dimafx-item-card__actions">
+                <button type="button" class="dimafx-mini-btn dimafx-mini-btn--edit" (click)="selectItem(item)">
+                  <lucide-icon [img]="editIcon" class="h-3.5 w-3.5" />
+                  <span>{{ t('modules.dimafx.edit') }}</span>
+                </button>
+                @if (item.mediaUrl) {
+                  <button type="button" class="dimafx-mini-btn dimafx-mini-btn--preview" (click)="openPreviewModal($event, { label: item.name, mediaType: item.mediaType, playbackUrl: item.mediaUrl })">
+                    <lucide-icon [img]="previewIcon" class="h-3.5 w-3.5" />
+                    <span>{{ t('modules.dimafx.preview') }}</span>
+                  </button>
+                }
+                <div class="ml-auto flex gap-2">
+                  <button type="button" class="dimafx-mini-btn dimafx-mini-btn--delete" (click)="deleteItem(item, false)">
+                    <lucide-icon [img]="trashIcon" class="h-3.5 w-3.5" />
+                    <span>{{ t('modules.dimafx.delete') }}</span>
+                  </button>
+                  <button type="button" class="dimafx-mini-btn dimafx-mini-btn--refund" (click)="deleteItem(item, true)">
+                    <span>{{ t('modules.dimafx.refundDelete') }}</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <div class="dimafx-empty">
+              <lucide-icon [img]="imageIcon" class="dimafx-empty__icon" />
+              <h3>{{ t('modules.dimafx.noItemsTitle') }}</h3>
+              <p>{{ t('modules.dimafx.noItemsDesc') }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Create/Edit Form Sidebar (Right) -->
+    <aside class="dimafx-sidebar">
+      <div class="dimafx-card">
+        <div class="dimafx-card__head">
+          <h2>{{ isEditing() ? t('modules.dimafx.editTitle') : t('modules.dimafx.createTitle') }}</h2>
+          @if (isEditing()) {
+            <button type="button" class="text-xs font-bold text-purple-600 dark:text-purple-300 hover:underline cursor-pointer" (click)="resetForm()">
+              {{ t('modules.dimafx.newItem') }}
+            </button>
+          }
+        </div>
+
+        <form class="dimafx-form" (submit)="$event.preventDefault(); save()">
+          <!-- Media Browser Section -->
+          <div class="dimafx-form-group">
+            <span class="dimafx-form-label">{{ t('modules.dimafx.mediaAsset') }}</span>
+            @if (selectedAssetID()) {
+              <div class="dimafx-media-asset-box">
+                <div class="dimafx-media-asset-box__icon-wrapper">
+                  @if (getSelectedAssetMediaType() === 'audio') {
+                    <lucide-icon [img]="volumeIcon" class="dimafx-media-asset-box__icon" />
+                  } @else if (getSelectedAssetMediaType() === 'image') {
+                    <lucide-icon [img]="imageIcon" class="dimafx-media-asset-box__icon" />
+                  } @else {
+                    <lucide-icon [img]="previewIcon" class="dimafx-media-asset-box__icon" />
+                  }
+                </div>
+                <div class="dimafx-media-asset-box__details">
+                  <div class="dimafx-media-asset-box__name" [title]="getSelectedAssetLabel()">{{ getSelectedAssetLabel() }}</div>
+                  <div class="dimafx-media-asset-box__type">{{ getSelectedAssetMediaType() }} · {{ getSelectedAssetSource() }}</div>
+                </div>
+                <button type="button" class="dimafx-mini-btn dimafx-mini-btn--edit" (click)="openMediaModal()">
+                  {{ t('modules.dimafx.change') }}
+                </button>
+              </div>
+            } @else {
+              <button type="button" class="dimafx-media-picker-btn" (click)="openMediaModal()">
+                <lucide-icon [img]="plusIcon" class="dimafx-media-picker-btn__icon" />
+                <span>{{ t('modules.dimafx.selectMedia') }}</span>
+              </button>
+            }
+          </div>
+
+          <!-- Form Fields -->
+          <div class="dimafx-form-group">
+            <label class="dimafx-form-label">{{ t('modules.dimafx.nameLabel') }}</label>
+            <input class="dimafx-input" [value]="name()" (input)="setName($any($event.target).value)" [placeholder]="t('modules.dimafx.namePlaceholder')" required />
+          </div>
+
+          <div class="dimafx-form-group">
+            <label class="dimafx-form-label">{{ t('modules.dimafx.descriptionLabel') }}</label>
+            <textarea class="dimafx-textarea" [value]="description()" (input)="setDescription($any($event.target).value)" [placeholder]="t('modules.dimafx.descriptionPlaceholder')"></textarea>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="dimafx-form-group">
+              <label class="dimafx-form-label">{{ t('modules.dimafx.categoryLabel') }}</label>
+              <select class="dimafx-select" [value]="category()" (change)="onCategoryInput($event.target)">
+                <option value="video">Video</option>
+                <option value="gif">Gifs</option>
+                <option value="audio">Audio</option>
+                <option value="tts">TTS</option>
+              </select>
+            </div>
+            <div class="dimafx-form-group">
+              <label class="dimafx-form-label">{{ t('modules.dimafx.bitsPriceLabel') }}</label>
+              <select class="dimafx-select" [value]="bitsPrice()" (change)="setBitsPrice(+$any($event.target).value)">
+                @for (price of allowedBitPrices(); track price) {
+                  <option [value]="price">{{ price }} Bits</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="dimafx-form-group">
+            <label class="dimafx-form-label">{{ t('modules.dimafx.thumbnailLabel') }}</label>
+            <input class="dimafx-input" [value]="thumbnailUrl()" (input)="setThumbnailUrl($any($event.target).value)" [placeholder]="t('modules.dimafx.optionalUrl')" />
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="dimafx-form-group">
+              <label class="dimafx-form-label">
+                <span class="inline-flex items-center gap-1"><lucide-icon [img]="clockIcon" class="h-3.5 w-3.5" />{{ t('modules.dimafx.duration') }}</span>
+              </label>
+              <input type="number" step="any" class="dimafx-input" [value]="durationMs() / 1000" (input)="setDurationMs(+$any($event.target).value * 1000)" />
+            </div>
+            <div class="dimafx-form-group">
+              <label class="dimafx-form-label">
+                <span class="inline-flex items-center gap-1"><lucide-icon [img]="volumeIcon" class="h-3.5 w-3.5" />{{ t('modules.dimafx.volume') }}</span>
+              </label>
+              <input type="number" min="0" max="100" class="dimafx-input" [value]="volume()" (input)="setVolume(+$any($event.target).value)" />
+            </div>
+            <div class="dimafx-form-group">
+              <label class="dimafx-form-label">
+                <span class="inline-flex items-center gap-1"><lucide-icon [img]="layersIcon" class="h-3.5 w-3.5" />{{ t('modules.dimafx.sortOrder') }}</span>
+              </label>
+              <input type="number" class="dimafx-input" [value]="sortOrder()" (input)="setSortOrder(+$any($event.target).value)" />
+            </div>
+          </div>
+
+          <label class="dimafx-checkbox-container">
+            <input type="checkbox" class="dimafx-checkbox" [checked]="isEnabled()" (change)="isEnabled.set($any($event.target).checked)" />
+            <span>{{ t('modules.dimafx.enabledInExtension') }}</span>
+          </label>
+
+          <button type="submit" class="dimafx-btn dimafx-btn--primary w-full" [disabled]="saving() || !canSubmit()">
+            <lucide-icon [img]="plusIcon" class="h-4 w-4" />
+            <span>{{ saving() ? t('modules.dimafx.saving') : isEditing() ? t('modules.dimafx.saveItem') : t('modules.dimafx.createItem') }}</span>
+          </button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Redesigned Media Browser Modal Dialog -->
+@if (isMediaModalOpen()) {
+  <div class="dimafx-modal-backdrop" (click)="closeMediaModal()">
+    <div class="dimafx-modal" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="dimafx-modal__header">
+        <div>
+          <h3 class="dimafx-modal__header-title">{{ t('modules.dimafx.modal.title') }}</h3>
+          <p class="dimafx-modal__header-subtitle">{{ t('modules.dimafx.modal.subtitle') }}</p>
+        </div>
+        <button type="button" class="dimafx-modal__close-btn" (click)="closeMediaModal()">
+          <lucide-icon [img]="xIcon" class="h-5 w-5" />
+        </button>
+      </div>
+
+      <!-- Toolbar Search & Filter -->
+      <div class="dimafx-modal__toolbar">
+        <div class="dimafx-modal__search-wrapper">
+          <input
+            type="search"
+            class="dimafx-modal__search-input"
+            [placeholder]="t('modules.dimafx.modal.searchPlaceholder')"
+            [value]="mediaSearchQuery()"
+            (input)="mediaSearchQuery.set($any($event.target).value)"
+          />
+          <lucide-icon [img]="searchIcon" class="dimafx-modal__search-icon" />
+        </div>
+
+        <div class="dimafx-modal__filters">
+          <div class="flex gap-1.5 flex-wrap flex-1">
+            @for (filterOpt of ['all', 'audio', 'image', 'video']; track filterOpt) {
+              <button
+                type="button"
+                class="dimafx-modal__filter-tab"
+                [class.dimafx-modal__filter-tab--active]="mediaFilter() === filterOpt"
+                (click)="mediaFilter.set(filterOpt)"
+              >
+                {{ filterOpt }}
+              </button>
+            }
+          </div>
+
+          <!-- View Toggle Group -->
+          <div class="dimafx-view-toggle-group">
+            <button
+              type="button"
+              class="dimafx-view-mode-btn"
+              [class.dimafx-view-mode-btn--active]="modalViewMode() === 'grid'"
+              (click)="modalViewMode.set('grid')"
+              title="Grid View"
+            >
+              <lucide-icon [img]="layoutGridIcon" class="h-4.5 w-4.5" />
+            </button>
+            <button
+              type="button"
+              class="dimafx-view-mode-btn"
+              [class.dimafx-view-mode-btn--active]="modalViewMode() === 'list'"
+              (click)="modalViewMode.set('list')"
+              title="List View"
+            >
+              <lucide-icon [img]="listIcon" class="h-4.5 w-4.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Asset Content Grid/List -->
+      <div class="dimafx-modal__body">
+        @if (filteredAssetOptions().length === 0) {
+          <div class="dimafx-modal-empty">
+            <lucide-icon [img]="imageIcon" class="dimafx-modal-empty__icon" />
+            <h4>{{ t('modules.dimafx.modal.noAssets') }}</h4>
+            <p>{{ t('modules.dimafx.modal.noAssetsDesc') }}</p>
+          </div>
+        } @else {
+          <!-- GRID VIEW -->
+          @if (modalViewMode() === 'grid') {
+            <div class="dimafx-modal-grid-cards">
+              @for (asset of filteredAssetOptions(); track asset.id) {
+                <div
+                  class="dimafx-asset-grid-card"
+                  [class.dimafx-asset-grid-card--selected]="selectedAssetID() === asset.id"
+                  (click)="selectAssetFromModal(asset)"
+                >
+                  <!-- Card Preview (Image / Video / Audio) -->
+                  <div class="dimafx-asset-grid-card__preview">
+                    @if (asset.mediaType === 'image') {
+                      <img [src]="asset.playbackUrl" class="dimafx-asset-grid-card__img" loading="lazy" />
+                    }
+                    @if (asset.mediaType === 'video') {
+                      <video [src]="asset.playbackUrl" muted preload="metadata" class="dimafx-asset-grid-card__video"></video>
+                      <div class="dimafx-asset-grid-card__badge-icon">
+                        <lucide-icon [img]="previewIcon" class="h-4 w-4 text-white" />
+                      </div>
+                    }
+                    @if (asset.mediaType === 'audio') {
+                      <div class="dimafx-asset-grid-card__audio-box">
+                        <div class="dimafx-wave-animation">
+                          <div class="dimafx-wave-animation-bar"></div>
+                          <div class="dimafx-wave-animation-bar"></div>
+                          <div class="dimafx-wave-animation-bar"></div>
+                          <div class="dimafx-wave-animation-bar"></div>
+                        </div>
+                        <lucide-icon [img]="volumeIcon" class="h-6 w-6 text-purple-400" />
+                      </div>
+                    }
+
+                    <!-- Preview Action Button (Float) -->
+                    @if (asset.playbackUrl) {
+                      <button
+                        type="button"
+                        class="dimafx-asset-grid-card__preview-btn"
+                        (click)="openPreviewModal($event, asset)"
+                        title="Preview"
+                      >
+                        <lucide-icon [img]="previewIcon" class="h-3.5 w-3.5" />
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Card Labels -->
+                  <div class="dimafx-asset-grid-card__info">
+                    <div class="dimafx-asset-grid-card__name" [title]="asset.label">{{ asset.label }}</div>
+                    <div class="dimafx-asset-grid-card__meta">
+                      <span
+                        class="dimafx-asset-grid-card__source"
+                        [class.dimafx-asset-grid-card__source--library]="asset.source === 'library'"
+                        [class.dimafx-asset-grid-card__source--public]="asset.source === 'public'"
+                      >
+                        <lucide-icon [img]="asset.source === 'library' ? databaseIcon : globeIcon" class="h-3 w-3 mr-0.5" />
+                        {{ asset.source }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- LIST VIEW -->
+          @if (modalViewMode() === 'list') {
+            <div class="dimafx-modal-grid">
+              @for (asset of filteredAssetOptions(); track asset.id) {
+                <div
+                  class="dimafx-asset-item"
+                  [class.dimafx-asset-item--selected]="selectedAssetID() === asset.id"
+                  (click)="selectAssetFromModal(asset)"
+                >
+                  <!-- Type Icon -->
+                  <div class="dimafx-asset-item__icon-wrapper">
+                    @if (asset.mediaType === 'audio') {
+                      <lucide-icon [img]="volumeIcon" class="dimafx-asset-item__icon" />
+                    } @else if (asset.mediaType === 'image') {
+                      <lucide-icon [img]="imageIcon" class="dimafx-asset-item__icon" />
+                    } @else {
+                      <lucide-icon [img]="previewIcon" class="dimafx-asset-item__icon" />
+                    }
+                  </div>
+
+                  <!-- Labels -->
+                  <div class="dimafx-asset-item__details">
+                    <div class="dimafx-asset-item__name" [title]="asset.label">{{ asset.label }}</div>
+                    <div class="dimafx-asset-item__meta">
+                      <span
+                        class="dimafx-asset-item__source-badge"
+                        [class.dimafx-asset-item__source-badge--library]="asset.source === 'library'"
+                        [class.dimafx-asset-item__source-badge--public]="asset.source === 'public'"
+                      >
+                        <lucide-icon [img]="asset.source === 'library' ? databaseIcon : globeIcon" class="h-3 w-3 mr-0.5" />
+                        {{ asset.source }}
+                      </span>
+                      <span class="capitalize">{{ asset.mediaType }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Preview trigger button -->
+                  @if (asset.playbackUrl) {
+                    <button
+                      type="button"
+                      class="dimafx-asset-item__preview-btn"
+                      (click)="openPreviewModal($event, asset)"
+                      title="Preview Asset"
+                    >
+                      <lucide-icon
+                        [img]="previewIcon"
+                        class="dimafx-asset-item__preview-icon"
+                      />
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="dimafx-modal__footer">
+        <button
+          type="button"
+          class="dimafx-btn dimafx-btn--secondary"
+          (click)="closeMediaModal()"
+        >
+          {{ t('modules.dimafx.modal.cancel') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Inner Preview Popup Sub-Modal -->
+@if (activePreviewAsset(); as previewAsset) {
+  <div class="dimafx-preview-overlay" (click)="closePreviewModal()">
+    <div class="dimafx-preview-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="dimafx-preview-modal__close" (click)="closePreviewModal()">
+        <lucide-icon [img]="xIcon" class="h-4 w-4" />
+      </button>
+
+      <div class="dimafx-preview-modal__body">
+        <h4 class="dimafx-preview-modal__title">{{ previewAsset.label }}</h4>
+        <p class="dimafx-preview-modal__meta">{{ previewAsset.mediaType }} · {{ previewAsset.source }}</p>
+
+        <div class="dimafx-preview-modal__content-box">
+          <!-- Audio Waveform Visualizer -->
+          @if (previewAsset.mediaType === 'audio') {
+            <div class="dimafx-waveform-visualizer">
+              <div class="dimafx-waveform-bars" [class.dimafx-waveform-bars--playing]="isAudioPlaying()">
+                @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track bar) {
+                  <div class="dimafx-waveform-bar" [style.animation-delay.ms]="bar * 40"></div>
+                }
+              </div>
+              <p class="dimafx-waveform-status">
+                {{ isAudioPlaying() ? 'Playing Audio Demo...' : 'Audio Paused' }}
+              </p>
+            </div>
+            
+            <div class="dimafx-preview-controls">
+              <button type="button" class="dimafx-btn dimafx-btn--primary" (click)="toggleAudioPlayPause()">
+                <lucide-icon [img]="isAudioPlaying() ? pauseIcon : playIcon" class="h-4 w-4" />
+                <span>{{ isAudioPlaying() ? 'Pause' : 'Play' }}</span>
+              </button>
+            </div>
+          }
+
+          <!-- Video Player -->
+          @if (previewAsset.mediaType === 'video') {
+            <div class="dimafx-video-player-box">
+              <video class="dimafx-video-element" [src]="previewAsset.playbackUrl" controls autoplay></video>
+            </div>
+          }
+
+          <!-- Image / GIF Preview -->
+          @if (previewAsset.mediaType === 'image') {
+            <div class="dimafx-image-preview-box">
+              <img class="dimafx-image-preview-element" [src]="previewAsset.playbackUrl" [alt]="previewAsset.label" />
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

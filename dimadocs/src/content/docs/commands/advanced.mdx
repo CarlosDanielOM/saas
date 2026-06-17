@@ -1,0 +1,122 @@
+---
+title: Advanced Custom Commands (AST)
+description: Friendly starting point for DomDimaBot's AST system, with links to syntax, functions, execution, and recipe guides.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+DomDimaBot's **AST parser** is the advanced layer behind custom commands. It lets you build commands that can store values, run logic, call functions, reuse other commands, and react differently based on context.
+
+<Aside type="caution">
+This section is for advanced setups. If you only need simple text commands, start with [Commands Overview](/commands/overview).
+</Aside>
+
+## What AST is for
+
+Use AST when you want your command to do more than send fixed text.
+
+- save counters and user progress
+- build dynamic replies
+- run conditionals like if / else logic
+- work with arrays and loops
+- call Twitch, moderation, TTS, trigger, and EventSub functions
+- chain commands together
+
+## Important: variables are not built in
+
+DomDimaBot does **not** give you default AST variables automatically.
+
+- Variables are **user-created** with `%(...)`
+- If you want to store a value, you create that variable yourself
+- Context data usually comes from **functions** like `$(user)`, `$(twitch.game)`, or from **arguments** like `&p1`
+
+Example:
+
+```bash
+%(#wins *(%(#wins) + 1))
+"$(user) now has %(#wins) wins!"
+```
+
+## Start here
+
+This AST section is now split into smaller guides so it is easier to learn.
+
+1. **[AST Syntax & Data](/commands/advanced/syntax)**
+   - prefixes
+   - variables and storage
+   - arguments
+   - arrays
+   - conditionals
+   - loops
+   - command references
+
+2. **[AST Functions Reference](/commands/advanced/functions)**
+   - user and Twitch functions
+   - moderation and channel actions
+   - counters, clips, followage
+   - EventSub, TTS, triggers, chat send
+
+3. **[AST Execution, Errors & Limits](/commands/advanced/execution)**
+   - how the parser runs
+   - common errors
+   - loop and recursion limits
+   - debugging mindset
+
+4. **[AST Recipes & Patterns](/commands/advanced/recipes)**
+   - best practices
+   - initialize-or-increment
+   - guard checks
+   - user selectors
+   - full shield systems
+
+## Quick mental model
+
+Think of AST commands as small scripts inside a custom command.
+
+- `%(...)` = read or write your own variables
+- `$(...)` = call a function
+- `*(...)` = compute logic
+- `^(...)` = check whether something exists
+- `#(...)` = run another command from this command
+
+## Quick example
+
+This command creates a simple win counter:
+
+```bash
+*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
+"$(user) has %(#wins) wins!"
+```
+
+What it does:
+
+1. checks if `#wins` exists
+2. if yes, increments it
+3. if no, creates it with `1`
+4. prints the updated total
+
+## Plan-aware features
+
+Some AST features depend on the streamer's plan.
+
+| Feature | Free | Premium | Pro |
+|---------|------|---------|-----|
+| Memory variables | Yes | Yes | Yes |
+| Cache variables (`#`, `##`) | Yes | Yes | Yes |
+| Database variables (`*`, `**`) | No | Yes | Yes |
+| Deeper loops | Limited | More | Most |
+| AI voice / cloned voice features | Limited | More | Most |
+
+## Recommended workflow
+
+1. Start with a plain text response
+2. Add arguments like `&p1`
+3. Add functions like `$(user)` or `$(twitch.game)`
+4. Add variables only when you need state
+5. Add conditionals and loops last
+
+<Aside type="tip">
+If an AST command can ban users, grant roles, change title/game, start polls, or trigger media, keep it restricted to moderators or the broadcaster.
+</Aside>

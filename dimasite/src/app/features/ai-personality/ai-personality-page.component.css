@@ -1,0 +1,1028 @@
+/* AI Personality Page - Glassmorphism Redesign */
+
+:host {
+  display: block;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Shell - Ambient Backdrop & Typography
+   ========================================================================== */
+.ai-personality-shell {
+  position: relative;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--ring) 10%, transparent), transparent 38%),
+    radial-gradient(circle at 88% 82%, color-mix(in srgb, #3b82f6 8%, transparent), transparent 38%),
+    linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+/* Lucide Icon Alignment rules */
+.ai-personality-shell lucide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.ai-personality-shell lucide-icon svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ==========================================================================
+   Glass Panel Base
+   ========================================================================== */
+.glass-panel,
+.ai-personality-page__hero,
+.ai-personality-page__card,
+.ai-personality-page__footer,
+.ai-personality-page__banner,
+.ai-personality-page__empty,
+.ai-personality-page__loading {
+  background: color-mix(in srgb, var(--surface) 50%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 1.5rem;
+  transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__card {
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-personality-page__card:hover:not(.ai-personality-page__card--master-toggle) {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.32),
+    0 0 15px rgba(139, 92, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Dark Mode Overrides for extreme depth */
+.dark .ai-personality-page__card {
+  background: color-mix(in srgb, #140d24 65%, transparent);
+  border-color: color-mix(in srgb, #c4b5fd 12%, transparent);
+}
+
+/* ==========================================================================
+   Hero Section with Blur Orbs
+   ========================================================================== */
+.ai-personality-page__hero {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: flex-start;
+  border-radius: 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--ring) 20%, transparent);
+  background: linear-gradient(135deg, rgba(20, 13, 31, 0.95), rgba(31, 18, 56, 0.92)),
+              radial-gradient(circle at top right, rgba(168, 85, 247, 0.25), transparent 60%),
+              radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.2), transparent 60%);
+  color: #f8fafc;
+  box-shadow: 0 20px 40px -15px rgba(109, 40, 217, 0.25);
+}
+
+.ai-personality-page__hero-copy {
+  position: relative;
+  z-index: 2;
+}
+
+.ai-personality-page__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 9999px;
+  color: #c084fc;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ai-personality-page__eyebrow lucide-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.ai-personality-page__title {
+  margin: 0;
+  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #ffffff, #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ai-personality-page__subtitle {
+  max-width: 44rem;
+  margin: 0.75rem 0 0;
+  color: rgba(226, 232, 240, 0.75);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.ai-personality-page__hero-badges {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ai-personality-page__badge--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__badge--link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.ai-personality-page__badge--link lucide-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ==========================================================================
+   Master Toggle Card
+   ========================================================================== */
+.ai-personality-page__card--master-toggle {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(59, 130, 246, 0.12));
+  border: 1px solid color-mix(in srgb, var(--ring) 35%, transparent);
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.15);
+  padding: 1.75rem;
+}
+
+.ai-personality-page__card--master-toggle .ai-personality-page__card-header {
+  margin-bottom: 0.5rem;
+}
+
+.ai-personality-page__toggle-hint {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ai-personality-page__card--master-toggle .ai-personality-page__toggle-grid {
+  margin-top: 1.25rem;
+}
+
+.ai-personality-page__toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 3.5rem;
+  height: 2rem;
+  flex-shrink: 0;
+}
+
+.ai-personality-page__toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ai-personality-page__toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(100, 116, 139, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 1.5rem;
+  width: 1.5rem;
+  left: 0.18rem;
+  bottom: 0.16rem;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-personality-page__toggle-switch input:checked + .ai-personality-page__toggle-slider {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+}
+
+.ai-personality-page__toggle-switch input:checked + .ai-personality-page__toggle-slider::before {
+  transform: translateX(1.6rem);
+}
+
+.ai-personality-page__toggle-switch input:disabled + .ai-personality-page__toggle-slider {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Master disable overlay */
+.ai-personality-page__grid--disabled .ai-personality-page__card:not(.ai-personality-page__card--master-toggle) {
+  opacity: 0.45;
+  filter: saturate(0.3) blur(0.2px);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Overview / Limit Grid
+   ========================================================================== */
+.ai-personality-page__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-personality-page__card-kicker {
+  margin: 0 0 0.3rem;
+  color: #a855f7;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ai-personality-page__card-title {
+  margin: 0;
+  font-family: 'Sora', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-personality-page__card-header lucide-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #a855f7;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.ai-personality-page__help-intro {
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.ai-personality-page__help-tips {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-personality-page__help-tip {
+  padding: 1rem 1.25rem;
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 1rem;
+}
+
+.ai-personality-page__help-tip strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.ai-personality-page__help-tip p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Limit Pills Grid */
+.ai-personality-page__limit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+}
+
+.ai-personality-page__limit-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem;
+  background: rgba(56, 189, 248, 0.06);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 1rem;
+  transition: all 0.2s ease;
+}
+
+.ai-personality-page__limit-pill span {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ai-personality-page__limit-pill strong {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* ================= Plan Tier Highlights ================= */
+
+/* Premium Tier Accents */
+.ai-personality-shell[data-plan-tier='premium'] .ai-personality-page__card--overview {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.05);
+}
+
+.ai-personality-shell[data-plan-tier='premium'] .ai-personality-page__limit-pill {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.ai-personality-shell[data-plan-tier='premium'] .ai-personality-page__limit-pill strong {
+  color: #fbbf24;
+}
+
+/* Pro Tier Accents (Premium Plus) */
+.ai-personality-shell[data-plan-tier='pro'] .ai-personality-page__card--overview {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 
+    0 15px 40px rgba(245, 158, 11, 0.12),
+    inset 0 0 12px rgba(245, 158, 11, 0.05);
+}
+
+.ai-personality-shell[data-plan-tier='pro'] .ai-personality-page__card--overview .ai-personality-page__card-kicker {
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.3);
+}
+
+.ai-personality-shell[data-plan-tier='pro'] .ai-personality-page__limit-pill {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(251, 191, 36, 0.03));
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.08);
+}
+
+.ai-personality-shell[data-plan-tier='pro'] .ai-personality-page__limit-pill strong {
+  color: #fbbf24;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.25);
+}
+
+/* ==========================================================================
+   Profiles Card & Pill selector
+   ========================================================================== */
+.ai-personality-page__profiles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.ai-personality-page__profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1.1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__profile-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+
+.ai-personality-page__profile-pill--active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(59, 130, 246, 0.25));
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #f8fafc;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.25);
+}
+
+.ai-personality-page__profile-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-soft);
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+
+.ai-personality-page__profile-pill:hover .ai-personality-page__profile-remove {
+  color: var(--text);
+}
+
+.ai-personality-page__profile-remove:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #fca5a5 !important;
+}
+
+/* ==========================================================================
+   Form controls (inputs, selects, textareas)
+   ========================================================================== */
+.ai-personality-page__form-grid,
+.ai-personality-page__known-user-grid,
+.ai-personality-page__toggle-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.ai-personality-page__form-grid--dense {
+  margin-top: 1.25rem;
+}
+
+.ai-personality-page__field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ai-personality-page__field span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-personality-page__input,
+.ai-personality-page__select,
+.ai-personality-page__textarea {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.95rem;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__input:focus,
+.ai-personality-page__select:focus,
+.ai-personality-page__textarea:focus {
+  outline: none;
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 
+    0 0 0 3px rgba(168, 85, 247, 0.15),
+    0 0 15px rgba(168, 85, 247, 0.1);
+}
+
+.ai-personality-page__input:disabled,
+.ai-personality-page__select:disabled,
+.ai-personality-page__textarea:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Custom Dropdown Arrow for Select */
+.ai-personality-page__select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(156, 163, 175, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.15rem;
+  padding-right: 2.75rem;
+}
+
+.dark .ai-personality-page__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(209, 213, 219, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+}
+
+.ai-personality-page__textarea {
+  resize: vertical;
+  min-height: 7.5rem;
+  line-height: 1.5;
+}
+
+.ai-personality-page__field--full {
+  grid-column: 1 / -1;
+}
+
+/* ==========================================================================
+   Toggle Cards
+   ========================================================================== */
+.ai-personality-page__toggle-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+  align-items: flex-start;
+  padding: 1.15rem 1.35rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.15rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.ai-personality-page__toggle-card:hover {
+  border-color: rgba(168, 85, 247, 0.25);
+  background: rgba(168, 85, 247, 0.05);
+  transform: translateY(-1px);
+}
+
+.ai-personality-page__toggle-card strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-personality-page__toggle-card p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.ai-personality-page__toggle-card input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  accent-color: #a855f7;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   List Headers & Buttons (Rules, Catchphrases, Known Users)
+   ========================================================================== */
+.ai-personality-page__list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.ai-personality-page__list-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ai-personality-page__ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 9999px;
+  color: #d8b4fe;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__ghost-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #f5f3ff;
+  transform: translateY(-1.5px);
+}
+
+.ai-personality-page__ghost-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-personality-page__ghost-btn lucide-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.ai-personality-page__stack,
+.ai-personality-page__known-users {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ai-personality-page__stack-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ai-personality-page__stack-row .ai-personality-page__input {
+  flex: 1;
+}
+
+.ai-personality-page__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.85rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 0.85rem;
+  color: #fca5a5;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 2.75rem;
+}
+
+.ai-personality-page__icon-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.ai-personality-page__icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-personality-page__icon-btn lucide-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* Known Users Card Specifics */
+.ai-personality-page__known-user-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.ai-personality-page__known-user-card:hover {
+  border-color: rgba(168, 85, 247, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ai-personality-page__known-user-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+.ai-personality-page__muted {
+  margin: 0.5rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Collapsible drawer
+   ========================================================================== */
+.ai-personality-page__card-header--collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.ai-personality-page__card-header--collapsible:hover {
+  opacity: 0.9;
+}
+
+.ai-personality-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ai-personality-page__chevron {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-personality-page__chevron--expanded {
+  transform: rotate(180deg);
+}
+
+.ai-personality-page__collapsible-content {
+  animation: slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 0.5rem;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Error banner
+   ========================================================================== */
+.ai-personality-page__banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.15rem 1.5rem;
+  border-radius: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.ai-personality-page__banner--error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.05);
+}
+
+.ai-personality-page__banner lucide-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  color: #fca5a5;
+  flex-shrink: 0;
+}
+
+.ai-personality-page__banner p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #fee2e2;
+}
+
+.ai-personality-page__inline-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #d8b4fe;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.ai-personality-page__inline-btn:hover {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Save footer - Translucent glass
+   ========================================================================== */
+.ai-personality-page__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.15rem 2rem;
+  margin-top: 1.5rem;
+  position: sticky;
+  bottom: 1.5rem;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.35),
+    0 0 20px rgba(168, 85, 247, 0.1);
+  z-index: 10;
+  border-radius: 1.5rem;
+}
+
+.ai-personality-page__footer-text {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  max-width: 32rem;
+  line-height: 1.5;
+}
+
+.ai-personality-page__save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.7rem 1.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.ai-personality-page__save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 32px rgba(124, 58, 237, 0.5),
+    0 0 15px rgba(168, 85, 247, 0.25);
+}
+
+.ai-personality-page__save-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.ai-personality-page__save-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.ai-personality-page__save-btn lucide-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ==========================================================================
+   Loading / Empty states
+   ========================================================================== */
+.ai-personality-page__loading,
+.ai-personality-page__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.ai-personality-page__empty lucide-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: rgba(168, 85, 247, 0.4);
+}
+
+.ai-personality-page__empty p {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-soft);
+}
+
+/* ==========================================================================
+   Grid layouts & Media queries
+   ========================================================================== */
+.ai-personality-page__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.ai-personality-page__card--overview,
+.ai-personality-page__card--full {
+  grid-column: 1 / -1;
+}
+
+/* Tablet & Up */
+@media (min-width: 768px) {
+  .ai-personality-page__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .ai-personality-page__card--overview,
+  .ai-personality-page__card--full {
+    grid-column: 1 / -1;
+  }
+
+  .ai-personality-page__form-grid,
+  .ai-personality-page__known-user-grid,
+  .ai-personality-page__toggle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ai-personality-page__known-user-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ai-personality-page__limit-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Desktop & Up */
+@media (min-width: 1024px) {
+  .ai-personality-shell {
+    padding: 2rem;
+  }
+
+  .ai-personality-page__grid {
+    gap: 2rem;
+  }
+
+  .ai-personality-page__hero {
+    padding: 2.5rem;
+  }
+
+  .ai-personality-page__card {
+    padding: 1.75rem;
+  }
+
+  .ai-personality-page__toggle-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .ai-personality-page__known-user-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile Specific overrides */
+@media (max-width: 767px) {
+  .ai-personality-shell {
+    padding: 1rem;
+    gap: 1.25rem;
+  }
+
+  .ai-personality-page__hero {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+  }
+
+  .ai-personality-page__card {
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+  }
+
+  .ai-personality-page__footer {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+  }
+
+  .ai-personality-page__save-btn {
+    width: 100%;
+  }
+
+  .ai-personality-page__known-user-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .ai-personality-page__icon-btn {
+    align-self: flex-end;
+  }
+}

@@ -1,0 +1,690 @@
+<div class="ai-personality-shell" [attr.data-plan-tier]="tier().isPremiumPlus ? 'pro' : (tier().isPremium ? 'premium' : 'free')">
+  <!-- Hero Section -->
+  <section class="ai-personality-page__hero">
+    <div class="ai-personality-page__hero-copy">
+      <p class="ai-personality-page__eyebrow">
+        <lucide-icon [img]="brainIcon"></lucide-icon>
+        {{ t('modules.aiPersonality.eyebrow') }}
+      </p>
+      <h1 class="ai-personality-page__title">{{ t('modules.aiPersonality.title') }}</h1>
+      <p class="ai-personality-page__subtitle">{{ t('modules.aiPersonality.subtitle') }}</p>
+    </div>
+
+    <div class="ai-personality-page__hero-badges">
+      <a class="ai-personality-page__badge ai-personality-page__badge--link" [href]="modulePath()">
+        <lucide-icon [img]="sparklesIcon"></lucide-icon>
+        {{ t('modules.aiPersonality.backToModules') }}
+      </a>
+    </div>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="ai-personality-page__banner ai-personality-page__banner--error" role="alert">
+      <lucide-icon [img]="alertIcon"></lucide-icon>
+      <div>
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="ai-personality-page__inline-btn" (click)="retryLoad()">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (loading() && !hasSettings()) {
+    <div class="ai-personality-page__loading" aria-live="polite">
+      <loading-indicator [loading]="true" variant="three" size="md"></loading-indicator>
+      <p>{{ t('modules.aiPersonality.states.loading') }}</p>
+    </div>
+  } @else if (settings(); as settings) {
+    <div class="ai-personality-page__grid">
+      <!-- Master Toggle Card -->
+      <article class="ai-personality-page__card ai-personality-page__card--master-toggle glass-panel">
+        <header class="ai-personality-page__card-header">
+          <div>
+            <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.masterToggle.kicker') }}</p>
+            <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.masterToggle.title') }}</h2>
+          </div>
+          <label class="ai-personality-page__toggle-switch">
+            <input
+              type="checkbox"
+              [checked]="isAiEnabled()"
+              [disabled]="saving()"
+              (change)="updateEnabled($any($event.target).checked)"
+            />
+            <span class="ai-personality-page__toggle-slider"></span>
+          </label>
+        </header>
+        <p class="ai-personality-page__toggle-hint">
+          {{ isAiEnabled()
+            ? t('modules.aiPersonality.masterToggle.enabledHint')
+            : t('modules.aiPersonality.masterToggle.disabledHint')
+          }}
+        </p>
+
+        <div class="ai-personality-page__toggle-grid">
+          <label class="ai-personality-page__toggle-card">
+            <div>
+              <strong>{{ t('modules.aiPersonality.featureToggles.streamSummaries') }}</strong>
+              <p>{{ t('modules.aiPersonality.featureToggles.streamSummariesHint') }}</p>
+            </div>
+            <input
+              type="checkbox"
+              [checked]="settings.streamSummariesEnabled"
+              [disabled]="saving()"
+              (change)="updateFeatureToggle('streamSummariesEnabled', $any($event.target).checked)"
+            />
+          </label>
+
+          <label class="ai-personality-page__toggle-card">
+            <div>
+              <strong>{{ t('modules.aiPersonality.featureToggles.recommendations') }}</strong>
+              <p>{{ t('modules.aiPersonality.featureToggles.recommendationsHint') }}</p>
+            </div>
+            <input
+              type="checkbox"
+              [checked]="settings.recommendationsEnabled"
+              [disabled]="saving()"
+              (change)="updateFeatureToggle('recommendationsEnabled', $any($event.target).checked)"
+            />
+          </label>
+        </div>
+      </article>
+
+      <!-- Overview / Help Card -->
+      <article class="ai-personality-page__card ai-personality-page__card--overview glass-panel">
+        <header class="ai-personality-page__card-header">
+          <div>
+            <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.help.kicker') }}</p>
+            <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.help.title') }}</h2>
+          </div>
+          <lucide-icon [img]="helpIcon"></lucide-icon>
+        </header>
+
+        <div class="ai-personality-page__help-content">
+          <p class="ai-personality-page__help-intro">{{ t('modules.aiPersonality.help.intro') }}</p>
+          
+          <div class="ai-personality-page__help-tips">
+            <div class="ai-personality-page__help-tip">
+              <strong>{{ t('modules.aiPersonality.help.tips.profiles.title') }}</strong>
+              <p>{{ t('modules.aiPersonality.help.tips.profiles.description') }}</p>
+            </div>
+            <div class="ai-personality-page__help-tip">
+              <strong>{{ t('modules.aiPersonality.help.tips.personality.title') }}</strong>
+              <p>{{ t('modules.aiPersonality.help.tips.personality.description') }}</p>
+            </div>
+            <div class="ai-personality-page__help-tip">
+              <strong>{{ t('modules.aiPersonality.help.tips.learning.title') }}</strong>
+              <p>{{ t('modules.aiPersonality.help.tips.learning.description') }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ai-personality-page__limit-grid">
+          <div class="ai-personality-page__limit-pill">
+            <span>{{ t('modules.aiPersonality.overview.contextWindow') }}</span>
+            <strong>{{ tier().limits.contextWindow }}</strong>
+          </div>
+          <div class="ai-personality-page__limit-pill">
+            <span>{{ t('modules.aiPersonality.overview.profileLimit') }}</span>
+            <strong>{{ tier().limits.profiles }}</strong>
+          </div>
+          <div class="ai-personality-page__limit-pill">
+            <span>{{ t('modules.aiPersonality.overview.rulesLimit') }}</span>
+            <strong>{{ limitLabel(tier().limits.rules) }}</strong>
+          </div>
+          <div class="ai-personality-page__limit-pill">
+            <span>{{ t('modules.aiPersonality.overview.knownUsersLimit') }}</span>
+            <strong>{{ limitLabel(tier().limits.knownUsers) }}</strong>
+          </div>
+        </div>
+      </article>
+
+      <!-- Profiles Card -->
+      <article class="ai-personality-page__card ai-personality-page__card--profiles glass-panel">
+        <header class="ai-personality-page__card-header">
+          <div>
+            <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.profiles.kicker') }}</p>
+            <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.profiles.title') }}</h2>
+          </div>
+
+          <button
+            type="button"
+            class="ai-personality-page__ghost-btn"
+            [disabled]="profileLimitReached()"
+            (click)="addProfile()"
+          >
+            <lucide-icon [img]="addIcon"></lucide-icon>
+            {{ t('modules.aiPersonality.profiles.add') }}
+          </button>
+        </header>
+
+        <div class="ai-personality-page__profiles-list">
+          @for (profile of settings.profiles; track profile.profileID) {
+            <button
+              type="button"
+              class="ai-personality-page__profile-pill"
+              [class.ai-personality-page__profile-pill--active]="profile.profileID === settings.activeProfileId"
+              (click)="selectProfile(profile.profileID)"
+            >
+              <span>{{ profile.name || t('modules.aiPersonality.defaults.profileName') }}</span>
+              @if (settings.profiles.length > 1) {
+                <span
+                  class="ai-personality-page__profile-remove"
+                  (click)="$event.stopPropagation(); removeProfile(profile.profileID)"
+                >
+                  ×
+                </span>
+              }
+            </button>
+          }
+        </div>
+
+        @if (profileLimitReached()) {
+          <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.profiles.limitReached') }}</p>
+        }
+      </article>
+
+      @if (activeProfile(); as activeProfile) {
+        <!-- Personality Editor Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--editor glass-panel">
+          <header class="ai-personality-page__card-header">
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.editor.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.editor.title') }}</h2>
+            </div>
+            <lucide-icon [img]="botIcon"></lucide-icon>
+          </header>
+
+          <div class="ai-personality-page__form-grid">
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.fields.profileName') }}</span>
+              <input
+                class="ai-personality-page__input"
+                [value]="activeProfile.name"
+                [disabled]="saving()"
+                (input)="updateActiveProfileField('name', $any($event.target).value)"
+              />
+            </label>
+
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.fields.personaMode') }}</span>
+              <select
+                class="ai-personality-page__select"
+                [value]="activeProfile.personaMode"
+                [disabled]="saving()"
+                (change)="updateActivePersonaMode($any($event.target).value)"
+              >
+                @for (mode of personaModes; track mode.value) {
+                  <option [value]="mode.value">{{ t(mode.labelKey) }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.fields.tonePreset') }}</span>
+              <select
+                class="ai-personality-page__select"
+                [value]="activeProfile.tonePreset"
+                [disabled]="saving()"
+                (change)="updateActiveTonePreset($any($event.target).value)"
+              >
+                @for (preset of tonePresets; track preset.value) {
+                  <option [value]="preset.value">{{ t(preset.labelKey) }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="ai-personality-page__field ai-personality-page__field--full">
+              <span>{{ t('modules.aiPersonality.fields.personaReference') }}</span>
+              <input
+                class="ai-personality-page__input"
+                [value]="activeProfile.personaReference"
+                [disabled]="saving()"
+                (input)="updateActiveProfileField('personaReference', $any($event.target).value)"
+              />
+            </label>
+
+            <label class="ai-personality-page__field ai-personality-page__field--full">
+              <span>{{ t('modules.aiPersonality.fields.personalityPrompt') }}</span>
+              <textarea
+                class="ai-personality-page__textarea"
+                rows="8"
+                [value]="activeProfile.personality"
+                [disabled]="saving()"
+                (input)="updateActiveProfileField('personality', $any($event.target).value)"
+              ></textarea>
+            </label>
+          </div>
+        </article>
+
+        <!-- Voice Settings Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--voice glass-panel">
+          <header class="ai-personality-page__card-header">
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.voice.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.voice.title') }}</h2>
+            </div>
+            <lucide-icon [img]="sparklesIcon"></lucide-icon>
+          </header>
+
+          <div class="ai-personality-page__form-grid">
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.fields.voiceTone') }}</span>
+              <input
+                class="ai-personality-page__input"
+                [value]="activeProfile.voiceProfile.tone"
+                [disabled]="saving()"
+                (input)="updateActiveVoiceField('tone', $any($event.target).value)"
+              />
+            </label>
+
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.fields.voiceCadence') }}</span>
+              <input
+                class="ai-personality-page__input"
+                [value]="activeProfile.voiceProfile.cadence"
+                [disabled]="saving()"
+                (input)="updateActiveVoiceField('cadence', $any($event.target).value)"
+              />
+            </label>
+
+            <label class="ai-personality-page__field ai-personality-page__field--full">
+              <span>{{ t('modules.aiPersonality.fields.voiceStyle') }}</span>
+              <input
+                class="ai-personality-page__input"
+                [value]="activeProfile.voiceProfile.style"
+                [disabled]="saving()"
+                (input)="updateActiveVoiceField('style', $any($event.target).value)"
+              />
+            </label>
+          </div>
+
+          <div class="ai-personality-page__list-header">
+            <h3>{{ t('modules.aiPersonality.voice.catchphrasesTitle') }}</h3>
+            <button type="button" class="ai-personality-page__ghost-btn" [disabled]="saving()" (click)="addCatchphrase()">
+              <lucide-icon [img]="addIcon"></lucide-icon>
+              {{ t('modules.aiPersonality.voice.addCatchphrase') }}
+            </button>
+          </div>
+
+          <div class="ai-personality-page__stack">
+            @for (catchphrase of activeProfile.voiceProfile.catchphrases; track $index) {
+              <div class="ai-personality-page__stack-row">
+                <input
+                  class="ai-personality-page__input"
+                  [value]="catchphrase"
+                  [disabled]="saving()"
+                  (input)="updateCatchphrase($index, $any($event.target).value)"
+                />
+                <button type="button" class="ai-personality-page__icon-btn" [disabled]="saving()" (click)="removeCatchphrase($index)">
+                  <lucide-icon [img]="trashIcon"></lucide-icon>
+                </button>
+              </div>
+            } @empty {
+              <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.voice.noCatchphrases') }}</p>
+            }
+          </div>
+        </article>
+
+        <!-- Rules Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--rules glass-panel">
+          <header class="ai-personality-page__card-header">
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.rules.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.rules.title') }}</h2>
+            </div>
+            <lucide-icon [img]="usersIcon"></lucide-icon>
+          </header>
+
+          <div class="ai-personality-page__list-header">
+            <h3>{{ t('modules.aiPersonality.rules.listTitle') }}</h3>
+            <button type="button" class="ai-personality-page__ghost-btn" [disabled]="saving() || rulesLimitReached()" (click)="addRule()">
+              <lucide-icon [img]="addIcon"></lucide-icon>
+              {{ t('modules.aiPersonality.rules.add') }}
+            </button>
+          </div>
+
+          @if (rulesLimitReached()) {
+            <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.rules.limitReached') }}</p>
+          }
+
+          <div class="ai-personality-page__stack">
+            @for (rule of settings.rules; track $index) {
+              <div class="ai-personality-page__stack-row">
+                <input
+                  class="ai-personality-page__input"
+                  [value]="rule"
+                  [disabled]="saving()"
+                  (input)="updateRule($index, $any($event.target).value)"
+                />
+                <button
+                  type="button"
+                  class="ai-personality-page__icon-btn"
+                  [disabled]="saving() || settings.rules.length <= 1"
+                  (click)="removeRule($index)"
+                >
+                  <lucide-icon [img]="trashIcon"></lucide-icon>
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+
+        <!-- Known Users Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--known-users ai-personality-page__card--full glass-panel">
+          <header class="ai-personality-page__card-header">
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.knownUsers.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.knownUsers.title') }}</h2>
+            </div>
+            <lucide-icon [img]="userIcon"></lucide-icon>
+          </header>
+
+          <div class="ai-personality-page__list-header">
+            <h3>{{ t('modules.aiPersonality.knownUsers.listTitle') }}</h3>
+            <button type="button" class="ai-personality-page__ghost-btn" [disabled]="saving() || knownUsersLimitReached()" (click)="addKnownUser()">
+              <lucide-icon [img]="addIcon"></lucide-icon>
+              {{ t('modules.aiPersonality.knownUsers.add') }}
+            </button>
+          </div>
+
+          @if (knownUsersLimitReached()) {
+            <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.knownUsers.limitReached') }}</p>
+          }
+
+          <div class="ai-personality-page__known-users">
+            @for (knownUser of settings.knownUsers; track $index) {
+              <div class="ai-personality-page__known-user-card">
+                <div class="ai-personality-page__known-user-grid">
+                  <label class="ai-personality-page__field">
+                    <span>{{ t('modules.aiPersonality.fields.username') }}</span>
+                    <input
+                      class="ai-personality-page__input"
+                      [value]="knownUser.username"
+                      [disabled]="saving()"
+                      (input)="updateKnownUserField($index, 'username', $any($event.target).value)"
+                    />
+                  </label>
+                  <label class="ai-personality-page__field">
+                    <span>{{ t('modules.aiPersonality.fields.relationship') }}</span>
+                    <input
+                      class="ai-personality-page__input"
+                      [value]="knownUser.relationship"
+                      [disabled]="saving()"
+                      (input)="updateKnownUserField($index, 'relationship', $any($event.target).value)"
+                    />
+                  </label>
+                  <label class="ai-personality-page__field ai-personality-page__field--full">
+                    <span>{{ t('modules.aiPersonality.fields.description') }}</span>
+                    <textarea
+                      class="ai-personality-page__textarea"
+                      rows="3"
+                      [value]="knownUser.description"
+                      [disabled]="saving()"
+                      (input)="updateKnownUserField($index, 'description', $any($event.target).value)"
+                    ></textarea>
+                  </label>
+                </div>
+
+                <button type="button" class="ai-personality-page__icon-btn" [disabled]="saving()" (click)="removeKnownUser($index)">
+                  <lucide-icon [img]="trashIcon"></lucide-icon>
+                </button>
+              </div>
+            } @empty {
+              <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.knownUsers.empty') }}</p>
+            }
+          </div>
+        </article>
+
+        <!-- Learning Config Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--learning ai-personality-page__card--full glass-panel">
+          <header
+            class="ai-personality-page__card-header ai-personality-page__card-header--collapsible"
+            (click)="toggleLearning()"
+            role="button"
+            [attr.aria-expanded]="learningExpanded()"
+            tabindex="0"
+            (keydown.enter)="toggleLearning()"
+            (keydown.space)="toggleLearning(); $event.preventDefault()"
+          >
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.learning.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.learning.title') }}</h2>
+            </div>
+            <div class="ai-personality-page__header-actions">
+              <lucide-icon [img]="learningIcon"></lucide-icon>
+              <lucide-icon
+                class="ai-personality-page__chevron"
+                [class.ai-personality-page__chevron--expanded]="learningExpanded()"
+                [img]="learningExpanded() ? chevronUpIcon : chevronDownIcon"
+              ></lucide-icon>
+            </div>
+          </header>
+
+          @if (learningExpanded()) {
+          <div class="ai-personality-page__collapsible-content">
+          <div class="ai-personality-page__toggle-grid">
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.enabled') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.enabled') }}</p>
+              </div>
+              <input
+                type="checkbox"
+                [checked]="settings.learningConfig.enabled"
+                [disabled]="saving()"
+                (change)="updateLearningToggle('enabled', $any($event.target).checked)"
+              />
+            </label>
+
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.autoConfirmEnabled') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.autoConfirmEnabled') }}</p>
+              </div>
+              <input
+                type="checkbox"
+                [checked]="settings.learningConfig.autoConfirmEnabled"
+                [disabled]="saving()"
+                (change)="updateLearningToggle('autoConfirmEnabled', $any($event.target).checked)"
+              />
+            </label>
+
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.postStreamSummaryEnabled') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.postStreamSummaryEnabled') }}</p>
+              </div>
+              <input
+                type="checkbox"
+                [checked]="settings.learningConfig.postStreamSummaryEnabled"
+                [disabled]="saving()"
+                (change)="updateLearningToggle('postStreamSummaryEnabled', $any($event.target).checked)"
+              />
+            </label>
+
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.weeklyMaintenanceEnabled') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.weeklyMaintenanceEnabled') }}</p>
+              </div>
+              <input
+                type="checkbox"
+                [checked]="settings.learningConfig.weeklyMaintenanceEnabled"
+                [disabled]="saving()"
+                (change)="updateLearningToggle('weeklyMaintenanceEnabled', $any($event.target).checked)"
+              />
+            </label>
+
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.monthlyMaintenanceEnabled') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.monthlyMaintenanceEnabled') }}</p>
+              </div>
+              <input
+                type="checkbox"
+                [checked]="settings.learningConfig.monthlyMaintenanceEnabled"
+                [disabled]="saving()"
+                (change)="updateLearningToggle('monthlyMaintenanceEnabled', $any($event.target).checked)"
+              />
+            </label>
+          </div>
+
+          <div class="ai-personality-page__list-header">
+            <h3>{{ t('modules.aiPersonality.learning.autoApplyTitle') }}</h3>
+          </div>
+
+          <div class="ai-personality-page__toggle-grid">
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyCreates') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.autoApplyCreates') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.learningConfig.autoApplyCreates" [disabled]="saving()" (change)="updateLearningToggle('autoApplyCreates', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyEdits') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.autoApplyEdits') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.learningConfig.autoApplyEdits" [disabled]="saving()" (change)="updateLearningToggle('autoApplyEdits', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyArchives') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.autoApplyArchives') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.learningConfig.autoApplyArchives" [disabled]="saving()" (change)="updateLearningToggle('autoApplyArchives', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyPermanentDeletes') }}</strong>
+                <p>{{ t('modules.aiPersonality.learning.hints.autoApplyPermanentDeletes') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.learningConfig.autoApplyPermanentDeletes" [disabled]="saving()" (change)="updateLearningToggle('autoApplyPermanentDeletes', $any($event.target).checked)" />
+            </label>
+          </div>
+
+          <div class="ai-personality-page__form-grid ai-personality-page__form-grid--dense">
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.autoConfirmThreshold') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.autoConfirmThreshold" [disabled]="saving()" (input)="updateLearningNumber('autoConfirmThreshold', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.minMessageLength') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.minMessageLength" [disabled]="saving()" (input)="updateLearningNumber('minMessageLength', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.maxPendingMemories') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.maxPendingMemories" [disabled]="saving()" (input)="updateLearningNumber('maxPendingMemories', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.maxConfirmedMemories') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.maxConfirmedMemories" [disabled]="saving()" (input)="updateLearningNumber('maxConfirmedMemories', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.summaryMinDurationMinutes') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinDurationMinutes" [disabled]="saving()" (input)="updateLearningNumber('summaryMinDurationMinutes', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.summaryMinChatMessages') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinChatMessages" [disabled]="saving()" (input)="updateLearningNumber('summaryMinChatMessages', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.createMinConfidence') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.createMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('createMinConfidence', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.editMinConfidence') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.editMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('editMinConfidence', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.archiveMinConfidence') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.archiveMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('archiveMinConfidence', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.deleteMinConfidence') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.deleteMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('deleteMinConfidence', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.maxActionsPerRun') }}</span>
+              <input class="ai-personality-page__input" type="number" min="1" step="1" [value]="settings.learningConfig.maxActionsPerRun" [disabled]="saving()" (input)="updateLearningNumber('maxActionsPerRun', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.maxDeletesPerRun') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" step="1" [value]="settings.learningConfig.maxDeletesPerRun" [disabled]="saving()" (input)="updateLearningNumber('maxDeletesPerRun', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.minMemoryAgeDaysForDelete') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" step="1" [value]="settings.learningConfig.minMemoryAgeDaysForDelete" [disabled]="saving()" (input)="updateLearningNumber('minMemoryAgeDaysForDelete', $any($event.target).value)" />
+            </label>
+            <label class="ai-personality-page__field">
+              <span>{{ t('modules.aiPersonality.learning.fields.minUnusedDaysForDelete') }}</span>
+              <input class="ai-personality-page__input" type="number" min="0" step="1" [value]="settings.learningConfig.minUnusedDaysForDelete" [disabled]="saving()" (input)="updateLearningNumber('minUnusedDaysForDelete', $any($event.target).value)" />
+            </label>
+          </div>
+          </div>
+          }
+        </article>
+
+        <!-- Memory Policy Card -->
+        <article class="ai-personality-page__card ai-personality-page__card--memory ai-personality-page__card--full glass-panel">
+          <header class="ai-personality-page__card-header">
+            <div>
+              <p class="ai-personality-page__card-kicker">{{ t('modules.aiPersonality.memory.kicker') }}</p>
+              <h2 class="ai-personality-page__card-title">{{ t('modules.aiPersonality.memory.title') }}</h2>
+            </div>
+            <lucide-icon [img]="memoryIcon"></lucide-icon>
+          </header>
+
+          <p class="ai-personality-page__muted">{{ t('modules.aiPersonality.memory.subtitle') }}</p>
+
+          <div class="ai-personality-page__toggle-grid">
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.memory.fields.prioritizeRecentChat') }}</strong>
+                <p>{{ t('modules.aiPersonality.memory.hints.prioritizeRecentChat') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.memoryPolicy.prioritizeRecentChat" [disabled]="saving()" (change)="updateMemoryPolicy('prioritizeRecentChat', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.memory.fields.allowSensitiveMemories') }}</strong>
+                <p>{{ t('modules.aiPersonality.memory.hints.allowSensitiveMemories') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowSensitiveMemories" [disabled]="saving()" (change)="updateMemoryPolicy('allowSensitiveMemories', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.memory.fields.allowUserPreferenceMemories') }}</strong>
+                <p>{{ t('modules.aiPersonality.memory.hints.allowUserPreferenceMemories') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowUserPreferenceMemories" [disabled]="saving()" (change)="updateMemoryPolicy('allowUserPreferenceMemories', $any($event.target).checked)" />
+            </label>
+            <label class="ai-personality-page__toggle-card">
+              <div>
+                <strong>{{ t('modules.aiPersonality.memory.fields.allowRunningJokes') }}</strong>
+                <p>{{ t('modules.aiPersonality.memory.hints.allowRunningJokes') }}</p>
+              </div>
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowRunningJokes" [disabled]="saving()" (change)="updateMemoryPolicy('allowRunningJokes', $any($event.target).checked)" />
+            </label>
+          </div>
+        </article>
+      }
+    </div>
+
+    <!-- Footer -->
+    <footer class="ai-personality-page__footer">
+      <p class="ai-personality-page__footer-text">{{ t('modules.aiPersonality.footer') }}</p>
+      <button type="button" class="ai-personality-page__save-btn" [disabled]="saving() || !dirty()" (click)="saveSettings()">
+        <lucide-icon [img]="saveIcon"></lucide-icon>
+        {{ saving() ? t('modules.aiPersonality.actions.saving') : t('modules.aiPersonality.actions.save') }}
+      </button>
+    </footer>
+  } @else {
+    <div class="ai-personality-page__empty glass-panel">
+      <lucide-icon [img]="brainIcon"></lucide-icon>
+      <p>{{ t('modules.aiPersonality.states.empty') }}</p>
+    </div>
+  }
+</div>

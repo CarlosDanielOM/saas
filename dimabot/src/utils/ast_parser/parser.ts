@@ -1,0 +1,210 @@
+import type { RootNode, AstNode, AstParseResult } from './types.js';
+import { tokenize } from './tokenizer.js';
+import { parseExpression, SyntaxRegistry } from './registry.js';
+import type { SyntaxDefinition } from './types.js';
+
+export function parse(input: string, registry: Map<string, SyntaxDefinition> = SyntaxRegistry): AstParseResult {
+    const { tokens, error: tokenizeError } = tokenize(input, registry);
+    
+    if (tokenizeError) {
+        return {
+            ast: { type: 'root', children: [] },
+            error: tokenizeError
+        };
+    }
+    
+    const children: AstNode[] = [];
+    let i = 0;
+    
+    while (i < tokens.length) {
+        const token = tokens[i];
+        
+        const definition = registry.get(token);
+        if (definition) {
+            const result = definition.handler(tokens, i, registry);
+            if (result.node.type !== 'literal' || result.node.value !== '') {
+                children.push(result.node);
+            }
+            i = result.newIndex;
+        } else if (token === ')' || token === ';' || token === '}') {
+            i++;
+        } else {
+            const result = parseExpression(tokens, i, registry);
+            if (result.node.type !== 'literal' || result.node.value !== '') {
+                children.push(result.node);
+            }
+            i = result.newIndex;
+        }
+    }
+    
+    const ast: RootNode = {
+        type: 'root',
+        children
+    };
+    
+    return { ast };
+}
+
+export function parseToAst(input: string): AstParseResult {
+    return parse(input);
+}
+
+export function printAst(node: AstNode, indent: number = 0): string {
+    const prefix = '  '.repeat(indent);
+    let output = '';
+    
+    switch (node.type) {
+        case 'root':
+            output += `${prefix}ROOT\n`;
+            for (const child of node.children) {
+                output += printAst(child, indent + 1);
+            }
+            break;
+            
+        case 'setVar':
+            output += `${prefix}SetVar\n`;
+            output += `${prefix}  name: "${node.name}"\n`;
+            output += `${prefix}  value:\n`;
+            output += printAst(node.value, indent + 2);
+            break;
+            
+        case 'getVar':
+            output += `${prefix}GetVar("${node.name}")\n`;
+            if (node.userSelector) {
+                output += `${prefix}  userSelector:\n`;
+                output += printAst(node.userSelector, indent + 2);
+            }
+            break;
+            
+        case 'exists':
+            output += `${prefix}Exists("${node.name}")\n`;
+            if (node.userSelector) {
+                output += `${prefix}  userSelector:\n`;
+                output += printAst(node.userSelector, indent + 2);
+            }
+            break;
+            
+        case 'function':
+            output += `${prefix}Function("${node.name}")\n`;
+            if (node.args.length > 0) {
+                output += `${prefix}  args:\n`;
+                for (const arg of node.args) {
+                    output += printAst(arg, indent + 2);
+                }
+            }
+            break;
+            
+        case 'conditional':
+            output += `${prefix}Conditional\n`;
+            if (node.condition) {
+                output += `${prefix}  condition:\n`;
+                output += printAst(node.condition, indent + 2);
+            }
+            if (node.left) {
+                output += `${prefix}  left:\n`;
+                output += printAst(node.left, indent + 2);
+            }
+            if (node.operator) {
+                output += `${prefix}  operator: "${node.operator}"\n`;
+            }
+            if (node.right) {
+                output += `${prefix}  right:\n`;
+                output += printAst(node.right, indent + 2);
+            }
+            output += `${prefix}  trueBranch:\n`;
+            output += printAst(node.trueBranch, indent + 2);
+            output += `${prefix}  falseBranch:\n`;
+            output += printAst(node.falseBranch, indent + 2);
+            break;
+            
+        case 'binary':
+            output += `${prefix}Binary("${node.operator}")\n`;
+            output += `${prefix}  left:\n`;
+            output += printAst(node.left, indent + 2);
+            output += `${prefix}  right:\n`;
+            output += printAst(node.right, indent + 2);
+            break;
+            
+        case 'unary':
+            output += `${prefix}Unary("${node.operator}")\n`;
+            output += `${prefix}  argument:\n`;
+            output += printAst(node.argument, indent + 2);
+            break;
+            
+        case 'ternary':
+            output += `${prefix}Ternary\n`;
+            output += `${prefix}  test:\n`;
+            output += printAst(node.test, indent + 2);
+            output += `${prefix}  consequent:\n`;
+            output += printAst(node.consequent, indent + 2);
+            output += `${prefix}  alternate:\n`;
+            output += printAst(node.alternate, indent + 2);
+            break;
+            
+        case 'template':
+            output += `${prefix}Template\n`;
+            for (const seg of node.segments) {
+                if (seg.type === 'text') {
+                    output += `${prefix}  Text: "${seg.value}"\n`;
+                } else {
+                    output += `${prefix}  Expr:\n`;
+                    output += printAst(seg.node, indent + 2);
+                }
+            }
+            break;
+            
+        case 'literal':
+            output += `${prefix}Literal("${node.value}")\n`;
+            break;
+
+        case 'arrayLiteral':
+            output += `${prefix}ArrayLiteral\n`;
+            for (const item of node.items) {
+                output += printAst(item, indent + 1);
+            }
+            break;
+
+        case 'loopVar':
+            output += `${prefix}LoopVar("#${node.name}")\n`;
+            break;
+
+        case 'loopAssign':
+            output += `${prefix}LoopAssign("#${node.name}", "${node.operator}")\n`;
+            if (node.value) {
+                output += `${prefix}  value:\n`;
+                output += printAst(node.value, indent + 2);
+            }
+            break;
+
+        case 'forLoop':
+            output += `${prefix}ForLoop("#${node.loopVar}", ${node.mode})\n`;
+            if (node.init) {
+                output += `${prefix}  init:\n`;
+                output += printAst(node.init, indent + 2);
+            }
+            if (node.condition) {
+                output += `${prefix}  condition:\n`;
+                output += printAst(node.condition, indent + 2);
+            }
+            if (node.update) {
+                output += `${prefix}  update:\n`;
+                output += printAst(node.update, indent + 2);
+            }
+            if (node.iterable) {
+                output += `${prefix}  iterable:\n`;
+                output += printAst(node.iterable, indent + 2);
+            }
+            output += `${prefix}  body:\n`;
+            for (const bodyNode of node.body) {
+                output += printAst(bodyNode, indent + 2);
+            }
+            break;
+            
+        case 'custom':
+            output += `${prefix}Custom("${node.customType}")\n`;
+            output += `${prefix}  data: ${JSON.stringify(node.data)}\n`;
+            break;
+    }
+    
+    return output;
+}

@@ -1,0 +1,49 @@
+{
+  "logo": {
+    "label": "DimaBot Docs"
+  },
+  "nav": {
+    "docs": {
+      "label": "Documentación",
+      "link": "/"
+    }
+  },
+  "docFooter": {
+    "prev": "Anterior",
+    "next": "Siguiente"
+  },
+  "pagination": true,
+  "search": {
+    "label": "Buscar",
+    "cancel": "Cancelar",
+    "description": "Buscar en la documentación"
+  },
+  "tableOfContents": {
+    "title": "En esta página",
+    "minHeadingLevel": 2,
+    "maxHeadingLevel": 3
+  },
+  "shortcuts": {
+    "openSearch": "Abrir búsqueda (Ctrl + K)",
+    "toggleTheme": "Cambiar tema",
+    "toggleSidebar": "Alternar barra lateral"
+  },
+  "themeToggle": {
+    "light": "Cambiar a tema claro",
+    "dark": "Cambiar a tema oscuro",
+    "system": "Cambiar a tema del sistema"
+  },
+  "linkButton": {
+    "text": "Ver en GitHub"
+  },
+  "404": {
+    "title": "Página no encontrada",
+    "hint": "Parece que esta página no existe.",
+    "linkText": "Volver al inicio"
+  },
+  "expressiveCode": {
+    "copyButtonTitle": "Copiar código",
+    "editButtonTitle": "Editar código",
+    "terminalTitle": "Terminal"
+  }
+}

@@ -1,0 +1,67 @@
+---
+title: Disparadores y Medios
+description: Automatiza sonidos, overlays y animaciones durante tu transmisión.
+sidebar:
+  order: 5
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Los disparadores son acciones basadas en eventos que suceden automáticamente durante tu transmisión. Conecta sonidos, overlays y más a momentos específicos.
+
+## Tipos de Disparadores
+
+### Disparadores Basados en Chat
+
+Se activan con mensajes específicos de chat o uso de comandos:
+- Invocaciones de comandos personalizados
+- Detección de palabras clave
+- Patrones de frases
+
+### Disparadores Basados en Eventos
+
+Reaccionan automáticamente a eventos de Twitch:
+- Nuevos seguidores
+- Nuevas suscripciones
+- Raids
+- Donaciones de Bits
+- Canjes de puntos del canal
+
+## Tipos de Medios
+
+| Tipo | Descripción |
+|------|-------------|
+| **Sonidos** | Clips de audio reproducidos a través del audio de la transmisión |
+| **Overlays** | Gráficos visuales/animaciones mostrados en la transmisión |
+| **TTS** | Mensajes de texto a voz |
+| **Combos** | Múltiples tipos de medios encadenados |
+
+## Configurar Disparadores
+
+<Steps>
+
+1. **Navega a Disparadores**
+
+   Abre la sección de Disparadores en tu panel.
+
+2. **Sube Medios**
+
+   Sube tus archivos de sonido, imágenes de overlay o configura los ajustes de TTS.
+
+3. **Crea un Disparador**
+
+   Selecciona el evento disparador y vincúlalo a la acción de medio deseada.
+
+4. **Prueba**
+
+   Usa el botón de prueba para previsualizar cómo actuará tu disparador en vivo.
+
+</Steps>
+
+<Aside type="caution">
+Los disparadores de medios requieren que OBS esté conectado a DomDimaBot para que los overlays y algunas funciones de audio funcionen correctamente.
+</Aside>
+
+## Conexión con OBS
+
+Para usar disparadores de overlay, necesitarás el plugin de OBS de DomDimaBot instalado. Consulta la [guía de configuración de OBS](/es/triggers/obs-setup/) para instrucciones.

@@ -1,0 +1,168 @@
+---
+title: Referencia de Funciones AST
+description: "Funciones AST disponibles: usuario, Twitch, moderación, EventSub, TTS, triggers, contadores, clips y chat."
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Las funciones se llaman con `$(...)`.
+
+```bash
+$(user)
+$(random 10)
+$(twitch.game)
+```
+
+<Aside type="note">
+Algunas funciones solo leen datos. Otras ejecutan acciones como banear, cambiar título, hablar por TTS o enviar mensajes al chat. Restringe los comandos con acciones fuertes a roles de confianza.
+</Aside>
+
+## Funciones de usuario
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(user)` | Nombre del usuario actual | `$(user)` |
+| `$(touser)` | Usuario objetivo desde el contexto | `$(touser)` |
+| `$(randomuser)` | Usuario aleatorio del chat | `$(randomuser)` |
+
+## Funciones aleatorias
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(random N)` | Entero aleatorio de `0` a `N-1` | `$(random 10)` |
+| `$(random)` | Entero aleatorio usando el rango por defecto | `$(random)` |
+
+## Funciones de Twitch
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(twitch.subs)` | Número de subs | `$(twitch.subs)` |
+| `$(twitch.title)` | Título del stream | `$(twitch.title)` |
+| `$(twitch.game)` | Categoría actual | `$(twitch.game)` |
+| `$(twitch.viewers)` | Viewers / chatters | `$(twitch.viewers)` |
+| `$(twitch.follows)` | Número de follows | `$(twitch.follows)` |
+| `$(twitch.channel)` | Nombre del broadcaster | `$(twitch.channel)` |
+| `$(twitch.login)` | Login del broadcaster | `$(twitch.login)` |
+
+## Funciones de moderación
+
+| Función | Descripción | Args | Nivel |
+|---------|-------------|------|-------|
+| `$(vip)` o `$(add.vip)` | Dar VIP | `username [days]` | Mod |
+| `$(unvip)` | Quitar VIP | `username` | Mod |
+| `$(ban)` | Ban o timeout | `username [duration_seconds]` | Mod |
+| `$(ban.mod)` | Ban y restaurar mod opcionalmente | `username seconds true|false` | Mod |
+| `$(mod)` o `$(add.mod)` | Dar moderador | `username [days]` | Owner |
+| `$(unmod)` | Quitar moderador | `username` | Owner |
+| `$(clear.chat)` | Limpiar chat | none | Mod |
+| `$(emoteonly)` | Activar solo emotes | `[duration_seconds]` | Mod |
+| `$(bot.mode attack)` | Activa manualmente el Modo Ataque de Defensa de Follows | none | Mod |
+| `$(bot.mode status)` | Muestra el modo actual de Defensa de Follows | none | Mod |
+
+Las duraciones temporales de mod y VIP de `1` a `365` días requieren **Premium o Pro**.
+
+<Aside type="caution">
+`$(bot.mode attack)` puede banear permanentemente followers rastreados de una ola activa de follows. Usalo solo en comandos restringidos a moderadores, como `!defmode`. Consulta [Defensa de Follows](/es/follow-defense/) para más detalles.
+</Aside>
+
+## Funciones de canal
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(raid channel)` | Hacer raid a un canal | `$(raid targetchannel)` |
+| `$(unraid)` | Cancelar raid | `$(unraid)` |
+| `$(set.title new_title)` | Actualizar el título | `$(set.title Playing Valorant!)` |
+| `$(set.game game_name)` | Actualizar categoría | `$(set.game Valorant)` |
+| `$(start.prediction title;opt1/opt2;seconds)` | Iniciar predicción | `$(start.prediction Who wins?;A/B;120)` |
+| `$(start.poll title;opt1/opt2;seconds)` | Iniciar encuesta | `$(start.poll Favorite game?;COD/Halo;60)` |
+| `$(ad)` | Duración del anuncio en segundos | `$(ad)` |
+| `$(ad.time)` | Duración del anuncio en segundos | `$(ad.time)` |
+| `$(ai prompt)` | Respuesta generada por IA | `$(ai tell a joke)` |
+
+## Funciones de conteo
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(count N)` | Lee el conteo actual y opcionalmente suma `N` | `$(count 5)` |
+| `$(count 0)` | Lee el conteo sin cambiarlo | `$(count 0)` |
+| `$(count -3)` | Resta del conteo | `$(count -3)` |
+| `$(scount)` | Incremento simple de `+1` | `$(scount)` |
+| `$(bits)` | Bits de un evento cheer | `$(bits)` |
+
+## Funciones de clip
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(create.clip)` | Crea un clip y devuelve la URL | `$(create.clip)` |
+
+## Funciones de followage
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(followage username)` | Devuelve cuánto tiempo sigue un usuario | `$(followage ronni)` |
+
+## Funciones de EventSub
+
+Estas solo devuelven datos útiles cuando el comando se dispara desde el evento EventSub correcto.
+
+| Función | Contexto EventSub | Devuelve |
+|---------|-------------------|----------|
+| `$(raid.channel)` | `channel.raid` | Nombre del canal que raidea |
+| `$(raid.login)` | `channel.raid` | Login del canal que raidea |
+| `$(raid.viewers)` | `channel.raid` | Número de viewers del raid |
+| `$(cheer.amount)` | `channel.cheer` | Bits del cheer |
+| `$(cheer.message)` | `channel.cheer` | Texto del cheer |
+| `$(sub.tier)` | `channel.subscribe` | Prime / Tier 1 / Tier 2 / Tier 3 |
+| `$(sub.months)` | `channel.subscribe` | Meses acumulados |
+| `$(gifted.user)` | `channel.gift` | Usuario receptor del regalo |
+| `$(hypetrain.progress)` | `hypetrain.event` | Progreso hacia la meta |
+| `$(hypetrain.level)` | `hypetrain.event` | Nivel actual |
+| `$(hypetrain.end)` | `hypetrain.event` | Timestamp final |
+| `$(shoutout.channel)` | `channel.shoutout` | Canal del shoutout |
+| `$(reward.input)` | `channel.points_redemption` | Input de la redención |
+| `$(redemption.input)` | `channel.points_redemption` | Input de la redención |
+| `$(ad)` | `channel.ad_break` | Duración del anuncio |
+
+## Funciones de TTS
+
+| Función | Plan | Descripción | Uso |
+|---------|------|-------------|-----|
+| `$(tts message)` | Todos | Cola de TTS por defecto | `$(tts Hello world)` |
+| `$(tts.speak message)` | Todos | Igual que `$(tts ...)` | `$(tts.speak Hello)` |
+| `$(tts.ai message)` | Premium / Pro | TTS con voz IA | `$(tts.ai Hello world)` |
+| `$(tts.clone name message)` | Pro | TTS con voice clone | `$(tts.clone voice1 Hello)` |
+
+## Funciones de trigger
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(trigger.send name)` | Dispara un trigger | `$(trigger.send airhorn)` |
+| `$(trigger.send name true)` | Dispara un trigger en cola | `$(trigger.send airhorn true)` |
+
+## Funciones de delay, control y chat
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(delay N)` | Pausa `N` segundos, máximo `60` | `$(delay 5)` |
+| `$(break)` | Sale de un bucle antes de tiempo | `$(break)` |
+| `$(continue)` | Salta la iteración actual del bucle | `$(continue)` |
+| `$(chat.send message)` | Envía un mensaje al chat | `$(chat.send Hello everyone!)` |
+
+## Ejemplos rápidos
+
+| Función | Ejemplo de uso | Salida de ejemplo |
+|---------|----------------|-------------------|
+| `$(user)` | `"Welcome $(user)!"` | `Welcome ronchi!` |
+| `$(random 20)` | `"You rolled: $(random 20)"` | `You rolled: 7` |
+| `$(twitch.subs)` | `"We have $(twitch.subs) subscribers!"` | `We have 1542 subscribers!` |
+| `$(count 1)` | `"Uses: $(count 1)"` | `Uses: 42` |
+| `$(followage ronchi)` | `"$(user) has followed for $(followage ronchi)"` | `ronchi has followed for 1 year...` |
+| `$(create.clip)` | `"Clip: $(create.clip)"` | `Clip: https://clips.twitch.tv/...` |
+| `$(trigger.send airhorn)` | `"$(trigger.send airhorn)"` | El trigger se dispara |
+| `$(chat.send Hello everyone!)` | `"$(chat.send Hello everyone!)"` | Mensaje enviado |
+
+<Aside type="tip">
+Si una función cambia el estado del canal o modera usuarios, acompáñala con permisos correctos en tu dashboard.
+</Aside>

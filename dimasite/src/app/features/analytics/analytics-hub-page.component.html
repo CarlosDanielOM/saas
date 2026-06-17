@@ -12,7 +12,6 @@
       <div class="analytics-hub__chips" aria-label="Analytics highlights">
         <span class="analytics-hub__chip">{{ t('analyticsHub.chips.activeFollowers') }}</span>
         <span class="analytics-hub__chip">{{ t('analyticsHub.chips.mutualHighlights') }}</span>
-        <span class="analytics-hub__chip">{{ t('analyticsHub.chips.futureHistory') }}</span>
       </div>
     </div>
 
@@ -26,8 +25,8 @@
     </div>
   </header>
 
-  <section class="analytics-hub__grid">
-    <article class="analytics-hub-card analytics-hub-card--feature" [class.analytics-hub-card--locked]="!hasPaidAccess()">
+  <section class="analytics-hub__content">
+    <article class="analytics-hub-card analytics-hub-card--primary" [class.analytics-hub-card--locked]="!hasPaidAccess()">
       <div class="analytics-hub-card__header">
         <div class="analytics-hub-card__icon-shell">
           <lucide-icon [img]="followersIcon" class="analytics-hub-card__icon"></lucide-icon>
@@ -59,25 +58,9 @@
         }
       </div>
     </article>
-
-    <article class="analytics-hub-card analytics-hub-card--roadmap">
-      <div class="analytics-hub-card__header analytics-hub-card__header--compact">
-        <div class="analytics-hub-card__icon-shell analytics-hub-card__icon-shell--secondary">
-          <lucide-icon [img]="analyticsIcon" class="analytics-hub-card__icon"></lucide-icon>
-        </div>
-        <span class="analytics-hub-card__badge analytics-hub-card__badge--future">{{ t('analyticsHub.roadmap.badge') }}</span>
-      </div>
-
-      <div class="analytics-hub-card__body">
-        <p class="analytics-hub-card__eyebrow">{{ t('analyticsHub.roadmap.eyebrow') }}</p>
-        <h2>{{ t('analyticsHub.roadmap.title') }}</h2>
-        <p>{{ t('analyticsHub.roadmap.description') }}</p>
-        <ul class="analytics-hub-card__list">
-          <li>{{ t('analyticsHub.roadmap.items.endedHistory') }}</li>
-          <li>{{ t('analyticsHub.roadmap.items.retentionViews') }}</li>
-          <li>{{ t('analyticsHub.roadmap.items.moreModules') }}</li>
-        </ul>
-      </div>
-    </article>
   </section>
+
+  <footer class="analytics-hub__future">
+    <p class="analytics-hub__future-teaser">{{ t('analyticsHub.future.teaser') }}</p>
+  </footer>
 </section>

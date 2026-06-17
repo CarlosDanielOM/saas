@@ -1,0 +1,79 @@
+---
+title: Welcome to DomDimaBot Docs
+description: Everything you need to know about DomDimaBot - your Twitch streaming companion.
+template: splash
+sidebar:
+  hidden: true
+hero:
+  title: DomDimaBot
+  tagline: Your ultimate Twitch streaming companion. Automate commands, manage rewards, engage your community, and more.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get Started
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Dashboard
+      link: https://domdimabot.com
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<div class="hero-showcase">
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="chat-status-dot"></div>
+      <span>Twitch Chat</span>
+    </div>
+    <div class="chat-messages">
+      <div class="chat-message user">
+        <span class="chat-user">Viewer:</span>
+        <span class="chat-text">!commands</span>
+      </div>
+      <div class="chat-message bot">
+        <span class="chat-bot-badge">BOT</span>
+        <span class="chat-user">DomDimaBot:</span>
+        <span class="chat-text">Current active commands: !ping, !socials, !tts, !play... Type !help <span class="accent-glow">[Premium]</span> for more!</span>
+      </div>
+      <div class="chat-message user">
+        <span class="chat-user-vip">VIP_Streamer:</span>
+        <span class="chat-text">!tts Hello chat!</span>
+      </div>
+      <div class="chat-message bot voice">
+        <span class="chat-bot-badge">BOT</span>
+        <span class="chat-user">DomDimaBot:</span>
+        <span class="chat-text">🔊 Playing voice text... <span class="premium-glow">[Pro Tier]</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<CardGrid stagger>
+  <Card title="Quick Setup" icon="rocket" href="/getting-started/">
+    Get up and running in minutes with our straightforward setup guide. Connect your Twitch account and start automating.
+  </Card>
+  <Card title="Commands" icon="command" href="/commands/">
+    Create custom commands for anything your community needs. From simple text responses to complex integrations.
+  </Card>
+  <Card title="Text to Speech" icon="voice" href="/tts/">
+    Configure TTS providers, expressive AI voice tags, and AI credit costs.
+  </Card>
+  <Card title="Rewards & Redemptions" icon="gift" href="/rewards/">
+    Manage Twitch channel points, custom rewards, and automated redemptions seamlessly.
+  </Card>
+  <Card title="AI Personality" icon="sparkle" href="/ai-personality/">
+    Give your bot a unique personality powered by AI. It can chat, respond to context, and engage naturally.
+  </Card>
+  <Card title="Triggers & Media" icon="play" href="/triggers/">
+    Set up trigger-based actions for sounds, overlays, animations, and more during your streams.
+  </Card>
+  <Card title="Follow Defense" icon="shield" href="/follow-defense/">
+    Protect your stream from follow floods, bot follow attacks, and hate raids with configurable defense modes.
+  </Card>
+  <Card title="Analytics" icon="chart" href="https://domdimabot.com" target="_blank">
+    Track your stream performance, follower growth, and engagement metrics in real-time.
+  </Card>
+</CardGrid>

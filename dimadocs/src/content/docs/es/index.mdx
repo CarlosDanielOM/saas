@@ -1,0 +1,79 @@
+---
+title: Bienvenido a los Docs de DomDimaBot
+description: Todo lo que necesitas saber sobre DomDimaBot - tu compañero de streaming en Twitch.
+template: splash
+sidebar:
+  hidden: true
+hero:
+  title: DomDimaBot
+  tagline: Tu compañero definitivo de streaming en Twitch. Automatiza comandos, gestiona recompensas, involucra a tu comunidad y más.
+  image:
+    file: ../../../assets/logo.svg
+  actions:
+    - text: Comenzar
+      link: /es/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Panel de Control
+      link: https://domdimabot.com
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<div class="hero-showcase">
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="chat-status-dot"></div>
+      <span>Chat de Twitch</span>
+    </div>
+    <div class="chat-messages">
+      <div class="chat-message user">
+        <span class="chat-user">Espectador:</span>
+        <span class="chat-text">!commands</span>
+      </div>
+      <div class="chat-message bot">
+        <span class="chat-bot-badge">BOT</span>
+        <span class="chat-user">DomDimaBot:</span>
+        <span class="chat-text">Comandos activos actuales: !ping, !socials, !tts, !play... ¡Escribe !help <span class="accent-glow">[Premium]</span> para más!</span>
+      </div>
+      <div class="chat-message user">
+        <span class="chat-user-vip">VIP_Streamer:</span>
+        <span class="chat-text">!tts ¡Hola chat!</span>
+      </div>
+      <div class="chat-message bot voice">
+        <span class="chat-bot-badge">BOT</span>
+        <span class="chat-user">DomDimaBot:</span>
+        <span class="chat-text">🔊 Reproduciendo texto a voz... <span class="premium-glow">[Tier Pro]</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<CardGrid stagger>
+  <Card title="Configuración Rápida" icon="rocket" href="/es/getting-started/">
+    Ponlo en marcha en minutos con nuestra guía de configuración directa. Conecta tu cuenta de Twitch y empieza a automatizar.
+  </Card>
+  <Card title="Comandos" icon="command" href="/es/commands/">
+    Crea comandos personalizados para cualquier cosa que necesite tu comunidad. Desde respuestas de texto simples hasta integraciones complejas.
+  </Card>
+  <Card title="Texto a Voz" icon="voice" href="/es/tts/">
+    Configura proveedores TTS, etiquetas expresivas de voz IA y costos de créditos IA.
+  </Card>
+  <Card title="Recompensas y Canjes" icon="gift" href="/es/rewards/">
+    Gestiona puntos del canal, recompensas personalizadas y canjes automatizados sin problemas.
+  </Card>
+  <Card title="Personalidad IA" icon="sparkle" href="/es/ai-personality/">
+    Dale a tu bot una personalidad única impulsada por IA. Puede chatear, responder al contexto y participar de forma natural.
+  </Card>
+  <Card title="Disparadores y Medios" icon="play" href="/es/triggers/">
+    Configura acciones basadas en disparadores para sonidos, overlays, animaciones y más durante tus transmisiones.
+  </Card>
+  <Card title="Defensa de Follows" icon="shield" href="/es/follow-defense/">
+    Protege tu stream de avalanchas de follows, ataques con bots y hate raids con modos de defensa configurables.
+  </Card>
+  <Card title="Analíticas" icon="chart" href="https://domdimabot.com" target="_blank">
+    Rastrea el rendimiento de tu transmisión, crecimiento de seguidores y métricas de engagement en tiempo real.
+  </Card>
+</CardGrid>

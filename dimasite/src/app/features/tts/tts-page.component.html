@@ -1,0 +1,498 @@
+<div class="tts-page">
+  <section class="tts-hero">
+    <div class="tts-hero__content">
+      <a [routerLink]="modulePath()" class="tts-back-link">
+        <lucide-icon [img]="sparklesIcon" class="tts-back-link__icon"></lucide-icon>
+        <span>{{ t('modules.tts.backToModules') }}</span>
+      </a>
+
+      <div class="tts-hero__chips">
+        <span class="tts-chip">
+          <lucide-icon [img]="wavesIcon" class="tts-chip__icon"></lucide-icon>
+          {{ t('modules.tts.heroBadge') }}
+        </span>
+        <span class="tts-chip tts-chip--soft">{{ t('modules.tts.providerPill') }}</span>
+        <span class="tts-chip" [class.tts-chip--readonly]="ttsReadOnly()">
+          <lucide-icon [img]="ttsReadOnly() ? lockIcon : crownIcon" class="tts-chip__icon"></lucide-icon>
+          {{ ttsReadOnly() ? t('modules.tts.readOnlyPill') : getCurrentPlanLabel() }}
+        </span>
+      </div>
+
+      <div class="tts-hero__body">
+        <div class="tts-hero__copy">
+          <p class="tts-hero__eyebrow">{{ t('modules.tts.eyebrow') }}</p>
+          <h1 class="tts-hero__title">{{ t('modules.tts.title') }}</h1>
+          <p class="tts-hero__subtitle">{{ t('modules.tts.subtitle') }}</p>
+        </div>
+
+        <div class="tts-hero__actions">
+          @if (speechApiUrl()) {
+            <button type="button" class="tts-button tts-button--ghost" (click)="copySpeechUrl()">
+              <lucide-icon [img]="urlCopied() ? checkIcon : copyIcon" class="tts-button__icon"></lucide-icon>
+              <span>{{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (ttsErrorMessage()) {
+    <section class="tts-banner" role="alert">
+      <lucide-icon [img]="alertIcon" class="tts-banner__icon"></lucide-icon>
+      <div class="tts-banner__copy">
+        <p>{{ ttsErrorMessage() }}</p>
+        <button type="button" class="tts-inline-button" (click)="retryLoad()">{{ t('common.retry') }}</button>
+      </div>
+    </section>
+  }
+
+  @if (ttsLoading() && !hasTtsSettings()) {
+    <section class="tts-loading" aria-live="polite">
+      <loading-indicator [loading]="true" variant="three" size="md"></loading-indicator>
+      <p>{{ t('modules.tts.states.loading') }}</p>
+    </section>
+  } @else if (ttsSettings(); as tts) {
+    <section class="tts-stat-grid">
+      <article class="tts-stat-card">
+        <span class="tts-stat-card__label">{{ t('modules.tts.metrics.status') }}</span>
+        <strong class="tts-stat-card__value" [class.tts-stat-card__value--danger]="!tts.enabled">
+          {{ tts.enabled ? t('modules.tts.metrics.statusActive') : t('modules.tts.metrics.statusDisabled') }}
+        </strong>
+        <span class="tts-stat-card__meta">{{ t('modules.tts.metrics.statusMeta') }}</span>
+      </article>
+
+      <article class="tts-stat-card">
+        <span class="tts-stat-card__label">{{ t('modules.tts.metrics.engine') }}</span>
+        <strong class="tts-stat-card__value">{{ currentDefaultProviderLabel() }}</strong>
+        <span class="tts-stat-card__meta">{{ t('modules.tts.metrics.engineMeta') }}</span>
+      </article>
+
+      <article class="tts-stat-card">
+        <span class="tts-stat-card__label">{{ t('modules.tts.metrics.queue') }}</span>
+        <strong class="tts-stat-card__value">{{ tts.queue.maxItems }}</strong>
+        <span class="tts-stat-card__meta">{{ t('modules.tts.metrics.queueMeta') }}</span>
+      </article>
+
+      <article class="tts-stat-card">
+        <span class="tts-stat-card__label">{{ t('modules.tts.metrics.maxLength') }}</span>
+        <strong class="tts-stat-card__value">{{ tts.filters.maxLength }}</strong>
+        <span class="tts-stat-card__meta">{{ t('modules.tts.metrics.maxLengthMeta') }}</span>
+      </article>
+    </section>
+
+    @if (speechApiUrl()) {
+      <section class="tts-endpoint-card">
+        <div class="tts-endpoint-card__icon">
+          <lucide-icon [img]="wavesIcon"></lucide-icon>
+        </div>
+        <div class="tts-endpoint-card__copy">
+          <p class="tts-endpoint-card__label">{{ t('modules.tts.urlSection.label') }}</p>
+          <code class="tts-endpoint-card__url">{{ speechApiUrl() }}</code>
+          <p class="tts-endpoint-card__hint">{{ t('modules.tts.urlSection.hint') }}</p>
+        </div>
+        <button
+          type="button"
+          class="tts-button tts-button--ghost tts-endpoint-card__button"
+          [class.tts-endpoint-card__button--copied]="urlCopied()"
+          (click)="copySpeechUrl()"
+        >
+          <lucide-icon [img]="urlCopied() ? checkIcon : copyIcon" class="tts-button__icon"></lucide-icon>
+          <span>{{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}</span>
+        </button>
+      </section>
+    }
+
+    <section class="tts-layout">
+      <article class="tts-card">
+        <header class="tts-card__header">
+          <div>
+            <p class="tts-card__kicker">{{ t('modules.tts.cards.behaviorKicker') }}</p>
+            <h2 class="tts-card__title">{{ t('modules.tts.cards.behaviorTitle') }}</h2>
+          </div>
+          <lucide-icon [img]="queueIcon" class="tts-card__icon"></lucide-icon>
+        </header>
+
+        <div class="tts-toggle-row">
+          <div>
+            <p class="tts-toggle-row__label">{{ t('modules.tts.fields.enabledLabel') }}</p>
+            <p class="tts-toggle-row__hint">{{ t('modules.tts.fields.enabledHint') }}</p>
+          </div>
+          <label class="tts-switch">
+            <input
+              type="checkbox"
+              class="tts-switch__input"
+              [checked]="tts.enabled"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsEnabled($any($event.target).checked)"
+            />
+            <span class="tts-switch__track">
+              <span class="tts-switch__thumb"></span>
+            </span>
+          </label>
+        </div>
+
+        <div class="tts-form-grid">
+          <label class="tts-field">
+            <span class="tts-field__label">
+              <lucide-icon [img]="languageIcon" class="tts-field__icon"></lucide-icon>
+              {{ t('modules.tts.fields.defaultLanguageLabel') }}
+            </span>
+            <select
+              class="tts-select"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsDefaultLanguage($any($event.target).value)"
+            >
+              <option value="es" [selected]="tts.defaultLanguage === 'es'">{{ t('modules.tts.fields.languageSpanish') }}</option>
+              <option value="en" [selected]="tts.defaultLanguage === 'en'">{{ t('modules.tts.fields.languageEnglish') }}</option>
+            </select>
+          </label>
+
+          <label class="tts-field">
+            <span class="tts-field__label">
+              <lucide-icon [img]="sparklesIcon" class="tts-field__icon"></lucide-icon>
+              {{ t('modules.tts.fields.defaultProviderLabel') }}
+            </span>
+            <select
+              class="tts-select"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsProvider($any($event.target).value)"
+            >
+              @for (provider of defaultProviderOptions(); track provider.value) {
+                <option [value]="provider.value" [selected]="provider.value === tts.provider">{{ provider.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="tts-field">
+            <span class="tts-field__label">{{ t('modules.tts.fields.maxLengthLabel') }}</span>
+            <input
+              type="number"
+              class="tts-input"
+              min="30"
+              max="500"
+              [value]="tts.filters.maxLength"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (input)="updateTtsMaxLength($event)"
+            />
+          </label>
+
+          <label class="tts-field">
+            <span class="tts-field__label">{{ t('modules.tts.fields.queueMaxItemsLabel') }}</span>
+            <input
+              type="number"
+              class="tts-input"
+              min="1"
+              max="20"
+              [value]="tts.queue.maxItems"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (input)="updateQueueMaxItems($event)"
+            />
+            <span class="tts-field__hint">{{ t('modules.tts.fields.queueMaxItemsHint') }}</span>
+          </label>
+        </div>
+
+        <div class="tts-note">
+          <p class="tts-note__title">{{ t('modules.tts.defaultMode.title') }}</p>
+          <p class="tts-note__copy">{{ t('modules.tts.defaultMode.copy') }}</p>
+        </div>
+      </article>
+
+      <article class="tts-card">
+        <header class="tts-card__header">
+          <div>
+            <p class="tts-card__kicker">{{ t('modules.tts.cards.voiceKicker') }}</p>
+            <h2 class="tts-card__title">{{ t('modules.tts.cards.voiceTitle') }}</h2>
+          </div>
+          <lucide-icon [img]="voiceIcon" class="tts-card__icon"></lucide-icon>
+        </header>
+
+        @if (showCloneSettings()) {
+          <div class="tts-form-grid tts-form-grid--single">
+            <label class="tts-field">
+              <span class="tts-field__label">{{ t('modules.tts.fields.cloneVoiceLabel') }}</span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsCloneDefault($any($event.target).value)"
+              >
+                @for (voice of cloneDefaultVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === (tts.voices.cloneDefault || 'gojo')">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        } @else {
+          <div class="tts-form-grid tts-form-grid--single">
+            <label class="tts-field">
+              <span class="tts-field__label">{{ t('modules.tts.fields.englishVoiceLabel') }}</span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsVoice('en', $any($event.target).value)"
+              >
+                @for (voice of englishVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === tts.voices.en">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="tts-field">
+              <span class="tts-field__label">{{ t('modules.tts.fields.spanishVoiceLabel') }}</span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsVoice('es', $any($event.target).value)"
+              >
+                @for (voice of spanishVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === tts.voices.es">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
+        }
+      </article>
+
+      <article class="tts-card">
+        <header class="tts-card__header">
+          <div>
+            <p class="tts-card__kicker">{{ t('modules.tts.cards.aiKicker') }}</p>
+            <h2 class="tts-card__title">{{ t('modules.tts.cards.aiTitle') }}</h2>
+          </div>
+          <lucide-icon [img]="botIcon" class="tts-card__icon"></lucide-icon>
+        </header>
+
+        @if (showAiSettings()) {
+          <div class="tts-form-grid tts-form-grid--single">
+            <label class="tts-field">
+              <span class="tts-field__label">
+                <lucide-icon [img]="sparklesIcon" class="tts-field__icon"></lucide-icon>
+                {{ t('modules.tts.fields.aiProviderLabel') }}
+              </span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiProvider($any($event.target).value)"
+              >
+                @for (provider of aiProviderOptions(); track provider.value) {
+                  <option [value]="provider.value" [selected]="provider.value === tts.aiProvider">{{ provider.label }}</option>
+                }
+              </select>
+            </label>
+
+            @if (showOpenRouterModelSettings()) {
+              <label class="tts-field">
+                <span class="tts-field__label">{{ t('modules.tts.fields.openRouterModelLabel') }}</span>
+                <select
+                  class="tts-select"
+                  [disabled]="ttsReadOnly() || ttsSaving()"
+                  (change)="updateOpenRouterModel($any($event.target).value)"
+                >
+                  @for (model of openRouterModelOptions(); track model.value) {
+                    <option [value]="model.value" [selected]="model.value === getDisplayedOpenRouterModel()">{{ model.label }}</option>
+                  }
+                </select>
+              </label>
+            }
+
+            <label class="tts-field">
+              <span class="tts-field__label">{{ t('modules.tts.fields.aiEnglishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiVoice('en', $any($event.target).value)"
+              >
+                @for (voice of englishAiVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('en')">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="tts-field">
+              <span class="tts-field__label">{{ t('modules.tts.fields.aiSpanishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
+              <select
+                class="tts-select"
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiVoice('es', $any($event.target).value)"
+              >
+                @for (voice of spanishAiVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('es')">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <div class="tts-note tts-note--subtle">
+            <p class="tts-note__title">{{ t('modules.tts.future.title') }}</p>
+            <p class="tts-note__copy">{{ t('modules.tts.future.copy') }}</p>
+          </div>
+        } @else {
+          <div class="tts-upgrade-card">
+            <div class="tts-upgrade-card__badge">
+              <lucide-icon [img]="crownIcon" class="tts-upgrade-card__badge-icon"></lucide-icon>
+              {{ t('modules.tts.badges.premium') }}
+            </div>
+            <h3 class="tts-upgrade-card__title">{{ t('modules.tts.upgrade.title') }}</h3>
+            <p class="tts-upgrade-card__copy">{{ t('modules.tts.upgrade.description') }}</p>
+            <ul class="tts-upgrade-card__list">
+              <li>{{ t('modules.tts.upgrade.features.aiVoices') }}</li>
+              <li>{{ t('modules.tts.upgrade.features.expressiveTags') }}</li>
+              <li>{{ t('modules.tts.upgrade.features.openRouter') }}</li>
+            </ul>
+            <div class="tts-upgrade-card__plan">
+              <span>{{ t('modules.tts.upgrade.currentPlan') }}</span>
+              <strong>{{ getCurrentPlanLabel() }}</strong>
+            </div>
+          </div>
+        }
+      </article>
+
+      <article class="tts-card">
+        <header class="tts-card__header">
+          <div>
+            <p class="tts-card__kicker">{{ t('modules.tts.cards.filtersKicker') }}</p>
+            <h2 class="tts-card__title">{{ t('modules.tts.cards.filtersTitle') }}</h2>
+          </div>
+          <lucide-icon [img]="slidersIcon" class="tts-card__icon"></lucide-icon>
+        </header>
+
+        <div class="tts-check-grid">
+          <label class="tts-check-card" [class.tts-check-card--active]="tts.filters.skipEmotes">
+            <input
+              type="checkbox"
+              class="tts-check-card__input"
+              [checked]="tts.filters.skipEmotes"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsFilter('skipEmotes', $any($event.target).checked)"
+            />
+            <span class="tts-check-card__title">{{ t('modules.tts.fields.skipEmotesLabel') }}</span>
+            <span class="tts-check-card__copy">{{ t('modules.tts.fields.skipEmotesHint') }}</span>
+          </label>
+
+          <label class="tts-check-card" [class.tts-check-card--active]="tts.filters.stripLinks">
+            <input
+              type="checkbox"
+              class="tts-check-card__input"
+              [checked]="tts.filters.stripLinks"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsFilter('stripLinks', $any($event.target).checked)"
+            />
+            <span class="tts-check-card__title">{{ t('modules.tts.fields.stripLinksLabel') }}</span>
+            <span class="tts-check-card__copy">{{ t('modules.tts.fields.stripLinksHint') }}</span>
+          </label>
+
+          <label class="tts-check-card" [class.tts-check-card--active]="tts.filters.normalizeWhitespace">
+            <input
+              type="checkbox"
+              class="tts-check-card__input"
+              [checked]="tts.filters.normalizeWhitespace"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (change)="updateTtsFilter('normalizeWhitespace', $any($event.target).checked)"
+            />
+            <span class="tts-check-card__title">{{ t('modules.tts.fields.normalizeWhitespaceLabel') }}</span>
+            <span class="tts-check-card__copy">{{ t('modules.tts.fields.normalizeWhitespaceHint') }}</span>
+          </label>
+        </div>
+      </article>
+
+      @if (showExpressiveTagsSection()) {
+        <article class="tts-card tts-card--full">
+          <header class="tts-card__header tts-card__header--split">
+            <div>
+              <p class="tts-card__kicker">{{ t('modules.tts.expressive.kicker') }}</p>
+              <h2 class="tts-card__title">{{ t('modules.tts.expressive.title') }}</h2>
+              <p class="tts-card__subtitle">{{ t('modules.tts.expressive.subtitle') }}</p>
+            </div>
+            <div class="tts-pill-summary" aria-live="polite">
+              <strong>{{ expressiveTagsEnabledCount() }}/{{ expressiveTagsTotalCount() }}</strong>
+              <span>{{ t('modules.tts.expressive.summary') }}</span>
+            </div>
+          </header>
+
+          <div class="tts-note tts-note--subtle">
+            <p class="tts-note__title">{{ t('modules.tts.expressive.providerTitle') }}</p>
+            <p class="tts-note__copy">{{ t('modules.tts.expressive.providerCopy') }}</p>
+          </div>
+
+          <p class="tts-tag-help">{{ t('modules.tts.expressive.toggleHint') }}</p>
+
+          <div class="tts-tag-columns">
+            <section class="tts-tag-column">
+              <header class="tts-tag-column__header">
+                <h3>{{ t('modules.tts.expressive.inlineTitle') }}</h3>
+                <p>{{ t('modules.tts.expressive.inlineCopy') }}</p>
+              </header>
+
+              @for (category of inlineExpressiveTagCategories; track category.categoryKey) {
+                <div class="tts-tag-category">
+                  <h4>{{ t(category.categoryKey) }}</h4>
+                  <div class="tts-tag-pills" role="group" [attr.aria-label]="t(category.categoryKey)">
+                    @for (item of category.items; track item.key) {
+                      <button
+                        type="button"
+                        class="tts-tag-pill"
+                        [class.tts-tag-pill--enabled]="isInlineExpressiveTagEnabled(item.key)"
+                        [class.tts-tag-pill--disabled]="!isInlineExpressiveTagEnabled(item.key)"
+                        [disabled]="ttsReadOnly() || ttsSaving()"
+                        [attr.aria-pressed]="isInlineExpressiveTagEnabled(item.key)"
+                        (click)="updateInlineExpressiveTag(item.key, !isInlineExpressiveTagEnabled(item.key))"
+                      >
+                        {{ item.tag }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+
+            <section class="tts-tag-column">
+              <header class="tts-tag-column__header">
+                <h3>{{ t('modules.tts.expressive.wrappingTitle') }}</h3>
+                <p>{{ t('modules.tts.expressive.wrappingCopy') }}</p>
+              </header>
+
+              @for (category of wrappingExpressiveTagCategories; track category.categoryKey) {
+                <div class="tts-tag-category">
+                  <h4>{{ t(category.categoryKey) }}</h4>
+                  <div class="tts-tag-pills" role="group" [attr.aria-label]="t(category.categoryKey)">
+                    @for (item of category.items; track item.key) {
+                      <button
+                        type="button"
+                        class="tts-tag-pill"
+                        [class.tts-tag-pill--enabled]="isWrappingExpressiveTagEnabled(item.key)"
+                        [class.tts-tag-pill--disabled]="!isWrappingExpressiveTagEnabled(item.key)"
+                        [disabled]="ttsReadOnly() || ttsSaving()"
+                        [attr.aria-pressed]="isWrappingExpressiveTagEnabled(item.key)"
+                        (click)="updateWrappingExpressiveTag(item.key, !isWrappingExpressiveTagEnabled(item.key))"
+                      >
+                        {{ item.tag }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+          </div>
+        </article>
+      }
+    </section>
+
+    <footer class="tts-footer">
+      <p class="tts-footer__copy">{{ t(ttsReadOnly() ? 'modules.tts.footer.readOnly' : 'modules.tts.footer.owner') }}</p>
+
+      @if (!ttsReadOnly()) {
+        <button type="button" class="tts-button tts-button--primary" [disabled]="ttsSaving() || !ttsDirty()" (click)="saveTtsSettings()">
+          @if (ttsSaving()) {
+            <span class="tts-button__spinner"></span>
+          }
+          <span>{{ ttsSaving() ? t('modules.tts.actions.saving') : t('modules.tts.actions.save') }}</span>
+        </button>
+      }
+    </footer>
+  } @else {
+    <section class="tts-empty">
+      <lucide-icon [img]="micIcon" class="tts-empty__icon"></lucide-icon>
+      <p>{{ t('modules.tts.states.empty') }}</p>
+    </section>
+  }
+</div>

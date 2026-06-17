@@ -140,6 +140,40 @@ export const routes: Routes = [
             title: 'Triggers | DomDimaBot'
           },
           {
+            path: 'dimafx',
+            loadComponent: () =>
+              import('./features/dimafx/dimafx-page.component').then((m) => m.DimafxPageComponent),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'DimaFX | DomDimaBot'
+          },
+          {
+            path: 'ai-personality',
+            loadComponent: () =>
+              import('./features/ai-personality/ai-personality-page.component').then(
+                (m) => m.AiPersonalityPageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'AI Personality | DomDimaBot'
+          },
+          {
+            path: 'memories',
+            loadComponent: () =>
+              import('./features/memories/memories-page.component').then(
+                (m) => m.MemoriesPageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Memories | DomDimaBot'
+          },
+          {
             path: 'analytics',
             children: [
               {
@@ -188,6 +222,40 @@ export const routes: Routes = [
               permission: 'dashboard:view'
             },
             title: 'Redemptions | DomDimaBot'
+          },
+          {
+            path: 'tts',
+            loadComponent: () =>
+              import('./features/tts/tts-page.component').then((m) => m.TtsPageComponent),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'settings:view'
+            },
+            title: 'Text to Speech | DomDimaBot'
+          },
+          {
+            path: 'follow-defense',
+            loadComponent: () =>
+              import('./features/follow-defense/follow-defense-page.component').then(
+                (m) => m.FollowDefensePageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Follow Defense | DomDimaBot'
+          },
+          {
+            path: 'stream-summaries',
+            loadComponent: () =>
+              import('./features/stream-summaries/stream-summaries-page.component').then(
+                (m) => m.StreamSummariesPageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Stream Summaries | DomDimaBot'
           }
         ]
       },

@@ -1,0 +1,214 @@
+---
+title: Defensa de Follows
+description: Protege tu canal de avalanchas de follows, ataques con bots y hate raids.
+sidebar:
+  order: 6
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Defensa de Follows ayuda a proteger tu stream cuando alguien envia una gran ola de cuentas bot a seguir tu canal. Estos ataques pueden llenar el chat de alertas, activar overlays repetidamente y saturar tu flujo de moderacion.
+
+DomDimaBot observa la velocidad de follows en segundo plano y puede pasar por tres niveles de proteccion: **Modo Silencioso**, **Modo Proteccion** y **Modo Ataque**.
+
+<Aside type="note">
+Defensa de Follows se puede desactivar completamente. Si ya usas otro sistema de proteccion, desactiva la Defensa de Follows de DomDimaBot para evitar interferencias con tus alertas o moderacion.
+</Aside>
+
+## Que hace Defensa de Follows
+
+Cuando esta activado, DomDimaBot puede:
+
+- Detectar rafagas de follows demasiado rapidas en segundos.
+- Silenciar temporalmente alertas de follows para detener spam en chat y overlays.
+- Rastrear los followers de la ola actual para revision o accion posterior.
+- Banear nuevos follows durante eventos confirmados de proteccion.
+- Escalar manualmente a Modo Ataque con un comando personalizado.
+- Detectar raids y rastrear follows de raid sin tratarlos automaticamente como ataques.
+- Guardar historial de ataques y posibles fuentes de hate raid para referencia futura.
+
+## Resumen de modos
+
+| Modo | Disparador predeterminado | Que sucede |
+|------|---------------------------|------------|
+| **Normal** | Sin rafaga activa | Las alertas de follows funcionan normalmente. |
+| **Modo Silencioso** | 10 follows en 5 segundos | Se silencian las alertas de follows y se rastrea la ola. Todavia no hay bans. |
+| **Modo Proteccion** | 100 follows en la ventana de deteccion | DomDimaBot anuncia proteccion y banea nuevos follows de la ola, excepto si hay una raid activa. |
+| **Modo Ataque** | 500 follows o activacion manual | DomDimaBot banea todos los follows rastreados de la ola y sigue baneando nuevos follows hasta que el modo expire o se reinicie. |
+
+Todos los limites son configurables por canal.
+
+## Como funciona la deteccion
+
+Defensa de Follows usa una ventana corta de tiempo en vez de esperar minutos para reaccionar.
+
+Por defecto:
+
+- **Limite silencioso:** 10 follows
+- **Ventana de deteccion:** 5 segundos
+- **Duracion de rastreo:** 60 segundos
+- **Limite de proteccion:** 100 follows
+- **Limite de ataque:** 500 follows
+
+Ejemplo:
+
+```txt
+10 follows en 5 segundos  -> Modo Silencioso
+100 follows en 5 segundos -> Modo Proteccion
+500 follows en 5 segundos -> Modo Ataque
+```
+
+Si una rafaga solo llega al Modo Silencioso y luego se detiene, DomDimaBot vuelve a normal despues de la duracion de rastreo y envia un resumen corto en vez de spamear cada alerta de follow.
+
+## Modo Silencioso
+
+Modo Silencioso es la primera capa de seguridad.
+
+Cuando se activa:
+
+- DomDimaBot deja de enviar mensajes de alerta de follows.
+- Los triggers relacionados con follows deben quedar silenciados mientras el modo esta activo.
+- Los followers de la ola se rastrean.
+- Nadie es baneado todavia.
+
+Esto es util para picos sospechosos que aun podrian ser legitimos.
+
+## Modo Proteccion
+
+Modo Proteccion se activa cuando la ola de follows supera el limite de proteccion.
+
+Cuando se activa fuera de una raid:
+
+- DomDimaBot envia un aviso al chat.
+- Los nuevos follows de la ola son baneados usando el endpoint de bans de Twitch.
+- Los follows ya rastreados quedan disponibles para escalar.
+
+<Aside type="caution">
+Modo Proteccion usa bans, no timeouts, cuando banea atacantes de follows. Asegurate de que tus limites coincidan con la actividad normal de tu canal.
+</Aside>
+
+## Modo Ataque
+
+Modo Ataque es la respuesta mas fuerte.
+
+Puede activarse automaticamente cuando se alcanza el limite de ataque, o manualmente con un comando AST.
+
+Cuando se activa:
+
+- DomDimaBot banea todos los followers rastreados de la ola actual.
+- DomDimaBot sigue baneando nuevos follows mientras el modo esta activo.
+- El evento se guarda en el historial de ataques.
+- Si se activo durante una raid, el raider puede registrarse como posible fuente de hate raid.
+
+<Aside type="danger">
+Modo Ataque puede banear permanentemente muchas cuentas rapidamente. Usalo solo cuando tengas confianza de que la ola de follows es hostil.
+</Aside>
+
+## Comando manual: `!defmode`
+
+El backend proporciona una funcion AST para escalar manualmente:
+
+```txt
+$(bot.mode attack)
+```
+
+Puedes crear el nombre de comando que prefieras. Un comando recomendado es:
+
+```txt
+!defmode -> $(bot.mode attack)
+```
+
+Tambien puedes revisar el estado con:
+
+```txt
+$(bot.mode status)
+```
+
+<Aside type="tip">
+Limita tu comando de defensa a moderadores de confianza o al dueno del canal. Realiza acciones de moderacion.
+</Aside>
+
+## Comportamiento con raids
+
+No toda ola grande de follows es un ataque. Un streamer grande puede raidear tu canal con miles de espectadores y provocar cientos de follows legitimos.
+
+Cuando DomDimaBot recibe un evento de raid de Twitch:
+
+- Marca el canal como en ventana de raid durante 5 minutos.
+- Los follows durante esa ventana son rastreados.
+- DomDimaBot no anuncia automaticamente Modo Proteccion ni banea follows de raid solo porque se alcanzaron los limites.
+- Si activas manualmente Modo Ataque durante la raid, DomDimaBot trata la ola rastreada como hostil y puede registrar al raider como posible fuente de hate raid.
+
+Esto permite que las raids legitimas ocurran normalmente, pero te da una respuesta rapida si la raid se vuelve abusiva.
+
+## Desactivacion global
+
+Usa la opcion global **Activar Defensa de Follows** para encender o apagar todo el sistema.
+
+Cuando Defensa de Follows esta desactivado:
+
+- DomDimaBot no encola eventos de defensa de follows.
+- DomDimaBot no silencia alertas de follows por estado de defensa.
+- DomDimaBot no realiza bans de defensa de follows.
+- El historial existente sigue disponible para revision.
+
+Esto se recomienda si ya usas otro bot o servicio de moderacion para protegerte de ataques de follows.
+
+## Referencia de configuracion
+
+| Configuracion | Predeterminado | Descripcion |
+|---------------|----------------|-------------|
+| **Activar Defensa de Follows** | Activado | Enciende o apaga todo el sistema. |
+| **Modo Silencioso activado** | Activado | Permite que la primera capa de proteccion silencie alertas. |
+| **Modo Proteccion activado** | Activado | Permite que DomDimaBot banee nuevos follows durante una avalancha confirmada. |
+| **Modo Ataque activado** | Activado | Permite bans automaticos o manuales de toda la ola. |
+| **Limite silencioso** | 10 | Numero de follows necesarios para entrar en Modo Silencioso. |
+| **Ventana de deteccion** | 5 segundos | Ventana de tiempo usada para detectar rafagas. |
+| **Limite de proteccion** | 100 | Numero de follows necesarios para entrar en Modo Proteccion. |
+| **Limite de ataque** | 500 | Numero de follows necesarios para entrar en Modo Ataque. |
+| **Duracion de rastreo** | 60 segundos | Cuanto tiempo DomDimaBot rastrea la ola actual. |
+| **Follows esperados por hora** | Personalizado | Linea base opcional que configuras para la actividad normal de tu canal. |
+
+## Configuracion recomendada
+
+<Steps>
+
+1. **Activa Defensa de Follows**
+
+   Activa la opcion global salvo que ya uses otro sistema de proteccion de follows.
+
+2. **Configura limites realistas**
+
+   Comienza con los valores predeterminados y ajustalos segun el tamano de tu canal y actividad normal de follows.
+
+3. **Crea un comando manual de defensa**
+
+   Agrega un comando solo para moderadores como `!defmode` que ejecute `$(bot.mode attack)`.
+
+4. **Explica a tus moderadores que hace**
+
+   Asegurate de que tus moderadores de confianza entiendan que Modo Ataque banea todos los follows rastreados en la ola activa.
+
+5. **Revisa el historial despues de incidentes**
+
+   Usa los logs de ataques y fuentes de hate raid para entender que paso y ajustar la configuracion despues.
+
+</Steps>
+
+## Escenarios comunes
+
+### Un pico pequeno sospechoso
+
+Si llegan 10 follows en 5 segundos y luego se detienen, DomDimaBot entra en Modo Silencioso, silencia alertas, rastrea la ola y luego vuelve a normal con un resumen.
+
+### Una avalancha clara de follows
+
+Si la ola llega al limite de proteccion fuera de una raid, DomDimaBot entra en Modo Proteccion y empieza a banear nuevos follows de la ola.
+
+### Un ataque hostil grande
+
+Si la ola llega al limite de ataque, o un moderador usa `!defmode`, DomDimaBot entra en Modo Ataque y banea todos los follows rastreados de la ola.
+
+### Una raid legitima grande
+
+Si hay un evento de raid activo de Twitch, DomDimaBot rastrea follows silenciosamente. No baneara automaticamente follows de raid salvo que actives Modo Ataque manualmente.

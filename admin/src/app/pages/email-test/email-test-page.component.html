@@ -1,0 +1,184 @@
+<div class="email-test">
+  <section class="email-test__header">
+    <h1 class="email-test__title">Email Test</h1>
+    <p class="email-test__subtitle">Send test emails to verify your templates</p>
+  </section>
+
+  <div class="email-test__card">
+    <section class="email-test__form">
+      <div class="form-group">
+        <span class="form-label">Email Type</span>
+        <div class="email-test__email-types">
+          <div class="email-type-option">
+            <input
+              type="radio"
+              id="type-welcome"
+              name="emailType"
+              value="welcome"
+              [ngModel]="emailType()"
+              (ngModelChange)="emailType.set($event)"
+            />
+            <label for="type-welcome">
+              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+              </svg>
+              <span class="email-type-option__label">Welcome</span>
+            </label>
+          </div>
+
+          <div class="email-type-option">
+            <input
+              type="radio"
+              id="type-reminder"
+              name="emailType"
+              value="activation-reminder"
+              [ngModel]="emailType()"
+              (ngModelChange)="emailType.set($event)"
+            />
+            <label for="type-reminder">
+              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span class="email-type-option__label">Reminder</span>
+            </label>
+          </div>
+
+          <div class="email-type-option">
+            <input
+              type="radio"
+              id="type-summary"
+              name="emailType"
+              value="stream-summary"
+              [ngModel]="emailType()"
+              (ngModelChange)="emailType.set($event)"
+            />
+            <label for="type-summary">
+              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span class="email-type-option__label">Summary</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Language</span>
+        <div class="email-test__email-types email-test__email-types--2cols">
+          @for (lang of languages; track lang.value) {
+            <div class="email-type-option email-type-option--compact">
+              <input
+                type="radio"
+                id="lang-{{ lang.value }}"
+                name="language"
+                [value]="lang.value"
+                [ngModel]="language()"
+                (ngModelChange)="language.set($event)"
+              />
+              <label for="lang-{{ lang.value }}">
+                <span class="email-type-option__label">{{ lang.label }}</span>
+              </label>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <span class="form-label">Theme Mode</span>
+        <div class="email-test__email-types email-test__email-types--2cols">
+          @for (t of themes; track t.value) {
+            <div class="email-type-option email-type-option--compact">
+              <input
+                type="radio"
+                id="theme-{{ t.value }}"
+                name="theme"
+                [value]="t.value"
+                [ngModel]="theme()"
+                (ngModelChange)="theme.set($event)"
+              />
+              <label for="theme-{{ t.value }}">
+                <span class="email-type-option__label">{{ t.label }}</span>
+              </label>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="recipient-email" class="form-label">Recipient Email</label>
+        <input
+          id="recipient-email"
+          type="email"
+          class="input"
+          placeholder="your@email.com"
+          [ngModel]="recipientEmail()"
+          (ngModelChange)="recipientEmail.set($event)"
+        />
+      </div>
+
+      <button
+        class="button button--primary"
+        (click)="sendTestEmail()"
+        [disabled]="isLoading()"
+      >
+        @if (isLoading()) {
+          <svg class="button__icon animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Sending...
+        } @else {
+          <svg class="button__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+          Send Test Email
+        }
+      </button>
+    </section>
+
+    @if (result(); as res) {
+      <div class="email-test__result" [class.result--success]="res.success" [class.result--error]="!res.success">
+        @if (res.success) {
+          <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        } @else {
+          <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        }
+        <span>{{ res.message }}</span>
+      </div>
+    }
+
+    <!-- Activation link hook for the new standardized pendingActionsQueue system -->
+    @if (activationLink(); as link) {
+      <div class="email-test__activation-link">
+        <div class="activation-link__header">
+          <span class="activation-link__label">Activation Link (pendingActionsQueue)</span>
+          <button type="button" class="activation-link__clear" (click)="clearActivationLink()" title="Clear link">
+            ×
+          </button>
+        </div>
+        <p class="activation-link__hint">
+          This link goes through <code>/email/auth</code> and will trigger the standardized action queue
+          (toast / redirect) on the public site once the user logs in.
+        </p>
+        <div class="activation-link__row">
+          <a [href]="link" target="_blank" rel="noopener" class="activation-link__url">{{ link }}</a>
+          <button
+            type="button"
+            class="button button--secondary activation-link__copy"
+            (click)="copyActivationLink()"
+          >
+            @if (copyFeedback()) {
+              {{ copyFeedback() }}
+            } @else {
+              Copy
+            }
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

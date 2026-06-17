@@ -1,0 +1,193 @@
+@if (prompt(); as p) {
+  <div class="upgrade-modal-overlay" (click)="onOverlayClick($event)" (keydown.escape)="onCancel()">
+    <div
+      class="upgrade-modal-container"
+      [class.upgrade-modal-container--visible]="isVisible()"
+      [class.upgrade-modal-container--reduced-motion]="useCSSFallback()"
+      #modalContainer
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'upgrade-modal-title'"
+    >
+      <div class="upgrade-modal-canvas" aria-hidden="true">
+        @if (useThreeJS()) {
+          <canvas #particleCanvas class="upgrade-modal-particles"></canvas>
+        } @else {
+          <div class="upgrade-modal-particles-fallback"></div>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="upgrade-modal-close"
+        (click)="onCancel()"
+        [disabled]="isBusy()"
+        [attr.aria-label]="t('common.close')"
+      >
+        <lucide-icon [img]="xIcon" class="upgrade-modal-close-icon"></lucide-icon>
+      </button>
+
+      <div class="upgrade-modal-content">
+        @switch (p.state) {
+          @case ('loading') {
+            <div class="upgrade-modal-state">
+              <div class="upgrade-modal-spinner" aria-hidden="true"></div>
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.loading') }}
+              </h2>
+            </div>
+          }
+
+          @case ('winback') {
+            <div class="upgrade-modal-state">
+              <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--winback" aria-hidden="true">
+                <lucide-icon [img]="sparklesIcon" class="upgrade-modal-icon"></lucide-icon>
+              </div>
+              <span class="upgrade-modal-winback-pill">
+                <lucide-icon [img]="sparklesIcon" class="upgrade-modal-winback-pill-icon"></lucide-icon>
+                {{ t('upgradeModal.winbackBadge') }}
+              </span>
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.winbackTitle') }}
+              </h2>
+              <p class="upgrade-modal-subtitle">{{ t('upgradeModal.winbackBody') }}</p>
+              <div class="upgrade-modal-spinner upgrade-modal-spinner--inline" aria-hidden="true"></div>
+            </div>
+          }
+
+          @case ('reactivate') {
+            <div class="upgrade-modal-state">
+              <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--reactivate" aria-hidden="true">
+                <lucide-icon [img]="refreshIcon" class="upgrade-modal-icon"></lucide-icon>
+              </div>
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.reactivateTitle') }}
+              </h2>
+              <p class="upgrade-modal-subtitle">{{ t('upgradeModal.reactivateBody') }}</p>
+              <div class="upgrade-modal-spinner upgrade-modal-spinner--inline" aria-hidden="true"></div>
+            </div>
+          }
+
+          @case ('already_subscribed') {
+            <div class="upgrade-modal-state">
+              <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--success" aria-hidden="true">
+                <lucide-icon [img]="checkIcon" class="upgrade-modal-icon"></lucide-icon>
+              </div>
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.alreadySubscribed.title', { tier: tierName(p.currentTier) }) }}
+              </h2>
+              <p class="upgrade-modal-subtitle">
+                {{ t('upgradeModal.alreadySubscribed.body') }}
+              </p>
+              <div class="upgrade-modal-actions">
+                <button
+                  type="button"
+                  class="upgrade-modal-btn upgrade-modal-btn--primary"
+                  (click)="onAlreadySubscribed()"
+                >
+                  {{ t('upgradeModal.alreadySubscribed.cta') }}
+                </button>
+              </div>
+            </div>
+          }
+
+          @case ('error') {
+            <div class="upgrade-modal-state">
+              <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--error" aria-hidden="true">
+                <lucide-icon [img]="alertIcon" class="upgrade-modal-icon"></lucide-icon>
+              </div>
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.errorTitle') }}
+              </h2>
+              <p class="upgrade-modal-subtitle">
+                {{ p.errorMessage ?? t('upgradeModal.errorGeneric') }}
+              </p>
+              <div class="upgrade-modal-actions">
+                <button
+                  type="button"
+                  class="upgrade-modal-btn upgrade-modal-btn--primary"
+                  (click)="onRetry()"
+                >
+                  {{ t('upgradeModal.retry') }}
+                </button>
+                <button
+                  type="button"
+                  class="upgrade-modal-btn upgrade-modal-btn--ghost"
+                  (click)="onCancel()"
+                >
+                  {{ t('common.cancel') }}
+                </button>
+              </div>
+            </div>
+          }
+
+          @default {
+            <header class="upgrade-modal-header">
+              <h2 id="upgrade-modal-title" class="upgrade-modal-title">
+                {{ t('upgradeModal.title', { module: p.moduleName }) }}
+              </h2>
+              <p class="upgrade-modal-subtitle">
+                {{ subtitleFor(p.currentTier) }}
+              </p>
+            </header>
+
+            <div
+              class="upgrade-modal-tiers"
+              [class.upgrade-modal-tiers--single]="p.offers.length === 1"
+            >
+              @for (offer of p.offers; track offer.tier) {
+                <article
+                  class="upgrade-tier-card"
+                  [class]="'upgrade-tier-card--' + offer.tier"
+                  [class.upgrade-tier-card--recommended]="offer.recommended"
+                >
+                  @if (offer.recommended) {
+                    <span class="upgrade-tier-card__recommended-badge">
+                      <lucide-icon [img]="sparklesIcon" class="upgrade-tier-card__recommended-icon"></lucide-icon>
+                      {{ t('upgradeModal.recommended') }}
+                    </span>
+                  }
+
+                  <header class="upgrade-tier-card__header">
+                    <h3 class="upgrade-tier-card__name">{{ offer.name }}</h3>
+                    <p class="upgrade-tier-card__price">{{ offer.priceLabel }}</p>
+                  </header>
+
+                  <ul class="upgrade-tier-card__benefits">
+                    @for (benefit of offer.benefits; track benefit) {
+                      <li class="upgrade-tier-card__benefit">
+                        <lucide-icon [img]="checkIcon" class="upgrade-tier-card__benefit-icon"></lucide-icon>
+                        <span>{{ benefit }}</span>
+                      </li>
+                    }
+                  </ul>
+
+                  <button
+                    type="button"
+                    class="upgrade-tier-card__cta"
+                    [class]="'upgrade-tier-card__cta--' + offer.tier"
+                    [disabled]="isBusy()"
+                    (click)="onSubscribe(offer.tier)"
+                  >
+                    {{ offer.ctaLabel }}
+                  </button>
+                </article>
+              }
+            </div>
+
+            <div class="upgrade-modal-footer">
+              <button
+                type="button"
+                class="upgrade-modal-btn upgrade-modal-btn--ghost"
+                [disabled]="isBusy()"
+                (click)="onCancel()"
+              >
+                {{ t('upgradeModal.cancel') }}
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

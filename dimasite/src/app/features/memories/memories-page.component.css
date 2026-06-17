@@ -1,0 +1,1023 @@
+/* AI Memories Page - Glassmorphism Redesign */
+
+:host {
+  display: block;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Shell - Ambient Backdrop & Typography
+   ========================================================================== */
+.memories-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 10% 15%, color-mix(in srgb, var(--ring) 8%, transparent), transparent 35%),
+    radial-gradient(circle at 90% 85%, color-mix(in srgb, #3b82f6 6%, transparent), transparent 35%),
+    linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  color: var(--text);
+  font-family: 'Outfit', 'Inter', sans-serif;
+  max-width: 1400px;
+  margin: 0 auto;
+  border-radius: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Lucide Icon Alignment rules */
+.memories-page lucide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.memories-page lucide-icon svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ==========================================================================
+   Hero / Header
+   ========================================================================== */
+.memories-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 2.25rem;
+  border-radius: 1.75rem;
+  border: 1px solid color-mix(in srgb, var(--ring) 20%, transparent);
+  background: linear-gradient(135deg, rgba(20, 13, 31, 0.95), rgba(31, 18, 56, 0.92)),
+              radial-gradient(circle at top right, rgba(168, 85, 247, 0.25), transparent 60%),
+              radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.2), transparent 60%);
+  color: #f8fafc;
+  box-shadow: 0 20px 40px -15px rgba(109, 40, 217, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.memories-hero__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #d8b4fe;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memories-hero__back:hover {
+  color: #ffffff;
+  transform: translateX(-4px);
+}
+
+.memories-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(168, 85, 247, 0.25);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 9999px;
+  color: #c084fc;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+.memories-hero__title {
+  margin: 0 0 0.5rem;
+  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #ffffff, #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.memories-hero__subtitle {
+  color: rgba(226, 232, 240, 0.75);
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 44rem;
+}
+
+/* ==========================================================================
+   Filter Bar
+   ========================================================================== */
+.memories-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--surface) 40%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1.5rem;
+  backdrop-filter: blur(16px);
+}
+
+.memories-filters__tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+}
+
+.memories-filters__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.memories-filters__tab {
+  padding: 0.55rem 1.1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memories-filters__tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.memories-filters__tab--active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(59, 130, 246, 0.25));
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+}
+
+.memories-filters__selects {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.memories-filters__select-wrap {
+  position: relative;
+}
+
+.memories-filters__select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0.55rem 2.25rem 0.55rem 1rem;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(156, 163, 175, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+.dark .memories-filters__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(209, 213, 219, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+}
+
+.memories-filters__select:focus {
+  outline: none;
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 
+    0 0 0 3px rgba(168, 85, 247, 0.15),
+    0 0 10px rgba(168, 85, 247, 0.08);
+}
+
+.memories-filters__search {
+  flex: 1;
+  min-width: 240px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.memories-filters__search-icon {
+  position: absolute;
+  left: 0.85rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-soft);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.memories-filters__search-input {
+  width: 100%;
+  padding: 0.55rem 2.25rem 0.55rem 2.25rem;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memories-filters__search-input::placeholder {
+  color: var(--text-soft);
+  opacity: 0.7;
+}
+
+.memories-filters__search-input:focus {
+  outline: none;
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 
+    0 0 0 3px rgba(168, 85, 247, 0.15),
+    0 0 10px rgba(168, 85, 247, 0.08);
+}
+
+.memories-filters__search-clear {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.memories-filters__search-clear:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.memories-filters__search-clear-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* ==========================================================================
+   Memory Grid & Cards
+   ========================================================================== */
+.memories-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 900px) {
+  .memories-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.memory-card {
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .memory-card {
+  background: color-mix(in srgb, #140d24 65%, transparent);
+  border-color: color-mix(in srgb, #c4b5fd 12%, transparent);
+}
+
+.memory-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 
+    0 15px 40px rgba(0, 0, 0, 0.28),
+    0 0 15px rgba(168, 85, 247, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.memory-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.25rem 0.5rem;
+  gap: 0.75rem;
+}
+
+.memory-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.memory-type {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.memory-card__confidence {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  padding: 0.25rem 0.55rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.memory-card__body {
+  padding: 0.75rem 1.25rem;
+  flex: 1;
+}
+
+.memory-card__summary {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+  font-family: 'Sora', sans-serif;
+}
+
+.memory-card__content {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.memory-card__footer {
+  padding: 0.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.memory-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  opacity: 0.85;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.75rem;
+}
+
+.memory-card__meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.memory-card__meta-label {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.memory-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+/* ==========================================================================
+   Memory Action Buttons
+   ========================================================================== */
+.memory-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-soft);
+}
+
+.memory-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.memory-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.memory-action__icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.memory-action--approve {
+  background: rgba(34, 197, 94, 0.12);
+  color: #a3e635;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.memory-action--approve:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.25);
+  color: #ffffff;
+}
+
+.memory-action--deny {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.memory-action--deny:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+}
+
+.memory-action--archive {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde047;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.memory-action--archive:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+}
+
+.memory-action--edit {
+  background: rgba(168, 85, 247, 0.12);
+  color: #d8b4fe;
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+.memory-action--edit:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.25);
+  color: #ffffff;
+}
+
+.memory-action--delete {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.memory-action--delete:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Badges (Risk & Status)
+   ========================================================================== */
+.memory-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid transparent;
+}
+
+.memory-badge--risk-low {
+  background: rgba(34, 197, 94, 0.12);
+  color: #a3e635;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.memory-badge--risk-medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.memory-badge--risk-high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.memory-badge--status-candidate,
+.memory-badge--status-pending-review {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.memory-badge--status-confirmed {
+  background: rgba(34, 197, 94, 0.12);
+  color: #a3e635;
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.memory-badge--status-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.memory-badge--status-archived {
+  background: rgba(156, 163, 175, 0.12);
+  color: #9ca3af;
+  border-color: rgba(156, 163, 175, 0.2);
+}
+
+/* ==========================================================================
+   Modals & Dialogs
+   ========================================================================== */
+.memory-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+}
+
+/* Edit Modal */
+.memory-modal {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.75rem;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .memory-modal {
+  background: color-mix(in srgb, #1c1430 85%, transparent);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.memory-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.memory-modal__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.memory-modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.memory-modal__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.memory-modal__close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Edit Form */
+.memory-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.memory-edit-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.memory-edit-form__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.memory-edit-form__input,
+.memory-edit-form__textarea,
+.memory-edit-form__select {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.95rem;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memory-edit-form__input:focus,
+.memory-edit-form__textarea:focus,
+.memory-edit-form__select:focus {
+  outline: none;
+  background: rgba(15, 23, 42, 0.6);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 
+    0 0 0 3px rgba(168, 85, 247, 0.15),
+    0 0 12px rgba(168, 85, 247, 0.1);
+}
+
+/* Custom Dropdown Arrow inside Modal Selects */
+.memory-edit-form__select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(156, 163, 175, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.15rem;
+  padding-right: 2.75rem;
+}
+
+.dark .memory-edit-form__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(209, 213, 219, 0.9)' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+}
+
+.memory-edit-form__textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
+
+.memory-edit-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.memory-edit-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.memory-edit-form__cancel {
+  padding: 0.7rem 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memory-edit-form__cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.memory-edit-form__save {
+  padding: 0.7rem 1.75rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 9999px;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memory-edit-form__save:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 10px 24px rgba(124, 58, 237, 0.45),
+    0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.memory-edit-form__save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Confirmation Dialog */
+.memory-confirm-dialog {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  animation: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .memory-confirm-dialog {
+  background: color-mix(in srgb, #1c1430 85%, transparent);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+
+.memory-confirm-dialog__header {
+  margin-bottom: 1rem;
+}
+
+.memory-confirm-dialog__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.memory-confirm-dialog__body {
+  margin-bottom: 1.5rem;
+}
+
+.memory-confirm-dialog__message {
+  color: var(--text-soft);
+  margin: 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.memory-confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.memory-confirm-dialog__cancel {
+  padding: 0.6rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.memory-confirm-dialog__cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.memory-confirm-dialog__confirm {
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 9999px;
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 15px rgba(124, 58, 237, 0.25);
+}
+
+.memory-confirm-dialog__confirm:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 8px 20px rgba(124, 58, 237, 0.35),
+    0 0 10px rgba(168, 85, 247, 0.15);
+}
+
+.memory-confirm-dialog__confirm--danger {
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  box-shadow: 0 6px 15px rgba(239, 68, 68, 0.25);
+}
+
+.memory-confirm-dialog__confirm--danger:hover {
+  box-shadow: 
+    0 8px 20px rgba(239, 68, 68, 0.35),
+    0 0 10px rgba(239, 68, 68, 0.15);
+}
+
+/* ==========================================================================
+   Empty & Error States
+   ========================================================================== */
+.memories-empty,
+.memories-state--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.memories-empty__icon,
+.memories-state__icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  color: rgba(168, 85, 247, 0.5);
+  margin-bottom: 1rem;
+}
+
+.memories-empty__title,
+.memories-state__title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.memories-empty__description,
+.memories-state__message {
+  color: var(--text-soft);
+  margin: 0;
+  font-size: 0.95rem;
+  max-width: 28rem;
+  line-height: 1.5;
+}
+
+.memories-state__action {
+  margin-top: 1.25rem;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 15px rgba(124, 58, 237, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memories-state__action:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.35);
+}
+
+/* ==========================================================================
+   Loading / Load More
+   ========================================================================== */
+.memories-loading,
+.memories-loading-more {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.memories-loading-more {
+  padding: 1.5rem;
+}
+
+.memories-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.memories-load-more__btn {
+  padding: 0.7rem 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.memories-load-more__btn:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(59, 130, 246, 0.2));
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #ffffff;
+  transform: translateY(-1.5px);
+}
+
+/* Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Tablet / Mobile specific media overrides
+   ========================================================================== */
+@media (max-width: 767px) {
+  .memories-page {
+    padding: 1rem;
+  }
+
+  .memories-hero {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+  }
+
+  .memories-filters {
+    padding: 0.85rem;
+    border-radius: 1.25rem;
+  }
+
+  .memories-filters__selects {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .memories-filters__select-wrap,
+  .memories-filters__search {
+    width: 100%;
+  }
+
+  .memory-card {
+    border-radius: 1.25rem;
+  }
+
+  .memory-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .memory-action {
+    justify-content: center;
+  }
+
+  .memory-modal {
+    max-height: 100vh;
+    border-radius: 1.5rem 1.5rem 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+  }
+
+  .memory-edit-form__row {
+    grid-template-columns: 1fr;
+  }
+}

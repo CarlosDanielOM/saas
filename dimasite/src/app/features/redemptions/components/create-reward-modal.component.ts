@@ -22,6 +22,7 @@ import {
 @Component({
   selector: 'app-create-reward-modal',
   imports: [LucideAngularModule, ReactiveFormsModule],
+  styleUrl: './create-reward-modal.component.css',
   template: `
     @if (isOpen()) {
       <div
@@ -324,7 +325,7 @@ export class CreateRewardModalComponent {
 
   form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.minLength(1)]],
-    cost: [100, [Validators.required, Validators.min(1)]],
+    cost: [100, [Validators.required, Validators.min(0)]],
     prompt: [''],
     message: [''],
     cooldown: [0, [Validators.min(0)]],

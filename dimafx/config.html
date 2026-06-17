@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DimaFX Config</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, system-ui, sans-serif;
+        color: #fff;
+        background:
+          radial-gradient(circle at 12% 12%, rgba(168, 85, 247, .45), transparent 32%),
+          radial-gradient(circle at 88% 18%, rgba(34, 211, 238, .28), transparent 34%),
+          linear-gradient(135deg, #150b2f 0%, #2a1556 50%, #12091f 100%);
+      }
+      main {
+        box-sizing: border-box;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(520px, 100%);
+        border: 1px solid rgba(255,255,255,.16);
+        border-radius: 28px;
+        padding: 28px;
+        background: rgba(15, 9, 34, .72);
+        box-shadow: 0 24px 80px rgba(0,0,0,.35);
+        backdrop-filter: blur(18px);
+        text-align: center;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+      .logo-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #a855f7, #22d3ee);
+        box-shadow: 0 0 28px rgba(168,85,247,.55);
+      }
+      h1 { margin: 10px 0 8px; font-size: 24px; }
+      p { margin: 0; color: rgba(255,255,255,.76); line-height: 1.6; }
+      .status {
+        margin: 18px 0;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255,255,255,.08);
+        color: rgba(255,255,255,.82);
+        font-size: 13px;
+      }
+      .btn {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 14px 20px;
+        font-weight: 800;
+        color: white;
+        cursor: pointer;
+        background: linear-gradient(135deg, #9146ff, #22d3ee);
+        box-shadow: 0 16px 34px rgba(145,70,255,.32);
+      }
+      .btn:focus-visible { outline: 3px solid #f0abfc; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card" aria-labelledby="title">
+        <div class="logo"><span class="logo-mark">✦</span>DimaFX</div>
+        <h1 id="title">Configure your media extension</h1>
+        <p>Sign in with Twitch on DomDimaBot to choose media, configure Bits prices, and manage your DimaFX storefront.</p>
+        <div class="status"><strong>Status:</strong> <span id="status">Waiting for Twitch authorization…</span></div>
+        <button class="btn" type="button" id="configure-btn">Sign in with Twitch</button>
+      </section>
+    </main>
+
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+    <script>
+      let channelId = '';
+      Twitch.ext.onAuthorized(function(auth) {
+        channelId = auth.channelId || '';
+        document.getElementById('status').textContent = channelId ? 'Ready for channel ' + channelId : 'Ready';
+      });
+      document.getElementById('configure-btn').addEventListener('click', function() {
+        const returnPath = channelId ? '/' + encodeURIComponent(channelId) + '/modules/dimafx' : '/modules/dimafx';
+        window.open('https://domdimabot.com/login?return=' + encodeURIComponent(returnPath), '_blank', 'noopener,noreferrer');
+      });
+    </script>
+  </body>
+</html>

@@ -26,7 +26,7 @@ import {
 import { AnalyticsApiService } from '../../services/analytics-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
-import { ToastService } from '../../services/toast.service';
+import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -38,6 +38,7 @@ interface ChannelResolutionState {
 @Component({
   selector: 'app-follow-ledger-page',
   imports: [RouterLink, LucideAngularModule, LoadingIndicatorComponent],
+  styleUrl: './follow-ledger-page.component.css',
   templateUrl: './follow-ledger-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -46,7 +47,7 @@ export class FollowLedgerPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly analyticsApi = inject(AnalyticsApiService);
-  private readonly toastService = inject(ToastService);
+  private readonly upgradeService = inject(UpgradeService);
 
   readonly backIcon = ArrowLeft;
   readonly searchIcon = Search;
@@ -319,7 +320,10 @@ export class FollowLedgerPageComponent {
   }
 
   showUpgradeNotice(): void {
-    this.toastService.warning(this.t('common.premiumFeature'), this.t('common.premiumSubscriptionRequired'));
+    void this.upgradeService.promptUpgradeForModule({
+      moduleId: 'analytics.follows',
+      source: 'follow_ledger'
+    });
   }
 
   formatFollowedAt(value: string): string {

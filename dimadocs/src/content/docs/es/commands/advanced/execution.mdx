@@ -1,0 +1,153 @@
+---
+title: Ejecución, Errores y Límites de AST
+description: "Cómo corre el parser AST, errores comunes y límites de seguridad según el plan."
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Esta página explica qué pasa cuando corre un comando AST y cómo depurarlo cuando algo falla.
+
+## Flujo de ejecución
+
+1. Un comando o evento activa la plantilla
+2. Se resuelven placeholders como `&p1` y `&t`
+3. Se crea el contexto de ejecución con datos del usuario, canal y evento
+4. El input se tokeniza
+5. Los tokens se parsean en un AST
+6. El AST se evalúa
+7. Las variables se escriben en memoria, caché o base de datos si hace falta
+8. La salida final se renderiza y se envía al chat
+
+## Por qué importa
+
+Entender el orden te ayuda a depurar problemas como:
+
+- argumentos que no aparecen donde esperabas
+- variables faltantes
+- ramas que se ejecutan cuando no deberían
+- referencias a comandos con resultados raros
+- funciones EventSub que devuelven vacío en el chat
+
+## Mensajes de error comunes
+
+| Patrón de Error | Significado |
+|-----------------|-------------|
+| `[Unknown function: name]` | La función no está registrada |
+| `[Loop error: invalid loop syntax]` | La sintaxis del bucle es inválida |
+| `[Loop error: missing loop body]` | Al bucle le faltan `{}` |
+| `[Parse error: expr]` | El parser no pudo entender la expresión |
+| `Usage: $(func ...)` | Faltan argumentos o son inválidos |
+
+## Límites y reglas de seguridad
+
+### Límites de bucles por plan
+
+| Plan | Máx. profundidad de anidación | Máx. iteraciones |
+|------|-------------------------------|------------------|
+| Free | 2 | 25 |
+| Premium | 3 | 50 |
+| Pro | 4 | 100 |
+
+### Límites de referencia a comandos
+
+- profundidad máxima de recursión: `5`
+- los ciclos se detectan y se frenan
+
+### Límites de delay
+
+- `$(delay N)` soporta hasta `60` segundos
+
+## Checklist de debugging
+
+### 1. Empieza simple
+
+Antes de construir el comando completo, prueba una versión mínima.
+
+```bash
+"Hello $(user)!"
+```
+
+### 2. Añade una sola cosa cada vez
+
+Buen orden:
+
+1. texto plano
+2. argumentos
+3. funciones
+4. variables
+5. condicionales
+6. bucles
+
+### 3. Comprueba la inicialización
+
+Si un valor de caché o base de datos puede no existir todavía, compruébalo primero:
+
+```bash
+*(^(#wins) ? %(#wins) : "no wins yet")
+```
+
+### 4. Recuerda que la asignación es directa
+
+Esto está mal si quieres incrementar:
+
+```bash
+%(#wins 1)
+```
+
+Esto está bien:
+
+```bash
+%(#wins *(%(#wins) + 1))
+```
+
+### 5. Recuerda el contexto EventSub
+
+Funciones como `$(cheer.amount)` o `$(reward.input)` solo funcionan cuando el comando corre desde el tipo de evento correcto.
+
+<Aside type="note">
+Si una función EventSub parece vacía durante pruebas en chat, normalmente no significa que esté rota. Suele significar que el contexto actual no contiene esa carga útil del evento.
+</Aside>
+
+## Errores comunes
+
+### Valor de caché vacío
+
+Si una variable `#` o `##` expiró, volverá vacía.
+
+### Posición de `&t`
+
+`&t` debe ir al final. No puedes definir nuevos `&pN` después.
+
+### Abusar de bucles
+
+Si un bucle puede reemplazarse por una expresión directa o una referencia a otro comando, suele ser mejor la opción simple.
+
+### Acciones potentes en comandos públicos
+
+Los comandos que usan moderación, roles, título, juego, encuestas o triggers no deberían estar disponibles para todo el mundo.
+
+## Mentalidad práctica para depurar
+
+Cuando un comando falla, hazte estas preguntas en orden:
+
+1. ¿Mis argumentos están bien?
+2. ¿Creé la variable antes de leerla?
+3. ¿Estoy asignando o incrementando?
+4. ¿Estoy en el contexto correcto para esa función?
+5. ¿Creé recursión o demasiada complejidad con bucles?
+
+## Consejo para probar con seguridad
+
+Construye primero la salida, y después añade los side effects.
+
+Por ejemplo, prueba el texto y la lógica antes de añadir:
+
+- `$(ban ...)`
+- `$(vip ...)`
+- `$(set.title ...)`
+- `$(start.poll ...)`
+- `$(trigger.send ...)`
+
+Así es mucho más fácil confirmar la lógica antes de que el comando empiece a cambiar el estado real del canal.

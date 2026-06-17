@@ -1,0 +1,67 @@
+---
+title: Triggers & Media
+description: Automate sounds, overlays, and animations during your stream.
+sidebar:
+  order: 5
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Triggers are event-based actions that happen automatically during your stream. Connect sounds, overlays, and more to specific moments.
+
+## Trigger Types
+
+### Chat-Based Triggers
+
+Activate on specific chat messages or command usage:
+- Custom command invocations
+- Keyword detection
+- Phrase patterns
+
+### Event-Based Triggers
+
+React to Twitch events automatically:
+- New followers
+- New subscribers
+- Raids
+- Bits donations
+- Channel point redemptions
+
+## Media Types
+
+| Type | Description |
+|------|-------------|
+| **Sounds** | Audio clips played through stream audio |
+| **Overlays** | Visual graphics/animations shown on stream |
+| **TTS** | Text-to-speech messages |
+| **Combos** | Multiple media types chained together |
+
+## Setting Up Triggers
+
+<Steps>
+
+1. **Navigate to Triggers**
+
+   Open the Triggers section in your dashboard.
+
+2. **Upload Media**
+
+   Upload your sound files, overlay images, or configure TTS settings.
+
+3. **Create Trigger**
+
+   Select your trigger event and link it to the desired media action.
+
+4. **Test**
+
+   Use the test button to preview how your trigger will behave live.
+
+</Steps>
+
+<Aside type="caution">
+Media triggers require OBS to be connected to DomDimaBot for overlays and some audio features to work properly.
+</Aside>
+
+## OBS Connection
+
+To use overlay triggers, you'll need the DomDimaBot OBS plugin installed. See the [OBS Setup guide](/triggers/obs-setup/) for instructions.

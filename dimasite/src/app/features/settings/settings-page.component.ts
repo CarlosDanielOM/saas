@@ -3,28 +3,22 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import {
   AlertCircle,
-  Globe2,
   LucideAngularModule,
-  Mic2,
   Search,
   Shield,
   ShieldPlus,
-  Sparkles,
   Trash2,
   UserRound,
-  Volume2,
   X
 } from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import { LoadingIndicatorComponent } from '../../components/loading';
 import { AdminCandidate, AdminRecord } from '../../models/admin.model';
-import { TtsRole, TtsSettings } from '../../models/tts-settings.model';
 import { AdminApiService } from '../../services/admin-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
-import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -44,7 +38,6 @@ export class SettingsPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly adminApi = inject(AdminApiService);
-  private readonly ttsSettingsApi = inject(TtsSettingsApiService);
   private readonly toastService = inject(ToastService);
 
   readonly searchIcon = Search;
@@ -54,10 +47,6 @@ export class SettingsPageComponent {
   readonly deleteIcon = Trash2;
   readonly userIcon = UserRound;
   readonly alertIcon = AlertCircle;
-  readonly micIcon = Mic2;
-  readonly languageIcon = Globe2;
-  readonly voiceIcon = Volume2;
-  readonly sparklesIcon = Sparkles;
 
   readonly admins = signal<AdminRecord[]>([]);
   readonly candidates = signal<AdminCandidate[]>([]);
@@ -66,12 +55,6 @@ export class SettingsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly pendingAddIDs = signal<string[]>([]);
   readonly pendingDeleteIDs = signal<string[]>([]);
-  readonly ttsSettings = signal<TtsSettings | null>(null);
-  readonly initialTtsSettings = signal<TtsSettings | null>(null);
-  readonly ttsRole = signal<TtsRole>('none');
-  readonly ttsLoading = signal(false);
-  readonly ttsSaving = signal(false);
-  readonly ttsErrorMessage = signal<string | null>(null);
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -166,11 +149,6 @@ export class SettingsPageComponent {
   readonly hasCandidateResults = computed(() => this.filteredCandidates().length > 0);
   readonly isSearchIdle = computed(() => this.normalizedSearchQuery().length === 0);
   readonly showSearchDropdown = computed(() => this.isOwnerView() && !this.isSearchIdle());
-  readonly hasTtsSettings = computed(() => this.ttsSettings() !== null);
-  readonly ttsReadOnly = computed(() => this.ttsRole() !== 'owner');
-  readonly ttsDirty = computed(
-    () => this.serializeTtsSettings(this.ttsSettings()) !== this.serializeTtsSettings(this.initialTtsSettings())
-  );
 
   private lastLoadedKey = '';
 
@@ -230,64 +208,6 @@ export class SettingsPageComponent {
     this.searchQuery.set('');
   }
 
-  updateTtsEnabled(enabled: boolean): void {
-    this.patchTtsSettings((settings) => ({
-      ...settings,
-      enabled
-    }));
-  }
-
-  updateTtsDefaultLanguage(language: 'en' | 'es'): void {
-    this.patchTtsSettings((settings) => ({
-      ...settings,
-      defaultLanguage: language
-    }));
-  }
-
-  updateTtsVoice(language: 'en' | 'es', event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
-
-    const value = target.value;
-    this.patchTtsSettings((settings) => ({
-      ...settings,
-      voices: {
-        ...settings.voices,
-        [language]: value
-      }
-    }));
-  }
-
-  updateTtsFilter(filter: 'skipEmotes' | 'stripLinks' | 'normalizeWhitespace', enabled: boolean): void {
-    this.patchTtsSettings((settings) => ({
-      ...settings,
-      filters: {
-        ...settings.filters,
-        [filter]: enabled
-      }
-    }));
-  }
-
-  updateTtsMaxLength(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
-
-    const parsed = Number.parseInt(target.value || '', 10);
-    const maxLength = Number.isFinite(parsed) ? Math.max(30, Math.min(500, parsed)) : 280;
-
-    this.patchTtsSettings((settings) => ({
-      ...settings,
-      filters: {
-        ...settings.filters,
-        maxLength
-      }
-    }));
-  }
-
   async retryLoad(): Promise<void> {
     const channelID = this.channelID();
     if (!channelID) {
@@ -296,46 +216,6 @@ export class SettingsPageComponent {
 
     this.adminApi.clearCache(channelID);
     await this.loadSettingsData(channelID, this.isOwnerView());
-  }
-
-  async saveTtsSettings(): Promise<void> {
-    const channelID = this.channelID();
-    const settings = this.ttsSettings();
-
-    if (!channelID || !settings || this.ttsReadOnly() || this.ttsSaving() || !this.ttsDirty()) {
-      return;
-    }
-
-    this.ttsSaving.set(true);
-    this.ttsErrorMessage.set(null);
-
-    try {
-      const response = await firstValueFrom(this.ttsSettingsApi.updateSettings(channelID, settings));
-      this.ttsRole.set(response.role);
-      this.ttsSettings.set(response.settings);
-      this.initialTtsSettings.set(this.cloneTtsSettings(response.settings));
-
-      this.toastService.success(
-        this.t('settings.tts.toasts.savedTitle'),
-        this.t('settings.tts.toasts.savedMessage')
-      );
-    } catch (error) {
-      console.error('Failed to save TTS settings:', {
-        channelID,
-        settings,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      });
-
-      const message = error instanceof Error ? error.message : this.t('settings.tts.errors.saveFailed');
-      this.ttsErrorMessage.set(message);
-      this.toastService.error(
-        this.t('settings.tts.toasts.errorTitle'),
-        message
-      );
-    } finally {
-      this.ttsSaving.set(false);
-    }
   }
 
   async addAdmin(candidate: AdminCandidate): Promise<void> {
@@ -436,10 +316,7 @@ export class SettingsPageComponent {
   }
 
   private async loadSettingsData(channelID: string, includeCandidates: boolean): Promise<void> {
-    await Promise.all([
-      this.loadAdminData(channelID, includeCandidates),
-      this.loadTtsSettings(channelID)
-    ]);
+    await this.loadAdminData(channelID, includeCandidates);
   }
 
   private async loadAdminData(channelID: string, includeCandidates: boolean): Promise<void> {
@@ -470,53 +347,5 @@ export class SettingsPageComponent {
     } finally {
       this.loading.set(false);
     }
-  }
-
-  private async loadTtsSettings(channelID: string): Promise<void> {
-    this.ttsLoading.set(true);
-    this.ttsErrorMessage.set(null);
-
-    try {
-      const response = await firstValueFrom(this.ttsSettingsApi.getSettings(channelID));
-      this.ttsRole.set(response.role);
-      this.ttsSettings.set(response.settings);
-      this.initialTtsSettings.set(this.cloneTtsSettings(response.settings));
-    } catch (error) {
-      console.error('Failed to load TTS settings:', {
-        channelID,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      });
-
-      this.ttsRole.set('none');
-      this.ttsSettings.set(null);
-      this.initialTtsSettings.set(null);
-      this.ttsErrorMessage.set(
-        error instanceof Error ? error.message : this.t('settings.tts.errors.loadFailed')
-      );
-    } finally {
-      this.ttsLoading.set(false);
-    }
-  }
-
-  private patchTtsSettings(updater: (settings: TtsSettings) => TtsSettings): void {
-    if (this.ttsReadOnly()) {
-      return;
-    }
-
-    this.ttsSettings.update((settings) => (settings ? updater(settings) : settings));
-  }
-
-  private cloneTtsSettings(settings: TtsSettings): TtsSettings {
-    return {
-      ...settings,
-      voices: { ...settings.voices },
-      filters: { ...settings.filters },
-      queue: { ...settings.queue }
-    };
-  }
-
-  private serializeTtsSettings(settings: TtsSettings | null): string {
-    return settings ? JSON.stringify(settings) : '';
   }
 }

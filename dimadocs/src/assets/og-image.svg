@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9146ff;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#ff79c6;stop-opacity:0.1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="180" height="60" rx="8" fill="url(#bgGrad)"/>
+  
+  <!-- Bot head -->
+  <path d="M30 15 C22 15 22 45 30 45 C38 45 38 15 30 15Z" fill="#9146ff"/>
+  
+  <!-- Eyes -->
+  <circle cx="26" cy="27" r="3" fill="#fff"/>
+  <circle cx="34" cy="27" r="3" fill="#fff"/>
+  <circle cx="27" cy="27" r="1.5" fill="#0d0d12"/>
+  <circle cx="35" cy="27" r="1.5" fill="#0d0d12"/>
+  
+  <!-- Smile -->
+  <path d="M26 35 Q30 39 34 35" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Antenna -->
+  <line x1="30" y1="15" x2="30" y2="8" stroke="#9146ff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="30" cy="7" r="2.5" fill="#ff79c6"/>
+  
+  <!-- Text: DimaBot -->
+  <text x="50" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#9146ff">DimaBot</text>
+</svg>

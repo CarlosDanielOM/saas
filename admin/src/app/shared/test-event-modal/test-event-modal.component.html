@@ -1,0 +1,67 @@
+<div class="modal-overlay" (click)="onCancel()">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <header class="modal__header">
+            <h2 class="modal__title">Test Event: {{ eventType() }}</h2>
+            <button type="button" class="modal__close" (click)="onCancel()">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </header>
+
+        <div class="modal__body">
+            <p class="modal__description">
+                Edit the payload below and click Send to trigger the event handler. Changes will be processed as if from Twitch.
+            </p>
+
+            <div class="form-group">
+                <label for="payload-editor" class="form-label">Event Payload (JSON)</label>
+                <textarea
+                    id="payload-editor"
+                    class="payload-editor"
+                    [value]="payloadText()"
+                    (input)="onPayloadChange($event)"
+                    spellcheck="false"
+                ></textarea>
+                @if (jsonError()) {
+                    <p class="form-error">{{ jsonError() }}</p>
+                }
+            </div>
+
+            <div class="modal__info">
+                <p><strong>Channel ID:</strong> {{ channelID() }}</p>
+            </div>
+        </div>
+
+        <footer class="modal__footer">
+            <button
+                type="button"
+                class="btn btn--secondary"
+                (click)="onReset()"
+                [disabled]="isSending()">
+                Reset
+            </button>
+            <div class="modal__footer-actions">
+                <button
+                    type="button"
+                    class="btn btn--secondary"
+                    (click)="onCancel()"
+                    [disabled]="isSending()">
+                    Cancel
+                </button>
+                <button
+                    type="button"
+                    class="btn btn--primary"
+                    (click)="onSend()"
+                    [disabled]="isSending()">
+                    @if (isSending()) {
+                        <span class="spinner"></span>
+                        Sending...
+                    } @else {
+                        Send Test Event
+                    }
+                </button>
+            </div>
+        </footer>
+    </div>
+</div>

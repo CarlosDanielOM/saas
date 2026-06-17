@@ -34,6 +34,8 @@ import {
   Video,
   X,
   Zap,
+  Eye,
+  Pause,
   type LucideIconData
 } from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
@@ -50,6 +52,7 @@ import { PublicLibraryModalComponent } from './components/public-library-modal.c
 import {
   CreateTriggerRequest,
   TriggerRewardDraft,
+  MediaAsset,
   MediaLibraryItem,
   MediaLibraryMeta,
   MediaScope,
@@ -119,6 +122,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
     ConfirmationModalComponent,
     PublicLibraryModalComponent
   ],
+  styleUrl: './triggers-page.component.css',
   templateUrl: './triggers-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
@@ -163,14 +167,18 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly alertIcon = ShieldAlert;
   readonly closeIcon = X;
   readonly infoIcon = Info;
+  readonly previewIcon = Eye;
+  readonly pauseIcon = Pause;
 
   readonly streamer = toSignal(this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))), {
-    initialValue: getRouteParam(this.route, 'streamer')
+    requireSync: true
   });
-
   readonly channelID = signal<string | null>(null);
   readonly triggers = signal<TriggerRecord[]>([]);
   readonly libraryItems = signal<MediaLibraryItem[]>([]);
+  readonly activePreviewAsset = signal<MediaAsset | null>(null);
+  readonly isAudioPlaying = signal(false);
+  private previewAudio: HTMLAudioElement | null = null;
   readonly libraryMeta = signal<MediaLibraryMeta>(DEFAULT_LIBRARY_META);
 
   readonly isLoadingTriggers = signal(true);
@@ -263,7 +271,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       libraryItemID: this.triggerFormMode() === 'create' && form.libraryItemID.trim().length === 0,
       volume: !Number.isFinite(form.volume) || form.volume < 0 || form.volume > 100,
       rewardTitle: form.reward.enabled && form.reward.title.trim().length === 0,
-      rewardCost: form.reward.enabled && (!Number.isFinite(form.reward.cost) || form.reward.cost < 1),
+      rewardCost: form.reward.enabled && (!Number.isFinite(form.reward.cost) || form.reward.cost < 0),
       rewardCooldown: form.reward.enabled && (!Number.isFinite(form.reward.cooldown) || form.reward.cooldown < 0),
       rewardDuration: form.reward.enabled && (!Number.isFinite(form.reward.duration) || form.reward.duration < 0),
       rewardCostChange: form.reward.enabled && !Number.isFinite(form.reward.costChange)
@@ -296,6 +304,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopPreview();
     if (this.cooldownTimer !== null) {
       window.clearInterval(this.cooldownTimer);
       this.cooldownTimer = null;
@@ -304,6 +313,71 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  getTriggerAsset(trigger: TriggerRecord): MediaAsset | null {
+    const libraryItem = this.libraryItems().find((item) => item._id === trigger.libraryItemID)
+      || this.libraryItems().find((item) => item.assetID === trigger.assetID);
+    return libraryItem?.asset || null;
+  }
+
+  openPreviewModal(event: MouseEvent, asset: MediaAsset): void {
+    event.stopPropagation();
+    this.stopPreview();
+    this.activePreviewAsset.set(asset);
+    if (asset.mediaType === 'audio' && asset.playbackUrl) {
+      this.playAudioPreview(asset.playbackUrl);
+    }
+  }
+
+  closePreviewModal(): void {
+    this.stopPreview();
+    this.activePreviewAsset.set(null);
+  }
+
+  toggleAudioPlayPause(): void {
+    if (!this.previewAudio) {
+      const asset = this.activePreviewAsset();
+      if (asset && asset.playbackUrl) {
+        this.playAudioPreview(asset.playbackUrl);
+      }
+      return;
+    }
+    if (this.previewAudio.paused) {
+      this.previewAudio.play();
+    } else {
+      this.previewAudio.pause();
+    }
+  }
+
+  stopPreview(): void {
+    if (this.previewAudio) {
+      this.previewAudio.pause();
+      this.previewAudio = null;
+    }
+    this.isAudioPlaying.set(false);
+  }
+
+  private playAudioPreview(url: string): void {
+    try {
+      this.previewAudio = new Audio(url);
+      this.previewAudio.volume = 0.5;
+      this.previewAudio.addEventListener('play', () => this.isAudioPlaying.set(true));
+      this.previewAudio.addEventListener('pause', () => this.isAudioPlaying.set(false));
+      this.previewAudio.addEventListener('ended', () => {
+        this.isAudioPlaying.set(false);
+        this.previewAudio = null;
+      });
+      this.previewAudio.addEventListener('error', () => {
+        this.isAudioPlaying.set(false);
+        this.previewAudio = null;
+        this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
+      });
+      this.previewAudio.play();
+    } catch (err) {
+      this.isAudioPlaying.set(false);
+      this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
+    }
   }
 
   handleEscape(): void {

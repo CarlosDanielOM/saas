@@ -6,7 +6,9 @@ import {
   DashboardAccessResponse,
   DashboardBootstrapResponse,
   DashboardLiveStatusResponse,
-  LiveSessionMetrics
+  LiveSessionMetrics,
+  AiCreditsData,
+  AiCreditsResponse
 } from '../models/dashboard.model';
 import { LinksService } from './links.service';
 import { WebsocketService } from './websocket.service';
@@ -33,12 +35,14 @@ export class DashboardApiService implements OnDestroy {
   private readonly linksService = inject(LinksService);
   private readonly websocketService = inject(WebsocketService);
   private readonly stopLivePoll$ = new Subject<void>();
+  private readonly stopAiCreditsPoll$ = new Subject<void>();
   private currentChannelID: string | null = null;
   private wsUnsubscribe: (() => void) | null = null;
 
   readonly bootstrapData = signal<DashboardBootstrapResponse | null>(null);
   readonly liveStatus = signal<DashboardLiveStatusResponse | null>(null);
   readonly liveSessionMetrics = signal<LiveSessionMetrics | null>(null);
+  readonly aiCredits = signal<AiCreditsData | null>(null);
   readonly loading = signal(false);
   readonly connectionStatus = signal<'connected' | 'connecting' | 'disconnected'>('disconnected');
 
@@ -46,6 +50,7 @@ export class DashboardApiService implements OnDestroy {
     this.bootstrapData.set(null);
     this.liveStatus.set(null);
     this.liveSessionMetrics.set(null);
+    this.aiCredits.set(null);
     this.loading.set(false);
     this.connectionStatus.set('disconnected');
   }
@@ -245,6 +250,7 @@ export class DashboardApiService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopLiveStatusPolling();
+    this.stopAiCreditsPolling();
   }
 
   toggleChat(channelID: string, enabled: boolean) {
@@ -252,5 +258,46 @@ export class DashboardApiService implements OnDestroy {
       `${this.linksService.getApiUrl()}/users/chat/${channelID}`,
       { enabled }
     );
+  }
+
+  getAiCredits(channelID: string) {
+    return this.http.get<AiCreditsResponse>(
+      `${this.linksService.getApiUrl()}/billing/ai-credits?channelID=${encodeURIComponent(channelID)}`
+    ).pipe(
+      catchError(() => of({
+        error: true,
+        status: 500,
+        message: 'Failed to load AI credits',
+        data: undefined
+      } as AiCreditsResponse))
+    );
+  }
+
+  startAiCreditsPolling(channelID: string, intervalMs = 60000): void {
+    this.stopAiCreditsPolling();
+
+    // Initial fetch (webhook or 5min cache will usually serve it)
+    this.getAiCredits(channelID).subscribe((response) => {
+      if (response?.data) {
+        this.aiCredits.set(response.data);
+      }
+    });
+
+    interval(intervalMs)
+      .pipe(
+        switchMap(() => this.getAiCredits(channelID)),
+        tap((response) => {
+          if (response?.data) {
+            this.aiCredits.set(response.data);
+          }
+        }),
+        catchError(() => of(null)),
+        takeUntil(this.stopAiCreditsPoll$)
+      )
+      .subscribe();
+  }
+
+  stopAiCreditsPolling(): void {
+    this.stopAiCreditsPoll$.next();
   }
 }

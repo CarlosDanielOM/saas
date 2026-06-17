@@ -67,10 +67,34 @@
           }
         </div>
 
-        <button type="button" class="triggers-mini-button" (click)="refreshAssets()">
-          <lucide-icon [name]="refreshIcon" class="triggers-mini-button__icon"></lucide-icon>
-          <span>{{ t('common.refresh') }}</span>
-        </button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- View Toggle Group -->
+          <div class="triggers-view-toggle-group">
+            <button
+              type="button"
+              class="triggers-view-mode-btn"
+              [class.triggers-view-mode-btn--active]="modalViewMode() === 'grid'"
+              (click)="modalViewMode.set('grid')"
+              title="Grid View"
+            >
+              <lucide-icon [name]="layoutGridIcon" class="triggers-view-icon"></lucide-icon>
+            </button>
+            <button
+              type="button"
+              class="triggers-view-mode-btn"
+              [class.triggers-view-mode-btn--active]="modalViewMode() === 'list'"
+              (click)="modalViewMode.set('list')"
+              title="List View"
+            >
+              <lucide-icon [name]="listIcon" class="triggers-view-icon"></lucide-icon>
+            </button>
+          </div>
+
+          <button type="button" class="triggers-mini-button" (click)="refreshAssets()">
+            <lucide-icon [name]="refreshIcon" class="triggers-mini-button__icon"></lucide-icon>
+            <span>{{ t('common.refresh') }}</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -89,65 +113,211 @@
       </div>
     } @else {
       <div class="public-library-modal__results">
-        @for (asset of assets(); track asset._id) {
-          <article class="media-card media-card--marketplace-detail">
-            <div class="media-card__icon-wrap media-card__icon-wrap--marketplace">
-              <lucide-icon [name]="getMediaIcon(asset.mediaType)" class="media-card__icon"></lucide-icon>
-            </div>
-
-            <div class="media-card__body">
-              <div class="media-card__head">
-                <div>
-                  <h3>{{ asset.displayName }}</h3>
-                  <p class="public-library-modal__creator">{{ asset.ownerChannelName }}</p>
-                </div>
-                <span class="media-card__scope media-card__scope--public">{{ t('triggers.marketplace.publicTag') }}</span>
-              </div>
-
-              <div class="public-library-modal__meta-grid">
-                <div class="public-library-modal__meta-pill">
-                  <span>{{ t('triggers.marketplace.creatorLabel') }}</span>
-                  <strong>{{ asset.ownerChannelName }}</strong>
-                </div>
-                <div class="public-library-modal__meta-pill">
-                  <span>{{ t('triggers.marketplace.typeLabel') }}</span>
-                  <strong>{{ t('triggers.filters.' + asset.mediaType) }}</strong>
-                </div>
-                <div class="public-library-modal__meta-pill">
-                  <span>{{ t('triggers.marketplace.sizeLabel') }}</span>
-                  <strong>{{ formatBytes(asset.bytes) }}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div class="media-card__actions">
-              <button
-                type="button"
-                class="media-card__button media-card__button--add"
-                [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
-                (click)="addAsset(asset)"
+        @if (modalViewMode() === 'grid') {
+          <div class="triggers-modal-grid-cards">
+            @for (asset of assets(); track asset._id) {
+              <div
+                class="triggers-asset-grid-card"
+                [class.triggers-asset-grid-card--selected]="isAssetAdded(asset._id)"
               >
-                @if (isAddingAsset(asset._id)) {
-                  <lucide-icon [name]="refreshIcon" class="media-card__button-icon triggers-spin"></lucide-icon>
-                  <span>{{ t('triggers.marketplace.adding') }}</span>
-                } @else if (isAssetAdded(asset._id)) {
-                  <lucide-icon [name]="checkIcon" class="media-card__button-icon"></lucide-icon>
-                  <span>{{ t('triggers.marketplace.added') }}</span>
-                } @else {
-                  <lucide-icon [name]="plusIcon" class="media-card__button-icon"></lucide-icon>
-                  <span>{{ t('triggers.marketplace.add') }}</span>
-                }
-              </button>
-            </div>
-          </article>
-        } @empty {
-          <div class="triggers-empty-state triggers-empty-state--compact">
-            <lucide-icon [name]="marketplaceIcon" class="triggers-empty-state__icon"></lucide-icon>
-            <h3>{{ t('triggers.marketplace.emptyTitle') }}</h3>
-            <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
+                <!-- Card Preview -->
+                <div class="triggers-asset-grid-card__preview">
+                  @if (asset.mediaType === 'image') {
+                    <img [src]="asset.playbackUrl" class="triggers-asset-grid-card__img" loading="lazy" />
+                  }
+                  @if (asset.mediaType === 'gif') {
+                    <img [src]="asset.playbackUrl" class="triggers-asset-grid-card__img" loading="lazy" />
+                  }
+                  @if (asset.mediaType === 'video') {
+                    <video [src]="asset.playbackUrl" muted preload="metadata" class="triggers-asset-grid-card__video"></video>
+                    <div class="triggers-asset-grid-card__badge-icon">
+                      <lucide-icon [name]="previewIcon" class="h-4 w-4 text-white"></lucide-icon>
+                    </div>
+                  }
+                  @if (asset.mediaType === 'audio') {
+                    <div class="triggers-asset-grid-card__audio-box">
+                      <div class="triggers-wave-animation">
+                        <div class="triggers-wave-animation-bar"></div>
+                        <div class="triggers-wave-animation-bar"></div>
+                        <div class="triggers-wave-animation-bar"></div>
+                        <div class="triggers-wave-animation-bar"></div>
+                      </div>
+                      <lucide-icon [name]="audioIcon" class="h-6 w-6 text-purple-400"></lucide-icon>
+                    </div>
+                  }
+
+                  <!-- Preview Action Button (Float) -->
+                  @if (asset.playbackUrl) {
+                    <button
+                      type="button"
+                      class="triggers-asset-grid-card__preview-btn"
+                      (click)="openPreviewModal($event, asset)"
+                      title="Preview"
+                    >
+                      <lucide-icon [name]="previewIcon" class="h-3.5 w-3.5"></lucide-icon>
+                    </button>
+                  }
+                </div>
+
+                <!-- Info and Action Footer -->
+                <div class="triggers-asset-grid-card__info">
+                  <div class="triggers-asset-grid-card__name" [title]="asset.displayName">{{ asset.displayName }}</div>
+                  <div class="triggers-asset-grid-card__meta">
+                    <span class="triggers-asset-grid-card__creator">{{ asset.ownerChannelName }}</span>
+                    <span class="triggers-asset-grid-card__size">{{ formatBytes(asset.bytes) }}</span>
+                  </div>
+                  <div class="triggers-asset-grid-card__actions">
+                    <button
+                      type="button"
+                      class="media-card__button media-card__button--add w-full"
+                      [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
+                      (click)="addAsset(asset)"
+                    >
+                      @if (isAddingAsset(asset._id)) {
+                        <lucide-icon [name]="refreshIcon" class="media-card__button-icon triggers-spin"></lucide-icon>
+                        <span>{{ t('triggers.marketplace.adding') }}</span>
+                      } @else if (isAssetAdded(asset._id)) {
+                        <lucide-icon [name]="checkIcon" class="media-card__button-icon"></lucide-icon>
+                        <span>{{ t('triggers.marketplace.added') }}</span>
+                      } @else {
+                        <lucide-icon [name]="plusIcon" class="media-card__button-icon"></lucide-icon>
+                        <span>{{ t('triggers.marketplace.add') }}</span>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @empty {
+              <div class="triggers-empty-state triggers-empty-state--compact w-full col-span-full">
+                <lucide-icon [name]="marketplaceIcon" class="triggers-empty-state__icon"></lucide-icon>
+                <h3>{{ t('triggers.marketplace.emptyTitle') }}</h3>
+                <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
+              </div>
+            }
+          </div>
+        }
+
+        @if (modalViewMode() === 'list') {
+          <div class="public-library-modal__list-view">
+            @for (asset of assets(); track asset._id) {
+              <article class="media-card media-card--marketplace-detail">
+                <!-- Preview Button or Thumbnail in List -->
+                <div class="media-card__icon-wrap media-card__icon-wrap--marketplace relative group cursor-pointer" (click)="openPreviewModal($event, asset)">
+                  @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
+                    <img [src]="asset.playbackUrl" class="w-full h-full object-cover rounded" />
+                  } @else {
+                    <lucide-icon [name]="getMediaIcon(asset.mediaType)" class="media-card__icon"></lucide-icon>
+                  }
+                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                    <lucide-icon [name]="previewIcon" class="h-4 w-4 text-white"></lucide-icon>
+                  </div>
+                </div>
+
+                <div class="media-card__body">
+                  <div class="media-card__head">
+                    <div>
+                      <h3 class="cursor-pointer" (click)="openPreviewModal($event, asset)">{{ asset.displayName }}</h3>
+                      <p class="public-library-modal__creator">{{ asset.ownerChannelName }}</p>
+                    </div>
+                    <span class="media-card__scope media-card__scope--public">{{ t('triggers.marketplace.publicTag') }}</span>
+                  </div>
+
+                  <div class="public-library-modal__meta-grid">
+                    <div class="public-library-modal__meta-pill">
+                      <span>{{ t('triggers.marketplace.creatorLabel') }}</span>
+                      <strong>{{ asset.ownerChannelName }}</strong>
+                    </div>
+                    <div class="public-library-modal__meta-pill">
+                      <span>{{ t('triggers.marketplace.typeLabel') }}</span>
+                      <strong>{{ t('triggers.filters.' + asset.mediaType) }}</strong>
+                    </div>
+                    <div class="public-library-modal__meta-pill">
+                      <span>{{ t('triggers.marketplace.sizeLabel') }}</span>
+                      <strong>{{ formatBytes(asset.bytes) }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="media-card__actions">
+                  <button
+                    type="button"
+                    class="media-card__button media-card__button--add"
+                    [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
+                    (click)="addAsset(asset)"
+                  >
+                    @if (isAddingAsset(asset._id)) {
+                      <lucide-icon [name]="refreshIcon" class="media-card__button-icon triggers-spin"></lucide-icon>
+                      <span>{{ t('triggers.marketplace.adding') }}</span>
+                    } @else if (isAssetAdded(asset._id)) {
+                      <lucide-icon [name]="checkIcon" class="media-card__button-icon"></lucide-icon>
+                      <span>{{ t('triggers.marketplace.added') }}</span>
+                    } @else {
+                      <lucide-icon [name]="plusIcon" class="media-card__button-icon"></lucide-icon>
+                      <span>{{ t('triggers.marketplace.add') }}</span>
+                    }
+                  </button>
+                </div>
+              </article>
+            } @empty {
+              <div class="triggers-empty-state triggers-empty-state--compact">
+                <lucide-icon [name]="marketplaceIcon" class="triggers-empty-state__icon"></lucide-icon>
+                <h3>{{ t('triggers.marketplace.emptyTitle') }}</h3>
+                <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
+              </div>
+            }
           </div>
         }
       </div>
     }
   </section>
 </div>
+
+<!-- Inner Preview Popup Sub-Modal -->
+@if (activePreviewAsset(); as previewAsset) {
+  <div class="triggers-preview-overlay" (click)="closePreviewModal()">
+    <div class="triggers-preview-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="triggers-preview-modal__close" (click)="closePreviewModal()">
+        <lucide-icon [name]="closeIcon" class="h-4 w-4"></lucide-icon>
+      </button>
+
+      <div class="triggers-preview-modal__body">
+        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName }}</h4>
+        <p class="triggers-preview-modal__meta">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
+
+        <div class="triggers-preview-modal__content-box">
+          <!-- Audio Waveform Visualizer -->
+          @if (previewAsset.mediaType === 'audio') {
+            <div class="triggers-waveform-visualizer">
+              <div class="triggers-waveform-bars" [class.triggers-waveform-bars--playing]="isAudioPlaying()">
+                @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track bar) {
+                  <div class="triggers-waveform-bar" [style.animation-delay.ms]="bar * 40"></div>
+                }
+              </div>
+              <p class="triggers-waveform-status">
+                {{ isAudioPlaying() ? 'Playing Audio Demo...' : 'Audio Paused' }}
+              </p>
+              <button type="button" class="triggers-preview-play-btn" (click)="toggleAudioPlayPause()">
+                <lucide-icon [name]="isAudioPlaying() ? pauseIcon : playIcon" class="h-5 w-5"></lucide-icon>
+                <span>{{ isAudioPlaying() ? 'Pause Preview' : 'Play Preview' }}</span>
+              </button>
+            </div>
+          }
+
+          <!-- Image Preview -->
+          @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
+            <div class="triggers-image-preview-container">
+              <img [src]="previewAsset.playbackUrl" alt="Preview Asset" class="triggers-image-preview-element" />
+            </div>
+          }
+
+          <!-- Video Preview -->
+          @if (previewAsset.mediaType === 'video') {
+            <div class="triggers-video-preview-container">
+              <video [src]="previewAsset.playbackUrl" autoplay controls class="triggers-video-preview-element"></video>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

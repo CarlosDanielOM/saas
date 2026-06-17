@@ -59,6 +59,9 @@ export interface Module {
         <div class="card-body">
           <h3 class="module-title">{{ module().name }}</h3>
           <p class="module-description">{{ module().description }}</p>
+          @if (lockedSubtext()) {
+            <p class="module-locked-subtext">{{ lockedSubtext() }}</p>
+          }
         </div>
         
         <div class="card-footer">
@@ -321,6 +324,18 @@ export interface Module {
       display: block;
     }
 
+    lucide-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    lucide-icon svg {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
     .icon-glow {
       position: absolute;
       inset: -10px;
@@ -347,6 +362,14 @@ export interface Module {
       color: var(--text-soft);
       line-height: 1.5;
       margin: 0;
+    }
+
+    .module-locked-subtext {
+      font-size: 0.8rem;
+      color: color-mix(in srgb, var(--text-soft) 90%, transparent);
+      font-style: italic;
+      line-height: 1.4;
+      margin: 0.5rem 0 0;
     }
 
     .card-footer {
@@ -394,8 +417,8 @@ export interface Module {
 
     .action-button.upgrade {
       background: linear-gradient(135deg, #fbbf24, #f59e0b);
-      color: white;
-      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+      color: #1e1b4b;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
     }
 
     .arrow-icon {
@@ -432,6 +455,11 @@ export interface Module {
       background-size: 200% 100%;
     }
 
+    .module-card.locked .gradient-line {
+      background: linear-gradient(90deg, #d97706, #fbbf24, #d97706);
+      background-size: 200% 100%;
+    }
+
     .module-card.coming-soon .icon-3d {
       background: linear-gradient(135deg, #9ca3af, #d1d5db);
       box-shadow: 0 10px 25px -5px rgba(156, 163, 175, 0.3);
@@ -440,7 +468,7 @@ export interface Module {
     /* Mobile optimizations - only apply hover effects on hover-capable devices */
     @media (hover: hover) {
       .module-card:hover .card-content {
-        transform: translateY(-8px);
+        transform: translateY(-8px) rotateX(4deg) rotateY(-2deg);
         border-color: color-mix(in srgb, var(--ring) 40%, transparent);
         box-shadow:
           0 25px 50px -12px rgba(124, 58, 237, 0.2),
@@ -601,6 +629,7 @@ export class ModuleCardComponent {
   readonly staggerDelay = input(0);
   readonly accessText = input('Open Module');
   readonly upgradeText = input('Upgrade');
+  readonly lockedSubtext = input<string | null>(null);
 
   readonly upgradeClick = output<Module>();
 

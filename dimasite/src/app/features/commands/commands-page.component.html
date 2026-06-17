@@ -5,29 +5,30 @@
       <h1 class="commands-header__title">{{ t('commands.heading') }}</h1>
       <div class="commands-header__underline"></div>
     </div>
-    
+
     <div class="commands-header__actions">
       <button type="button" class="commands-btn commands-btn--secondary" (click)="hardRefreshCommands()"
-              [disabled]="!canHardRefresh()">
-        {{ refreshButtonLabel() }}
+              [disabled]="loading()">
+        @if (loading()) {
+          <span class="commands-refresh-spinner"></span>
+        } @else {
+          {{ t('commands.refresh') }}
+        }
       </button>
 
-      @if (!addingCommand()) {
-        <button type="button" class="commands-btn commands-btn--primary" (click)="startAddingCommand()"
-                [disabled]="loading()">
-          {{ t('commands.addCommand') }}
-        </button>
-      }
-      
+      <button type="button" class="commands-btn commands-btn--primary" (click)="openCreateModal()">
+        {{ t('commands.addCommand') }}
+      </button>
+
       <div class="commands-view-toggle">
-        <button type="button" 
+        <button type="button"
                 class="commands-view-toggle__btn"
                 [class.commands-view-toggle__btn--active]="viewMode() === 'table'"
                 (click)="setViewMode('table')"
                 [attr.aria-label]="t('commands.viewTable')">
           <lucide-icon [name]="listIcon" class="commands-view-toggle__icon"></lucide-icon>
         </button>
-        <button type="button" 
+        <button type="button"
                 class="commands-view-toggle__btn"
                 [class.commands-view-toggle__btn--active]="viewMode() === 'card'"
                 (click)="setViewMode('card')"
@@ -50,120 +51,86 @@
 
   <!-- Table View -->
   @if (viewMode() === 'table' && !showInitialLoading() && !showLoadError()) {
+    <!-- Search Bar -->
+    <section class="commands-search">
+      <div class="search-box">
+        <svg class="search-box__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input
+          type="text"
+          class="search-box__input"
+          [placeholder]="t('commands.search.placeholder')"
+          [value]="searchInput()"
+          (input)="onSearchInput($any($event.target).value)"
+          (keyup.enter)="onSearchSubmit()"
+        />
+        @if (searchInput()) {
+          <button type="button" class="search-box__clear" (click)="onClearSearch()">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        }
+        <button type="button" class="search-box__button" (click)="onSearchSubmit()">
+          @if (isSearching()) {
+            <span class="search-spinner"></span>
+          } @else {
+            {{ t('commands.search.searchButton') }}
+          }
+        </button>
+      </div>
+      @if (searchHint()) {
+        <p class="commands-search__hint">{{ searchHint() }}</p>
+      }
+    </section>
+
+    <!-- Table -->
     <div class="commands-table-container">
       <div class="commands-table-wrapper">
         <table class="commands-table">
           <colgroup>
+            <col class="w-[15%]" />
             <col class="w-[12%]" />
+            <col class="w-[23%]" />
+            <col class="w-[15%]" />
             <col class="w-[10%]" />
-            <col class="w-[28%]" />
-            <col class="w-[18%]" />
-            <col class="w-[8%]" />
             <col class="w-[10%]" />
-            <col class="w-[6%]" />
+            <col class="w-[7%]" />
             <col class="w-[8%]" />
           </colgroup>
-          
+
           <thead>
             <tr>
-              <th>{{ t('commands.placeholder.name') }}</th>
-              <th>{{ t('commands.placeholder.command') }}</th>
+              <th class="sortable" (click)="onSort('name')">
+                {{ t('commands.placeholder.name') }} {{ getSortIcon('name') }}
+              </th>
+              <th class="sortable" (click)="onSort('cmd')">
+                {{ t('commands.placeholder.command') }} {{ getSortIcon('cmd') }}
+              </th>
               <th>{{ t('commands.placeholder.function') }}</th>
               <th>{{ t('commands.placeholder.description') }}</th>
-              <th>{{ t('commands.placeholder.cooldown') }}</th>
-              <th>{{ t('commands.placeholder.userLevel') }}</th>
-              <th>{{ t('commands.placeholder.status') }}</th>
-              <th class="commands-table__actions">{{ t('commands.placeholder.actions') }}</th>
+              <th class="sortable" (click)="onSort('cooldown')">
+                {{ t('commands.placeholder.cooldown') }} {{ getSortIcon('cooldown') }}
+              </th>
+              <th class="sortable" (click)="onSort('userLevel')">
+                {{ t('commands.placeholder.userLevel') }} {{ getSortIcon('userLevel') }}
+              </th>
+              <th class="sortable" (click)="onSort('enabled')">
+                {{ t('commands.placeholder.status') }} {{ getSortIcon('enabled') }}
+              </th>
+              <th>{{ t('commands.placeholder.actions') }}</th>
             </tr>
           </thead>
-          
-          <tbody>
-            <!-- Add New Command Row -->
-            @if (addingCommand()) {
-              <tr class="commands-table__new-row" [formGroup]="newCommandForm">
-                <td>
-                  <input type="text" 
-                         class="commands-input"
-                         [placeholder]="t('commands.placeholder.name')"
-                         formControlName="name">
-                </td>
-                <td>
-                  <div class="commands-input-prefix">
-                    <span>!</span>
-                    <input type="text" 
-                           class="commands-input"
-                           [placeholder]="t('commands.placeholder.command')"
-                           formControlName="cmd">
-                  </div>
-                </td>
-                
-                <td>
-                  <input type="text" 
-                         class="commands-input"
-                         [placeholder]="t('commands.placeholder.function')"
-                         formControlName="message">
-                </td>
-                
-                <td>
-                  <input type="text" 
-                         class="commands-input"
-                         [placeholder]="t('commands.placeholder.description')"
-                         formControlName="description">
-                </td>
-                
-                <td>
-                  <div class="commands-input-suffix">
-                    <input type="number" 
-                           class="commands-input"
-                           min="5"
-                           max="60"
-                           formControlName="cooldown">
-                    <span>s</span>
-                  </div>
-                </td>
-                
-                <td>
-                  <select class="commands-select" formControlName="userLevel">
-                    @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                      <option [value]="level">
-                        {{ level }} - {{ t(getUserLevelName(level)) }}
-                      </option>
-                    }
-                  </select>
-                </td>
-                
-                <td>
-                  <label class="commands-checkbox">
-                    <input type="checkbox" formControlName="enabled">
-                    <span>{{ t('common.enabled') }}</span>
-                  </label>
-                </td>
-                
-                <td class="commands-table__actions">
-                  <button type="button" 
-                          class="commands-action-btn commands-action-btn--save"
-                          (click)="saveNewCommand()"
-                          [disabled]="newCommandForm.invalid">
-                    {{ t('common.save') }}
-                  </button>
-                  <button type="button" 
-                          class="commands-action-btn commands-action-btn--cancel"
-                          (click)="cancelAddingCommand()">
-                    {{ t('common.cancel') }}
-                  </button>
-                </td>
-              </tr>
-            }
 
-            <!-- Commands List -->
-            @if (paginatedCommands().length === 0 && !addingCommand()) {
+          <tbody>
+            @if (paginatedCommands().length === 0) {
               <tr>
                 <td colspan="8" class="commands-table__empty">
                   <div class="commands-empty-state">
                     <p>{{ t('commands.placeholder.noCommandsFound') }}</p>
-                    <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()"
-                            [disabled]="!canHardRefresh()">
-                      {{ refreshButtonLabel() }}
+                    <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()">
+                      {{ t('commands.refresh') }}
                     </button>
                   </div>
                 </td>
@@ -178,263 +145,159 @@
                   [class.commands-table__row--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
                   [class.commands-table__row--disabled]="command.enabled === false"
                   (keydown)="onKeyDown($event)">
-                
-                @if (isEditingRow(command.id || command._id!)) {
-                  <!-- Row Edit Mode -->
-                  <td>
-                     <input type="text" 
-                            class="commands-input"
-                            [attr.data-command-editor]="(command.id || command._id!) + '_name'"
-                            [value]="getEditingValue(command.id || command._id!, 'name')"
-                            (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)">
-                  </td>
-                  
-                  <td>
+
+                <!-- Name -->
+                <td (dblclick)="startCellEdit(command.id || command._id!, 'name', command.name)"
+                    class="commands-table__cell--editable">
+                  @if (isEditingCell(command.id || command._id!, 'name')) {
+                    <input type="text"
+                           class="commands-input commands-input--inline"
+                           [value]="getEditingValue(command.id || command._id!, 'name')"
+                           (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)"
+                           (keydown.enter)="saveCellEdit()"
+                           (keydown.escape)="cancelEdit()"
+                           (click)="$event.stopPropagation()">
+                  } @else {
+                    <span class="commands-table__text">{{ command.name }}</span>
+                  }
+                </td>
+
+                <!-- Command -->
+                <td (dblclick)="startCellEdit(command.id || command._id!, 'cmd', command.cmd)"
+                    class="commands-table__cell--editable commands-table__cell--mono">
+                  @if (isEditingCell(command.id || command._id!, 'cmd')) {
                     <div class="commands-input-prefix">
                       <span>!</span>
-                        <input type="text" 
-                               class="commands-input"
-                               [attr.data-command-editor]="(command.id || command._id!) + '_cmd'"
-                               [value]="getEditingValue(command.id || command._id!, 'cmd')"
-                               (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)">
+                      <input type="text"
+                             class="commands-input commands-input--inline"
+                             [value]="getEditingValue(command.id || command._id!, 'cmd')"
+                             (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)"
+                             (keydown.enter)="saveCellEdit()"
+                             (keydown.escape)="cancelEdit()"
+                             (click)="$event.stopPropagation()">
                     </div>
-                  </td>
-                  
-                  <td>
-                     <input type="text" 
-                            class="commands-input"
-                            [class.commands-input--disabled]="!canEditField(command.id || command._id!, 'message')"
-                            [attr.data-command-editor]="(command.id || command._id!) + '_message'"
-                            [value]="getEditingValue(command.id || command._id!, 'message')"
-                            [disabled]="!canEditField(command.id || command._id!, 'message')"
-                            (input)="updateEditingValue(command.id || command._id!, 'message', $any($event.target).value)">
-                  </td>
-                  
-                  <td>
-                     <input type="text" 
-                            class="commands-input"
-                            [attr.data-command-editor]="(command.id || command._id!) + '_description'"
-                            [value]="getEditingValue(command.id || command._id!, 'description')"
-                            (input)="updateEditingValue(command.id || command._id!, 'description', $any($event.target).value)">
-                  </td>
-                  
-                  <td>
+                  } @else {
+                    <span class="commands-table__text">!{{ command.cmd }}</span>
+                  }
+                </td>
+
+                <!-- Function/Message -->
+                <td class="commands-table__cell--mono">
+                  <span class="commands-table__text">
+                    @if (command.reserved) {
+                      {{ t('commands.placeholder.reservedCommand') }}
+                    } @else {
+                      {{ command.message || t('commands.placeholder.public') }}
+                    }
+                  </span>
+                </td>
+
+                <!-- Description -->
+                <td>
+                  <span class="commands-table__text">
+                    {{ command.description || t('common.notAvailable') }}
+                  </span>
+                </td>
+
+                <!-- Cooldown -->
+                <td (dblclick)="startCellEdit(command.id || command._id!, 'cooldown', command.cooldown)"
+                    class="commands-table__cell--editable">
+                  @if (isEditingCell(command.id || command._id!, 'cooldown')) {
                     <div class="commands-input-suffix">
-                        <input type="number" 
-                               class="commands-input"
-                               min="5"
-                               max="60"
-                               [attr.data-command-editor]="(command.id || command._id!) + '_cooldown'"
-                               [value]="getEditingValue(command.id || command._id!, 'cooldown')"
-                               (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)">
+                      <input type="number"
+                             class="commands-input commands-input--inline commands-input--small"
+                             min="5"
+                             max="60"
+                             [value]="getEditingValue(command.id || command._id!, 'cooldown')"
+                             (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)"
+                             (keydown.enter)="saveCellEdit()"
+                             (keydown.escape)="cancelEdit()"
+                             (click)="$event.stopPropagation()">
                       <span>s</span>
                     </div>
-                  </td>
-                  
-                  <td>
-                     <select class="commands-select"
-                             [attr.data-command-editor]="(command.id || command._id!) + '_userLevel'"
-                             [value]="getEditingValue(command.id || command._id!, 'userLevel')"
-                             (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value)">
+                  } @else {
+                    <span class="commands-table__text">{{ command.cooldown }}s</span>
+                  }
+                </td>
+
+                <!-- User Level -->
+                <td (dblclick)="startCellEdit(command.id || command._id!, 'userLevel', command.userLevel)"
+                    class="commands-table__cell--editable">
+                  @if (isEditingCell(command.id || command._id!, 'userLevel')) {
+                    <select class="commands-select commands-select--inline"
+                            [value]="getEditingValue(command.id || command._id!, 'userLevel')"
+                            (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value); saveCellEdit()"
+                            (keydown.escape)="cancelEdit()"
+                            (click)="$event.stopPropagation()">
                       @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
                         <option [value]="level">
                           {{ level }} - {{ t(getUserLevelName(level)) }}
                         </option>
                       }
                     </select>
-                  </td>
-                  
-                  <td></td>
-                  
-                  <td class="commands-table__actions">
-                    <button type="button" 
-                            class="commands-action-btn commands-action-btn--save"
-                            (click)="saveRowEdit()">
-                      {{ t('common.save') }}
-                    </button>
-                    <button type="button" 
-                            class="commands-action-btn commands-action-btn--cancel"
-                            (click)="cancelEdit()">
-                      {{ t('common.cancel') }}
-                    </button>
-                  </td>
-                } @else {
-                  <!-- Display Mode -->
-                  <!-- Name -->
-                  <td (dblclick)="startCellEdit(command.id || command._id!, 'name', command.name)"
-                      class="commands-table__cell--editable">
-                    @if (isEditingCell(command.id || command._id!, 'name')) {
-                       <input type="text" 
-                              class="commands-input"
-                              [attr.data-command-editor]="(command.id || command._id!) + '_name'"
-                              [value]="getEditingValue(command.id || command._id!, 'name')"
-                              (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)"
-                             (keydown.enter)="saveCellEdit()"
-                             (keydown.escape)="cancelEdit()"
-                             (click)="$event.stopPropagation()">
-                    } @else {
-                      <span class="commands-table__text">{{ command.name }}</span>
-                    }
-                  </td>
-                  
-                  <!-- Command -->
-                  <td (dblclick)="startCellEdit(command.id || command._id!, 'cmd', command.cmd)"
-                      class="commands-table__cell--editable commands-table__cell--mono">
-                    @if (isEditingCell(command.id || command._id!, 'cmd')) {
-                      <div class="commands-input-prefix">
-                        <span>!</span>
-                         <input type="text" 
-                                class="commands-input"
-                                [attr.data-command-editor]="(command.id || command._id!) + '_cmd'"
-                                [value]="getEditingValue(command.id || command._id!, 'cmd')"
-                                (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)"
-                               (keydown.enter)="saveCellEdit()"
-                               (keydown.escape)="cancelEdit()"
-                               (click)="$event.stopPropagation()">
-                      </div>
-                    } @else {
-                      <span class="commands-table__text">!{{ command.cmd }}</span>
-                    }
-                  </td>
-                  
-                  <!-- Function/Message -->
-                  <td (dblclick)="canEditField(command.id || command._id!, 'message') ? startCellEdit(command.id || command._id!, 'message', command.message || '') : null"
-                      class="commands-table__cell--editable commands-table__cell--mono"
-                      [class.commands-table__cell--disabled]="!canEditField(command.id || command._id!, 'message')">
-                    @if (isEditingCell(command.id || command._id!, 'message')) {
-                       <input type="text" 
-                              class="commands-input"
-                              [attr.data-command-editor]="(command.id || command._id!) + '_message'"
-                              [value]="getEditingValue(command.id || command._id!, 'message')"
-                              (input)="updateEditingValue(command.id || command._id!, 'message', $any($event.target).value)"
-                             (keydown.enter)="saveCellEdit()"
-                             (keydown.escape)="cancelEdit()"
-                             (click)="$event.stopPropagation()">
-                    } @else {
-                      <span class="commands-table__text">
-                        @if (command.reserved) {
-                          {{ t('commands.placeholder.reservedCommand') }}
-                        } @else {
-                          {{ command.message || t('commands.placeholder.public') }}
-                        }
-                      </span>
-                    }
-                  </td>
-                  
-                  <!-- Description -->
-                  <td (dblclick)="startCellEdit(command.id || command._id!, 'description', command.description || '')"
-                      class="commands-table__cell--editable">
-                    @if (isEditingCell(command.id || command._id!, 'description')) {
-                       <input type="text" 
-                              class="commands-input"
-                              [attr.data-command-editor]="(command.id || command._id!) + '_description'"
-                              [value]="getEditingValue(command.id || command._id!, 'description')"
-                              (input)="updateEditingValue(command.id || command._id!, 'description', $any($event.target).value)"
-                             (keydown.enter)="saveCellEdit()"
-                             (keydown.escape)="cancelEdit()"
-                             (click)="$event.stopPropagation()">
-                    } @else {
-                      <span class="commands-table__text">
-                        {{ command.description || t('common.notAvailable') }}
-                      </span>
-                    }
-                  </td>
-                  
-                  <!-- Cooldown -->
-                  <td (dblclick)="startCellEdit(command.id || command._id!, 'cooldown', command.cooldown)"
-                      class="commands-table__cell--editable">
-                    @if (isEditingCell(command.id || command._id!, 'cooldown')) {
-                      <div class="commands-input-suffix">
-                         <input type="number" 
-                                class="commands-input"
-                                min="5"
-                                max="60"
-                                [attr.data-command-editor]="(command.id || command._id!) + '_cooldown'"
-                                [value]="getEditingValue(command.id || command._id!, 'cooldown')"
-                                (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)"
-                               (keydown.enter)="saveCellEdit()"
-                               (keydown.escape)="cancelEdit()"
-                               (click)="$event.stopPropagation()">
-                        <span>s</span>
-                      </div>
-                    } @else {
-                      <span class="commands-table__text">{{ command.cooldown }}s</span>
-                    }
-                  </td>
-                  
-                  <!-- User Level -->
-                  <td (dblclick)="startCellEdit(command.id || command._id!, 'userLevel', command.userLevel)"
-                      class="commands-table__cell--editable">
-                    @if (isEditingCell(command.id || command._id!, 'userLevel')) {
-                       <select class="commands-select"
-                               [attr.data-command-editor]="(command.id || command._id!) + '_userLevel'"
-                               [value]="getEditingValue(command.id || command._id!, 'userLevel')"
-                               (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value); saveCellEdit()"
-                              (keydown.escape)="cancelEdit()"
-                              (click)="$event.stopPropagation()">
-                        @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                          <option [value]="level">
-                            {{ level }} - {{ t(getUserLevelName(level)) }}
-                          </option>
-                        }
-                      </select>
-                    } @else {
-                      <span class="commands-table__text">
-                        {{ command.userLevel }} - {{ t('commands.userLevels.' + command.userLevelName) }}
-                      </span>
-                    }
-                  </td>
-                  
-                  <!-- Status -->
-                  <td>
-                    <span class="commands-status"
-                          [class.commands-status--enabled]="command.enabled !== false"
-                          [class.commands-status--disabled]="command.enabled === false"
-                          [class.commands-status--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                          [class.commands-status--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'">
-                      {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+                  } @else {
+                    <span class="commands-table__text">
+                      {{ command.userLevel }} - {{ t(command.userLevelName) }}
                     </span>
-                  </td>
-                  
-                  <!-- Actions -->
-                  <td class="commands-table__actions">
-                    @if (isPending(commandTrackId(command))) {
-                      <div class="commands-pending-chip" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
-                        <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
-                        <span class="commands-pending-dots" aria-hidden="true">
-                          <span>.</span><span>.</span><span>.</span>
-                        </span>
-                      </div>
-                    } @else {
-                      <button type="button" 
+                  }
+                </td>
+
+                <!-- Status -->
+                <td>
+                  <span class="commands-status"
+                        [class.commands-status--enabled]="command.enabled !== false"
+                        [class.commands-status--disabled]="command.enabled === false"
+                        [class.commands-status--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
+                        [class.commands-status--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'">
+                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="commands-table__actions">
+                  @if (isPending(commandTrackId(command))) {
+                    <div class="commands-pending-chip" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
+                      <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
+                    </div>
+                  } @else {
+                    <div class="commands-actions">
+                      <button type="button"
                               class="commands-action-btn commands-action-btn--edit"
-                              (click)="startRowEdit(command.id || command._id!)">
-                        {{ t('common.edit') }}
+                              [attr.aria-label]="t('common.edit')"
+                              (click)="openEditModal(command)">
+                        <lucide-icon [name]="editIcon" class="commands-action-btn__icon"></lucide-icon>
+                        <span class="commands-action-btn__text">{{ t('common.edit') }}</span>
                       </button>
-                      
+
                       @if (command.enabled === false) {
-                        <button type="button" 
+                        <button type="button"
                                 class="commands-action-btn commands-action-btn--enable"
+                                [attr.aria-label]="t('common.enable')"
                                 (click)="enableCommand(command.id || command._id!)">
-                          {{ t('common.enable') }}
+                          <lucide-icon [name]="powerIcon" class="commands-action-btn__icon"></lucide-icon>
+                          <span class="commands-action-btn__text">{{ t('common.enable') }}</span>
                         </button>
                       } @else {
-                        <button type="button" 
+                        <button type="button"
                                 class="commands-action-btn commands-action-btn--disable"
+                                [attr.aria-label]="t('common.disable')"
                                 (click)="disableCommand(command.id || command._id!)">
-                          {{ t('common.disable') }}
+                          <lucide-icon [name]="powerOffIcon" class="commands-action-btn__icon"></lucide-icon>
+                          <span class="commands-action-btn__text">{{ t('common.disable') }}</span>
                         </button>
                       }
-                      
-                      <button type="button" 
+
+                      <button type="button"
                               class="commands-action-btn commands-action-btn--delete"
                               [disabled]="command.reserved || isPending(commandTrackId(command))"
+                              [attr.aria-label]="t('common.delete')"
                               (click)="command.reserved ? null : promptDeleteCommand(command)">
-                        {{ t('common.delete') }}
+                        <lucide-icon [name]="trashIcon" class="commands-action-btn__icon"></lucide-icon>
+                        <span class="commands-action-btn__text">{{ t('common.delete') }}</span>
                       </button>
-                    }
-                  </td>
-                }
+                    </div>
+                  }
+                </td>
               </tr>
             }
           </tbody>
@@ -446,7 +309,7 @@
         <div class="commands-pagination">
           <div class="commands-pagination__info">
             <span>{{ t('common.show') }}</span>
-            <select class="commands-select commands-select--small" 
+            <select class="commands-select commands-select--small"
                     [value]="itemsPerPage()"
                     (change)="onItemsPerPageChange($event)">
               @for (option of itemsPerPageOptions; track option) {
@@ -487,398 +350,168 @@
 
   <!-- Card View -->
   @if (viewMode() === 'card' && !showInitialLoading() && !showLoadError()) {
-    <div class="commands-cards">
-      <!-- Add New Command Card -->
-      @if (addingCommand()) {
-        <div class="commands-card commands-card--new" [formGroup]="newCommandForm">
-          <div class="commands-card__header">
-            <div class="commands-card__gradient"></div>
-            <h3 class="commands-card__title">+ {{ t('commands.addCommand') }}</h3>
-          </div>
-          
-          <div class="commands-card__body">
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.name') }}</label>
-              <input type="text" 
-                     class="commands-input"
-                     [placeholder]="t('commands.placeholder.name')"
-                     formControlName="name">
-            </div>
-            
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.command') }}</label>
-              <div class="commands-input-prefix">
-                <span>!</span>
-                <input type="text" 
-                       class="commands-input"
-                       [placeholder]="t('commands.placeholder.command')"
-                       formControlName="cmd">
-              </div>
-            </div>
-            
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.function') }}</label>
-              <input type="text" 
-                     class="commands-input"
-                     [placeholder]="t('commands.placeholder.function')"
-                     formControlName="message">
-            </div>
-            
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.description') }}</label>
-              <input type="text" 
-                     class="commands-input"
-                     [placeholder]="t('commands.placeholder.description')"
-                     formControlName="description">
-            </div>
-            
-            <div class="commands-card__field commands-card__field--half">
-              <label>{{ t('commands.placeholder.cooldown') }}</label>
-              <div class="commands-input-suffix">
-                <input type="number" 
-                       class="commands-input"
-                       min="5"
-                       max="60"
-                       formControlName="cooldown">
-                <span>s</span>
-              </div>
-            </div>
-            
-            <div class="commands-card__field commands-card__field--half">
-              <label>{{ t('commands.placeholder.userLevel') }}</label>
-              <select class="commands-select" formControlName="userLevel">
-                @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                  <option [value]="level">
-                    {{ level }} - {{ t(getUserLevelName(level)) }}
-                  </option>
-                }
-              </select>
-            </div>
-            
-            <div class="commands-card__field">
-              <label class="commands-checkbox">
-                <input type="checkbox" formControlName="enabled">
-                <span>{{ t('common.enabled') }}</span>
-              </label>
-            </div>
-          </div>
-          
-          <div class="commands-card__footer">
-            <button type="button" 
-                    class="commands-btn commands-btn--primary commands-btn--small"
-                    (click)="saveNewCommand()"
-                    [disabled]="newCommandForm.invalid">
-              {{ t('common.save') }}
-            </button>
-            
-            <button type="button" 
-                    class="commands-btn commands-btn--secondary commands-btn--small"
-                    (click)="cancelAddingCommand()">
-              {{ t('common.cancel') }}
-            </button>
-          </div>
-        </div>
-      }
+    <!-- Floating Search Bar for Card View -->
+    <div class="commands-card-search">
+      <div class="search-box">
+        <svg class="search-box__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input
+          type="text"
+          class="search-box__input"
+          [placeholder]="t('commands.search.placeholder')"
+          [value]="searchInput()"
+          (input)="onSearchInput($any($event.target).value)"
+          (keyup.enter)="onSearchSubmit()"
+        />
+        @if (searchInput()) {
+          <button type="button" class="search-box__clear" (click)="onClearSearch()">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        }
+        <button type="button" class="search-box__button" (click)="onSearchSubmit()">
+          {{ t('commands.search.searchButton') }}
+        </button>
+      </div>
+    </div>
 
-      @if (commands().length === 0 && !addingCommand()) {
-        <div class="commands-card commands-card--new commands-card--empty">
+    @if (searchHint()) {
+      <p class="commands-search__hint">{{ searchHint() }}</p>
+    }
+
+    <!-- Cards Grid -->
+    <div class="commands-cards">
+      @if (filteredCommands().length === 0) {
+        <div class="commands-card commands-card--empty">
           <div class="commands-card__header">
             <div class="commands-card__gradient"></div>
             <h3 class="commands-card__title">{{ t('commands.heading') }}</h3>
           </div>
-
           <div class="commands-card__body">
             <p class="commands-card__value">{{ t('commands.placeholder.noCommandsFound') }}</p>
           </div>
-
           <div class="commands-card__footer">
-            <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()"
-                    [disabled]="!canHardRefresh()">
-              {{ refreshButtonLabel() }}
+            <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()">
+              {{ t('commands.refresh') }}
             </button>
           </div>
         </div>
       }
 
-      <!-- Command Cards -->
-      @for (command of commands(); track commandTrackId(command)) {
+      @for (command of filteredCommands(); track commandTrackId(command)) {
         <div class="commands-card"
-              [class.commands-card--pending]="isPending(commandTrackId(command))"
-              [class.commands-card--ghost]="command.optimistic || isPendingDelete(commandTrackId(command))"
-              [class.commands-card--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-              [class.commands-card--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
-              [class.commands-card--disabled]="command.enabled === false"
-              (keydown)="onKeyDown($event)">
-          @if (isPending(commandTrackId(command))) {
-            <div class="commands-card__pending-overlay" aria-hidden="true"></div>
-          }
-          
+             [class.commands-card--pending]="isPending(commandTrackId(command))"
+             [class.commands-card--ghost]="command.optimistic || isPendingDelete(commandTrackId(command))"
+             [class.commands-card--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
+             [class.commands-card--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
+             [class.commands-card--disabled]="command.enabled === false">
+
           <div class="commands-card__header">
             <div class="commands-card__gradient"></div>
-            
-             <div class="commands-card__header-content">
-               @if (isEditingCard(command.id || command._id!)) {
-                 <input type="text" 
-                        class="commands-input commands-input--large"
-                        [attr.data-command-editor]="(command.id || command._id!) + '_name'"
-                        [value]="getEditingValue(command.id || command._id!, 'name')"
-                        (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)">
-               } @else {
-                 @if (isEditingCell(command.id || command._id!, 'name')) {
-                   <input type="text" 
-                          class="commands-input commands-input--large"
-                          [attr.data-command-editor]="(command.id || command._id!) + '_name'"
-                          [value]="getEditingValue(command.id || command._id!, 'name')"
-                          (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)"
-                          (keydown.enter)="saveCellEdit()"
-                          (keydown.escape)="cancelEdit()"
-                          (click)="$event.stopPropagation()">
-                 } @else {
-                   <h3 class="commands-card__title" (dblclick)="startCellEdit(command.id || command._id!, 'name', command.name)">
-                     {{ command.name }}
-                   </h3>
-                 }
-               }
-              
-               <span class="commands-status"
-                     [class.commands-status--enabled]="command.enabled !== false"
-                     [class.commands-status--disabled]="command.enabled === false"
-                     [class.commands-status--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                     [class.commands-status--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'">
-                 {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-               </span>
+            <div class="commands-card__header-content">
+              <h3 class="commands-card__title">{{ command.name }}</h3>
+              <span class="commands-status"
+                    [class.commands-status--enabled]="command.enabled !== false"
+                    [class.commands-status--disabled]="command.enabled === false">
+                {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+              </span>
             </div>
           </div>
-          
+
           <div class="commands-card__body">
-            @if (isEditingCard(command.id || command._id!)) {
-              <!-- Card Edit Mode -->
-              <div class="commands-card__field">
-                <label>{{ t('commands.placeholder.command') }}</label>
-                <div class="commands-input-prefix">
-                  <span>!</span>
-                   <input type="text" 
-                          class="commands-input"
-                          [attr.data-command-editor]="(command.id || command._id!) + '_cmd'"
-                          [value]="getEditingValue(command.id || command._id!, 'cmd')"
-                          (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)">
-                </div>
-              </div>
-              
-              <div class="commands-card__field">
-                <label>{{ t('commands.placeholder.function') }}</label>
-                 <input type="text" 
-                        class="commands-input"
-                        [class.commands-input--disabled]="!canEditField(command.id || command._id!, 'message')"
-                        [attr.data-command-editor]="(command.id || command._id!) + '_message'"
-                        [value]="getEditingValue(command.id || command._id!, 'message')"
-                        [disabled]="!canEditField(command.id || command._id!, 'message')"
-                        (input)="updateEditingValue(command.id || command._id!, 'message', $any($event.target).value)">
-              </div>
-              
-              <div class="commands-card__field">
-                <label>{{ t('commands.placeholder.description') }}</label>
-                 <input type="text" 
-                        class="commands-input"
-                        [attr.data-command-editor]="(command.id || command._id!) + '_description'"
-                        [value]="getEditingValue(command.id || command._id!, 'description')"
-                        (input)="updateEditingValue(command.id || command._id!, 'description', $any($event.target).value)">
-              </div>
-              
+            <div class="commands-card__field">
+              <label>{{ t('commands.placeholder.command') }}</label>
+              <p class="commands-card__value commands-card__value--mono">!{{ command.cmd }}</p>
+            </div>
+
+            <div class="commands-card__field">
+              <label>{{ t('commands.placeholder.function') }}</label>
+              <p class="commands-card__value commands-card__value--mono">
+                @if (command.reserved) {
+                  {{ t('commands.placeholder.reservedCommand') }}
+                } @else {
+                  {{ command.message || t('commands.placeholder.public') }}
+                }
+              </p>
+            </div>
+
+            <div class="commands-card__field">
+              <label>{{ t('commands.placeholder.description') }}</label>
+              <p class="commands-card__value">
+                {{ command.description || t('common.notAvailable') }}
+              </p>
+            </div>
+
+            <div class="commands-card__row">
               <div class="commands-card__field commands-card__field--half">
                 <label>{{ t('commands.placeholder.cooldown') }}</label>
-                <div class="commands-input-suffix">
-                   <input type="number" 
-                          class="commands-input"
-                          min="5"
-                          max="60"
-                          [attr.data-command-editor]="(command.id || command._id!) + '_cooldown'"
-                          [value]="getEditingValue(command.id || command._id!, 'cooldown')"
-                          (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)">
-                  <span>s</span>
-                </div>
+                <p class="commands-card__value">{{ command.cooldown }}s</p>
               </div>
-              
+
               <div class="commands-card__field commands-card__field--half">
                 <label>{{ t('commands.placeholder.userLevel') }}</label>
-                 <select class="commands-select"
-                         [attr.data-command-editor]="(command.id || command._id!) + '_userLevel'"
-                         [value]="getEditingValue(command.id || command._id!, 'userLevel')"
-                         (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value)">
-                  @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                    <option [value]="level">
-                      {{ level }} - {{ t(getUserLevelName(level)) }}
-                    </option>
-                  }
-                </select>
+                <p class="commands-card__value">
+                  {{ command.userLevel }} - {{ t(command.userLevelName) }}
+                </p>
               </div>
-             } @else {
-               <!-- Display Mode -->
-               <div class="commands-card__field">
-                 <label>{{ t('commands.placeholder.command') }}</label>
-                 @if (isEditingCell(command.id || command._id!, 'cmd')) {
-                   <div class="commands-input-prefix">
-                     <span>!</span>
-                     <input type="text" 
-                            class="commands-input"
-                            [attr.data-command-editor]="(command.id || command._id!) + '_cmd'"
-                            [value]="getEditingValue(command.id || command._id!, 'cmd')"
-                            (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)"
-                            (keydown.enter)="saveCellEdit()"
-                            (keydown.escape)="cancelEdit()"
-                            (click)="$event.stopPropagation()">
-                   </div>
-                 } @else {
-                   <p class="commands-card__value commands-card__value--mono"
-                      (dblclick)="startCellEdit(command.id || command._id!, 'cmd', command.cmd)">
-                     !{{ command.cmd }}
-                   </p>
-                 }
-               </div>
-               
-               <div class="commands-card__field">
-                 <label>{{ t('commands.placeholder.function') }}</label>
-                 @if (isEditingCell(command.id || command._id!, 'message')) {
-                   <input type="text" 
-                          class="commands-input"
-                          [attr.data-command-editor]="(command.id || command._id!) + '_message'"
-                          [value]="getEditingValue(command.id || command._id!, 'message')"
-                          (input)="updateEditingValue(command.id || command._id!, 'message', $any($event.target).value)"
-                          (keydown.enter)="saveCellEdit()"
-                          (keydown.escape)="cancelEdit()"
-                          (click)="$event.stopPropagation()">
-                 } @else {
-                   <p class="commands-card__value commands-card__value--mono"
-                      [class.commands-card__value--disabled]="!canEditField(command.id || command._id!, 'message')"
-                      (dblclick)="canEditField(command.id || command._id!, 'message') ? startCellEdit(command.id || command._id!, 'message', command.message || '') : null">
-                     @if (command.reserved) {
-                       {{ t('commands.placeholder.reservedCommand') }}
-                     } @else {
-                       {{ command.message || t('commands.placeholder.public') }}
-                     }
-                   </p>
-                 }
-               </div>
-               
-               <div class="commands-card__field">
-                 <label>{{ t('commands.placeholder.description') }}</label>
-                 @if (isEditingCell(command.id || command._id!, 'description')) {
-                   <input type="text" 
-                          class="commands-input"
-                          [attr.data-command-editor]="(command.id || command._id!) + '_description'"
-                          [value]="getEditingValue(command.id || command._id!, 'description')"
-                          (input)="updateEditingValue(command.id || command._id!, 'description', $any($event.target).value)"
-                          (keydown.enter)="saveCellEdit()"
-                          (keydown.escape)="cancelEdit()"
-                          (click)="$event.stopPropagation()">
-                 } @else {
-                   <p class="commands-card__value"
-                      (dblclick)="startCellEdit(command.id || command._id!, 'description', command.description || '')">
-                     {{ command.description || t('common.notAvailable') }}
-                   </p>
-                 }
-               </div>
-               
-               <div class="commands-card__field commands-card__field--half">
-                 <label>{{ t('commands.placeholder.cooldown') }}</label>
-                 @if (isEditingCell(command.id || command._id!, 'cooldown')) {
-                   <div class="commands-input-suffix">
-                     <input type="number" 
-                            class="commands-input"
-                            min="5"
-                            max="60"
-                            [attr.data-command-editor]="(command.id || command._id!) + '_cooldown'"
-                            [value]="getEditingValue(command.id || command._id!, 'cooldown')"
-                            (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)"
-                            (keydown.enter)="saveCellEdit()"
-                            (keydown.escape)="cancelEdit()"
-                            (click)="$event.stopPropagation()">
-                     <span>s</span>
-                   </div>
-                 } @else {
-                   <p class="commands-card__value"
-                      (dblclick)="startCellEdit(command.id || command._id!, 'cooldown', command.cooldown)">
-                     {{ command.cooldown }}s
-                   </p>
-                 }
-               </div>
-               
-               <div class="commands-card__field commands-card__field--half">
-                 <label>{{ t('commands.placeholder.userLevel') }}</label>
-                 @if (isEditingCell(command.id || command._id!, 'userLevel')) {
-                   <select class="commands-select"
-                           [attr.data-command-editor]="(command.id || command._id!) + '_userLevel'"
-                           [value]="getEditingValue(command.id || command._id!, 'userLevel')"
-                           (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value); saveCellEdit()"
-                           (keydown.escape)="cancelEdit()"
-                           (click)="$event.stopPropagation()">
-                     @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                       <option [value]="level">
-                         {{ level }} - {{ t(getUserLevelName(level)) }}
-                       </option>
-                     }
-                   </select>
-                 } @else {
-                   <p class="commands-card__value"
-                      (dblclick)="startCellEdit(command.id || command._id!, 'userLevel', command.userLevel)">
-                     {{ command.userLevel }} - {{ t('commands.userLevels.' + command.userLevelName) }}
-                   </p>
-                 }
-               </div>
-             }
-           </div>
-          
-           <div class="commands-card__footer">
-             @if (isEditingCard(command.id || command._id!)) {
-              <button type="button" 
-                      class="commands-btn commands-btn--primary commands-btn--small"
-                      (click)="saveCardEdit()">
-                {{ t('common.save') }}
-              </button>
-              
-              <button type="button" 
-                      class="commands-btn commands-btn--secondary commands-btn--small"
-                      (click)="cancelEdit()">
-                {{ t('common.cancel') }}
-              </button>
-             } @else if (isPending(commandTrackId(command))) {
-               <div class="commands-pending-chip commands-pending-chip--card" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
-                 <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
-                 <span class="commands-pending-dots" aria-hidden="true">
-                   <span>.</span><span>.</span><span>.</span>
-                 </span>
-               </div>
-             } @else {
-               <button type="button" 
-                       class="commands-btn commands-btn--secondary commands-btn--small"
-                       (click)="startCardEdit(command.id || command._id!)">
-                 {{ t('common.edit') }}
-               </button>
-               
-               @if (command.enabled === false) {
-                 <button type="button" 
-                         class="commands-btn commands-btn--success commands-btn--small"
-                         (click)="enableCommand(command.id || command._id!)">
-                   {{ t('common.enable') }}
-                 </button>
-               } @else {
-                 <button type="button" 
-                         class="commands-btn commands-btn--warning commands-btn--small"
-                         (click)="disableCommand(command.id || command._id!)">
-                   {{ t('common.disable') }}
-                 </button>
-               }
-               
-               <button type="button" 
-                       class="commands-btn commands-btn--danger commands-btn--small"
-                       [disabled]="command.reserved || isPending(commandTrackId(command))"
-                       (click)="command.reserved ? null : promptDeleteCommand(command)">
-                 {{ t('common.delete') }}
-               </button>
-             }
-           </div>
+            </div>
+          </div>
+
+          <div class="commands-card__footer">
+            @if (isPending(commandTrackId(command))) {
+              <div class="commands-pending-chip commands-pending-chip--card" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
+                <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
+                <span class="commands-pending-dots" aria-hidden="true">
+                  <span>.</span><span>.</span><span>.</span>
+                </span>
+              </div>
+            } @else {
+              <div class="commands-card-actions">
+                <button type="button"
+                        class="commands-card-action-btn"
+                        (click)="openEditModal(command)">
+                  <lucide-icon [name]="editIcon" class="commands-card-action-btn__icon"></lucide-icon>
+                  <span class="commands-card-action-btn__text">{{ t('common.edit') }}</span>
+                </button>
+
+                @if (command.enabled === false) {
+                  <button type="button"
+                          class="commands-card-action-btn commands-card-action-btn--enable"
+                          (click)="enableCommand(command.id || command._id!)">
+                    <lucide-icon [name]="powerIcon" class="commands-card-action-btn__icon"></lucide-icon>
+                    <span class="commands-card-action-btn__text">{{ t('common.enable') }}</span>
+                  </button>
+                } @else {
+                  <button type="button"
+                          class="commands-card-action-btn commands-card-action-btn--disable"
+                          (click)="disableCommand(command.id || command._id!)">
+                    <lucide-icon [name]="powerOffIcon" class="commands-card-action-btn__icon"></lucide-icon>
+                    <span class="commands-card-action-btn__text">{{ t('common.disable') }}</span>
+                  </button>
+                }
+
+                <button type="button"
+                        class="commands-card-action-btn commands-card-action-btn--delete"
+                        [disabled]="command.reserved || isPending(commandTrackId(command))"
+                        (click)="command.reserved ? null : promptDeleteCommand(command)">
+                  <lucide-icon [name]="trashIcon" class="commands-card-action-btn__icon"></lucide-icon>
+                  <span class="commands-card-action-btn__text">{{ t('common.delete') }}</span>
+                </button>
+              </div>
+            }
+          </div>
         </div>
       }
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (showInitialLoading()) {
+    <div class="commands-loading">
+      <div class="commands-loading__spinner"></div>
+      <p>{{ t('commands.loading') }}</p>
     </div>
   }
 
@@ -893,4 +526,12 @@
     (confirm)="confirmDelete()"
     (cancel)="closeDeleteModal()">
   </app-confirmation-modal>
+
+  <!-- Command Create/Edit Modal -->
+  <app-command-modal
+    [isOpen]="showCommandModal()"
+    [command]="editingCommand()"
+    (save)="onModalSave($event)"
+    (cancel)="closeModal()">
+  </app-command-modal>
 </div>

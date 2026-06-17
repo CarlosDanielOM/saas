@@ -1,0 +1,179 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+}
+
+.modal {
+    position: relative;
+    background: var(--color-surface, #1a1a2e);
+    border-radius: 0.75rem;
+    width: 100%;
+    max-width: 650px;
+    height: 550px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+.modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.modal__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text, #ffffff);
+}
+
+.modal__close {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted, #a0a0a0);
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+}
+
+.modal__close:hover {
+    color: var(--color-text, #ffffff);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.modal__body {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.modal__description {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-muted, #a0a0a0);
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.form-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--color-text, #ffffff);
+    flex-shrink: 0;
+}
+
+.payload-editor {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    padding: 0.75rem;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    color: var(--color-text, #ffffff);
+    resize: none;
+    tab-size: 2;
+    overflow-y: auto;
+}
+
+.payload-editor:focus {
+    outline: none;
+    border-color: var(--color-primary, #6366f1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.form-error {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.75rem;
+    color: var(--color-error, #ef4444);
+}
+
+.modal__info {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted, #a0a0a0);
+    flex-shrink: 0;
+}
+
+.modal__info p {
+    margin: 0.125rem 0;
+}
+
+.modal__info strong {
+    color: var(--color-text, #ffffff);
+}
+
+.modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.modal__footer-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.spinner {
+    display: inline-block;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Mobile: full screen */
+@media (max-width: 640px) {
+    .modal-overlay {
+        padding: 0;
+    }
+
+    .modal {
+        max-width: 100%;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+}

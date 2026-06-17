@@ -1,5 +1,6 @@
 <div class="auth-layout">
   <app-toast-container />
+  <app-upgrade-modal />
   <header class="auth-navbar">
     <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']">
       <span class="brand-dot" aria-hidden="true"></span>
@@ -109,6 +110,18 @@
             {{ t('navbar.profileSettings') }}
           </a>
 
+          @if (showUpgradeOption()) {
+            <button
+              type="button"
+              class="auth-navbar__dropdown-item auth-navbar__dropdown-item--upgrade"
+              role="menuitem"
+              (click)="openUpgradeFromMenu()"
+            >
+              <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+              <span>{{ upgradeMenuLabel() }}</span>
+            </button>
+          }
+
           <button type="button" class="auth-navbar__dropdown-item" role="menuitem" (click)="toggleThemeFromMenu()">
             <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
             <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
@@ -183,6 +196,16 @@
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'profile']" (click)="closeMobileMenu()">
               {{ t('navbar.profileSettings') }}
             </a>
+            @if (showUpgradeOption()) {
+              <button
+                type="button"
+                class="auth-navbar__mobile-link auth-navbar__mobile-link--upgrade"
+                (click)="openUpgradeFromMenu()"
+              >
+                <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+                <span>{{ upgradeMenuLabel() }}</span>
+              </button>
+            }
             <button type="button" class="auth-navbar__mobile-link" (click)="toggleThemeFromMobileMenu()">
               <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
               <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>

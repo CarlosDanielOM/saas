@@ -1,0 +1,55 @@
+<div class="read-tool">
+  <section class="read-tool__header">
+    <h1 class="read-tool__title">Read Tool</h1>
+    <p class="read-tool__subtitle">Read files from the server filesystem</p>
+  </section>
+
+  <section class="read-tool__input-section">
+    <div class="input-group">
+      <label for="file-path" class="input-label">File Path</label>
+      <div class="input-row">
+        <input
+          id="file-path"
+          type="text"
+          class="input"
+          placeholder="/home/cdom/saas/dimabot/src/server/index.ts"
+          [ngModel]="filePath()"
+          (ngModelChange)="filePath.set($event)"
+          (keydown.enter)="readFile()"
+        />
+        <button
+          class="button button--primary"
+          (click)="readFile()"
+          [disabled]="isLoading()"
+        >
+          @if (isLoading()) {
+            Reading...
+          } @else {
+            Read
+          }
+        </button>
+      </div>
+    </div>
+  </section>
+
+  @if (error()) {
+    <section class="read-tool__error">
+      <div class="error-card">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span>{{ error() }}</span>
+      </div>
+    </section>
+  }
+
+  @if (fileContent() !== null) {
+    <section class="read-tool__output">
+      <div class="output-header">
+        <span class="output-label">File Content</span>
+        <span class="output-size">{{ fileContent()?.length || 0 | number }} characters</span>
+      </div>
+      <pre class="file-content"><code>{{ fileContent() }}</code></pre>
+    </section>
+  }
+</div>

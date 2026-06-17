@@ -1,0 +1,180 @@
+---
+title: Texto a Voz
+description: Configura y usa la salida de voz texto a voz para tu stream.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El texto a voz (TTS) lee los mensajes de tus espectadores en voz alta durante tu stream. DomDimaBot soporta tres proveedores de TTS con diferentes calidades de voz, costos y capacidades.
+
+## Proveedores
+
+### Piper — Gratis (Todos los Planes)
+
+Piper es un motor de voz neural local que se ejecuta en el servidor de DomDimaBot. Es gratis para todos los niveles de plan.
+
+**Costo en creditos IA:** 1 credito por 50 caracteres
+
+**Voces disponibles:**
+- Ingles (EE.UU.) — `en_US-ryan-medium`
+- Espanol (Mexico) — `es_MX-ald-medium`
+
+**Caracteristicas:**
+- Sintesis rapida (local, sin llamadas a API)
+- Sin etiquetas expresivas/de emocion
+- Sin funciones premium de IA
+- Disponible para todos los usuarios sin importar su plan
+
+---
+
+### OpenRouter — IA Economica (Premium y Pro)
+
+OpenRouter proporciona acceso a los modelos TTS de OpenAI a traves de una API unificada. Esta disponible para usuarios de los planes **Premium** y **Pro**.
+
+**Costo en creditos IA:** 1 credito por 14 caracteres
+
+**Voces disponibles:**
+- Alloy, Ash, Ballad, Coral, Echo, Sage, Shimmer, Verse
+
+**Caracteristicas:**
+- Voces IA de alta calidad via OpenAI TTS
+- Sin soporte de etiquetas expresivas (todas las etiquetas de xAI se eliminan automaticamente)
+- Buen balance entre calidad y eficiencia de costo
+
+---
+
+### xAI — IA Premium (Premium y Pro)
+
+xAI usa el modelo TTS de Grok para voces IA naturales y similares a las humanas. Esta disponible para usuarios de los planes **Premium** y **Pro**.
+
+**Costo en creditos IA:** 1.5 creditos por caracter
+
+**Voces disponibles:**
+- Eve, Ara, Rex, Sal, Leo
+
+**Caracteristicas:**
+- Voces IA naturales y expresivas
+- **Soporta etiquetas expresivas de emocion** — permite `<whisper>`, `[laugh]`, `[cry]`, y mas
+- Controla cuales etiquetas expresivas estan permitidas o bloqueadas por canal
+- Audio de calidad de streaming
+
+#### Etiquetas Expresivas
+
+Las voces de xAI soportan etiquetas inline y wrapping que anaden emocion y expresion vocal a los mensajes TTS. Como streamer puedes habilitar o deshabilitar cada etiqueta individualmente en tu configuracion de TTS.
+
+**Etiquetas inline** — se insertan entre palabras:
+
+| Etiqueta | Descripcion |
+|----------|-------------|
+| `[pause]` | Pausa corta |
+| `[long-pause]` | Pausa mas larga |
+| `[hum-tune]` | Tararea una melodia |
+| `[laugh]` | Risa |
+| `[chuckle]` | Risa suave |
+| `[giggle]` | Risita |
+| `[cry]` | Sonido de llanto |
+| `[tsk]` | Chasquido de lengua |
+| `[tongue-click]` | Chasquido de lengua |
+| `[lip-smack]` | Chasquido de labios |
+| `[breath]` | Sonido de respiracion |
+| `[inhale]` | Inhalar |
+| `[exhale]` | Exhalar |
+| `[sigh]` | Suspiro |
+
+**Etiquetas wrapping** — envuelven texto para cambiar la entrega:
+
+| Etiqueta | Efecto |
+|----------|--------|
+| `<soft>` | Entrega suave y gentil |
+| `<whisper>` | Habla susurrada |
+| `<loud>` | Entrega mas fuerte |
+| `<build-intensity>` | Aumenta la intensidad |
+| `<decrease-intensity>` | Disminuye la intensidad |
+| `<higher-pitch>` | Tono mas agudo |
+| `<lower-pitch>` | Tono mas grave |
+| `<slow>` | Entrega mas lenta |
+| `<fast>` | Entrega mas rapida |
+| `<sing-song>` | Ritmo de cancion |
+| `<singing>` | Entrega cantada |
+| `<laugh-speak>` | Riendo mientras habla |
+| `<emphasis>` | Palabras enfatizadas |
+
+**Ejemplo:**
+
+```
+<whisper>Hola a todos</whisper> bienvenidos al stream [laugh]
+```
+
+Si una etiqueta esta deshabilitada en tu configuracion, la etiqueta se elimina pero el texto interior sigue siendo pronunciado. Los proveedores que no son xAI eliminan todas las etiquetas expresivas automaticamente.
+
+---
+
+## Resumen de Costos en Creditos IA
+
+| Proveedor | Creditos IA por Caracter |
+|-----------|--------------------------|
+| Piper | 1 por 50 caracteres |
+| OpenRouter (OpenAI TTS) | 1 por 14 caracteres |
+| xAI (Grok TTS) | 1.5 por caracter |
+
+## Creditos IA Mensuales por Plan
+
+| Plan | Creditos Mensuales |
+|------|--------------------|
+| Free | 25,000 |
+| Premium | 125,000 |
+| Pro | 500,000 |
+
+<Aside type="note">
+Los creditos IA se consumen cuando un mensaje TTS se encola para sintesis. El costo en creditos se calcula sobre el conteo de caracteres sin procesar del mensaje antes de que se eliminen las etiquetas expresivas.
+</Aside>
+
+## Comandos
+
+### `!s` — Hablar
+
+**Permiso:** Todos
+
+**Uso:** `!s <mensaje>`
+
+Hace que DomDimaBot lea tu mensaje en voz alta usando el proveedor y voz de TTS predeterminados del canal.
+
+**Ejemplo:**
+```
+!s Hola chat, bienvenidos al stream
+```
+
+### Funciones AST
+
+En comandos personalizados y el sistema AST, usa estas funciones para control detallado:
+
+| Funcion | Proveedor | Notas |
+|---------|-----------|-------|
+| `$(tts ...)` | Proveedor predeterminado | Usa el motor TTS predeterminado del canal |
+| `$(tts.speak ...)` | Solo Piper | Fuerza la voz local gratis |
+| `$(tts.ai ...)` | Proveedor IA del canal | Usa xAI u OpenRouter segun configuracion |
+| `$(tts.xai ...)` | Solo xAI | Fuerza el proveedor xAI |
+| `$(tts.or ...)` | Solo OpenRouter | Fuerza OpenRouter |
+
+**Ejemplos:**
+```
+$(tts.xai <whisper>Bienvenidos al espectaculo</whisper>)
+$(tts.or Hola desde OpenRouter!)
+```
+
+<Aside type="tip">
+Las etiquetas expresivas como `<whisper>` y `[laugh]` solo funcionan con el proveedor xAI. Usarlas con Piper u OpenRouter eliminara las etiquetas automaticamente.
+</Aside>
+
+## Configuracion del Canal
+
+Configura el TTS en tu panel bajo **Modulos → Texto a Voz**:
+
+- **Habilitar/deshabilitar** TTS del canal
+- Seleccion de **proveedor predeterminado** y **proveedor IA**
+- **Seleccion de voz** por idioma
+- **Filtros de mensaje** — omitir emotes, reemplazar enlaces, normalizar espacios, longitud maxima
+- **Configuracion de cola** — maximo de elementos TTS pendientes
+- **Controles de etiquetas expresivas** (solo xAI) — habilitacion/deshabilitacion por etiqueta para susurro, risa, pausas y mas

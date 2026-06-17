@@ -1,0 +1,616 @@
+---
+title: Comandos
+description: Todo sobre los comandos predeterminados y personalizados de DomDimaBot.
+sidebar:
+  order: 2
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Los comandos son la base de DomDimaBot. Se dividen en dos categorías: **Comandos Predeterminados** (incluidos) y **Comandos Personalizados** (creados por ti).
+
+## Comandos Predeterminados
+
+Estos comandos vienen preinstalados con DomDimaBot. Son comandos incluidos por defecto, pero aquí **no** los llamamos “reservados” porque poco a poco se están convirtiendo en comandos normales que los usuarios pueden configurar y editar.
+
+<Aside type="note">
+Esta sección coincide con la lista actual de comandos incluidos en la configuración del bot. Muchos de ellos pueden activarse, desactivarse y ajustarse con el tiempo.
+</Aside>
+
+### Niveles de Permiso
+
+- **Everyone** — cualquier viewer puede usarlo
+- **Moderator** — requiere acceso de moderador
+- **Editor** — comandos de gestión de nivel más alto
+
+### 🎮 Stream, Chat y Moderación
+
+| Comando | Permiso | Estado por Defecto | Qué hace |
+|--------|---------|--------------------|----------|
+| `!anuncio` | Moderator | Activado | Envía un anuncio al canal; visible en navegador web, no en móvil |
+| `!promo` | Moderator | Activado | Promo / shoutout por texto pensado para que se vea también en móvil |
+| `!so` | Moderator | Activado | Menciona a un usuario y puede enviar un clip si el sistema de clips está activo |
+| `!game` | Moderator | Activado | Cambia el juego / categoría actual |
+| `!title` | Moderator | Activado | Cambia el título actual del stream |
+| `!s` | Everyone | Desactivado | Hace que el bot hable en el chat |
+| `!onlyemotes` | Moderator | Activado | Activa o desactiva el modo solo emotes, opcionalmente por segundos |
+| `!vip` | Editor | Activado | Da VIP de forma permanente o temporal |
+| `!unvip` | Editor | Activado | Quita el VIP a un usuario |
+| `!mod` | Editor | Activado | Da moderador de forma permanente o temporal |
+| `!unmod` | Editor | Activado | Quita moderador a un usuario |
+| `!vanish` | Everyone | Activado | Hace que un usuario desaparezca del chat |
+| `!clearchat` | Moderator | Desactivado | Limpia el chat |
+
+### 🎯 Predicciones y Encuestas
+
+| Comando | Permiso | Estado por Defecto | Qué hace |
+|--------|---------|--------------------|----------|
+| `!predi` | Moderator | Activado | Crea una predicción |
+| `!lockpredi` | Moderator | Activado | Bloquea la predicción actual para que no se pueda seguir votando |
+| `!endpredi` | Moderator | Activado | Termina la predicción actual y elige la opción ganadora |
+| `!cancelpredi` | Moderator | Activado | Cancela la predicción actual |
+| `!poll` | Moderator | Activado | Crea una encuesta |
+| `!endpoll` | Moderator | Activado | Termina la encuesta actual |
+| `!cancelpoll` | Moderator | Activado | Cancela la encuesta actual |
+
+### 🛠️ Gestión de Comandos y Temporizadores
+
+| Comando | Permiso | Estado por Defecto | Qué hace |
+|--------|---------|--------------------|----------|
+| `!cc` | Moderator | Activado | Crea un comando personalizado |
+| `!ec` | Moderator | Activado | Edita un comando personalizado |
+| `!dc` | Moderator | Activado | Elimina un comando personalizado |
+| `!enable` | Moderator | Activado | Activa un comando |
+| `!disable` | Moderator | Activado | Desactiva un comando |
+| `!commands` | Everyone | Activado | Muestra los comandos disponibles para ese usuario según sus permisos |
+| `!cct` | Moderator | Activado | Crea un temporizador personalizado |
+| `!ect` | Moderator | Activado | Edita un temporizador existente |
+| `!dct` | Moderator | Activado | Elimina un temporizador |
+
+### 🎉 Utilidad y Diversión
+
+| Comando | Permiso | Estado por Defecto | Qué hace |
+|--------|---------|--------------------|----------|
+| `!ruletarusa` | Everyone | Activado | Ruleta rusa; puede dar timeout de 150 segundos |
+| `!sumimetro` | Everyone | Activado | Da una lectura dominante / sumisa para ti o para otro usuario |
+| `!memide` | Everyone | Activado | Devuelve una medida imaginaria |
+| `!amor` | Everyone | Activado | Mide el amor entre dos usuarios |
+| `!ponerla` | Everyone | Activado | Devuelve un porcentaje de posibilidades |
+| `!mecabe` | Everyone | Activado | Devuelve un resultado en forma de medida / broma |
+| `!followage` | Everyone | Activado | Muestra cuánto tiempo lleva alguien siguiendo el canal |
+| `!clip` | Everyone | Activado | Crea un clip con duración y título opcionales |
+| `!duel` | Everyone | Activado | Inicia un duelo entre usuarios |
+
+### Sintaxis Exacta y Límites
+
+#### `!anuncio`
+
+**Uso:** `!anuncio <mensaje>`  
+**Límite:** el mensaje no puede superar `300` caracteres  
+**Nota:** visible en navegadores web, no en móvil
+
+**Ejemplo:**
+```text
+!anuncio Hola como estas
+```
+
+#### `!predi`
+
+**Uso:** `!predi <titulo>;<opcion1>/<opcion2>;<tiempo en segundos>`  
+**Límites:**
+
+- título máximo de `30` caracteres
+- opciones de máximo `20` caracteres cada una
+- mínimo `2` opciones y máximo `10`
+- las opciones deben separarse con `/`
+- el tiempo debe estar entre `30` segundos y `5` minutos
+
+**Ejemplo:**
+```text
+!predi ¿Ganara el streamer?;Si/No;60
+```
+
+#### `!endpredi`
+
+**Uso:** `!endpredi <numero de opcion>`  
+**Nota:** el número debe ser la opción ganadora
+
+**Ejemplo:**
+```text
+!endpredi 1
+```
+
+#### `!cancelpredi`
+
+**Uso:** `!cancelpredi`  
+**Nota:** solo funciona si la predicción está activa o bloqueada
+
+#### `!lockpredi`
+
+**Uso:** `!lockpredi`  
+**Nota:** solo funciona si la predicción está activa
+
+#### `!poll`
+
+**Uso:** `!poll <titulo>;<opcion1>/<opcion2>;<tiempo en segundos>`  
+**Límites:**
+
+- título máximo de `25` caracteres
+- opciones de máximo `25` caracteres cada una
+- mínimo `2` opciones y máximo `5`
+- las opciones deben separarse con `/`
+- el tiempo debe estar entre `30` segundos y `5` minutos
+
+**Ejemplo:**
+```text
+!poll ¿Ganara el streamer?;Si/No;60
+```
+
+#### `!endpoll`
+
+**Uso:** `!endpoll`  
+**Nota:** solo funciona si la encuesta está activa
+
+#### `!cancelpoll`
+
+**Uso:** `!cancelpoll`  
+**Nota:** solo funciona si la encuesta está activa
+
+#### `!game`
+
+**Uso:** `!game <nombre del juego>`
+
+**Ejemplo:**
+```text
+!game Fortnite
+```
+
+#### `!title`
+
+**Uso:** `!title <titulo>`
+
+**Ejemplo:**
+```text
+!title Hola como estas
+```
+
+#### `!s`
+
+**Uso:** `!s <mensaje>`  
+**Estado por defecto:** desactivado
+
+**Ejemplo:**
+```text
+!s Hola como estas
+```
+
+#### `!sumimetro`
+
+**Uso:** `!sumimetro [username]`
+
+**Ejemplos:**
+```text
+!sumimetro
+!sumimetro username
+```
+
+#### `!memide`
+
+**Uso:** `!memide`
+
+#### `!amor`
+
+**Uso:**
+
+- `!amor <username>`
+- `!amor <user1> <user2>`
+
+**Notas:**
+
+- si apuntas a tu propio usuario, responde con una frase negativa
+- si no pasas argumentos, recuerda cómo se usa y responde con una frase negativa
+
+#### `!ponerla`
+
+**Uso:** `!ponerla`
+
+#### `!mecabe`
+
+**Uso:** `!mecabe`
+
+#### `!onlyemotes`
+
+**Uso:** `!onlyemotes [segundos]`
+
+**Ejemplos:**
+```text
+!onlyemotes
+!onlyemotes 10
+```
+
+#### `!cc`
+
+**Uso:** `!cc [opciones] <nombre del comando> <respuesta del comando>`
+
+**Opciones soportadas:**
+
+- `-cd=<valor>` para cooldown
+- `-ul=<valor>` para user level
+
+**Límites:**
+
+- el nombre no puede tener espacios
+- el nombre no puede tener caracteres especiales
+- el nombre tiene máximo `20` caracteres
+- la respuesta tiene máximo `300` caracteres
+
+**Ejemplos:**
+```text
+!cc discord Sigueme en mi discord: discord.cdom201.com
+!cc -cd=10 -ul=mod discord Sigueme en mi discord: discord.cdom201.com
+```
+
+#### `!ec`
+
+**Uso:** `!ec [opciones] <nombre del comando> <respuesta del comando>`
+
+**Opciones soportadas:**
+
+- `-cd=`
+- `-ul=`
+- `-enabled=`
+- `-desc=`
+
+**Límites:**
+
+- el nombre no puede tener espacios
+- el nombre no puede tener caracteres especiales
+- el nombre tiene máximo `20` caracteres
+- la respuesta tiene máximo `300` caracteres
+
+**Ejemplos:**
+```text
+!ec discord Sigueme en mi discord: discord.cdom201.com
+!ec -cd=10 -ul=mod discord Sigueme en mi discord: discord.cdom201.com
+```
+
+#### `!dc`
+
+**Uso:** `!dc <nombre del comando>`
+
+**Ejemplo:**
+```text
+!dc discord
+```
+
+#### `!followage`
+
+**Uso:** `!followage [username]`
+
+#### `!clip`
+
+**Uso:**
+
+- `!clip`
+- `!clip 20`
+- `!clip Momento epico`
+- `!clip 20 Momento epico`
+
+**Comportamiento:**
+
+- si el primer argumento es un número, se usa como duración
+- el rango válido es de `5` a `60` segundos
+- si el primer argumento no es un número, se usa como título
+- duraciones fuera de rango usan `30` segundos por defecto
+
+#### `!vip`
+
+**Uso:** `!vip <username> [days]`
+
+**Nota:** el VIP temporal solo está disponible para usuarios **Premium** y **Pro**, con un máximo de `30` días.
+
+#### `!commands`
+
+**Uso:** `!commands`  
+**Nota:** solo muestra los comandos disponibles para el nivel de permisos de ese usuario
+
+#### `!clearchat`
+
+**Uso:** `!clearchat`  
+**Estado por defecto:** desactivado
+
+#### `!enable`
+
+**Uso:** `!enable <nombre del comando>`
+
+#### `!disable`
+
+**Uso:** `!disable <nombre del comando>`
+
+#### `!cct`
+
+**Uso:** `!cct <nombre del temporizador> <frecuencia> <mensaje>`
+
+**Ejemplos:**
+```text
+!cct mitemporizador 5m Hola mundo!
+!cct saludo 10m Visita las redes!
+```
+
+**Notas:**
+
+- la frecuencia debe ser múltiplo de `5` minutos
+- ejemplos: `5m`, `10m`, `15m`, `1h`
+- gratis máximo `60min`
+- premium máximo `360min`
+- pro máximo `1440min`
+- puedes referenciar comandos con `#(comando)`
+
+#### `!ect`
+
+**Uso:** `!ect <nombre del temporizador> <frecuencia> <mensaje>`
+
+**Nota:** la frecuencia debe ser múltiplo de `5` minutos y el temporizador ya debe existir
+
+**Ejemplo:**
+```text
+!ect mitemporizador 10m Nuevo mensaje aqui
+```
+
+#### `!dct`
+
+**Uso:** `!dct <nombre del temporizador>`
+
+**Ejemplo:**
+```text
+!dct mitemporizador
+```
+
+#### `!mod`
+
+**Uso:** `!mod <username> [days]`
+
+**Nota:** el moderador temporal solo está disponible para usuarios **Premium** y **Pro**, con un máximo de `30` días.
+
+#### `!unmod`
+
+**Uso:** `!unmod <username>`
+
+#### `!unvip`
+
+**Uso:** `!unvip <username>`
+
+#### `!vanish`
+
+**Uso:** `!vanish <username>`
+
+#### `!duel`
+
+**Uso:**
+
+- `!duel <username>`
+- `!duel accept`
+- `!duel decline`
+
+**Nota:** el usuario retado debe aceptar o declinar el duelo
+
+<Aside type="tip">
+Si quieres lógica dinámica avanzada, variables, funciones, encadenamiento o estado guardado, continúa con la documentación AST en la siguiente sección. Aquí el objetivo es describir el conjunto actual de comandos incluidos por defecto.
+</Aside>
+
+## Comandos Personalizados
+
+Los comandos personalizados los creas tú y pueden enviar texto, usar funciones AST, guardar datos, activar media y llamar otros comandos.
+
+<Aside type="tip">
+Consulta la página del [Dashboard](/es/dashboard) para una guía visual sobre cómo crear y gestionar comandos personalizados a través de la interfaz web.
+</Aside>
+
+### Cómo Crear Comandos Personalizados
+
+Puedes crear comandos personalizados de dos maneras:
+
+<Tabs>
+<TabItem label="Por Chat">
+
+Usa el comando `!cc` directamente en el chat:
+
+```
+!cc <nombre_comando> <respuesta>
+```
+
+El nombre del comando se crea **sin** el `!`.
+
+**Ejemplo:**
+```
+😎Streamer: !cc discord ¡Mira mi Discord! discord.gg/ejemplo
+🤖 DomDimaBot: ¡Comando !discord creado!
+```
+
+Con opciones:
+```
+!cc -cd=300 -ul=sub discord ¡Discord solo para subs! discord.gg/subonly
+🤖 DomDimaBot: ¡Comando !discord creado con configuración personalizada!
+```
+
+| Opción | Descripción |
+|--------|-------------|
+| `-cd=` | Enfriamiento en segundos |
+| `-ul=` | Nivel de usuario: `everyone`, `sub`, `mod`, `broadcaster` |
+| `-desc=` | Descripción personalizada para texto de ayuda |
+
+**Editar:** `!ec <nombre> <nueva respuesta>`  
+**Eliminar:** `!dc <nombre>`
+
+</TabItem>
+<TabItem label="Por Dashboard">
+
+Navega a la sección **Comandos** en tu dashboard para un editor visual con:
+
+- Lista completa de comandos con interruptores de activar/desactivar
+- Configuración de enfriamiento y permisos
+- Editor de respuestas para texto / plantillas AST
+- Estadísticas de uso de comandos
+- Gestión de temporizadores
+
+</TabItem>
+</Tabs>
+
+### Comandos Básicos vs Avanzados
+
+Hay dos formas útiles de entender los comandos personalizados:
+
+| Tipo | Mejor para | Ejemplo |
+|------|------------|---------|
+| **Comandos de texto básicos** | enlaces, reglas, información simple | `!discord`, `!reglas`, `!horario` |
+| **Comandos AST** | respuestas dinámicas, contadores, lógica, triggers | `!uptime`, `!abrazo`, sistemas de lealtad |
+
+### Nota importante sobre AST
+
+DomDimaBot **no** usa sintaxis tipo `{user}` o `{game}` para la lógica avanzada de comandos.
+
+Usa:
+
+- `$(user)` para el usuario actual
+- `$(twitch.game)` para el juego actual
+- `&p1`, `&p2`, `&t` para argumentos
+- `%(...)` para variables que tú mismo creas
+
+## Ejemplos de Patrones Correctos para Comandos Personalizados
+
+<Tabs>
+<TabItem label="Texto">
+
+Respuestas de texto plano para información, enlaces y anuncios.
+
+```
+!cc discord ¡Mira mi Discord! discord.gg/ejemplo
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !discord
+🤖 DomDimaBot: ¡Mira mi Discord! discord.gg/ejemplo
+```
+
+```
+!cc reglas ¡Por favor sé amable y diviértete!
+```
+
+</TabItem>
+<TabItem label="Funciones">
+
+Las respuestas dinámicas deben usar funciones AST.
+
+**Ejemplo:**
+```
+!cc gameinfo $(twitch.channel) está jugando ahora mismo a $(twitch.game)
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !gameinfo
+🤖 DomDimaBot: DomDima está jugando ahora mismo a Valorant
+```
+
+</TabItem>
+<TabItem label="Parámetros">
+
+Usa `&p1`, `&p2` y `&t` cuando quieras recibir entrada del usuario.
+
+**Argumento único:**
+```
+!cc abrazo $(user) le manda un cálido abrazo a &p1! 🤗
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !abrazo @AmigoUsuario
+🤖 DomDimaBot: Espectador le manda un cálido abrazo a @AmigoUsuario! 🤗
+```
+
+**Texto restante:**
+```
+!cc decir $(user) dice: &t
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !decir este bot está increíble
+🤖 DomDimaBot: Espectador dice: este bot está increíble
+```
+
+</TabItem>
+<TabItem label="Datos Guardados">
+
+Las variables AST las creas tú. No existen por defecto.
+
+```
+!cc wins *(^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1)) $(user) ahora tiene %(#wins) wins!
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !wins
+🤖 DomDimaBot: Espectador ahora tiene 1 wins!
+```
+
+En el siguiente uso:
+
+```text
+💬 Espectador: !wins
+🤖 DomDimaBot: Espectador ahora tiene 2 wins!
+```
+
+</TabItem>
+<TabItem label="Triggers y Encadenamiento">
+
+Puedes disparar media configurada y llamar otros comandos desde AST.
+
+**Ejemplo de trigger:**
+```
+!cc airhorn $(trigger.send airhorn) AIRHORN!
+```
+
+**Ejemplo en chat:**
+```
+💬 Espectador: !airhorn
+🤖 DomDimaBot: AIRHORN!
+```
+
+Si existe un trigger llamado `airhorn`, se disparará cuando corra el comando.
+
+**Ejemplo de referencia a comando:**
+
+```
+!cc creator Mira mis enlaces aquí: #(discord)
+```
+
+Esto ejecuta el comando `discord` dentro de `creator`.
+
+</TabItem>
+</Tabs>
+
+### Comandos Personalizados Avanzados
+
+Los ejemplos anteriores solo cubren lo básico. El sistema AST completo soporta:
+
+- **Condiciones** con `*(...)`
+- **Variables y almacenamiento** con `%(...)`
+- **Verificación de existencia** con `^(...)`
+- **Argumentos** con `&p1`, `&p2` y `&t`
+- **Referencias a comandos** con `#(...)`
+- **Bucles, arrays y lógica avanzada**
+- **Llamadas a funciones** para Twitch, moderación, TTS, triggers, EventSub y más
+
+👉 Para la referencia AST completa y correcta, usa estas páginas:
+
+- **[Comandos Personalizados Avanzados](/es/commands/advanced)**
+- **[Sintaxis y Datos de AST](/es/commands/advanced/syntax)**
+- **[Referencia de Funciones AST](/es/commands/advanced/functions)**
+- **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution)**
+- **[Recetas y Patrones AST](/es/commands/advanced/recipes)**
+
+---
+
+*Para crear comandos personalizados, usa el comando `!cc` en el chat o visita la sección Comandos en tu panel de control.*

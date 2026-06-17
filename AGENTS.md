@@ -396,19 +396,44 @@ All authenticated routes use a shared layout shell with a consistent navbar.
 
 - **`authenticatedGuard`**: Checks session exists + validates token against `/site/` endpoint
 - **`dashboardAccessGuard`**: Resolves streamer + verifies access via `/dashboard/:channelID/access`
+- **`streamerRouteShapeGuard`**: Validates URL path structure before route loading (prevents 404 on valid paths)
 
 ### Adding new authenticated routes
 
 1. Add child route under `/:streamer` in `app.routes.ts`
 2. Create component in `dimasite/src/app/features/...`
-3. Add nav link in `authenticated-layout.component.html` under `.auth-navbar__nav`
+3. Add nav link in `authenticated-layout.component.html` under `.auth-navbar__nav` (or add to modules page if it's a module)
 4. Add translation keys in `dimasite/src/assets/i18n/en.json` and `dimasite/src/assets/i18n/es.json` for navbar items
+5. **IMPORTANT**: If adding a new module under `/modules/`, you MUST also update the whitelist in `dimasite/src/app/guards/streamer-route.guard.ts`
+
+### Route whitelist (streamerRouteShapeGuard)
+
+The `streamerRouteShapeGuard` uses a whitelist to validate route paths before Angular processes them. This prevents 404 errors on valid routes.
+
+**For modules under `/modules/`**, you MUST add the module name to `MODULE_CHILDREN` in `streamerRouteShapeGuard.ts`:
+
+```typescript
+const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
+  ['clips', null],
+  ['chat-events', null],
+  ['triggers', null],
+  ['referrals', null],
+  ['redemptions', null],
+  ['tts', null],  // Add new modules here
+  ['analytics', new Set(['follows'])]
+]);
+```
+
+If your module has nested routes (like `/modules/analytics/follows`), use a `Set` to whitelist them.
 
 ## Frontend styling policy (important)
 
-- To prevent Angular `anyComponentStyle` budget warnings/errors, place frontend CSS in `dimasite/src/styles.css` by default.
-- Avoid adding non-trivial CSS to component-level `*.component.css` files.
-- If a tiny component-scoped override is absolutely needed, keep it minimal and document why.
+- Use a hybrid CSS strategy in `dimasite/`.
+- Put shared or non-trivial styling in `dimasite/src/styles.css` by default. This includes design tokens, theme variables, typography, spacing, layout primitives, reusable card/form/button patterns, section shells, and plan-tier styling hooks.
+- Use component-level `*.component.css` files only for small, truly local overrides that are unlikely to grow.
+- Avoid placing large page-level or reusable styling in component CSS, because Angular's `anyComponentStyle` budget can still warn or fail as files grow.
+- If a component stylesheet starts becoming substantial or reusable, move that styling into `dimasite/src/styles.css`.
+- Current Angular frontend build budgets in `dimasite/angular.json` are `1.5MB` warning / `3MB` error for `initial`, and `50kB` warning / `100kB` error for `anyComponentStyle`.
 
 ## Plan tier styling rule (important)
 
@@ -419,3 +444,29 @@ All authenticated routes use a shared layout shell with a consistent navbar.
 - Prefer applying tier styles through a global attribute hook (for example `data-plan-tier` on `<html>`) so future components can reuse the same system.
 
 This file is the root navigation guide so agents know exactly where to work and how frontend/backend contracts connect.
+
+<!-- gitnexus:start -->
+# GitNexus MCP
+
+This project is indexed by GitNexus as **saas** (3523 symbols, 9709 relationships, 267 execution flows).
+
+## Always Start Here
+
+1. **Read `gitnexus://repo/{name}/context`** — codebase overview + check index freshness
+2. **Match your task to a skill below** and **read that skill file**
+3. **Follow the skill's workflow and checklist**
+
+> If step 1 warns the index is stale, run `npx gitnexus analyze` in the terminal first.
+
+## Skills
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

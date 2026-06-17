@@ -1,0 +1,153 @@
+---
+title: AST Recipes & Patterns
+description: "Best practices and advanced AST patterns, including counters, guard checks, user selectors, and shield systems."
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This page shows reusable AST patterns you can adapt into your own commands.
+
+## Best practices
+
+### Increment correctly
+
+Wrong:
+
+```bash
+%(#wins 1)
+```
+
+Correct:
+
+```bash
+%(#wins *(%(#wins) + 1))
+```
+
+### Initialize before you depend on a value
+
+```bash
+*(^(#wins) ? %(#wins) : 0)
+```
+
+### Choose the right storage
+
+- use `#` or `##` for temporary 24h data
+- use `*` or `**` for permanent Premium / Pro data
+
+### Keep loops small
+
+- respect plan limits
+- use `$(break)` if you can exit early
+
+### Use real event context for EventSub commands
+
+- chat tests do not fully represent redemptions, cheers, raids, or subscriptions
+
+## Pattern summary
+
+| Pattern | Syntax idea | Purpose |
+|---------|-------------|---------|
+| Initialize-or-increment | `*(^(**x) ? %(**x + 1) : %(**x 1))` | Smart counter |
+| User selector | `%(**var(%(target)))` | Read or write another user's state |
+| Guard check | `*(^(**target) ? FAIL : ACT)` | Prevent an action if a condition exists |
+| Side effect in ternary | `*(cond ? $(action) : "")` | Execute an action in a branch |
+| Nested comparison | `*(a > b ? A_WIN : B_WIN)` | Multi-branch combat logic |
+| State arithmetic | `%(winner *(%(winner) - %(loser)))` | Update stored state with math |
+
+## Recipe 1: initialize or increment
+
+This is one of the most common AST patterns.
+
+```bash
+*( ^(**escudos) ? %(**escudos *(%(**escudos) + 1)) : %(**escudos 1) ) $(user) ha comprado un escudo, ahora tiene %(**escudos) escudos
+```
+
+What it does:
+
+1. checks whether `**escudos` exists
+2. if yes, adds 1
+3. if no, creates it with value `1`
+4. prints the final total
+
+## Recipe 2: guard check / shield bounce
+
+If the target has shields, the attack bounces. If not, the target gets banned and loses shields.
+
+```bash
+%(target $(reward.input))
+*( ^(**escudos(%(target))) ?
+    $(ban.mod $(user) 300 true) "¡%(target) tiene escudos! El ataque rebotó hacia %(user)."
+:
+    $(ban.mod %(target) 300 true)
+    %(**escudos(%(target)) 0)
+    "¡%(user) atacó y baneó a %(target)! Los escudos de %(target) se han perdido."
+)
+```
+
+Key ideas used here:
+
+- store event input in a local variable
+- use a user selector to inspect another user's data
+- perform an action inside a ternary branch
+- reset state after the action
+
+## Recipe 3: full shield battle
+
+Whoever has more shields wins. The loser is banned. The winner loses shields equal to the loser's amount.
+
+```bash
+%(attacker %(user))
+%(defender $(reward.input))
+*( ^(**escudos(%(defender))) ?
+    *( ^(**escudos(%(attacker))) ?
+        *( %(**escudos(%(attacker))) > %(**escudos(%(defender))) ?
+            $(ban.mod %(defender) 300 true)
+            %(**escudos(%(defender)) 0)
+            %(**escudos(%(attacker)) *(%(**escudos(%(attacker))) - %(**escudos(%(defender)))))
+            "¡%(attacker) gana! %(defender) baneado. %(attacker) ahora tiene %(**escudos(%(attacker))) escudos."
+        :
+            $(ban.mod %(attacker) 300 true)
+            %(**escudos(%(attacker)) 0)
+            %(**escudos(%(defender)) *(%(**escudos(%(defender))) - %(**escudos(%(attacker)))))
+            "¡%(defender) gana! %(attacker) baneado. %(defender) ahora tiene %(**escudos(%(defender))) escudos."
+        )
+    : "¡%(defender) tiene escudos pero %(attacker) no tiene ninguno!"
+:
+    $(ban.mod %(defender) 300 true)
+    "¡%(defender) no tiene escudos y fue baneado por %(user)!"
+)
+```
+
+What makes this advanced:
+
+- nested ternaries
+- reading two users' stored state
+- performing multiple writes in a branch
+- arithmetic updates based on previous state
+
+## Building your own systems
+
+When you design an advanced AST command, this order usually works best:
+
+1. define the input
+2. decide what state must be stored
+3. define guard checks
+4. define the success branch
+5. define the fail branch
+6. only then add side effects like bans, title changes, or triggers
+
+## Good use cases for AST recipes
+
+- loyalty systems
+- economy counters
+- collectible inventories
+- viewer battles
+- redemption-driven mini games
+- dynamic shoutouts
+- timed chat workflows
+
+<Aside type="tip">
+If your logic starts becoming hard to read, split the system across more than one command and use `#(...)` command references to keep each piece smaller.
+</Aside>

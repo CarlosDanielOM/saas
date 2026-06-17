@@ -10,7 +10,21 @@ interface ApiEnvelope<T> {
   error: boolean;
   message?: string;
   status?: number;
+  code?: string;
+  type?: string;
   data?: T;
+}
+
+export class AuthLoginError extends Error {
+  constructor(
+    message: string,
+    public readonly code?: string,
+    public readonly errorType?: string,
+    public readonly status?: number
+  ) {
+    super(message);
+    this.name = 'AuthLoginError';
+  }
 }
 
 interface TwitchUserProfile {
@@ -107,6 +121,14 @@ export class SessionAuthService {
     window.location.href = this.linksService.getTwitchAuthUrl(state);
   }
 
+  /**
+   * Start Twitch login with a custom state (used for admin redirect flow)
+   */
+  startTwitchLoginWithState(state: string): void {
+    localStorage.setItem(this.oauthStateKey, state);
+    window.location.href = this.linksService.getTwitchAuthUrl(state);
+  }
+
   consumeOAuthState(): string | null {
     const value = localStorage.getItem(this.oauthStateKey);
     localStorage.removeItem(this.oauthStateKey);
@@ -123,14 +145,28 @@ export class SessionAuthService {
 
   loginWithTwitchUser(twitchUser: TwitchUserProfile): Observable<ApiEnvelope<AppLoginData>> {
     const referralCode = this.checkoutIntent.getPendingReferralCode();
+    const normalizedLogin = (twitchUser.login || '').trim().toLowerCase();
 
     return this.http.post<ApiEnvelope<AppLoginData>>(`${this.linksService.getApiUrl()}/auth/login`, {
       id: twitchUser.id,
-      name: twitchUser.display_name || twitchUser.login,
+      name: normalizedLogin,
+      login: normalizedLogin,
       email: twitchUser.email,
       language: this.languageService.getCurrentLanguage(),
       referralCode: referralCode || undefined
-    });
+    }).pipe(
+      map((response) => {
+        if (response.error || !response.data) {
+          throw new AuthLoginError(
+            response.message || 'Login failed',
+            response.code,
+            response.type,
+            response.status
+          );
+        }
+        return response;
+      })
+    );
   }
 
   fetchSessionFromServer(): Observable<ApiEnvelope<AuthSessionResponse>> {

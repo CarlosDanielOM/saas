@@ -15,7 +15,9 @@
     "profileSettings": "Configuracion de Perfil",
     "planFree": "Gratis",
     "planPremium": "Premium",
-    "planPro": "Pro"
+    "planPro": "Pro",
+    "upgrade": "Actualizar",
+    "upgradeToPro": "Actualizar a Pro"
   },
   "modules": {
     "title": "Modulos",
@@ -42,6 +44,197 @@
     "triggers": {
       "description": "Construye momentos con triggers usando tu biblioteca privada, assets publicos y recompensas del canal sin salir de los limites de tu plan."
     },
+    "dimafx": {
+      "description": "Configura tu tienda de Twitch Extension con assets multimedia que los viewers pueden comprar con Bits, usar al instante o guardar para despues.",
+      "title": "Tienda de Twitch Extension",
+      "subtitle": "Configura assets multimedia que los espectadores pueden comprar con Bits, activar de inmediato o guardar en su inventario de canal.",
+      "backToModules": "Volver a módulos",
+      "heroBadge": "Tienda",
+      "storefrontItems": "Artículos de la tienda",
+      "configured": "{{count}} configurados",
+      "active": "Activo",
+      "disabled": "Desactivado",
+      "edit": "Editar",
+      "preview": "Previsualizar",
+      "delete": "Eliminar",
+      "refundDelete": "Eliminar con Reembolso",
+      "noItemsTitle": "Aún no hay artículos en la tienda",
+      "noItemsDesc": "Crea tu primer artículo de la tienda de Twitch usando el formulario de la derecha.",
+      "editTitle": "Editar artículo",
+      "createTitle": "Crear artículo",
+      "newItem": "Nuevo artículo",
+      "mediaAsset": "Asset multimedia",
+      "selectMedia": "Seleccionar de la biblioteca de medios",
+      "change": "Cambiar",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Alerta de grito",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Cuéntale a los espectadores qué hace esto",
+      "categoryLabel": "Categoría",
+      "bitsPriceLabel": "Precio en Bits",
+      "thumbnailLabel": "URL de miniatura",
+      "optionalUrl": "URL de imagen opcional",
+      "duration": "Duración (segundos)",
+      "volume": "Volumen %",
+      "sortOrder": "Orden",
+      "enabledInExtension": "Habilitado en la extensión",
+      "saveItem": "Guardar artículo de DimaFX",
+      "createItem": "Crear artículo de DimaFX",
+      "saving": "Guardando...",
+      "modal": {
+        "title": "Explorar biblioteca de medios",
+        "subtitle": "Selecciona un asset de la biblioteca para vincularlo a tu artículo de la tienda",
+        "searchPlaceholder": "Buscar assets...",
+        "noAssets": "No se encontraron assets que coincidan",
+        "noAssetsDesc": "Intenta refinar tu texto de búsqueda o los filtros.",
+        "cancel": "Cancelar"
+      }
+    },
+    "tts": {
+      "description": "Configura los ajustes de texto a voz para tu canal. Habilita TTS, establece preferencias de voz y controla los filtros de mensajes.",
+      "eyebrow": "Texto a Voz",
+      "title": "Configuracion TTS",
+      "subtitle": "Configura los ajustes de salida de voz para tu stream. Habilita TTS, elige voces y establece filtros de mensajes.",
+      "backToModules": "Volver a modulos",
+      "heroBadge": "Sintesis de voz",
+      "providerPill": "Piper en este VPS",
+      "readOnlyPill": "Solo lectura",
+      "copySpeechUrl": "Copiar URL",
+      "copiedCta": "Copiado!",
+      "urlSection": {
+        "label": "Endpoint de API de voz",
+        "hint": "Usa esta URL para enviar solicitudes TTS via OBS browser source o Streamer.bot"
+      },
+      "metrics": {
+        "status": "Estado",
+        "statusActive": "Activo",
+        "statusDisabled": "Deshabilitado",
+        "statusMeta": "Cola TTS habilitada",
+        "engine": "Motor por defecto",
+        "engineMeta": "Provider actual en runtime",
+        "language": "Idioma",
+        "languageMeta": "Idioma hablado por defecto",
+        "queue": "Limite de cola",
+        "queueMeta": "Voces pendientes permitidas",
+        "maxLength": "Longitud max",
+        "maxLengthMeta": "Caracteres por mensaje"
+      },
+      "cards": {
+        "behaviorKicker": "Reglas de voz",
+        "behaviorTitle": "Cola y limpieza por defecto",
+        "voiceKicker": "Mapa de voces",
+        "voiceTitle": "Voces en vivo actuales",
+        "aiKicker": "Routing premium",
+        "aiTitle": "Valores por defecto IA",
+        "filtersKicker": "Normalizacion",
+        "filtersTitle": "Reglas de limpieza del mensaje"
+      },
+      "fields": {
+        "enabledLabel": "Habilitar TTS del canal",
+        "enabledHint": "Cuando esta deshabilitado, las solicitudes `!s` y `$(tts ...)` son rechazadas para este canal.",
+        "defaultLanguageLabel": "Idioma hablado por defecto",
+        "defaultProviderLabel": "Motor TTS por defecto para !s y $(tts)",
+        "providerPiper": "Piper (voz local gratis)",
+        "providerXai": "xAI (voz IA premium)",
+        "providerOpenRouter": "OpenRouter (voz IA economica)",
+        "providerFish": "Fish Audio (voces clonadas)",
+        "cloneVoiceLabel": "Voz clonada",
+        "aiProviderLabel": "Provider IA para $(tts.ai)",
+        "openRouterModelLabel": "Modelo de voz OpenRouter",
+        "languageSpanish": "Espanol",
+        "languageEnglish": "Ingles",
+        "maxLengthLabel": "Longitud maxima normalizada",
+        "queueMaxItemsLabel": "Maximo de items pendientes",
+        "queueMaxItemsHint": "Limita cuantas solicitudes de voz pueden esperar al mismo tiempo.",
+        "skipEmotesLabel": "Omitir emotes por defecto",
+        "skipEmotesHint": "Los tokens de emotes se eliminan antes de que el mensaje llegue a Piper.",
+        "stripLinksLabel": "Reemplazar enlaces",
+        "stripLinksHint": "Las URLs se convierten en `[link]` para que el stream no tenga spam de enlaces.",
+        "normalizeWhitespaceLabel": "Normalizar espacios",
+        "normalizeWhitespaceHint": "Colapsa espacios repetidos y recorta el ruido de entrada.",
+        "englishVoiceLabel": "Voz en Ingles",
+        "spanishVoiceLabel": "Voz en Espanol",
+        "aiEnglishVoiceLabel": "Voz IA en Ingles · {{provider}}",
+        "aiSpanishVoiceLabel": "Voz IA en Espanol · {{provider}}",
+        "savedValueOption": "Guardado en servidor · {{value}}"
+      },
+      "filters": {
+        "title": "Filtros de mensajes"
+      },
+      "expressive": {
+        "kicker": "Speech tags de xAI",
+        "title": "Controles de voz IA expresiva",
+        "subtitle": "Controla que speech tags inline y wrapping de xAI permites en tu stream. Los tags deshabilitados se eliminan automaticamente antes de enviar la solicitud TTS.",
+        "toggleHint": "Haz click en cualquier pill para activar o desactivar ese tag. Los wrapping tags se muestran una sola vez y aplican al par completo.",
+        "summary": "tags activos",
+        "providerTitle": "Comportamiento por provider",
+        "providerCopy": "Estos controles afectan los tags expresivos de xAI. Si el provider activo no es xAI, todos estos tags se eliminan automaticamente antes de la sintesis.",
+        "inlineTitle": "Tags inline",
+        "inlineCopy": "Inserta tags inline como `[laugh]` o `[pause]` dentro de la frase. Desactiva cualquier tag que no quieras permitir para viewers o automatizaciones.",
+        "wrappingTitle": "Tags wrapping",
+        "wrappingCopy": "Los tags wrapping cambian como se entrega el texto que encierran. Cuando estan deshabilitados, se elimina el wrapper pero el texto interno se sigue leyendo.",
+        "enabled": "Activo",
+        "disabled": "Desactivado",
+        "categories": {
+          "pauses": "Pausas",
+          "laughterCry": "Risa y llanto",
+          "mouthSounds": "Sonidos de boca",
+          "breathing": "Respiracion",
+          "volumeIntensity": "Volumen e intensidad",
+          "pitchSpeed": "Tono y velocidad",
+          "vocalStyle": "Estilo vocal"
+        }
+      },
+      "future": {
+        "title": "Reservado para tiers premium",
+        "copy": "Las voces IA estan disponibles para planes de pago. `tts.clone` sigue reservado para un provider futuro de clonacion de voz."
+      },
+      "defaultMode": {
+        "title": "Como funciona la voz por defecto",
+        "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, `$(tts.ai ...)` para usar tu provider IA seleccionado, `$(tts.xai ...)` para forzar xAI, o `$(tts.or ...)` para forzar OpenRouter."
+      },
+      "footer": {
+        "owner": "Los propietarios pueden cambiar estos valores por defecto. Los administradores pueden revisar la configuracion sin editarla.",
+        "readOnly": "Estas viendo la configuracion de TTS en modo de solo lectura. Solo el propietario del canal puede cambiarla."
+      },
+      "actions": {
+        "save": "Guardar configuracion TTS",
+        "saving": "Guardando..."
+      },
+      "states": {
+        "loading": "Cargando configuracion TTS...",
+        "empty": "No hay configuracion de TTS disponible."
+      },
+      "errors": {
+        "loadFailed": "Error al cargar la configuracion TTS.",
+        "saveFailed": "Error al guardar la configuracion TTS.",
+        "channelNotResolved": "No se pudo resolver el canal.",
+        "copyFailed": "Error al copiar URL al portapapeles."
+      },
+      "toasts": {
+        "savedTitle": "Configuracion TTS guardada",
+        "savedMessage": "Los valores por defecto de la cola de voz se han actualizado para este canal.",
+        "errorTitle": "Error al actualizar TTS",
+        "copiedTitle": "URL copiada",
+        "copiedMessage": "URL de API de voz copiada al portapapeles."
+      },
+      "upgrade": {
+        "title": "Desbloquea Voces IA",
+        "description": "Lleva tu TTS al siguiente nivel con voces IA naturales. Los planes Premium y Pro incluyen acceso a sintesis de voz avanzada.",
+        "features": {
+          "aiVoices": "Voces IA naturales (Eve, Ara, Rex y mas)",
+          "expressiveTags": "Etiquetas expresivas como [laugh], <whisper> y <sing-song>",
+          "openRouter": "Soporte OpenRouter con modelos OpenAI y Kokoro"
+        },
+        "cta": "Mejorar a Premium",
+        "currentPlan": "Tu plan actual"
+      },
+      "badges": {
+        "premium": "Premium",
+        "pro": "Pro",
+        "locked": "Bloqueado"
+      }
+    },
     "referrals": {
       "description": "Crea codigos de referido, sigue conversiones y administra las campanas con tarjetas conectadas a tu canal."
     },
@@ -49,91 +242,518 @@
       "description": "Crea, edita y gestiona redemptions para tu contenido. Recompensas que los espectadores pueden canjear."
     },
     "aiPersonality": {
-      "description": "Configura la personalidad, comportamiento y respuestas de tu bot IA para interacciones mas inteligentes en el chat."
+      "description": "Configura las personalidades, reglas y usuarios conocidos de tu bot IA para interacciones mas inteligentes en el chat.",
+      "eyebrow": "Laboratorio de Personalidad IA",
+      "title": "Personalidad IA",
+      "subtitle": "Define como habla tu bot, que personaje usa y que espectadores recurrentes debe recordar.",
+      "backToModules": "Volver a modulos",
+      "unlimited": "Ilimitado",
+      "masterToggle": {
+        "kicker": "Control de IA en chat",
+        "title": "Respuestas IA en chat",
+        "enabledHint": "Las respuestas por mencion y comandos $(ai) estan activos para este canal.",
+        "disabledHint": "Las respuestas IA en chat estan desactivadas. El aprendizaje, resumenes y recomendaciones pueden seguir activos si estan habilitados abajo."
+      },
+      "featureToggles": {
+        "streamSummaries": "Resumenes de stream",
+        "streamSummariesHint": "Genera resumenes post-stream y envia emails de resumen independientemente de la IA en chat.",
+        "recommendations": "Recomendaciones",
+        "recommendationsHint": "Permite que futuros servicios de recomendaciones analicen tu canal y envien sugerencias."
+      },
+      "overview": {
+        "kicker": "Tu canal",
+        "title": "Limites actuales",
+        "contextWindow": "Ventana de contexto",
+        "profileLimit": "Perfiles",
+        "rulesLimit": "Reglas",
+        "knownUsersLimit": "Usuarios conocidos"
+      },
+      "help": {
+        "kicker": "Primeros pasos",
+        "title": "Como usar esta pagina",
+        "intro": "Configura como se comporta tu bot IA en el chat. Crea multiples personalidades, establece reglas de comportamiento, gestiona viewers conocidos y controla como el bot aprende y recuerda informacion.",
+        "tips": {
+          "profiles": {
+            "title": "Multiples personalidades",
+            "description": "Crea diferentes personas para diferentes estados de animo o eventos. Cambia entre ellas en cualquier momento."
+          },
+          "personality": {
+            "title": "Ajusta las respuestas",
+            "description": "Usa el prompt de personalidad, el preset de tono y los ajustes de voz para controlar como habla el bot."
+          },
+          "learning": {
+            "title": "Controla la memoria",
+            "description": "Ajusta los parametros de aprendizaje para controlar que tan agresivamente el bot aprende del chat y que recuerda."
+          }
+        }
+      },
+      "learning": {
+        "kicker": "Automatizacion de aprendizaje",
+        "title": "Configuracion de aprendizaje",
+        "autoApplyTitle": "Manejo automatico de acciones",
+        "fields": {
+          "enabled": "Activar pipeline de aprendizaje",
+          "autoConfirmEnabled": "Auto confirmar sugerencias",
+          "postStreamSummaryEnabled": "Crear resumen post-stream",
+          "weeklyMaintenanceEnabled": "Ejecutar mantenimiento semanal",
+          "monthlyMaintenanceEnabled": "Ejecutar mantenimiento mensual",
+          "autoApplyCreates": "Aplicar nuevas memorias automaticamente",
+          "autoApplyEdits": "Aplicar ediciones automaticamente",
+          "autoApplyArchives": "Aplicar archivados automaticamente",
+          "autoApplyPermanentDeletes": "Aplicar borrados permanentes automaticamente",
+          "autoConfirmThreshold": "Umbral de auto confirmacion",
+          "minMessageLength": "Longitud minima del mensaje",
+          "maxPendingMemories": "Maximo de memorias pendientes",
+          "maxConfirmedMemories": "Maximo de memorias confirmadas",
+          "summaryMinDurationMinutes": "Duracion minima del stream (minutos)",
+          "summaryMinChatMessages": "Minimo de mensajes en chat",
+          "createMinConfidence": "Confianza para crear",
+          "editMinConfidence": "Confianza para editar",
+          "archiveMinConfidence": "Confianza para archivar",
+          "deleteMinConfidence": "Confianza para borrar",
+          "maxActionsPerRun": "Maximo de acciones por ejecucion",
+          "maxDeletesPerRun": "Maximo de borrados por ejecucion",
+          "minMemoryAgeDaysForDelete": "Edad minima de memoria para borrar (dias)",
+          "minUnusedDaysForDelete": "Dias minimos sin uso para borrar"
+        },
+        "hints": {
+          "enabled": "Interruptor principal del sistema de aprendizaje de memoria.",
+          "autoConfirmEnabled": "Permite que sugerencias con alta confianza se aprueben sin revision manual.",
+          "postStreamSummaryEnabled": "Genera pases de memoria basados en resumen cuando termina el stream.",
+          "weeklyMaintenanceEnabled": "Ejecuta limpiezas ligeras y mantenimiento cada semana.",
+          "monthlyMaintenanceEnabled": "Ejecuta limpiezas mas pesadas a largo plazo cada mes.",
+          "autoApplyCreates": "Guarda memorias nuevas automaticamente cuando la confianza sea suficiente.",
+          "autoApplyEdits": "Aplica ediciones a memorias existentes sin revision manual cuando se cumplan los umbrales.",
+          "autoApplyArchives": "Archiva memorias antiguas automaticamente cuando la confianza sea suficiente.",
+          "autoApplyPermanentDeletes": "Permite borrados irreversibles cuando se alcance el umbral de borrado."
+        }
+      },
+      "memory": {
+        "kicker": "Limites de memoria",
+        "title": "Politica de memoria",
+        "subtitle": "Elige que tipos de recuerdos puede priorizar y conservar el bot.",
+        "fields": {
+          "prioritizeRecentChat": "Priorizar chat reciente",
+          "allowSensitiveMemories": "Permitir memorias sensibles",
+          "allowUserPreferenceMemories": "Permitir memorias de preferencias",
+          "allowRunningJokes": "Permitir chistes recurrentes"
+        },
+        "hints": {
+          "prioritizeRecentChat": "Da preferencia al contexto mas nuevo cuando varias memorias compiten.",
+          "allowSensitiveMemories": "Permite guardar detalles potencialmente sensibles en memoria a largo plazo.",
+          "allowUserPreferenceMemories": "Recuerda gustos, disgustos y preferencias repetidas de los viewers.",
+          "allowRunningJokes": "Conserva bromas recurrentes y referencias compartidas del canal."
+        }
+      },
+      "profiles": {
+        "kicker": "Cambio de perfiles",
+        "title": "Perfiles de personalidad",
+        "add": "Agregar perfil",
+        "limitReached": "Ya alcanzaste el limite de perfiles de este plan. Actualiza cuando quieras mas personajes listos para cambiar."
+      },
+      "editor": {
+        "kicker": "Persona activa",
+        "title": "Editor de perfil"
+      },
+      "voice": {
+        "kicker": "Guia de voz",
+        "title": "Tono y frases distintivas",
+        "catchphrasesTitle": "Frases distintivas",
+        "addCatchphrase": "Agregar frase",
+        "noCatchphrases": "Todavia no hay frases distintivas. Agrega algunas lineas si quieres que el bot se sienta mas reconocible."
+      },
+      "rules": {
+        "kicker": "Barandales de comportamiento",
+        "title": "Reglas del canal",
+        "listTitle": "Lista de reglas",
+        "add": "Agregar regla",
+        "limitReached": "Ya alcanzaste el limite de reglas de este plan."
+      },
+      "knownUsers": {
+        "kicker": "Contexto recurrente",
+        "title": "Usuarios conocidos",
+        "listTitle": "Espectadores recordados",
+        "add": "Agregar usuario conocido",
+        "empty": "Todavia no hay usuarios conocidos. Agrega viewers recurrentes, moderadores o regulares con chistes internos aqui.",
+        "limitReached": "Ya alcanzaste el limite de usuarios conocidos de este plan."
+      },
+      "fields": {
+        "profileName": "Nombre del perfil",
+        "personaMode": "Modo de persona",
+        "tonePreset": "Preset de tono",
+        "personaReference": "Referencia de la persona",
+        "personalityPrompt": "Prompt de personalidad",
+        "voiceTone": "Tono de voz",
+        "voiceCadence": "Cadencia de voz",
+        "voiceStyle": "Estilo de voz",
+        "username": "Usuario",
+        "relationship": "Relacion",
+        "description": "Descripcion"
+      },
+      "personaModes": {
+        "original": "Original",
+        "inspired": "Inspirado",
+        "strictRoleplay": "Roleplay estricto"
+      },
+      "tonePresets": {
+        "familyFriendly": "Familiar",
+        "balanced": "Balanceado",
+        "darkHumor": "Humor oscuro"
+      },
+      "defaults": {
+        "profileName": "Perfil",
+        "voiceTone": "Amigable y jugueton",
+        "voiceCadence": "Corta y dinamica",
+        "voiceStyle": "Nativo del chat y expresivo"
+      },
+      "actions": {
+        "save": "Guardar personalidad IA",
+        "saving": "Guardando..."
+      },
+      "states": {
+        "loading": "Cargando configuracion de personalidad IA...",
+        "empty": "No hay configuracion de personalidad IA disponible todavia."
+      },
+      "errors": {
+        "loadFailed": "Error al cargar la configuracion de personalidad IA.",
+        "saveFailed": "Error al guardar la configuracion de personalidad IA.",
+        "channelNotResolved": "No se pudo resolver el canal."
+      },
+      "toasts": {
+        "savedTitle": "Personalidad IA guardada",
+        "savedMessage": "La configuracion activa de personalidad ya fue actualizada para este canal.",
+        "errorTitle": "Error al actualizar la personalidad IA"
+      },
+      "footer": "Guarda cuando estes conforme con el perfil actual, la politica de memoria, la automatizacion de aprendizaje, las reglas y el contexto de usuarios conocidos."
+    },
+    "memories": {
+      "description": "Revisa, edita y gestiona lo que el bot ha aprendido de tus resumenes de transmision y chat.",
+      "eyebrow": "Gestor de Memorias",
+      "title": "Memorias",
+      "subtitle": "Revisa, edita y gestiona lo que el bot ha aprendido de tus resumenes de transmision y chat.",
+      "backToModules": "Volver a modulos",
+      "filters": {
+        "all": "Todos",
+        "status": "Estado",
+        "type": "Tipo",
+        "risk": "Riesgo",
+        "search": "Buscar memorias...",
+        "allStatuses": "Todos los Estados",
+        "allTypes": "Todos los Tipos",
+        "allRisks": "Todos los Riegos"
+      },
+      "status": {
+        "candidate": "Candidato",
+        "pending_review": "Requiere Revision",
+        "confirmed": "Activo",
+        "rejected": "Rechazado",
+        "archived": "Archivado"
+      },
+      "risk": {
+        "low": "Riesgo Bajo",
+        "medium": "Riesgo Medio",
+        "high": "Riesgo Alto"
+      },
+      "type": {
+        "preference": "Preferencia",
+        "running_joke": "Chiste Recurrente",
+        "known_user_fact": "Hecho de Usuario",
+        "channel_lore": "Lore del Canal",
+        "boundary": "Limite"
+      },
+      "fields": {
+        "content": "Contenido de Memoria",
+        "summary": "Resumen",
+        "type": "Tipo",
+        "risk": "Nivel de Riesgo",
+        "confidence": "Confianza",
+        "subject": "Sujeto",
+        "useCount": "Veces Usado",
+        "lastUsed": "Ultimo Uso",
+        "created": "Creado",
+        "channelwide": "Todo el canal",
+        "userSpecific": "Usuario: @{{username}}"
+      },
+      "actions": {
+        "approve": "Aprobar",
+        "deny": "Rechazar",
+        "archive": "Archivar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar"
+      },
+      "empty": {
+        "title": "No se encontraron memorias",
+        "description": "Las memorias apareceran aqui a medida que el bot aprenda de tu transmision."
+      },
+      "confirmDelete": "¿Eliminar esta memoria? Esto no se puede deshacer.",
+      "confirmDeny": "¿Rechazar esta memoria? Se marcara como rechazada.",
+      "confirmArchive": "¿Archivar esta memoria? Se ocultara de las listas activas.",
+      "confirmApprove": "¿Aprobar esta memoria? Se activara.",
+      "toasts": {
+        "approveSuccessTitle": "Memoria aprobada",
+        "approveSuccessMessage": "La memoria ahora esta activa.",
+        "denySuccessTitle": "Memoria rechazada",
+        "denySuccessMessage": "La memoria ha sido rechazada.",
+        "archiveSuccessTitle": "Memoria archivada",
+        "archiveSuccessMessage": "La memoria ha sido archivada.",
+        "deleteSuccessTitle": "Memoria eliminada",
+        "deleteSuccessMessage": "La memoria ha sido eliminada permanentemente.",
+        "updateSuccessTitle": "Memoria actualizada",
+        "updateSuccessMessage": "Tus cambios han sido guardados."
+      }
     },
     "analytics": {
-      "description": "Abre el hub de analiticas para ver inteligencia de seguidores, mutuos destacados y futuras vistas de audiencia."
+      "description": "Abre el hub de analiticas para ver inteligencia de seguidores en vivo, mutuos destacados y claridad de audiencia."
     },
     "openModule": "Abrir Modulo",
     "upgradeToAccess": "Actualizar para Acceder",
     "comingSoon": "Proximamente",
+    "comingSoonLocked": "Proximamente — necesitaras un plan {{tier}} para acceder cuando se publique.",
     "unavailable": "No disponible",
     "noResults": "No se encontraron modulos",
     "adjustFilters": "Intenta ajustar tu busqueda o filtros",
-    "resetFilters": "Restablecer Filtros"
+    "resetFilters": "Restablecer Filtros",
+    "followDefense": {
+      "description": "Protege tu canal de inundaciones de follows y hate raids con modos de defensa automatizados."
+    },
+    "streamSummaries": {
+      "description": "Accede a las métricas de tus transmisiones pasadas, lee resúmenes de IA y revisa actualizaciones de memoria propuestas por IA."
+    }
+  },
+  "streamSummaries": {
+    "title": "Resúmenes de Directo",
+    "subtitle": "Revisa métricas, resúmenes de IA y actualizaciones de memoria de tus transmisiones pasadas.",
+    "backToModules": "Volver a módulos",
+    "heroBadge": "Resúmenes de IA",
+    "states": {
+      "loading": "Cargando resúmenes de directo...",
+      "empty": "No hay resúmenes de directo disponibles aún.",
+      "emptyDetail": "Selecciona una sesión de directo de la lista para ver estadísticas detalladas, recapitulaciones destacadas de IA y propuestas de memoria."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los resúmenes de directo."
+    },
+    "list": {
+      "headline": "Lista de Sesiones",
+      "noHeadline": "Sin título de directo registrado",
+      "duration": "{{minutes}} mins",
+      "avgViewers": "Med: {{count}}",
+      "status": {
+        "pending": "IA Pendiente",
+        "applied": "Memorias Actualizadas",
+        "noop": "Sin Acciones",
+        "failed": "Fallo de Procesamiento"
+      }
+    },
+    "details": {
+      "title": "Detalles de Sesión",
+      "metrics": {
+        "duration": "Duración",
+        "avgViewers": "Espectadores Medios",
+        "peakViewers": "Espectadores Máximos",
+        "chatSampled": "Chat Muestreado",
+        "snapshots": "Capturas"
+      },
+      "performance": {
+        "follows": "Seguidores",
+        "subs": "Subs",
+        "bits": "Bits",
+        "donations": "Donaciones"
+      },
+      "tabs": {
+        "recap": "Recapitulación de IA y Destacados",
+        "memories": "Memorias Propuestas"
+      },
+      "recapHeader": "Resumen del Directo",
+      "highlightsHeader": "Destacados Clave",
+      "recapPlaceholder": "No hay recapitulación disponible para esta sesión de directo.",
+      "noHighlights": "No se registraron destacados para esta sesión de directo.",
+      "memoriesHeader": "Acciones de Memoria Propuestas por IA",
+      "noMemories": "No se propusieron ni ejecutaron acciones de memoria para esta sesión de directo.",
+      "memoryCard": {
+        "action": "Acción",
+        "risk": "Riesgo",
+        "confidence": "Confianza",
+        "reason": "Razón de IA",
+        "evidence": "Evidencia"
+      }
+    }
+  },
+  "followDefense": {
+    "badge": "Proteccion",
+    "title": "Follow Defense",
+    "subtitle": "Protege tu canal de inundaciones de follows y hate raids.",
+    "backToModules": "Volver a modulos",
+    "enabled": "Habilitar Follow Defense",
+    "enabledDescription": "Desactiva esto si usas otro sistema de proteccion o no quieres que DimaBot interfiera con alertas/moderacion de follows.",
+    "enabledDisabledNote": "Follow Defense esta desactivado. DimaBot no encolara eventos de defensa ni suprimira alertas de follows.",
+    "status": {
+      "currentStatus": "Estado Actual",
+      "currentMode": "Modo Actual",
+      "disabled": "Desactivado",
+      "normal": "Normal",
+      "silentMode": "Modo Silencioso",
+      "protectionMode": "Modo Proteccion",
+      "attackMode": "Modo Ataque",
+      "raidTracking": "Rastreo de Raid",
+      "trackedFollowers": "seguidores rastreados",
+      "mode": "Modo",
+      "triggeredBy": "Activado Por",
+      "activeFor": "Activo Por",
+      "trackedCount": "Conteo Rastrado",
+      "lastTransition": "Ultima Transicion",
+      "raidInfo": "Informacion de Raid",
+      "raidActive": "Raid activo",
+      "viewers": "espectadores",
+      "expiresIn": "Expira en"
+    },
+    "modeConfiguration": "Configuracion de Modo",
+    "silentMode": "Modo Silencioso",
+    "silentModeDescription": "Si ocurre una pequena rafaga de follows, DimaBot pausa las alertas de follows y rastrea la ola silenciosamente.",
+    "silentModeThresholdHint": "Numero de follows para activar el modo silencioso.",
+    "protectionMode": "Modo Proteccion",
+    "protectionModeDescription": "Si la ola crece mas, DimaBot advierte al chat y banea los nuevos follows. Durante raids, DimaBot rastrea silenciosamente en su lugar.",
+    "protectionThreshold": "Umbral de proteccion",
+    "protectionThresholdHint": "Tamano de ola para activar el modo proteccion.",
+    "attackMode": "Modo Ataque",
+    "attackModeDescription": "Si se alcanza este umbral, o si un moderador usa tu comando de defensa, DimaBot banea todos los follows rastreados de la ola.",
+    "attackThreshold": "Umbral de ataque",
+    "attackThresholdHint": "Tamano de ola para activar el modo ataque automatico.",
+    "manualCommand": "Comando manual",
+    "followsThreshold": "Umbral de follows",
+    "detectionWindow": "Ventana de deteccion (segundos)",
+    "trackingDuration": "Duracion del rastreo (segundos)",
+    "seconds": "segundos",
+    "baseline": {
+      "title": "Sensibilidad de Linea Base",
+      "description": "Linea base definida por el streamer para contexto y recomendaciones futuras.",
+      "placeholder": "ej. 100"
+    },
+    "expectedFollowsPerHour": "Follows esperados por hora",
+    "attackWarning": "Usa esto solo cuando estes seguro de que la ola de follows actual es hostil. Esto puede banear permanentemente a los seguidores rastreados.",
+    "activateAttack": "Activar Modo Ataque",
+    "resetMode": "Reiniciar Modo",
+    "attackActions": "Acciones de Modo Ataque",
+    "history": "Historial de Ataques",
+    "hateRaidSources": "Fuentes de Hate Raid",
+    "hateRaidSourcesDescription": "Los canales listados aqui fueron identificados como fuentes hostiles cuando el Modo Ataque se activo durante un raid.",
+    "noHistory": "No hay eventos de Follow Defense registrados.",
+    "noHateRaids": "No hay fuentes de hate raid identificadas.",
+    "table": {
+      "dateTime": "Fecha/Hora",
+      "mode": "Modo",
+      "triggeredBy": "Activado Por",
+      "totalFollows": "Total Follows",
+      "velocity": "Velocidad",
+      "raid": "Raid?",
+      "bannedCount": "Baneados",
+      "raiderChannel": "Canal Raider",
+      "count": "Cantidad",
+      "firstSeen": "Primera Vez",
+      "lastSeen": "Ultima Vez",
+      "lastViewers": "Ultimos Viewers"
+    },
+    "dialog": {
+      "attackTitle": "Activar Modo Ataque?",
+      "attackBody": "Esto banehara a todos los seguidores actualmente rastreados en la ola de follows activa y continuara baneando nuevos follows hasta que el modo expire o se reinicie.",
+      "raidWarning": "Un raid esta siendo rastreado actualmente. Activar el Modo Ataque marcara esto como un posible hate raid.",
+      "confirmLabel": "Escribe ATTACK para confirmar",
+      "confirmPlaceholder": "ATTACK",
+      "confirmHint": "Esta accion es irreversible. Por favor escribe ATTACK para confirmar.",
+      "cancel": "Cancelar",
+      "confirm": "Activar Modo Ataque",
+      "activating": "Activando..."
+    },
+    "actions": {
+      "save": "Guardar Ajustes",
+      "saving": "Guardando..."
+    },
+    "states": {
+      "loading": "Cargando ajustes de Follow Defense..."
+    },
+    "errors": {
+      "loadSettingsFailed": "Error al cargar los ajustes de Follow Defense.",
+      "saveSettingsFailed": "Error al guardar los ajustes de Follow Defense.",
+      "channelNotResolved": "No se pudo resolver el canal.",
+      "activateFailed": "Error al activar el Modo Ataque.",
+      "resetFailed": "Error al reiniciar el modo."
+    },
+    "toasts": {
+      "savedTitle": "Ajustes guardados",
+      "savedMessage": "Los ajustes de Follow Defense han sido actualizados.",
+      "errorTitle": "Error",
+      "attackActivatedTitle": "Modo Ataque activado",
+      "attackActivatedMessage": "DimaBot esta baneando a los seguidores rastreados de la ola.",
+      "resetSuccessTitle": "Modo reiniciado",
+      "resetSuccessMessage": "El modo de Follow Defense ha sido reiniciado a normal."
+    }
   },
   "analyticsHub": {
     "badge": "Inteligencia de Audiencia",
     "title": "Hub de Analiticas",
-    "subtitle": "Un hogar enfocado para entender tu audiencia. Empieza con el seguimiento de follows activos y luego ampliamos este hub con mas analiticas.",
+    "subtitle": "Inteligencia de seguidores en vivo para tu canal. El Registro de Seguidores ofrece acceso filtrable y buscable a todos los que te siguen actualmente, con relaciones mutuas claramente destacadas.",
     "chips": {
-      "activeFollowers": "Seguimiento de follows activos",
-      "mutualHighlights": "Destacado de mutuos",
-      "futureHistory": "Historial de unfollows despues"
+      "activeFollowers": "Seguimiento en vivo",
+      "mutualHighlights": "Destacado de mutuos"
     },
     "panel": {
-      "kicker": "Lanzamiento actual",
-      "title": "Follow Ledger vive aqui primero",
-      "description": "Estamos reconstruyendo analiticas como modulos dedicados. El primer modulo es Follow Ledger, pensado para canales premium y pro.",
+      "kicker": "Analiticas premium",
+      "title": "Registro de Seguidores",
+      "description": "Una herramienta completa y lista para produccion para rastrear tu audiencia activa. Los canales Premium y Pro obtienen busqueda potente, filtros de mutuos y ledgers visuales limpios.",
       "paidPlan": "Premium desbloqueado",
-      "freePlan": "Vista gratis"
+      "freePlan": "Requiere premium"
     },
     "followLedger": {
-      "activeOnly": "Solo follows activos",
-      "eyebrow": "Modulo premium de analiticas",
+      "activeOnly": "Audiencia en vivo",
+      "eyebrow": "Modulo principal de analiticas",
       "title": "Registro de Seguidores",
-      "description": "Busca tus seguidores activos, aisla mutuos y revisa quien sigue tu canal actualmente con un ledger visual mas limpio.",
-      "open": "Abrir Follow Ledger",
+      "description": "Busca tus seguidores actuales, aisla mutuos y entiende exactamente quien esta en tu audiencia en vivo con un ledger rapido y filtrable.",
+      "open": "Abrir Registro de Seguidores",
       "lockedCta": "Requiere premium"
     },
-    "roadmap": {
-      "badge": "Roadmap",
-      "eyebrow": "Lo que sigue",
-      "title": "Este hub ya esta listo para mas analiticas",
-      "description": "La estructura ya existe para crecer mas alla de follows activos sin esconder analiticas otra vez en el navbar principal.",
-      "items": {
-        "endedHistory": "Historial de unfollows para planes pagos",
-        "retentionViews": "Vistas de retencion y lealtad",
-        "moreModules": "Mas modulos de analiticas de audiencia"
-      }
+    "future": {
+      "teaser": "Mas modulos de analiticas estaran disponibles pronto."
     }
   },
   "analytics": {
     "follows": {
       "title": "Registro de Seguidores",
-      "subtitle": "Sigue a tus followers activos, destaca mutuos y busca dentro de la audiencia del canal sin salir del flujo de analiticas.",
+      "subtitle": "Busca tus seguidores actuales, destaca relaciones mutuas y obten una vision completa de tu audiencia en vivo con un ledger rapido y filtrable.",
       "backToAnalytics": "Volver a analiticas",
-      "activeOnly": "Solo follows activos",
-      "filters": "Filtros de seguidores",
+      "activeOnly": "Audiencia en vivo",
+      "filters": "Filtros",
       "sort": "Orden",
       "searchLabel": "Buscar seguidores",
       "searchPlaceholder": "Buscar por nombre, login o ID",
       "clearSearchAriaLabel": "Limpiar busqueda de seguidores",
       "all": "Todos",
       "mutuals": "Mutuos",
-      "nonMutuals": "No mutuos",
+      "nonMutuals": "Solo te siguen",
       "newest": "Mas nuevos",
       "oldest": "Mas antiguos",
-      "activeTotal": "Follows activos",
-      "mutualTotal": "Follows mutuos",
-      "nonMutualTotal": "Follows no mutuos",
+      "activeTotal": "Seguidores actuales",
+      "mutualTotal": "Seguidores mutuos",
+      "nonMutualTotal": "Solo te siguen",
       "followedAt": "Siguio el",
       "followAge": "Antiguedad",
       "mutualBadge": "Mutuo",
-      "loading": "Cargando seguidores activos...",
-      "empty": "No se encontraron seguidores activos para este filtro.",
-      "emptyHint": "Prueba otra busqueda o combinacion de filtros.",
+      "loading": "Cargando seguidores...",
+      "empty": "No hay seguidores que coincidan con este filtro.",
+      "emptyHint": "Amplia la busqueda o limpia algunos filtros.",
       "loadError": "No se pudo cargar el registro de seguidores.",
       "missingStreamer": "No se encontro el contexto del streamer. Actualiza e intenta de nuevo.",
       "pagination": "Paginacion de seguidores",
-      "searchNoResults": "No hay seguidores activos que coincidan con \"{{query}}\".",
-      "resultsTitle": "Resultados de seguidores activos",
-      "showingResults": "Mostrando {{start}}-{{end}} de {{total}} follows activos",
-      "refreshing": "Actualizando resultados...",
+      "searchNoResults": "No hay seguidores que coincidan con \"{{query}}\".",
+      "resultsTitle": "Resultados de seguidores",
+      "showingResults": "Mostrando {{start}}-{{end}} de {{total}} seguidores",
+      "refreshing": "Actualizando...",
       "ownerView": "Vista owner",
       "adminView": "Vista admin",
-      "lockedTitle": "Follow Ledger es un modulo premium de analiticas",
-      "lockedDescription": "Los canales gratis pueden ver el hub de analiticas, pero el seguimiento de follows activos por ahora se desbloquea en premium y pro.",
+      "lockedTitle": "Registro de Seguidores es un modulo premium de analiticas",
+      "lockedDescription": "El Registro de Seguidores te da una vista completa y buscable de tu audiencia en vivo. Actualiza a Premium o Pro para desbloquear acceso completo.",
       "lockedCta": "Ver acceso premium",
       "durationYears": "{{count}} año(s)",
       "durationMonths": "{{count}} mes(es)",
@@ -161,15 +781,36 @@
     "selectDesignDescription": "Elige un diseño de overlay de clips de arriba para comenzar",
     "premiumRequired": "Premium Requerido",
     "upgradeToAccess": "Actualiza tu plan para acceder a este diseño",
+    "underConstructionTitle": "En Construcción",
+    "underConstructionMessage": "Este diseño aún no está disponible. ¡Vuelve pronto!",
     "testWarning": "Abre primero la URL del overlay de clips en OBS o navegador para habilitar las pruebas",
     "copiedTitle": "URL Copiada",
     "copiedMessage": "La URL del overlay de clips se ha copiado al portapapeles",
     "copyFailed": "Error al Copiar",
-    "copyFailedMessage": "No se pudo copiar la URL. Por favor, inténtalo de nuevo."
+    "copyFailedMessage": "No se pudo copiar la URL. Por favor, inténtalo de nuevo.",
+    "metrics": {
+      "designs": "Diseños Disponibles",
+      "designsMeta": "Elige tu estilo",
+      "premiumDesigns": "Premium",
+      "premiumMeta": "Requiere plan de pago",
+      "yourPlan": "Tu Plan",
+      "planMeta": "Nivel de acceso"
+    }
   },
   "profile": {
     "title": "Configuracion de Perfil",
-    "subtitle": "Gestiona la configuracion de tu cuenta y preferencias."
+    "subtitle": "Gestiona tu cuenta, suscripcion y preferencias.",
+    "subscription": {
+      "eyebrow": "Plan actual",
+      "title": "Suscripcion",
+      "currentLabel": "Actualmente estas en el plan {{tier}}.",
+      "upgradeCta": "Actualizar a Premium o Pro",
+      "upgradeToProCta": "Actualizar a Pro",
+      "maxTierNote": "Estas en el plan mas alto — gracias por el apoyo!",
+      "benefitCredits": "Hasta 500,000 creditos de IA / mes",
+      "benefitTts": "Clonacion de voz TTS y voces humanas",
+      "benefitSupport": "Soporte prioritario+"
+    }
   },
   "referrals": {
     "eyebrow": "Campanas de referido",
@@ -279,6 +920,11 @@
     "pageLabel": "Centro de Control",
     "title": "Panel del Canal",
     "subtitle": "Una vista clara del crecimiento, rendimiento y el historial reciente.",
+    "referralPromo": {
+      "title": "Gana con Referencias",
+      "message": "Recibe 50 creditos por referencias Premium y 100 creditos por referencias Pro!",
+      "cta": "Gestionar Referencias"
+    },
     "loading": "Cargando tu panel...",
     "empty": "Todavia no hay datos para mostrar.",
     "connection": {
@@ -305,9 +951,14 @@
       "averageViewers30d": "Promedio de Viewers (30d)",
       "bits30d": "Bits (30d)",
       "donations30d": "Donaciones (30d)",
-      "featureSpotlight": "Feature Destacado",
-      "featureSpotlightValue": "Mapa de Calor de Eventos",
-      "featureSpotlightHint": "Reservado para tu proxima feature."
+       "featureSpotlight": "Feature Destacado",
+       "featureSpotlightValue": "Mapa de Calor de Eventos",
+       "featureSpotlightHint": "Reservado para tu proxima feature.",
+       "aiCredits": "Créditos de IA",
+       "aiCreditsExhaustedFree": "Mejora a Premium o Pro",
+       "aiCreditsExhaustedPremium": "Mejora a Pro",
+       "aiCreditsExhaustedPro": "Comprar más créditos",
+       "aiCreditsNotAvailable": "No disponible para esta cuenta"
     },
     "charts": {
       "sectionLabel": "Grafico de rendimiento",
@@ -433,7 +1084,9 @@
     },
     "toast": {
       "sessionExpiredTitle": "Sesion expirada",
-      "sessionExpiredMessage": "Tu sesion de Twitch expiro o ya no es valida. Te redirigimos al login..."
+      "sessionExpiredMessage": "Tu sesion de Twitch expiro o ya no es valida. Te redirigimos al login...",
+      "alreadyActivatedTitle": "Cuenta ya activada",
+      "alreadyActivatedMessage": "Tu cuenta ya esta activada. ¡Todo listo!"
     },
     "errors": {
       "denied": "La autenticacion fue cancelada en Twitch.",
@@ -446,7 +1099,10 @@
       "sessionExpired": "Tu sesion expiro. Inicia sesion de nuevo.",
       "permissionRedirectFailed": "Tu sesion se cargo, pero no pudimos confirmar acceso al panel para esa ruta.",
       "navigationFailed": "No pudimos completar la redireccion al panel. Intenta de nuevo.",
-      "unexpected": "Error inesperado al iniciar sesion. Intenta de nuevo."
+      "unexpected": "Error inesperado al iniciar sesion. Intenta de nuevo.",
+      "emailDenied": "Se requiere permiso de correo electronico para crear una cuenta. Intenta de nuevo y approve el acceso al correo.",
+      "emailDeniedTitle": "Permiso de Correo Electronico Requerido",
+      "emailDeniedMessage": "DomDimaBot necesita acceso a tu correo electronico para configurar tu cuenta. Intenta iniciar sesion de nuevo y approve el permiso de correo electronico."
     }
   },
   "notFound": {
@@ -571,6 +1227,17 @@
       "editor": "Editor",
       "admin": "Admin",
       "streamer": "Streamer"
+    },
+    "modal": {
+      "createTitle": "Crear Comando",
+      "editTitle": "Editar Comando",
+      "createButton": "Crear"
+    },
+    "search": {
+      "placeholder": "Buscar por nombre o comando...",
+      "searchButton": "Buscar",
+      "notFoundHint": "No se encontraron comandos. Presiona Enter para buscar en la API.",
+      "noResultsInCache": "No se encontraron comandos en los datos cacheados. Intenta buscar."
     }
   },
   "common": {
@@ -1186,6 +1853,66 @@
       "copyTitle": "Error al copiar",
       "copyMessage": "No pudimos copiar la URL del overlay por ti.",
       "missingStreamer": "Falta el contexto del streamer. Actualiza e intenta de nuevo."
+    }
+  },
+  "upgradeModal": {
+    "title": "Desbloquear {{module}}",
+    "subtitle": {
+      "free": "Estas en el plan Gratis. Actualiza para desbloquear este modulo y todo lo que incluye.",
+      "premium": "Estas en Premium. Actualiza a Pro para desbloquear este modulo.",
+      "pro": "Estas en Pro. Este modulo ya deberia estar desbloqueado — contacta a soporte si no es asi."
+    },
+    "recommended": "Recomendado",
+    "winbackBadge": "Oferta de regreso",
+    "winbackTitle": "Bienvenido de vuelta — reclamando tu oferta",
+    "winbackBody": "Estamos aplicando un descuento especial para reactivar tu suscripcion.",
+    "reactivateTitle": "Reactivando tu suscripcion",
+    "reactivateBody": "Espera un momento mientras preparamos tu checkout.",
+    "cancel": "Quizas despues",
+    "retry": "Intentar de nuevo",
+    "loading": "Redirigiendo al checkout seguro…",
+    "errorTitle": "No se pudo iniciar el checkout",
+    "errorGeneric": "Algo salio mal al preparar tu checkout. Intentalo de nuevo.",
+    "alreadySubscribed": {
+      "title": "Ya estas en el plan {{tier}}",
+      "body": "No necesitas una actualizacion para este modulo.",
+      "cta": "Entendido"
+    },
+    "successToast": {
+      "title": "Suscripcion activa",
+      "body": "Bienvenido a {{tier}}!"
+    },
+    "tiers": {
+      "premium": {
+        "name": "Premium",
+        "price": "$6/mes",
+        "benefits": [
+          "125,000 creditos de IA / mes",
+          "Voces TTS similares a humanos",
+          "Aprendizaje de memoria del chat",
+          "Visibilidad de subidas publica o privada",
+          "Soporte prioritario"
+        ],
+        "cta": "Suscribirse a Premium",
+        "upgradeCta": "Actualizar a Premium",
+        "reactivateCta": "Reactivar Premium"
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "$15/mes",
+        "benefits": [
+          "500,000 creditos de IA / mes",
+          "Clonacion de voz TTS",
+          "Aprende del chat + resúmenes de stream",
+          "Visibilidad de subidas publica o privada",
+          "Soporte prioritario+",
+          "Diseno de overlay SO personalizado"
+        ],
+        "cta": "Suscribirse a Pro",
+        "upgradeCta": "Actualizar a Pro",
+        "reactivateCta": "Reactivar Pro",
+        "winbackCta": "Reclamar oferta y reactivar Pro"
+      }
     }
   }
 }

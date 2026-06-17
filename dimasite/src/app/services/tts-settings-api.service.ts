@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError } from 'rxjs';
 
@@ -27,8 +27,18 @@ export class TtsSettingsApiService {
   }
 
   getSettings(channelID: string) {
+    const cacheBuster = Date.now().toString();
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache'
+    });
+    const params = new HttpParams().set('_', cacheBuster);
+
     return this.http
-      .get<TtsSettingsResponse>(`${this.linksService.getApiUrl()}/speech/settings/${channelID.trim()}`)
+      .get<TtsSettingsResponse>(`${this.linksService.getApiUrl()}/speech/settings/${channelID.trim()}`, {
+        headers,
+        params
+      })
       .pipe(
         map((response) => {
           if (response.error || !response.data) {

@@ -1,0 +1,302 @@
+<div class="summaries-page">
+  <!-- Hero Section -->
+  <section class="summaries-hero">
+    <div class="summaries-hero__content">
+      <a [routerLink]="modulePath()" class="summaries-back-link">
+        <lucide-icon [img]="sparklesIcon" class="summaries-back-link__icon"></lucide-icon>
+        <span>{{ t('streamSummaries.backToModules') }}</span>
+      </a>
+
+      <div class="summaries-hero__chips">
+        <span class="summaries-chip">
+          <lucide-icon [img]="videoIcon" class="summaries-chip__icon"></lucide-icon>
+          {{ t('streamSummaries.heroBadge') }}
+        </span>
+        @if (isUsingMockData()) {
+          <span class="summaries-chip summaries-chip--mock">
+            <lucide-icon [img]="databaseIcon" class="summaries-chip__icon"></lucide-icon>
+            Demo Sandbox Mode
+          </span>
+        }
+      </div>
+
+      <div class="summaries-hero__body">
+        <div class="summaries-hero__copy">
+          <h1 class="summaries-hero__title">{{ t('streamSummaries.title') }}</h1>
+          <p class="summaries-hero__subtitle">{{ t('streamSummaries.subtitle') }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (isLoading() && !hasSummaries()) {
+    <section class="summaries-loading" aria-live="polite">
+      <loading-indicator [loading]="true" variant="three" size="md"></loading-indicator>
+      <p>{{ t('streamSummaries.states.loading') }}</p>
+    </section>
+  } @else if (!hasSummaries()) {
+    <section class="summaries-empty">
+      <lucide-icon [img]="videoIcon" class="summaries-empty__icon"></lucide-icon>
+      <p>{{ t('streamSummaries.states.empty') }}</p>
+    </section>
+  } @else {
+    <div class="summaries-layout" [class.show-detail]="showDetailOnMobile()">
+      <!-- Master List Side -->
+      <aside class="summaries-sidebar">
+        <header class="summaries-sidebar__header">
+          <h2>{{ t('streamSummaries.list.headline') }}</h2>
+          <span class="summaries-sidebar__count">{{ totalCount() }} total</span>
+        </header>
+
+        <div class="summaries-list">
+          @for (summary of summaries(); track summary._id) {
+            <button
+              type="button"
+              class="summary-card"
+              [class.summary-card--active]="selectedSummary()?._id === summary._id"
+              (click)="selectSummary(summary)"
+            >
+              <div class="summary-card__header">
+                <span class="summary-card__date">
+                  <lucide-icon [img]="calendarIcon" class="summary-card__icon-small"></lucide-icon>
+                  {{ formatDate(summary.ended_at) }}
+                </span>
+                <span class="summary-card__status summary-card__status--{{ summary.status }}">
+                  {{ t('streamSummaries.list.status.' + summary.status) }}
+                </span>
+              </div>
+              <h3 class="summary-card__title">
+                {{ summary.headline || t('streamSummaries.list.noHeadline') }}
+              </h3>
+              <div class="summary-card__meta">
+                <span class="summary-card__meta-item">
+                  <lucide-icon [img]="clockIcon" class="summary-card__icon-small"></lucide-icon>
+                  {{ t('streamSummaries.list.duration', { minutes: summary.duration_minutes }) }}
+                </span>
+                <span class="summary-card__meta-item">
+                  <lucide-icon [img]="usersIcon" class="summary-card__icon-small"></lucide-icon>
+                  {{ t('streamSummaries.list.avgViewers', { count: summary.average_viewers }) }}
+                </span>
+              </div>
+            </button>
+          }
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages() > 1) {
+          <footer class="summaries-pagination">
+            <button
+              type="button"
+              class="pagination-btn"
+              [disabled]="currentPage() === 1"
+              (click)="changePage(currentPage() - 1)"
+            >
+              <lucide-icon [img]="prevIcon"></lucide-icon>
+            </button>
+            <span class="pagination-text">{{ currentPage() }} / {{ totalPages() }}</span>
+            <button
+              type="button"
+              class="pagination-btn"
+              [disabled]="currentPage() === totalPages()"
+              (click)="changePage(currentPage() + 1)"
+            >
+              <lucide-icon [img]="nextIcon"></lucide-icon>
+            </button>
+          </footer>
+        }
+      </aside>
+
+      <!-- Details View Side -->
+      <main class="summaries-content">
+        @if (selectedSummary(); as active) {
+          <!-- Back link for mobile view -->
+          <button type="button" class="detail-back-btn" (click)="closeDetailMobile()">
+            <lucide-icon [img]="arrowLeftIcon"></lucide-icon>
+            <span>Back to Sessions</span>
+          </button>
+
+          <header class="detail-header">
+            <div class="detail-header__main">
+              <span class="detail-header__date">{{ formatDate(active.ended_at) }}</span>
+              <h2 class="detail-header__title">{{ active.headline || t('streamSummaries.list.noHeadline') }}</h2>
+            </div>
+            <div class="detail-header__status-badge detail-header__status-badge--{{ active.status }}">
+              {{ t('streamSummaries.list.status.' + active.status) }}
+            </div>
+          </header>
+
+          <!-- Metrics Widgets -->
+          <section class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.duration') }}</span>
+              <strong class="metric-card__value">{{ active.duration_minutes }}m</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.avgViewers') }}</span>
+              <strong class="metric-card__value">{{ active.average_viewers }}</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.peakViewers') }}</span>
+              <strong class="metric-card__value">{{ active.peak_viewers }}</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.chatSampled') }}</span>
+              <strong class="metric-card__value">{{ active.chat_messages_sampled }}</strong>
+            </div>
+          </section>
+
+          <!-- Performance Gains -->
+          <section class="performance-section">
+            <div class="perf-card">
+              <span class="perf-card__label">{{ t('streamSummaries.details.performance.follows') }}</span>
+              <span class="perf-card__value">+{{ active.follows }}</span>
+            </div>
+            <div class="perf-card">
+              <span class="perf-card__label">{{ t('streamSummaries.details.performance.subs') }}</span>
+              <span class="perf-card__value">+{{ active.subs }}</span>
+            </div>
+            <div class="perf-card">
+              <span class="perf-card__label">{{ t('streamSummaries.details.performance.bits') }}</span>
+              <span class="perf-card__value">{{ active.bits }}</span>
+            </div>
+            <div class="perf-card">
+              <span class="perf-card__label">{{ t('streamSummaries.details.performance.donations') }}</span>
+              <span class="perf-card__value">${{ active.donations | number:'1.2-2' }}</span>
+            </div>
+          </section>
+
+          <!-- Details Navigation Tab -->
+          <nav class="detail-tabs">
+            <button
+              type="button"
+              class="tab-btn"
+              [class.tab-btn--active]="detailTab() === 'recap'"
+              (click)="detailTab.set('recap')"
+            >
+              <lucide-icon [img]="messageIcon" class="tab-btn__icon"></lucide-icon>
+              <span>{{ t('streamSummaries.details.tabs.recap') }}</span>
+            </button>
+            <button
+              type="button"
+              class="tab-btn"
+              [class.tab-btn--active]="detailTab() === 'memories'"
+              (click)="detailTab.set('memories')"
+            >
+              <lucide-icon [img]="trendingIcon" class="tab-btn__icon"></lucide-icon>
+              <span>{{ t('streamSummaries.details.tabs.memories') }}</span>
+              @if (active.proposed_actions.length > 0) {
+                <span class="tab-btn__badge">{{ active.proposed_actions.length }}</span>
+              }
+            </button>
+          </nav>
+
+          <!-- Tab Content Panels -->
+          <div class="tab-content">
+            @if (detailTab() === 'recap') {
+              <div class="recap-panel">
+                <section class="glass-section">
+                  <h3>{{ t('streamSummaries.details.recapHeader') }}</h3>
+                  <p class="recap-text">
+                    {{ active.recap || t('streamSummaries.details.recapPlaceholder') }}
+                  </p>
+                </section>
+
+                <section class="glass-section">
+                  <h3>{{ t('streamSummaries.details.highlightsHeader') }}</h3>
+                  @if (active.highlights.length > 0) {
+                    <ul class="highlights-list">
+                      @for (highlight of active.highlights; track highlight) {
+                        <li>
+                          <span class="bullet-glow"></span>
+                          <span>{{ highlight }}</span>
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <p class="empty-text">{{ t('streamSummaries.details.noHighlights') }}</p>
+                  }
+                </section>
+              </div>
+            } @else if (detailTab() === 'memories') {
+              <div class="memories-panel">
+                <header class="memories-header">
+                  <h3>{{ t('streamSummaries.details.memoriesHeader') }}</h3>
+                  @if (active.proposed_actions.length > 0) {
+                    <div class="memories-summary-badge">
+                      Proposed: {{ active.totals.proposed }} | Applied: {{ active.totals.applied }}
+                    </div>
+                  }
+                </header>
+
+                @if (active.proposed_actions.length > 0) {
+                  <div class="proposals-list">
+                    @for (proposal of active.proposed_actions; track proposal.summary; let idx = $index) {
+                      <div class="proposal-card">
+                        <div class="proposal-card__header">
+                          <div class="proposal-card__identity">
+                            <span class="action-tag action-tag--{{ proposal.action }}">{{ proposal.action }}</span>
+                            @if (proposal.type) {
+                              <span class="type-tag">{{ proposal.type }}</span>
+                            }
+                          </div>
+                          <div class="proposal-card__badges">
+                            @if (proposal.risk) {
+                              <span class="risk-badge risk-badge--{{ proposal.risk }}">
+                                {{ t('streamSummaries.details.memoryCard.risk') }}: {{ proposal.risk }}
+                              </span>
+                            }
+                            @if (proposal.confidence) {
+                              <span class="confidence-badge">
+                                {{ Math.trunc(proposal.confidence * 100) }}% Match
+                              </span>
+                            }
+                          </div>
+                        </div>
+
+                        <h4 class="proposal-card__summary">{{ proposal.summary }}</h4>
+                        @if (proposal.content) {
+                          <p class="proposal-card__content">"{{ proposal.content }}"</p>
+                        }
+
+                        @if (proposal.reason) {
+                          <div class="proposal-meta-section">
+                            <h5>{{ t('streamSummaries.details.memoryCard.reason') }}</h5>
+                            <p>{{ proposal.reason }}</p>
+                          </div>
+                        }
+
+                        @if (proposal.evidence && proposal.evidence.length > 0) {
+                          <div class="proposal-meta-section">
+                            <h5>{{ t('streamSummaries.details.memoryCard.evidence') }}</h5>
+                            <ul class="evidence-list">
+                              @for (ev of proposal.evidence; track ev) {
+                                <li>
+                                  <lucide-icon [img]="infoIcon" class="evidence-list__icon"></lucide-icon>
+                                  <span>{{ ev }}</span>
+                                </li>
+                              }
+                            </ul>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="empty-panel">
+                    <lucide-icon [img]="helpIcon" class="empty-panel__icon"></lucide-icon>
+                    <p class="empty-panel__text">{{ t('streamSummaries.details.noMemories') }}</p>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="empty-panel empty-panel--centered">
+            <lucide-icon [img]="infoIcon" class="empty-panel__icon"></lucide-icon>
+            <p class="empty-panel__text">{{ t('streamSummaries.states.emptyDetail') }}</p>
+          </div>
+        }
+      </main>
+    </div>
+  }
+</div>

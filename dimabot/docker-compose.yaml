@@ -1,0 +1,86 @@
+services:
+  # =========================================
+  # SERVICE 1: API SERVER (Dashboard Backend)
+  # =========================================
+  api-server:
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        - SERVICE_NAME=server
+        - NODE_ENV=production
+    image: dimabot/api-server:latest
+    container_name: dima-server
+    command: node dist/server/index.js
+    restart: always
+    env_file: .env
+    environment:
+      PIPER_HTTP_URL: http://piper-tts:5000
+      PUBLIC_API_URL: https://api.domdimabot.com
+    networks:
+      - web-proxy
+      - databases
+
+  # =========================================
+  # SERVICE 2: CHAT BOT (Twitch Connection)
+  # =========================================
+  chat-bot:
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        - SERVICE_NAME=bot
+        - NODE_ENV=production
+    image: dimabot/chat-bot:latest
+    container_name: dima-bot
+    command: node dist/bot/index.js
+    restart: always
+    env_file: .env
+    environment:
+      INTERNAL_API_URL: http://dima-server:3000
+      PUBLIC_API_URL: https://api.domdimabot.com
+    networks:
+      - web-proxy
+      - databases
+
+  # =========================================
+  # SERVICE 3: CRON WORKERS (Host Process)
+  # =========================================
+  dima-cron:
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        - SERVICE_NAME=cron
+        - NODE_ENV=production
+    container_name: dima-cron
+    command: node dist/workers/cron.index.js
+    restart: always
+    env_file: .env
+    stop_grace_period: 30s
+    networks:
+      - web-proxy
+      - databases
+
+  # =========================================
+  # SERVICE 4: PIPER HTTP TTS
+  # =========================================
+  piper-tts:
+    build:
+      context: .
+      dockerfile: dockerfile.piper
+    container_name: piper-tts
+    restart: always
+    networks:
+      - databases
+    volumes:
+      - piper-data:/voices
+
+networks:
+  web-proxy:
+    external: true
+  databases:
+    external: true
+
+volumes:
+  piper-data:

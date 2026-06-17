@@ -1,0 +1,228 @@
+<div class="channel-page">
+  <!-- Header with back link -->
+  <section class="channel-page__header">
+    <a routerLink="/users" class="back-link">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Back to Users
+    </a>
+    @if (overview(); as o) {
+      <div class="channel-page__title">
+        <h1>{{ o.user.channel }}</h1>
+        <span class="channel-page__id">{{ o.user.channelID }}</span>
+      </div>
+    }
+  </section>
+
+  @if (isLoading()) {
+    <!-- Loading skeletons -->
+    <section class="channel-page__info-cards">
+      @for (item of [1,2,3,4]; track item) {
+        <div class="info-card info-card--skeleton">
+          <app-skeleton variant="bar" height="1rem" width="60%" />
+          <app-skeleton variant="bar" height="1.5rem" width="80%" />
+          <app-skeleton variant="bar" height="0.75rem" width="40%" />
+        </div>
+      }
+    </section>
+
+    <section class="channel-page__stats">
+      @for (item of [1,2,3,4,5,6,7]; track item) {
+        <div class="stat-clickable stat-clickable--skeleton">
+          <app-skeleton variant="bar" height="1rem" width="50%" />
+          <app-skeleton variant="bar" height="1.5rem" width="30%" />
+        </div>
+      }
+    </section>
+  } @else if (error()) {
+    <div class="channel-page__error">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--secondary" (click)="loadChannelOverview()">Retry</button>
+    </div>
+  } @else if (overview(); as o) {
+    <!-- Info Cards -->
+    <section class="channel-page__info-cards">
+      @for (card of infoCards(); track card.label) {
+        <div class="info-card" [class]="card.class">
+          <span class="info-card__label">{{ card.label }}</span>
+          <span class="info-card__value">{{ card.value }}</span>
+          @if (card.subvalue) {
+            <span class="info-card__subvalue">{{ card.subvalue }}</span>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Stats Section -->
+    <section class="channel-page__stats">
+      <h2 class="channel-page__section-title">Channel Data</h2>
+      <div class="channel-page__stats-grid">
+        @for (stat of statItems(); track stat.label) {
+          @if (stat.link) {
+            <a [href]="stat.link" class="stat-clickable">
+              <span class="stat-clickable__label">{{ stat.label }}</span>
+              <span class="stat-clickable__value">{{ formatNumber(stat.value) }}</span>
+            </a>
+          } @else {
+            <div class="stat-clickable stat-clickable--disabled">
+              <span class="stat-clickable__label">{{ stat.label }}</span>
+              <span class="stat-clickable__value">{{ formatNumber(stat.value) }}</span>
+            </div>
+          }
+        }
+      </div>
+    </section>
+
+    <!-- Additional Info -->
+    <section class="channel-page__details">
+      <h2 class="channel-page__section-title">Details</h2>
+      <div class="details-grid">
+        <div class="detail-item">
+          <span class="detail-item__label">Email</span>
+          <span class="detail-item__value">{{ o.user.email || '-' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-item__label">Chat Enabled</span>
+          <span class="detail-item__value">{{ o.user.chat_enabled ? 'Yes' : 'No' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-item__label">Has Permissions</span>
+          <span class="detail-item__value">{{ o.user.has_permissions ? 'Yes' : 'No' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-item__label">Created</span>
+          <span class="detail-item__value">{{ formatDate(o.user.created_at) }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-item__label">Last Reminder Sent</span>
+          <span class="detail-item__value">{{ getReminderSentAt() }}</span>
+        </div>
+        <div class="detail-item detail-item--full" [class]="aiCreditsItemClass()">
+          <span class="detail-item__label">AI Credit Usage</span>
+          @if (aiCredits() && aiCreditsAvailable()) {
+            <span class="detail-item__value credit-usage__summary">
+              <span class="credit-usage__label">{{ aiCreditsLabel() }}</span>
+              <span class="credit-usage__balance" [class.credit-usage__balance--exhausted]="aiCreditsExhausted()">
+                ({{ formatCredits(aiCreditsBalance()) }} left)
+              </span>
+              <span class="credit-usage__percent">{{ aiCreditsPercent() }}%</span>
+            </span>
+            <div class="credit-usage__progress" role="progressbar"
+                 aria-label="AI credit usage"
+                 [attr.aria-valuemin]="0" [attr.aria-valuemax]="100"
+                 [attr.aria-valuenow]="aiCreditsPercent()">
+              <span [class]="aiCreditsFillClass()"
+                    [class.credit-usage__fill--exhausted]="aiCreditsExhausted()"
+                    [style.width.%]="aiCreditsPercent()"></span>
+            </div>
+            @if (aiCreditsExhausted()) {
+              <span class="credit-usage__hint credit-usage__hint--warning">
+                No credits remaining — user needs to upgrade or wait for refill.
+              </span>
+            }
+          } @else {
+            <span class="detail-item__value credit-usage__summary credit-usage__summary--muted">
+              Not available
+              @if (aiCredits() && !aiCreditsAvailable()) {
+                <span class="credit-usage__hint">No Polar customer linked — credits not provisioned yet.</span>
+              }
+            </span>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Admin Actions -->
+    <section class="channel-page__actions">
+      <h2 class="channel-page__section-title">Admin Actions</h2>
+      <div class="actions-row">
+        <button
+          type="button"
+          class="btn"
+          [class.btn--primary]="!isUserActive()"
+          [class.btn--warning]="isUserActive()"
+          (click)="openSendReminder()"
+          [disabled]="isSendingReminder()"
+          [title]="isUserActive() ? 'User is already active — override and send reminder' : 'Send real activation reminder email'"
+        >
+          Send Reminder Email
+        </button>
+        <span class="actions-hint">Sends a real production activation reminder (uses the standardized pendingActionsQueue flow).</span>
+      </div>
+
+      <div class="actions-row actions-row--stacked">
+        <div class="credit-grant-panel">
+          <div class="credit-grant-panel__head">
+            <div>
+              <h3>Grant AI Credits</h3>
+              <p>Ingests a negative <code>ai_credits</code> event in Polar and updates local cache.</p>
+            </div>
+          </div>
+
+          <div class="credit-grant-panel__presets" aria-label="AI credit grant presets">
+            @for (credits of creditPresets; track credits) {
+              <button
+                type="button"
+                class="btn btn--primary"
+                (click)="grantPresetCredits(credits)"
+                [disabled]="isGrantingCredits()"
+              >
+                +{{ formatCredits(credits) }}
+              </button>
+            }
+          </div>
+
+          <label class="credit-grant-panel__field">
+            <span>Custom credits</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputmode="numeric"
+              placeholder="Custom amount"
+              [value]="customCreditAmount()"
+              (input)="onCustomCreditInput($event)"
+              [disabled]="isGrantingCredits()"
+            />
+          </label>
+
+          <label class="credit-grant-panel__field">
+            <span>Reason</span>
+            <input
+              type="text"
+              maxlength="180"
+              placeholder="bug reimbursement"
+              [value]="creditReason()"
+              (input)="onCreditReasonInput($event)"
+              [disabled]="isGrantingCredits()"
+            />
+          </label>
+
+          <button
+            type="button"
+            class="btn btn--warning"
+            (click)="grantCustomCredits()"
+            [disabled]="isGrantingCredits() || !customCreditAmount()"
+          >
+            {{ isGrantingCredits() ? 'Granting...' : 'Grant Custom Credits' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- Confirmation Modal for Reminder -->
+  <app-confirm-modal
+    [open]="showReminderModal()"
+    [title]="'Send Activation Reminder'"
+    [message]="'Send a real production activation reminder email to this streamer?'"
+    [warning]="isUserActive() ? 'This user is already active. The email will still be sent (override).' : null"
+    [confirmLabel]="'Send Reminder'"
+    [cancelLabel]="'Cancel'"
+    [isDanger]="false"
+    [loading]="isSendingReminder()"
+    (confirmed)="confirmSendReminder()"
+    (cancelled)="closeReminderModal()"
+  />
+</div>

@@ -107,3 +107,15 @@ export interface DashboardAccessData {
 export type DashboardBootstrapResponse = ApiEnvelope<DashboardBootstrapData>;
 export type DashboardLiveStatusResponse = ApiEnvelope<DashboardLiveStatusData>;
 export type DashboardAccessResponse = ApiEnvelope<DashboardAccessData>;
+
+export interface AiCreditsData {
+  version?: number;
+  used: number;
+  limit: number;
+  balance: number;
+  meterId: string;
+  updatedAt: string;
+  available: boolean;
+}
+
+export type AiCreditsResponse = ApiEnvelope<AiCreditsData>;

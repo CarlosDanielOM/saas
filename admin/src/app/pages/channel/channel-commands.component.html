@@ -1,0 +1,108 @@
+<div class="channel-page">
+  <!-- Header with back link -->
+  <section class="channel-page__header">
+    <a [routerLink]="['/channels', channelID()]" class="back-link">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Back to Channel
+    </a>
+    <h1 class="channel-page__title">Commands</h1>
+  </section>
+
+  @if (isLoading()) {
+    <section class="channel-page__table-section">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Command</th>
+            <th>Function</th>
+            <th>Cooldown</th>
+            <th>User Level</th>
+            <th>Enabled</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of [1,2,3,4,5]; track item) {
+            <tr>
+              <td><app-skeleton variant="bar" height="1rem" width="60px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="80px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="50px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else if (error()) {
+    <div class="channel-page__error">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--secondary" (click)="loadCommands(currentPage())">Retry</button>
+    </div>
+  } @else if (commands().length === 0) {
+    <div class="channel-page__empty">
+      <p>No commands found</p>
+    </div>
+  } @else {
+    <section class="channel-page__table-section">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Command</th>
+            <th>Function</th>
+            <th>Cooldown</th>
+            <th>User Level</th>
+            <th>Enabled</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cmd of commands(); track cmd.id) {
+            <tr>
+              <td class="data-table__name">{{ cmd.name }}</td>
+              <td class="data-table__cmd">{{ cmd.cmd }}</td>
+              <td class="data-table__func">{{ cmd.func }}</td>
+              <td>{{ cmd.cooldown }}s</td>
+              <td>{{ cmd.userLevelName || '-' }}</td>
+              <td>
+                @if (cmd.enabled) {
+                  <span class="status-badge status-badge--active">Yes</span>
+                } @else {
+                  <span class="status-badge status-badge--inactive">No</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="pagination">
+        <button
+          type="button"
+          class="pagination__btn"
+          [disabled]="currentPage() === 1"
+          (click)="onPageChange(currentPage() - 1)"
+        >
+          Previous
+        </button>
+        <span class="pagination__info">
+          Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
+        </span>
+        <button
+          type="button"
+          class="pagination__btn"
+          [disabled]="currentPage() === totalPages()"
+          (click)="onPageChange(currentPage() + 1)"
+        >
+          Next
+        </button>
+      </div>
+    }
+  }
+</div>

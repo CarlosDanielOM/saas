@@ -1,0 +1,81 @@
+---
+title: Getting Started
+description: Set up DomDimaBot and start streaming smarter.
+sidebar:
+  order: 1
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+Welcome to DomDimaBot! This guide will walk you through getting your bot connected and configured.
+
+## Authentication Levels
+
+DomDimaBot has two levels of access:
+
+| Feature | Basic Access | Full Access |
+|---------|-------------|-------------|
+| Custom commands | ✅ | ✅ |
+| Chat interaction | ✅ | ✅ |
+| AI personality chat | ❌ | ✅ |
+| Channel rewards | ❌ | ✅ |
+| Triggers & media | ❌ | ✅ |
+| Moderation tools | ❌ | ✅ |
+| Analytics | ❌ | ✅ |
+| Streamer integrations | ❌ | ✅ |
+
+**Basic Access** is granted automatically when you first log in with Twitch.
+
+**Full Access** requires you to authorize the bot to access your Twitch account with all required permissions.
+
+## Setup Process
+
+<Steps>
+
+1. **Visit the dashboard**
+
+   Go to [domdimabot.com](https://domdimabot.com) and click **Login with Twitch**.
+
+2. **Authenticate with Twitch**
+
+   - If this is your first time, a DomDimaBot account will be created automatically
+   - If you've used DomDimaBot before, you'll be logged into your existing account
+
+   At this point you have **Basic Access** and can use custom commands and basic chat features.
+
+3. **Authorize for Full Access** *(optional but recommended)*
+
+   Click **Authorize Bot** in the dashboard header.
+
+   You'll be redirected to Twitch to grant the required permissions. The bot needs access to moderation tools, chat, polls, predictions, subscriptions, and more — everything it needs to run your stream smoothly.
+
+   <Aside type="tip">
+   You must have 2FA enabled on your Twitch account to grant these permissions. No sensitive data like your stream key is ever requested.
+   </Aside>
+
+   When you authorize, DomDimaBot automatically:
+   - Creates default commands for your channel
+   - Sets up default webhooks for live events
+   - Configures your account with sensible defaults
+
+   If you skip this step, you'll need to set everything up manually.
+
+4. **Configure settings**
+
+   Set up your preferred language, timezone, and notification preferences from the dashboard.
+
+5. **Test your bot**
+
+   Type `!ping` in your Twitch chat to verify the bot is responding.
+
+</Steps>
+
+## Next Steps
+
+Once you're set up, explore these guides:
+
+- **[Commands](/commands/overview/)** — Create custom chat commands
+- **[Rewards](/rewards/)** — Set up channel point redemptions
+- **[Triggers](/triggers/)** — Automate sounds and overlays
+- **[Follow Defense](/follow-defense/)** — Protect your channel from follow floods and hate raids
+- **[AI Personality](/ai-personality/)** — Configure your bot's character

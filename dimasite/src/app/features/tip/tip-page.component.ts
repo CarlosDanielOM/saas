@@ -3,6 +3,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   ArrowRight,
   ChevronDown,
+  Coins,
+  Crown,
   Heart,
   LucideAngularModule,
   MessageSquare,
@@ -80,6 +82,14 @@ export class TipPageComponent {
   readonly moonIcon = Moon;
   readonly sunIcon = Sun;
   readonly chevronDownIcon = ChevronDown;
+  readonly crownIcon = Crown;
+  readonly coinsIcon = Coins;
+
+  readonly presetAmounts = signal([5, 10, 20, 50, 100]);
+
+  selectPreset(amount: number): void {
+    this.donationAmount.set(amount.toFixed(2));
+  }
 
   private readonly mockConfig = signal<TipPageMockConfig>({
     currency: undefined,

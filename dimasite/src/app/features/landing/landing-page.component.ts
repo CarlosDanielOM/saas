@@ -193,9 +193,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   readonly pricingLimits: PricingRow[] = [
     {
       label: 'AI credits / month',
-      free: '25',
-      premium: '125',
-      pro: '500',
+      free: '25,000',
+      premium: '125,000',
+      pro: '500,000',
       note: 'Credits are non-rollover.'
     },
     { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' },

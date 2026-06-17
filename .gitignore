@@ -123,9 +123,9 @@ connect.lock
 .yarn/install-state.gz
 .pnp.*
 
-# Subproject-specific paths (explicitly excluded)
-/http
-/rest/
+# Subproject-specific paths (explicitly excluded - COMMENTED OUT FOR MONOREPO)
+ # /http
+ # /rest/
 
 # OpenCode workspace
 .opencode/node_modules/
@@ -134,6 +134,15 @@ connect.lock
 .opencode/.gitignore
 
 # Database files (local)
-*.db
-*.sqlite
-*.sqlite3
+ *.db
+ *.sqlite
+ *.sqlite3
+ .gitnexus
+
+# Per-project lockfiles (each subproject manages its own npm dependencies)
+ !dimabot/package-lock.json
+ !dimasite/package-lock.json
+ !admin/package-lock.json
+ !dimadocs/package-lock.json
+ !dimafx/package-lock.json
+ !dimafx/server/package-lock.json

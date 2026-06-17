@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>DimaFX Mobile Extension</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- External Modular Stylesheet -->
+    <link rel="stylesheet" href="mobile.css?v=25" />
+  </head>
+  <body>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-alert">
+      <div class="toast-alert-icon">
+        <svg viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <div class="toast-text">
+        <div id="toast-title" class="toast-alert-title">
+          Purchase Successful
+        </div>
+        <div id="toast-desc" class="toast-alert-desc">
+          Item is now available in your inventory.
+        </div>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+      <div class="header-top">
+        <div class="logo">
+          <svg viewBox="0 0 24 24">
+            <polygon
+              points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"
+            ></polygon>
+            <polyline points="2 8.5 12 15 22 8.5"></polyline>
+            <line x1="12" y1="15" x2="12" y2="22"></line>
+          </svg>
+          DimaFX
+        </div>
+        <div class="header-controls">
+          <div class="balance-badge">
+            <svg viewBox="0 0 24 24">
+              <polygon points="12 2 22 12 12 22 2 12"></polygon>
+            </svg>
+            <span id="header-balance">1,250</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Views Viewport -->
+    <div class="app-viewport">
+      <!-- Screen 1: Store (Media Library) -->
+      <div id="screen-store" class="app-screen active">
+        <div class="screen-header">
+          <h2 class="screen-title">Media Store</h2>
+          <p class="screen-desc">
+            Unlock custom sound effects, overlay frames, and streaming alerts.
+          </p>
+        </div>
+
+        <div class="search-filter-wrapper">
+          <div class="search-input-box">
+            <svg class="search-icon" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              id="store-search"
+              placeholder="Search library..."
+              oninput="handleSearch(this.value)"
+            />
+          </div>
+
+          <div class="category-scroll">
+            <button
+              class="category-pill active"
+              onclick="filterCategory('all', this)"
+            >
+              All Items
+            </button>
+            <button
+              class="category-pill"
+              onclick="filterCategory('video', this)"
+            >
+              Video
+            </button>
+            <button class="category-pill" onclick="filterCategory('gif', this)">
+              Gifs
+            </button>
+            <button
+              class="category-pill"
+              onclick="filterCategory('audio', this)"
+            >
+              Audio
+            </button>
+            <button class="category-pill" onclick="filterCategory('tts', this)">
+              TTS
+            </button>
+          </div>
+        </div>
+
+        <!-- Shimmering Skeleton Loader Screen Overlay -->
+        <div id="skeleton-loader" class="mobile-skeleton-overlay">
+          <div class="sk-card">
+            <div class="sk-thumb shimmer"></div>
+            <div class="sk-body">
+              <div class="sk-line sk-title shimmer"></div>
+              <div class="sk-line sk-desc shimmer"></div>
+            </div>
+            <div class="sk-btn shimmer"></div>
+          </div>
+          <div class="sk-card">
+            <div class="sk-thumb shimmer"></div>
+            <div class="sk-body">
+              <div class="sk-line sk-title shimmer"></div>
+              <div class="sk-line sk-desc shimmer"></div>
+            </div>
+            <div class="sk-btn shimmer"></div>
+          </div>
+          <div class="sk-card">
+            <div class="sk-thumb shimmer"></div>
+            <div class="sk-body">
+              <div class="sk-line sk-title shimmer"></div>
+              <div class="sk-line sk-desc shimmer"></div>
+            </div>
+            <div class="sk-btn shimmer"></div>
+          </div>
+          <div class="sk-card">
+            <div class="sk-thumb shimmer"></div>
+            <div class="sk-body">
+              <div class="sk-line sk-title shimmer"></div>
+              <div class="sk-line sk-desc shimmer"></div>
+            </div>
+            <div class="sk-btn shimmer"></div>
+          </div>
+        </div>
+
+        <!-- Store Grid of Items -->
+        <div id="store-grid" class="mobile-grid">
+          <!-- populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Screen 2: My Inventory -->
+      <div id="screen-inventory" class="app-screen">
+        <div class="screen-header">
+          <h2 class="screen-title">My Inventory</h2>
+          <p class="screen-desc">
+            Manage and trigger unlocked effects on the broadcast overlay.
+          </p>
+        </div>
+
+        <!-- Inventory Lists -->
+        <div id="inventory-list" class="inventory-list">
+          <!-- populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Screen 3: Settings -->
+      <div id="screen-settings" class="app-screen">
+        <div class="screen-header">
+          <h2 class="screen-title">Preferences</h2>
+          <p class="screen-desc">
+            Adjust media parameters and system notifications.
+          </p>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Sound FX Volume</div>
+              <div class="settings-desc">
+                Global volume level for alert sound effects.
+              </div>
+            </div>
+            <div
+              style="
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--accent-purple);
+              "
+              id="val-volume"
+            >
+              80%
+            </div>
+          </div>
+          <input
+            type="range"
+            class="volume-slider"
+            min="0"
+            max="100"
+            value="80"
+            oninput="
+              document.getElementById('val-volume').textContent =
+                this.value + '%'
+            "
+          />
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Auto-trigger on Overlay</div>
+              <div class="settings-desc">
+                Immediately play sounds on checkout.
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div>
+              <div class="settings-label">Low Latency Mode</div>
+              <div class="settings-desc">
+                Prioritizes audio execution speed.
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Sheet Backdrop -->
+    <div
+      id="sheet-backdrop"
+      class="sheet-backdrop"
+      onclick="closeSheet()"
+    ></div>
+
+    <!-- Bottom Sheet Detail Drawer -->
+    <div id="bottom-sheet" class="mobile-bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div>
+          <div id="sheet-title" class="sheet-title">Title</div>
+          <div id="sheet-category" class="sheet-category">Category</div>
+        </div>
+        <button class="sheet-close-btn" onclick="closeSheet()">
+          <svg viewBox="0 0 24 24" fill="none">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile Audio widget -->
+      <div id="mobile-player" class="mobile-player-box">
+        <button class="btn-play-sheet" onclick="togglePlayPreview()">
+          <svg id="play-icon-svg" viewBox="0 0 24 24">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </button>
+        <div class="waveform-bars">
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+          <div class="w-bar"></div>
+        </div>
+        <div id="player-time" class="player-time-label">0:00</div>
+      </div>
+
+      <p id="sheet-desc" class="sheet-desc">
+        Detail description showing what this item is.
+      </p>
+
+      <div class="drawer-actions">
+        <button
+          id="sheet-buy-btn"
+          class="sheet-btn-buy"
+          onclick="triggerPurchase()"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            style="width: 14px; height: 14px; fill: currentColor"
+          >
+            <polygon points="12 2 22 12 12 22 2 12"></polygon>
+          </svg>
+          <span>Unlock for 150 Bits</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Tab Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-tab active" onclick="switchTab('store', this)">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="9"></rect>
+          <rect x="14" y="3" width="7" height="5"></rect>
+          <rect x="14" y="12" width="7" height="9"></rect>
+          <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        Store
+      </button>
+      <button class="nav-tab" onclick="switchTab('inventory', this)">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+          ></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        Inventory
+      </button>
+      <button class="nav-tab" onclick="switchTab('settings', this)">
+        <svg viewBox="0 0 24 24">
+          <line x1="4" y1="21" x2="4" y2="14"></line>
+          <line x1="4" y1="10" x2="4" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12" y2="3"></line>
+          <line x1="20" y1="21" x2="20" y2="16"></line>
+          <line x1="20" y1="12" x2="20" y2="3"></line>
+          <line x1="1" y1="14" x2="7" y2="14"></line>
+          <line x1="9" y1="8" x2="15" y2="8"></line>
+          <line x1="17" y1="16" x2="23" y2="16"></line>
+        </svg>
+        Settings
+      </button>
+    </nav>
+
+    <!-- Twitch Extension Helper -->
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+
+    <!-- External Modular Scripts -->
+    <script src="mobile.js?v=35"></script>
+  </body>
+</html>

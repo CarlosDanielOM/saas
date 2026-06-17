@@ -1,0 +1,214 @@
+---
+title: Follow Defense
+description: Protect your channel from follow floods, bot follow attacks, and hate raids.
+sidebar:
+  order: 6
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+Follow Defense helps protect your stream when a bad actor sends a large wave of bot accounts to follow your channel. These attacks can spam chat alerts, trigger overlays repeatedly, and overwhelm your moderation workflow.
+
+DomDimaBot watches follow velocity in the background and can move through three protection levels: **Silent Mode**, **Protection Mode**, and **Attack Mode**.
+
+<Aside type="note">
+Follow Defense can be fully disabled. If you already use another protection system, turn DomDimaBot Follow Defense off to avoid interference with your alerts or moderation flow.
+</Aside>
+
+## What Follow Defense does
+
+When enabled, DomDimaBot can:
+
+- Detect unusually fast follow bursts in seconds.
+- Temporarily silence follow alerts to stop chat and overlay spam.
+- Track followers in the current wave for review or later action.
+- Ban new followers during confirmed protection events.
+- Manually escalate to Attack Mode with a custom command.
+- Detect raids and track raid follows without automatically treating them as attacks.
+- Save attack history and possible hate raid sources for future reference.
+
+## Mode overview
+
+| Mode | Default trigger | What happens |
+|------|-----------------|--------------|
+| **Normal** | No active burst | Follow alerts work normally. |
+| **Silent Mode** | 10 follows in 5 seconds | Follow alerts are suppressed and the wave is tracked. No bans happen yet. |
+| **Protection Mode** | 100 follows in the detection window | DomDimaBot announces protection and bans new follows from the wave, unless an active raid is detected. |
+| **Attack Mode** | 500 follows or manual activation | DomDimaBot bans all tracked follows from the wave and continues banning new follows until the mode expires or is reset. |
+
+All thresholds are configurable per channel.
+
+## How detection works
+
+Follow Defense uses a short time window instead of waiting minutes to react.
+
+By default:
+
+- **Silent threshold:** 10 follows
+- **Detection window:** 5 seconds
+- **Tracking duration:** 60 seconds
+- **Protection threshold:** 100 follows
+- **Attack threshold:** 500 follows
+
+Example:
+
+```txt
+10 follows in 5 seconds  -> Silent Mode
+100 follows in 5 seconds -> Protection Mode
+500 follows in 5 seconds -> Attack Mode
+```
+
+If a burst only reaches Silent Mode and then stops, DomDimaBot returns to normal after the tracking duration and sends a short summary instead of spamming every follow alert.
+
+## Silent Mode
+
+Silent Mode is the first safety layer.
+
+When it activates:
+
+- DomDimaBot stops sending follow alert messages.
+- Follow-related triggers should be suppressed while the mode is active.
+- Followers in the wave are tracked.
+- No one is banned yet.
+
+This is useful for suspicious spikes that might still be legitimate.
+
+## Protection Mode
+
+Protection Mode activates when the follow wave grows past the protection threshold.
+
+When it activates outside of a raid:
+
+- DomDimaBot sends a warning message to chat.
+- New follows in the wave are banned using Twitch's ban endpoint.
+- Existing tracked follows remain available for escalation.
+
+<Aside type="caution">
+Protection Mode uses bans, not timeouts, when banning follow attackers. Make sure your thresholds match your channel's normal activity.
+</Aside>
+
+## Attack Mode
+
+Attack Mode is the strongest response.
+
+It can activate automatically when the attack threshold is reached, or manually through an AST command.
+
+When it activates:
+
+- DomDimaBot bans all tracked followers from the current wave.
+- DomDimaBot continues banning new follows while the mode is active.
+- The event is saved in attack history.
+- If it was activated during a raid, the raider can be recorded as a possible hate raid source.
+
+<Aside type="danger">
+Attack Mode can permanently ban many accounts quickly. Only use it when you are confident the follow wave is hostile.
+</Aside>
+
+## Manual command: `!defmode`
+
+The backend provides an AST function for manual escalation:
+
+```txt
+$(bot.mode attack)
+```
+
+You can create your own command name for it. A recommended command is:
+
+```txt
+!defmode -> $(bot.mode attack)
+```
+
+You can also check status with:
+
+```txt
+$(bot.mode status)
+```
+
+<Aside type="tip">
+Restrict your defense command to trusted moderators or the channel owner. It performs moderation actions.
+</Aside>
+
+## Raid-aware behavior
+
+Not every large follow wave is an attack. A big streamer may raid your channel with thousands of viewers and cause hundreds of legitimate follows.
+
+When DomDimaBot receives a Twitch raid event:
+
+- It marks the channel as being in a raid window for 5 minutes.
+- Follows during that window are tracked.
+- DomDimaBot does not automatically announce Protection Mode or ban raid follows just because the thresholds are reached.
+- If you manually activate Attack Mode during the raid, DomDimaBot treats the tracked raid wave as hostile and can record the raider as a possible hate raid source.
+
+This allows legitimate raids to happen normally while still giving you a fast response if the raid becomes abusive.
+
+## Global disable
+
+Use the global **Enable Follow Defense** setting to turn the system on or off.
+
+When Follow Defense is disabled:
+
+- DomDimaBot does not queue follow defense events.
+- DomDimaBot does not suppress follow alerts because of defense state.
+- DomDimaBot does not perform follow-defense bans.
+- Existing history remains available for review.
+
+This is recommended if you already use another bot or moderation service for follow attack protection.
+
+## Settings reference
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Enable Follow Defense** | On | Turns the entire system on or off. |
+| **Silent Mode enabled** | On | Allows the first protection layer to suppress alerts. |
+| **Protection Mode enabled** | On | Allows DomDimaBot to ban new follows during a confirmed flood. |
+| **Attack Mode enabled** | On | Allows automatic or manual full-wave bans. |
+| **Silent threshold** | 10 | Number of follows needed to enter Silent Mode. |
+| **Detection window** | 5 seconds | Time window used for burst detection. |
+| **Protection threshold** | 100 | Number of follows needed to enter Protection Mode. |
+| **Attack threshold** | 500 | Number of follows needed to enter Attack Mode. |
+| **Tracking duration** | 60 seconds | How long DomDimaBot tracks the current wave. |
+| **Expected follows per hour** | Custom | Optional baseline you set for your channel's normal follow activity. |
+
+## Recommended setup
+
+<Steps>
+
+1. **Enable Follow Defense**
+
+   Turn on the global setting unless you already use another follow protection system.
+
+2. **Set realistic thresholds**
+
+   Start with the defaults, then adjust based on your channel size and normal follow activity.
+
+3. **Create a manual defense command**
+
+   Add a moderator-only command such as `!defmode` that runs `$(bot.mode attack)`.
+
+4. **Tell your moderators what it does**
+
+   Make sure trusted moderators understand that Attack Mode bans all tracked follows in the active wave.
+
+5. **Review history after incidents**
+
+   Use attack logs and hate raid sources to understand what happened and tune settings later.
+
+</Steps>
+
+## Common scenarios
+
+### A small suspicious spike
+
+If 10 follows arrive in 5 seconds and then stop, DomDimaBot enters Silent Mode, suppresses alerts, tracks the wave, then returns to normal with a summary.
+
+### A clear follow flood
+
+If the wave reaches the protection threshold outside of a raid, DomDimaBot enters Protection Mode and starts banning new follows from the wave.
+
+### A large hostile attack
+
+If the wave reaches the attack threshold, or a moderator uses `!defmode`, DomDimaBot enters Attack Mode and bans all tracked follows in the wave.
+
+### A large legitimate raid
+
+If a Twitch raid event is active, DomDimaBot tracks follows silently. It will not automatically ban raid follows unless you manually activate Attack Mode.

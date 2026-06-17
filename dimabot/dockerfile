@@ -1,0 +1,59 @@
+FROM node:24-alpine
+
+# ---------------------------------------------------------------------
+# 1. Install System Dependencies (Added Step)
+# We do this FIRST so it is cached efficiently.
+# - python3 & py3-pip: Required to run yt-dlp
+# - ffmpeg: Required by yt-dlp to merge video segments (for VODs)
+# ---------------------------------------------------------------------
+RUN apk add --no-cache python3 py3-pip ffmpeg build-base g++ gcompat libstdc++
+
+# ---------------------------------------------------------------------
+# 2. Install Deno (Added Step)
+# We use the binary from the official Deno image.
+# ---------------------------------------------------------------------
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
+
+# ---------------------------------------------------------------------
+# 3. Install yt-dlp (Twitch Clip Downloader)
+# We switched from twitch-dl to yt-dlp because twitch-dl uses hardcoded
+# Twitch GQL persisted query hashes that Twitch rotates periodically,
+# causing all clip downloads to fail with PersistedQueryNotFound errors.
+# yt-dlp is actively maintained and its Twitch extractor is patched
+# quickly when those hashes change.
+# --break-system-packages is safe here because we are in a container.
+# ---------------------------------------------------------------------
+RUN pip3 install yt-dlp --break-system-packages
+
+WORKDIR /app
+
+# ---------------------------------------------------------------------
+# 4. Install Node Dependencies
+# ---------------------------------------------------------------------
+COPY package*.json ./
+
+# Accept NODE_ENV as an build argument (defaults to production)
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+
+# Install dependencies based on environment
+RUN npm install
+
+# ---------------------------------------------------------------------
+# 6. Source Code
+# ---------------------------------------------------------------------
+# We copy the entire src directory. This supports both individual
+# services (bot/server) and the combined 'dev-bot' service.
+COPY . .
+
+# ---------------------------------------------------------------------
+# 7. Build the Project
+# ---------------------------------------------------------------------
+# Build TypeScript project to JavaScript
+RUN npm run build
+
+# 7.5 Copy public HTML files to dist
+# ---------------------------------------------------------------------
+# Copy static HTML files for overlays to build output
+COPY --chown=node:node ./src/server/routes/public/ ./dist/server/routes/public/
+

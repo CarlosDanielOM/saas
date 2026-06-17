@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   ArrowRight,
-  BarChart3,
   Lock,
   LucideAngularModule,
   Sparkles,
@@ -11,12 +10,13 @@ import {
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
-import { ToastService } from '../../services/toast.service';
+import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 @Component({
   selector: 'app-analytics-hub-page',
   imports: [RouterLink, LucideAngularModule],
+  styleUrl: './analytics-hub-page.component.css',
   templateUrl: './analytics-hub-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -24,10 +24,9 @@ export class AnalyticsHubPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
-  private readonly toastService = inject(ToastService);
+  private readonly upgradeService = inject(UpgradeService);
 
   readonly sparklesIcon = Sparkles;
-  readonly analyticsIcon = BarChart3;
   readonly followersIcon = Users;
   readonly arrowIcon = ArrowRight;
   readonly lockIcon = Lock;
@@ -49,6 +48,9 @@ export class AnalyticsHubPageComponent {
   }
 
   openLockedNotice(): void {
-    this.toastService.warning(this.t('common.premiumFeature'), this.t('common.premiumSubscriptionRequired'));
+    void this.upgradeService.promptUpgradeForModule({
+      moduleId: 'analytics.follows',
+      source: 'analytics_hub'
+    });
   }
 }

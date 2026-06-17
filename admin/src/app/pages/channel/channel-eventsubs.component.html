@@ -1,0 +1,167 @@
+<div class="channel-page">
+  <!-- Header with back link -->
+  <section class="channel-page__header">
+    <a [routerLink]="['/channels', channelID()]" class="back-link">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      Back to Channel
+    </a>
+    <h1 class="channel-page__title">Eventsubs</h1>
+  </section>
+
+  @if (isLoading()) {
+    <section class="channel-page__table-section">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Version</th>
+            <th>Enabled</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of [1,2,3,4,5]; track item) {
+            <tr>
+              <td><app-skeleton variant="bar" height="1rem" width="80px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="60px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="50px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="70px" /></td>
+              <td><app-skeleton variant="bar" height="1rem" width="80px" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  } @else if (error()) {
+    <div class="channel-page__error">
+      <p>{{ error() }}</p>
+      <button type="button" class="btn btn--secondary" (click)="loadEventsubs()">Retry</button>
+    </div>
+  } @else if (eventsubs().length === 0) {
+    <div class="channel-page__empty">
+      <p>No eventsubs found</p>
+    </div>
+  } @else {
+    <section class="channel-page__table-section">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Version</th>
+            <th>Enabled</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (eventsub of eventsubs(); track eventsub.type) {
+            <tr [class]="getRowClass(eventsub)">
+              <td class="data-table__type">{{ eventsub.type }}</td>
+              <td>
+                <span class="status-badge" [class]="getStatusClass(eventsub)">
+                  {{ eventsub.status }}
+                </span>
+              </td>
+              <td>{{ eventsub.version }}</td>
+              <td>
+                @if (eventsub.isMissing) {
+                  <span class="status-badge status-badge--missing">-</span>
+                } @else if (eventsub.enabled) {
+                  <span class="status-badge status-badge--active">Yes</span>
+                } @else {
+                  <span class="status-badge status-badge--inactive">No</span>
+                }
+              </td>
+              <td class="data-table__date">{{ formatDate(eventsub.created_at) }}</td>
+              <td class="data-table__actions">
+                @if (eventsub.isMissing) {
+                  <button
+                    type="button"
+                    class="btn btn--small btn--success"
+                    [disabled]="isLoadingId(eventsub.type + eventsub.version)"
+                    (click)="toggleEventsub(eventsub)">
+                    @if (isLoadingId(eventsub.type + eventsub.version)) {
+                      <span class="spinner"></span>
+                    }
+                    Subscribe
+                  </button>
+                } @else {
+                  @if (eventsub.enabled) {
+                    <button
+                      type="button"
+                      class="btn btn--small btn--danger"
+                      [disabled]="isLoadingId(eventsub.id)"
+                      (click)="toggleEventsub(eventsub)">
+                      @if (isLoadingId(eventsub.id)) {
+                        <span class="spinner"></span>
+                      }
+                      Disable
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="btn btn--small btn--success"
+                      [disabled]="isLoadingId(eventsub.id)"
+                      (click)="toggleEventsub(eventsub)">
+                      @if (isLoadingId(eventsub.id)) {
+                        <span class="spinner"></span>
+                      }
+                      Enable
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="btn btn--small btn--secondary"
+                    (click)="openTestModal(eventsub)">
+                    Test
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="pagination">
+        <button
+          type="button"
+          class="pagination__btn"
+          [disabled]="currentPage() === 1"
+          (click)="onPageChange(currentPage() - 1)"
+        >
+          Previous
+        </button>
+        <span class="pagination__info">
+          Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
+        </span>
+        <button
+          type="button"
+          class="pagination__btn"
+          [disabled]="currentPage() === totalPages()"
+          (click)="onPageChange(currentPage() + 1)"
+        >
+          Next
+        </button>
+      </div>
+    }
+  }
+</div>
+
+@if (showTestModal()) {
+  <app-test-event-modal
+    [eventType]="testEventType()"
+    [channelID]="channelID()"
+    [initialPayload]="testPayload()"
+    (sendTest)="sendTestEvent($event)"
+    (closeModal)="closeTestModal()"
+  />
+}

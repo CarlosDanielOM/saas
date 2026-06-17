@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" fill="none">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9146ff"/>
+      <stop offset="100%" style="stop-color:#ff79c6"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Bot head shape -->
+  <path d="M20 8 C8 8 8 32 20 32 C32 32 32 8 20 8Z" fill="url(#logoGradient)"/>
+  
+  <!-- Eyes -->
+  <circle cx="14" cy="18" r="3" fill="#fff"/>
+  <circle cx="26" cy="18" r="3" fill="#fff"/>
+  <circle cx="15" cy="18" r="1.5" fill="#0d0d12"/>
+  <circle cx="27" cy="18" r="1.5" fill="#0d0d12"/>
+  
+  <!-- Smile -->
+  <path d="M14 24 Q20 28 26 24" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+  
+  <!-- Antenna -->
+  <line x1="20" y1="8" x2="20" y2="2" stroke="#9146ff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="20" cy="1" r="2" fill="#ff79c6"/>
+  
+  <!-- Text: DomDimaBot -->
+  <text x="45" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="700" fill="#9146ff">DomDimaBot</text>
+</svg>

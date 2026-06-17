@@ -1,0 +1,153 @@
+---
+title: AST Execution, Errors & Limits
+description: "How the AST parser runs, common errors, and plan-based safety limits."
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+This page explains what happens when an AST command runs and how to debug it when something goes wrong.
+
+## Execution flow
+
+1. A command or event triggers the template
+2. Argument placeholders like `&p1` and `&t` are resolved
+3. Execution context is created with user, channel, and event data
+4. Input is tokenized
+5. Tokens are parsed into an AST
+6. The AST is evaluated
+7. Variables are written to memory, cache, or database if needed
+8. Final output is rendered and sent to chat
+
+## Why this matters
+
+Understanding the order helps you debug issues like:
+
+- arguments not showing up where you expect
+- missing variables
+- branches running unexpectedly
+- command references returning surprising results
+- EventSub functions returning blank values in chat
+
+## Common error messages
+
+| Error Pattern | Meaning |
+|---------------|---------|
+| `[Unknown function: name]` | The function is not registered |
+| `[Loop error: invalid loop syntax]` | The loop syntax is malformed |
+| `[Loop error: missing loop body]` | The loop is missing `{}` |
+| `[Parse error: expr]` | The parser could not understand the expression |
+| `Usage: $(func ...)` | The function arguments are missing or invalid |
+
+## Limits and safety rules
+
+### Loop limits by plan
+
+| Plan | Max nesting depth | Max iterations |
+|------|-------------------|----------------|
+| Free | 2 | 25 |
+| Premium | 3 | 50 |
+| Pro | 4 | 100 |
+
+### Command reference limits
+
+- max recursion depth: `5`
+- cycles are detected and stopped
+
+### Delay limits
+
+- `$(delay N)` supports up to `60` seconds
+
+## Debugging checklist
+
+### 1. Start simple
+
+Before building the full command, test a minimal version first.
+
+```bash
+"Hello $(user)!"
+```
+
+### 2. Add one feature at a time
+
+Good order:
+
+1. plain text
+2. arguments
+3. functions
+4. variables
+5. conditionals
+6. loops
+
+### 3. Check initialization
+
+If a cache or database value might not exist yet, check it first:
+
+```bash
+*(^(#wins) ? %(#wins) : "no wins yet")
+```
+
+### 4. Remember assignment is direct
+
+This is wrong if you want to increment:
+
+```bash
+%(#wins 1)
+```
+
+This is correct:
+
+```bash
+%(#wins *(%(#wins) + 1))
+```
+
+### 5. Remember EventSub context
+
+Functions like `$(cheer.amount)` or `$(reward.input)` only work when the command runs from the matching event type.
+
+<Aside type="note">
+If an EventSub function seems empty during chat testing, that usually does not mean the function is broken. It often just means the current execution context does not contain that event payload.
+</Aside>
+
+## Common gotchas
+
+### Blank cache value
+
+If a `#` or `##` variable expired, it comes back blank.
+
+### `&t` placement
+
+`&t` must be last. You cannot define new `&pN` placeholders after it.
+
+### Loop overuse
+
+If a loop can be replaced by a direct expression or command reference, prefer the simpler option.
+
+### Powerful actions in public commands
+
+Commands using moderation, role, title, game, poll, or trigger actions should not be available to everyone.
+
+## Practical debugging mindset
+
+When a command breaks, ask these questions in order:
+
+1. Are my arguments correct?
+2. Did I create the variable before reading it?
+3. Am I assigning or incrementing?
+4. Am I in the right context for this function?
+5. Did I accidentally create recursion or loop complexity?
+
+## Safe testing tip
+
+Build the output first, then add side effects.
+
+For example, test the text and branch logic before you add:
+
+- `$(ban ...)`
+- `$(vip ...)`
+- `$(set.title ...)`
+- `$(start.poll ...)`
+- `$(trigger.send ...)`
+
+That makes it much easier to confirm the logic before the command starts changing real channel state.

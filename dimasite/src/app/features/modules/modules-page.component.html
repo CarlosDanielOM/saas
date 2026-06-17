@@ -20,9 +20,7 @@
 
       <!-- Search Bar -->
       <div class="search-container">
-        <div class="search-wrapper"
-          [class.focused]="searchQuery()"
-        >
+        <div class="search-wrapper" [class.focused]="searchQuery()">
           <lucide-icon [name]="searchIcon" class="search-icon"></lucide-icon>
           <input
             type="text"
@@ -30,7 +28,7 @@
             [placeholder]="t('modules.searchPlaceholder')"
             [value]="searchQuery()"
             (input)="onSearchChange($event)"
-          >
+          />
           @if (searchQuery()) {
             <button type="button" class="search-clear" (click)="searchQuery.set('')">
               <lucide-icon [name]="clearIcon" class="clear-icon"></lucide-icon>
@@ -41,17 +39,19 @@
 
       <!-- Category Filter -->
       <div class="category-filter">
-        @for (category of categories; track category.id) {
-          <button
-            type="button"
-            class="category-chip"
-            [class.active]="selectedCategory() === category.id"
-            (click)="onCategoryChange(category.id)"
-          >
-            <lucide-icon [name]="category.icon" class="chip-icon"></lucide-icon>
-            <span>{{ t(category.labelKey) }}</span>
-          </button>
-        }
+        <div class="category-filter-track">
+          @for (category of categories; track category.id) {
+            <button
+              type="button"
+              class="category-chip"
+              [class.active]="selectedCategory() === category.id"
+              (click)="onCategoryChange(category.id)"
+            >
+              <lucide-icon [name]="category.icon" class="chip-icon"></lucide-icon>
+              <span>{{ t(category.labelKey) }}</span>
+            </button>
+          }
+        </div>
       </div>
     </div>
 
@@ -65,35 +65,12 @@
 
   <!-- Loading State -->
   @if (isLoading()) {
-    <loading-indicator
-      [loading]="true"
-      size="fullscreen"
-      message="common.loading" />
+    <loading-indicator [loading]="true" size="fullscreen" message="common.loading" />
   }
 
   <!-- Modules Grid -->
   @if (!isLoading()) {
     <section class="modules-section">
-      <!-- Featured Module -->
-      @if (featuredModule() && !searchQuery() && selectedCategory() === 'all') {
-        <div class="featured-section">
-          <div class="section-header">
-            <lucide-icon [name]="featuredIcon" class="section-icon"></lucide-icon>
-            <h2>{{ t('modules.featured') }}</h2>
-          </div>
-
-          <div class="featured-card-wrapper">
-            <app-module-card
-              [module]="featuredModule()!"
-              [featured]="true"
-              [accessText]="getAccessText(featuredModule()!)"
-              (upgradeClick)="onUpgradeClick($event)"
-            ></app-module-card>
-          </div>
-        </div>
-      }
-
-      <!-- All Modules Grid -->
       <div class="section-header">
         <lucide-icon [name]="gridIcon" class="section-icon"></lucide-icon>
         <h2>{{ t('modules.allModules') }}</h2>
@@ -102,14 +79,13 @@
         </span>
       </div>
 
-      <div class="modules-grid"
-        [class.empty]="filteredModules().length === 0"
-      >
-        @for (module of displayedModules(); track module.id; let i = $index) {
+      <div class="modules-grid" [class.empty]="filteredModules().length === 0">
+        @for (module of filteredModules(); track module.id; let i = $index) {
           <app-module-card
-            [module]="module"
+            [module]="toModule(module)"
             [staggerDelay]="i * 100"
             [accessText]="getAccessText(module)"
+            [lockedSubtext]="getLockedSubtext(module)"
             (upgradeClick)="onUpgradeClick($event)"
           ></app-module-card>
         }

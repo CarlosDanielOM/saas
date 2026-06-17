@@ -1,0 +1,122 @@
+---
+title: Comandos Personalizados Avanzados (AST)
+description: "Punto de inicio amigable para el sistema AST de DomDimaBot, con guías separadas de sintaxis, funciones, ejecución y recetas."
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+El **parser AST** de DomDimaBot es la capa avanzada detrás de los comandos personalizados. Te permite construir comandos que guardan valores, ejecutan lógica, llaman funciones, reutilizan otros comandos y responden distinto según el contexto.
+
+<Aside type="caution">
+Esta sección es para configuraciones avanzadas. Si solo necesitas comandos de texto simples, empieza por [Comandos](/es/commands/overview).
+</Aside>
+
+## Para qué sirve AST
+
+Usa AST cuando quieres que un comando haga algo más que enviar texto fijo.
+
+- guardar contadores y progreso de usuarios
+- construir respuestas dinámicas
+- ejecutar lógica tipo if / else
+- trabajar con arrays y bucles
+- llamar funciones de Twitch, moderación, TTS, triggers y EventSub
+- encadenar comandos entre sí
+
+## Importante: las variables no vienen creadas
+
+DomDimaBot **no** te da variables AST por defecto automáticamente.
+
+- Las variables las **creas tú** con `%(...)`
+- Si quieres guardar un valor, debes crear esa variable
+- Los datos de contexto normalmente vienen de **funciones** como `$(user)`, `$(twitch.game)` o de **argumentos** como `&p1`
+
+Ejemplo:
+
+```bash
+%(#wins *(%(#wins) + 1))
+"$(user) ahora tiene %(#wins) wins!"
+```
+
+## Empieza aquí
+
+Esta sección AST ahora está dividida en guías más pequeñas para que sea más fácil aprenderla.
+
+1. **[Sintaxis y Datos de AST](/es/commands/advanced/syntax)**
+   - prefijos
+   - variables y almacenamiento
+   - argumentos
+   - arrays
+   - condicionales
+   - bucles
+   - referencias a comandos
+
+2. **[Referencia de Funciones AST](/es/commands/advanced/functions)**
+   - funciones de usuario y Twitch
+   - acciones de moderación y canal
+   - contadores, clips, followage
+   - EventSub, TTS, triggers y chat send
+
+3. **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution)**
+   - cómo corre el parser
+   - errores comunes
+   - límites de bucles y recursión
+   - mentalidad de debugging
+
+4. **[Recetas y Patrones AST](/es/commands/advanced/recipes)**
+   - buenas prácticas
+   - initialize-or-increment
+   - guard checks
+   - selectores de usuario
+   - sistemas completos de escudos
+
+## Modelo mental rápido
+
+Piensa en los comandos AST como pequeños scripts dentro de un comando personalizado.
+
+- `%(...)` = leer o escribir tus variables
+- `$(...)` = llamar una función
+- `*(...)` = calcular lógica
+- `^(...)` = comprobar si algo existe
+- `#(...)` = ejecutar otro comando desde este comando
+
+## Ejemplo rápido
+
+Este comando crea un contador simple de wins:
+
+```bash
+*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
+"$(user) tiene %(#wins) wins!"
+```
+
+Qué hace:
+
+1. comprueba si `#wins` existe
+2. si existe, lo incrementa
+3. si no existe, lo crea con `1`
+4. imprime el total actualizado
+
+## Funciones según el plan
+
+Algunas funciones AST dependen del plan del streamer.
+
+| Función | Free | Premium | Pro |
+|---------|------|---------|-----|
+| Variables en memoria | Sí | Sí | Sí |
+| Variables de caché (`#`, `##`) | Sí | Sí | Sí |
+| Variables de base de datos (`*`, `**`) | No | Sí | Sí |
+| Bucles más profundos | Limitado | Más | Más aún |
+| Voz IA / voice clone | Limitado | Más | Más aún |
+
+## Flujo recomendado
+
+1. Empieza con una respuesta de texto plano
+2. Añade argumentos como `&p1`
+3. Añade funciones como `$(user)` o `$(twitch.game)`
+4. Añade variables solo cuando necesites estado
+5. Añade condicionales y bucles al final
+
+<Aside type="tip">
+Si un comando AST puede banear usuarios, dar roles, cambiar el título o juego, iniciar encuestas o activar media, mantenlo restringido a moderadores o al broadcaster.
+</Aside>

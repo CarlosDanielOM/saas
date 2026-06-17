@@ -109,56 +109,99 @@
           <div class="triggers-grid">
             @for (trigger of triggers(); track trigger._id) {
               <article class="trigger-card" [class.trigger-card--disabled]="!trigger.isEnabled">
-                <div class="trigger-card__head">
-                  <div>
-                    <h3 class="trigger-card__title">{{ trigger.name }}</h3>
-                    <p class="trigger-card__media">{{ trigger.file }}</p>
-                  </div>
-                  <span class="trigger-card__badge" [class.trigger-card__badge--off]="!trigger.isEnabled">
-                    {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
-                  </span>
-                </div>
+                <!-- Visual Card Preview at top -->
+                @if (getTriggerAsset(trigger); as asset) {
+                  <div class="trigger-card__preview">
+                    @if (asset.mediaType === 'image') {
+                      <img [src]="asset.playbackUrl" class="trigger-card__preview-element" loading="lazy" />
+                    }
+                    @if (asset.mediaType === 'gif') {
+                      <img [src]="asset.playbackUrl" class="trigger-card__preview-element" loading="lazy" />
+                    }
+                    @if (asset.mediaType === 'video') {
+                      <video [src]="asset.playbackUrl" muted preload="metadata" class="trigger-card__preview-element"></video>
+                      <div class="trigger-card__preview-badge">
+                        <lucide-icon [name]="previewIcon" class="h-3.5 w-3.5 text-white"></lucide-icon>
+                      </div>
+                    }
+                    @if (asset.mediaType === 'audio') {
+                      <div class="trigger-card__audio-box">
+                        <div class="triggers-mini-wave">
+                          <div class="triggers-mini-wave-bar"></div>
+                          <div class="triggers-mini-wave-bar"></div>
+                          <div class="triggers-mini-wave-bar"></div>
+                          <div class="triggers-mini-wave-bar"></div>
+                        </div>
+                        <lucide-icon [name]="audioIcon" class="h-6 w-6 text-purple-400"></lucide-icon>
+                      </div>
+                    }
 
-                <p class="trigger-card__prompt">
-                  @if (trigger.reward) {
-                    {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
-                  } @else {
-                    {{ t('triggers.noLinkedReward') }}
-                  }
-                </p>
+                    <!-- Preview Action Button (Float) -->
+                    @if (asset.playbackUrl) {
+                      <button
+                        type="button"
+                        class="trigger-card__preview-btn"
+                        (click)="openPreviewModal($event, asset)"
+                        title="Preview"
+                      >
+                        <lucide-icon [name]="previewIcon" class="h-3.5 w-3.5"></lucide-icon>
+                      </button>
+                    }
+                  </div>
+                }
 
-                <div class="trigger-card__stats">
-                  <div>
-                    <span>{{ t('triggers.assetLabel') }}</span>
-                    <strong>{{ trigger.file }}</strong>
+                <div class="trigger-card__content">
+                  <div class="trigger-card__head">
+                    <div>
+                      <h3 class="trigger-card__title">{{ trigger.name }}</h3>
+                      <p class="trigger-card__media">{{ trigger.file }}</p>
+                    </div>
+                    <span class="trigger-card__badge" [class.trigger-card__badge--off]="!trigger.isEnabled">
+                      {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
+                    </span>
                   </div>
-                  <div>
-                    <span>{{ t('triggers.rewardState') }}</span>
-                    <strong>{{ trigger.reward ? t('triggers.rewardLinked') : t('triggers.rewardless') }}</strong>
-                  </div>
-                  <div>
-                    <span>{{ t('triggers.volume') }}</span>
-                    <strong>{{ trigger.volume }}%</strong>
-                  </div>
-                </div>
 
-                <div class="trigger-card__actions">
-                  <button type="button" class="trigger-card__action" (click)="openTestModal(trigger)">
-                    <lucide-icon [name]="playIcon" class="trigger-card__action-icon"></lucide-icon>
-                    <span>{{ t('triggers.testAction') }}</span>
-                  </button>
-                  <button type="button" class="trigger-card__action" (click)="openEditModal(trigger)">
-                    <lucide-icon [name]="editIcon" class="trigger-card__action-icon"></lucide-icon>
-                    <span>{{ t('common.edit') }}</span>
-                  </button>
-                  <button type="button" class="trigger-card__action" (click)="toggleTrigger(trigger)">
-                    <lucide-icon [name]="triggerIcon" class="trigger-card__action-icon"></lucide-icon>
-                    <span>{{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}</span>
-                  </button>
-                  <button type="button" class="trigger-card__action trigger-card__action--danger" (click)="openDeleteTrigger(trigger)">
-                    <lucide-icon [name]="deleteIcon" class="trigger-card__action-icon"></lucide-icon>
-                    <span>{{ t('common.delete') }}</span>
-                  </button>
+                  <p class="trigger-card__prompt">
+                    @if (trigger.reward) {
+                      {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
+                    } @else {
+                      {{ t('triggers.noLinkedReward') }}
+                    }
+                  </p>
+
+                  <div class="trigger-card__stats">
+                    <div>
+                      <span>{{ t('triggers.assetLabel') }}</span>
+                      <strong>{{ trigger.file }}</strong>
+                    </div>
+                    <div>
+                      <span>{{ t('triggers.rewardState') }}</span>
+                      <strong>{{ trigger.reward ? t('triggers.rewardLinked') : t('triggers.rewardless') }}</strong>
+                    </div>
+                    <div>
+                      <span>{{ t('triggers.volume') }}</span>
+                      <strong>{{ trigger.volume }}%</strong>
+                    </div>
+                  </div>
+
+                  <div class="trigger-card__actions">
+                    <button type="button" class="trigger-card__action" (click)="openTestModal(trigger)">
+                      <lucide-icon [name]="playIcon" class="trigger-card__action-icon"></lucide-icon>
+                      <span>{{ t('triggers.testAction') }}</span>
+                    </button>
+                    <button type="button" class="trigger-card__action" (click)="openEditModal(trigger)">
+                      <lucide-icon [name]="editIcon" class="trigger-card__action-icon"></lucide-icon>
+                      <span>{{ t('common.edit') }}</span>
+                    </button>
+                    <button type="button" class="trigger-card__action" (click)="toggleTrigger(trigger)">
+                      <lucide-icon [name]="triggerIcon" class="trigger-card__action-icon"></lucide-icon>
+                      <span>{{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}</span>
+                    </button>
+                    <button type="button" class="trigger-card__action trigger-card__action--danger" (click)="openDeleteTrigger(trigger)">
+                      <lucide-icon [name]="deleteIcon" class="trigger-card__action-icon"></lucide-icon>
+                      <span>{{ t('common.delete') }}</span>
+                    </button>
+                  </div>
                 </div>
               </article>
             }
@@ -207,12 +250,23 @@
             <div class="media-list">
               @for (item of displayedLibraryItems(); track item._id) {
                 <article class="media-card" [class.media-card--muted]="!canAttachItem(item)">
-                  <div class="media-card__icon-wrap">
-                    <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="media-card__icon"></lucide-icon>
+                  <!-- Sidebar Preview or Image Thumbnail -->
+                  <div class="media-card__icon-wrap relative group cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">
+                    @if (item.asset && (item.asset.mediaType === 'image' || item.asset.mediaType === 'gif')) {
+                      <img [src]="item.asset.playbackUrl" class="w-full h-full object-cover rounded" />
+                    } @else {
+                      <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="media-card__icon"></lucide-icon>
+                    }
+                    @if (item.asset?.playbackUrl) {
+                      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
+                        <lucide-icon [name]="previewIcon" class="h-4 w-4 text-white"></lucide-icon>
+                      </div>
+                    }
                   </div>
+
                   <div class="media-card__body">
                     <div class="media-card__head">
-                      <h3>{{ item.localAlias || item.asset?.displayName || item.asset?.fileName }}</h3>
+                      <h3 class="cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">{{ item.localAlias || item.asset?.displayName || item.asset?.fileName }}</h3>
                       <span class="media-card__scope" [class.media-card__scope--public]="item.assetScope === 'public'">
                         {{ t('triggers.scope.' + item.assetScope) }}
                       </span>
@@ -570,3 +624,53 @@
     (cancel)="closeDeleteModal()"
   />
 </div>
+
+<!-- Inner Preview Popup Sub-Modal -->
+@if (activePreviewAsset(); as previewAsset) {
+  <div class="triggers-preview-overlay" (click)="closePreviewModal()">
+    <div class="triggers-preview-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="triggers-preview-modal__close" (click)="closePreviewModal()">
+        <lucide-icon [name]="closeIcon" class="h-4 w-4"></lucide-icon>
+      </button>
+
+      <div class="triggers-preview-modal__body">
+        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName }}</h4>
+        <p class="triggers-preview-modal__meta">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
+
+        <div class="triggers-preview-modal__content-box">
+          <!-- Audio Waveform Visualizer -->
+          @if (previewAsset.mediaType === 'audio') {
+            <div class="triggers-waveform-visualizer">
+              <div class="triggers-waveform-bars" [class.triggers-waveform-bars--playing]="isAudioPlaying()">
+                @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track bar) {
+                  <div class="triggers-waveform-bar" [style.animation-delay.ms]="bar * 40"></div>
+                }
+              </div>
+              <p class="triggers-waveform-status">
+                {{ isAudioPlaying() ? 'Playing Audio Demo...' : 'Audio Paused' }}
+              </p>
+              <button type="button" class="triggers-preview-play-btn" (click)="toggleAudioPlayPause()">
+                <lucide-icon [name]="isAudioPlaying() ? pauseIcon : playIcon" class="h-5 w-5"></lucide-icon>
+                <span>{{ isAudioPlaying() ? 'Pause Preview' : 'Play Preview' }}</span>
+              </button>
+            </div>
+          }
+
+          <!-- Image Preview -->
+          @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
+            <div class="triggers-image-preview-container">
+              <img [src]="previewAsset.playbackUrl" alt="Preview Asset" class="triggers-image-preview-element" />
+            </div>
+          }
+
+          <!-- Video Preview -->
+          @if (previewAsset.mediaType === 'video') {
+            <div class="triggers-video-preview-container">
+              <video [src]="previewAsset.playbackUrl" autoplay controls class="triggers-video-preview-element"></video>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

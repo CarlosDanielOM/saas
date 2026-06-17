@@ -1,0 +1,57 @@
+---
+title: Personalidad IA
+description: Dale a tu bot una personalidad única impulsada por IA.
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+La función de personalidad IA de DomDimaBot le da a tu bot la habilidad de participar en conversaciones naturales, responder al contexto y desarrollar un carácter único.
+
+## Ajustes de Personalidad
+
+Configura el carácter de tu bot a través de estos ajustes:
+
+| Ajuste | Descripción |
+|--------|-------------|
+| **Nombre** | Cómo los espectadores llaman a tu bot |
+| **Personalidad** | Rasgos core y patrones de comportamiento |
+| **Saludo** | Cómo el bot saluda a nuevos espectadores |
+| **Estilo de Respuesta** | Casual, formal, gracioso, etc. |
+
+## Usuarios Conocidos
+
+Puedes enseñarle a DomDimaBot sobre miembros específicos de la comunidad:
+
+```json
+{
+  "username": "superfan123",
+  "description": "Miembro de la comunidad desde hace mucho tiempo, juega RPGs",
+  "relationship": "friend"
+}
+```
+
+El bot usará este contexto para personalizar las interacciones.
+
+## Comportamiento de Respuestas
+
+<Aside type="note">
+Las respuestas de IA son probabilísticas. El bot ocasionalmente puede decir cosas inesperadas. Usa los ajustes de moderación de contenido para filtrar mensajes inapropiados.
+</Aside>
+
+### Opciones de Configuración
+
+- **Frecuencia de respuestas** — Qué tan seguido el bot habla sin que le pidan
+- **Longitud máxima del mensaje** — Limitar el tamaño de las respuestas
+- **Memoria de conversación** — Cuántos mensajes pasados considera el bot
+- **Lista de ignorados** — Usuarios a los que el bot no responderá
+
+## Seguridad del Contenido
+
+Habilita funciones de moderación para filtrar:
+
+- Spam y exceso de mayúsculas
+- Enlaces (configurable por usuario)
+- Filtros de palabras personalizados
+- Limitación de tasa

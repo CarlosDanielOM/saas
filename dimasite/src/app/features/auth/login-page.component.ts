@@ -8,10 +8,11 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { BillingContextData, BillingService } from '../../services/billing.service';
 import { CheckoutIntentService } from '../../services/checkout-intent.service';
 import { LanguageService } from '../../services/language.service';
-import { SessionAuthService } from '../../services/session-auth.service';
+import { AuthLoginError, SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
 import { LoginLoader3DComponent, type LoaderStage } from './login-loader-3d.component';
+import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 
 type LoginStage =
   | 'idle'
@@ -42,8 +43,10 @@ export class LoginPageComponent implements OnInit {
   private readonly billingService = inject(BillingService);
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly toastService = inject(ToastService);
+  private readonly pendingActionsQueue = inject(PendingActionsQueueService);
   private lastQuerySignature: string | null = null;
   private redirectTimeoutHandle: number | null = null;
+  private hasAutoTriggeredLogin = false;
 
   readonly stage = signal<LoginStage>('idle');
   readonly errorMessage = signal<string | null>(null);
@@ -90,8 +93,48 @@ export class LoginPageComponent implements OnInit {
       }
 
       this.lastQuerySignature = signature;
+
+      // Auto-trigger login for admin flow
+      const returnTo = this.getAdminReturnTo();
+      if (returnTo && !this.hasAutoTriggeredLogin && !query.get('code')) {
+        this.hasAutoTriggeredLogin = true;
+        void this.triggerAdminLogin(returnTo);
+        return;
+      }
+
+      // Handle email-triggered actions (e.g. activation link "already activated").
+      // We use the standardized pendingActionsQueue (sessionStorage backed) so that
+      // actions survive OAuth round-trips and page reloads. The authenticated layout
+      // drains the queue once a valid session is present.
+      const emailAction = query.get('emailAction');
+      if (emailAction === 'alreadyActivated') {
+        this.pendingActionsQueue.pushAction({
+          type: 'toast',
+          tone: 'success',
+          titleKey: 'login.toast.alreadyActivatedTitle',
+          messageKey: 'login.toast.alreadyActivatedMessage'
+        });
+        // Clean the URL so it doesn't stick around
+        void this.router.navigate([], {
+          queryParams: { emailAction: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+      }
+
       void this.handleQueryState(query);
     });
+  }
+
+  /**
+   * Automatically trigger admin login flow
+   */
+  private async triggerAdminLogin(returnTo: string): Promise<void> {
+    this.stage.set('validating');
+    this.analytics.capture('auth_started', {
+      source: 'admin_redirect',
+    });
+    this.sessionAuth.startTwitchLoginWithState(`admin-${returnTo}`);
   }
 
   t(key: string): string {
@@ -102,7 +145,26 @@ export class LoginPageComponent implements OnInit {
     this.analytics.capture('auth_started', {
       source: 'login_page',
     });
-    this.sessionAuth.startTwitchLogin();
+
+    // Check if this is an admin login flow
+    const returnTo = this.getAdminReturnTo();
+    if (returnTo) {
+      // Use admin state format: admin-{returnUrl}
+      this.sessionAuth.startTwitchLoginWithState(`admin-${returnTo}`);
+    } else {
+      this.sessionAuth.startTwitchLogin();
+    }
+  }
+
+  /**
+   * Get admin return URL from query params if present
+   */
+  private getAdminReturnTo(): string | null {
+    const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    if (returnTo && returnTo.includes('admin.domdimabot.com')) {
+      return returnTo;
+    }
+    return null;
   }
 
   private async handleQueryState(query: ParamMap): Promise<void> {
@@ -131,6 +193,11 @@ export class LoginPageComponent implements OnInit {
 
     if (error) {
       this.stage.set('error');
+      this.analytics.capture('auth_failed', {
+        source: 'twitch_oauth',
+        reason: error,
+        stage: 'oauth_callback',
+      });
       this.errorMessage.set(this.t('login.errors.denied'));
       return;
     }
@@ -140,9 +207,25 @@ export class LoginPageComponent implements OnInit {
       return;
     }
 
+    // Check if this is an admin login redirect
+    if (returnedState?.startsWith('admin-')) {
+      void this.completeAdminLogin(code, returnedState);
+      return;
+    }
+
+    // If returnTo is present (admin flow), don't use existing session - wait for fresh login
+    const returnTo = this.getAdminReturnTo();
+
     this.cancelPendingLoginReset();
 
     if (!code) {
+      // For admin flow, clear any existing session and show login button
+      if (returnTo) {
+        this.sessionAuth.clearSession();
+        this.stage.set('idle');
+        return;
+      }
+
       const existingChannel = this.sessionAuth.getPrimaryChannelID();
       this.pushDebug(`No code in URL. Existing channel: ${existingChannel ?? 'none'}`);
       if (existingChannel) {
@@ -257,16 +340,97 @@ export class LoginPageComponent implements OnInit {
       await this.navigateToDashboard(primaryStreamerLogin, primaryChannel);
     } catch (error) {
       this.stage.set('error');
+
+      const authError = error instanceof AuthLoginError ? error : null;
       this.analytics.capture('auth_failed', {
         source: 'oauth_callback',
         reason: error instanceof Error ? error.message : 'unexpected',
+        error_code: authError?.code,
+        error_type: authError?.errorType,
       });
-      this.errorMessage.set(
-        error instanceof Error ? error.message : this.t('login.errors.unexpected')
-      );
+
+      if (authError?.code === 'AUTH_MISSING_EMAIL') {
+        this.errorMessage.set(this.t('login.errors.emailDenied'));
+        this.toastService.warning(
+          this.t('login.errors.emailDeniedTitle'),
+          this.t('login.errors.emailDeniedMessage'),
+          6000
+        );
+      } else {
+        this.errorMessage.set(
+          error instanceof Error ? error.message : this.t('login.errors.syncFailed')
+        );
+      }
+
       if (!sessionEstablished) {
         this.sessionAuth.clearSession();
       }
+    }
+  }
+
+  /**
+   * Handle admin login flow - redirects to admin.domdimabot.com with session token
+   */
+  private async completeAdminLogin(code: string | null, returnedState: string | null): Promise<void> {
+    if (!code) {
+      this.stage.set('error');
+      this.errorMessage.set('Missing authorization code');
+      return;
+    }
+
+    const authCode = code;
+
+    try {
+      this.stage.set('validating');
+
+      const expectedState = this.sessionAuth.consumeOAuthState();
+      if (expectedState && returnedState && expectedState !== returnedState) {
+        this.stage.set('error');
+        this.errorMessage.set(this.t('login.errors.stateMismatch'));
+        return;
+      }
+
+      const exchange = await firstValueFrom(this.sessionAuth.exchangeCode(authCode, returnedState));
+      if (exchange.error || !exchange.data) {
+        throw new Error(exchange.message || this.t('login.errors.exchangeFailed'));
+      }
+
+      this.stage.set('syncing');
+      const loginResult = await firstValueFrom(
+        this.sessionAuth.loginWithTwitchUser(exchange.data.twitch_user)
+      );
+      if (loginResult.error || !loginResult.data) {
+        throw new Error(loginResult.message || this.t('login.errors.syncFailed'));
+      }
+
+      // Store session locally
+      this.sessionAuth.completeSession(
+        exchange.data.access_token,
+        exchange.data.twitch_user,
+        loginResult.data
+      );
+
+      this.stage.set('redirecting');
+
+      // Parse the return URL from state (format: admin-{returnUrl})
+      const returnTo = returnedState?.replace(/^admin-/, '') || 'https://admin.domdimabot.com';
+
+      // Encode session data for transfer to admin panel
+      const sessionData = {
+        token: exchange.data.access_token,
+        twitchUser: exchange.data.twitch_user,
+        appUser: loginResult.data
+      };
+      const encodedToken = btoa(JSON.stringify(sessionData));
+
+      // Redirect to admin panel with session token
+      const adminUrl = new URL('/login', returnTo);
+      adminUrl.searchParams.set('token', encodedToken);
+      window.location.href = adminUrl.toString();
+    } catch (error) {
+      this.stage.set('error');
+      this.errorMessage.set(error instanceof Error ? error.message : this.t('login.errors.syncFailed'));
+      this.sessionAuth.clearSession();
     }
   }
 
