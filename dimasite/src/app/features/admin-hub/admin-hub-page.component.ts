@@ -4,14 +4,18 @@ import {
   AlertCircle,
   ArrowRight,
   LayoutDashboard,
+  Loader2,
   LucideAngularModule,
   Search,
+  SearchX,
   Shield,
+  Sparkles,
   Users,
   X,
 } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 
+import { ParticleFieldComponent } from '../../components/particle-field/particle-field.component';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 
@@ -20,9 +24,18 @@ interface ChannelOption {
   channelName: string;
 }
 
+const CHANNEL_GRADIENTS = [
+  'linear-gradient(135deg, #7c3aed, #a855f7)',
+  'linear-gradient(135deg, #3b82f6, #2563eb)',
+  'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+  'linear-gradient(135deg, #6366f1, #7c3aed)',
+  'linear-gradient(135deg, #a855f7, #ec4899)',
+  'linear-gradient(135deg, #0ea5e9, #3b82f6)',
+] as const;
+
 @Component({
   selector: 'app-admin-hub-page',
-  imports: [LucideAngularModule, RouterLink],
+  imports: [LucideAngularModule, RouterLink, ParticleFieldComponent],
   styleUrl: './admin-hub-page.component.css',
   templateUrl: './admin-hub-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,6 +45,7 @@ export class AdminHubPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly router = inject(Router);
 
+  readonly sparklesIcon = Sparkles;
   readonly shieldIcon = Shield;
   readonly searchIcon = Search;
   readonly clearIcon = X;
@@ -39,6 +53,8 @@ export class AdminHubPageComponent {
   readonly dashboardIcon = LayoutDashboard;
   readonly usersIcon = Users;
   readonly alertIcon = AlertCircle;
+  readonly emptyIcon = SearchX;
+  readonly loaderIcon = Loader2;
 
   readonly errorMessage = signal<string | null>(null);
   readonly switchingChannelID = signal<string | null>(null);
@@ -103,9 +119,21 @@ export class AdminHubPageComponent {
     return this.languageService.translate(key);
   }
 
+  staggerDelay(index: number): number {
+    return index * 80;
+  }
+
   channelInitial(channelName: string): string {
     const trimmed = channelName.trim();
     return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+  }
+
+  channelGradient(channelName: string): string {
+    let hash = 0;
+    for (const char of channelName) {
+      hash = (hash + char.charCodeAt(0) * 17) % CHANNEL_GRADIENTS.length;
+    }
+    return CHANNEL_GRADIENTS[hash] ?? CHANNEL_GRADIENTS[0];
   }
 
   onSearchInput(event: Event): void {
