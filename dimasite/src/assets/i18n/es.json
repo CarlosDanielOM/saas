@@ -899,6 +899,25 @@
   "adminHub": {
     "title": "Hub de Admin",
     "subtitle": "Cambia entre canales que administras como admin.",
+    "badge": "Selector de canales",
+    "chips": {
+      "quickSwitch": "Cambio rapido",
+      "dashboardAccess": "Acceso al panel"
+    },
+    "panel": {
+      "kicker": "Canales administrados",
+      "description": "Abre el panel de cualquier canal donde tengas permisos de admin.",
+      "channelCountOne": "{count} canal",
+      "channelCountMany": "{count} canales",
+      "myDashboard": "Volver a mi panel"
+    },
+    "search": {
+      "label": "Buscar canales administrados",
+      "placeholder": "Buscar canales...",
+      "clear": "Limpiar busqueda",
+      "noResultsTitle": "Ningun canal coincide con tu busqueda",
+      "noResultsDescription": "Prueba otro nombre de canal o limpia el campo de busqueda."
+    },
     "labels": {
       "owner": "Owner",
       "admin": "Admin"
@@ -912,6 +931,7 @@
       "description": "Cuando otro streamer te de acceso de admin, su canal aparecera aqui para cambiar rapido."
     },
     "errors": {
+      "title": "No se pudo cambiar de canal",
       "noAccess": "No tienes acceso al panel para este canal.",
       "failed": "No se pudo cambiar de canal en este momento."
     }
@@ -951,14 +971,14 @@
       "averageViewers30d": "Promedio de Viewers (30d)",
       "bits30d": "Bits (30d)",
       "donations30d": "Donaciones (30d)",
-       "featureSpotlight": "Feature Destacado",
-       "featureSpotlightValue": "Mapa de Calor de Eventos",
-       "featureSpotlightHint": "Reservado para tu proxima feature.",
-       "aiCredits": "Créditos de IA",
-       "aiCreditsExhaustedFree": "Mejora a Premium o Pro",
-       "aiCreditsExhaustedPremium": "Mejora a Pro",
-       "aiCreditsExhaustedPro": "Comprar más créditos",
-       "aiCreditsNotAvailable": "No disponible para esta cuenta"
+      "featureSpotlight": "Feature Destacado",
+      "featureSpotlightValue": "Mapa de Calor de Eventos",
+      "featureSpotlightHint": "Reservado para tu proxima feature.",
+      "aiCredits": "Créditos de IA",
+      "aiCreditsExhaustedFree": "Mejora a Premium o Pro",
+      "aiCreditsExhaustedPremium": "Mejora a Pro",
+      "aiCreditsExhaustedPro": "Comprar más créditos",
+      "aiCreditsNotAvailable": "No disponible para esta cuenta"
     },
     "charts": {
       "sectionLabel": "Grafico de rendimiento",

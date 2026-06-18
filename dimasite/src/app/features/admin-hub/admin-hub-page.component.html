@@ -1,36 +1,116 @@
 <section class="admin-hub">
-  <header class="admin-hub__header">
-    <h1>{{ t('adminHub.title') }}</h1>
-    <p>{{ t('adminHub.subtitle') }}</p>
+  <header class="admin-hub__hero">
+    <div class="admin-hub__hero-copy">
+      <div class="admin-hub__eyebrow">
+        <lucide-icon [img]="shieldIcon" class="admin-hub__eyebrow-icon"></lucide-icon>
+        <span>{{ t('adminHub.badge') }}</span>
+      </div>
+
+      <h1>{{ t('adminHub.title') }}</h1>
+      <p class="admin-hub__subtitle">{{ t('adminHub.subtitle') }}</p>
+
+      <div class="admin-hub__chips" aria-label="Admin hub highlights">
+        <span class="admin-hub__chip">{{ t('adminHub.chips.quickSwitch') }}</span>
+        <span class="admin-hub__chip">{{ t('adminHub.chips.dashboardAccess') }}</span>
+      </div>
+    </div>
+
+    <div class="admin-hub__hero-panel">
+      <p class="admin-hub__panel-kicker">{{ t('adminHub.panel.kicker') }}</p>
+      <h2>{{ channelCountLabel() }}</h2>
+      <p>{{ t('adminHub.panel.description') }}</p>
+
+      @if (ownerDashboardLink(); as ownerLink) {
+        <a class="admin-hub__owner-link" [routerLink]="ownerLink">
+          <lucide-icon [img]="dashboardIcon" class="admin-hub__owner-link-icon"></lucide-icon>
+          <span>{{ t('adminHub.panel.myDashboard') }}</span>
+        </a>
+      }
+    </div>
   </header>
 
   @if (errorMessage()) {
-    <div class="admin-hub__error" role="alert">{{ errorMessage() }}</div>
+    <div class="admin-hub__error" role="alert">
+      <lucide-icon [img]="alertIcon" class="admin-hub__error-icon"></lucide-icon>
+      <div>
+        <p class="admin-hub__error-title">{{ t('adminHub.errors.title') }}</p>
+        <p class="admin-hub__error-copy">{{ errorMessage() }}</p>
+      </div>
+    </div>
   }
 
   @if (channels().length) {
-    <div class="admin-hub__grid">
-      @for (channel of channels(); track channel.channelID) {
-        <article class="admin-hub__card">
-          <p class="admin-hub__name">{{ channel.channelName }}</p>
-          <p class="admin-hub__meta">{{ t('adminHub.labels.admin') }}</p>
+    <div class="admin-hub__toolbar">
+      <span class="admin-hub__count-pill">{{ channelCountLabel() }}</span>
+
+      <label class="admin-hub__search" [attr.aria-label]="t('adminHub.search.label')">
+        <lucide-icon [img]="searchIcon" class="admin-hub__search-icon"></lucide-icon>
+        <input
+          type="search"
+          class="admin-hub__search-input"
+          [value]="searchQuery()"
+          [placeholder]="t('adminHub.search.placeholder')"
+          (input)="onSearchInput($event)"
+        />
+
+        @if (searchQuery()) {
           <button
             type="button"
-            class="admin-hub__button"
-            [disabled]="switchingChannelID() === channel.channelID"
-            (click)="openChannel(channel)"
+            class="admin-hub__search-clear"
+            [attr.aria-label]="t('adminHub.search.clear')"
+            (click)="clearSearch()"
           >
-            @if (switchingChannelID() === channel.channelID) {
-              {{ t('adminHub.actions.opening') }}
-            } @else {
-              {{ t('adminHub.actions.openDashboard') }}
-            }
+            <lucide-icon [img]="clearIcon"></lucide-icon>
           </button>
-        </article>
-      }
+        }
+      </label>
     </div>
+
+    @if (filteredChannels().length) {
+      <div class="admin-hub__grid">
+        @for (channel of filteredChannels(); track channel.channelID) {
+          <article class="admin-hub__card">
+            <div class="admin-hub__card-header">
+              <div class="admin-hub__avatar" aria-hidden="true">
+                {{ channelInitial(channel.channelName) }}
+              </div>
+
+              <div class="admin-hub__card-copy">
+                <p class="admin-hub__name">{{ channel.channelName }}</p>
+                <p class="admin-hub__meta">
+                  <lucide-icon [img]="shieldIcon" class="admin-hub__meta-icon"></lucide-icon>
+                  <span>{{ t('adminHub.labels.admin') }}</span>
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="admin-hub__button"
+              [disabled]="switchingChannelID() === channel.channelID"
+              (click)="openChannel(channel)"
+            >
+              @if (switchingChannelID() === channel.channelID) {
+                <span>{{ t('adminHub.actions.opening') }}</span>
+              } @else {
+                <span>{{ t('adminHub.actions.openDashboard') }}</span>
+                <lucide-icon [img]="arrowIcon" class="admin-hub__button-icon"></lucide-icon>
+              }
+            </button>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="admin-hub__no-results" role="status">
+        <p class="admin-hub__empty-title">{{ t('adminHub.search.noResultsTitle') }}</p>
+        <p class="admin-hub__empty-copy">{{ t('adminHub.search.noResultsDescription') }}</p>
+      </div>
+    }
   } @else {
     <div class="admin-hub__empty" role="status">
+      <div class="admin-hub__empty-icon-shell">
+        <lucide-icon [img]="usersIcon" class="admin-hub__empty-icon"></lucide-icon>
+      </div>
       <p class="admin-hub__empty-title">{{ t('adminHub.empty.title') }}</p>
       <p class="admin-hub__empty-copy">{{ t('adminHub.empty.description') }}</p>
     </div>

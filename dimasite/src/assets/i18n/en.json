@@ -899,6 +899,25 @@
   "adminHub": {
     "title": "Admin Hub",
     "subtitle": "Switch between channels you manage as admin.",
+    "badge": "Channel Switcher",
+    "chips": {
+      "quickSwitch": "Quick switching",
+      "dashboardAccess": "Dashboard access"
+    },
+    "panel": {
+      "kicker": "Managed channels",
+      "description": "Open any channel dashboard where you have admin permissions.",
+      "channelCountOne": "{count} channel",
+      "channelCountMany": "{count} channels",
+      "myDashboard": "Back to my dashboard"
+    },
+    "search": {
+      "label": "Search managed channels",
+      "placeholder": "Search channels...",
+      "clear": "Clear search",
+      "noResultsTitle": "No channels match your search",
+      "noResultsDescription": "Try a different channel name or clear the search field."
+    },
     "labels": {
       "owner": "Owner",
       "admin": "Admin"
@@ -912,6 +931,7 @@
       "description": "When another streamer gives you admin access, their channel will appear here for quick switching."
     },
     "errors": {
+      "title": "Unable to switch channel",
       "noAccess": "You do not have dashboard access for this channel.",
       "failed": "Unable to switch channel right now."
     }
@@ -951,14 +971,14 @@
       "averageViewers30d": "Average Viewers (30d)",
       "bits30d": "Bits (30d)",
       "donations30d": "Donations (30d)",
-       "featureSpotlight": "Feature Spotlight",
-       "featureSpotlightValue": "Event Heatmap",
-       "featureSpotlightHint": "Reserved for your next feature.",
-       "aiCredits": "AI Credits",
-       "aiCreditsExhaustedFree": "Upgrade to Premium or Pro",
-       "aiCreditsExhaustedPremium": "Upgrade to Pro",
-       "aiCreditsExhaustedPro": "Buy more credits",
-       "aiCreditsNotAvailable": "Not available for this account"
+      "featureSpotlight": "Feature Spotlight",
+      "featureSpotlightValue": "Event Heatmap",
+      "featureSpotlightHint": "Reserved for your next feature.",
+      "aiCredits": "AI Credits",
+      "aiCreditsExhaustedFree": "Upgrade to Premium or Pro",
+      "aiCreditsExhaustedPremium": "Upgrade to Pro",
+      "aiCreditsExhaustedPro": "Buy more credits",
+      "aiCreditsNotAvailable": "Not available for this account"
     },
     "charts": {
       "sectionLabel": "Performance chart",
