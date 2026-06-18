@@ -814,28 +814,19 @@
 
 /* Mutual Follow Highlight Accent Card */
 .follow-ledger-card--mutual {
-  border: 1px solid rgba(245, 158, 11, 0.48);
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--surface) 94%, transparent),
-    color-mix(in srgb, var(--surface-2) 88%, transparent)
-  );
+  border-color: rgba(180, 83, 9, 0.28);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
   box-shadow:
-    0 10px 34px rgba(217, 119, 6, 0.14),
-    0 0 0 1px rgba(245, 158, 11, 0.12) inset;
-  animation: mutual-card-pulse 3.6s ease-in-out infinite;
+    0 8px 32px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(217, 119, 6, 0.08) inset;
 }
 
 .dark .follow-ledger-card--mutual {
-  border-color: rgba(251, 191, 36, 0.42);
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, #1f1430 92%, transparent),
-    color-mix(in srgb, #2a1a3d 88%, transparent)
-  );
+  border-color: rgba(245, 158, 11, 0.22);
+  background: rgba(20, 13, 31, 0.65);
   box-shadow:
-    0 10px 34px rgba(245, 158, 11, 0.16),
-    0 0 0 1px rgba(251, 191, 36, 0.1) inset;
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(245, 158, 11, 0.06) inset;
 }
 
 .follow-ledger-card--mutual > :not(.follow-ledger-card__glow) {
@@ -844,27 +835,9 @@
 }
 
 .follow-ledger-card--mutual .follow-ledger-card__glow {
-  opacity: 1;
-  background:
-    radial-gradient(circle at 88% 8%, rgba(251, 191, 36, 0.28), transparent 42%),
-    radial-gradient(circle at 12% 92%, rgba(245, 158, 11, 0.16), transparent 48%);
-  animation: mutual-glow-breathe 3.6s ease-in-out infinite;
-}
-
-.follow-ledger-card--mutual::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(251, 191, 36, 0.08) 42%,
-    transparent 72%
-  );
-  background-size: 220% 100%;
-  animation: mutual-sheen 5.5s ease-in-out infinite;
+  opacity: 0.55;
+  background: radial-gradient(circle at 92% 6%, rgba(217, 119, 6, 0.14), transparent 52%);
+  animation: mutual-glow-breathe 4.8s ease-in-out infinite;
 }
 
 .follow-ledger-card--mutual::after {
@@ -873,96 +846,70 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   pointer-events: none;
   z-index: 2;
-  background: linear-gradient(90deg, #d97706, #fbbf24, #f59e0b, #f97316, #d97706);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(180, 83, 9, 0.45),
+    rgba(217, 119, 6, 0.65),
+    rgba(180, 83, 9, 0.45),
+    transparent
+  );
   background-size: 220% 100%;
-  animation: mutual-bar-flow 2.8s linear infinite;
+  animation: mutual-bar-flow 4.2s linear infinite;
 }
 
 .follow-ledger-card--mutual:hover {
-  border-color: rgba(245, 158, 11, 0.72);
-  transform: translateY(-5px);
+  border-color: rgba(180, 83, 9, 0.42);
+  transform: translateY(-4px);
   box-shadow:
-    0 16px 42px rgba(217, 119, 6, 0.22),
-    0 0 28px rgba(245, 158, 11, 0.2),
-    0 0 0 1px rgba(245, 158, 11, 0.18) inset;
+    0 12px 40px rgba(0, 0, 0, 0.1),
+    0 0 18px rgba(217, 119, 6, 0.1);
 }
 
 .dark .follow-ledger-card--mutual:hover {
-  border-color: rgba(251, 191, 36, 0.68);
+  border-color: rgba(245, 158, 11, 0.34);
   box-shadow:
-    0 16px 42px rgba(245, 158, 11, 0.24),
-    0 0 28px rgba(251, 191, 36, 0.18),
-    0 0 0 1px rgba(251, 191, 36, 0.14) inset;
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(245, 158, 11, 0.1);
 }
 
 .follow-ledger-card--mutual .follow-ledger-card__badge {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: rgba(245, 158, 11, 0.5);
-  color: #92400e;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.22);
-  animation: mutual-badge-pulse 2.8s ease-in-out infinite;
+  background: color-mix(in srgb, var(--surface) 92%, rgba(217, 119, 6, 0.08));
+  border-color: rgba(180, 83, 9, 0.32);
+  color: #78350f;
+  box-shadow: none;
 }
 
 .dark .follow-ledger-card--mutual .follow-ledger-card__badge {
-  background: rgba(245, 158, 11, 0.22);
-  border-color: rgba(251, 191, 36, 0.45);
-  color: #fde68a;
-  box-shadow: 0 0 14px rgba(251, 191, 36, 0.2);
+  background: color-mix(in srgb, var(--surface-2) 90%, rgba(245, 158, 11, 0.06));
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+  box-shadow: none;
 }
 
 .follow-ledger-card--mutual .follow-ledger-card__badge-icon {
-  animation: mutual-sparkle 2.2s ease-in-out infinite;
-}
-
-.follow-ledger-card--mutual .follow-ledger-card__name {
-  color: var(--text);
+  color: currentColor;
+  animation: mutual-sparkle 3s ease-in-out infinite;
 }
 
 .follow-ledger-card--mutual .follow-ledger-card__stats {
-  border-top-color: rgba(245, 158, 11, 0.28);
+  border-top-color: rgba(180, 83, 9, 0.18);
 }
 
 .dark .follow-ledger-card--mutual .follow-ledger-card__stats {
-  border-top-color: rgba(251, 191, 36, 0.22);
-}
-
-@keyframes mutual-card-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 10px 34px rgba(217, 119, 6, 0.14),
-      0 0 0 1px rgba(245, 158, 11, 0.12) inset;
-  }
-  50% {
-    box-shadow:
-      0 12px 38px rgba(217, 119, 6, 0.22),
-      0 0 22px rgba(245, 158, 11, 0.16),
-      0 0 0 1px rgba(245, 158, 11, 0.2) inset;
-  }
+  border-top-color: rgba(245, 158, 11, 0.14);
 }
 
 @keyframes mutual-glow-breathe {
   0%,
   100% {
-    opacity: 0.72;
+    opacity: 0.42;
   }
   50% {
-    opacity: 1;
-  }
-}
-
-@keyframes mutual-sheen {
-  0%,
-  100% {
-    background-position: 0% 50%;
-    opacity: 0.45;
-  }
-  50% {
-    background-position: 100% 50%;
-    opacity: 0.75;
+    opacity: 0.62;
   }
 }
 
@@ -975,27 +922,15 @@
   }
 }
 
-@keyframes mutual-badge-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.16);
-  }
-  50% {
-    transform: scale(1.03);
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.3);
-  }
-}
-
 @keyframes mutual-sparkle {
   0%,
   100% {
-    transform: scale(1) rotate(0deg);
+    transform: rotate(0deg);
     opacity: 1;
   }
   50% {
-    transform: scale(1.15) rotate(8deg);
-    opacity: 0.85;
+    transform: rotate(6deg);
+    opacity: 0.82;
   }
 }
 
@@ -1280,16 +1215,13 @@ html[data-plan-tier='pro'] .follow-ledger-card:not(.follow-ledger-card--mutual):
     box-shadow: none !important;
   }
 
-  .follow-ledger-card--mutual,
   .follow-ledger-card--mutual .follow-ledger-card__glow,
-  .follow-ledger-card--mutual::before,
   .follow-ledger-card--mutual::after,
-  .follow-ledger-card--mutual .follow-ledger-card__badge,
   .follow-ledger-card--mutual .follow-ledger-card__badge-icon {
     animation: none !important;
   }
 
   .follow-ledger-card--mutual .follow-ledger-card__glow {
-    opacity: 0.85;
+    opacity: 0.5;
   }
 }
