@@ -695,9 +695,19 @@
     "badge": "Inteligencia de Audiencia",
     "title": "Hub de Analiticas",
     "subtitle": "Inteligencia de seguidores en vivo para tu canal. El Registro de Seguidores ofrece acceso filtrable y buscable a todos los que te siguen actualmente, con relaciones mutuas claramente destacadas.",
+    "backToModules": "Volver a Modulos",
     "chips": {
       "activeFollowers": "Seguimiento en vivo",
       "mutualHighlights": "Destacado de mutuos"
+    },
+    "metrics": {
+      "ariaLabel": "Metricas generales de analiticas",
+      "modules": "Modulos activos",
+      "modulesMeta": "Analiticas listas para produccion",
+      "plan": "Nivel de acceso",
+      "planMeta": "Plan actual del canal",
+      "tracking": "Modo de audiencia",
+      "trackingMeta": "Inteligencia de seguidores en vivo"
     },
     "panel": {
       "kicker": "Analiticas premium",

@@ -1,28 +1,39 @@
 <section class="follow-ledger" [attr.data-plan-tier]="planTier()">
+  <div class="follow-ledger__glow" aria-hidden="true"></div>
+  <div class="follow-ledger__grid" aria-hidden="true"></div>
+
   <header class="follow-ledger__hero">
-    <div>
+    <div class="follow-ledger__hero-main">
       <a class="follow-ledger__back-link" [routerLink]="['/', streamer(), 'modules', 'analytics']">
         <lucide-icon [img]="backIcon" class="follow-ledger__back-icon"></lucide-icon>
         <span>{{ t('analytics.follows.backToAnalytics') }}</span>
       </a>
 
-      <div class="follow-ledger__eyebrow">
-        <lucide-icon [img]="sparklesIcon" class="follow-ledger__eyebrow-icon"></lucide-icon>
-        <span>{{ t('analytics.follows.activeOnly') }}</span>
+      <div class="follow-ledger__chips">
+        <span class="follow-ledger__chip follow-ledger__chip--live">
+          <span class="follow-ledger__chip-dot" aria-hidden="true"></span>
+          {{ t('analytics.follows.activeOnly') }}
+        </span>
+
+        @if (channelName()) {
+          <span class="follow-ledger__chip">{{ channelName() }}</span>
+        }
+
+        @if (getRoleLabel()) {
+          <span class="follow-ledger__chip follow-ledger__chip--role">{{ getRoleLabel() }}</span>
+        }
       </div>
 
-      <h1>{{ t('analytics.follows.title') }}</h1>
+      <p class="follow-ledger__eyebrow">{{ t('analyticsHub.badge') }}</p>
+      <h1 class="follow-ledger__title">{{ t('analytics.follows.title') }}</h1>
       <p class="follow-ledger__subtitle">{{ t('analytics.follows.subtitle') }}</p>
     </div>
 
-    <div class="follow-ledger__hero-meta">
-      @if (channelName()) {
-        <span class="follow-ledger__meta-pill">{{ channelName() }}</span>
-      }
-      @if (getRoleLabel()) {
-        <span class="follow-ledger__meta-pill follow-ledger__meta-pill--accent">{{ getRoleLabel() }}</span>
-      }
-    </div>
+    <aside class="follow-ledger__hero-panel">
+      <p class="follow-ledger__panel-kicker">{{ t('analyticsHub.panel.kicker') }}</p>
+      <h2>{{ t('analyticsHub.panel.title') }}</h2>
+      <p>{{ t('analyticsHub.panel.description') }}</p>
+    </aside>
   </header>
 
   @if (!hasPaidAccess()) {
@@ -160,7 +171,12 @@
 
     @if (showInitialLoading()) {
       <div class="follow-ledger__state-card" aria-live="polite">
-        <loading-indicator [loading]="true" size="md" variant="three" message="analytics.follows.loading"></loading-indicator>
+        <loading-indicator
+          [loading]="true"
+          size="md"
+          variant="three"
+          message="analytics.follows.loading"
+        ></loading-indicator>
       </div>
     } @else {
       <section class="follow-ledger__results" aria-live="polite">
@@ -177,7 +193,12 @@
               <span class="follow-ledger__refreshing">{{ t('analytics.follows.refreshing') }}</span>
             }
 
-            <button type="button" class="follow-ledger__refresh-btn" [disabled]="loading() || refreshing()" (click)="retryLoad()">
+            <button
+              type="button"
+              class="follow-ledger__refresh-btn"
+              [disabled]="loading() || refreshing()"
+              (click)="retryLoad()"
+            >
               <lucide-icon [img]="refreshIcon"></lucide-icon>
               <span>{{ t('common.refresh') }}</span>
             </button>
@@ -189,7 +210,13 @@
             <div class="follow-ledger__state-icon">
               <lucide-icon [img]="followersIcon"></lucide-icon>
             </div>
-            <h2>{{ searchQuery() ? t('analytics.follows.searchNoResults', { query: searchQuery() }) : t('analytics.follows.empty') }}</h2>
+            <h2>
+              {{
+                searchQuery()
+                  ? t('analytics.follows.searchNoResults', { query: searchQuery() })
+                  : t('analytics.follows.empty')
+              }}
+            </h2>
             <p>{{ t('analytics.follows.emptyHint') }}</p>
           </div>
         } @else {
@@ -200,13 +227,20 @@
 
                 <div class="follow-ledger-card__header">
                   <div>
-                    <p class="follow-ledger-card__name">{{ row.follower_name || row.follower_login || row.follower_id }}</p>
-                    <p class="follow-ledger-card__meta">{{ row.follower_login || row.follower_id }}</p>
+                    <p class="follow-ledger-card__name">
+                      {{ row.follower_name || row.follower_login || row.follower_id }}
+                    </p>
+                    <p class="follow-ledger-card__meta">
+                      {{ row.follower_login || row.follower_id }}
+                    </p>
                   </div>
 
                   @if (row.mutual) {
                     <span class="follow-ledger-card__badge">
-                      <lucide-icon [img]="sparklesIcon" class="follow-ledger-card__badge-icon"></lucide-icon>
+                      <lucide-icon
+                        [img]="sparklesIcon"
+                        class="follow-ledger-card__badge-icon"
+                      ></lucide-icon>
                       <span>{{ t('analytics.follows.mutualBadge') }}</span>
                     </span>
                   }
@@ -230,15 +264,27 @@
             <div class="follow-ledger__pagination">
               <div class="follow-ledger__pagination-info">
                 <span>{{ t('common.show') }}</span>
-                <select class="follow-ledger__select" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                <select
+                  class="follow-ledger__select"
+                  [value]="itemsPerPage()"
+                  (change)="onItemsPerPageChange($event)"
+                >
                   @for (option of itemsPerPageOptions; track option) {
-                    <option [value]="option" [attr.selected]="itemsPerPage() === option ? '' : null">{{ option }}</option>
+                    <option
+                      [value]="option"
+                      [attr.selected]="itemsPerPage() === option ? '' : null"
+                    >
+                      {{ option }}
+                    </option>
                   }
                 </select>
                 <span>{{ t('common.entries') }}</span>
               </div>
 
-              <nav class="follow-ledger__pagination-nav" [attr.aria-label]="t('analytics.follows.pagination')">
+              <nav
+                class="follow-ledger__pagination-nav"
+                [attr.aria-label]="t('analytics.follows.pagination')"
+              >
                 <button
                   type="button"
                   class="follow-ledger__pagination-btn"

@@ -695,9 +695,19 @@
     "badge": "Audience Intelligence",
     "title": "Analytics Hub",
     "subtitle": "Live follower intelligence for your channel. The Follow Ledger delivers searchable, filterable access to everyone currently following you, with mutual relationships clearly highlighted.",
+    "backToModules": "Back to Modules",
     "chips": {
       "activeFollowers": "Live follow tracking",
       "mutualHighlights": "Mutual spotlight"
+    },
+    "metrics": {
+      "ariaLabel": "Analytics overview metrics",
+      "modules": "Active modules",
+      "modulesMeta": "Production-ready analytics",
+      "plan": "Access tier",
+      "planMeta": "Current channel plan",
+      "tracking": "Audience mode",
+      "trackingMeta": "Live follower intelligence"
     },
     "panel": {
       "kicker": "Premium analytics",
