@@ -6883,11 +6883,13 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .settings-admins__layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
+  justify-content: start;
 }
 
 .settings-admins__panel {
+  width: 100%;
+  max-width: 34rem;
   border: 1px solid color-mix(in srgb, var(--ring) 24%, transparent);
   border-radius: 1.1rem;
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -6897,14 +6899,10 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .settings-admins__panel-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.85rem;
   margin-bottom: 0.95rem;
-}
-
-.settings-admins__panel--full {
-  width: 100%;
 }
 
 .settings-admins__panel-header h2 {
@@ -6942,14 +6940,15 @@ html[data-plan-tier='pro'] .dashboard-shell {
   align-items: flex-start;
   gap: 0.85rem;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .settings-admins__search-stack {
   position: relative;
-  flex: 0 1 33%;
-  width: min(24rem, 33vw);
-  min-width: 18rem;
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .settings-admins__inline-note {
@@ -6982,6 +6981,8 @@ html[data-plan-tier='pro'] .dashboard-shell {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  width: 100%;
+  max-width: 34rem;
   padding: 0.9rem 1rem;
   border-radius: 0.95rem;
 }

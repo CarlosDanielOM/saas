@@ -7,7 +7,10 @@
     </div>
 
     <div class="settings-page__hero-badge" [class.settings-page__hero-badge--owner]="isOwnerView()">
-      <lucide-icon [img]="isOwnerView() ? addAdminIcon : adminIcon" class="settings-page__hero-badge-icon"></lucide-icon>
+      <lucide-icon
+        [img]="isOwnerView() ? addAdminIcon : adminIcon"
+        class="settings-page__hero-badge-icon"
+      ></lucide-icon>
       <span>
         {{ isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode') }}
       </span>
@@ -27,7 +30,7 @@
   }
 
   <div class="settings-admins__layout">
-    <article class="settings-admins__panel settings-admins__panel--primary settings-admins__panel--full">
+    <article class="settings-admins__panel settings-admins__panel--primary">
       <div class="settings-admins__panel-header">
         <div>
           <p class="settings-admins__panel-kicker">{{ t('settings.admins.current.kicker') }}</p>
@@ -36,11 +39,16 @@
         </div>
 
         <div class="settings-admins__toolbar">
-          <span class="settings-admins__count-pill">{{ admins().length }} {{ t('settings.admins.current.countLabel') }}</span>
+          <span class="settings-admins__count-pill"
+            >{{ admins().length }} {{ t('settings.admins.current.countLabel') }}</span
+          >
 
           @if (isOwnerView()) {
             <div class="settings-admins__search-stack">
-              <label class="settings-admins__search" [attr.aria-label]="t('settings.admins.search.inputLabel')">
+              <label
+                class="settings-admins__search"
+                [attr.aria-label]="t('settings.admins.search.inputLabel')"
+              >
                 <lucide-icon [img]="searchIcon" class="settings-admins__search-icon"></lucide-icon>
                 <input
                   type="search"
@@ -63,7 +71,11 @@
               </label>
 
               @if (showSearchDropdown()) {
-                <div class="settings-admins__dropdown" role="listbox" [attr.aria-label]="t('settings.admins.search.dropdownLabel')">
+                <div
+                  class="settings-admins__dropdown"
+                  role="listbox"
+                  [attr.aria-label]="t('settings.admins.search.dropdownLabel')"
+                >
                   @if (hasCandidateResults()) {
                     <p class="settings-admins__dropdown-meta">
                       {{ t('settings.admins.search.matchesMeta', { count: searchResultCount() }) }}
@@ -73,7 +85,9 @@
                       <article class="settings-admins__dropdown-item">
                         <div>
                           <p class="settings-admins__name">{{ candidate.display_name }}</p>
-                          <p class="settings-admins__meta">{{ candidate.login }} · {{ candidate.id }}</p>
+                          <p class="settings-admins__meta">
+                            {{ candidate.login }} · {{ candidate.id }}
+                          </p>
                         </div>
 
                         <button
@@ -84,7 +98,11 @@
                         >
                           <lucide-icon [img]="addAdminIcon"></lucide-icon>
                           <span>
-                            {{ isAdding(candidate.id) ? t('settings.admins.actions.adding') : t('settings.admins.actions.add') }}
+                            {{
+                              isAdding(candidate.id)
+                                ? t('settings.admins.actions.adding')
+                                : t('settings.admins.actions.add')
+                            }}
                           </span>
                         </button>
                       </article>
@@ -136,7 +154,9 @@
               </div>
 
               <div class="settings-admins__actions">
-                <span class="settings-admins__status-pill">{{ admin.actived ? t('common.enabled') : t('common.disabled') }}</span>
+                <span class="settings-admins__status-pill">{{
+                  admin.actived ? t('common.enabled') : t('common.disabled')
+                }}</span>
 
                 @if (isOwnerView()) {
                   <button
@@ -147,7 +167,11 @@
                   >
                     <lucide-icon [img]="deleteIcon"></lucide-icon>
                     <span>
-                      {{ isDeleting(admin.adminID) ? t('settings.admins.actions.removing') : t('settings.admins.actions.remove') }}
+                      {{
+                        isDeleting(admin.adminID)
+                          ? t('settings.admins.actions.removing')
+                          : t('settings.admins.actions.remove')
+                      }}
                     </span>
                   </button>
                 }
