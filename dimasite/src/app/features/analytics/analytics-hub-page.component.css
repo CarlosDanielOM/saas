@@ -42,11 +42,16 @@
   min-width: 0;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 1rem;
-  border-radius: 1.25rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
   border: 1px solid var(--ana-border);
   display: grid;
   gap: 1rem;
+  grid-template-areas:
+    "header"
+    "metrics"
+    "launchpad"
+    "footer";
   background: linear-gradient(170deg, var(--ana-bg-0) 0%, var(--ana-bg-1) 100%);
   box-shadow: 0 16px 42px rgba(8, 24, 52, 0.08);
   color: var(--ana-text);
@@ -119,13 +124,14 @@
 
 /* Command header */
 .analytics-command {
+  grid-area: header;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.85fr);
+  grid-template-columns: 1fr;
   gap: 1rem;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--ana-border) 85%, transparent);
   border-radius: 1rem;
-  padding: 1.2rem;
+  padding: 1rem;
   background: linear-gradient(
     160deg,
     color-mix(in srgb, var(--ana-panel) 94%, transparent),
@@ -297,8 +303,9 @@
 
 /* KPI strip */
 .analytics-metrics {
+  grid-area: metrics;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.72rem;
 }
 
@@ -380,6 +387,7 @@
 
 /* Launch card */
 .analytics-launchpad {
+  grid-area: launchpad;
   display: flex;
   justify-content: center;
 }
@@ -396,7 +404,7 @@
     color-mix(in srgb, var(--ana-panel) 96%, transparent),
     color-mix(in srgb, var(--ana-panel-2) 94%, transparent)
   );
-  padding: 1.35rem 1.4rem;
+  padding: 1rem;
   box-shadow:
     0 14px 30px rgba(3, 10, 20, 0.16),
     inset 0 0 0 1px color-mix(in srgb, var(--ana-tier-ring) 18%, transparent);
@@ -561,6 +569,7 @@
 
 /* Roadmap footer */
 .analytics-roadmap {
+  grid-area: footer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -605,26 +614,59 @@
   }
 }
 
-/* Responsive */
-@media (max-width: 900px) {
+/* Responsive mobile-first overrides */
+@media (min-width: 560px) {
+  .analytics-shell {
+    padding: 1rem;
+    border-radius: 1.25rem;
+  }
+
   .analytics-command {
-    grid-template-columns: 1fr;
+    padding: 1.2rem;
+  }
+
+  .analytics-launch-card {
+    padding: 1.35rem 1.4rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .analytics-command {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.85fr);
+  }
+
+  .analytics-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .analytics-shell {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.85fr);
+    grid-template-areas:
+      "header header"
+      "launchpad metrics"
+      "footer footer";
+    gap: 1.25rem;
   }
 
   .analytics-metrics {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 560px) {
-  .analytics-shell {
-    padding: 0.75rem;
-    border-radius: 1rem;
+    gap: 0.85rem;
+    align-content: start;
   }
 
-  .analytics-command,
+  .analytics-launchpad {
+    display: block;
+  }
+
   .analytics-launch-card {
-    padding: 1rem;
+    max-width: 100%;
+    height: 100%;
+  }
+
+  .analytics-launch-card__body {
+    flex-grow: 1;
   }
 }
 

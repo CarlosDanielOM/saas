@@ -21,16 +21,16 @@
 }
 
 .follow-ledger {
-  --ana-bg-0: var(--surface);
-  --ana-bg-1: var(--surface-2);
-  --ana-panel: color-mix(in srgb, var(--surface) 90%, transparent);
-  --ana-panel-2: color-mix(in srgb, var(--surface-2) 90%, transparent);
-  --ana-border: color-mix(in srgb, var(--ring) 25%, transparent);
-  --ana-text: var(--text);
-  --ana-text-soft: var(--text-soft);
-  --ana-cyan: #0ea5e9;
-  --ana-violet: #8b5cf6;
-  --ana-magenta: #d946ef;
+  --ana-bg-0: #f4f9ff;
+  --ana-bg-1: #ddeeff;
+  --ana-panel: #ffffff;
+  --ana-panel-2: #f4faff;
+  --ana-border: rgba(59, 132, 229, 0.26);
+  --ana-text: #173658;
+  --ana-text-soft: #46729e;
+  --ana-cyan: #00b8ff;
+  --ana-violet: #7857ff;
+  --ana-magenta: #ff4fcf;
   --ana-tier-glow: transparent;
   --ana-tier-ring: transparent;
 
@@ -53,7 +53,14 @@
   font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
 }
 
-:host-context(.dark) .follow-ledger {
+.dark .follow-ledger {
+  --ana-bg-0: #060c17;
+  --ana-bg-1: #0b1528;
+  --ana-panel: #101d34;
+  --ana-panel-2: #0b1a31;
+  --ana-border: rgba(65, 137, 225, 0.32);
+  --ana-text: #e6f2ff;
+  --ana-text-soft: #8daecd;
   --ana-cyan: #29d9ff;
   --ana-violet: #8a7eff;
   --ana-magenta: #ff5cf2;
@@ -355,7 +362,7 @@
   color: #e11d48;
 }
 
-:host-context(.dark) .follow-ledger__banner-title {
+.dark .follow-ledger__banner-title {
   color: #fb7185;
 }
 
@@ -801,7 +808,7 @@
   white-space: nowrap;
 }
 
-:host-context(.dark) .follow-ledger-card__badge {
+.dark .follow-ledger-card__badge {
   color: #fbbf24;
 }
 
