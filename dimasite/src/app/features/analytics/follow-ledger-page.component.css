@@ -834,31 +834,54 @@
   z-index: 1;
 }
 
+/* Corner warmth — not a full-card rectangle */
 .follow-ledger-card--mutual .follow-ledger-card__glow {
-  opacity: 0.55;
-  background: radial-gradient(circle at 92% 6%, rgba(217, 119, 6, 0.14), transparent 52%);
-  animation: mutual-glow-breathe 4.8s ease-in-out infinite;
+  inset: auto;
+  top: -28%;
+  right: -18%;
+  width: 58%;
+  height: 52%;
+  border-radius: 50%;
+  opacity: 0.75;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.22), transparent 70%);
+  animation: mutual-corner-breathe 4.8s ease-in-out infinite;
 }
 
+/* Static top rail */
 .follow-ledger-card--mutual::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+  left: 12%;
+  right: 12%;
+  height: 2px;
   pointer-events: none;
   z-index: 2;
+  border-radius: 9999px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(180, 83, 9, 0.45),
-    rgba(217, 119, 6, 0.65),
-    rgba(180, 83, 9, 0.45),
+    rgba(180, 83, 9, 0.28),
+    rgba(217, 119, 6, 0.38),
+    rgba(180, 83, 9, 0.28),
     transparent
   );
-  background-size: 220% 100%;
-  animation: mutual-bar-flow 4.2s linear infinite;
+}
+
+/* Signal bead travels the top edge = two-way link pulse */
+.follow-ledger-card--mutual::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 26%;
+  height: 3px;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.95), transparent);
+  filter: blur(0.4px);
+  animation: mutual-signal-travel 3.6s ease-in-out infinite;
 }
 
 .follow-ledger-card--mutual:hover {
@@ -892,7 +915,7 @@
 
 .follow-ledger-card--mutual .follow-ledger-card__badge-icon {
   color: currentColor;
-  animation: mutual-sparkle 3s ease-in-out infinite;
+  animation: mutual-icon-twinkle 2.6s ease-in-out infinite;
 }
 
 .follow-ledger-card--mutual .follow-ledger-card__stats {
@@ -903,34 +926,44 @@
   border-top-color: rgba(245, 158, 11, 0.14);
 }
 
-@keyframes mutual-glow-breathe {
+@keyframes mutual-corner-breathe {
   0%,
   100% {
-    opacity: 0.42;
+    opacity: 0.55;
+    transform: scale(0.96);
   }
   50% {
-    opacity: 0.62;
+    opacity: 0.82;
+    transform: scale(1.04);
   }
 }
 
-@keyframes mutual-bar-flow {
+@keyframes mutual-signal-travel {
   0% {
-    background-position: 0% 50%;
+    left: -28%;
+    opacity: 0;
   }
-  100% {
-    background-position: 220% 50%;
-  }
-}
-
-@keyframes mutual-sparkle {
-  0%,
-  100% {
-    transform: rotate(0deg);
+  12% {
     opacity: 1;
   }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 102%;
+    opacity: 0;
+  }
+}
+
+@keyframes mutual-icon-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
   50% {
-    transform: rotate(6deg);
-    opacity: 0.82;
+    opacity: 0.72;
+    filter: brightness(1.35);
   }
 }
 
@@ -1216,12 +1249,18 @@ html[data-plan-tier='pro'] .follow-ledger-card:not(.follow-ledger-card--mutual):
   }
 
   .follow-ledger-card--mutual .follow-ledger-card__glow,
-  .follow-ledger-card--mutual::after,
+  .follow-ledger-card--mutual::before,
   .follow-ledger-card--mutual .follow-ledger-card__badge-icon {
     animation: none !important;
   }
 
   .follow-ledger-card--mutual .follow-ledger-card__glow {
-    opacity: 0.5;
+    opacity: 0.65;
+    transform: none;
+  }
+
+  .follow-ledger-card--mutual::before {
+    left: 36%;
+    opacity: 0.75;
   }
 }
