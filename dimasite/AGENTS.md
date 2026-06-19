@@ -120,6 +120,7 @@ Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) ma
   - `authenticatedGuard` – ensures user is logged in.
   - `dashboardAccessGuard` – checks streamer ownership / permissions.
   - `streamerRouteShapeGuard` – validates route shape against `MODULE_CHILDREN` whitelist.
+  - **Important**: Any new authenticated module route (e.g. `library`) **must** be added to the `MODULE_CHILDREN` map in `src/app/guards/streamer-route.guard.ts` for users to be able to access it.
 - Lazy-load feature modules when possible.
 
 ---
