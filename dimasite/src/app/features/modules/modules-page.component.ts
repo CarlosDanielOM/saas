@@ -15,6 +15,7 @@ import {
   Shield,
   Sparkles,
   Video,
+  HardDrive,
   X,
   Zap,
   type LucideIconData,
@@ -234,6 +235,17 @@ export class ModulesPageComponent {
         status: MODULE_TIER_REQUIREMENTS['stream-summaries'].defaultStatus,
         minTier: MODULE_TIER_REQUIREMENTS['stream-summaries'].minTier,
         isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['stream-summaries'], userPlanTier),
+      },
+      {
+        id: 'library',
+        name: 'Media Library',
+        description: this.t('modules.library.description'),
+        icon: HardDrive,
+        path: streamerName ? `/${streamerName}/modules/library` : null,
+        category: 'content',
+        status: MODULE_TIER_REQUIREMENTS['library'].defaultStatus,
+        minTier: MODULE_TIER_REQUIREMENTS['library'].minTier,
+        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['library'], userPlanTier),
       },
     ];
   });

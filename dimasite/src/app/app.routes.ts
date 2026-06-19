@@ -256,6 +256,16 @@ export const routes: Routes = [
               permission: 'dashboard:view'
             },
             title: 'Stream Summaries | DomDimaBot'
+          },
+          {
+            path: 'library',
+            loadComponent: () =>
+              import('./features/library/media-library-page.component').then((m) => m.MediaLibraryPageComponent),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Media Library | DomDimaBot'
           }
         ]
       },

@@ -13,7 +13,8 @@ export type ModuleId =
   | 'analytics'
   | 'analytics.follows'
   | 'follow-defense'
-  | 'stream-summaries';
+  | 'stream-summaries'
+  | 'library';
 
 export type ModuleStatus = 'stable' | 'beta' | 'alpha' | 'coming_soon' | 'under_construction' | 'maintenance';
 
@@ -118,6 +119,13 @@ export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequi
     minTier: 'free',
     displayName: 'Stream Summaries',
     defaultStatus: 'stable',
+    category: 'content'
+  },
+  library: {
+    id: 'library',
+    minTier: 'free',
+    displayName: 'Media Library',
+    defaultStatus: 'beta',
     category: 'content'
   }
 };

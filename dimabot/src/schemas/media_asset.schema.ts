@@ -27,6 +27,8 @@ export interface IMediaAsset {
     checksumSha256?: string | null;
     libraryCount: number;
     triggerReferenceCount: number;
+    alertReferenceCount: number;
+    extensionReferenceCount: number;
     deletedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
@@ -60,6 +62,8 @@ const mediaAssetSchema = new Schema<IMediaAsset>({
     checksumSha256: { type: String, default: null },
     libraryCount: { type: Number, default: 0 },
     triggerReferenceCount: { type: Number, default: 0 },
+    alertReferenceCount: { type: Number, default: 0 },
+    extensionReferenceCount: { type: Number, default: 0 },
     deletedAt: { type: Date, default: null, index: true }
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }

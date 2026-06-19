@@ -21,9 +21,9 @@ const PLAN_UPLOAD_LIMIT_MB: Record<PlanTier, number> = {
 };
 
 const PLAN_STORAGE_QUOTA_BYTES: Record<PlanTier, number> = {
-    free: 100 * 1024 * 1024,
-    premium: 1024 * 1024 * 1024,
-    pro: 10 * 1024 * 1024 * 1024
+    free: 100 * 1024 * 1024,       // 100 MB - teaser allocation
+    premium: 500 * 1024 * 1024,    // 500 MB
+    pro: 1024 * 1024 * 1024        // 1 GB
 };
 
 const MIME_EXTENSION_FALLBACK: Record<string, string> = {
