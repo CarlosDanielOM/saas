@@ -1,7 +1,7 @@
 import { Schema, model, type HydratedDocument, Types } from "mongoose";
 import type { MediaAssetType } from "./media_asset.schema.js";
 
-export type ChannelExtensionItemCategory = "video" | "audio" | "gifs" | "tts";
+export type ChannelExtensionItemCategory = "video" | "audio" | "gif" | "tts";
 
 export interface IChannelExtensionItem {
   _id: Types.ObjectId;
@@ -41,7 +41,7 @@ const channelExtensionItemSchema = new Schema<IChannelExtensionItem>(
     category: {
       type: String,
       required: true,
-      enum: ["video", "audio", "gifs", "tts"],
+      enum: ["video", "audio", "gif", "tts"],
       default: "video",
       index: true,
     },

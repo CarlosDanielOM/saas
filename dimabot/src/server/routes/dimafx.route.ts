@@ -84,6 +84,22 @@ function getFallbackThumbnail(asset: IMediaAsset | null): string {
     return '';
 }
 
+const ALLOWED_DIMAFX_CATEGORIES: ChannelExtensionItemCategory[] = ['video', 'audio', 'gif', 'tts'];
+
+function isChannelExtensionItemCategory(value: unknown): value is ChannelExtensionItemCategory {
+    return typeof value === 'string' && (ALLOWED_DIMAFX_CATEGORIES as string[]).includes(value);
+}
+
+function defaultCategoryFromMediaType(mediaType: string | undefined): ChannelExtensionItemCategory {
+    if (mediaType === 'audio') return 'audio';
+    if (mediaType === 'image' || mediaType === 'gif') return 'gif';
+    return 'video';
+}
+
+function normalizeCategoryInput(value: unknown, fallback: ChannelExtensionItemCategory): ChannelExtensionItemCategory {
+    return isChannelExtensionItemCategory(value) ? value : fallback;
+}
+
 function mapChannelExtensionItem(item: IChannelExtensionItem, asset: IMediaAsset | null): Record<string, unknown> {
     return {
         _id: item._id,
@@ -541,9 +557,25 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
         }
 
         const inventoryDoc = await UserExtensionInventorySchema.findOne({ platform: 'twitch', userID: body.userID, channelID });
-        const savedItem = inventoryDoc?.items.find((item) => String(item.channelExtensionItemID) === itemID && item.quantity > 0);
+        // Match the dedup key used by addInventoryItem (itemID, regardless of price/source).
+        // Sort most-recently-acquired first (LIFO) so users see fresh saves get used first.
+        const candidates = (inventoryDoc?.items || [])
+            .filter((item) => String(item.channelExtensionItemID) === itemID && item.quantity > 0)
+            .sort((a, b) => b.acquiredAt.getTime() - a.acquiredAt.getTime());
+
+        const savedItem = candidates[0];
         if (!inventoryDoc || !savedItem) {
             return res.status(400).json({ error: true, message: 'No saved copies available for this item', status: 400 });
+        }
+
+        if (candidates.length > 1) {
+            console.warn('[DIMAFX REDEEM] multiple inventory rows matched, only newest decremented', {
+                channelID,
+                userID: body.userID,
+                itemID,
+                rowCount: candidates.length,
+                timestamp: new Date().toISOString()
+            });
         }
 
         savedItem.quantity -= 1;
@@ -628,7 +660,7 @@ router.post('/:channelID/items', authMiddleware as any, async (req: DimafxReques
             assetID: asset._id,
             name,
             description: typeof body.description === 'string' ? body.description.trim() : '',
-            category: body.category || 'media',
+            category: normalizeCategoryInput(body.category, defaultCategoryFromMediaType(asset.mediaType as string | undefined)),
             mediaType: asset.mediaType as MediaAssetType,
             thumbnailUrl: typeof body.thumbnailUrl === 'string' ? body.thumbnailUrl.trim() : getFallbackThumbnail(asset),
             durationMs: normalizePositiveInteger(body.durationMs, 0),
@@ -666,7 +698,16 @@ router.patch('/:channelID/items/:itemID', authMiddleware as any, async (req: Dim
         const body = (req.body || {}) as ChannelExtensionItemPayload;
         if (typeof body.name === 'string' && body.name.trim()) existing.name = body.name.trim();
         if (typeof body.description === 'string') existing.description = body.description.trim();
-        if (body.category) existing.category = body.category;
+        if (body.category !== undefined) {
+            if (!isChannelExtensionItemCategory(body.category)) {
+                return res.status(400).json({
+                    error: true,
+                    message: `Invalid category. Allowed: ${ALLOWED_DIMAFX_CATEGORIES.join(', ')}`,
+                    status: 400
+                });
+            }
+            existing.category = body.category;
+        }
         if (typeof body.thumbnailUrl === 'string') existing.thumbnailUrl = body.thumbnailUrl.trim();
         if (body.durationMs !== undefined) existing.durationMs = normalizePositiveInteger(body.durationMs, 0);
         if (body.volume !== undefined) existing.volume = normalizeVolume(body.volume);

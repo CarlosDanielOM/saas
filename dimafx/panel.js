@@ -39,7 +39,7 @@ function formatDuration(ms) {
 
 function getInventoryQuantity(itemId) {
   return (inventory?.items || [])
-    .filter((item) => String(item.channelExtensionItemID) === String(itemId))
+    .filter((item) => String(item.channelExtensionItemID) === String(itemId) && Number(item.quantity || 0) > 0)
     .reduce((total, item) => total + Number(item.quantity || 0), 0);
 }
 
