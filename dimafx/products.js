@@ -70,5 +70,17 @@ window.fallbackProducts = [
     priceValue: 500,
     image: "assets/alert.png",
     description: "Golden sparkle fountain reward alert. Premium quality visual design suitable for celebrating subscribers."
+  },
+  {
+    id: 7,
+    name: "Free Welcome Stinger",
+    category: "video",
+    categoryLabel: "Video",
+    duration: "0:04",
+    price: "Free",
+    priceType: "free",
+    priceValue: 0,
+    image: "assets/overlay.png",
+    description: "Complementary welcome stinger for new followers. Triggered automatically when a viewer joins, no Bits required."
   }
 ];

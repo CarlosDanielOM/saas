@@ -162,6 +162,9 @@ function renderLibrary() {
     card.className = grid.id === "store-grid" ? "mobile-card" : "media-card";
     card.onclick = () => openDrawer(item);
 
+    const isFree = Number(item.priceValue || 0) === 0;
+    const priceClass = isFree ? "free" : "bits";
+
     let thumbHtml = '';
     if (item.category === 'video' && item.mediaUrl) {
       thumbHtml = `<video class="card-thumb-video" src="${escapeHtml(item.mediaUrl)}" poster="${escapeHtml(item.image)}" muted playsinline preload="metadata"></video>`;
@@ -194,7 +197,7 @@ function renderLibrary() {
         <div class="card-desc">${escapeHtml(item.description)}</div>
       </div>
       <div class="card-footer">
-        <button class="price-btn bits" onclick="event.stopPropagation(); quickPurchase('${escapeHtml(item.id)}')">
+        <button class="price-btn ${priceClass}" onclick="event.stopPropagation(); quickPurchase('${escapeHtml(item.id)}')">
           <svg viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"></polygon></svg>
           <span>${quickActionLabel(item)}</span>
         </button>
@@ -206,6 +209,9 @@ function renderLibrary() {
 function quickActionLabel(item) {
   const config = inventory?.config || { quickPurchasePriority: "credits_first", quickPurchaseAction: "use_now" };
   const action = config.quickPurchaseAction === "save" && identityShared ? "Save" : "Use";
+  if (Number(item.priceValue || 0) === 0) {
+    return `${action} • Free`;
+  }
   if (identityShared && config.quickPurchasePriority === "credits_first" && getBalance() >= item.priceValue) {
     return `${action} • ${item.priceValue} Credits`;
   }
@@ -292,14 +298,21 @@ function openDrawer(item) {
 function renderDrawerActions() {
   const actionContainer = document.querySelector(".drawer-actions") || getEl("sheet-buy-btn")?.parentElement;
   if (!actionContainer || !selectedItem) return;
+  const isFree = Number(selectedItem.priceValue || 0) === 0;
+  const freeLabel = selectedAction === "save" ? "Save for Free" : "Use for Free";
+  const saveDisabled = !identityShared;
   actionContainer.innerHTML = `
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted);">
       <button class="category-btn ${selectedAction === "use_now" ? "active" : ""}" onclick="setDrawerAction('use_now')">Use now</button>
-      <button class="category-btn ${selectedAction === "save" ? "active" : ""}" ${identityShared ? "" : "disabled"} onclick="setDrawerAction('save')">Save</button>
+      <button class="category-btn ${selectedAction === "save" ? "active" : ""}" ${saveDisabled ? "disabled" : ""} onclick="setDrawerAction('save')">Save</button>
     </div>
-    <button class="drawer-buy-btn bits sheet-btn-buy" onclick="buyWithBits(selectedItem, selectedAction)"><span>Buy with Bits • ${selectedItem.price}</span></button>
-    <button class="drawer-buy-btn credits sheet-btn-buy" ${identityShared && getBalance() >= selectedItem.priceValue ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>
-    ${!identityShared ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save items and use credits.</div>' : ''}`;
+    ${isFree
+      ? `<button class="drawer-buy-btn free sheet-btn-buy" ${selectedAction === "save" && saveDisabled ? "disabled" : ""} onclick="triggerFreeItem(selectedItem, selectedAction)"><span>${freeLabel}</span></button>`
+      : `<button class="drawer-buy-btn bits sheet-btn-buy" onclick="buyWithBits(selectedItem, selectedAction)"><span>Buy with Bits • ${selectedItem.price}</span></button>
+         <button class="drawer-buy-btn credits sheet-btn-buy" ${identityShared && getBalance() >= selectedItem.priceValue ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>`
+    }
+    ${!identityShared && !isFree ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save items and use credits.</div>' : ''}
+    ${isFree && !identityShared ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save this for later.</div>' : ''}`;
 }
 
 function setDrawerAction(action) {
@@ -381,8 +394,10 @@ function quickPurchase(itemId) {
   const item = products.find((candidate) => String(candidate.id) === String(itemId));
   if (!item) return;
   // Free items (0 bits) trigger immediately without bits/credits flow
-  if (item.priceValue === 0) {
-    triggerFreeItem(item);
+  if (Number(item.priceValue || 0) === 0) {
+    const config = inventory?.config || { quickPurchasePriority: "credits_first", quickPurchaseAction: "use_now" };
+    const action = config.quickPurchaseAction === "save" && identityShared ? "save" : "use_now";
+    triggerFreeItem(item, action);
     return;
   }
   const config = inventory?.config || { quickPurchasePriority: "credits_first", quickPurchaseAction: "use_now" };
@@ -403,16 +418,24 @@ function buyWithBits(item, action) {
   Twitch.ext.bits.useBits(item.sku);
 }
 
-async function triggerFreeItem(item) {
+async function triggerFreeItem(item, action = "use_now") {
+  // Free items are fulfilled server-side without ever touching the Twitch Bits API,
+  // because Twitch rejects 0-cost SKUs in Twitch.ext.bits.useBits.
+  const safeAction = action === "save" ? "save" : "use_now";
+  const transactionID = `free_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
-      body: JSON.stringify({ sku: item.sku, transactionID: `free_${Date.now()}`, action: "use_now" }),
+      body: JSON.stringify({ sku: item.sku, transactionID, action: safeAction }),
     });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();
     closeDrawer();
-    showToast("Free", `${item.name} is queued on stream.`, "success");
+    showToast(
+      safeAction === "save" ? "Saved" : "Triggered",
+      `${item.name} is ${safeAction === "save" ? "in your inventory" : "queued on stream"}.`,
+      "success"
+    );
   } catch (error) {
     showToast("Free item issue", error.message || "Unable to trigger free item.", "error");
     await refreshMe().catch(() => undefined);
@@ -514,7 +537,13 @@ async function saveUserConfig() {
 }
 
 function triggerPurchase() {
-  if (selectedItem) buyWithBits(selectedItem, selectedAction);
+  if (!selectedItem) return;
+  // Free items skip the Twitch Bits flow entirely — Twitch rejects 0-cost SKUs.
+  if (Number(selectedItem.priceValue || 0) === 0) {
+    triggerFreeItem(selectedItem, selectedAction);
+    return;
+  }
+  buyWithBits(selectedItem, selectedAction);
 }
 
 function showBitsBalance() {
