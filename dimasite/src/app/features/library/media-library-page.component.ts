@@ -10,6 +10,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { DisplayNamePipe } from '../../pipes/display-name.pipe';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -24,13 +25,13 @@ interface UploadFormState {
   file: File | null;
 }
 
-const SAFE_NAME_REGEX = /^[A-Za-z0-9_]+$/;
+const SAFE_NAME_REGEX = /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/;
 const SAFE_NAME_MAX_LENGTH = 60;
 
 @Component({
   selector: 'app-media-library-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, LucideAngularModule, ConfirmationModalComponent],
+  imports: [CommonModule, RouterLink, LucideAngularModule, ConfirmationModalComponent, DisplayNamePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="media-library-page">
@@ -104,7 +105,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
                 <span class="media-card__type">{{ item.mediaType }}</span>
               </div>
               <div class="media-card__body">
-                <h3 class="media-card__name">{{ item.localAlias || item.asset?.displayName }}</h3>
+                <h3 class="media-card__name">{{ (item.localAlias || item.asset?.displayName) | displayName }}</h3>
                 <p class="media-card__meta">
                   {{ formatBytes(item.quotaBytesCharged) }}
                   @if (item.assetScope === 'private') {
@@ -191,7 +192,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
               [value]="uploadForm().name"
               (input)="updateUploadName($event)"
               [placeholder]="t('modules.library.upload.namePlaceholder')"
-              pattern="[A-Za-z0-9_]+"
+              pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
               [attr.maxlength]="60"
               autocapitalize="off"
               autocomplete="off"
@@ -256,7 +257,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
         [isOpen]="true"
         variant="warning"
         [title]="t('modules.library.makePublic.confirmTitle')"
-        [message]="t('modules.library.makePublic.confirmMessage', { name: (item.localAlias || item.asset?.displayName || '') })"
+        [message]="t('modules.library.makePublic.confirmMessage', { name: makePublicDisplayName() })"
         [confirmText]="t('modules.library.actions.makePublic')"
         [cancelText]="t('common.cancel')"
         (confirm)="commitMakePublic(item)"
@@ -290,7 +291,7 @@ export class MediaLibraryPageComponent {
   readonly libraryMeta = signal<MediaLibraryMeta>({
     planTier: 'free',
     quotaBytesUsed: 0,
-    quotaBytesLimit: 100 * 1024 * 1024
+    quotaBytesLimit: 50 * 1024 * 1024
   });
 
   // Upload state
@@ -299,6 +300,13 @@ export class MediaLibraryPageComponent {
   readonly isDraggingUpload = signal(false);
   readonly uploadForm = signal<UploadFormState>({ name: '', scope: 'private', file: null });
   readonly makePublicConfirm = signal<MediaLibraryItem | null>(null);
+
+  readonly makePublicDisplayName = computed(() => {
+    const item = this.makePublicConfirm();
+    if (!item) return '';
+    const raw = item.localAlias || item.asset?.displayName || '';
+    return raw.replace(/_+/g, ' ').trim();
+  });
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('uploadFileInput');
 
   readonly planTier = computed<PlanTier>(() => {
@@ -573,8 +581,14 @@ export class MediaLibraryPageComponent {
   // === Helpers ===
 
   private sanitizeSafeName(value: string): string {
+    // Strip everything that's not letter/digit/underscore, collapse runs of
+    // underscores, trim leading/trailing underscores, drop leading digits,
+    // and cap at SAFE_NAME_MAX_LENGTH so the value matches SAFE_NAME_REGEX.
     return value
       .replace(/[^A-Za-z0-9_]/g, '')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/^\d+/, '')
       .slice(0, SAFE_NAME_MAX_LENGTH);
   }
 

@@ -266,7 +266,7 @@
 
                   <div class="media-card__body">
                     <div class="media-card__head">
-                      <h3 class="cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">{{ item.localAlias || item.asset?.displayName || item.asset?.fileName }}</h3>
+                      <h3 class="cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">{{ (item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName }}</h3>
                       <span class="media-card__scope" [class.media-card__scope--public]="item.assetScope === 'public'">
                         {{ t('triggers.scope.' + item.assetScope) }}
                       </span>
@@ -316,7 +316,7 @@
         <div class="triggers-form-grid">
           <label class="triggers-field">
             <span>{{ t('triggers.form.nameLabel') }}</span>
-            <input type="text" [value]="triggerForm().name" (input)="updateTriggerForm('name', $any($event.target).value)" [placeholder]="t('triggers.form.namePlaceholder')" pattern="[A-Za-z0-9_]+" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+            <input type="text" [value]="triggerForm().name" (input)="updateTriggerForm('name', $any($event.target).value)" [placeholder]="t('triggers.form.namePlaceholder')" pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
           </label>
 
           <label class="triggers-field">
@@ -358,7 +358,7 @@
                 >
                   <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="triggers-media-picker__icon"></lucide-icon>
                   <div>
-                    <strong>{{ item.localAlias || item.asset?.displayName }}</strong>
+                    <strong>{{ (item.localAlias || item.asset?.displayName) | displayName }}</strong>
                     <span>{{ formatBytes(item.quotaBytesCharged) }} - {{ t('triggers.scope.' + item.assetScope) }}</span>
                   </div>
                 </button>
@@ -375,7 +375,7 @@
           <div class="triggers-form-locked-media">
             <lucide-icon [name]="getMediaIcon(selectedTriggerFormItem()!.asset?.mediaType || 'video')" class="triggers-form-locked-media__icon"></lucide-icon>
             <div>
-              <strong>{{ selectedTriggerFormItem()!.localAlias || selectedTriggerFormItem()!.asset?.displayName }}</strong>
+              <strong>{{ (selectedTriggerFormItem()!.localAlias || selectedTriggerFormItem()!.asset?.displayName) | displayName }}</strong>
               <p>{{ t('triggers.form.mediaLockedMessage') }}</p>
             </div>
           </div>
@@ -524,7 +524,7 @@
 
         <label class="triggers-field triggers-field--full">
           <span>{{ t('triggers.upload.nameLabel') }}</span>
-          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)" [placeholder]="t('triggers.upload.namePlaceholder')" pattern="[A-Za-z0-9_]+" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)" [placeholder]="t('triggers.upload.namePlaceholder')" pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
         </label>
 
         <label
@@ -634,7 +634,7 @@
       </button>
 
       <div class="triggers-preview-modal__body">
-        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName }}</h4>
+        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName | displayName }}</h4>
         <p class="triggers-preview-modal__meta">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
 
         <div class="triggers-preview-modal__content-box">

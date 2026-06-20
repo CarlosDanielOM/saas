@@ -39,12 +39,13 @@ import {
   MediaType
 } from '../triggers.model';
 import { TriggersService } from '../triggers.service';
+import { DisplayNamePipe } from '../../../pipes/display-name.pipe';
 
 type MediaFilter = 'all' | MediaType;
 
 @Component({
   selector: 'app-public-library-modal',
-  imports: [LucideAngularModule, LoadingIndicatorComponent],
+  imports: [LucideAngularModule, LoadingIndicatorComponent, DisplayNamePipe],
   styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

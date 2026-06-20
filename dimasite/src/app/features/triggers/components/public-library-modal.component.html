@@ -161,7 +161,7 @@
 
                 <!-- Info and Action Footer -->
                 <div class="triggers-asset-grid-card__info">
-                  <div class="triggers-asset-grid-card__name" [title]="asset.displayName">{{ asset.displayName }}</div>
+                  <div class="triggers-asset-grid-card__name" [title]="asset.displayName | displayName">{{ asset.displayName | displayName }}</div>
                   <div class="triggers-asset-grid-card__meta">
                     <span class="triggers-asset-grid-card__creator">{{ asset.ownerChannelName }}</span>
                     <span class="triggers-asset-grid-card__size">{{ formatBytes(asset.bytes) }}</span>
@@ -216,7 +216,7 @@
                 <div class="media-card__body">
                   <div class="media-card__head">
                     <div>
-                      <h3 class="cursor-pointer" (click)="openPreviewModal($event, asset)">{{ asset.displayName }}</h3>
+                      <h3 class="cursor-pointer" (click)="openPreviewModal($event, asset)">{{ asset.displayName | displayName }}</h3>
                       <p class="public-library-modal__creator">{{ asset.ownerChannelName }}</p>
                     </div>
                     <span class="media-card__scope media-card__scope--public">{{ t('triggers.marketplace.publicTag') }}</span>
@@ -281,7 +281,7 @@
       </button>
 
       <div class="triggers-preview-modal__body">
-        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName }}</h4>
+        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName | displayName }}</h4>
         <p class="triggers-preview-modal__meta">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
 
         <div class="triggers-preview-modal__content-box">

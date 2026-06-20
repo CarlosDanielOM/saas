@@ -199,7 +199,7 @@ export class LandingPageComponent implements OnInit, OnDestroy {
       note: 'Credits are non-rollover.'
     },
     { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' },
-    { label: 'Max file storage', free: '100MB', premium: '500MB', pro: '1GB' },
+    { label: 'Max file storage', free: '50MB', premium: '250MB', pro: '1GB' },
     {
       label: 'Bandwidth',
       free: '10GB',

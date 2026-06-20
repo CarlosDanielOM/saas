@@ -9,7 +9,11 @@ import { getApiUrl } from '../../utils/dev.js';
 
 export type PlanTier = 'free' | 'premium' | 'pro';
 
-export const MEDIA_NAME_REGEX = /^[A-Za-z0-9_]+$/;
+// Display names start with a letter, may contain letters/digits/underscores,
+// and must end with a letter or digit (no leading/trailing underscore, no
+// leading digit). Multiple underscores between segments are allowed at the
+// storage level but will be collapsed to a single space when rendered.
+export const MEDIA_NAME_REGEX = /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/;
 export const DOMDIMABOT_SITE_OWNER_USER_ID = 'system:domdimabot';
 export const DOMDIMABOT_SITE_OWNER_CHANNEL_ID = 'domdimabot';
 export const DOMDIMABOT_SITE_OWNER_CHANNEL_NAME = 'DomDimaBot';
@@ -21,8 +25,8 @@ const PLAN_UPLOAD_LIMIT_MB: Record<PlanTier, number> = {
 };
 
 const PLAN_STORAGE_QUOTA_BYTES: Record<PlanTier, number> = {
-    free: 100 * 1024 * 1024,       // 100 MB - teaser allocation
-    premium: 500 * 1024 * 1024,    // 500 MB
+    free: 50 * 1024 * 1024,        // 50 MB - teaser allocation
+    premium: 250 * 1024 * 1024,    // 250 MB
     pro: 1024 * 1024 * 1024        // 1 GB
 };
 

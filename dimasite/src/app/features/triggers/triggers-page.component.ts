@@ -42,6 +42,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { LoadingIndicatorComponent } from '../../components/loading';
 import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
+import { DisplayNamePipe } from '../../pipes/display-name.pipe';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LanguageService } from '../../services/language.service';
@@ -105,11 +106,11 @@ interface DeleteState {
 const DEFAULT_LIBRARY_META: MediaLibraryMeta = {
   planTier: 'free',
   quotaBytesUsed: 0,
-  quotaBytesLimit: 100 * 1024 * 1024
+  quotaBytesLimit: 50 * 1024 * 1024
 };
 
 const SUPPORTED_TRIGGER_MEDIA_TYPES = new Set<MediaType>(['video', 'audio']);
-const TRIGGER_NAME_REGEX = /^[A-Za-z0-9_]+$/;
+const TRIGGER_NAME_REGEX = /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*$/;
 const SAFE_NAME_MAX_LENGTH = 60;
 
 @Component({
@@ -119,6 +120,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
     LucideAngularModule,
     LoadingIndicatorComponent,
     SafeUrlPipe,
+    DisplayNamePipe,
     ConfirmationModalComponent,
     PublicLibraryModalComponent
   ],
@@ -258,6 +260,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
       const haystack = [item.localAlias, asset.displayName, asset.ownerChannelName, asset.mediaType]
         .filter(Boolean)
+        .map((value) => String(value).replace(/_+/g, ' ').trim())
         .join(' ')
         .toLowerCase();
       return haystack.includes(query);
@@ -656,7 +659,8 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openDeleteLibraryItem(item: MediaLibraryItem): void {
-    const label = item.localAlias || item.asset?.displayName || item.asset?.fileName || item._id;
+    const raw = item.localAlias || item.asset?.displayName || item.asset?.fileName || item._id;
+    const label = raw.replace(/_+/g, ' ').trim();
     this.pendingDelete.set({
       type: 'library-item',
       id: item._id,
@@ -1085,7 +1089,12 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   private sanitizeSafeName(name: string): string {
-    return name.replace(/[^A-Za-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '').slice(0, SAFE_NAME_MAX_LENGTH);
+    return name
+      .replace(/[^A-Za-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/^\d+/, '')
+      .slice(0, SAFE_NAME_MAX_LENGTH);
   }
 
   private resetFileInput(): void {
