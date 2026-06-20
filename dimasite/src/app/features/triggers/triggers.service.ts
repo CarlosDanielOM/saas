@@ -13,6 +13,7 @@ import {
   MediaLibraryMeta,
   MediaLibraryResponse,
   MediaType,
+  PlanTier,
   TriggerRecord,
   TriggerTestPayload,
   UpdateTriggerRequest,
@@ -111,6 +112,25 @@ export class TriggersService {
     return this.http
       .delete<ApiEnvelope<MediaLibraryItem>>(`${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}`)
       .pipe(map((response) => this.requireNoError(response, 'Failed to remove media item')));
+  }
+
+  changeLibraryItemScope(
+    channelId: string,
+    libraryItemId: string,
+    scope: 'public',
+    planTier: PlanTier
+  ): Observable<MediaLibraryMutationResult> {
+    return this.http
+      .patch<ApiEnvelope<MediaLibraryItem>>(
+        `${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}/scope`,
+        { scope, planTier }
+      )
+      .pipe(
+        map((response) => ({
+          item: this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to change media scope'),
+          meta: this.normalizeLibraryMeta(response.meta)
+        }))
+      );
   }
 
   private requireData<TInput, TOutput>(

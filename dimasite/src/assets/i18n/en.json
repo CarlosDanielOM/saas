@@ -44,6 +44,74 @@
     "triggers": {
       "description": "Build trigger moments with your private library, public assets, and channel point rewards while staying inside your plan limits."
     },
+    "library": {
+      "description": "Upload and manage your private media assets. Free users get 100 MB, Premium 500 MB, Pro 1 GB. Public assets are free and shared across features.",
+      "backToModules": "Back to modules",
+      "heroBadge": "Media Storage",
+      "eyebrow": "Media Library",
+      "title": "Your Media Library",
+      "subtitle": "Upload private files for triggers, alerts, and extensions. Public assets are free and shared across the platform.",
+      "quota": {
+        "label": "Private Storage Used",
+        "hint": "Only private assets count against your plan quota. Public assets are free."
+      },
+      "scope": {
+        "private": "Private",
+        "public": "Public"
+      },
+      "card": {
+        "chargesQuota": "Counts toward your quota",
+        "freeQuota": "Free (does not use quota)"
+      },
+      "actions": {
+        "upload": "Upload Media",
+        "makePublic": "Make Public"
+      },
+      "upload": {
+        "kicker": "Add media",
+        "title": "Upload to Library",
+        "limitTitle": "Plan-aware uploads",
+        "limitMessage": "Per-file upload limit is {{size}}. Public files are unlimited in count but share this file-size cap.",
+        "privateInfo": "Private files count against your {{quota}} storage quota. You can delete them anytime.",
+        "publicInfo": "Public files do not count against your quota, but the change is irreversible. Only CDOM Labs can delete or disable them — contact support if needed.",
+        "nameLabel": "Media name",
+        "namePlaceholder": "Only letters, numbers, and underscores",
+        "pickFile": "Choose a media file",
+        "dropNow": "Drop the file here",
+        "fileHint": "Video, audio, images, and GIFs are all supported.",
+        "submit": "Upload to Library",
+        "uploading": "Uploading...",
+        "fileTooLarge": "File is larger than the {{size}} per-file limit.",
+        "quotaExceeded": "Upload would exceed your {{quota}} private quota. Make it public or delete something first.",
+        "successTitle": "Media uploaded",
+        "successMessage": "The new asset is now available in your library.",
+        "errorTitle": "Upload failed",
+        "errorMessage": "We could not upload that media file.",
+        "validationMessage": "Pick a file and give it a valid name (letters, numbers, underscores only)."
+      },
+      "makePublic": {
+        "confirmTitle": "Make this asset public?",
+        "confirmMessage": "\"{{name}}\" will become public. Your private quota will be released immediately. This change is one-way: only CDOM Labs can delete or disable the asset afterwards. Contact support if needed.",
+        "successTitle": "Asset is now public",
+        "successMessage": "Quota has been released and the asset is visible in the public marketplace.",
+        "errorTitle": "Could not promote asset",
+        "errorMessage": "Failed to promote the asset to public."
+      },
+      "states": {
+        "loading": "Loading your media library...",
+        "empty": "No media yet. Upload your first file to get started."
+      },
+      "confirm": {
+        "delete": "Delete this media item? This cannot be undone."
+      },
+      "toasts": {
+        "deleted": "Media item removed"
+      },
+      "errors": {
+        "loadFailed": "Failed to load media library",
+        "deleteFailed": "Failed to delete media item"
+      }
+    },
     "dimafx": {
       "description": "Configure your Twitch Extension storefront with media assets viewers can buy with Bits, use instantly, or save for later.",
       "title": "Twitch Extension Storefront",

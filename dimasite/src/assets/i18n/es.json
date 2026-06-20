@@ -44,6 +44,74 @@
     "triggers": {
       "description": "Construye momentos con triggers usando tu biblioteca privada, assets publicos y recompensas del canal sin salir de los limites de tu plan."
     },
+    "library": {
+      "description": "Sube y gestiona tus archivos multimedia privados. Los usuarios Free tienen 100 MB, Premium 500 MB, Pro 1 GB. Los assets públicos son gratuitos y se comparten entre funciones.",
+      "backToModules": "Volver a módulos",
+      "heroBadge": "Almacenamiento",
+      "eyebrow": "Biblioteca Multimedia",
+      "title": "Tu Biblioteca Multimedia",
+      "subtitle": "Sube archivos privados para triggers, alerts y extensiones. Los assets públicos son gratuitos y compartidos en la plataforma.",
+      "quota": {
+        "label": "Almacenamiento Privado Usado",
+        "hint": "Solo los assets privados cuentan contra tu cuota del plan. Los assets públicos son gratuitos."
+      },
+      "scope": {
+        "private": "Privado",
+        "public": "Público"
+      },
+      "card": {
+        "chargesQuota": "Cuenta contra tu cuota",
+        "freeQuota": "Gratis (no usa cuota)"
+      },
+      "actions": {
+        "upload": "Subir Media",
+        "makePublic": "Hacer Público"
+      },
+      "upload": {
+        "kicker": "Añadir media",
+        "title": "Subir a la Biblioteca",
+        "limitTitle": "Subidas según tu plan",
+        "limitMessage": "El límite por archivo es {{size}}. Los archivos públicos no tienen límite de cantidad pero comparten este tope de tamaño.",
+        "privateInfo": "Los archivos privados cuentan contra tu cuota de almacenamiento de {{quota}}. Puedes eliminarlos cuando quieras.",
+        "publicInfo": "Los archivos públicos no cuentan contra tu cuota, pero el cambio es irreversible. Solo CDOM Labs puede eliminarlos o deshabilitarlos — contacta a soporte si es necesario.",
+        "nameLabel": "Nombre del media",
+        "namePlaceholder": "Solo letras, números y guiones bajos",
+        "pickFile": "Elige un archivo",
+        "dropNow": "Suelta el archivo aquí",
+        "fileHint": "Se admiten video, audio, imágenes y GIFs.",
+        "submit": "Subir a la Biblioteca",
+        "uploading": "Subiendo...",
+        "fileTooLarge": "El archivo supera el límite por archivo de {{size}}.",
+        "quotaExceeded": "La subida excedería tu cuota privada de {{quota}}. Hazlo público o elimina algo primero.",
+        "successTitle": "Media subido",
+        "successMessage": "El nuevo asset ya está disponible en tu biblioteca.",
+        "errorTitle": "Subida fallida",
+        "errorMessage": "No pudimos subir ese archivo multimedia.",
+        "validationMessage": "Elige un archivo y asígnale un nombre válido (solo letras, números y guiones bajos)."
+      },
+      "makePublic": {
+        "confirmTitle": "¿Hacer público este asset?",
+        "confirmMessage": "\"{{name}}\" se hará público. Tu cuota privada se liberará inmediatamente. Este cambio es de una sola vía: solo CDOM Labs puede eliminar o deshabilitar el asset después. Contacta a soporte si es necesario.",
+        "successTitle": "El asset ahora es público",
+        "successMessage": "Se liberó la cuota y el asset es visible en el marketplace público.",
+        "errorTitle": "No se pudo promover el asset",
+        "errorMessage": "Error al promover el asset a público."
+      },
+      "states": {
+        "loading": "Cargando tu biblioteca multimedia...",
+        "empty": "Sin media aún. Sube tu primer archivo para comenzar."
+      },
+      "confirm": {
+        "delete": "¿Eliminar este elemento? Esta acción no se puede deshacer."
+      },
+      "toasts": {
+        "deleted": "Elemento eliminado"
+      },
+      "errors": {
+        "loadFailed": "Error al cargar la biblioteca",
+        "deleteFailed": "Error al eliminar el elemento"
+      }
+    },
     "dimafx": {
       "description": "Configura tu tienda de Twitch Extension con assets multimedia que los viewers pueden comprar con Bits, usar al instante o guardar para despues.",
       "title": "Tienda de Twitch Extension",

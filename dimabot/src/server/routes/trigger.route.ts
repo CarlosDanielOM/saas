@@ -811,6 +811,112 @@ router.patch('/library/:channelID/:libraryItemID', authMiddleware as any, async 
     }
 });
 
+router.patch('/library/:channelID/:libraryItemID/scope', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
+    try {
+        const { channelID, libraryItemID } = req.params;
+        const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+        const libraryItemIdStr = Array.isArray(libraryItemID) ? libraryItemID[0] : libraryItemID;
+
+        if (!await ensureTriggerPermission(req, res, channelIdStr, ['triggers:edit'])) {
+            return;
+        }
+
+        const requestedScope = typeof req.body?.scope === 'string' ? req.body.scope : '';
+        if (requestedScope !== 'public') {
+            return res.status(400).json({
+                error: true,
+                message: 'Scope change is one-way: assets can only be promoted from private to public.',
+                status: 400
+            });
+        }
+
+        const libraryItem = await UserMediaLibraryItemSchema.findOne({
+            _id: libraryItemIdStr,
+            channelID: channelIdStr,
+            isActive: true,
+            deletedAt: null
+        });
+        if (!libraryItem) {
+            return res.status(404).json({
+                error: true,
+                message: 'Library item not found',
+                status: 404
+            });
+        }
+
+        if (libraryItem.assetScope !== 'private') {
+            return res.status(400).json({
+                error: true,
+                message: 'Only private assets can be promoted to public.',
+                status: 400
+            });
+        }
+
+        const asset = await MediaAssetSchema.findById(libraryItem.assetID);
+        if (!asset || asset.deletedAt) {
+            return res.status(404).json({
+                error: true,
+                message: 'Associated media asset not found',
+                status: 404
+            });
+        }
+
+        if (asset.scope !== 'private') {
+            return res.status(400).json({
+                error: true,
+                message: 'Only private assets can be promoted to public.',
+                status: 400
+            });
+        }
+
+        // Promote asset to public; user no longer owns it exclusively.
+        asset.scope = 'public';
+        if (asset.marketplaceStatus === 'not_listed' || !asset.marketplaceStatus) {
+            asset.marketplaceStatus = 'not_listed';
+        }
+        await asset.save();
+
+        // Update library item to reflect new scope and release quota charge.
+        libraryItem.assetScope = 'public';
+        libraryItem.quotaBytesCharged = 0;
+        await libraryItem.save();
+
+        // Recalculate channel quota to reflect the release.
+        const planTier = normalizePlanTier(req.body?.planTier);
+        const quotaBytesUsed = await getChannelQuotaUsageBytes(channelIdStr);
+        const quotaBytesLimit = getPlanStorageQuotaBytes(planTier);
+
+        return res.status(200).json({
+            error: false,
+            message: 'Asset promoted to public. Quota released. This change is irreversible.',
+            status: 200,
+            data: {
+                item: mapLibraryItemResponse(libraryItem.toObject(), asset.toObject()),
+                meta: {
+                    planTier,
+                    quotaBytesUsed,
+                    quotaBytesLimit
+                }
+            }
+        });
+    } catch (err) {
+        await error({
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
+            channelID: req.params.channelID,
+            libraryItemID: req.params.libraryItemID,
+            body: req.body,
+            timestamp: new Date().toISOString()
+        }, { destination: 'both' });
+
+        return res.status(500).json({
+            error: true,
+            message: 'Internal server error',
+            status: 500
+        });
+    }
+});
+
 router.delete('/library/:channelID/:libraryItemID', authMiddleware as any, async (req: TriggerRequest, res: Response) => {
     try {
         const { channelID, libraryItemID } = req.params;
