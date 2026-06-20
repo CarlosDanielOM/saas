@@ -1,12 +1,21 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, HardDrive, Upload, Trash2, Edit2, Eye, Lock, Globe } from 'lucide-angular';
+import { map, distinctUntilChanged, shareReplay, switchMap, startWith, of } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { TriggersService } from '../triggers/triggers.service';
 import { MediaLibraryItem, MediaLibraryMeta, PlanTier } from '../triggers/triggers.model';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
+import { getRouteParam } from '../../shared/utils/route-param.util';
+
+interface ChannelResolutionState {
+  streamer: string;
+  channelID: string | null;
+  status: 'idle' | 'loading' | 'resolved';
+}
 
 @Component({
   selector: 'app-media-library-page',
@@ -17,9 +26,9 @@ import { ToastService } from '../../services/toast.service';
     <div class="media-library-page">
       <section class="media-hero">
         <div class="media-hero__content">
-          <a routerLink="../triggers" class="media-back-link">
+          <a routerLink=".." class="media-back-link">
             <lucide-icon [img]="storageIcon" class="media-back-link__icon"></lucide-icon>
-            <span>{{ t('modules.library.backToTriggers') }}</span>
+            <span>{{ t('modules.library.backToModules') }}</span>
           </a>
 
           <div class="media-hero__chips">
@@ -106,6 +115,7 @@ export class MediaLibraryPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
 
   readonly storageIcon = HardDrive;
   readonly uploadIcon = Upload;
@@ -123,7 +133,11 @@ export class MediaLibraryPageComponent {
     quotaBytesLimit: 100 * 1024 * 1024
   });
 
-  readonly planTier = computed<PlanTier>(() => this.libraryMeta().planTier || 'free');
+  readonly planTier = computed<PlanTier>(() => {
+    const metaTier = this.libraryMeta().planTier;
+    if (metaTier) return metaTier;
+    return (this.sessionAuth.session()?.appUser.plan_tier || 'free') as PlanTier;
+  });
   readonly planTierLabel = computed(() => this.planTier().toUpperCase());
   readonly quotaPercent = computed(() => {
     const meta = this.libraryMeta();
@@ -131,11 +145,47 @@ export class MediaLibraryPageComponent {
     return Math.max(0, Math.min(100, Math.round((meta.quotaBytesUsed / meta.quotaBytesLimit) * 100)));
   });
 
-  private channelID: string | null = null;
+  private readonly streamerParam$ = this.route.paramMap.pipe(
+    map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
+    distinctUntilChanged(),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+
+  private readonly channelID$ = this.streamerParam$.pipe(
+    switchMap((streamer) => {
+      if (!streamer) {
+        return of<ChannelResolutionState>({ streamer, channelID: null, status: 'idle' });
+      }
+
+      return this.sessionAuth.resolveChannelID(streamer).pipe(
+        map((channelID) => ({ streamer, channelID, status: 'resolved' as const })),
+        startWith({ streamer, channelID: null, status: 'loading' as const })
+      );
+    }),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+
+  readonly streamer = toSignal(this.streamerParam$, {
+    initialValue: (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()
+  });
+
+  readonly channelResolution = toSignal(this.channelID$, {
+    initialValue: {
+      streamer: (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase(),
+      channelID: null,
+      status: 'loading'
+    } satisfies ChannelResolutionState
+  });
+
+  readonly channelID = computed(() => this.channelResolution().channelID);
 
   constructor() {
-    // TODO: Resolve channelID from route/context via getRouteParam
-    // For now leave empty; loadLibrary will be triggered after channelID is set
+    effect(() => {
+      const channelId = this.channelID();
+      if (channelId) {
+        this.loadLibrary(channelId);
+      }
+    });
   }
 
   t(key: string, params?: Record<string, string | number>): string {
@@ -150,10 +200,11 @@ export class MediaLibraryPageComponent {
     return `${value.toFixed(value < 10 ? 1 : 0)} ${units[exponent]}`;
   }
 
-  loadLibrary(): void {
-    if (!this.channelID) return;
+  loadLibrary(channelId?: string): void {
+    const id = channelId ?? this.channelID();
+    if (!id) return;
     this.loading.set(true);
-    this.triggersService.getLibrary(this.channelID).subscribe({
+    this.triggersService.getLibrary(id).subscribe({
       next: (res) => {
         this.items.set(res.items || []);
         if (res.meta) this.libraryMeta.set(res.meta);
@@ -167,14 +218,14 @@ export class MediaLibraryPageComponent {
   }
 
   triggerUpload(): void {
-    // TODO: Implement file input + upload via TriggersService
     this.toast.info(this.t('common.info'), this.t('modules.library.actions.uploadComingSoon'));
   }
 
   deleteItem(item: MediaLibraryItem): void {
-    if (!this.channelID) return;
+    const id = this.channelID();
+    if (!id) return;
     if (!confirm(this.t('modules.library.confirm.delete'))) return;
-    this.triggersService.removeLibraryItem(this.channelID, item._id).subscribe({
+    this.triggersService.removeLibraryItem(id, item._id).subscribe({
       next: () => {
         this.toast.success(this.t('common.success'), this.t('modules.library.toasts.deleted'));
         this.loadLibrary();
