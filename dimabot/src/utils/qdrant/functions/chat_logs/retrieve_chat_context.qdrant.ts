@@ -1,7 +1,5 @@
-import {
-  detectLanguage,
-  generateEmbedding,
-} from "../../../ai/openrouter/embeddings.ai.js";
+import { detectLanguage } from "../../../ai/openrouter/embeddings.ai.js";
+import { generateEmbedding } from "../../../ai/lfm2_embeddings/index.js";
 import { getQdrantConnection } from "../../../databases/qdrant.database.js";
 import { debug, error } from "../../../logger.js";
 import { recordSemanticMemoryMetric } from "../../../observability/bot_runtime_metrics.js";
@@ -220,7 +218,7 @@ export async function retrieveSemanticChatContext(
 
     const queryText = String(params.query || "").trim();
     const language = detectLanguage(queryText, 0.1);
-    const embeddingResult = await generateEmbedding(queryText);
+    const embeddingResult = await generateEmbedding(queryText, 'lfm2.5-embedding-350m', 'query');
 
     if (embeddingResult.error || !embeddingResult.embedding) {
       void recordSemanticMemoryMetric({

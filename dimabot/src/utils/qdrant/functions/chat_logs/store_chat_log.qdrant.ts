@@ -1,5 +1,6 @@
 import { getQdrantConnection } from '../../../databases/qdrant.database.js';
-import { generateEmbedding, detectLanguage } from '../../../ai/openrouter/embeddings.ai.js';
+import { generateEmbedding } from '../../../ai/lfm2_embeddings/index.js';
+import { detectLanguage } from '../../../ai/openrouter/embeddings.ai.js';
 import { error, debug } from '../../../logger.js';
 import { createHash } from 'crypto';
 import EmbeddingBatcher from '../../../../classes/embedding_batcher.class.js';
@@ -50,7 +51,7 @@ export async function storeChatMessageEmbedding(data: IChatMessageData): Promise
 
         const language = data.language || detectLanguage(data.message, 0.1);
 
-        const embeddingResult = await generateEmbedding(data.message);
+        const embeddingResult = await generateEmbedding(data.message, 'lfm2.5-embedding-350m', 'document');
         
         const embeddingEnd = Date.now();
         const embeddingTime = embeddingEnd - embeddingStart;

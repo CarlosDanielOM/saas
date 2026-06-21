@@ -1,4 +1,5 @@
-import { generateEmbeddings, detectLanguage } from '../utils/ai/openrouter/embeddings.ai.js';
+import { generateEmbeddings } from '../utils/ai/lfm2_embeddings/index.js';
+import { detectLanguage } from '../utils/ai/openrouter/embeddings.ai.js';
 import { EMBEDDING_MODELS } from '../utils/ai/constants.js';
 import { getQdrantConnection } from '../utils/databases/qdrant.database.js';
 import { error, debug } from '../utils/logger.js';
@@ -82,7 +83,8 @@ class EmbeddingBatcher {
 
             const result = await generateEmbeddings(
                 messages.map(m => m.text),
-                EMBEDDING_MODELS.default
+                EMBEDDING_MODELS.default,
+                'document'  // these are chat messages being indexed for retrieval
             );
 
             if (result.error || !result.embeddings) {

@@ -65,12 +65,14 @@ export const MINIMAX_COST_PER_M_OUTPUT = 2.4;
 
 export const DEFAULT_TIMEOUT_MS = 8000;
 
+// Self-hosted LFM2.5-Embedding-350M is the only embedding model we use.
+// It produces 1024-dim L2-normalized vectors served by the
+// `lfm2.5-embeddings` container on the databases network.
 export const EMBEDDING_MODELS = {
-  default: "qwen/qwen3-embedding-8b",
-  multilingual: "qwen/qwen3-embedding-8b",
+  default: "lfm2.5-embedding-350m",
+  multilingual: "lfm2.5-embedding-350m",
 } as const;
 
 export const EMBEDDING_DIMENSIONS: Record<string, number> = {
-  "baai/bge-m3": 1024,
-  "qwen/qwen3-embedding-8b": 1024,
+  "lfm2.5-embedding-350m": 1024,
 };

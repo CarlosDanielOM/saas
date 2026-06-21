@@ -1,4 +1,4 @@
-import { generateEmbedding } from '../../../ai/openrouter/embeddings.ai.js';
+import { generateEmbedding } from '../../../ai/lfm2_embeddings/index.js';
 import { getQdrantConnection } from '../../../databases/qdrant.database.js';
 import { error, debug } from '../../../logger.js';
 
@@ -52,7 +52,7 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
             };
         }
 
-        const embeddingResult = await generateEmbedding(embeddingInput);
+        const embeddingResult = await generateEmbedding(embeddingInput, 'lfm2.5-embedding-350m', 'document');
         if (embeddingResult.error || !embeddingResult.embedding) {
             return {
                 error: true,

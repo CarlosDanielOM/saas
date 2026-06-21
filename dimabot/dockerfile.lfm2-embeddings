@@ -1,0 +1,65 @@
+# Multi-stage not strictly needed; we keep this lean to fit on the same
+# host as the other dimabot services. Total image size is ~1.5GB.
+FROM python:3.12-slim
+
+# Install build deps for sentence-transformers / onnxruntime wheels.
+# Then drop them to keep the image small.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        gcc \
+        g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps. We need:
+#   - sentence-transformers >= 3.0 for prompt_name support
+#   - transformers >= 4.56 for Lfm2BidirectionalModel (custom code in repo)
+#   - torch (CPU build) for the backbone
+#   - fastapi + uvicorn for the OpenAI-compatible HTTP API
+# The model card explicitly requires `trust_remote_code=True` because
+# Lfm2BidirectionalModel is shipped as custom code in the HF repo.
+# Install torch first from the CPU-only PyTorch index, then everything
+# else from PyPI (otherwise the torch index would not have the other
+# packages).
+RUN pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        "torch>=2.4" \
+    && pip install --no-cache-dir \
+        "sentence-transformers>=3.0.1" \
+        "transformers==4.56.2" \
+        "huggingface-hub>=0.24" \
+        "tokenizers>=0.20" \
+        "fastapi>=0.115" \
+        "uvicorn[standard]>=0.30" \
+        "numpy>=1.26" \
+        "pydantic>=2.7" \
+    && apt-get purge -y gcc g++ \
+    && apt-get autoremove -y \
+    && rm -rf /root/.cache /tmp/*
+
+# Copy server script + startup script. The Python file is placed in
+# /app and /app is added to PYTHONPATH so uvicorn can import it as
+# "lfm2_embeddings_server".
+COPY scripts/lfm2_embeddings_server.py /app/lfm2_embeddings_server.py
+COPY scripts/run-lfm2-embeddings.sh /usr/local/bin/run-lfm2-embeddings.sh
+RUN chmod +x /usr/local/bin/run-lfm2-embeddings.sh
+
+# Make /app importable
+ENV PYTHONPATH=/app
+
+# Environment
+ENV LFM2_MODEL_ID="LiquidAI/LFM2.5-Embedding-350M" \
+    LFM2_HTTP_HOST=0.0.0.0 \
+    LFM2_HTTP_PORT=8080 \
+    LFM2_EMBED_DIM=1024 \
+    HF_HOME=/data/hf-cache \
+    TRANSFORMERS_CACHE=/data/hf-cache \
+    HUGGINGFACE_HUB_CACHE=/data/hf-cache \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    TOKENIZERS_PARALLELISM=false \
+    OMP_NUM_THREADS=6
+
+EXPOSE 8080
+
+CMD ["/usr/local/bin/run-lfm2-embeddings.sh"]
