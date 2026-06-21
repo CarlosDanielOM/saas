@@ -143,4 +143,61 @@ Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) ma
 
 ---
 
+## Production Build & Deployment
+
+After **any** change to `dimasite/src/**`, you must rebuild the production bundle. There is **no separate deploy step** — the serving container reads the build output directly via a bind-mount.
+
+### Build command
+
+From `saas/` root:
+
+```bash
+npm run build --prefix dimasite
+```
+
+This invokes `ng build` in production mode (no flags needed). Output is written to:
+
+```
+dimasite/dist/dimasite/browser/
+```
+
+### How the bundle reaches production
+
+The `dimabot-site` nginx container (managed by `nginx-proxy-manager`, **not** part of `dimabot/docker-compose.yaml`) has a **read-only bind-mount**:
+
+```
+host:        /home/cdom/saas/dimasite/dist/dimasite/browser
+container:   /usr/share/nginx/html
+```
+
+Nginx reads files on every request, so the new bundle is live the moment `ng build` finishes — **no container restart, no `cp`, no service reload**.
+
+### Verify the deploy
+
+```bash
+# Confirm bundle timestamp updated on host
+stat -c '%y' /home/cdom/saas/dimasite/dist/dimasite/browser/index.html
+
+# Confirm the served bundle has new chunk hashes
+curl -s https://domdimabot.com/ | grep -oE 'main-[A-Z0-9]+\.js'
+
+# Confirm the count-up directive / new code is in the served bundle
+curl -s https://domdimabot.com/main-<HASH>.js | head -c 200
+```
+
+The new entry chunk will have a different content hash than the previous build (e.g. `main-ZC6TJKTU.js`). Cross-check it against `dimasite/dist/dimasite/browser/main-*.js`.
+
+### Important do-nots
+
+- **Do not** copy files to `/home/cdom/var/www/dima-site/` — that path is unused. The container reads from `dimasite/dist/dimasite/browser/` directly. (The `dimabot/AGENTS.md` had a stale copy step; treat it as deprecated.)
+- **Do not** restart the `dimabot-site` container after a frontend change — nginx picks up file changes per-request.
+- **Do not** commit `dimasite/dist/` — it is gitignored at both root (`/home/cdom/saas/.gitignore`) and per-project (`dimasite/.gitignore`).
+- **Do not** add `cp`/`rsync` steps in deploy scripts — the bind-mount is the deploy.
+
+### Why no flags?
+
+`ng build` with no arguments runs the default production configuration (`production: true` in `angular.json`), which enables optimization, hashing, and minification. The dev-only configuration (`--configuration development`) should only be used for `ng serve` during local development.
+
+---
+
 **This file is the authoritative design-system and Angular-pattern guide for `dimasite/`.** Update it when visual language, component conventions, or Angular best practices evolve. Root `saas/AGENTS.md` takes precedence for monorepo-wide rules.

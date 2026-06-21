@@ -98,6 +98,17 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 - Authenticated routes use `AuthenticatedLayoutComponent` + child routes under `/:streamer`.
 - Guards: `authenticatedGuard`, `dashboardAccessGuard`, `streamerRouteShapeGuard` (uses `MODULE_CHILDREN` whitelist).
 - Theme via `ThemeService` (light/dark/system) + `data-theme` attribute.
+
+### Frontend Deploy (no container rebuild needed)
+
+After **any** change to `dimasite/src/**`, rebuild from the repo root:
+
+```bash
+npm run build --prefix dimasite
+```
+
+The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. nginx reads files per-request, so the new bundle is live the moment the build finishes — no `cp`, no container restart. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
+
 - Plan-tier styling: use `plan_tier` (`free|premium|pro`) as source of truth. Premium = subtle gold, Pro = stronger gold treatment.
 - **Responsive priority**: All site projects (`dimasite/`, `admin/`, `dimadocs/`) follow a **mobile-first** approach. Design for 320–480px base, then enhance for tablet/desktop. Use `min-width` media queries. Test on real mobile devices or emulation before finalizing desktop.
 

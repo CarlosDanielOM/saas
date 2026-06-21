@@ -84,16 +84,18 @@ docker compose up -d --build
 
 ### Frontend bundle (dimasite)
 
-The `dima-site` nginx container is **not** part of `dimabot/docker-compose.yaml`. Its content is bind-mounted from the host at `/home/cdom/var/www/dima-site/` and is sourced from `dimasite/dist/dimasite/browser/` (Angular output). After building the frontend:
+The `dimabot-site` nginx container is **not** part of `dimabot/docker-compose.yaml`; it is managed by `nginx-proxy-manager`. Its content is bind-mounted directly from `dimasite/dist/dimasite/browser/` (Angular build output) into the container at `/usr/share/nginx/html` (read-only).
+
+**There is no separate deploy step.** After editing `dimasite/src/**`, just rebuild:
 
 ```bash
 # From saas/ root
 npm run build --prefix dimasite
-rm -rf /home/cdom/var/www/dima-site/*
-cp -r dimasite/dist/dimasite/browser/. /home/cdom/var/www/dima-site/
 ```
 
-No container restart is needed — nginx reads files on each request and the bind-mount reflects host changes immediately.
+No container restart is needed — nginx reads files on each request and the bind-mount reflects host changes immediately. The `/home/cdom/var/www/dima-site/` path mentioned in older revisions of this document is **unused** — do not copy files there.
+
+See `dimasite/AGENTS.md` → "Production Build & Deployment" for full details.
 
 ## Worker Guidelines
 
