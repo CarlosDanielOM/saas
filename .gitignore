@@ -70,6 +70,13 @@ __screenshots__/
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/mcp.json
+# Editor backup files (vim, VSCode, emacs, etc.)
+*~
+*.swp
+*.swo
+*.bak
+*.backup
+*.backup-*
 
 # OS files
 .DS_Store
