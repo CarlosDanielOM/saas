@@ -4,6 +4,7 @@ import { CommandsSchema } from '../schemas/commands.schema.js';
 import { SiteAnalyticsSchema, type ILiveChannel } from '../schemas/site_analytics.schema.js';
 import { getTwitchHelixUrl } from './links.js';
 import { executeHelixAppRequestWith401Retry } from './twitch_helix_retry.js';
+import { error as logError } from './logger.js';
 
 const SITE_ANALYTICS_KEY = 'site:analytics:channels';
 const SITE_ANALYTICS_LIVE_CHANNELS_KEY = 'site:analytics:live:channels';
@@ -540,9 +541,25 @@ export async function startSiteAnalytics(): Promise<boolean> {
         startLiveChannelsRefreshWorker();
 
         return true;
-    } catch (error) {
-        console.error('Error starting site analytics: ', error);
-        return false;
+    } catch (caught) {
+        // Surface failures through the structured logger so they show up
+        // alongside every other dimabot error and are alertable.
+        // Previously the catch only wrote to console.error, which made
+        // init failures invisible and left the cache empty (causing the
+        // landing page to render all zeros).
+        await logError(
+            {
+                function: 'startSiteAnalytics',
+                step: 'site-analytics-init',
+                phase: 'cache-warmup',
+                impact: 'landing-page-stats-may-show-zeros-until-recovery',
+                error: caught instanceof Error ? caught.message : String(caught)
+            },
+            { destination: 'both' }
+        );
+        // Re-throw so the caller can decide how to handle the failure
+        // (fail open with a recovery refresh, or process.exit).
+        throw caught;
     }
 }
 

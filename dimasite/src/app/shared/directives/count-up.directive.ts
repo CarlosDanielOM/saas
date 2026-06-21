@@ -48,17 +48,43 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (!this.hasEnteredViewport || !changes['countUp'] || changes['countUp'].firstChange) {
+    if (!changes['countUp']) {
       return;
     }
 
     const newTarget = this.countUp;
-    
+
+    if (!this.hasEnteredViewport) {
+      // Element hasn't entered the viewport yet. Reflect the current
+      // value directly in the DOM (no animation) so the displayed
+      // number always tracks the latest signal. Without this, if SSE
+      // delivers the real count while the section is below the fold,
+      // the textContent would stay at the initial '0' until the user
+      // scrolls down — and the user would see "0" right up until the
+      // moment the section scrolls into view.
+      //
+      // When the IntersectionObserver eventually fires (on viewport
+      // entry), `animateTo(this.countUp)` is called with the latest
+      // value. Because `this.current` is already set to that value
+      // here, the animation will be a no-op — the user will see the
+      // correct number without an unexpected re-count from 0.
+      this.current = newTarget;
+      this.elementRef.nativeElement.textContent = newTarget.toLocaleString();
+      return;
+    }
+
+    if (changes['countUp'].firstChange) {
+      // First binding change is the initial render. The
+      // IntersectionObserver handles the initial animation; nothing
+      // to do here.
+      return;
+    }
+
     if (this.frameId) {
       const now = performance.now();
       const elapsed = now - this.animationStartTime;
       const originalProgress = Math.min(elapsed / this.duration, 1);
-      
+
       if (originalProgress < 0.5) {
         this.animateTo(newTarget, this.current);
       } else {
