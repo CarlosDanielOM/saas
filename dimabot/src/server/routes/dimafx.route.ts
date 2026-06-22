@@ -12,6 +12,7 @@ import {
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getIO } from '../websocket.js';
 import { buildMediaPlaybackUrl } from '../services/media_library.service.js';
+import { scheduleThumbnailGeneration } from '../../utils/thumbnail_generator.js';
 import {
     getAllowedDimafxBitPrices,
     getDimafxSkuForBitsPrice,
@@ -78,10 +79,28 @@ function normalizeVolume(value: unknown): number {
 
 function getFallbackThumbnail(asset: IMediaAsset | null): string {
     if (!asset) return '';
+    if (asset.thumbnailAssetID) {
+        return buildMediaPlaybackUrl(asset.thumbnailAssetID);
+    }
     if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
+        // The asset itself is an image — its own playback URL works as a thumbnail.
         return buildMediaPlaybackUrl(asset._id);
     }
     return '';
+}
+
+/**
+ * If a media asset is missing its generated thumbnail and is not audio,
+ * schedule background generation. This is the safety net for assets that
+ * were uploaded before this feature shipped or whose initial generation
+ * failed silently.
+ */
+function ensureThumbnailInFlight(asset: IMediaAsset | null): void {
+    if (!asset) return;
+    if (asset.thumbnailAssetID) return;
+    if (asset.thumbnailStatus === 'skipped') return;
+    if (asset.mediaType === 'audio') return;
+    scheduleThumbnailGeneration(asset._id);
 }
 
 const ALLOWED_DIMAFX_CATEGORIES: ChannelExtensionItemCategory[] = ['video', 'audio', 'gif', 'tts'];
@@ -101,6 +120,25 @@ function normalizeCategoryInput(value: unknown, fallback: ChannelExtensionItemCa
 }
 
 function mapChannelExtensionItem(item: IChannelExtensionItem, asset: IMediaAsset | null): Record<string, unknown> {
+    // thumbnailUrl resolution order:
+    //   1. auto-generated thumbnail (always serves from api.domdimabot.com)
+    //   2. asset's own playback URL (works for image/gif assets)
+    //   3. the legacy stored thumbnailUrl (kept for back-compat, may be a stale external URL)
+    // The mapper ALWAYS prefers the auto-generated thumbnail so the extension never
+    // receives a broadcaster-controlled URL. The stale item.thumbnailUrl is only
+    // consulted as a last-resort fallback for very old rows where the asset has
+    // no thumbnailAssetID and is not an image/gif.
+    const resolvedThumbnail = (() => {
+        if (asset?.thumbnailAssetID) return buildMediaPlaybackUrl(asset.thumbnailAssetID);
+        if (asset && (asset.mediaType === 'image' || asset.mediaType === 'gif')) {
+            return buildMediaPlaybackUrl(asset._id);
+        }
+        if (typeof item.thumbnailUrl === 'string' && item.thumbnailUrl.trim().startsWith('https://api.domdimabot.com/')) {
+            return item.thumbnailUrl.trim();
+        }
+        return '';
+    })();
+
     return {
         _id: item._id,
         id: String(item._id),
@@ -111,7 +149,7 @@ function mapChannelExtensionItem(item: IChannelExtensionItem, asset: IMediaAsset
         description: item.description,
         category: item.category,
         mediaType: item.mediaType,
-        thumbnailUrl: item.thumbnailUrl || getFallbackThumbnail(asset),
+        thumbnailUrl: resolvedThumbnail,
         durationMs: item.durationMs,
         bitsPrice: item.bitsPrice,
         sku: item.sku,
@@ -163,7 +201,14 @@ async function getAssetMap(assetIDs: string[]): Promise<Map<string, IMediaAsset>
     if (uniqueIDs.length === 0) return new Map();
 
     const assets = await MediaAssetSchema.find({ _id: { $in: uniqueIDs }, deletedAt: null }).lean();
-    return new Map(assets.map((asset) => [String(asset._id), asset]));
+    const map = new Map(assets.map((asset) => [String(asset._id), asset]));
+
+    // Lazy fallback: any non-audio asset without a thumbnail gets a background job.
+    for (const asset of assets) {
+        ensureThumbnailInFlight(asset);
+    }
+
+    return map;
 }
 
 async function ensureDimafxPermission(req: DimafxRequest, res: Response, channelID: string, permissions: string[]): Promise<boolean> {
@@ -662,7 +707,9 @@ router.post('/:channelID/items', authMiddleware as any, async (req: DimafxReques
             description: typeof body.description === 'string' ? body.description.trim() : '',
             category: normalizeCategoryInput(body.category, defaultCategoryFromMediaType(asset.mediaType as string | undefined)),
             mediaType: asset.mediaType as MediaAssetType,
-            thumbnailUrl: typeof body.thumbnailUrl === 'string' ? body.thumbnailUrl.trim() : getFallbackThumbnail(asset),
+            // body.thumbnailUrl is intentionally ignored — thumbnails are auto-generated
+            // server-side so they always resolve to https://api.domdimabot.com/media/{id}.
+            thumbnailUrl: getFallbackThumbnail(asset),
             durationMs: normalizePositiveInteger(body.durationMs, 0),
             bitsPrice,
             sku,
@@ -708,7 +755,9 @@ router.patch('/:channelID/items/:itemID', authMiddleware as any, async (req: Dim
             }
             existing.category = body.category;
         }
-        if (typeof body.thumbnailUrl === 'string') existing.thumbnailUrl = body.thumbnailUrl.trim();
+        // body.thumbnailUrl is intentionally ignored — thumbnails are auto-generated
+        // server-side. (Old persisted values remain on the row; the mapper below
+        // prefers the asset's generated thumbnail over the stale field.)
         if (body.durationMs !== undefined) existing.durationMs = normalizePositiveInteger(body.durationMs, 0);
         if (body.volume !== undefined) existing.volume = normalizeVolume(body.volume);
         if (typeof body.isEnabled === 'boolean') existing.isEnabled = body.isEnabled;

@@ -1,6 +1,6 @@
 import { Schema, model, type HydratedDocument, Types } from 'mongoose';
 
-export type MediaAssetScope = 'public' | 'private';
+export type MediaAssetScope = 'public' | 'private' | 'system';
 export type MediaAssetType = 'video' | 'audio' | 'image' | 'gif';
 export type MediaAssetMarketplaceStatus = 'not_listed' | 'published' | 'pending_review' | 'hidden' | 'removed';
 
@@ -25,6 +25,10 @@ export interface IMediaAsset {
     scope: MediaAssetScope;
     marketplaceStatus: MediaAssetMarketplaceStatus;
     checksumSha256?: string | null;
+    thumbnailAssetID?: Types.ObjectId | null;
+    thumbnailStatus: 'pending' | 'ready' | 'failed' | 'skipped';
+    thumbnailAttempts: number;
+    thumbnailLastError?: string | null;
     libraryCount: number;
     triggerReferenceCount: number;
     alertReferenceCount: number;
@@ -51,7 +55,7 @@ const mediaAssetSchema = new Schema<IMediaAsset>({
     s3Key: { type: String, required: true, unique: true },
     storageUrl: { type: String, required: true },
     proxyPath: { type: String, default: null },
-    scope: { type: String, required: true, enum: ['public', 'private'], index: true },
+    scope: { type: String, required: true, enum: ['public', 'private', 'system'], index: true },
     marketplaceStatus: {
         type: String,
         required: true,
@@ -60,6 +64,16 @@ const mediaAssetSchema = new Schema<IMediaAsset>({
         index: true
     },
     checksumSha256: { type: String, default: null },
+    thumbnailAssetID: { type: Schema.Types.ObjectId, default: null, index: true, ref: 'MediaAsset' },
+    thumbnailStatus: {
+        type: String,
+        required: true,
+        enum: ['pending', 'ready', 'failed', 'skipped'],
+        default: 'pending',
+        index: true
+    },
+    thumbnailAttempts: { type: Number, default: 0 },
+    thumbnailLastError: { type: String, default: null },
     libraryCount: { type: Number, default: 0 },
     triggerReferenceCount: { type: Number, default: 0 },
     alertReferenceCount: { type: Number, default: 0 },

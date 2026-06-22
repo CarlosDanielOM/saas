@@ -11,6 +11,7 @@ import { MediaAssetSchema, type IMediaAsset } from '../../schemas/media_asset.sc
 import { UserMediaLibraryItemSchema, type IUserMediaLibraryItem } from '../../schemas/user_media_library_item.schema.js';
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { uploadTriggerFileToS3, deleteTriggerFileFromS3 } from '../../utils/s3.js';
+import { scheduleThumbnailGeneration } from '../../utils/thumbnail_generator.js';
 import { getUrl } from '../../utils/dev.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getIO } from '../../server/websocket.js';
@@ -576,10 +577,18 @@ router.post('/library/:channelID/upload', authMiddleware as any, async (req: Mul
                 scope,
                 marketplaceStatus: getInitialMarketplaceStatus(scope),
                 checksumSha256: null,
+                thumbnailAssetID: null,
+                thumbnailStatus: mediaType === 'audio' ? 'skipped' : 'pending',
+                thumbnailAttempts: 0,
+                thumbnailLastError: null,
                 libraryCount: 1,
                 triggerReferenceCount: 0,
                 deletedAt: null
             });
+
+            // Background: extract a 480px thumbnail for the DimaFX extension.
+            // Skipped automatically by the generator for audio assets.
+            scheduleThumbnailGeneration(asset._id);
 
             const libraryItem = await UserMediaLibraryItemSchema.create({
                 channelID: channelIdStr,

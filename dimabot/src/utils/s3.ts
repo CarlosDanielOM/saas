@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import type { Readable } from 'stream';
 
-const s3Client = new S3Client({
+export const s3Client = new S3Client({
     region: process.env.S3_REGION!,
     endpoint: `https://${process.env.S3_REGION!}.${process.env.S3_ENDPOINT!}`,
     credentials: {
@@ -10,7 +10,7 @@ const s3Client = new S3Client({
     }
 });
 
-const BUCKET = process.env.S3_BUCKET!;
+export const BUCKET = process.env.S3_BUCKET!;
 const S3_PUBLIC_URL = process.env.S3_PUBLIC_URL || `https://${BUCKET}.${process.env.S3_REGION!}.${process.env.S3_ENDPOINT!}`;
 
 export function getS3PublicObjectUrl(key: string): string {

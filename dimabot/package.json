@@ -19,6 +19,7 @@
     "migrate:bits-canonical": "tsx src/scripts/migrate_bits_canonical.script.ts",
     "backup:full-db": "tsx src/scripts/backup_full_database.script.ts",
     "migrate:trigger-media": "tsx src/scripts/migrate_trigger_media.script.ts",
+    "migrate:dimafx-thumbnails": "tsx src/scripts/migrate_dimafx_thumbnails.script.ts",
     "cleanup:invalid-trigger-files": "tsx src/scripts/cleanup_invalid_legacy_trigger_files.script.ts",
     "migrate:legacy-trigger-rewards": "tsx src/scripts/migrate_legacy_trigger_rewards.script.ts",
     "migrate:ai-feature-flags": "tsx src/scripts/migrate_ai_feature_flags.script.ts",
