@@ -169,6 +169,93 @@ This project is indexed by GitNexus as **saas**.
 | Tools, resources, schema          | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`         |
 | Index / status / clean / wiki     | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`           |
 
+## Code Intelligence: GitNexus + Graphify
+
+This project has **two complementary knowledge graph tools**. They overlap on static code structure but each has unique strengths. Use the right one for the task.
+
+### Quick decision guide
+
+| Task | Use | Why |
+|------|-----|-----|
+| "What breaks if I change X?" | **GitNexus** `impact()` | Blast radius analysis — finds all callers/importers |
+| "Show me the full context of symbol X" | **GitNexus** `context()` | 360° view: callers, callees, process participation |
+| "Trace the call path from A to B" | **GitNexus** `trace()` | Shortest directed path over call + class-member edges |
+| "What depends on this route?" | **GitNexus** `api_impact()` | Route-level consumer mapping + response shape checks |
+| "Check my uncommitted changes" | **GitNexus** `detect_changes()` | Maps git diff hunks to symbols + affected flows |
+| "Rename X across the codebase" | **GitNexus** `rename()` | Graph-aware rename with confidence tags |
+| "Raw Cypher query on the graph" | **GitNexus** `cypher()` | Direct DB query on LadybugDB |
+| "How does the codebase work as a whole?" | **Graphify** `GRAPH_REPORT.md` | God nodes, communities, surprising connections |
+| "What concepts connect auth to the database?" | **Graphify** `query` | Semantic concept traversal (includes docs, not just code) |
+| "What's the relationship between A and B?" | **Graphify** `path "A" "B"` | Edge-level detail with relation type + confidence |
+| "Explain what X does in plain language" | **Graphify** `explain "X"` | Node + neighbors summary |
+| "Show me import cycles / surprising cross-file links" | **Graphify** `GRAPH_REPORT.md` | Auto-detected cycles, god nodes, hyperedges |
+| "Find design docs that reference this code" | **Graphify** | LLM-extracted doc→code traces (GitNexus can't do this) |
+| "Interactive graph visualization" | **Graphify** `graph.html` | Clickable network graph (when < 5000 nodes) |
+
+### How they complement each other
+
+**GitNexus** is the **real-time code intelligence layer**:
+- Persistent LadybugDB graph database (queryable via Cypher)
+- MCP server with 8 live tools (impact, context, trace, query, rename, detect_changes, etc.)
+- Hybrid BM25 + vector semantic search (8,219 embeddings, snowflake-arctic-embed-xs)
+- Incremental re-index on every commit (post-commit hook, ~seconds, free)
+- Sees: symbols, types, imports, calls, class hierarchies, route handlers, execution flows
+- Blind spots: dynamic imports, barrel-file re-exports, callback patterns, design intent, documentation
+
+**Graphify** is the **architecture + design-intent layer**:
+- NetworkX graph stored as `graph.json` (portable, committed to git)
+- LLM-driven semantic extraction (MiniMax M3, 512K token budget, reasoning_split)
+- 290 LLM-labeled communities with descriptive names
+- God nodes, surprising connections, import cycles, hyperedges
+- Multi-modal: reads code (Tree-sitter), docs (Markdown/MDX), images (M3 vision)
+- AST-only rebuild on every commit (post-commit hook, free); LLM extraction on-demand
+- Sees: code structure + documentation concepts + design rationale + image/diagram content
+- Blind spots: real-time querying (no MCP server by default), blast radius, rename safety
+
+### When to use which — by workflow phase
+
+**Before editing code:**
+1. `gitnexus impact({target: "symbolName", direction: "upstream"})` — check blast radius
+2. `gitnexus context({name: "symbolName"})` — understand callers/callees
+3. If the symbol is part of a larger architecture question, `graphify explain "concept"` for design context
+
+**Exploring unfamiliar code:**
+1. `graphify query "how does X work"` — get the concept-level overview first (includes docs)
+2. `gitnexus query({search_query: "X"})` — get process-grouped execution flows
+3. `gitnexus context({name: "specificSymbol"})` — drill into a specific symbol
+
+**Before committing:**
+1. `gitnexus detect_changes()` — verify changes only affect expected symbols/flows
+2. Check the Graphify LLM Re-Extraction Policy (below) — assess if semantic refresh is needed
+
+**Architecture review / onboarding:**
+1. Read `graphify-out/GRAPH_REPORT.md` — god nodes, communities, surprising connections
+2. `graphify query "what are the core abstractions?"` — semantic overview
+3. `gitnexus query({search_query: "main entry points"})` — execution flow traces
+
+### Index freshness — both auto-update
+
+| Tool | Post-commit hook | What it updates | Cost |
+|------|-----------------|-----------------|------|
+| GitNexus | `gitnexus analyze .` (background) | Full graph: symbols, edges, embeddings (incremental) | Free |
+| Graphify | AST rebuild (background) | Code structure only: nodes, edges, communities | Free |
+| Graphify LLM | Manual or agent-triggered | Community labels, doc concepts, image understanding | MiniMax tokens ($0 on plan) |
+
+Both hooks are in `.git/hooks/post-commit` and run automatically. Neither blocks the commit.
+
+### Current index stats
+
+| Metric | GitNexus (v1.6.8) | Graphify (v0.8.47) |
+|--------|-------------------|---------------------|
+| Storage | `.gitnexus/lbug` (LadybugDB, ~120 MB) | `graphify-out/graph.json` (NetworkX, ~6 MB) |
+| Nodes | 9,380 | 5,455 |
+| Edges | 23,286 | 11,450 |
+| Communities | 535 clusters | 290 LLM-labeled communities |
+| Execution flows | 300 processes | — |
+| Embeddings | 8,219 (384-dim, HNSW index) | — |
+| Search | Hybrid BM25 + vector | BFS subgraph traversal |
+| LLM extraction | — | MiniMax M3 (reasoning_split, 512K tokens) |
+
 ## Per-Project Agent Guides
 
 Each major project now contains its own `AGENTS.md` for domain-specific rules:
@@ -248,7 +335,7 @@ Agent: Claude 4 via claude-code
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **saas** (9580 symbols, 23485 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **saas** (9583 symbols, 23488 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
