@@ -11,6 +11,21 @@ import {
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MAX_AUDIO_CANDIDATES = Math.max(1, Number(process.env.CLIP_RECOMMENDATION_MAX_AUDIO_CANDIDATES || 24));
 
+// Map of MIME type -> input_audio format hint supported by Xiaomi / mimo-v2.5.
+const AUDIO_MIME_TO_FORMAT: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/aiff': 'aiff',
+    'audio/x-aiff': 'aiff',
+    'audio/aac': 'aac',
+    'audio/ogg': 'ogg',
+    'audio/flac': 'flac',
+    'audio/m4a': 'm4a',
+    'audio/mp4': 'm4a'
+};
+
 export interface AudioCandidate {
     startSeconds: number;
     endSeconds: number;
@@ -28,16 +43,22 @@ interface OpenRouterMessageContentText {
     text: string;
 }
 
-interface OpenRouterMessageContentFile {
-    type: 'file';
-    file: {
-        filename: string;
-        mime_type: string;
-        data: string;
-    };
+interface OpenRouterAudioContent {
+    type: 'input_audio';
+    input_audio: { data: string; format: string };
 }
 
-type OpenRouterMessageContent = string | Array<OpenRouterMessageContentText | OpenRouterMessageContentFile>;
+interface OpenRouterVideoContent {
+    type: 'video_url';
+    video_url: { url: string };
+}
+
+interface OpenRouterImageContent {
+    type: 'image_url';
+    image_url: { url: string };
+}
+
+type OpenRouterUserContent = OpenRouterMessageContentText | OpenRouterAudioContent | OpenRouterVideoContent | OpenRouterImageContent;
 
 interface OpenRouterResponse {
     choices?: Array<{ message?: { content?: string } }>;
@@ -65,9 +86,19 @@ function clampCandidate(candidate: Partial<AudioCandidate>): AudioCandidate | nu
     return { startSeconds: start, endSeconds, reason: reason.slice(0, 500), confidence };
 }
 
-async function fileToDataUrl(filePath: string, mimeType: string): Promise<string> {
+async function fileToBase64(filePath: string): Promise<string> {
     const buffer = await fs.readFile(filePath);
-    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+    return buffer.toString('base64');
+}
+
+function resolveAudioFormat(mimeType: string): string {
+    const normalized = String(mimeType || '').toLowerCase().trim();
+    if (AUDIO_MIME_TO_FORMAT[normalized]) return AUDIO_MIME_TO_FORMAT[normalized];
+    if (normalized.startsWith('audio/')) {
+        const sub = normalized.split('/')[1] || '';
+        if (sub) return sub;
+    }
+    throw new Error(`Unsupported audio MIME type for OpenRouter input_audio: ${mimeType}`);
 }
 
 async function callOpenRouterJson(options: {
@@ -84,25 +115,41 @@ async function callOpenRouterJson(options: {
         throw new Error('OPENROUTER_API_KEY is required for clip recommendations');
     }
 
-    const dataUrl = await fileToDataUrl(options.filePath, options.mimeType);
+    const normalizedMime = String(options.mimeType || '').toLowerCase().trim();
+    const base64Data = await fileToBase64(options.filePath);
+
+    let mediaContent: OpenRouterUserContent;
+    if (normalizedMime.startsWith('audio/')) {
+        // Xiaomi/mimo-v2.5 audio format: type=input_audio with { data, format }
+        const audioFormat = resolveAudioFormat(normalizedMime);
+        mediaContent = {
+            type: 'input_audio',
+            input_audio: { data: base64Data, format: audioFormat }
+        };
+    } else if (normalizedMime.startsWith('video/')) {
+        // Xiaomi/mimo-v2.5 video format: type=video_url with a data URL
+        mediaContent = {
+            type: 'video_url',
+            video_url: { url: `data:${normalizedMime};base64,${base64Data}` }
+        };
+    } else if (normalizedMime.startsWith('image/')) {
+        // Xiaomi/mimo-v2.5 image format: type=image_url with a data URL
+        mediaContent = {
+            type: 'image_url',
+            image_url: { url: `data:${normalizedMime};base64,${base64Data}` }
+        };
+    } else {
+        throw new Error(`OpenRouter clip recommendations accept only audio/video/image inputs (got ${options.mimeType}).`);
+    }
+
     const body = {
         model: options.modelID || CLIP_RECOMMENDATION_MODEL_ID,
         messages: [
             { role: 'system', content: options.systemPrompt },
-            {
-                role: 'user',
-                content: [
-                    { type: 'text', text: options.userText },
-                    {
-                        type: 'file',
-                        file: {
-                            filename: path.basename(options.filePath),
-                            mime_type: options.mimeType,
-                            data: dataUrl
-                        }
-                    }
-                ] satisfies OpenRouterMessageContent
-            }
+            { role: 'user', content: [
+                { type: 'text', text: options.userText },
+                mediaContent
+            ] }
         ],
         response_format: { type: 'json_object' },
         max_tokens: options.maxTokens || 8000,
@@ -120,9 +167,21 @@ async function callOpenRouterJson(options: {
         body: JSON.stringify(body)
     });
 
-    const payload = await response.json() as OpenRouterResponse;
+    let payload: OpenRouterResponse;
+    try {
+        payload = await response.json() as OpenRouterResponse;
+    } catch (parseError) {
+        const responseText = await response.text().catch(() => '');
+        throw new Error(`OpenRouter returned non-JSON response (HTTP ${response.status}): ${responseText.slice(0, 500)}`);
+    }
+
     if (!response.ok || payload.error) {
-        const errorMessage = typeof payload.error === 'object' ? payload.error.message : payload.message;
+        let errorMessage: string;
+        if (typeof payload.error === 'object' && payload.error) {
+            errorMessage = payload.error.message ?? `OpenRouter HTTP ${response.status}`;
+        } else {
+            errorMessage = payload.message ?? `OpenRouter HTTP ${response.status}`;
+        }
         throw new Error(errorMessage || `OpenRouter HTTP ${response.status}`);
     }
 
