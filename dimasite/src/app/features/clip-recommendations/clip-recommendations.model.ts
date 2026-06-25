@@ -1,6 +1,16 @@
 export type ClipRecommendationStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type ClipRecommendationCandidateStatus = 'pending' | 'approved' | 'rejected' | 'confirmed' | 'denied';
 
+export interface TwitchVodInfo {
+  id: string;
+  title: string;
+  url: string;
+  duration: string;
+  durationMinutes: number;
+  createdAt: string;
+  thumbnailUrl: string;
+}
+
 export interface ClipRecommendationCandidate {
   _id: string;
   startSeconds: number;

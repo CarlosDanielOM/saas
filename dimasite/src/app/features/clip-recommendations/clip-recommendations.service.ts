@@ -4,7 +4,8 @@ import { LinksService } from '../../services/links.service';
 import {
   ApiEnvelope,
   ClipRecommendation,
-  ClipRecommendationConfig
+  ClipRecommendationConfig,
+  TwitchVodInfo
 } from './clip-recommendations.model';
 
 @Injectable({ providedIn: 'root' })
@@ -31,10 +32,17 @@ export class ClipRecommendationsService {
     );
   }
 
-  queue(channelID: string) {
-    return this.http.post<ApiEnvelope<{ estimatedCostCredits: number }>>(
+  listVods(channelID: string, days = 7) {
+    return this.http.get<ApiEnvelope<{ days: number; vods: TwitchVodInfo[] }>>(
+      `${this.linksService.getApiUrl()}/clip-recommendations/${encodeURIComponent(channelID)}/vods`,
+      { params: { days: String(days) } }
+    );
+  }
+
+  queue(channelID: string, vodId?: string) {
+    return this.http.post<ApiEnvelope<{ estimatedCostCredits: number; vod?: TwitchVodInfo }>>(
       `${this.linksService.getApiUrl()}/clip-recommendations/${encodeURIComponent(channelID)}/queue`,
-      {}
+      vodId ? { vodId } : {}
     );
   }
 

@@ -10,7 +10,9 @@ import { ClipRecommendationSchema } from '../../schemas/clip_recommendation.sche
 import { enqueueClipRecommendationJob } from '../../utils/ai/clip_recommendations/clip_recommendations_queue.js';
 import {
     calculateClipRecommendationCredits,
-    fetchLatestVodForChannel
+    fetchLatestVodForChannel,
+    fetchRecentVodsForChannel,
+    fetchVodById
 } from '../../utils/ai/clip_recommendations/vod_clip_recommendation_runner.js';
 
 const router = express.Router();
@@ -139,8 +141,11 @@ router.post('/:channelID/queue', authMiddleware as any, async (req: AuthRequest,
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
         if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
+        const requestedVodId = String(req.body?.vodId || '').trim();
         const [vod, user] = await Promise.all([
-            fetchLatestVodForChannel(channelID),
+            requestedVodId
+                ? fetchVodById(requestedVodId)
+                : fetchLatestVodForChannel(channelID),
             getChannelUser(channelID)
         ]);
         if (!user) return res.status(404).json({ error: true, message: 'User not found', status: 404 });
@@ -174,6 +179,31 @@ router.post('/:channelID/queue', authMiddleware as any, async (req: AuthRequest,
         });
     } catch (error) {
         console.error('Error in POST /clip-recommendations/:channelID/queue:', error);
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+router.get('/:channelID/vods', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        const channelID = String(req.params.channelID || '').trim();
+        const requesterID = getRequesterID(req);
+        if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
+        if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
+
+        const days = Math.max(1, Math.min(60, Number(req.query?.days || 7)));
+        const vods = await fetchRecentVodsForChannel(channelID, days);
+
+        return res.status(200).json({
+            error: false,
+            message: 'Recent VODs fetched successfully',
+            status: 200,
+            data: {
+                days,
+                vods
+            }
+        });
+    } catch (error) {
+        console.error('Error in GET /clip-recommendations/:channelID/vods:', error);
         return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
     }
 });

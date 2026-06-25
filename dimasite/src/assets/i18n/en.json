@@ -847,21 +847,30 @@
     "backToModules": "Back to modules",
     "heroBadge": "AI Clip Scout",
     "title": "Clip Recommendations",
-    "subtitle": "Queue your latest Twitch VOD for AI audio discovery and video verification. Pro users can enable automatic analysis when a stream ends.",
+    "subtitle": "Pick a Twitch VOD from the last 7 days and let AI find the moments worth clipping. Pro users can also enable automatic analysis when a stream ends.",
     "credits": "credits",
     "approved": "approved",
     "actions": {
       "queue": "Analyze latest VOD",
       "queueing": "Queueing...",
       "refresh": "Refresh",
+      "refreshVods": "Refresh VODs",
+      "analyze": "Analyze",
       "confirm": "Confirm",
       "deny": "Deny"
+    },
+    "vods": {
+      "title": "Recent VODs",
+      "estimatedCost": "Est. cost: {{credits}} credits"
+    },
+    "past": {
+      "title": "Past Analyses"
     },
     "auto": {
       "kicker": "Pro automation",
       "title": "Auto-analyze after stream ends",
-      "description": "When enabled, your latest VOD will be queued automatically after stream offline events.",
-      "proOnly": "Automatic analysis is Pro-only. Free and Premium users can still queue a manual analysis from this page."
+      "description": "When enabled, your latest VOD will be queued automatically after stream offline events. Tap the switch to turn it on or off.",
+      "proOnly": "Automatic analysis is Pro-only. Free and Premium users can still queue a manual analysis from the list above."
     },
     "pricing": {
       "base": "minimum for the first hour",
@@ -876,16 +885,22 @@
     },
     "states": {
       "loading": "Loading clip recommendations...",
+      "loadingVods": "Loading recent VODs...",
+      "noVodsTitle": "No VODs in the last 7 days",
+      "noVodsMessage": "Stream and save your broadcasts as VODs to start analyzing them for clips.",
+      "untitled": "Untitled stream",
       "emptyTitle": "No VOD analyses yet",
-      "emptyMessage": "Analyze your latest VOD to find likely clip moments. The worker processes one job at a time to keep rate limits safe.",
+      "emptyMessage": "Pick a VOD above and tap Analyze to find likely clip moments. The worker processes one job at a time to keep rate limits safe.",
       "previewPending": "Preview pending",
       "notApproved": "Not approved by video check"
     },
     "toasts": {
       "refreshedTitle": "Refreshed",
       "refreshedMessage": "Clip recommendations are up to date.",
+      "vodsLoadedTitle": "VODs loaded",
+      "vodsLoadedMessage": "Found {{count}} recent VODs.",
       "queuedTitle": "VOD analysis queued",
-      "queuedMessage": "This analysis will cost about {{credits}} AI credits and run in the background.",
+      "queuedMessage": "\u201c{{title}}\u201d will be analyzed in the background. Estimated cost about {{credits}} AI credits.",
       "completedTitle": "VOD analysis finished",
       "completedMessage": "AI found {{count}} probable clip moments.",
       "configTitle": "Automation updated",
@@ -898,8 +913,10 @@
     "errors": {
       "loadTitle": "Load failed",
       "loadMessage": "We could not load clip recommendations.",
+      "vodsLoadTitle": "VODs failed",
+      "vodsLoadMessage": "We could not load your recent VODs. Try refreshing.",
       "queueTitle": "Queue failed",
-      "queueMessage": "We could not queue the latest VOD. Make sure a VOD exists and you have enough credits.",
+      "queueMessage": "We could not queue that VOD. Make sure the VOD exists and you have enough credits.",
       "configTitle": "Automation not saved",
       "configMessage": "We could not update the auto-analysis setting.",
       "actionTitle": "Action failed",

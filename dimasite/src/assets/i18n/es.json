@@ -847,21 +847,30 @@
     "backToModules": "Volver a modulos",
     "heroBadge": "Scout de Clips IA",
     "title": "Recomendaciones de Clips",
-    "subtitle": "Encola tu ultimo VOD de Twitch para descubrimiento por audio y verificacion por video. Los usuarios Pro pueden activar analisis automatico al terminar stream.",
+    "subtitle": "Elige un VOD de Twitch de los ultimos 7 dias y deja que la IA encuentre los momentos que valgan un clip. Los usuarios Pro pueden activar analisis automatico al terminar stream.",
     "credits": "creditos",
     "approved": "aprobados",
     "actions": {
       "queue": "Analizar ultimo VOD",
       "queueing": "Encolando...",
       "refresh": "Actualizar",
+      "refreshVods": "Actualizar VODs",
+      "analyze": "Analizar",
       "confirm": "Confirmar",
       "deny": "Descartar"
+    },
+    "vods": {
+      "title": "VODs recientes",
+      "estimatedCost": "Costo aprox: {{credits}} creditos"
+    },
+    "past": {
+      "title": "Analisis pasados"
     },
     "auto": {
       "kicker": "Automatizacion Pro",
       "title": "Auto-analizar al terminar stream",
-      "description": "Cuando esta activo, tu ultimo VOD se encolara automaticamente despues del evento de stream offline.",
-      "proOnly": "El analisis automatico es solo para Pro. Usuarios Free y Premium pueden encolar analisis manual desde esta pagina."
+      "description": "Cuando esta activo, tu ultimo VOD se encolara automaticamente despues del evento de stream offline. Toca el interruptor para activarlo o desactivarlo.",
+      "proOnly": "El analisis automatico es solo para Pro. Usuarios Free y Premium pueden encolar analisis manual desde la lista de arriba."
     },
     "pricing": {
       "base": "minimo por la primera hora",
@@ -876,16 +885,22 @@
     },
     "states": {
       "loading": "Cargando recomendaciones de clips...",
+      "loadingVods": "Cargando VODs recientes...",
+      "noVodsTitle": "No hay VODs en los ultimos 7 dias",
+      "noVodsMessage": "Transmite y guarda tus emisiones como VODs para empezar a analizarlas en busca de clips.",
+      "untitled": "Stream sin titulo",
       "emptyTitle": "Aun no hay analisis de VOD",
-      "emptyMessage": "Analiza tu ultimo VOD para encontrar momentos probables de clip. El worker procesa un trabajo a la vez para cuidar los rate limits.",
+      "emptyMessage": "Elige un VOD de arriba y toca Analizar para encontrar momentos probables de clip. El worker procesa un trabajo a la vez para cuidar los rate limits.",
       "previewPending": "Preview pendiente",
       "notApproved": "No aprobado por la verificacion de video"
     },
     "toasts": {
       "refreshedTitle": "Actualizado",
       "refreshedMessage": "Las recomendaciones estan al dia.",
+      "vodsLoadedTitle": "VODs cargados",
+      "vodsLoadedMessage": "Se encontraron {{count}} VODs recientes.",
       "queuedTitle": "Analisis de VOD encolado",
-      "queuedMessage": "Este analisis costara aproximadamente {{credits}} creditos de IA y correra en segundo plano.",
+      "queuedMessage": "\u201c{{title}}\u201d se analizara en segundo plano. Costo aprox. de {{credits}} creditos de IA.",
       "completedTitle": "Analisis de VOD terminado",
       "completedMessage": "La IA encontro {{count}} posibles momentos de clip.",
       "configTitle": "Automatizacion actualizada",
@@ -898,8 +913,10 @@
     "errors": {
       "loadTitle": "Error al cargar",
       "loadMessage": "No pudimos cargar las recomendaciones de clips.",
+      "vodsLoadTitle": "Error al cargar VODs",
+      "vodsLoadMessage": "No pudimos cargar tus VODs recientes. Prueba actualizar.",
       "queueTitle": "Error al encolar",
-      "queueMessage": "No pudimos encolar el ultimo VOD. Asegurate de que exista un VOD y tengas creditos suficientes.",
+      "queueMessage": "No pudimos encolar ese VOD. Asegurate de que exista el VOD y tengas creditos suficientes.",
       "configTitle": "Automatizacion no guardada",
       "configMessage": "No pudimos actualizar el ajuste automatico.",
       "actionTitle": "Accion fallida",

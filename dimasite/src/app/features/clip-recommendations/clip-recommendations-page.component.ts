@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   ArrowLeft,
+  Calendar,
   Check,
   Clock,
+  Clapperboard,
+  Loader,
   LucideAngularModule,
+  Play,
   RefreshCw,
   Sparkles,
-  Video,
-  X
+  X,
+  Zap
 } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 
@@ -18,7 +22,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
-import { ClipRecommendation, ClipRecommendationCandidate } from './clip-recommendations.model';
+import { ClipRecommendation, ClipRecommendationCandidate, TwitchVodInfo } from './clip-recommendations.model';
 import { ClipRecommendationsService } from './clip-recommendations.service';
 
 @Component({
@@ -37,21 +41,29 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private hasLoadedOnce = false;
   private readonly completedSeen = new Set<string>();
+  /** VODs currently queued for analysis (by vodId) — local only, cleared on successful queue. */
+  private readonly queuedVodIds = new Set<string>();
 
   readonly sparklesIcon = Sparkles;
   readonly arrowLeftIcon = ArrowLeft;
-  readonly videoIcon = Video;
+  readonly videoIcon = Clapperboard;
   readonly refreshIcon = RefreshCw;
   readonly clockIcon = Clock;
   readonly checkIcon = Check;
   readonly xIcon = X;
+  readonly calendarIcon = Calendar;
+  readonly playIcon = Play;
+  readonly loaderIcon = Loader;
+  readonly zapIcon = Zap;
 
   readonly streamer = signal('');
   readonly channelID = signal<string | null>(null);
   readonly loading = signal(true);
-  readonly queueing = signal(false);
+  readonly loadingVods = signal(true);
+  readonly queueingVodId = signal<string | null>(null);
   readonly savingConfig = signal(false);
   readonly recommendations = signal<ClipRecommendation[]>([]);
+  readonly vods = signal<TwitchVodInfo[]>([]);
   readonly total = signal(0);
   readonly autoAnalyzeEnabled = signal(false);
   readonly canAutoAnalyze = signal(false);
@@ -65,21 +77,26 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     this.recommendations().some((item) => item.status === 'pending' || item.status === 'processing')
   );
 
+  readonly hasVods = computed(() => this.vods().length > 0);
+  readonly hasRecommendations = computed(() => this.recommendations().length > 0);
+
   ngOnInit(): void {
     const streamer = (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase();
     this.streamer.set(streamer);
     if (!streamer) {
       this.loading.set(false);
+      this.loadingVods.set(false);
       return;
     }
 
     this.sessionAuth.resolveChannelID(streamer).subscribe((channelID) => {
       this.channelID.set(channelID);
       if (channelID) {
-        void this.loadAll(false);
+        void Promise.all([this.loadAll(false), this.loadVods(false)]);
         this.startPolling();
       } else {
         this.loading.set(false);
+        this.loadingVods.set(false);
       }
     });
   }
@@ -126,6 +143,29 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadVods(showToast = true): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    this.loadingVods.set(true);
+    try {
+      const response = await firstValueFrom(this.api.listVods(channelID, 7));
+      this.vods.set(response.data?.vods ?? []);
+      if (showToast) {
+        this.toastService.success(
+          this.t('clipRecommendations.toasts.vodsLoadedTitle'),
+          this.t('clipRecommendations.toasts.vodsLoadedMessage', { count: response.data?.vods?.length ?? 0 })
+        );
+      }
+    } catch {
+      this.vods.set([]);
+      if (showToast) {
+        this.toastService.error(this.t('clipRecommendations.errors.vodsLoadTitle'), this.t('clipRecommendations.errors.vodsLoadMessage'));
+      }
+    } finally {
+      this.loadingVods.set(false);
+    }
+  }
+
   async toggleAutoAnalyze(): Promise<void> {
     const channelID = this.channelID();
     if (!channelID || !this.canAutoAnalyze()) return;
@@ -142,21 +182,29 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  async queueAnalysis(): Promise<void> {
+  async queueAnalysis(vod: TwitchVodInfo): Promise<void> {
     const channelID = this.channelID();
-    if (!channelID) return;
-    this.queueing.set(true);
+    if (!channelID || !vod?.id || this.queueingVodId() === vod.id) return;
+    this.queuedVodIds.add(vod.id);
+    this.queueingVodId.set(vod.id);
     try {
-      const response = await firstValueFrom(this.api.queue(channelID));
+      const response = await firstValueFrom(this.api.queue(channelID, vod.id));
       this.toastService.success(
         this.t('clipRecommendations.toasts.queuedTitle'),
-        this.t('clipRecommendations.toasts.queuedMessage', { credits: response.data?.estimatedCostCredits ?? 2500 })
+        this.t('clipRecommendations.toasts.queuedMessage', {
+          title: this.truncate(vod.title, 48),
+          credits: response.data?.estimatedCostCredits ?? 2500
+        })
       );
-      await this.loadAll(false);
+      await Promise.all([this.loadAll(false), this.loadVods(false)]);
     } catch {
       this.toastService.error(this.t('clipRecommendations.errors.queueTitle'), this.t('clipRecommendations.errors.queueMessage'));
     } finally {
-      this.queueing.set(false);
+      this.queuedVodIds.delete(vod.id);
+      // Keep last highlight for a moment so the button visibly settles.
+      if (this.queueingVodId() === vod.id) {
+        this.queueingVodId.set(null);
+      }
     }
   }
 
@@ -175,6 +223,26 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  isQueued(vod: TwitchVodInfo): boolean {
+    return this.queuedVodIds.has(vod.id);
+  }
+
+  formatDurationLabel(duration: string): string {
+    const normalized = String(duration || '').trim();
+    if (!normalized) return '';
+    // Twitch returns durations like "2h34m22s" — prettify for display.
+    const hours = Number(normalized.match(/(\d+)h/)?.[1] || 0);
+    const minutes = Number(normalized.match(/(\d+)m/)?.[1] || 0);
+    const seconds = Number(normalized.match(/(\d+)s/)?.[1] || 0);
+    if (hours > 0) {
+      return seconds > 0 ? `${hours}h ${minutes}m ${seconds}s` : `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+    }
+    return `${seconds}s`;
+  }
+
   formatTimestamp(seconds: number): string {
     const safeSeconds = Math.max(0, Math.floor(seconds));
     const minutes = Math.floor(safeSeconds / 60);
@@ -188,6 +256,10 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
   trackCandidate(_index: number, item: ClipRecommendationCandidate): string {
     return item._id;
+  }
+
+  trackVod(_index: number, item: TwitchVodInfo): string {
+    return item.id;
   }
 
   private startPolling(): void {
@@ -211,5 +283,10 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
         );
       }
     }
+  }
+
+  private truncate(value: string, max = 60): string {
+    const trimmed = String(value || '').trim();
+    return trimmed.length > max ? `${trimmed.slice(0, max - 1)}\u2026` : trimmed;
   }
 }

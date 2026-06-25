@@ -36,6 +36,25 @@ export interface TwitchVodInfo {
     createdAt?: string;
 }
 
+export interface TwitchVodSummary {
+    id: string;
+    title: string;
+    url: string;
+    duration: string;
+    durationMinutes: number;
+    createdAt: string;
+    thumbnailUrl: string;
+}
+
+interface TwitchVideoApiItem {
+    id: string;
+    title?: string;
+    url: string;
+    duration?: string;
+    created_at?: string;
+    thumbnail_url?: string;
+}
+
 export interface RunVodClipRecommendationInput {
     channelID: string;
     channel?: string;
@@ -205,9 +224,8 @@ async function notifyFinished(input: {
     });
 }
 
-export async function fetchLatestVodForChannel(channelID: string): Promise<TwitchVodInfo | null> {
+async function fetchTwitchVideos(params: URLSearchParams): Promise<TwitchVideoApiItem[]> {
     const header = await getTwitchAppHeader();
-    const params = new URLSearchParams({ user_id: channelID, type: 'archive', first: '1' });
     const response = await fetch(getTwitchHelixUrl('videos', params.toString()), {
         headers: {
             'Client-Id': header['Client-Id'],
@@ -218,8 +236,26 @@ export async function fetchLatestVodForChannel(channelID: string): Promise<Twitc
     if (!response.ok) {
         throw new Error(`Failed to fetch Twitch VODs: HTTP ${response.status}`);
     }
-    const payload = await response.json() as { data?: Array<{ id: string; url: string; duration: string; created_at?: string }> };
-    const vod = payload.data?.[0];
+    const payload = await response.json() as { data?: TwitchVideoApiItem[] };
+    return payload.data ?? [];
+}
+
+function toTwitchVodSummary(item: TwitchVideoApiItem): TwitchVodSummary {
+    return {
+        id: item.id,
+        title: String(item.title || '').trim(),
+        url: item.url,
+        duration: item.duration || '',
+        durationMinutes: parseTwitchDurationMinutes(item.duration || ''),
+        createdAt: item.created_at || '',
+        thumbnailUrl: item.thumbnail_url || ''
+    };
+}
+
+export async function fetchLatestVodForChannel(channelID: string): Promise<TwitchVodInfo | null> {
+    const params = new URLSearchParams({ user_id: channelID, type: 'archive', first: '1' });
+    const items = await fetchTwitchVideos(params);
+    const vod = items[0];
     if (!vod?.url) return null;
     return {
         id: vod.id,
@@ -228,6 +264,35 @@ export async function fetchLatestVodForChannel(channelID: string): Promise<Twitc
         durationMinutes: parseTwitchDurationMinutes(vod.duration || ''),
         createdAt: vod.created_at
     };
+}
+
+export async function fetchVodById(vodID: string): Promise<TwitchVodInfo | null> {
+    if (!vodID) return null;
+    const params = new URLSearchParams({ id: vodID });
+    const items = await fetchTwitchVideos(params);
+    const vod = items[0];
+    if (!vod?.url) return null;
+    return {
+        id: vod.id,
+        url: vod.url,
+        duration: vod.duration || '',
+        durationMinutes: parseTwitchDurationMinutes(vod.duration || ''),
+        createdAt: vod.created_at
+    };
+}
+
+export async function fetchRecentVodsForChannel(channelID: string, days = 7): Promise<TwitchVodSummary[]> {
+    const params = new URLSearchParams({ user_id: channelID, type: 'archive', first: '100' });
+    const items = await fetchTwitchVideos(params);
+    const summaries = items.map(toTwitchVodSummary);
+    if (!summaries.length) return [];
+
+    const cutoffSeconds = Math.max(0, Math.floor((Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000) / 1000));
+    return summaries.filter((vod) => {
+        if (!vod.createdAt) return true;
+        const createdSeconds = Math.floor(Date.parse(vod.createdAt) / 1000);
+        return Number.isFinite(createdSeconds) ? createdSeconds >= cutoffSeconds : true;
+    });
 }
 
 export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommendationInput): Promise<RunVodClipRecommendationResult> {
