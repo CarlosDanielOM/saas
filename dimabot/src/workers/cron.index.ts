@@ -68,6 +68,11 @@ const WORKERS: WorkerDefinition[] = [
         name: 'activation-reminder',
         sourceEntry: 'src/workers/activation-reminder.worker.ts',
         distEntry: 'dist/workers/activation-reminder.worker.js'
+    },
+    {
+        name: 'vod-clip-recommender',
+        sourceEntry: 'src/workers/vod_clip_recommender.worker.ts',
+        distEntry: 'dist/workers/vod_clip_recommender.worker.js'
     }
 ];
 

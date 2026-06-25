@@ -14,6 +14,7 @@ export type ModuleId =
   | 'analytics.follows'
   | 'follow-defense'
   | 'stream-summaries'
+  | 'clip-recommendations'
   | 'library';
 
 export type ModuleStatus = 'stable' | 'beta' | 'alpha' | 'coming_soon' | 'under_construction' | 'maintenance';
@@ -119,6 +120,13 @@ export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequi
     minTier: 'free',
     displayName: 'Stream Summaries',
     defaultStatus: 'stable',
+    category: 'content'
+  },
+  'clip-recommendations': {
+    id: 'clip-recommendations',
+    minTier: 'free',
+    displayName: 'Clip Recommendations',
+    defaultStatus: 'beta',
     category: 'content'
   },
   library: {

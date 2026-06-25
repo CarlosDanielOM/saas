@@ -29,6 +29,7 @@ import { analyticsRoute } from "./routes/analytics.route.js";
 import { timerRoute } from "./routes/timer.route.js";
 import { followDefenseRoute } from "./routes/follow_defense.route.js";
 import { streamSummaryRoute } from "./routes/stream-summary.route.js";
+import { clipRecommendationsRoute } from "./routes/clip-recommendations.route.js";
 import { dimafxRoute } from "./routes/dimafx.route.js";
 import { getSiteAnalyticsSnapshot } from "../utils/siteanalytics.js";
 import { getReservedCommandsPayload } from "./services/command_defaults.service.js";
@@ -121,6 +122,9 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup stream summaries routes
         app.use('/stream-summaries', streamSummaryRoute);
+
+        // Setup VOD clip recommendations routes
+        app.use('/clip-recommendations', clipRecommendationsRoute);
 
         // Setup DimaFX extension routes
         app.use('/extensions/dimafx', dimafxRoute);

@@ -1,0 +1,317 @@
+.clip-rec-page {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.back-link,
+.eyebrow,
+.hero-actions,
+.recommendation-meta,
+.candidate-actions,
+.candidate-time {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.back-link {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+}
+
+.hero-card,
+.settings-card,
+.pricing-card,
+.empty-card,
+.recommendation-card,
+.candidate-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-card {
+  display: grid;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 1.25rem;
+  position: relative;
+}
+
+.hero-card::before {
+  background: radial-gradient(circle at top right, rgba(250, 204, 21, 0.22), transparent 34rem);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.hero-copy,
+.hero-actions {
+  position: relative;
+}
+
+.eyebrow,
+.section-kicker {
+  color: #d97706;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 8vw, 4rem);
+  line-height: 1;
+  margin-top: 0.6rem;
+}
+
+.hero-copy p,
+.settings-card p,
+.empty-card p,
+.why {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.primary-button,
+.ghost-button,
+.confirm-button,
+.deny-button {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.8rem 1rem;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #7c3aed, #facc15);
+  color: #111827;
+}
+
+.ghost-button {
+  background: color-mix(in srgb, var(--surface) 80%, var(--text) 8%);
+  color: var(--text);
+}
+
+.settings-card {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.settings-card--locked {
+  opacity: 0.75;
+}
+
+.switch-button {
+  background: var(--border);
+  border-radius: 999px;
+  height: 2rem;
+  padding: 0.2rem;
+  width: 3.8rem;
+}
+
+.switch-button span {
+  background: var(--surface);
+  border-radius: 999px;
+  display: block;
+  height: 1.6rem;
+  transition: transform 160ms ease;
+  width: 1.6rem;
+}
+
+.switch-button--on {
+  background: linear-gradient(135deg, #7c3aed, #facc15);
+}
+
+.switch-button--on span {
+  transform: translateX(1.8rem);
+}
+
+.pricing-card {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  padding: 1rem;
+}
+
+.metric {
+  background: color-mix(in srgb, var(--surface) 80%, var(--text) 5%);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.metric strong {
+  display: block;
+  font-size: 1.8rem;
+}
+
+.metric span,
+.recommendation-meta,
+.candidate-time span {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.empty-card {
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  height: 2rem;
+  width: 2rem;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.recommendation-card {
+  padding: 1rem;
+}
+
+.recommendation-header {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.recommendation-meta {
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 0.3rem 0.6rem;
+  text-transform: uppercase;
+}
+
+.status-pill--completed { background: rgba(34, 197, 94, 0.16); color: #16a34a; }
+.status-pill--processing,
+.status-pill--pending { background: rgba(250, 204, 21, 0.18); color: #ca8a04; }
+.status-pill--failed { background: rgba(239, 68, 68, 0.16); color: #dc2626; }
+
+.candidate-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.candidate-card {
+  overflow: hidden;
+}
+
+.candidate-card--rejected {
+  opacity: 0.72;
+}
+
+.candidate-video,
+.candidate-placeholder {
+  aspect-ratio: 16 / 9;
+  background: #05030a;
+  color: #fff;
+  width: 100%;
+}
+
+.candidate-placeholder {
+  align-items: center;
+  display: grid;
+  justify-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.candidate-body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.candidate-time {
+  color: #7c3aed;
+  font-weight: 900;
+  justify-content: space-between;
+}
+
+.reason {
+  font-weight: 800;
+}
+
+.confirm-button {
+  background: rgba(34, 197, 94, 0.14);
+  color: #16a34a;
+}
+
+.deny-button {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+
+.error-message {
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 0.8rem;
+  color: #dc2626;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+}
+
+@media (min-width: 768px) {
+  .clip-rec-page {
+    padding: 1.5rem;
+  }
+
+  .hero-card {
+    align-items: center;
+    grid-template-columns: 1fr auto;
+    padding: 2rem;
+  }
+
+  .pricing-card {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .recommendation-header {
+    align-items: center;
+    grid-template-columns: 1fr auto;
+  }
+
+  .candidate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

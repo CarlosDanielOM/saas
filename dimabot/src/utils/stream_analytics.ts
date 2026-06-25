@@ -7,6 +7,9 @@ import { getTwitchHelixUrl } from './links.js';
 import { error as logError, info as logInfo, warn as logWarn } from './logger.js';
 import { getLiveChannelsBoard } from './siteanalytics.js';
 import { enqueueStreamMemorySummaryJob } from './ai/memory/stream_memory_queue.js';
+import { ClipRecommendationConfigSchema } from '../schemas/clip_recommendation_config.schema.js';
+import UsersSchema from '../schemas/users.schema.js';
+import { enqueueClipRecommendationJob } from './ai/clip_recommendations/clip_recommendations_queue.js';
 
 const DEFAULT_DASHBOARD_DAYS = 30;
 const OFFLINE_CHECK_THRESHOLD = 2;
@@ -184,6 +187,55 @@ async function enqueuePostStreamSummaryJob(input: {
             streamID: input.streamID || '',
             reason: input.reason,
             requestedBy: input.requestedBy,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+async function enqueueAutomaticClipRecommendationJob(input: {
+    channelID: string;
+    channel?: string;
+    sessionID: string;
+    streamID?: string;
+    durationMinutes?: number;
+}): Promise<void> {
+    try {
+        const [config, user] = await Promise.all([
+            ClipRecommendationConfigSchema.findOne({ channelID: input.channelID }).lean().exec(),
+            UsersSchema.findOne({ 'accounts.id': input.channelID, 'accounts.type': 'twitch' }).lean().exec()
+        ]);
+
+        if (!config?.autoAnalyzeEnabled || user?.plan_tier !== 'pro') {
+            return;
+        }
+
+        const result = await enqueueClipRecommendationJob({
+            channelID: input.channelID,
+            channel: input.channel,
+            sessionID: input.sessionID,
+            streamID: input.streamID,
+            vodUrl: `twitch-latest:${input.channelID}`,
+            source: 'stream_offline',
+            requestedBy: 'recordStreamOfflineEvent',
+            vodDurationMinutes: input.durationMinutes || 60,
+            notBeforeUnix: Math.floor(Date.now() / 1000) + 300
+        });
+
+        await logInfo({
+            function: 'enqueueAutomaticClipRecommendationJob',
+            message: result.message,
+            channelID: input.channelID,
+            sessionID: input.sessionID,
+            streamID: input.streamID || '',
+            enqueued: result.enqueued
+        }, { channelId: input.channelID, destination: 'both' });
+    } catch (error) {
+        logAnalyticsError('enqueueAutomaticClipRecommendationJob', {
+            channelID: input.channelID,
+            sessionID: input.sessionID,
+            streamID: input.streamID || '',
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
@@ -584,7 +636,15 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
             requestedBy: 'recordStreamOfflineEvent'
         });
 
-        console.log('recordStreamOfflineEvent: Summary job enqueued successfully', { channelID });
+        await enqueueAutomaticClipRecommendationJob({
+            channelID,
+            channel: String(activeSession.channel || ''),
+            sessionID: String(activeSession._id),
+            streamID: String(activeSession.stream_id || ''),
+            durationMinutes: getDurationMinutes(activeSession.started_at, endedAt)
+        });
+
+        console.log('recordStreamOfflineEvent: Post-stream jobs enqueued successfully', { channelID });
     } catch (error) {
         console.error('recordStreamOfflineEvent: All retries exhausted', {
             channelID,

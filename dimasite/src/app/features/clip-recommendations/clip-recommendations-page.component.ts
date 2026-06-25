@@ -1,0 +1,215 @@
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  ArrowLeft,
+  Check,
+  Clock,
+  LucideAngularModule,
+  RefreshCw,
+  Sparkles,
+  Video,
+  X
+} from 'lucide-angular';
+import { firstValueFrom } from 'rxjs';
+
+import { LoadingIndicatorComponent } from '../../components/loading';
+import { LanguageService } from '../../services/language.service';
+import { SessionAuthService } from '../../services/session-auth.service';
+import { ToastService } from '../../services/toast.service';
+import { getRouteParam } from '../../shared/utils/route-param.util';
+import { ClipRecommendation, ClipRecommendationCandidate } from './clip-recommendations.model';
+import { ClipRecommendationsService } from './clip-recommendations.service';
+
+@Component({
+  selector: 'app-clip-recommendations-page',
+  imports: [RouterLink, DatePipe, DecimalPipe, LucideAngularModule, LoadingIndicatorComponent],
+  templateUrl: './clip-recommendations-page.component.html',
+  styleUrl: './clip-recommendations-page.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
+  private readonly languageService = inject(LanguageService);
+  private readonly sessionAuth = inject(SessionAuthService);
+  private readonly api = inject(ClipRecommendationsService);
+  private readonly toastService = inject(ToastService);
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private hasLoadedOnce = false;
+  private readonly completedSeen = new Set<string>();
+
+  readonly sparklesIcon = Sparkles;
+  readonly arrowLeftIcon = ArrowLeft;
+  readonly videoIcon = Video;
+  readonly refreshIcon = RefreshCw;
+  readonly clockIcon = Clock;
+  readonly checkIcon = Check;
+  readonly xIcon = X;
+
+  readonly streamer = signal('');
+  readonly channelID = signal<string | null>(null);
+  readonly loading = signal(true);
+  readonly queueing = signal(false);
+  readonly savingConfig = signal(false);
+  readonly recommendations = signal<ClipRecommendation[]>([]);
+  readonly total = signal(0);
+  readonly autoAnalyzeEnabled = signal(false);
+  readonly canAutoAnalyze = signal(false);
+  readonly planTier = signal<'free' | 'premium' | 'pro'>('free');
+
+  readonly approvedCandidates = computed(() =>
+    this.recommendations().flatMap((item) => item.candidates.filter((candidate) => candidate.videoApproved))
+  );
+
+  readonly hasProcessingJob = computed(() =>
+    this.recommendations().some((item) => item.status === 'pending' || item.status === 'processing')
+  );
+
+  ngOnInit(): void {
+    const streamer = (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase();
+    this.streamer.set(streamer);
+    if (!streamer) {
+      this.loading.set(false);
+      return;
+    }
+
+    this.sessionAuth.resolveChannelID(streamer).subscribe((channelID) => {
+      this.channelID.set(channelID);
+      if (channelID) {
+        void this.loadAll(false);
+        this.startPolling();
+      } else {
+        this.loading.set(false);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+  }
+
+  t(key: string, params?: Record<string, string | number>): string {
+    return this.languageService.translate(key, params);
+  }
+
+  async loadAll(showToast = true): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    this.loading.set(true);
+    try {
+      const [configResponse, listResponse] = await Promise.all([
+        firstValueFrom(this.api.getConfig(channelID)),
+        firstValueFrom(this.api.list(channelID))
+      ]);
+
+      if (configResponse.data) {
+        this.autoAnalyzeEnabled.set(configResponse.data.autoAnalyzeEnabled);
+        this.canAutoAnalyze.set(configResponse.data.canAutoAnalyze);
+        this.planTier.set(configResponse.data.planTier);
+      }
+
+      const items = listResponse.data?.items ?? [];
+      this.notifyCompletedJobs(items);
+      this.recommendations.set(items);
+      this.total.set(listResponse.data?.total ?? 0);
+      if (showToast) {
+        this.toastService.success(this.t('clipRecommendations.toasts.refreshedTitle'), this.t('clipRecommendations.toasts.refreshedMessage'));
+      }
+    } catch {
+      this.toastService.error(this.t('clipRecommendations.errors.loadTitle'), this.t('clipRecommendations.errors.loadMessage'));
+    } finally {
+      this.loading.set(false);
+      this.hasLoadedOnce = true;
+    }
+  }
+
+  async toggleAutoAnalyze(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || !this.canAutoAnalyze()) return;
+    const nextValue = !this.autoAnalyzeEnabled();
+    this.savingConfig.set(true);
+    try {
+      await firstValueFrom(this.api.updateConfig(channelID, nextValue));
+      this.autoAnalyzeEnabled.set(nextValue);
+      this.toastService.success(this.t('clipRecommendations.toasts.configTitle'), this.t('clipRecommendations.toasts.configMessage'));
+    } catch {
+      this.toastService.error(this.t('clipRecommendations.errors.configTitle'), this.t('clipRecommendations.errors.configMessage'));
+    } finally {
+      this.savingConfig.set(false);
+    }
+  }
+
+  async queueAnalysis(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    this.queueing.set(true);
+    try {
+      const response = await firstValueFrom(this.api.queue(channelID));
+      this.toastService.success(
+        this.t('clipRecommendations.toasts.queuedTitle'),
+        this.t('clipRecommendations.toasts.queuedMessage', { credits: response.data?.estimatedCostCredits ?? 2500 })
+      );
+      await this.loadAll(false);
+    } catch {
+      this.toastService.error(this.t('clipRecommendations.errors.queueTitle'), this.t('clipRecommendations.errors.queueMessage'));
+    } finally {
+      this.queueing.set(false);
+    }
+  }
+
+  async setCandidateStatus(recommendationID: string, candidateID: string, action: 'confirm' | 'deny'): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    try {
+      await firstValueFrom(this.api.setCandidateStatus(channelID, recommendationID, candidateID, action));
+      this.toastService.success(
+        action === 'confirm' ? this.t('clipRecommendations.toasts.confirmedTitle') : this.t('clipRecommendations.toasts.deniedTitle'),
+        action === 'confirm' ? this.t('clipRecommendations.toasts.confirmedMessage') : this.t('clipRecommendations.toasts.deniedMessage')
+      );
+      await this.loadAll(false);
+    } catch {
+      this.toastService.error(this.t('clipRecommendations.errors.actionTitle'), this.t('clipRecommendations.errors.actionMessage'));
+    }
+  }
+
+  formatTimestamp(seconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainder = safeSeconds % 60;
+    return `${minutes}:${String(remainder).padStart(2, '0')}`;
+  }
+
+  trackRecommendation(_index: number, item: ClipRecommendation): string {
+    return item._id;
+  }
+
+  trackCandidate(_index: number, item: ClipRecommendationCandidate): string {
+    return item._id;
+  }
+
+  private startPolling(): void {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => {
+      if (this.hasProcessingJob()) {
+        void this.loadAll(false);
+      }
+    }, 30000);
+  }
+
+  private notifyCompletedJobs(items: ClipRecommendation[]): void {
+    for (const item of items) {
+      if (item.status !== 'completed') continue;
+      const wasSeen = this.completedSeen.has(item._id);
+      this.completedSeen.add(item._id);
+      if (this.hasLoadedOnce && !wasSeen) {
+        this.toastService.success(
+          this.t('clipRecommendations.toasts.completedTitle'),
+          this.t('clipRecommendations.toasts.completedMessage', { count: item.approvedCount })
+        );
+      }
+    }
+  }
+}

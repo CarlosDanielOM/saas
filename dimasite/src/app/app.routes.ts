@@ -258,6 +258,18 @@ export const routes: Routes = [
             title: 'Stream Summaries | DomDimaBot'
           },
           {
+            path: 'clip-recommendations',
+            loadComponent: () =>
+              import('./features/clip-recommendations/clip-recommendations-page.component').then(
+                (m) => m.ClipRecommendationsPageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Clip Recommendations | DomDimaBot'
+          },
+          {
             path: 'library',
             loadComponent: () =>
               import('./features/library/media-library-page.component').then((m) => m.MediaLibraryPageComponent),

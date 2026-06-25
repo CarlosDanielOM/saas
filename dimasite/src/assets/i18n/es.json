@@ -38,6 +38,9 @@
     "clips": {
       "description": "Selecciona un diseno de visualizador de clips y ajusta la configuracion para tus overlays de stream."
     },
+    "clipRecommendations": {
+      "description": "Deja que la IA revise tu ultimo VOD para encontrar hype, gritos, risas, sustos y otros momentos buenos para clip."
+    },
     "chatEvents": {
       "description": "Activa o desactiva eventos de chat como follows, bits, subs y establece sus mensajes y umbrales."
     },
@@ -838,6 +841,70 @@
       "durationDays": "{{count}} dia(s)",
       "durationPair": "{{first}} y {{second}}",
       "durationUnknown": "Desconocido"
+    }
+  },
+  "clipRecommendations": {
+    "backToModules": "Volver a modulos",
+    "heroBadge": "Scout de Clips IA",
+    "title": "Recomendaciones de Clips",
+    "subtitle": "Encola tu ultimo VOD de Twitch para descubrimiento por audio y verificacion por video. Los usuarios Pro pueden activar analisis automatico al terminar stream.",
+    "credits": "creditos",
+    "approved": "aprobados",
+    "actions": {
+      "queue": "Analizar ultimo VOD",
+      "queueing": "Encolando...",
+      "refresh": "Actualizar",
+      "confirm": "Confirmar",
+      "deny": "Descartar"
+    },
+    "auto": {
+      "kicker": "Automatizacion Pro",
+      "title": "Auto-analizar al terminar stream",
+      "description": "Cuando esta activo, tu ultimo VOD se encolara automaticamente despues del evento de stream offline.",
+      "proOnly": "El analisis automatico es solo para Pro. Usuarios Free y Premium pueden encolar analisis manual desde esta pagina."
+    },
+    "pricing": {
+      "base": "minimo por la primera hora",
+      "extra": "creditos por minuto despues de 60m",
+      "ready": "momentos verificados listos"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "completed": "Completado",
+      "failed": "Fallido"
+    },
+    "states": {
+      "loading": "Cargando recomendaciones de clips...",
+      "emptyTitle": "Aun no hay analisis de VOD",
+      "emptyMessage": "Analiza tu ultimo VOD para encontrar momentos probables de clip. El worker procesa un trabajo a la vez para cuidar los rate limits.",
+      "previewPending": "Preview pendiente",
+      "notApproved": "No aprobado por la verificacion de video"
+    },
+    "toasts": {
+      "refreshedTitle": "Actualizado",
+      "refreshedMessage": "Las recomendaciones estan al dia.",
+      "queuedTitle": "Analisis de VOD encolado",
+      "queuedMessage": "Este analisis costara aproximadamente {{credits}} creditos de IA y correra en segundo plano.",
+      "completedTitle": "Analisis de VOD terminado",
+      "completedMessage": "La IA encontro {{count}} posibles momentos de clip.",
+      "configTitle": "Automatizacion actualizada",
+      "configMessage": "Se guardo tu preferencia de automatizacion.",
+      "confirmedTitle": "Clip confirmado",
+      "confirmedMessage": "Esta recomendacion se marco para guardar.",
+      "deniedTitle": "Clip descartado",
+      "deniedMessage": "Esta recomendacion fue descartada."
+    },
+    "errors": {
+      "loadTitle": "Error al cargar",
+      "loadMessage": "No pudimos cargar las recomendaciones de clips.",
+      "queueTitle": "Error al encolar",
+      "queueMessage": "No pudimos encolar el ultimo VOD. Asegurate de que exista un VOD y tengas creditos suficientes.",
+      "configTitle": "Automatizacion no guardada",
+      "configMessage": "No pudimos actualizar el ajuste automatico.",
+      "actionTitle": "Accion fallida",
+      "actionMessage": "No pudimos actualizar esa recomendacion.",
+      "genericJob": "El trabajo de analisis fallo. Prueba con otro VOD mas tarde."
     }
   },
   "clips": {

@@ -1,0 +1,121 @@
+<section class="clip-rec-page">
+  <a class="back-link" [routerLink]="['/', streamer(), 'modules']">
+    <lucide-icon [name]="arrowLeftIcon" class="icon" />
+    {{ t('clipRecommendations.backToModules') }}
+  </a>
+
+  <header class="hero-card">
+    <div class="hero-copy">
+      <span class="eyebrow"><lucide-icon [name]="sparklesIcon" class="icon" /> {{ t('clipRecommendations.heroBadge') }}</span>
+      <h1>{{ t('clipRecommendations.title') }}</h1>
+      <p>{{ t('clipRecommendations.subtitle') }}</p>
+    </div>
+    <div class="hero-actions">
+      <button class="primary-button" type="button" (click)="queueAnalysis()" [disabled]="queueing() || !channelID()">
+        <lucide-icon [name]="videoIcon" class="icon" />
+        {{ queueing() ? t('clipRecommendations.actions.queueing') : t('clipRecommendations.actions.queue') }}
+      </button>
+      <button class="ghost-button" type="button" (click)="loadAll()" [disabled]="loading()">
+        <lucide-icon [name]="refreshIcon" class="icon" />
+        {{ t('clipRecommendations.actions.refresh') }}
+      </button>
+    </div>
+  </header>
+
+  <section class="settings-card" [class.settings-card--locked]="!canAutoAnalyze()">
+    <div>
+      <p class="section-kicker">{{ t('clipRecommendations.auto.kicker') }}</p>
+      <h2>{{ t('clipRecommendations.auto.title') }}</h2>
+      <p>{{ canAutoAnalyze() ? t('clipRecommendations.auto.description') : t('clipRecommendations.auto.proOnly') }}</p>
+    </div>
+    <button
+      class="switch-button"
+      type="button"
+      role="switch"
+      [attr.aria-checked]="autoAnalyzeEnabled()"
+      [disabled]="!canAutoAnalyze() || savingConfig()"
+      [class.switch-button--on]="autoAnalyzeEnabled()"
+      (click)="toggleAutoAnalyze()"
+    >
+      <span></span>
+    </button>
+  </section>
+
+  <section class="pricing-card">
+    <div class="metric">
+      <strong>2,500</strong>
+      <span>{{ t('clipRecommendations.pricing.base') }}</span>
+    </div>
+    <div class="metric">
+      <strong>42</strong>
+      <span>{{ t('clipRecommendations.pricing.extra') }}</span>
+    </div>
+    <div class="metric">
+      <strong>{{ approvedCandidates().length }}</strong>
+      <span>{{ t('clipRecommendations.pricing.ready') }}</span>
+    </div>
+  </section>
+
+  @if (loading()) {
+    <loading-indicator [loading]="true" size="md" message="clipRecommendations.states.loading" />
+  } @else if (recommendations().length === 0) {
+    <section class="empty-card">
+      <lucide-icon [name]="videoIcon" class="empty-icon" />
+      <h2>{{ t('clipRecommendations.states.emptyTitle') }}</h2>
+      <p>{{ t('clipRecommendations.states.emptyMessage') }}</p>
+    </section>
+  } @else {
+    <section class="recommendation-list">
+      @for (recommendation of recommendations(); track trackRecommendation($index, recommendation)) {
+        <article class="recommendation-card">
+          <div class="recommendation-header">
+            <div>
+              <span class="status-pill status-pill--{{ recommendation.status }}">{{ t('clipRecommendations.status.' + recommendation.status) }}</span>
+              <h2>{{ recommendation.created_at | date:'medium' }}</h2>
+            </div>
+            <div class="recommendation-meta">
+              <span><lucide-icon [name]="clockIcon" class="icon" /> {{ recommendation.vodDurationMinutes }}m</span>
+              <span>{{ recommendation.costCredits | number }} {{ t('clipRecommendations.credits') }}</span>
+              <span>{{ recommendation.approvedCount }}/{{ recommendation.candidateCount }} {{ t('clipRecommendations.approved') }}</span>
+            </div>
+          </div>
+
+          @if (recommendation.status === 'failed') {
+            <p class="error-message">{{ recommendation.errorMessage || t('clipRecommendations.errors.genericJob') }}</p>
+          }
+
+          <div class="candidate-grid">
+            @for (candidate of recommendation.candidates; track trackCandidate($index, candidate)) {
+              <article class="candidate-card" [class.candidate-card--rejected]="!candidate.videoApproved">
+                @if (candidate.previewUrl) {
+                  <video class="candidate-video" controls preload="metadata" [src]="candidate.previewUrl"></video>
+                } @else {
+                  <div class="candidate-placeholder">
+                    <lucide-icon [name]="videoIcon" class="empty-icon" />
+                    <span>{{ candidate.videoApproved ? t('clipRecommendations.states.previewPending') : t('clipRecommendations.states.notApproved') }}</span>
+                  </div>
+                }
+                <div class="candidate-body">
+                  <div class="candidate-time">
+                    {{ formatTimestamp(candidate.startSeconds) }} - {{ formatTimestamp(candidate.endSeconds) }}
+                    <span>{{ candidate.audioConfidence | number:'1.0-2' }}</span>
+                  </div>
+                  <p class="reason">{{ candidate.reason }}</p>
+                  <p class="why">{{ candidate.videoWhy }}</p>
+                  <div class="candidate-actions">
+                    <button type="button" class="confirm-button" [disabled]="!candidate.videoApproved || candidate.status === 'confirmed'" (click)="setCandidateStatus(recommendation._id, candidate._id, 'confirm')">
+                      <lucide-icon [name]="checkIcon" class="icon" /> {{ t('clipRecommendations.actions.confirm') }}
+                    </button>
+                    <button type="button" class="deny-button" [disabled]="candidate.status === 'denied'" (click)="setCandidateStatus(recommendation._id, candidate._id, 'deny')">
+                      <lucide-icon [name]="xIcon" class="icon" /> {{ t('clipRecommendations.actions.deny') }}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  }
+</section>
