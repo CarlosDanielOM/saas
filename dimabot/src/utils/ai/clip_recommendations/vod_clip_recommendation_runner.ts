@@ -22,9 +22,11 @@ import {
 } from './openrouter_clip_recommendations.client.js';
 import { CLIP_RECOMMENDATION_MODEL_ID } from './clip_recommendations_prompts.js';
 
-const BASE_CREDITS = 2500;
+const BASE_CREDITS = 2750;
 const BASE_MINUTES = 60;
-const EXTRA_CREDITS_PER_MINUTE = 42;
+const EXTRA_CREDITS_PER_MINUTE = 50;
+const AUDIO_BITRATE = '12k';
+const AUDIO_SEGMENT_MINUTES = 60;
 const DOWNLOAD_TIMEOUT_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_DOWNLOAD_TIMEOUT_MS || 3 * 60 * 60 * 1000));
 const COMMAND_TIMEOUT_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_FFMPEG_TIMEOUT_MS || 30 * 60 * 1000));
 
@@ -126,8 +128,18 @@ async function downloadVod(vodUrl: string, outputPath: string): Promise<void> {
     await runCommand('yt-dlp', ['--no-progress', '-S', 'res:720', '-o', outputPath, vodUrl], DOWNLOAD_TIMEOUT_MS);
 }
 
-async function extractAudio(videoPath: string, audioPath: string): Promise<void> {
-    await runCommand('ffmpeg', ['-y', '-i', videoPath, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '64k', audioPath], COMMAND_TIMEOUT_MS);
+async function extractAudioSegment(videoPath: string, audioPath: string, startSeconds: number, durationSeconds: number): Promise<void> {
+    await runCommand('ffmpeg', [
+        '-y',
+        '-ss', String(Math.max(0, Math.floor(startSeconds))),
+        '-i', videoPath,
+        '-t', String(Math.max(1, Math.floor(durationSeconds))),
+        '-vn',
+        '-ac', '1',
+        '-ar', '16000',
+        '-b:a', AUDIO_BITRATE,
+        audioPath
+    ], COMMAND_TIMEOUT_MS);
 }
 
 async function cutVideoSegment(videoPath: string, outputPath: string, startSeconds: number, endSeconds: number): Promise<void> {
@@ -337,11 +349,42 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         recommendationObjectID = String(recommendation._id);
 
         const vodPath = path.join(workDir, 'vod.mp4');
-        const audioPath = path.join(workDir, 'vod-audio.mp3');
         await downloadVod(vodUrl, vodPath);
-        await extractAudio(vodPath, audioPath);
 
-        const audioCandidates = await analyzeVodAudioForClipMoments({ audioPath, channelID, modelID });
+        // Extract audio in 1-hour segments at 12 kbps to stay under OpenRouter's 8 MB upload limit.
+        // We make one OpenRouter request per segment (least amount of requests possible) and
+        // merge candidates back with offset-adjusted timestamps.
+        const totalSeconds = Math.max(60, Math.ceil(durationMinutes * 60));
+        const segmentSeconds = AUDIO_SEGMENT_MINUTES * 60;
+        const segmentCount = Math.max(1, Math.ceil(totalSeconds / segmentSeconds));
+        const audioCandidates: AudioCandidate[] = [];
+
+        for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+            const segmentStartSeconds = segmentIndex * segmentSeconds;
+            const segmentDurationSeconds = Math.min(segmentSeconds, totalSeconds - segmentStartSeconds);
+            if (segmentDurationSeconds <= 0) break;
+            const segmentAudioPath = path.join(workDir, `segment-${segmentIndex}.mp3`);
+
+            await extractAudioSegment(vodPath, segmentAudioPath, segmentStartSeconds, segmentDurationSeconds);
+            const segmentCandidates = await analyzeVodAudioForClipMoments({ audioPath: segmentAudioPath, channelID, modelID });
+
+            // Adjust candidate timestamps by the segment offset so they reference the full VOD timeline.
+            for (const candidate of segmentCandidates) {
+                candidate.startSeconds += segmentStartSeconds;
+                candidate.endSeconds += segmentStartSeconds;
+            }
+            audioCandidates.push(...segmentCandidates);
+
+            // Free disk space between segments — the segment file isn't needed anymore.
+            await fs.unlink(segmentAudioPath).catch(() => undefined);
+
+            // Persist progress so far so partial work is visible in the DB during very long VODs.
+            const partialDocs = audioCandidates.map(buildCandidateDocument);
+            recommendation.candidates = partialDocs as any;
+            recommendation.candidateCount = partialDocs.length;
+            await recommendation.save();
+        }
+
         const candidateDocs = audioCandidates.map(buildCandidateDocument);
         recommendation.candidates = candidateDocs as any;
         recommendation.candidateCount = candidateDocs.length;

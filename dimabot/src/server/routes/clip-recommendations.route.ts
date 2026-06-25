@@ -59,9 +59,9 @@ router.get('/:channelID/config', authMiddleware as any, async (req: AuthRequest,
                 planTier: user?.plan_tier || 'free',
                 lastAnalyzedAt: config?.lastAnalyzedAt || null,
                 pricing: {
-                    baseCredits: 2500,
+                    baseCredits: 2750,
                     baseMinutes: 60,
-                    extraCreditsPerMinute: 42
+                    extraCreditsPerMinute: 50
                 }
             }
         });

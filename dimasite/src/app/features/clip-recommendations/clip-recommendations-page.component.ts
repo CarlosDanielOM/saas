@@ -193,7 +193,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
         this.t('clipRecommendations.toasts.queuedTitle'),
         this.t('clipRecommendations.toasts.queuedMessage', {
           title: this.truncate(vod.title, 48),
-          credits: response.data?.estimatedCostCredits ?? 2500
+          credits: response.data?.estimatedCostCredits ?? 2750
         })
       );
       await Promise.all([this.loadAll(false), this.loadVods(false)]);
@@ -225,6 +225,11 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
   isQueued(vod: TwitchVodInfo): boolean {
     return this.queuedVodIds.has(vod.id);
+  }
+
+  calculateEstimatedCredits(durationMinutes: number): number {
+    const minutes = Math.max(1, Math.ceil(Number(durationMinutes || 0)));
+    return 2750 + Math.max(0, minutes - 60) * 50;
   }
 
   formatDurationLabel(duration: string): string {

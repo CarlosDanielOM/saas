@@ -58,11 +58,11 @@
   <!-- Pricing strip -->
   <section class="cr-pricing">
     <div class="cr-pricing__metric">
-      <strong>2,500</strong>
+      <strong>2,750</strong>
       <span>{{ t('clipRecommendations.pricing.base') }}</span>
     </div>
     <div class="cr-pricing__metric">
-      <strong>42</strong>
+      <strong>50</strong>
       <span>{{ t('clipRecommendations.pricing.extra') }}</span>
     </div>
     <div class="cr-pricing__metric">
@@ -123,7 +123,7 @@
                 </span>
               </div>
               <p class="cr-vod__cost">
-                {{ t('clipRecommendations.vods.estimatedCost', { credits: vod.durationMinutes <= 60 ? 2500 : 2500 + (vod.durationMinutes - 60) * 42 }) }}
+                {{ t('clipRecommendations.vods.estimatedCost', { credits: calculateEstimatedCredits(vod.durationMinutes) }) }}
               </p>
             </div>
             <button
