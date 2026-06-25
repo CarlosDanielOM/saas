@@ -15,7 +15,7 @@
  * to swap back.
  */
 
-import { error, debug } from '../../logger.js';
+import { error } from '../../logger.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
 
 const DEFAULT_LFM2_EMBEDDINGS_URL = 'http://lfm2.5-embeddings:8080/v1/embeddings';
@@ -156,14 +156,6 @@ export async function generateEmbedding(
         if (result.error) {
             return result;
         }
-
-        debug({
-            message: 'LFM2 embedding generated',
-            model,
-            kind,
-            dim: embedding!.length,
-            duration,
-        });
 
         return {
             error: false,
