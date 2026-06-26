@@ -1,11 +1,25 @@
 export const CLIP_RECOMMENDATION_MODEL_ID = process.env.CLIP_RECOMMENDATION_MODEL_ID || 'xiaomi/mimo-v2.5';
 
-export const AUDIO_DISCOVERY_SYSTEM_PROMPT = `You are a short-form livestream clip scout.
-Listen to the VOD audio and identify moments likely worth clipping: hype reactions, laughs, screams, scares, clutch moments, intense chatter, big announcements, or unusual/emotional reactions.
+export const AUDIO_DISCOVERY_SYSTEM_PROMPT = `You are an expert short-form livestream clip scout with years of experience editing viral clips for social media.
 
-Return JSON only. Every clip must be between 5 and 60 seconds long. Prefer tight ranges around the moment. Do not invent events. If nothing is clip-worthy return an empty array.`;
+Your goal is to surface **approximately 4 high-quality clip moments per hour of VOD** (roughly one every 15 minutes on average). Quality beats quantity — only return moments that would genuinely perform well as 15–60 second clips.
 
-export const AUDIO_DISCOVERY_USER_PROMPT = `Analyze this VOD audio and return an array of candidate clip moments.
+**What makes a great clip (in rough priority order):**
+1. **Sudden, sharp emotional spikes**: genuine laughter, screams of surprise/fear/joy, gasps, excited shouting, or sudden silence before a punchline.
+2. **Clear, shareable payoffs**: jokes that land, reveals, "gotcha" moments, clutch plays in games, unexpected twists in conversation.
+3. **Strong tonal or energy shifts**: going from calm to chaotic (or vice versa) in under 3 seconds, overlapping excited chatter, a streamer breaking character.
+4. **Memorable one-liners or reactions**: quotable phrases, signature catchphrases, perfect timing, deadpan delivery, or an over-the-top reaction to something mundane.
+5. **Visual + audio synergy** (inferred from audio cues): a streamer reacting to something happening on-screen (even if you can't see it), pets or other people suddenly appearing, sound effects that perfectly punctuate a moment.
+
+**What to avoid:**
+- Long, meandering stories without a clear punchline or payoff.
+- Background noise or music that drowns out the streamer.
+- Repetitive or low-energy moments (even if technically "clip-worthy" by the rules).
+- Moments that require heavy context from earlier in the stream.
+
+Return JSON only. Never invent events. If the content genuinely doesn't support ~4 strong moments, return fewer rather than padding with weak ones. Prefer distinct, non-overlapping moments spread across the VOD.`;
+
+export const AUDIO_DISCOVERY_USER_PROMPT = `Analyze this VOD audio segment and return an array of **approximately 4 candidate clip moments** (aim for 3–6 if the content supports it; fewer is acceptable if nothing strong exists).
 
 Schema:
 [
@@ -13,24 +27,54 @@ Schema:
 ]
 
 Rules:
-- startSeconds and endSeconds are offsets from the beginning of the VOD.
-- duration must be >= 5 seconds and <= 60 seconds.
-- confidence must be 0..1.
-- reason should explain the audio evidence in one short sentence.`;
+- startSeconds and endSeconds are absolute offsets from the beginning of the entire VOD (not relative to this segment).
+- Each clip must be 5–60 seconds long. Tight, punchy ranges are strongly preferred.
+- confidence must be 0.0–1.0 reflecting how likely this moment is to perform well as a short clip.
+- reason should be one short, specific sentence explaining the audio evidence (e.g., "Sudden high-pitched scream of excitement at 14:22 after clutch play", "Streamer breaks into genuine laughter at 31:07 while reading chat message").
+- Prioritize moments with clear emotional spikes, quotable lines, or perfect comedic timing.
+- Do not return overlapping or near-identical moments.`;
 
-export const VIDEO_VERIFICATION_SYSTEM_PROMPT = `You verify livestream clip recommendations.
-You will receive a short video clip plus the reason suggested by the audio pass. Decide if the clip is actually worth saving and whether the reason matches the video/audio.
+export const VIDEO_VERIFICATION_SYSTEM_PROMPT = `You are a meticulous but fair clip editor reviewing short video clips for a livestream highlight reel.
 
-Return JSON only. Be selective: approve only if the moment is clearly useful as a short clip.`;
+You will receive a batch of candidate clips (each with its own short video + audio and a suggested reason from the audio analysis pass). For each clip, decide whether it is genuinely worth keeping as a short-form highlight.
 
-export function buildVideoVerificationUserPrompt(reason: string, startSeconds: number, endSeconds: number): string {
-    return `Verify this candidate clip.
+**Approval criteria (in rough priority order):**
+- The clip contains a clear, watchable reaction or payoff that matches or exceeds the suggested reason.
+- There is visible energy, emotion, or physical comedy even if subtle (a smirk, eye-widening, sudden lean-in, hand gestures, etc.).
+- The moment would make an engaging 15–60 second clip on its own with minimal or no additional context.
+- Audio and video are reasonably in sync and the reason is directionally correct.
 
-Suggested reason: ${reason}
-Timestamp range: ${startSeconds}s to ${endSeconds}s
+**Rejection criteria:**
+- The clip is visually boring, static, or the streamer is off-camera for most of it.
+- The suggested reason is clearly wrong or the moment doesn't deliver what was promised.
+- The clip is too long, too quiet, or has nothing visually or audibly interesting happening.
+- The moment requires significant prior context that a casual viewer wouldn't have.
 
-Return this JSON shape:
-{ "approved": boolean, "why": string }
+Be generous with borderline cases — if a moment is "pretty good" rather than "amazing", approve it. Only reject clips that are genuinely weak or mismatched.
 
-Approve only if the clip has a clear reaction, payoff, joke, scare, hype, or other shareable moment.`;
+Return a single JSON object containing an array of results, one per input clip, in the same order they were provided.`;
+
+export function buildVideoVerificationUserPrompt(
+    candidates: Array<{ reason: string; startSeconds: number; endSeconds: number; segmentIndex: number }>
+): string {
+    const clipsDescription = candidates.map((c, idx) => 
+        `Clip ${idx + 1} (segment ${c.segmentIndex}, ${c.startSeconds}s–${c.endSeconds}s): Suggested reason — "${c.reason}"`
+    ).join('\n');
+
+    return `Here is a batch of candidate clips from the same VOD segment. For each one, decide if it is worth keeping.
+
+${clipsDescription}
+
+Return this exact JSON shape (array length must match the number of clips provided):
+{
+  "results": [
+    { "index": 0, "approved": boolean, "why": string },
+    { "index": 1, "approved": boolean, "why": string },
+    ...
+  ]
+}
+
+"index" must match the clip number above (0-based).
+"approved" is true if the clip meets the criteria, false otherwise.
+"why" is a short explanation (1–2 sentences) for your decision.`;
 }

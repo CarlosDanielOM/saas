@@ -18,7 +18,7 @@ import { VodClipAnalysisFinishedEmail, getVodClipAnalysisFinishedSubject } from 
 import {
     analyzeVodAudioForClipMoments,
     type AudioCandidate,
-    verifyCandidateVideo
+    verifyCandidateVideosBatch
 } from './openrouter_clip_recommendations.client.js';
 import { CLIP_RECOMMENDATION_MODEL_ID } from './clip_recommendations_prompts.js';
 
@@ -357,7 +357,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         const totalSeconds = Math.max(60, Math.ceil(durationMinutes * 60));
         const segmentSeconds = AUDIO_SEGMENT_MINUTES * 60;
         const segmentCount = Math.max(1, Math.ceil(totalSeconds / segmentSeconds));
-        const audioCandidates: AudioCandidate[] = [];
+        const perSegmentCandidates: AudioCandidate[][] = [];
 
         for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
             const segmentStartSeconds = segmentIndex * segmentSeconds;
@@ -373,50 +373,102 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 candidate.startSeconds += segmentStartSeconds;
                 candidate.endSeconds += segmentStartSeconds;
             }
-            audioCandidates.push(...segmentCandidates);
+            perSegmentCandidates.push(segmentCandidates);
 
             // Free disk space between segments — the segment file isn't needed anymore.
             await fs.unlink(segmentAudioPath).catch(() => undefined);
 
             // Persist progress so far so partial work is visible in the DB during very long VODs.
-            const partialDocs = audioCandidates.map(buildCandidateDocument);
+            const flatSoFar = perSegmentCandidates.flat();
+            const partialDocs = flatSoFar.map(buildCandidateDocument);
             recommendation.candidates = partialDocs as any;
             recommendation.candidateCount = partialDocs.length;
             await recommendation.save();
         }
 
+        const audioCandidates = perSegmentCandidates.flat();
         const candidateDocs = audioCandidates.map(buildCandidateDocument);
         recommendation.candidates = candidateDocs as any;
         recommendation.candidateCount = candidateDocs.length;
         await recommendation.save();
 
-        let approvedCount = 0;
-        for (let index = 0; index < audioCandidates.length; index += 1) {
-            const candidate = audioCandidates[index];
-            const candidateDoc = recommendation.candidates[index];
-            const candidateID = String(candidateDoc._id || randomUUID());
-            const segmentPath = path.join(workDir, `candidate-${index + 1}.mp4`);
-            await cutVideoSegment(vodPath, segmentPath, candidate.startSeconds, candidate.endSeconds);
-            const verification = await verifyCandidateVideo({
-                videoPath: segmentPath,
+        // Fail loudly if audio analysis produced zero candidates. Previously this
+        // case was treated as a successful "0 clip" completion — the workflow
+        // exited cleanly, the user got a "no clips found" email, and the credits
+        // they'd been charged stayed gone. Better to surface the failure clearly
+        // so we can investigate provider routing or prompt problems.
+        if (audioCandidates.length === 0) {
+            const message = 'Audio analysis returned zero candidates. The model may not be processing the audio input correctly (provider routing or prompt issue). Credits have been charged but no clips were generated.';
+            await ClipRecommendationSchema.findByIdAndUpdate(recommendationObjectID, {
+                $set: {
+                    status: 'failed',
+                    errorMessage: message,
+                    completedAt: new Date()
+                }
+            }).exec();
+            await logWarn({
+                worker: 'clip_recommendations',
+                message: 'Audio analysis returned zero candidates',
                 channelID,
-                reason: candidate.reason,
-                startSeconds: candidate.startSeconds,
-                endSeconds: candidate.endSeconds,
+                recommendationID: recommendationObjectID,
+                segmentCount: perSegmentCandidates.length
+            }, { channelId: channelID, destination: 'both' });
+            return {
+                error: true,
+                status: 'failed',
+                message,
+                recommendationID: recommendationObjectID,
+                candidateCount: 0,
+                approvedCount: 0
+            };
+        }
+
+        // Batched video verification: one request per segment, passing all clips from that segment together.
+        let approvedCount = 0;
+        let globalIndex = 0;
+
+        for (let segmentIndex = 0; segmentIndex < perSegmentCandidates.length; segmentIndex += 1) {
+            const segCands = perSegmentCandidates[segmentIndex];
+            if (segCands.length === 0) continue;
+
+            // Extract video clips for this segment's candidates.
+            const videoInputs = await Promise.all(segCands.map(async (candidate, localIdx) => {
+                const candidateID = String(recommendation.candidates[globalIndex + localIdx]._id || randomUUID());
+                const segmentPath = path.join(workDir, `candidate-seg${segmentIndex}-c${localIdx}.mp4`);
+                await cutVideoSegment(vodPath, segmentPath, candidate.startSeconds, candidate.endSeconds);
+                return {
+                    videoPath: segmentPath,
+                    reason: candidate.reason,
+                    startSeconds: candidate.startSeconds,
+                    endSeconds: candidate.endSeconds
+                };
+            }));
+
+            const verifications = await verifyCandidateVideosBatch({
+                videos: videoInputs,
+                channelID,
                 modelID
             });
 
-            candidateDoc.videoApproved = verification.approved;
-            candidateDoc.videoWhy = verification.why;
-            candidateDoc.status = verification.approved ? 'approved' : 'rejected';
+            for (let localIdx = 0; localIdx < segCands.length; localIdx += 1) {
+                const candidateDoc = recommendation.candidates[globalIndex + localIdx];
+                const verification = verifications[localIdx] || { approved: false, why: 'No result' };
 
-            if (verification.approved) {
-                const upload = await uploadPreviewClip(channelID, recommendationObjectID, candidateID, segmentPath);
-                candidateDoc.s3Key = upload.key;
-                candidateDoc.previewUrl = upload.url;
-                approvedCount += 1;
+                candidateDoc.videoApproved = verification.approved;
+                candidateDoc.videoWhy = verification.why;
+                candidateDoc.status = verification.approved ? 'approved' : 'rejected';
+
+                if (verification.approved) {
+                    const segmentPath = videoInputs[localIdx].videoPath;
+                    const candidateID = String(candidateDoc._id || randomUUID());
+                    const upload = await uploadPreviewClip(channelID, recommendationObjectID, candidateID, segmentPath);
+                    candidateDoc.s3Key = upload.key;
+                    candidateDoc.previewUrl = upload.url;
+                    approvedCount += 1;
+                }
             }
 
+            globalIndex += segCands.length;
             recommendation.approvedCount = approvedCount;
             await recommendation.save();
         }
