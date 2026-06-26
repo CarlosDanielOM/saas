@@ -8,9 +8,36 @@ import {
     VIDEO_VERIFICATION_SYSTEM_PROMPT
 } from './clip_recommendations_prompts.js';
 import { info as logInfo, warn as logWarn } from '../../logger.js';
+import { createFetchWithRetry } from '../fetch.utils.js';
 
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MAX_AUDIO_CANDIDATES = Math.max(1, Number(process.env.CLIP_RECOMMENDATION_MAX_AUDIO_CANDIDATES || 24));
+
+// Audio payloads can be ~5 MB+ base64 — give each request a generous timeout.
+// Retries use the shared default policy (1s/3s/5s backoff on 429/500/502/503/504),
+// which absorbs transient OpenRouter gateway errors without redoing the entire
+// VOD workflow (download + ffmpeg extract + credit charge).
+const audioFetch = createFetchWithRetry({ timeout: 60_000, retries: 3 });
+
+// Video verification batches multiple base64 video clips — request body is larger
+// and the model takes longer, so use a higher timeout.
+const videoFetch = createFetchWithRetry({ timeout: 120_000, retries: 3 });
+
+/**
+ * Build a useful diagnostic suffix when the response body is empty (e.g. a 502
+ * from an upstream gateway that returns no content). Includes statusText and any
+ * request-id style headers so we can correlate with OpenRouter/edge logs.
+ */
+function buildEmptyBodyDiagnostic(response: Response): string {
+    const parts: string[] = [];
+    if (response.statusText) parts.push(`statusText=${response.statusText}`);
+    const interestingHeaderNames = ['x-request-id', 'x-request-id-2', 'cf-ray', 'x-vercel-id', 'tracestate'];
+    for (const name of interestingHeaderNames) {
+        const value = response.headers.get(name);
+        if (value) parts.push(`${name}=${value}`);
+    }
+    return parts.length > 0 ? ` (${parts.join(', ')})` : ' (empty body)';
+}
 
 // Map of MIME type -> input_audio format hint supported by Xiaomi / mimo-v2.5.
 const AUDIO_MIME_TO_FORMAT: Record<string, string> = {
@@ -178,7 +205,7 @@ async function callOpenRouterJson(options: {
         user: options.user
     };
 
-    const response = await fetch(OPENROUTER_CHAT_URL, {
+    const response = await audioFetch(OPENROUTER_CHAT_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -194,7 +221,8 @@ async function callOpenRouterJson(options: {
         payload = await response.json() as OpenRouterResponse;
     } catch (parseError) {
         const responseText = await response.text().catch(() => '');
-        throw new Error(`OpenRouter returned non-JSON response (HTTP ${response.status}): ${responseText.slice(0, 500)}`);
+        const suffix = responseText ? `: ${responseText.slice(0, 500)}` : buildEmptyBodyDiagnostic(response);
+        throw new Error(`OpenRouter returned non-JSON response (HTTP ${response.status})${suffix}`);
     }
 
     if (!response.ok || payload.error) {
@@ -331,7 +359,7 @@ export async function verifyCandidateVideosBatch(input: {
         user: input.channelID
     };
 
-    const response = await fetch(OPENROUTER_CHAT_URL, {
+    const response = await videoFetch(OPENROUTER_CHAT_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -347,7 +375,8 @@ export async function verifyCandidateVideosBatch(input: {
         payload = await response.json();
     } catch {
         const text = await response.text().catch(() => '');
-        throw new Error(`OpenRouter returned non-JSON (HTTP ${response.status}): ${text.slice(0, 500)}`);
+        const suffix = text ? `: ${text.slice(0, 500)}` : buildEmptyBodyDiagnostic(response);
+        throw new Error(`OpenRouter returned non-JSON (HTTP ${response.status})${suffix}`);
     }
 
     if (!response.ok || payload.error) {
