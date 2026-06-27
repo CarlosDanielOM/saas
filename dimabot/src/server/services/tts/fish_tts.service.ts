@@ -3,6 +3,7 @@ import path from 'path';
 
 import { FishAudioClient, type Backends } from 'fish-audio';
 
+import { error as logError, warn as logWarn } from '../../../utils/logger.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
 import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
 
@@ -17,6 +18,9 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
+const PRIMARY_FISH_TTS_BACKEND = 's2.1-pro-free';
+const FALLBACK_FISH_TTS_BACKEND = 's2-pro';
+
 function getFishApiKey(): string | null {
     const key = process.env.FISH_AUDIO_API_KEY;
     if (!key || key.trim() === '') {
@@ -30,6 +34,60 @@ async function ensureSpeechOutputDir(channelID: string): Promise<string> {
     const outputDir = path.join(PIPER_PUBLIC_SPEECH_DIR, channelID);
     await fs.mkdir(outputDir, { recursive: true });
     return outputDir;
+}
+
+async function convertWithBackend(
+    fishAudio: FishAudioClient,
+    text: string,
+    referenceId: string,
+    backend: string
+) {
+    return await fishAudio.textToSpeech.convert(
+        {
+            text,
+            reference_id: referenceId,
+            format: 'mp3'
+        },
+        backend as Backends
+    );
+}
+
+async function synthesizeWithFallback(
+    fishAudio: FishAudioClient,
+    text: string,
+    referenceId: string,
+    channelID: string
+): Promise<{ audio: ReadableStream<Uint8Array>; usedBackend: string }> {
+    try {
+        const audio = await convertWithBackend(fishAudio, text, referenceId, PRIMARY_FISH_TTS_BACKEND);
+        return { audio, usedBackend: PRIMARY_FISH_TTS_BACKEND };
+    } catch (primaryError) {
+        const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+        await logWarn({
+            event: 'fish_tts_fallback',
+            from: PRIMARY_FISH_TTS_BACKEND,
+            to: FALLBACK_FISH_TTS_BACKEND,
+            primaryError: primaryMessage
+        }, { channelId: channelID });
+
+        try {
+            const audio = await convertWithBackend(fishAudio, text, referenceId, FALLBACK_FISH_TTS_BACKEND);
+            return { audio, usedBackend: FALLBACK_FISH_TTS_BACKEND };
+        } catch (fallbackError) {
+            const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            await logError({
+                event: 'fish_tts_total_failure',
+                primary: PRIMARY_FISH_TTS_BACKEND,
+                fallback: FALLBACK_FISH_TTS_BACKEND,
+                primaryError: primaryMessage,
+                fallbackError: fallbackMessage
+            }, { channelId: channelID });
+
+            throw new Error(
+                `Fish Audio TTS failed on primary '${PRIMARY_FISH_TTS_BACKEND}' and fallback '${FALLBACK_FISH_TTS_BACKEND}': ${fallbackMessage}`
+            );
+        }
+    }
 }
 
 class FishTtsService implements TtsProvider {
@@ -50,13 +108,11 @@ class FishTtsService implements TtsProvider {
             const fishAudio = new FishAudioClient({ apiKey });
             const referenceId = String(request.voice).trim();
 
-            const audio = await fishAudio.textToSpeech.convert(
-                {
-                    text: request.text,
-                    reference_id: referenceId,
-                    format: 'mp3'
-                },
-                's2.1-pro-free' as Backends
+            const { audio, usedBackend } = await synthesizeWithFallback(
+                fishAudio,
+                request.text,
+                referenceId,
+                request.channelID
             );
 
             const buffer = Buffer.from(await new Response(audio).arrayBuffer());
@@ -64,7 +120,7 @@ class FishTtsService implements TtsProvider {
 
             return {
                 error: false,
-                message: 'Speech synthesized with Fish Audio',
+                message: `Speech synthesized with Fish Audio (${usedBackend})`,
                 outputPath,
                 publicPath: buildPublicPath(request.channelID, request.speechID),
                 mimeType: 'audio/mpeg'
