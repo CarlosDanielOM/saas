@@ -56,7 +56,7 @@ class FishTtsService implements TtsProvider {
                     reference_id: referenceId,
                     format: 'mp3'
                 },
-                's2-pro' as Backends
+                's2.1-pro-free' as Backends
             );
 
             const buffer = Buffer.from(await new Response(audio).arrayBuffer());
