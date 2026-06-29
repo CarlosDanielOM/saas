@@ -51,7 +51,10 @@ export function filterExpressiveTtsTags(
     expressiveTags: XaiExpressiveTagSettings
 ): string {
     let text = String(rawText || '');
-    const allowExpressiveTags = provider === 'xai' || provider === 'fish';
+    // Only xAI understands these expressive tags. Fish Audio does not, so we
+    // always strip every `[emotion]` and `<tag>` token for the fish provider,
+    // regardless of any per-tag setting.
+    const allowExpressiveTags = provider === 'xai';
 
     for (const definition of XAI_INLINE_TAG_DEFINITIONS) {
         const isEnabled = allowExpressiveTags && expressiveTags.inline[definition.key];
