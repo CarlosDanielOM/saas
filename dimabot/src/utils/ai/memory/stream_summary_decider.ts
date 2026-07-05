@@ -291,16 +291,18 @@ interface AttemptResult {
  * which surfaced as DECIDER_EMPTY_CONTENT → DECIDER_HTTP_ERROR cascades.
  * 256k gives reasoning + structured output room to complete.
  *
- * NOTE: deepseek/deepseek-v4-flash's hard upstream cap is 16,384 tokens
- * (advertised `top_provider.max_completion_tokens`). Sending max_tokens: 256000
- * to v4-flash causes OpenRouter to reject the call outright. This is
- * intentional per the operator — premium summaries will fail loudly in logs
- * until either (a) v4-flash's cap is raised upstream, or (b) premium is
- * migrated off v4-flash. Use v4-pro for any tier that needs >16k output.
+ * v4-flash also benefits at higher values; empirical OpenRouter probe (2026-07-05)
+ * shows both 50k and 256k are accepted for v4-flash — OpenRouter auto-routes
+ * higher-budget requests to the DeepSeek provider instead of the cheaper
+ * third-party hosts.
  *
- * Free tier (qwen/qwen3-235b-a22b-2507) keeps 50,000 — its hard cap is also
- * 16,384, so it's already silently truncating; the lower value is left in
- * place pending model migration.
+ * Free tier (qwen/qwen3-235b-a22b-2507) keeps 50,000; bumping to 256k is
+ * left for a later change since the affected callers are low-priority and
+ * the cost spike on qwen is not currently budgeted.
+ *
+ * NOTE: deepseek/deepseek-v4-pro is hard-pinned to provider `deepseek` in
+ * MODEL_PROVIDER_RESTRICTIONS (constants.ts) — that pin is what gives us
+ * the 75% price cut vs deepinfra/fireworks/digitalocean. Do not remove it.
  */
 const STREAM_SUMMARY_MAX_TOKENS_BY_MODEL: Readonly<Record<string, number>> = {
     "deepseek/deepseek-v4-pro": 256000,
