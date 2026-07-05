@@ -69,11 +69,17 @@ const WORKERS: WorkerDefinition[] = [
         sourceEntry: 'src/workers/activation-reminder.worker.ts',
         distEntry: 'dist/workers/activation-reminder.worker.js'
     },
-    {
-        name: 'vod-clip-recommender',
-        sourceEntry: 'src/workers/vod_clip_recommender.worker.ts',
-        distEntry: 'dist/workers/vod_clip_recommender.worker.js'
-    }
+    // {
+    //     name: 'vod-clip-recommender',
+    //     sourceEntry: 'src/workers/vod_clip_recommender.worker.ts',
+    //     distEntry: 'dist/workers/vod_clip_recommender.worker.js'
+    // }
+    // ^ Disabled 2026-07-05: VOD clip recommendation workflow is failing on the
+    // pinned Parasail OpenRouter provider (Provider returned error / Internal
+    // Server Error on verifyCandidateVideosBatch). Worker stays out of the
+    // supervisor until Parasail recovers or the provider pin is relaxed.
+    // Jobs already enqueued in cron:clip-recommendations:queue stay there;
+    // drain manually if needed before re-enabling.
 ];
 
 function resolveWorkerEntry(worker: WorkerDefinition): { command: string; args: string[] } {

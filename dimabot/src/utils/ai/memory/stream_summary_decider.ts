@@ -282,6 +282,35 @@ interface AttemptResult {
     error?: string;
 }
 
+/**
+ * Per-model max output tokens for stream-summary OpenRouter calls.
+ *
+ * Bumped to 256k on 2026-07-05 for v4 Pro / v4 Flash (premium + pro tiers):
+ * v4-pro is a reasoning model that was burning the full output budget on
+ * internal reasoning and emitting empty `content` before the JSON body,
+ * which surfaced as DECIDER_EMPTY_CONTENT → DECIDER_HTTP_ERROR cascades.
+ * 256k gives reasoning + structured output room to complete.
+ *
+ * NOTE: deepseek/deepseek-v4-flash's hard upstream cap is 16,384 tokens
+ * (advertised `top_provider.max_completion_tokens`). Sending max_tokens: 256000
+ * to v4-flash causes OpenRouter to reject the call outright. This is
+ * intentional per the operator — premium summaries will fail loudly in logs
+ * until either (a) v4-flash's cap is raised upstream, or (b) premium is
+ * migrated off v4-flash. Use v4-pro for any tier that needs >16k output.
+ *
+ * Free tier (qwen/qwen3-235b-a22b-2507) keeps 50,000 — its hard cap is also
+ * 16,384, so it's already silently truncating; the lower value is left in
+ * place pending model migration.
+ */
+const STREAM_SUMMARY_MAX_TOKENS_BY_MODEL: Readonly<Record<string, number>> = {
+    "deepseek/deepseek-v4-pro": 256000,
+    "deepseek/deepseek-v4-flash": 256000
+};
+
+function resolveMaxTokens(model: string): number {
+    return STREAM_SUMMARY_MAX_TOKENS_BY_MODEL[model] ?? 50000;
+}
+
 async function callOpenRouter(
     model: string,
     systemPrompt: string,
@@ -299,7 +328,7 @@ async function callOpenRouter(
                 type: 'json_schema',
                 json_schema: STREAM_SUMMARY_JSON_SCHEMA
             },
-            max_tokens: 50000,
+            max_tokens: resolveMaxTokens(model),
             user: context.channelID
         };
 
