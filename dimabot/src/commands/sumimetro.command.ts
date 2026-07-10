@@ -1,5 +1,7 @@
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import Commands from "../classes/command.class.js";
+import { parseSpecialCommands } from '../handlers/special_parser.handler.js';
+import { isAstSumimetroMessage, renderAstSumimetroMessage } from './sumimetro_ast_message.js';
 
 export const sumimetroCommand = async (channelID: string, user: string, touser: string, commandName: string): Promise<any> => {
     const cache = await getDragonflyClient();
@@ -12,6 +14,23 @@ export const sumimetroCommand = async (channelID: string, user: string, touser: 
 
     if(!sumimetroCommand.error && sumimetroCommand.command && sumimetroCommand.command.message) {
         commandMessage = sumimetroCommand.command.message;
+    }
+
+    if (commandMessage && isAstSumimetroMessage(commandMessage)) {
+        const parsedMessage = await renderAstSumimetroMessage(
+            commandMessage,
+            channelID,
+            user,
+            commandName,
+            parseSpecialCommands
+        );
+
+        return {
+            error: false,
+            message: parsedMessage,
+            status: 200,
+            type: 'success'
+        };
     }
 
     const dominantValue = Math.floor(Math.random() * 101);

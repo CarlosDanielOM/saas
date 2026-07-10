@@ -208,7 +208,7 @@ function parseTemplateString(content: string, registry: Map<string, SyntaxDefini
         
         if (braceDepth === 0) {
             const exprContent = content.slice(dollarBrace + 2, j - 1);
-            
+
             try {
                 const innerTokens = tokenize(exprContent, registry);
                 if (innerTokens.tokens.length > 0) {
@@ -786,30 +786,38 @@ function parseStarExpression(
             if (minPrecedence > 1) break;
             
             currentIndex++;
-            const consequentResult = parseStarExpression(tokens, currentIndex, registry, 0);
-            currentIndex = consequentResult.newIndex;
-            
+            let consequent: AstNode;
+            let hasAlternate = false;
             if (tokens[currentIndex] === ':') {
+                consequent = { type: 'literal', value: '' };
                 currentIndex++;
+                hasAlternate = true;
+            } else {
+                const consequentResult = parseStarExpression(tokens, currentIndex, registry, 0);
+                consequent = consequentResult.node;
+                currentIndex = consequentResult.newIndex;
+
+                if (tokens[currentIndex] === ':') {
+                    currentIndex++;
+                    hasAlternate = true;
+                }
+            }
+
+            let alternate: AstNode = { type: 'literal', value: '' };
+
+            if (hasAlternate) {
                 const alternateResult = parseStarExpression(tokens, currentIndex, registry, 0);
                 currentIndex = alternateResult.newIndex;
-                
-                const ternaryNode: TernaryExpressionNode = {
-                    type: 'ternary',
-                    test: left,
-                    consequent: consequentResult.node,
-                    alternate: alternateResult.node
-                };
-                left = ternaryNode;
-            } else {
-                const ternaryNode: TernaryExpressionNode = {
-                    type: 'ternary',
-                    test: left,
-                    consequent: consequentResult.node,
-                    alternate: { type: 'literal', value: '' }
-                };
-                left = ternaryNode;
+                alternate = alternateResult.node;
             }
+
+            const ternaryNode: TernaryExpressionNode = {
+                type: 'ternary',
+                test: left,
+                consequent,
+                alternate
+            };
+            left = ternaryNode;
             continue;
         }
         
