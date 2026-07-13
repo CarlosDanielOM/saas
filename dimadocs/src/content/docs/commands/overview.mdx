@@ -333,24 +333,26 @@ This section matches the current built-in command list from the bot config. Many
 
 **Examples:**
 ```text
-!cct mytimer 5m Hello world!
-!cct shoutout 10m Check out the socials!
+!cct mytimer 15 Hello world!
+!cct shoutout 30 Check out the socials!
+!cct pro-reminder 7m This Pro timer runs every seven minutes.
 ```
 
 **Notes:**
 
-- frequency must be a multiple of `5` minutes
-- examples include `5m`, `10m`, `15m`, `1h`
-- free max `60min`
-- premium max `360min`
-- pro max `1440min`
-- you can reference commands with `#(command)`
+- this is a repeating timer command that runs only while the channel is live; it is separate from one-time countdown timers
+- a bare number is interpreted as minutes; `15m` and `1h` are also accepted
+- Free intervals: `15`, `30`, `45`, or `60` minutes
+- Premium intervals: multiples of `5` minutes from `5` through `180`
+- Pro intervals: any whole minute from `1` through `180`
+- existing out-of-tier intervals keep running after plan changes, but editing requires choosing an interval allowed by the current plan
+- timer messages support the full AST parser, including command references such as `#(command)`
 
 #### `!ect`
 
-**Usage:** `!ect <timer name> <frequency> <message>`
+**Usage:** `!ect <timer name> [frequency] [message]`
 
-**Note:** frequency must be a multiple of `5` minutes and the timer must already exist
+**Note:** the timer must already exist and any edit must satisfy the current plan's interval rules
 
 **Example:**
 ```text

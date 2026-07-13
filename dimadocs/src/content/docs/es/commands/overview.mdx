@@ -333,24 +333,26 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 
 **Ejemplos:**
 ```text
-!cct mitemporizador 5m Hola mundo!
-!cct saludo 10m Visita las redes!
+!cct mitemporizador 15 Hola mundo!
+!cct saludo 30m Visita las redes!
+!cct recordatorio-pro 7m Este temporizador Pro se ejecuta cada siete minutos.
 ```
 
 **Notas:**
 
-- la frecuencia debe ser múltiplo de `5` minutos
-- ejemplos: `5m`, `10m`, `15m`, `1h`
-- gratis máximo `60min`
-- premium máximo `360min`
-- pro máximo `1440min`
-- puedes referenciar comandos con `#(comando)`
+- este es un comando de temporizador repetitivo que funciona solo mientras el canal está en vivo; es distinto de los temporizadores de cuenta regresiva de una sola ejecución
+- un número sin sufijo se interpreta como minutos; también se aceptan `15m` y `1h`
+- intervalos Gratis: `15`, `30`, `45` o `60` minutos
+- intervalos Premium: múltiplos de `5` minutos desde `5` hasta `180`
+- intervalos Pro: cualquier minuto entero desde `1` hasta `180`
+- los intervalos existentes fuera del plan siguen funcionando después de cambiar de plan, pero para editarlos debes elegir un intervalo permitido por el plan actual
+- los mensajes admiten todo el analizador AST, incluidas referencias como `#(comando)`
 
 #### `!ect`
 
-**Uso:** `!ect <nombre del temporizador> <frecuencia> <mensaje>`
+**Uso:** `!ect <nombre del temporizador> [frecuencia] [mensaje]`
 
-**Nota:** la frecuencia debe ser múltiplo de `5` minutos y el temporizador ya debe existir
+**Nota:** el temporizador debe existir y cualquier edición debe cumplir las reglas de intervalo del plan actual
 
 **Ejemplo:**
 ```text

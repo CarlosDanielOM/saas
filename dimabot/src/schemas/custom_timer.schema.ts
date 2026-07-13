@@ -5,6 +5,7 @@ export interface ICustomTimer {
     name: string;
     message: string;
     frequency: number;
+    frequencyUnit?: 'minutes';
     channel: string;
     channelID: string;
     active: boolean;
@@ -29,7 +30,16 @@ const customTimerSchema = new Schema<ICustomTimer>({
         type: Number,
         required: true,
         min: 1,
-        max: 288
+        max: 1440,
+        validate: {
+            validator: Number.isInteger,
+            message: 'Timer frequency must be a whole number'
+        }
+    },
+    frequencyUnit: {
+        type: String,
+        enum: ['minutes'],
+        required: false
     },
     channel: {
         type: String,

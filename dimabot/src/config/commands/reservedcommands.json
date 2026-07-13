@@ -468,8 +468,8 @@
       "userLevelName": "mod",
       "userLevel": 7,
       "description": {
-        "en": "Creates a custom timer that sends a message every X minutes when you are live | Example: !cct mytimer 5m Hello world! | Example: !cct shoutout 10m Check out the socials! | You can reference commands with #(command): !cct test 2 #(discord) | Frequency must be a multiple of 5 minutes (5m, 10m, 15m, 1h) | Free: max 60min | Premium: max 360min | Pro: max 1440min",
-        "es": "Crea un temporizador que envia un mensaje cada X minutos cuando estes en vivo | Ejemplo: !cct mitemporizador 5m Hola mundo! | Ejemplo: !cct saludo 10m Visita las redes! | Puedes referenciar comandos con #(comando): !cct test 2 #(discord) | La frecuencia debe ser multiplo de 5 minutos (5m, 10m, 15m, 1h) | Gratis: max 60min | Premium: max 360min | Pro: max 1440min"
+        "en": "Creates a repeating timer command that sends a message while you are live | Example: !cct mytimer 15 Hello world! | Example: !cct socials 30m #(discord) | Timer messages support the full AST parser | Free: 15/30/45/60min | Premium: 5min intervals up to 180min | Pro: any whole minute up to 180min",
+        "es": "Crea un comando de temporizador repetitivo que envia un mensaje mientras estes en vivo | Ejemplo: !cct mitemporizador 15 Hola mundo! | Ejemplo: !cct redes 30m #(discord) | Los mensajes admiten todo el analizador AST | Gratis: 15/30/45/60min | Premium: intervalos de 5min hasta 180min | Pro: cualquier minuto entero hasta 180min"
       }
     },
     {
@@ -483,8 +483,8 @@
       "userLevelName": "mod",
       "userLevel": 7,
       "description": {
-        "en": "Edits an existing custom timer | Example: !ect mytimer 10m New message here | Provide frequency and/or message to update | Frequency must be a multiple of 5 minutes (5m, 10m, 15m, 1h) | If the timer does not exist it will tell you that it does not exist",
-        "es": "Edita un temporizador existente | Ejemplo: !ect mitemporizador 10m Nuevo mensaje aqui | Proporciona frecuencia y/o mensaje a actualizar | La frecuencia debe ser multiplo de 5 minutos (5m, 10m, 15m, 1h) | Si el temporizador no existe se le dira que no existe"
+        "en": "Edits an existing repeating timer command | Example: !ect mytimer 30 New message here | Provide a frequency and/or message | Grandfathered intervals keep running, but editing requires an interval allowed by the current plan",
+        "es": "Edita un comando de temporizador repetitivo existente | Ejemplo: !ect mitemporizador 30 Nuevo mensaje aqui | Proporciona una frecuencia y/o mensaje | Los intervalos heredados siguen funcionando, pero para editarlos se requiere un intervalo permitido por el plan actual"
       }
     },
     {

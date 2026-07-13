@@ -1,6 +1,7 @@
 import { CustomTimerSchema } from '../schemas/custom_timer.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import { error as logError, info as logInfo } from '../utils/logger.js';
+import { error as logError } from '../utils/logger.js';
+import { TIMER_FREQUENCY_UNIT } from './timer_policy.js';
 
 export async function loadChannelTimersIntoCache(channelID: string): Promise<void> {
     try {
@@ -8,6 +9,12 @@ export async function loadChannelTimersIntoCache(channelID: string): Promise<voi
         const timers = await CustomTimerSchema.find({ channelID, active: true }).lean();
 
         if (timers.length === 0) {
+            const staleTimers = await cache.hGetAll(`timer:channel:${channelID}:timers`);
+            for (const timerID of Object.keys(staleTimers || {})) {
+                await cache.del(`timer:channel:${channelID}:heartbeat:${timerID}`);
+                await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timerID}`);
+            }
+            await cache.del(`timer:channel:${channelID}:timers`);
             await cache.sAdd('timer:active', channelID);
             return;
         }
@@ -22,21 +29,18 @@ export async function loadChannelTimersIntoCache(channelID: string): Promise<voi
 
             for (const timer of timers) {
                 const heartbeatKey = `timer:channel:${channelID}:heartbeat:${timer._id}`;
+                const heartbeatUnitKey = `timer:channel:${channelID}:heartbeat-unit:${timer._id}`;
                 const exists = await cache.exists(heartbeatKey);
-                if (!exists) {
+                const unitExists = await cache.exists(heartbeatUnitKey);
+                if (!exists || !unitExists) {
                     await cache.set(heartbeatKey, '0');
+                    await cache.set(heartbeatUnitKey, TIMER_FREQUENCY_UNIT);
                 }
             }
         }
 
         await cache.sAdd('timer:active', channelID);
 
-        await logInfo({
-            function: 'loadChannelTimersIntoCache',
-            channelID,
-            timerCount: timers.length,
-            message: 'Loaded timers into cache for live channel'
-        }, { channelId: channelID, destination: 'console' });
     } catch (error) {
         await logError({
             function: 'loadChannelTimersIntoCache',
@@ -57,16 +61,12 @@ export async function unloadChannelTimersFromCache(channelID: string): Promise<v
         if (timersData) {
             for (const timerID of Object.keys(timersData)) {
                 await cache.del(`timer:channel:${channelID}:heartbeat:${timerID}`);
+                await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timerID}`);
             }
         }
 
         await cache.del(`timer:channel:${channelID}:timers`);
 
-        await logInfo({
-            function: 'unloadChannelTimersFromCache',
-            channelID,
-            message: 'Unloaded timers from cache for offline channel'
-        }, { channelId: channelID, destination: 'console' });
     } catch (error) {
         await logError({
             function: 'unloadChannelTimersFromCache',
@@ -90,11 +90,13 @@ export async function refreshChannelTimerInCache(channelID: string, timerID: str
         if (!timer || !timer.active) {
             await cache.hDel(`timer:channel:${channelID}:timers`, timerID);
             await cache.del(`timer:channel:${channelID}:heartbeat:${timerID}`);
+            await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timerID}`);
             return;
         }
 
         await cache.hSet(`timer:channel:${channelID}:timers`, timerID, JSON.stringify(timer));
         await cache.set(`timer:channel:${channelID}:heartbeat:${timerID}`, '0');
+        await cache.set(`timer:channel:${channelID}:heartbeat-unit:${timerID}`, TIMER_FREQUENCY_UNIT);
     } catch (error) {
         await logError({
             function: 'refreshChannelTimerInCache',
@@ -112,6 +114,7 @@ export async function removeChannelTimerFromCache(channelID: string, timerID: st
         const cache = await getDragonflyClient('removeChannelTimer');
         await cache.hDel(`timer:channel:${channelID}:timers`, timerID);
         await cache.del(`timer:channel:${channelID}:heartbeat:${timerID}`);
+        await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timerID}`);
     } catch (error) {
         await logError({
             function: 'removeChannelTimerFromCache',

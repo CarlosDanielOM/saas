@@ -2,6 +2,12 @@ import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import { CustomTimerSchema, type ICustomTimer } from '../schemas/custom_timer.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { isLive as checkChannelLive } from '../functions/channels/is_live.channel.js';
+import {
+    TIMER_FREQUENCY_UNIT,
+    getTimerIntervalMinutes,
+    validateTimerEditInterval,
+    validateTimerInterval
+} from '../utils/timer_policy.js';
 
 const MAX_NAME_LENGTH = 30;
 const MAX_MESSAGE_LENGTH = 350;
@@ -15,18 +21,6 @@ interface ITimerCommandResult {
     timers?: unknown[];
 }
 
-function getTierFrequencyLimits(tier: string): { min: number; max: number } {
-    switch (tier) {
-        case 'pro':
-            return { min: 1, max: 288 };
-        case 'premium':
-            return { min: 1, max: 72 };
-        case 'free':
-        default:
-            return { min: 1, max: 12 };
-    }
-}
-
 function getTierTimerLimit(tier: string): number {
     switch (tier) {
         case 'pro':
@@ -37,10 +31,6 @@ function getTierTimerLimit(tier: string): number {
         default:
             return 5;
     }
-}
-
-function frequencyToMinutes(frequency: number): number {
-    return frequency * 5;
 }
 
 function validateName(name: string): { valid: boolean; error?: string } {
@@ -66,21 +56,6 @@ function validateMessage(message: string): { valid: boolean; error?: string } {
     return { valid: true };
 }
 
-function validateFrequency(frequency: number, tier: string): { valid: boolean; error?: string } {
-    const limits = getTierFrequencyLimits(tier);
-    if (!Number.isInteger(frequency)) {
-        return { valid: false, error: 'Frequency must be a whole number' };
-    }
-    if (frequency < limits.min) {
-        return { valid: false, error: `Minimum frequency is ${limits.min} (${frequencyToMinutes(limits.min)} minutes)` };
-    }
-    if (frequency > limits.max) {
-        const maxMinutes = frequencyToMinutes(limits.max);
-        return { valid: false, error: `Your plan allows a maximum of ${limits.max} (${maxMinutes} minutes). Upgrade for longer intervals.` };
-    }
-    return { valid: true };
-}
-
 async function checkTimerLimit(channelID: string, tier: string): Promise<{ allowed: boolean; count: number; limit: number }> {
     const limit = getTierTimerLimit(tier);
     const count = await CustomTimerSchema.countDocuments({ channelID, active: true });
@@ -101,7 +76,7 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             return { error: true, message: String(nameValidation.error), status: 400 };
         }
 
-        const frequencyValidation = validateFrequency(frequency, tier);
+        const frequencyValidation = validateTimerInterval(frequency, tier);
         if (!frequencyValidation.valid) {
             return { error: true, message: String(frequencyValidation.error), status: 400 };
         }
@@ -129,6 +104,7 @@ export async function createTimer(channelID: string, name: string, frequency: nu
             name: name.toLowerCase(),
             message,
             frequency,
+            frequencyUnit: TIMER_FREQUENCY_UNIT,
             channel: streamer.name,
             channelID,
             active: true
@@ -153,9 +129,10 @@ export async function createTimer(channelID: string, name: string, frequency: nu
         if (isLive) {
             await cache.hSet(`timer:channel:${channelID}:timers`, String(timer._id), JSON.stringify(timer.toObject()));
             await cache.set(`timer:channel:${channelID}:heartbeat:${timer._id}`, '0');
+            await cache.set(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`, TIMER_FREQUENCY_UNIT);
         }
 
-        const minutes = frequencyToMinutes(frequency);
+        const minutes = frequency;
         return {
             error: false,
             message: isLive
@@ -190,12 +167,21 @@ export async function editTimer(channelID: string, name: string, frequency?: num
             return { error: true, message: `Timer "${name}" not found`, status: 404 };
         }
 
+        const currentMinutes = getTimerIntervalMinutes(timer);
+        const frequencyValidation = validateTimerEditInterval(timer, frequency, tier);
+        if (!frequencyValidation.valid) {
+            const grandfatheredMessage = frequency === undefined
+                ? `This timer can keep running at ${currentMinutes} minutes, but it cannot be edited on your current plan. Choose a valid interval first.`
+                : String(frequencyValidation.error);
+            return { error: true, message: grandfatheredMessage, status: 400 };
+        }
+
         if (frequency !== undefined) {
-            const frequencyValidation = validateFrequency(frequency, tier);
-            if (!frequencyValidation.valid) {
-                return { error: true, message: String(frequencyValidation.error), status: 400 };
-            }
             timer.frequency = frequency;
+        }
+        timer.frequencyUnit = TIMER_FREQUENCY_UNIT;
+        if (frequency === undefined) {
+            timer.frequency = currentMinutes;
         }
 
         if (message !== undefined) {
@@ -226,9 +212,11 @@ export async function editTimer(channelID: string, name: string, frequency?: num
 
         if (isLive && timer.active) {
             await cache.hSet(`timer:channel:${channelID}:timers`, String(timer._id), JSON.stringify(timer.toObject()));
+            await cache.set(`timer:channel:${channelID}:heartbeat:${timer._id}`, '0');
+            await cache.set(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`, TIMER_FREQUENCY_UNIT);
         }
 
-        const minutes = frequencyToMinutes(timer.frequency);
+        const minutes = getTimerIntervalMinutes(timer);
         return {
             error: false,
             message: `Timer "${name}" updated. Sends every ${minutes} minute${minutes !== 1 ? 's' : ''} when live.`,
@@ -259,6 +247,7 @@ export async function deleteTimer(channelID: string, name: string): Promise<ITim
         const cache = await getDragonflyClient('timerManager');
         await cache.hDel(`timer:channel:${channelID}:timers`, String(timer._id));
         await cache.del(`timer:channel:${channelID}:heartbeat:${timer._id}`);
+        await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`);
 
         return {
             error: false,
@@ -308,9 +297,11 @@ export async function toggleTimer(channelID: string, name: string, active?: bool
             if (timer.active) {
                 await cache.hSet(`timer:channel:${channelID}:timers`, String(timer._id), JSON.stringify(timer.toObject()));
                 await cache.set(`timer:channel:${channelID}:heartbeat:${timer._id}`, '0');
+                await cache.set(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`, TIMER_FREQUENCY_UNIT);
             } else {
                 await cache.hDel(`timer:channel:${channelID}:timers`, String(timer._id));
                 await cache.del(`timer:channel:${channelID}:heartbeat:${timer._id}`);
+                await cache.del(`timer:channel:${channelID}:heartbeat-unit:${timer._id}`);
             }
         }
 
@@ -348,7 +339,7 @@ export async function listTimers(channelID: string): Promise<ITimerCommandResult
         const timerList = timers.map((t) => ({
             name: t.name,
             frequency: t.frequency,
-            minutes: frequencyToMinutes(t.frequency),
+            minutes: getTimerIntervalMinutes(t),
             message: t.message.length > 50 ? t.message.substring(0, 47) + '...' : t.message,
             active: t.active
         }));

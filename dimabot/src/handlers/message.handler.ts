@@ -31,6 +31,7 @@ import { appendAssistantTurnToThread, resolveUserThreadForMessage } from "../uti
 import { endMessageHandlerMetric, recordRedisOpsEstimate, startMessageHandlerMetric } from "../utils/observability/bot_runtime_metrics.js";
 import { identifyStreamer, trackCommand } from "../utils/posthog_events.js";
 import { splitAiResponseForTwitch } from "../utils/twitch/chat_message_chunks.js";
+import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 
 const modID = '698614112';
 const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
@@ -150,7 +151,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     if (!timerName || !timerFrequencyRaw || !timerMessage || timerFrequency === null) {
                         timerResponse = {
                             error: true,
-                            message: 'Usage: !timer create <name> <frequency> <message> | Examples: !timer create mytimer 5m Hello! | Frequency: 5m, 10m, 15m, 1h (multiples of 5 minutes only)'
+                            message: 'Usage: !timer create <name> <minutes> <message> | Free: 15/30/45/60 | Premium: 5-minute intervals up to 180 | Pro: any whole minute up to 180'
                         };
                         break;
                     }
@@ -160,27 +161,23 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 case 'edit':
                 case 'update':
                 case 'modify': {
-                    const [timerName, timerFrequencyRaw, ...timerMessageParts] = timerPayload;
-                    const timerFrequency = parseTimerFrequencyInput(timerFrequencyRaw);
-                    const timerMessage = timerMessageParts.join(' ').trim();
-                    if (!timerName || (!timerFrequencyRaw && !timerMessage)) {
+                    const [timerName, timerFrequencyOrMessage, ...remainingParts] = timerPayload;
+                    const parsedFrequency = parseTimerFrequencyInput(timerFrequencyOrMessage);
+                    const timerFrequency = parsedFrequency ?? undefined;
+                    const timerMessage = parsedFrequency === null
+                        ? [timerFrequencyOrMessage, ...remainingParts].filter(Boolean).join(' ').trim()
+                        : remainingParts.join(' ').trim();
+                    if (!timerName || (!timerFrequencyOrMessage && !timerMessage)) {
                         timerResponse = {
                             error: true,
                             message: 'Usage: !timer edit <name> <frequency?> <message?>'
                         };
                         break;
                     }
-                    if (timerFrequencyRaw && timerFrequency === null) {
-                        timerResponse = {
-                            error: true,
-                            message: 'Invalid frequency. Use 5m, 10m, 15m, 1h (multiples of 5 minutes only).'
-                        };
-                        break;
-                    }
                     timerResponse = await editTimer(
                         channelID,
                         timerName,
-                        timerFrequencyRaw ? timerFrequency ?? undefined : undefined,
+                        timerFrequency,
                         timerMessage || undefined
                     );
                     break;
@@ -799,45 +796,4 @@ async function giveUserLevel(channelID: string, messageEventData: IChatMessage) 
     }
 
     return userLevel;
-}
-
-function parseTimerFrequencyInput(rawValue: string | undefined): number | null {
-    if (!rawValue) {
-        return null;
-    }
-
-    const normalized = String(rawValue).trim().toLowerCase();
-    if (!normalized) {
-        return null;
-    }
-
-    if (/^\d+$/.test(normalized)) {
-        const parsed = Number.parseInt(normalized, 10);
-        return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-    }
-
-    const match = normalized.match(/^(\d+)([mh])$/);
-    if (!match) {
-        return null;
-    }
-
-    const amount = Number.parseInt(match[1], 10);
-    const unit = match[2];
-
-    if (!Number.isInteger(amount) || amount <= 0) {
-        return null;
-    }
-
-    if (unit === 'm') {
-        if (amount % 5 !== 0) {
-            return null; // Caller handles error — 7m is invalid
-        }
-        return amount / 5;
-    }
-
-    if (unit === 'h') {
-        return amount * 12;
-    }
-
-    return null;
 }

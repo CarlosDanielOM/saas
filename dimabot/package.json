@@ -23,6 +23,7 @@
     "cleanup:invalid-trigger-files": "tsx src/scripts/cleanup_invalid_legacy_trigger_files.script.ts",
     "migrate:legacy-trigger-rewards": "tsx src/scripts/migrate_legacy_trigger_rewards.script.ts",
     "migrate:ai-feature-flags": "tsx src/scripts/migrate_ai_feature_flags.script.ts",
+    "migrate:timer-frequency-minutes": "tsx src/scripts/migrate_timer_frequency_minutes.script.ts",
     "invalidate:all-user-permissions": "tsx src/scripts/invalidate_all_user_permissions.script.ts"
   },
   "keywords": [
