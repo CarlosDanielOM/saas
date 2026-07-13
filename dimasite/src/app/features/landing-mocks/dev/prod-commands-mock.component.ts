@@ -2,29 +2,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import {
-  Clock,
-  LayoutGrid,
-  List,
-  Moon,
-  Plus,
-  Power,
-  PowerOff,
-  RefreshCw,
-  Sun,
-  Timer,
-  Trash2,
-  Zap
-} from 'lucide-angular';
-import { LucideAngularModule } from 'lucide-angular';
 
 import { Command, USER_LEVELS } from '../../../models/command.model';
-import { ThemeService } from '../../../services/theme.service';
 
 type PlanTier = 'free' | 'premium' | 'pro';
 type ViewMode = 'table' | 'card';
@@ -90,37 +73,21 @@ const SEED_TIMERS: MockTimer[] = [
 
 @Component({
   selector: 'app-prod-commands-mock',
-  imports: [FormsModule, RouterLink, LucideAngularModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './prod-commands-mock.component.html',
   styleUrl: './prod-commands-mock.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProdCommandsMockComponent {
-  private readonly themeService = inject(ThemeService);
-
-  readonly listIcon = List;
-  readonly gridIcon = LayoutGrid;
-  readonly moonIcon = Moon;
-  readonly sunIcon = Sun;
-  readonly refreshIcon = RefreshCw;
-  readonly plusIcon = Plus;
-  readonly trashIcon = Trash2;
-  readonly powerIcon = Power;
-  readonly powerOffIcon = PowerOff;
-  readonly timerIcon = Timer;
-  readonly zapIcon = Zap;
-  readonly clockIcon = Clock;
-
   readonly channelID = CHANNEL_ID;
   readonly channelName = CHANNEL_NAME;
-  readonly liveApi = LIVE_API;
 
   readonly planTier = signal<PlanTier>('pro');
   readonly activeTab = signal<TabId>('timers');
-  readonly viewMode = signal<ViewMode>('table');
+  readonly viewMode = signal<ViewMode>('card');
   readonly currentPage = signal(1);
-  readonly itemsPerPage = signal(10);
-  readonly itemsPerPageOptions = [5, 10, 15, 20];
+  readonly itemsPerPage = signal(12);
+  readonly itemsPerPageOptions = [6, 12, 18, 24];
   readonly searchInput = signal('');
 
   readonly commands = signal<Command[]>([]);
@@ -154,9 +121,6 @@ export class ProdCommandsMockComponent {
   });
 
   readonly freeIntervals = FREE_INTERVALS;
-  readonly premiumIntervals = computed(() =>
-    Array.from({ length: MAX_TIMER_MINUTES / 5 }, (_, i) => (i + 1) * 5)
-  );
 
   readonly filteredCommands = computed(() => {
     const query = this.searchInput().trim().toLowerCase();
@@ -208,27 +172,8 @@ export class ProdCommandsMockComponent {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   });
 
-  readonly frequencyOptions = computed(() => {
-    const tier = this.planTier();
-    if (tier === 'free') {
-      return [...FREE_INTERVALS];
-    }
-    if (tier === 'premium') {
-      return this.premiumIntervals();
-    }
-    return null;
-  });
-
   constructor() {
     void this.loadCommands();
-  }
-
-  isDarkMode(): boolean {
-    return this.themeService.isDarkMode();
-  }
-
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
   }
 
   setPlanTier(tier: PlanTier): void {
@@ -236,10 +181,9 @@ export class ProdCommandsMockComponent {
     const draft = this.timerDraft();
     const validation = this.validateInterval(draft.frequency, tier);
     if (!validation.valid) {
-      const fallback = tier === 'pro' ? 30 : tier === 'premium' ? 30 : 30;
-      this.timerDraft.update((current) => ({ ...current, frequency: fallback }));
+      this.timerDraft.update((current) => ({ ...current, frequency: 30 }));
     }
-    this.showToast(`Simulating ${tier.toUpperCase()} plan limits`);
+    this.showToast(`Simulating ${tier} plan limits`);
   }
 
   setTab(tab: TabId): void {
@@ -319,6 +263,7 @@ export class ProdCommandsMockComponent {
 
       this.commands.set(list);
       this.currentPage.set(1);
+      this.showToast(`Loaded ${list.length} live commands`);
     } catch (error) {
       this.commandsError.set(
         error instanceof Error ? error.message : 'Failed to load commands'
@@ -435,7 +380,7 @@ export class ProdCommandsMockComponent {
         createdAt: new Date().toISOString()
       };
       this.timers.update((list) => [next, ...list]);
-      this.showToast(`Timer "${name}" created · every ${this.formatInterval(frequency)}`);
+      this.showToast(`Timer "${name}" · every ${this.formatInterval(frequency)}`);
     } else {
       this.timers.update((list) =>
         list.map((timer) =>

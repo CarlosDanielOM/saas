@@ -1,341 +1,397 @@
-<div class="pcm" [attr.data-plan-tier]="planTier()">
-  <header class="pcm-top">
-    <div class="pcm-top__left">
-      <a routerLink="/mocks/dev" class="pcm-back">← Dev mocks</a>
-      <div class="pcm-badge">LIVE API · mock shell</div>
-      <h1 class="pcm-title">Commands</h1>
-      <p class="pcm-sub">
-        Real chat commands for <strong>{{ channelName }}</strong>
-        <span class="pcm-mono">({{ channelID }})</span>
-        via <span class="pcm-mono">{{ liveApi }}/commands/…</span>.
-        Timers are interactive local state (API requires auth) with real plan-tier interval rules.
-      </p>
-    </div>
+<div class="lf" [attr.data-plan]="planTier()">
+  <header class="lf-nav">
+    <a routerLink="/" class="lf-brand" aria-label="DomDimaBot home">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
 
-    <div class="pcm-top__right">
-      <button type="button" class="pcm-icon-btn" (click)="toggleTheme()" [attr.aria-label]="'Toggle theme'">
-        <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="pcm-ico"></lucide-icon>
-      </button>
+    <nav class="lf-nav__links" aria-label="Mock modules">
+      <button type="button" class="lf-nav__link lf-nav__link--active">Commands</button>
+      <button type="button" class="lf-nav__link" disabled>Timers</button>
+      <button type="button" class="lf-nav__link" disabled>Analytics</button>
+      <a routerLink="/mocks/dev" class="lf-nav__link">← Dev mocks</a>
+    </nav>
+
+    <div class="lf-nav__right">
+      <span class="lf-chip lf-chip--live">Live API</span>
+      <div class="lf-avatar" title="{{ channelName }}">
+        {{ channelName.slice(0, 1).toUpperCase() }}
+      </div>
     </div>
   </header>
 
-  <section class="pcm-toolbar">
-    <div class="pcm-tier" role="group" aria-label="Simulate plan tier">
-      <span class="pcm-tier__label">Plan</span>
-      @for (tier of ['free', 'premium', 'pro']; track tier) {
-        <button
-          type="button"
-          class="pcm-tier__btn"
-          [class.pcm-tier__btn--active]="planTier() === tier"
-          [attr.data-tier]="tier"
-          (click)="setPlanTier($any(tier))"
-        >
-          {{ tier }}
-        </button>
-      }
-    </div>
+  <main class="lf-main">
+    <!-- Hero bento -->
+    <section class="lf-bento lf-bento--hero" aria-label="Commands overview">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">Channel ops · commands</p>
+        <h1 class="lf-title">
+          Chat that runs
+          <span>while you stream.</span>
+        </h1>
+        <p class="lf-copy">
+          Manage chat commands and auto-repeat timers for
+          <strong>{{ channelName }}</strong>.
+          Commands load live from production · timers are a local playground
+          with real plan interval rules.
+        </p>
 
-    <div class="pcm-stats">
-      <span class="pcm-stat">{{ totalCommands() }} commands</span>
-      <span class="pcm-stat">{{ enabledCommands() }} enabled</span>
-      <span class="pcm-stat">
-        {{ activeTimers() }}/{{ timerLimit() }} active timers
-      </span>
-    </div>
-  </section>
-
-  <nav class="pcm-tabs" role="tablist">
-    <button
-      type="button"
-      class="pcm-tab"
-      role="tab"
-      [class.pcm-tab--active]="activeTab() === 'commands'"
-      [attr.aria-selected]="activeTab() === 'commands'"
-      (click)="setTab('commands')"
-    >
-      <lucide-icon [name]="zapIcon" class="pcm-ico"></lucide-icon>
-      Chat commands
-    </button>
-    <button
-      type="button"
-      class="pcm-tab"
-      role="tab"
-      [class.pcm-tab--active]="activeTab() === 'timers'"
-      [attr.aria-selected]="activeTab() === 'timers'"
-      (click)="setTab('timers')"
-    >
-      <lucide-icon [name]="timerIcon" class="pcm-ico"></lucide-icon>
-      Timer commands
-    </button>
-  </nav>
-
-  @if (activeTab() === 'commands') {
-    <section class="pcm-panel">
-      <div class="pcm-panel__head">
-        <div>
-          <h2 class="pcm-panel__title">Chat commands</h2>
-          <p class="pcm-panel__hint">Read-only · fetched from production</p>
-        </div>
-        <div class="pcm-panel__actions">
-          <button
-            type="button"
-            class="pcm-btn pcm-btn--ghost"
-            (click)="loadCommands()"
-            [disabled]="commandsLoading()"
-          >
-            <lucide-icon [name]="refreshIcon" class="pcm-ico" [class.pcm-spin]="commandsLoading()"></lucide-icon>
-            Refresh
+        <div class="lf-actions">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="setTab('timers'); openCreateTimer()">
+            New timer
           </button>
-          <div class="pcm-view-toggle">
-            <button
-              type="button"
-              class="pcm-view-toggle__btn"
-              [class.pcm-view-toggle__btn--active]="viewMode() === 'table'"
-              (click)="setViewMode('table')"
-              aria-label="Table view"
-            >
-              <lucide-icon [name]="listIcon" class="pcm-ico"></lucide-icon>
-            </button>
-            <button
-              type="button"
-              class="pcm-view-toggle__btn"
-              [class.pcm-view-toggle__btn--active]="viewMode() === 'card'"
-              (click)="setViewMode('card')"
-              aria-label="Card view"
-            >
-              <lucide-icon [name]="gridIcon" class="pcm-ico"></lucide-icon>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="pcm-search">
-        <input
-          type="search"
-          class="pcm-input"
-          placeholder="Search name, trigger, description…"
-          [value]="searchInput()"
-          (input)="onSearchInput($any($event.target).value)"
-        />
-      </div>
-
-      @if (commandsLoading() && commands().length === 0) {
-        <div class="pcm-empty">Loading live commands…</div>
-      } @else if (commandsError() && commands().length === 0) {
-        <div class="pcm-empty pcm-empty--error">
-          <p>{{ commandsError() }}</p>
-          <button type="button" class="pcm-btn pcm-btn--ghost" (click)="loadCommands()">Retry</button>
-        </div>
-      } @else if (viewMode() === 'table') {
-        <div class="pcm-table-wrap">
-          <table class="pcm-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Trigger</th>
-                <th>Description</th>
-                <th>Cooldown</th>
-                <th>Level</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @if (paginatedCommands().length === 0) {
-                <tr>
-                  <td colspan="6" class="pcm-table__empty">No commands match your search.</td>
-                </tr>
-              }
-              @for (command of paginatedCommands(); track commandTrackId(command)) {
-                <tr [class.pcm-table__row--off]="command.enabled === false">
-                  <td>
-                    <div class="pcm-name">
-                      {{ command.name }}
-                      @if (command.reserved) {
-                        <span class="pcm-pill pcm-pill--muted">reserved</span>
-                      }
-                    </div>
-                  </td>
-                  <td><code class="pcm-code">!{{ command.cmd }}</code></td>
-                  <td class="pcm-desc">{{ command.description || command.message || '—' }}</td>
-                  <td>{{ command.cooldown }}s</td>
-                  <td>{{ getUserLevelLabel(command) }}</td>
-                  <td>
-                    <span
-                      class="pcm-status"
-                      [class.pcm-status--on]="command.enabled !== false"
-                      [class.pcm-status--off]="command.enabled === false"
-                    >
-                      {{ command.enabled === false ? 'Off' : 'On' }}
-                    </span>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+          <button type="button" class="lf-btn" (click)="setTab('commands'); loadCommands()">
+            Refresh commands
+          </button>
         </div>
 
-        <div class="pcm-pager">
-          <label class="pcm-pager__size">
-            Per page
-            <select
-              class="pcm-select"
-              [value]="itemsPerPage()"
-              (change)="onItemsPerPageChange($event)"
-            >
-              @for (n of itemsPerPageOptions; track n) {
-                <option [value]="n">{{ n }}</option>
-              }
-            </select>
-          </label>
-          <div class="pcm-pager__pages">
-            <button
-              type="button"
-              class="pcm-btn pcm-btn--ghost pcm-btn--sm"
-              [disabled]="currentPage() <= 1"
-              (click)="changePage(currentPage() - 1)"
-            >
-              Prev
-            </button>
-            @for (page of pages(); track page) {
-              <button
-                type="button"
-                class="pcm-page"
-                [class.pcm-page--active]="page === currentPage()"
-                (click)="changePage(page)"
-              >
-                {{ page }}
-              </button>
-            }
-            <button
-              type="button"
-              class="pcm-btn pcm-btn--ghost pcm-btn--sm"
-              [disabled]="currentPage() >= totalPages()"
-              (click)="changePage(currentPage() + 1)"
-            >
-              Next
-            </button>
-          </div>
+        <p class="lf-feed lf-feed--on">
+          {{ channelName }} · id {{ channelID }}
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }} plan</span>
+          <span class="lf-spotlight__count">simulate limits</span>
         </div>
-      } @else {
-        <div class="pcm-cards">
-          @for (command of paginatedCommands(); track commandTrackId(command)) {
-            <article class="pcm-card" [class.pcm-card--off]="command.enabled === false">
-              <div class="pcm-card__top">
-                <h3>{{ command.name }}</h3>
-                <code class="pcm-code">!{{ command.cmd }}</code>
-              </div>
-              <p class="pcm-card__body">{{ command.description || command.message || 'No description' }}</p>
-              <div class="pcm-card__meta">
-                <span>{{ command.cooldown }}s</span>
-                <span>{{ getUserLevelLabel(command) }}</span>
-                <span>{{ command.enabled === false ? 'Off' : 'On' }}</span>
-              </div>
-            </article>
+
+        <p class="lf-label">Interval rules</p>
+        <p class="lf-spotlight__rule">{{ intervalHint() }}</p>
+
+        <div class="lf-plan-switch" role="group" aria-label="Simulate plan tier">
+          @for (tier of ['free', 'premium', 'pro']; track tier) {
+            <button
+              type="button"
+              class="lf-plan-pill"
+              [class.lf-plan-pill--active]="planTier() === tier"
+              [attr.data-tier]="tier"
+              (click)="setPlanTier($any(tier))"
+            >
+              {{ tier }}
+            </button>
           }
         </div>
-      }
-    </section>
-  }
 
-  @if (activeTab() === 'timers') {
-    <section class="pcm-panel">
-      <div class="pcm-panel__head">
-        <div>
-          <h2 class="pcm-panel__title">Timer commands</h2>
-          <p class="pcm-panel__hint">
-            Repeat a message every X minutes while live.
-            <strong>{{ intervalHint() }}</strong>
-          </p>
-        </div>
-        <button type="button" class="pcm-btn pcm-btn--primary" (click)="openCreateTimer()">
-          <lucide-icon [name]="plusIcon" class="pcm-ico"></lucide-icon>
-          Add timer
-        </button>
-      </div>
-
-      <div class="pcm-policy" [attr.data-tier]="planTier()">
-        <div class="pcm-policy__row">
-          <lucide-icon [name]="clockIcon" class="pcm-ico"></lucide-icon>
+        <div class="lf-spotlight__meta-row">
           <div>
-            <strong>{{ planTier().toUpperCase() }} interval rules</strong>
-            <p>{{ intervalHint() }} Max active timers: {{ timerLimit() }}.</p>
+            <p class="lf-label">Active timers</p>
+            <p class="lf-value lf-value--sm">{{ activeTimers() }}/{{ timerLimit() }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Chat commands</p>
+            <p class="lf-value lf-value--sm">{{ totalCommands() }}</p>
           </div>
         </div>
-        @if (planTier() === 'free') {
-          <div class="pcm-chips">
-            @for (m of freeIntervals; track m) {
-              <span class="pcm-chip">{{ m }}m</span>
+      </article>
+
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Commands</p>
+        <p class="lf-value">{{ totalCommands() }}</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Enabled</p>
+        <p class="lf-value">{{ enabledCommands() }}</p>
+      </article>
+      <article class="lf-tile lf-metric lf-metric--accent">
+        <p class="lf-label">Active timers</p>
+        <p class="lf-value">{{ activeTimers() }}</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Timer cap</p>
+        <p class="lf-value">{{ timerLimit() }}</p>
+      </article>
+    </section>
+
+    <!-- Segment control -->
+    <section class="lf-segment" role="tablist" aria-label="Command type">
+      <button
+        type="button"
+        class="lf-segment__btn"
+        role="tab"
+        [class.lf-segment__btn--active]="activeTab() === 'commands'"
+        [attr.aria-selected]="activeTab() === 'commands'"
+        (click)="setTab('commands')"
+      >
+        Chat commands
+        <span class="lf-segment__count">{{ totalCommands() }}</span>
+      </button>
+      <button
+        type="button"
+        class="lf-segment__btn"
+        role="tab"
+        [class.lf-segment__btn--active]="activeTab() === 'timers'"
+        [attr.aria-selected]="activeTab() === 'timers'"
+        (click)="setTab('timers')"
+      >
+        Timer commands
+        <span class="lf-segment__count">{{ timers().length }}</span>
+      </button>
+    </section>
+
+    <!-- Chat commands -->
+    @if (activeTab() === 'commands') {
+      <section class="lf-section" aria-label="Chat commands">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">Live · /commands/{{ channelID }}</p>
+            <h2 class="lf-h2">Every reply in your pocket</h2>
+          </div>
+          <div class="lf-section__tools">
+            <label class="lf-search">
+              <span class="visually-hidden">Search commands</span>
+              <input
+                type="search"
+                placeholder="Search name, !trigger, level…"
+                [value]="searchInput()"
+                (input)="onSearchInput($any($event.target).value)"
+              />
+            </label>
+            <div class="lf-view">
+              <button
+                type="button"
+                class="lf-view__btn"
+                [class.lf-view__btn--active]="viewMode() === 'table'"
+                (click)="setViewMode('table')"
+                aria-label="List view"
+              >
+                List
+              </button>
+              <button
+                type="button"
+                class="lf-view__btn"
+                [class.lf-view__btn--active]="viewMode() === 'card'"
+                (click)="setViewMode('card')"
+                aria-label="Bento view"
+              >
+                Bento
+              </button>
+            </div>
+          </div>
+        </div>
+
+        @if (commandsLoading() && commands().length === 0) {
+          <div class="lf-tile lf-empty">Pulling live commands…</div>
+        } @else if (commandsError() && commands().length === 0) {
+          <div class="lf-tile lf-empty lf-empty--warn">
+            <p>{{ commandsError() }}</p>
+            <button type="button" class="lf-btn" (click)="loadCommands()">Retry</button>
+          </div>
+        } @else if (viewMode() === 'card') {
+          <div class="lf-bento lf-bento--cmds">
+            @for (command of paginatedCommands(); track commandTrackId(command)) {
+              <article
+                class="lf-tile lf-cmd"
+                [class.lf-cmd--off]="command.enabled === false"
+              >
+                <div class="lf-cmd__top">
+                  <code class="lf-code">!{{ command.cmd }}</code>
+                  <span
+                    class="lf-chip"
+                    [class.lf-chip--muted]="command.enabled === false"
+                    [class.lf-chip--live]="command.enabled !== false"
+                  >
+                    {{ command.enabled === false ? 'Off' : 'On' }}
+                  </span>
+                </div>
+                <h3 class="lf-cmd__name">{{ command.name }}</h3>
+                <p class="lf-cmd__desc">
+                  {{ command.description || command.message || 'No description' }}
+                </p>
+                <div class="lf-cmd__meta">
+                  <span>{{ command.cooldown }}s</span>
+                  <span>{{ getUserLevelLabel(command) }}</span>
+                  @if (command.reserved) {
+                    <span class="lf-chip">Reserved</span>
+                  }
+                </div>
+              </article>
+            } @empty {
+              <div class="lf-tile lf-empty">No commands match that search.</div>
+            }
+          </div>
+        } @else {
+          <div class="lf-tile lf-matrix">
+            <div class="lf-matrix__row lf-matrix__row--head">
+              <span>Command</span>
+              <span>Trigger</span>
+              <span>Level</span>
+              <span>Cool</span>
+              <span>Status</span>
+            </div>
+            @for (command of paginatedCommands(); track commandTrackId(command)) {
+              <div
+                class="lf-matrix__row"
+                [class.lf-matrix__row--off]="command.enabled === false"
+              >
+                <span class="lf-matrix__primary">
+                  <strong>{{ command.name }}</strong>
+                  <small>{{ command.description || command.message || '—' }}</small>
+                </span>
+                <span><code class="lf-code">!{{ command.cmd }}</code></span>
+                <span>{{ getUserLevelLabel(command) }}</span>
+                <span>{{ command.cooldown }}s</span>
+                <span>
+                  <span
+                    class="lf-chip"
+                    [class.lf-chip--live]="command.enabled !== false"
+                    [class.lf-chip--muted]="command.enabled === false"
+                  >
+                    {{ command.enabled === false ? 'Off' : 'On' }}
+                  </span>
+                </span>
+              </div>
+            } @empty {
+              <div class="lf-matrix__row">
+                <span>No commands match that search.</span>
+              </div>
             }
           </div>
         }
-      </div>
 
-      @if (timers().length === 0) {
-        <div class="pcm-empty">
-          <p>No timers yet. Create one to try the interval picker.</p>
-          <button type="button" class="pcm-btn pcm-btn--primary" (click)="openCreateTimer()">
+        @if (filteredCommands().length > 0) {
+          <div class="lf-pager">
+            <label class="lf-pager__size">
+              Per page
+              <select [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                @for (n of itemsPerPageOptions; track n) {
+                  <option [value]="n">{{ n }}</option>
+                }
+              </select>
+            </label>
+            <div class="lf-pager__pages">
+              <button
+                type="button"
+                class="lf-btn lf-btn--ghost"
+                [disabled]="currentPage() <= 1"
+                (click)="changePage(currentPage() - 1)"
+              >
+                Prev
+              </button>
+              @for (page of pages(); track page) {
+                <button
+                  type="button"
+                  class="lf-page"
+                  [class.lf-page--active]="page === currentPage()"
+                  (click)="changePage(page)"
+                >
+                  {{ page }}
+                </button>
+              }
+              <button
+                type="button"
+                class="lf-btn lf-btn--ghost"
+                [disabled]="currentPage() >= totalPages()"
+                (click)="changePage(currentPage() + 1)"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Timers -->
+    @if (activeTab() === 'timers') {
+      <section class="lf-section" aria-label="Timer commands">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">Repeat · plan-aware</p>
+            <h2 class="lf-h2">Messages on a heartbeat</h2>
+            <p class="lf-copy lf-copy--tight">
+              Auto-post while live. {{ intervalHint() }}
+              Cap: {{ timerLimit() }} active on {{ planTier() }}.
+            </p>
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
             Add timer
           </button>
         </div>
-      } @else {
-        <div class="pcm-timers">
-          @for (timer of timers(); track timer.id) {
-            <article class="pcm-timer" [class.pcm-timer--off]="!timer.active">
-              <div class="pcm-timer__main">
-                <div class="pcm-timer__title">
-                  <code class="pcm-code">{{ timer.name }}</code>
-                  <span class="pcm-freq">every {{ formatInterval(timer.frequency) }}</span>
-                  <span
-                    class="pcm-status"
-                    [class.pcm-status--on]="timer.active"
-                    [class.pcm-status--off]="!timer.active"
-                  >
+
+        @if (planTier() === 'free') {
+          <div class="lf-bento lf-bento--intervals">
+            @for (m of freeIntervals; track m) {
+              <article class="lf-tile lf-interval-tile">
+                <p class="lf-label">Free slot</p>
+                <p class="lf-value lf-value--sm">{{ m }}m</p>
+              </article>
+            }
+          </div>
+        }
+
+        @if (timers().length === 0) {
+          <div class="lf-tile lf-empty">
+            <p>No timers yet — create one and play with intervals.</p>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
+              Add timer
+            </button>
+          </div>
+        } @else {
+          <div class="lf-bento lf-bento--timers">
+            @for (timer of timers(); track timer.id) {
+              <article
+                class="lf-tile lf-timer"
+                [class.lf-timer--off]="!timer.active"
+                [class.lf-timer--live]="timer.active"
+              >
+                <div class="lf-timer__head">
+                  <span class="lf-chip" [class.lf-chip--live]="timer.active" [class.lf-chip--muted]="!timer.active">
                     {{ timer.active ? 'Active' : 'Paused' }}
                   </span>
+                  <span class="lf-timer__freq">every {{ formatInterval(timer.frequency) }}</span>
                 </div>
-                <p class="pcm-timer__msg">{{ timer.message }}</p>
-              </div>
-              <div class="pcm-timer__actions">
-                <button type="button" class="pcm-icon-btn" (click)="openEditTimer(timer)" aria-label="Edit timer">
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  class="pcm-icon-btn"
-                  (click)="toggleTimer(timer)"
-                  [attr.aria-label]="timer.active ? 'Pause timer' : 'Activate timer'"
-                >
-                  <lucide-icon [name]="timer.active ? powerOffIcon : powerIcon" class="pcm-ico"></lucide-icon>
-                </button>
-                <button
-                  type="button"
-                  class="pcm-icon-btn pcm-icon-btn--danger"
-                  (click)="deleteTimer(timer)"
-                  aria-label="Delete timer"
-                >
-                  <lucide-icon [name]="trashIcon" class="pcm-ico"></lucide-icon>
-                </button>
-              </div>
-            </article>
-          }
-        </div>
-      }
-    </section>
-  }
+                <h3 class="lf-timer__name">{{ timer.name }}</h3>
+                <p class="lf-timer__msg">{{ timer.message }}</p>
+                <div class="lf-timer__actions">
+                  <button type="button" class="lf-text-link" (click)="openEditTimer(timer)">
+                    Edit →
+                  </button>
+                  <button type="button" class="lf-btn lf-btn--ghost" (click)="toggleTimer(timer)">
+                    {{ timer.active ? 'Pause' : 'Activate' }}
+                  </button>
+                  <button type="button" class="lf-btn lf-btn--ghost lf-btn--danger" (click)="deleteTimer(timer)">
+                    Delete
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+
+  <footer class="lf-footer">
+    <span>© DomDimaBot · Live First product shell · commands mock</span>
+    <a routerLink="/mocks/grok/oc3c">Design source · OC3c</a>
+  </footer>
 
   @if (showTimerModal()) {
-    <div class="pcm-modal-overlay" (click)="closeTimerModal()">
-      <div class="pcm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
-        <div class="pcm-modal__head">
-          <h2>{{ editingTimerId() ? 'Edit timer' : 'Create timer' }}</h2>
-          <button type="button" class="pcm-icon-btn" (click)="closeTimerModal()" aria-label="Close">×</button>
+    <div class="lf-modal-overlay" (click)="closeTimerModal()">
+      <div
+        class="lf-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lf-timer-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="lf-modal__head">
+          <div>
+            <p class="lf-kicker">{{ planTier() }} · {{ intervalHint() }}</p>
+            <h2 id="lf-timer-title">
+              {{ editingTimerId() ? 'Edit timer' : 'New timer' }}
+            </h2>
+          </div>
+          <button type="button" class="lf-icon-close" (click)="closeTimerModal()" aria-label="Close">
+            ×
+          </button>
         </div>
 
-        <form class="pcm-form" (ngSubmit)="saveTimer()">
-          <label class="pcm-field">
+        <form class="lf-form" (ngSubmit)="saveTimer()">
+          <label class="lf-field">
             <span>Name</span>
             <input
-              class="pcm-input"
               type="text"
               maxlength="30"
               placeholder="discord"
@@ -345,16 +401,14 @@
               [disabled]="!!editingTimerId()"
               autocomplete="off"
             />
-            <small>Letters, numbers, underscores · max 30</small>
           </label>
 
-          <label class="pcm-field">
+          <label class="lf-field">
             <span>Message</span>
             <textarea
-              class="pcm-input pcm-textarea"
               rows="3"
               maxlength="350"
-              placeholder="Message posted to chat on each tick"
+              placeholder="Posted to chat on each tick"
               [ngModel]="timerDraft().message"
               (ngModelChange)="updateDraftMessage($event)"
               name="timerMessage"
@@ -362,41 +416,16 @@
             <small>{{ timerDraft().message.length }}/350</small>
           </label>
 
-          <div class="pcm-field">
+          <div class="lf-field">
             <span>Repeat every</span>
+
             @if (planTier() === 'free') {
-              <div class="pcm-interval-grid">
+              <div class="lf-interval-grid">
                 @for (m of freeIntervals; track m) {
                   <button
                     type="button"
-                    class="pcm-interval"
-                    [class.pcm-interval--active]="timerDraft().frequency === m"
-                    (click)="updateDraftFrequency(m)"
-                  >
-                    {{ m }}m
-                  </button>
-                }
-              </div>
-            } @else if (planTier() === 'premium') {
-              <div class="pcm-interval-row">
-                <input
-                  class="pcm-input pcm-input--num"
-                  type="number"
-                  min="5"
-                  max="180"
-                  step="5"
-                  [ngModel]="timerDraft().frequency"
-                  (ngModelChange)="updateDraftFrequency($event)"
-                  name="timerFreqPremium"
-                />
-                <span class="pcm-unit">minutes (×5)</span>
-              </div>
-              <div class="pcm-quick">
-                @for (m of [5, 10, 15, 30, 45, 60, 90, 120, 180]; track m) {
-                  <button
-                    type="button"
-                    class="pcm-chip pcm-chip--btn"
-                    [class.pcm-chip--active]="timerDraft().frequency === m"
+                    class="lf-interval"
+                    [class.lf-interval--active]="timerDraft().frequency === m"
                     (click)="updateDraftFrequency(m)"
                   >
                     {{ m }}m
@@ -404,25 +433,30 @@
                 }
               </div>
             } @else {
-              <div class="pcm-interval-row">
+              <div class="lf-interval-row">
                 <input
-                  class="pcm-input pcm-input--num"
                   type="number"
-                  min="1"
+                  class="lf-num"
+                  [min]="planTier() === 'premium' ? 5 : 1"
                   max="180"
-                  step="1"
+                  [step]="planTier() === 'premium' ? 5 : 1"
                   [ngModel]="timerDraft().frequency"
                   (ngModelChange)="updateDraftFrequency($event)"
-                  name="timerFreqPro"
+                  name="timerFreq"
                 />
-                <span class="pcm-unit">minutes (any whole #)</span>
+                <span class="lf-unit">minutes</span>
               </div>
-              <div class="pcm-quick">
-                @for (m of [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180]; track m) {
+              <div class="lf-quick">
+                @for (
+                  m of planTier() === 'premium'
+                    ? [5, 10, 15, 30, 45, 60, 90, 120, 180]
+                    : [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180];
+                  track m
+                ) {
                   <button
                     type="button"
-                    class="pcm-chip pcm-chip--btn"
-                    [class.pcm-chip--active]="timerDraft().frequency === m"
+                    class="lf-chip lf-chip--btn"
+                    [class.lf-chip--active]="timerDraft().frequency === m"
                     (click)="updateDraftFrequency(m)"
                   >
                     {{ m }}m
@@ -430,17 +464,16 @@
                 }
               </div>
             }
-            <small class="pcm-hint">{{ intervalHint() }}</small>
           </div>
 
           @if (timerFormError()) {
-            <p class="pcm-form-error">{{ timerFormError() }}</p>
+            <p class="lf-form-error">{{ timerFormError() }}</p>
           }
 
-          <div class="pcm-form__actions">
-            <button type="button" class="pcm-btn pcm-btn--ghost" (click)="closeTimerModal()">Cancel</button>
-            <button type="submit" class="pcm-btn pcm-btn--primary">
-              {{ editingTimerId() ? 'Save changes' : 'Create timer' }}
+          <div class="lf-form__actions">
+            <button type="button" class="lf-btn" (click)="closeTimerModal()">Cancel</button>
+            <button type="submit" class="lf-btn lf-btn--primary">
+              {{ editingTimerId() ? 'Save' : 'Create timer' }}
             </button>
           </div>
         </form>
@@ -449,6 +482,6 @@
   }
 
   @if (toast()) {
-    <div class="pcm-toast" role="status">{{ toast() }}</div>
+    <div class="lf-toast" role="status">{{ toast() }}</div>
   }
 </div>
