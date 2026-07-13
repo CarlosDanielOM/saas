@@ -224,20 +224,29 @@ export const routes: Routes = [
         title: 'Dev Mocks | DomDimaBot'
       },
       {
-        path: 'prod-commands',
+        path: '',
         loadComponent: () =>
-          import('./features/landing-mocks/dev/prod-commands-mock.component').then(
-            (m) => m.ProdCommandsMockComponent
+          import('./features/landing-mocks/dev/dev-mock-shell.component').then(
+            (m) => m.DevMockShellComponent
           ),
-        title: 'Prod Commands Mock | DomDimaBot'
-      },
-      {
-        path: 'prod-dashboard',
-        loadComponent: () =>
-          import('./features/landing-mocks/dev/prod-dashboard-mock.component').then(
-            (m) => m.ProdDashboardMockComponent
-          ),
-        title: 'Prod Dashboard Mock | DomDimaBot'
+        children: [
+          {
+            path: 'prod-dashboard',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/prod-dashboard-mock.component').then(
+                (m) => m.ProdDashboardMockComponent
+              ),
+            title: 'Dashboard | DomDimaBot'
+          },
+          {
+            path: 'prod-commands',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/prod-commands-mock.component').then(
+                (m) => m.ProdCommandsMockComponent
+              ),
+            title: 'Commands | DomDimaBot'
+          }
+        ]
       }
     ]
   },

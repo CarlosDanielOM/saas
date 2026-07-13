@@ -1,32 +1,4 @@
 <div class="lf" [attr.data-plan]="planTier()" [class.lf--live]="isLive()">
-  <header class="lf-nav">
-    <a routerLink="/" class="lf-brand" aria-label="DomDimaBot home">
-      <span class="lf-brand__live" aria-hidden="true"></span>
-      DomDimaBot
-    </a>
-
-    <nav class="lf-nav__links" aria-label="Mock modules">
-      <button type="button" class="lf-nav__link lf-nav__link--active">Dashboard</button>
-      <a routerLink="/mocks/dev/prod-commands" class="lf-nav__link">Commands</a>
-      <a routerLink="/mocks/dev" class="lf-nav__link">← Dev mocks</a>
-    </nav>
-
-    <div class="lf-nav__right">
-      <span
-        class="lf-chip lf-chip--status"
-        [class.lf-chip--live]="connectionStatus() === 'connected'"
-        [class.lf-chip--muted]="connectionStatus() !== 'connected'"
-      >
-        {{ connectionLabel() }}
-      </span>
-      @if (avatarUrl()) {
-        <img class="lf-avatar-img" [src]="avatarUrl()" [alt]="displayName()" />
-      } @else {
-        <div class="lf-avatar">{{ avatarLetter() }}</div>
-      }
-    </div>
-  </header>
-
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero" aria-label="Dashboard overview">
       <article class="lf-tile lf-tile--intro">
@@ -50,7 +22,20 @@
           >
             {{ botInChat() ? 'Leave chat' : 'Join bot' }}
           </button>
-          <a routerLink="/mocks/dev/prod-commands" class="lf-btn">Open commands</a>
+          <a routerLink="/mocks/dev/prod-commands" class="lf-btn">Go to commands</a>
+        </div>
+
+        <div class="lf-status-row lf-status-row--top">
+          <span
+            class="lf-chip"
+            [class.lf-chip--live]="connectionStatus() === 'connected'"
+            [class.lf-chip--muted]="connectionStatus() !== 'connected'"
+          >
+            {{ connectionLabel() }}
+          </span>
+          @if (avatarUrl()) {
+            <img class="lf-avatar-img lf-avatar-img--inline" [src]="avatarUrl()" [alt]="displayName()" />
+          }
         </div>
 
         <p

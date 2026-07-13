@@ -519,6 +519,19 @@
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.9rem;
+  align-items: center;
+}
+
+.lf-status-row--top {
+  margin-top: 0.85rem;
+}
+
+.lf-avatar-img--inline {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.55rem;
+  object-fit: cover;
+  border: 1px solid rgba(196, 181, 253, 0.35);
 }
 
 .lf-bar {
@@ -797,7 +810,7 @@
   gap: 0.45rem;
   max-width: 74rem;
   margin: 0 auto;
-  padding: 1.15rem 0.85rem 5.5rem;
+  padding: 1.15rem 0.85rem 1.5rem;
   color: var(--muted);
   font-size: 0.8rem;
 }
@@ -816,7 +829,7 @@
 .lf-toast {
   position: fixed;
   left: 50%;
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  bottom: calc(4.9rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 50;
   width: min(calc(100vw - 1.5rem), 28rem);
