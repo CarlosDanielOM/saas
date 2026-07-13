@@ -1,0 +1,249 @@
+<div class="gm1">
+  <header class="gm1-nav">
+    <div class="gm1-nav__inner">
+      <a class="gm1-brand" href="#top" aria-label="DomDimaBot home">
+        <span class="gm1-brand__mark" aria-hidden="true"></span>
+        <span>DomDimaBot</span>
+      </a>
+
+      <nav class="gm1-nav__links" aria-label="Page sections">
+        <button type="button" class="gm1-nav__link" (click)="scrollTo('features')">Features</button>
+        <button type="button" class="gm1-nav__link" (click)="scrollTo('pricing')">Pricing</button>
+        <button type="button" class="gm1-nav__link" (click)="scrollTo('live')">Live</button>
+      </nav>
+
+      <div class="gm1-nav__actions">
+        <a routerLink="/mocks/grok" class="gm1-nav__back">← Grok mocks</a>
+        <button type="button" class="gm1-btn gm1-btn--solid gm1-btn--sm" (click)="login()">
+          Login with Twitch
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero: split studio -->
+    <section class="gm1-hero">
+      <div class="gm1-hero__copy">
+        <p class="gm1-eyebrow">Live moderation + automation</p>
+        <h1 class="gm1-hero__title">
+          Your ultimate
+          <span class="gm1-hero__accent">Twitch chat companion</span>
+        </h1>
+        <p class="gm1-hero__desc">
+          Enhance your streaming experience with DomDimaBot. Engage your audience, moderate chats,
+          and boost your channel’s interactivity — from first command to full AI control room.
+        </p>
+        <div class="gm1-hero__ctas">
+          <button type="button" class="gm1-btn gm1-btn--solid" (click)="login()">
+            Login with Twitch
+          </button>
+          <button type="button" class="gm1-btn gm1-btn--ghost" (click)="openDiscord()">
+            Join Discord
+          </button>
+        </div>
+        <p class="gm1-hero__proof">
+          Free forever to start · Premium from $6/mo · Pro at $15/mo
+        </p>
+      </div>
+
+      <aside class="gm1-panel" aria-label="Live platform snapshot">
+        <div class="gm1-panel__head">
+          <span class="gm1-panel__label">Platform pulse</span>
+          <span
+            class="gm1-status"
+            [class.gm1-status--ok]="connectionStatus() === 'connected'"
+            [class.gm1-status--warn]="connectionStatus() === 'reconnecting'"
+          >
+            <span class="gm1-status__dot" aria-hidden="true"></span>
+            {{ connectionLabel() }}
+          </span>
+        </div>
+
+        <div class="gm1-panel__metrics">
+          <div class="gm1-metric">
+            <lucide-icon [name]="usersIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Registered users</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().registeredUsers" [staggerDelay]="0">0</p>
+            </div>
+          </div>
+          <div class="gm1-metric">
+            <lucide-icon [name]="activityIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Bots active</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="100">0</p>
+            </div>
+          </div>
+          <div class="gm1-metric">
+            <lucide-icon [name]="tvIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Users live</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().liveUsers" [staggerDelay]="200">0</p>
+            </div>
+          </div>
+          <div class="gm1-metric">
+            <lucide-icon [name]="messageIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Messages received</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().messagesReceived" [staggerDelay]="300">0</p>
+            </div>
+          </div>
+          <div class="gm1-metric">
+            <lucide-icon [name]="zapIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Total commands</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().totalCommands" [staggerDelay]="400">0</p>
+            </div>
+          </div>
+          <div class="gm1-metric gm1-metric--wide">
+            <lucide-icon [name]="tvIcon" class="gm1-metric__icon"></lucide-icon>
+            <div>
+              <p class="gm1-metric__label">Total live viewers</p>
+              <p class="gm1-metric__value" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="500">0</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="gm1-section">
+      <div class="gm1-section__head">
+        <h2 class="gm1-section__title">Features that map to your plan</h2>
+        <p class="gm1-section__sub">
+          A focused spotlight that lines up with Free, Premium, and Pro capabilities.
+        </p>
+      </div>
+
+      <div class="gm1-features">
+        @for (feature of features; track feature.title) {
+          <article class="gm1-feature">
+            <div class="gm1-feature__top">
+              <span class="gm1-feature__badge">{{ feature.badge }}</span>
+              <lucide-icon [name]="iconFor(feature.icon)" class="gm1-feature__icon"></lucide-icon>
+            </div>
+            <h3 class="gm1-feature__title">{{ feature.title }}</h3>
+            <p class="gm1-feature__copy">{{ feature.copy }}</p>
+            <button type="button" class="gm1-feature__link" (click)="scrollTo('pricing')">
+              Compare plans →
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="gm1-section gm1-section--tint">
+      <div class="gm1-section__head">
+        <h2 class="gm1-section__title">Simple pricing for every stage</h2>
+        <p class="gm1-section__sub">Choose your plan and start engaging your audience today.</p>
+      </div>
+
+      <div class="gm1-tiers">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="gm1-tier"
+            [class.gm1-tier--hot]="tier.highlighted"
+            [class.gm1-tier--active]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="gm1-tier__ribbon">Most popular</span>
+            }
+            <h3 class="gm1-tier__name">{{ tier.label }}</h3>
+            <p class="gm1-tier__price">
+              <span class="gm1-tier__amount">{{ tier.price }}</span>
+              <span class="gm1-tier__per">/mo</span>
+            </p>
+            <p class="gm1-tier__desc">{{ tier.description }}</p>
+            <button type="button" class="gm1-btn gm1-btn--solid gm1-btn--block" (click)="login()">
+              {{ tier.cta }}
+            </button>
+            <ul class="gm1-tier__list">
+              @for (row of capabilityRows; track row.label) {
+                <li>
+                  <lucide-icon [name]="checkIcon" class="gm1-tier__check"></lucide-icon>
+                  <span
+                    >{{ row.label }}:
+                    <strong>{{
+                      tier.key === 'free' ? row.free : tier.key === 'premium' ? row.premium : row.pro
+                    }}</strong></span
+                  >
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Live now -->
+    <section id="live" class="gm1-section">
+      <div class="gm1-section__head gm1-section__head--row">
+        <div>
+          <h2 class="gm1-section__title">Who is live right now</h2>
+          <p class="gm1-section__sub">Top channels by viewers. Real creators, real traffic.</p>
+        </div>
+      </div>
+
+      @if (liveChannels().length > 0) {
+        <div class="gm1-live" role="list">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="gm1-live-card" role="listitem">
+              <img
+                class="gm1-live-card__avatar"
+                [src]="
+                  channel.profileImageUrl ||
+                  'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'
+                "
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div class="gm1-live-card__body">
+                <p class="gm1-live-card__name">{{ channel.channel }}</p>
+                <p class="gm1-live-card__viewers">
+                  {{ formatViewers(channel.viewers) }} viewers
+                </p>
+                <div class="gm1-live-card__platforms">
+                  @if (channel.botPlatforms.length > 0) {
+                    @for (platform of channel.botPlatforms; track platform) {
+                      <span
+                        class="gm1-chip"
+                        [class.gm1-chip--twitch]="platform === 'twitch'"
+                        [class.gm1-chip--kick]="platform === 'kick'"
+                      >
+                        {{ platform === 'twitch' ? 'Twitch' : 'Kick' }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="gm1-chip gm1-chip--none">None</span>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="gm1-empty">No channels are live right now.</p>
+      }
+    </section>
+
+    <!-- CTA -->
+    <section class="gm1-cta">
+      <div class="gm1-cta__inner">
+        <h2 class="gm1-cta__title">Ready to elevate your Twitch stream?</h2>
+        <p class="gm1-cta__desc">
+          Join thousands of streamers who have transformed their channels with DomDimaBot.
+        </p>
+        <button type="button" class="gm1-btn gm1-btn--solid gm1-btn--lg" (click)="login()">
+          Sign up with Twitch
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="gm1-footer">
+    <p>© 2024 DomDimaBot. All rights reserved.</p>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

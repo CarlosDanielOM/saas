@@ -1,0 +1,244 @@
+<div class="gm2">
+  <div class="gm2-grid-bg" aria-hidden="true"></div>
+
+  <header class="gm2-nav">
+    <div class="gm2-nav__inner">
+      <a class="gm2-brand" href="#top">
+        <span class="gm2-brand__pulse" aria-hidden="true"></span>
+        DomDimaBot
+      </a>
+      <nav class="gm2-nav__mid" aria-label="Sections">
+        <button type="button" (click)="scrollTo('features')">Features</button>
+        <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+        <button type="button" (click)="scrollTo('live')">Live</button>
+      </nav>
+      <div class="gm2-nav__end">
+        <a routerLink="/mocks/grok" class="gm2-nav__back">← MOCKS</a>
+        <button type="button" class="gm2-btn gm2-btn--cyan" (click)="login()">Login with Twitch</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Cinematic hero -->
+    <section class="gm2-hero">
+      <p class="gm2-hero__kicker">
+        <span class="gm2-live-dot" aria-hidden="true"></span>
+        Live moderation + automation
+      </p>
+      <h1 class="gm2-hero__title">
+        Meet DomDimaBot
+        <span class="gm2-hero__subline">Your ultimate Twitch chat companion</span>
+      </h1>
+      <p class="gm2-hero__lead">
+        Enhance your Twitch streaming experience. Engage your audience, moderate chats, and boost your
+        channel’s interactivity — under one signal-tight control stage.
+      </p>
+      <div class="gm2-hero__actions">
+        <button type="button" class="gm2-btn gm2-btn--magenta" (click)="login()">
+          Login with Twitch
+        </button>
+        <button type="button" class="gm2-btn gm2-btn--outline" (click)="openDiscord()">
+          Join Discord
+        </button>
+      </div>
+    </section>
+
+    <!-- Marquee stats -->
+    <section class="gm2-ticker" aria-label="Platform analytics">
+      <div class="gm2-ticker__meta">
+        <span
+          class="gm2-signal"
+          [class.gm2-signal--ok]="connectionStatus() === 'connected'"
+          [class.gm2-signal--warn]="connectionStatus() === 'reconnecting'"
+        >
+          {{ connectionLabel() }}
+        </span>
+        <span class="gm2-ticker__label">Analytics</span>
+      </div>
+      <div class="gm2-ticker__track">
+        <div class="gm2-ticker__row">
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Registered</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().registeredUsers" [staggerDelay]="0">0</span>
+          </div>
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Live users</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span>
+          </div>
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Bots active</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="160">0</span>
+          </div>
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Messages</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().messagesReceived" [staggerDelay]="240">0</span>
+          </div>
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Commands</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().totalCommands" [staggerDelay]="320">0</span>
+          </div>
+          <div class="gm2-tick">
+            <span class="gm2-tick__k">Live viewers</span>
+            <span class="gm2-tick__v" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="400">0</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Numbered features -->
+    <section id="features" class="gm2-block">
+      <div class="gm2-block__head">
+        <h2>Features</h2>
+        <p>A focused feature spotlight that maps directly to our plan comparison.</p>
+      </div>
+      <div class="gm2-features">
+        @for (f of featureRows; track f.num) {
+          <article class="gm2-feat">
+            <div class="gm2-feat__num">{{ f.num }}</div>
+            <div class="gm2-feat__body">
+              <div class="gm2-feat__meta">
+                <span class="gm2-tag">{{ f.tag }}</span>
+              </div>
+              <h3>{{ f.title }}</h3>
+              <p>{{ f.copy }}</p>
+              <button type="button" class="gm2-text-link" (click)="scrollTo('pricing')">
+                Compare plans →
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Pricing matrix -->
+    <section id="pricing" class="gm2-block">
+      <div class="gm2-block__head">
+        <h2>Pricing</h2>
+        <p>Choose your plan and start engaging your audience today.</p>
+      </div>
+
+      <div class="gm2-price-tabs" role="tablist" aria-label="Plan tiers">
+        @for (tier of tiers; track tier.key) {
+          <button
+            type="button"
+            role="tab"
+            class="gm2-price-tab"
+            [class.gm2-price-tab--on]="activeTier() === tier.key"
+            (click)="setTier(tier.key)"
+          >
+            {{ tier.label }}
+          </button>
+        }
+      </div>
+
+      <div class="gm2-price-cards">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="gm2-price-card"
+            [class.gm2-price-card--hot]="tier.key === 'premium'"
+            [class.gm2-price-card--hide-mobile]="activeTier() !== tier.key"
+          >
+            @if (tier.key === 'premium') {
+              <span class="gm2-price-card__badge">Most popular</span>
+            }
+            <h3>{{ tier.label }}</h3>
+            <p class="gm2-price-card__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="gm2-price-card__blurb">{{ tier.blurb }}</p>
+            <button type="button" class="gm2-btn gm2-btn--magenta gm2-btn--block" (click)="login()">
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="gm2-matrix">
+        <div class="gm2-matrix__head">
+          <span>Capability</span>
+          @for (tier of tiers; track tier.key) {
+            <span
+              class="gm2-matrix__tier"
+              [class.gm2-matrix__tier--hide]="activeTier() !== tier.key"
+              >{{ tier.label }}</span
+            >
+          }
+        </div>
+        @for (row of visibleRows(); track row.label) {
+          <div class="gm2-matrix__row">
+            <span class="gm2-matrix__label">{{ row.label }}</span>
+            @for (tier of tiers; track tier.key) {
+              <span
+                class="gm2-matrix__val"
+                [class.gm2-matrix__val--hot]="tier.key === 'premium'"
+                [class.gm2-matrix__tier--hide]="activeTier() !== tier.key"
+              >
+                {{ cell(row, tier.key) }}
+              </span>
+            }
+          </div>
+        }
+        <button type="button" class="gm2-btn gm2-btn--outline gm2-matrix__more" (click)="toggleRows()">
+          {{ showAllRows() ? 'Show less features' : 'Show more features' }}
+        </button>
+      </div>
+    </section>
+
+    <!-- Live film strip -->
+    <section id="live" class="gm2-block">
+      <div class="gm2-block__head gm2-block__head--row">
+        <div>
+          <h2>Who is live right now</h2>
+          <p>Top channels by viewers. Scroll to explore all live creators.</p>
+        </div>
+      </div>
+
+      @if (liveChannels().length > 0) {
+        <div class="gm2-strip">
+          @for (ch of liveChannels(); track ch.channelID) {
+            <article class="gm2-onair">
+              <div class="gm2-onair__media">
+                <img
+                  [src]="
+                    ch.profileImageUrl ||
+                    'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'
+                  "
+                  [alt]="ch.channel + ' avatar'"
+                  loading="lazy"
+                />
+                <span class="gm2-onair__badge">LIVE</span>
+              </div>
+              <p class="gm2-onair__name">{{ ch.channel }}</p>
+              <p class="gm2-onair__viewers">{{ ch.viewers }} viewers</p>
+              <div class="gm2-onair__plats">
+                @if (ch.botPlatforms.length > 0) {
+                  @for (p of ch.botPlatforms; track p) {
+                    <span [class.gm2-plat--twitch]="p === 'twitch'" [class.gm2-plat--kick]="p === 'kick'">
+                      {{ p === 'twitch' ? 'Twitch' : 'Kick' }}
+                    </span>
+                  }
+                } @else {
+                  <span class="gm2-plat--none">None</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="gm2-empty">No channels are live right now.</p>
+      }
+    </section>
+
+    <section class="gm2-finale">
+      <h2>Ready to elevate your Twitch stream?</h2>
+      <p>Join thousands of streamers who have transformed their channels with DomDimaBot.</p>
+      <button type="button" class="gm2-btn gm2-btn--magenta gm2-btn--lg" (click)="login()">
+        Sign up with Twitch
+      </button>
+    </section>
+  </main>
+
+  <footer class="gm2-footer">
+    <span>© 2024 DomDimaBot. All rights reserved.</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

@@ -1,0 +1,213 @@
+.gmi {
+  --gmi-bg: #0c0a12;
+  --gmi-surface: #161221;
+  --gmi-text: #f4edff;
+  --gmi-muted: #a89bc0;
+  --gmi-line: rgba(183, 148, 244, 0.22);
+  --gmi-violet: #b794f4;
+  --gmi-cyan: #5eead4;
+  --gmi-coral: #fb7185;
+
+  min-height: 100vh;
+  padding: 1.25rem 1.25rem 3rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(139, 92, 246, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(45, 212, 191, 0.12), transparent 50%),
+    var(--gmi-bg);
+  color: var(--gmi-text);
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+}
+
+.gmi__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto 2.5rem;
+}
+
+.gmi__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.gmi__dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--gmi-violet), #7c3aed);
+  box-shadow: 0 0 12px rgba(183, 148, 244, 0.7);
+}
+
+.gmi__badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gmi-muted);
+  border: 1px solid var(--gmi-line);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gmi__hero {
+  max-width: 1100px;
+  margin: 0 auto 2.5rem;
+}
+
+.gmi__kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gmi-violet);
+}
+
+.gmi__title {
+  margin: 0 0 1rem;
+  max-width: 18ch;
+  font-size: clamp(1.85rem, 4.5vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+.gmi__sub {
+  margin: 0 0 1rem;
+  max-width: 52ch;
+  color: var(--gmi-muted);
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.gmi__paths {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gmi-muted);
+}
+
+.gmi__paths code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--gmi-text);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.gmi__grid {
+  display: grid;
+  gap: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .gmi__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.gmi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.35rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--gmi-line);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.gmi-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(183, 148, 244, 0.45);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.gmi-card[data-accent='violet']:hover {
+  border-color: rgba(183, 148, 244, 0.55);
+}
+
+.gmi-card[data-accent='cyan']:hover {
+  border-color: rgba(94, 234, 212, 0.45);
+}
+
+.gmi-card[data-accent='coral']:hover {
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.gmi-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.gmi-card__vibe {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gmi-violet);
+}
+
+.gmi-card[data-accent='cyan'] .gmi-card__vibe {
+  color: var(--gmi-cyan);
+}
+
+.gmi-card[data-accent='coral'] .gmi-card__vibe {
+  color: var(--gmi-coral);
+}
+
+.gmi-card__id {
+  font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--gmi-muted);
+}
+
+.gmi-card__title {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.gmi-card__desc {
+  margin: 0;
+  flex: 1;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--gmi-muted);
+}
+
+.gmi-card__cta {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--gmi-text);
+}
+
+.gmi__footer {
+  max-width: 1100px;
+  margin: 2.5rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--gmi-line);
+  color: var(--gmi-muted);
+  font-size: 0.9rem;
+}
+
+.gmi__footer a {
+  color: var(--gmi-violet);
+}

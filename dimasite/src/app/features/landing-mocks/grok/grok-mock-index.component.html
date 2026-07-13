@@ -1,0 +1,43 @@
+<div class="gmi">
+  <header class="gmi__header">
+    <a routerLink="/" class="gmi__brand" aria-label="DomDimaBot home">
+      <span class="gmi__dot" aria-hidden="true"></span>
+      <span>DomDimaBot</span>
+    </a>
+    <span class="gmi__badge">Grok · Landing Mocks</span>
+  </header>
+
+  <section class="gmi__hero">
+    <p class="gmi__kicker">Design explorations</p>
+    <h1 class="gmi__title">Three fresh takes on the DomDimaBot landing</h1>
+    <p class="gmi__sub">
+      Built from the production product story — AI moderation, automation, analytics, TTS, live platform
+      stats, and Free / Premium / Pro pricing — without copying prior mock directions.
+    </p>
+    <p class="gmi__paths">
+      Routes: <code>/mocks/grok</code> · <code>/mocks/grok/1</code> · <code>/mocks/grok/2</code> ·
+      <code>/mocks/grok/3</code>
+    </p>
+  </section>
+
+  <div class="gmi__grid">
+    @for (mock of mocks; track mock.id) {
+      <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
+        <div class="gmi-card__top">
+          <span class="gmi-card__vibe">{{ mock.vibe }}</span>
+          <span class="gmi-card__id">/mocks/grok/{{ mock.id }}</span>
+        </div>
+        <h2 class="gmi-card__title">{{ mock.title }}</h2>
+        <p class="gmi-card__desc">{{ mock.description }}</p>
+        <span class="gmi-card__cta">Open mock →</span>
+      </a>
+    }
+  </div>
+
+  <footer class="gmi__footer">
+    <p>
+      Isolated prototypes. Production landing stays at
+      <a routerLink="/">/</a>.
+    </p>
+  </footer>
+</div>

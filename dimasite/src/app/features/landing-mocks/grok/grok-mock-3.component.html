@@ -1,0 +1,208 @@
+<div class="gm3">
+  <header class="gm3-nav">
+    <div class="gm3-nav__inner">
+      <a class="gm3-brand" href="#top">
+        <span class="gm3-brand__orb" aria-hidden="true"></span>
+        DomDimaBot
+      </a>
+      <nav class="gm3-nav__links" aria-label="Sections">
+        <button type="button" (click)="scrollTo('features')">Features</button>
+        <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+        <button type="button" (click)="scrollTo('live')">Live</button>
+      </nav>
+      <div class="gm3-nav__end">
+        <a routerLink="/mocks/grok" class="gm3-nav__back">← Grok mocks</a>
+        <button type="button" class="gm3-btn gm3-btn--ink gm3-btn--sm" (click)="login()">
+          Login with Twitch
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Warm hero -->
+    <section class="gm3-hero">
+      <div class="gm3-hero__blob gm3-hero__blob--a" aria-hidden="true"></div>
+      <div class="gm3-hero__blob gm3-hero__blob--b" aria-hidden="true"></div>
+
+      <div class="gm3-hero__content">
+        <p class="gm3-pill">
+          <lucide-icon [name]="sparklesIcon" class="gm3-pill__icon"></lucide-icon>
+          Live moderation + automation
+        </p>
+        <h1>
+          Meet DomDimaBot —
+          <em>your ultimate Twitch chat companion</em>
+        </h1>
+        <p class="gm3-hero__lead">
+          Enhance your streaming experience. Engage your audience, moderate chats, and boost your
+          channel’s interactivity with a bot that feels built for real creators.
+        </p>
+        <div class="gm3-hero__ctas">
+          <button type="button" class="gm3-btn gm3-btn--coral" (click)="login()">
+            Login with Twitch
+          </button>
+          <button type="button" class="gm3-btn gm3-btn--soft" (click)="openDiscord()">
+            Join Discord
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats bar -->
+    <section class="gm3-stats" aria-label="Analytics">
+      <div class="gm3-stats__bar">
+        <div class="gm3-stats__status">
+          <span
+            class="gm3-dot"
+            [class.gm3-dot--ok]="connectionStatus() === 'connected'"
+            [class.gm3-dot--warn]="connectionStatus() === 'reconnecting'"
+            aria-hidden="true"
+          ></span>
+          <span>{{ connectionLabel() }}</span>
+          <span class="gm3-stats__title">Analytics</span>
+        </div>
+        <div class="gm3-stats__grid">
+          @for (stat of stats; track stat.key; let i = $index) {
+            <div class="gm3-stat">
+              <lucide-icon [name]="iconFor(stat.icon)" class="gm3-stat__icon"></lucide-icon>
+              <p class="gm3-stat__label">{{ stat.label }}</p>
+              <p class="gm3-stat__value" [countUp]="statValue(stat.key)" [staggerDelay]="i * 80">0</p>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="gm3-section">
+      <div class="gm3-section__head">
+        <h2>Features</h2>
+        <p>A focused feature spotlight that maps directly to our plan comparison.</p>
+      </div>
+      <div class="gm3-features">
+        @for (f of features; track f.title) {
+          <article class="gm3-feature" [attr.data-tone]="f.tone">
+            <div class="gm3-feature__icon-wrap">
+              <lucide-icon [name]="iconFor(f.icon)" class="gm3-feature__icon"></lucide-icon>
+            </div>
+            <span class="gm3-feature__badge">{{ f.badge }}</span>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.copy }}</p>
+            <button type="button" class="gm3-link" (click)="scrollTo('pricing')">Compare plans</button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Pricing cards -->
+    <section id="pricing" class="gm3-section">
+      <div class="gm3-section__head">
+        <h2>Pricing</h2>
+        <p>Choose your plan and start engaging your audience today.</p>
+      </div>
+
+      <div class="gm3-plan-switch" role="tablist" aria-label="Plans">
+        @for (plan of plans; track plan.key) {
+          <button
+            type="button"
+            role="tab"
+            class="gm3-plan-switch__btn"
+            [class.gm3-plan-switch__btn--on]="openPlan() === plan.key"
+            (click)="setPlan(plan.key)"
+          >
+            {{ plan.label }}
+          </button>
+        }
+      </div>
+
+      <div class="gm3-plans">
+        @for (plan of plans; track plan.key) {
+          <article
+            class="gm3-plan"
+            [class.gm3-plan--featured]="plan.key === 'premium'"
+            [class.gm3-plan--mobile-hide]="openPlan() !== plan.key"
+          >
+            @if (plan.key === 'premium') {
+              <span class="gm3-plan__badge">Most popular</span>
+            }
+            <h3>{{ plan.label }}</h3>
+            <p class="gm3-plan__price">
+              {{ plan.price }}<span>/mo</span>
+            </p>
+            <p class="gm3-plan__desc">{{ plan.description }}</p>
+            <button type="button" class="gm3-btn gm3-btn--coral gm3-btn--block" (click)="login()">
+              {{ plan.cta }}
+            </button>
+            <ul>
+              @for (item of plan.highlights; track item) {
+                <li>
+                  <lucide-icon [name]="checkIcon" class="gm3-plan__check"></lucide-icon>
+                  {{ item }}
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- Live -->
+    <section id="live" class="gm3-section">
+      <div class="gm3-section__head">
+        <h2>Who is live right now</h2>
+        <p>Top channels by viewers. Scroll to explore all live creators.</p>
+      </div>
+
+      @if (liveChannels().length > 0) {
+        <div class="gm3-live">
+          @for (ch of liveChannels(); track ch.channelID) {
+            <article class="gm3-live-card">
+              <img
+                [src]="
+                  ch.profileImageUrl ||
+                  'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'
+                "
+                [alt]="ch.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="gm3-live-card__name">{{ ch.channel }}</p>
+                <p class="gm3-live-card__viewers">{{ ch.viewers }} viewers</p>
+                <div class="gm3-live-card__plats">
+                  @if (ch.botPlatforms.length > 0) {
+                    @for (p of ch.botPlatforms; track p) {
+                      <span [class.is-twitch]="p === 'twitch'" [class.is-kick]="p === 'kick'">
+                        {{ p === 'twitch' ? 'Twitch' : 'Kick' }}
+                      </span>
+                    }
+                  } @else {
+                    <span class="is-none">None</span>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="gm3-empty">No channels are live right now.</p>
+      }
+    </section>
+
+    <!-- CTA -->
+    <section class="gm3-cta">
+      <div class="gm3-cta__card">
+        <h2>Ready to elevate your Twitch stream?</h2>
+        <p>Join thousands of streamers who have transformed their channels with DomDimaBot.</p>
+        <button type="button" class="gm3-btn gm3-btn--ink gm3-btn--lg" (click)="login()">
+          Sign up with Twitch
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="gm3-footer">
+    <p>© 2024 DomDimaBot. All rights reserved.</p>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

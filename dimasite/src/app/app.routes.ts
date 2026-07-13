@@ -53,6 +53,44 @@ export const routes: Routes = [
     title: '404 | DomDimaBot'
   },
   {
+    path: 'mocks/grok',
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/grok-mock-index.component').then(
+            (m) => m.GrokMockIndexComponent
+          ),
+        title: 'Grok Landing Mocks | DomDimaBot'
+      },
+      {
+        path: '1',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/grok-mock-1.component').then(
+            (m) => m.GrokMock1Component
+          ),
+        title: 'Split Studio · Grok Mock | DomDimaBot'
+      },
+      {
+        path: '2',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/grok-mock-2.component').then(
+            (m) => m.GrokMock2Component
+          ),
+        title: 'Night Signal · Grok Mock | DomDimaBot'
+      },
+      {
+        path: '3',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/grok-mock-3.component').then(
+            (m) => m.GrokMock3Component
+          ),
+        title: 'Warm Desk · Grok Mock | DomDimaBot'
+      }
+    ]
+  },
+  {
     path: ':streamer',
     canMatch: [streamerRouteShapeGuard],
     loadComponent: () =>
