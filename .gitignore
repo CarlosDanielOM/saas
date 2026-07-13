@@ -140,11 +140,11 @@ connect.lock
 .opencode/bun.lock
 .opencode/.gitignore
 
-# Database files (local)
- *.db
- *.sqlite
- *.sqlite3
- .gitnexus
+# Local database and code-intelligence files
+*.db
+*.sqlite
+*.sqlite3
+.gitnexus/
 
 # Per-project lockfiles (each subproject manages its own npm dependencies)
  !dimabot/package-lock.json
