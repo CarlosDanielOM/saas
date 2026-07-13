@@ -1,6 +1,5 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <!-- Hero bento -->
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('devMocks.commands.overviewAria')">
       <article class="lf-tile lf-tile--intro">
         <p class="lf-kicker">{{ t('devMocks.commands.kicker') }}</p>
@@ -9,54 +8,52 @@
           <span>{{ t('devMocks.commands.titleAccent') }}</span>
         </h1>
         <p class="lf-copy">
-          {{ t('devMocks.commands.copy', { name: channelName }) }}
+          {{ t('devMocks.commands.unifiedCopy', { name: channelName }) }}
         </p>
 
         <div class="lf-actions">
-          <button type="button" class="lf-btn lf-btn--primary" (click)="setTab('timers'); openCreateTimer()">
-            {{ t('devMocks.commands.newTimer') }}
+          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate()">
+            {{ t('devMocks.commands.addCommand') }}
           </button>
-          <button type="button" class="lf-btn" (click)="setTab('commands'); loadCommands()">
+          <button type="button" class="lf-btn" (click)="loadCommands()" [disabled]="loading()">
             {{ t('devMocks.commands.refresh') }}
           </button>
         </div>
 
         <p class="lf-feed lf-feed--on">
-          {{ channelName }} · id {{ channelID }}
+          {{ channelName }} · {{ channelID }}
         </p>
       </article>
 
       <article class="lf-tile lf-tile--spotlight">
         <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ t('devMocks.commands.planLabel', { tier: planTier() }) }}</span>
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            {{ t('devMocks.commands.planLabel', { tier: planTier() }) }}
+          </span>
           <span class="lf-spotlight__count">{{ t('devMocks.commands.simulateLimits') }}</span>
         </div>
-
         <p class="lf-label">{{ t('devMocks.commands.intervalRules') }}</p>
         <p class="lf-spotlight__rule">{{ intervalHint() }}</p>
-
         <div class="lf-plan-switch" role="group" [attr.aria-label]="t('devMocks.commands.simulatePlan')">
           @for (tier of ['free', 'premium', 'pro']; track tier) {
             <button
               type="button"
               class="lf-plan-pill"
               [class.lf-plan-pill--active]="planTier() === tier"
-              [attr.data-tier]="tier"
               (click)="setPlanTier($any(tier))"
             >
               {{ tier }}
             </button>
           }
         </div>
-
         <div class="lf-spotlight__meta-row">
           <div>
             <p class="lf-label">{{ t('devMocks.commands.activeTimers') }}</p>
             <p class="lf-value lf-value--sm">{{ activeTimers() }}/{{ timerLimit() }}</p>
           </div>
           <div>
-            <p class="lf-label">{{ t('devMocks.commands.chatCommands') }}</p>
-            <p class="lf-value lf-value--sm">{{ totalCommands() }}</p>
+            <p class="lf-label">{{ t('devMocks.commands.timedCommands') }}</p>
+            <p class="lf-value lf-value--sm">{{ timedCommands() }}</p>
           </div>
         </div>
       </article>
@@ -79,142 +76,131 @@
       </article>
     </section>
 
-    <!-- Segment control -->
-    <section class="lf-segment" role="tablist" [attr.aria-label]="t('devMocks.commands.commands')">
-      <button
-        type="button"
-        class="lf-segment__btn"
-        role="tab"
-        [class.lf-segment__btn--active]="activeTab() === 'commands'"
-        [attr.aria-selected]="activeTab() === 'commands'"
-        (click)="setTab('commands')"
-      >
-        {{ t('devMocks.commands.chatTab') }}
-        <span class="lf-segment__count">{{ totalCommands() }}</span>
-      </button>
-      <button
-        type="button"
-        class="lf-segment__btn"
-        role="tab"
-        [class.lf-segment__btn--active]="activeTab() === 'timers'"
-        [attr.aria-selected]="activeTab() === 'timers'"
-        (click)="setTab('timers')"
-      >
-        {{ t('devMocks.commands.timerTab') }}
-        <span class="lf-segment__count">{{ timers().length }}</span>
-      </button>
-    </section>
-
-    <!-- Chat commands -->
-    @if (activeTab() === 'commands') {
-      <section class="lf-section" [attr.aria-label]="t('devMocks.commands.chatTab')">
-        <div class="lf-section__head">
-          <div>
-            <p class="lf-kicker">{{ t('devMocks.commands.liveApi', { id: channelID }) }}</p>
-            <h2 class="lf-h2">{{ t('devMocks.commands.everyReply') }}</h2>
-          </div>
-          <div class="lf-section__tools">
-            <label class="lf-search">
-              <span class="visually-hidden">{{ t('devMocks.commands.searchPlaceholder') }}</span>
-              <input
-                type="search"
-                [placeholder]="t('devMocks.commands.searchPlaceholder')"
-                [value]="searchInput()"
-                (input)="onSearchInput($any($event.target).value)"
-              />
-            </label>
-            <div class="lf-view">
-              <button
-                type="button"
-                class="lf-view__btn"
-                [class.lf-view__btn--active]="viewMode() === 'table'"
-                (click)="setViewMode('table')"
-                [attr.aria-label]="t('devMocks.commands.list')"
-              >
-                {{ t('devMocks.commands.list') }}
-              </button>
-              <button
-                type="button"
-                class="lf-view__btn"
-                [class.lf-view__btn--active]="viewMode() === 'card'"
-                (click)="setViewMode('card')"
-                [attr.aria-label]="t('devMocks.commands.bento')"
-              >
-                {{ t('devMocks.commands.bento') }}
-              </button>
-            </div>
-          </div>
+    <section class="lf-section" [attr.aria-label]="t('devMocks.commands.commands')">
+      <div class="lf-section__head">
+        <div>
+          <p class="lf-kicker">{{ t('devMocks.commands.liveApi', { id: channelID }) }}</p>
+          <h2 class="lf-h2">{{ t('devMocks.commands.everyReply') }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ t('devMocks.commands.unifiedHint') }}</p>
         </div>
+        <div class="lf-section__tools">
+          <label class="lf-search">
+            <span class="visually-hidden">{{ t('devMocks.commands.searchPlaceholder') }}</span>
+            <input
+              type="search"
+              [placeholder]="t('devMocks.commands.searchPlaceholder')"
+              [value]="searchInput()"
+              (input)="onSearchInput($any($event.target).value)"
+            />
+          </label>
+          <div class="lf-view">
+            <button
+              type="button"
+              class="lf-view__btn"
+              [class.lf-view__btn--active]="viewMode() === 'table'"
+              (click)="setViewMode('table')"
+            >
+              {{ t('devMocks.commands.list') }}
+            </button>
+            <button
+              type="button"
+              class="lf-view__btn"
+              [class.lf-view__btn--active]="viewMode() === 'card'"
+              (click)="setViewMode('card')"
+            >
+              {{ t('devMocks.commands.bento') }}
+            </button>
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreate()">
+            {{ t('devMocks.commands.addCommand') }}
+          </button>
+        </div>
+      </div>
 
-        @if (commandsLoading() && commands().length === 0) {
-          <div class="lf-tile lf-empty">{{ t('devMocks.commands.loading') }}</div>
-        } @else if (commandsError() && commands().length === 0) {
-          <div class="lf-tile lf-empty lf-empty--warn">
-            <p>{{ commandsError() }}</p>
-            <button type="button" class="lf-btn" (click)="loadCommands()">{{ t('devMocks.commands.retry') }}</button>
-          </div>
-        } @else if (viewMode() === 'card') {
-          <div class="lf-bento lf-bento--cmds">
-            @for (command of paginatedCommands(); track commandTrackId(command)) {
-              <article
-                class="lf-tile lf-cmd"
-                [class.lf-cmd--off]="command.enabled === false"
-              >
-                <div class="lf-cmd__top">
-                  <code class="lf-code">!{{ command.cmd }}</code>
-                  <span
-                    class="lf-chip"
-                    [class.lf-chip--muted]="command.enabled === false"
-                    [class.lf-chip--live]="command.enabled !== false"
-                  >
-                    {{ command.enabled === false ? t('devMocks.commands.off') : t('devMocks.commands.on') }}
-                  </span>
-                </div>
-                <h3 class="lf-cmd__name">{{ command.name }}</h3>
-                <p class="lf-cmd__desc">
-                  {{ command.description || command.message || t('devMocks.commands.noDescription') }}
-                </p>
-                <div class="lf-cmd__meta">
-                  <span>{{ command.cooldown }}s</span>
-                  <span>{{ getUserLevelLabel(command) }}</span>
-                  @if (command.reserved) {
-                    <span class="lf-chip">Reserved</span>
-                  }
-                </div>
-              </article>
-            } @empty {
-              <div class="lf-tile lf-empty">{{ t('devMocks.commands.noMatch') }}</div>
-            }
-          </div>
-        } @else {
-          <div class="lf-tile lf-matrix">
-            <div class="lf-matrix__row lf-matrix__row--head">
+      @if (loading() && commands().length === 0) {
+        <div class="lf-tile lf-empty">{{ t('devMocks.commands.loading') }}</div>
+      } @else if (error() && commands().length === 0) {
+        <div class="lf-tile lf-empty lf-empty--warn">
+          <p>{{ error() }}</p>
+          <button type="button" class="lf-btn" (click)="loadCommands()">
+            {{ t('devMocks.commands.retry') }}
+          </button>
+        </div>
+      } @else if (viewMode() === 'table') {
+        <div class="lf-tile lf-matrix">
+          <div class="lf-matrix__scroller">
+            <div class="lf-matrix__row lf-matrix__row--head lf-matrix__row--cmds">
               <span>{{ t('devMocks.commands.name') }}</span>
               <span>{{ t('devMocks.commands.trigger') }}</span>
-              <span>{{ t('devMocks.commands.level') }}</span>
+              <span>{{ t('devMocks.commands.message') }}</span>
+              <span>{{ t('devMocks.commands.timerCol') }}</span>
               <span>{{ t('devMocks.commands.cooldown') }}</span>
+              <span>{{ t('devMocks.commands.level') }}</span>
               <span>{{ t('devMocks.commands.status') }}</span>
+              <span>{{ t('devMocks.commands.actions') }}</span>
             </div>
-            @for (command of paginatedCommands(); track commandTrackId(command)) {
+
+            @for (command of paginatedCommands(); track command.id) {
               <div
-                class="lf-matrix__row"
-                [class.lf-matrix__row--off]="command.enabled === false"
+                class="lf-matrix__row lf-matrix__row--cmds"
+                [class.lf-matrix__row--off]="!command.enabled"
               >
                 <span class="lf-matrix__primary">
                   <strong>{{ command.name }}</strong>
-                  <small>{{ command.description || command.message || '—' }}</small>
+                  @if (command.reserved) {
+                    <span class="lf-chip lf-chip--muted">{{ t('devMocks.commands.reserved') }}</span>
+                  }
+                  @if (command.local) {
+                    <span class="lf-chip">local</span>
+                  }
                 </span>
                 <span><code class="lf-code">!{{ command.cmd }}</code></span>
-                <span>{{ getUserLevelLabel(command) }}</span>
-                <span>{{ command.cooldown }}s</span>
+                <span class="lf-clip">{{ command.message || command.description || '—' }}</span>
                 <span>
                   <span
                     class="lf-chip"
-                    [class.lf-chip--live]="command.enabled !== false"
-                    [class.lf-chip--muted]="command.enabled === false"
+                    [class.lf-chip--live]="(command.timerMinutes ?? 0) > 0"
+                    [class.lf-chip--muted]="!(command.timerMinutes ?? 0)"
                   >
-                    {{ command.enabled === false ? t('devMocks.commands.off') : t('devMocks.commands.on') }}
+                    {{ formatTimer(command.timerMinutes) }}
                   </span>
+                </span>
+                <span>{{ command.cooldown }}s</span>
+                <span>{{ levelLabel(command.userLevel, command.userLevelName) }}</span>
+                <span>
+                  <span
+                    class="lf-chip"
+                    [class.lf-chip--live]="command.enabled"
+                    [class.lf-chip--muted]="!command.enabled"
+                  >
+                    {{ command.enabled ? t('devMocks.commands.on') : t('devMocks.commands.off') }}
+                  </span>
+                </span>
+                <span class="lf-actions-cell">
+                  <button
+                    type="button"
+                    class="lf-icon-action"
+                    [disabled]="command.reserved"
+                    (click)="openEdit(command)"
+                  >
+                    {{ t('devMocks.commands.editShort') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="lf-icon-action"
+                    [disabled]="command.reserved"
+                    (click)="toggleEnabled(command)"
+                  >
+                    {{ command.enabled ? t('devMocks.commands.disable') : t('devMocks.commands.enable') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="lf-icon-action lf-icon-action--danger"
+                    [disabled]="command.reserved"
+                    (click)="requestDelete(command)"
+                  >
+                    {{ t('devMocks.commands.delete') }}
+                  </button>
                 </span>
               </div>
             } @empty {
@@ -223,118 +209,79 @@
               </div>
             }
           </div>
-        }
-
-        @if (filteredCommands().length > 0) {
-          <div class="lf-pager">
-            <label class="lf-pager__size">
-              {{ t('devMocks.commands.perPage') }}
-              <select [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
-                @for (n of itemsPerPageOptions; track n) {
-                  <option [value]="n">{{ n }}</option>
-                }
-              </select>
-            </label>
-            <div class="lf-pager__pages">
-              <button
-                type="button"
-                class="lf-btn lf-btn--ghost"
-                [disabled]="currentPage() <= 1"
-                (click)="changePage(currentPage() - 1)"
-              >
-                {{ t('devMocks.commands.prev') }}
-              </button>
-              @for (page of pages(); track page) {
-                <button
-                  type="button"
-                  class="lf-page"
-                  [class.lf-page--active]="page === currentPage()"
-                  (click)="changePage(page)"
-                >
-                  {{ page }}
-                </button>
-              }
-              <button
-                type="button"
-                class="lf-btn lf-btn--ghost"
-                [disabled]="currentPage() >= totalPages()"
-                (click)="changePage(currentPage() + 1)"
-              >
-                {{ t('devMocks.commands.next') }}
-              </button>
-            </div>
-          </div>
-        }
-      </section>
-    }
-
-    <!-- Timers -->
-    @if (activeTab() === 'timers') {
-      <section class="lf-section" [attr.aria-label]="t('devMocks.commands.timerTab')">
-        <div class="lf-section__head">
-          <div>
-            <p class="lf-kicker">{{ t('devMocks.commands.repeatKicker') }}</p>
-            <h2 class="lf-h2">{{ t('devMocks.commands.heartbeat') }}</h2>
-            <p class="lf-copy lf-copy--tight">
-              {{ t('devMocks.commands.timerHint', { interval: intervalHint(), limit: timerLimit(), tier: planTier() }) }}
-            </p>
-          </div>
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
-            {{ t('devMocks.commands.addTimer') }}
-          </button>
         </div>
+      } @else {
+        <div class="lf-bento lf-bento--cmds">
+          @for (command of paginatedCommands(); track command.id) {
+            <article class="lf-tile lf-cmd" [class.lf-cmd--off]="!command.enabled">
+              <div class="lf-cmd__top">
+                <code class="lf-code">!{{ command.cmd }}</code>
+                <span
+                  class="lf-chip"
+                  [class.lf-chip--live]="(command.timerMinutes ?? 0) > 0"
+                  [class.lf-chip--muted]="!(command.timerMinutes ?? 0)"
+                >
+                  {{ formatTimer(command.timerMinutes) }}
+                </span>
+              </div>
+              <h3 class="lf-cmd__name">
+                {{ command.name }}
+                @if (command.reserved) {
+                  <span class="lf-chip lf-chip--muted">{{ t('devMocks.commands.reserved') }}</span>
+                }
+              </h3>
+              <p class="lf-cmd__desc">
+                {{ command.message || command.description || t('devMocks.commands.noDescription') }}
+              </p>
+              <div class="lf-cmd__meta">
+                <span>{{ command.cooldown }}s</span>
+                <span>{{ levelLabel(command.userLevel, command.userLevelName) }}</span>
+                <span>{{ command.enabled ? t('devMocks.commands.on') : t('devMocks.commands.off') }}</span>
+              </div>
+              <div class="lf-cmd__actions">
+                <button type="button" class="lf-btn lf-btn--ghost lf-btn--compact" [disabled]="command.reserved" (click)="openEdit(command)">
+                  {{ t('devMocks.commands.editShort') }}
+                </button>
+                <button type="button" class="lf-btn lf-btn--ghost lf-btn--compact" [disabled]="command.reserved" (click)="toggleEnabled(command)">
+                  {{ command.enabled ? t('devMocks.commands.disable') : t('devMocks.commands.enable') }}
+                </button>
+                <button type="button" class="lf-btn lf-btn--ghost lf-btn--compact lf-btn--danger" [disabled]="command.reserved" (click)="requestDelete(command)">
+                  {{ t('devMocks.commands.delete') }}
+                </button>
+              </div>
+            </article>
+          } @empty {
+            <div class="lf-tile lf-empty">{{ t('devMocks.commands.noMatch') }}</div>
+          }
+        </div>
+      }
 
-        @if (planTier() === 'free') {
-          <div class="lf-bento lf-bento--intervals">
-            @for (m of freeIntervals; track m) {
-              <article class="lf-tile lf-interval-tile">
-                <p class="lf-label">{{ t('devMocks.commands.freeSlot') }}</p>
-                <p class="lf-value lf-value--sm">{{ m }}m</p>
-              </article>
+      @if (filteredCommands().length > 0) {
+        <div class="lf-pager">
+          <label class="lf-pager__size">
+            {{ t('devMocks.commands.perPage') }}
+            <select [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+              @for (n of itemsPerPageOptions; track n) {
+                <option [value]="n">{{ n }}</option>
+              }
+            </select>
+          </label>
+          <div class="lf-pager__pages">
+            <button type="button" class="lf-btn lf-btn--ghost" [disabled]="currentPage() <= 1" (click)="changePage(currentPage() - 1)">
+              {{ t('devMocks.commands.prev') }}
+            </button>
+            @for (page of pages(); track page) {
+              <button type="button" class="lf-page" [class.lf-page--active]="page === currentPage()" (click)="changePage(page)">
+                {{ page }}
+              </button>
             }
-          </div>
-        }
-
-        @if (timers().length === 0) {
-          <div class="lf-tile lf-empty">
-            <p>{{ t('devMocks.commands.noTimers') }}</p>
-            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
-              {{ t('devMocks.commands.addTimer') }}
+            <button type="button" class="lf-btn lf-btn--ghost" [disabled]="currentPage() >= totalPages()" (click)="changePage(currentPage() + 1)">
+              {{ t('devMocks.commands.next') }}
             </button>
           </div>
-        } @else {
-          <div class="lf-bento lf-bento--timers">
-            @for (timer of timers(); track timer.id) {
-              <article
-                class="lf-tile lf-timer"
-                [class.lf-timer--off]="!timer.active"
-                [class.lf-timer--live]="timer.active"
-              >
-                <div class="lf-timer__head">
-                  <span class="lf-chip" [class.lf-chip--live]="timer.active" [class.lf-chip--muted]="!timer.active">
-                    {{ timer.active ? t('devMocks.commands.active') : t('devMocks.commands.paused') }}
-                  </span>
-                  <span class="lf-timer__freq">{{ t('devMocks.commands.every', { interval: formatInterval(timer.frequency) }) }}</span>
-                </div>
-                <h3 class="lf-timer__name">{{ timer.name }}</h3>
-                <p class="lf-timer__msg">{{ timer.message }}</p>
-                <div class="lf-timer__actions">
-                  <button type="button" class="lf-text-link" (click)="openEditTimer(timer)">
-                    {{ t('devMocks.commands.edit') }}
-                  </button>
-                  <button type="button" class="lf-btn lf-btn--ghost" (click)="toggleTimer(timer)">
-                    {{ timer.active ? t('devMocks.commands.pause') : t('devMocks.commands.activate') }}
-                  </button>
-                  <button type="button" class="lf-btn lf-btn--ghost lf-btn--danger" (click)="deleteTimer(timer)">
-                    {{ t('devMocks.commands.delete') }}
-                  </button>
-                </div>
-              </article>
-            }
-          </div>
-        }
-      </section>
-    }
+        </div>
+      }
+    </section>
   </main>
 
   <footer class="lf-footer">
@@ -342,116 +289,207 @@
     <a routerLink="/mocks/grok/oc3c">{{ t('devMocks.commands.designSource') }}</a>
   </footer>
 
-  @if (showTimerModal()) {
-    <div class="lf-modal-overlay" (click)="closeTimerModal()">
-      <div
-        class="lf-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lf-timer-title"
-        (click)="$event.stopPropagation()"
-      >
+  <!-- Create / Edit modal -->
+  @if (showModal()) {
+    <div class="lf-modal-overlay" (click)="closeModal()">
+      <div class="lf-modal lf-modal--wide" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
         <div class="lf-modal__head">
           <div>
-            <p class="lf-kicker">{{ planTier() }} · {{ intervalHint() }}</p>
-            <h2 id="lf-timer-title">
-              {{ editingTimerId() ? t('devMocks.commands.editTimer') : t('devMocks.commands.newTimer') }}
+            <p class="lf-kicker">{{ t('devMocks.commands.planLabel', { tier: planTier() }) }}</p>
+            <h2>
+              {{ editingId() ? t('devMocks.commands.editCommand') : t('devMocks.commands.addCommand') }}
             </h2>
           </div>
-          <button type="button" class="lf-icon-close" (click)="closeTimerModal()" [attr.aria-label]="t('devMocks.commands.cancel')">
-            ×
-          </button>
+          <button type="button" class="lf-icon-close" (click)="closeModal()" [attr.aria-label]="t('devMocks.commands.cancel')">×</button>
         </div>
 
-        <form class="lf-form" (ngSubmit)="saveTimer()">
-          <label class="lf-field">
-            <span>{{ t('devMocks.commands.name') }}</span>
-            <input
-              type="text"
-              maxlength="30"
-              placeholder="discord"
-              [ngModel]="timerDraft().name"
-              (ngModelChange)="updateDraftName($event)"
-              name="timerName"
-              [disabled]="!!editingTimerId()"
-              autocomplete="off"
-            />
-          </label>
+        <form class="lf-form" (ngSubmit)="saveCommand()">
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span>{{ t('devMocks.commands.name') }}</span>
+              <input
+                type="text"
+                maxlength="40"
+                [ngModel]="draft().name"
+                (ngModelChange)="updateDraft('name', $event)"
+                name="cmdName"
+                autocomplete="off"
+              />
+            </label>
+
+            <label class="lf-field">
+              <span>{{ t('devMocks.commands.trigger') }}</span>
+              <div class="lf-input-prefix">
+                <span>!</span>
+                <input
+                  type="text"
+                  maxlength="30"
+                  [ngModel]="draft().cmd"
+                  (ngModelChange)="updateDraft('cmd', $event)"
+                  name="cmdTrigger"
+                  autocomplete="off"
+                />
+              </div>
+            </label>
+          </div>
 
           <label class="lf-field">
             <span>{{ t('devMocks.commands.message') }}</span>
             <textarea
               rows="3"
-              maxlength="350"
+              maxlength="500"
               [placeholder]="t('devMocks.commands.messagePh')"
-              [ngModel]="timerDraft().message"
-              (ngModelChange)="updateDraftMessage($event)"
-              name="timerMessage"
+              [ngModel]="draft().message"
+              (ngModelChange)="updateDraft('message', $event)"
+              name="cmdMessage"
             ></textarea>
-            <small>{{ timerDraft().message.length }}/350</small>
           </label>
 
-          <div class="lf-field">
-            <span>{{ t('devMocks.commands.repeatEvery') }}</span>
+          <label class="lf-field">
+            <span>{{ t('devMocks.commands.description') }}</span>
+            <input
+              type="text"
+              maxlength="200"
+              [ngModel]="draft().description"
+              (ngModelChange)="updateDraft('description', $event)"
+              name="cmdDesc"
+            />
+          </label>
 
-            @if (planTier() === 'free') {
-              <div class="lf-interval-grid">
-                @for (m of freeIntervals; track m) {
-                  <button
-                    type="button"
-                    class="lf-interval"
-                    [class.lf-interval--active]="timerDraft().frequency === m"
-                    (click)="updateDraftFrequency(m)"
-                  >
-                    {{ m }}m
-                  </button>
-                }
-              </div>
-            } @else {
-              <div class="lf-interval-row">
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span>{{ t('devMocks.commands.cooldown') }}</span>
+              <div class="lf-input-suffix">
                 <input
                   type="number"
-                  class="lf-num"
-                  [min]="planTier() === 'premium' ? 5 : 1"
-                  max="180"
-                  [step]="planTier() === 'premium' ? 5 : 1"
-                  [ngModel]="timerDraft().frequency"
-                  (ngModelChange)="updateDraftFrequency($event)"
-                  name="timerFreq"
+                  min="0"
+                  max="600"
+                  [ngModel]="draft().cooldown"
+                  (ngModelChange)="updateDraft('cooldown', +$event)"
+                  name="cmdCooldown"
                 />
-                <span class="lf-unit">{{ t('devMocks.commands.minutes') }}</span>
+                <span>s</span>
               </div>
-              <div class="lf-quick">
-                @for (
-                  m of planTier() === 'premium'
-                    ? [5, 10, 15, 30, 45, 60, 90, 120, 180]
-                    : [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180];
-                  track m
-                ) {
-                  <button
-                    type="button"
-                    class="lf-chip lf-chip--btn"
-                    [class.lf-chip--active]="timerDraft().frequency === m"
-                    (click)="updateDraftFrequency(m)"
-                  >
-                    {{ m }}m
-                  </button>
+            </label>
+
+            <label class="lf-field">
+              <span>{{ t('devMocks.commands.level') }}</span>
+              <select
+                [ngModel]="draft().userLevel"
+                (ngModelChange)="updateDraft('userLevel', +$event)"
+                name="cmdLevel"
+              >
+                @for (level of userLevels; track level) {
+                  <option [value]="level">{{ level }} — {{ levelLabel(level) }}</option>
                 }
+              </select>
+            </label>
+          </div>
+
+          <label class="lf-check">
+            <input
+              type="checkbox"
+              [checked]="draft().enabled"
+              (change)="updateDraft('enabled', $any($event.target).checked)"
+            />
+            <span>{{ t('devMocks.commands.enabledOnCreate') }}</span>
+          </label>
+
+          <div class="lf-timer-block">
+            <label class="lf-check">
+              <input
+                type="checkbox"
+                [checked]="draft().timerEnabled"
+                (change)="setTimerEnabled($any($event.target).checked)"
+              />
+              <span>{{ t('devMocks.commands.timerToggle') }}</span>
+            </label>
+            <p class="lf-note">{{ t('devMocks.commands.timerToggleHint') }}</p>
+
+            @if (draft().timerEnabled) {
+              <div class="lf-field">
+                <span>{{ t('devMocks.commands.repeatEvery') }}</span>
+                @if (planTier() === 'free') {
+                  <div class="lf-interval-grid">
+                    @for (m of freeIntervals; track m) {
+                      <button
+                        type="button"
+                        class="lf-interval"
+                        [class.lf-interval--active]="draft().timerMinutes === m"
+                        (click)="setTimerMinutes(m)"
+                      >
+                        {{ m }}m
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <div class="lf-interval-row">
+                    <input
+                      type="number"
+                      class="lf-num"
+                      [min]="planTier() === 'premium' ? 5 : 1"
+                      max="180"
+                      [step]="planTier() === 'premium' ? 5 : 1"
+                      [ngModel]="draft().timerMinutes"
+                      (ngModelChange)="setTimerMinutes($event)"
+                      name="timerMins"
+                    />
+                    <span class="lf-unit">{{ t('devMocks.commands.minutes') }}</span>
+                  </div>
+                  <div class="lf-quick">
+                    @for (
+                      m of planTier() === 'premium'
+                        ? [5, 10, 15, 30, 45, 60, 90, 120, 180]
+                        : [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180];
+                      track m
+                    ) {
+                      <button
+                        type="button"
+                        class="lf-chip lf-chip--btn"
+                        [class.lf-chip--active]="draft().timerMinutes === m"
+                        (click)="setTimerMinutes(m)"
+                      >
+                        {{ m }}m
+                      </button>
+                    }
+                  </div>
+                }
+                <small class="lf-hint">{{ intervalHint() }}</small>
               </div>
             }
           </div>
 
-          @if (timerFormError()) {
-            <p class="lf-form-error">{{ timerFormError() }}</p>
+          @if (formError()) {
+            <p class="lf-form-error">{{ formError() }}</p>
           }
 
           <div class="lf-form__actions">
-            <button type="button" class="lf-btn" (click)="closeTimerModal()">{{ t('devMocks.commands.cancel') }}</button>
+            <button type="button" class="lf-btn" (click)="closeModal()">{{ t('devMocks.commands.cancel') }}</button>
             <button type="submit" class="lf-btn lf-btn--primary">
-              {{ editingTimerId() ? t('devMocks.commands.save') : t('devMocks.commands.createTimer') }}
+              {{ editingId() ? t('devMocks.commands.save') : t('devMocks.commands.addCommand') }}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  }
+
+  @if (deleteTarget(); as target) {
+    <div class="lf-modal-overlay" (click)="cancelDelete()">
+      <div class="lf-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="lf-modal__head">
+          <h2>{{ t('devMocks.commands.deleteTitle') }}</h2>
+          <button type="button" class="lf-icon-close" (click)="cancelDelete()">×</button>
+        </div>
+        <p class="lf-copy">
+          {{ t('devMocks.commands.deleteConfirm', { name: target.name, cmd: target.cmd }) }}
+        </p>
+        <div class="lf-form__actions">
+          <button type="button" class="lf-btn" (click)="cancelDelete()">{{ t('devMocks.commands.cancel') }}</button>
+          <button type="button" class="lf-btn lf-btn--danger-solid" (click)="confirmDelete()">
+            {{ t('devMocks.commands.delete') }}
+          </button>
+        </div>
       </div>
     </div>
   }

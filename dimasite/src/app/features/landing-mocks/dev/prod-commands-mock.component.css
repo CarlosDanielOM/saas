@@ -661,6 +661,166 @@
   font-size: 0.9rem;
 }
 
+.lf-matrix__row--cmds {
+  grid-template-columns:
+    minmax(7.5rem, 1.1fr)
+    minmax(5rem, 0.75fr)
+    minmax(8rem, 1.4fr)
+    minmax(3.5rem, 0.55fr)
+    3.2rem
+    minmax(4rem, 0.7fr)
+    3.5rem
+    minmax(9.5rem, 1.1fr);
+  min-width: 52rem;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+}
+
+.lf-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.lf-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.lf-icon-action {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.28rem 0.5rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-icon-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lf-icon-action--danger {
+  color: #f87171;
+  border-color: color-mix(in srgb, #f87171 35%, var(--line));
+}
+
+.lf-cmd__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+}
+
+.lf-btn--compact {
+  min-height: 36px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.lf-btn--danger-solid {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.lf-btn--danger {
+  color: #f87171;
+  border-color: color-mix(in srgb, #f87171 35%, var(--line));
+}
+
+.lf-modal--wide {
+  width: min(100%, 36rem);
+}
+
+.lf-form-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+.lf-input-prefix,
+.lf-input-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--input-bg, rgba(0, 0, 0, 0.12));
+  padding: 0 0.75rem;
+}
+
+.lf-input-prefix span,
+.lf-input-suffix span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.lf-input-prefix input,
+.lf-input-suffix input {
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  padding: 0.75rem 0;
+  width: 100%;
+  outline: none;
+}
+
+.lf-field select,
+.lf-field input[type='text'],
+.lf-field input[type='number'],
+.lf-field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--input-bg, rgba(0, 0, 0, 0.12));
+  color: var(--fg);
+  border-radius: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+}
+
+.lf-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.lf-check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent);
+}
+
+.lf-timer-block {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.lf-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.lf-copy--tight {
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+}
+
 .lf-matrix__row:last-child {
   border-bottom: 0;
 }
@@ -1089,6 +1249,14 @@
 
   .lf-modal {
     border-radius: var(--radius);
+  }
+
+  .lf-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lf-modal--wide {
+    width: min(100%, 40rem);
   }
 }
 

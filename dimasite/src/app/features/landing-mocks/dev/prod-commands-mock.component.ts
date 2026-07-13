@@ -8,27 +8,39 @@ import {
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Command, USER_LEVELS } from '../../../models/command.model';
+import { USER_LEVELS, USER_LEVEL_NAMES } from '../../../models/command.model';
 import { LanguageService } from '../../../services/language.service';
 
 type PlanTier = 'free' | 'premium' | 'pro';
 type ViewMode = 'table' | 'card';
-type TabId = 'commands' | 'timers';
 
-interface MockTimer {
+/** Unified command: optional timerMinutes makes it also auto-repeat. */
+interface MockCommand {
   id: string;
   name: string;
+  cmd: string;
   message: string;
-  frequency: number;
-  frequencyUnit: 'minutes';
-  active: boolean;
-  createdAt: string;
+  description: string | null;
+  cooldown: number;
+  userLevel: number;
+  userLevelName: string;
+  enabled: boolean;
+  reserved: boolean;
+  /** null / 0 = chat-only; >0 = chat + auto timer (minutes) */
+  timerMinutes: number | null;
+  local?: boolean;
 }
 
-interface TimerDraft {
+interface CommandDraft {
   name: string;
+  cmd: string;
   message: string;
-  frequency: number;
+  description: string;
+  cooldown: number;
+  userLevel: number;
+  enabled: boolean;
+  timerEnabled: boolean;
+  timerMinutes: number;
 }
 
 const LIVE_API = 'https://api.domdimabot.com';
@@ -43,35 +55,13 @@ const TIER_TIMER_LIMITS: Record<PlanTier, number> = {
   pro: 50
 };
 
-const SEED_TIMERS: MockTimer[] = [
-  {
-    id: 't1',
-    name: 'discord',
-    message: 'Join the community: discord.gg/HdubYrkPXt',
-    frequency: 30,
-    frequencyUnit: 'minutes',
-    active: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 't2',
-    name: 'follow',
-    message: 'Thanks for hanging out — hit follow if you enjoy the stream!',
-    frequency: 15,
-    frequencyUnit: 'minutes',
-    active: true,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 't3',
-    name: 'socials',
-    message: 'Links & socials: !socials',
-    frequency: 60,
-    frequencyUnit: 'minutes',
-    active: false,
-    createdAt: new Date().toISOString()
-  }
-];
+/** Demo timer assignments for known cmds when loading live data */
+const SEED_TIMERS_BY_CMD: Record<string, number> = {
+  discord: 30,
+  socials: 60,
+  follow: 15,
+  commands: 45
+};
 
 @Component({
   selector: 'app-prod-commands-mock',
@@ -85,34 +75,43 @@ export class ProdCommandsMockComponent {
 
   readonly channelID = CHANNEL_ID;
   readonly channelName = CHANNEL_NAME;
+  readonly freeIntervals = FREE_INTERVALS;
+  readonly userLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+  readonly userLevelNames = USER_LEVEL_NAMES;
 
   readonly planTier = signal<PlanTier>('pro');
-  readonly activeTab = signal<TabId>('timers');
-  readonly viewMode = signal<ViewMode>('card');
+  readonly viewMode = signal<ViewMode>('table');
   readonly currentPage = signal(1);
-  readonly itemsPerPage = signal(12);
-  readonly itemsPerPageOptions = [6, 12, 18, 24];
+  readonly itemsPerPage = signal(10);
+  readonly itemsPerPageOptions = [5, 10, 15, 20];
   readonly searchInput = signal('');
 
-  readonly commands = signal<Command[]>([]);
-  readonly commandsLoading = signal(true);
-  readonly commandsError = signal<string | null>(null);
+  readonly commands = signal<MockCommand[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
 
-  readonly timers = signal<MockTimer[]>([...SEED_TIMERS]);
-  readonly showTimerModal = signal(false);
-  readonly editingTimerId = signal<string | null>(null);
-  readonly timerDraft = signal<TimerDraft>({ name: '', message: '', frequency: 30 });
-  readonly timerFormError = signal<string | null>(null);
+  readonly showModal = signal(false);
+  readonly editingId = signal<string | null>(null);
+  readonly draft = signal<CommandDraft>(this.emptyDraft());
+  readonly formError = signal<string | null>(null);
   readonly toast = signal<string | null>(null);
+  readonly confirmDeleteId = signal<string | null>(null);
 
   private toastTimer: number | null = null;
 
   readonly totalCommands = computed(() => this.commands().length);
   readonly enabledCommands = computed(
-    () => this.commands().filter((command) => command.enabled !== false).length
+    () => this.commands().filter((c) => c.enabled).length
   );
-  readonly activeTimers = computed(() => this.timers().filter((timer) => timer.active).length);
+  readonly timedCommands = computed(
+    () => this.commands().filter((c) => (c.timerMinutes ?? 0) > 0).length
+  );
+  readonly activeTimers = computed(
+    () =>
+      this.commands().filter((c) => c.enabled && (c.timerMinutes ?? 0) > 0).length
+  );
   readonly timerLimit = computed(() => TIER_TIMER_LIMITS[this.planTier()]);
+
   readonly intervalHint = computed(() => {
     this.languageService.currentLanguage();
     switch (this.planTier()) {
@@ -125,27 +124,16 @@ export class ProdCommandsMockComponent {
     }
   });
 
-  readonly freeIntervals = FREE_INTERVALS;
-
   readonly filteredCommands = computed(() => {
-    const query = this.searchInput().trim().toLowerCase();
+    const q = this.searchInput().trim().toLowerCase();
     const list = this.commands();
-    if (!query) {
-      return list;
-    }
-
-    return list.filter((command) => {
-      const haystack = [
-        command.name,
-        command.cmd,
-        command.message,
-        command.description ?? '',
-        command.userLevelName
-      ]
+    if (!q) return list;
+    return list.filter((c) =>
+      [c.name, c.cmd, c.message, c.description ?? '', c.userLevelName]
         .join(' ')
-        .toLowerCase();
-      return haystack.includes(query);
-    });
+        .toLowerCase()
+        .includes(q)
+    );
   });
 
   readonly totalPages = computed(() =>
@@ -160,10 +148,7 @@ export class ProdCommandsMockComponent {
   readonly pages = computed(() => {
     const total = this.totalPages();
     const current = this.currentPage();
-    if (total <= 5) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
     let start = current - 2;
     let end = current + 2;
     if (start < 1) {
@@ -173,8 +158,13 @@ export class ProdCommandsMockComponent {
       end = total;
       start = total - 4;
     }
-
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  });
+
+  readonly deleteTarget = computed(() => {
+    const id = this.confirmDeleteId();
+    if (!id) return null;
+    return this.commands().find((c) => c.id === id) ?? null;
   });
 
   constructor() {
@@ -188,16 +178,11 @@ export class ProdCommandsMockComponent {
 
   setPlanTier(tier: PlanTier): void {
     this.planTier.set(tier);
-    const draft = this.timerDraft();
-    const validation = this.validateInterval(draft.frequency, tier);
-    if (!validation.valid) {
-      this.timerDraft.update((current) => ({ ...current, frequency: 30 }));
+    const d = this.draft();
+    if (d.timerEnabled && !this.validateInterval(d.timerMinutes, tier).valid) {
+      this.draft.update((cur) => ({ ...cur, timerMinutes: 30 }));
     }
     this.showToast(this.t('devMocks.commands.planToast', { tier }));
-  }
-
-  setTab(tab: TabId): void {
-    this.activeTab.set(tab);
   }
 
   setViewMode(mode: ViewMode): void {
@@ -210,224 +195,318 @@ export class ProdCommandsMockComponent {
   }
 
   changePage(page: number): void {
-    if (page < 1 || page > this.totalPages()) {
-      return;
-    }
+    if (page < 1 || page > this.totalPages()) return;
     this.currentPage.set(page);
   }
 
   onItemsPerPageChange(event: Event): void {
     const target = event.target;
-    if (!(target instanceof HTMLSelectElement)) {
-      return;
-    }
+    if (!(target instanceof HTMLSelectElement)) return;
     const next = Number(target.value);
-    if (!Number.isFinite(next) || next <= 0) {
-      return;
-    }
+    if (!Number.isFinite(next) || next <= 0) return;
     this.itemsPerPage.set(next);
     this.currentPage.set(1);
   }
 
-  commandTrackId(command: Pick<Command, 'id' | '_id'>): string {
-    return command.id || command._id || '';
-  }
-
-  getUserLevelLabel(command: Command): string {
-    return command.userLevelName || USER_LEVELS[command.userLevel] || 'everyone';
-  }
-
-  formatInterval(minutes: number): string {
-    if (minutes < 60) {
-      return `${minutes}m`;
+  formatTimer(minutes: number | null | undefined): string {
+    if (!minutes || minutes <= 0) {
+      return this.t('devMocks.commands.timerNone');
     }
-    const hours = Math.floor(minutes / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const h = Math.floor(minutes / 60);
     const rem = minutes % 60;
-    return rem ? `${hours}h ${rem}m` : `${hours}h`;
+    return rem ? `${h}h ${rem}m` : `${h}h`;
+  }
+
+  levelLabel(level: number, name?: string): string {
+    const key = USER_LEVEL_NAMES[level] || USER_LEVELS[level] || 'everyone';
+    if (key.startsWith('commands.')) {
+      return this.t(key);
+    }
+    return name || key;
   }
 
   async loadCommands(): Promise<void> {
-    this.commandsLoading.set(true);
-    this.commandsError.set(null);
-
+    this.loading.set(true);
+    this.error.set(null);
     try {
-      const response = await fetch(
+      const res = await fetch(
         `${LIVE_API}/commands/${CHANNEL_ID}?limit=100&language=en`
       );
-      const body = (await response.json()) as {
+      const body = (await res.json()) as {
         error?: boolean;
         message?: string;
-        commands?: Command[];
-        data?: { commands?: Command[] };
+        commands?: Array<Record<string, unknown>>;
+        data?: { commands?: Array<Record<string, unknown>> };
       };
-
-      if (!response.ok || body.error) {
-        throw new Error(body.message || `HTTP ${response.status}`);
+      if (!res.ok || body.error) {
+        throw new Error(body.message || `HTTP ${res.status}`);
       }
-
-      const list = Array.isArray(body.commands)
+      const raw = Array.isArray(body.commands)
         ? body.commands
         : Array.isArray(body.data?.commands)
           ? body.data.commands
           : [];
 
-      this.commands.set(list);
+      const mapped = raw.map((row) => this.mapApiCommand(row));
+      // Keep local-only commands when refreshing
+      const locals = this.commands().filter((c) => c.local);
+      const liveIds = new Set(mapped.map((c) => c.id));
+      const keptLocals = locals.filter((c) => !liveIds.has(c.id));
+      this.commands.set([...keptLocals, ...mapped]);
       this.currentPage.set(1);
-      this.showToast(`Loaded ${list.length} live commands`);
-    } catch (error) {
-      this.commandsError.set(
-        error instanceof Error ? error.message : 'Failed to load commands'
+      this.showToast(
+        this.t('devMocks.commands.loadedToast', { count: mapped.length })
       );
+    } catch (e) {
+      this.error.set(e instanceof Error ? e.message : 'Failed to load');
     } finally {
-      this.commandsLoading.set(false);
+      this.loading.set(false);
     }
   }
 
-  openCreateTimer(): void {
-    this.editingTimerId.set(null);
-    this.timerFormError.set(null);
-    this.timerDraft.set({
-      name: '',
-      message: '',
-      frequency: this.planTier() === 'free' ? 30 : 15
+  openCreate(): void {
+    this.editingId.set(null);
+    this.formError.set(null);
+    this.draft.set(this.emptyDraft());
+    this.showModal.set(true);
+  }
+
+  openEdit(command: MockCommand): void {
+    if (command.reserved) {
+      this.showToast(this.t('devMocks.commands.reservedLocked'));
+      return;
+    }
+    this.editingId.set(command.id);
+    this.formError.set(null);
+    const mins = command.timerMinutes ?? 0;
+    this.draft.set({
+      name: command.name,
+      cmd: command.cmd,
+      message: command.message,
+      description: command.description ?? '',
+      cooldown: command.cooldown,
+      userLevel: command.userLevel,
+      enabled: command.enabled,
+      timerEnabled: mins > 0,
+      timerMinutes: mins > 0 ? mins : this.planTier() === 'free' ? 30 : 15
     });
-    this.showTimerModal.set(true);
+    this.showModal.set(true);
   }
 
-  openEditTimer(timer: MockTimer): void {
-    this.editingTimerId.set(timer.id);
-    this.timerFormError.set(null);
-    this.timerDraft.set({
-      name: timer.name,
-      message: timer.message,
-      frequency: timer.frequency
-    });
-    this.showTimerModal.set(true);
+  closeModal(): void {
+    this.showModal.set(false);
+    this.editingId.set(null);
+    this.formError.set(null);
   }
 
-  closeTimerModal(): void {
-    this.showTimerModal.set(false);
-    this.editingTimerId.set(null);
-    this.timerFormError.set(null);
+  updateDraft<K extends keyof CommandDraft>(key: K, value: CommandDraft[K]): void {
+    this.draft.update((d) => ({ ...d, [key]: value }));
   }
 
-  updateDraftName(value: string): void {
-    this.timerDraft.update((draft) => ({ ...draft, name: value }));
+  setTimerEnabled(enabled: boolean): void {
+    this.draft.update((d) => ({ ...d, timerEnabled: enabled }));
   }
 
-  updateDraftMessage(value: string): void {
-    this.timerDraft.update((draft) => ({ ...draft, message: value }));
-  }
-
-  updateDraftFrequency(value: number | string): void {
-    const next = typeof value === 'number' ? value : Number(value);
-    this.timerDraft.update((draft) => ({
-      ...draft,
-      frequency: Number.isFinite(next) ? next : draft.frequency
+  setTimerMinutes(value: number | string): void {
+    const n = typeof value === 'number' ? value : Number(value);
+    this.draft.update((d) => ({
+      ...d,
+      timerMinutes: Number.isFinite(n) ? n : d.timerMinutes
     }));
   }
 
-  saveTimer(): void {
-    const draft = this.timerDraft();
+  saveCommand(): void {
+    const d = this.draft();
     const tier = this.planTier();
-    const name = draft.name.trim().toLowerCase();
-    const message = draft.message.trim();
-    const frequency = draft.frequency;
-    const editingId = this.editingTimerId();
+    const name = d.name.trim();
+    const cmd = d.cmd.trim().replace(/^!+/, '').toLowerCase();
+    const message = d.message.trim();
+    const description = d.description.trim() || null;
+    const editingId = this.editingId();
 
     if (!name) {
-      this.timerFormError.set('Timer name is required');
+      this.formError.set(this.t('devMocks.commands.errName'));
       return;
     }
-    if (name.length > 30) {
-      this.timerFormError.set('Timer name cannot exceed 30 characters');
-      return;
-    }
-    if (!/^[\w]+$/.test(name)) {
-      this.timerFormError.set('Name can only contain letters, numbers, and underscores');
+    if (!cmd || !/^[\w-]+$/.test(cmd)) {
+      this.formError.set(this.t('devMocks.commands.errCmd'));
       return;
     }
     if (!message) {
-      this.timerFormError.set('Timer message is required');
+      this.formError.set(this.t('devMocks.commands.errMessage'));
       return;
     }
-    if (message.length > 350) {
-      this.timerFormError.set('Message cannot exceed 350 characters');
-      return;
-    }
-
-    const intervalCheck = this.validateInterval(frequency, tier);
-    if (!intervalCheck.valid) {
-      this.timerFormError.set(intervalCheck.error ?? 'Invalid interval');
+    if (!Number.isInteger(d.cooldown) || d.cooldown < 0 || d.cooldown > 600) {
+      this.formError.set(this.t('devMocks.commands.errCooldown'));
       return;
     }
 
-    const duplicate = this.timers().some(
-      (timer) => timer.name === name && timer.id !== editingId
-    );
-    if (duplicate) {
-      this.timerFormError.set(`Timer "${name}" already exists`);
-      return;
-    }
-
-    if (!editingId) {
-      const activeCount = this.timers().filter((timer) => timer.active).length;
-      const limit = TIER_TIMER_LIMITS[tier];
-      if (activeCount >= limit) {
-        this.timerFormError.set(
-          `Timer limit reached (${limit} for ${tier}). Upgrade for more timers.`
+    let timerMinutes: number | null = null;
+    if (d.timerEnabled) {
+      const check = this.validateInterval(d.timerMinutes, tier);
+      if (!check.valid) {
+        this.formError.set(check.error ?? this.t('devMocks.commands.errTimer'));
+        return;
+      }
+      // Cap active timed commands by plan when enabling a new timer
+      const othersTimed = this.commands().filter(
+        (c) =>
+          c.id !== editingId &&
+          c.enabled &&
+          (c.timerMinutes ?? 0) > 0
+      ).length;
+      const willBeActive = d.enabled;
+      if (willBeActive && othersTimed >= TIER_TIMER_LIMITS[tier]) {
+        this.formError.set(
+          this.t('devMocks.commands.errTimerLimit', {
+            limit: TIER_TIMER_LIMITS[tier],
+            tier
+          })
         );
         return;
       }
-
-      const next: MockTimer = {
-        id: `local-${Date.now()}`,
-        name,
-        message,
-        frequency,
-        frequencyUnit: 'minutes',
-        active: true,
-        createdAt: new Date().toISOString()
-      };
-      this.timers.update((list) => [next, ...list]);
-      this.showToast(`Timer "${name}" · every ${this.formatInterval(frequency)}`);
-    } else {
-      this.timers.update((list) =>
-        list.map((timer) =>
-          timer.id === editingId
-            ? { ...timer, name, message, frequency, frequencyUnit: 'minutes' }
-            : timer
-        )
-      );
-      this.showToast(`Timer "${name}" updated`);
+      timerMinutes = d.timerMinutes;
     }
 
-    this.closeTimerModal();
+    const duplicate = this.commands().some(
+      (c) => c.cmd === cmd && c.id !== editingId
+    );
+    if (duplicate) {
+      this.formError.set(this.t('devMocks.commands.errDuplicate', { cmd }));
+      return;
+    }
+
+    const userLevelName = USER_LEVELS[d.userLevel] || 'everyone';
+
+    if (!editingId) {
+      const next: MockCommand = {
+        id: `local-${Date.now()}`,
+        name,
+        cmd,
+        message,
+        description,
+        cooldown: d.cooldown,
+        userLevel: d.userLevel,
+        userLevelName,
+        enabled: d.enabled,
+        reserved: false,
+        timerMinutes,
+        local: true
+      };
+      this.commands.update((list) => [next, ...list]);
+      this.showToast(this.t('devMocks.commands.createdToast', { name }));
+    } else {
+      this.commands.update((list) =>
+        list.map((c) =>
+          c.id === editingId
+            ? {
+                ...c,
+                name,
+                cmd,
+                message,
+                description,
+                cooldown: d.cooldown,
+                userLevel: d.userLevel,
+                userLevelName,
+                enabled: d.enabled,
+                timerMinutes
+              }
+            : c
+        )
+      );
+      this.showToast(this.t('devMocks.commands.updatedToast', { name }));
+    }
+
+    this.closeModal();
   }
 
-  toggleTimer(timer: MockTimer): void {
-    if (!timer.active) {
-      const activeCount = this.timers().filter((item) => item.active).length;
-      const limit = this.timerLimit();
-      if (activeCount >= limit) {
-        this.showToast(`Active timer limit reached (${limit} for ${this.planTier()})`);
+  toggleEnabled(command: MockCommand): void {
+    if (command.reserved) {
+      this.showToast(this.t('devMocks.commands.reservedLocked'));
+      return;
+    }
+    // If enabling a timed command, respect timer cap
+    if (!command.enabled && (command.timerMinutes ?? 0) > 0) {
+      const active = this.activeTimers();
+      if (active >= this.timerLimit()) {
+        this.showToast(
+          this.t('devMocks.commands.errTimerLimit', {
+            limit: this.timerLimit(),
+            tier: this.planTier()
+          })
+        );
         return;
       }
     }
-
-    this.timers.update((list) =>
-      list.map((item) =>
-        item.id === timer.id ? { ...item, active: !item.active } : item
+    this.commands.update((list) =>
+      list.map((c) =>
+        c.id === command.id ? { ...c, enabled: !c.enabled } : c
       )
     );
     this.showToast(
-      timer.active ? `Timer "${timer.name}" paused` : `Timer "${timer.name}" activated`
+      command.enabled
+        ? this.t('devMocks.commands.disabledToast', { name: command.name })
+        : this.t('devMocks.commands.enabledToast', { name: command.name })
     );
   }
 
-  deleteTimer(timer: MockTimer): void {
-    this.timers.update((list) => list.filter((item) => item.id !== timer.id));
-    this.showToast(`Timer "${timer.name}" deleted`);
+  requestDelete(command: MockCommand): void {
+    if (command.reserved) {
+      this.showToast(this.t('devMocks.commands.reservedLocked'));
+      return;
+    }
+    this.confirmDeleteId.set(command.id);
+  }
+
+  cancelDelete(): void {
+    this.confirmDeleteId.set(null);
+  }
+
+  confirmDelete(): void {
+    const id = this.confirmDeleteId();
+    if (!id) return;
+    const cmd = this.commands().find((c) => c.id === id);
+    this.commands.update((list) => list.filter((c) => c.id !== id));
+    this.confirmDeleteId.set(null);
+    if (cmd) {
+      this.showToast(this.t('devMocks.commands.deletedToast', { name: cmd.name }));
+    }
+  }
+
+  private emptyDraft(): CommandDraft {
+    return {
+      name: '',
+      cmd: '',
+      message: '',
+      description: '',
+      cooldown: 10,
+      userLevel: 1,
+      enabled: true,
+      timerEnabled: false,
+      timerMinutes: 30
+    };
+  }
+
+  private mapApiCommand(row: Record<string, unknown>): MockCommand {
+    const cmd = String(row['cmd'] ?? '').toLowerCase();
+    const id = String(row['id'] ?? row['_id'] ?? cmd);
+    const seedTimer = SEED_TIMERS_BY_CMD[cmd];
+    return {
+      id,
+      name: String(row['name'] ?? cmd),
+      cmd,
+      message: String(row['message'] ?? ''),
+      description:
+        row['description'] == null ? null : String(row['description']),
+      cooldown: Number(row['cooldown'] ?? 10) || 10,
+      userLevel: Number(row['userLevel'] ?? 1) || 1,
+      userLevelName: String(row['userLevelName'] ?? USER_LEVELS[1]),
+      enabled: row['enabled'] !== false,
+      reserved: row['reserved'] === true,
+      timerMinutes: seedTimer ?? null,
+      local: false
+    };
   }
 
   private validateInterval(
@@ -435,27 +514,25 @@ export class ProdCommandsMockComponent {
     tier: PlanTier
   ): { valid: boolean; error?: string } {
     if (!Number.isInteger(minutes) || minutes <= 0) {
-      return { valid: false, error: 'Frequency must be a positive whole number of minutes' };
+      return { valid: false, error: this.t('devMocks.commands.errTimer') };
     }
-
     switch (tier) {
       case 'pro':
         if (minutes > MAX_TIMER_MINUTES) {
-          return { valid: false, error: 'Pro timers must be between 1 and 180 minutes' };
+          return { valid: false, error: this.t('devMocks.commands.intervalPro') };
         }
         return { valid: true };
       case 'premium':
         if (minutes < 5 || minutes > MAX_TIMER_MINUTES || minutes % 5 !== 0) {
           return {
             valid: false,
-            error: 'Premium timers must use 5-minute intervals from 5 to 180 minutes'
+            error: this.t('devMocks.commands.intervalPremium')
           };
         }
         return { valid: true };
-      case 'free':
       default:
         if (!(FREE_INTERVALS as readonly number[]).includes(minutes)) {
-          return { valid: false, error: 'Free timers must use 15, 30, 45, or 60 minutes' };
+          return { valid: false, error: this.t('devMocks.commands.intervalFree') };
         }
         return { valid: true };
     }
@@ -463,12 +540,10 @@ export class ProdCommandsMockComponent {
 
   private showToast(message: string): void {
     this.toast.set(message);
-    if (this.toastTimer !== null) {
-      window.clearTimeout(this.toastTimer);
-    }
+    if (this.toastTimer !== null) window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => {
       this.toast.set(null);
       this.toastTimer = null;
-    }, 2600);
+    }, 2400);
   }
 }
