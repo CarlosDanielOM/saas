@@ -87,6 +87,81 @@ export const routes: Routes = [
             (m) => m.GrokMock3Component
           ),
         title: 'Warm Desk · Grok Mock | DomDimaBot'
+      },
+      // Lineage of Mock 18 — Global Metrics
+      {
+        path: '18a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-18a.component').then(
+            (m) => m.GrokLineage18aComponent
+          ),
+        title: 'Pulse Board · Grok 18a | DomDimaBot'
+      },
+      {
+        path: '18b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-18b.component').then(
+            (m) => m.GrokLineage18bComponent
+          ),
+        title: 'Quiet Ledger · Grok 18b | DomDimaBot'
+      },
+      {
+        path: '18c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-18c.component').then(
+            (m) => m.GrokLineage18cComponent
+          ),
+        title: 'Focus Strip · Grok 18c | DomDimaBot'
+      },
+      // Lineage of Mock 20 — Aurora Stream
+      {
+        path: '20a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-20a.component').then(
+            (m) => m.GrokLineage20aComponent
+          ),
+        title: 'Tide Glass · Grok 20a | DomDimaBot'
+      },
+      {
+        path: '20b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-20b.component').then(
+            (m) => m.GrokLineage20bComponent
+          ),
+        title: 'Soft Horizon · Grok 20b | DomDimaBot'
+      },
+      {
+        path: '20c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-20c.component').then(
+            (m) => m.GrokLineage20cComponent
+          ),
+        title: 'Bloom Panel · Grok 20c | DomDimaBot'
+      },
+      // Lineage of Mock 23 — Constellation
+      {
+        path: '23a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-23a.component').then(
+            (m) => m.GrokLineage23aComponent
+          ),
+        title: 'Orbit Rings · Grok 23a | DomDimaBot'
+      },
+      {
+        path: '23b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-23b.component').then(
+            (m) => m.GrokLineage23bComponent
+          ),
+        title: 'Deep Catalog · Grok 23b | DomDimaBot'
+      },
+      {
+        path: '23c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/lineage/grok-lineage-23c.component').then(
+            (m) => m.GrokLineage23cComponent
+          ),
+        title: 'Nebula Core · Grok 23c | DomDimaBot'
       }
     ]
   },

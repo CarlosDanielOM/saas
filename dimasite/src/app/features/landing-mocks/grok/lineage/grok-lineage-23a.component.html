@@ -1,0 +1,75 @@
+<div class="g23a">
+  <div class="stars" aria-hidden="true"><div class="s s1"></div><div class="s s2"></div></div>
+  <nav class="nav"><div class="wrap row">
+    <a class="brand" routerLink="/"><span class="core"></span>dima·orbit</a>
+    <div class="links"><a routerLink="/mocks/grok">← Grok</a>
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button></div>
+    <button type="button" class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+  </div></nav>
+
+  <header class="hero"><div class="wrap grid">
+    <div>
+      <div class="pill"><span class="dot"></span>
+        <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> in orbit ·
+        <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> watching
+      </div>
+      <h1>Your stream,<br>a body in<br><span class="grad">stable orbit</span>.</h1>
+      <p>Constellation DNA reimagined as concentric rings. Moderation, commands, voice, and analytics — satellites around your channel.</p>
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="onLogin()">Start free</button>
+        <button type="button" class="btn ghost" (click)="onDiscord()">Join Discord</button>
+      </div>
+    </div>
+    <div class="orbit-viz" aria-hidden="true">
+      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+      <div class="sat s1"></div><div class="sat s2"></div><div class="sat s3"></div><div class="sat s4"></div>
+      <div class="hub"></div>
+      <div class="cap">
+        <div class="cap-h"><span>ORBIT MAP</span><span class="live">LIVE</span></div>
+        <div class="cap-n" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</div>
+        <div class="cap-l">Bots in orbit</div>
+        <div class="cap-g">
+          <div><strong [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</strong><span>Viewers</span></div>
+          <div><strong [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</strong><span>Stars</span></div>
+          <div><strong [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</strong><span>Msgs</span></div>
+          <div><strong [countUp]="siteStats().totalCommands" [staggerDelay]="220">0</strong><span>Cmds</span></div>
+        </div>
+      </div>
+    </div>
+  </div></header>
+
+  <section id="features" class="sec"><div class="wrap">
+    <div class="ey">// 001 · SATELLITES</div><h2>Four bodies in the system.</h2>
+    <div class="feats">
+      <article><div class="planet p1"></div><lucide-icon [name]="shieldIcon"></lucide-icon><h3>AI Moderation</h3><p>The protective ring around every channel.</p></article>
+      <article><div class="planet p2"></div><lucide-icon [name]="zapIcon"></lucide-icon><h3>Command Engine</h3><p>The drive shaft. Unlimited on every plan.</p></article>
+      <article><div class="planet p3"></div><lucide-icon [name]="chartIcon"></lucide-icon><h3>Analytics</h3><p>The telescope. Retention, loyalty, usage.</p></article>
+      <article><div class="planet p4"></div><lucide-icon [name]="volumeIcon"></lucide-icon><h3>Voice &amp; TTS</h3><p>The signal. High quality voices.</p></article>
+    </div>
+  </div></section>
+
+  <section id="pricing" class="sec"><div class="wrap">
+    <div class="ey">// 002 · TIERS</div><h2>Three orbits, same center.</h2>
+    <div class="plans">
+      <div class="plan"><div class="pn">Free</div><div class="pp">$0</div><ul><li>Core moderation</li><li>Unlimited commands*</li><li>Basic analytics</li></ul><button type="button" class="btn ghost full" (click)="onLogin()">Get started</button></div>
+      <div class="plan feat"><div class="flag">Most popular</div><div class="pn">Premium</div><div class="pp">$6<span>/mo</span></div><ul><li>Full AI moderation</li><li>Advanced analytics</li><li>Premium TTS</li></ul><button type="button" class="btn primary full" (click)="onLogin()">Choose Premium</button></div>
+      <div class="plan"><div class="pn">Pro</div><div class="pp">$15<span>/mo</span></div><ul><li>Everything in Premium</li><li>Voice cloning</li><li>Unlimited bandwidth*</li></ul><button type="button" class="btn ghost full" (click)="onLogin()">Go Pro</button></div>
+    </div>
+  </div></section>
+
+  <section id="live" class="sec"><div class="wrap">
+    <div class="ey">// 003 · STAR LOG</div><h2>Channels lit up right now.</h2>
+    <div class="log">
+      @if (liveChannels().length > 0) {
+        @for (c of liveChannels(); track c.channelID; let i = $index) {
+          <div class="log-row"><span class="star"></span><span class="id">#{{ i + 1 < 10 ? '0' + (i + 1) : i + 1 }}</span><span class="ch">{{ c.channel }}</span><span class="vw">{{ c.viewers }} viewers</span><span class="tag">live</span></div>
+        }
+      } @else { <div class="log-row empty">The sky is clearing…</div> }
+    </div>
+  </div></section>
+
+  <div class="finale"><div class="wrap"><p>Find your place in the network.</p><button type="button" class="btn primary" (click)="onLogin()">Log in with Twitch</button></div></div>
+  <footer>Grok · 23a Orbit Rings · from Mock 23 Constellation</footer>
+</div>

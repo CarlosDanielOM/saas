@@ -1,0 +1,66 @@
+<div class="g18b">
+  <nav class="nav"><div class="wrap row">
+    <div class="logo">dima <span>ledger</span></div>
+    <div class="links"><a routerLink="/mocks/grok">← Grok</a>
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button>
+    </div>
+    <button type="button" class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+  </div></nav>
+
+  <header class="hero"><div class="wrap hero-grid">
+    <div>
+      <div class="tag">PLATFORM LEDGER · LIVE</div>
+      <h1>The quiet books<br>for a loud chat.</h1>
+      <p>Same calm Global Metrics DNA — reframed as an accounting-grade surface. Numbers first, noise never.</p>
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="onLogin()">Start free</button>
+        <button type="button" class="btn line" (click)="onDiscord()">Join Discord</button>
+      </div>
+    </div>
+    <div class="ledger" aria-label="Platform ledger">
+      <div class="led-h"><span>dima · platform books</span><span class="ok">BALANCED</span></div>
+      <div class="led-row"><span class="k">Bots running</span><span class="v" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span></div>
+      <div class="led-row"><span class="k">Registered creators</span><span class="v" [countUp]="siteStats().registeredUsers" [staggerDelay]="50">0</span></div>
+      <div class="led-row"><span class="k">People watching live</span><span class="v" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="100">0</span></div>
+      <div class="led-row"><span class="k">Messages processed</span><span class="v" [countUp]="siteStats().messagesReceived" [staggerDelay]="150">0</span></div>
+      <div class="led-row"><span class="k">Commands today</span><span class="v" [countUp]="siteStats().totalCommands" [staggerDelay]="200">0</span></div>
+      <div class="led-row total"><span class="k">Live channels</span><span class="v" [countUp]="liveChannels().length" [staggerDelay]="250">0</span></div>
+    </div>
+  </div></header>
+
+  <section id="features" class="sec"><div class="wrap">
+    <div class="eyebrow">LINE ITEMS</div><h2>Four columns that close the books.</h2>
+    <div class="feats">
+      <article><span class="code">01</span><lucide-icon [name]="shieldIcon"></lucide-icon><h3>AI Moderation</h3><p>Context-aware protection that learns your community in real time.</p></article>
+      <article><span class="code">02</span><lucide-icon [name]="zapIcon"></lucide-icon><h3>Command Engine</h3><p>Variables, timers, conditions, and advanced logic — unlimited*.</p></article>
+      <article><span class="code">03</span><lucide-icon [name]="chartIcon"></lucide-icon><h3>Analytics</h3><p>Clear retention, usage, and loyalty insights that actually help.</p></article>
+      <article><span class="code">04</span><lucide-icon [name]="volumeIcon"></lucide-icon><h3>Voice &amp; TTS</h3><p>High quality voices and seamless trigger integration.</p></article>
+    </div>
+  </div></section>
+
+  <section id="pricing" class="sec soft"><div class="wrap">
+    <div class="eyebrow">RATES</div><h2>Three lines. One clear total.</h2>
+    <div class="plans">
+      <div class="plan"><div class="pn">Free</div><div class="pp">$0</div><ul><li>Core moderation</li><li>Unlimited commands*</li><li>Basic analytics</li></ul><button type="button" class="btn line full" (click)="onLogin()">Get started</button></div>
+      <div class="plan feat"><div class="pn">Premium</div><div class="pp">$6<small>/mo</small></div><ul><li>Full AI moderation</li><li>Advanced analytics</li><li>Premium TTS</li></ul><button type="button" class="btn primary full" (click)="onLogin()">Choose Premium</button></div>
+      <div class="plan"><div class="pn">Pro</div><div class="pp">$15<small>/mo</small></div><ul><li>Everything in Premium</li><li>Voice cloning</li><li>Unlimited bandwidth*</li></ul><button type="button" class="btn line full" (click)="onLogin()">Go Pro</button></div>
+    </div>
+  </div></section>
+
+  <section id="live" class="sec"><div class="wrap">
+    <div class="eyebrow">OPEN ENTRIES</div><h2>Channels running dima</h2>
+    <div class="table">
+      <div class="th"><span>Channel</span><span>Viewers</span><span>Status</span></div>
+      @if (liveChannels().length > 0) {
+        @for (c of liveChannels(); track c.channelID) {
+          <div class="tr"><span>{{ c.channel }}</span><span>{{ c.viewers }}</span><span class="ok">active</span></div>
+        }
+      } @else { <div class="tr empty">No open entries…</div> }
+    </div>
+  </div></section>
+
+  <div class="cta"><div class="wrap"><p>Close the chaos. Open the books.</p><button type="button" class="btn primary" (click)="onLogin()">Log in with Twitch</button></div></div>
+  <footer>Grok · 18b Quiet Ledger · from Mock 18 Global Metrics</footer>
+</div>

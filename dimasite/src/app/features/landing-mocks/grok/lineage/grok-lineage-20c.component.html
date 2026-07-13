@@ -1,0 +1,69 @@
+<div class="g20c">
+  <div class="bloom" aria-hidden="true"><div class="bb b1"></div><div class="bb b2"></div><div class="bb b3"></div></div>
+  <nav class="nav"><div class="wrap row">
+    <a class="brand" routerLink="/"><span class="mark"><lucide-icon [name]="sparklesIcon"></lucide-icon></span>dima</a>
+    <div class="links"><a routerLink="/mocks/grok">← Grok</a>
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button></div>
+    <button type="button" class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+  </div></nav>
+
+  <header class="hero"><div class="wrap stack">
+    <div class="pill"><span class="pulse"></span>
+      <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> blooming ·
+      <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> watching
+    </div>
+    <h1>A bot that <span class="grad">blooms</span><br>with your community.</h1>
+    <p>Aurora Stream warmth turned floral — peach, rose, soft lilac glass. Stacked panels instead of a side card.</p>
+    <div class="actions">
+      <button type="button" class="btn primary" (click)="onLogin()">Start free</button>
+      <button type="button" class="btn soft" (click)="onDiscord()">Join Discord</button>
+    </div>
+
+    <div class="panels">
+      <div class="panel big">
+        <div class="ph">platform · in bloom</div>
+        <div class="big-n" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</div>
+        <div class="big-l">Bots on the air</div>
+      </div>
+      <div class="panel"><div class="n" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="80">0</div><div class="l">Live viewers</div></div>
+      <div class="panel"><div class="n" [countUp]="siteStats().registeredUsers" [staggerDelay]="140">0</div><div class="l">Creators</div></div>
+      <div class="panel"><div class="n" [countUp]="siteStats().messagesReceived" [staggerDelay]="200">0</div><div class="l">Messages</div></div>
+      <div class="panel"><div class="n" [countUp]="siteStats().totalCommands" [staggerDelay]="240">0</div><div class="l">Commands</div></div>
+    </div>
+  </div></header>
+
+  <section id="features" class="sec"><div class="wrap">
+    <div class="ey">What’s in bloom</div><h2>Everything that makes a stream feel alive.</h2>
+    <div class="feats">
+      <article><div class="ico"><lucide-icon [name]="shieldIcon"></lucide-icon></div><h3>AI Moderation</h3><p>Reads the room, not just the regex.</p></article>
+      <article><div class="ico"><lucide-icon [name]="zapIcon"></lucide-icon></div><h3>Command Engine</h3><p>Variables, timers, conditions — unlimited.</p></article>
+      <article><div class="ico"><lucide-icon [name]="chartIcon"></lucide-icon></div><h3>Analytics</h3><p>Clear retention and loyalty insights.</p></article>
+      <article><div class="ico"><lucide-icon [name]="volumeIcon"></lucide-icon></div><h3>Voice &amp; TTS</h3><p>High quality voices. Pro clones yours.</p></article>
+    </div>
+  </div></section>
+
+  <section id="pricing" class="sec"><div class="wrap">
+    <div class="ey">Pricing</div><h2>One surface. Three sizes.</h2>
+    <div class="plans">
+      <div class="plan"><div class="pn">Free</div><div class="pp">$0</div><ul><li>Core moderation</li><li>Unlimited commands*</li><li>Basic analytics</li></ul><button type="button" class="btn soft full" (click)="onLogin()">Get started</button></div>
+      <div class="plan feat"><div class="flag">Most popular</div><div class="pn">Premium</div><div class="pp">$6<span>/mo</span></div><ul><li>Full AI moderation</li><li>Advanced analytics</li><li>Premium TTS</li></ul><button type="button" class="btn primary full" (click)="onLogin()">Choose Premium</button></div>
+      <div class="plan"><div class="pn">Pro</div><div class="pp">$15<span>/mo</span></div><ul><li>Everything in Premium</li><li>Voice cloning</li><li>Unlimited bandwidth*</li></ul><button type="button" class="btn soft full" (click)="onLogin()">Go Pro</button></div>
+    </div>
+  </div></section>
+
+  <section id="live" class="sec"><div class="wrap">
+    <div class="ey">Right now</div><h2>Channels in bloom.</h2>
+    <div class="stream">
+      @if (liveChannels().length > 0) {
+        @for (c of liveChannels(); track c.channelID) {
+          <div class="srow"><span>{{ c.channel }}</span><span>{{ c.viewers }} viewers</span><span class="tag">Live</span></div>
+        }
+      } @else { <div class="srow empty">Petals still closed…</div> }
+    </div>
+  </div></section>
+
+  <div class="finale"><div class="wrap"><p>Ready to let your stream bloom?</p><button type="button" class="btn primary" (click)="onLogin()">Log in with Twitch</button></div></div>
+  <footer>Grok · 20c Bloom Panel · from Mock 20 Aurora Stream</footer>
+</div>

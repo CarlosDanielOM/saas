@@ -9,30 +9,52 @@
 
   <section class="gmi__hero">
     <p class="gmi__kicker">Design explorations</p>
-    <h1 class="gmi__title">Three fresh takes on the DomDimaBot landing</h1>
+    <h1 class="gmi__title">Grok landing mocks</h1>
     <p class="gmi__sub">
-      Built from the production product story — AI moderation, automation, analytics, TTS, live platform
-      stats, and Free / Premium / Pro pricing — without copying prior mock directions.
+      Originals plus nine creative riffs from production mocks
+      <strong>18</strong> (Global Metrics), <strong>20</strong> (Aurora Stream), and
+      <strong>23</strong> (Constellation). All use live platform data.
     </p>
     <p class="gmi__paths">
-      Routes: <code>/mocks/grok</code> · <code>/mocks/grok/1</code> · <code>/mocks/grok/2</code> ·
-      <code>/mocks/grok/3</code>
+      Base: <code>/mocks/grok</code> · Lineages:
+      <code>/mocks/grok/18a–c</code> ·
+      <code>/mocks/grok/20a–c</code> ·
+      <code>/mocks/grok/23a–c</code>
     </p>
   </section>
 
+  <h2 class="gmi__section-title">Original Grok directions</h2>
   <div class="gmi__grid">
-    @for (mock of mocks; track mock.id) {
+    @for (mock of originals; track mock.id) {
       <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
         <div class="gmi-card__top">
           <span class="gmi-card__vibe">{{ mock.vibe }}</span>
           <span class="gmi-card__id">/mocks/grok/{{ mock.id }}</span>
         </div>
-        <h2 class="gmi-card__title">{{ mock.title }}</h2>
+        <h3 class="gmi-card__title">{{ mock.title }}</h3>
         <p class="gmi-card__desc">{{ mock.description }}</p>
         <span class="gmi-card__cta">Open mock →</span>
       </a>
     }
   </div>
+
+  @for (section of sections; track section.title) {
+    <h2 class="gmi__section-title">{{ section.title }}</h2>
+    <p class="gmi__section-note">{{ section.note }}</p>
+    <div class="gmi__grid">
+      @for (mock of section.mocks; track mock.id) {
+        <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
+          <div class="gmi-card__top">
+            <span class="gmi-card__vibe">{{ mock.vibe }}</span>
+            <span class="gmi-card__id">/mocks/grok/{{ mock.id }}</span>
+          </div>
+          <h3 class="gmi-card__title">{{ mock.title }}</h3>
+          <p class="gmi-card__desc">{{ mock.description }}</p>
+          <span class="gmi-card__cta">Open mock →</span>
+        </a>
+      }
+    </div>
+  }
 
   <footer class="gmi__footer">
     <p>

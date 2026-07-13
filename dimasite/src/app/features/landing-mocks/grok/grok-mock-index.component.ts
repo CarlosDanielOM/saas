@@ -9,6 +9,12 @@ interface GrokMockCard {
   accent: string;
 }
 
+interface GrokMockSection {
+  title: string;
+  note: string;
+  mocks: GrokMockCard[];
+}
+
 @Component({
   selector: 'app-grok-mock-index',
   imports: [RouterLink],
@@ -17,12 +23,12 @@ interface GrokMockCard {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GrokMockIndexComponent {
-  readonly mocks: GrokMockCard[] = [
+  readonly originals: GrokMockCard[] = [
     {
       id: '1',
       title: 'Split Studio',
       description:
-        'Asymmetric product layout. Hero copy on the left, a live ops panel on the right. Clean light surfaces with violet brand energy.',
+        'Asymmetric product layout. Hero copy on the left, a live ops panel on the right.',
       vibe: 'Product',
       accent: 'violet'
     },
@@ -30,7 +36,7 @@ export class GrokMockIndexComponent {
       id: '2',
       title: 'Night Signal',
       description:
-        'Cinematic dark stage. Oversized type, neon accents, marquee platform stats, and an on-air live strip.',
+        'Cinematic dark stage. Oversized type, neon accents, marquee platform stats.',
       vibe: 'Cinematic',
       accent: 'cyan'
     },
@@ -38,9 +44,102 @@ export class GrokMockIndexComponent {
       id: '3',
       title: 'Warm Desk',
       description:
-        'Soft creator-friendly SaaS. Paper tones, rounded cards, gentle motion, and approachable pricing.',
+        'Soft creator-friendly SaaS. Paper tones, rounded cards, approachable pricing.',
       vibe: 'Friendly',
       accent: 'coral'
+    }
+  ];
+
+  readonly sections: GrokMockSection[] = [
+    {
+      title: 'From Mock 18 · Global Metrics',
+      note: 'Calm dark product DNA with platform KPIs. Three creative riffs — board, ledger, focus strip.',
+      mocks: [
+        {
+          id: '18a',
+          title: 'Pulse Board',
+          description:
+            'KPI board as the hero. Amber live pulse, dense metric cells, same quiet product chrome.',
+          vibe: 'Board',
+          accent: 'violet'
+        },
+        {
+          id: '18b',
+          title: 'Quiet Ledger',
+          description:
+            'Accounting-grade light surface. Monospace books, ledger panel, open entries table.',
+          vibe: 'Ledger',
+          accent: 'coral'
+        },
+        {
+          id: '18c',
+          title: 'Focus Strip',
+          description:
+            'Centered calm headline with a full-width metrics strip. Horizontal feature list.',
+          vibe: 'Focus',
+          accent: 'cyan'
+        }
+      ]
+    },
+    {
+      title: 'From Mock 20 · Aurora Stream',
+      note: 'Glass + aurora mesh DNA. Three riffs — dusk tide, horizon band, warm bloom panels.',
+      mocks: [
+        {
+          id: '20a',
+          title: 'Tide Glass',
+          description:
+            'Aurora inverted to night. Deep dusk glass cards, cyan/magenta mesh, after-dark calm.',
+          vibe: 'Dusk',
+          accent: 'cyan'
+        },
+        {
+          id: '20b',
+          title: 'Soft Horizon',
+          description:
+            'Centered hero under a horizontal aurora band. Floating metric chips, soft pills.',
+          vibe: 'Horizon',
+          accent: 'violet'
+        },
+        {
+          id: '20c',
+          title: 'Bloom Panel',
+          description:
+            'Peach/rose floral aurora. Stacked glass panels, warm creator energy.',
+          vibe: 'Bloom',
+          accent: 'coral'
+        }
+      ]
+    },
+    {
+      title: 'From Mock 23 · Constellation',
+      note: 'Space network DNA. Three riffs — orbital rings, observatory catalog, nebula core.',
+      mocks: [
+        {
+          id: '23a',
+          title: 'Orbit Rings',
+          description:
+            'Concentric orbital rings and satellites instead of a mesh graph. Caption card intact.',
+          vibe: 'Orbit',
+          accent: 'violet'
+        },
+        {
+          id: '23b',
+          title: 'Deep Catalog',
+          description:
+            'Observatory ledger. Star log is the hero; platform metrics as a catalog header.',
+          vibe: 'Catalog',
+          accent: 'cyan'
+        },
+        {
+          id: '23c',
+          title: 'Nebula Core',
+          description:
+            'Dense glowing core with radial nodes. Pink nebula clouds and shell pricing.',
+          vibe: 'Nebula',
+          accent: 'coral'
+        }
+      ]
     }
   ];
 }

@@ -1,0 +1,72 @@
+<div class="g23c">
+  <div class="nebula" aria-hidden="true"><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div></div>
+  <nav class="nav"><div class="wrap row">
+    <a class="brand" routerLink="/"><span class="core"></span>dima·nebula</a>
+    <div class="links"><a routerLink="/mocks/grok">← Grok</a>
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button></div>
+    <button type="button" class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+  </div></nav>
+
+  <header class="hero"><div class="wrap center">
+    <div class="pill"><span class="dot"></span>
+      <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> cores burning ·
+      <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> in the glow
+    </div>
+    <h1>Your stream at the<br><span class="grad">heart of the nebula</span>.</h1>
+    <p>Constellation DNA densified — a glowing core, radial nodes, and features that orbit the center.</p>
+    <div class="actions">
+      <button type="button" class="btn primary" (click)="onLogin()">Start free</button>
+      <button type="button" class="btn ghost" (click)="onDiscord()">Join Discord</button>
+    </div>
+
+    <div class="core-viz">
+      <div class="field">
+        @for (n of nodes; track $index) {
+          <span class="node" [class.hub]="n.hub" [style.left.%]="n.x" [style.top.%]="n.y" [style.width.px]="n.size" [style.height.px]="n.size"></span>
+        }
+      </div>
+      <div class="stats-ring">
+        <div><span class="sn" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span><span class="sl">Bots</span></div>
+        <div><span class="sn" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</span><span class="sl">Viewers</span></div>
+        <div><span class="sn" [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</span><span class="sl">Creators</span></div>
+        <div><span class="sn" [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span><span class="sl">Msgs</span></div>
+        <div><span class="sn" [countUp]="siteStats().totalCommands" [staggerDelay]="220">0</span><span class="sl">Cmds</span></div>
+      </div>
+    </div>
+  </div></header>
+
+  <section id="features" class="sec"><div class="wrap">
+    <div class="ey">// 001 · RADIALS</div><h2>Four rays from the core.</h2>
+    <div class="feats">
+      <article><lucide-icon [name]="shieldIcon"></lucide-icon><h3>AI Moderation</h3><p>Protective glow that learns your community.</p></article>
+      <article><lucide-icon [name]="zapIcon"></lucide-icon><h3>Command Engine</h3><p>Drive shaft. Unlimited on every plan.</p></article>
+      <article><lucide-icon [name]="chartIcon"></lucide-icon><h3>Analytics</h3><p>Telescope on retention and loyalty.</p></article>
+      <article><lucide-icon [name]="volumeIcon"></lucide-icon><h3>Voice &amp; TTS</h3><p>Signal beam. Pro clones yours.</p></article>
+    </div>
+  </div></section>
+
+  <section id="pricing" class="sec"><div class="wrap">
+    <div class="ey">// 002 · SHELLS</div><h2>Three shells around the core.</h2>
+    <div class="plans">
+      <div class="plan"><div class="pn">Free</div><div class="pp">$0</div><ul><li>Core moderation</li><li>Unlimited commands*</li><li>Basic analytics</li></ul><button type="button" class="btn ghost full" (click)="onLogin()">Get started</button></div>
+      <div class="plan feat"><div class="flag">Most popular</div><div class="pn">Premium</div><div class="pp">$6<span>/mo</span></div><ul><li>Full AI moderation</li><li>Advanced analytics</li><li>Premium TTS</li></ul><button type="button" class="btn primary full" (click)="onLogin()">Choose Premium</button></div>
+      <div class="plan"><div class="pn">Pro</div><div class="pp">$15<span>/mo</span></div><ul><li>Everything in Premium</li><li>Voice cloning</li><li>Unlimited bandwidth*</li></ul><button type="button" class="btn ghost full" (click)="onLogin()">Go Pro</button></div>
+    </div>
+  </div></section>
+
+  <section id="live" class="sec"><div class="wrap">
+    <div class="ey">// 003 · STAR LOG</div><h2>Channels glowing right now.</h2>
+    <div class="log">
+      @if (liveChannels().length > 0) {
+        @for (c of liveChannels(); track c.channelID; let i = $index) {
+          <div class="log-row"><span class="star"></span><span class="ch">{{ c.channel }}</span><span class="vw">{{ c.viewers }} viewers</span><span class="tag">live</span></div>
+        }
+      } @else { <div class="log-row empty">Nebula still forming…</div> }
+    </div>
+  </div></section>
+
+  <div class="finale"><div class="wrap"><p>Step into the glow.</p><button type="button" class="btn primary" (click)="onLogin()">Log in with Twitch</button></div></div>
+  <footer>Grok · 23c Nebula Core · from Mock 23 Constellation</footer>
+</div>

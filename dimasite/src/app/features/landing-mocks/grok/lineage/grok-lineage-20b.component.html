@@ -1,0 +1,64 @@
+<div class="g20b">
+  <div class="horizon" aria-hidden="true"></div>
+  <nav class="nav"><div class="wrap row">
+    <a class="brand" routerLink="/"><span class="mark"></span>dima</a>
+    <div class="links"><a routerLink="/mocks/grok">← Grok</a>
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button></div>
+    <button type="button" class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+  </div></nav>
+
+  <header class="hero"><div class="wrap center">
+    <div class="pill"><span class="pulse"></span>
+      <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> in flow ·
+      <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> watching
+    </div>
+    <h1>A bot that flows<br>with your stream<br><span class="grad">like a horizon.</span></h1>
+    <p>Aurora Stream, stretched into a single bright band. Copy stays centered. Stats float as soft chips underneath.</p>
+    <div class="actions">
+      <button type="button" class="btn primary" (click)="onLogin()">Start free</button>
+      <button type="button" class="btn soft" (click)="onDiscord()">Join Discord</button>
+    </div>
+    <div class="chips">
+      <div class="chip"><span class="cn" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span><span class="cl">Bots</span></div>
+      <div class="chip"><span class="cn" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="80">0</span><span class="cl">Viewers</span></div>
+      <div class="chip"><span class="cn" [countUp]="siteStats().registeredUsers" [staggerDelay]="140">0</span><span class="cl">Creators</span></div>
+      <div class="chip"><span class="cn" [countUp]="siteStats().messagesReceived" [staggerDelay]="200">0</span><span class="cl">Messages</span></div>
+      <div class="chip"><span class="cn" [countUp]="siteStats().totalCommands" [staggerDelay]="240">0</span><span class="cl">Commands</span></div>
+    </div>
+  </div></header>
+
+  <section id="features" class="sec"><div class="wrap">
+    <div class="ey">What’s in the flow</div><h2>Everything that makes a stream feel alive.</h2>
+    <div class="feats">
+      <article><lucide-icon [name]="shieldIcon"></lucide-icon><h3>AI Moderation</h3><p>Soft-touch, hard-line — your call.</p></article>
+      <article><lucide-icon [name]="zapIcon"></lucide-icon><h3>Command Engine</h3><p>Unlimited variables, timers, aliases.</p></article>
+      <article><lucide-icon [name]="chartIcon"></lucide-icon><h3>Analytics</h3><p>Cited, dated, calm retention curves.</p></article>
+      <article><lucide-icon [name]="volumeIcon"></lucide-icon><h3>Voice &amp; TTS</h3><p>Premium voices. Pro clones yours.</p></article>
+    </div>
+  </div></section>
+
+  <section id="pricing" class="sec"><div class="wrap">
+    <div class="ey">Pricing</div><h2>One surface. Three sizes.</h2>
+    <div class="plans">
+      <div class="plan"><div class="pn">Free</div><div class="pp">$0</div><ul><li>Core moderation</li><li>Unlimited commands*</li><li>Basic analytics</li></ul><button type="button" class="btn soft full" (click)="onLogin()">Get started</button></div>
+      <div class="plan feat"><div class="flag">Most popular</div><div class="pn">Premium</div><div class="pp">$6<span>/mo</span></div><ul><li>Full AI moderation</li><li>Advanced analytics</li><li>Premium TTS</li></ul><button type="button" class="btn primary full" (click)="onLogin()">Choose Premium</button></div>
+      <div class="plan"><div class="pn">Pro</div><div class="pp">$15<span>/mo</span></div><ul><li>Everything in Premium</li><li>Voice cloning</li><li>Unlimited bandwidth*</li></ul><button type="button" class="btn soft full" (click)="onLogin()">Go Pro</button></div>
+    </div>
+  </div></section>
+
+  <section id="live" class="sec"><div class="wrap">
+    <div class="ey">Right now</div><h2>Channels on the horizon.</h2>
+    <div class="stream">
+      @if (liveChannels().length > 0) {
+        @for (c of liveChannels(); track c.channelID) {
+          <div class="srow"><span>{{ c.channel }}</span><span>{{ c.viewers }} viewers</span><span class="tag">Live</span></div>
+        }
+      } @else { <div class="srow empty">The wave is forming…</div> }
+    </div>
+  </div></section>
+
+  <div class="finale"><div class="wrap"><p>Ready to stop fighting your tools?</p><button type="button" class="btn primary" (click)="onLogin()">Log in with Twitch</button></div></div>
+  <footer>Grok · 20b Soft Horizon · from Mock 20 Aurora Stream</footer>
+</div>
