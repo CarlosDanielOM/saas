@@ -38,7 +38,20 @@ interface TrendPoint {
   hours: number;
   bits: number;
   follows: number;
+  subs: number;
+  donations: number;
 }
+
+interface GoalItem {
+  id: string;
+  label: string;
+  current: number;
+  target: number;
+  format: 'compact' | 'money' | 'hours' | 'raw';
+  tone: 'violet' | 'gold' | 'sky' | 'green';
+}
+
+type TrendSeriesKey = 'viewers' | 'bits' | 'follows' | 'subs' | 'donations' | 'hours';
 
 interface ActivityMetrics {
   follows: number;
@@ -69,12 +82,15 @@ function buildTrend(days: number): TrendPoint[] {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const wave = Math.sin(i / 2.4) * 18 + Math.cos(i / 3.1) * 10;
+    const pulse = Math.sin(i / 1.7) * 6;
     out.push({
       label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       viewers: Math.max(20, Math.round(78 + wave + (i % 5) * 3)),
       hours: Math.round((2.2 + (i % 4) * 0.55 + Math.abs(wave) / 40) * 10) / 10,
       bits: Math.max(0, Math.round(420 + wave * 22 + (i % 3) * 80)),
-      follows: Math.max(0, Math.round(8 + wave / 4 + (i % 4)))
+      follows: Math.max(0, Math.round(8 + wave / 4 + (i % 4))),
+      subs: Math.max(0, Math.round(1.2 + Math.abs(pulse) / 3 + (i % 5 === 0 ? 2 : 0))),
+      donations: Math.max(0, Math.round(8 + Math.abs(wave) / 3 + (i % 6) * 2))
     });
   }
   return out;
@@ -121,14 +137,50 @@ export class ProdDashboardMockComponent {
     aiLimit: 500000
   });
 
-  readonly goals = signal({
-    followers: 18420,
-    followersGoal: 20000,
-    subs: 312,
-    subsGoal: 400
-  });
+  readonly goals = signal<GoalItem[]>([
+    {
+      id: 'followers',
+      label: 'Followers',
+      current: 18420,
+      target: 20000,
+      format: 'compact',
+      tone: 'violet'
+    },
+    {
+      id: 'subs',
+      label: 'Subs',
+      current: 312,
+      target: 400,
+      format: 'raw',
+      tone: 'gold'
+    },
+    {
+      id: 'bits',
+      label: 'Bits · month',
+      current: 12480,
+      target: 15000,
+      format: 'compact',
+      tone: 'sky'
+    },
+    {
+      id: 'hours',
+      label: 'Hours · month',
+      current: 42.5,
+      target: 60,
+      format: 'hours',
+      tone: 'green'
+    }
+  ]);
 
   readonly history = signal<HistoryRow[]>(SEED_HISTORY);
+  readonly activeSeries = signal<Record<TrendSeriesKey, boolean>>({
+    viewers: true,
+    bits: true,
+    follows: true,
+    subs: true,
+    donations: true,
+    hours: true
+  });
 
   private toastTimer: number | null = null;
 
@@ -177,46 +229,60 @@ export class ProdDashboardMockComponent {
     return Math.min(100, Math.round((aiUsed / aiLimit) * 100));
   });
 
-  readonly followerPct = computed(() => {
-    const g = this.goals();
-    return Math.min(100, Math.round((g.followers / g.followersGoal) * 100));
-  });
-
-  readonly subPct = computed(() => {
-    const g = this.goals();
-    return Math.min(100, Math.round((g.subs / g.subsGoal) * 100));
-  });
+  readonly goalRows = computed(() =>
+    this.goals().map((goal) => ({
+      ...goal,
+      pct: Math.min(100, Math.round((goal.current / Math.max(goal.target, 1)) * 100)),
+      display: this.formatGoalValue(goal)
+    }))
+  );
 
   readonly trend = computed(() => buildTrend(this.trendRange()));
 
   readonly chartPaths = computed(() => {
     const points = this.trend();
+    const empty = {
+      viewers: '',
+      bits: '',
+      follows: '',
+      subs: '',
+      donations: '',
+      hours: '',
+      area: ''
+    };
     if (points.length < 2) {
-      return { viewers: '', bits: '', area: '' };
+      return empty;
     }
 
     const w = 100;
     const h = 42;
     const pad = 2;
-    const maxV = Math.max(...points.map((p) => p.viewers), 1);
-    const maxB = Math.max(...points.map((p) => p.bits), 1);
-
     const xAt = (i: number) => pad + (i / (points.length - 1)) * (w - pad * 2);
-    const yV = (v: number) => h - pad - (v / maxV) * (h - pad * 2);
-    const yB = (v: number) => h - pad - (v / maxB) * (h - pad * 2) * 0.72;
+    const pathFor = (key: TrendSeriesKey, scale = 1) => {
+      const max = Math.max(...points.map((p) => p[key]), 0.0001);
+      return points
+        .map((p, i) => {
+          const y = h - pad - (p[key] / max) * (h - pad * 2) * scale;
+          return `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(2)} ${y.toFixed(2)}`;
+        })
+        .join(' ');
+    };
 
-    const viewers = points
-      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(2)} ${yV(p.viewers).toFixed(2)}`)
-      .join(' ');
-    const bits = points
-      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${xAt(i).toFixed(2)} ${yB(p.bits).toFixed(2)}`)
-      .join(' ');
+    const viewers = pathFor('viewers', 1);
     const area =
       viewers +
       ` L ${xAt(points.length - 1).toFixed(2)} ${(h - pad).toFixed(2)}` +
       ` L ${xAt(0).toFixed(2)} ${(h - pad).toFixed(2)} Z`;
 
-    return { viewers, bits, area };
+    return {
+      viewers,
+      bits: pathFor('bits', 0.9),
+      follows: pathFor('follows', 0.82),
+      subs: pathFor('subs', 0.78),
+      donations: pathFor('donations', 0.8),
+      hours: pathFor('hours', 0.75),
+      area
+    };
   });
 
   readonly historyRows = computed(() => {
@@ -254,6 +320,33 @@ export class ProdDashboardMockComponent {
 
   setMobilePanel(panel: MobilePanel): void {
     this.mobilePanel.set(panel);
+  }
+
+  toggleSeries(key: TrendSeriesKey): void {
+    this.activeSeries.update((current) => {
+      const enabledCount = Object.values(current).filter(Boolean).length;
+      if (current[key] && enabledCount <= 1) {
+        return current;
+      }
+      return { ...current, [key]: !current[key] };
+    });
+  }
+
+  isSeriesOn(key: TrendSeriesKey): boolean {
+    return this.activeSeries()[key];
+  }
+
+  formatGoalValue(goal: GoalItem): string {
+    switch (goal.format) {
+      case 'money':
+        return `${this.formatMoney(goal.current)} / ${this.formatMoney(goal.target)}`;
+      case 'hours':
+        return `${goal.current}h / ${goal.target}h`;
+      case 'compact':
+        return `${this.formatCompact(goal.current)} / ${this.formatCompact(goal.target)}`;
+      default:
+        return `${goal.current} / ${goal.target}`;
+    }
   }
 
   toggleBot(): void {

@@ -260,32 +260,120 @@
         <svg class="lf-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
           <defs>
             <linearGradient id="lfArea" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.28" />
               <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0" />
             </linearGradient>
           </defs>
-          <path [attr.d]="chartPaths().area" fill="url(#lfArea)" />
-          <path
-            [attr.d]="chartPaths().viewers"
-            fill="none"
-            stroke="#c4b5fd"
-            stroke-width="0.7"
-            vector-effect="non-scaling-stroke"
-          />
-          <path
-            [attr.d]="chartPaths().bits"
-            fill="none"
-            stroke="#fbbf24"
-            stroke-width="0.55"
-            stroke-dasharray="1.2 1"
-            vector-effect="non-scaling-stroke"
-          />
+          @if (isSeriesOn('viewers')) {
+            <path [attr.d]="chartPaths().area" fill="url(#lfArea)" />
+            <path
+              [attr.d]="chartPaths().viewers"
+              fill="none"
+              stroke="#c4b5fd"
+              stroke-width="0.7"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @if (isSeriesOn('bits')) {
+            <path
+              [attr.d]="chartPaths().bits"
+              fill="none"
+              stroke="#fbbf24"
+              stroke-width="0.55"
+              stroke-dasharray="1.2 1"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @if (isSeriesOn('follows')) {
+            <path
+              [attr.d]="chartPaths().follows"
+              fill="none"
+              stroke="#38bdf8"
+              stroke-width="0.55"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @if (isSeriesOn('subs')) {
+            <path
+              [attr.d]="chartPaths().subs"
+              fill="none"
+              stroke="#f472b6"
+              stroke-width="0.55"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @if (isSeriesOn('donations')) {
+            <path
+              [attr.d]="chartPaths().donations"
+              fill="none"
+              stroke="#4ade80"
+              stroke-width="0.55"
+              stroke-dasharray="0.8 1.1"
+              vector-effect="non-scaling-stroke"
+            />
+          }
+          @if (isSeriesOn('hours')) {
+            <path
+              [attr.d]="chartPaths().hours"
+              fill="none"
+              stroke="#a78bfa"
+              stroke-width="0.55"
+              stroke-dasharray="2 1.2"
+              vector-effect="non-scaling-stroke"
+            />
+          }
         </svg>
 
-        <div class="lf-legend">
-          <span><i class="lf-swatch lf-swatch--violet"></i> Avg viewers</span>
-          <span><i class="lf-swatch lf-swatch--gold"></i> Bits</span>
-          <span class="lf-legend__note">Seeded · {{ trendRange() }}d</span>
+        <div class="lf-legend" role="group" aria-label="Toggle trend series">
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('viewers')"
+            (click)="toggleSeries('viewers')"
+          >
+            <i class="lf-swatch lf-swatch--violet"></i> Viewers
+          </button>
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('bits')"
+            (click)="toggleSeries('bits')"
+          >
+            <i class="lf-swatch lf-swatch--gold"></i> Bits
+          </button>
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('follows')"
+            (click)="toggleSeries('follows')"
+          >
+            <i class="lf-swatch lf-swatch--sky"></i> Follows
+          </button>
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('subs')"
+            (click)="toggleSeries('subs')"
+          >
+            <i class="lf-swatch lf-swatch--pink"></i> Subs
+          </button>
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('donations')"
+            (click)="toggleSeries('donations')"
+          >
+            <i class="lf-swatch lf-swatch--green"></i> Donations
+          </button>
+          <button
+            type="button"
+            class="lf-legend__btn"
+            [class.lf-legend__btn--off]="!isSeriesOn('hours')"
+            (click)="toggleSeries('hours')"
+          >
+            <i class="lf-swatch lf-swatch--lilac"></i> Hours
+          </button>
+          <span class="lf-legend__note">Seeded · {{ trendRange() }}d · tap to toggle</span>
         </div>
       </article>
 
@@ -294,27 +382,24 @@
         [class.lf-panel--hidden-mobile]="mobilePanel() !== 'goals'"
       >
         <div class="lf-section-mini">
-          <p class="lf-kicker">Goals</p>
+          <p class="lf-kicker">Goals · 4 active</p>
           <h2 class="lf-h3">Community targets</h2>
         </div>
 
-        <div class="lf-goal">
-          <div class="lf-goal__head">
-            <span>Followers</span>
-            <strong>{{ formatCompact(goals().followers) }} / {{ formatCompact(goals().followersGoal) }}</strong>
-          </div>
-          <div class="lf-bar"><span [style.width.%]="followerPct()"></span></div>
+        <div class="lf-goals__stack">
+          @for (goal of goalRows(); track goal.id) {
+            <div class="lf-goal">
+              <div class="lf-goal__head">
+                <span>{{ goal.label }}</span>
+                <strong>{{ goal.display }}</strong>
+              </div>
+              <div class="lf-bar" [class]="'lf-bar lf-bar--' + goal.tone" aria-hidden="true">
+                <span [style.width.%]="goal.pct"></span>
+              </div>
+              <p class="lf-goal__pct">{{ goal.pct }}%</p>
+            </div>
+          }
         </div>
-
-        <div class="lf-goal">
-          <div class="lf-goal__head">
-            <span>Subs</span>
-            <strong>{{ goals().subs }} / {{ goals().subsGoal }}</strong>
-          </div>
-          <div class="lf-bar lf-bar--gold"><span [style.width.%]="subPct()"></span></div>
-        </div>
-
-        <p class="lf-note">Seeded progress — wire to bootstrap when auth is available.</p>
       </article>
     </section>
 
