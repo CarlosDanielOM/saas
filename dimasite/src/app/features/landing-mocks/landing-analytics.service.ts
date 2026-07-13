@@ -1,8 +1,9 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { environment } from '../../../environments/environment';
 import { SiteStats } from '../../models/site-stats.model';
+
+/** Always hit production so landing mocks show real live data even under ng serve. */
+const LIVE_ANALYTICS_API = 'https://api.domdimabot.com';
 
 interface SiteAnalyticsSnapshotDto {
   registeredUsers?: unknown;
@@ -43,18 +44,26 @@ export class LandingAnalyticsService {
   private reconnectAttempts = 0;
 
   constructor() {
-    // Only run in browser
     if (typeof window === 'undefined') {
       return;
     }
 
-    this.fetchSnapshot();
+    this.destroyRef.onDestroy(() => {
+      this.eventSource?.close();
+      this.eventSource = null;
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+    });
+
+    void this.fetchSnapshot();
     this.connectStream();
   }
 
   private async fetchSnapshot(): Promise<void> {
     try {
-      const response = await fetch(`${environment.DIMA_API}/config/site/analytics`);
+      const response = await fetch(`${LIVE_ANALYTICS_API}/config/site/analytics`);
       if (!response.ok) return;
 
       const envelope = (await response.json()) as { data?: SiteAnalyticsSnapshotDto };
@@ -70,7 +79,7 @@ export class LandingAnalyticsService {
     this.eventSource?.close();
 
     this.connectionStatus.set('reconnecting');
-    this.eventSource = new EventSource(`${environment.DIMA_API}/config/site/analytics/stream`);
+    this.eventSource = new EventSource(`${LIVE_ANALYTICS_API}/config/site/analytics/stream`);
 
     this.eventSource.onopen = () => {
       this.reconnectAttempts = 0;
@@ -94,6 +103,7 @@ export class LandingAnalyticsService {
       this.connectionStatus.set(
         this.reconnectAttempts > 3 ? 'disconnected' : 'reconnecting'
       );
+      void this.fetchSnapshot();
       this.scheduleReconnect();
     };
   }
