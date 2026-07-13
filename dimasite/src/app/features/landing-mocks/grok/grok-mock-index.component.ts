@@ -77,6 +77,33 @@ export class GrokMockIndexComponent {
     }
   ];
 
+  readonly solOpencodeMocks: GrokMockCard[] = [
+    {
+      id: 'soloc1',
+      title: 'Streamside Guide',
+      description:
+        'Warm editorial storytelling. Paper texture, expressive serif type, chat field notes, and human-centered automation.',
+      vibe: 'Editorial',
+      accent: 'coral'
+    },
+    {
+      id: 'soloc2',
+      title: 'Live Ops Grid',
+      description:
+        'High-density creator command center. Near-black panels, acid signal green, live telemetry, and technical precision.',
+      vibe: 'Control room',
+      accent: 'cyan'
+    },
+    {
+      id: 'soloc3',
+      title: 'Channel 24',
+      description:
+        'Retro community broadcast. Bold program-guide typography, on-air energy, playful color, and a live-channel stage.',
+      vibe: 'Broadcast',
+      accent: 'violet'
+    }
+  ];
+
   readonly m3Mocks: GrokMockCard[] = [
     {
       id: 'm3-1',
