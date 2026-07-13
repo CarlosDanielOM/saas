@@ -1,0 +1,264 @@
+<div class="sol3-shell">
+  <a class="sol3-skip" href="#sol3-main">{{ t('landingMocks.common.skip') }}</a>
+
+  <header class="sol3-header">
+    <a class="sol3-brand" href="#sol3-top" aria-label="DomDimaBot">
+      <span class="sol3-brand__seal" aria-hidden="true"
+        ><lucide-icon [name]="radioIcon"></lucide-icon
+      ></span>
+      <span><b>DOMDIMA</b><i>BOT</i></span>
+    </a>
+    <p>{{ t('landingMocks.three.broadcasting') }}</p>
+    <nav [attr.aria-label]="t('landingMocks.common.primaryNav')">
+      <a href="#sol3-lineup">{{ t('landing.nav.features') }}</a>
+      <a href="#sol3-plans">{{ t('landing.nav.pricing') }}</a>
+      <a class="sol3-nav-cta" routerLink="/login">{{ t('landing.hero.loginWith') }}</a>
+    </nav>
+  </header>
+
+  <main id="sol3-main">
+    <section id="sol3-top" class="sol3-hero" aria-labelledby="sol3-title">
+      <div class="sol3-hero__copy">
+        <p class="sol3-kicker">
+          <span>{{ t('landingMocks.three.live') }}</span
+          >{{ t('landingMocks.three.eyebrow') }}
+        </p>
+        <h1 id="sol3-title">
+          <span>{{ t('landingMocks.three.heroOne') }}</span>
+          <span>{{ t('landingMocks.three.heroTwo') }}</span>
+          <em>{{ t('landingMocks.three.heroThree') }}</em>
+        </h1>
+        <p class="sol3-intro">{{ t('landing.hero.description') }}</p>
+        <div class="sol3-actions">
+          <a class="sol3-button sol3-button--red" routerLink="/login"
+            >{{ t('landing.callToAction.button')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+          <a
+            class="sol3-button sol3-button--cream"
+            [href]="discordUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            >{{ t('landing.hero.join') }}</a
+          >
+        </div>
+      </div>
+
+      <div class="sol3-tv" [attr.aria-label]="t('landingMocks.three.communityPreview')">
+        <div class="sol3-tv__top">
+          <span>CH.24</span><b>{{ t('landingMocks.three.nowPlaying') }}</b
+          ><i aria-hidden="true"></i>
+        </div>
+        <div class="sol3-tv__screen">
+          <div class="sol3-orbit sol3-orbit--one" aria-hidden="true"></div>
+          <div class="sol3-orbit sol3-orbit--two" aria-hidden="true"></div>
+          <div class="sol3-host">
+            <span>D</span>
+            <lucide-icon [name]="playIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <div class="sol3-viewer sol3-viewer--one">J</div>
+          <div class="sol3-viewer sol3-viewer--two">M</div>
+          <div class="sol3-viewer sol3-viewer--three">R</div>
+          <div class="sol3-live-card">
+            <i aria-hidden="true"></i><b>2,482</b
+            ><span>{{ t('landing.analytics.totalLiveViewer') }}</span>
+          </div>
+        </div>
+        <div class="sol3-tv__lower">
+          <p>
+            <lucide-icon [name]="messageIcon" aria-hidden="true"></lucide-icon
+            ><span
+              ><b>{{ t('landingMocks.three.chatMoving') }}</b
+              >{{ t('landingMocks.three.chatMovingCopy') }}</span
+            >
+          </p>
+          <p>
+            <lucide-icon [name]="heartIcon" aria-hidden="true"></lucide-icon
+            ><span
+              ><b>{{ t('landingMocks.three.communityGrowing') }}</b
+              >{{ t('landingMocks.three.communityGrowingCopy') }}</span
+            >
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <div class="sol3-marquee" aria-hidden="true">
+      <div>
+        <span>{{ t('landingMocks.three.onAir') }}</span
+        ><i>◆</i> <span>{{ t('landing.features.automationTitle') }}</span
+        ><i>◆</i> <span>{{ t('landing.features.aiModerationTitle') }}</span
+        ><i>◆</i> <span>{{ t('landing.features.ttsTitle') }}</span
+        ><i>◆</i>
+      </div>
+    </div>
+
+    <section id="sol3-lineup" class="sol3-lineup" aria-labelledby="sol3-lineup-title">
+      <div class="sol3-heading">
+        <p>{{ t('landingMocks.three.programGuide') }}</p>
+        <h2 id="sol3-lineup-title">{{ t('landingMocks.three.lineupTitle') }}</h2>
+        <span>01—04</span>
+      </div>
+      <div class="sol3-shows">
+        <article class="sol3-show sol3-show--red">
+          <header>
+            <span>01</span><lucide-icon [name]="shieldIcon" aria-hidden="true"></lucide-icon>
+          </header>
+          <p>{{ t('landingMocks.three.alwaysLive') }}</p>
+          <h3>{{ t('landing.features.aiModerationTitle') }}</h3>
+          <div class="sol3-show__art sol3-show__art--shield" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
+          <footer>{{ t('landing.features.aiModerationDescription') }}</footer>
+        </article>
+        <article class="sol3-show sol3-show--blue">
+          <header>
+            <span>02</span><lucide-icon [name]="zapIcon" aria-hidden="true"></lucide-icon>
+          </header>
+          <p>{{ t('landingMocks.three.viewerFavorite') }}</p>
+          <h3>{{ t('landing.features.automationTitle') }}</h3>
+          <div class="sol3-show__art sol3-show__art--bolt" aria-hidden="true">
+            <b>!</b><b>SO</b><b>CLIP</b>
+          </div>
+          <footer>{{ t('landing.features.automationDescription') }}</footer>
+        </article>
+        <article class="sol3-show sol3-show--cream">
+          <header>
+            <span>03</span><lucide-icon [name]="activityIcon" aria-hidden="true"></lucide-icon>
+          </header>
+          <p>{{ t('landingMocks.three.afterShow') }}</p>
+          <h3>{{ t('landing.features.analyticsTitle') }}</h3>
+          <div class="sol3-show__art sol3-show__art--chart" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <footer>{{ t('landing.features.analyticsDescription') }}</footer>
+        </article>
+        <article class="sol3-show sol3-show--yellow">
+          <header>
+            <span>04</span><lucide-icon [name]="audioIcon" aria-hidden="true"></lucide-icon>
+          </header>
+          <p>{{ t('landingMocks.three.specialFeature') }}</p>
+          <h3>{{ t('landing.features.ttsTitle') }}</h3>
+          <div class="sol3-show__art sol3-show__art--voice" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <footer>{{ t('landing.features.ttsDescription') }}</footer>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol3-community" aria-labelledby="sol3-community-title">
+      <div class="sol3-community__copy">
+        <p>{{ t('landingMocks.three.communityLabel') }}</p>
+        <h2 id="sol3-community-title">{{ t('landingMocks.three.communityTitle') }}</h2>
+        <p>{{ t('landing.callToAction.description') }}</p>
+        <a
+          class="sol3-button sol3-button--cream"
+          [href]="discordUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          >{{ t('landing.hero.join')
+          }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+        ></a>
+      </div>
+      <div class="sol3-community__board">
+        <div>
+          <lucide-icon [name]="usersIcon" aria-hidden="true"></lucide-icon><strong>24/7</strong
+          ><span>{{ t('landingMocks.three.activeCommunity') }}</span>
+        </div>
+        <div>
+          <lucide-icon [name]="messageIcon" aria-hidden="true"></lucide-icon><strong>∞</strong
+          ><span>{{ t('landing.analytics.messagesReceived') }}</span>
+        </div>
+        <div>
+          <lucide-icon [name]="sparkleIcon" aria-hidden="true"></lucide-icon><strong>01</strong
+          ><span>{{ t('landingMocks.three.sharedStage') }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="sol3-plans" class="sol3-pricing" aria-labelledby="sol3-plans-title">
+      <div class="sol3-heading">
+        <p>{{ t('landing.nav.pricing') }}</p>
+        <h2 id="sol3-plans-title">{{ t('landingMocks.three.pricingTitle') }}</h2>
+        <span>CH.01-03</span>
+      </div>
+      <div class="sol3-plan-grid">
+        <article class="sol3-plan">
+          <div class="sol3-plan__dial"><span>1</span></div>
+          <h3>{{ t('navbar.planFree') }}</h3>
+          <p class="sol3-plan__price">
+            $0<small>{{ t('landingMocks.common.perMonth') }}</small>
+          </p>
+          <p>{{ t('landing.pricing.basic.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.pricing.basic.features.smartChatModeration') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.pricing.basic.features.basicAnalytics') }}
+            </li>
+          </ul>
+          <a routerLink="/login">{{ t('landing.pricing.choosePlan') }}</a>
+        </article>
+        <article class="sol3-plan sol3-plan--star">
+          <div class="sol3-plan__tag">{{ t('landingMocks.common.mostPopular') }}</div>
+          <div class="sol3-plan__dial"><span>2</span></div>
+          <h3>{{ t('navbar.planPremium') }}</h3>
+          <p class="sol3-plan__price">
+            $6<small>{{ t('landingMocks.common.perMonth') }}</small>
+          </p>
+          <p>{{ t('landing.pricing.premium.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.analyticsTitle') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.ttsTitle') }}
+            </li>
+          </ul>
+          <a routerLink="/login">{{ t('landing.pricing.choosePlan') }}</a>
+        </article>
+        <article class="sol3-plan">
+          <div class="sol3-plan__dial"><span>3</span></div>
+          <h3>{{ t('navbar.planPro') }}</h3>
+          <p class="sol3-plan__price">
+            $15<small>{{ t('landingMocks.common.perMonth') }}</small>
+          </p>
+          <p>{{ t('landing.pricing.ai.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.aiModerationTitle') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landingMocks.three.maximumSignal') }}
+            </li>
+          </ul>
+          <a routerLink="/login">{{ t('landing.pricing.choosePlan') }}</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol3-final" aria-labelledby="sol3-final-title">
+      <div class="sol3-final__sun" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p>{{ t('landingMocks.three.nextUp') }}</p>
+      <h2 id="sol3-final-title">{{ t('landing.callToAction.title') }}</h2>
+      <a class="sol3-button sol3-button--red" routerLink="/login"
+        >{{ t('landing.callToAction.button')
+        }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+      ></a>
+    </section>
+  </main>
+
+  <footer class="sol3-footer">
+    <span>CH.24 / DOMDIMABOT</span>
+    <p>{{ t('landing.footer.copyright') }}</p>
+    <a href="#sol3-top">{{ t('landingMocks.common.backToTop') }}</a>
+  </footer>
+</div>

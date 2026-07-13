@@ -1,0 +1,212 @@
+<div class="sol1-shell">
+  <a class="skip-link" href="#sol1-main">{{ t('landingMocks.common.skip') }}</a>
+
+  <header class="sol1-header">
+    <a class="sol1-brand" href="#sol1-top" aria-label="DomDimaBot">
+      <span class="sol1-brand__mark" aria-hidden="true">D</span>
+      <span>DomDimaBot</span>
+    </a>
+    <nav class="sol1-nav" [attr.aria-label]="t('landingMocks.common.primaryNav')">
+      <a href="#sol1-features">{{ t('landing.nav.features') }}</a>
+      <a href="#sol1-pricing">{{ t('landing.nav.pricing') }}</a>
+    </nav>
+    <a class="sol1-button sol1-button--small" routerLink="/login">
+      {{ t('landing.hero.loginWith') }}
+      <lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon>
+    </a>
+  </header>
+
+  <main id="sol1-main">
+    <section id="sol1-top" class="sol1-hero" aria-labelledby="sol1-title">
+      <div class="sol1-hero__copy">
+        <p class="sol1-eyebrow">
+          <span aria-hidden="true"></span>
+          {{ t('landingMocks.one.eyebrow') }}
+        </p>
+        <h1 id="sol1-title">
+          {{ t('landingMocks.one.heroLead') }}
+          <em>{{ t('landingMocks.one.heroAccent') }}</em>
+        </h1>
+        <p class="sol1-lede">{{ t('landing.hero.description') }}</p>
+        <div class="sol1-actions">
+          <a class="sol1-button sol1-button--primary" routerLink="/login">
+            {{ t('landing.hero.loginWith') }}
+            <lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon>
+          </a>
+          <a
+            class="sol1-button sol1-button--quiet"
+            [href]="discordUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ t('landing.hero.join') }}
+          </a>
+        </div>
+        <div class="sol1-proof" [attr.aria-label]="t('landingMocks.common.productHighlights')">
+          <span
+            ><lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+            >{{ t('landingMocks.common.freeStart') }}</span
+          >
+          <span
+            ><lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+            >{{ t('landingMocks.common.noCard') }}</span
+          >
+        </div>
+      </div>
+
+      <div class="sol1-chat" [attr.aria-label]="t('landingMocks.one.chatPreview')">
+        <div class="sol1-chat__tape" aria-hidden="true">{{ t('landingMocks.one.fieldNote') }}</div>
+        <div class="sol1-chat__head">
+          <span class="sol1-live-dot" aria-hidden="true"></span>
+          <div>
+            <strong>{{ t('landingMocks.one.chatTitle') }}</strong>
+            <small>{{ t('landingMocks.one.chatStatus') }}</small>
+          </div>
+          <span class="sol1-chat__count">2.4k</span>
+        </div>
+        <div class="sol1-chat__messages">
+          <p>
+            <span class="sol1-avatar sol1-avatar--blue">M</span
+            ><span><b>moonbyte</b>{{ t('landingMocks.one.chatMessageOne') }}</span>
+          </p>
+          <p>
+            <span class="sol1-avatar sol1-avatar--orange">D</span
+            ><span><b>DomDimaBot</b>{{ t('landingMocks.one.chatMessageTwo') }}</span>
+          </p>
+          <p>
+            <span class="sol1-avatar sol1-avatar--ink">R</span
+            ><span><b>raindrop</b>{{ t('landingMocks.one.chatMessageThree') }}</span>
+          </p>
+        </div>
+        <div class="sol1-chat__composer">
+          <span>{{ t('landingMocks.one.chatPlaceholder') }}</span>
+          <lucide-icon [name]="messageIcon" aria-hidden="true"></lucide-icon>
+        </div>
+        <div class="sol1-spark" aria-hidden="true">
+          <lucide-icon [name]="sparkleIcon"></lucide-icon>
+        </div>
+      </div>
+    </section>
+
+    <section id="sol1-features" class="sol1-chapter" aria-labelledby="sol1-features-title">
+      <div class="sol1-section-heading">
+        <p>01 / {{ t('landing.nav.features') }}</p>
+        <h2 id="sol1-features-title">{{ t('landingMocks.one.featuresTitle') }}</h2>
+        <p>{{ t('landing.features.subtitle') }}</p>
+      </div>
+
+      <div class="sol1-feature-grid">
+        <article class="sol1-feature sol1-feature--wide">
+          <div class="sol1-feature__icon">
+            <lucide-icon [name]="shieldIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <span>01</span>
+          <h3>{{ t('landing.features.aiModerationTitle') }}</h3>
+          <p>{{ t('landing.features.aiModerationDescription') }}</p>
+          <div class="sol1-moderation-demo" aria-hidden="true">
+            <span></span><span></span><span></span><b>{{ t('landingMocks.one.handled') }}</b>
+          </div>
+        </article>
+        <article class="sol1-feature">
+          <div class="sol1-feature__icon">
+            <lucide-icon [name]="zapIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <span>02</span>
+          <h3>{{ t('landing.features.automationTitle') }}</h3>
+          <p>{{ t('landing.features.automationDescription') }}</p>
+        </article>
+        <article class="sol1-feature sol1-feature--ink">
+          <div class="sol1-feature__icon">
+            <lucide-icon [name]="activityIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <span>03</span>
+          <h3>{{ t('landing.features.analyticsTitle') }}</h3>
+          <p>{{ t('landing.features.analyticsDescription') }}</p>
+          <div class="sol1-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+        <article class="sol1-feature sol1-feature--sun">
+          <div class="sol1-feature__icon">
+            <lucide-icon [name]="audioIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <span>04</span>
+          <h3>{{ t('landing.features.ttsTitle') }}</h3>
+          <p>{{ t('landing.features.ttsDescription') }}</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol1-manifesto" [attr.aria-label]="t('landingMocks.common.approach')">
+      <p>{{ t('landingMocks.one.manifestoKicker') }}</p>
+      <blockquote>“{{ t('landingMocks.one.manifesto') }}”</blockquote>
+      <div class="sol1-manifesto__stats">
+        <span><strong>24/7</strong>{{ t('landingMocks.one.alwaysOn') }}</span>
+        <span
+          ><strong>∞</strong
+          >{{ t('landing.pricing.basic.features.unlimitedSimpleCustomCommands') }}</span
+        >
+        <span><strong>$0</strong>{{ t('landingMocks.common.toBegin') }}</span>
+      </div>
+    </section>
+
+    <section id="sol1-pricing" class="sol1-pricing" aria-labelledby="sol1-pricing-title">
+      <div class="sol1-section-heading">
+        <p>02 / {{ t('landing.nav.pricing') }}</p>
+        <h2 id="sol1-pricing-title">{{ t('landingMocks.one.pricingTitle') }}</h2>
+        <p>{{ t('landing.pricing.description') }}</p>
+      </div>
+      <div class="sol1-plans">
+        <article class="sol1-plan">
+          <p class="sol1-plan__name">{{ t('navbar.planFree') }}</p>
+          <p class="sol1-plan__price">
+            $0 <span>{{ t('landingMocks.common.perMonth') }}</span>
+          </p>
+          <p>{{ t('landing.pricing.basic.description') }}</p>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+        <article class="sol1-plan sol1-plan--featured">
+          <div class="sol1-plan__flag">{{ t('landingMocks.common.mostPopular') }}</div>
+          <p class="sol1-plan__name">{{ t('navbar.planPremium') }}</p>
+          <p class="sol1-plan__price">
+            $6 <span>{{ t('landingMocks.common.perMonth') }}</span>
+          </p>
+          <p>{{ t('landing.pricing.premium.description') }}</p>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+        <article class="sol1-plan">
+          <p class="sol1-plan__name">{{ t('navbar.planPro') }}</p>
+          <p class="sol1-plan__price">
+            $15 <span>{{ t('landingMocks.common.perMonth') }}</span>
+          </p>
+          <p>{{ t('landing.pricing.ai.description') }}</p>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol1-final" aria-labelledby="sol1-final-title">
+      <lucide-icon [name]="sparkleIcon" aria-hidden="true"></lucide-icon>
+      <p>{{ t('landingMocks.one.finalKicker') }}</p>
+      <h2 id="sol1-final-title">{{ t('landing.callToAction.title') }}</h2>
+      <a class="sol1-button sol1-button--primary" routerLink="/login">
+        {{ t('landing.callToAction.button') }}
+        <lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon>
+      </a>
+    </section>
+  </main>
+
+  <footer class="sol1-footer">
+    <a class="sol1-brand" href="#sol1-top"
+      ><span class="sol1-brand__mark" aria-hidden="true">D</span><span>DomDimaBot</span></a
+    >
+    <p>{{ t('landing.footer.copyright') }}</p>
+  </footer>
+</div>

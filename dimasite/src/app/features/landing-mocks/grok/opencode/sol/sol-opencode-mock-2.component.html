@@ -1,0 +1,261 @@
+<div class="sol2-shell">
+  <a class="sol2-skip" href="#sol2-main">{{ t('landingMocks.common.skip') }}</a>
+
+  <header class="sol2-header">
+    <a class="sol2-brand" href="#sol2-top" aria-label="DomDimaBot">
+      <span aria-hidden="true"><lucide-icon [name]="terminalIcon"></lucide-icon></span>
+      <b>DOMDIMA<span>BOT</span></b>
+    </a>
+    <div class="sol2-status"><i aria-hidden="true"></i>{{ t('landingMocks.two.allSystems') }}</div>
+    <nav [attr.aria-label]="t('landingMocks.common.primaryNav')">
+      <a href="#sol2-system">{{ t('landing.nav.features') }}</a>
+      <a href="#sol2-plans">{{ t('landing.nav.pricing') }}</a>
+      <a class="sol2-header__cta" routerLink="/login">{{ t('landing.hero.loginWith') }}</a>
+    </nav>
+  </header>
+
+  <main id="sol2-main">
+    <section id="sol2-top" class="sol2-hero" aria-labelledby="sol2-title">
+      <div class="sol2-hero__copy">
+        <p class="sol2-kicker"><span>SYS.01</span>{{ t('landingMocks.two.eyebrow') }}</p>
+        <h1 id="sol2-title">
+          {{ t('landingMocks.two.heroLead') }}
+          <strong>{{ t('landingMocks.two.heroAccent') }}</strong>
+        </h1>
+        <p>{{ t('landing.hero.description') }}</p>
+        <div class="sol2-actions">
+          <a class="sol2-button sol2-button--signal" routerLink="/login">
+            {{ t('landing.hero.loginWith') }}
+            <lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon>
+          </a>
+          <a class="sol2-button" [href]="discordUrl" target="_blank" rel="noopener noreferrer">
+            {{ t('landing.hero.join') }}
+          </a>
+        </div>
+      </div>
+
+      <div class="sol2-console" [attr.aria-label]="t('landingMocks.two.consolePreview')">
+        <div class="sol2-console__bar">
+          <span><i></i><i></i><i></i></span>
+          <b>{{ t('landingMocks.two.consoleTitle') }}</b>
+          <small>v4.8.2</small>
+        </div>
+        <div class="sol2-console__grid">
+          <article class="sol2-monitor sol2-monitor--live">
+            <div class="sol2-monitor__label">
+              <lucide-icon [name]="radioIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landingMocks.two.liveChannel') }}
+            </div>
+            <strong>2,482</strong>
+            <span>{{ t('landing.analytics.totalLiveViewer') }}</span>
+            <div class="sol2-wave" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </article>
+          <article class="sol2-monitor">
+            <div class="sol2-monitor__label">
+              <lucide-icon [name]="shieldIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landingMocks.two.moderation') }}
+            </div>
+            <strong>99.8%</strong>
+            <span>{{ t('landingMocks.two.handledLive') }}</span>
+            <div class="sol2-ring" aria-hidden="true"><b></b></div>
+          </article>
+          <article class="sol2-log">
+            <div class="sol2-log__head">
+              <span>{{ t('landingMocks.two.eventStream') }}</span
+              ><i>{{ t('landing.analyticsConnection.connected') }}</i>
+            </div>
+            <p>
+              <time>21:42:08</time><b>!so</b><span>{{ t('landingMocks.two.eventOne') }}</span>
+            </p>
+            <p>
+              <time>21:42:11</time><b>AI</b><span>{{ t('landingMocks.two.eventTwo') }}</span>
+            </p>
+            <p>
+              <time>21:42:14</time><b>TTS</b><span>{{ t('landingMocks.two.eventThree') }}</span>
+            </p>
+            <p>
+              <time>21:42:17</time><b>VIP</b><span>{{ t('landingMocks.two.eventFour') }}</span>
+            </p>
+          </article>
+        </div>
+        <div class="sol2-console__foot">
+          <span>{{ t('landingMocks.two.latency') }} <b>38ms</b></span
+          ><span>CPU <b>12%</b></span
+          ><span>{{ t('landingMocks.two.uptime') }} <b>99.99%</b></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="sol2-ticker" aria-hidden="true">
+      <div>
+        <span>{{ t('landing.features.aiModerationTitle') }}</span
+        ><i>+</i> <span>{{ t('landing.features.automationTitle') }}</span
+        ><i>+</i> <span>{{ t('landing.features.analyticsTitle') }}</span
+        ><i>+</i> <span>{{ t('landing.features.ttsTitle') }}</span
+        ><i>+</i>
+      </div>
+    </div>
+
+    <section id="sol2-system" class="sol2-system" aria-labelledby="sol2-system-title">
+      <div class="sol2-section-head">
+        <p><span>02</span>{{ t('landingMocks.two.systemLabel') }}</p>
+        <h2 id="sol2-system-title">{{ t('landingMocks.two.systemTitle') }}</h2>
+      </div>
+
+      <div class="sol2-capabilities">
+        <article class="sol2-capability sol2-capability--hero">
+          <div class="sol2-capability__top">
+            <span>MOD.01</span><lucide-icon [name]="shieldIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3>{{ t('landing.features.aiModerationTitle') }}</h3>
+          <p>{{ t('landing.features.aiModerationDescription') }}</p>
+          <div class="sol2-scan" aria-hidden="true"><span></span><span></span><i></i></div>
+        </article>
+        <article class="sol2-capability">
+          <div class="sol2-capability__top">
+            <span>AUTO.02</span><lucide-icon [name]="commandIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3>{{ t('landing.features.automationTitle') }}</h3>
+          <p>{{ t('landing.features.automationDescription') }}</p>
+          <code>{{ t('landingMocks.two.commandFlow') }}</code>
+        </article>
+        <article class="sol2-capability sol2-capability--violet">
+          <div class="sol2-capability__top">
+            <span>DATA.03</span><lucide-icon [name]="activityIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3>{{ t('landing.features.analyticsTitle') }}</h3>
+          <p>{{ t('landing.features.analyticsDescription') }}</p>
+          <div class="sol2-chart" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </article>
+        <article class="sol2-capability">
+          <div class="sol2-capability__top">
+            <span>VOICE.04</span><lucide-icon [name]="audioIcon" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3>{{ t('landing.features.ttsTitle') }}</h3>
+          <p>{{ t('landing.features.ttsDescription') }}</p>
+          <div class="sol2-audio" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol2-metrics" [attr.aria-label]="t('landingMocks.common.productMetrics')">
+      <div>
+        <lucide-icon [name]="usersIcon" aria-hidden="true"></lucide-icon><strong>24/7</strong
+        ><span>{{ t('landingMocks.two.monitoring') }}</span>
+      </div>
+      <div>
+        <lucide-icon [name]="zapIcon" aria-hidden="true"></lucide-icon><strong>∞</strong
+        ><span>{{ t('landing.pricing.basic.features.unlimitedSimpleCustomCommands') }}</span>
+      </div>
+      <div>
+        <lucide-icon [name]="botIcon" aria-hidden="true"></lucide-icon><strong>01</strong
+        ><span>{{ t('landingMocks.two.controlSurface') }}</span>
+      </div>
+    </section>
+
+    <section id="sol2-plans" class="sol2-plans" aria-labelledby="sol2-plans-title">
+      <div class="sol2-section-head">
+        <p><span>03</span>{{ t('landing.nav.pricing') }}</p>
+        <h2 id="sol2-plans-title">{{ t('landingMocks.two.pricingTitle') }}</h2>
+      </div>
+      <div class="sol2-plan-grid">
+        <article class="sol2-plan">
+          <header>
+            <p>{{ t('navbar.planFree') }}</p>
+            <span>01</span>
+          </header>
+          <strong
+            >$0<small>{{ t('landingMocks.common.perMonth') }}</small></strong
+          >
+          <p>{{ t('landing.pricing.basic.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.pricing.basic.features.smartChatModeration') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.pricing.basic.features.basicAnalytics') }}
+            </li>
+          </ul>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+        <article class="sol2-plan sol2-plan--active">
+          <div class="sol2-plan__badge">{{ t('landingMocks.common.mostPopular') }}</div>
+          <header>
+            <p>{{ t('navbar.planPremium') }}</p>
+            <span>02</span>
+          </header>
+          <strong
+            >$6<small>{{ t('landingMocks.common.perMonth') }}</small></strong
+          >
+          <p>{{ t('landing.pricing.premium.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.analyticsTitle') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.ttsTitle') }}
+            </li>
+          </ul>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+        <article class="sol2-plan">
+          <header>
+            <p>{{ t('navbar.planPro') }}</p>
+            <span>03</span>
+          </header>
+          <strong
+            >$15<small>{{ t('landingMocks.common.perMonth') }}</small></strong
+          >
+          <p>{{ t('landing.pricing.ai.description') }}</p>
+          <ul>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landing.features.aiModerationTitle') }}
+            </li>
+            <li>
+              <lucide-icon [name]="checkIcon" aria-hidden="true"></lucide-icon
+              >{{ t('landingMocks.two.proScale') }}
+            </li>
+          </ul>
+          <a routerLink="/login"
+            >{{ t('landing.pricing.choosePlan')
+            }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+          ></a>
+        </article>
+      </div>
+    </section>
+
+    <section class="sol2-final" aria-labelledby="sol2-final-title">
+      <div>
+        <span>{{ t('landingMocks.two.readyStatus') }}</span
+        ><i aria-hidden="true"></i>
+      </div>
+      <h2 id="sol2-final-title">{{ t('landingMocks.two.finalTitle') }}</h2>
+      <a class="sol2-button sol2-button--signal" routerLink="/login"
+        >{{ t('landing.callToAction.button')
+        }}<lucide-icon [name]="arrowIcon" aria-hidden="true"></lucide-icon
+      ></a>
+    </section>
+  </main>
+
+  <footer class="sol2-footer">
+    <span>DOMDIMABOT / OPENCODE / SOL.02</span>
+    <p>{{ t('landing.footer.copyright') }}</p>
+  </footer>
+</div>

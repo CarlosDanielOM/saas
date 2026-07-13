@@ -138,6 +138,31 @@ export const routes: Routes = [
           ),
         title: 'Live First · OpenCode OC3c | DomDimaBot'
       },
+      // Sol OpenCode landing explorations
+      {
+        path: 'soloc1',
+        loadComponent: () =>
+          import(
+            './features/landing-mocks/grok/opencode/sol/sol-opencode-mock-1.component'
+          ).then((m) => m.SolOpencodeMock1Component),
+        title: 'Streamside Guide · Sol OpenCode Mock | DomDimaBot'
+      },
+      {
+        path: 'soloc2',
+        loadComponent: () =>
+          import(
+            './features/landing-mocks/grok/opencode/sol/sol-opencode-mock-2.component'
+          ).then((m) => m.SolOpencodeMock2Component),
+        title: 'Live Ops Grid · Sol OpenCode Mock | DomDimaBot'
+      },
+      {
+        path: 'soloc3',
+        loadComponent: () =>
+          import(
+            './features/landing-mocks/grok/opencode/sol/sol-opencode-mock-3.component'
+          ).then((m) => m.SolOpencodeMock3Component),
+        title: 'Channel 24 · Sol OpenCode Mock | DomDimaBot'
+      },
       // OpenCode lineage of Mock 18 — Global Metrics
       {
         path: 'oc18a',
