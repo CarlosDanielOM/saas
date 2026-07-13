@@ -1,5 +1,32 @@
-/* Live First product shell — DNA from OC3c */
-.lf {
+/* Live First product shell — DNA from OC3c (light + dark) */
+:host {
+  display: block;
+  --bg: #f4f5f8;
+  --tile: #ffffff;
+  --fg: #14151a;
+  --muted: #667085;
+  --line: rgba(15, 17, 21, 0.08);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --live: #ef4444;
+  --live-soft: rgba(239, 68, 68, 0.12);
+  --ok: #15803d;
+  --ok-soft: rgba(22, 163, 74, 0.12);
+  --gold: #b45309;
+  --gold-soft: rgba(180, 83, 9, 0.12);
+  --btn: #eef0f5;
+  --btn-border: rgba(15, 17, 21, 0.1);
+  --kicker: #6d28d9;
+  --title-accent: #6d28d9;
+  --input-bg: #f8f9fc;
+  --glow-a: rgba(124, 58, 237, 0.12);
+  --glow-b: rgba(239, 68, 68, 0.08);
+  --radius: 1.35rem;
+  --shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
+  --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host-context(html.dark) {
   --bg: #0f1115;
   --tile: #171a21;
   --fg: #f5f7fb;
@@ -13,13 +40,21 @@
   --ok-soft: rgba(34, 197, 94, 0.14);
   --gold: #fbbf24;
   --gold-soft: rgba(251, 191, 36, 0.14);
-  --radius: 1.35rem;
+  --btn: #1d2230;
+  --btn-border: rgba(255, 255, 255, 0.07);
+  --kicker: #c4b5fd;
+  --title-accent: #c4b5fd;
+  --input-bg: rgba(0, 0, 0, 0.22);
+  --glow-a: rgba(139, 92, 246, 0.18);
+  --glow-b: rgba(239, 68, 68, 0.1);
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
-  --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+.lf {
   min-height: 100dvh;
   background:
-    radial-gradient(800px 360px at 80% -5%, rgba(139, 92, 246, 0.18), transparent 55%),
-    radial-gradient(600px 280px at 10% 0%, rgba(239, 68, 68, 0.1), transparent 50%),
+    radial-gradient(800px 360px at 80% -5%, var(--glow-a), transparent 55%),
+    radial-gradient(600px 280px at 10% 0%, var(--glow-b), transparent 50%),
     var(--bg);
   color: var(--fg);
   font-family: var(--font);
@@ -153,7 +188,7 @@
 }
 
 .lf-tile {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%), var(--tile);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -180,7 +215,7 @@
 
 .lf-kicker {
   margin: 0 0 0.75rem;
-  color: #c4b5fd;
+  color: var(--kicker);
   font-size: 0.75rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -197,7 +232,7 @@
 
 .lf-title span {
   display: block;
-  color: #c4b5fd;
+  color: var(--title-accent);
 }
 
 .lf-h2 {
@@ -254,9 +289,9 @@
   justify-content: center;
   min-height: 44px;
   padding: 0.7rem 1.15rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--btn-border);
   border-radius: 999px;
-  background: #1d2230;
+  background: var(--btn);
   color: var(--fg);
   font: inherit;
   font-size: 0.92rem;
@@ -302,7 +337,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #c4b5fd;
+  color: var(--kicker);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 700;
@@ -320,7 +355,7 @@
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: #c4b5fd;
+  color: var(--kicker);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.04em;
@@ -488,7 +523,7 @@
 .lf-segment__count {
   font-size: 0.75rem;
   font-weight: 800;
-  color: #c4b5fd;
+  color: var(--kicker);
   background: var(--accent-soft);
   border-radius: 999px;
   padding: 0.12rem 0.45rem;
@@ -606,7 +641,7 @@
   padding: 0.18rem 0.45rem;
   border-radius: 0.55rem;
   background: var(--accent-soft);
-  color: #c4b5fd;
+  color: var(--kicker);
 }
 
 /* Matrix list */
@@ -697,7 +732,7 @@
 }
 
 .lf-timer__freq {
-  color: #c4b5fd;
+  color: var(--kicker);
   font-size: 0.8rem;
   font-weight: 750;
 }
@@ -973,7 +1008,7 @@
 }
 
 .lf-footer a {
-  color: #c4b5fd;
+  color: var(--kicker);
   text-decoration: none;
   font-weight: 650;
 }

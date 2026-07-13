@@ -1,39 +1,42 @@
 <div class="shell">
   <header class="shell-nav">
-    <a routerLink="/mocks/dev/prod-dashboard" class="shell-brand" aria-label="DomDimaBot dashboard">
+    <a
+      routerLink="/mocks/dev/prod-dashboard"
+      class="shell-brand"
+      [attr.aria-label]="t('devMocks.shell.brandAria')"
+    >
       <span class="shell-brand__live" aria-hidden="true"></span>
       DomDimaBot
     </a>
 
-    <!-- Desktop primary nav only (hidden on mobile — bottom tabs handle that) -->
-    <nav class="shell-nav__links" aria-label="Primary">
+    <nav class="shell-nav__links" [attr.aria-label]="t('devMocks.shell.primaryNav')">
       <a
         routerLink="/mocks/dev/prod-dashboard"
         routerLinkActive="shell-nav__link--active"
         class="shell-nav__link"
       >
-        Dashboard
+        {{ t('navbar.dashboard') }}
       </a>
       <a
         routerLink="/mocks/dev/prod-commands"
         routerLinkActive="shell-nav__link--active"
         class="shell-nav__link"
       >
-        Commands
+        {{ t('navbar.commands') }}
       </a>
       <a
         routerLink="/mocks/dev/prod-modules"
         routerLinkActive="shell-nav__link--active"
         class="shell-nav__link"
       >
-        Modules
+        {{ t('navbar.modules') }}
       </a>
       <a
         routerLink="/mocks/dev/prod-settings"
         routerLinkActive="shell-nav__link--active"
         class="shell-nav__link"
       >
-        Settings
+        {{ t('navbar.settings') }}
       </a>
     </nav>
 
@@ -44,7 +47,7 @@
           class="shell-avatar-btn"
           [attr.aria-expanded]="profileOpen()"
           aria-haspopup="menu"
-          [attr.aria-label]="displayName() + ' menu'"
+          [attr.aria-label]="t('devMocks.shell.profileMenu')"
           (click)="toggleProfileMenu($event)"
         >
           @if (avatarUrl()) {
@@ -58,7 +61,7 @@
           <div class="shell-dropdown" role="menu">
             <div class="shell-dropdown__head">
               <span class="shell-dropdown__name">{{ displayName() }}</span>
-              <span class="shell-dropdown__badge">Pro · mock</span>
+              <span class="shell-dropdown__badge">{{ t('devMocks.shell.proMock') }}</span>
             </div>
 
             <div class="shell-dropdown__divider" aria-hidden="true"></div>
@@ -70,7 +73,7 @@
               (click)="closeProfileMenu()"
             >
               <lucide-icon [name]="userIcon" class="shell-dropdown__ico"></lucide-icon>
-              Profile settings
+              {{ t('devMocks.shell.profileSettings') }}
             </a>
 
             <button
@@ -83,7 +86,7 @@
                 [name]="isDarkMode() ? sunIcon : moonIcon"
                 class="shell-dropdown__ico"
               ></lucide-icon>
-              {{ isDarkMode() ? 'Light mode' : 'Dark mode' }}
+              {{ isDarkMode() ? t('devMocks.shell.lightMode') : t('devMocks.shell.darkMode') }}
             </button>
 
             <button
@@ -103,7 +106,7 @@
               role="menuitem"
               (click)="closeProfileMenu()"
             >
-              All dev mocks
+              {{ t('devMocks.shell.allMocks') }}
             </a>
           </div>
         }
@@ -115,15 +118,14 @@
     <router-outlet />
   </div>
 
-  <!-- Mobile product tabs -->
-  <nav class="shell-bottom" aria-label="Primary navigation">
+  <nav class="shell-bottom" [attr.aria-label]="t('devMocks.shell.mobileNav')">
     <a
       routerLink="/mocks/dev/prod-dashboard"
       routerLinkActive="shell-bottom__link--active"
       class="shell-bottom__link"
     >
       <span class="shell-bottom__glyph" aria-hidden="true">▣</span>
-      <span>Dashboard</span>
+      <span>{{ t('navbar.dashboard') }}</span>
     </a>
     <a
       routerLink="/mocks/dev/prod-commands"
@@ -131,7 +133,7 @@
       class="shell-bottom__link"
     >
       <span class="shell-bottom__glyph" aria-hidden="true">⚡</span>
-      <span>Commands</span>
+      <span>{{ t('navbar.commands') }}</span>
     </a>
     <a
       routerLink="/mocks/dev/prod-modules"
@@ -139,7 +141,7 @@
       class="shell-bottom__link"
     >
       <span class="shell-bottom__glyph" aria-hidden="true">◇</span>
-      <span>Modules</span>
+      <span>{{ t('navbar.modules') }}</span>
     </a>
     <a
       routerLink="/mocks/dev/prod-settings"
@@ -147,7 +149,7 @@
       class="shell-bottom__link"
     >
       <span class="shell-bottom__glyph" aria-hidden="true">⚙</span>
-      <span>Settings</span>
+      <span>{{ t('navbar.settings') }}</span>
     </a>
     <a
       routerLink="/mocks/dev/prod-profile"
@@ -155,7 +157,7 @@
       class="shell-bottom__link"
     >
       <span class="shell-bottom__glyph" aria-hidden="true">☺</span>
-      <span>Profile</span>
+      <span>{{ t('devMocks.shell.profile') }}</span>
     </a>
   </nav>
 </div>

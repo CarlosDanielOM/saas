@@ -2,12 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  inject,
   signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { Command, USER_LEVELS } from '../../../models/command.model';
+import { LanguageService } from '../../../services/language.service';
 
 type PlanTier = 'free' | 'premium' | 'pro';
 type ViewMode = 'table' | 'card';
@@ -79,6 +81,8 @@ const SEED_TIMERS: MockTimer[] = [
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProdCommandsMockComponent {
+  private readonly languageService = inject(LanguageService);
+
   readonly channelID = CHANNEL_ID;
   readonly channelName = CHANNEL_NAME;
 
@@ -110,13 +114,14 @@ export class ProdCommandsMockComponent {
   readonly activeTimers = computed(() => this.timers().filter((timer) => timer.active).length);
   readonly timerLimit = computed(() => TIER_TIMER_LIMITS[this.planTier()]);
   readonly intervalHint = computed(() => {
+    this.languageService.currentLanguage();
     switch (this.planTier()) {
       case 'pro':
-        return 'Any whole minute from 1–180.';
+        return this.t('devMocks.commands.intervalPro');
       case 'premium':
-        return '5-minute steps from 5–180.';
+        return this.t('devMocks.commands.intervalPremium');
       default:
-        return 'Pick 15, 30, 45, or 60 minutes.';
+        return this.t('devMocks.commands.intervalFree');
     }
   });
 
@@ -176,6 +181,11 @@ export class ProdCommandsMockComponent {
     void this.loadCommands();
   }
 
+  t(key: string, params?: Record<string, string | number>): string {
+    this.languageService.currentLanguage();
+    return this.languageService.translate(key, params);
+  }
+
   setPlanTier(tier: PlanTier): void {
     this.planTier.set(tier);
     const draft = this.timerDraft();
@@ -183,7 +193,7 @@ export class ProdCommandsMockComponent {
     if (!validation.valid) {
       this.timerDraft.update((current) => ({ ...current, frequency: 30 }));
     }
-    this.showToast(`Simulating ${tier} plan limits`);
+    this.showToast(this.t('devMocks.commands.planToast', { tier }));
   }
 
   setTab(tab: TabId): void {

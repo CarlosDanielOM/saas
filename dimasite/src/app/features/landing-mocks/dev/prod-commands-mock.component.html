@@ -1,28 +1,24 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
     <!-- Hero bento -->
-    <section class="lf-bento lf-bento--hero" aria-label="Commands overview">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('devMocks.commands.overviewAria')">
       <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">Channel ops · commands</p>
+        <p class="lf-kicker">{{ t('devMocks.commands.kicker') }}</p>
         <h1 class="lf-title">
-          Chat that runs
-          <span>while you stream.</span>
+          {{ t('devMocks.commands.title') }}
+          <span>{{ t('devMocks.commands.titleAccent') }}</span>
         </h1>
         <p class="lf-copy">
-          Manage chat commands and auto-repeat timers for
-          <strong>{{ channelName }}</strong>.
-          Commands load live from production · timers are a local playground
-          with real plan interval rules.
+          {{ t('devMocks.commands.copy', { name: channelName }) }}
         </p>
 
         <div class="lf-actions">
           <button type="button" class="lf-btn lf-btn--primary" (click)="setTab('timers'); openCreateTimer()">
-            New timer
+            {{ t('devMocks.commands.newTimer') }}
           </button>
           <button type="button" class="lf-btn" (click)="setTab('commands'); loadCommands()">
-            Refresh commands
+            {{ t('devMocks.commands.refresh') }}
           </button>
-          <a routerLink="/mocks/dev/prod-dashboard" class="lf-btn">Go to dashboard</a>
         </div>
 
         <p class="lf-feed lf-feed--on">
@@ -32,14 +28,14 @@
 
       <article class="lf-tile lf-tile--spotlight">
         <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }} plan</span>
-          <span class="lf-spotlight__count">simulate limits</span>
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ t('devMocks.commands.planLabel', { tier: planTier() }) }}</span>
+          <span class="lf-spotlight__count">{{ t('devMocks.commands.simulateLimits') }}</span>
         </div>
 
-        <p class="lf-label">Interval rules</p>
+        <p class="lf-label">{{ t('devMocks.commands.intervalRules') }}</p>
         <p class="lf-spotlight__rule">{{ intervalHint() }}</p>
 
-        <div class="lf-plan-switch" role="group" aria-label="Simulate plan tier">
+        <div class="lf-plan-switch" role="group" [attr.aria-label]="t('devMocks.commands.simulatePlan')">
           @for (tier of ['free', 'premium', 'pro']; track tier) {
             <button
               type="button"
@@ -55,36 +51,36 @@
 
         <div class="lf-spotlight__meta-row">
           <div>
-            <p class="lf-label">Active timers</p>
+            <p class="lf-label">{{ t('devMocks.commands.activeTimers') }}</p>
             <p class="lf-value lf-value--sm">{{ activeTimers() }}/{{ timerLimit() }}</p>
           </div>
           <div>
-            <p class="lf-label">Chat commands</p>
+            <p class="lf-label">{{ t('devMocks.commands.chatCommands') }}</p>
             <p class="lf-value lf-value--sm">{{ totalCommands() }}</p>
           </div>
         </div>
       </article>
 
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Commands</p>
+        <p class="lf-label">{{ t('devMocks.commands.commands') }}</p>
         <p class="lf-value">{{ totalCommands() }}</p>
       </article>
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Enabled</p>
+        <p class="lf-label">{{ t('devMocks.commands.enabled') }}</p>
         <p class="lf-value">{{ enabledCommands() }}</p>
       </article>
       <article class="lf-tile lf-metric lf-metric--accent">
-        <p class="lf-label">Active timers</p>
+        <p class="lf-label">{{ t('devMocks.commands.activeTimers') }}</p>
         <p class="lf-value">{{ activeTimers() }}</p>
       </article>
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Timer cap</p>
+        <p class="lf-label">{{ t('devMocks.commands.timerCap') }}</p>
         <p class="lf-value">{{ timerLimit() }}</p>
       </article>
     </section>
 
     <!-- Segment control -->
-    <section class="lf-segment" role="tablist" aria-label="Command type">
+    <section class="lf-segment" role="tablist" [attr.aria-label]="t('devMocks.commands.commands')">
       <button
         type="button"
         class="lf-segment__btn"
@@ -93,7 +89,7 @@
         [attr.aria-selected]="activeTab() === 'commands'"
         (click)="setTab('commands')"
       >
-        Chat commands
+        {{ t('devMocks.commands.chatTab') }}
         <span class="lf-segment__count">{{ totalCommands() }}</span>
       </button>
       <button
@@ -104,25 +100,25 @@
         [attr.aria-selected]="activeTab() === 'timers'"
         (click)="setTab('timers')"
       >
-        Timer commands
+        {{ t('devMocks.commands.timerTab') }}
         <span class="lf-segment__count">{{ timers().length }}</span>
       </button>
     </section>
 
     <!-- Chat commands -->
     @if (activeTab() === 'commands') {
-      <section class="lf-section" aria-label="Chat commands">
+      <section class="lf-section" [attr.aria-label]="t('devMocks.commands.chatTab')">
         <div class="lf-section__head">
           <div>
-            <p class="lf-kicker">Live · /commands/{{ channelID }}</p>
-            <h2 class="lf-h2">Every reply in your pocket</h2>
+            <p class="lf-kicker">{{ t('devMocks.commands.liveApi', { id: channelID }) }}</p>
+            <h2 class="lf-h2">{{ t('devMocks.commands.everyReply') }}</h2>
           </div>
           <div class="lf-section__tools">
             <label class="lf-search">
-              <span class="visually-hidden">Search commands</span>
+              <span class="visually-hidden">{{ t('devMocks.commands.searchPlaceholder') }}</span>
               <input
                 type="search"
-                placeholder="Search name, !trigger, level…"
+                [placeholder]="t('devMocks.commands.searchPlaceholder')"
                 [value]="searchInput()"
                 (input)="onSearchInput($any($event.target).value)"
               />
@@ -133,29 +129,29 @@
                 class="lf-view__btn"
                 [class.lf-view__btn--active]="viewMode() === 'table'"
                 (click)="setViewMode('table')"
-                aria-label="List view"
+                [attr.aria-label]="t('devMocks.commands.list')"
               >
-                List
+                {{ t('devMocks.commands.list') }}
               </button>
               <button
                 type="button"
                 class="lf-view__btn"
                 [class.lf-view__btn--active]="viewMode() === 'card'"
                 (click)="setViewMode('card')"
-                aria-label="Bento view"
+                [attr.aria-label]="t('devMocks.commands.bento')"
               >
-                Bento
+                {{ t('devMocks.commands.bento') }}
               </button>
             </div>
           </div>
         </div>
 
         @if (commandsLoading() && commands().length === 0) {
-          <div class="lf-tile lf-empty">Pulling live commands…</div>
+          <div class="lf-tile lf-empty">{{ t('devMocks.commands.loading') }}</div>
         } @else if (commandsError() && commands().length === 0) {
           <div class="lf-tile lf-empty lf-empty--warn">
             <p>{{ commandsError() }}</p>
-            <button type="button" class="lf-btn" (click)="loadCommands()">Retry</button>
+            <button type="button" class="lf-btn" (click)="loadCommands()">{{ t('devMocks.commands.retry') }}</button>
           </div>
         } @else if (viewMode() === 'card') {
           <div class="lf-bento lf-bento--cmds">
@@ -171,12 +167,12 @@
                     [class.lf-chip--muted]="command.enabled === false"
                     [class.lf-chip--live]="command.enabled !== false"
                   >
-                    {{ command.enabled === false ? 'Off' : 'On' }}
+                    {{ command.enabled === false ? t('devMocks.commands.off') : t('devMocks.commands.on') }}
                   </span>
                 </div>
                 <h3 class="lf-cmd__name">{{ command.name }}</h3>
                 <p class="lf-cmd__desc">
-                  {{ command.description || command.message || 'No description' }}
+                  {{ command.description || command.message || t('devMocks.commands.noDescription') }}
                 </p>
                 <div class="lf-cmd__meta">
                   <span>{{ command.cooldown }}s</span>
@@ -187,17 +183,17 @@
                 </div>
               </article>
             } @empty {
-              <div class="lf-tile lf-empty">No commands match that search.</div>
+              <div class="lf-tile lf-empty">{{ t('devMocks.commands.noMatch') }}</div>
             }
           </div>
         } @else {
           <div class="lf-tile lf-matrix">
             <div class="lf-matrix__row lf-matrix__row--head">
-              <span>Command</span>
-              <span>Trigger</span>
-              <span>Level</span>
-              <span>Cool</span>
-              <span>Status</span>
+              <span>{{ t('devMocks.commands.name') }}</span>
+              <span>{{ t('devMocks.commands.trigger') }}</span>
+              <span>{{ t('devMocks.commands.level') }}</span>
+              <span>{{ t('devMocks.commands.cooldown') }}</span>
+              <span>{{ t('devMocks.commands.status') }}</span>
             </div>
             @for (command of paginatedCommands(); track commandTrackId(command)) {
               <div
@@ -217,13 +213,13 @@
                     [class.lf-chip--live]="command.enabled !== false"
                     [class.lf-chip--muted]="command.enabled === false"
                   >
-                    {{ command.enabled === false ? 'Off' : 'On' }}
+                    {{ command.enabled === false ? t('devMocks.commands.off') : t('devMocks.commands.on') }}
                   </span>
                 </span>
               </div>
             } @empty {
               <div class="lf-matrix__row">
-                <span>No commands match that search.</span>
+                <span>{{ t('devMocks.commands.noMatch') }}</span>
               </div>
             }
           </div>
@@ -232,7 +228,7 @@
         @if (filteredCommands().length > 0) {
           <div class="lf-pager">
             <label class="lf-pager__size">
-              Per page
+              {{ t('devMocks.commands.perPage') }}
               <select [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
                 @for (n of itemsPerPageOptions; track n) {
                   <option [value]="n">{{ n }}</option>
@@ -246,7 +242,7 @@
                 [disabled]="currentPage() <= 1"
                 (click)="changePage(currentPage() - 1)"
               >
-                Prev
+                {{ t('devMocks.commands.prev') }}
               </button>
               @for (page of pages(); track page) {
                 <button
@@ -264,7 +260,7 @@
                 [disabled]="currentPage() >= totalPages()"
                 (click)="changePage(currentPage() + 1)"
               >
-                Next
+                {{ t('devMocks.commands.next') }}
               </button>
             </div>
           </div>
@@ -274,18 +270,17 @@
 
     <!-- Timers -->
     @if (activeTab() === 'timers') {
-      <section class="lf-section" aria-label="Timer commands">
+      <section class="lf-section" [attr.aria-label]="t('devMocks.commands.timerTab')">
         <div class="lf-section__head">
           <div>
-            <p class="lf-kicker">Repeat · plan-aware</p>
-            <h2 class="lf-h2">Messages on a heartbeat</h2>
+            <p class="lf-kicker">{{ t('devMocks.commands.repeatKicker') }}</p>
+            <h2 class="lf-h2">{{ t('devMocks.commands.heartbeat') }}</h2>
             <p class="lf-copy lf-copy--tight">
-              Auto-post while live. {{ intervalHint() }}
-              Cap: {{ timerLimit() }} active on {{ planTier() }}.
+              {{ t('devMocks.commands.timerHint', { interval: intervalHint(), limit: timerLimit(), tier: planTier() }) }}
             </p>
           </div>
           <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
-            Add timer
+            {{ t('devMocks.commands.addTimer') }}
           </button>
         </div>
 
@@ -293,7 +288,7 @@
           <div class="lf-bento lf-bento--intervals">
             @for (m of freeIntervals; track m) {
               <article class="lf-tile lf-interval-tile">
-                <p class="lf-label">Free slot</p>
+                <p class="lf-label">{{ t('devMocks.commands.freeSlot') }}</p>
                 <p class="lf-value lf-value--sm">{{ m }}m</p>
               </article>
             }
@@ -302,9 +297,9 @@
 
         @if (timers().length === 0) {
           <div class="lf-tile lf-empty">
-            <p>No timers yet — create one and play with intervals.</p>
+            <p>{{ t('devMocks.commands.noTimers') }}</p>
             <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateTimer()">
-              Add timer
+              {{ t('devMocks.commands.addTimer') }}
             </button>
           </div>
         } @else {
@@ -317,21 +312,21 @@
               >
                 <div class="lf-timer__head">
                   <span class="lf-chip" [class.lf-chip--live]="timer.active" [class.lf-chip--muted]="!timer.active">
-                    {{ timer.active ? 'Active' : 'Paused' }}
+                    {{ timer.active ? t('devMocks.commands.active') : t('devMocks.commands.paused') }}
                   </span>
-                  <span class="lf-timer__freq">every {{ formatInterval(timer.frequency) }}</span>
+                  <span class="lf-timer__freq">{{ t('devMocks.commands.every', { interval: formatInterval(timer.frequency) }) }}</span>
                 </div>
                 <h3 class="lf-timer__name">{{ timer.name }}</h3>
                 <p class="lf-timer__msg">{{ timer.message }}</p>
                 <div class="lf-timer__actions">
                   <button type="button" class="lf-text-link" (click)="openEditTimer(timer)">
-                    Edit →
+                    {{ t('devMocks.commands.edit') }}
                   </button>
                   <button type="button" class="lf-btn lf-btn--ghost" (click)="toggleTimer(timer)">
-                    {{ timer.active ? 'Pause' : 'Activate' }}
+                    {{ timer.active ? t('devMocks.commands.pause') : t('devMocks.commands.activate') }}
                   </button>
                   <button type="button" class="lf-btn lf-btn--ghost lf-btn--danger" (click)="deleteTimer(timer)">
-                    Delete
+                    {{ t('devMocks.commands.delete') }}
                   </button>
                 </div>
               </article>
@@ -343,8 +338,8 @@
   </main>
 
   <footer class="lf-footer">
-    <span>© DomDimaBot · Live First product shell · commands mock</span>
-    <a routerLink="/mocks/grok/oc3c">Design source · OC3c</a>
+    <span>{{ t('devMocks.commands.footer') }}</span>
+    <a routerLink="/mocks/grok/oc3c">{{ t('devMocks.commands.designSource') }}</a>
   </footer>
 
   @if (showTimerModal()) {
@@ -360,17 +355,17 @@
           <div>
             <p class="lf-kicker">{{ planTier() }} · {{ intervalHint() }}</p>
             <h2 id="lf-timer-title">
-              {{ editingTimerId() ? 'Edit timer' : 'New timer' }}
+              {{ editingTimerId() ? t('devMocks.commands.editTimer') : t('devMocks.commands.newTimer') }}
             </h2>
           </div>
-          <button type="button" class="lf-icon-close" (click)="closeTimerModal()" aria-label="Close">
+          <button type="button" class="lf-icon-close" (click)="closeTimerModal()" [attr.aria-label]="t('devMocks.commands.cancel')">
             ×
           </button>
         </div>
 
         <form class="lf-form" (ngSubmit)="saveTimer()">
           <label class="lf-field">
-            <span>Name</span>
+            <span>{{ t('devMocks.commands.name') }}</span>
             <input
               type="text"
               maxlength="30"
@@ -384,11 +379,11 @@
           </label>
 
           <label class="lf-field">
-            <span>Message</span>
+            <span>{{ t('devMocks.commands.message') }}</span>
             <textarea
               rows="3"
               maxlength="350"
-              placeholder="Posted to chat on each tick"
+              [placeholder]="t('devMocks.commands.messagePh')"
               [ngModel]="timerDraft().message"
               (ngModelChange)="updateDraftMessage($event)"
               name="timerMessage"
@@ -397,7 +392,7 @@
           </label>
 
           <div class="lf-field">
-            <span>Repeat every</span>
+            <span>{{ t('devMocks.commands.repeatEvery') }}</span>
 
             @if (planTier() === 'free') {
               <div class="lf-interval-grid">
@@ -424,7 +419,7 @@
                   (ngModelChange)="updateDraftFrequency($event)"
                   name="timerFreq"
                 />
-                <span class="lf-unit">minutes</span>
+                <span class="lf-unit">{{ t('devMocks.commands.minutes') }}</span>
               </div>
               <div class="lf-quick">
                 @for (
@@ -451,9 +446,9 @@
           }
 
           <div class="lf-form__actions">
-            <button type="button" class="lf-btn" (click)="closeTimerModal()">Cancel</button>
+            <button type="button" class="lf-btn" (click)="closeTimerModal()">{{ t('devMocks.commands.cancel') }}</button>
             <button type="submit" class="lf-btn lf-btn--primary">
-              {{ editingTimerId() ? 'Save' : 'Create timer' }}
+              {{ editingTimerId() ? t('devMocks.commands.save') : t('devMocks.commands.createTimer') }}
             </button>
           </div>
         </form>

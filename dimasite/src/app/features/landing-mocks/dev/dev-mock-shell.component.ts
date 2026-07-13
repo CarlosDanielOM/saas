@@ -45,6 +45,12 @@ export class DevMockShellComponent {
     void this.loadProfile();
   }
 
+  t(key: string, params?: Record<string, string | number>): string {
+    // touch language signal so menu labels refresh
+    this.languageService.currentLanguage();
+    return this.languageService.translate(key, params);
+  }
+
   isDarkMode(): boolean {
     return this.themeService.isDarkMode();
   }

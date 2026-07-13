@@ -253,9 +253,8 @@ export const routes: Routes = [
                 (m) => m.ProdStubPageComponent
               ),
             data: {
-              title: 'Modules',
-              blurb:
-                'Triggers, clips, analytics, TTS, AI personality, and the rest of the module board.'
+              titleKey: 'devMocks.stub.modulesTitle',
+              blurbKey: 'devMocks.stub.modulesBlurb'
             },
             title: 'Modules | DomDimaBot'
           },
@@ -266,8 +265,8 @@ export const routes: Routes = [
                 (m) => m.ProdStubPageComponent
               ),
             data: {
-              title: 'Settings',
-              blurb: 'Channel preferences, bot behavior, and account-level streamer controls.'
+              titleKey: 'devMocks.stub.settingsTitle',
+              blurbKey: 'devMocks.stub.settingsBlurb'
             },
             title: 'Settings | DomDimaBot'
           },
@@ -278,9 +277,8 @@ export const routes: Routes = [
                 (m) => m.ProdStubPageComponent
               ),
             data: {
-              title: 'Profile',
-              blurb:
-                'Personal account settings. On desktop this also lives under the avatar menu with theme + language.'
+              titleKey: 'devMocks.stub.profileTitle',
+              blurbKey: 'devMocks.stub.profileBlurb'
             },
             title: 'Profile | DomDimaBot'
           }

@@ -3,37 +3,59 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 
+import { LanguageService } from '../../../services/language.service';
+
 @Component({
   selector: 'app-prod-stub-page',
   imports: [RouterLink],
   template: `
     <div class="stub">
       <main class="stub-main">
-        <p class="stub-kicker">Mock shell · placeholder</p>
+        <p class="stub-kicker">{{ t('devMocks.stub.kicker') }}</p>
         <h1 class="stub-title">{{ title() }}</h1>
         <p class="stub-copy">
-          {{ blurb() }}
-          This page exists so product navigation feels complete — wire the real module later.
+          {{ t('devMocks.stub.copy', { blurb: blurb() }) }}
         </p>
         <div class="stub-actions">
-          <a routerLink="/mocks/dev/prod-dashboard" class="stub-btn stub-btn--primary">Dashboard</a>
-          <a routerLink="/mocks/dev/prod-commands" class="stub-btn">Commands</a>
+          <a routerLink="/mocks/dev/prod-dashboard" class="stub-btn stub-btn--primary">
+            {{ t('devMocks.stub.toDashboard') }}
+          </a>
+          <a routerLink="/mocks/dev/prod-commands" class="stub-btn">
+            {{ t('devMocks.stub.toCommands') }}
+          </a>
         </div>
       </main>
     </div>
   `,
   styles: `
-    .stub {
+    :host {
+      display: block;
+      --bg: #f4f5f8;
+      --fg: #14151a;
+      --muted: #667085;
+      --line: rgba(15, 17, 21, 0.08);
+      --accent: #7c3aed;
+      --btn: #eef0f5;
+      --kicker: #6d28d9;
+      --glow: rgba(124, 58, 237, 0.12);
+      --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    :host-context(html.dark) {
       --bg: #0f1115;
-      --tile: #171a21;
       --fg: #f5f7fb;
       --muted: #9aa3b5;
       --line: rgba(255, 255, 255, 0.07);
       --accent: #8b5cf6;
-      --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+      --btn: #1d2230;
+      --kicker: #c4b5fd;
+      --glow: rgba(139, 92, 246, 0.16);
+    }
+
+    .stub {
       min-height: 100%;
       background:
-        radial-gradient(700px 320px at 80% -10%, rgba(139, 92, 246, 0.16), transparent 55%),
+        radial-gradient(700px 320px at 80% -10%, var(--glow), transparent 55%),
         var(--bg);
       color: var(--fg);
       font-family: var(--font);
@@ -47,7 +69,7 @@ import { map } from 'rxjs';
 
     .stub-kicker {
       margin: 0 0 0.65rem;
-      color: #c4b5fd;
+      color: var(--kicker);
       font-size: 0.72rem;
       font-weight: 750;
       letter-spacing: 0.08em;
@@ -83,7 +105,7 @@ import { map } from 'rxjs';
       padding: 0.65rem 1.05rem;
       border-radius: 999px;
       border: 1px solid var(--line);
-      background: #1d2230;
+      background: var(--btn);
       color: var(--fg);
       text-decoration: none;
       font-weight: 650;
@@ -100,16 +122,27 @@ import { map } from 'rxjs';
 })
 export class ProdStubPageComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly languageService = inject(LanguageService);
   private readonly data = toSignal(this.route.data.pipe(map((d) => d)), {
     initialValue: this.route.snapshot.data
   });
 
-  readonly title = computed(() => String(this.data()?.['title'] ?? 'Page'));
-  readonly blurb = computed(
-    () =>
-      String(
-        this.data()?.['blurb'] ??
-          'A Live First placeholder for this product area.'
-      )
-  );
+  readonly title = computed(() => {
+    this.languageService.currentLanguage();
+    const key = String(this.data()?.['titleKey'] ?? '');
+    if (key) return this.t(key);
+    return String(this.data()?.['title'] ?? 'Page');
+  });
+
+  readonly blurb = computed(() => {
+    this.languageService.currentLanguage();
+    const key = String(this.data()?.['blurbKey'] ?? '');
+    if (key) return this.t(key);
+    return String(this.data()?.['blurb'] ?? '');
+  });
+
+  t(key: string, params?: Record<string, string | number>): string {
+    this.languageService.currentLanguage();
+    return this.languageService.translate(key, params);
+  }
 }

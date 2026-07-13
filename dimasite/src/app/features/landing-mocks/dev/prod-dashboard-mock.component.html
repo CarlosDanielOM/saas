@@ -1,16 +1,14 @@
 <div class="lf" [attr.data-plan]="planTier()" [class.lf--live]="isLive()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" aria-label="Dashboard overview">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('devMocks.dashboard.overviewAria')">
       <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">Control center · {{ channelLogin }}</p>
+        <p class="lf-kicker">{{ t('devMocks.dashboard.kicker', { channel: channelLogin }) }}</p>
         <h1 class="lf-title">
-          Channel
-          <span>dashboard.</span>
+          {{ t('devMocks.dashboard.title') }}
+          <span>{{ t('devMocks.dashboard.titleAccent') }}</span>
         </h1>
         <p class="lf-copy">
-          Live First product shell for
-          <strong>{{ displayName() }}</strong>.
-          Live/offline status uses the public board; KPIs, session, trend, goals, and history are seeded.
+          {{ t('devMocks.dashboard.copy', { name: displayName() }) }}
         </p>
 
         <div class="lf-actions">
@@ -20,9 +18,8 @@
             [class.lf-btn--primary]="!botInChat()"
             (click)="toggleBot()"
           >
-            {{ botInChat() ? 'Leave chat' : 'Join bot' }}
+            {{ botInChat() ? t('devMocks.dashboard.leaveChat') : t('devMocks.dashboard.joinBot') }}
           </button>
-          <a routerLink="/mocks/dev/prod-commands" class="lf-btn">Go to commands</a>
         </div>
 
         <div class="lf-status-row lf-status-row--top">
@@ -43,7 +40,7 @@
           [class.lf-feed--on]="botInChat()"
           [class.lf-feed--warn]="!botInChat()"
         >
-          Bot {{ botInChat() ? 'active in chat' : 'not in chat' }}
+          {{ botInChat() ? t('devMocks.dashboard.botActive') : t('devMocks.dashboard.botInactive') }}
           @if (healthMs() !== null) {
             · API {{ healthMs() }}ms
           }
@@ -53,11 +50,11 @@
       <article class="lf-tile lf-tile--spotlight" [class.lf-spotlight--live]="isLive()">
         <div class="lf-spotlight__head">
           @if (isLive()) {
-            <span class="lf-chip lf-chip--live">Live now</span>
+            <span class="lf-chip lf-chip--live">{{ t('devMocks.dashboard.liveNow') }}</span>
           } @else {
-            <span class="lf-chip lf-chip--muted">Offline</span>
+            <span class="lf-chip lf-chip--muted">{{ t('devMocks.dashboard.offline') }}</span>
           }
-          <span class="lf-spotlight__count">{{ planTier() }} · owner</span>
+          <span class="lf-spotlight__count">{{ t('devMocks.dashboard.owner', { tier: planTier() }) }}</span>
         </div>
 
         <div class="lf-channel">
@@ -77,21 +74,21 @@
             <p class="lf-channel__name">{{ displayName() }}</p>
             @if (myLiveChannel(); as liveCh) {
               <p class="lf-channel__meta">
-                {{ formatViewers(liveCh.viewers) }} viewers · {{ uptimeLabel() }}
+                {{ t('devMocks.dashboard.viewersMeta', { viewers: formatViewers(liveCh.viewers), uptime: uptimeLabel() }) }}
               </p>
             } @else {
-              <p class="lf-channel__meta">Not streaming right now</p>
+              <p class="lf-channel__meta">{{ t('devMocks.dashboard.notStreaming') }}</p>
             }
           </div>
         </div>
 
         @if (!isLive()) {
           <p class="lf-empty-inline">
-            When you go live, this tile picks up viewers from the public board.
+            {{ t('devMocks.dashboard.offlineHint') }}
           </p>
         }
 
-        <div class="lf-plan-switch" role="group" aria-label="Simulate plan tier">
+        <div class="lf-plan-switch" role="group" [attr.aria-label]="t('devMocks.dashboard.simulatePlan')">
           @for (tier of ['free', 'premium', 'pro']; track tier) {
             <button
               type="button"
@@ -106,86 +103,86 @@
       </article>
 
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Avg hours / stream</p>
+        <p class="lf-label">{{ t('devMocks.dashboard.avgHours') }}</p>
         <p class="lf-value">{{ kpis().avgHours }}</p>
       </article>
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Avg viewers · 30d</p>
+        <p class="lf-label">{{ t('devMocks.dashboard.avgViewers') }}</p>
         <p class="lf-value" [countUp]="kpis().avgViewers">0</p>
       </article>
       <article class="lf-tile lf-metric lf-metric--accent">
-        <p class="lf-label">Bits · 30d</p>
+        <p class="lf-label">{{ t('devMocks.dashboard.bits30d') }}</p>
         <p class="lf-value" [countUp]="kpis().bits30d">0</p>
       </article>
       <article class="lf-tile lf-metric">
-        <p class="lf-label">Donations · 30d</p>
+        <p class="lf-label">{{ t('devMocks.dashboard.donations30d') }}</p>
         <p class="lf-value">{{ formatMoney(kpis().donations30d) }}</p>
       </article>
     </section>
 
-    <section class="lf-bento lf-bento--ops" aria-label="Live ops">
+    <section class="lf-bento lf-bento--ops" [attr.aria-label]="t('devMocks.dashboard.liveOpsAria')">
       <article class="lf-tile lf-activity">
         <div class="lf-section-mini">
-          <p class="lf-kicker">Live activity</p>
-          <h2 class="lf-h3">This session</h2>
+          <p class="lf-kicker">{{ t('devMocks.dashboard.liveActivity') }}</p>
+          <h2 class="lf-h3">{{ t('devMocks.dashboard.thisSession') }}</h2>
         </div>
         <div class="lf-activity__grid">
           <div>
-            <p class="lf-label">Follows</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.follows') }}</p>
             <p class="lf-value lf-value--sm">{{ seededActivity().follows }}</p>
           </div>
           <div>
-            <p class="lf-label">Subs</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.subs') }}</p>
             <p class="lf-value lf-value--sm">{{ seededActivity().subs }}</p>
           </div>
           <div>
-            <p class="lf-label">Bits</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.bits') }}</p>
             <p class="lf-value lf-value--sm">{{ formatCompact(seededActivity().bits) }}</p>
           </div>
           <div>
-            <p class="lf-label">Donations</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.donations') }}</p>
             <p class="lf-value lf-value--sm">{{ formatMoney(seededActivity().donations) }}</p>
           </div>
           <div>
-            <p class="lf-label">Messages</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.messages') }}</p>
             <p class="lf-value lf-value--sm">{{ formatCompact(seededActivity().messages) }}</p>
           </div>
           <div>
-            <p class="lf-label">Commands used</p>
+            <p class="lf-label">{{ t('devMocks.dashboard.commandsUsed') }}</p>
             <p class="lf-value lf-value--sm">{{ seededActivity().commands }}</p>
           </div>
         </div>
         @if (!isLive()) {
-          <p class="lf-note">Seeded while offline — real counters need dashboard auth.</p>
+          <p class="lf-note">{{ t('devMocks.dashboard.seededOffline') }}</p>
         }
       </article>
 
       <article class="lf-tile lf-actions-tile">
         <div class="lf-section-mini">
-          <p class="lf-kicker">Quick actions</p>
-          <h2 class="lf-h3">Bot control</h2>
+          <p class="lf-kicker">{{ t('devMocks.dashboard.quickActions') }}</p>
+          <h2 class="lf-h3">{{ t('devMocks.dashboard.botControl') }}</h2>
         </div>
         <p class="lf-copy lf-copy--tight">
-          Join or leave chat from the board. Mock only — no chat side-effect.
+          {{ t('devMocks.dashboard.botControlCopy') }}
         </p>
         <div class="lf-actions lf-actions--tight">
           <button type="button" class="lf-btn lf-btn--primary" (click)="toggleBot()">
-            {{ botInChat() ? 'Leave chat' : 'Join bot' }}
+            {{ botInChat() ? t('devMocks.dashboard.leaveChat') : t('devMocks.dashboard.joinBot') }}
           </button>
         </div>
         <div class="lf-status-row">
           <span class="lf-chip" [class.lf-chip--live]="botInChat()" [class.lf-chip--muted]="!botInChat()">
-            {{ botInChat() ? 'Active' : 'Inactive' }}
+            {{ botInChat() ? t('devMocks.dashboard.active') : t('devMocks.dashboard.inactive') }}
           </span>
           <span class="lf-chip lf-chip--muted">
-            Health {{ healthMs() === null ? '—' : healthMs() + 'ms' }}
+            {{ t('devMocks.dashboard.health', { ms: healthMs() === null ? '—' : healthMs() + 'ms' }) }}
           </span>
         </div>
       </article>
 
       <article class="lf-tile lf-ai">
         <div class="lf-spotlight__head">
-          <p class="lf-label lf-label--inline">AI credits</p>
+          <p class="lf-label lf-label--inline">{{ t('devMocks.dashboard.aiCredits') }}</p>
           <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }}</span>
         </div>
         <p class="lf-value lf-value--sm">
@@ -195,18 +192,18 @@
         <div class="lf-bar" aria-hidden="true">
           <span [style.width.%]="aiPct()"></span>
         </div>
-        <p class="lf-note">{{ aiPct() }}% used this cycle · seeded</p>
+        <p class="lf-note">{{ t('devMocks.dashboard.aiUsed', { pct: aiPct() }) }}</p>
       </article>
     </section>
 
-    <div class="lf-mobile-tabs" role="tablist" aria-label="Chart or goals">
+    <div class="lf-mobile-tabs" role="tablist" [attr.aria-label]="t('devMocks.dashboard.trend') + ' / ' + t('devMocks.dashboard.goals')">
       <button
         type="button"
         class="lf-segment__btn"
         [class.lf-segment__btn--active]="mobilePanel() === 'chart'"
         (click)="setMobilePanel('chart')"
       >
-        Trend
+        {{ t('devMocks.dashboard.trend') }}
       </button>
       <button
         type="button"
@@ -214,7 +211,7 @@
         [class.lf-segment__btn--active]="mobilePanel() === 'goals'"
         (click)="setMobilePanel('goals')"
       >
-        Goals
+        {{ t('devMocks.dashboard.goals') }}
       </button>
     </div>
 
@@ -225,10 +222,10 @@
       >
         <div class="lf-section-mini lf-section-mini--row">
           <div>
-            <p class="lf-kicker">Performance</p>
-            <h2 class="lf-h3">Trend</h2>
+            <p class="lf-kicker">{{ t('devMocks.dashboard.performance') }}</p>
+            <h2 class="lf-h3">{{ t('devMocks.dashboard.trend') }}</h2>
           </div>
-          <div class="lf-range" role="group" aria-label="Trend range">
+          <div class="lf-range" role="group" [attr.aria-label]="t('devMocks.dashboard.trendRange')">
             @for (range of [7, 15, 30]; track range) {
               <button
                 type="button"
@@ -316,7 +313,7 @@
             [class.lf-legend__btn--off]="!isSeriesOn('viewers')"
             (click)="toggleSeries('viewers')"
           >
-            <i class="lf-swatch lf-swatch--violet"></i> Viewers
+            <i class="lf-swatch lf-swatch--violet"></i> {{ t('devMocks.dashboard.viewers') }}
           </button>
           <button
             type="button"
@@ -324,7 +321,7 @@
             [class.lf-legend__btn--off]="!isSeriesOn('bits')"
             (click)="toggleSeries('bits')"
           >
-            <i class="lf-swatch lf-swatch--gold"></i> Bits
+            <i class="lf-swatch lf-swatch--gold"></i> {{ t('devMocks.dashboard.bits') }}
           </button>
           <button
             type="button"
@@ -332,7 +329,7 @@
             [class.lf-legend__btn--off]="!isSeriesOn('follows')"
             (click)="toggleSeries('follows')"
           >
-            <i class="lf-swatch lf-swatch--sky"></i> Follows
+            <i class="lf-swatch lf-swatch--sky"></i> {{ t('devMocks.dashboard.follows') }}
           </button>
           <button
             type="button"
@@ -340,7 +337,7 @@
             [class.lf-legend__btn--off]="!isSeriesOn('subs')"
             (click)="toggleSeries('subs')"
           >
-            <i class="lf-swatch lf-swatch--pink"></i> Subs
+            <i class="lf-swatch lf-swatch--pink"></i> {{ t('devMocks.dashboard.subs') }}
           </button>
           <button
             type="button"
@@ -348,7 +345,7 @@
             [class.lf-legend__btn--off]="!isSeriesOn('donations')"
             (click)="toggleSeries('donations')"
           >
-            <i class="lf-swatch lf-swatch--green"></i> Donations
+            <i class="lf-swatch lf-swatch--green"></i> {{ t('devMocks.dashboard.donations') }}
           </button>
           <button
             type="button"
@@ -356,9 +353,9 @@
             [class.lf-legend__btn--off]="!isSeriesOn('hours')"
             (click)="toggleSeries('hours')"
           >
-            <i class="lf-swatch lf-swatch--lilac"></i> Hours
+            <i class="lf-swatch lf-swatch--lilac"></i> {{ t('devMocks.dashboard.hours') }}
           </button>
-          <span class="lf-legend__note">Seeded · {{ trendRange() }}d · tap to toggle</span>
+          <span class="lf-legend__note">{{ t('devMocks.dashboard.seededToggle', { days: trendRange() }) }}</span>
         </div>
       </article>
 
@@ -367,15 +364,15 @@
         [class.lf-panel--hidden-mobile]="mobilePanel() !== 'goals'"
       >
         <div class="lf-section-mini">
-          <p class="lf-kicker">Goals · 4 active</p>
-          <h2 class="lf-h3">Community targets</h2>
+          <p class="lf-kicker">{{ t('devMocks.dashboard.goalsKicker') }}</p>
+          <h2 class="lf-h3">{{ t('devMocks.dashboard.communityTargets') }}</h2>
         </div>
 
         <div class="lf-goals__stack">
           @for (goal of goalRows(); track goal.id) {
             <div class="lf-goal">
               <div class="lf-goal__head">
-                <span>{{ goal.label }}</span>
+                <span>{{ goal.labelText }}</span>
                 <strong>{{ goal.display }}</strong>
               </div>
               <div class="lf-bar" [class]="'lf-bar lf-bar--' + goal.tone" aria-hidden="true">
@@ -388,29 +385,29 @@
       </article>
     </section>
 
-    <section class="lf-section" aria-label="Stream history">
+    <section class="lf-section" [attr.aria-label]="t('devMocks.dashboard.history')">
       <div class="lf-section__head">
-        <p class="lf-kicker">History</p>
-        <h2 class="lf-h2">Recent streams</h2>
+        <p class="lf-kicker">{{ t('devMocks.dashboard.history') }}</p>
+        <h2 class="lf-h2">{{ t('devMocks.dashboard.recentStreams') }}</h2>
       </div>
 
       <div class="lf-tile lf-matrix">
         <div class="lf-matrix__scroller">
           <div class="lf-matrix__row lf-matrix__row--head">
-            <span>Date</span>
-            <span>Hours</span>
-            <span>Avg</span>
-            <span>Bits</span>
-            <span>Subs</span>
-            <span>Follows</span>
-            <span>Tips</span>
+            <span>{{ t('devMocks.dashboard.date') }}</span>
+            <span>{{ t('devMocks.dashboard.hours') }}</span>
+            <span>{{ t('devMocks.dashboard.avg') }}</span>
+            <span>{{ t('devMocks.dashboard.bits') }}</span>
+            <span>{{ t('devMocks.dashboard.subs') }}</span>
+            <span>{{ t('devMocks.dashboard.follows') }}</span>
+            <span>{{ t('devMocks.dashboard.tips') }}</span>
           </div>
           @for (row of historyRows(); track row.date + (row.live ? '-live' : '')) {
             <div class="lf-matrix__row" [class.lf-matrix__row--live]="row.live">
               <span class="lf-matrix__primary">
                 <strong>{{ row.date }}</strong>
                 @if (row.live) {
-                  <span class="lf-chip lf-chip--live">Live</span>
+                  <span class="lf-chip lf-chip--live">{{ t('devMocks.dashboard.live') }}</span>
                 }
               </span>
               <span>{{ row.live ? '—' : row.hours }}</span>
@@ -427,8 +424,8 @@
   </main>
 
   <footer class="lf-footer">
-    <span>© DomDimaBot · Live First dashboard · {{ channelLogin }}</span>
-    <a routerLink="/mocks/grok/oc3c">Design source · OC3c</a>
+    <span>{{ t('devMocks.dashboard.footer', { channel: channelLogin }) }}</span>
+    <a routerLink="/mocks/grok/oc3c">{{ t('devMocks.dashboard.designSource') }}</a>
   </footer>
 
   @if (toast()) {

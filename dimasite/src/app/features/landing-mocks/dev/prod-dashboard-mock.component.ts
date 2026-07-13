@@ -8,6 +8,7 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { CountUpDirective } from '../../../shared/directives/count-up.directive';
+import { LanguageService } from '../../../services/language.service';
 import { LandingAnalyticsService } from '../landing-analytics.service';
 
 type PlanTier = 'free' | 'premium' | 'pro';
@@ -105,6 +106,7 @@ function buildTrend(days: number): TrendPoint[] {
 })
 export class ProdDashboardMockComponent {
   private readonly analytics = inject(LandingAnalyticsService);
+  private readonly languageService = inject(LanguageService);
 
   readonly channelLogin = CHANNEL_LOGIN;
   readonly liveChannels = this.analytics.liveChannels;
@@ -140,7 +142,7 @@ export class ProdDashboardMockComponent {
   readonly goals = signal<GoalItem[]>([
     {
       id: 'followers',
-      label: 'Followers',
+      label: 'devMocks.dashboard.goalFollowers',
       current: 18420,
       target: 20000,
       format: 'compact',
@@ -148,7 +150,7 @@ export class ProdDashboardMockComponent {
     },
     {
       id: 'subs',
-      label: 'Subs',
+      label: 'devMocks.dashboard.goalSubs',
       current: 312,
       target: 400,
       format: 'raw',
@@ -156,7 +158,7 @@ export class ProdDashboardMockComponent {
     },
     {
       id: 'bits',
-      label: 'Bits · month',
+      label: 'devMocks.dashboard.goalBits',
       current: 12480,
       target: 15000,
       format: 'compact',
@@ -164,7 +166,7 @@ export class ProdDashboardMockComponent {
     },
     {
       id: 'hours',
-      label: 'Hours · month',
+      label: 'devMocks.dashboard.goalHours',
       current: 42.5,
       target: 60,
       format: 'hours',
@@ -185,13 +187,14 @@ export class ProdDashboardMockComponent {
   private toastTimer: number | null = null;
 
   readonly connectionLabel = computed(() => {
+    this.languageService.currentLanguage();
     switch (this.connectionStatus()) {
       case 'connected':
-        return 'Live';
+        return this.t('devMocks.dashboard.boardConnected');
       case 'reconnecting':
-        return 'Sync…';
+        return this.t('devMocks.dashboard.boardReconnecting');
       default:
-        return 'Offline';
+        return this.t('devMocks.dashboard.boardOffline');
     }
   });
 
@@ -229,13 +232,15 @@ export class ProdDashboardMockComponent {
     return Math.min(100, Math.round((aiUsed / aiLimit) * 100));
   });
 
-  readonly goalRows = computed(() =>
-    this.goals().map((goal) => ({
+  readonly goalRows = computed(() => {
+    this.languageService.currentLanguage();
+    return this.goals().map((goal) => ({
       ...goal,
+      labelText: this.t(goal.label),
       pct: Math.min(100, Math.round((goal.current / Math.max(goal.target, 1)) * 100)),
       display: this.formatGoalValue(goal)
-    }))
-  );
+    }));
+  });
 
   readonly trend = computed(() => buildTrend(this.trendRange()));
 
@@ -309,9 +314,14 @@ export class ProdDashboardMockComponent {
     void this.bootstrapPublic();
   }
 
+  t(key: string, params?: Record<string, string | number>): string {
+    this.languageService.currentLanguage();
+    return this.languageService.translate(key, params);
+  }
+
   setPlanTier(tier: PlanTier): void {
     this.planTier.set(tier);
-    this.showToast(`Simulating ${tier} plan`);
+    this.showToast(this.t('devMocks.dashboard.planSim', { tier }));
   }
 
   setTrendRange(range: TrendRange): void {
@@ -353,8 +363,8 @@ export class ProdDashboardMockComponent {
     this.botInChat.update((v) => !v);
     this.showToast(
       this.botInChat()
-        ? 'Bot joined chat (mock — not wired)'
-        : 'Bot left chat (mock — not wired)'
+        ? this.t('devMocks.dashboard.botJoined')
+        : this.t('devMocks.dashboard.botLeft')
     );
   }
 
