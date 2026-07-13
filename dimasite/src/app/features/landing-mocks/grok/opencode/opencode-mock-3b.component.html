@@ -1,0 +1,195 @@
+<div class="oc3b">
+  <header class="oc3b-nav">
+    <a routerLink="/" class="oc3b-brand" aria-label="DomDimaBot home">
+      <span class="oc3b-brand__mark" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <nav class="oc3b-nav__links">
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button>
+      <a routerLink="/mocks/grok">← OpenCode</a>
+    </nav>
+    <button type="button" class="oc3b-btn oc3b-btn--primary" (click)="login()">
+      Login with Twitch
+    </button>
+  </header>
+
+  <main class="oc3b-main">
+    <section class="oc3b-bento oc3b-bento--hero" aria-label="Hero">
+      <article class="oc3b-tile oc3b-tile--hero">
+        <p class="oc3b-kicker">OpenCode · OC3b · Cream Studio</p>
+        <h1 class="oc3b-title">
+          A soft studio desk for
+          <em>serious stream tools</em>
+        </h1>
+        <p class="oc3b-copy">
+          DomDimaBot keeps AI moderation, automation, analytics, and TTS cozy and clear — same
+          power, warmer workspace.
+        </p>
+        <div class="oc3b-actions">
+          <button type="button" class="oc3b-btn oc3b-btn--primary" (click)="login()">
+            Login with Twitch
+          </button>
+          <button type="button" class="oc3b-btn" (click)="openDiscord()">Join Discord</button>
+        </div>
+      </article>
+
+      <article class="oc3b-tile oc3b-tile--status">
+        <p class="oc3b-label">Studio status</p>
+        <p
+          class="oc3b-status"
+          [class.oc3b-status--on]="connectionStatus() === 'connected'"
+          [class.oc3b-status--warn]="connectionStatus() === 'reconnecting'"
+        >
+          {{ connectionLabel() }}
+        </p>
+        <p class="oc3b-hint">Live platform data from the production feed.</p>
+      </article>
+
+      <article class="oc3b-tile oc3b-metric oc3b-metric--peach">
+        <lucide-icon [name]="usersIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Registered</p>
+        <p class="oc3b-value" [countUp]="siteStats().registeredUsers">0</p>
+      </article>
+      <article class="oc3b-tile oc3b-metric oc3b-metric--mint">
+        <lucide-icon [name]="tvIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Live users</p>
+        <p class="oc3b-value" [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</p>
+      </article>
+      <article class="oc3b-tile oc3b-metric oc3b-metric--lilac">
+        <lucide-icon [name]="activityIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Bots active</p>
+        <p class="oc3b-value" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="160">0</p>
+      </article>
+      <article class="oc3b-tile oc3b-metric oc3b-metric--butter">
+        <lucide-icon [name]="messageIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Messages</p>
+        <p class="oc3b-value" [countUp]="siteStats().messagesReceived" [staggerDelay]="240">0</p>
+      </article>
+      <article class="oc3b-tile oc3b-metric">
+        <lucide-icon [name]="zapIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Commands</p>
+        <p class="oc3b-value" [countUp]="siteStats().totalCommands" [staggerDelay]="320">0</p>
+      </article>
+      <article class="oc3b-tile oc3b-metric">
+        <lucide-icon [name]="tvIcon" class="oc3b-icon"></lucide-icon>
+        <p class="oc3b-label">Live viewers</p>
+        <p class="oc3b-value" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="400">0</p>
+      </article>
+    </section>
+
+    <section id="features" class="oc3b-section">
+      <div class="oc3b-section__head">
+        <p class="oc3b-kicker">Features</p>
+        <h2 class="oc3b-h2">Four pastel modules, one calm workflow</h2>
+      </div>
+      <div class="oc3b-bento oc3b-bento--features">
+        @for (f of features; track f.title) {
+          <article class="oc3b-tile oc3b-feature" [attr.data-tone]="f.tone">
+            <div class="oc3b-feature__top">
+              <span class="oc3b-chip">{{ f.badge }}</span>
+              <lucide-icon [name]="iconFor(f.icon)" class="oc3b-icon"></lucide-icon>
+            </div>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.copy }}</p>
+            <button type="button" class="oc3b-text-link" (click)="scrollTo('pricing')">
+              Compare plans →
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="oc3b-section">
+      <div class="oc3b-section__head">
+        <p class="oc3b-kicker">Pricing</p>
+        <h2 class="oc3b-h2">Gentle pricing, clear upgrades</h2>
+      </div>
+      <div class="oc3b-bento oc3b-bento--pricing">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="oc3b-tile oc3b-plan"
+            [class.oc3b-plan--hot]="tier.highlighted"
+            [class.oc3b-plan--active]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="oc3b-chip oc3b-chip--gold">Most popular</span>
+            }
+            <p class="oc3b-plan__name">{{ tier.label }}</p>
+            <p class="oc3b-plan__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc3b-plan__desc">{{ tier.description }}</p>
+            <button
+              type="button"
+              class="oc3b-btn"
+              [class.oc3b-btn--primary]="!!tier.highlighted"
+              (click)="login()"
+            >
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="oc3b-tile oc3b-matrix">
+        <div class="oc3b-matrix__row oc3b-matrix__row--head">
+          <span>Capability</span><span>Free</span><span>Premium</span><span>Pro</span>
+        </div>
+        @for (row of capabilityRows; track row.label) {
+          <div class="oc3b-matrix__row">
+            <span>{{ row.label }}</span>
+            <span>{{ row.free }}</span>
+            <span>{{ row.premium }}</span>
+            <span>{{ row.pro }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section id="live" class="oc3b-section">
+      <div class="oc3b-section__head">
+        <p class="oc3b-kicker">Live now</p>
+        <h2 class="oc3b-h2">Friends of the studio</h2>
+      </div>
+      @if (liveChannels().length > 0) {
+        <div class="oc3b-bento oc3b-bento--live">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="oc3b-tile oc3b-live">
+              <img
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="oc3b-live__name">{{ channel.channel }}</p>
+                <p class="oc3b-live__meta">{{ formatViewers(channel.viewers) }} viewers</p>
+              </div>
+              <div class="oc3b-live__tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="oc3b-empty">No live channels right now.</p>
+      }
+    </section>
+
+    <section class="oc3b-tile oc3b-cta">
+      <div>
+        <h2 class="oc3b-h2">Make your stream feel managed.</h2>
+        <p class="oc3b-copy">Login with Twitch and set up DomDimaBot in a few minutes.</p>
+      </div>
+      <button type="button" class="oc3b-btn oc3b-btn--primary" (click)="login()">
+        Login with Twitch
+      </button>
+    </section>
+  </main>
+
+  <footer class="oc3b-footer">
+    <span>© DomDimaBot · OpenCode OC3b · Cream Studio</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

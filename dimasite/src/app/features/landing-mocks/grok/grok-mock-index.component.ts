@@ -79,6 +79,36 @@ export class GrokMockIndexComponent {
 
   readonly sections: GrokMockSection[] = [
     {
+      title: 'From OC3 · Command Bento',
+      note: 'OpenCode bento DNA. Three riffs — night ops deck, warm cream studio, live-channel-first board.',
+      mocks: [
+        {
+          id: 'oc3a',
+          title: 'Night Deck',
+          description:
+            'Dark glass bento. Cyan/violet glow, dense KPI tiles flanking a tall hero column.',
+          vibe: 'Night',
+          accent: 'cyan'
+        },
+        {
+          id: 'oc3b',
+          title: 'Cream Studio',
+          description:
+            'Warm paper studio. Peach/mint/lilac pastel metric tiles, soft oversized radius.',
+          vibe: 'Warm',
+          accent: 'coral'
+        },
+        {
+          id: 'oc3c',
+          title: 'Live First',
+          description:
+            'Social-proof bento. Live channel spotlight is the hero; metrics orbit around it.',
+          vibe: 'Live',
+          accent: 'violet'
+        }
+      ]
+    },
+    {
       title: 'From Mock 18 · Global Metrics',
       note: 'Calm dark product DNA with platform KPIs. Three creative riffs — board, ledger, focus strip.',
       mocks: [

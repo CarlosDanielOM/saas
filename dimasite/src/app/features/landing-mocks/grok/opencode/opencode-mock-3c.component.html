@@ -1,0 +1,204 @@
+<div class="oc3c">
+  <header class="oc3c-nav">
+    <a routerLink="/" class="oc3c-brand" aria-label="DomDimaBot home">
+      <span class="oc3c-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <nav class="oc3c-nav__links">
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button>
+      <a routerLink="/mocks/grok">← OpenCode</a>
+    </nav>
+    <button type="button" class="oc3c-btn oc3c-btn--primary" (click)="login()">
+      Login with Twitch
+    </button>
+  </header>
+
+  <main class="oc3c-main">
+    <section class="oc3c-bento oc3c-bento--hero" aria-label="Hero">
+      <article class="oc3c-tile oc3c-tile--intro">
+        <p class="oc3c-kicker">OpenCode · OC3c · Live First</p>
+        <h1 class="oc3c-title">
+          Proof first.
+          <span>Product second.</span>
+        </h1>
+        <p class="oc3c-copy">
+          DomDimaBot is already on air — AI moderation, automation, analytics, and TTS powering
+          live channels right now.
+        </p>
+        <div class="oc3c-actions">
+          <button type="button" class="oc3c-btn oc3c-btn--primary" (click)="login()">
+            Login with Twitch
+          </button>
+          <button type="button" class="oc3c-btn" (click)="openDiscord()">Join Discord</button>
+        </div>
+        <p
+          class="oc3c-feed"
+          [class.oc3c-feed--on]="connectionStatus() === 'connected'"
+          [class.oc3c-feed--warn]="connectionStatus() === 'reconnecting'"
+        >
+          {{ connectionLabel() }}
+        </p>
+      </article>
+
+      <article class="oc3c-tile oc3c-tile--spotlight" id="live">
+        <div class="oc3c-spotlight__head">
+          <span class="oc3c-chip oc3c-chip--live">Live now</span>
+          <span class="oc3c-spotlight__count">{{ liveChannels().length }} channels</span>
+        </div>
+
+        @if (featuredChannel(); as channel) {
+          <div class="oc3c-spotlight__main">
+            <img
+              [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+              [alt]="channel.channel + ' avatar'"
+              loading="lazy"
+            />
+            <div>
+              <p class="oc3c-spotlight__name">{{ channel.channel }}</p>
+              <p class="oc3c-spotlight__meta">
+                {{ formatViewers(channel.viewers) }} viewers
+              </p>
+              <div class="oc3c-tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <p class="oc3c-empty-inline">No channels live right now — metrics still update live.</p>
+        }
+
+        @if (otherChannels().length > 0) {
+          <div class="oc3c-spotlight__list">
+            @for (channel of otherChannels(); track channel.channelID) {
+              <div class="oc3c-spotlight__row">
+                <img
+                  [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                  [alt]="channel.channel + ' avatar'"
+                  loading="lazy"
+                />
+                <span class="oc3c-spotlight__row-name">{{ channel.channel }}</span>
+                <span class="oc3c-spotlight__row-viewers">
+                  {{ formatViewers(channel.viewers) }}
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </article>
+
+      <article class="oc3c-tile oc3c-metric">
+        <lucide-icon [name]="usersIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Registered</p>
+        <p class="oc3c-value" [countUp]="siteStats().registeredUsers">0</p>
+      </article>
+      <article class="oc3c-tile oc3c-metric">
+        <lucide-icon [name]="tvIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Live users</p>
+        <p class="oc3c-value" [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</p>
+      </article>
+      <article class="oc3c-tile oc3c-metric">
+        <lucide-icon [name]="activityIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Bots active</p>
+        <p class="oc3c-value" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="160">0</p>
+      </article>
+      <article class="oc3c-tile oc3c-metric oc3c-metric--accent">
+        <lucide-icon [name]="messageIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Messages</p>
+        <p class="oc3c-value" [countUp]="siteStats().messagesReceived" [staggerDelay]="240">0</p>
+      </article>
+      <article class="oc3c-tile oc3c-metric">
+        <lucide-icon [name]="zapIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Commands</p>
+        <p class="oc3c-value" [countUp]="siteStats().totalCommands" [staggerDelay]="320">0</p>
+      </article>
+      <article class="oc3c-tile oc3c-metric">
+        <lucide-icon [name]="tvIcon" class="oc3c-icon"></lucide-icon>
+        <p class="oc3c-label">Viewers</p>
+        <p class="oc3c-value" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="400">0</p>
+      </article>
+    </section>
+
+    <section id="features" class="oc3c-section">
+      <div class="oc3c-section__head">
+        <p class="oc3c-kicker">Features</p>
+        <h2 class="oc3c-h2">What those live channels are running</h2>
+      </div>
+      <div class="oc3c-bento oc3c-bento--features">
+        @for (f of features; track f.title) {
+          <article class="oc3c-tile oc3c-feature">
+            <span class="oc3c-chip">{{ f.badge }}</span>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.copy }}</p>
+            <button type="button" class="oc3c-text-link" (click)="scrollTo('pricing')">
+              Compare plans →
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="oc3c-section">
+      <div class="oc3c-section__head">
+        <p class="oc3c-kicker">Pricing</p>
+        <h2 class="oc3c-h2">Join the board at your pace</h2>
+      </div>
+      <div class="oc3c-bento oc3c-bento--pricing">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="oc3c-tile oc3c-plan"
+            [class.oc3c-plan--hot]="tier.highlighted"
+            [class.oc3c-plan--active]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="oc3c-chip oc3c-chip--gold">Most popular</span>
+            }
+            <p class="oc3c-plan__name">{{ tier.label }}</p>
+            <p class="oc3c-plan__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc3c-plan__desc">{{ tier.description }}</p>
+            <button
+              type="button"
+              class="oc3c-btn"
+              [class.oc3c-btn--primary]="!!tier.highlighted"
+              (click)="login()"
+            >
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="oc3c-tile oc3c-matrix">
+        <div class="oc3c-matrix__row oc3c-matrix__row--head">
+          <span>Capability</span><span>Free</span><span>Premium</span><span>Pro</span>
+        </div>
+        @for (row of capabilityRows; track row.label) {
+          <div class="oc3c-matrix__row">
+            <span>{{ row.label }}</span>
+            <span>{{ row.free }}</span>
+            <span>{{ row.premium }}</span>
+            <span>{{ row.pro }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="oc3c-tile oc3c-cta">
+      <div>
+        <h2 class="oc3c-h2">Be the next live tile.</h2>
+        <p class="oc3c-copy">Connect Twitch and put DomDimaBot on your channel today.</p>
+      </div>
+      <button type="button" class="oc3c-btn oc3c-btn--primary" (click)="login()">
+        Login with Twitch
+      </button>
+    </section>
+  </main>
+
+  <footer class="oc3c-footer">
+    <span>© DomDimaBot · OpenCode OC3c · Live First</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

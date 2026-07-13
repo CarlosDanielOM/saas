@@ -1,0 +1,167 @@
+<div class="oc3a">
+  <header class="oc3a-nav">
+    <a routerLink="/" class="oc3a-brand" aria-label="DomDimaBot home">
+      <span class="oc3a-brand__dot" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <nav class="oc3a-nav__links">
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button>
+      <a routerLink="/mocks/grok">← OpenCode</a>
+    </nav>
+    <button type="button" class="oc3a-btn oc3a-btn--primary" (click)="login()">
+      Login with Twitch
+    </button>
+  </header>
+
+  <main class="oc3a-main">
+    <section class="oc3a-bento oc3a-bento--hero" aria-label="Hero">
+      <article class="oc3a-tile oc3a-tile--hero">
+        <div class="oc3a-hero__top">
+          <p class="oc3a-kicker">OpenCode · OC3a · Night Deck</p>
+          <span
+            class="oc3a-pill"
+            [class.oc3a-pill--on]="connectionStatus() === 'connected'"
+            [class.oc3a-pill--warn]="connectionStatus() === 'reconnecting'"
+          >
+            {{ connectionLabel() }}
+          </span>
+        </div>
+        <h1 class="oc3a-title">
+          Ops bento for streams that never sleep
+        </h1>
+        <p class="oc3a-copy">
+          DomDimaBot packs AI moderation, unlimited automation, analytics, and TTS into a dark
+          command deck — live metrics on every tile.
+        </p>
+        <div class="oc3a-actions">
+          <button type="button" class="oc3a-btn oc3a-btn--primary" (click)="login()">
+            Login with Twitch
+          </button>
+          <button type="button" class="oc3a-btn" (click)="openDiscord()">Join Discord</button>
+        </div>
+      </article>
+
+      @for (m of metrics(); track m.label; let i = $index) {
+        <article class="oc3a-tile oc3a-metric" [class.oc3a-metric--hot]="i === 3">
+          <div class="oc3a-metric__head">
+            <lucide-icon [name]="m.icon" class="oc3a-icon"></lucide-icon>
+            <span>{{ m.label }}</span>
+          </div>
+          <p class="oc3a-metric__value" [countUp]="m.value" [staggerDelay]="i * 70">0</p>
+        </article>
+      }
+    </section>
+
+    <section id="features" class="oc3a-section">
+      <div class="oc3a-section__head">
+        <p class="oc3a-kicker">Features</p>
+        <h2 class="oc3a-h2">Modular systems, night-shift ready</h2>
+      </div>
+      <div class="oc3a-bento oc3a-bento--features">
+        @for (f of features; track f.title) {
+          <article class="oc3a-tile oc3a-feature">
+            <span class="oc3a-badge">{{ f.badge }}</span>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.copy }}</p>
+            <button type="button" class="oc3a-link" (click)="scrollTo('pricing')">
+              Compare plans →
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="oc3a-section">
+      <div class="oc3a-section__head">
+        <p class="oc3a-kicker">Pricing</p>
+        <h2 class="oc3a-h2">Pick a tier, keep the deck</h2>
+      </div>
+      <div class="oc3a-bento oc3a-bento--pricing">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="oc3a-tile oc3a-plan"
+            [class.oc3a-plan--hot]="tier.highlighted"
+            [class.oc3a-plan--active]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="oc3a-badge oc3a-badge--gold">Most popular</span>
+            }
+            <p class="oc3a-plan__name">{{ tier.label }}</p>
+            <p class="oc3a-plan__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc3a-plan__desc">{{ tier.description }}</p>
+            <button
+              type="button"
+              class="oc3a-btn"
+              [class.oc3a-btn--primary]="!!tier.highlighted"
+              (click)="login()"
+            >
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="oc3a-tile oc3a-matrix">
+        <div class="oc3a-matrix__row oc3a-matrix__row--head">
+          <span>Capability</span><span>Free</span><span>Premium</span><span>Pro</span>
+        </div>
+        @for (row of capabilityRows; track row.label) {
+          <div class="oc3a-matrix__row">
+            <span>{{ row.label }}</span>
+            <span>{{ row.free }}</span>
+            <span>{{ row.premium }}</span>
+            <span>{{ row.pro }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section id="live" class="oc3a-section">
+      <div class="oc3a-section__head">
+        <p class="oc3a-kicker">Live now</p>
+        <h2 class="oc3a-h2">Channels on the feed</h2>
+      </div>
+      @if (liveChannels().length > 0) {
+        <div class="oc3a-bento oc3a-bento--live">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="oc3a-tile oc3a-live">
+              <img
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="oc3a-live__name">{{ channel.channel }}</p>
+                <p class="oc3a-live__meta">{{ formatViewers(channel.viewers) }} viewers</p>
+              </div>
+              <div class="oc3a-live__tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="oc3a-empty">No live channels right now.</p>
+      }
+    </section>
+
+    <section class="oc3a-tile oc3a-cta">
+      <div>
+        <h2 class="oc3a-h2">Deploy the deck on your channel</h2>
+        <p class="oc3a-copy">Connect Twitch and go live with DomDimaBot in minutes.</p>
+      </div>
+      <button type="button" class="oc3a-btn oc3a-btn--primary" (click)="login()">
+        Login with Twitch
+      </button>
+    </section>
+  </main>
+
+  <footer class="oc3a-footer">
+    <span>© DomDimaBot · OpenCode OC3a · Night Deck</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

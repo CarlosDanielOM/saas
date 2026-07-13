@@ -113,6 +113,31 @@ export const routes: Routes = [
           ),
         title: 'Command Bento · OpenCode Mock | DomDimaBot'
       },
+      // Lineage of OC3 — Command Bento
+      {
+        path: 'oc3a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-3a.component').then(
+            (m) => m.OpencodeMock3aComponent
+          ),
+        title: 'Night Deck · OpenCode OC3a | DomDimaBot'
+      },
+      {
+        path: 'oc3b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-3b.component').then(
+            (m) => m.OpencodeMock3bComponent
+          ),
+        title: 'Cream Studio · OpenCode OC3b | DomDimaBot'
+      },
+      {
+        path: 'oc3c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-3c.component').then(
+            (m) => m.OpencodeMock3cComponent
+          ),
+        title: 'Live First · OpenCode OC3c | DomDimaBot'
+      },
       // Lineage of Mock 18 — Global Metrics
       {
         path: '18a',
