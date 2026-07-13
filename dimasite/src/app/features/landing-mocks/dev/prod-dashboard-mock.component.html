@@ -1,0 +1,430 @@
+<div class="lf" [attr.data-plan]="planTier()" [class.lf--live]="isLive()">
+  <header class="lf-nav">
+    <a routerLink="/" class="lf-brand" aria-label="DomDimaBot home">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+
+    <nav class="lf-nav__links" aria-label="Mock modules">
+      <button type="button" class="lf-nav__link lf-nav__link--active">Dashboard</button>
+      <a routerLink="/mocks/dev/prod-commands" class="lf-nav__link">Commands</a>
+      <button type="button" class="lf-nav__link" disabled>Analytics</button>
+      <a routerLink="/mocks/dev" class="lf-nav__link">← Dev mocks</a>
+    </nav>
+
+    <div class="lf-nav__right">
+      <span
+        class="lf-chip"
+        [class.lf-chip--live]="connectionStatus() === 'connected'"
+        [class.lf-chip--muted]="connectionStatus() !== 'connected'"
+      >
+        {{ connectionLabel() }}
+      </span>
+      @if (avatarUrl()) {
+        <img class="lf-avatar-img" [src]="avatarUrl()" [alt]="displayName()" />
+      } @else {
+        <div class="lf-avatar">{{ avatarLetter() }}</div>
+      }
+    </div>
+  </header>
+
+  <main class="lf-main">
+    <!-- Hero bento -->
+    <section class="lf-bento lf-bento--hero" aria-label="Dashboard overview">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">Control center · {{ channelLogin }}</p>
+        <h1 class="lf-title">
+          Channel
+          <span>dashboard.</span>
+        </h1>
+        <p class="lf-copy">
+          Live First product shell for
+          <strong>{{ displayName() }}</strong>.
+          Public profile, commands, and network board are live.
+          KPIs / history / goals are seeded (auth API).
+        </p>
+
+        <div class="lf-actions">
+          <button
+            type="button"
+            class="lf-btn"
+            [class.lf-btn--primary]="!botInChat()"
+            (click)="toggleBot()"
+          >
+            {{ botInChat() ? 'Leave chat' : 'Join bot' }}
+          </button>
+          <a routerLink="/mocks/dev/prod-commands" class="lf-btn">Open commands</a>
+        </div>
+
+        <p
+          class="lf-feed"
+          [class.lf-feed--on]="botInChat()"
+          [class.lf-feed--warn]="!botInChat()"
+        >
+          Bot {{ botInChat() ? 'active in chat' : 'not in chat' }}
+          @if (healthMs() !== null) {
+            · API {{ healthMs() }}ms
+          }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight" [class.lf-spotlight--live]="isLive()">
+        <div class="lf-spotlight__head">
+          @if (isLive()) {
+            <span class="lf-chip lf-chip--live">Live now</span>
+          } @else {
+            <span class="lf-chip lf-chip--muted">Offline</span>
+          }
+          <span class="lf-spotlight__count">{{ planTier() }} · owner</span>
+        </div>
+
+        <div class="lf-channel">
+          @if (avatarUrl()) {
+            <img
+              class="lf-channel__avatar"
+              [class.lf-channel__avatar--live]="isLive()"
+              [src]="avatarUrl()"
+              [alt]="displayName()"
+            />
+          } @else {
+            <div class="lf-channel__avatar lf-channel__avatar--fallback">
+              {{ avatarLetter() }}
+            </div>
+          }
+          <div>
+            <p class="lf-channel__name">{{ displayName() }}</p>
+            @if (myLiveChannel(); as liveCh) {
+              <p class="lf-channel__meta">
+                {{ formatViewers(liveCh.viewers) }} viewers · {{ uptimeLabel() }}
+              </p>
+            } @else {
+              <p class="lf-channel__meta">Not streaming right now</p>
+            }
+          </div>
+        </div>
+
+        @if (myLiveChannel(); as live) {
+          <div class="lf-tags">
+            @for (platform of live.botPlatforms; track platform) {
+              <span>{{ platform }}</span>
+            }
+            <span>twitch</span>
+          </div>
+        } @else {
+          <p class="lf-empty-inline">
+            When you go live, this tile pulls real title, game, and viewers from the network board.
+          </p>
+        }
+
+        <div class="lf-plan-switch" role="group" aria-label="Simulate plan tier">
+          @for (tier of ['free', 'premium', 'pro']; track tier) {
+            <button
+              type="button"
+              class="lf-plan-pill"
+              [class.lf-plan-pill--active]="planTier() === tier"
+              (click)="setPlanTier($any(tier))"
+            >
+              {{ tier }}
+            </button>
+          }
+        </div>
+      </article>
+
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Avg hours / stream</p>
+        <p class="lf-value">{{ kpis().avgHours }}</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Avg viewers · 30d</p>
+        <p class="lf-value" [countUp]="kpis().avgViewers">0</p>
+      </article>
+      <article class="lf-tile lf-metric lf-metric--accent">
+        <p class="lf-label">Bits · 30d</p>
+        <p class="lf-value" [countUp]="kpis().bits30d">0</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Commands</p>
+        <p class="lf-value" [countUp]="commandCount()">0</p>
+      </article>
+    </section>
+
+    <!-- Activity + actions -->
+    <section class="lf-bento lf-bento--ops" aria-label="Live ops">
+      <article class="lf-tile lf-activity">
+        <div class="lf-section-mini">
+          <p class="lf-kicker">Live activity</p>
+          <h2 class="lf-h3">This session</h2>
+        </div>
+        <div class="lf-activity__grid">
+          <div>
+            <p class="lf-label">Follows</p>
+            <p class="lf-value lf-value--sm">{{ seededActivity().follows }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Subs</p>
+            <p class="lf-value lf-value--sm">{{ seededActivity().subs }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Bits</p>
+            <p class="lf-value lf-value--sm">{{ formatCompact(seededActivity().bits) }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Donations</p>
+            <p class="lf-value lf-value--sm">{{ formatMoney(seededActivity().donations) }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Messages</p>
+            <p class="lf-value lf-value--sm">{{ formatCompact(seededActivity().messages) }}</p>
+          </div>
+          <div>
+            <p class="lf-label">Commands</p>
+            <p class="lf-value lf-value--sm">{{ seededActivity().commands }}</p>
+          </div>
+        </div>
+        @if (!isLive()) {
+          <p class="lf-note">Seeded while offline — real counters require dashboard auth.</p>
+        }
+      </article>
+
+      <article class="lf-tile">
+        <div class="lf-section-mini">
+          <p class="lf-kicker">Quick actions</p>
+          <h2 class="lf-h3">Bot control</h2>
+        </div>
+        <p class="lf-copy lf-copy--tight">
+          Join or leave chat without leaving the board. Mock only — no chat side-effect.
+        </p>
+        <div class="lf-actions lf-actions--tight">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="toggleBot()">
+            {{ botInChat() ? 'Leave chat' : 'Join bot' }}
+          </button>
+        </div>
+        <div class="lf-status-row">
+          <span class="lf-chip" [class.lf-chip--live]="botInChat()" [class.lf-chip--muted]="!botInChat()">
+            {{ botInChat() ? 'Active' : 'Inactive' }}
+          </span>
+          <span class="lf-chip lf-chip--muted">
+            Health {{ healthMs() === null ? '—' : healthMs() + 'ms' }}
+          </span>
+        </div>
+      </article>
+
+      <article class="lf-tile lf-tile--network">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip lf-chip--live">Network</span>
+          <span class="lf-spotlight__count">{{ liveChannels().length }} live</span>
+        </div>
+        @if (otherLive().length === 0) {
+          <p class="lf-empty-inline">No other channels on the board right now.</p>
+        } @else {
+          <div class="lf-network-list">
+            @for (channel of otherLive(); track trackChannel($index, channel)) {
+              <div class="lf-network-row">
+                <img
+                  [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                  [alt]="channel.channel"
+                  loading="lazy"
+                />
+                <span class="lf-network-row__name">{{ channel.channel }}</span>
+                <span class="lf-network-row__viewers">{{ formatViewers(channel.viewers) }}</span>
+              </div>
+            }
+          </div>
+        }
+        <p class="lf-note">
+          Platform ·
+          <span [countUp]="siteStats().liveUsers">0</span> live users ·
+          <span [countUp]="siteStats().totalLiveViewer">0</span> viewers
+        </p>
+      </article>
+    </section>
+
+    <!-- AI credits -->
+    <section class="lf-bento lf-bento--kpi" aria-label="KPI strip">
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">Donations · 30d</p>
+        <p class="lf-value lf-value--sm">{{ formatMoney(kpis().donations30d) }}</p>
+      </article>
+      <article class="lf-tile lf-ai">
+        <div class="lf-spotlight__head">
+          <p class="lf-label" style="margin:0">AI credits</p>
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }}</span>
+        </div>
+        <p class="lf-value lf-value--sm">
+          {{ formatCompact(kpis().aiUsed) }}
+          <span class="lf-value__suffix">/ {{ formatCompact(kpis().aiLimit) }}</span>
+        </p>
+        <div class="lf-bar" aria-hidden="true">
+          <span [style.width.%]="aiPct()"></span>
+        </div>
+        <p class="lf-note">{{ aiPct() }}% used this cycle · seeded</p>
+      </article>
+      <article class="lf-tile lf-cmds-strip">
+        <div class="lf-spotlight__head">
+          <p class="lf-label" style="margin:0">Live commands</p>
+          <a routerLink="/mocks/dev/prod-commands" class="lf-text-link">Open →</a>
+        </div>
+        <p class="lf-value lf-value--sm" [countUp]="commandCount()">0</p>
+        <div class="lf-cmd-samples">
+          @for (cmd of commandSamples(); track cmd.cmd + cmd.name) {
+            <code class="lf-code">!{{ cmd.cmd }}</code>
+          } @empty {
+            <span class="lf-note">Loading…</span>
+          }
+        </div>
+      </article>
+    </section>
+
+    <!-- Chart + goals -->
+    <div class="lf-mobile-tabs" role="tablist" aria-label="Chart or goals">
+      <button
+        type="button"
+        class="lf-segment__btn"
+        [class.lf-segment__btn--active]="mobilePanel() === 'chart'"
+        (click)="setMobilePanel('chart')"
+      >
+        Trend
+      </button>
+      <button
+        type="button"
+        class="lf-segment__btn"
+        [class.lf-segment__btn--active]="mobilePanel() === 'goals'"
+        (click)="setMobilePanel('goals')"
+      >
+        Goals
+      </button>
+    </div>
+
+    <section class="lf-bento lf-bento--mid" aria-label="Performance and goals">
+      <article
+        class="lf-tile lf-chart"
+        [class.lf-panel--hidden-mobile]="mobilePanel() !== 'chart'"
+      >
+        <div class="lf-section-mini lf-section-mini--row">
+          <div>
+            <p class="lf-kicker">Performance</p>
+            <h2 class="lf-h3">Trend</h2>
+          </div>
+          <div class="lf-range" role="group" aria-label="Trend range">
+            @for (range of [7, 15, 30]; track range) {
+              <button
+                type="button"
+                class="lf-range__btn"
+                [class.lf-range__btn--active]="trendRange() === range"
+                (click)="setTrendRange($any(range))"
+              >
+                {{ range }}d
+              </button>
+            }
+          </div>
+        </div>
+
+        <svg class="lf-svg" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="lfArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
+              <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path [attr.d]="chartPaths().area" fill="url(#lfArea)" />
+          <path
+            [attr.d]="chartPaths().viewers"
+            fill="none"
+            stroke="#c4b5fd"
+            stroke-width="0.7"
+            vector-effect="non-scaling-stroke"
+          />
+          <path
+            [attr.d]="chartPaths().bits"
+            fill="none"
+            stroke="#fbbf24"
+            stroke-width="0.55"
+            stroke-dasharray="1.2 1"
+            vector-effect="non-scaling-stroke"
+          />
+        </svg>
+
+        <div class="lf-legend">
+          <span><i class="lf-swatch lf-swatch--violet"></i> Avg viewers</span>
+          <span><i class="lf-swatch lf-swatch--gold"></i> Bits</span>
+          <span class="lf-note">Seeded series · {{ trendRange() }} days</span>
+        </div>
+      </article>
+
+      <article
+        class="lf-tile lf-goals"
+        [class.lf-panel--hidden-mobile]="mobilePanel() !== 'goals'"
+      >
+        <div class="lf-section-mini">
+          <p class="lf-kicker">Goals</p>
+          <h2 class="lf-h3">Community targets</h2>
+        </div>
+
+        <div class="lf-goal">
+          <div class="lf-goal__head">
+            <span>Followers</span>
+            <strong>{{ formatCompact(goals().followers) }} / {{ formatCompact(goals().followersGoal) }}</strong>
+          </div>
+          <div class="lf-bar"><span [style.width.%]="followerPct()"></span></div>
+        </div>
+
+        <div class="lf-goal">
+          <div class="lf-goal__head">
+            <span>Subs</span>
+            <strong>{{ goals().subs }} / {{ goals().subsGoal }}</strong>
+          </div>
+          <div class="lf-bar lf-bar--gold"><span [style.width.%]="subPct()"></span></div>
+        </div>
+
+        <p class="lf-note">Progress bars are seeded for layout — swap to bootstrap when auth is available.</p>
+      </article>
+    </section>
+
+    <!-- History -->
+    <section class="lf-section" aria-label="Stream history">
+      <div class="lf-section__head">
+        <div>
+          <p class="lf-kicker">History</p>
+          <h2 class="lf-h2">Recent streams</h2>
+        </div>
+      </div>
+
+      <div class="lf-tile lf-matrix">
+        <div class="lf-matrix__row lf-matrix__row--head">
+          <span>Date</span>
+          <span>Hours</span>
+          <span>Avg</span>
+          <span>Bits</span>
+          <span>Subs</span>
+          <span>Follows</span>
+          <span>Tips</span>
+        </div>
+        @for (row of historyRows(); track row.date + (row.live ? '-live' : '')) {
+          <div class="lf-matrix__row" [class.lf-matrix__row--live]="row.live">
+            <span class="lf-matrix__primary">
+              <strong>{{ row.date }}</strong>
+              @if (row.live) {
+                <span class="lf-chip lf-chip--live">Live</span>
+              }
+            </span>
+            <span>{{ row.live ? '—' : row.hours }}</span>
+            <span>{{ row.avgViewers }}</span>
+            <span>{{ formatCompact(row.bits) }}</span>
+            <span>{{ row.subs }}</span>
+            <span>{{ row.follows }}</span>
+            <span>{{ formatMoney(row.donations) }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  </main>
+
+  <footer class="lf-footer">
+    <span>© DomDimaBot · Live First dashboard mock · {{ channelLogin }}</span>
+    <a routerLink="/mocks/grok/oc3c">Design source · OC3c</a>
+  </footer>
+
+  @if (toast()) {
+    <div class="lf-toast" role="status">{{ toast() }}</div>
+  }
+</div>

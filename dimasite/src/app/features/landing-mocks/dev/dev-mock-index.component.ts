@@ -139,6 +139,13 @@ interface DevMockCard {
 export class DevMockIndexComponent {
   readonly mocks: DevMockCard[] = [
     {
+      id: 'prod-dashboard',
+      title: 'Prod Dashboard',
+      badge: 'Live First · OC3c',
+      description:
+        'Channel control center for cdom201 — live network board, public profile/commands, seeded KPIs, trend, goals, and stream history.'
+    },
+    {
       id: 'prod-commands',
       title: 'Prod Commands',
       badge: 'Live API + timers',

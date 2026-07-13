@@ -230,6 +230,14 @@ export const routes: Routes = [
             (m) => m.ProdCommandsMockComponent
           ),
         title: 'Prod Commands Mock | DomDimaBot'
+      },
+      {
+        path: 'prod-dashboard',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/prod-dashboard-mock.component').then(
+            (m) => m.ProdDashboardMockComponent
+          ),
+        title: 'Prod Dashboard Mock | DomDimaBot'
       }
     ]
   },
