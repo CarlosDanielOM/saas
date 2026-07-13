@@ -212,6 +212,28 @@ export const routes: Routes = [
     title: '404 | DomDimaBot'
   },
   {
+    path: 'mocks/dev',
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/dev-mock-index.component').then(
+            (m) => m.DevMockIndexComponent
+          ),
+        title: 'Dev Mocks | DomDimaBot'
+      },
+      {
+        path: 'prod-commands',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/prod-commands-mock.component').then(
+            (m) => m.ProdCommandsMockComponent
+          ),
+        title: 'Prod Commands Mock | DomDimaBot'
+      }
+    ]
+  },
+  {
     path: 'mocks/grok',
     children: [
       {

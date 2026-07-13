@@ -1,0 +1,454 @@
+<div class="pcm" [attr.data-plan-tier]="planTier()">
+  <header class="pcm-top">
+    <div class="pcm-top__left">
+      <a routerLink="/mocks/dev" class="pcm-back">← Dev mocks</a>
+      <div class="pcm-badge">LIVE API · mock shell</div>
+      <h1 class="pcm-title">Commands</h1>
+      <p class="pcm-sub">
+        Real chat commands for <strong>{{ channelName }}</strong>
+        <span class="pcm-mono">({{ channelID }})</span>
+        via <span class="pcm-mono">{{ liveApi }}/commands/…</span>.
+        Timers are interactive local state (API requires auth) with real plan-tier interval rules.
+      </p>
+    </div>
+
+    <div class="pcm-top__right">
+      <button type="button" class="pcm-icon-btn" (click)="toggleTheme()" [attr.aria-label]="'Toggle theme'">
+        <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="pcm-ico"></lucide-icon>
+      </button>
+    </div>
+  </header>
+
+  <section class="pcm-toolbar">
+    <div class="pcm-tier" role="group" aria-label="Simulate plan tier">
+      <span class="pcm-tier__label">Plan</span>
+      @for (tier of ['free', 'premium', 'pro']; track tier) {
+        <button
+          type="button"
+          class="pcm-tier__btn"
+          [class.pcm-tier__btn--active]="planTier() === tier"
+          [attr.data-tier]="tier"
+          (click)="setPlanTier($any(tier))"
+        >
+          {{ tier }}
+        </button>
+      }
+    </div>
+
+    <div class="pcm-stats">
+      <span class="pcm-stat">{{ totalCommands() }} commands</span>
+      <span class="pcm-stat">{{ enabledCommands() }} enabled</span>
+      <span class="pcm-stat">
+        {{ activeTimers() }}/{{ timerLimit() }} active timers
+      </span>
+    </div>
+  </section>
+
+  <nav class="pcm-tabs" role="tablist">
+    <button
+      type="button"
+      class="pcm-tab"
+      role="tab"
+      [class.pcm-tab--active]="activeTab() === 'commands'"
+      [attr.aria-selected]="activeTab() === 'commands'"
+      (click)="setTab('commands')"
+    >
+      <lucide-icon [name]="zapIcon" class="pcm-ico"></lucide-icon>
+      Chat commands
+    </button>
+    <button
+      type="button"
+      class="pcm-tab"
+      role="tab"
+      [class.pcm-tab--active]="activeTab() === 'timers'"
+      [attr.aria-selected]="activeTab() === 'timers'"
+      (click)="setTab('timers')"
+    >
+      <lucide-icon [name]="timerIcon" class="pcm-ico"></lucide-icon>
+      Timer commands
+    </button>
+  </nav>
+
+  @if (activeTab() === 'commands') {
+    <section class="pcm-panel">
+      <div class="pcm-panel__head">
+        <div>
+          <h2 class="pcm-panel__title">Chat commands</h2>
+          <p class="pcm-panel__hint">Read-only · fetched from production</p>
+        </div>
+        <div class="pcm-panel__actions">
+          <button
+            type="button"
+            class="pcm-btn pcm-btn--ghost"
+            (click)="loadCommands()"
+            [disabled]="commandsLoading()"
+          >
+            <lucide-icon [name]="refreshIcon" class="pcm-ico" [class.pcm-spin]="commandsLoading()"></lucide-icon>
+            Refresh
+          </button>
+          <div class="pcm-view-toggle">
+            <button
+              type="button"
+              class="pcm-view-toggle__btn"
+              [class.pcm-view-toggle__btn--active]="viewMode() === 'table'"
+              (click)="setViewMode('table')"
+              aria-label="Table view"
+            >
+              <lucide-icon [name]="listIcon" class="pcm-ico"></lucide-icon>
+            </button>
+            <button
+              type="button"
+              class="pcm-view-toggle__btn"
+              [class.pcm-view-toggle__btn--active]="viewMode() === 'card'"
+              (click)="setViewMode('card')"
+              aria-label="Card view"
+            >
+              <lucide-icon [name]="gridIcon" class="pcm-ico"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pcm-search">
+        <input
+          type="search"
+          class="pcm-input"
+          placeholder="Search name, trigger, description…"
+          [value]="searchInput()"
+          (input)="onSearchInput($any($event.target).value)"
+        />
+      </div>
+
+      @if (commandsLoading() && commands().length === 0) {
+        <div class="pcm-empty">Loading live commands…</div>
+      } @else if (commandsError() && commands().length === 0) {
+        <div class="pcm-empty pcm-empty--error">
+          <p>{{ commandsError() }}</p>
+          <button type="button" class="pcm-btn pcm-btn--ghost" (click)="loadCommands()">Retry</button>
+        </div>
+      } @else if (viewMode() === 'table') {
+        <div class="pcm-table-wrap">
+          <table class="pcm-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Trigger</th>
+                <th>Description</th>
+                <th>Cooldown</th>
+                <th>Level</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (paginatedCommands().length === 0) {
+                <tr>
+                  <td colspan="6" class="pcm-table__empty">No commands match your search.</td>
+                </tr>
+              }
+              @for (command of paginatedCommands(); track commandTrackId(command)) {
+                <tr [class.pcm-table__row--off]="command.enabled === false">
+                  <td>
+                    <div class="pcm-name">
+                      {{ command.name }}
+                      @if (command.reserved) {
+                        <span class="pcm-pill pcm-pill--muted">reserved</span>
+                      }
+                    </div>
+                  </td>
+                  <td><code class="pcm-code">!{{ command.cmd }}</code></td>
+                  <td class="pcm-desc">{{ command.description || command.message || '—' }}</td>
+                  <td>{{ command.cooldown }}s</td>
+                  <td>{{ getUserLevelLabel(command) }}</td>
+                  <td>
+                    <span
+                      class="pcm-status"
+                      [class.pcm-status--on]="command.enabled !== false"
+                      [class.pcm-status--off]="command.enabled === false"
+                    >
+                      {{ command.enabled === false ? 'Off' : 'On' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pcm-pager">
+          <label class="pcm-pager__size">
+            Per page
+            <select
+              class="pcm-select"
+              [value]="itemsPerPage()"
+              (change)="onItemsPerPageChange($event)"
+            >
+              @for (n of itemsPerPageOptions; track n) {
+                <option [value]="n">{{ n }}</option>
+              }
+            </select>
+          </label>
+          <div class="pcm-pager__pages">
+            <button
+              type="button"
+              class="pcm-btn pcm-btn--ghost pcm-btn--sm"
+              [disabled]="currentPage() <= 1"
+              (click)="changePage(currentPage() - 1)"
+            >
+              Prev
+            </button>
+            @for (page of pages(); track page) {
+              <button
+                type="button"
+                class="pcm-page"
+                [class.pcm-page--active]="page === currentPage()"
+                (click)="changePage(page)"
+              >
+                {{ page }}
+              </button>
+            }
+            <button
+              type="button"
+              class="pcm-btn pcm-btn--ghost pcm-btn--sm"
+              [disabled]="currentPage() >= totalPages()"
+              (click)="changePage(currentPage() + 1)"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="pcm-cards">
+          @for (command of paginatedCommands(); track commandTrackId(command)) {
+            <article class="pcm-card" [class.pcm-card--off]="command.enabled === false">
+              <div class="pcm-card__top">
+                <h3>{{ command.name }}</h3>
+                <code class="pcm-code">!{{ command.cmd }}</code>
+              </div>
+              <p class="pcm-card__body">{{ command.description || command.message || 'No description' }}</p>
+              <div class="pcm-card__meta">
+                <span>{{ command.cooldown }}s</span>
+                <span>{{ getUserLevelLabel(command) }}</span>
+                <span>{{ command.enabled === false ? 'Off' : 'On' }}</span>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (activeTab() === 'timers') {
+    <section class="pcm-panel">
+      <div class="pcm-panel__head">
+        <div>
+          <h2 class="pcm-panel__title">Timer commands</h2>
+          <p class="pcm-panel__hint">
+            Repeat a message every X minutes while live.
+            <strong>{{ intervalHint() }}</strong>
+          </p>
+        </div>
+        <button type="button" class="pcm-btn pcm-btn--primary" (click)="openCreateTimer()">
+          <lucide-icon [name]="plusIcon" class="pcm-ico"></lucide-icon>
+          Add timer
+        </button>
+      </div>
+
+      <div class="pcm-policy" [attr.data-tier]="planTier()">
+        <div class="pcm-policy__row">
+          <lucide-icon [name]="clockIcon" class="pcm-ico"></lucide-icon>
+          <div>
+            <strong>{{ planTier().toUpperCase() }} interval rules</strong>
+            <p>{{ intervalHint() }} Max active timers: {{ timerLimit() }}.</p>
+          </div>
+        </div>
+        @if (planTier() === 'free') {
+          <div class="pcm-chips">
+            @for (m of freeIntervals; track m) {
+              <span class="pcm-chip">{{ m }}m</span>
+            }
+          </div>
+        }
+      </div>
+
+      @if (timers().length === 0) {
+        <div class="pcm-empty">
+          <p>No timers yet. Create one to try the interval picker.</p>
+          <button type="button" class="pcm-btn pcm-btn--primary" (click)="openCreateTimer()">
+            Add timer
+          </button>
+        </div>
+      } @else {
+        <div class="pcm-timers">
+          @for (timer of timers(); track timer.id) {
+            <article class="pcm-timer" [class.pcm-timer--off]="!timer.active">
+              <div class="pcm-timer__main">
+                <div class="pcm-timer__title">
+                  <code class="pcm-code">{{ timer.name }}</code>
+                  <span class="pcm-freq">every {{ formatInterval(timer.frequency) }}</span>
+                  <span
+                    class="pcm-status"
+                    [class.pcm-status--on]="timer.active"
+                    [class.pcm-status--off]="!timer.active"
+                  >
+                    {{ timer.active ? 'Active' : 'Paused' }}
+                  </span>
+                </div>
+                <p class="pcm-timer__msg">{{ timer.message }}</p>
+              </div>
+              <div class="pcm-timer__actions">
+                <button type="button" class="pcm-icon-btn" (click)="openEditTimer(timer)" aria-label="Edit timer">
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="pcm-icon-btn"
+                  (click)="toggleTimer(timer)"
+                  [attr.aria-label]="timer.active ? 'Pause timer' : 'Activate timer'"
+                >
+                  <lucide-icon [name]="timer.active ? powerOffIcon : powerIcon" class="pcm-ico"></lucide-icon>
+                </button>
+                <button
+                  type="button"
+                  class="pcm-icon-btn pcm-icon-btn--danger"
+                  (click)="deleteTimer(timer)"
+                  aria-label="Delete timer"
+                >
+                  <lucide-icon [name]="trashIcon" class="pcm-ico"></lucide-icon>
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (showTimerModal()) {
+    <div class="pcm-modal-overlay" (click)="closeTimerModal()">
+      <div class="pcm-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+        <div class="pcm-modal__head">
+          <h2>{{ editingTimerId() ? 'Edit timer' : 'Create timer' }}</h2>
+          <button type="button" class="pcm-icon-btn" (click)="closeTimerModal()" aria-label="Close">×</button>
+        </div>
+
+        <form class="pcm-form" (ngSubmit)="saveTimer()">
+          <label class="pcm-field">
+            <span>Name</span>
+            <input
+              class="pcm-input"
+              type="text"
+              maxlength="30"
+              placeholder="discord"
+              [ngModel]="timerDraft().name"
+              (ngModelChange)="updateDraftName($event)"
+              name="timerName"
+              [disabled]="!!editingTimerId()"
+              autocomplete="off"
+            />
+            <small>Letters, numbers, underscores · max 30</small>
+          </label>
+
+          <label class="pcm-field">
+            <span>Message</span>
+            <textarea
+              class="pcm-input pcm-textarea"
+              rows="3"
+              maxlength="350"
+              placeholder="Message posted to chat on each tick"
+              [ngModel]="timerDraft().message"
+              (ngModelChange)="updateDraftMessage($event)"
+              name="timerMessage"
+            ></textarea>
+            <small>{{ timerDraft().message.length }}/350</small>
+          </label>
+
+          <div class="pcm-field">
+            <span>Repeat every</span>
+            @if (planTier() === 'free') {
+              <div class="pcm-interval-grid">
+                @for (m of freeIntervals; track m) {
+                  <button
+                    type="button"
+                    class="pcm-interval"
+                    [class.pcm-interval--active]="timerDraft().frequency === m"
+                    (click)="updateDraftFrequency(m)"
+                  >
+                    {{ m }}m
+                  </button>
+                }
+              </div>
+            } @else if (planTier() === 'premium') {
+              <div class="pcm-interval-row">
+                <input
+                  class="pcm-input pcm-input--num"
+                  type="number"
+                  min="5"
+                  max="180"
+                  step="5"
+                  [ngModel]="timerDraft().frequency"
+                  (ngModelChange)="updateDraftFrequency($event)"
+                  name="timerFreqPremium"
+                />
+                <span class="pcm-unit">minutes (×5)</span>
+              </div>
+              <div class="pcm-quick">
+                @for (m of [5, 10, 15, 30, 45, 60, 90, 120, 180]; track m) {
+                  <button
+                    type="button"
+                    class="pcm-chip pcm-chip--btn"
+                    [class.pcm-chip--active]="timerDraft().frequency === m"
+                    (click)="updateDraftFrequency(m)"
+                  >
+                    {{ m }}m
+                  </button>
+                }
+              </div>
+            } @else {
+              <div class="pcm-interval-row">
+                <input
+                  class="pcm-input pcm-input--num"
+                  type="number"
+                  min="1"
+                  max="180"
+                  step="1"
+                  [ngModel]="timerDraft().frequency"
+                  (ngModelChange)="updateDraftFrequency($event)"
+                  name="timerFreqPro"
+                />
+                <span class="pcm-unit">minutes (any whole #)</span>
+              </div>
+              <div class="pcm-quick">
+                @for (m of [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180]; track m) {
+                  <button
+                    type="button"
+                    class="pcm-chip pcm-chip--btn"
+                    [class.pcm-chip--active]="timerDraft().frequency === m"
+                    (click)="updateDraftFrequency(m)"
+                  >
+                    {{ m }}m
+                  </button>
+                }
+              </div>
+            }
+            <small class="pcm-hint">{{ intervalHint() }}</small>
+          </div>
+
+          @if (timerFormError()) {
+            <p class="pcm-form-error">{{ timerFormError() }}</p>
+          }
+
+          <div class="pcm-form__actions">
+            <button type="button" class="pcm-btn pcm-btn--ghost" (click)="closeTimerModal()">Cancel</button>
+            <button type="submit" class="pcm-btn pcm-btn--primary">
+              {{ editingTimerId() ? 'Save changes' : 'Create timer' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (toast()) {
+    <div class="pcm-toast" role="status">{{ toast() }}</div>
+  }
+</div>
