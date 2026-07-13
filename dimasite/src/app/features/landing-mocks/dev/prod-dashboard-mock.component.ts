@@ -8,10 +8,7 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { CountUpDirective } from '../../../shared/directives/count-up.directive';
-import {
-  LandingAnalyticsService,
-  LiveChannelBoardEntry
-} from '../landing-analytics.service';
+import { LandingAnalyticsService } from '../landing-analytics.service';
 
 type PlanTier = 'free' | 'premium' | 'pro';
 type TrendRange = 7 | 15 | 30;
@@ -93,10 +90,7 @@ function buildTrend(days: number): TrendPoint[] {
 export class ProdDashboardMockComponent {
   private readonly analytics = inject(LandingAnalyticsService);
 
-  readonly channelID = CHANNEL_ID;
   readonly channelLogin = CHANNEL_LOGIN;
-
-  readonly siteStats = this.analytics.siteStats;
   readonly liveChannels = this.analytics.liveChannels;
   readonly connectionStatus = this.analytics.connectionStatus;
 
@@ -107,9 +101,6 @@ export class ProdDashboardMockComponent {
   readonly toast = signal<string | null>(null);
 
   readonly profile = signal<ChannelProfile | null>(null);
-  readonly profileLoading = signal(true);
-  readonly commandCount = signal(0);
-  readonly commandSamples = signal<Array<{ name: string; cmd: string }>>([]);
   readonly healthMs = signal<number | null>(null);
 
   readonly seededActivity = signal<ActivityMetrics>({
@@ -144,11 +135,11 @@ export class ProdDashboardMockComponent {
   readonly connectionLabel = computed(() => {
     switch (this.connectionStatus()) {
       case 'connected':
-        return 'Live board connected';
+        return 'Live';
       case 'reconnecting':
-        return 'Reconnecting…';
+        return 'Sync…';
       default:
-        return 'Board offline';
+        return 'Offline';
     }
   });
 
@@ -164,12 +155,6 @@ export class ProdDashboardMockComponent {
   });
 
   readonly isLive = computed(() => !!this.myLiveChannel());
-
-  readonly otherLive = computed(() =>
-    this.liveChannels()
-      .filter((channel) => channel.channelID !== CHANNEL_ID)
-      .slice(0, 5)
-  );
 
   readonly displayName = computed(
     () => this.profile()?.displayName || CHANNEL_LOGIN
@@ -252,12 +237,7 @@ export class ProdDashboardMockComponent {
     return rows;
   });
 
-  readonly uptimeLabel = computed(() => {
-    // Live board entry doesn't always expose startedAt on the typed model;
-    // fall back to a soft estimate when live.
-    if (!this.isLive()) return '—';
-    return 'Live now';
-  });
+  readonly uptimeLabel = computed(() => (this.isLive() ? 'Live now' : '—'));
 
   constructor() {
     void this.bootstrapPublic();
@@ -300,20 +280,11 @@ export class ProdDashboardMockComponent {
     return n.toLocaleString();
   }
 
-  trackChannel(_: number, channel: LiveChannelBoardEntry): string {
-    return channel.channelID;
-  }
-
   private async bootstrapPublic(): Promise<void> {
-    this.profileLoading.set(true);
     const started = performance.now();
 
     try {
-      const [profileRes, commandsRes] = await Promise.all([
-        fetch(`${LIVE_API}/users?username=${CHANNEL_LOGIN}`),
-        fetch(`${LIVE_API}/commands/${CHANNEL_ID}?limit=100&language=en`)
-      ]);
-
+      const profileRes = await fetch(`${LIVE_API}/users?username=${CHANNEL_LOGIN}`);
       this.healthMs.set(Math.round(performance.now() - started));
 
       if (profileRes.ok) {
@@ -335,29 +306,8 @@ export class ProdDashboardMockComponent {
           });
         }
       }
-
-      if (commandsRes.ok) {
-        const body = (await commandsRes.json()) as {
-          commands?: Array<{ name?: string; cmd?: string }>;
-          data?: { commands?: Array<{ name?: string; cmd?: string }> };
-        };
-        const list = Array.isArray(body.commands)
-          ? body.commands
-          : Array.isArray(body.data?.commands)
-            ? body.data.commands
-            : [];
-        this.commandCount.set(list.length);
-        this.commandSamples.set(
-          list.slice(0, 4).map((c) => ({
-            name: c.name || c.cmd || 'command',
-            cmd: c.cmd || ''
-          }))
-        );
-      }
     } catch {
       this.healthMs.set(null);
-    } finally {
-      this.profileLoading.set(false);
     }
   }
 
