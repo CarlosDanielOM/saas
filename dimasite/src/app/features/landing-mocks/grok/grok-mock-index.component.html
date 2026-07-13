@@ -17,8 +17,11 @@
     </p>
     <p class="gmi__paths">
       Base: <code>/mocks/grok</code> · OpenCode:
-      <code>/mocks/grok/oc1–oc3</code> · Bento lineage:
-      <code>/mocks/grok/oc3a–c</code> · Lineages:
+      <code>/mocks/grok/oc1–oc3</code> · Bento:
+      <code>/mocks/grok/oc3a–c</code> · OpenCode 18/20/23:
+      <code>/mocks/grok/oc18a–c</code> ·
+      <code>/mocks/grok/oc20a–c</code> ·
+      <code>/mocks/grok/oc23a–c</code> · Grok lineages:
       <code>/mocks/grok/18a–c</code> ·
       <code>/mocks/grok/20a–c</code> ·
       <code>/mocks/grok/23a–c</code>
@@ -47,6 +50,25 @@
   </p>
   <div class="gmi__grid">
     @for (mock of opencodeMocks; track mock.id) {
+      <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
+        <div class="gmi-card__top">
+          <span class="gmi-card__vibe">{{ mock.vibe }}</span>
+          <span class="gmi-card__id">/mocks/grok/{{ mock.id }}</span>
+        </div>
+        <h3 class="gmi-card__title">{{ mock.title }}</h3>
+        <p class="gmi-card__desc">{{ mock.description }}</p>
+        <span class="gmi-card__cta">Open mock →</span>
+      </a>
+    }
+  </div>
+
+  <h2 class="gmi__section-title">MiniMax M3 mocks</h2>
+  <p class="gmi__section-note">
+    Three directions from MiniMax M3 via OpenCode + UI/UX Pro Max skill. Independent exploration
+    starting only from the production landing content.
+  </p>
+  <div class="gmi__grid">
+    @for (mock of m3Mocks; track mock.id) {
       <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
         <div class="gmi-card__top">
           <span class="gmi-card__vibe">{{ mock.vibe }}</span>

@@ -1,0 +1,159 @@
+<div class="oc oc--prism">
+  <header class="oc-nav">
+    <a routerLink="/" class="oc-brand" aria-label="DomDimaBot home">
+      <span class="oc-brand__dot" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <nav class="oc-nav__links">
+      <button type="button" (click)="scrollTo('features')">Features</button>
+      <button type="button" (click)="scrollTo('pricing')">Pricing</button>
+      <button type="button" (click)="scrollTo('live')">Live</button>
+      <a routerLink="/mocks/grok">← OpenCode</a>
+    </nav>
+    <div class="oc-nav__right">
+      <span class="oc-status" [class.oc-status--on]="connectionStatus() === 'connected'">{{ connectionLabel() }}</span>
+      <button type="button" class="oc-btn oc-btn--primary" (click)="login()">Login with Twitch</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="oc-hero">
+      <div class="oc-hero__text">
+        <p class="oc-kicker">OpenCode · from Mock 20 · Prism Flow</p>
+        <div class="oc-pill">
+          <span class="oc-pill__dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts">0</span> bots active ·
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> live now
+        </div>
+        <h1 class="oc-title">A bot that<br><span>refracts</span> with your stream.</h1>
+        <p class="oc-copy">Glass surfaces over a prism aurora — DomDimaBot blends AI moderation, commands, analytics, and TTS into one luminous tide.</p>
+        <div class="oc-actions">
+          <button type="button" class="oc-btn oc-btn--primary" (click)="login()">Start free</button>
+          <button type="button" class="oc-btn" (click)="openDiscord()">Join Discord</button>
+        </div>
+        <p class="oc-trust">Free forever · No credit card · Twitch &amp; Kick</p>
+      </div>
+      
+      <div class="oc-visual">
+        <div class="oc-glass">
+          <div class="oc-glass__head"><span>platform · in motion</span><span class="oc-live">LIVE</span></div>
+          <div class="oc-glass__stats">
+            <div><p class="oc-gnum" [countUp]="siteStats().botActiveAccounts">0</p><p class="oc-glab">Bots on air</p></div>
+            <div><p class="oc-gnum" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="80">0</p><p class="oc-glab">Live viewers</p></div>
+            <div><p class="oc-gnum" [countUp]="siteStats().registeredUsers" [staggerDelay]="140">0</p><p class="oc-glab">Creators</p></div>
+            <div><p class="oc-gnum" [countUp]="siteStats().messagesReceived" [staggerDelay]="200">0</p><p class="oc-glab">Messages</p></div>
+          </div>
+          <svg class="oc-wave" viewBox="0 0 360 60" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0,30 C40,8 80,52 120,30 C160,8 200,52 240,30 C280,8 320,52 360,30 L360,60 L0,60 Z"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="oc-metrics" aria-label="Platform metrics">
+      <article class="oc-metric">
+        <lucide-icon [name]="usersIcon"></lucide-icon>
+        <p class="oc-metric__lab">Registered</p>
+        <p class="oc-metric__val" [countUp]="siteStats().registeredUsers">0</p>
+      </article>
+      <article class="oc-metric">
+        <lucide-icon [name]="tvIcon"></lucide-icon>
+        <p class="oc-metric__lab">Live users</p>
+        <p class="oc-metric__val" [countUp]="siteStats().liveUsers" [staggerDelay]="70">0</p>
+      </article>
+      <article class="oc-metric">
+        <lucide-icon [name]="activityIcon"></lucide-icon>
+        <p class="oc-metric__lab">Bots active</p>
+        <p class="oc-metric__val" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="140">0</p>
+      </article>
+      <article class="oc-metric">
+        <lucide-icon [name]="messageIcon"></lucide-icon>
+        <p class="oc-metric__lab">Messages</p>
+        <p class="oc-metric__val" [countUp]="siteStats().messagesReceived" [staggerDelay]="210">0</p>
+      </article>
+      <article class="oc-metric">
+        <lucide-icon [name]="zapIcon"></lucide-icon>
+        <p class="oc-metric__lab">Commands</p>
+        <p class="oc-metric__val" [countUp]="siteStats().totalCommands" [staggerDelay]="280">0</p>
+      </article>
+      <article class="oc-metric">
+        <lucide-icon [name]="tvIcon"></lucide-icon>
+        <p class="oc-metric__lab">Viewers</p>
+        <p class="oc-metric__val" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="350">0</p>
+      </article>
+    </section>
+
+    <section id="features" class="oc-section">
+      <p class="oc-kicker">Features</p>
+      <h2 class="oc-h2">Everything you need. Nothing you don’t.</h2>
+      <div class="oc-features">
+        @for (f of features; track f.title) {
+          <article class="oc-feature">
+            <lucide-icon [name]="f.icon" class="oc-feature__icon"></lucide-icon>
+            <h3>{{ f.title }}</h3>
+            <p>{{ f.copy }}</p>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="oc-section">
+      <p class="oc-kicker">Pricing</p>
+      <h2 class="oc-h2">Simple plans. Real value.</h2>
+      <div class="oc-pricing">
+        @for (tier of tiers; track tier.key) {
+          <article class="oc-plan" [class.oc-plan--hot]="tier.hot">
+            @if (tier.hot) {
+              <span class="oc-badge">Most popular</span>
+            }
+            <p class="oc-plan__name">{{ tier.label }}</p>
+            <p class="oc-plan__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc-plan__desc">{{ tier.desc }}</p>
+            <button type="button" class="oc-btn" [class.oc-btn--primary]="tier.hot" (click)="login()">
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="live" class="oc-section">
+      <p class="oc-kicker">Live now</p>
+      <h2 class="oc-h2">Channels running DomDimaBot</h2>
+      @if (liveChannels().length > 0) {
+        <div class="oc-live">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="oc-live-card">
+              <img
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="oc-live-card__name">{{ channel.channel }}</p>
+                <p class="oc-live-card__meta">{{ formatViewers(channel.viewers) }} viewers</p>
+              </div>
+              <div class="oc-live-card__tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="oc-empty">No live channels right now.</p>
+      }
+    </section>
+
+    <section class="oc-cta">
+      <h2 class="oc-h2">Ready when your stream is.</h2>
+      <button type="button" class="oc-btn oc-btn--primary" (click)="login()">Login with Twitch</button>
+    </section>
+  </main>
+
+  <footer class="oc-foot">
+    <span>© DomDimaBot · OpenCode 20A · Prism Flow</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

@@ -138,7 +138,82 @@ export const routes: Routes = [
           ),
         title: 'Live First · OpenCode OC3c | DomDimaBot'
       },
-      // Lineage of Mock 18 — Global Metrics
+      // OpenCode lineage of Mock 18 — Global Metrics
+      {
+        path: 'oc18a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-18a.component').then(
+            (m) => m.Opencode18aComponent
+          ),
+        title: 'Metric Terminal · OpenCode OC18a | DomDimaBot'
+      },
+      {
+        path: 'oc18b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-18b.component').then(
+            (m) => m.Opencode18bComponent
+          ),
+        title: 'Paper Ops · OpenCode OC18b | DomDimaBot'
+      },
+      {
+        path: 'oc18c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-18c.component').then(
+            (m) => m.Opencode18cComponent
+          ),
+        title: 'Signal Columns · OpenCode OC18c | DomDimaBot'
+      },
+      // OpenCode lineage of Mock 20 — Aurora Stream
+      {
+        path: 'oc20a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-20a.component').then(
+            (m) => m.Opencode20aComponent
+          ),
+        title: 'Prism Flow · OpenCode OC20a | DomDimaBot'
+      },
+      {
+        path: 'oc20b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-20b.component').then(
+            (m) => m.Opencode20bComponent
+          ),
+        title: 'Mist Glass · OpenCode OC20b | DomDimaBot'
+      },
+      {
+        path: 'oc20c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-20c.component').then(
+            (m) => m.Opencode20cComponent
+          ),
+        title: 'Coral Bloom · OpenCode OC20c | DomDimaBot'
+      },
+      // OpenCode lineage of Mock 23 — Constellation
+      {
+        path: 'oc23a',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-23a.component').then(
+            (m) => m.Opencode23aComponent
+          ),
+        title: 'Star Lattice · OpenCode OC23a | DomDimaBot'
+      },
+      {
+        path: 'oc23b',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-23b.component').then(
+            (m) => m.Opencode23bComponent
+          ),
+        title: 'Observatory · OpenCode OC23b | DomDimaBot'
+      },
+      {
+        path: 'oc23c',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/lineage/opencode-23c.component').then(
+            (m) => m.Opencode23cComponent
+          ),
+        title: 'Core Pulse · OpenCode OC23c | DomDimaBot'
+      },
+      // Lineage of Mock 18 — Global Metrics (Grok)
       {
         path: '18a',
         loadComponent: () =>
@@ -212,6 +287,31 @@ export const routes: Routes = [
             (m) => m.GrokLineage23cComponent
           ),
         title: 'Nebula Core · Grok 23c | DomDimaBot'
+      },
+      // MiniMax M3 mocks — three independent directions via OpenCode + UI/UX skill
+      {
+        path: 'm3-1',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/m3/m3-mock-1.component').then(
+            (m) => m.M3Mock1Component
+          ),
+        title: 'Terminal Co-op · M3 Mock | DomDimaBot'
+      },
+      {
+        path: 'm3-2',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/m3/m3-mock-2.component').then(
+            (m) => m.M3Mock2Component
+          ),
+        title: 'Print Editorial · M3 Mock | DomDimaBot'
+      },
+      {
+        path: 'm3-3',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/m3/m3-mock-3.component').then(
+            (m) => m.M3Mock3Component
+          ),
+        title: 'Now Playing · M3 Mock | DomDimaBot'
       }
     ]
   },

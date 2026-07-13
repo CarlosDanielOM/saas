@@ -1,0 +1,261 @@
+<div class="m3t1">
+  <a routerLink="/mocks/grok" class="m3t1__back" aria-label="Back to mock index">← /mocks/grok</a>
+
+  <header class="m3t1__navbar">
+    <div class="m3t1__nav-inner">
+      <div class="m3t1__brand">
+        <span class="m3t1__brand-dot" aria-hidden="true"></span>
+        <span class="m3t1__brand-name">domdimabot</span>
+        <span class="m3t1__brand-tag">[coop_session]</span>
+      </div>
+      <nav class="m3t1__nav-links" aria-label="Primary">
+        <a class="m3t1__nav-link" href="#features">/features</a>
+        <a class="m3t1__nav-link" href="#pricing">/pricing</a>
+        <a class="m3t1__nav-link" href="#live">/live</a>
+        <button type="button" class="m3t1__nav-cta" (click)="login()">
+          <span>login</span>
+          <lucide-icon [name]="enterIcon" class="h-3.5 w-3.5"></lucide-icon>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="m3t1__ticker" aria-hidden="true">
+    <div class="m3t1__ticker-track">
+      @for (item of marqueeItems(); track item) {
+        <span class="m3t1__ticker-item">
+          <span class="m3t1__ticker-dot"></span>{{ item }}
+        </span>
+      }
+      @for (item of marqueeItems(); track item; let i = $index) {
+        <span class="m3t1__ticker-item">
+          <span class="m3t1__ticker-dot"></span>{{ item }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <main class="m3t1__main">
+    <section class="m3t1__hero">
+      <div class="m3t1__terminal" role="region" aria-label="Terminal hero">
+        <div class="m3t1__term-bar">
+          <span class="m3t1__term-btn" aria-hidden="true"></span>
+          <span class="m3t1__term-btn" aria-hidden="true"></span>
+          <span class="m3t1__term-btn" aria-hidden="true"></span>
+          <span class="m3t1__term-title">~/domdimabot — session_42</span>
+          <span class="m3t1__term-status">{{ connectionLabel() }}</span>
+        </div>
+        <div class="m3t1__term-body">
+          <p class="m3t1__term-line">
+            <span class="m3t1__term-prompt">guest@domdimabot</span>
+            <span class="m3t1__term-sep">:</span>
+            <span class="m3t1__term-path">~</span>
+            <span class="m3t1__term-sep">$</span>
+            <span class="m3t1__term-cmd">./domdimabot --init</span>
+          </p>
+          <p class="m3t1__term-line m3t1__term-line--muted">
+            <span class="m3t1__term-arrow">↳</span> booting moderator, automation, voice, analytics
+            subsystems…
+          </p>
+          <p class="m3t1__term-line">
+            <span class="m3t1__term-arrow">↳</span>
+            <span class="m3t1__term-pill">[ok]</span> connected to
+            <span class="m3t1__term-strong">api.domdimabot.com</span>
+          </p>
+          <p class="m3t1__term-line">
+            <span class="m3t1__term-arrow">↳</span>
+            <span class="m3t1__term-pill">[ok]</span>
+            <span [countUp]="siteStats().registeredUsers" [staggerDelay]="0">0</span>
+            streamers online · last sync 0s ago
+          </p>
+          <h1 class="m3t1__term-title-hero">
+            &gt; your_twitch_chat<span class="m3t1__caret">█</span>
+          </h1>
+          <p class="m3t1__term-desc">
+            DomDimaBot plugs into your channel as a co-op teammate — moderating chat, running
+            commands, learning from stream summaries, and talking back with neural voices.
+          </p>
+          <div class="m3t1__term-actions">
+            <button type="button" class="m3t1__btn m3t1__btn--primary" (click)="login()">
+              <lucide-icon [name]="enterIcon" class="h-4 w-4"></lucide-icon>
+              login_with --provider=twitch
+            </button>
+            <button type="button" class="m3t1__btn m3t1__btn--ghost" (click)="openDiscord()">
+              open --discord
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="m3t1__hero-side" aria-label="Live system status">
+        <div class="m3t1__side-card">
+          <div class="m3t1__side-head">
+            <span class="m3t1__side-led"></span>
+            <span>system.status</span>
+          </div>
+          <ul class="m3t1__side-list">
+            <li><span>moderation</span><span class="m3t1__tag m3t1__tag--ok">armed</span></li>
+            <li><span>commands.engine</span><span class="m3t1__tag m3t1__tag--ok">online</span></li>
+            <li><span>voice.synth</span><span class="m3t1__tag m3t1__tag--ok">ready</span></li>
+            <li><span>analytics.sink</span><span class="m3t1__tag m3t1__tag--warn">{{ connectionLabel() }}</span></li>
+            <li><span>ai.personalities</span><span class="m3t1__tag">3 / 3</span></li>
+          </ul>
+        </div>
+
+        <div class="m3t1__side-card m3t1__side-card--kv">
+          <div class="m3t1__side-head">
+            <span>live.kv</span>
+            <span class="m3t1__side-meta">refresh ~3s</span>
+          </div>
+          <dl class="m3t1__kv">
+            <div><dt>registered</dt><dd [countUp]="siteStats().registeredUsers" [staggerDelay]="0">0</dd></div>
+            <div><dt>live.users</dt><dd [countUp]="siteStats().liveUsers" [staggerDelay]="120">0</dd></div>
+            <div><dt>bots</dt><dd [countUp]="siteStats().botActiveAccounts" [staggerDelay]="240">0</dd></div>
+            <div><dt>msgs</dt><dd [countUp]="siteStats().messagesReceived" [staggerDelay]="360">0</dd></div>
+            <div><dt>commands</dt><dd [countUp]="siteStats().totalCommands" [staggerDelay]="480">0</dd></div>
+            <div><dt>live.viewers</dt><dd [countUp]="siteStats().totalLiveViewer" [staggerDelay]="600">0</dd></div>
+          </dl>
+        </div>
+      </aside>
+    </section>
+
+    <section id="features" class="m3t1__section">
+      <header class="m3t1__section-head">
+        <span class="m3t1__section-prompt">$ cat /features</span>
+        <h2 class="m3t1__section-title">features.list</h2>
+        <p class="m3t1__section-sub">
+          Four systems that ship in every tier. Premium and Pro unlock richer variants.
+        </p>
+      </header>
+
+      <div class="m3t1__features">
+        @for (f of features; track f.idx) {
+          <article class="m3t1__feat">
+            <div class="m3t1__feat-head">
+              <span class="m3t1__feat-idx">{{ f.idx }}</span>
+              <span class="m3t1__feat-tag">[{{ f.tag }}]</span>
+              <span class="m3t1__feat-status">--{{ f.status }}</span>
+            </div>
+            <h3 class="m3t1__feat-title">{{ f.title }}</h3>
+            <p class="m3t1__feat-copy">{{ f.copy }}</p>
+            <a class="m3t1__feat-link" href="#pricing">
+              compare_plans <lucide-icon [name]="chevronIcon" class="h-3.5 w-3.5"></lucide-icon>
+            </a>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="m3t1__section">
+      <header class="m3t1__section-head">
+        <span class="m3t1__section-prompt">$ ./plans --compare</span>
+        <h2 class="m3t1__section-title">pricing.matrix</h2>
+        <p class="m3t1__section-sub">
+          Three plans, one engine. Same commands engine, same uptime — different ceiling.
+        </p>
+      </header>
+
+      <div class="m3t1__plans">
+        <div class="m3t1__plan-head">
+          <div class="m3t1__plan-cell m3t1__plan-cell--label">spec</div>
+          @for (tier of tiers; track tier.key) {
+            <div class="m3t1__plan-tier"
+                 [class.m3t1__plan-tier--active]="selectedPlan() === tier.key"
+                 [class.m3t1__plan-tier--flagged]="tier.flagged">
+              <div class="m3t1__plan-code">{{ tier.code }}</div>
+              <div class="m3t1__plan-name">{{ tier.label }}</div>
+              <div class="m3t1__plan-price">
+                {{ tier.price }}<span>{{ tier.cycle }}</span>
+              </div>
+              <p class="m3t1__plan-desc">{{ tier.description }}</p>
+              <button type="button" class="m3t1__plan-cta"
+                      [class.m3t1__plan-cta--active]="selectedPlan() === tier.key"
+                      (click)="selectPlan(tier.key); login()">
+                <span class="m3t1__plan-prompt">$</span> {{ tier.cta }}
+              </button>
+            </div>
+          }
+        </div>
+
+        @for (row of capabilityRows; track row.label) {
+          <div class="m3t1__plan-row">
+            <div class="m3t1__plan-cell m3t1__plan-cell--label">{{ row.label }}</div>
+            @for (tier of tiers; track tier.key) {
+              <div class="m3t1__plan-val"
+                   [class.m3t1__plan-val--active]="selectedPlan() === tier.key"
+                   [class.m3t1__plan-val--flagged]="tier.flagged">
+                <span>{{ row.values[tier.key] }}</span>
+              </div>
+            }
+            @if (row.note) {
+              <div class="m3t1__plan-note">// {{ row.note }}</div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section id="live" class="m3t1__section m3t1__section--live">
+      <header class="m3t1__section-head">
+        <span class="m3t1__section-prompt">$ tail -f /live/channels</span>
+        <h2 class="m3t1__section-title">live.channels</h2>
+        <p class="m3t1__section-sub">
+          Streams currently running DomDimaBot. Updated as the platform reports.
+        </p>
+      </header>
+
+      <div class="m3t1__live-board">
+        <div class="m3t1__live-head">
+          <span>ch.id</span>
+          <span>channel</span>
+          <span>platforms</span>
+          <span class="m3t1__live-head--right">viewers</span>
+        </div>
+
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="m3t1__live-row">
+              <span class="m3t1__live-id">#{{ channel.channelID }}</span>
+              <span class="m3t1__live-name">{{ channel.channel }}</span>
+              <span class="m3t1__live-platforms">
+                @if (channel.botPlatforms.length > 0) {
+                  @for (platform of channel.botPlatforms; track platform) {
+                    <span class="m3t1__live-pill"
+                          [class.m3t1__live-pill--twitch]="platform === 'twitch'"
+                          [class.m3t1__live-pill--kick]="platform === 'kick'">
+                      {{ platform }}
+                    </span>
+                  }
+                } @else {
+                  <span class="m3t1__live-pill m3t1__live-pill--none">none</span>
+                }
+              </span>
+              <span class="m3t1__live-viewers">{{ formatViewers(channel.viewers) }}</span>
+            </div>
+          }
+        } @else {
+          <p class="m3t1__live-empty">// no live sessions reported — uplink may be offline</p>
+        }
+      </div>
+    </section>
+
+    <section class="m3t1__section m3t1__section--cta">
+      <div class="m3t1__cta">
+        <p class="m3t1__cta-prompt">$ ./join --now</p>
+        <h2 class="m3t1__cta-title">ready to upgrade your stream?</h2>
+        <p class="m3t1__cta-sub">
+          Spawn DomDimaBot into your Twitch in under a minute.
+        </p>
+        <button type="button" class="m3t1__btn m3t1__btn--primary" (click)="login()">
+          <lucide-icon [name]="enterIcon" class="h-4 w-4"></lucide-icon>
+          login_with --provider=twitch
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="m3t1__footer">
+    <span>© domdimabot — terminal_session_42</span>
+    <span>build: m3-mock-1 · /mocks/grok/m3-1</span>
+  </footer>
+</div>

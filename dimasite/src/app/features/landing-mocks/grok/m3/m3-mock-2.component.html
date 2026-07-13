@@ -1,0 +1,261 @@
+<div class="m3e">
+  <a routerLink="/mocks/grok" class="m3e__back" aria-label="Back to mock index">← /mocks/grok</a>
+
+  <header class="m3e__masthead">
+    <div class="m3e__masthead-row">
+      <span class="m3e__edition">Vol. IV · No. 7</span>
+      <a routerLink="/mocks/grok" class="m3e__brand">DomDimaBot · The Quarterly</a>
+      <span class="m3e__date">{{ 'July 12, 2026' }}</span>
+    </div>
+    <hr class="m3e__rule m3e__rule--double" />
+    <p class="m3e__strap">
+      A field guide to your channel's most useful assistant — for streamers, by streamers.
+    </p>
+    <hr class="m3e__rule" />
+    <nav class="m3e__nav" aria-label="Primary">
+      <a href="#features" (click)="scrollTo('features')">Features</a>
+      <a href="#numbers" (click)="scrollTo('numbers')">By the Numbers</a>
+      <a href="#pricing" (click)="scrollTo('pricing')">Subscription</a>
+      <a href="#live" (click)="scrollTo('live')">From the Field</a>
+      <button type="button" class="m3e__nav-cta" (click)="login()">
+        Sign in
+        <lucide-icon [name]="arrowIcon" class="h-3.5 w-3.5"></lucide-icon>
+      </button>
+    </nav>
+  </header>
+
+  <main class="m3e__main">
+    <!-- ============== HERO ============== -->
+    <section class="m3e__hero">
+      <div class="m3e__hero-left">
+        <p class="m3e__hero-kicker">Cover Story · A Field Guide</p>
+        <h1 class="m3e__hero-title">
+          The quiet companion<br />
+          <em>your chat always wanted.</em>
+        </h1>
+        <p class="m3e__hero-deck">
+          A long, careful look at DomDimaBot — the assistant that moderates, automates,
+          remembers, and speaks — without ever forgetting who is in charge.
+        </p>
+        <div class="m3e__hero-byline">
+          <span>By the Editors</span>
+          <span class="m3e__byline-sep">·</span>
+          <span>Photography: live platform data</span>
+        </div>
+        <div class="m3e__hero-actions">
+          <button type="button" class="m3e__btn m3e__btn--ink" (click)="login()">
+            Begin your subscription
+            <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+          </button>
+          <button type="button" class="m3e__btn m3e__btn--ghost" (click)="openDiscord()">
+            Read the forum
+          </button>
+        </div>
+      </div>
+
+      <aside class="m3e__hero-side">
+        <div class="m3e__side-block">
+          <p class="m3e__side-cap">In this issue</p>
+          <ul class="m3e__side-toc">
+            <li><span>I.</span><a href="#features" (click)="scrollTo('features')">Four chapters on the platform</a></li>
+            <li><span>II.</span><a href="#numbers" (click)="scrollTo('numbers')">By the numbers, this morning</a></li>
+            <li><span>III.</span><a href="#pricing" (click)="scrollTo('pricing')">A subscription, three rates</a></li>
+            <li><span>IV.</span><a href="#live" (click)="scrollTo('live')">From the field: who is live now</a></li>
+          </ul>
+        </div>
+        <div class="m3e__side-block m3e__side-block--accent">
+          <p class="m3e__side-cap">Pull quote</p>
+          <p class="m3e__pull">
+            "The bot that learns your stream is the bot that earns your stream."
+          </p>
+          <p class="m3e__pull-attrib">— from the Editor's note</p>
+        </div>
+      </aside>
+    </section>
+
+    <hr class="m3e__rule m3e__rule--double" />
+
+    <!-- ============== FEATURES ============== -->
+    <section id="features" class="m3e__section">
+      <header class="m3e__section-head">
+        <span class="m3e__chapter">Chapter One</span>
+        <h2 class="m3e__section-title">Four ways the bot earns its keep.</h2>
+        <p class="m3e__section-sub">
+          Long-form observations from the field, written for streamers thinking about their next move.
+        </p>
+      </header>
+
+      <div class="m3e__features">
+        @for (f of features; track f.chapter) {
+          <article class="m3e__feat">
+            <span class="m3e__feat-chapter">{{ f.chapter }}</span>
+            <p class="m3e__feat-kicker">{{ f.kicker }}</p>
+            <h3 class="m3e__feat-title">{{ f.title }}</h3>
+            <p class="m3e__feat-copy">{{ f.copy }}</p>
+            <blockquote class="m3e__feat-pull">{{ f.pull }}</blockquote>
+            <a class="m3e__feat-link" href="#pricing" (click)="scrollTo('pricing')">
+              Compare subscription rates
+              <lucide-icon [name]="chevronIcon" class="h-3.5 w-3.5"></lucide-icon>
+            </a>
+          </article>
+        }
+      </div>
+    </section>
+
+    <hr class="m3e__rule" />
+
+    <!-- ============== BY THE NUMBERS ============== -->
+    <section id="numbers" class="m3e__section">
+      <header class="m3e__section-head">
+        <span class="m3e__chapter">Chapter Two</span>
+        <h2 class="m3e__section-title">By the numbers, this morning.</h2>
+        <p class="m3e__section-sub">
+          Live figures pulled from the platform's reporting service — refreshed continuously.
+        </p>
+      </header>
+
+      <div class="m3e__numbers">
+        @for (stat of leadStats(); track stat.label) {
+          <article class="m3e__num">
+            <p class="m3e__num-label">{{ stat.label }}</p>
+            <p class="m3e__num-value"
+               [countUp]="stat.value"
+               [staggerDelay]="$index * 120">0</p>
+            <p class="m3e__num-foot">{{ stat.footnote }}</p>
+          </article>
+        }
+      </div>
+
+      <p class="m3e__caption">
+        Source: DomDimaBot live analytics stream. Figures refresh every few seconds.
+      </p>
+    </section>
+
+    <hr class="m3e__rule" />
+
+    <!-- ============== PRICING ============== -->
+    <section id="pricing" class="m3e__section">
+      <header class="m3e__section-head">
+        <span class="m3e__chapter">Chapter Three</span>
+        <h2 class="m3e__section-title">A subscription, three rates.</h2>
+        <p class="m3e__section-sub">
+          The same platform. Three reading levels. Choose the one that matches your channel today.
+        </p>
+      </header>
+
+      <div class="m3e__plans">
+        <div class="m3e__plan-head">
+          <div class="m3e__plan-cell m3e__plan-cell--label">The Offering</div>
+          @for (tier of tiers; track tier.key) {
+            <div class="m3e__plan-tier"
+                 [class.m3e__plan-tier--active]="selectedPlan() === tier.key"
+                 [class.m3e__plan-tier--flagged]="tier.flagged">
+              @if (tier.flagged) {
+                <span class="m3e__plan-flag">Editor's choice</span>
+              }
+              <p class="m3e__plan-name">{{ tier.label }}</p>
+              <p class="m3e__plan-tagline">{{ tier.tagline }}</p>
+              <p class="m3e__plan-price">
+                <span class="m3e__plan-price-num">{{ tier.price }}</span>
+                <span class="m3e__plan-price-cycle">{{ tier.cycle }}</span>
+              </p>
+              <p class="m3e__plan-desc">{{ tier.description }}</p>
+              <button type="button" class="m3e__plan-cta"
+                      [class.m3e__plan-cta--active]="selectedPlan() === tier.key"
+                      (click)="selectPlan(tier.key); login()">
+                {{ tier.cta }}
+                <lucide-icon [name]="arrowIcon" class="h-3.5 w-3.5"></lucide-icon>
+              </button>
+            </div>
+          }
+        </div>
+
+        @for (row of capabilityRows; track row.label) {
+          <div class="m3e__plan-row">
+            <div class="m3e__plan-cell m3e__plan-cell--label">{{ row.label }}</div>
+            @for (tier of tiers; track tier.key) {
+              <div class="m3e__plan-val"
+                   [class.m3e__plan-val--active]="selectedPlan() === tier.key">
+                {{ row.values[tier.key] }}
+              </div>
+            }
+            @if (row.footnote) {
+              <div class="m3e__plan-footnote">* {{ row.footnote }}</div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <hr class="m3e__rule" />
+
+    <!-- ============== FROM THE FIELD ============== -->
+    <section id="live" class="m3e__section">
+      <header class="m3e__section-head">
+        <span class="m3e__chapter">Chapter Four</span>
+        <h2 class="m3e__section-title">From the field: who is live now.</h2>
+        <p class="m3e__section-sub">
+          A dispatch from the desk — streamers running DomDimaBot right now, ordered by audience.
+        </p>
+      </header>
+
+      @if (liveChannels().length > 0) {
+        <div class="m3e__dispatch">
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <article class="m3e__dispatch-row">
+              <span class="m3e__dispatch-num">{{ (i + 1).toString().padStart(2, '0') }}</span>
+              <div class="m3e__dispatch-img">
+                <img
+                  [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                  [alt]="channel.channel + ' portrait'"
+                  loading="lazy" />
+              </div>
+              <div class="m3e__dispatch-meta">
+                <p class="m3e__dispatch-name">{{ channel.channel }}</p>
+                <p class="m3e__dispatch-sub">
+                  @if (channel.botPlatforms.length > 0) {
+                    Running on {{ channel.botPlatforms.join(' and ') }}
+                  } @else {
+                    Currently broadcasting
+                  }
+                </p>
+              </div>
+              <div class="m3e__dispatch-fig">
+                <p class="m3e__dispatch-viewers">{{ formatViewers(channel.viewers) }}</p>
+                <p class="m3e__dispatch-cap">viewers</p>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="m3e__empty">No dispatches at this hour — the field is quiet.</p>
+      }
+    </section>
+
+    <hr class="m3e__rule m3e__rule--double" />
+
+    <!-- ============== CTA ============== -->
+    <section class="m3e__cta">
+      <p class="m3e__cta-kicker">A note from the editor</p>
+      <h2 class="m3e__cta-title">
+        Subscribe, and start the next chapter<br />of your channel.
+      </h2>
+      <p class="m3e__cta-sub">
+        DomDimaBot begins moderating the moment you sign in — and learns from there.
+      </p>
+      <button type="button" class="m3e__btn m3e__btn--ink" (click)="login()">
+        Sign in with Twitch
+        <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+      </button>
+    </section>
+  </main>
+
+  <footer class="m3e__footer">
+    <hr class="m3e__rule m3e__rule--double" />
+    <div class="m3e__footer-row">
+      <span>DomDimaBot · The Quarterly</span>
+      <span class="m3e__footer-mark">M3 · Mock 02 · Print Editorial</span>
+      <span>Set in Fraunces &amp; Inter</span>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,308 @@
+<div class="m3p">
+  <a routerLink="/mocks/grok" class="m3p__back" aria-label="Back to mock index">← /mocks/grok</a>
+
+  <header class="m3p__navbar">
+    <a routerLink="/mocks/grok" class="m3p__brand" aria-label="DomDimaBot home">
+      <lucide-icon [name]="radioIcon" class="h-5 w-5"></lucide-icon>
+      <span>DomDimaBot</span>
+    </a>
+
+    <nav class="m3p__nav" aria-label="Primary">
+      <a class="m3p__nav-link" href="#features" (click)="scrollTo('features')">Tracks</a>
+      <a class="m3p__nav-link" href="#charts" (click)="scrollTo('charts')">Charts</a>
+      <a class="m3p__nav-link" href="#pricing" (click)="scrollTo('pricing')">Plans</a>
+      <a class="m3p__nav-link" href="#queue" (click)="scrollTo('queue')">Up Next</a>
+    </nav>
+
+    <button type="button" class="m3p__nav-cta" (click)="login()">
+      <lucide-icon [name]="playIcon" class="h-3.5 w-3.5"></lucide-icon>
+      <span>Sign in</span>
+    </button>
+  </header>
+
+  <main class="m3p__main">
+    <!-- ============ HERO / NOW PLAYING ============ -->
+    <section class="m3p__hero">
+      <div class="m3p__hero-glow" aria-hidden="true"></div>
+
+      <div class="m3p__hero-inner">
+        <div class="m3p__hero-text">
+          <span class="m3p__hero-eyebrow">
+            <span class="m3p__dot"></span>
+            {{ connectionLabel() }}
+          </span>
+          <h1 class="m3p__hero-title">
+            Your channel,<br />
+            <em>always playing.</em>
+          </h1>
+          <p class="m3p__hero-sub">
+            DomDimaBot is the quiet track that never skips — moderating chat, running commands,
+            remembering moments, and speaking when you ask it to.
+          </p>
+
+          <div class="m3p__hero-actions">
+            <button type="button" class="m3p__btn m3p__btn--primary" (click)="login()">
+              <lucide-icon [name]="playIcon" class="h-4 w-4"></lucide-icon>
+              Press play
+            </button>
+            <button type="button" class="m3p__btn m3p__btn--ghost" (click)="openDiscord()">
+              <lucide-icon [name]="headphonesIcon" class="h-4 w-4"></lucide-icon>
+              Join the Discord
+            </button>
+          </div>
+
+          <div class="m3p__hero-stats">
+            @for (stat of leadStats(); track stat.label) {
+              <div class="m3p__hero-stat">
+                <span class="m3p__hero-stat-num"
+                      [countUp]="stat.value"
+                      [staggerDelay]="$index * 150">0</span>
+                <span class="m3p__hero-stat-label">{{ stat.label }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <aside class="m3p__player" aria-label="Now playing">
+          <div class="m3p__player-art" aria-hidden="true">
+            <div class="m3p__player-disc">
+              <div class="m3p__player-disc-inner">
+                <div class="m3p__player-disc-hole"></div>
+              </div>
+            </div>
+            <div class="m3p__player-art-glow"></div>
+          </div>
+
+          <div class="m3p__player-body">
+            <span class="m3p__player-eyebrow">Now playing · live</span>
+            <h2 class="m3p__player-title">{{ nowPlaying().track }}</h2>
+            <p class="m3p__player-artist">{{ nowPlaying().artist }}</p>
+
+            <div class="m3p__player-meta">
+              <span class="m3p__player-pill">
+                <span class="m3p__player-eq"><span></span><span></span><span></span></span>
+                on air
+              </span>
+              <span class="m3p__player-time">{{ nowPlaying().duration }}</span>
+            </div>
+
+            <div class="m3p__player-progress">
+              <div class="m3p__player-progress-bar">
+                <div class="m3p__player-progress-fill"></div>
+              </div>
+              <div class="m3p__player-progress-meta">
+                <span
+                  [countUp]="nowPlaying().listeners"
+                  [staggerDelay]="0"
+                  class="m3p__player-listeners">0</span>
+                <span>listeners</span>
+              </div>
+            </div>
+
+            <div class="m3p__player-controls" aria-hidden="true">
+              <span class="m3p__player-ctrl">⟸⟸</span>
+              <button type="button" class="m3p__player-play" (click)="login()" aria-label="Sign in to play">
+                <lucide-icon [name]="playIcon" class="h-5 w-5"></lucide-icon>
+              </button>
+              <span class="m3p__player-ctrl">⟹⟹</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ TRACKLIST / FEATURES ============ -->
+    <section id="features" class="m3p__section">
+      <header class="m3p__section-head">
+        <span class="m3p__section-eyebrow">The Album · 04 tracks</span>
+        <h2 class="m3p__section-title">Four systems, one record.</h2>
+        <p class="m3p__section-sub">
+          The whole album ships with every plan. Premium and Pro remix the tracks with extra depth.
+        </p>
+      </header>
+
+      <div class="m3p__tracks">
+        @for (t of featureTracks; track t.number) {
+          <article class="m3p__track">
+            <div class="m3p__track-meta">
+              <span class="m3p__track-num">{{ t.number }}</span>
+              <span class="m3p__track-time">{{ t.duration }}</span>
+            </div>
+            <div class="m3p__track-art" [attr.data-tag]="t.tag">
+              <lucide-icon [name]="discIcon" class="h-12 w-12"></lucide-icon>
+            </div>
+            <div class="m3p__track-body">
+              <p class="m3p__track-tag">{{ t.tag }}</p>
+              <h3 class="m3p__track-title">{{ t.title }}</h3>
+              <p class="m3p__track-artist">{{ t.artist }}</p>
+              <p class="m3p__track-copy">{{ t.copy }}</p>
+              <a class="m3p__track-link" href="#pricing" (click)="scrollTo('pricing')">
+                View on plans →
+              </a>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- ============ CHARTS / NUMBERS ============ -->
+    <section id="charts" class="m3p__section">
+      <header class="m3p__section-head">
+        <span class="m3p__section-eyebrow">Top Charts · today</span>
+        <h2 class="m3p__section-title">Streaming numbers, in real time.</h2>
+        <p class="m3p__section-sub">
+          A quick look at the platform's morning charts. Updated every few seconds.
+        </p>
+      </header>
+
+      <div class="m3p__charts">
+        @for (stat of leadStats(); track stat.label) {
+          <article class="m3p__chart">
+            <p class="m3p__chart-label">{{ stat.label }}</p>
+            <p class="m3p__chart-value"
+               [countUp]="stat.value"
+               [staggerDelay]="$index * 100">0</p>
+            <div class="m3p__chart-spark">
+              <svg viewBox="0 0 100 32" preserveAspectRatio="none">
+                <path d="M0,24 L10,20 L20,22 L30,14 L40,18 L50,10 L60,16 L70,8 L80,12 L90,6 L100,4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"></path>
+              </svg>
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- ============ PLANS / TRACKLIST ============ -->
+    <section id="pricing" class="m3p__section">
+      <header class="m3p__section-head">
+        <span class="m3p__section-eyebrow">Subscription · 3 sides</span>
+        <h2 class="m3p__section-title">Pick your side.</h2>
+        <p class="m3p__section-sub">
+          Same engine. Different cuts. Premium is the most-played this month.
+        </p>
+      </header>
+
+      <div class="m3p__plans">
+        <div class="m3p__plan-head">
+          <div class="m3p__plan-cell m3p__plan-cell--label">Side</div>
+          @for (tier of tiers; track tier.key) {
+            <div class="m3p__plan-tier"
+                 [class.m3p__plan-tier--active]="selectedPlan() === tier.key"
+                 [class.m3p__plan-tier--flagged]="tier.flagged">
+              <span class="m3p__plan-track">{{ tier.track }}</span>
+              <p class="m3p__plan-name">{{ tier.label }}</p>
+              <p class="m3p__plan-price">
+                <span>{{ tier.price }}</span><em>{{ tier.cycle }}</em>
+              </p>
+              <p class="m3p__plan-desc">{{ tier.description }}</p>
+              <button type="button" class="m3p__plan-cta"
+                      [class.m3p__plan-cta--active]="selectedPlan() === tier.key"
+                      (click)="selectPlan(tier.key); login()">
+                <lucide-icon [name]="playIcon" class="h-3.5 w-3.5"></lucide-icon>
+                {{ tier.cta }}
+              </button>
+            </div>
+          }
+        </div>
+
+        @for (row of capabilityRows; track row.label) {
+          <div class="m3p__plan-row">
+            <div class="m3p__plan-cell m3p__plan-cell--label">{{ row.label }}</div>
+            @for (tier of tiers; track tier.key) {
+              <div class="m3p__plan-val"
+                   [class.m3p__plan-val--active]="selectedPlan() === tier.key">
+                {{ row.values[tier.key] }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- ============ UP NEXT / QUEUE ============ -->
+    <section id="queue" class="m3p__section">
+      <header class="m3p__section-head">
+        <span class="m3p__section-eyebrow">Up Next</span>
+        <h2 class="m3p__section-title">Channels on air.</h2>
+        <p class="m3p__section-sub">
+          Your queue, sorted by audience — what's playing across the platform right now.
+        </p>
+      </header>
+
+      @if (liveChannels().length > 0) {
+        <div class="m3p__queue">
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <article class="m3p__queue-item">
+              <span class="m3p__queue-num">{{ (i + 1).toString().padStart(2, '0') }}</span>
+              <div class="m3p__queue-art">
+                <img
+                  [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                  [alt]="channel.channel + ' avatar'"
+                  loading="lazy" />
+              </div>
+              <div class="m3p__queue-meta">
+                <p class="m3p__queue-name">{{ channel.channel }}</p>
+                <p class="m3p__queue-sub">
+                  @if (channel.botPlatforms.length > 0) {
+                    {{ channel.botPlatforms.join(' · ') }}
+                  } @else {
+                    Live broadcast
+                  }
+                </p>
+              </div>
+              <div class="m3p__queue-tags">
+                @if (channel.botPlatforms.includes('twitch')) {
+                  <span class="m3p__queue-tag m3p__queue-tag--twitch">Twitch</span>
+                }
+                @if (channel.botPlatforms.includes('kick')) {
+                  <span class="m3p__queue-tag m3p__queue-tag--kick">Kick</span>
+                }
+              </div>
+              <div class="m3p__queue-listeners">
+                <lucide-icon [name]="headphonesIcon" class="h-3.5 w-3.5"></lucide-icon>
+                <span>{{ formatViewers(channel.viewers) }}</span>
+              </div>
+              <button type="button" class="m3p__queue-play" aria-label="Open channel">
+                <lucide-icon [name]="playIcon" class="h-4 w-4"></lucide-icon>
+              </button>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="m3p__empty">No channels in the queue right now — check back in a moment.</p>
+      }
+    </section>
+
+    <!-- ============ CTA ============ -->
+    <section class="m3p__cta">
+      <div class="m3p__cta-inner">
+        <lucide-icon [name]="sparklesIcon" class="h-6 w-6"></lucide-icon>
+        <h2 class="m3p__cta-title">Press play on the next stream.</h2>
+        <p class="m3p__cta-sub">
+          Sign in once with Twitch and the bot starts running your room — moderation,
+          automation, voice, analytics — all from the same record.
+        </p>
+        <button type="button" class="m3p__btn m3p__btn--primary m3p__btn--lg" (click)="login()">
+          <lucide-icon [name]="playIcon" class="h-4 w-4"></lucide-icon>
+          Sign in with Twitch
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="m3p__footer">
+    <div class="m3p__footer-row">
+      <span class="m3p__footer-brand">
+        <lucide-icon [name]="radioIcon" class="h-4 w-4"></lucide-icon>
+        DomDimaBot
+      </span>
+      <span>M3 · Mock 03 · Now Playing</span>
+      <span>{{ 'Now streaming ' + liveChannels().length + ' channels' }}</span>
+    </div>
+  </footer>
+</div>
