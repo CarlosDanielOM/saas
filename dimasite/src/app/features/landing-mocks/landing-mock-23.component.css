@@ -1,0 +1,1059 @@
+:host {
+  display: block;
+  position: relative;
+}
+
+.mock23-shell {
+  position: relative;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 30% 0%, #1a0e2e 0%, #07050f 50%, #03020a 100%);
+  color: #e8e4f5;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.mock23-container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 20px;
+  position: relative;
+  z-index: 2;
+}
+
+@media (min-width: 640px) {
+  .mock23-container { padding: 0 32px; }
+}
+
+/* === Starfield === */
+.stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.stars-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.stars-layer::before,
+.stars-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+}
+
+.stars-layer.s1::before {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, white, transparent),
+    radial-gradient(1px 1px at 70% 80%, white, transparent),
+    radial-gradient(1px 1px at 40% 60%, white, transparent),
+    radial-gradient(1px 1px at 90% 20%, white, transparent),
+    radial-gradient(1px 1px at 10% 90%, white, transparent),
+    radial-gradient(1px 1px at 50% 10%, white, transparent);
+  opacity: 0.6;
+  animation: mock-23-twinkle 4s ease-in-out infinite alternate;
+}
+
+.stars-layer.s2::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 15% 45%, #c4b5fd, transparent),
+    radial-gradient(1.5px 1.5px at 80% 55%, #f0abfc, transparent),
+    radial-gradient(1.5px 1.5px at 60% 30%, #93c5fd, transparent),
+    radial-gradient(1.5px 1.5px at 30% 75%, #fde68a, transparent);
+  background-size: 200px 200px;
+  opacity: 0.5;
+  animation: mock-23-twinkle 6s ease-in-out infinite alternate;
+}
+
+.stars-layer.s3::before {
+  background-image: radial-gradient(2px 2px at 50% 50%, #f9a8d4, transparent);
+  background-size: 350px 350px;
+  opacity: 0.4;
+  animation: mock-23-drift 80s linear infinite;
+}
+
+@keyframes mock-23-twinkle {
+  0% { opacity: 0.3; }
+  100% { opacity: 0.8; }
+}
+
+@keyframes mock-23-drift {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-100px, -100px); }
+}
+
+/* === Nav === */
+.mock23-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 14px 0;
+  background: rgba(7, 5, 15, 0.65);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.12);
+}
+
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-core {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c4b5fd;
+  box-shadow: 0 0 12px #c4b5fd, 0 0 24px rgba(196, 181, 253, 0.5);
+  animation: mock-23-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes mock-23-pulse {
+  0%, 100% { box-shadow: 0 0 12px #c4b5fd, 0 0 24px rgba(196, 181, 253, 0.5); }
+  50% { box-shadow: 0 0 20px #c4b5fd, 0 0 40px rgba(196, 181, 253, 0.7); }
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.3px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-links button {
+  background: none;
+  border: none;
+  color: #a59ac9;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-links button:hover { color: white; background: rgba(167, 139, 250, 0.1); }
+
+.nav-back {
+  color: #c4b5fd;
+  text-decoration: none;
+  font-size: 13px;
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+.nav-cta {
+  font-family: inherit;
+  background: linear-gradient(120deg, #a78bfa, #f0abfc);
+  color: #1a0e2e;
+  border: none;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(167, 139, 250, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.nav-cta:hover { transform: translateY(-1px); }
+
+/* === Hero === */
+.mock23-hero {
+  padding: 64px 0 80px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr 1.1fr;
+    gap: 56px;
+  }
+}
+
+.star-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: #c4b5fd;
+  margin-bottom: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c4b5fd;
+  box-shadow: 0 0 8px #c4b5fd;
+  animation: mock-23-pulse 2s ease-in-out infinite;
+}
+
+.hero-h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.04;
+  letter-spacing: -2px;
+  font-weight: 700;
+  margin: 0 0 20px;
+  color: white;
+}
+
+.grad {
+  background: linear-gradient(120deg, #c4b5fd, #f0abfc, #93c5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.hero-desc {
+  font-size: 16px;
+  color: #a59ac9;
+  max-width: 480px;
+  margin-bottom: 26px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn-primary {
+  font-family: inherit;
+  background: linear-gradient(120deg, #a78bfa, #f0abfc);
+  color: #1a0e2e;
+  border: none;
+  padding: 13px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.btn-primary:hover { transform: translateY(-1px); }
+
+.btn-primary.large { padding: 15px 36px; font-size: 15px; }
+
+.btn-primary.full,
+.btn-secondary.full { width: 100%; margin-top: 16px; }
+
+.btn-secondary {
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: #c4b5fd;
+  padding: 13px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.trust {
+  font-size: 12.5px;
+  color: #6f638f;
+  letter-spacing: 0.3px;
+}
+
+/* === Constellation visual === */
+.hero-visual {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 540px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.constellation {
+  position: absolute;
+  inset: 0;
+}
+
+.const-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.const-svg .line {
+  stroke: rgba(196, 181, 253, 0.25);
+  stroke-width: 0.3;
+  stroke-dasharray: 0.6 0.6;
+  animation: mock-23-dash 30s linear infinite;
+}
+
+@keyframes mock-23-dash {
+  to { stroke-dashoffset: -50; }
+}
+
+.node {
+  position: absolute;
+  border-radius: 50%;
+  background: #c4b5fd;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px rgba(196, 181, 253, 0.6);
+  animation: mock-23-node 3s ease-in-out infinite;
+}
+
+.node.hub {
+  background: #f9a8d4;
+  box-shadow: 0 0 20px #f9a8d4, 0 0 40px rgba(249, 168, 212, 0.5);
+  animation: mock-23-hub 4s ease-in-out infinite;
+}
+
+@keyframes mock-23-node {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+}
+
+@keyframes mock-23-hub {
+  0%, 100% { opacity: 0.9; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* Caption card floating over the constellation */
+.caption {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: rgba(7, 5, 15, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 14px;
+  padding: 16px 18px;
+  width: min(280px, 90%);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 600px) {
+  .caption {
+    position: relative;
+    margin: 24px auto 0;
+    width: 100%;
+  }
+}
+
+.cap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.15);
+}
+
+.cap-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #c4b5fd;
+}
+
+.cap-time {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #f9a8d4;
+  background: rgba(249, 168, 212, 0.15);
+  padding: 2px 7px;
+  border-radius: 4px;
+  animation: mock-23-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes mock-23-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.cap-row {
+  margin-bottom: 12px;
+}
+
+.cap-num {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.cap-lab {
+  font-size: 11px;
+  color: #8871c2;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.cap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cg-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c4b5fd;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+.cg-lab {
+  font-size: 10px;
+  color: #8871c2;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* === Sections === */
+.mock23-section {
+  padding: 64px 0;
+  position: relative;
+  z-index: 2;
+}
+
+@media (min-width: 640px) {
+  .mock23-section { padding: 80px 0; }
+}
+
+.sec-head {
+  margin-bottom: 36px;
+}
+
+.sec-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: #c4b5fd;
+  margin-bottom: 8px;
+}
+
+.sec-title {
+  font-size: clamp(26px, 3.5vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+  color: white;
+  margin: 0;
+  max-width: 640px;
+}
+
+/* === Features === */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 640px) {
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 980px) {
+  .feature-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.f-card {
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 16px;
+  padding: 24px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.f-card:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+  transform: translateY(-3px);
+}
+
+.f-planet {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+.f-planet.mod { background: radial-gradient(circle at 30% 30%, #f0abfc, #7c3aed); box-shadow: 0 0 20px rgba(167, 139, 250, 0.5); }
+.f-planet.cmd { background: radial-gradient(circle at 30% 30%, #93c5fd, #2563eb); box-shadow: 0 0 20px rgba(147, 197, 253, 0.5); }
+.f-planet.ana { background: radial-gradient(circle at 30% 30%, #c4b5fd, #6d28d9); box-shadow: 0 0 20px rgba(196, 181, 253, 0.5); }
+.f-planet.voi { background: radial-gradient(circle at 30% 30%, #fde68a, #d97706); box-shadow: 0 0 20px rgba(253, 230, 138, 0.5); }
+
+.f-icon {
+  position: absolute;
+  top: 28px;
+  right: 22px;
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.f-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: white;
+  letter-spacing: -0.2px;
+}
+
+.f-card p {
+  font-size: 13.5px;
+  color: #a59ac9;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* === Pricing === */
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 720px) {
+  .plan-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.plan {
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 16px;
+  padding: 28px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan.featured {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(236, 72, 153, 0.12));
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 20px 50px -20px rgba(124, 58, 237, 0.5);
+}
+
+.p-orbit {
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  border-radius: 50%;
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  pointer-events: none;
+  animation: mock-23-orbit 30s linear infinite;
+}
+
+.p-orbit-2 { animation-duration: 22s; }
+.p-orbit-3 { animation-duration: 38s; animation-direction: reverse; }
+
+@keyframes mock-23-orbit {
+  to { transform: rotate(360deg); }
+}
+
+.p-flag {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #1a0e2e;
+  background: linear-gradient(120deg, #f0abfc, #c4b5fd);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.p-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #c4b5fd;
+  margin-bottom: 8px;
+}
+
+.p-price {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  margin-bottom: 6px;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.p-price .per {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8871c2;
+  margin-left: 4px;
+}
+
+.p-desc {
+  font-size: 13px;
+  color: #a59ac9;
+  margin-bottom: 18px;
+}
+
+.p-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #e8e4f5;
+  line-height: 1.85;
+}
+
+.p-list li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.p-list li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: #c4b5fd;
+  font-size: 11px;
+  top: 0.4em;
+}
+
+.fine-print {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #6f638f;
+  line-height: 1.5;
+  max-width: 640px;
+}
+
+/* === Star log === */
+.log {
+  background: rgba(7, 5, 15, 0.6);
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 760px;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.08);
+  font-size: 14px;
+}
+
+.log-row:last-child { border-bottom: none; }
+
+.log-star {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c4b5fd;
+  box-shadow: 0 0 8px #c4b5fd;
+  animation: mock-23-pulse 2s ease-in-out infinite;
+}
+
+.log-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #6f638f;
+}
+
+.log-chan {
+  font-weight: 600;
+  color: white;
+}
+
+.log-viewers {
+  color: #a59ac9;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #f0abfc;
+  background: rgba(240, 171, 252, 0.12);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.log-row.empty {
+  grid-template-columns: 1fr;
+  text-align: center;
+  color: #6f638f;
+  font-style: italic;
+  padding: 22px;
+}
+
+/* === CTA === */
+.mock23-cta {
+  padding: 60px 0 80px;
+}
+
+.cta-grid {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(236, 72, 153, 0.15));
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 24px;
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  box-shadow: 0 30px 80px -20px rgba(124, 58, 237, 0.4);
+}
+
+@media (min-width: 800px) {
+  .cta-grid {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+
+.cta-text {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: white;
+}
+
+.mock23-foot {
+  text-align: center;
+  padding: 24px;
+  font-size: 11px;
+  color: #6f638f;
+  letter-spacing: 0.5px;
+}
+
+/* === Theme toggle button === */
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #c4b5fd;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(167, 139, 250, 0.5);
+  transform: translateY(-1px);
+}
+
+.theme-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ============================================
+   LIGHT MODE OVERRIDE
+   ============================================ */
+.mock23-shell[data-theme='light'] {
+  background: radial-gradient(ellipse at 30% 0%, #ede4ff 0%, #f7f3ff 50%, #ffffff 100%);
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .stars-layer.s1::before,
+.mock23-shell[data-theme='light'] .stars-layer.s2::before,
+.mock23-shell[data-theme='light'] .stars-layer.s3::before {
+  opacity: 0.15;
+}
+
+.mock23-shell[data-theme='light'] .stars-layer.s1::before {
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #7c3aed, transparent),
+    radial-gradient(1px 1px at 70% 80%, #7c3aed, transparent),
+    radial-gradient(1px 1px at 40% 60%, #7c3aed, transparent),
+    radial-gradient(1px 1px at 90% 20%, #7c3aed, transparent),
+    radial-gradient(1px 1px at 10% 90%, #7c3aed, transparent);
+}
+
+.mock23-shell[data-theme='light'] .stars-layer.s2::before {
+  background-image:
+    radial-gradient(1.5px 1.5px at 15% 45%, #7c3aed, transparent),
+    radial-gradient(1.5px 1.5px at 80% 55%, #ec4899, transparent),
+    radial-gradient(1.5px 1.5px at 60% 30%, #2563eb, transparent),
+    radial-gradient(1.5px 1.5px at 30% 75%, #d97706, transparent);
+}
+
+.mock23-shell[data-theme='light'] .mock23-nav {
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom-color: rgba(124, 58, 237, 0.15);
+}
+
+.mock23-shell[data-theme='light'] .nav-links button {
+  color: #4a4263;
+}
+
+.mock23-shell[data-theme='light'] .nav-links button:hover {
+  color: #1a0e2e;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.mock23-shell[data-theme='light'] .theme-toggle {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(124, 58, 237, 0.25);
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .theme-toggle:hover {
+  background: #ffffff;
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.mock23-shell[data-theme='light'] .star-pill {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.2);
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .sp-dot {
+  background: #7c3aed;
+  box-shadow: 0 0 8px #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .hero-h1 {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .hero-desc {
+  color: #4a4263;
+}
+
+.mock23-shell[data-theme='light'] .trust {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .const-svg .line {
+  stroke: rgba(124, 58, 237, 0.3);
+}
+
+.mock23-shell[data-theme='light'] .node {
+  background: #7c3aed;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.5);
+}
+
+.mock23-shell[data-theme='light'] .node.hub {
+  background: #ec4899;
+  box-shadow: 0 0 20px #ec4899, 0 0 40px rgba(236, 72, 153, 0.5);
+}
+
+.mock23-shell[data-theme='light'] .caption {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(124, 58, 237, 0.25);
+  box-shadow: 0 20px 50px -20px rgba(124, 58, 237, 0.3);
+}
+
+.mock23-shell[data-theme='light'] .cap-head {
+  border-bottom-color: rgba(124, 58, 237, 0.15);
+}
+
+.mock23-shell[data-theme='light'] .cap-tag {
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .cap-time {
+  color: #ec4899;
+  background: rgba(236, 72, 153, 0.12);
+}
+
+.mock23-shell[data-theme='light'] .cap-num {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .cap-lab {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .cg-val {
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .cg-lab {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .sec-eyebrow {
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .sec-title {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .f-card {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(124, 58, 237, 0.18);
+  box-shadow: 0 4px 16px -4px rgba(124, 58, 237, 0.1);
+}
+
+.mock23-shell[data-theme='light'] .f-card:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 12px 32px -8px rgba(124, 58, 237, 0.2);
+}
+
+.mock23-shell[data-theme='light'] .f-icon {
+  color: rgba(26, 14, 46, 0.4);
+}
+
+.mock23-shell[data-theme='light'] .f-card h3 {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .f-card p {
+  color: #4a4263;
+}
+
+.mock23-shell[data-theme='light'] .plan {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(124, 58, 237, 0.2);
+  box-shadow: 0 4px 16px -4px rgba(124, 58, 237, 0.08);
+}
+
+.mock23-shell[data-theme='light'] .plan.featured {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(236, 72, 153, 0.06));
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 20px 50px -20px rgba(124, 58, 237, 0.3);
+}
+
+.mock23-shell[data-theme='light'] .p-orbit {
+  border-color: rgba(124, 58, 237, 0.18);
+}
+
+.mock23-shell[data-theme='light'] .p-name {
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .p-price {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .p-price .per {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .p-desc {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .p-list {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .p-list li::before {
+  color: #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .fine-print {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .log {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+.mock23-shell[data-theme='light'] .log-row {
+  border-bottom-color: rgba(124, 58, 237, 0.08);
+}
+
+.mock23-shell[data-theme='light'] .log-star {
+  background: #7c3aed;
+  box-shadow: 0 0 8px #7c3aed;
+}
+
+.mock23-shell[data-theme='light'] .log-id {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .log-chan {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .log-viewers {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .log-tag {
+  color: #ec4899;
+  background: rgba(236, 72, 153, 0.12);
+}
+
+.mock23-shell[data-theme='light'] .log-row.empty {
+  color: #6a6184;
+}
+
+.mock23-shell[data-theme='light'] .cta-grid {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(236, 72, 153, 0.08));
+  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: 0 20px 50px -20px rgba(124, 58, 237, 0.2);
+}
+
+.mock23-shell[data-theme='light'] .cta-text {
+  color: #1a0e2e;
+}
+
+.mock23-shell[data-theme='light'] .mock23-foot {
+  color: #6a6184;
+}

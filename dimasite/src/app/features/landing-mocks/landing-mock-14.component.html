@@ -1,0 +1,192 @@
+<div class="mock14-shell">
+  <!-- Clean Product Nav -->
+  <nav class="mock14-nav">
+    <div class="mock14-container nav-flex">
+      <div class="logo">dima</div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <div>
+        <button class="nav-btn" (click)="onLogin()">Log in with Twitch</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Split Hero -->
+  <header class="mock14-hero">
+    <div class="mock14-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> bots •
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span> streaming
+        </div>
+
+        <h1 class="hero-h1">Less noise.<br>More control.</h1>
+        <p class="hero-desc">
+          A focused platform for streamers who value clarity and craft.<br>
+          Powerful features presented simply.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start for free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Discord</button>
+        </div>
+
+        <div class="meta">Trusted by serious creators worldwide</div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="preview-panel">
+          <div class="preview-top">
+            <div class="preview-brand">
+              <span>dima</span>
+              <span class="preview-live">LIVE</span>
+            </div>
+            <div class="preview-chan">stream.example</div>
+          </div>
+
+          <div class="preview-stats">
+            <div class="stat">
+              <div class="stat-val">41</div>
+              <div class="stat-lab">Active commands</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">8.9k</div>
+              <div class="stat-lab">Chat messages</div>
+            </div>
+            <div class="stat">
+              <div class="stat-val">99.7%</div>
+              <div class="stat-lab">Uptime</div>
+            </div>
+          </div>
+
+          <div class="preview-actions">
+            <div class="action-item">
+              <span>Moderation</span>
+              <span class="action-val good">Protecting</span>
+            </div>
+            <div class="action-item">
+              <span>Auto TTS</span>
+              <span class="action-val">Quiet</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section id="features" class="mock14-section">
+    <div class="mock14-container">
+      <div class="sec-label">CAPABILITIES</div>
+      <h2 class="sec-title">Thoughtful tools<br>for live creators.</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <lucide-icon [name]="shieldIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Thoughtful Moderation</div>
+          <p>AI that understands context and tone, not just keywords.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="zapIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Flexible Automation</div>
+          <p>Commands and triggers that feel natural and powerful.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="chartIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Meaningful Insights</div>
+          <p>Analytics designed to be read at a glance during stream.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="volumeIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Voice That Fits</div>
+          <p>Clear, natural TTS that doesn’t pull focus from your content.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock14-section pricing-section">
+    <div class="mock14-container">
+      <div class="sec-label">PLANS</div>
+      <h2 class="sec-title">Choose what fits<br>your channel.</h2>
+
+      <div class="pricing-grid">
+        <div class="plan">
+          <div class="plan-name">Starter</div>
+          <div class="plan-price">$0</div>
+          <div class="plan-desc">Everything you need to begin</div>
+          <ul class="plan-list">
+            <li>Moderation tools</li>
+            <li>Custom commands</li>
+            <li>30-day history</li>
+            <li>Community Discord</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Start free</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="plan-name">Creator <span class="rec">Recommended</span></div>
+          <div class="plan-price">$6 <span class="per">/mo</span></div>
+          <div class="plan-desc">For channels that are growing</div>
+          <ul class="plan-list">
+            <li>Advanced AI tools</li>
+            <li>Full analytics suite</li>
+            <li>High-quality voices</li>
+            <li>Email + chat support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Select Creator</button>
+        </div>
+
+        <div class="plan">
+          <div class="plan-name">Studio</div>
+          <div class="plan-price">$15 <span class="per">/mo</span></div>
+          <div class="plan-desc">For teams and large communities</div>
+          <ul class="plan-list">
+            <li>Everything in Creator</li>
+            <li>Custom voice models</li>
+            <li>Team access</li>
+            <li>Dedicated support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Choose Studio</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section id="live" class="mock14-section">
+    <div class="mock14-container">
+      <div class="sec-label">ON AIR</div>
+      <h2 class="sec-title">Streams using dima right now</h2>
+
+      <div class="live-list">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-row">
+              <span class="live-chan">{{ channel.channel }}</span>
+              <span class="live-viewers">{{ channel.viewers }} watching</span>
+              <span class="live-status">Active</span>
+            </div>
+          }
+        } @else {
+          <div class="live-row empty">Fetching current activity…</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock14-cta">
+    <div class="mock14-container">
+      <div class="cta-text">Take back control of your chat.</div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock14-foot">Mock 14 — Quiet Control • Simulated environment</footer>
+</div>

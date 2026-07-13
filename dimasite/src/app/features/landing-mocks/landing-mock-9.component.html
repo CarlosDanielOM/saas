@@ -1,0 +1,118 @@
+<div class="mock9-shell">
+  <nav class="mock9-nav">
+    <div class="mock9-container nav-flex">
+      <div class="logo">COSMIC<span class="pulse">DIMA</span></div>
+      <div class="nav-links">
+        <button (click)="scrollTo('powers')">Cosmic Powers</button>
+        <button (click)="scrollTo('pulse')">Live Pulse</button>
+        <button (click)="scrollTo('pricing')">Plans</button>
+      </div>
+      <div>
+        <a routerLink="/mock" class="back">← Mocks</a>
+        <button class="nav-btn" (click)="onLogin()">Enter the Stream</button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="mock9-hero">
+    <div class="mock9-container">
+      <div class="badge">✧ PULSING ACROSS THE UNIVERSE</div>
+      <h1 class="title">Your chat.<br>The universe’s favorite <span>frequency</span>.</h1>
+      <p class="desc">DomDimaBot tuned to the perfect cosmic wavelength. Energy that resonates.</p>
+      <div class="actions">
+        <button class="btn-cosmic" (click)="onLogin()">Tune in for free</button>
+        <button class="btn-ghost" (click)="onDiscord()">Join the constellation</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mock9-container">
+    <div class="pulse-stats">
+      <div><span [countUp]="siteStats().botActiveAccounts">0</span> bots pulsing</div>
+      <div><span [countUp]="siteStats().messagesReceived">0</span> messages across galaxies</div>
+    </div>
+  </div>
+
+  <section id="powers" class="mock9-section">
+    <div class="mock9-container">
+      <h2 class="sec-title">Cosmic Powers</h2>
+      <div class="powers">
+        <div class="power">
+          <lucide-icon [name]="sparklesIcon"></lucide-icon>
+          <h3>Resonance AI</h3>
+          <p>Moderation that feels the frequency of your community.</p>
+        </div>
+        <div class="power">
+          <lucide-icon [name]="zapIcon"></lucide-icon>
+          <h3>Event Horizon</h3>
+          <p>Triggers and redemptions that bend time and chat.</p>
+        </div>
+        <div class="power">
+          <lucide-icon [name]="usersIcon"></lucide-icon>
+          <h3>Constellation</h3>
+          <p>Build loyal viewers who keep coming back orbit after orbit.</p>
+        </div>
+        <div class="power">
+          <lucide-icon [name]="starIcon"></lucide-icon>
+          <h3>Stellar Voice</h3>
+          <p>Voice cloning that sounds like it came from another dimension.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pulse" class="mock9-section alt">
+    <div class="mock9-container">
+      <h2 class="sec-title">Live Pulse Check</h2>
+      <div class="pulse-grid">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="pulse-card">
+            <div class="avatar-wrap">
+              <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" />
+              <span class="pulse-dot"></span>
+            </div>
+            <div>
+              <div class="name">{{ channel.channel }}</div>
+              <div class="meta">{{ channel.viewers }} tuned in</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="mock9-section">
+    <div class="mock9-container">
+      <h2 class="sec-title">Choose your wavelength</h2>
+      <div class="cosmic-pricing">
+        <div class="tier">
+          <div class="label">BASE FREQUENCY</div>
+          <div class="price">$0</div>
+          <div class="features">Core tools • 25k credits</div>
+          <button class="btn-ghost full" (click)="onLogin()">Start resonating</button>
+        </div>
+        <div class="tier featured">
+          <div class="label">PULSE <span class="pop">RECOMMENDED</span></div>
+          <div class="price">$6</div>
+          <div class="features">Full AI • Premium voice • 125k credits</div>
+          <button class="btn-cosmic full" (click)="onLogin()">Lock in the frequency</button>
+        </div>
+        <div class="tier">
+          <div class="label">SUPERNOVA</div>
+          <div class="price">$15</div>
+          <div class="features">Voice cloning • Unlimited scale</div>
+          <button class="btn-ghost full" (click)="onLogin()">Go supernova</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final-cosmic">
+    <div class="mock9-container">
+      <h2>Ready to resonate with your people?</h2>
+      <button class="btn-cosmic big" (click)="onLogin()">Login with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock9-foot">Mock 9 — Cosmic Pulse • Different wavelength of Twitch Energy</footer>
+</div>

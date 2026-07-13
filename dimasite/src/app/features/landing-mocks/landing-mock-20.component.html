@@ -1,0 +1,269 @@
+<div class="mock20-shell" [attr.data-theme]="theme()">
+  <!-- Aurora mesh background lives behind everything -->
+  <div class="aurora">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="grain"></div>
+  </div>
+
+  <!-- Glass nav -->
+  <nav class="mock20-nav">
+    <div class="mock20-container nav-flex">
+      <a class="brand" routerLink="/">
+        <span class="brand-mark">
+          <lucide-icon [name]="sparklesIcon" class="brand-icon"></lucide-icon>
+        </span>
+        <span class="brand-name">dima</span>
+      </a>
+
+      <div class="nav-links">
+        <a routerLink="/mock" class="nav-back">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+
+      <button class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'" type="button">
+        @if (isDarkMode()) {
+          <lucide-icon [name]="sunIcon" class="theme-icon"></lucide-icon>
+        } @else {
+          <lucide-icon [name]="moonIcon" class="theme-icon"></lucide-icon>
+        }
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero: floating glass card on aurora -->
+  <header class="mock20-hero">
+    <div class="mock20-container hero-grid">
+      <div class="hero-text">
+        <div class="pill">
+          <span class="pulse"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+          channels in flow &nbsp;·&nbsp;
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span>
+          watching now
+        </div>
+
+        <h1 class="hero-h1">
+          A bot that flows<br>
+          <span class="grad">with your stream</span><br>
+          like a tide.
+        </h1>
+
+        <p class="hero-desc">
+          Mod queues, command lines, voice, TTS, and analytics. All the pieces
+          of running a serious channel, blended into one calm surface.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Join Discord</button>
+        </div>
+
+        <div class="trust">
+          <span>Free forever</span>
+          <span class="dot"></span>
+          <span>No credit card</span>
+          <span class="dot"></span>
+          <span>Twitch &amp; Kick</span>
+        </div>
+      </div>
+
+      <!-- Glassy floating stat card -->
+      <div class="hero-visual">
+        <div class="glass-card">
+          <div class="glass-head">
+            <div class="glass-title">platform · in motion</div>
+            <div class="glass-status">LIVE</div>
+          </div>
+
+          <div class="glass-stats">
+            <div class="gstat">
+              <div class="g-num">
+                <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+              </div>
+              <div class="g-lab">Bots on the air</div>
+            </div>
+            <div class="gstat">
+              <div class="g-num alt">
+                <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="80">0</span>
+              </div>
+              <div class="g-lab">Live viewers</div>
+            </div>
+            <div class="gstat">
+              <div class="g-num">
+                <span [countUp]="siteStats().registeredUsers" [staggerDelay]="140">0</span>
+              </div>
+              <div class="g-lab">Creators</div>
+            </div>
+            <div class="gstat">
+              <div class="g-num alt">
+                <span [countUp]="siteStats().messagesReceived" [staggerDelay]="200">0</span>
+              </div>
+              <div class="g-lab">Messages today</div>
+            </div>
+          </div>
+
+          <!-- Wave graphic inside card -->
+          <div class="glass-wave">
+            <svg viewBox="0 0 360 60" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="auroraWave" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stop-color="#a78bfa" />
+                  <stop offset="50%" stop-color="#22d3ee" />
+                  <stop offset="100%" stop-color="#f472b6" />
+                </linearGradient>
+              </defs>
+              <path d="M0,30 C40,8 80,52 120,30 C160,8 200,52 240,30 C280,8 320,52 360,30 L360,60 L0,60 Z" fill="url(#auroraWave)" opacity="0.35"/>
+              <path d="M0,30 C40,8 80,52 120,30 C160,8 200,52 240,30 C280,8 320,52 360,30" stroke="url(#auroraWave)" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <div class="glass-foot">
+            <div>
+              <span class="ff-lab">Commands run</span>
+              <span class="ff-val">
+                <span [countUp]="siteStats().totalCommands" [staggerDelay]="240">0</span>
+              </span>
+            </div>
+            <div>
+              <span class="ff-lab">Uptime</span>
+              <span class="ff-val">99.98%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features: glass tiles on white-ish -->
+  <section id="features" class="mock20-section">
+    <div class="mock20-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">What&rsquo;s in the flow</div>
+        <h2 class="sec-title">Everything that makes a stream feel alive.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <div class="ftile">
+          <div class="ftile-ico"><lucide-icon [name]="shieldIcon" class="ico"></lucide-icon></div>
+          <h3>AI Moderation</h3>
+          <p>Reads the room, not just the regex. Soft-touch, hard-line, your call.</p>
+        </div>
+        <div class="ftile">
+          <div class="ftile-ico"><lucide-icon [name]="zapIcon" class="ico"></lucide-icon></div>
+          <h3>Command Engine</h3>
+          <p>Variables, timers, conditions, aliases. Unlimited on every tier.</p>
+        </div>
+        <div class="ftile">
+          <div class="ftile-ico"><lucide-icon [name]="chartIcon" class="ico"></lucide-icon></div>
+          <h3>Analytics</h3>
+          <p>Clear retention curves and loyalty insights. Cited, dated, calm.</p>
+        </div>
+        <div class="ftile">
+          <div class="ftile-ico"><lucide-icon [name]="volumeIcon" class="ico"></lucide-icon></div>
+          <h3>Voice &amp; TTS</h3>
+          <p>High quality voices. Pro tier clones yours. Triggers feel seamless.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing: floating pill cards -->
+  <section id="pricing" class="mock20-section">
+    <div class="mock20-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Pricing</div>
+        <h2 class="sec-title">One surface. Three sizes.</h2>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan">
+          <div class="p-name">Free</div>
+          <div class="p-price">$0<span class="per">/forever</span></div>
+          <div class="p-desc">Perfect for starting out</div>
+          <ul class="p-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Get started</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="p-flag">Most popular</div>
+          <div class="p-name">Premium</div>
+          <div class="p-price">$6<span class="per">/mo</span></div>
+          <div class="p-desc">For growing channels</div>
+          <ul class="p-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Choose Premium</button>
+        </div>
+
+        <div class="plan">
+          <div class="p-name">Pro</div>
+          <div class="p-price">$15<span class="per">/mo</span></div>
+          <div class="p-desc">Maximum scale &amp; control</div>
+          <ul class="p-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+
+      <p class="fine-print">
+        * Core features (commands, basic automation) are unlimited. AI
+        moderation, TTS, and advanced voice features are subject to monthly
+        credit limits.
+      </p>
+    </div>
+  </section>
+
+  <!-- Live: stream line -->
+  <section id="live" class="mock20-section">
+    <div class="mock20-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">Right now</div>
+        <h2 class="sec-title">Channels flowing through dima.</h2>
+      </div>
+
+      <div class="stream">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="stream-row">
+              <span class="stream-chan">{{ channel.channel }}</span>
+              <span class="stream-meta">
+                <span [countUp]="channel.viewers" [staggerDelay]="0">0</span> viewers
+              </span>
+              <span class="stream-tag">Live</span>
+            </div>
+          }
+        } @else {
+          <div class="stream-row empty">The wave is forming…</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock20-cta">
+    <div class="mock20-container cta-grid">
+      <div class="cta-text">
+        Ready to stop fighting your tools and start running your stream?
+      </div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock20-foot">Mock 20 — Aurora Stream · Calm, glassy, on the air</footer>
+</div>

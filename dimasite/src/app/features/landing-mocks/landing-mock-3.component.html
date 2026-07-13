@@ -1,0 +1,169 @@
+<div class="mock3-shell">
+  <!-- Tech Navbar -->
+  <nav class="mock3-nav">
+    <div class="mock3-container nav-flex">
+      <div class="logo">
+        <span class="logo-bracket">[</span>DOMDIMABOT<span class="logo-bracket">]</span>
+      </div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button (click)="scrollTo('features')">FEATURES</button>
+        <button (click)="scrollTo('pricing')">PRICING</button>
+        <button (click)="scrollTo('live')">LIVE</button>
+      </div>
+      <div>
+        <button class="nav-btn" (click)="onLogin()">LOGIN / TWITCH</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Split Hero -->
+  <header class="mock3-hero">
+    <div class="mock3-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> BOTS ACTIVE •
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="110">0</span> LIVE USERS
+        </div>
+        <h1 class="hero-h1">Precision.<br>Automation.<br>Control.</h1>
+        <p class="hero-desc">A professional-grade Twitch operations platform.<br>Built for serious creators and growing communities.</p>
+
+        <div class="hero-actions">
+          <button class="btn-neon" (click)="onLogin()">Activate bot — free</button>
+          <button class="btn-outline" (click)="onDiscord()">Discord</button>
+        </div>
+        <div class="tech-note">v4.8 • 99.98% uptime • SOC2 aligned</div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="console-window">
+          <div class="console-bar">
+            <span>console</span>
+            <span class="status">CONNECTED</span>
+          </div>
+          <pre class="console-body">> bot activated on twitch
+> moderation: ai+rules enabled
+> analytics stream: live
+> tts: pro voice ready
+> uptime: 47d 11h 09m</pre>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section id="features" class="mock3-section">
+    <div class="mock3-container">
+      <div class="sec-label">CAPABILITIES</div>
+      <h2 class="sec-title">Built like infrastructure.<br>Feels like magic.</h2>
+
+      <div class="grid-tech">
+        <div class="tech-card">
+          <lucide-icon [name]="shieldIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">AI Shield</div>
+          <p>Context-aware moderation that learns your community’s language in real time.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="terminalIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Command Engine</div>
+          <p>Powerful variables, timers, conditional logic. No limits on the Free tier.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="chartIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Stream Intel</div>
+          <p>Retention curves, command heatmaps, viewer loyalty metrics.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="volumeIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Voice Layer</div>
+          <p>Crystal TTS + Pro voice cloning. Seamlessly integrated with triggers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock3-section pricing-section">
+    <div class="mock3-container">
+      <div class="sec-label">PLANS</div>
+      <h2 class="sec-title">Choose your tier.</h2>
+
+      <div class="price-table">
+        <div class="price-col">
+          <div class="p-tier">FREE</div>
+          <div class="p-price">$0</div>
+          <div class="p-desc">For new and small channels.</div>
+          <ul>
+            <li>Basic moderation</li>
+            <li>Unlimited commands</li>
+            <li>30-day analytics</li>
+            <li>25k AI credits</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Start</button>
+        </div>
+
+        <div class="price-col featured">
+          <div class="p-tier">PREMIUM <span class="rec">RECOMMENDED</span></div>
+          <div class="p-price">$6 <span class="mo">/mo</span></div>
+          <div class="p-desc">For growing, active communities.</div>
+          <ul>
+            <li>AI + rule moderation</li>
+            <li>Advanced analytics</li>
+            <li>Human-like TTS</li>
+            <li>125k credits + more</li>
+          </ul>
+          <button class="btn-neon full" (click)="onLogin()">Select Premium</button>
+        </div>
+
+        <div class="price-col">
+          <div class="p-tier">PRO</div>
+          <div class="p-price">$15 <span class="mo">/mo</span></div>
+          <div class="p-desc">Maximum power and scale.</div>
+          <ul>
+            <li>Full AI suite</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>500k credits</li>
+            <li>Priority + custom support</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section id="live" class="mock3-section">
+    <div class="mock3-container">
+      <div class="sec-label">CURRENTLY ONLINE</div>
+      <h2 class="sec-title">Live channels</h2>
+
+      <div class="live-console">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-line">
+              <span class="chan-name">{{ channel.channel }}</span>
+              <span class="chan-viewers">{{ channel.viewers }} viewers</span>
+              <span class="chan-status">● BOT ACTIVE</span>
+            </div>
+          }
+        } @else {
+          <div class="live-line">
+            <span class="chan-name">No live data</span>
+            <span class="chan-viewers">—</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock3-final">
+    <div class="mock3-container">
+      <div class="final-text">Ready to take control of your stream?</div>
+      <button class="btn-neon big" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock3-foot">Mock 3 — Neon Console • All data simulated</footer>
+</div>

@@ -1,0 +1,126 @@
+<div class="mock7-shell">
+  <nav class="mock7-nav">
+    <div class="mock7-container nav-inner">
+      <div class="brand">DIMA<span class="accent">RIOT</span></div>
+      <div class="nav-links">
+        <button (click)="scrollTo('modes')">Riot Modes</button>
+        <button (click)="scrollTo('live')">Live Chaos</button>
+        <button (click)="scrollTo('pricing')">Tiers</button>
+      </div>
+      <div class="nav-actions">
+        <a routerLink="/mock" class="back">← Mocks</a>
+        <button class="btn-secondary" (click)="onDiscord()">Discord</button>
+        <button class="btn-riot" (click)="onLogin()">Join the Riot</button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="mock7-hero">
+    <div class="mock7-container">
+      <div class="chaos-badge">⚡ CHAT IS IN FULL RIOT MODE</div>
+      <h1 class="hero-title">Turn your chat<br>into a <span class="highlight">riot</span>.</h1>
+      <p class="hero-subtitle">Explosive energy. Zero chill. DomDimaBot brings the chaos your viewers crave.</p>
+      <div class="hero-ctas">
+        <button class="btn-riot big" (click)="onLogin()">Unleash the chaos</button>
+        <button class="btn-ghost" (click)="onDiscord()">See the mayhem</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mock7-container">
+    <div class="live-rail">
+      @for (c of liveChannels(); track c.channelID) {
+        <div class="live-pill"><img [src]="c.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" /> {{ c.channel }}</div>
+      }
+    </div>
+  </div>
+
+  <section class="mock7-section">
+    <div class="mock7-container">
+      <div class="quick-stats">
+        <div><span [countUp]="siteStats().liveUsers">0</span> live viewers causing chaos</div>
+        <div><span [countUp]="siteStats().messagesReceived">0</span> messages in the last 24h</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modes" class="mock7-section">
+    <div class="mock7-container">
+      <h2 class="section-title">Riot Modes</h2>
+      <div class="modes-grid">
+        <div class="mode-card">
+          <lucide-icon [name]="flameIcon"></lucide-icon>
+          <h3>Full Send</h3>
+          <p>AI that keeps up with the fastest, most unhinged chats.</p>
+        </div>
+        <div class="mode-card">
+          <lucide-icon [name]="zapIcon"></lucide-icon>
+          <h3>Command Storm</h3>
+          <p>Unlimited commands that hit different every time.</p>
+        </div>
+        <div class="mode-card">
+          <lucide-icon [name]="usersIcon"></lucide-icon>
+          <h3>Hype Cascade</h3>
+          <p>Redemptions and events that chain into bigger moments.</p>
+        </div>
+        <div class="mode-card">
+          <lucide-icon [name]="starIcon"></lucide-icon>
+          <h3>Voice Mayhem</h3>
+          <p>TTS and voice cloning that sounds like your stream on steroids.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="live" class="mock7-section alt">
+    <div class="mock7-container">
+      <h2 class="section-title">Live in the Riot</h2>
+      <div class="riot-live">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="riot-live-card">
+            <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" />
+            <div>
+              <div class="name">{{ channel.channel }}</div>
+              <div class="viewers">{{ channel.viewers }} rioting</div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="mock7-section">
+    <div class="mock7-container">
+      <h2 class="section-title">Choose your riot level</h2>
+      <div class="riot-pricing">
+        <div class="p-tier">
+          <div class="tier-name">CASUAL</div>
+          <div class="tier-price">$0</div>
+          <ul><li>Basic riot tools</li><li>Unlimited spam commands</li></ul>
+          <button class="btn-ghost full" (click)="onLogin()">Start light</button>
+        </div>
+        <div class="p-tier hot">
+          <div class="tier-name">RIOT <span>HOT</span></div>
+          <div class="tier-price">$6</div>
+          <ul><li>Full AI chaos</li><li>Hype cascades</li><li>125k credits</li></ul>
+          <button class="btn-riot full" (click)="onLogin()">Go full riot</button>
+        </div>
+        <div class="p-tier">
+          <div class="tier-name">ANARCHY</div>
+          <div class="tier-price">$15</div>
+          <ul><li>Voice destruction</li><li>Unlimited everything</li></ul>
+          <button class="btn-ghost full" (click)="onLogin()">Maximum chaos</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final-riot">
+    <div class="mock7-container">
+      <h2>Ready to set your chat on fire?</h2>
+      <button class="btn-riot big" (click)="onLogin()">Login &amp; Riot</button>
+    </div>
+  </div>
+
+  <footer class="mock7-foot">Mock 7 — Neon Riot • Based on Twitch Energy</footer>
+</div>

@@ -1,0 +1,157 @@
+<div class="mock2-shell">
+  <!-- Vibrant Navbar -->
+  <nav class="mock2-nav">
+    <div class="mock2-container nav-row">
+      <div class="brand">
+        <span class="brand-accent">D</span>DomDimaBot
+      </div>
+      <div class="nav-right">
+        <a routerLink="/mock" class="nav-item back">← Mocks</a>
+        <a class="nav-item" (click)="scrollToSection('features')">Features</a>
+        <a class="nav-item" (click)="scrollToSection('pricing')">Pricing</a>
+        <button class="nav-cta" (click)="onLogin()">Login</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Big Gradient Hero -->
+  <section class="mock2-hero">
+    <div class="mock2-container hero-inner">
+      <div class="hero-badge">NEW: AI Voice Cloning in Pro</div>
+      <h1 class="hero-big">Make your chat<br>feel alive.</h1>
+      <p class="hero-lead">
+        The most loved Twitch bot. Smarter moderation.<br>
+        Better tools. Zero hassle.
+      </p>
+
+      <div class="hero-ctas">
+        <button class="cta-primary" (click)="onLogin()">
+          Start free <lucide-icon [name]="arrowIcon" class="h-4 w-4 ml-1"></lucide-icon>
+        </button>
+        <button class="cta-secondary" (click)="onDiscord()">Join the community</button>
+      </div>
+      <div class="hero-meta">No credit card required • Cancel anytime</div>
+    </div>
+  </section>
+
+  <!-- Quick Social Proof + Live Stats -->
+  <div class="mock2-container proof-bar">
+    <div class="proof-stats">
+      <span><strong [countUp]="siteStats().registeredUsers" [staggerDelay]="0">0</strong> registered</span>
+      <span><strong [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</strong> watching live</span>
+      <span><strong [countUp]="siteStats().botActiveAccounts" [staggerDelay]="160">0</strong> bots active</span>
+    </div>
+    <div>⭐️⭐️⭐️⭐️⭐️ <span>Featured in thousands of streams</span></div>
+  </div>
+
+  <!-- Features - Bold Cards -->
+  <section id="features" class="mock2-section">
+    <div class="mock2-container">
+      <h2 class="section-title">Everything hits different.</h2>
+      <div class="feature-grid">
+        <div class="fcard">
+          <div class="ficon"><lucide-icon [name]="zapIcon"></lucide-icon></div>
+          <div class="ftitle">Blazing Automation</div>
+          <div class="fdesc">Set it once. Watch your stream run smoother than ever.</div>
+          <div class="ftag">Unlimited</div>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><lucide-icon [name]="usersIcon"></lucide-icon></div>
+          <div class="ftitle">AI That Gets It</div>
+          <div class="fdesc">Context-aware chat moderation that actually understands slang and tone.</div>
+          <div class="ftag">Premium+</div>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><lucide-icon [name]="chartIcon"></lucide-icon></div>
+          <div class="ftitle">Analytics That Matter</div>
+          <div class="fdesc">Know exactly who engages and when. Retention insights included.</div>
+          <div class="ftag">All plans</div>
+        </div>
+        <div class="fcard">
+          <div class="ficon"><lucide-icon [name]="micIcon"></lucide-icon></div>
+          <div class="ftitle">Voice That Wows</div>
+          <div class="fdesc">Human-like TTS + full voice cloning on Pro. Your brand, your voice.</div>
+          <div class="ftag">Pro</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing - Toggle + Panel -->
+  <section id="pricing" class="mock2-section pricing-area">
+    <div class="mock2-container">
+      <div class="pricing-head">
+        <h2>Pricing built for growth.</h2>
+        <div class="plan-tabs">
+          <button [class.active]="activePlan() === 'free'" (click)="setPlan('free')">Free</button>
+          <button [class.active]="activePlan() === 'premium'" (click)="setPlan('premium')">Premium</button>
+          <button [class.active]="activePlan() === 'pro'" (click)="setPlan('pro')">Pro</button>
+        </div>
+      </div>
+
+      @if (activePlan() === 'free') {
+        <div class="plan-detail">
+          <div class="plan-price">$0 <span>forever</span></div>
+          <div class="plan-perks">
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Basic chat tools</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Simple commands</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> 25k AI credits</div>
+          </div>
+          <button class="cta-primary" (click)="onLogin()">Get started</button>
+        </div>
+      }
+
+      @if (activePlan() === 'premium') {
+        <div class="plan-detail highlight">
+          <div class="plan-price">$6 <span>/mo</span></div>
+          <div class="plan-perks">
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Smart AI moderation</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Advanced analytics</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> 125k credits + human TTS</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Priority support</div>
+          </div>
+          <button class="cta-primary" (click)="onLogin()">Choose Premium — most popular</button>
+        </div>
+      }
+
+      @if (activePlan() === 'pro') {
+        <div class="plan-detail">
+          <div class="plan-price">$15 <span>/mo</span></div>
+          <div class="plan-perks">
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Everything in Premium</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> Voice cloning</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> 500k AI credits</div>
+            <div><lucide-icon [name]="checkIcon"></lucide-icon> 1TB bandwidth + custom perks</div>
+          </div>
+          <button class="cta-primary" (click)="onLogin()">Go Pro</button>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Live Rail -->
+  <section class="mock2-section live-rail">
+    <div class="mock2-container">
+      <div class="live-head">Live with DomDimaBot right now</div>
+      <div class="live-avatars">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="avatar-chip">
+            <img class="av" [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+            <span>{{ channel.channel }}</span>
+            <span class="viewers">{{ channel.viewers }}</span>
+            <span class="dot"></span>
+          </div>
+        }
+        @if (liveChannels().length === 0) {
+          <div class="avatar-chip">No live channels detected</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="final-cta">
+    <button class="big-cta" (click)="onLogin()">Join thousands of streamers — free to start</button>
+  </div>
+
+  <footer class="mock2-footer">Mock 2 — Gradient Pop</footer>
+</div>

@@ -1,0 +1,162 @@
+<div class="mock12-shell">
+  <nav class="mock12-nav">
+    <div class="mock12-container nav-flex">
+      <div class="logo">
+        <span class="logo-bracket">[</span>ABYSS<span class="logo-bracket">]</span>
+      </div>
+      <div class="nav-links">
+        <button (click)="scrollTo('features')">FEATURES</button>
+        <button (click)="scrollTo('pricing')">PRICING</button>
+        <button (click)="scrollTo('live')">LIVE</button>
+      </div>
+      <div>
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button class="nav-btn" (click)="onLogin()">LOGIN / TWITCH</button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="mock12-hero">
+    <div class="mock12-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> BOTS IN THE VOID
+        </div>
+        <h1 class="hero-h1">Deep.<br>Immersive.<br>Stream.</h1>
+        <p class="hero-desc">A dark terminal built for creators who want depth, focus, and serious tools for their community.</p>
+
+        <div class="hero-actions">
+          <button class="btn-neon" (click)="onLogin()">Descend</button>
+          <button class="btn-outline" (click)="onDiscord()">Discord</button>
+        </div>
+        <div class="tech-note">v4.8 • 99.98% uptime • Built in the dark</div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="console-window">
+          <div class="console-bar">
+            <span>void.log</span>
+            <span class="status">CONNECTED</span>
+          </div>
+          <pre class="console-body">> bot initialized on twitch
+> moderation: abyss-active
+> analytics: deep scan live
+> tts: enabled
+> uptime: 47d 11h 09m</pre>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="features" class="mock12-section">
+    <div class="mock12-container">
+      <div class="sec-label">CAPABILITIES</div>
+      <h2 class="sec-title">Tools from the depths.<br>For your stream.</h2>
+
+      <div class="grid-tech">
+        <div class="tech-card">
+          <lucide-icon [name]="shieldIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Abyss Shield</div>
+          <p>Deep, context-aware moderation that protects your vibe.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="terminalIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Command Core</div>
+          <p>Advanced automation and logic for creators who go hard.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="chartIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Depth Analytics</div>
+          <p>Long-term insights into your community and stream health.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="volumeIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Echo Voice</div>
+          <p>Premium voice tools that sound powerful and clean.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="mock12-section pricing-section">
+    <div class="mock12-container">
+      <div class="sec-label">PLANS</div>
+      <h2 class="sec-title">Select your depth.</h2>
+
+      <div class="price-table">
+        <div class="price-col">
+          <div class="p-tier">FREE</div>
+          <div class="p-price">$0</div>
+          <div class="p-desc">Surface level.</div>
+          <ul>
+            <li>Basic moderation</li>
+            <li>Unlimited commands</li>
+            <li>30-day analytics</li>
+            <li>25k AI credits</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Start</button>
+        </div>
+
+        <div class="price-col featured">
+          <div class="p-tier">PREMIUM <span class="rec">RECOMMENDED</span></div>
+          <div class="p-price">$6 <span class="mo">/mo</span></div>
+          <div class="p-desc">Deeper access.</div>
+          <ul>
+            <li>AI + rule moderation</li>
+            <li>Advanced analytics</li>
+            <li>Human-like TTS</li>
+            <li>125k credits</li>
+          </ul>
+          <button class="btn-neon full" (click)="onLogin()">Select Premium</button>
+        </div>
+
+        <div class="price-col">
+          <div class="p-tier">PRO</div>
+          <div class="p-price">$15 <span class="mo">/mo</span></div>
+          <div class="p-desc">The void awaits.</div>
+          <ul>
+            <li>Full AI suite</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>500k credits</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="live" class="mock12-section">
+    <div class="mock12-container">
+      <div class="sec-label">CURRENTLY ONLINE</div>
+      <h2 class="sec-title">Live in the abyss</h2>
+
+      <div class="live-console">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-line">
+              <span class="chan-name">{{ channel.channel }}</span>
+              <span class="chan-viewers">{{ channel.viewers }} viewers</span>
+              <span class="chan-status">● VOID ACTIVE</span>
+            </div>
+          }
+        } @else {
+          <div class="live-line">
+            <span class="chan-name">No live data</span>
+            <span class="chan-viewers">—</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock12-final">
+    <div class="mock12-container">
+      <div class="final-text">Ready to go deeper?</div>
+      <button class="btn-neon big" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock12-foot">Mock 12 — Abyss Terminal • Neon Console variation • Real data</footer>
+</div>

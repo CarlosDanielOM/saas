@@ -1,0 +1,297 @@
+<div class="dash23-shell" [attr.data-theme]="theme()">
+  <!-- Starfield lives behind everything -->
+  <div class="stars">
+    <div class="stars-layer s1"></div>
+    <div class="stars-layer s2"></div>
+    <div class="stars-layer s3"></div>
+  </div>
+
+  <!-- App shell: sidebar + main -->
+  <div class="shell">
+    <!-- Backdrop for mobile drawer -->
+    <div
+      class="backdrop"
+      [class.visible]="sidebarOpen()"
+      (click)="closeSidebar()"
+      aria-hidden="true"
+    ></div>
+
+    <!-- ========== Sidebar ========== -->
+    <aside class="sidebar" [class.open]="sidebarOpen()" [class.collapsed]="!sidebarOpen()">
+      <div class="sb-head">
+        <div class="sb-brand">
+          <span class="brand-core"></span>
+          @if (sidebarOpen()) {
+            <span class="brand-name">dima·net</span>
+          }
+        </div>
+        <button
+          type="button"
+          class="sb-close"
+          (click)="closeSidebar()"
+          aria-label="Close menu"
+        >
+          ×
+        </button>
+      </div>
+
+      <nav class="sb-nav">
+        <a class="sb-link active" (click)="closeSidebar()">
+          <lucide-icon [name]="activityIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>Overview</span> }
+        </a>
+        <a class="sb-link" (click)="closeSidebar()">
+          <lucide-icon [name]="zapIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>Commands</span> }
+        </a>
+        <a class="sb-link" (click)="closeSidebar()">
+          <lucide-icon [name]="shieldIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>Moderation</span> }
+        </a>
+        <a class="sb-link" (click)="closeSidebar()">
+          <lucide-icon [name]="chartIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>Analytics</span> }
+        </a>
+        <a class="sb-link" (click)="closeSidebar()">
+          <lucide-icon [name]="volumeIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>Voice &amp; TTS</span> }
+        </a>
+        <a class="sb-link" (click)="closeSidebar()">
+          <lucide-icon [name]="sparklesIcon" class="sb-ico"></lucide-icon>
+          @if (sidebarOpen()) { <span>AI Personality</span> }
+        </a>
+      </nav>
+
+      @if (sidebarOpen()) {
+        <div class="sb-plan">
+          <div class="sb-plan-eyebrow">TIER</div>
+          <div class="sb-plan-name">{{ channel().tier | uppercase }}</div>
+          <div class="sb-plan-sub">Until renewal · 24d</div>
+        </div>
+      }
+    </aside>
+
+    <!-- ========== Main column ========== -->
+    <div class="main">
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="tb-left">
+          <button class="sb-toggle" (click)="toggleSidebar()" type="button" aria-label="Toggle sidebar">
+            <span class="tb-burger"></span>
+          </button>
+          <a routerLink="/mock" class="tb-back">← MOCKS</a>
+          <div class="tb-channel">
+            <span class="tb-live">
+              <span class="live-pulse"></span>
+              LIVE
+            </span>
+            <span class="tb-name">{{ channel().display }}</span>
+            <span class="tb-sep">·</span>
+            <span class="tb-cat">{{ channel().category }}</span>
+          </div>
+        </div>
+
+        <div class="tb-right">
+          <div class="tb-time">
+            <span class="tb-time-eyebrow">UPTIME</span>
+            <span class="tb-time-val">{{ channel().startedAt }}</span>
+          </div>
+          <button class="theme-toggle" (click)="toggleTheme()" type="button" [attr.aria-label]="isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'">
+            @if (isDarkMode()) {
+              <lucide-icon [name]="sunIcon" class="theme-icon"></lucide-icon>
+            } @else {
+              <lucide-icon [name]="moonIcon" class="theme-icon"></lucide-icon>
+            }
+          </button>
+          <div class="tb-avatar">{{ channel().name.charAt(0).toUpperCase() }}</div>
+        </div>
+      </header>
+
+      <!-- Stream title / context strip -->
+      <div class="ctx-strip">
+        <div class="ctx-left">
+          <div class="ctx-eyebrow">// STREAM CONTEXT</div>
+          <h1 class="ctx-title">{{ channel().title }}</h1>
+        </div>
+        <div class="ctx-right">
+          <div class="ctx-pill">
+            <span class="sp-dot"></span>
+            <span [countUp]="platformKpis().bots" [staggerDelay]="0">0</span>
+            &nbsp;bots in the network
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI grid -->
+      <section class="kpi-grid">
+        @for (k of kpis(); track k.id) {
+          <div class="kpi" [attr.data-color]="k.color">
+            <div class="kpi-planet"></div>
+            <div class="kpi-head">
+              <lucide-icon [name]="k.icon" class="kpi-ico"></lucide-icon>
+              <div class="kpi-label">{{ k.label }}</div>
+            </div>
+            <div class="kpi-num">
+              <span [countUp]="k.value" [staggerDelay]="0">0</span>
+            </div>
+            <div class="kpi-foot">
+              <span class="kpi-delta up">
+                <lucide-icon [name]="trendingIcon" class="kpi-arrow"></lucide-icon>
+                {{ k.delta }}%
+              </span>
+              <span class="kpi-vs">vs last 7d</span>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- Main grid: chart (left) + system (right) -->
+      <section class="main-grid">
+        <!-- Chart card -->
+        <div class="card chart-card">
+          <div class="card-head">
+            <div>
+              <div class="card-eyebrow">// 002 · CONSTELLATION</div>
+              <h2 class="card-title">Viewers across the last 14 streams</h2>
+            </div>
+            <div class="card-tabs">
+              <span class="ct-tab">7d</span>
+              <span class="ct-tab">15d</span>
+              <span class="ct-tab active">30d</span>
+            </div>
+          </div>
+
+          <div class="chart">
+            <svg [attr.viewBox]="'0 0 ' + chartPath().w + ' ' + chartPath().h" preserveAspectRatio="none" class="chart-svg">
+              <defs>
+                <linearGradient id="dash23-area" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.5" />
+                  <stop offset="100%" stop-color="#a78bfa" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient id="dash23-line" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stop-color="#c4b5fd" />
+                  <stop offset="50%" stop-color="#f0abfc" />
+                  <stop offset="100%" stop-color="#93c5fd" />
+                </linearGradient>
+              </defs>
+
+              <!-- grid lines -->
+              <line [attr.x1]="0" [attr.x2]="chartPath().w" y1="36" y2="36" class="chart-grid" />
+              <line [attr.x1]="0" [attr.x2]="chartPath().w" y1="90" y2="90" class="chart-grid" />
+              <line [attr.x1]="0" [attr.x2]="chartPath().w" y1="144" y2="144" class="chart-grid" />
+
+              <!-- area + line -->
+              <path [attr.d]="chartPath().area" fill="url(#dash23-area)" />
+              <path [attr.d]="chartPath().line" stroke="url(#dash23-line)" stroke-width="2" fill="none" />
+
+              <!-- stars on the line -->
+              @for (p of history(); track p.day; let i = $index) {
+                <circle
+                  [attr.cx]="chartPath().pad + i * chartPath().stepX"
+                  [attr.cy]="chartPath().h - chartPath().pad - (p.viewers / 1247) * (chartPath().h - chartPath().pad * 2)"
+                  r="3"
+                  class="chart-star"
+                />
+              }
+            </svg>
+
+            <div class="chart-x">
+              @for (p of history(); track p.day; let i = $index) {
+                @if (i % 2 === 0) {
+                  <span class="chart-tick">{{ p.day }}</span>
+                }
+              }
+            </div>
+
+            <div class="chart-legend">
+              <span class="lg-item"><span class="lg-dot" style="background: #c4b5fd;"></span> Viewers</span>
+              <span class="lg-item"><span class="lg-dot" style="background: #f0abfc;"></span> Chat msgs</span>
+              <span class="lg-item"><span class="lg-dot" style="background: #93c5fd;"></span> Hours</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- System card -->
+        <div class="card sys-card">
+          <div class="card-head">
+            <div>
+              <div class="card-eyebrow">// 003 · SYSTEM</div>
+              <h2 class="card-title">Telemetry</h2>
+            </div>
+            <span class="card-pill ok">● NOMINAL</span>
+          </div>
+
+          <div class="sys-list">
+            @for (s of system(); track s.id) {
+              <div class="sys-row" [attr.data-status]="s.status">
+                <span class="sys-dot"></span>
+                <span class="sys-label">{{ s.label }}</span>
+                <span class="sys-val">{{ s.value }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="sys-foot">
+            <lucide-icon [name]="checkIcon" class="sys-foot-ico"></lucide-icon>
+            All subsystems reporting.
+          </div>
+        </div>
+      </section>
+
+      <!-- Lower grid: activity (left) + live (right) -->
+      <section class="lower-grid">
+        <!-- Activity -->
+        <div class="card activity-card">
+          <div class="card-head">
+            <div>
+              <div class="card-eyebrow">// 004 · ACTIVITY</div>
+              <h2 class="card-title">Recent in the stream</h2>
+            </div>
+            <a class="card-link">View all →</a>
+          </div>
+
+          <div class="activity-list">
+            @for (a of activity(); track a.id) {
+              <div class="activity-row">
+                <span class="activity-bullet" [style.background]="a.color" [style.boxShadow]="'0 0 8px ' + a.color"></span>
+                <span class="activity-text">{{ a.text }}</span>
+                <span class="activity-ago">{{ a.ago }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Live channels -->
+        <div class="card live-card">
+          <div class="card-head">
+            <div>
+              <div class="card-eyebrow">// 005 · LIVE NOW</div>
+              <h2 class="card-title">In the network</h2>
+            </div>
+            <span class="card-pill live">● {{ liveChannels().length }} LIVE</span>
+          </div>
+
+          <div class="live-list">
+            @if (liveChannels().length > 0) {
+              @for (channel of liveChannels().slice(0, 5); track channel.channelID; let i = $index) {
+                <div class="live-row">
+                  <span class="live-star"></span>
+                  <span class="live-id">#{{ '0' + (i + 1) }}</span>
+                  <span class="live-chan">{{ channel.channel }}</span>
+                  <span class="live-viewers">{{ channel.viewers }}</span>
+                </div>
+              }
+            } @else {
+              <div class="live-row empty">The sky is forming…</div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <footer class="dash-foot">
+        <div>// MOCK DASHBOARD · 23 · CONSTELLATION</div>
+        <div>// REAL DATA · STREAM-INTEGRATED</div>
+      </footer>
+    </div>
+  </div>
+</div>

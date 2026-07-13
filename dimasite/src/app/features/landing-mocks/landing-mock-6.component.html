@@ -1,0 +1,155 @@
+<div class="mock6-shell">
+  <!-- Premium Nav -->
+  <nav class="mock6-nav">
+    <div class="mock6-container nav-flex">
+      <div class="logo">DIMA<span>BOT</span></div>
+      <div class="nav-links">
+        <button (click)="scrollTo('why')">Why Streamers</button>
+        <button (click)="scrollTo('live')">Live Now</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+      </div>
+      <div class="nav-right">
+        <a routerLink="/mock" class="nav-back">← Mocks</a>
+        <button class="nav-cta" (click)="onLogin()">Log in</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Bold Hero -->
+  <header class="mock6-hero">
+    <div class="mock6-container">
+      <div class="hero-eyebrow">FOR CREATORS WHO TAKE STREAMING SERIOUSLY</div>
+      <h1 class="hero-title">Elevate your stream.<br>Own your chat.</h1>
+      <p class="hero-desc">The modern bot built for streamers who want their community to feel premium, engaged, and unforgettable.</p>
+
+      <div class="hero-actions">
+        <button class="cta-primary" (click)="onLogin()">Start free</button>
+        <button class="cta-secondary" (click)="onDiscord()">Talk to the team</button>
+      </div>
+
+      <div class="hero-trust">
+        <strong [countUp]="siteStats().registeredUsers">0</strong> creators &amp; counting
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Presence -->
+  <div class="mock6-container live-presence">
+    <div class="presence-header">
+      <span class="dot"></span> LIVE WITH DOMDIMABOT
+    </div>
+    <div class="live-rail">
+      @for (channel of liveChannels().slice(0, 8); track channel.channelID) {
+        <div class="live-item">
+          <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+          <div>{{ channel.channel }}</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Why Section -->
+  <section id="why" class="mock6-section">
+    <div class="mock6-container">
+      <h2 class="sec-title">Why creators choose us</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <lucide-icon [name]="playIcon"></lucide-icon>
+          <h3>Chat That Feels Alive</h3>
+          <p>AI that knows your community. Commands that hit. Events that create moments.</p>
+        </div>
+        <div class="why-card">
+          <lucide-icon [name]="usersIcon"></lucide-icon>
+          <h3>Community That Stays</h3>
+          <p>Recognition systems, loyalty, and memories that make viewers come back every stream.</p>
+        </div>
+        <div class="why-card">
+          <lucide-icon [name]="zapIcon"></lucide-icon>
+          <h3>Tools That Scale</h3>
+          <p>From small chats to massive communities — the same powerful experience.</p>
+        </div>
+        <div class="why-card">
+          <lucide-icon [name]="awardIcon"></lucide-icon>
+          <h3>Production Quality</h3>
+          <p>Beautiful TTS, clean overlays, and integrations that make your stream look pro.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Now Big -->
+  <section id="live" class="mock6-section alt">
+    <div class="mock6-container">
+      <div class="sec-header">
+        <h2>Creators live right now</h2>
+        <p>Real channels using DomDimaBot at this moment</p>
+      </div>
+      <div class="live-grid">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="live-tile">
+            <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+            <div class="tile-info">
+              <div class="name">{{ channel.channel }}</div>
+              <div class="meta">{{ channel.viewers }} viewers</div>
+            </div>
+          </div>
+        }
+        @if (liveChannels().length === 0) {
+          <div class="live-tile">No live data at the moment</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock6-section">
+    <div class="mock6-container">
+      <h2 class="sec-title">Simple plans for serious creators</h2>
+      <div class="pricing-tiles">
+        <div class="tile">
+          <div class="tile-head">Starter</div>
+          <div class="tile-price">$0</div>
+          <div class="tile-desc">Perfect to get started</div>
+          <ul>
+            <li>Core features</li>
+            <li>Unlimited commands</li>
+            <li>25k AI credits</li>
+          </ul>
+          <button class="btn-secondary" (click)="onLogin()">Get started</button>
+        </div>
+        <div class="tile featured">
+          <div class="tile-head">Creator <span class="pop">Most Popular</span></div>
+          <div class="tile-price">$6</div>
+          <div class="tile-desc">The sweet spot for most streamers</div>
+          <ul>
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS</li>
+            <li>125k credits</li>
+          </ul>
+          <button class="btn-primary" (click)="onLogin()">Choose Creator</button>
+        </div>
+        <div class="tile">
+          <div class="tile-head">Pro</div>
+          <div class="tile-price">$15</div>
+          <div class="tile-desc">Maximum power & scale</div>
+          <ul>
+            <li>Voice cloning</li>
+            <li>500k credits</li>
+            <li>Unlimited everything*</li>
+          </ul>
+          <button class="btn-secondary" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final-section">
+    <div class="mock6-container">
+      <h2>Your community deserves the best.</h2>
+      <button class="btn-primary big" (click)="onLogin()">Login with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock6-footer">Mock 6 — Stream Glow • Real data • Built for Twitch creators</footer>
+</div>

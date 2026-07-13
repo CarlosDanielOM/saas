@@ -1,0 +1,269 @@
+<div class="mock21-shell">
+  <!-- Top status bar -->
+  <div class="statusbar">
+    <div class="mock21-container sb-row">
+      <div class="sb-left">
+        <span class="sb-tag">MOCK_021</span>
+        <span class="sb-sep">/</span>
+        <span class="sb-text">DomDimaBot — brutalist variant</span>
+      </div>
+      <div class="sb-right">
+        <span class="sb-tag live">● LIVE</span>
+        <span class="sb-sep">/</span>
+        <a routerLink="/mock" class="sb-back">← INDEX</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hard-edge nav -->
+  <nav class="mock21-nav">
+    <div class="mock21-container nav-row">
+      <div class="brand">
+        <lucide-icon [name]="squareIcon" class="brand-mark"></lucide-icon>
+        <span class="brand-name">DIMA//BOT</span>
+      </div>
+      <div class="nav-links">
+        <button (click)="scrollTo('features')">[01] FEATURES</button>
+        <button (click)="scrollTo('pricing')">[02] PRICING</button>
+        <button (click)="scrollTo('live')">[03] LIVE</button>
+      </div>
+      <button class="nav-cta" (click)="onLogin()">▶ LOG_IN</button>
+    </div>
+  </nav>
+
+  <!-- HERO: grid of labeled brutalist panels -->
+  <header class="mock21-hero">
+    <div class="mock21-container">
+      <div class="hero-grid">
+        <!-- Headline panel -->
+        <div class="panel headline-panel">
+          <div class="panel-tag">// 00_HEADLINE</div>
+          <h1 class="hero-h1">
+            <span class="hl-block">BOT</span>
+            <span class="hl-block">FOR</span>
+            <span class="hl-block accent">STREAMS</span>
+            <span class="hl-block">THAT</span>
+            <span class="hl-block">DO NOT</span>
+            <span class="hl-block">BREAK.</span>
+          </h1>
+          <div class="headline-foot">
+            <p>
+              Moderation. Commands. TTS. Analytics. Wired into one ugly,
+              honest, very fast product.
+            </p>
+          </div>
+        </div>
+
+        <!-- Stat grid (asymmetric brutalist mesh) -->
+        <div class="panel stat-panel">
+          <div class="panel-tag">// 01_PLATFORM_STATE</div>
+          <div class="stat-block big">
+            <div class="sb-num">
+              <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+            </div>
+            <div class="sb-lab">BOTS_RUNNING</div>
+          </div>
+          <div class="stat-block">
+            <div class="sb-num small">
+              <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span>
+            </div>
+            <div class="sb-lab">LIVE_USERS</div>
+          </div>
+          <div class="stat-block">
+            <div class="sb-num small">
+              <span [countUp]="siteStats().registeredUsers" [staggerDelay]="140">0</span>
+            </div>
+            <div class="sb-lab">REGISTERED</div>
+          </div>
+          <div class="stat-block">
+            <div class="sb-num small">
+              <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="200">0</span>
+            </div>
+            <div class="sb-lab">VIEWERS_NOW</div>
+          </div>
+        </div>
+
+        <!-- CTA panel -->
+        <div class="panel cta-panel">
+          <div class="panel-tag">// 02_ACTION</div>
+          <button class="btn-primary" (click)="onLogin()">
+            <span>► START_FREE</span>
+          </button>
+          <button class="btn-secondary" (click)="onDiscord()">
+            <span># JOIN_DISCORD</span>
+          </button>
+          <div class="cta-foot">
+            <span>$0 FOREVER</span>
+            <span class="sep">/</span>
+            <span>NO CARD</span>
+            <span class="sep">/</span>
+            <span>TWITCH + KICK</span>
+          </div>
+        </div>
+
+        <!-- Marquee strip -->
+        <div class="panel marquee-panel">
+          <div class="panel-tag">// 03_FEED</div>
+          <div class="marquee">
+            <div class="marquee-track">
+              <span>// PLATFORM_UPTIME: 99.98%</span>
+              <span>// MESSAGES_TODAY: <span [countUp]="siteStats().messagesReceived" [staggerDelay]="0">0</span></span>
+              <span>// COMMANDS_RUN: <span [countUp]="siteStats().totalCommands" [staggerDelay]="60">0</span></span>
+              <span>// CHANNELS_LIVE: <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="120">0</span></span>
+              <span>// STATUS: NOMINAL</span>
+              <span>// PLATFORM_UPTIME: 99.98%</span>
+              <span>// MESSAGES_TODAY: <span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features: labeled grid -->
+  <section id="features" class="mock21-section">
+    <div class="mock21-container">
+      <div class="sec-bar">
+        <div class="sec-tag">
+          <lucide-icon [name]="hashIcon" class="sec-hash"></lucide-icon> 01_FEATURES
+        </div>
+        <div class="sec-line">WHAT_YOU_GET / 4_BLOCKS</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="panel feature">
+          <div class="panel-tag">// MOD_001</div>
+          <lucide-icon [name]="shieldIcon" class="f-icon"></lucide-icon>
+          <h3>AI_MODERATION</h3>
+          <p>Reads the room. Soft-touch by default, hard-line when asked. The rules are yours.</p>
+        </div>
+        <div class="panel feature">
+          <div class="panel-tag">// CMD_002</div>
+          <lucide-icon [name]="zapIcon" class="f-icon"></lucide-icon>
+          <h3>COMMAND_ENGINE</h3>
+          <p>Variables. Timers. Conditions. Aliases. Unlimited on every plan.</p>
+        </div>
+        <div class="panel feature">
+          <div class="panel-tag">// ANA_003</div>
+          <lucide-icon [name]="chartIcon" class="f-icon"></lucide-icon>
+          <h3>ANALYTICS</h3>
+          <p>Retention, loyalty, usage. Plain charts. No dancing infographics.</p>
+        </div>
+        <div class="panel feature">
+          <div class="panel-tag">// VOI_004</div>
+          <lucide-icon [name]="volumeIcon" class="f-icon"></lucide-icon>
+          <h3>VOICE_TTS</h3>
+          <p>High quality voices. Pro tier clones yours. Trigger integration is one click.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing: hard cards -->
+  <section id="pricing" class="mock21-section">
+    <div class="mock21-container">
+      <div class="sec-bar">
+        <div class="sec-tag">
+          <lucide-icon [name]="hashIcon" class="sec-hash"></lucide-icon> 02_PRICING
+        </div>
+        <div class="sec-line">PLANS / 3_TIERS</div>
+      </div>
+
+      <div class="plan-grid">
+        <div class="panel plan">
+          <div class="panel-tag">// PLAN_FREE</div>
+          <div class="p-name">FREE</div>
+          <div class="p-price">$0<span class="per">/FOREVER</span></div>
+          <ul class="p-list">
+            <li>[+] CORE_MOD</li>
+            <li>[+] UNLIMITED_CMDS*</li>
+            <li>[+] BASIC_ANALYTICS</li>
+            <li>[+] COMMUNITY_SUPPORT</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">▶ START</button>
+        </div>
+
+        <div class="panel plan featured">
+          <div class="panel-tag accent">// PLAN_PREMIUM ★</div>
+          <div class="p-name">PREMIUM</div>
+          <div class="p-price">$6<span class="per">/MO</span></div>
+          <ul class="p-list">
+            <li>[+] AI_MOD</li>
+            <li>[+] ADV_ANALYTICS</li>
+            <li>[+] PREMIUM_TTS</li>
+            <li>[+] PRIORITY_SUPPORT</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">▶ CHOOSE</button>
+        </div>
+
+        <div class="panel plan">
+          <div class="panel-tag">// PLAN_PRO</div>
+          <div class="p-name">PRO</div>
+          <div class="p-price">$15<span class="per">/MO</span></div>
+          <ul class="p-list">
+            <li>[+] ALL_PREMIUM</li>
+            <li>[+] VOICE_CLONE</li>
+            <li>[+] UNLIMITED_BW*</li>
+            <li>[+] EARLY_ACCESS</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">▶ GO_PRO</button>
+        </div>
+      </div>
+
+      <div class="footnote">
+        // * CORE FEATURES UNLIMITED. AI_MOD / TTS / VOICE FEATURES CAPPED BY MONTHLY CREDITS.
+      </div>
+    </div>
+  </section>
+
+  <!-- Live: raw feed -->
+  <section id="live" class="mock21-section">
+    <div class="mock21-container">
+      <div class="sec-bar">
+        <div class="sec-tag">
+          <lucide-icon [name]="hashIcon" class="sec-hash"></lucide-icon> 03_LIVE
+        </div>
+        <div class="sec-line">CHANNELS_LIVE / REAL_TIME</div>
+      </div>
+
+      <div class="panel live">
+        <div class="panel-tag">// FEED_LIVE</div>
+        <div class="live-table">
+          <div class="live-head">
+            <span>CHANNEL</span>
+            <span>VIEWERS</span>
+            <span>STATUS</span>
+          </div>
+          @if (liveChannels().length > 0) {
+            @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+              <div class="live-row">
+                <span class="lr-chan">
+                  <span class="lr-num">{{ '0' + (i + 1) }}</span>
+                  {{ channel.channel }}
+                </span>
+                <span class="lr-v">
+                  <span [countUp]="channel.viewers" [staggerDelay]="0">0</span>
+                </span>
+                <span class="lr-status">● ON</span>
+              </div>
+            }
+          } @else {
+            <div class="live-row empty">
+              <span>// AWAITING_DATA…</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mock21-foot">
+    <div class="mock21-container">
+      <div class="foot-row">
+        <div>// END_OF_PAGE</div>
+        <button class="btn-primary" (click)="onLogin()">► LOG_IN_TWITCH</button>
+        <div>// MOCK_21_BRUTALIST_MESH</div>
+      </div>
+    </div>
+  </footer>
+</div>

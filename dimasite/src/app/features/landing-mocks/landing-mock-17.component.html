@@ -1,0 +1,198 @@
+<div class="mock17-shell">
+  <!-- Clean Product Nav -->
+  <nav class="mock17-nav">
+    <div class="mock17-container nav-flex">
+      <div class="logo">dima</div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <div>
+        <button class="nav-btn" (click)="onLogin()">Log in with Twitch</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Split Hero -->
+  <header class="mock17-hero">
+    <div class="mock17-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> bots active •
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="90">0</span> live now
+        </div>
+
+        <h1 class="hero-h1">The calm<br>way to run<br>your stream.</h1>
+        <p class="hero-desc">
+          Professional moderation, automation, and analytics.<br>
+          Built for creators who want control without the chaos.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Join Discord</button>
+        </div>
+
+        <div class="meta">Free forever plan • No credit card required</div>
+      </div>
+
+      <div class="hero-visual">
+        <!-- Live Network / Platform Overview -->
+        <div class="network-panel">
+          <div class="network-header">
+            <div>
+              <span class="network-title">dima network</span>
+            </div>
+            <div class="network-status">● LIVE DATA</div>
+          </div>
+
+          <div class="network-main">
+            <div class="big-stat">
+              <div class="big-num"><span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span></div>
+              <div class="big-label">Active channels</div>
+            </div>
+            <div class="big-stat">
+              <div class="big-num"><span [countUp]="siteStats().liveUsers" [staggerDelay]="60">0</span></div>
+              <div class="big-label">Viewers with bots</div>
+            </div>
+          </div>
+
+          <div class="network-secondary">
+            <div class="sec-item">
+              <span class="sec-val"><span [countUp]="siteStats().registeredUsers" [staggerDelay]="100">0</span></span>
+              <span class="sec-lab">Total registered</span>
+            </div>
+            <div class="sec-item">
+              <span class="sec-val"><span [countUp]="siteStats().totalCommands" [staggerDelay]="140">0</span></span>
+              <span class="sec-lab">Commands run today</span>
+            </div>
+            <div class="sec-item">
+              <span class="sec-val"><span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span></span>
+              <span class="sec-lab">Messages processed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section id="features" class="mock17-section">
+    <div class="mock17-container">
+      <div class="sec-label">WHAT YOU GET</div>
+      <h2 class="sec-title">Everything you need.<br>Nothing you don’t.</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <lucide-icon [name]="shieldIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">AI Moderation</div>
+          <p>Context-aware protection that learns your community in real time.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="zapIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Command Engine</div>
+          <p>Variables, timers, conditions, and advanced logic — unlimited*.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="chartIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Analytics</div>
+          <p>Clear retention, usage, and loyalty insights that actually help.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="volumeIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Voice &amp; TTS</div>
+          <p>High quality voices and seamless trigger integration.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock17-section pricing-section">
+    <div class="mock17-container">
+      <div class="sec-label">PRICING</div>
+      <h2 class="sec-title">Simple plans.<br>Real value.</h2>
+
+      <div class="pricing-grid">
+        <div class="plan">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">$0</div>
+          <div class="plan-desc">Perfect for starting out</div>
+          <ul class="plan-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Get started</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="plan-name">Premium <span class="rec">Most popular</span></div>
+          <div class="plan-price">$6 <span class="per">/mo</span></div>
+          <div class="plan-desc">For growing channels</div>
+          <ul class="plan-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Choose Premium</button>
+        </div>
+
+        <div class="plan">
+          <div class="plan-name">Pro</div>
+          <div class="plan-price">$15 <span class="per">/mo</span></div>
+          <div class="plan-desc">Maximum scale &amp; control</div>
+          <ul class="plan-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+
+      <div class="pricing-note">
+        * Core features (commands, basic automation) are unlimited. AI moderation, TTS, and advanced voice features are subject to monthly credit limits.
+      </div>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section id="live" class="mock17-section">
+    <div class="mock17-container">
+      <div class="sec-label">RIGHT NOW</div>
+      <h2 class="sec-title">Channels running dima</h2>
+
+      <div class="live-list">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-row">
+              <span class="live-chan">{{ channel.channel }}</span>
+              <span class="live-viewers">{{ channel.viewers }} viewers</span>
+              <span class="live-status">Bot active</span>
+            </div>
+          }
+        } @else {
+          <div class="live-row empty">
+            <span>Live data loading…</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock17-cta">
+    <div class="mock17-container">
+      <div class="cta-text">Ready to run your stream with confidence?</div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock17-foot">Mock 17 — Live Network • Real platform data</footer>
+</div>

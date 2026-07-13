@@ -1,0 +1,177 @@
+:host {
+  display: block;
+  --hot: #ff2e92;
+  --cyan: #00f0ff;
+  --lime: #c4ff00;
+}
+
+.mock7-shell {
+  background: #0a0712;
+  color: #f0eaff;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.mock7-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 640px) { .mock7-container { padding: 0 24px; } }
+
+.mock7-nav {
+  position: sticky;
+  top: 0;
+  background: rgba(10,7,18,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,46,146,0.2);
+  z-index: 50;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  min-height: 60px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand { font-weight: 800; font-size: 18px; }
+.accent { color: var(--hot); }
+
+.nav-links { display: flex; gap: 14px; margin-left: auto; font-size: 13px; }
+.nav-links button { background: none; border: none; color: #b8a6e0; cursor: pointer; }
+
+.nav-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.back { font-size: 12px; color: #8a7db0; text-decoration: none; }
+
+.btn-riot, .btn-secondary, .btn-ghost {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-riot { background: var(--hot); color: white; border: none; }
+.btn-riot.big { padding: 14px 30px; font-size: 15px; }
+.btn-secondary { background: transparent; border: 1px solid #444; color: #ddd; }
+.btn-ghost { background: transparent; border: 1px solid #555; color: #ccc; }
+
+.mock7-hero {
+  padding: 72px 0 48px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 40%, rgba(255,46,146,0.2) 0%, transparent 70%);
+}
+.chaos-badge {
+  display: inline-block;
+  background: rgba(0,240,255,0.15);
+  color: var(--cyan);
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.hero-title { font-size: clamp(36px, 8vw, 68px); font-weight: 800; line-height: 1; margin-bottom: 12px; }
+.highlight { color: var(--hot); }
+.hero-subtitle { max-width: 480px; margin: 0 auto 24px; font-size: 17px; color: #b8a6e0; }
+.hero-ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+.live-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0;
+}
+.live-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a1430;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.live-pill img { width: 22px; height: 22px; border-radius: 50%; }
+
+.quick-stats {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 20px 0;
+  font-size: 15px;
+  color: #a38ed4;
+}
+.quick-stats span { color: white; font-weight: 700; }
+
+.mock7-section { padding: 48px 0; }
+.mock7-section.alt { background: #120c1f; }
+
+.section-title {
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.modes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.mode-card {
+  background: #1a1430;
+  padding: 18px;
+  border: 1px solid rgba(255,46,146,0.2);
+  border-radius: 14px;
+}
+.mode-card lucide-icon { color: var(--lime); margin-bottom: 8px; }
+
+.riot-live {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+.riot-live-card {
+  background: #1a1430;
+  padding: 10px;
+  border-radius: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.riot-live-card img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--hot); }
+
+.riot-pricing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.p-tier {
+  background: #1a1430;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,46,146,0.15);
+}
+.p-tier.hot { border-color: var(--hot); }
+.tier-name { font-weight: 700; font-size: 13px; }
+.tier-name span { font-size: 10px; background: var(--hot); color: #0a0712; padding: 1px 6px; border-radius: 3px; margin-left: 4px; }
+.tier-price { font-size: 30px; font-weight: 800; }
+.p-tier ul { margin: 14px 0; padding-left: 18px; font-size: 14px; }
+
+.final-riot {
+  background: #120c1f;
+  text-align: center;
+  padding: 48px 0;
+}
+.final-riot h2 { margin-bottom: 16px; }
+
+.mock7-foot {
+  text-align: center;
+  padding: 22px;
+  font-size: 12px;
+  color: #665f7d;
+  border-top: 1px solid #2a253a;
+}

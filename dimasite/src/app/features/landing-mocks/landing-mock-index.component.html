@@ -1,0 +1,160 @@
+<div class="mock-index">
+  <div class="mock-index__header">
+    <div class="mock-index__brand">
+      <span class="mock-index__dot"></span>
+      <span class="mock-index__name">DomDimaBot</span>
+    </div>
+    <div class="mock-index__badge">Design Mocks</div>
+  </div>
+
+  <div class="mock-index__hero">
+    <h1 class="mock-index__title">Landing Page Redesigns</h1>
+    <p class="mock-index__subtitle">
+      All using <strong>real live data</strong>. Mocks 4–9 are streamer-focused. 7–9 are fresh variations on the Twitch Energy style you liked.
+    </p>
+
+    <div class="mock-index__live-teaser">
+      <span class="teaser-stat"><strong [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</strong> bots active</span>
+      <span class="teaser-stat"><strong [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</strong> users live</span>
+      @if (liveChannels().length) {
+        <span class="teaser-stat">{{ liveChannels().length }} channels streaming now</span>
+      }
+    </div>
+  </div>
+
+  <h3 class="mock-section-title">Early Explorations</h3>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(0, 3); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">Streamer-Focused</h3>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(3, 6); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--new">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">Twitch Energy Variations (based on #4)</h3>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(6, 9); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--variant">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">Refined v3 Lineage (based on Mock 3)</h3>
+  <p class="mock-section-note">Clean product aesthetic. No gradients. Less terminal/dev feel.</p>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(9, 15); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--console">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">New Creative Explorations (19–21)</h3>
+  <p class="mock-section-note">Three totally new directions for the DomDimaBot landing. Magazine, aurora, brutalist.</p>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(15, 18); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--new">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">Command-Center Variations (based on Mock 18 — Global Metrics)</h3>
+  <p class="mock-section-note">Three more takes on the platform-KPI hero. Not copies of Mock 18 — different metaphors for the same numbers.</p>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(18, 21); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--variant">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View redesign
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <h3 class="mock-section-title">Dashboard Mocks</h3>
+  <p class="mock-section-note">The same design languages applied to a dashboard shell. Constellation for now; the others coming next.</p>
+  <div class="mock-index__grid">
+    @for (variant of variants.slice(21); track variant.id) {
+      <a [routerLink]="['/mock', variant.id]" class="mock-card mock-card--new">
+        <div class="mock-card__header">
+          <span class="mock-card__vibe">{{ variant.vibe }}</span>
+          <span class="mock-card__id">/mock/{{ variant.id }}</span>
+        </div>
+        <h2 class="mock-card__title">{{ variant.title }}</h2>
+        <p class="mock-card__desc">{{ variant.description }}</p>
+        <div class="mock-card__cta">
+          View dashboard
+          <lucide-icon [name]="arrowIcon" class="h-4 w-4"></lucide-icon>
+        </div>
+      </a>
+    }
+  </div>
+
+  <div class="mock-index__footer">
+    <p>
+      These are isolated prototypes. The real landing page at <a routerLink="/">/</a> remains untouched.
+    </p>
+  </div>
+</div>

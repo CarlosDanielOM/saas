@@ -1,0 +1,343 @@
+<div class="mock24-shell" [attr.data-theme]="theme()">
+  <!-- Top status rail -->
+  <div class="status-rail">
+    <div class="mock24-container rail-row">
+      <div class="rail-cell">
+        <span class="rail-label">SYSTEM</span>
+        <span class="rail-value ok">
+          <span class="dot ok"></span> NOMINAL
+        </span>
+      </div>
+      <div class="rail-cell">
+        <span class="rail-label">REGION</span>
+        <span class="rail-value">us-east-1</span>
+      </div>
+      <div class="rail-cell">
+        <span class="rail-label">UPTIME</span>
+        <span class="rail-value">99.982%</span>
+      </div>
+      <div class="rail-cell">
+        <span class="rail-label">LATENCY</span>
+        <span class="rail-value">42 MS</span>
+      </div>
+      <div class="rail-cell right">
+        <span class="rail-label">SESSION</span>
+        <span class="rail-value mono">OPS-OPS-19A2</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="mock24-nav">
+    <div class="mock24-container nav-row">
+      <div class="brand">
+        <lucide-icon [name]="cpuIcon" class="brand-icon"></lucide-icon>
+        <div>
+          <div class="brand-name">DIMA · MISSION CONTROL</div>
+          <div class="brand-sub">live platform telemetry</div>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="nav-back">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <button class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'" type="button">
+        @if (isDarkMode()) {
+          <lucide-icon [name]="sunIcon" class="theme-icon"></lucide-icon>
+        } @else {
+          <lucide-icon [name]="moonIcon" class="theme-icon"></lucide-icon>
+        }
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero: oversized KPI board -->
+  <header class="mock24-hero">
+    <div class="mock24-container">
+      <div class="mission-bar">
+        <div class="mb-left">
+          <div class="mb-eyebrow">PRIMARY TELEMETRY · LIVE</div>
+          <h1 class="mb-h1">
+            The calm command center<br>
+            for your <span class="accent">stream.</span>
+          </h1>
+        </div>
+        <div class="mb-right">
+          <div class="mb-meta">
+            <div>
+              <span class="meta-label">VIEWER ON</span>
+              <span class="meta-value ok">
+                <span class="dot ok"></span> ONLINE
+              </span>
+            </div>
+            <div>
+              <span class="meta-label">SYNC</span>
+              <span class="meta-value mono">00:00:14</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 oversized KPI tiles -->
+      <div class="kpi-grid">
+        <div class="kpi-tile primary">
+          <div class="kpi-label">BOTS ACTIVE</div>
+          <div class="kpi-num">
+            <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+          </div>
+          <div class="kpi-foot">
+            <span class="ok">● STEADY</span>
+            <span class="kpi-trend">last 60s</span>
+          </div>
+        </div>
+
+        <div class="kpi-tile">
+          <div class="kpi-label">LIVE VIEWERS</div>
+          <div class="kpi-num">
+            <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</span>
+          </div>
+          <div class="kpi-foot">
+            <span class="ok">● STEADY</span>
+            <span class="kpi-trend">across all channels</span>
+          </div>
+        </div>
+
+        <div class="kpi-tile">
+          <div class="kpi-label">REGISTERED CREATORS</div>
+          <div class="kpi-num">
+            <span [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</span>
+          </div>
+          <div class="kpi-foot">
+            <span class="ok">● STEADY</span>
+            <span class="kpi-trend">all time</span>
+          </div>
+        </div>
+
+        <div class="kpi-tile">
+          <div class="kpi-label">MESSAGES · 24H</div>
+          <div class="kpi-num">
+            <span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span>
+          </div>
+          <div class="kpi-foot">
+            <span class="ok">● STEADY</span>
+            <span class="kpi-trend">rolling window</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero CTA + status -->
+      <div class="hero-actions">
+        <button class="btn-primary" (click)="onLogin()">Start free</button>
+        <button class="btn-secondary" (click)="onDiscord()">Join Discord</button>
+        <div class="hero-meta">
+          <span><span class="ok">●</span> Free forever</span>
+          <span class="sep">/</span>
+          <span>No credit card</span>
+          <span class="sep">/</span>
+          <span>Twitch &amp; Kick</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features: 4 telemetry panels -->
+  <section id="features" class="mock24-section">
+    <div class="mock24-container">
+      <div class="sec-bar">
+        <div class="sec-tag">// 01 · SUBSYSTEMS</div>
+        <div class="sec-line">FOUR TELEMETRY CHANNELS · ALL NOMINAL</div>
+      </div>
+
+      <div class="feature-grid">
+        <div class="f-panel">
+          <div class="f-head">
+            <div class="f-id">MOD-01</div>
+            <div class="f-state ok">● ONLINE</div>
+          </div>
+          <lucide-icon [name]="shieldIcon" class="f-icon"></lucide-icon>
+          <h3>AI Moderation</h3>
+          <p>Context-aware protection that learns your community. Soft by default, sharp when needed.</p>
+          <div class="f-bar">
+            <span class="bar-fill" style="width: 92%;"></span>
+          </div>
+          <div class="f-foot">LOAD 92% · 12 MS P95</div>
+        </div>
+
+        <div class="f-panel">
+          <div class="f-head">
+            <div class="f-id">CMD-02</div>
+            <div class="f-state ok">● ONLINE</div>
+          </div>
+          <lucide-icon [name]="zapIcon" class="f-icon"></lucide-icon>
+          <h3>Command Engine</h3>
+          <p>Variables, timers, conditions, aliases. Unlimited on every plan. Quiet under load.</p>
+          <div class="f-bar">
+            <span class="bar-fill" style="width: 78%;"></span>
+          </div>
+          <div class="f-foot">LOAD 78% · 8 MS P95</div>
+        </div>
+
+        <div class="f-panel">
+          <div class="f-head">
+            <div class="f-id">ANA-03</div>
+            <div class="f-state ok">● ONLINE</div>
+          </div>
+          <lucide-icon [name]="chartIcon" class="f-icon"></lucide-icon>
+          <h3>Analytics</h3>
+          <p>Retention, loyalty, usage. Clear charts, dated reports. Plain CSV export, no drama.</p>
+          <div class="f-bar">
+            <span class="bar-fill" style="width: 64%;"></span>
+          </div>
+          <div class="f-foot">LOAD 64% · 22 MS P95</div>
+        </div>
+
+        <div class="f-panel">
+          <div class="f-head">
+            <div class="f-id">VOI-04</div>
+            <div class="f-state ok">● ONLINE</div>
+          </div>
+          <lucide-icon [name]="volumeIcon" class="f-icon"></lucide-icon>
+          <h3>Voice &amp; TTS</h3>
+          <p>High quality voices. Pro tier clones yours. Trigger integration is one click.</p>
+          <div class="f-bar">
+            <span class="bar-fill" style="width: 88%;"></span>
+          </div>
+          <div class="f-foot">LOAD 88% · 18 MS P95</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing: mission tiers -->
+  <section id="pricing" class="mock24-section">
+    <div class="mock24-container">
+      <div class="sec-bar">
+        <div class="sec-tag">// 02 · CLEARANCE LEVELS</div>
+        <div class="sec-line">3 TIERS · SAME PLATFORM</div>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan">
+          <div class="p-head">
+            <div class="p-tier">TIER 01 / FREE</div>
+            <div class="p-state">● OPEN</div>
+          </div>
+          <div class="p-price">$0<span class="per">/forever</span></div>
+          <div class="p-desc">Perfect for starting out</div>
+          <ul class="p-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Get access</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="p-head">
+            <div class="p-tier">TIER 02 / PREMIUM</div>
+            <div class="p-state">● RECOMMENDED</div>
+          </div>
+          <div class="p-price">$6<span class="per">/mo</span></div>
+          <div class="p-desc">For growing channels</div>
+          <ul class="p-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Choose Premium</button>
+        </div>
+
+        <div class="plan">
+          <div class="p-head">
+            <div class="p-tier">TIER 03 / PRO</div>
+            <div class="p-state">● MAX</div>
+          </div>
+          <div class="p-price">$15<span class="per">/mo</span></div>
+          <div class="p-desc">Maximum scale &amp; control</div>
+          <ul class="p-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+
+      <p class="fine-print">
+        * Core features (commands, basic automation) are unlimited. AI
+        moderation, TTS, and advanced voice features are subject to monthly
+        credit limits.
+      </p>
+    </div>
+  </section>
+
+  <!-- Live: ops table -->
+  <section id="live" class="mock24-section">
+    <div class="mock24-container">
+      <div class="sec-bar">
+        <div class="sec-tag">// 03 · ACTIVE CHANNELS</div>
+        <div class="sec-line">REAL-TIME CHANNEL TELEMETRY</div>
+      </div>
+
+      <div class="ops-table">
+        <div class="ops-head">
+          <span>CHANNEL</span>
+          <span>VIEWERS</span>
+          <span>P95 MS</span>
+          <span>STATE</span>
+        </div>
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <div class="ops-row">
+              <span class="op-chan">
+                <span class="op-num">{{ '0' + (i + 1) }}</span>
+                {{ channel.channel }}
+              </span>
+              <span class="op-v">
+                <span [countUp]="channel.viewers" [staggerDelay]="0">0</span>
+              </span>
+              <span class="op-latency">
+                <span class="latency-bar"><span class="latency-fill" [style.width.%]="60 + (i * 5) % 35"></span></span>
+                <span class="latency-ms">{{ 12 + (i * 3) % 28 }} ms</span>
+              </span>
+              <span class="op-state ok">● ON</span>
+            </div>
+          }
+        } @else {
+          <div class="ops-row empty">
+            <span>// Awaiting channel data…</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA strip -->
+  <div class="mock24-cta">
+    <div class="mock24-container cta-grid">
+      <div class="cta-text">
+        <lucide-icon [name]="activityIcon" class="cta-icon"></lucide-icon>
+        <div>
+          <div class="cta-h">Take control of your stream.</div>
+          <div class="cta-sub">Real-time tools. Calm interface. Yours in under a minute.</div>
+        </div>
+      </div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock24-foot">
+    <div class="mock24-container foot-row">
+      <div>// MISSION CONTROL · MOCK 24 · END OF FEED</div>
+      <div class="foot-right">
+        <span class="dot ok"></span> ALL SYSTEMS NOMINAL · {{ '0' + (liveChannels().length || 0) }} CHANNELS TRACKED
+      </div>
+    </div>
+  </footer>
+</div>

@@ -1,0 +1,275 @@
+<div class="mock23-shell" [attr.data-theme]="theme()">
+  <!-- Starfield -->
+  <div class="stars">
+    <div class="stars-layer s1"></div>
+    <div class="stars-layer s2"></div>
+    <div class="stars-layer s3"></div>
+  </div>
+
+  <nav class="mock23-nav">
+    <div class="mock23-container nav-row">
+      <a class="brand" routerLink="/">
+        <span class="brand-core"></span>
+        <span class="brand-name">dima·net</span>
+      </a>
+      <div class="nav-links">
+        <a routerLink="/mock" class="nav-back">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <button class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode'" type="button">
+        @if (isDarkMode()) {
+          <lucide-icon [name]="sunIcon" class="theme-icon"></lucide-icon>
+        } @else {
+          <lucide-icon [name]="moonIcon" class="theme-icon"></lucide-icon>
+        }
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero with constellation visual -->
+  <header class="mock23-hero">
+    <div class="mock23-container hero-grid">
+      <div class="hero-text">
+        <div class="star-pill">
+          <span class="sp-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+          stars on &nbsp;·&nbsp;
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span>
+          viewers in the constellation
+        </div>
+
+        <h1 class="hero-h1">
+          Your stream,<br>
+          a <span class="grad">star</span> in a<br>
+          quiet network.
+        </h1>
+
+        <p class="hero-desc">
+          dima is a constellation of channels running together. Mod queues,
+          commands, voice, and analytics — connected, calm, yours.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Join Discord</button>
+        </div>
+
+        <div class="trust">Free forever · No credit card · Twitch &amp; Kick</div>
+      </div>
+
+      <!-- Constellation visualization -->
+      <div class="hero-visual">
+        <div class="constellation" aria-hidden="true">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="const-svg">
+            <!-- connection lines from hub -->
+            <line x1="18" y1="28" x2="38" y2="14" class="line"/>
+            <line x1="18" y1="28" x2="52" y2="32" class="line"/>
+            <line x1="18" y1="28" x2="32" y2="62" class="line"/>
+            <line x1="18" y1="28" x2="12" y2="50" class="line"/>
+            <line x1="38" y1="14" x2="52" y2="32" class="line"/>
+            <line x1="52" y1="32" x2="70" y2="22" class="line"/>
+            <line x1="52" y1="32" x2="62" y2="58" class="line"/>
+            <line x1="70" y1="22" x2="82" y2="42" class="line"/>
+            <line x1="62" y1="58" x2="82" y2="42" class="line"/>
+            <line x1="62" y1="58" x2="48" y2="78" class="line"/>
+            <line x1="62" y1="58" x2="76" y2="86" class="line"/>
+            <line x1="82" y1="42" x2="88" y2="70" class="line"/>
+            <line x1="12" y1="50" x2="32" y2="62" class="line"/>
+            <line x1="32" y1="62" x2="48" y2="78" class="line"/>
+            <line x1="32" y1="62" x2="24" y2="84" class="line"/>
+          </svg>
+
+          @for (node of nodes; track $index) {
+            <span
+              class="node"
+              [class.hub]="node.highlight"
+              [style.left.%]="node.x"
+              [style.top.%]="node.y"
+              [style.width.px]="node.size"
+              [style.height.px]="node.size"
+              [style.animation-delay.s]="node.delay"
+            ></span>
+          }
+        </div>
+
+        <!-- Caption block, floating over the constellation -->
+        <div class="caption">
+          <div class="cap-head">
+            <span class="cap-tag">CONSTELLATION</span>
+            <span class="cap-time">LIVE</span>
+          </div>
+          <div class="cap-row">
+            <div class="cap-num">
+              <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+            </div>
+            <div class="cap-lab">Bots running now</div>
+          </div>
+          <div class="cap-grid">
+            <div>
+              <div class="cg-val">
+                <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</span>
+              </div>
+              <div class="cg-lab">Viewers in net</div>
+            </div>
+            <div>
+              <div class="cg-val">
+                <span [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</span>
+              </div>
+              <div class="cg-lab">Registered stars</div>
+            </div>
+            <div>
+              <div class="cg-val">
+                <span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span>
+              </div>
+              <div class="cg-lab">Msgs today</div>
+            </div>
+            <div>
+              <div class="cg-val">
+                <span [countUp]="siteStats().totalCommands" [staggerDelay]="220">0</span>
+              </div>
+              <div class="cg-lab">Commands run</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features as moons orbiting a planet metaphor -->
+  <section id="features" class="mock23-section">
+    <div class="mock23-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 001 · ORBITS</div>
+        <h2 class="sec-title">Four bodies in the system.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <div class="f-card">
+          <div class="f-planet mod"></div>
+          <lucide-icon [name]="shieldIcon" class="f-icon"></lucide-icon>
+          <h3>AI Moderation</h3>
+          <p>The protective ring. Catches what regex misses, learns how your community talks.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-planet cmd"></div>
+          <lucide-icon [name]="zapIcon" class="f-icon"></lucide-icon>
+          <h3>Command Engine</h3>
+          <p>The drive shaft. Variables, timers, conditions. Unlimited on every plan.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-planet ana"></div>
+          <lucide-icon [name]="chartIcon" class="f-icon"></lucide-icon>
+          <h3>Analytics</h3>
+          <p>The telescope. Retention, loyalty, usage — observed cleanly, exported freely.</p>
+        </div>
+        <div class="f-card">
+          <div class="f-planet voi"></div>
+          <lucide-icon [name]="volumeIcon" class="f-icon"></lucide-icon>
+          <h3>Voice &amp; TTS</h3>
+          <p>The signal. High quality voices. Pro tier clones yours.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing as 3 orbits -->
+  <section id="pricing" class="mock23-section">
+    <div class="mock23-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 002 · TIERS</div>
+        <h2 class="sec-title">Three orbits, same center.</h2>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan">
+          <div class="p-orbit p-orbit-1"></div>
+          <div class="p-name">Free</div>
+          <div class="p-price">$0<span class="per">/forever</span></div>
+          <div class="p-desc">Perfect for starting out</div>
+          <ul class="p-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Get started</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="p-orbit p-orbit-2"></div>
+          <div class="p-flag">Most popular</div>
+          <div class="p-name">Premium</div>
+          <div class="p-price">$6<span class="per">/mo</span></div>
+          <div class="p-desc">For growing channels</div>
+          <ul class="p-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Choose Premium</button>
+        </div>
+
+        <div class="plan">
+          <div class="p-orbit p-orbit-3"></div>
+          <div class="p-name">Pro</div>
+          <div class="p-price">$15<span class="per">/mo</span></div>
+          <div class="p-desc">Maximum scale &amp; control</div>
+          <ul class="p-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+
+      <p class="fine-print">
+        * Core features (commands, basic automation) are unlimited. AI
+        moderation, TTS, and advanced voice features are subject to monthly
+        credit limits.
+      </p>
+    </div>
+  </section>
+
+  <!-- Live as star log -->
+  <section id="live" class="mock23-section">
+    <div class="mock23-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 003 · STAR LOG</div>
+        <h2 class="sec-title">Channels lit up right now.</h2>
+      </div>
+
+      <div class="log">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <div class="log-row">
+              <span class="log-star"></span>
+              <span class="log-id">#{{ '0' + (i + 1) }}</span>
+              <span class="log-chan">{{ channel.channel }}</span>
+              <span class="log-viewers">
+                <span [countUp]="channel.viewers" [staggerDelay]="0">0</span> viewers
+              </span>
+              <span class="log-tag">live</span>
+            </div>
+          }
+        } @else {
+          <div class="log-row empty">The sky is clearing…</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock23-cta">
+    <div class="mock23-container cta-grid">
+      <div class="cta-text">Find your place in the network.</div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock23-foot">Mock 23 — Constellation · The platform as a star map</footer>
+</div>

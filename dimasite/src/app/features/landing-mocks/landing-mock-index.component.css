@@ -1,0 +1,238 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #0a0712;
+  color: #f1e9ff;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.mock-index {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+@media (min-width: 640px) {
+  .mock-index {
+    padding: 48px 24px 80px;
+  }
+}
+
+.mock-index__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .mock-index__header {
+    margin-bottom: 48px;
+  }
+}
+
+.mock-index__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mock-index__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #c084fc;
+}
+
+.mock-index__name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.mock-index__badge {
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+  font-weight: 500;
+}
+
+.mock-index__hero {
+  margin-bottom: 56px;
+}
+
+.mock-index__title {
+  font-size: clamp(36px, 7vw, 58px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1.6px;
+  margin: 0 0 16px;
+}
+
+.mock-index__subtitle {
+  font-size: 17px;
+  max-width: 560px;
+  color: #b4a3d9;
+  line-height: 1.45;
+}
+
+.mock-index__live-teaser {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #8a7db0;
+}
+
+@media (min-width: 640px) {
+  .mock-index__live-teaser {
+    margin-top: 20px;
+    gap: 16px;
+    font-size: 13px;
+  }
+}
+
+.teaser-stat {
+  background: #1c162b;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.teaser-stat strong {
+  color: #c5b1f0;
+  font-weight: 600;
+}
+
+.mock-index__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .mock-index__grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+.mock-card {
+  display: block;
+  background: #140f22;
+  border: 1px solid rgba(192, 132, 252, 0.15);
+  border-radius: 16px;
+  padding: 26px 24px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.mock-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(192, 132, 252, 0.35);
+  box-shadow: 0 20px 45px -12px rgba(0, 0, 0, 0.6);
+}
+
+.mock-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 12px;
+}
+
+.mock-card__vibe {
+  background: #211b33;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 500;
+  color: #c5b1f0;
+}
+
+.mock-card__id {
+  font-family: ui-monospace, monospace;
+  color: #8871c2;
+}
+
+.mock-card__title {
+  font-size: 21px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  letter-spacing: -0.3px;
+}
+
+.mock-card__desc {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #a59ac9;
+  margin: 0 0 28px;
+}
+
+.mock-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c084fc;
+}
+
+.mock-index__footer {
+  margin-top: 64px;
+  font-size: 13px;
+  color: #6f638f;
+  text-align: center;
+}
+
+.mock-index__footer a {
+  color: #a38dd9;
+  text-decoration: underline;
+}
+
+.mock-section-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #8871c2;
+  margin: 32px 0 6px;
+  font-weight: 600;
+}
+
+.mock-section-note {
+  font-size: 13px;
+  color: #6f6a87;
+  margin: 0 0 16px;
+}
+
+.mock-card--new {
+  border-color: rgba(192, 132, 252, 0.35);
+}
+
+.mock-card--new:hover {
+  border-color: #c084fc;
+}
+
+.mock-card--variant {
+  border-color: rgba(255, 77, 148, 0.3);
+}
+
+.mock-card--variant:hover {
+  border-color: #ff4d94;
+}
+
+.mock-card--console {
+  border-color: rgba(34, 197, 94, 0.3);
+  font-family: ui-monospace, monospace;
+}
+
+.mock-card--console:hover {
+  border-color: #22c55e;
+}

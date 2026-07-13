@@ -1,0 +1,254 @@
+<div class="mock19-shell">
+  <!-- Editorial masthead -->
+  <header class="mock19-masthead">
+    <div class="mock19-container masthead-row">
+      <a routerLink="/mock" class="mast-back">← INDEX</a>
+      <div class="mast-issue">
+        VOL. 01 &nbsp;·&nbsp; ISSUE 19 &nbsp;·&nbsp; ON THE RECORD
+      </div>
+      <div class="mast-date">Today</div>
+    </div>
+  </header>
+
+  <div class="mock19-nameplate">
+    <div class="mock19-container">
+      <h1 class="nameplate">DomDimaBot</h1>
+      <div class="nameplate-sub">A field guide to running a modern Twitch channel</div>
+    </div>
+  </div>
+
+  <!-- Hero: editorial pull -->
+  <section class="mock19-hero">
+    <div class="mock19-container hero-grid">
+      <article class="hero-article">
+        <div class="kicker">The Platform Issue &nbsp;·&nbsp; Live Data</div>
+        <h2 class="hero-h2">
+          The bot that <em>quietly</em><br>
+          runs <span class="ink">tens of thousands</span><br>
+          of streams.
+        </h2>
+
+        <p class="lede">
+          Mod queues. Command engines. Voice lines. TTS. A live ledger of
+          everything your community does &mdash; folded into a single,
+          <em>unshowy</em> product that ships to your channel in under a minute.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start the issue free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Read the Discord</button>
+        </div>
+
+        <div class="dateline">
+          <span class="dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+          channels on the wire &nbsp;·&nbsp;
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="80">0</span>
+          viewers live &nbsp;·&nbsp; Press run
+        </div>
+      </article>
+
+      <!-- Side data card, styled like a magazine sidebar -->
+      <aside class="hero-sidebar">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-eyebrow">By the numbers</span>
+            <span class="card-pin">N° 01</span>
+          </div>
+
+          <div class="metric">
+            <div class="m-label">Channels running the bot</div>
+            <div class="m-num">
+              <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+            </div>
+          </div>
+          <div class="metric">
+            <div class="m-label">Viewers online this minute</div>
+            <div class="m-num">
+              <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</span>
+            </div>
+          </div>
+          <div class="metric">
+            <div class="m-label">Registered creators</div>
+            <div class="m-num">
+              <span [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</span>
+            </div>
+          </div>
+
+          <div class="bar-row">
+            <div class="bar-cell">
+              <div class="b-label">Messages today</div>
+              <div class="b-val">
+                <span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span>
+              </div>
+            </div>
+            <div class="bar-cell">
+              <div class="b-label">Commands run</div>
+              <div class="b-val">
+                <span [countUp]="siteStats().totalCommands" [staggerDelay]="220">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <blockquote class="pull">
+          &ldquo;A working Twitch command center that doesn&rsquo;t scream at you. The data reads like a paper, not a control panel.&rdquo;
+          <span class="attrib">— early review, &beta; cohort 04</span>
+        </blockquote>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Features as feature articles -->
+  <section id="features" class="mock19-section">
+    <div class="mock19-container">
+      <div class="rule"></div>
+      <div class="sec-eyebrow">The Departments</div>
+      <h3 class="sec-h3">Four sections of the paper.</h3>
+
+      <div class="feature-grid">
+        <article class="feature">
+          <div class="f-mark">I.</div>
+          <lucide-icon [name]="shieldIcon" class="f-icon"></lucide-icon>
+          <h4 class="f-h">Moderation</h4>
+          <p>
+            Context-aware protection that learns how your community actually
+            talks, and only steps in when something is genuinely off.
+          </p>
+        </article>
+
+        <article class="feature">
+          <div class="f-mark">II.</div>
+          <lucide-icon [name]="zapIcon" class="f-icon"></lucide-icon>
+          <h4 class="f-h">Command Engine</h4>
+          <p>
+            Variables, timers, conditions, aliases. The whole kit. Unlimited on
+            every plan, so the writing never has to stop.
+          </p>
+        </article>
+
+        <article class="feature">
+          <div class="f-mark">III.</div>
+          <lucide-icon [name]="chartIcon" class="f-icon"></lucide-icon>
+          <h4 class="f-h">Analytics</h4>
+          <p>
+            Retention, loyalty, and usage charts that read like a real report
+            &mdash; not a dashboard. Cited, dated, exportable.
+          </p>
+        </article>
+
+        <article class="feature">
+          <div class="f-mark">IV.</div>
+          <lucide-icon [name]="volumeIcon" class="f-icon"></lucide-icon>
+          <h4 class="f-h">Voice &amp; TTS</h4>
+          <p>
+            High quality voices, clean trigger integration, and (for Pro) the
+            ability to clone your own &mdash; because sometimes <em>you</em> are
+            the sound.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing, styled as subscription tiers -->
+  <section id="pricing" class="mock19-section dark-band">
+    <div class="mock19-container">
+      <div class="sec-eyebrow light">Subscriptions</div>
+      <h3 class="sec-h3 light">Three tiers. One paper.</h3>
+
+      <div class="plan-grid">
+        <div class="plan">
+          <div class="p-tier">Daily</div>
+          <div class="p-price">$0<span class="per">/forever</span></div>
+          <div class="p-tag">For the new channel</div>
+          <ul class="p-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary dark full" (click)="onLogin()">Start daily</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="featured-flag">Editor&rsquo;s pick</div>
+          <div class="p-tier">Premium</div>
+          <div class="p-price">$6<span class="per">/mo</span></div>
+          <div class="p-tag">For growing channels</div>
+          <ul class="p-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Subscribe</button>
+        </div>
+
+        <div class="plan">
+          <div class="p-tier">Pro</div>
+          <div class="p-price">$15<span class="per">/mo</span></div>
+          <div class="p-tag">Maximum scale &amp; control</div>
+          <ul class="p-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary dark full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+
+      <p class="fine-print">
+        * Core features (commands, basic automation) are unlimited. AI
+        moderation, TTS, and advanced voice features are subject to monthly
+        credit limits.
+      </p>
+    </div>
+  </section>
+
+  <!-- Live on the wire -->
+  <section id="live" class="mock19-section">
+    <div class="mock19-container">
+      <div class="sec-eyebrow">The Wire</div>
+      <h3 class="sec-h3">Channels on press right now.</h3>
+
+      <div class="wire">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <div class="wire-row">
+              <span class="wire-num">{{ '0' + (i + 1) }}</span>
+              <span class="wire-chan">{{ channel.channel }}</span>
+              <span class="wire-viewers">
+                <span [countUp]="channel.viewers" [staggerDelay]="0">0</span> watching
+              </span>
+              <span class="wire-tag">Bot active</span>
+            </div>
+          }
+        } @else {
+          <div class="wire-row empty">
+            <span>The wire is loading&hellip;</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="mock19-colophon">
+    <div class="mock19-container colophon-grid">
+      <div>
+        <div class="colophon-eyebrow">Colophon</div>
+        <p>
+          Set in a contemporary serif. Typeset in three columns on desktop, one
+          on mobile. The data is real. The paper is yours to take.
+        </p>
+      </div>
+      <div class="colophon-cta">
+        <div class="colophon-line">Ready to put your stream on the wire?</div>
+        <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mock19-foot">Mock 19 — Editorial Spread · Issue 19</footer>
+</div>

@@ -1,0 +1,686 @@
+:host {
+  display: block;
+}
+
+.mock19-shell {
+  background: #f3eee2;
+  color: #0c0a08;
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', 'Times New Roman', serif;
+  min-height: 100vh;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mock19-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (min-width: 640px) {
+  .mock19-container { padding: 0 32px; }
+}
+
+/* === Masthead === */
+.mock19-masthead {
+  background: #0c0a08;
+  color: #f3eee2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 10px 0;
+}
+
+.masthead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mast-back {
+  color: #f4c20d;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.mast-back:hover { text-decoration: underline; }
+
+.mast-issue { color: #d8d2c2; }
+
+.mast-date { color: #9a9484; }
+
+/* === Nameplate === */
+.mock19-nameplate {
+  border-bottom: 4px double #0c0a08;
+  padding: 38px 0 28px;
+  text-align: center;
+}
+
+.nameplate {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: clamp(56px, 12vw, 132px);
+  font-weight: 900;
+  letter-spacing: -4px;
+  line-height: 0.92;
+  margin: 0;
+  font-style: italic;
+  color: #0c0a08;
+}
+
+.nameplate-sub {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #5a5346;
+  margin-top: 12px;
+}
+
+/* === Hero === */
+.mock19-hero {
+  padding: 64px 0 72px;
+  border-bottom: 1px solid #c8bfa9;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1.4fr 1fr;
+    gap: 56px;
+  }
+}
+
+.kicker {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #b34300;
+  font-weight: 700;
+  margin-bottom: 22px;
+  padding-top: 4px;
+  border-top: 2px solid #0c0a08;
+  display: inline-block;
+  padding: 6px 0 0;
+  margin-top: 4px;
+}
+
+.hero-h2 {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: clamp(40px, 6.5vw, 78px);
+  line-height: 0.98;
+  letter-spacing: -2.4px;
+  font-weight: 800;
+  margin: 0 0 22px;
+  color: #0c0a08;
+}
+
+.hero-h2 em {
+  font-style: italic;
+  font-weight: 500;
+  color: #5a5346;
+}
+
+.hero-h2 .ink {
+  background: #f4c20d;
+  padding: 0 8px 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.lede {
+  font-size: 18px;
+  line-height: 1.55;
+  color: #2b261e;
+  max-width: 560px;
+  margin: 0 0 28px;
+}
+
+.lede em {
+  background: #f4c20d;
+  padding: 0 4px;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.btn-primary {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #0c0a08;
+  color: #f3eee2;
+  border: none;
+  padding: 14px 26px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-primary:hover { background: #2b261e; }
+
+.btn-secondary {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: transparent;
+  border: 2px solid #0c0a08;
+  color: #0c0a08;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.btn-secondary:hover { background: #0c0a08; color: #f3eee2; }
+
+.btn-secondary.dark {
+  border-color: #f3eee2;
+  color: #f3eee2;
+}
+
+.btn-secondary.dark:hover {
+  background: #f3eee2;
+  color: #0c0a08;
+}
+
+.btn-primary.large { padding: 16px 36px; font-size: 15px; }
+
+.btn-primary.full,
+.btn-secondary.full { width: 100%; margin-top: 16px; }
+
+.dateline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #5a5346;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px dashed #c8bfa9;
+  padding-top: 14px;
+  flex-wrap: wrap;
+}
+
+.dateline .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c8102e;
+  display: inline-block;
+  animation: mock-19-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mock-19-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* === Sidebar === */
+.hero-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.card {
+  background: #0c0a08;
+  color: #f3eee2;
+  padding: 24px 22px;
+  border: 1px solid #0c0a08;
+  box-shadow: 8px 8px 0 0 #f4c20d;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #2b261e;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.card-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #f4c20d;
+  font-weight: 700;
+}
+
+.card-pin {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  color: #9a9484;
+  letter-spacing: 1.5px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px dotted #2b261e;
+}
+
+.metric:last-of-type { border-bottom: none; }
+
+.m-label {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  color: #b3a98f;
+  letter-spacing: 0.3px;
+  max-width: 60%;
+}
+
+.m-num {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #f3eee2;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 16px;
+  background: #2b261e;
+  border: 1px solid #2b261e;
+}
+
+.bar-cell {
+  padding: 12px 14px;
+  border-right: 1px solid #0c0a08;
+}
+
+.bar-cell:last-child { border-right: none; }
+
+.b-label {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  color: #b3a98f;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 4px;
+}
+
+.b-val {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f4c20d;
+  font-variant-numeric: tabular-nums;
+}
+
+.pull {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #0c0a08;
+  font-style: italic;
+  border-left: 4px solid #c8102e;
+  padding: 6px 0 6px 18px;
+  margin: 0;
+}
+
+.attrib {
+  display: block;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-style: normal;
+  font-size: 12px;
+  color: #5a5346;
+  margin-top: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* === Sections === */
+.mock19-section {
+  padding: 64px 0;
+  border-bottom: 1px solid #c8bfa9;
+}
+
+@media (min-width: 640px) {
+  .mock19-section { padding: 80px 0; }
+}
+
+.rule {
+  height: 4px;
+  background: #0c0a08;
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+.sec-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #b34300;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.sec-eyebrow.light { color: #f4c20d; }
+
+.sec-h3 {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.05;
+  margin: 0 0 36px;
+  max-width: 720px;
+}
+
+.sec-h3.light { color: #f3eee2; }
+
+/* === Features === */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+}
+
+@media (min-width: 640px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+}
+
+@media (min-width: 980px) {
+  .feature-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.feature {
+  border-top: 1px solid #0c0a08;
+  padding-top: 18px;
+}
+
+.f-mark {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 28px;
+  font-style: italic;
+  font-weight: 700;
+  color: #b34300;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.f-icon {
+  display: none; /* Magazine prefers mark, not icon */
+}
+
+.f-h {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 6px 0 10px;
+}
+
+.feature p {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #2b261e;
+  margin: 0;
+}
+
+.feature p em {
+  background: #f4c20d;
+  padding: 0 3px;
+  font-style: italic;
+}
+
+/* === Pricing === */
+.dark-band {
+  background: #0c0a08;
+  color: #f3eee2;
+  border-bottom: none;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 720px) {
+  .plan-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.plan {
+  background: #1a1610;
+  border: 1px solid #2b261e;
+  padding: 28px 22px;
+  position: relative;
+}
+
+.plan.featured {
+  background: #f3eee2;
+  color: #0c0a08;
+  border: 1px solid #f4c20d;
+  box-shadow: 8px 8px 0 0 #f4c20d;
+}
+
+.featured-flag {
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  background: #c8102e;
+  color: #f3eee2;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  font-weight: 700;
+}
+
+.p-tier {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #f4c20d;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.plan.featured .p-tier { color: #b34300; }
+
+.p-price {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.p-price .per {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: #9a9484;
+  margin-left: 4px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.plan.featured .p-price .per { color: #5a5346; }
+
+.p-tag {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  color: #b3a98f;
+  margin-bottom: 18px;
+}
+
+.plan.featured .p-tag { color: #5a5346; }
+
+.p-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  line-height: 1.85;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.p-list li {
+  padding-left: 16px;
+  position: relative;
+}
+
+.p-list li::before {
+  content: "§";
+  position: absolute;
+  left: 0;
+  color: #f4c20d;
+  font-weight: 700;
+}
+
+.plan.featured .p-list li::before { color: #b34300; }
+
+.fine-print {
+  margin-top: 22px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  color: #9a9484;
+  line-height: 1.5;
+  max-width: 640px;
+}
+
+/* === Wire === */
+.wire {
+  background: #0c0a08;
+  color: #f3eee2;
+  border: 1px solid #0c0a08;
+  box-shadow: 8px 8px 0 0 #c8102e;
+}
+
+.wire-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px dotted #2b261e;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.wire-row:last-child { border-bottom: none; }
+
+.wire-num {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: #f4c20d;
+  font-weight: 700;
+}
+
+.wire-chan {
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.wire-viewers { color: #b3a98f; font-variant-numeric: tabular-nums; }
+
+.wire-tag {
+  color: #c8102e;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.wire-row.empty {
+  grid-template-columns: 1fr;
+  text-align: center;
+  color: #9a9484;
+  padding: 22px;
+  font-style: italic;
+}
+
+/* === Colophon === */
+.mock19-colophon {
+  background: #f4c20d;
+  color: #0c0a08;
+  padding: 48px 0;
+}
+
+.colophon-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+@media (min-width: 800px) {
+  .colophon-grid { grid-template-columns: 1.4fr 1fr; }
+}
+
+.colophon-eyebrow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.mock19-colophon p {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 480px;
+}
+
+.colophon-cta {
+  text-align: left;
+}
+
+@media (min-width: 800px) {
+  .colophon-cta { text-align: right; }
+}
+
+.colophon-line {
+  font-family: 'Iowan Old Style', 'Charter', 'Georgia', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+
+.mock19-foot {
+  background: #0c0a08;
+  color: #9a9484;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 18px;
+}

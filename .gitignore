@@ -153,6 +153,5 @@ connect.lock
  !dimadocs/package-lock.json
  !dimafx/package-lock.json
  !dimafx/server/package-lock.json
-graphify-out/cache/
-graphify-out/cost.json
-graphify-out/2026-06-25/
+# Generated Graphify knowledge graph output
+graphify-out/

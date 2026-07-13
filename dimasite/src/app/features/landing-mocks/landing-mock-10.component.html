@@ -1,0 +1,162 @@
+<div class="mock10-shell">
+  <nav class="mock10-nav">
+    <div class="mock10-container nav-flex">
+      <div class="logo">
+        <span class="logo-bracket">[</span>GRIDBOT<span class="logo-bracket">]</span>
+      </div>
+      <div class="nav-links">
+        <button (click)="scrollTo('features')">FEATURES</button>
+        <button (click)="scrollTo('pricing')">PRICING</button>
+        <button (click)="scrollTo('live')">LIVE</button>
+      </div>
+      <div>
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button class="nav-btn" (click)="onLogin()">LOGIN / TWITCH</button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="mock10-hero">
+    <div class="mock10-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> BOTS GRID-LOCKED
+        </div>
+        <h1 class="hero-h1">Precision.<br>Control.<br>Stream.</h1>
+        <p class="hero-desc">A clean terminal interface for serious streamers. Moderation, automation, and analytics that just work.</p>
+
+        <div class="hero-actions">
+          <button class="btn-neon" (click)="onLogin()">Activate grid</button>
+          <button class="btn-outline" (click)="onDiscord()">Discord</button>
+        </div>
+        <div class="tech-note">v4.8 • 99.98% uptime • Built for live</div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="console-window">
+          <div class="console-bar">
+            <span>stream.log</span>
+            <span class="status">CONNECTED</span>
+          </div>
+          <pre class="console-body">> bot initialized on twitch
+> moderation: grid-active
+> analytics: streaming live
+> tts: enabled
+> uptime: 47d 11h 09m</pre>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="features" class="mock10-section">
+    <div class="mock10-container">
+      <div class="sec-label">CAPABILITIES</div>
+      <h2 class="sec-title">Built for your stream.<br>Engineered for growth.</h2>
+
+      <div class="grid-tech">
+        <div class="tech-card">
+          <lucide-icon [name]="shieldIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Grid Shield</div>
+          <p>Precision moderation that scales with your chat without missing a beat.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="terminalIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Command Engine</div>
+          <p>Powerful variables, timers, and conditional logic. No limits.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="chartIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Stream Intel</div>
+          <p>Real-time retention, command usage, and viewer loyalty metrics.</p>
+        </div>
+        <div class="tech-card">
+          <lucide-icon [name]="volumeIcon" class="tech-icon"></lucide-icon>
+          <div class="tech-name">Voice Layer</div>
+          <p>High-quality TTS with pro options. Seamlessly integrated.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="mock10-section pricing-section">
+    <div class="mock10-container">
+      <div class="sec-label">PLANS</div>
+      <h2 class="sec-title">Choose your access level.</h2>
+
+      <div class="price-table">
+        <div class="price-col">
+          <div class="p-tier">FREE</div>
+          <div class="p-price">$0</div>
+          <div class="p-desc">For new channels.</div>
+          <ul>
+            <li>Basic moderation</li>
+            <li>Unlimited commands</li>
+            <li>30-day analytics</li>
+            <li>25k AI credits</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Start</button>
+        </div>
+
+        <div class="price-col featured">
+          <div class="p-tier">PREMIUM <span class="rec">RECOMMENDED</span></div>
+          <div class="p-price">$6 <span class="mo">/mo</span></div>
+          <div class="p-desc">For growing communities.</div>
+          <ul>
+            <li>AI + rule moderation</li>
+            <li>Advanced analytics</li>
+            <li>Human-like TTS</li>
+            <li>125k credits</li>
+          </ul>
+          <button class="btn-neon full" (click)="onLogin()">Select Premium</button>
+        </div>
+
+        <div class="price-col">
+          <div class="p-tier">PRO</div>
+          <div class="p-price">$15 <span class="mo">/mo</span></div>
+          <div class="p-desc">Maximum power.</div>
+          <ul>
+            <li>Full AI suite</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>500k credits</li>
+          </ul>
+          <button class="btn-outline full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="live" class="mock10-section">
+    <div class="mock10-container">
+      <div class="sec-label">CURRENTLY ONLINE</div>
+      <h2 class="sec-title">Live channels on the grid</h2>
+
+      <div class="live-console">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-line">
+              <span class="chan-name">{{ channel.channel }}</span>
+              <span class="chan-viewers">{{ channel.viewers }} viewers</span>
+              <span class="chan-status">● GRID ACTIVE</span>
+            </div>
+          }
+        } @else {
+          <div class="live-line">
+            <span class="chan-name">No live data</span>
+            <span class="chan-viewers">—</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock10-final">
+    <div class="mock10-container">
+      <div class="final-text">Ready to lock in your stream?</div>
+      <button class="btn-neon big" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock10-foot">Mock 10 — Grid Terminal • Neon Console variation • Real data</footer>
+</div>

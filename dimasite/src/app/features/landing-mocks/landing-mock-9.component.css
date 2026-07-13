@@ -1,0 +1,185 @@
+:host {
+  display: block;
+  --lime: #a3e635;
+  --magenta: #f472b6;
+  --space: #0a0f2e;
+}
+
+.mock9-shell {
+  background: var(--space);
+  color: #e0e7ff;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.mock9-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+@media (min-width: 640px) { .mock9-container { padding: 0 24px; } }
+
+.mock9-nav {
+  background: rgba(10,15,46,0.95);
+  border-bottom: 1px solid #1f2a5e;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.nav-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.logo { font-weight: 700; font-size: 16px; letter-spacing: 1px; }
+.pulse { color: var(--lime); }
+.nav-links { display: flex; gap: 14px; font-size: 13px; }
+.nav-links button { background: none; border: none; color: #a5b4fc; cursor: pointer; }
+.back { font-size: 12px; color: #64748b; text-decoration: none; margin-right: 6px; }
+.nav-btn {
+  background: #1f2a5e;
+  color: #e0e7ff;
+  border: 1px solid #334155;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mock9-hero {
+  padding: 64px 0 42px;
+  text-align: center;
+}
+.badge {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--lime);
+  margin-bottom: 12px;
+}
+.title {
+  font-size: clamp(34px, 8vw, 62px);
+  font-weight: 700;
+  line-height: 1.02;
+  margin-bottom: 12px;
+}
+.title span { color: var(--magenta); }
+.desc {
+  max-width: 440px;
+  margin: 0 auto 20px;
+  color: #a5b4fc;
+}
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+.btn-cosmic {
+  background: linear-gradient(90deg, var(--lime), #f472b6);
+  color: var(--space);
+  border: none;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-cosmic.big { padding: 14px 28px; font-size: 15px; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  padding: 10px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.pulse-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 16px 0;
+  color: #64748b;
+  font-size: 14px;
+}
+.pulse-stats span { color: var(--lime); font-weight: 700; }
+
+.mock9-section { padding: 44px 0; }
+.mock9-section.alt { background: #0f1638; }
+
+.sec-title {
+  font-size: 24px;
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.powers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.power {
+  background: #0f1638;
+  padding: 16px;
+  border-radius: 12px;
+}
+.power lucide-icon { color: var(--lime); margin-bottom: 8px; }
+
+.pulse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.pulse-card {
+  background: #0f1638;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.pulse-card .avatar-wrap { position: relative; }
+.pulse-card img { width: 40px; height: 40px; border-radius: 50%; }
+.pulse-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  background: var(--lime);
+  border-radius: 50%;
+  border: 2px solid var(--space);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.cosmic-pricing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.tier {
+  background: #0f1638;
+  padding: 18px;
+  border-radius: 12px;
+}
+.tier.featured { border: 1px solid var(--magenta); }
+.tier .label { font-size: 12px; font-weight: 600; }
+.tier .label .pop { font-size: 9px; background: var(--magenta); color: #0a0f2e; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
+.tier .price { font-size: 28px; font-weight: 700; }
+.tier .features { font-size: 14px; color: #a5b4fc; margin: 8px 0 12px; }
+
+.final-cosmic {
+  background: #0f1638;
+  text-align: center;
+  padding: 44px 0;
+}
+.final-cosmic h2 { margin-bottom: 14px; }
+
+.mock9-foot {
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+  color: #475569;
+  border-top: 1px solid #1f2a5e;
+}

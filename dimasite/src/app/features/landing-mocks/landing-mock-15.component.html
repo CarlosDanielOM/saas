@@ -1,0 +1,192 @@
+<div class="mock15-shell">
+  <!-- Clean Product Nav -->
+  <nav class="mock15-nav">
+    <div class="mock15-container nav-flex">
+      <div class="logo">dima</div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="back-link">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <div>
+        <button class="nav-btn" (click)="onLogin()">Log in with Twitch</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Split Hero -->
+  <header class="mock15-hero">
+    <div class="mock15-container hero-grid">
+      <div class="hero-text">
+        <div class="status-pill">
+          <span class="live-dot"></span>
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span> active •
+          <span [countUp]="siteStats().liveUsers" [staggerDelay]="100">0</span> online
+        </div>
+
+        <h1 class="hero-h1">Operate<br>your stream<br>with clarity.</h1>
+        <p class="hero-desc">
+          Clean interfaces. Powerful systems.<br>
+          Built for streamers who treat their channel like a real operation.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Get started</button>
+          <button class="btn-secondary" (click)="onDiscord()">Community</button>
+        </div>
+
+        <div class="meta">99.98% uptime • SOC 2 aligned practices</div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="preview-panel">
+          <div class="preview-top">
+            <div class="preview-brand">
+              <span>dima</span>
+              <span class="preview-live">● OPERATIONAL</span>
+            </div>
+            <div class="preview-chan">prochannel</div>
+          </div>
+
+          <div class="preview-metrics">
+            <div class="metric">
+              <div class="metric-value">312</div>
+              <div class="metric-label">Engagement score</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">19</div>
+              <div class="metric-label">Active automations</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">4.8m</div>
+              <div class="metric-label">Total processed</div>
+            </div>
+          </div>
+
+          <div class="preview-row">
+            <div class="row-item">
+              <span class="row-label">Moderation</span>
+              <span class="row-val">99.4% clean</span>
+            </div>
+            <div class="row-item">
+              <span class="row-label">Response time</span>
+              <span class="row-val">&lt; 40ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features -->
+  <section id="features" class="mock15-section">
+    <div class="mock15-container">
+      <div class="sec-label">PLATFORM</div>
+      <h2 class="sec-title">Built for scale.<br>Designed for focus.</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <lucide-icon [name]="shieldIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Precision Shield</div>
+          <p>Layered protection that adapts without overstepping.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="zapIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Automation Core</div>
+          <p>Reliable triggers, timers, and logic that just works.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="chartIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Operational Analytics</div>
+          <p>The numbers that matter for long-term growth.</p>
+        </div>
+        <div class="feature-card">
+          <lucide-icon [name]="volumeIcon" class="feature-icon"></lucide-icon>
+          <div class="feature-name">Voice System</div>
+          <p>Professional audio layer with full creative control.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock15-section pricing-section">
+    <div class="mock15-container">
+      <div class="sec-label">TIERS</div>
+      <h2 class="sec-title">Transparent pricing.<br>No surprises.</h2>
+
+      <div class="pricing-grid">
+        <div class="plan">
+          <div class="plan-name">Free</div>
+          <div class="plan-price">$0</div>
+          <div class="plan-desc">For new and testing channels</div>
+          <ul class="plan-list">
+            <li>Core features</li>
+            <li>Basic commands</li>
+            <li>Standard analytics</li>
+            <li>Public support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Start free</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="plan-name">Pro <span class="rec">Best value</span></div>
+          <div class="plan-price">$6 <span class="per">/mo</span></div>
+          <div class="plan-desc">Most streamers choose this</div>
+          <ul class="plan-list">
+            <li>Full AI suite</li>
+            <li>Complete analytics</li>
+            <li>Premium audio</li>
+            <li>Fast support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Select Pro</button>
+        </div>
+
+        <div class="plan">
+          <div class="plan-name">Enterprise</div>
+          <div class="plan-price">$15 <span class="per">/mo</span></div>
+          <div class="plan-desc">For established operations</div>
+          <ul class="plan-list">
+            <li>Everything in Pro</li>
+            <li>Advanced voice</li>
+            <li>Team seats</li>
+            <li>Priority queue</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Talk to us</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section id="live" class="mock15-section">
+    <div class="mock15-container">
+      <div class="sec-label">CURRENTLY LIVE</div>
+      <h2 class="sec-title">Operational streams</h2>
+
+      <div class="live-list">
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID) {
+            <div class="live-row">
+              <span class="live-chan">{{ channel.channel }}</span>
+              <span class="live-viewers">{{ channel.viewers }} viewers</span>
+              <span class="live-status">Running smoothly</span>
+            </div>
+          }
+        } @else {
+          <div class="live-row empty">Loading current streams…</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock15-cta">
+    <div class="mock15-container">
+      <div class="cta-text">Run your stream like the professional operation it is.</div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock15-foot">Mock 15 — Operational Clarity • All data is simulated</footer>
+</div>

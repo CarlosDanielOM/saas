@@ -1,0 +1,339 @@
+<div class="mock22-shell">
+  <!-- Ticker bar across the very top -->
+  <div class="ticker">
+    <div class="ticker-track">
+      <span class="t-item">
+        <span class="t-sym">DIMA</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.bots }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">VIEWERS</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="40">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.viewers }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">CREATORS</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().registeredUsers" [staggerDelay]="80">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.creators }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">MSG/24H</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().messagesReceived" [staggerDelay]="120">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.messages }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">CMD/24H</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().totalCommands" [staggerDelay]="160">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.commands }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">CHANNELS</span>
+        <span class="t-num">
+          <span [countUp]="liveChannels().length" [staggerDelay]="200">0</span>
+        </span>
+        <span class="t-up">▲ 5.3%</span>
+      </span>
+      <!-- repeat for seamless loop -->
+      <span class="t-item">
+        <span class="t-sym">DIMA</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.bots }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">VIEWERS</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="40">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.viewers }}%</span>
+      </span>
+      <span class="t-item">
+        <span class="t-sym">CREATORS</span>
+        <span class="t-num">
+          <span [countUp]="siteStats().registeredUsers" [staggerDelay]="80">0</span>
+        </span>
+        <span class="t-up">▲ {{ deltas.creators }}%</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Top nav -->
+  <nav class="mock22-nav">
+    <div class="mock22-container nav-row">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">DIMA<span class="brand-thin">SIGNAL</span></span>
+      </div>
+      <div class="nav-links">
+        <a routerLink="/mock" class="nav-back">← MOCKS</a>
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+        <button (click)="scrollTo('live')">Live</button>
+      </div>
+      <button class="nav-cta" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </nav>
+
+  <!-- Hero: big market-style number panel -->
+  <header class="mock22-hero">
+    <div class="mock22-container hero-grid">
+      <div class="hero-text">
+        <div class="exchange">
+          <span class="ex-name">DIMA · PLATFORM SIGNAL</span>
+          <span class="ex-time">LIVE · REAL-TIME</span>
+        </div>
+
+        <h1 class="hero-h1">
+          The market<br>
+          for your stream.
+        </h1>
+        <p class="hero-desc">
+          Mod queues, commands, voice, and analytics traded as one transparent
+          signal. Real-time numbers, real-time control, no insider talk.
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary" (click)="onLogin()">Start free</button>
+          <button class="btn-secondary" (click)="onDiscord()">Join Discord</button>
+        </div>
+
+        <div class="fine">Free forever · No credit card · Cancel anytime</div>
+      </div>
+
+      <!-- Big quote-style stat board -->
+      <div class="hero-visual">
+        <div class="quote-board">
+          <div class="qb-head">
+            <div>
+              <div class="qb-symbol">DIMA · BOT INDEX</div>
+              <div class="qb-sub">bots running right now</div>
+            </div>
+            <div class="qb-delta">▲ {{ deltas.bots }}%</div>
+          </div>
+
+          <div class="qb-price">
+            <span [countUp]="siteStats().botActiveAccounts" [staggerDelay]="0">0</span>
+            <span class="qb-cur">UNITS</span>
+          </div>
+
+          <!-- sparkline -->
+          <div class="qb-spark">
+            <svg viewBox="0 0 320 80" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="sig22" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#22c55e" stop-opacity="0.4" />
+                  <stop offset="100%" stop-color="#22c55e" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path d="M0,55 L20,52 L40,48 L60,50 L80,42 L100,40 L120,30 L140,34 L160,28 L180,22 L200,26 L220,18 L240,12 L260,16 L280,10 L300,6 L320,4 L320,80 L0,80 Z" fill="url(#sig22)"/>
+              <path d="M0,55 L20,52 L40,48 L60,50 L80,42 L100,40 L120,30 L140,34 L160,28 L180,22 L200,26 L220,18 L240,12 L260,16 L280,10 L300,6 L320,4" stroke="#22c55e" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <div class="qb-rows">
+            <div class="qb-row">
+              <span class="qb-sym">VIEWERS</span>
+              <span class="qb-val">
+                <span [countUp]="siteStats().totalLiveViewer" [staggerDelay]="60">0</span>
+              </span>
+              <span class="qb-delta-sm up">▲ {{ deltas.viewers }}%</span>
+            </div>
+            <div class="qb-row">
+              <span class="qb-sym">CREATORS</span>
+              <span class="qb-val">
+                <span [countUp]="siteStats().registeredUsers" [staggerDelay]="120">0</span>
+              </span>
+              <span class="qb-delta-sm up">▲ {{ deltas.creators }}%</span>
+            </div>
+            <div class="qb-row">
+              <span class="qb-sym">MSG / 24H</span>
+              <span class="qb-val">
+                <span [countUp]="siteStats().messagesReceived" [staggerDelay]="180">0</span>
+              </span>
+              <span class="qb-delta-sm up">▲ {{ deltas.messages }}%</span>
+            </div>
+            <div class="qb-row">
+              <span class="qb-sym">CMDS / 24H</span>
+              <span class="qb-val">
+                <span [countUp]="siteStats().totalCommands" [staggerDelay]="220">0</span>
+              </span>
+              <span class="qb-delta-sm up">▲ {{ deltas.commands }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features: 4 ticker-style cards -->
+  <section id="features" class="mock22-section">
+    <div class="mock22-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 001 · POSITIONS</div>
+        <h2 class="sec-title">Four lines in the order book.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <div class="f-card">
+          <div class="f-tag">MOD</div>
+          <lucide-icon [name]="shieldIcon" class="f-icon"></lucide-icon>
+          <h3>AI Moderation</h3>
+          <p>Context-aware. Catches what regex misses. Calm in the chat, sharp in the logs.</p>
+          <div class="f-foot"><span class="t-up">▲ TRENDING</span></div>
+        </div>
+        <div class="f-card">
+          <div class="f-tag">CMD</div>
+          <lucide-icon [name]="zapIcon" class="f-icon"></lucide-icon>
+          <h3>Command Engine</h3>
+          <p>Variables. Timers. Conditions. Unlimited on every plan, no rate cap on creativity.</p>
+          <div class="f-foot"><span class="t-up">▲ TRENDING</span></div>
+        </div>
+        <div class="f-card">
+          <div class="f-tag">ANA</div>
+          <lucide-icon [name]="chartIcon" class="f-icon"></lucide-icon>
+          <h3>Analytics</h3>
+          <p>Retention, loyalty, usage. Cited, dated, exportable — like a real report.</p>
+          <div class="f-foot"><span class="t-up">▲ TRENDING</span></div>
+        </div>
+        <div class="f-card">
+          <div class="f-tag">VOI</div>
+          <lucide-icon [name]="volumeIcon" class="f-icon"></lucide-icon>
+          <h3>Voice &amp; TTS</h3>
+          <p>High-quality voices and (Pro) cloning. Triggers feel like part of the stream.</p>
+          <div class="f-foot"><span class="t-up">▲ TRENDING</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing: order book -->
+  <section id="pricing" class="mock22-section">
+    <div class="mock22-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 002 · PRICING</div>
+        <h2 class="sec-title">Three orders. Same product.</h2>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan">
+          <div class="p-head">
+            <div class="p-tier">FREE / SPOT</div>
+            <div class="p-tick">●</div>
+          </div>
+          <div class="p-price">$0<span class="per">/forever</span></div>
+          <div class="p-desc">Perfect for starting out</div>
+          <ul class="p-list">
+            <li>Core moderation</li>
+            <li>Unlimited commands*</li>
+            <li>Basic analytics</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Buy at $0</button>
+        </div>
+
+        <div class="plan featured">
+          <div class="p-head">
+            <div class="p-tier">PREMIUM / LIMIT</div>
+            <div class="p-tick">●</div>
+          </div>
+          <div class="p-price">$6<span class="per">/mo</span></div>
+          <div class="p-desc">For growing channels</div>
+          <ul class="p-list">
+            <li>Full AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>Premium TTS voices</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Buy at $6</button>
+        </div>
+
+        <div class="plan">
+          <div class="p-head">
+            <div class="p-tier">PRO / MARKET</div>
+            <div class="p-tick">●</div>
+          </div>
+          <div class="p-price">$15<span class="per">/mo</span></div>
+          <div class="p-desc">Maximum scale &amp; control</div>
+          <ul class="p-list">
+            <li>Everything in Premium</li>
+            <li>Voice cloning</li>
+            <li>Unlimited bandwidth*</li>
+            <li>Early access features</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Buy at $15</button>
+        </div>
+      </div>
+
+      <p class="fine-print">
+        * Core features (commands, basic automation) are unlimited. AI
+        moderation, TTS, and advanced voice features are subject to monthly
+        credit limits.
+      </p>
+    </div>
+  </section>
+
+  <!-- Live: order book -->
+  <section id="live" class="mock22-section">
+    <div class="mock22-container">
+      <div class="sec-head">
+        <div class="sec-eyebrow">// 003 · ORDER BOOK</div>
+        <h2 class="sec-title">Channels on the floor right now.</h2>
+      </div>
+
+      <div class="book">
+        <div class="book-head">
+          <span>CHANNEL</span>
+          <span>VIEWERS</span>
+          <span>BID</span>
+          <span>STATUS</span>
+        </div>
+        @if (liveChannels().length > 0) {
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <div class="book-row">
+              <span class="br-chan">
+                <span class="br-num">{{ '0' + (i + 1) }}</span>
+                {{ channel.channel }}
+              </span>
+              <span class="br-v">
+                <span [countUp]="channel.viewers" [staggerDelay]="0">0</span>
+              </span>
+              <span class="br-bid up">
+                <lucide-icon [name]="upIcon" class="br-arrow"></lucide-icon>
+                OPEN
+              </span>
+              <span class="br-status">FILL</span>
+            </div>
+          }
+        } @else {
+          <div class="book-row empty">
+            <span>The order book is loading…</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="mock22-cta">
+    <div class="mock22-container cta-grid">
+      <div class="cta-text">
+        <span class="cta-tick">●</span>
+        Buy your channel a real bot. Start free.
+      </div>
+      <button class="btn-primary large" (click)="onLogin()">Log in with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="mock22-foot">Mock 22 — Signal Ticker · Market-style metrics</footer>
+</div>

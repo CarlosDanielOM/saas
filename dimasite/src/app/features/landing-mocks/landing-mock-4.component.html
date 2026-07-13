@@ -1,0 +1,171 @@
+<div class="mock4-shell">
+  <!-- Fun Navbar -->
+  <nav class="mock4-nav">
+    <div class="mock4-container nav-inner">
+      <div class="brand">DomDima<span class="brand-accent">Bot</span></div>
+      <div class="nav-links">
+        <button (click)="scrollTo('features')">Features</button>
+        <button (click)="scrollTo('hype')">Hype Live</button>
+        <button (click)="scrollTo('pricing')">Pricing</button>
+      </div>
+      <div class="nav-actions">
+        <a routerLink="/mock" class="back">← Mocks</a>
+        <button class="btn-ghost" (click)="onDiscord()">Discord</button>
+        <button class="btn-main" (click)="onLogin()">Login with Twitch</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Energetic Hero -->
+  <header class="mock4-hero">
+    <div class="mock4-container">
+      <div class="hero-badge">🔥 2k+ streamers making chat pop</div>
+      <h1 class="hero-title">Your chat is the<br>main character.</h1>
+      <p class="hero-subtitle">DomDimaBot turns every message into moments. Moderation that gets it, automation that slaps, and energy that keeps people coming back.</p>
+
+      <div class="hero-ctas">
+        <button class="btn-main big" (click)="onLogin()">Get your chat popping</button>
+        <button class="btn-outline" (click)="onDiscord()">Join the squad</button>
+      </div>
+      <div class="hero-meta">Free to start • Used in 2k+ live chats right now</div>
+    </div>
+  </header>
+
+  <!-- Quick Live Hype -->
+  <div class="mock4-container hype-bar">
+    <div class="hype-label">LIVE RIGHT NOW</div>
+    <div class="hype-avatars">
+      @for (channel of liveChannels(); track channel.channelID) {
+        <div class="hype-chip">
+          <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+          <span>{{ channel.channel }}</span>
+        </div>
+      }
+      @if (liveChannels().length === 0) {
+        <div class="hype-chip">Loading live streamers...</div>
+      }
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <section class="mock4-section">
+    <div class="mock4-container">
+      <div class="stats-row">
+        <div class="stat"><div class="num" [countUp]="siteStats().registeredUsers">0</div><div class="label">Streamers</div></div>
+        <div class="stat"><div class="num" [countUp]="siteStats().liveUsers">0</div><div class="label">Watching Live</div></div>
+        <div class="stat"><div class="num" [countUp]="siteStats().messagesReceived">0</div><div class="label">Messages Today</div></div>
+        <div class="stat"><div class="num" [countUp]="siteStats().totalCommands">0</div><div class="label">Commands Fired</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features - Chat Energy -->
+  <section id="features" class="mock4-section">
+    <div class="mock4-container">
+      <h2 class="section-title">Everything your chat needs to go crazy</h2>
+      <div class="feature-grid">
+        <div class="fcard">
+          <lucide-icon [name]="chatIcon"></lucide-icon>
+          <h3>Chat That Hits Different</h3>
+          <p>AI moderation that actually understands your community slang and inside jokes.</p>
+          <span class="tag">Smart</span>
+        </div>
+        <div class="fcard">
+          <lucide-icon [name]="zapIcon"></lucide-icon>
+          <h3>Commands That Slap</h3>
+          <p>Unlimited commands, timers, variables, and triggers. Make your stream feel alive.</p>
+          <span class="tag">Unlimited</span>
+        </div>
+        <div class="fcard">
+          <lucide-icon [name]="heartIcon"></lucide-icon>
+          <h3>Hype That Sticks</h3>
+          <p>Rewards, redemptions, and chat events that keep people engaged for hours.</p>
+          <span class="tag">Engagement</span>
+        </div>
+        <div class="fcard">
+          <lucide-icon [name]="starIcon"></lucide-icon>
+          <h3>Voice That Pops</h3>
+          <p>Human-like TTS and voice cloning so your stream sounds premium.</p>
+          <span class="tag">Pro</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hype Live Section -->
+  <section id="hype" class="mock4-section alt">
+    <div class="mock4-container">
+      <h2 class="section-title">Streams popping off right now</h2>
+      <div class="live-grid">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="live-card">
+            <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+            <div class="live-info">
+              <div class="name">{{ channel.channel }}</div>
+              <div class="viewers">{{ channel.viewers }} viewers • BOT ON</div>
+            </div>
+          </div>
+        }
+        @if (liveChannels().length === 0) {
+          <p class="empty">No one live at the moment — but the energy is always here.</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing - Fun -->
+  <section id="pricing" class="mock4-section">
+    <div class="mock4-container">
+      <h2 class="section-title">Pick your power level</h2>
+      <div class="pricing-grid">
+        <div class="p-card">
+          <div class="p-head">
+            <div class="tier">FREE</div>
+            <div class="price">$0</div>
+          </div>
+          <ul>
+            <li>Basic moderation</li>
+            <li>Unlimited commands</li>
+            <li>25k AI credits</li>
+          </ul>
+          <button class="btn-ghost full" (click)="onLogin()">Start free</button>
+        </div>
+        <div class="p-card popular">
+          <div class="p-head">
+            <div class="tier">PREMIUM <span class="pop">MOST POPULAR</span></div>
+            <div class="price">$6<span class="mo">/mo</span></div>
+          </div>
+          <ul>
+            <li>Smart AI moderation</li>
+            <li>Advanced analytics</li>
+            <li>125k credits + human TTS</li>
+            <li>Priority chat energy</li>
+          </ul>
+          <button class="btn-main full" (click)="onLogin()">Level up to Premium</button>
+        </div>
+        <div class="p-card">
+          <div class="p-head">
+            <div class="tier">PRO</div>
+            <div class="price">$15<span class="mo">/mo</span></div>
+          </div>
+          <ul>
+            <li>Full AI suite</li>
+            <li>Voice cloning</li>
+            <li>500k credits</li>
+            <li>Unlimited bandwidth*</li>
+          </ul>
+          <button class="btn-ghost full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final-cta">
+    <div class="mock4-container">
+      <h2>Ready to make your chat legendary?</h2>
+      <button class="btn-main big" (click)="onLogin()">Login with Twitch — free</button>
+    </div>
+  </div>
+
+  <footer class="mock4-foot">Mock 4 — Twitch Energy • Real data • For the streamers</footer>
+</div>

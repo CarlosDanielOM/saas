@@ -1,0 +1,131 @@
+<div class="mock8-shell">
+  <nav class="mock8-nav">
+    <div class="mock8-container">
+      <div class="nav-flex">
+        <div class="brand">DomDima <span class="warm">Sunset</span></div>
+        <div class="links">
+          <button (click)="scrollTo('hype')">Hype Levels</button>
+          <button (click)="scrollTo('squads')">Live Squads</button>
+          <button (click)="scrollTo('pricing')">Plans</button>
+        </div>
+        <div>
+          <a routerLink="/mock" class="back">Back to mocks</a>
+          <button class="btn-main" (click)="onLogin()">Login with Twitch</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <header class="mock8-hero">
+    <div class="mock8-container hero-grid">
+      <div>
+        <div class="badge">🌅 WARM CHAOS</div>
+        <h1>Cozy streams.<br>Chaotic chats.</h1>
+        <p class="lead">The same powerful bot, but with sunset energy and golden hour hype.</p>
+        <div class="actions">
+          <button class="btn-main" (click)="onLogin()">Bring the sunset energy</button>
+          <button class="btn-light" (click)="onDiscord()">Join the community</button>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="stat-bubble">
+          <div><strong [countUp]="siteStats().liveUsers">0</strong></div>
+          <div>people watching right now</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="mock8-section">
+    <div class="mock8-container">
+      <div class="live-strip">
+        @for (c of liveChannels(); track c.channelID) {
+          <div class="strip-item">
+            <img [src]="c.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" />
+            <span>{{ c.channel }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="hype" class="mock8-section alt">
+    <div class="mock8-container">
+      <h2 class="section-title">Hype Levels</h2>
+      <div class="hype-levels">
+        <div class="level">
+          <lucide-icon [name]="sunIcon"></lucide-icon>
+          <h3>Golden Hour</h3>
+          <p>Beautiful TTS and chill moderation that keeps the vibe warm.</p>
+        </div>
+        <div class="level">
+          <lucide-icon [name]="heartIcon"></lucide-icon>
+          <h3>Community Glow</h3>
+          <p>Redemptions and events that make your viewers feel loved.</p>
+        </div>
+        <div class="level">
+          <lucide-icon [name]="zapIcon"></lucide-icon>
+          <h3>Surprise Drop</h3>
+          <p>Commands and triggers that hit at the perfect chaotic moment.</p>
+        </div>
+        <div class="level">
+          <lucide-icon [name]="usersIcon"></lucide-icon>
+          <h3>Squad Memory</h3>
+          <p>The bot remembers inside jokes so your community feels like family.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="squads" class="mock8-section">
+    <div class="mock8-container">
+      <h2 class="section-title">Live at golden hour</h2>
+      <div class="squads-grid">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="squad">
+            <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" />
+            <div class="meta">
+              <strong>{{ channel.channel }}</strong>
+              <span>{{ channel.viewers }} watching the sunset</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="mock8-section">
+    <div class="mock8-container">
+      <h2 class="section-title">Warm up your stream</h2>
+      <div class="price-cards">
+        <div class="card">
+          <div class="name">Cozy</div>
+          <div class="price">$0</div>
+          <ul><li>Core tools</li><li>Basic hype</li></ul>
+          <button class="btn-light full" (click)="onLogin()">Start cozy</button>
+        </div>
+        <div class="card hot">
+          <div class="name">Sunset</div>
+          <div class="price">$6</div>
+          <ul><li>Full AI glow</li><li>Premium voice</li><li>Advanced stats</li></ul>
+          <button class="btn-main full" (click)="onLogin()">Catch the vibe</button>
+        </div>
+        <div class="card">
+          <div class="name">Golden</div>
+          <div class="price">$15</div>
+          <ul><li>Voice cloning</li><li>Unlimited scale</li></ul>
+          <button class="btn-light full" (click)="onLogin()">Go golden</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final">
+    <div class="mock8-container">
+      <h2>Let’s make your chat feel like golden hour.</h2>
+      <button class="btn-main big" (click)="onLogin()">Login with Twitch</button>
+    </div>
+  </div>
+
+  <footer class="foot">Mock 8 — Sunset Hype • Warm take on Twitch Energy</footer>
+</div>

@@ -1,0 +1,217 @@
+<div class="mock1-shell">
+  <!-- Navbar -->
+  <nav class="mock1-navbar">
+    <div class="mock1-container nav-inner">
+      <div class="nav-brand">DomDimaBot</div>
+      <div class="nav-links">
+        <button class="nav-link" (click)="scrollTo('features')">Features</button>
+        <button class="nav-link" (click)="scrollTo('pricing')">Pricing</button>
+        <button class="nav-link" (click)="scrollTo('live')">Live</button>
+      </div>
+      <div class="nav-actions">
+        <a routerLink="/mock" class="nav-back">← Mocks</a>
+        <button class="btn-ghost" (click)="onDiscord()">Discord</button>
+        <button class="btn-primary" (click)="onLogin()">Log in with Twitch</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="mock1-hero">
+    <div class="mock1-container">
+      <div class="hero-eyebrow">Built for Twitch streamers</div>
+      <h1 class="hero-title">The cleanest way<br>to run your chat.</h1>
+      <p class="hero-subtitle">
+        Moderation, automation, and insights — without the noise.
+        DomDimaBot keeps your community engaged and your stream on track.
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary btn-lg" (click)="onLogin()">Get started free</button>
+        <button class="btn-ghost btn-lg" (click)="scrollTo('pricing')">See pricing</button>
+      </div>
+      <div class="hero-trust">Trusted by 12k+ streamers • 140k+ hours live</div>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <section class="mock1-stats">
+    <div class="mock1-container stats-grid">
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().registeredUsers"
+             [staggerDelay]="0">0</div>
+        <div class="stat-label">Registered Users</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().liveUsers"
+             [staggerDelay]="120">0</div>
+        <div class="stat-label">Live Users</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().botActiveAccounts"
+             [staggerDelay]="240">0</div>
+        <div class="stat-label">Bot Active Accounts</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().messagesReceived"
+             [staggerDelay]="360">0</div>
+        <div class="stat-label">Messages Received</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().totalCommands"
+             [staggerDelay]="480">0</div>
+        <div class="stat-label">Total Commands</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"
+             [countUp]="siteStats().totalLiveViewer"
+             [staggerDelay]="600">0</div>
+        <div class="stat-label">Total Live Viewers</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="mock1-section">
+    <div class="mock1-container">
+      <div class="section-head">
+        <h2 class="section-title">Everything you need.<br>Nothing you don’t.</h2>
+        <p class="section-sub">Powerful features presented simply.</p>
+      </div>
+
+      <div class="features-minimal">
+        <div class="feature-min">
+          <div class="feature-icon">🧠</div>
+          <div>
+            <div class="feature-title">AI Moderation</div>
+            <p class="feature-text">Context-aware filtering that scales with your chat size.</p>
+          </div>
+        </div>
+        <div class="feature-min">
+          <div class="feature-icon">⚡</div>
+          <div>
+            <div class="feature-title">Unlimited Commands</div>
+            <p class="feature-text">Custom commands, variables, timers, and advanced triggers.</p>
+          </div>
+        </div>
+        <div class="feature-min">
+          <div class="feature-icon">📈</div>
+          <div>
+            <div class="feature-title">Deep Analytics</div>
+            <p class="feature-text">Understand who’s chatting, when, and how they engage.</p>
+          </div>
+        </div>
+        <div class="feature-min">
+          <div class="feature-icon">🔊</div>
+          <div>
+            <div class="feature-title">TTS &amp; Voice</div>
+            <p class="feature-text">Natural voices and voice cloning on higher tiers.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock1-section alt">
+    <div class="mock1-container">
+      <div class="section-head center">
+        <h2 class="section-title">Simple, transparent pricing</h2>
+      </div>
+
+      <div class="pricing-cards">
+        <div class="price-card">
+          <div class="price-head">
+            <div class="price-name">Free</div>
+            <div class="price-amount">$0 <span>forever</span></div>
+          </div>
+          <ul class="price-list">
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Basic moderation</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Unlimited simple commands</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Basic analytics</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> 25k AI credits/mo</li>
+          </ul>
+          <button class="btn-ghost full" (click)="onLogin()">Start for free</button>
+        </div>
+
+        <div class="price-card popular">
+          <div class="popular-badge">Most popular</div>
+          <div class="price-head">
+            <div class="price-name">Premium</div>
+            <div class="price-amount">$6 <span>/ month</span></div>
+          </div>
+          <ul class="price-list">
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Smart AI moderation</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Everything in Free</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Advanced analytics</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> 125k AI credits</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Human-like TTS</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Choose Premium</button>
+        </div>
+
+        <div class="price-card">
+          <div class="price-head">
+            <div class="price-name">Pro</div>
+            <div class="price-amount">$15 <span>/ month</span></div>
+          </div>
+          <ul class="price-list">
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Full AI moderation suite</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Voice cloning</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> 500k AI credits</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> 1TB bandwidth</li>
+            <li><lucide-icon [name]="checkIcon" class="h-4 w-4"></lucide-icon> Priority support + extras</li>
+          </ul>
+          <button class="btn-ghost full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live -->
+  <section id="live" class="mock1-section">
+    <div class="mock1-container">
+      <div class="section-head">
+        <h2 class="section-title">Happening live</h2>
+        <p class="section-sub">Some of the channels using DomDimaBot right now.</p>
+      </div>
+
+      @if (liveChannels().length > 0) {
+        <div class="live-grid">
+          @for (channel of liveChannels(); track channel.channelID; let i = $index) {
+            <div class="live-row">
+              <img
+                class="live-avatar"
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div class="live-meta">
+                <div class="live-name">{{ channel.channel }}</div>
+                <div class="live-viewers">{{ channel.viewers }} viewers</div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="live-empty">No live channels detected right now.</p>
+      }
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <div class="mock1-cta">
+    <div class="mock1-container">
+      <h2>Ready to level up your stream?</h2>
+      <button class="btn-primary btn-lg" (click)="onLogin()">Log in with Twitch — it’s free</button>
+    </div>
+  </div>
+
+  <footer class="mock1-footer">
+    © DomDimaBot — Mock 1
+  </footer>
+</div>

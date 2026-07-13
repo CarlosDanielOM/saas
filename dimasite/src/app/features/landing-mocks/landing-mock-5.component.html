@@ -1,0 +1,151 @@
+<div class="mock5-shell">
+  <nav class="mock5-nav">
+    <div class="mock5-container">
+      <div class="nav-row">
+        <div class="brand">DomDimaBot</div>
+        <div class="nav-links">
+          <a (click)="scrollTo('community')">Community</a>
+          <a (click)="scrollTo('live')">Live Squads</a>
+          <a (click)="scrollTo('pricing')">Plans</a>
+        </div>
+        <div>
+          <a routerLink="/mock" class="back-link">All Mocks</a>
+          <button class="btn-twitch" (click)="onLogin()">Login with Twitch</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Community Hero -->
+  <header class="mock5-hero">
+    <div class="mock5-container hero-content">
+      <div class="hero-left">
+        <div class="badge">Built for real communities</div>
+        <h1>Build the squad.<br>Grow together.</h1>
+        <p class="lead">The bot that actually helps you build a loyal, engaged community instead of just moderating it.</p>
+
+        <div class="cta-row">
+          <button class="btn-primary" (click)="onLogin()">Start growing your squad</button>
+          <button class="btn-secondary" (click)="onDiscord()">See what streamers say</button>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="avatar-stack">
+          @for (channel of liveChannels().slice(0, 5); track channel.channelID) {
+            <img [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+          }
+        </div>
+        <div class="stack-label">Join thousands of streamers building real squads</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Big Community Numbers -->
+  <section class="mock5-section stats">
+    <div class="mock5-container">
+      <div class="big-stats">
+        <div><strong [countUp]="siteStats().liveUsers">0</strong><span>people watching streams with our bot right now</span></div>
+        <div><strong [countUp]="siteStats().messagesReceived">0</strong><span>messages processed today across all chats</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Community Features -->
+  <section id="community" class="mock5-section">
+    <div class="mock5-container">
+      <h2 class="section-head">What actually helps streamers grow</h2>
+      <div class="community-grid">
+        <div class="comm-card">
+          <lucide-icon [name]="usersIcon"></lucide-icon>
+          <h3>Real Recognition</h3>
+          <p>Custom redemptions, loyalty tracking, and shoutouts that make viewers feel seen.</p>
+        </div>
+        <div class="comm-card">
+          <lucide-icon [name]="heartIcon"></lucide-icon>
+          <h3>Chat That Cares</h3>
+          <p>Smart moderation that protects your vibe without killing the fun.</p>
+        </div>
+        <div class="comm-card">
+          <lucide-icon [name]="trophyIcon"></lucide-icon>
+          <h3>Growth Tools</h3>
+          <p>Analytics that show you exactly who’s showing up and why.</p>
+        </div>
+        <div class="comm-card">
+          <lucide-icon [name]="chatIcon"></lucide-icon>
+          <h3>Memories That Last</h3>
+          <p>The bot actually learns from your chat so inside jokes and callbacks feel natural.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Squads -->
+  <section id="live" class="mock5-section alt">
+    <div class="mock5-container">
+      <h2 class="section-head">Squads live right now</h2>
+      <div class="squad-grid">
+        @for (channel of liveChannels(); track channel.channelID) {
+          <div class="squad-card">
+            <img class="avatar" [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'" [alt]="channel.channel" />
+            <div class="info">
+              <div class="name">{{ channel.channel }}</div>
+              <div class="meta">{{ channel.viewers }} viewers • using DomDimaBot</div>
+            </div>
+            <div class="live-badge">LIVE</div>
+          </div>
+        }
+        @if (liveChannels().length === 0) {
+          <p>Checking who’s live...</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="mock5-section">
+    <div class="mock5-container">
+      <h2 class="section-head">Choose how you want to grow</h2>
+      <div class="price-grid">
+        <div class="price-item">
+          <div class="price-tier">Free</div>
+          <div class="price-val">$0</div>
+          <ul>
+            <li>Core moderation</li>
+            <li>Unlimited commands</li>
+            <li>Basic analytics</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Start here</button>
+        </div>
+        <div class="price-item featured">
+          <div class="price-tier">Premium <span class="rec">Recommended</span></div>
+          <div class="price-val">$6/mo</div>
+          <ul>
+            <li>AI moderation</li>
+            <li>Advanced growth analytics</li>
+            <li>Human TTS + more credits</li>
+          </ul>
+          <button class="btn-primary full" (click)="onLogin()">Build with Premium</button>
+        </div>
+        <div class="price-item">
+          <div class="price-tier">Pro</div>
+          <div class="price-val">$15/mo</div>
+          <ul>
+            <li>Everything + voice cloning</li>
+            <li>Maximum scale</li>
+            <li>Priority support</li>
+          </ul>
+          <button class="btn-secondary full" (click)="onLogin()">Go Pro</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta-banner">
+    <div class="mock5-container">
+      <p>Thousands of streamers are already building better communities.</p>
+      <button class="btn-primary big" (click)="onLogin()">Join them — free to start</button>
+    </div>
+  </div>
+
+  <footer class="mock5-footer">Mock 5 — Squad Glow • Real live data for Twitch communities</footer>
+</div>
