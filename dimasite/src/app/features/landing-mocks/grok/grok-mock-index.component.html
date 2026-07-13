@@ -11,12 +11,13 @@
     <p class="gmi__kicker">Design explorations</p>
     <h1 class="gmi__title">Grok landing mocks</h1>
     <p class="gmi__sub">
-      Originals plus nine creative riffs from production mocks
+      Originals, OpenCode design-skill mocks, plus nine creative riffs from production mocks
       <strong>18</strong> (Global Metrics), <strong>20</strong> (Aurora Stream), and
       <strong>23</strong> (Constellation). All use live platform data.
     </p>
     <p class="gmi__paths">
-      Base: <code>/mocks/grok</code> · Lineages:
+      Base: <code>/mocks/grok</code> · OpenCode:
+      <code>/mocks/grok/oc1–oc3</code> · Lineages:
       <code>/mocks/grok/18a–c</code> ·
       <code>/mocks/grok/20a–c</code> ·
       <code>/mocks/grok/23a–c</code>
@@ -26,6 +27,25 @@
   <h2 class="gmi__section-title">Original Grok directions</h2>
   <div class="gmi__grid">
     @for (mock of originals; track mock.id) {
+      <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
+        <div class="gmi-card__top">
+          <span class="gmi-card__vibe">{{ mock.vibe }}</span>
+          <span class="gmi-card__id">/mocks/grok/{{ mock.id }}</span>
+        </div>
+        <h3 class="gmi-card__title">{{ mock.title }}</h3>
+        <p class="gmi-card__desc">{{ mock.description }}</p>
+        <span class="gmi-card__cta">Open mock →</span>
+      </a>
+    }
+  </div>
+
+  <h2 class="gmi__section-title">OpenCode mocks</h2>
+  <p class="gmi__section-note">
+    Designed via OpenCode + UI/UX Pro Max skill (not Grok Build). Three independent directions from
+    production landing content only.
+  </p>
+  <div class="gmi__grid">
+    @for (mock of opencodeMocks; track mock.id) {
       <a [routerLink]="['/mocks/grok', mock.id]" class="gmi-card" [attr.data-accent]="mock.accent">
         <div class="gmi-card__top">
           <span class="gmi-card__vibe">{{ mock.vibe }}</span>

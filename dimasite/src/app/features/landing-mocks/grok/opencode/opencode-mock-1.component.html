@@ -1,0 +1,204 @@
+<div class="oc1">
+  <div class="oc1-marquee" aria-hidden="true">
+    <div class="oc1-marquee__track">
+      @for (item of marqueeItems(); track item) {
+        <span class="oc1-marquee__item">{{ item }}</span>
+        <span class="oc1-marquee__sep">///</span>
+      }
+      @for (item of marqueeItems(); track $index) {
+        <span class="oc1-marquee__item">{{ item }}</span>
+        <span class="oc1-marquee__sep">///</span>
+      }
+    </div>
+  </div>
+
+  <header class="oc1-nav">
+    <a routerLink="/" class="oc1-nav__brand" aria-label="DomDimaBot home">
+      <span class="oc1-nav__mark" aria-hidden="true"></span>
+      DOMDIMABOT
+    </a>
+    <nav class="oc1-nav__links">
+      <button type="button" class="oc1-nav__link" (click)="scrollTo('features')">FEATURES</button>
+      <button type="button" class="oc1-nav__link" (click)="scrollTo('pricing')">PRICING</button>
+      <button type="button" class="oc1-nav__link" (click)="scrollTo('live')">LIVE</button>
+      <a routerLink="/mocks/grok" class="oc1-nav__back">← OPENCODE</a>
+    </nav>
+    <button type="button" class="oc1-btn oc1-btn--solid" (click)="login()">LOGIN WITH TWITCH</button>
+  </header>
+
+  <main>
+    <section class="oc1-hero">
+      <div class="oc1-hero__meta">
+        <span
+          class="oc1-pulse"
+          [class.oc1-pulse--on]="connectionStatus() === 'connected'"
+          [class.oc1-pulse--warn]="connectionStatus() === 'reconnecting'"
+        ></span>
+        <span>{{ connectionLabel() }}</span>
+        <span class="oc1-hero__tag">OPENCODE MOCK · OC1</span>
+      </div>
+
+      <h1 class="oc1-hero__title">
+        LIVE MODERATION
+        <span class="oc1-hero__slash">/</span>
+        AUTOMATION
+        <span class="oc1-hero__slash">/</span>
+        FOR STREAMERS WHO RUN HOT
+      </h1>
+
+      <p class="oc1-hero__copy">
+        DomDimaBot keeps chat clean, commands firing, and your community moving — AI moderation,
+        unlimited automation, analytics, and TTS that scales with your stream.
+      </p>
+
+      <div class="oc1-hero__actions">
+        <button type="button" class="oc1-btn oc1-btn--solid oc1-btn--lg" (click)="login()">
+          LOGIN WITH TWITCH
+        </button>
+        <button type="button" class="oc1-btn oc1-btn--ghost oc1-btn--lg" (click)="openDiscord()">
+          JOIN DISCORD
+        </button>
+      </div>
+
+      <div class="oc1-statboard">
+        <article class="oc1-stat">
+          <lucide-icon [name]="usersIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">REGISTERED</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().registeredUsers">0</p>
+        </article>
+        <article class="oc1-stat">
+          <lucide-icon [name]="tvIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">LIVE USERS</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().liveUsers" [staggerDelay]="100">0</p>
+        </article>
+        <article class="oc1-stat">
+          <lucide-icon [name]="activityIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">BOTS ACTIVE</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="200">0</p>
+        </article>
+        <article class="oc1-stat">
+          <lucide-icon [name]="messageIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">MESSAGES</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().messagesReceived" [staggerDelay]="300">0</p>
+        </article>
+        <article class="oc1-stat">
+          <lucide-icon [name]="zapIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">COMMANDS</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().totalCommands" [staggerDelay]="400">0</p>
+        </article>
+        <article class="oc1-stat">
+          <lucide-icon [name]="tvIcon" class="oc1-stat__icon"></lucide-icon>
+          <p class="oc1-stat__label">VIEWERS</p>
+          <p class="oc1-stat__value" [countUp]="siteStats().totalLiveViewer" [staggerDelay]="500">0</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="features" class="oc1-section">
+      <div class="oc1-section__head">
+        <p class="oc1-kicker">CAPABILITIES</p>
+        <h2 class="oc1-section__title">WHAT THE BOT ACTUALLY DOES</h2>
+      </div>
+      <div class="oc1-features">
+        @for (f of features; track f.title) {
+          <article class="oc1-feature">
+            <span class="oc1-feature__badge">{{ f.badge }}</span>
+            <h3 class="oc1-feature__title">{{ f.title }}</h3>
+            <p class="oc1-feature__copy">{{ f.copy }}</p>
+            <button type="button" class="oc1-feature__cta" (click)="scrollTo('pricing')">
+              COMPARE PLANS →
+            </button>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section id="pricing" class="oc1-section">
+      <div class="oc1-section__head">
+        <p class="oc1-kicker">PRICING</p>
+        <h2 class="oc1-section__title">PICK YOUR POWER LEVEL</h2>
+      </div>
+      <div class="oc1-pricing">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="oc1-tier"
+            [class.oc1-tier--hot]="tier.highlighted"
+            [class.oc1-tier--active]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="oc1-tier__badge">MOST POPULAR</span>
+            }
+            <p class="oc1-tier__name">{{ tier.label }}</p>
+            <p class="oc1-tier__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc1-tier__desc">{{ tier.description }}</p>
+            <button type="button" class="oc1-btn oc1-btn--solid" (click)="login()">
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="oc1-matrix">
+        <div class="oc1-matrix__head">
+          <span>CAPABILITY</span>
+          <span>FREE</span>
+          <span>PREMIUM</span>
+          <span>PRO</span>
+        </div>
+        @for (row of capabilityRows; track row.label) {
+          <div class="oc1-matrix__row">
+            <span>{{ row.label }}</span>
+            <span>{{ row.free }}</span>
+            <span>{{ row.premium }}</span>
+            <span>{{ row.pro }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section id="live" class="oc1-section">
+      <div class="oc1-section__head">
+        <p class="oc1-kicker">LIVE NOW</p>
+        <h2 class="oc1-section__title">CHANNELS RUNNING THE BOT</h2>
+      </div>
+      @if (liveChannels().length > 0) {
+        <div class="oc1-live">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="oc1-live-card">
+              <img
+                class="oc1-live-card__avatar"
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="oc1-live-card__name">{{ channel.channel }}</p>
+                <p class="oc1-live-card__viewers">{{ formatViewers(channel.viewers) }} viewers</p>
+              </div>
+              <div class="oc1-live-card__platforms">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span class="oc1-plat">{{ platform }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="oc1-empty">No live channels right now — check back during peak hours.</p>
+      }
+    </section>
+
+    <section class="oc1-cta">
+      <h2 class="oc1-cta__title">STOP FIGHTING CHAT. START RUNNING IT.</h2>
+      <p class="oc1-cta__copy">Connect Twitch and put DomDimaBot on your channel in minutes.</p>
+      <button type="button" class="oc1-btn oc1-btn--solid oc1-btn--lg" (click)="login()">
+        LOGIN WITH TWITCH
+      </button>
+    </section>
+  </main>
+
+  <footer class="oc1-footer">
+    <p>© DomDimaBot · OpenCode mock OC1 · Broadcast Brutal</p>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

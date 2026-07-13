@@ -1,0 +1,179 @@
+<div class="oc2">
+  <header class="oc2-nav">
+    <a routerLink="/" class="oc2-nav__brand" aria-label="DomDimaBot home">DomDimaBot</a>
+    <div class="oc2-nav__right">
+      <span
+        class="oc2-status"
+        [class.oc2-status--on]="connectionStatus() === 'connected'"
+        [class.oc2-status--warn]="connectionStatus() === 'reconnecting'"
+      >
+        {{ connectionLabel() }}
+      </span>
+      <button type="button" class="oc2-link" (click)="scrollTo('features')">Features</button>
+      <button type="button" class="oc2-link" (click)="scrollTo('pricing')">Pricing</button>
+      <a routerLink="/mocks/grok" class="oc2-link">← OpenCode</a>
+      <button type="button" class="oc2-btn" (click)="login()">Login with Twitch</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="oc2-hero">
+      <p class="oc2-eyebrow">OpenCode mock · OC2 · Editorial Void</p>
+      <h1 class="oc2-display">
+        Moderate.
+        <br />
+        Automate.
+        <br />
+        <em>Stream.</em>
+      </h1>
+      <p class="oc2-lede">
+        DomDimaBot is live moderation and automation for Twitch — AI chat control, unlimited
+        commands, analytics that retain, and TTS that grows with your audience.
+      </p>
+      <div class="oc2-hero__actions">
+        <button type="button" class="oc2-btn oc2-btn--fill" (click)="login()">
+          Login with Twitch
+        </button>
+        <button type="button" class="oc2-btn oc2-btn--ghost" (click)="openDiscord()">
+          Join Discord
+        </button>
+      </div>
+    </section>
+
+    <section class="oc2-metrics" aria-label="Platform metrics">
+      @for (m of metrics(); track m.label; let i = $index) {
+        <article class="oc2-metric">
+          <div class="oc2-metric__top">
+            <lucide-icon [name]="m.icon" class="oc2-metric__icon"></lucide-icon>
+            <span class="oc2-metric__label">{{ m.label }}</span>
+          </div>
+          <p class="oc2-metric__value" [countUp]="m.value" [staggerDelay]="i * 80">0</p>
+        </article>
+      }
+    </section>
+
+    <section id="features" class="oc2-block">
+      <div class="oc2-block__head">
+        <p class="oc2-kicker">Features</p>
+        <h2 class="oc2-h2">Four systems. One bot.</h2>
+      </div>
+      <ol class="oc2-features">
+        @for (f of features; track f.n) {
+          <li class="oc2-feature">
+            <span class="oc2-feature__n">{{ f.n }}</span>
+            <div>
+              <h3 class="oc2-feature__title">{{ f.title }}</h3>
+              <p class="oc2-feature__copy">{{ f.copy }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section id="pricing" class="oc2-block">
+      <div class="oc2-block__head">
+        <p class="oc2-kicker">Pricing</p>
+        <h2 class="oc2-h2">Simple tiers. Serious scale.</h2>
+      </div>
+      <div class="oc2-pricing">
+        @for (tier of tiers; track tier.key) {
+          <article
+            class="oc2-tier"
+            [class.oc2-tier--featured]="tier.highlighted"
+            [class.oc2-tier--active]="selectedPlan() === tier.key"
+            (click)="selectPlan(tier.key)"
+            (keydown.enter)="selectPlan(tier.key)"
+            tabindex="0"
+            role="button"
+            [attr.aria-pressed]="selectedPlan() === tier.key"
+          >
+            @if (tier.highlighted) {
+              <span class="oc2-tier__badge">Most popular</span>
+            }
+            <p class="oc2-tier__name">{{ tier.label }}</p>
+            <p class="oc2-tier__price">{{ tier.price }}<span>/mo</span></p>
+            <p class="oc2-tier__desc">{{ tier.description }}</p>
+            <button
+              type="button"
+              class="oc2-btn"
+              [class.oc2-btn--fill]="tier.highlighted"
+              (click)="login(); $event.stopPropagation()"
+            >
+              {{ tier.cta }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="oc2-table-wrap">
+        <table class="oc2-table">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>Free</th>
+              <th>Premium</th>
+              <th>Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of capabilityRows; track row.label) {
+              <tr>
+                <td>{{ row.label }}</td>
+                <td>{{ row.free }}</td>
+                <td>{{ row.premium }}</td>
+                <td>{{ row.pro }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="live" class="oc2-block">
+      <div class="oc2-block__head">
+        <p class="oc2-kicker">Live now</p>
+        <h2 class="oc2-h2">On air with DomDimaBot</h2>
+      </div>
+      @if (liveChannels().length > 0) {
+        <div class="oc2-live">
+          @for (channel of liveChannels(); track channel.channelID) {
+            <article class="oc2-live-card">
+              <img
+                [src]="channel.profileImageUrl || 'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png'"
+                [alt]="channel.channel + ' avatar'"
+                loading="lazy"
+              />
+              <div>
+                <p class="oc2-live-card__name">{{ channel.channel }}</p>
+                <p class="oc2-live-card__meta">{{ formatViewers(channel.viewers) }} viewers</p>
+              </div>
+              <div class="oc2-live-card__tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform }}</span>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="oc2-empty">No channels live at the moment.</p>
+      }
+    </section>
+
+    <section class="oc2-end">
+      <h2 class="oc2-display oc2-display--sm">
+        Your chat<br />
+        <em>deserves</em><br />
+        better tools.
+      </h2>
+      <button type="button" class="oc2-btn oc2-btn--fill" (click)="login()">
+        Login with Twitch
+      </button>
+    </section>
+  </main>
+
+  <footer class="oc2-footer">
+    <span>© DomDimaBot · OpenCode mock OC2</span>
+    <a routerLink="/mocks/grok">Back to Grok mocks</a>
+  </footer>
+</div>

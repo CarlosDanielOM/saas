@@ -88,6 +88,31 @@ export const routes: Routes = [
           ),
         title: 'Warm Desk · Grok Mock | DomDimaBot'
       },
+      // OpenCode mocks (design-skill explorations)
+      {
+        path: 'oc1',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-1.component').then(
+            (m) => m.OpencodeMock1Component
+          ),
+        title: 'Broadcast Brutal · OpenCode Mock | DomDimaBot'
+      },
+      {
+        path: 'oc2',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-2.component').then(
+            (m) => m.OpencodeMock2Component
+          ),
+        title: 'Editorial Void · OpenCode Mock | DomDimaBot'
+      },
+      {
+        path: 'oc3',
+        loadComponent: () =>
+          import('./features/landing-mocks/grok/opencode/opencode-mock-3.component').then(
+            (m) => m.OpencodeMock3Component
+          ),
+        title: 'Command Bento · OpenCode Mock | DomDimaBot'
+      },
       // Lineage of Mock 18 — Global Metrics
       {
         path: '18a',

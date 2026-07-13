@@ -50,6 +50,33 @@ export class GrokMockIndexComponent {
     }
   ];
 
+  readonly opencodeMocks: GrokMockCard[] = [
+    {
+      id: 'oc1',
+      title: 'Broadcast Brutal',
+      description:
+        'Kinetic brutalism. Acid yellow marquee, hard borders, flood-on-hover feature slabs.',
+      vibe: 'Brutal',
+      accent: 'cyan'
+    },
+    {
+      id: 'oc2',
+      title: 'Editorial Void',
+      description:
+        'Exaggerated minimal OLED. Giant serif display type, single violet accent, quiet metrics.',
+      vibe: 'Editorial',
+      accent: 'violet'
+    },
+    {
+      id: 'oc3',
+      title: 'Command Bento',
+      description:
+        'Apple-style modular bento. Hero + live KPI tiles, soft surfaces, plan cards in grid.',
+      vibe: 'Bento',
+      accent: 'coral'
+    }
+  ];
+
   readonly sections: GrokMockSection[] = [
     {
       title: 'From Mock 18 · Global Metrics',
