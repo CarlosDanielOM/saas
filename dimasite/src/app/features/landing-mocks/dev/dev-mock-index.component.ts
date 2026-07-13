@@ -143,14 +143,32 @@ export class DevMockIndexComponent {
       title: 'Prod Dashboard',
       badge: 'Live First · OC3c',
       description:
-        'Channel control center for cdom201 — live network board, public profile/commands, seeded KPIs, trend, goals, and stream history.'
+        'Channel control center for cdom201 with product shell nav (dashboard/commands/modules/settings/profile).'
     },
     {
       id: 'prod-commands',
       title: 'Prod Commands',
       badge: 'Live API + timers',
       description:
-        'Real chat commands for cdom201 (533538623) plus an interactive timer builder with free / premium / pro interval rules.'
+        'Real chat commands for cdom201 plus interactive timer builder with free / premium / pro interval rules.'
+    },
+    {
+      id: 'prod-modules',
+      title: 'Prod Modules',
+      badge: 'Placeholder',
+      description: 'Stub page so the product shell modules tab is navigable.'
+    },
+    {
+      id: 'prod-settings',
+      title: 'Prod Settings',
+      badge: 'Placeholder',
+      description: 'Stub page for channel settings in the mock shell.'
+    },
+    {
+      id: 'prod-profile',
+      title: 'Prod Profile',
+      badge: 'Placeholder',
+      description: 'Stub profile page; theme + language live under the avatar menu.'
     }
   ];
 }

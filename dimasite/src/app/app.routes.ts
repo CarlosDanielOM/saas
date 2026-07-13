@@ -245,6 +245,44 @@ export const routes: Routes = [
                 (m) => m.ProdCommandsMockComponent
               ),
             title: 'Commands | DomDimaBot'
+          },
+          {
+            path: 'prod-modules',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/prod-stub-page.component').then(
+                (m) => m.ProdStubPageComponent
+              ),
+            data: {
+              title: 'Modules',
+              blurb:
+                'Triggers, clips, analytics, TTS, AI personality, and the rest of the module board.'
+            },
+            title: 'Modules | DomDimaBot'
+          },
+          {
+            path: 'prod-settings',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/prod-stub-page.component').then(
+                (m) => m.ProdStubPageComponent
+              ),
+            data: {
+              title: 'Settings',
+              blurb: 'Channel preferences, bot behavior, and account-level streamer controls.'
+            },
+            title: 'Settings | DomDimaBot'
+          },
+          {
+            path: 'prod-profile',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/prod-stub-page.component').then(
+                (m) => m.ProdStubPageComponent
+              ),
+            data: {
+              title: 'Profile',
+              blurb:
+                'Personal account settings. On desktop this also lives under the avatar menu with theme + language.'
+            },
+            title: 'Profile | DomDimaBot'
           }
         ]
       }

@@ -1,0 +1,161 @@
+<div class="shell">
+  <header class="shell-nav">
+    <a routerLink="/mocks/dev/prod-dashboard" class="shell-brand" aria-label="DomDimaBot dashboard">
+      <span class="shell-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+
+    <!-- Desktop primary nav only (hidden on mobile — bottom tabs handle that) -->
+    <nav class="shell-nav__links" aria-label="Primary">
+      <a
+        routerLink="/mocks/dev/prod-dashboard"
+        routerLinkActive="shell-nav__link--active"
+        class="shell-nav__link"
+      >
+        Dashboard
+      </a>
+      <a
+        routerLink="/mocks/dev/prod-commands"
+        routerLinkActive="shell-nav__link--active"
+        class="shell-nav__link"
+      >
+        Commands
+      </a>
+      <a
+        routerLink="/mocks/dev/prod-modules"
+        routerLinkActive="shell-nav__link--active"
+        class="shell-nav__link"
+      >
+        Modules
+      </a>
+      <a
+        routerLink="/mocks/dev/prod-settings"
+        routerLinkActive="shell-nav__link--active"
+        class="shell-nav__link"
+      >
+        Settings
+      </a>
+    </nav>
+
+    <div class="shell-nav__right">
+      <div class="shell-profile" #profileMenu>
+        <button
+          type="button"
+          class="shell-avatar-btn"
+          [attr.aria-expanded]="profileOpen()"
+          aria-haspopup="menu"
+          [attr.aria-label]="displayName() + ' menu'"
+          (click)="toggleProfileMenu($event)"
+        >
+          @if (avatarUrl()) {
+            <img class="shell-avatar-img" [src]="avatarUrl()" [alt]="displayName()" />
+          } @else {
+            <span class="shell-avatar-fallback">{{ avatarLetter() }}</span>
+          }
+        </button>
+
+        @if (profileOpen()) {
+          <div class="shell-dropdown" role="menu">
+            <div class="shell-dropdown__head">
+              <span class="shell-dropdown__name">{{ displayName() }}</span>
+              <span class="shell-dropdown__badge">Pro · mock</span>
+            </div>
+
+            <div class="shell-dropdown__divider" aria-hidden="true"></div>
+
+            <a
+              class="shell-dropdown__item"
+              routerLink="/mocks/dev/prod-profile"
+              role="menuitem"
+              (click)="closeProfileMenu()"
+            >
+              <lucide-icon [name]="userIcon" class="shell-dropdown__ico"></lucide-icon>
+              Profile settings
+            </a>
+
+            <button
+              type="button"
+              class="shell-dropdown__item"
+              role="menuitem"
+              (click)="toggleTheme()"
+            >
+              <lucide-icon
+                [name]="isDarkMode() ? sunIcon : moonIcon"
+                class="shell-dropdown__ico"
+              ></lucide-icon>
+              {{ isDarkMode() ? 'Light mode' : 'Dark mode' }}
+            </button>
+
+            <button
+              type="button"
+              class="shell-dropdown__item"
+              role="menuitem"
+              (click)="toggleLanguage()"
+            >
+              {{ languageLabel() }}
+            </button>
+
+            <div class="shell-dropdown__divider" aria-hidden="true"></div>
+
+            <a
+              class="shell-dropdown__item shell-dropdown__item--muted"
+              routerLink="/mocks/dev"
+              role="menuitem"
+              (click)="closeProfileMenu()"
+            >
+              All dev mocks
+            </a>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <div class="shell-body">
+    <router-outlet />
+  </div>
+
+  <!-- Mobile product tabs -->
+  <nav class="shell-bottom" aria-label="Primary navigation">
+    <a
+      routerLink="/mocks/dev/prod-dashboard"
+      routerLinkActive="shell-bottom__link--active"
+      class="shell-bottom__link"
+    >
+      <span class="shell-bottom__glyph" aria-hidden="true">▣</span>
+      <span>Dashboard</span>
+    </a>
+    <a
+      routerLink="/mocks/dev/prod-commands"
+      routerLinkActive="shell-bottom__link--active"
+      class="shell-bottom__link"
+    >
+      <span class="shell-bottom__glyph" aria-hidden="true">⚡</span>
+      <span>Commands</span>
+    </a>
+    <a
+      routerLink="/mocks/dev/prod-modules"
+      routerLinkActive="shell-bottom__link--active"
+      class="shell-bottom__link"
+    >
+      <span class="shell-bottom__glyph" aria-hidden="true">◇</span>
+      <span>Modules</span>
+    </a>
+    <a
+      routerLink="/mocks/dev/prod-settings"
+      routerLinkActive="shell-bottom__link--active"
+      class="shell-bottom__link"
+    >
+      <span class="shell-bottom__glyph" aria-hidden="true">⚙</span>
+      <span>Settings</span>
+    </a>
+    <a
+      routerLink="/mocks/dev/prod-profile"
+      routerLinkActive="shell-bottom__link--active"
+      class="shell-bottom__link"
+    >
+      <span class="shell-bottom__glyph" aria-hidden="true">☺</span>
+      <span>Profile</span>
+    </a>
+  </nav>
+</div>
