@@ -14,6 +14,165 @@ export const routes: Routes = [
       import('./features/landing/landing-page.component').then((m) => m.LandingPageComponent),
     title: 'DomDimaBot'
   },
+  // === Design Mocks (public, no auth) ===
+  {
+    path: 'mock',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-index.component').then((m) => m.LandingMockIndexComponent),
+    title: 'Landing Mocks | DomDimaBot'
+  },
+  {
+    path: 'mock/1',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-1.component').then((m) => m.LandingMock1Component),
+    title: 'Mock 1: Pure Minimal | DomDimaBot'
+  },
+  {
+    path: 'mock/2',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-2.component').then((m) => m.LandingMock2Component),
+    title: 'Mock 2: Gradient Pop | DomDimaBot'
+  },
+  {
+    path: 'mock/3',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-3.component').then((m) => m.LandingMock3Component),
+    title: 'Mock 3: Neon Console | DomDimaBot'
+  },
+  {
+    path: 'mock/4',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-4.component').then((m) => m.LandingMock4Component),
+    title: 'Mock 4: Twitch Energy | DomDimaBot'
+  },
+  {
+    path: 'mock/5',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-5.component').then((m) => m.LandingMock5Component),
+    title: 'Mock 5: Squad Glow | DomDimaBot'
+  },
+  {
+    path: 'mock/6',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-6.component').then((m) => m.LandingMock6Component),
+    title: 'Mock 6: Stream Glow | DomDimaBot'
+  },
+  {
+    path: 'mock/7',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-7.component').then((m) => m.LandingMock7Component),
+    title: 'Mock 7: Neon Riot | DomDimaBot'
+  },
+  {
+    path: 'mock/8',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-8.component').then((m) => m.LandingMock8Component),
+    title: 'Mock 8: Sunset Hype | DomDimaBot'
+  },
+  {
+    path: 'mock/9',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-9.component').then((m) => m.LandingMock9Component),
+    title: 'Mock 9: Cosmic Pulse | DomDimaBot'
+  },
+  {
+    path: 'mock/10',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-10.component').then((m) => m.LandingMock10Component),
+    title: 'Mock 10: Grid Terminal | DomDimaBot'
+  },
+  {
+    path: 'mock/11',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-11.component').then((m) => m.LandingMock11Component),
+    title: 'Mock 11: Synth Console | DomDimaBot'
+  },
+  {
+    path: 'mock/12',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-12.component').then((m) => m.LandingMock12Component),
+    title: 'Mock 12: Abyss Terminal | DomDimaBot'
+  },
+  {
+    path: 'mock/13',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-13.component').then((m) => m.LandingMock13Component),
+    title: 'Mock 13: Refined Dark | DomDimaBot'
+  },
+  {
+    path: 'mock/14',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-14.component').then((m) => m.LandingMock14Component),
+    title: 'Mock 14: Quiet Control | DomDimaBot'
+  },
+  {
+    path: 'mock/15',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-15.component').then((m) => m.LandingMock15Component),
+    title: 'Mock 15: Operational Clarity | DomDimaBot'
+  },
+  {
+    path: 'mock/16',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-16.component').then((m) => m.LandingMock16Component),
+    title: 'Mock 16: Platform Pulse | DomDimaBot'
+  },
+  {
+    path: 'mock/17',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-17.component').then((m) => m.LandingMock17Component),
+    title: 'Mock 17: Live Network | DomDimaBot'
+  },
+  {
+    path: 'mock/18',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-18.component').then((m) => m.LandingMock18Component),
+    title: 'Mock 18: Global Metrics | DomDimaBot'
+  },
+  {
+    path: 'mock/19',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-19.component').then((m) => m.LandingMock19Component),
+    title: 'Mock 19: Editorial Spread | DomDimaBot'
+  },
+  {
+    path: 'mock/20',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-20.component').then((m) => m.LandingMock20Component),
+    title: 'Mock 20: Aurora Stream | DomDimaBot'
+  },
+  {
+    path: 'mock/21',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-21.component').then((m) => m.LandingMock21Component),
+    title: 'Mock 21: Brutalist Mesh | DomDimaBot'
+  },
+  {
+    path: 'mock/22',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-22.component').then((m) => m.LandingMock22Component),
+    title: 'Mock 22: Signal Ticker | DomDimaBot'
+  },
+  {
+    path: 'mock/23',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-23.component').then((m) => m.LandingMock23Component),
+    title: 'Mock 23: Constellation | DomDimaBot'
+  },
+  {
+    path: 'mock/24',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-mock-24.component').then((m) => m.LandingMock24Component),
+    title: 'Mock 24: Mission Control | DomDimaBot'
+  },
+  {
+    path: 'mock/dashboard-23',
+    loadComponent: () =>
+      import('./features/landing-mocks/landing-dashboard-mock-23.component').then(
+        (m) => m.LandingDashboardMock23Component
+      ),
+    title: 'Dashboard · Constellation | DomDimaBot'
+  },
   {
     path: 'login',
     loadComponent: () =>

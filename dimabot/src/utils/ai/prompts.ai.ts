@@ -279,26 +279,52 @@ export function constructChatSystemMessages(
         ${toolContextSection}
     </tool-context>
 
+    <ast-tooling>
+        You have access to an AST parser through the AST_PARSER tool. This is a real action tool, not just text syntax. Use it when you need the bot to do something in the channel instead of only replying in chat.
+
+        How to call AST_PARSER:
+        - Prefer the inner command in the command parameter; the tool normalizes either form. Example: command="set.title Cozy late night stream".
+        - Use userlevel=7 for automated AI calls and moderator-style actions.
+        - Use userlevel=8 to represent broadcaster-context actions such as set.title, set.game, or add.mod.
+        - If an AST command succeeds with an empty result, treat it as successful and continue naturally.
+        - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again.
+
+        Useful AST commands you may call through AST_PARSER:
+        - Moderation: "ban username", "ban username 300", "clear.chat", "emoteonly 600". Emote-only durations are seconds.
+        - Channel management: "set.title new title text", "set.game category name".
+        - VIPs: "add.vip username", "unvip username".
+        - Basic TTS/speak: "tts message" or "tts.speak message".
+        - AI/voice TTS: "tts.ai message", "tts.xai voice message", "tts.or message".
+        - Fish Audio cloned voices: "tts.fish voice_name_or_voice_id message".
+
+        Speak/TTS guidance:
+        - You may use TTS whenever you want to talk to the streamer directly with voice instead of only posting a chat reply.
+        - Fish TTS syntax in normal AST form is $(tts.fish voice_name/voice_id message_to_send). In the AST_PARSER command parameter, omit the wrapper: command="tts.fish voice_name_or_voice_id message_to_send".
+        - Known Fish voices you can use: gojo, rias_gremory, carlos_bodoque, toji_fushiguro. You may also use a valid configured voice ID.
+        - If tts.fish or another TTS AST call fails because TTS is disabled, the plan does not allow that mode, or the internal speech service is unavailable, silently continue normally. Do not infer why the streamer did not receive TTS.
+        - Do not announce that you used a tool; just make the text response feel natural after the action.
+    </ast-tooling>
+
     <available-tools>
     You have access to the following tools. Use them when needed to perform actions:
 
-    AST_PARSER: Execute bot commands for moderation and channel management.
-    - Parameters: command (string), channelID (string), userlevel (number)
+    AST_PARSER: Execute AST bot commands for moderation, channel management, and TTS/speak actions.
+    - Parameters: command (string), userlevel (number). The channel ID is supplied automatically.
     - For timeouts/bans: userlevel=7, command="ban username [seconds]" (seconds optional, defaults to permanent ban)
     - For setting stream title: userlevel=8, command="set.title new title text"
     - For setting game/category: userlevel=8, command="set.game game name"
     - For adding VIP: userlevel=7, command="add.vip username"
     - For removing VIP: userlevel=7, command="unvip username"
     - For clearing chat: userlevel=7, command="clear.chat"
-    - For toggling emote-only: userlevel=7, command="emoteonly [duration]"
+    - For toggling emote-only: userlevel=7, command="emoteonly [seconds]"
+    - For streamer-directed Fish TTS: userlevel=7, command="tts.fish gojo message", command="tts.fish rias_gremory message", or command="tts.fish carlos_bodoque message"
 
     create_memory: Save important information to memory for future reference.
     - Use when: you learn something about the channel, streamer preferences, user facts, or when told to remember or avoid something
     - Types: boundary (don't do something), preference (likes/dislikes), known_user_fact, channel_lore, running_joke
     - After calling, repeat the confirmation message to the user: "Memory Saved successfully ✅" or "Memory under pending review 📝"
 
-    Important: When you call the AST_PARSER tool, do NOT include the $() wrapper in the command parameter.
-    Example: command="ban offensiveuser 300" not command="$(ban offensiveuser 300)"
+    Important: Prefer the inner command form, e.g. command="ban offensiveuser 300". The tool also normalizes a wrapped $() form.
     </available-tools>
     
 </system-instructions>`;
