@@ -103,6 +103,15 @@
                   height="32"
                 />
                 <span class="lf-spotlight__row-name">{{ channel.channel }}</span>
+                <div class="lf-tags lf-tags--sm">
+                  @if (channel.botPlatforms.length > 0) {
+                    @for (platform of channel.botPlatforms; track platform) {
+                      <span>{{ platform === 'twitch' ? t('landing.liveNow.platforms.twitch') : t('landing.liveNow.platforms.kick') }}</span>
+                    }
+                  } @else {
+                    <span>{{ t('landing.liveNow.platforms.none') }}</span>
+                  }
+                </div>
                 <span class="lf-spotlight__row-viewers">{{ formatViewers(channel.viewers) }}</span>
               </div>
             }
