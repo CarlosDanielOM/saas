@@ -2385,26 +2385,12 @@ body {
   }
 }
 
+/* Auth layout + navbar styles moved to authenticated-layout.component.css (Live First) */
 .auth-layout {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 95% 5%, rgba(59, 130, 246, 0.16), transparent 28%),
-    radial-gradient(circle at 5% 5%, rgba(217, 119, 6, 0.15), transparent 30%),
-    linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface-2) 68%, #fff) 100%);
+  /* kept as hook for any external selectors */
 }
 
 .auth-navbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.9rem 1.2rem;
-  backdrop-filter: blur(14px);
-  background: color-mix(in srgb, var(--surface) 78%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--ring) 24%, transparent);
 }
 
 .auth-navbar__brand {
@@ -2985,7 +2971,7 @@ body {
 }
 
 .auth-layout__content {
-  padding: 1.2rem;
+  padding: 0;
 }
 
 .dashboard-shell {

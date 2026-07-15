@@ -50,12 +50,11 @@
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
 }
 
+/* Full-bleed page surface — auth layout owns the global background */
 .lf {
-  min-height: 100dvh;
-  background:
-    radial-gradient(800px 360px at 80% -5%, var(--glow-a), transparent 55%),
-    radial-gradient(600px 280px at 10% 0%, var(--glow-b), transparent 50%),
-    var(--bg);
+  min-height: calc(100dvh - 3.5rem);
+  width: 100%;
+  background: transparent;
   color: var(--fg);
   font-family: var(--font);
   overflow-x: clip;
@@ -63,9 +62,8 @@
 
 .lf--live {
   background:
-    radial-gradient(900px 380px at 75% -8%, var(--glow-b), transparent 55%),
-    radial-gradient(700px 320px at 12% 0%, var(--glow-a), transparent 50%),
-    var(--bg);
+    radial-gradient(900px 380px at 78% -12%, var(--glow-b), transparent 52%),
+    radial-gradient(700px 300px at 10% -4%, var(--glow-a), transparent 48%);
 }
 
 .lf *,
@@ -77,11 +75,18 @@
 /* Nav — single row on phone, no overlap */
 /* Layout */
 .lf-main {
-  padding: 0.85rem;
+  width: 100%;
   max-width: 74rem;
   margin: 0 auto;
+  padding: 1rem 1rem 2rem;
   display: grid;
   gap: 0.85rem;
+}
+
+@media (min-width: 960px) {
+  .lf-main {
+    padding: 1.15rem 1.25rem 2.25rem;
+  }
 }
 
 .lf-bento {

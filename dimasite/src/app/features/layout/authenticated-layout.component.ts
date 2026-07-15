@@ -19,6 +19,7 @@ import { UpgradeModalComponent } from '../../shared/upgrade-modal/upgrade-modal.
   selector: 'app-authenticated-layout',
   imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent],
   templateUrl: './authenticated-layout.component.html',
+  styleUrl: './authenticated-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
