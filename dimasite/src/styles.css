@@ -3958,6 +3958,18 @@ html[data-plan-tier='pro'] .dashboard-shell {
   color: var(--text-soft);
 }
 
+.login-dev-banner {
+  margin: 0.9rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px dashed color-mix(in srgb, #f59e0b 55%, transparent);
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
 .login-button {
   margin-top: 1rem;
   border: 0;
