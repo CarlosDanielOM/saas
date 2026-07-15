@@ -33,6 +33,8 @@ This workspace is a **single git repository** (`saas/`) containing five related 
 
 **Frontend (dimasite)**:
 - Pages/components/services: `dimasite/src/app/**`
+- **Design system: Live First (OC3c)** — agents must read `.opencode/skills/live-first/SKILL.md` (or `.claude/skills/live-first/SKILL.md`) before any dimasite UI work
+- Production references: landing `/`, tip `/tip/:streamer`, dashboard `/:streamer/dashboard`, auth layout
 - Global design tokens + shared utilities: `dimasite/src/styles.css`
 - Component-scoped styles: `*.component.css` (encouraged for page-level or reusable blocks)
 - Route guards: `dimasite/src/app/guards/**`
@@ -169,6 +171,7 @@ This project is indexed by GitNexus as **saas**.
 | Rename / extract / refactor       | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`   |
 | Tools, resources, schema          | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`         |
 | Index / status / clean / wiki     | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`           |
+| **dimasite UI / Live First design** | `.opencode/skills/live-first/SKILL.md` (mirror: `.claude/skills/live-first/SKILL.md`) |
 
 ## Code Intelligence: GitNexus + Graphify
 

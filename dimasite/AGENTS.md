@@ -85,12 +85,28 @@ Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) ma
 
 ## Design System & Visual Language
 
-### Color Palette & Theme
+### Live First (required for production UI)
 
-- Light theme tokens live in `:root`.
-- Dark theme tokens live in `.dark`.
-- Primary brand color family: purple/violet (`--ring`, surface accents).
-- Use CSS custom properties (`var(--surface)`, `var(--text)`, etc.) instead of hard-coded colors.
+**Canonical design language for all new and migrated dimasite surfaces.**
+
+- Skill (read first for any UI work): `.opencode/skills/live-first/SKILL.md` (also `.claude/skills/live-first/SKILL.md`)
+- Origin mock: `/mocks/grok/oc3c` (OC3c · Live First)
+- Product reference mocks: `/mocks/dev/prod-dashboard`, `/mocks/dev/prod-commands`
+- Production examples: landing `/`, tip `/tip/:streamer`, dashboard `/:streamer/dashboard`, auth shell `AuthenticatedLayoutComponent`
+
+**Rules:**
+
+1. Use Live First **structure** (bento + `lf-tile` / shell patterns), not a recolor of legacy glass/aurora layouts.
+2. Page tokens on `:host` / `:host-context(html.dark)`: `--bg`, `--tile`, `--fg`, `--muted`, `--line`, `--accent`, `--live`, `--gold`, `--radius`, `--shadow`, `--font` (Plus Jakarta Sans).
+3. Authenticated app: layout owns full-bleed background + navbar; `auth-layout__content` has **no** padding; page `.lf-main` provides max-width gutters only.
+4. Public pages: page owns background + sticky LF nav (brand pulse, language, theme, primary CTA).
+5. Prefer component-scoped `*.component.css` for page DNA; keep global `styles.css` for shared tokens/utilities only.
+6. Mobile-first (`min-width`), touch targets ≥ 44px, respect `prefers-reduced-motion`.
+7. Plan tier: `data-plan-tier` on `<html>` and/or `[attr.data-plan]` on page root — gold accents for premium/pro.
+
+### Legacy global tokens
+
+Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `--ring`). Do not expand those for new work; migrate toward Live First.
 
 ### Plan-Tier Styling
 
@@ -102,7 +118,7 @@ Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) ma
 
 ### Typography & Spacing
 
-- Use the design tokens defined in `styles.css` for consistent spacing and typography.
+- Live First pages: Plus Jakarta Sans + LF spacing scale from the skill.
 - Avoid one-off pixel values when a token exists.
 
 ### i18n
