@@ -63,6 +63,7 @@ function normalizeMessageLimit(value: number | undefined): number {
   selector: 'app-tip-page',
   imports: [RouterLink, LucideAngularModule],
   templateUrl: './tip-page.component.html',
+  styleUrl: './tip-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TipPageComponent {
@@ -87,16 +88,11 @@ export class TipPageComponent {
 
   readonly presetAmounts = signal([5, 10, 20, 50, 100]);
 
-  selectPreset(amount: number): void {
-    this.donationAmount.set(amount.toFixed(2));
-  }
-
   private readonly mockConfig = signal<TipPageMockConfig>({
     currency: undefined,
     messageLimit: undefined
   });
 
-  // User can override the default currency
   private readonly userCurrency = signal<string | null>(null);
 
   readonly routeStreamer = computed(() => getRouteParam(this.route, 'streamer') ?? 'domdima');
@@ -118,7 +114,6 @@ export class TipPageComponent {
       .join(' ');
   });
 
-  // Use user-selected currency if available, otherwise fall back to mock config default
   readonly selectedCurrency = computed(() => {
     const userSelected = this.userCurrency();
     if (userSelected) {
@@ -131,7 +126,9 @@ export class TipPageComponent {
 
   readonly donorName = signal('');
   readonly donationAmount = signal('25.00');
-  readonly message = signal('Thanks for the stream. Keep going, this has been such a fun month to watch.');
+  readonly message = signal(
+    'Thanks for the stream. Keep going, this has been such a fun month to watch.'
+  );
 
   readonly monthlyLeaderboard = computed<TipLeaderboardEntry[]>(() => {
     this.languageService.currentLanguage();
@@ -153,22 +150,19 @@ export class TipPageComponent {
     this.monthlyLeaderboard().reduce((total, entry) => total + entry.amount, 0)
   );
 
-  readonly currencyOptions = computed(() => SUPPORTED_CURRENCIES.filter(c => c !== this.selectedCurrency()));
+  readonly allCurrencies = SUPPORTED_CURRENCIES;
+
+  readonly isDarkMode = computed(() => this.themeService.isDarkMode());
+  readonly languageLabel = computed(() =>
+    this.languageService.currentLanguage() === 'en' ? 'EN' : 'ES'
+  );
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
   }
 
-  languageLabel(): string {
-    return this.languageService.currentLanguage() === 'en' ? 'EN' : 'ES';
-  }
-
-  isDarkMode(): boolean {
-    return this.themeService.isDarkMode();
-  }
-
   toggleTheme(): void {
-    this.themeService.toggleTheme();
+    this.themeService.setTheme(this.themeService.isDarkMode() ? 'light' : 'dark');
   }
 
   toggleLanguage(): void {
@@ -178,13 +172,22 @@ export class TipPageComponent {
   loginWithTwitch(): void {
     this.analytics.capture('tip_login_clicked', {
       source: 'tip_page',
-      target_streamer: this.routeStreamer(),
+      target_streamer: this.routeStreamer()
     });
     this.analytics.capture('auth_started', {
       source: 'tip_page',
-      target_streamer: this.routeStreamer(),
+      target_streamer: this.routeStreamer()
     });
     this.sessionAuth.startTwitchLogin();
+  }
+
+  selectPreset(amount: number): void {
+    this.donationAmount.set(amount.toFixed(2));
+  }
+
+  isPresetActive(amount: number): boolean {
+    const current = this.donationAmount();
+    return current === amount.toFixed(2) || current === String(amount);
   }
 
   updateCurrency(event: Event): void {
@@ -198,23 +201,15 @@ export class TipPageComponent {
 
   updateDonationAmount(event: Event): void {
     const input = event.target as HTMLInputElement;
-    let value = input.value;
-    
-    // Allow empty string, single decimal point, and valid decimal numbers
-    // Remove any characters that aren't digits or decimal points
-    value = value.replace(/[^\d.]/g, '');
-    
-    // Ensure only one decimal point
+    let value = input.value.replace(/[^\d.]/g, '');
+
     const parts = value.split('.');
     if (parts.length > 2) {
       value = parts[0] + '.' + parts.slice(1).join('');
     }
-    
-    // Update the signal with the cleaned value
+
     this.donationAmount.set(value);
-    
-    // If the cleaned value is different from input, update the input element
-    // This prevents the cursor jumping issue
+
     if (input.value !== value) {
       input.value = value;
     }

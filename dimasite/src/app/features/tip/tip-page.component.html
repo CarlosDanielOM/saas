@@ -1,304 +1,275 @@
-<div class="public-commands-shell tip-page-shell">
-  <header class="sticky-navbar public-commands-navbar">
-    <div class="public-commands-navbar__inner">
-      <a class="public-commands-navbar__brand" routerLink="/" aria-label="DomDimaBot home">
-        <span class="brand-dot" aria-hidden="true"></span>
-        <span class="brand-name">DomDimaBot</span>
-      </a>
+<div class="lf">
+  <header class="lf-nav">
+    <a class="lf-brand" routerLink="/" aria-label="DomDimaBot home">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
 
-      <nav class="public-commands-navbar__actions" aria-label="Tip page actions">
-        <button type="button" class="nav-pill" (click)="toggleLanguage()" [attr.aria-label]="t('commands.public.languageToggle')">
-          {{ languageLabel() }}
-        </button>
-        <button
-          type="button"
-          class="nav-pill nav-pill--icon"
-          (click)="toggleTheme()"
-          [attr.aria-label]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
-          [title]="isDarkMode() ? t('navbar.light') : t('navbar.dark')"
-        >
-          <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="h-4 w-4"></lucide-icon>
-          <span class="hidden sm:inline">{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
-        </button>
-        <button type="button" class="nav-pill nav-pill--login" (click)="loginWithTwitch()">
-          {{ t('landing.hero.loginWith') }}
-        </button>
-      </nav>
+    <div class="lf-nav__actions">
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool"
+        (click)="toggleLanguage()"
+        [attr.aria-label]="t('commands.public.languageToggle')"
+        [title]="t('commands.public.languageToggle')"
+      >
+        {{ languageLabel() }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+        [title]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+      >
+        <lucide-icon
+          [name]="isDarkMode() ? moonIcon : sunIcon"
+          [size]="16"
+          class="lf-theme-icon"
+          aria-hidden="true"
+        ></lucide-icon>
+        <span class="lf-btn__label">{{ isDarkMode() ? t('navbar.dark') : t('navbar.light') }}</span>
+      </button>
+      <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">
+        {{ t('landing.hero.loginWith') }}
+      </button>
     </div>
   </header>
 
-  <main class="public-commands-main tip-page-main">
-    <section class="tip-page">
-      <div class="tip-page__backdrop" aria-hidden="true">
-        <span class="tip-page__mesh tip-page__mesh--violet"></span>
-        <span class="tip-page__mesh tip-page__mesh--cyan"></span>
-        <span class="tip-page__mesh tip-page__mesh--gold"></span>
-      </div>
+  <main class="lf-main">
+    <div class="lf-grid">
+      <article class="lf-tile lf-tile--form">
+        <div class="lf-intro">
+          <p class="lf-kicker">
+            <lucide-icon [name]="heartIcon" [size]="14" class="lf-kicker-icon" aria-hidden="true"></lucide-icon>
+            {{ t('tip.eyebrow') }}
+          </p>
+          <h1 class="lf-title">{{ t('tip.title', { streamer: streamerName() }) }}</h1>
+          <p class="lf-copy">{{ t('tip.subtitle') }}</p>
+        </div>
 
-      <div class="tip-page__container">
-        <div class="tip-page__grid">
-          <!-- Left Main Card: Form and Preview -->
-          <article class="tip-card tip-card--form glass-card">
-            <div class="tip-card__intro">
-              <p class="tip-card__eyebrow">
-                <lucide-icon [name]="heartIcon" class="tip-card__eyebrow-icon heartbeat"></lucide-icon>
-                {{ t('tip.eyebrow') }}
-              </p>
-              <h1 class="tip-card__title">{{ t('tip.title', { streamer: streamerName() }) }}</h1>
-              <p class="tip-card__copy">{{ t('tip.subtitle') }}</p>
+        <form class="lf-form" novalidate>
+          <label class="lf-field" for="tip-donor-name">
+            <span class="lf-label">{{ t('tip.form.nameLabel') }}</span>
+            <div class="lf-control">
+              <lucide-icon [name]="userIcon" [size]="16" class="lf-control-icon" aria-hidden="true"></lucide-icon>
+              <input
+                id="tip-donor-name"
+                class="lf-input"
+                type="text"
+                [value]="donorName()"
+                [placeholder]="t('tip.form.namePlaceholder')"
+                autocomplete="nickname"
+                (input)="updateDonorName($event)"
+              />
             </div>
+          </label>
 
-            <form class="tip-form" novalidate>
-              <!-- Name Input Field -->
-              <label class="tip-form__field" for="tip-donor-name">
-                <span class="tip-form__label">{{ t('tip.form.nameLabel') }}</span>
-                <div class="tip-form__control">
-                  <lucide-icon [name]="userIcon" class="tip-form__control-icon"></lucide-icon>
-                  <input
-                    id="tip-donor-name"
-                    class="tip-form__input"
-                    type="text"
-                    [value]="donorName()"
-                    [placeholder]="t('tip.form.namePlaceholder')"
-                    autocomplete="nickname"
-                    (input)="updateDonorName($event)"
-                  />
-                </div>
+          <div class="lf-field">
+            <span class="lf-label">{{ t('tip.form.presetLabel') }}</span>
+            <div class="lf-presets">
+              @for (preset of presetAmounts(); track preset) {
+                <button
+                  type="button"
+                  class="lf-preset"
+                  [class.lf-preset--active]="isPresetActive(preset)"
+                  (click)="selectPreset(preset)"
+                >
+                  {{ formatAmount(preset) }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="lf-field">
+            <span class="lf-label">{{ t('tip.form.amountLabel') }}</span>
+            <div class="lf-control lf-control--amount">
+              <lucide-icon [name]="walletIcon" [size]="16" class="lf-control-icon" aria-hidden="true"></lucide-icon>
+              <input
+                id="tip-donation-amount"
+                class="lf-input lf-input--amount"
+                type="text"
+                inputmode="decimal"
+                pattern="^\d*\.?\d*$"
+                [value]="donationAmount()"
+                [placeholder]="t('tip.form.amountPlaceholder')"
+                (input)="updateDonationAmount($event)"
+              />
+              <label class="lf-currency" for="tip-currency">
+                <span class="sr-only">{{ t('tip.form.currencyLabel') }}</span>
+                <select
+                  id="tip-currency"
+                  class="lf-currency__select"
+                  [value]="selectedCurrency()"
+                  (change)="updateCurrency($event)"
+                  [attr.aria-label]="t('tip.form.currencyLabel')"
+                >
+                  @for (currency of allCurrencies; track currency) {
+                    <option [value]="currency">{{ currency }}</option>
+                  }
+                </select>
+                <lucide-icon [name]="chevronDownIcon" [size]="14" class="lf-currency__chevron" aria-hidden="true"></lucide-icon>
               </label>
+            </div>
+            <p class="lf-hint">{{ t('tip.form.currencyHint', { currency: selectedCurrency() }) }}</p>
+          </div>
 
-              <!-- Quick Presets Select -->
-              <div class="tip-form__field">
-                <span class="tip-form__label">Select Preset Amount</span>
-                <div class="tip-form__presets">
-                  @for (preset of presetAmounts(); track preset) {
-                    <button
-                      type="button"
-                      class="preset-btn"
-                      [class.preset-btn--active]="donationAmount() === preset.toFixed(2) || donationAmount() === preset.toString()"
-                      (click)="selectPreset(preset)"
-                    >
-                      <lucide-icon [name]="coinsIcon" class="preset-btn__icon"></lucide-icon>
-                      {{ formatAmount(preset) }}
-                    </button>
+          <label class="lf-field" for="tip-message">
+            <span class="lf-label-row">
+              <span class="lf-label">{{ t('tip.form.messageLabel') }}</span>
+              <span class="lf-counter" [class.lf-counter--limit]="remainingCharacters() === 0">
+                {{ message().length }}/{{ messageLimit() }}
+              </span>
+            </span>
+            <div class="lf-textarea-shell">
+              <span class="lf-chip lf-chip--soft">
+                <lucide-icon [name]="messageIcon" [size]="12" aria-hidden="true"></lucide-icon>
+                {{ t('tip.form.messageEyebrow') }}
+              </span>
+              <textarea
+                id="tip-message"
+                class="lf-textarea"
+                [value]="message()"
+                [attr.maxlength]="messageLimit()"
+                [placeholder]="t('tip.form.messagePlaceholder')"
+                [attr.aria-describedby]="'tip-message-limit'"
+                (input)="updateMessage($event)"
+              ></textarea>
+            </div>
+            <p id="tip-message-limit" class="lf-hint">
+              {{ t('tip.form.messageHint', { count: remainingCharacters() }) }}
+            </p>
+          </label>
+
+          <div class="lf-field">
+            <span class="lf-label">{{ t('tip.preview.label') }}</span>
+            <div class="lf-alert">
+              <div class="lf-alert__head">
+                <span class="lf-chip lf-chip--live">
+                  <span class="lf-dot" aria-hidden="true"></span>
+                  {{ t('tip.preview.liveBadge') }}
+                </span>
+                <lucide-icon [name]="sparklesIcon" [size]="14" class="lf-alert__sparkle" aria-hidden="true"></lucide-icon>
+              </div>
+              <div class="lf-alert__body">
+                <div class="lf-alert__avatar" aria-hidden="true">
+                  <lucide-icon [name]="userIcon" [size]="18"></lucide-icon>
+                </div>
+                <div class="lf-alert__content">
+                  <p class="lf-alert__line">
+                    <strong>{{ donorName().trim() || t('tip.preview.anonymous') }}</strong>
+                    <span>{{ t('tip.preview.tipped') }}</span>
+                    <strong class="lf-alert__amount">{{ formatAmount(donationPreview()) }}</strong>
+                  </p>
+                  @if (message().trim()) {
+                    <blockquote class="lf-alert__message">"{{ message() }}"</blockquote>
+                  } @else {
+                    <p class="lf-alert__message lf-alert__message--empty">
+                      {{ t('tip.preview.emptyMessage') }}
+                    </p>
                   }
                 </div>
               </div>
+            </div>
+          </div>
 
-              <!-- Custom Amount Input Field -->
-              <div class="tip-form__field">
-                <span class="tip-form__label">{{ t('tip.form.amountLabel') }}</span>
-                <div class="tip-form__control tip-form__control--amount-with-currency">
-                  <span class="tip-form__icon-tab" aria-hidden="true">
-                    <lucide-icon [name]="walletIcon" class="tip-form__control-icon"></lucide-icon>
-                  </span>
-                  <div class="tip-form__currency-divider tip-form__currency-divider--leading"></div>
-                  <input
-                    id="tip-donation-amount"
-                    class="tip-form__input tip-form__input--amount"
-                    type="text"
-                    inputmode="decimal"
-                    pattern="^\d*\.?\d*$"
-                    [value]="donationAmount()"
-                    [placeholder]="t('tip.form.amountPlaceholder')"
-                    (input)="updateDonationAmount($event)"
-                  />
-                  <div class="tip-form__currency-divider"></div>
-                  <label class="tip-form__currency-select-wrapper" for="tip-currency">
-                    <span class="tip-form__sr-only">{{ t('tip.form.currencyLabel') }}</span>
-                    <select
-                      id="tip-currency"
-                      class="tip-form__currency-select"
-                      [value]="selectedCurrency()"
-                      (change)="updateCurrency($event)"
-                      [attr.aria-label]="t('tip.form.currencyLabel')"
-                    >
-                      <option [value]="selectedCurrency()" selected>{{ selectedCurrency() }}</option>
-                      @for (currency of currencyOptions(); track currency) {
-                        <option [value]="currency">{{ currency }}</option>
-                      }
-                    </select>
-                    <lucide-icon [name]="chevronDownIcon" class="tip-form__currency-chevron"></lucide-icon>
-                  </label>
+          <button class="lf-btn lf-btn--paypal" type="button">
+            <span>{{ t('tip.form.submit') }}</span>
+            <span class="lf-btn__brand">PayPal</span>
+            <lucide-icon [name]="arrowRightIcon" [size]="16" aria-hidden="true"></lucide-icon>
+          </button>
+
+          <p class="lf-footnote">{{ t('tip.form.footnote') }}</p>
+        </form>
+      </article>
+
+      <aside class="lf-side" [attr.aria-label]="t('tip.sidebar.aria')">
+        <article class="lf-tile lf-tile--streamer">
+          <div class="lf-streamer__banner" aria-hidden="true"></div>
+          <div class="lf-streamer__body">
+            <div class="lf-streamer__head">
+              <div class="lf-streamer__avatar-wrap">
+                <div class="lf-streamer__avatar" aria-hidden="true">
+                  {{ streamerName().charAt(0) }}
                 </div>
-                <p class="tip-form__hint">{{ t('tip.form.currencyHint', { currency: selectedCurrency() }) }}</p>
+                <span
+                  class="lf-streamer__status"
+                  [attr.title]="t('tip.sidebar.botActive')"
+                  [attr.aria-label]="t('tip.sidebar.botActive')"
+                ></span>
               </div>
-
-              <!-- Message Textarea Field -->
-              <label class="tip-form__field" for="tip-message">
-                <span class="tip-form__label">{{ t('tip.form.messageLabel') }}</span>
-                <div class="tip-form__textarea-shell">
-                  <div class="tip-form__textarea-header">
-                    <span class="tip-form__textarea-pill">
-                      <lucide-icon [name]="messageIcon" class="tip-form__textarea-pill-icon"></lucide-icon>
-                      {{ t('tip.form.messageEyebrow') }}
-                    </span>
-                    <span class="tip-form__counter" [class.tip-form__counter--limit]="remainingCharacters() === 0">
-                      {{ message().length }}/{{ messageLimit() }}
-                    </span>
-                  </div>
-                  <textarea
-                    id="tip-message"
-                    class="tip-form__textarea"
-                    [value]="message()"
-                    [attr.maxlength]="messageLimit()"
-                    [placeholder]="t('tip.form.messagePlaceholder')"
-                    [attr.aria-describedby]="'tip-message-limit'"
-                    (input)="updateMessage($event)"
-                  ></textarea>
-                </div>
-                <p id="tip-message-limit" class="tip-form__hint">
-                  {{ t('tip.form.messageHint', { count: remainingCharacters() }) }}
-                </p>
-              </label>
-
-              <!-- LIVE ALERT PREVIEW -->
-              <div class="tip-form__alert-preview-wrapper">
-                <span class="tip-form__label">Alert Notification Preview</span>
-                <div class="tip-form__alert-preview">
-                  <div class="alert-preview__backdrop"></div>
-                  <div class="alert-preview__header">
-                    <div class="alert-preview__badge">
-                      <span class="badge-dot pulse"></span>
-                      <span>LIVE ALERT PREVIEW</span>
-                    </div>
-                    <lucide-icon [name]="sparklesIcon" class="alert-preview__sparkle"></lucide-icon>
-                  </div>
-                  <div class="alert-preview__body">
-                    <div class="alert-preview__avatar">
-                      <lucide-icon [name]="userIcon" class="alert-preview__avatar-icon"></lucide-icon>
-                    </div>
-                    <div class="alert-preview__content">
-                      <div class="alert-preview__heading">
-                        <strong class="alert-preview__donor">{{ donorName().trim() || 'Anonymous' }}</strong>
-                        <span class="alert-preview__action">tipped</span>
-                        <strong class="alert-preview__amount">{{ formatAmount(donationPreview()) }}</strong>
-                      </div>
-                      @if (message().trim()) {
-                        <blockquote class="alert-preview__message">
-                          "{{ message() }}"
-                        </blockquote>
-                      } @else {
-                        <p class="alert-preview__message alert-preview__message--empty">
-                          Type a message above to preview alert copy...
-                        </p>
-                      }
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <span class="lf-chip">
+                  <lucide-icon [name]="sparklesIcon" [size]="12" aria-hidden="true"></lucide-icon>
+                  {{ t('tip.sidebar.streamerEyebrow') }}
+                </span>
+                <h2 class="lf-streamer__name">{{ streamerName() }}</h2>
               </div>
+            </div>
 
-              <!-- PayPal Submit Button -->
-              <button class="tip-form__submit" type="button">
-                <span class="tip-form__submit-text">{{ t('tip.form.submit') }}</span>
-                <span class="tip-form__submit-brand">PayPal</span>
-                <lucide-icon [name]="arrowRightIcon" class="tip-form__submit-icon"></lucide-icon>
-              </button>
+            <p class="lf-copy">{{ t('tip.sidebar.streamerCopy') }}</p>
 
-              <p class="tip-form__footnote">{{ t('tip.form.footnote') }}</p>
-            </form>
-          </article>
-
-          <!-- Right Sidebar -->
-          <aside class="tip-side" [attr.aria-label]="t('tip.sidebar.aria')">
-            <!-- Streamer profile card -->
-            <article class="tip-card tip-card--streamer glass-card">
-              <!-- Profile Header Banner -->
-              <div class="tip-streamer__banner" aria-hidden="true">
-                <span class="tip-streamer__banner-glow"></span>
-              </div>
-
-              <div class="tip-streamer__content">
-                <!-- Profile Avatar & Details -->
-                <div class="tip-streamer__profile-header">
-                  <div class="tip-streamer__avatar-wrapper">
-                    <div class="tip-streamer__avatar">
-                      <span>{{ streamerName().charAt(0) }}</span>
-                    </div>
-                    <!-- Status indicator -->
-                    <span class="tip-streamer__status-badge pulse-active" title="Bot Active"></span>
-                  </div>
-                  
-                  <div class="tip-streamer__info">
-                    <span class="tip-streamer__badge-pill">
-                      <lucide-icon [name]="sparklesIcon" class="tip-streamer__badge-pill-icon"></lucide-icon>
-                      {{ t('tip.sidebar.streamerEyebrow') }}
-                    </span>
-                    <h2 class="tip-streamer__name">{{ streamerName() }}</h2>
-                  </div>
-                </div>
-
-                <p class="tip-streamer__copy">{{ t('tip.sidebar.streamerCopy') }}</p>
-
-                <!-- Stats Grid -->
-                <div class="tip-streamer__stats">
-                  <div class="tip-streamer__stat-box">
-                    <div class="tip-streamer__stat-icon-wrapper">
-                      <lucide-icon [name]="trophyIcon" class="tip-streamer__stat-icon"></lucide-icon>
-                    </div>
-                    <div class="tip-streamer__stat-details">
-                      <span class="tip-streamer__stat-title">{{ t('tip.sidebar.monthlyTotal') }}</span>
-                      <strong class="tip-streamer__stat-num">{{ formatAmount(monthlyTotal()) }}</strong>
-                    </div>
-                  </div>
-
-                  <div class="tip-streamer__stat-box">
-                    <div class="tip-streamer__stat-icon-wrapper">
-                      <lucide-icon [name]="walletIcon" class="tip-streamer__stat-icon"></lucide-icon>
-                    </div>
-                    <div class="tip-streamer__stat-details">
-                      <span class="tip-streamer__stat-title">{{ t('tip.sidebar.currency') }}</span>
-                      <strong class="tip-streamer__stat-num">{{ selectedCurrency() }}</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- Leaderboard Card -->
-            <article class="tip-card tip-card--leaderboard glass-card">
-              <div class="tip-leaderboard__header">
+            <div class="lf-stats">
+              <div class="lf-stat">
+                <lucide-icon [name]="trophyIcon" [size]="16" class="lf-stat__icon" aria-hidden="true"></lucide-icon>
                 <div>
-                  <p class="tip-leaderboard__eyebrow">
-                    <lucide-icon [name]="trophyIcon" class="tip-leaderboard__eyebrow-icon"></lucide-icon>
-                    {{ t('tip.leaderboard.eyebrow') }}
-                  </p>
-                  <h2 class="tip-leaderboard__title">{{ t('tip.leaderboard.title') }}</h2>
+                  <p class="lf-stat__label">{{ t('tip.sidebar.monthlyTotal') }}</p>
+                  <p class="lf-stat__value">{{ formatAmount(monthlyTotal()) }}</p>
                 </div>
-                <p class="tip-leaderboard__period">{{ t('tip.leaderboard.period') }}</p>
               </div>
+              <div class="lf-stat">
+                <lucide-icon [name]="walletIcon" [size]="16" class="lf-stat__icon" aria-hidden="true"></lucide-icon>
+                <div>
+                  <p class="lf-stat__label">{{ t('tip.sidebar.currency') }}</p>
+                  <p class="lf-stat__value">{{ selectedCurrency() }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
 
-              <div class="tip-leaderboard__list" role="list">
-                @for (entry of monthlyLeaderboard(); track entry.rank) {
-                  <div
-                    class="tip-leaderboard__item"
-                    [class.tip-leaderboard__item--rank1]="entry.rank === 1"
-                    [class.tip-leaderboard__item--rank2]="entry.rank === 2"
-                    [class.tip-leaderboard__item--rank3]="entry.rank === 3"
-                    role="listitem"
-                  >
-                    <div class="tip-leaderboard__rank">
-                      @if (entry.rank === 1) {
-                        <lucide-icon [name]="crownIcon" class="rank-badge-icon rank-badge-icon--gold"></lucide-icon>
-                      } @else if (entry.rank === 2 || entry.rank === 3) {
-                        <lucide-icon [name]="trophyIcon" class="rank-badge-icon"></lucide-icon>
-                      } @else {
-                        #{{ entry.rank }}
-                      }
-                    </div>
-                    <div class="tip-leaderboard__body">
-                      <div class="tip-leaderboard__header-row">
-                        <strong class="tip-leaderboard__name">{{ entry.donor }}</strong>
-                        <span class="tip-leaderboard__amount">{{ formatAmount(entry.amount) }}</span>
-                      </div>
-                      <p class="tip-leaderboard__note" [attr.title]="entry.note">{{ entry.note }}</p>
-                    </div>
+        <article class="lf-tile lf-tile--board">
+          <div class="lf-board__head">
+            <div>
+              <p class="lf-kicker">
+                <lucide-icon [name]="trophyIcon" [size]="14" class="lf-kicker-icon" aria-hidden="true"></lucide-icon>
+                {{ t('tip.leaderboard.eyebrow') }}
+              </p>
+              <h2 class="lf-h2">{{ t('tip.leaderboard.title') }}</h2>
+            </div>
+            <span class="lf-chip lf-chip--soft">{{ t('tip.leaderboard.period') }}</span>
+          </div>
+
+          <div class="lf-board__list" role="list">
+            @for (entry of monthlyLeaderboard(); track entry.rank) {
+              <div
+                class="lf-board__row"
+                [class.lf-board__row--1]="entry.rank === 1"
+                [class.lf-board__row--2]="entry.rank === 2"
+                [class.lf-board__row--3]="entry.rank === 3"
+                role="listitem"
+              >
+                <div class="lf-board__rank">
+                  @if (entry.rank === 1) {
+                    <lucide-icon [name]="crownIcon" [size]="16" class="lf-board__medal lf-board__medal--gold" aria-hidden="true"></lucide-icon>
+                  } @else if (entry.rank <= 3) {
+                    <lucide-icon [name]="trophyIcon" [size]="15" class="lf-board__medal" aria-hidden="true"></lucide-icon>
+                  } @else {
+                    <span>#{{ entry.rank }}</span>
+                  }
+                </div>
+                <div class="lf-board__meta">
+                  <div class="lf-board__top">
+                    <strong class="lf-board__name">{{ entry.donor }}</strong>
+                    <span class="lf-board__amount">{{ formatAmount(entry.amount) }}</span>
                   </div>
-                }
+                  <p class="lf-board__note" [attr.title]="entry.note">{{ entry.note }}</p>
+                </div>
               </div>
-            </article>
-          </aside>
-        </div>
-      </div>
-    </section>
+            }
+          </div>
+        </article>
+      </aside>
+    </div>
   </main>
 </div>

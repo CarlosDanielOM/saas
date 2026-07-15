@@ -1579,18 +1579,24 @@
       "messagePlaceholder": "Deja un mensaje para acompanar la donacion.",
       "messageHint": "Quedan {{count}} caracteres.",
       "submit": "Donar con",
-      "footnote": "Diseno mock por ahora. El flujo real de PayPal, la configuracion del streamer y las validaciones llegaran despues."
+      "footnote": "Diseno mock por ahora. El flujo real de PayPal, la configuracion del streamer y las validaciones llegaran despues.",
+      "presetLabel": "Monto rápido"
     },
     "preview": {
       "label": "Vista previa",
-      "copy": "Esta tarjeta mock ayuda a visualizar la experiencia para la comunidad de {{streamer}}."
+      "copy": "Esta tarjeta mock ayuda a visualizar la experiencia para la comunidad de {{streamer}}.",
+      "liveBadge": "Vista previa de alerta",
+      "tipped": "donó",
+      "anonymous": "Anónimo",
+      "emptyMessage": "Escribe un mensaje arriba para previsualizar la alerta…"
     },
     "sidebar": {
       "aria": "Resumen de tips del streamer",
       "streamerEyebrow": "Creador destacado",
       "streamerCopy": "Un panel hero cinematografico para la identidad del streamer, con espacio para alertas, branding y futuras metas.",
       "monthlyTotal": "Apoyo del mes",
-      "currency": "Moneda por defecto"
+      "currency": "Moneda por defecto",
+      "botActive": "Bot activo"
     },
     "leaderboard": {
       "eyebrow": "Top supporters",

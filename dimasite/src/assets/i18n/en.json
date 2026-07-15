@@ -1579,18 +1579,24 @@
       "messagePlaceholder": "Leave a message that can show alongside the donation.",
       "messageHint": "{{count}} characters remaining.",
       "submit": "Donate with",
-      "footnote": "Mock design only for now. PayPal flow, streamer settings, and validation rules will be wired next."
+      "footnote": "Mock design only for now. PayPal flow, streamer settings, and validation rules will be wired next.",
+      "presetLabel": "Quick amount"
     },
     "preview": {
       "label": "Donation preview",
-      "copy": "This mock card helps visualize the experience for {{streamer}}'s community."
+      "copy": "This mock card helps visualize the experience for {{streamer}}'s community.",
+      "liveBadge": "Live alert preview",
+      "tipped": "tipped",
+      "anonymous": "Anonymous",
+      "emptyMessage": "Type a message above to preview alert copy…"
     },
     "sidebar": {
       "aria": "Streamer tip overview",
       "streamerEyebrow": "Featured creator",
       "streamerCopy": "A cinematic hero panel for the streamer identity, with room for alerts, branding, and future goal data.",
       "monthlyTotal": "Monthly support",
-      "currency": "Default currency"
+      "currency": "Default currency",
+      "botActive": "Bot active"
     },
     "leaderboard": {
       "eyebrow": "Top supporters",
