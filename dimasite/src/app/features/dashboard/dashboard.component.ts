@@ -22,7 +22,6 @@ import {
   LiveSessionMetrics,
   AiCreditsData
 } from '../../models/dashboard.model';
-import { DashboardAmbientComponent } from './dashboard-ambient.component';
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { DashboardChartConfigService } from '../../services/dashboard-chart-config.service';
 import { LanguageService } from '../../services/language.service';
@@ -30,12 +29,10 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { getRouteParam } from '../../shared/utils/route-param.util';
-import { ActivityFeedComponent } from './components/activity-feed.component';
-import { LiveStreamCardComponent } from './components/live-stream-card.component';
-import { QuickActionsComponent } from './components/quick-actions.component';
-import { StreamHealthComponent, StreamHealthStatus } from './components/stream-health.component';
+import { StreamHealthStatus } from './components/stream-health.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
 import { ReferralPromoBannerComponent } from '../../shared/referral-promo-banner/referral-promo-banner.component';
+import { environment } from '../../../environments/environment';
 
 type TimeRange = '7d' | '15d' | '30d';
 type MobilePanel = 'chart' | 'goals';
@@ -57,15 +54,11 @@ type DashboardViewerRole = 'owner' | 'admin' | 'viewer';
   imports: [
     NgxEchartsDirective,
     CountUpDirective,
-    DashboardAmbientComponent,
-    LiveStreamCardComponent,
-    QuickActionsComponent,
-    ActivityFeedComponent,
-    StreamHealthComponent,
     LoadingIndicatorComponent,
     ReferralPromoBannerComponent
   ],
   templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.css',
   providers: [provideEchartsCore({ echarts })],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -131,6 +124,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly kpis = computed<DashboardKpis>(() => this.bootstrap()?.kpis ?? this.emptyKpis());
   readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
   readonly channelName = computed(() => this.bootstrap()?.channel.name ?? '');
+  readonly profileImageUrl = signal<string | null>(null);
+  readonly displayName = computed(() => {
+    const name = this.channelName().trim();
+    if (name) {
+      return name;
+    }
+    const login = this.streamer().trim();
+    return login || '—';
+  });
+  readonly avatarUrl = computed(() => {
+    const fromProfile = this.profileImageUrl();
+    if (fromProfile) {
+      return fromProfile;
+    }
+    const session = this.sessionAuth.session();
+    const sessionLogin = (session?.twitchUser.login || '').trim().toLowerCase();
+    if (sessionLogin && sessionLogin === this.streamer() && session?.twitchUser.profile_image_url) {
+      return session.twitchUser.profile_image_url;
+    }
+    return null;
+  });
+  readonly avatarLetter = computed(() => {
+    const name = this.displayName().trim();
+    return name ? name.charAt(0).toUpperCase() : '?';
+  });
   readonly viewerRole = computed<DashboardViewerRole | null>(() => this.bootstrap()?.role ?? null);
   readonly viewerRoleLabel = computed(() => {
     const role = this.viewerRole();
@@ -282,17 +300,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
             return of(null);
           }
 
-          return this.sessionAuth.resolveChannelID(streamer).pipe(
-            switchMap((channelID) => {
-              if (!channelID) {
-                this.errorMessage.set(this.t('dashboard.errors.missingChannel'));
-                return of(null);
-              }
+           void this.loadChannelAvatar(streamer);
 
-              this.channelID.set(channelID);
-              return this.dashboardApi.getBootstrap(channelID);
-            })
-          );
+           return this.sessionAuth.resolveChannelID(streamer).pipe(
+             switchMap((channelID) => {
+               if (!channelID) {
+                 this.errorMessage.set(this.t('dashboard.errors.missingChannel'));
+                 return of(null);
+               }
+
+               this.channelID.set(channelID);
+               return this.dashboardApi.getBootstrap(channelID);
+             })
+           );
         })
       )
       .subscribe({
@@ -972,11 +992,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.max(0, Math.min(100, Math.round((current / goal) * 100)));
   }
 
-  private formatCompactNumber(value: number): string {
+  formatCompactNumber(value: number): string {
     return this.compactNumberFormatter.format(Math.max(0, Number(value || 0)));
   }
 
-  private formatCompactCurrency(value: number): string {
+  formatCompactCurrency(value: number): string {
     return this.compactCurrencyFormatter.format(Math.max(0, Number(value || 0)));
   }
 
@@ -1104,11 +1124,45 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.stopStreamHealthMonitoring();
     this.channelID.set(null);
     this.errorMessage.set(null);
+    this.profileImageUrl.set(null);
     this.streamHealth.set({
       isConnected: false,
       responseTimeMs: 0,
       lastChecked: new Date().toISOString()
     });
+  }
+
+  private async loadChannelAvatar(login: string): Promise<void> {
+    const normalized = login.trim().toLowerCase();
+    if (!normalized) {
+      this.profileImageUrl.set(null);
+      return;
+    }
+
+    const session = this.sessionAuth.session();
+    const sessionLogin = (session?.twitchUser.login || '').trim().toLowerCase();
+    if (sessionLogin === normalized && session?.twitchUser.profile_image_url) {
+      this.profileImageUrl.set(session.twitchUser.profile_image_url);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${environment.DIMA_API}/users?username=${encodeURIComponent(normalized)}`
+      );
+      if (!response.ok) {
+        return;
+      }
+      const body = (await response.json()) as {
+        data?: { profile_image_url?: string };
+      };
+      const imageUrl = body.data?.profile_image_url?.trim();
+      if (imageUrl) {
+        this.profileImageUrl.set(imageUrl);
+      }
+    } catch {
+      // keep letter fallback
+    }
   }
 
   private shouldShowReferralPromoToday(): boolean {

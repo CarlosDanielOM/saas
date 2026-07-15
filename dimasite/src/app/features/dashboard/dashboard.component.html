@@ -1,38 +1,12 @@
-<section
-  class="dashboard-shell"
+<div
+  class="lf"
+  [attr.data-plan]="planTier()"
   [class.lf--live]="isLive()"
-  [attr.data-plan-tier]="planTier()"
   aria-live="polite"
 >
-    <header class="dashboard-header">
-      <app-dashboard-ambient class="dashboard-ambient"></app-dashboard-ambient>
-      <div>
-        <p class="dashboard-eyebrow">{{ t('dashboard.pageLabel') }}</p>
-        <h1 class="dashboard-title">{{ t('dashboard.title') }}</h1>
-
-        @if (channelName()) {
-          <div class="dashboard-channel-row">
-            <p class="dashboard-channel-name">{{ channelName() }}</p>
-            @if (viewerRoleLabel()) {
-              <span class="dashboard-role-badge">{{ viewerRoleLabel() }}</span>
-            }
-          </div>
-        }
-      </div>
-
-      <div
-        class="dashboard-status"
-        [class.dashboard-status--offline]="connectionStatus() === 'disconnected'"
-        [attr.title]="connectionTooltip()"
-        [attr.aria-label]="connectionTooltip()"
-      >
-        <span class="dashboard-status__dot" aria-hidden="true"></span>
-        <span>{{ t('dashboard.connection.' + connectionStatus()) }}</span>
-      </div>
-    </header>
-
+  <main class="lf-main">
     @if (showReferralPromo()) {
-      <div class="referral-promo-container">
+      <div class="lf-referral">
         <app-referral-promo-banner
           [title]="referralPromoTitle()"
           [message]="referralPromoMessage()"
@@ -44,256 +18,372 @@
     }
 
     @if (errorMessage()) {
-      <div class="dashboard-error" role="alert">
+      <div class="lf-error" role="alert">
         <p>{{ errorMessage() }}</p>
       </div>
     } @else if (!bootstrap()) {
-      <div class="dashboard-empty">
-        <p>{{ t('dashboard.empty') }}</p>
+      <div class="lf-empty">
+        <p>{{ loading() ? t('dashboard.loading') : t('dashboard.empty') }}</p>
       </div>
     } @else {
-      <!-- Compact Header Section for Mobile -->
-      <section class="dashboard-compact-header">
-        <div class="dashboard-compact-status">
-          <div class="dashboard-compact-live" [class.dashboard-compact-live--active]="isLive()">
-            <span class="dashboard-compact-live-dot" aria-hidden="true"></span>
-            <span class="dashboard-compact-live-text">{{ isLive() ? t('dashboard.liveStream.live') : t('dashboard.liveStream.offline') }}</span>
-            @if (isLive() && liveStream()?.viewer_count) {
-              <span class="dashboard-compact-viewers">{{ formatNumber(liveStream()!.viewer_count) }}</span>
+      <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('dashboard.pageLabel')">
+        <article class="lf-tile lf-tile--intro">
+          <p class="lf-kicker">{{ t('dashboard.pageLabel') }} · {{ streamer() }}</p>
+          <h1 class="lf-title">
+            {{ t('dashboard.title') }}
+            @if (channelName()) {
+              <span>{{ channelName() }}</span>
+            }
+          </h1>
+          <p class="lf-copy">
+            {{ t('dashboard.subtitle') }}
+          </p>
+
+          <div class="lf-actions">
+            <button
+              type="button"
+              class="lf-btn"
+              [class.lf-btn--primary]="!chatEnabled()"
+              [disabled]="isTogglingChat() || !channelID()"
+              (click)="toggleChatCompact()"
+            >
+              @if (isTogglingChat()) {
+                <loading-indicator [loading]="true" size="sm" variant="css" />
+              } @else {
+                {{ chatEnabled() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}
+              }
+            </button>
+          </div>
+
+          <div class="lf-status-row lf-status-row--top">
+            <span
+              class="lf-chip"
+              [class.lf-chip--ok]="connectionStatus() === 'connected'"
+              [class.lf-chip--muted]="connectionStatus() !== 'connected'"
+              [attr.title]="connectionTooltip()"
+            >
+              {{ t('dashboard.connection.' + connectionStatus()) }}
+            </span>
+            @if (viewerRoleLabel()) {
+              <span class="lf-chip">{{ viewerRoleLabel() }}</span>
+            }
+            @if (avatarUrl()) {
+              <img class="lf-avatar-img lf-avatar-img--inline" [src]="avatarUrl()!" [alt]="displayName()" />
             }
           </div>
 
-          <button
-            type="button"
-            class="dashboard-compact-action-btn"
-            [class.dashboard-compact-action-btn--active]="chatEnabled()"
-            [class.dashboard-compact-action-btn--join]="!chatEnabled()"
-            [class.dashboard-compact-action-btn--leave]="chatEnabled()"
-            (click)="toggleChatCompact()"
-            [disabled]="isTogglingChat()"
-          >
-            @if (isTogglingChat()) {
-              <loading-indicator
-                [loading]="true"
-                size="sm"
-                variant="css" />
-            } @else {
-              <span>{{ chatEnabled() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}</span>
+          <p class="lf-feed" [class.lf-feed--on]="chatEnabled()" [class.lf-feed--warn]="!chatEnabled()">
+            {{ chatEnabled() ? t('dashboard.quickActions.statusActive') : t('dashboard.quickActions.statusInactive') }}
+            @if (streamHealth().responseTimeMs > 0) {
+              · API {{ streamHealth().responseTimeMs }}ms
             }
-          </button>
-        </div>
-      </section>
-
-      <!-- Desktop: Full Components -->
-      <section class="dashboard-live-section desktop-only">
-        <app-live-stream-card 
-          [stream]="liveStream()" 
-          [isLive]="isLive()">
-        </app-live-stream-card>
-      </section>
-
-      <section class="dashboard-actions-section desktop-only">
-        <div class="dashboard-actions-grid">
-          <app-quick-actions
-            [channelID]="channelID()!"
-            [chatEnabled]="chatEnabled()"
-            (chatEnabledChange)="onChatEnabledChange($event)">
-          </app-quick-actions>
-
-          <app-stream-health [health]="streamHealth()"></app-stream-health>
-        </div>
-      </section>
-
-      <!-- Activity Feed -->
-      <section class="dashboard-activity-section">
-        <app-activity-feed [counters]="activityCounters()" [isLive]="isLive()"></app-activity-feed>
-      </section>
-
-      <section class="dashboard-kpis" [attr.aria-label]="t('dashboard.kpis.sectionLabel')">
-        <article class="dashboard-kpi-card">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.avgHoursPerStream') }}</p>
-          <p class="dashboard-kpi-card__value">{{ formatHours(kpis().averageHoursPerStream) }}</p>
+          </p>
         </article>
 
-        <article class="dashboard-kpi-card">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.averageViewers30d') }}</p>
-          <p class="dashboard-kpi-card__value" [countUp]="kpis().monthlyAverageViewers">0</p>
-        </article>
+        <article class="lf-tile lf-tile--spotlight" [class.lf-spotlight--live]="isLive()">
+          <div class="lf-spotlight__head">
+            @if (isLive()) {
+              <span class="lf-chip lf-chip--live">{{ t('dashboard.liveStream.live') }}</span>
+            } @else {
+              <span class="lf-chip lf-chip--muted">{{ t('dashboard.liveStream.offline') }}</span>
+            }
+            <span class="lf-spotlight__count">{{ planTier() }}</span>
+          </div>
 
-        <article class="dashboard-kpi-card dashboard-kpi-card--bits">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.bits30d') }}</p>
-          <p class="dashboard-kpi-card__value" [countUp]="kpis().totalBits">0</p>
-        </article>
-
-        <article class="dashboard-kpi-card dashboard-kpi-card--donations">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.donations30d') }}</p>
-          <p class="dashboard-kpi-card__value">{{ formatCurrency(kpis().totalDonations) }}</p>
-        </article>
-
-        <article class="dashboard-kpi-card dashboard-kpi-card--ai-credits"
-                 [class.dashboard-kpi-card--exhausted]="aiCreditsExhausted()">
-          <p class="dashboard-kpi-card__label">{{ t('dashboard.kpis.aiCredits') }}</p>
-
-          @if (aiCreditsAvailable()) {
-            <p class="dashboard-kpi-card__value">{{ aiCreditsLabel() }}</p>
-
-            <div class="dashboard-goal-card__progress dashboard-kpi-card__progress" role="progressbar"
-                 [attr.aria-label]="t('dashboard.kpis.aiCredits')"
-                 [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="aiCreditsPercent()">
-              <span class="dashboard-goal-card__fill"
-                    [class.dashboard-goal-card__fill--exhausted]="aiCreditsExhausted()"
-                    [style.width.%]="aiCreditsPercent()"></span>
+          <div class="lf-channel">
+            @if (avatarUrl()) {
+              <img
+                class="lf-channel__avatar"
+                [class.lf-channel__avatar--live]="isLive()"
+                [src]="avatarUrl()!"
+                [alt]="displayName()"
+              />
+            } @else {
+              <div class="lf-channel__avatar lf-channel__avatar--fallback">{{ avatarLetter() }}</div>
+            }
+            <div class="lf-channel__text">
+              <p class="lf-channel__name">{{ displayName() }}</p>
+              @if (isLive() && liveStream(); as stream) {
+                <p class="lf-channel__meta">
+                  {{ formatNumber(stream.viewer_count) }} {{ t('dashboard.liveStream.viewers') }}
+                  @if (stream.game_name) {
+                    · {{ stream.game_name }}
+                  }
+                </p>
+              } @else {
+                <p class="lf-channel__meta">{{ t('dashboard.liveStream.offlineHint') }}</p>
+              }
             </div>
+          </div>
 
+          @if (isLive() && liveStream()?.title) {
+            <p class="lf-empty-inline">{{ liveStream()!.title }}</p>
+          } @else if (!isLive()) {
+            <p class="lf-empty-inline">{{ t('dashboard.live.offlineDescription') }}</p>
+          }
+        </article>
+
+        <article class="lf-tile lf-metric">
+          <p class="lf-label">{{ t('dashboard.kpis.avgHoursPerStream') }}</p>
+          <p class="lf-value">{{ formatHours(kpis().averageHoursPerStream) }}</p>
+        </article>
+        <article class="lf-tile lf-metric">
+          <p class="lf-label">{{ t('dashboard.kpis.averageViewers30d') }}</p>
+          <p class="lf-value" [countUp]="kpis().monthlyAverageViewers">0</p>
+        </article>
+        <article class="lf-tile lf-metric lf-metric--accent">
+          <p class="lf-label">{{ t('dashboard.kpis.bits30d') }}</p>
+          <p class="lf-value" [countUp]="kpis().totalBits">0</p>
+        </article>
+        <article class="lf-tile lf-metric">
+          <p class="lf-label">{{ t('dashboard.kpis.donations30d') }}</p>
+          <p class="lf-value">{{ formatCurrency(kpis().totalDonations) }}</p>
+        </article>
+      </section>
+
+      <section class="lf-bento lf-bento--ops" [attr.aria-label]="t('dashboard.activity.title')">
+        <article class="lf-tile lf-activity">
+          <div class="lf-section-mini">
+            <p class="lf-kicker">{{ t('dashboard.activity.title') }}</p>
+            <h2 class="lf-h3">{{ t('dashboard.live.title') }}</h2>
+          </div>
+          <div class="lf-activity__grid">
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.follows') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatNumber(activityCounters().follows) }}</p>
+            </div>
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.subs') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatNumber(activityCounters().subs) }}</p>
+            </div>
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.bits') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatCompactNumber(activityCounters().bits) }}</p>
+            </div>
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.donations') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatCompactCurrency(activityCounters().donations) }}</p>
+            </div>
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.messages') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatCompactNumber(activityCounters().messages) }}</p>
+            </div>
+            <div>
+              <p class="lf-label">{{ t('dashboard.activity.commands') }}</p>
+              <p class="lf-value lf-value--sm">{{ formatNumber(activityCounters().commands) }}</p>
+            </div>
+          </div>
+          @if (!isLive()) {
+            <p class="lf-note">{{ t('dashboard.liveStream.offlineHint') }}</p>
+          }
+        </article>
+
+        <article class="lf-tile lf-actions-tile">
+          <div class="lf-section-mini">
+            <p class="lf-kicker">{{ t('dashboard.quickActions.title') }}</p>
+            <h2 class="lf-h3">{{ t('dashboard.quickActions.title') }}</h2>
+          </div>
+          <p class="lf-copy lf-copy--tight">
+            {{ chatEnabled() ? t('dashboard.quickActions.statusActive') : t('dashboard.quickActions.statusInactive') }}
+          </p>
+          <div class="lf-actions lf-actions--tight">
+            <button
+              type="button"
+              class="lf-btn lf-btn--primary"
+              [disabled]="isTogglingChat() || !channelID()"
+              (click)="toggleChatCompact()"
+            >
+              @if (isTogglingChat()) {
+                <loading-indicator [loading]="true" size="sm" variant="css" />
+              } @else {
+                {{ chatEnabled() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}
+              }
+            </button>
+          </div>
+          <div class="lf-status-row">
+            <span class="lf-chip" [class.lf-chip--live]="chatEnabled()" [class.lf-chip--muted]="!chatEnabled()">
+              {{ chatEnabled() ? t('dashboard.quickActions.statusActive') : t('dashboard.quickActions.statusInactive') }}
+            </span>
+            <span class="lf-chip" [class.lf-chip--ok]="streamHealth().isConnected" [class.lf-chip--muted]="!streamHealth().isConnected">
+              {{ streamHealth().isConnected ? t('dashboard.health.connected') : t('dashboard.health.disconnected') }}
+              @if (streamHealth().responseTimeMs > 0) {
+                · {{ streamHealth().responseTimeMs }}ms
+              }
+            </span>
+          </div>
+        </article>
+
+        <article class="lf-tile lf-ai lf-metric--ai">
+          <div class="lf-spotlight__head">
+            <p class="lf-label lf-label--inline">{{ t('dashboard.kpis.aiCredits') }}</p>
+            <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }}</span>
+          </div>
+          @if (aiCreditsAvailable()) {
+            <p class="lf-value lf-value--sm">{{ aiCreditsLabel() }}</p>
+            <div class="lf-bar" aria-hidden="true">
+              <span [style.width.%]="aiCreditsPercent()"></span>
+            </div>
             @if (aiCreditsExhausted()) {
-              <p class="dashboard-kpi-card__meta dashboard-kpi-card__meta--warning">
-                {{ aiCreditsUpsell() }}
-              </p>
+              <p class="lf-note">{{ aiCreditsUpsell() }}</p>
+            } @else {
+              <p class="lf-note">{{ aiCreditsPercent() }}%</p>
             }
           } @else {
-            <p class="dashboard-kpi-card__value dashboard-kpi-card__value--muted">
-              {{ aiCreditsNotAvailableLabel() }}
-            </p>
+            <p class="lf-value lf-value--sm">{{ aiCreditsNotAvailableLabel() }}</p>
           }
         </article>
       </section>
 
-      <section class="dashboard-mobile-toggle" [attr.aria-label]="t('dashboard.mobile.sectionLabel')">
+      <div class="lf-mobile-tabs" role="tablist" [attr.aria-label]="t('dashboard.mobile.sectionLabel')">
         <button
           type="button"
-          class="dashboard-mobile-toggle__button"
-          [class.dashboard-mobile-toggle__button--active]="selectedMobilePanel() === 'chart'"
-          [attr.aria-pressed]="selectedMobilePanel() === 'chart'"
+          class="lf-segment__btn"
+          [class.lf-segment__btn--active]="selectedMobilePanel() === 'chart'"
           (click)="selectMobilePanel('chart')"
         >
           {{ t('dashboard.mobile.showChart') }}
         </button>
         <button
           type="button"
-          class="dashboard-mobile-toggle__button"
-          [class.dashboard-mobile-toggle__button--active]="selectedMobilePanel() === 'goals'"
-          [attr.aria-pressed]="selectedMobilePanel() === 'goals'"
+          class="lf-segment__btn"
+          [class.lf-segment__btn--active]="selectedMobilePanel() === 'goals'"
           (click)="selectMobilePanel('goals')"
         >
           {{ t('dashboard.mobile.showGoals') }}
         </button>
-      </section>
+      </div>
 
-      <section class="dashboard-middle" [attr.aria-label]="t('dashboard.charts.sectionLabel')">
-        <article class="dashboard-chart-panel" [class.dashboard-panel--hidden-mobile]="selectedMobilePanel() !== 'chart'">
-          <div class="dashboard-chart-panel__header">
-          <h2>{{ t('dashboard.charts.title') }}</h2>
-          <div class="dashboard-ranges" role="tablist" [attr.aria-label]="t('dashboard.timeRange.title')">
-            @for (range of timeRanges; track range) {
-              <button
-                type="button"
-                class="dashboard-range-button"
-                [class.dashboard-range-button--active]="selectedTimeRange() === range"
-                (click)="selectTimeRange(range)"
-              >
-                {{ timeRangeLabel(range) }}
-              </button>
-            }
+      <section class="lf-bento lf-bento--mid" [attr.aria-label]="t('dashboard.charts.sectionLabel')">
+        <article
+          class="lf-tile lf-chart"
+          [class.lf-panel--hidden-mobile]="selectedMobilePanel() !== 'chart'"
+        >
+          <div class="lf-section-mini lf-section-mini--row">
+            <div>
+              <p class="lf-kicker">{{ t('dashboard.charts.sectionLabel') }}</p>
+              <h2 class="lf-h3">{{ t('dashboard.charts.title') }}</h2>
+            </div>
+            <div class="lf-range" role="group" [attr.aria-label]="t('dashboard.timeRange.title')">
+              @for (range of timeRanges; track range) {
+                <button
+                  type="button"
+                  class="lf-range__btn"
+                  [class.lf-range__btn--active]="selectedTimeRange() === range"
+                  (click)="selectTimeRange(range)"
+                >
+                  {{ timeRangeLabel(range) }}
+                </button>
+              }
+            </div>
           </div>
-          </div>
 
-          <div echarts class="dashboard-chart" [options]="overviewChartOption()" (chartInit)="onOverviewChartInit($event)"></div>
+          <div
+            echarts
+            class="lf-chart__canvas"
+            [options]="overviewChartOption()"
+            (chartInit)="onOverviewChartInit($event)"
+          ></div>
 
-          <div class="dashboard-chart-panel__time-context" aria-live="polite">
-            <span class="dashboard-chart-panel__time-note">{{ t('dashboard.charts.timeContext.note') }}</span>
+          <div class="lf-chart__time" aria-live="polite">
+            <span>{{ t('dashboard.charts.timeContext.note') }}</span>
             <span>{{ t('dashboard.charts.timeContext.server', { time: serverTimeDisplay() }) }}</span>
             <span>{{ t('dashboard.charts.timeContext.local', { time: localTimeDisplay() }) }}</span>
           </div>
         </article>
 
-        <aside class="dashboard-goals" [attr.aria-label]="t('dashboard.goals.sectionLabel')" [class.dashboard-panel--hidden-mobile]="selectedMobilePanel() !== 'goals'">
-          <h2>{{ t('dashboard.goals.title') }}</h2>
-
-          <div class="dashboard-goals__stats">
-            <article class="dashboard-goals__stat">
-              <p class="dashboard-goals__stat-label">{{ t('dashboard.goals.totalFollowers') }}</p>
-              <p class="dashboard-goals__stat-value">{{ formatNumber(totalFollowers()) }}</p>
-            </article>
-
-            <article class="dashboard-goals__stat">
-              <p class="dashboard-goals__stat-label">{{ t('dashboard.goals.totalSubs') }}</p>
-              <p class="dashboard-goals__stat-value">{{ formatNumber(totalSubs()) }}</p>
-            </article>
+        <article
+          class="lf-tile lf-goals"
+          [class.lf-panel--hidden-mobile]="selectedMobilePanel() !== 'goals'"
+        >
+          <div class="lf-section-mini">
+            <p class="lf-kicker">{{ t('dashboard.goals.sectionLabel') }}</p>
+            <h2 class="lf-h3">{{ t('dashboard.goals.title') }}</h2>
           </div>
 
-          <article class="dashboard-goal-card">
-            <div class="dashboard-goal-card__head">
-              <p class="dashboard-goal-card__label">{{ t('dashboard.goals.followersGoal') }}</p>
-              <p class="dashboard-goal-card__percent">{{ formatPercent(followersGoalPercent()) }}</p>
+          <div class="lf-goals__stack">
+            <div class="lf-goal">
+              <div class="lf-goal__head">
+                <span>{{ t('dashboard.goals.totalFollowers') }}</span>
+                <strong>{{ formatNumber(totalFollowers()) }}</strong>
+              </div>
             </div>
-            <p class="dashboard-goal-card__value">
-              {{ formatNumber(monthlyGoals().followersCurrent) }} / {{ formatNumber(monthlyGoals().followersGoal) }}
-            </p>
-            <div class="dashboard-goal-card__progress" role="progressbar" [attr.aria-label]="t('dashboard.goals.followersGoal')" [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="followersGoalPercent()">
-              <span class="dashboard-goal-card__fill" [style.width.%]="followersGoalPercent()"></span>
+            <div class="lf-goal">
+              <div class="lf-goal__head">
+                <span>{{ t('dashboard.goals.totalSubs') }}</span>
+                <strong>{{ formatNumber(totalSubs()) }}</strong>
+              </div>
             </div>
-          </article>
-
-          <article class="dashboard-goal-card">
-            <div class="dashboard-goal-card__head">
-              <p class="dashboard-goal-card__label">{{ t('dashboard.goals.subsGoal') }}</p>
-              <p class="dashboard-goal-card__percent">{{ formatPercent(subsGoalPercent()) }}</p>
+            <div class="lf-goal">
+              <div class="lf-goal__head">
+                <span>{{ t('dashboard.goals.followersGoal') }}</span>
+                <strong>
+                  {{ formatNumber(monthlyGoals().followersCurrent) }} /
+                  {{ formatNumber(monthlyGoals().followersGoal) }}
+                </strong>
+              </div>
+              <div class="lf-bar lf-bar--violet" aria-hidden="true">
+                <span [style.width.%]="followersGoalPercent()"></span>
+              </div>
+              <p class="lf-goal__pct">{{ formatPercent(followersGoalPercent()) }}</p>
             </div>
-            <p class="dashboard-goal-card__value">
-              {{ formatNumber(monthlyGoals().subsCurrent) }} / {{ formatNumber(monthlyGoals().subsGoal) }}
-            </p>
-            <div class="dashboard-goal-card__progress" role="progressbar" [attr.aria-label]="t('dashboard.goals.subsGoal')" [attr.aria-valuemin]="0" [attr.aria-valuemax]="100" [attr.aria-valuenow]="subsGoalPercent()">
-              <span class="dashboard-goal-card__fill dashboard-goal-card__fill--subs" [style.width.%]="subsGoalPercent()"></span>
+            <div class="lf-goal">
+              <div class="lf-goal__head">
+                <span>{{ t('dashboard.goals.subsGoal') }}</span>
+                <strong>
+                  {{ formatNumber(monthlyGoals().subsCurrent) }} /
+                  {{ formatNumber(monthlyGoals().subsGoal) }}
+                </strong>
+              </div>
+              <div class="lf-bar lf-bar--gold" aria-hidden="true">
+                <span [style.width.%]="subsGoalPercent()"></span>
+              </div>
+              <p class="lf-goal__pct">{{ formatPercent(subsGoalPercent()) }}</p>
             </div>
-          </article>
-        </aside>
+          </div>
+        </article>
       </section>
 
-      <section class="dashboard-history" [attr.aria-label]="t('dashboard.history.sectionLabel')">
-        <div class="dashboard-history__head">
-          <h2>{{ t('dashboard.history.title') }}</h2>
-          <p>{{ t('dashboard.history.subtitle') }}</p>
+      <section class="lf-section" [attr.aria-label]="t('dashboard.history.sectionLabel')">
+        <div class="lf-section__head">
+          <p class="lf-kicker">{{ t('dashboard.history.sectionLabel') }}</p>
+          <h2 class="lf-h2">{{ t('dashboard.history.title') }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ t('dashboard.history.subtitle') }}</p>
         </div>
 
-        <div class="dashboard-history__table-wrap">
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th scope="col">{{ t('dashboard.history.columns.date') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.hours') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.avgViewers') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.bits') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.subs') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.follows') }}</th>
-                <th scope="col">{{ t('dashboard.history.columns.donations') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (stream of streamHistoryRows(); track $index) {
-                <tr [class.dashboard-table__live-row]="isStreamLiveToday(stream)">
-                  <td>
-                    @if (isStreamLiveToday(stream)) {
-                      <span class="dashboard-live-badge">{{ t('dashboard.history.live') }}</span>
-                    }
-                    {{ formatHistoryDate(stream.date) }}
-                  </td>
-                  <td>{{ formatHours(stream.hours) }}</td>
-                  <td>{{ formatNumber(stream.viewers) }}</td>
-                  <td>{{ formatNumber(stream.bits) }}</td>
-                  <td>{{ formatNumber(stream.subs) }}</td>
-                  <td>{{ formatNumber(stream.follows) }}</td>
-                  <td>{{ formatCurrency(stream.donations) }}</td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td class="dashboard-table__empty" colspan="7">
-                    {{ t('dashboard.history.empty') }}
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="lf-tile lf-matrix">
+          <div class="lf-matrix__scroller">
+            <div class="lf-matrix__row lf-matrix__row--head">
+              <span>{{ t('dashboard.history.columns.date') }}</span>
+              <span>{{ t('dashboard.history.columns.hours') }}</span>
+              <span>{{ t('dashboard.history.columns.avgViewers') }}</span>
+              <span>{{ t('dashboard.history.columns.bits') }}</span>
+              <span>{{ t('dashboard.history.columns.subs') }}</span>
+              <span>{{ t('dashboard.history.columns.follows') }}</span>
+              <span>{{ t('dashboard.history.columns.donations') }}</span>
+            </div>
+            @for (stream of streamHistoryRows(); track $index) {
+              <div class="lf-matrix__row" [class.lf-matrix__row--live]="isStreamLiveToday(stream)">
+                <span class="lf-matrix__primary">
+                  <strong>{{ formatHistoryDate(stream.date) }}</strong>
+                  @if (isStreamLiveToday(stream)) {
+                    <span class="lf-chip lf-chip--live">{{ t('dashboard.history.live') }}</span>
+                  }
+                </span>
+                <span>{{ formatHours(stream.hours) }}</span>
+                <span>{{ formatNumber(stream.viewers) }}</span>
+                <span>{{ formatNumber(stream.bits) }}</span>
+                <span>{{ formatNumber(stream.subs) }}</span>
+                <span>{{ formatNumber(stream.follows) }}</span>
+                <span>{{ formatCurrency(stream.donations) }}</span>
+              </div>
+            } @empty {
+              <div class="lf-matrix__row">
+                <span class="lf-empty-inline">{{ t('dashboard.history.empty') }}</span>
+              </div>
+            }
+          </div>
         </div>
       </section>
     }
-  </section>
+  </main>
+</div>
