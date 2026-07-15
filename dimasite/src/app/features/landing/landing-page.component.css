@@ -214,18 +214,55 @@
   background: transparent;
 }
 
-.lf-btn--icon {
-  padding-inline: 0.85rem;
+.lf-btn--tool {
+  min-width: 44px;
+  padding-inline: 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.lf-btn--theme {
+  gap: 0.4rem;
+  padding-inline: 0.7rem;
 }
 
 .lf-btn__label {
   display: none;
+  line-height: 1;
+}
+
+.lf-theme-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.lf-theme-icon :is(svg) {
+  display: block;
+  width: 1rem;
+  height: 1rem;
 }
 
 .lf-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 1rem;
   height: 1rem;
-  flex-shrink: 0;
+  flex: 0 0 1rem;
+  line-height: 0;
+}
+
+.lf-icon-sm :is(svg) {
+  display: block;
+  width: 1rem;
+  height: 1rem;
 }
 
 /* Main */

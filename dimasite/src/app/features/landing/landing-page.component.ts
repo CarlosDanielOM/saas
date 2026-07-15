@@ -254,6 +254,14 @@ export class LandingPageComponent implements OnInit {
     }
   }
 
+  readonly languageLabel = computed(() =>
+    this.languageService.currentLanguage() === 'en' ? 'EN' : 'ES'
+  );
+
+  toggleLanguage(): void {
+    this.languageService.toggleLanguage();
+  }
+
   toggleTheme(): void {
     this.themeService.setTheme(this.themeService.isDarkMode() ? 'light' : 'dark');
   }

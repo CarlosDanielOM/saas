@@ -14,12 +14,27 @@
     <div class="lf-nav__actions">
       <button
         type="button"
-        class="lf-btn lf-btn--ghost lf-btn--icon"
+        class="lf-btn lf-btn--ghost lf-btn--tool"
+        (click)="toggleLanguage()"
+        [attr.aria-label]="t('commands.public.languageToggle')"
+        [title]="t('commands.public.languageToggle')"
+      >
+        {{ languageLabel() }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+
         (click)="toggleTheme()"
         [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
         [title]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
       >
-        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" class="lf-icon-sm"></lucide-icon>
+        <lucide-icon
+          [name]="isDarkMode() ? moonIcon : sunIcon"
+          [size]="16"
+          class="lf-theme-icon"
+          aria-hidden="true"
+        ></lucide-icon>
         <span class="lf-btn__label">{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
       </button>
       <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">
