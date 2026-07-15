@@ -111,6 +111,7 @@ The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/`
 
 - Plan-tier styling: use `plan_tier` (`free|premium|pro`) as source of truth. Premium = subtle gold, Pro = stronger gold treatment.
 - **Responsive priority**: All site projects (`dimasite/`, `admin/`, `dimadocs/`) follow a **mobile-first** approach. Design for 320–480px base, then enhance for tablet/desktop. Use `min-width` media queries. Test on real mobile devices or emulation before finalizing desktop.
+- **Visual verification**: When checking frontend design or layout, agents may use Playwright through its MCP tools or CLI to inspect the running application at desktop and mobile viewports.
 
 ## Styling Policy (Updated – Hybrid Approach)
 
