@@ -11,18 +11,22 @@ export class DashboardChartConfigService {
 
   getLineChartBase(): EChartsOption {
     const isDark = this.themeService.isDarkMode();
-    const axisColor = isDark ? '#c7b8df' : '#523679';
-    const gridColor = isDark ? 'rgba(199, 184, 223, 0.15)' : 'rgba(82, 54, 121, 0.14)';
+    // Live First chart palette
+    const axisColor = isDark ? '#9aa3b5' : '#667085';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(15, 17, 21, 0.08)';
+    const tooltipBg = isDark ? '#171a21' : '#ffffff';
+    const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(15, 17, 21, 0.08)';
+    const tooltipText = isDark ? '#f5f7fb' : '#14151a';
 
     return {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        backgroundColor: isDark ? '#1a1227' : '#fffdfc',
-        borderColor: isDark ? '#45305f' : '#e7d8ff',
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
         borderWidth: 1,
         textStyle: {
-          color: isDark ? '#f5f1ff' : '#2a163f'
+          color: tooltipText
         }
       },
       grid: {
@@ -49,16 +53,18 @@ export class DashboardChartConfigService {
 
   getBarChartBase(): EChartsOption {
     const isDark = this.themeService.isDarkMode();
-    const axisColor = isDark ? '#c7b8df' : '#523679';
-    const gridColor = isDark ? 'rgba(199, 184, 223, 0.15)' : 'rgba(82, 54, 121, 0.14)';
+    const axisColor = isDark ? '#9aa3b5' : '#667085';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(15, 17, 21, 0.08)';
+    const tooltipBg = isDark ? '#171a21' : '#ffffff';
+    const tooltipBorder = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(15, 17, 21, 0.08)';
 
     return {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? '#1a1227' : '#fffdfc',
-        borderColor: isDark ? '#45305f' : '#e7d8ff',
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
         borderWidth: 1
       },
       grid: {

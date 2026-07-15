@@ -143,7 +143,7 @@ body {
 }
 
 .brand-name {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -230,7 +230,7 @@ body {
 
 .hero-title {
   margin: 1.15rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(2rem, 5.5vw, 4rem);
   line-height: 1.05;
   text-wrap: balance;
@@ -251,7 +251,7 @@ body {
 .section-title {
   margin: 0 0 2rem;
   text-align: center;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   letter-spacing: -0.02em;
 }
@@ -424,7 +424,7 @@ body {
 .triggers-title {
   margin: 0;
   color: #f8fafc;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(2rem, 4vw, 3.4rem);
   line-height: 1.02;
 }
@@ -565,7 +565,7 @@ body {
 .triggers-metric-card__value {
   margin-top: 0.4rem;
   color: var(--text);
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.7rem;
   font-weight: 700;
   line-height: 1.05;
@@ -666,7 +666,7 @@ body {
 .triggers-rail-panel__head h2,
 .triggers-modal__head h2 {
   margin: 0.2rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.35rem;
 }
 
@@ -962,7 +962,7 @@ body {
 .triggers-empty-state h2,
 .triggers-empty-state h3 {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
 }
 
 .triggers-modal-backdrop {
@@ -1041,7 +1041,7 @@ body {
 
 .public-library-modal__hero-copy h3 {
   margin: 0.8rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.4rem;
 }
 
@@ -1066,7 +1066,7 @@ body {
 .public-library-modal__quota-card strong {
   display: block;
   margin-top: 0.8rem;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.3rem;
   color: var(--text);
 }
@@ -1254,7 +1254,7 @@ body {
 }
 
 .triggers-volume-display__value {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.15rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1831,7 +1831,7 @@ body {
 
 .pricing-tier__price {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1894,7 +1894,7 @@ body {
 
 .live-now-board__title {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.35rem, 2.2vw, 2rem);
 }
 
@@ -2005,7 +2005,7 @@ body {
 
 .price-value {
   margin: 0.8rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 2.2rem;
   font-weight: 700;
 }
@@ -2989,58 +2989,92 @@ body {
 }
 
 .dashboard-shell {
-  --dash-bg-0: #f4f9ff;
-  --dash-bg-1: #ddeeff;
+  /* Live First tokens (mapped to --dash-* for existing components) */
+  --dash-bg-0: #f4f5f8;
+  --dash-bg-1: #f4f5f8;
   --dash-panel: #ffffff;
-  --dash-panel-2: #f4faff;
-  --dash-border: rgba(59, 132, 229, 0.26);
-  --dash-text: #173658;
-  --dash-text-soft: #46729e;
-  --dash-cyan: #00b8ff;
-  --dash-violet: #7857ff;
-  --dash-magenta: #ff4fcf;
+  --dash-panel-2: #f8f9fc;
+  --dash-border: rgba(15, 17, 21, 0.08);
+  --dash-text: #14151a;
+  --dash-text-soft: #667085;
+  --dash-cyan: #7c3aed;
+  --dash-violet: #8b5cf6;
+  --dash-magenta: #ef4444;
   --dash-tier-glow: transparent;
   --dash-tier-ring: transparent;
+  --dash-font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --dash-radius: 1.25rem;
+  --dash-shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
+  --dash-accent-soft: rgba(124, 58, 237, 0.12);
+  --dash-gold: #b45309;
+  --dash-gold-soft: rgba(180, 83, 9, 0.12);
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  max-width: 78rem;
+  max-width: 74rem;
   width: 100%;
   min-width: 0;
   margin: 0 auto;
   padding: 1rem;
-  border-radius: 1.25rem;
-  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius);
+  border: 0;
   display: grid;
-  gap: 1.1rem;
-  background: linear-gradient(170deg, var(--dash-bg-0) 0%, var(--dash-bg-1) 100%);
-  box-shadow: 0 16px 42px rgba(8, 24, 52, 0.08);
+  gap: 0.85rem;
+  font-family: var(--dash-font);
+  color: var(--dash-text);
+  background:
+    radial-gradient(800px 360px at 80% -5%, rgba(124, 58, 237, 0.12), transparent 55%),
+    radial-gradient(600px 280px at 10% 0%, rgba(239, 68, 68, 0.08), transparent 50%),
+    var(--dash-bg-0);
+  box-shadow: none;
 }
 
 .dark .dashboard-shell {
-  --dash-bg-0: #060c17;
-  --dash-bg-1: #0b1528;
-  --dash-panel: #101d34;
-  --dash-panel-2: #0b1a31;
-  --dash-border: rgba(65, 137, 225, 0.32);
-  --dash-text: #e6f2ff;
-  --dash-text-soft: #8daecd;
-  --dash-cyan: #29d9ff;
-  --dash-violet: #8a7eff;
-  --dash-magenta: #ff5cf2;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+  --dash-bg-0: #0f1115;
+  --dash-bg-1: #0f1115;
+  --dash-panel: #171a21;
+  --dash-panel-2: #1a1e27;
+  --dash-border: rgba(255, 255, 255, 0.07);
+  --dash-text: #f5f7fb;
+  --dash-text-soft: #9aa3b5;
+  --dash-cyan: #8b5cf6;
+  --dash-violet: #a78bfa;
+  --dash-magenta: #ef4444;
+  --dash-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  --dash-accent-soft: rgba(139, 92, 246, 0.16);
+  --dash-gold: #fbbf24;
+  --dash-gold-soft: rgba(251, 191, 36, 0.14);
+  background:
+    radial-gradient(800px 360px at 80% -5%, rgba(139, 92, 246, 0.18), transparent 55%),
+    radial-gradient(600px 280px at 10% 0%, rgba(239, 68, 68, 0.1), transparent 50%),
+    var(--dash-bg-0);
+  box-shadow: none;
+}
+
+.dashboard-shell.lf--live {
+  background:
+    radial-gradient(900px 380px at 75% -8%, rgba(239, 68, 68, 0.1), transparent 55%),
+    radial-gradient(700px 320px at 12% 0%, rgba(124, 58, 237, 0.12), transparent 50%),
+    var(--dash-bg-0);
+}
+
+.dark .dashboard-shell.lf--live {
+  background:
+    radial-gradient(900px 380px at 75% -8%, rgba(239, 68, 68, 0.14), transparent 55%),
+    radial-gradient(700px 320px at 12% 0%, rgba(139, 92, 246, 0.18), transparent 50%),
+    var(--dash-bg-0);
 }
 
 .dashboard-shell[data-plan-tier='premium'],
 html[data-plan-tier='premium'] .dashboard-shell {
-  --dash-tier-glow: rgba(252, 200, 95, 0.22);
-  --dash-tier-ring: rgba(246, 198, 96, 0.58);
+  --dash-tier-glow: var(--dash-gold-soft);
+  --dash-tier-ring: color-mix(in srgb, var(--dash-gold) 40%, transparent);
 }
 
 .dashboard-shell[data-plan-tier='pro'],
 html[data-plan-tier='pro'] .dashboard-shell {
-  --dash-tier-glow: rgba(252, 203, 84, 0.38);
-  --dash-tier-ring: rgba(252, 207, 102, 0.88);
+  --dash-tier-glow: var(--dash-gold-soft);
+  --dash-tier-ring: color-mix(in srgb, var(--dash-gold) 55%, transparent);
 }
 
 .dashboard-shell::before,
@@ -3053,30 +3087,11 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 .dashboard-shell::before {
-  background:
-    radial-gradient(
-      circle at 18% 12%,
-      color-mix(in srgb, var(--dash-cyan) 28%, transparent),
-      transparent 36%
-    ),
-    radial-gradient(
-      circle at 81% 25%,
-      color-mix(in srgb, var(--dash-magenta) 22%, transparent),
-      transparent 39%
-    ),
-    radial-gradient(
-      circle at 60% 88%,
-      color-mix(in srgb, var(--dash-violet) 26%, transparent),
-      transparent 42%
-    );
-  opacity: 0.74;
+  display: none;
 }
 
 .dashboard-shell::after {
-  background:
-    radial-gradient(circle at 100% 0%, var(--dash-tier-glow), transparent 32%),
-    linear-gradient(transparent 35%, color-mix(in srgb, var(--dash-border) 28%, transparent) 100%);
-  opacity: 0.92;
+  display: none;
 }
 
 .dashboard-header,
@@ -3091,15 +3106,11 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-header {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--dash-border) 85%, transparent);
-  border-radius: 1rem;
-  padding: 1.2rem;
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--dash-panel) 94%, transparent),
-    color-mix(in srgb, var(--dash-panel-2) 96%, transparent)
-  );
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dash-tier-ring) 26%, transparent);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius);
+  padding: 1.2rem 1.3rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%), var(--dash-panel);
+  box-shadow: var(--dash-shadow);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -3127,18 +3138,19 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .dashboard-eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dash-cyan);
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .dashboard-title {
   margin: 0.38rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
-  font-size: clamp(1.4rem, 2.6vw, 2rem);
-  letter-spacing: -0.02em;
+  font-family: var(--dash-font);
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  letter-spacing: -0.035em;
+  font-weight: 750;
   color: var(--dash-text);
 }
 
@@ -3166,9 +3178,9 @@ html[data-plan-tier='pro'] .dashboard-shell {
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--dash-cyan) 58%, var(--dash-border));
-  background: color-mix(in srgb, var(--dash-cyan) 18%, transparent);
-  color: color-mix(in srgb, var(--dash-text) 90%, #ffffff 10%);
+  border: 0;
+  background: var(--dash-accent-soft);
+  color: var(--dash-cyan);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -3184,16 +3196,16 @@ html[data-plan-tier='pro'] .dashboard-shell {
   padding: 0.38rem 0.68rem;
   font-size: 0.75rem;
   font-weight: 700;
-  border: 1px solid rgba(34, 209, 151, 0.4);
-  background: rgba(9, 46, 43, 0.56);
-  color: #35ffc7;
+  border: 1px solid color-mix(in srgb, #15803d 30%, var(--dash-border));
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
   cursor: help;
 }
 
 .dashboard-status--offline {
-  border-color: rgba(255, 113, 142, 0.48);
-  background: rgba(74, 22, 37, 0.54);
-  color: #ff8ea9;
+  border-color: color-mix(in srgb, #ef4444 30%, var(--dash-border));
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
 }
 
 .dashboard-status__dot {
@@ -3238,17 +3250,11 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-kpi-card {
   position: relative;
   overflow: hidden;
-  border-radius: 0.92rem;
-  border: 1px solid color-mix(in srgb, var(--dash-border) 85%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--dash-panel) 98%, transparent),
-    color-mix(in srgb, var(--dash-panel-2) 98%, transparent)
-  );
-  padding: 0.9rem;
-  box-shadow:
-    0 10px 24px rgba(3, 10, 20, 0.2),
-    inset 0 0 0 1px color-mix(in srgb, var(--dash-tier-ring) 12%, transparent);
+  border-radius: var(--dash-radius);
+  border: 1px solid var(--dash-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%), var(--dash-panel);
+  padding: 0.95rem 1rem;
+  box-shadow: var(--dash-shadow);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -3263,16 +3269,13 @@ html[data-plan-tier='pro'] .dashboard-shell {
   top: 0;
   height: 2px;
   background: linear-gradient(90deg, var(--dash-cyan), var(--dash-violet));
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .dashboard-kpi-card:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--dash-cyan) 55%, var(--dash-border));
-  box-shadow:
-    0 14px 26px rgba(3, 10, 20, 0.32),
-    0 0 20px color-mix(in srgb, var(--dash-cyan) 28%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--dash-tier-ring) 28%, transparent);
+  border-color: color-mix(in srgb, var(--dash-cyan) 35%, transparent);
+  box-shadow: var(--dash-shadow);
 }
 
 .dashboard-kpi-card--bits::before {
@@ -3329,8 +3332,8 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-mobile-toggle__button--active {
   border-color: transparent;
   color: #ffffff;
-  background: linear-gradient(135deg, var(--dash-cyan), var(--dash-violet));
-  box-shadow: 0 0 16px color-mix(in srgb, var(--dash-cyan) 35%, transparent);
+  background: var(--dash-cyan);
+  box-shadow: var(--dash-shadow);
 }
 
 .dashboard-middle {
@@ -3344,15 +3347,9 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-goals,
 .dashboard-history {
   border: 1px solid color-mix(in srgb, var(--dash-border) 84%, transparent);
-  border-radius: 1rem;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--dash-panel) 98%, transparent),
-    color-mix(in srgb, var(--dash-panel-2) 96%, transparent)
-  );
-  box-shadow:
-    0 12px 28px rgba(2, 8, 18, 0.24),
-    inset 0 0 0 1px color-mix(in srgb, var(--dash-tier-ring) 18%, transparent);
+  border-radius: var(--dash-radius);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 42%), var(--dash-panel);
+  box-shadow: var(--dash-shadow);
   min-width: 0;
 }
 
@@ -3379,8 +3376,10 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-goals h2,
 .dashboard-history__head h2 {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
-  font-size: 1.08rem;
+  font-family: var(--dash-font);
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
   color: var(--dash-text);
 }
 
@@ -3413,8 +3412,9 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .dashboard-range-button--active {
   border-color: transparent;
   color: #fff;
-  background: linear-gradient(135deg, var(--dash-cyan), var(--dash-violet));
-  box-shadow: 0 0 16px color-mix(in srgb, var(--dash-cyan) 32%, transparent);
+  background: var(--dash-cyan);
+  color: #fff;
+  box-shadow: var(--dash-shadow);
 }
 
 .dashboard-chart {
@@ -3892,6 +3892,18 @@ html[data-plan-tier='pro'] .dashboard-shell {
   }
 }
 
+
+.dark .dashboard-status {
+  border-color: color-mix(in srgb, #86efac 30%, var(--dash-border));
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+.dark .dashboard-status--offline {
+  border-color: color-mix(in srgb, #fca5a5 35%, var(--dash-border));
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+}
 .placeholder-page {
   border-radius: 1rem;
   border: 1px solid color-mix(in srgb, var(--ring) 28%, transparent);
@@ -3901,7 +3913,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .placeholder-page h1 {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.35rem;
 }
 
@@ -3949,7 +3961,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .login-title {
   margin: 0.35rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.3rem, 2.5vw, 1.9rem);
 }
 
@@ -4871,7 +4883,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
   --digit-glitch-shift-y: 0px;
   position: relative;
   display: inline-block;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(6.5rem, 22vw, 15rem);
   font-weight: 800;
   line-height: 0.84;
@@ -4986,7 +4998,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .not-found-title {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.8rem, 3.4vw, 3rem);
   line-height: 0.98;
   letter-spacing: -0.045em;
@@ -5509,7 +5521,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
   --digit-base-transform: translate3d(0, 0, 0);
   position: relative;
   display: inline-block;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(6.5rem, 21vw, 14rem);
   font-weight: 800;
   line-height: 0.84;
@@ -5624,7 +5636,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .forbidden-title {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.8rem, 3.3vw, 3rem);
   line-height: 0.98;
   letter-spacing: -0.045em;
@@ -5965,7 +5977,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .referrals-page__hero h1 {
   margin: 0.32rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.55rem, 2.7vw, 2.2rem);
 }
 
@@ -6067,7 +6079,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .referrals-summary-card__value {
   display: block;
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1rem, 1.8vw, 1.3rem);
   letter-spacing: -0.03em;
 }
@@ -6201,7 +6213,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .referrals-page__panel-heading h2,
 .referrals-modal__header h2 {
   margin: 0.35rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.12rem;
 }
 
@@ -6428,7 +6440,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 .referral-card__label {
   margin: 0;
   max-width: 16rem;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.2;
@@ -6437,7 +6449,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .referral-card__code {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.05rem, 1.6vw, 1.32rem);
   letter-spacing: 0.18em;
 }
@@ -6521,7 +6533,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .referrals-page__empty-state h3 {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1rem;
 }
 
@@ -6747,7 +6759,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 
 .settings-page__hero h1 {
   margin: 0.4rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.45rem, 2.6vw, 2rem);
 }
 
@@ -7383,7 +7395,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 .commands-header__title {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
   margin: 0;
@@ -8284,7 +8296,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 .commands-card__title {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0;
@@ -8553,7 +8565,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 .modal-title {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 0.5rem;
@@ -8683,7 +8695,7 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 .command-modal-title {
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
@@ -12744,7 +12756,7 @@ canvas {
 
 .tip-card__title {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(2.2rem, 5vw, 3.4rem);
   font-weight: 800;
   line-height: 1.05;
@@ -12929,7 +12941,7 @@ canvas {
   border-radius: 0.9rem;
   background: color-mix(in srgb, var(--surface) 85%, transparent);
   color: var(--text-soft);
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -13025,7 +13037,7 @@ canvas {
   background: transparent;
   border: none;
   padding: 1.1rem 1.5rem 1.1rem 0.5rem;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--text);
@@ -13206,7 +13218,7 @@ canvas {
   padding: 1.1rem 1.4rem;
   color: #fff;
   cursor: pointer;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -13317,7 +13329,7 @@ canvas {
   background: var(--surface);
   border: 4px solid var(--surface);
   color: var(--text);
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 2.1rem;
   font-weight: 850;
   box-shadow: 0 8px 24px rgba(71, 24, 128, 0.16);
@@ -13379,7 +13391,7 @@ canvas {
 
 .tip-streamer__name {
   margin: 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 1.55rem;
   font-weight: 800;
   line-height: 1.1;
@@ -13454,7 +13466,7 @@ canvas {
 .tip-streamer__stat-num {
   font-size: 1.1rem;
   font-weight: 800;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   color: var(--text);
   letter-spacing: -0.01em;
 }
@@ -13474,7 +13486,7 @@ canvas {
 
 .tip-leaderboard__title {
   margin: 0.45rem 0 0;
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: clamp(1.5rem, 2.5vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -13512,7 +13524,7 @@ canvas {
   border-radius: 0.8rem;
   background: color-mix(in srgb, var(--ring) 12%, var(--surface-2));
   color: var(--text-soft);
-  font-family: 'Sora', 'Space Grotesk', sans-serif;
+  font-family: var(--dash-font, 'Plus Jakarta Sans', system-ui, sans-serif);
   font-size: 0.85rem;
   font-weight: 700;
   flex-shrink: 0;

@@ -1,4 +1,9 @@
-<section class="dashboard-shell" [attr.data-plan-tier]="planTier()" aria-live="polite">
+<section
+  class="dashboard-shell"
+  [class.lf--live]="isLive()"
+  [attr.data-plan-tier]="planTier()"
+  aria-live="polite"
+>
     <header class="dashboard-header">
       <app-dashboard-ambient class="dashboard-ambient"></app-dashboard-ambient>
       <div>

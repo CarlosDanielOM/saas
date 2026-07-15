@@ -670,13 +670,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
           nameRotate: 90,
           nameLocation: 'middle',
           nameTextStyle: {
-            color: '#29d9ff',
+            color: '#7c3aed',
             fontSize: isMobile ? 7 : 10,
             fontWeight: 700,
             padding: isMobile ? [0, 0, 0, 0] : [0, 0, 4, 0]
           },
           axisLabel: {
-            color: '#29d9ff',
+            color: '#7c3aed',
             fontSize: isMobile ? 7 : 10,
             formatter: (value: number) => this.formatHourAxisLabel(value)
           },
@@ -714,7 +714,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 1,
           data: bits,
-          lineStyle: { width: 2.5, color: '#ffd166' }
+          lineStyle: { width: 2.5, color: '#f59e0b' }
         },
         {
           name: donationsLabel,
@@ -723,7 +723,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 3,
           data: donations,
-          lineStyle: { width: 2.5, color: '#ff5cf2' }
+          lineStyle: { width: 2.5, color: '#ec4899' }
         },
         {
           name: subsLabel,
@@ -732,7 +732,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 0,
           data: subs,
-          lineStyle: { width: 2.5, color: '#31f7a6' }
+          lineStyle: { width: 2.5, color: '#22c55e' }
         },
         {
           name: hoursLabel,
@@ -741,7 +741,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 2,
           data: hours,
-          lineStyle: { width: 2.5, color: '#29d9ff' }
+          lineStyle: { width: 2.5, color: '#7c3aed' }
         },
         {
           name: avgViewersLabel,
@@ -750,7 +750,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 0,
           data: avgViewers,
-          lineStyle: { width: 2.5, color: '#8f9dff' }
+          lineStyle: { width: 2.5, color: '#8b5cf6' }
         },
         {
           name: followsLabel,
@@ -759,7 +759,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           symbol: 'none',
           yAxisIndex: 0,
           data: follows,
-          lineStyle: { width: 2.5, color: '#5fc8ff' }
+          lineStyle: { width: 2.5, color: '#a78bfa' }
         }
       ]
     };

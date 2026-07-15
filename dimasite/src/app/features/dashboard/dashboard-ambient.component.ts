@@ -56,7 +56,7 @@ export class DashboardAmbientComponent implements AfterViewInit, OnDestroy {
 
     this.cyanCloud = this.createCloud(
       this.qualityService.getMaxParticles(440),
-      '#29d9ff',
+      '#8b5cf6',
       0.042,
       0.64,
       2.6,
@@ -64,7 +64,7 @@ export class DashboardAmbientComponent implements AfterViewInit, OnDestroy {
     );
     this.violetCloud = this.createCloud(
       this.qualityService.getMaxParticles(280),
-      '#8f7bff',
+      '#7c3aed',
       0.03,
       0.56,
       1.9,
