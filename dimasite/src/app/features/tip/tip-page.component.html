@@ -189,9 +189,21 @@
           <div class="lf-streamer__body">
             <div class="lf-streamer__head">
               <div class="lf-streamer__avatar-wrap">
-                <div class="lf-streamer__avatar" aria-hidden="true">
-                  {{ streamerName().charAt(0) }}
-                </div>
+                @if (profileImageUrl() && !avatarBroken()) {
+                  <img
+                    class="lf-streamer__avatar lf-streamer__avatar--img"
+                    [src]="profileImageUrl()!"
+                    [alt]="streamerName() + ' avatar'"
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                    (error)="onAvatarError()"
+                  />
+                } @else {
+                  <div class="lf-streamer__avatar" aria-hidden="true">
+                    {{ avatarLetter() }}
+                  </div>
+                }
                 <span
                   class="lf-streamer__status"
                   [attr.title]="t('tip.sidebar.botActive')"

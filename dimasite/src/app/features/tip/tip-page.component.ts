@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   ArrowRight,
@@ -15,12 +24,12 @@ import {
   User,
   Wallet
 } from 'lucide-angular';
+import { map } from 'rxjs';
 
 import { AnalyticsService } from '../../services/analytics.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface TipLeaderboardEntry {
   rank: number;
@@ -38,6 +47,8 @@ interface TipPageMockConfig {
 const DEFAULT_CURRENCY = 'USD';
 const DEFAULT_MESSAGE_LIMIT = 350;
 const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'MXN'] as const;
+/** Public Twitch profile lookup — always production so tip works under ng serve too. */
+const PROFILE_API = 'https://api.domdimabot.com';
 
 function normalizeCurrency(value: string | undefined): string {
   if (!value) {
@@ -94,12 +105,24 @@ export class TipPageComponent {
   });
 
   private readonly userCurrency = signal<string | null>(null);
+  private readonly twitchDisplayName = signal<string | null>(null);
+  readonly profileImageUrl = signal<string | null>(null);
+  readonly avatarBroken = signal(false);
 
-  readonly routeStreamer = computed(() => getRouteParam(this.route, 'streamer') ?? 'domdima');
+  readonly routeStreamer = toSignal(
+    this.route.paramMap.pipe(map((params) => params.get('streamer') ?? 'domdima')),
+    { initialValue: this.route.snapshot.paramMap.get('streamer') ?? 'domdima' }
+  );
+
   readonly streamerName = computed(() => {
     const configuredName = this.mockConfig().streamerName?.trim();
     if (configuredName) {
       return configuredName;
+    }
+
+    const fromTwitch = this.twitchDisplayName()?.trim();
+    if (fromTwitch) {
+      return fromTwitch;
     }
 
     const rawStreamer = decodeURIComponent(this.routeStreamer()).trim();
@@ -113,6 +136,20 @@ export class TipPageComponent {
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
   });
+
+  readonly avatarLetter = computed(() => {
+    const name = this.streamerName().trim();
+    return name ? name.charAt(0).toUpperCase() : '?';
+  });
+
+  constructor() {
+    effect(() => {
+      const login = this.routeStreamer();
+      untracked(() => {
+        void this.loadStreamerProfile(login);
+      });
+    });
+  }
 
   readonly selectedCurrency = computed(() => {
     const userSelected = this.userCurrency();
@@ -179,6 +216,55 @@ export class TipPageComponent {
       target_streamer: this.routeStreamer()
     });
     this.sessionAuth.startTwitchLogin();
+  }
+
+  onAvatarError(): void {
+    this.avatarBroken.set(true);
+  }
+
+  private async loadStreamerProfile(rawLogin: string): Promise<void> {
+    const login = decodeURIComponent(rawLogin || '').trim().toLowerCase();
+    this.twitchDisplayName.set(null);
+    this.profileImageUrl.set(null);
+    this.avatarBroken.set(false);
+
+    if (!login) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${PROFILE_API}/users?username=${encodeURIComponent(login)}`
+      );
+      if (!response.ok) {
+        return;
+      }
+
+      const body = (await response.json()) as {
+        data?: {
+          display_name?: string;
+          profile_image_url?: string;
+          username?: string;
+        };
+      };
+
+      const data = body.data;
+      if (!data) {
+        return;
+      }
+
+      const displayName = data.display_name?.trim() || data.username?.trim() || null;
+      if (displayName) {
+        this.twitchDisplayName.set(displayName);
+      }
+
+      const imageUrl = data.profile_image_url?.trim();
+      if (imageUrl) {
+        this.profileImageUrl.set(imageUrl);
+      }
+    } catch {
+      // keep letter fallback
+    }
   }
 
   selectPreset(amount: number): void {

@@ -655,6 +655,13 @@
   box-shadow: var(--shadow);
 }
 
+.lf-streamer__avatar--img {
+  display: block;
+  object-fit: cover;
+  background: var(--input-bg);
+  padding: 0;
+}
+
 .lf-streamer__status {
   position: absolute;
   right: -0.1rem;
