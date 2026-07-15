@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
   OnDestroy,
   OnInit,
   computed,
@@ -16,7 +15,6 @@ import {
   Users,
   MessageCircle,
   Zap,
-  Settings,
   Check,
   Moon,
   Sun
@@ -27,11 +25,10 @@ import { SiteStats } from '../../models/site-stats.model';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CheckoutIntentService } from '../../services/checkout-intent.service';
-import { SupportedLanguage, LanguageService } from '../../services/language.service';
+import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { HeroOrbComponent } from './hero-orb.component';
 
 interface SiteAnalyticsSnapshotDto {
   registeredUsers?: unknown;
@@ -59,7 +56,6 @@ interface PricingTier {
   monthlyPriceLabel: string;
   description: string;
   ctaLabel: string;
-  ctaEnabled: boolean;
 }
 
 interface PricingRow {
@@ -72,7 +68,7 @@ interface PricingRow {
 
 @Component({
   selector: 'app-landing-page',
-  imports: [LucideAngularModule, CountUpDirective, HeroOrbComponent],
+  imports: [LucideAngularModule, CountUpDirective],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -81,7 +77,6 @@ interface PricingRow {
   }
 })
 export class LandingPageComponent implements OnInit, OnDestroy {
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly router = inject(Router);
   private readonly analytics = inject(AnalyticsService);
   private readonly linksService = inject(LinksService);
@@ -89,6 +84,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly checkoutIntent = inject(CheckoutIntentService);
   private readonly themeService = inject(ThemeService);
+
+  readonly fallbackAvatar =
+    'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png';
 
   readonly siteStats = signal<SiteStats>({
     registeredUsers: 0,
@@ -99,50 +97,51 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     totalLiveViewer: 0
   });
   readonly isDarkMode = computed(() => this.themeService.isDarkMode());
+  readonly navScrolled = signal(false);
 
   readonly activityIcon = Activity;
   readonly tvIcon = Tv;
   readonly usersIcon = Users;
   readonly messageCircleIcon = MessageCircle;
   readonly zapIcon = Zap;
-  readonly settingsIcon = Settings;
   readonly checkIcon = Check;
   readonly moonIcon = Moon;
   readonly sunIcon = Sun;
 
-  private revealObserver: IntersectionObserver | null = null;
   private analyticsEventSource: EventSource | null = null;
   private analyticsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly analyticsConnectionStatus = signal<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
+  readonly analyticsConnectionStatus = signal<'connected' | 'reconnecting' | 'disconnected'>(
+    'disconnected'
+  );
   private analyticsReconnectAttempts = 0;
   readonly liveChannels = signal<LiveChannelBoardEntry[]>([]);
   readonly activePricingTier = signal<PlanKey>('premium');
   readonly showAllPricingRows = signal(false);
 
+  readonly featuredChannel = computed(() => this.liveChannels()[0] ?? null);
+  readonly otherChannels = computed(() => this.liveChannels().slice(1, 5));
+
   readonly pricingTiers: PricingTier[] = [
     {
       key: 'free',
       label: 'Free',
-      monthlyPriceLabel: '$0/mo',
+      monthlyPriceLabel: '$0',
       description: 'Perfect for streamers getting started with automation and moderation.',
-      ctaLabel: 'Get Started',
-      ctaEnabled: true
+      ctaLabel: 'Get Started'
     },
     {
       key: 'premium',
       label: 'Premium',
-      monthlyPriceLabel: '$6/mo',
+      monthlyPriceLabel: '$6',
       description: 'Best for growing communities that need smarter moderation and deeper controls.',
-      ctaLabel: 'Choose Premium',
-      ctaEnabled: true
+      ctaLabel: 'Choose Premium'
     },
     {
       key: 'pro',
       label: 'Pro',
-      monthlyPriceLabel: '$15/mo',
+      monthlyPriceLabel: '$15',
       description: 'Built for serious creators with higher scale, quality, and AI flexibility.',
-      ctaLabel: 'Choose Pro',
-      ctaEnabled: true
+      ctaLabel: 'Choose Pro'
     }
   ];
 
@@ -229,7 +228,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.fetchAnalyticsSnapshot();
     this.connectAnalyticsStream();
-    this.setupRevealAnimations();
     this.onWindowScroll();
   }
 
@@ -238,7 +236,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     if (this.analyticsReconnectTimer) {
       clearTimeout(this.analyticsReconnectTimer);
     }
-    this.revealObserver?.disconnect();
     this.analyticsConnectionStatus.set('disconnected');
   }
 
@@ -246,18 +243,14 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     return this.languageService.translate(key);
   }
 
-  getCurrentLanguageInfo() {
-    return this.languageService.getLanguageInfo(this.languageService.getCurrentLanguage());
-  }
-
   loginWithTwitch(): void {
     this.checkoutIntent.clearPendingPlan();
     this.analytics.capture('landing_cta_clicked', {
       action: 'login',
-      source: 'landing',
+      source: 'landing'
     });
     this.analytics.capture('auth_started', {
-      source: 'landing',
+      source: 'landing'
     });
     this.beginAuthFlow();
   }
@@ -265,11 +258,11 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   choosePlan(plan: PlanKey): void {
     this.analytics.capture('checkout_intent_selected', {
       source: 'landing_pricing',
-      target_plan: plan,
+      target_plan: plan
     });
     this.analytics.capture('auth_started', {
       source: 'landing_pricing',
-      target_plan: plan,
+      target_plan: plan
     });
 
     if (plan === 'premium' || plan === 'pro') {
@@ -283,17 +276,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
 
   openDiscord(): void {
     this.analytics.capture('discord_opened', {
-      source: 'landing',
+      source: 'landing'
     });
     window.open(this.linksService.getDiscordUrl(), '_blank', 'noopener,noreferrer');
-  }
-
-  toggleLanguage(): void {
-    this.languageService.toggleLanguage();
-  }
-
-  switchLanguage(language: SupportedLanguage): void {
-    this.languageService.setLanguage(language);
   }
 
   getAnalyticsConnectionText(): string {
@@ -305,14 +290,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
       default:
         return this.t('landing.analyticsConnection.disconnected');
     }
-  }
-
-  digitCount(value: number): number {
-    const normalized = Math.abs(Math.floor(value));
-    if (normalized === 0) {
-      return 1;
-    }
-    return String(normalized).length;
   }
 
   toggleTheme(): void {
@@ -335,25 +312,27 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     this.showAllPricingRows.update((value) => !value);
   }
 
+  scrollTo(id: string): void {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  formatViewers(n: number): string {
+    if (n >= 1000) {
+      return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    }
+    return String(n);
+  }
+
   onWindowScroll(): void {
     const scrollY = window.scrollY || window.pageYOffset;
-    const host = this.elementRef.nativeElement;
-
-    const navbar = host.querySelector('.sticky-navbar');
-    if (navbar) {
-      navbar.classList.toggle('scrolled', scrollY > 8);
-    }
-
-    host.querySelectorAll('.parallax-layer').forEach((layer) => {
-      const element = layer as HTMLElement;
-      const depth = Number(element.dataset['depth'] ?? '0.04');
-      element.style.transform = `translate3d(0, ${Math.round(scrollY * depth)}px, 0)`;
-    });
+    this.navScrolled.set(scrollY > 8);
   }
 
   private connectAnalyticsStream(): void {
     this.analyticsEventSource?.close();
-    this.analyticsEventSource = new EventSource(`${environment.DIMA_API}/config/site/analytics/stream`);
+    this.analyticsEventSource = new EventSource(
+      `${environment.DIMA_API}/config/site/analytics/stream`
+    );
     this.analyticsConnectionStatus.set('reconnecting');
 
     this.analyticsEventSource.onopen = () => {
@@ -420,27 +399,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
     this.liveChannels.set(this.normalizeLiveChannels(payload.liveChannels));
   }
 
-  private setupRevealAnimations(): void {
-    this.revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          entry.target.classList.add('reveal-in');
-          entry.target.classList.remove('reveal-init');
-          this.revealObserver?.unobserve(entry.target);
-        });
-      },
-      { threshold: 0.15 }
-    );
-
-    this.elementRef.nativeElement.querySelectorAll('.reveal-init').forEach((element) => {
-      this.revealObserver?.observe(element as Element);
-    });
-  }
-
   private safeNumber(value: unknown): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
@@ -465,8 +423,9 @@ export class LandingPageComponent implements OnInit, OnDestroy {
         const botPlatforms = Array.isArray(raw['botPlatforms'])
           ? raw['botPlatforms']
               .map((platform) => String(platform).toLowerCase())
-              .filter((platform): platform is 'twitch' | 'kick' =>
-                platform === 'twitch' || platform === 'kick'
+              .filter(
+                (platform): platform is 'twitch' | 'kick' =>
+                  platform === 'twitch' || platform === 'kick'
               )
           : [];
 

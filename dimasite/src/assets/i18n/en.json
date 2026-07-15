@@ -1609,14 +1609,17 @@
     "nav": {
       "features": "Features",
       "pricing": "Pricing",
-      "contact": "Contact"
+      "contact": "Contact",
+      "live": "Live"
     },
     "hero": {
-      "title": "Meet DomDimaBot: Your Ultimate Twitch Chat Companion",
-      "description": "Enhance your Twitch streaming experience with DomDimaBot. Engage your audience, moderate chats, and boost your channel's interactivity.",
+      "title": "Proof first.",
+      "description": "DomDimaBot is already on air — AI moderation, automation, analytics, and TTS powering live channels right now.",
       "loginWith": "Login with Twitch",
       "learnMore": "Learn More",
-      "join": "Join Discord"
+      "join": "Join Discord",
+      "kicker": "Live First",
+      "titleAccent": "Product second."
     },
     "analytics": {
       "title": "Analytics",
@@ -1628,13 +1631,13 @@
       "totalLiveViewer": "Total Live Viewer"
     },
     "analyticsConnection": {
-      "connected": "Connected",
-      "reconnecting": "Reconnecting",
-      "disconnected": "Disconnected"
+      "connected": "Live board connected",
+      "reconnecting": "Reconnecting…",
+      "disconnected": "Board offline"
     },
     "features": {
       "title": "Features",
-      "subtitle": "A focused feature spotlight that maps directly to our plan comparison.",
+      "subtitle": "What those live channels are running",
       "aiModerationTitle": "AI-Powered Moderation",
       "aiModerationDescription": "Scale from basic filtering to smart, context-aware moderation for fast chats.",
       "automationTitle": "Commands & Automation",
@@ -1643,7 +1646,7 @@
       "analyticsDescription": "Track user activity, command usage, and engagement trends with deeper retention.",
       "ttsTitle": "TTS & Voice Features",
       "ttsDescription": "From basic TTS to premium human-like voices and pro-level voice capabilities.",
-      "comparePlansCta": "Compare plans"
+      "comparePlansCta": "Compare plans →"
     },
     "pricing": {
       "title": "Pricing",
@@ -1662,14 +1665,28 @@
           "basicAnalytics": "Basic Analytics"
         }
       },
-      "premium": {
-        "title": "Premium",
-        "description": "Premium plan with all features, and more limits."
-      },
+      "premium": "Premium",
       "ai": {
         "title": "AI",
         "description": "More automated chat moderation and AI integration."
-      }
+      },
+      "subtitle": "Join the board at your pace",
+      "mostPopular": "Most popular",
+      "capabilities": "Capabilities",
+      "limits": "Limits & Retentions",
+      "capability": "Capability",
+      "free": "Free",
+      "pro": "Pro",
+      "freePrice": "$0",
+      "premiumPrice": "$6",
+      "proPrice": "$15",
+      "perMonth": "/mo",
+      "freeDesc": "Perfect for streamers getting started with automation and moderation.",
+      "premiumDesc": "Best for growing communities that need smarter moderation and deeper controls.",
+      "proDesc": "Built for serious creators with higher scale, quality, and AI flexibility.",
+      "getStarted": "Get Started",
+      "choosePremium": "Choose Premium",
+      "choosePro": "Choose Pro"
     },
     "liveNow": {
       "title": "Who Is Live Right Now",
@@ -1680,18 +1697,27 @@
         "twitch": "Twitch",
         "kick": "Kick",
         "none": "None"
-      }
+      },
+      "chip": "Live now",
+      "channels": "channels",
+      "emptyHero": "No channels live right now — metrics still update live."
     },
     "callToAction": {
-      "title": "Ready to Elevate Your Twitch Stream?",
-      "description": "Join thousands of streamers who have transformed their channels with DomDimaBot.",
-      "button": "Sign Up with Twitch",
+      "title": "Be the next live tile.",
+      "description": "Connect Twitch and put DomDimaBot on your channel today.",
+      "button": "Login with Twitch",
       "terms": "By signing up, you agree to our Terms & Conditions."
     },
     "footer": {
-      "copyright": "© 2024 DomDimaBot. All rights reserved.",
+      "copyright": "© DomDimaBot · Live First",
       "terms": "Terms of Service",
       "privacy": "Privacy"
+    },
+    "theme": {
+      "dark": "Dark",
+      "light": "Light",
+      "darkActive": "Dark mode active",
+      "lightActive": "Light mode active"
     }
   },
   "landingMocks": {
