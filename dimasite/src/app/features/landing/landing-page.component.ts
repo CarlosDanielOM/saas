@@ -1,7 +1,6 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnDestroy,
   OnInit,
   computed,
   inject,
@@ -19,34 +18,15 @@ import {
   Moon,
   Sun
 } from 'lucide-angular';
-import { environment } from '../../../environments/environment';
 
-import { SiteStats } from '../../models/site-stats.model';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CheckoutIntentService } from '../../services/checkout-intent.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { SiteAnalyticsService } from '../../services/site-analytics.service';
 import { ThemeService } from '../../services/theme.service';
-
-interface SiteAnalyticsSnapshotDto {
-  registeredUsers?: unknown;
-  liveUsers?: unknown;
-  authorizedAccounts?: unknown;
-  totalMessages?: unknown;
-  totalCommands?: unknown;
-  totalLiveViewers?: unknown;
-  liveChannels?: unknown;
-}
-
-interface LiveChannelBoardEntry {
-  channelID: string;
-  channel: string;
-  viewers: number;
-  profileImageUrl: string;
-  botPlatforms: Array<'twitch' | 'kick'>;
-}
 
 type PlanKey = 'free' | 'premium' | 'pro';
 
@@ -76,9 +56,10 @@ interface PricingRow {
     '(window:scroll)': 'onWindowScroll()'
   }
 })
-export class LandingPageComponent implements OnInit, OnDestroy {
+export class LandingPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly analytics = inject(AnalyticsService);
+  private readonly siteAnalytics = inject(SiteAnalyticsService);
   private readonly linksService = inject(LinksService);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
@@ -88,14 +69,11 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   readonly fallbackAvatar =
     'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png';
 
-  readonly siteStats = signal<SiteStats>({
-    registeredUsers: 0,
-    liveUsers: 0,
-    botActiveAccounts: 0,
-    messagesReceived: 0,
-    totalCommands: 0,
-    totalLiveViewer: 0
-  });
+  /** Live production site metrics + channels (SSE → api.domdimabot.com). */
+  readonly siteStats = this.siteAnalytics.siteStats;
+  readonly liveChannels = this.siteAnalytics.liveChannels;
+  readonly analyticsConnectionStatus = this.siteAnalytics.connectionStatus;
+
   readonly isDarkMode = computed(() => this.themeService.isDarkMode());
   readonly navScrolled = signal(false);
 
@@ -108,13 +86,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   readonly moonIcon = Moon;
   readonly sunIcon = Sun;
 
-  private analyticsEventSource: EventSource | null = null;
-  private analyticsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly analyticsConnectionStatus = signal<'connected' | 'reconnecting' | 'disconnected'>(
-    'disconnected'
-  );
-  private analyticsReconnectAttempts = 0;
-  readonly liveChannels = signal<LiveChannelBoardEntry[]>([]);
   readonly activePricingTier = signal<PlanKey>('premium');
   readonly showAllPricingRows = signal(false);
 
@@ -226,17 +197,8 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    this.fetchAnalyticsSnapshot();
-    this.connectAnalyticsStream();
+    this.siteAnalytics.start();
     this.onWindowScroll();
-  }
-
-  ngOnDestroy(): void {
-    this.analyticsEventSource?.close();
-    if (this.analyticsReconnectTimer) {
-      clearTimeout(this.analyticsReconnectTimer);
-    }
-    this.analyticsConnectionStatus.set('disconnected');
   }
 
   t(key: string): string {
@@ -326,119 +288,6 @@ export class LandingPageComponent implements OnInit, OnDestroy {
   onWindowScroll(): void {
     const scrollY = window.scrollY || window.pageYOffset;
     this.navScrolled.set(scrollY > 8);
-  }
-
-  private connectAnalyticsStream(): void {
-    this.analyticsEventSource?.close();
-    this.analyticsEventSource = new EventSource(
-      `${environment.DIMA_API}/config/site/analytics/stream`
-    );
-    this.analyticsConnectionStatus.set('reconnecting');
-
-    this.analyticsEventSource.onopen = () => {
-      this.analyticsReconnectAttempts = 0;
-      this.analyticsConnectionStatus.set('connected');
-    };
-
-    this.analyticsEventSource.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as SiteAnalyticsSnapshotDto;
-      this.applyAnalyticsSnapshot(payload);
-      this.analyticsConnectionStatus.set('connected');
-    };
-
-    this.analyticsEventSource.onerror = () => {
-      this.analyticsEventSource?.close();
-      this.analyticsEventSource = null;
-      this.analyticsReconnectAttempts += 1;
-      this.analyticsConnectionStatus.set(
-        this.analyticsReconnectAttempts > 3 ? 'disconnected' : 'reconnecting'
-      );
-      this.fetchAnalyticsSnapshot();
-      this.scheduleAnalyticsReconnect();
-    };
-  }
-
-  private scheduleAnalyticsReconnect(): void {
-    if (this.analyticsReconnectTimer) {
-      clearTimeout(this.analyticsReconnectTimer);
-    }
-
-    this.analyticsReconnectTimer = setTimeout(() => {
-      this.connectAnalyticsStream();
-    }, 3500);
-  }
-
-  private async fetchAnalyticsSnapshot(): Promise<void> {
-    try {
-      const response = await fetch(`${environment.DIMA_API}/config/site/analytics`);
-      if (!response.ok) {
-        return;
-      }
-
-      const envelope = (await response.json()) as { data?: SiteAnalyticsSnapshotDto };
-      if (!envelope.data) {
-        return;
-      }
-
-      this.applyAnalyticsSnapshot(envelope.data);
-    } catch {
-      // no-op; live stream retries and later snapshots recover state
-    }
-  }
-
-  private applyAnalyticsSnapshot(payload: SiteAnalyticsSnapshotDto): void {
-    this.siteStats.set({
-      registeredUsers: this.safeNumber(payload.registeredUsers),
-      liveUsers: this.safeNumber(payload.liveUsers),
-      botActiveAccounts: this.safeNumber(payload.authorizedAccounts),
-      messagesReceived: this.safeNumber(payload.totalMessages),
-      totalCommands: this.safeNumber(payload.totalCommands),
-      totalLiveViewer: this.safeNumber(payload.totalLiveViewers)
-    });
-
-    this.liveChannels.set(this.normalizeLiveChannels(payload.liveChannels));
-  }
-
-  private safeNumber(value: unknown): number {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return 0;
-    }
-
-    return Math.max(0, Math.floor(parsed));
-  }
-
-  private normalizeLiveChannels(value: unknown): LiveChannelBoardEntry[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    return value
-      .map((entry) => {
-        if (!entry || typeof entry !== 'object') {
-          return null;
-        }
-
-        const raw = entry as Record<string, unknown>;
-        const botPlatforms = Array.isArray(raw['botPlatforms'])
-          ? raw['botPlatforms']
-              .map((platform) => String(platform).toLowerCase())
-              .filter(
-                (platform): platform is 'twitch' | 'kick' =>
-                  platform === 'twitch' || platform === 'kick'
-              )
-          : [];
-
-        return {
-          channelID: String(raw['channelID'] || ''),
-          channel: String(raw['channel'] || raw['channelID'] || '').trim(),
-          viewers: this.safeNumber(raw['viewers']),
-          profileImageUrl: String(raw['profileImageUrl'] || ''),
-          botPlatforms
-        };
-      })
-      .filter((entry): entry is LiveChannelBoardEntry => Boolean(entry && entry.channel))
-      .sort((a, b) => b.viewers - a.viewers);
   }
 
   private beginAuthFlow(): void {
