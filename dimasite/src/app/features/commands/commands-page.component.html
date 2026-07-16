@@ -1,537 +1,464 @@
-<div class="commands-page">
-  <!-- Header -->
-  <header class="commands-header">
-    <div class="commands-header__content">
-      <h1 class="commands-header__title">{{ t('commands.heading') }}</h1>
-      <div class="commands-header__underline"></div>
-    </div>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('commands.heading')">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">{{ t('commands.heading') }}</p>
+        <h1 class="lf-title">
+          {{ t('commands.heading') }}
+          <span>{{ planTier() }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('commands.placeholder.public') }}</p>
 
-    <div class="commands-header__actions">
-      <button type="button" class="commands-btn commands-btn--secondary" (click)="hardRefreshCommands()"
-              [disabled]="loading()">
-        @if (loading()) {
-          <span class="commands-refresh-spinner"></span>
-        } @else {
-          {{ t('commands.refresh') }}
-        }
-      </button>
-
-      <button type="button" class="commands-btn commands-btn--primary" (click)="openCreateModal()">
-        {{ t('commands.addCommand') }}
-      </button>
-
-      <div class="commands-view-toggle">
-        <button type="button"
-                class="commands-view-toggle__btn"
-                [class.commands-view-toggle__btn--active]="viewMode() === 'table'"
-                (click)="setViewMode('table')"
-                [attr.aria-label]="t('commands.viewTable')">
-          <lucide-icon [name]="listIcon" class="commands-view-toggle__icon"></lucide-icon>
-        </button>
-        <button type="button"
-                class="commands-view-toggle__btn"
-                [class.commands-view-toggle__btn--active]="viewMode() === 'card'"
-                (click)="setViewMode('card')"
-                [attr.aria-label]="t('commands.viewCard')">
-          <lucide-icon [name]="gridIcon" class="commands-view-toggle__icon"></lucide-icon>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Error State -->
-  @if (showLoadError()) {
-    <div class="commands-error">
-      <p>{{ error() }}</p>
-      <button type="button" class="commands-btn commands-btn--secondary" (click)="hardRefreshCommands()">
-        {{ t('common.retry') }}
-      </button>
-    </div>
-  }
-
-  <!-- Table View -->
-  @if (viewMode() === 'table' && !showInitialLoading() && !showLoadError()) {
-    <!-- Search Bar -->
-    <section class="commands-search">
-      <div class="search-box">
-        <svg class="search-box__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <input
-          type="text"
-          class="search-box__input"
-          [placeholder]="t('commands.search.placeholder')"
-          [value]="searchInput()"
-          (input)="onSearchInput($any($event.target).value)"
-          (keyup.enter)="onSearchSubmit()"
-        />
-        @if (searchInput()) {
-          <button type="button" class="search-box__clear" (click)="onClearSearch()">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+            {{ t('commands.addCommand') }}
           </button>
-        }
-        <button type="button" class="search-box__button" (click)="onSearchSubmit()">
-          @if (isSearching()) {
-            <span class="search-spinner"></span>
-          } @else {
-            {{ t('commands.search.searchButton') }}
+          <button
+            type="button"
+            class="lf-btn"
+            (click)="hardRefreshCommands()"
+            [disabled]="loading()"
+          >
+            {{ t('commands.refresh') }}
+          </button>
+        </div>
+
+        <p class="lf-feed lf-feed--on">
+          {{ streamerLabel() }}
+          @if (channelID()) {
+            · {{ channelID() }}
           }
-        </button>
-      </div>
-      @if (searchHint()) {
-        <p class="commands-search__hint">{{ searchHint() }}</p>
-      }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            {{ planTier() }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('commands.placeholder.status') }}</span>
+        </div>
+        <p class="lf-label">{{ t('commands.heading') }}</p>
+        <p class="lf-spotlight__rule">
+          {{ totalCommands() }} {{ t('commands.heading').toLowerCase() }} ·
+          {{ enabledCommands() }} {{ t('common.statusOn').toLowerCase() }} ·
+          {{ reservedCommands() }} {{ t('commands.placeholder.reservedCommand').toLowerCase() }}
+        </p>
+        <div class="lf-spotlight__meta-row">
+          <div>
+            <p class="lf-label">{{ t('common.statusOn') }}</p>
+            <p class="lf-value lf-value--sm">{{ enabledCommands() }}</p>
+          </div>
+          <div>
+            <p class="lf-label">{{ t('common.statusOff') }}</p>
+            <p class="lf-value lf-value--sm">{{ disabledCommands() }}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">{{ t('commands.heading') }}</p>
+        <p class="lf-value">{{ totalCommands() }}</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">{{ t('common.statusOn') }}</p>
+        <p class="lf-value">{{ enabledCommands() }}</p>
+      </article>
+      <article class="lf-tile lf-metric lf-metric--accent">
+        <p class="lf-label">{{ t('common.statusOff') }}</p>
+        <p class="lf-value">{{ disabledCommands() }}</p>
+      </article>
+      <article class="lf-tile lf-metric">
+        <p class="lf-label">{{ t('commands.placeholder.reservedCommand') }}</p>
+        <p class="lf-value">{{ reservedCommands() }}</p>
+      </article>
     </section>
 
-    <!-- Table -->
-    <div class="commands-table-container">
-      <div class="commands-table-wrapper">
-        <table class="commands-table">
-          <colgroup>
-            <col class="w-[15%]" />
-            <col class="w-[12%]" />
-            <col class="w-[23%]" />
-            <col class="w-[15%]" />
-            <col class="w-[10%]" />
-            <col class="w-[10%]" />
-            <col class="w-[7%]" />
-            <col class="w-[8%]" />
-          </colgroup>
+    <section class="lf-section" [attr.aria-label]="t('commands.heading')">
+      <div class="lf-section__head">
+        <div>
+          <p class="lf-kicker">{{ t('commands.heading') }}</p>
+          <h2 class="lf-h2">{{ t('commands.heading') }}</h2>
+          @if (searchHint()) {
+            <p class="lf-copy lf-copy--tight">{{ searchHint() }}</p>
+          }
+        </div>
+        <div class="lf-section__tools">
+          <label class="lf-search">
+            <span class="visually-hidden">{{ t('commands.search.placeholder') }}</span>
+            <input
+              type="search"
+              [placeholder]="t('commands.search.placeholder')"
+              [value]="searchInput()"
+              (input)="onSearchInput($any($event.target).value)"
+              (keyup.enter)="onSearchSubmit()"
+            />
+          </label>
+          <div class="lf-view">
+            <button
+              type="button"
+              class="lf-view__btn"
+              [class.lf-view__btn--active]="viewMode() === 'table'"
+              (click)="setViewMode('table')"
+              [attr.aria-label]="t('commands.viewTable')"
+            >
+              {{ t('commands.viewTable') }}
+            </button>
+            <button
+              type="button"
+              class="lf-view__btn"
+              [class.lf-view__btn--active]="viewMode() === 'card'"
+              (click)="setViewMode('card')"
+              [attr.aria-label]="t('commands.viewCard')"
+            >
+              {{ t('commands.viewCard') }}
+            </button>
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
+            {{ t('commands.addCommand') }}
+          </button>
+        </div>
+      </div>
 
-          <thead>
-            <tr>
-              <th class="sortable" (click)="onSort('name')">
+      @if (showInitialLoading()) {
+        <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
+      } @else if (showLoadError()) {
+        <div class="lf-tile lf-empty lf-empty--warn">
+          <p>{{ error() }}</p>
+          <button type="button" class="lf-btn" (click)="hardRefreshCommands()">
+            {{ t('common.retry') }}
+          </button>
+        </div>
+      } @else if (viewMode() === 'table') {
+        <div class="lf-tile lf-matrix">
+          <div class="lf-matrix__scroller">
+            <div class="lf-matrix__row lf-matrix__row--head lf-matrix__row--cmds">
+              <span class="sortable" (click)="onSort('name')">
                 {{ t('commands.placeholder.name') }} {{ getSortIcon('name') }}
-              </th>
-              <th class="sortable" (click)="onSort('cmd')">
+              </span>
+              <span class="sortable" (click)="onSort('cmd')">
                 {{ t('commands.placeholder.command') }} {{ getSortIcon('cmd') }}
-              </th>
-              <th>{{ t('commands.placeholder.function') }}</th>
-              <th>{{ t('commands.placeholder.description') }}</th>
-              <th class="sortable" (click)="onSort('cooldown')">
+              </span>
+              <span>{{ t('commands.placeholder.function') }}</span>
+              <span class="sortable" (click)="onSort('cooldown')">
                 {{ t('commands.placeholder.cooldown') }} {{ getSortIcon('cooldown') }}
-              </th>
-              <th class="sortable" (click)="onSort('userLevel')">
+              </span>
+              <span class="sortable" (click)="onSort('userLevel')">
                 {{ t('commands.placeholder.userLevel') }} {{ getSortIcon('userLevel') }}
-              </th>
-              <th class="sortable" (click)="onSort('enabled')">
+              </span>
+              <span class="sortable" (click)="onSort('enabled')">
                 {{ t('commands.placeholder.status') }} {{ getSortIcon('enabled') }}
-              </th>
-              <th>{{ t('commands.placeholder.actions') }}</th>
-            </tr>
-          </thead>
+              </span>
+              <span>{{ t('commands.placeholder.actions') }}</span>
+            </div>
 
-          <tbody>
             @if (paginatedCommands().length === 0) {
-              <tr>
-                <td colspan="8" class="commands-table__empty">
-                  <div class="commands-empty-state">
-                    <p>{{ t('commands.placeholder.noCommandsFound') }}</p>
-                    <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()">
-                      {{ t('commands.refresh') }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              <div class="lf-matrix__row lf-matrix__row--cmds">
+                <span class="lf-empty-inline">{{ t('commands.placeholder.noCommandsFound') }}</span>
+              </div>
             }
 
             @for (command of paginatedCommands(); track commandTrackId(command)) {
-              <tr class="commands-table__row"
-                  [class.commands-table__row--pending]="isPending(commandTrackId(command))"
-                  [class.commands-table__row--ghost]="command.optimistic || isPendingDelete(commandTrackId(command))"
-                  [class.commands-table__row--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                  [class.commands-table__row--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
-                  [class.commands-table__row--disabled]="command.enabled === false"
-                  (keydown)="onKeyDown($event)">
-
-                <!-- Name -->
-                <td (dblclick)="startCellEdit(command.id || command._id!, 'name', command.name)"
-                    class="commands-table__cell--editable">
-                  @if (isEditingCell(command.id || command._id!, 'name')) {
-                    <input type="text"
-                           class="commands-input commands-input--inline"
-                           [value]="getEditingValue(command.id || command._id!, 'name')"
-                           (input)="updateEditingValue(command.id || command._id!, 'name', $any($event.target).value)"
-                           (keydown.enter)="saveCellEdit()"
-                           (keydown.escape)="cancelEdit()"
-                           (click)="$event.stopPropagation()">
+              <div
+                class="lf-matrix__row lf-matrix__row--cmds"
+                [class.lf-matrix__row--off]="command.enabled === false"
+                [class.lf-matrix__row--pending]="isPending(commandTrackId(command))"
+                [class.lf-matrix__row--optimistic]="command.optimistic || isPendingDelete(commandTrackId(command))"
+                [class.lf-matrix__row--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
+                [class.lf-matrix__row--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
+              >
+                <span class="lf-matrix__primary">
+                  @if (isEditingCell(commandTrackId(command), 'name')) {
+                    <input
+                      type="text"
+                      class="lf-inline-edit"
+                      [value]="getEditingValue(commandTrackId(command), 'name')"
+                      (input)="updateEditingValue(commandTrackId(command), 'name', $any($event.target).value)"
+                      (keydown.enter)="saveCellEdit()"
+                      (keydown.escape)="cancelEdit()"
+                      (click)="$event.stopPropagation()"
+                    />
                   } @else {
-                    <span class="commands-table__text">{{ command.name }}</span>
+                    <strong
+                      (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
+                    >{{ command.name }}</strong>
                   }
-                </td>
+                  @if (command.reserved) {
+                    <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
+                  }
+                </span>
 
-                <!-- Command -->
-                <td (dblclick)="startCellEdit(command.id || command._id!, 'cmd', command.cmd)"
-                    class="commands-table__cell--editable commands-table__cell--mono">
-                  @if (isEditingCell(command.id || command._id!, 'cmd')) {
-                    <div class="commands-input-prefix">
-                      <span>!</span>
-                      <input type="text"
-                             class="commands-input commands-input--inline"
-                             [value]="getEditingValue(command.id || command._id!, 'cmd')"
-                             (input)="updateEditingValue(command.id || command._id!, 'cmd', $any($event.target).value)"
-                             (keydown.enter)="saveCellEdit()"
-                             (keydown.escape)="cancelEdit()"
-                             (click)="$event.stopPropagation()">
-                    </div>
+                <span>
+                  @if (isEditingCell(commandTrackId(command), 'cmd')) {
+                    <input
+                      type="text"
+                      class="lf-inline-edit"
+                      [value]="getEditingValue(commandTrackId(command), 'cmd')"
+                      (input)="updateEditingValue(commandTrackId(command), 'cmd', $any($event.target).value)"
+                      (keydown.enter)="saveCellEdit()"
+                      (keydown.escape)="cancelEdit()"
+                      (click)="$event.stopPropagation()"
+                    />
                   } @else {
-                    <span class="commands-table__text">!{{ command.cmd }}</span>
+                    <code
+                      class="lf-code"
+                      (dblclick)="startCellEdit(commandTrackId(command), 'cmd', command.cmd)"
+                    >!{{ command.cmd }}</code>
                   }
-                </td>
+                </span>
 
-                <!-- Function/Message -->
-                <td class="commands-table__cell--mono">
-                  <span class="commands-table__text">
-                    @if (command.reserved) {
-                      {{ t('commands.placeholder.reservedCommand') }}
-                    } @else {
-                      {{ command.message || t('commands.placeholder.public') }}
-                    }
-                  </span>
-                </td>
-
-                <!-- Description -->
-                <td>
-                  <span class="commands-table__text">
-                    {{ command.description || t('common.notAvailable') }}
-                  </span>
-                </td>
-
-                <!-- Cooldown -->
-                <td (dblclick)="startCellEdit(command.id || command._id!, 'cooldown', command.cooldown)"
-                    class="commands-table__cell--editable">
-                  @if (isEditingCell(command.id || command._id!, 'cooldown')) {
-                    <div class="commands-input-suffix">
-                      <input type="number"
-                             class="commands-input commands-input--inline commands-input--small"
-                             min="5"
-                             max="60"
-                             [value]="getEditingValue(command.id || command._id!, 'cooldown')"
-                             (input)="updateEditingValue(command.id || command._id!, 'cooldown', +$any($event.target).value || 10)"
-                             (keydown.enter)="saveCellEdit()"
-                             (keydown.escape)="cancelEdit()"
-                             (click)="$event.stopPropagation()">
-                      <span>s</span>
-                    </div>
+                <span class="lf-clip">
+                  @if (command.reserved) {
+                    {{ t('commands.placeholder.reservedCommand') }}
                   } @else {
-                    <span class="commands-table__text">{{ command.cooldown }}s</span>
+                    {{ command.message || command.description || '—' }}
                   }
-                </td>
+                </span>
 
-                <!-- User Level -->
-                <td (dblclick)="startCellEdit(command.id || command._id!, 'userLevel', command.userLevel)"
-                    class="commands-table__cell--editable">
-                  @if (isEditingCell(command.id || command._id!, 'userLevel')) {
-                    <select class="commands-select commands-select--inline"
-                            [value]="getEditingValue(command.id || command._id!, 'userLevel')"
-                            (change)="updateEditingValue(command.id || command._id!, 'userLevel', +$any($event.target).value); saveCellEdit()"
-                            (keydown.escape)="cancelEdit()"
-                            (click)="$event.stopPropagation()">
-                      @for (level of [1,2,3,4,5,6,7,8,9,10]; track level) {
-                        <option [value]="level">
-                          {{ level }} - {{ t(getUserLevelName(level)) }}
-                        </option>
+                <span>
+                  @if (isEditingCell(commandTrackId(command), 'cooldown')) {
+                    <input
+                      type="number"
+                      class="lf-inline-edit"
+                      min="5"
+                      max="60"
+                      [value]="getEditingValue(commandTrackId(command), 'cooldown')"
+                      (input)="updateEditingValue(commandTrackId(command), 'cooldown', +$any($event.target).value || 10)"
+                      (keydown.enter)="saveCellEdit()"
+                      (keydown.escape)="cancelEdit()"
+                      (click)="$event.stopPropagation()"
+                    />
+                  } @else {
+                    <span (dblclick)="startCellEdit(commandTrackId(command), 'cooldown', command.cooldown)">
+                      {{ command.cooldown }}s
+                    </span>
+                  }
+                </span>
+
+                <span>
+                  @if (isEditingCell(commandTrackId(command), 'userLevel')) {
+                    <select
+                      class="lf-inline-edit"
+                      [value]="getEditingValue(commandTrackId(command), 'userLevel')"
+                      (change)="updateEditingValue(commandTrackId(command), 'userLevel', +$any($event.target).value); saveCellEdit()"
+                      (keydown.escape)="cancelEdit()"
+                      (click)="$event.stopPropagation()"
+                    >
+                      @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
+                        <option [value]="level">{{ level }} - {{ t(getUserLevelName(level)) }}</option>
                       }
                     </select>
                   } @else {
-                    <span class="commands-table__text">
+                    <span (dblclick)="startCellEdit(commandTrackId(command), 'userLevel', command.userLevel)">
                       {{ command.userLevel }} - {{ t(command.userLevelName) }}
                     </span>
                   }
-                </td>
+                </span>
 
-                <!-- Status -->
-                <td>
-                  <span class="commands-status"
-                        [class.commands-status--enabled]="command.enabled !== false"
-                        [class.commands-status--disabled]="command.enabled === false"
-                        [class.commands-status--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                        [class.commands-status--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'">
+                <span>
+                  <span
+                    class="lf-chip"
+                    [class.lf-chip--live]="command.enabled !== false"
+                    [class.lf-chip--muted]="command.enabled === false"
+                  >
                     {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
                   </span>
-                </td>
+                </span>
 
-                <!-- Actions -->
-                <td class="commands-table__actions">
+                <span class="lf-actions-cell">
                   @if (isPending(commandTrackId(command))) {
-                    <div class="commands-pending-chip" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
-                      <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
-                    </div>
+                    <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
                   } @else {
-                    <div class="commands-actions">
-                      <button type="button"
-                              class="commands-action-btn commands-action-btn--edit"
-                              [attr.aria-label]="t('common.edit')"
-                              (click)="openEditModal(command)">
-                        <lucide-icon [name]="editIcon" class="commands-action-btn__icon"></lucide-icon>
-                        <span class="commands-action-btn__text">{{ t('common.edit') }}</span>
+                    <button type="button" class="lf-text-link" (click)="openEditModal(command)">
+                      {{ t('common.edit') }}
+                    </button>
+                    @if (command.enabled === false) {
+                      <button type="button" class="lf-text-link" (click)="enableCommand(commandTrackId(command))">
+                        {{ t('common.enable') }}
                       </button>
-
-                      @if (command.enabled === false) {
-                        <button type="button"
-                                class="commands-action-btn commands-action-btn--enable"
-                                [attr.aria-label]="t('common.enable')"
-                                (click)="enableCommand(command.id || command._id!)">
-                          <lucide-icon [name]="powerIcon" class="commands-action-btn__icon"></lucide-icon>
-                          <span class="commands-action-btn__text">{{ t('common.enable') }}</span>
-                        </button>
-                      } @else {
-                        <button type="button"
-                                class="commands-action-btn commands-action-btn--disable"
-                                [attr.aria-label]="t('common.disable')"
-                                (click)="disableCommand(command.id || command._id!)">
-                          <lucide-icon [name]="powerOffIcon" class="commands-action-btn__icon"></lucide-icon>
-                          <span class="commands-action-btn__text">{{ t('common.disable') }}</span>
-                        </button>
-                      }
-
-                      <button type="button"
-                              class="commands-action-btn commands-action-btn--delete"
-                              [disabled]="command.reserved || isPending(commandTrackId(command))"
-                              [attr.aria-label]="t('common.delete')"
-                              (click)="command.reserved ? null : promptDeleteCommand(command)">
-                        <lucide-icon [name]="trashIcon" class="commands-action-btn__icon"></lucide-icon>
-                        <span class="commands-action-btn__text">{{ t('common.delete') }}</span>
+                    } @else {
+                      <button type="button" class="lf-text-link" (click)="disableCommand(commandTrackId(command))">
+                        {{ t('common.disable') }}
                       </button>
-                    </div>
+                    }
+                    <button
+                      type="button"
+                      class="lf-text-link"
+                      [disabled]="command.reserved || isPending(commandTrackId(command))"
+                      (click)="command.reserved ? null : promptDeleteCommand(command)"
+                    >
+                      {{ t('common.delete') }}
+                    </button>
                   }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      @if (totalPages() > 1) {
-        <div class="commands-pagination">
-          <div class="commands-pagination__info">
-            <span>{{ t('common.show') }}</span>
-            <select class="commands-select commands-select--small"
-                    [value]="itemsPerPage()"
-                    (change)="onItemsPerPageChange($event)">
-              @for (option of itemsPerPageOptions; track option) {
-                <option [value]="option">{{ option }}</option>
-              }
-            </select>
-            <span>{{ t('common.entries') }}</span>
-          </div>
-
-          <nav class="commands-pagination__nav" aria-label="Pagination">
-            <button type="button"
-                    class="commands-pagination__btn"
-                    [disabled]="currentPage() === 1"
-                    (click)="changePage(currentPage() - 1)">
-              {{ t('common.previous') }}
-            </button>
-
-            @for (page of pages(); track page) {
-              <button type="button"
-                      class="commands-pagination__btn"
-                      [class.commands-pagination__btn--active]="currentPage() === page"
-                      (click)="changePage(page)">
-                {{ page }}
-              </button>
-            }
-
-            <button type="button"
-                    class="commands-pagination__btn"
-                    [disabled]="currentPage() === totalPages()"
-                    (click)="changePage(currentPage() + 1)">
-              {{ t('common.next') }}
-            </button>
-          </nav>
-        </div>
-      }
-    </div>
-  }
-
-  <!-- Card View -->
-  @if (viewMode() === 'card' && !showInitialLoading() && !showLoadError()) {
-    <!-- Floating Search Bar for Card View -->
-    <div class="commands-card-search">
-      <div class="search-box">
-        <svg class="search-box__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <input
-          type="text"
-          class="search-box__input"
-          [placeholder]="t('commands.search.placeholder')"
-          [value]="searchInput()"
-          (input)="onSearchInput($any($event.target).value)"
-          (keyup.enter)="onSearchSubmit()"
-        />
-        @if (searchInput()) {
-          <button type="button" class="search-box__clear" (click)="onClearSearch()">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        }
-        <button type="button" class="search-box__button" (click)="onSearchSubmit()">
-          {{ t('commands.search.searchButton') }}
-        </button>
-      </div>
-    </div>
-
-    @if (searchHint()) {
-      <p class="commands-search__hint">{{ searchHint() }}</p>
-    }
-
-    <!-- Cards Grid -->
-    <div class="commands-cards">
-      @if (filteredCommands().length === 0) {
-        <div class="commands-card commands-card--empty">
-          <div class="commands-card__header">
-            <div class="commands-card__gradient"></div>
-            <h3 class="commands-card__title">{{ t('commands.heading') }}</h3>
-          </div>
-          <div class="commands-card__body">
-            <p class="commands-card__value">{{ t('commands.placeholder.noCommandsFound') }}</p>
-          </div>
-          <div class="commands-card__footer">
-            <button type="button" class="commands-btn commands-btn--secondary commands-btn--small" (click)="hardRefreshCommands()">
-              {{ t('commands.refresh') }}
-            </button>
-          </div>
-        </div>
-      }
-
-      @for (command of filteredCommands(); track commandTrackId(command)) {
-        <div class="commands-card"
-             [class.commands-card--pending]="isPending(commandTrackId(command))"
-             [class.commands-card--ghost]="command.optimistic || isPendingDelete(commandTrackId(command))"
-             [class.commands-card--synced]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-             [class.commands-card--failed]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
-             [class.commands-card--disabled]="command.enabled === false">
-
-          <div class="commands-card__header">
-            <div class="commands-card__gradient"></div>
-            <div class="commands-card__header-content">
-              <h3 class="commands-card__title">{{ command.name }}</h3>
-              <span class="commands-status"
-                    [class.commands-status--enabled]="command.enabled !== false"
-                    [class.commands-status--disabled]="command.enabled === false">
-                {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-              </span>
-            </div>
-          </div>
-
-          <div class="commands-card__body">
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.command') }}</label>
-              <p class="commands-card__value commands-card__value--mono">!{{ command.cmd }}</p>
-            </div>
-
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.function') }}</label>
-              <p class="commands-card__value commands-card__value--mono">
-                @if (command.reserved) {
-                  {{ t('commands.placeholder.reservedCommand') }}
-                } @else {
-                  {{ command.message || t('commands.placeholder.public') }}
-                }
-              </p>
-            </div>
-
-            <div class="commands-card__field">
-              <label>{{ t('commands.placeholder.description') }}</label>
-              <p class="commands-card__value">
-                {{ command.description || t('common.notAvailable') }}
-              </p>
-            </div>
-
-            <div class="commands-card__row">
-              <div class="commands-card__field commands-card__field--half">
-                <label>{{ t('commands.placeholder.cooldown') }}</label>
-                <p class="commands-card__value">{{ command.cooldown }}s</p>
-              </div>
-
-              <div class="commands-card__field commands-card__field--half">
-                <label>{{ t('commands.placeholder.userLevel') }}</label>
-                <p class="commands-card__value">
-                  {{ command.userLevel }} - {{ t(command.userLevelName) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="commands-card__footer">
-            @if (isPending(commandTrackId(command))) {
-              <div class="commands-pending-chip commands-pending-chip--card" [attr.aria-label]="getPendingLabel(commandTrackId(command))">
-                <span>{{ getPendingLabel(commandTrackId(command)) }}</span>
-                <span class="commands-pending-dots" aria-hidden="true">
-                  <span>.</span><span>.</span><span>.</span>
                 </span>
               </div>
-            } @else {
-              <div class="commands-card-actions">
-                <button type="button"
-                        class="commands-card-action-btn"
-                        (click)="openEditModal(command)">
-                  <lucide-icon [name]="editIcon" class="commands-card-action-btn__icon"></lucide-icon>
-                  <span class="commands-card-action-btn__text">{{ t('common.edit') }}</span>
-                </button>
-
-                @if (command.enabled === false) {
-                  <button type="button"
-                          class="commands-card-action-btn commands-card-action-btn--enable"
-                          (click)="enableCommand(command.id || command._id!)">
-                    <lucide-icon [name]="powerIcon" class="commands-card-action-btn__icon"></lucide-icon>
-                    <span class="commands-card-action-btn__text">{{ t('common.enable') }}</span>
-                  </button>
-                } @else {
-                  <button type="button"
-                          class="commands-card-action-btn commands-card-action-btn--disable"
-                          (click)="disableCommand(command.id || command._id!)">
-                    <lucide-icon [name]="powerOffIcon" class="commands-card-action-btn__icon"></lucide-icon>
-                    <span class="commands-card-action-btn__text">{{ t('common.disable') }}</span>
-                  </button>
-                }
-
-                <button type="button"
-                        class="commands-card-action-btn commands-card-action-btn--delete"
-                        [disabled]="command.reserved || isPending(commandTrackId(command))"
-                        (click)="command.reserved ? null : promptDeleteCommand(command)">
-                  <lucide-icon [name]="trashIcon" class="commands-card-action-btn__icon"></lucide-icon>
-                  <span class="commands-card-action-btn__text">{{ t('common.delete') }}</span>
-                </button>
-              </div>
             }
           </div>
+
+          @if (totalPages() > 1) {
+            <div class="lf-pager">
+              <div class="lf-pager__meta">
+                <span>{{ t('common.show') }}</span>
+                <select class="lf-inline-edit" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                  @for (option of itemsPerPageOptions; track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+                <span>{{ t('common.entries') }}</span>
+              </div>
+              <nav class="lf-pager__pages" aria-label="Pagination">
+                <button
+                  type="button"
+                  class="lf-pager__btn"
+                  [disabled]="currentPage() === 1"
+                  (click)="changePage(currentPage() - 1)"
+                >
+                  {{ t('common.previous') }}
+                </button>
+                @for (page of pages(); track page) {
+                  <button
+                    type="button"
+                    class="lf-pager__btn"
+                    [class.lf-pager__btn--active]="currentPage() === page"
+                    (click)="changePage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="lf-pager__btn"
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="changePage(currentPage() + 1)"
+                >
+                  {{ t('common.next') }}
+                </button>
+              </nav>
+            </div>
+          }
         </div>
+      } @else {
+        @if (paginatedCommands().length === 0) {
+          <div class="lf-tile lf-empty">{{ t('commands.placeholder.noCommandsFound') }}</div>
+        } @else {
+          <div class="lf-bento lf-bento--cmds">
+            @for (command of paginatedCommands(); track commandTrackId(command)) {
+              <article
+                class="lf-tile lf-cmd"
+                [class.lf-cmd--off]="command.enabled === false"
+                [class.lf-cmd--pending]="isPending(commandTrackId(command))"
+                [class.lf-cmd--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
+                [class.lf-cmd--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
+              >
+                <div class="lf-cmd__top">
+                  <code class="lf-code">!{{ command.cmd }}</code>
+                  <span
+                    class="lf-chip"
+                    [class.lf-chip--live]="command.enabled !== false"
+                    [class.lf-chip--muted]="command.enabled === false"
+                  >
+                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
+                  </span>
+                </div>
+                <h3 class="lf-cmd__name">
+                  {{ command.name }}
+                  @if (command.reserved) {
+                    <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
+                  }
+                </h3>
+                <p class="lf-cmd__desc">
+                  @if (command.reserved) {
+                    {{ t('commands.placeholder.reservedCommand') }}
+                  } @else {
+                    {{ command.message || command.description || '—' }}
+                  }
+                </p>
+                <div class="lf-cmd__meta">
+                  <span>{{ command.cooldown }}s</span>
+                  <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                </div>
+                <div class="lf-actions-cell">
+                  @if (isPending(commandTrackId(command))) {
+                    <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
+                  } @else {
+                    <button type="button" class="lf-text-link" (click)="openEditModal(command)">
+                      {{ t('common.edit') }}
+                    </button>
+                    @if (command.enabled === false) {
+                      <button type="button" class="lf-text-link" (click)="enableCommand(commandTrackId(command))">
+                        {{ t('common.enable') }}
+                      </button>
+                    } @else {
+                      <button type="button" class="lf-text-link" (click)="disableCommand(commandTrackId(command))">
+                        {{ t('common.disable') }}
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="lf-text-link"
+                      [disabled]="command.reserved"
+                      (click)="command.reserved ? null : promptDeleteCommand(command)"
+                    >
+                      {{ t('common.delete') }}
+                    </button>
+                  }
+                </div>
+              </article>
+            }
+          </div>
+
+          @if (totalPages() > 1) {
+            <div class="lf-pager">
+              <nav class="lf-pager__pages" aria-label="Pagination">
+                <button
+                  type="button"
+                  class="lf-pager__btn"
+                  [disabled]="currentPage() === 1"
+                  (click)="changePage(currentPage() - 1)"
+                >
+                  {{ t('common.previous') }}
+                </button>
+                @for (page of pages(); track page) {
+                  <button
+                    type="button"
+                    class="lf-pager__btn"
+                    [class.lf-pager__btn--active]="currentPage() === page"
+                    (click)="changePage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="lf-pager__btn"
+                  [disabled]="currentPage() === totalPages()"
+                  (click)="changePage(currentPage() + 1)"
+                >
+                  {{ t('common.next') }}
+                </button>
+              </nav>
+            </div>
+          }
+        }
       }
-    </div>
-  }
+    </section>
+  </main>
 
-  <!-- Loading State -->
-  @if (showInitialLoading()) {
-    <div class="commands-loading">
-      <div class="commands-loading__spinner"></div>
-      <p>{{ t('commands.loading') }}</p>
-    </div>
-  }
-
-  <!-- Delete Confirmation Modal -->
   <app-confirmation-modal
     [isOpen]="showDeleteModal()"
     [title]="t('commands.deleteTitle')"
-    [message]="t('commands.deleteMessage')"
+    [message]="t('commands.deleteMessage', { name: commandToDelete()?.name || '' })"
     [confirmText]="t('common.delete')"
     [cancelText]="t('common.cancel')"
     variant="danger"
     (confirm)="confirmDelete()"
-    (cancel)="closeDeleteModal()">
-  </app-confirmation-modal>
+    (cancel)="closeDeleteModal()"
+  />
 
-  <!-- Command Create/Edit Modal -->
   <app-command-modal
     [isOpen]="showCommandModal()"
     [command]="editingCommand()"
     (save)="onModalSave($event)"
-    (cancel)="closeModal()">
-  </app-command-modal>
+    (cancel)="closeModal()"
+  />
 </div>

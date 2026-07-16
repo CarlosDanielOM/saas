@@ -35,6 +35,7 @@ interface CommandListItem extends Command {
   selector: 'app-commands-page',
   imports: [ReactiveFormsModule, LucideAngularModule, ConfirmationModalComponent, CommandModalComponent],
   templateUrl: './commands-page.component.html',
+  styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
@@ -126,7 +127,28 @@ export class CommandsPageComponent {
   private readonly commandFeedbackTimers = new Map<string, number>();
 
   // Computed
-  readonly totalPages = computed(() => Math.ceil(this.filteredCommands().length / this.itemsPerPage()));
+  readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly streamerLabel = computed(() => {
+    const fromRoute =
+      this.route.snapshot.paramMap.get('streamer') ||
+      this.route.parent?.snapshot.paramMap.get('streamer') ||
+      '';
+    return fromRoute || this.sessionAuth.session()?.twitchUser.login || '—';
+  });
+  readonly totalCommands = computed(() => this.commands().length);
+  readonly enabledCommands = computed(
+    () => this.commands().filter((command) => command.enabled !== false).length
+  );
+  readonly disabledCommands = computed(
+    () => this.commands().filter((command) => command.enabled === false).length
+  );
+  readonly reservedCommands = computed(
+    () => this.commands().filter((command) => Boolean(command.reserved)).length
+  );
+
+  readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredCommands().length / this.itemsPerPage()) || 1)
+  );
 
   readonly filteredCommands = computed(() => {
     const input = this.searchInput();
@@ -402,9 +424,7 @@ export class CommandsPageComponent {
 
   setViewMode(mode: ViewMode): void {
     this.viewMode.set(mode);
-    if (mode === 'card') {
-      this.currentPage.set(1);
-    }
+    this.currentPage.set(1);
   }
 
   // ========== Modal Handlers ==========
