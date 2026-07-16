@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+
+/* Prevent page-level horizontal scroll from wide tables (keeps sticky nav fixed) */
+html, body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

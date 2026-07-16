@@ -51,13 +51,13 @@
 }
 
 .lf {
-  min-height: 100dvh;
-  background:
-    radial-gradient(800px 360px at 80% -5%, var(--glow-a), transparent 55%),
-    radial-gradient(600px 280px at 10% 0%, var(--glow-b), transparent 50%),
-    var(--bg);
+  min-height: calc(100dvh - 3.75rem);
+  width: 100%;
+  max-width: 100%;
+  background: transparent;
   color: var(--fg);
   font-family: var(--font);
+  overflow-x: clip;
 }
 
 .lf *,
@@ -80,9 +80,17 @@
 
 /* Nav */
 .lf-main {
-  padding: 1rem;
-  max-width: 74rem;
+  width: 100%;
+  max-width: min(74rem, 100%);
   margin: 0 auto;
+  padding: 1rem 1rem 2rem;
+  min-width: 0;
+}
+
+.lf-bento,
+.lf-section {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .lf-bento {
@@ -91,6 +99,8 @@
 }
 
 .lf-tile {
+  min-width: 0;
+  max-width: 100%;
   background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -736,10 +746,20 @@
   color: var(--kicker);
 }
 
-/* Matrix list */
+/* Matrix list — horizontal scroll stays inside scroller, never the page/nav */
 .lf-matrix {
   padding: 0;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.lf-matrix__scroller {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .lf-matrix__row {
