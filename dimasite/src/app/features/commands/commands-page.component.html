@@ -175,23 +175,6 @@
                 [class.lf-matrix__row--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
               >
                 <span class="lf-matrix__primary">
-                  @if (isEditingCell(commandTrackId(command), 'name')) {
-                    <input
-                      type="text"
-                      class="lf-inline-edit lf-inline-edit--row"
-                      [value]="getEditingValue(commandTrackId(command), 'name')"
-                      (input)="updateEditingValue(commandTrackId(command), 'name', $any($event.target).value)"
-                      (keydown.enter)="saveCellEdit()"
-                      (keydown.escape)="cancelEdit()"
-                      (click)="$event.stopPropagation()"
-                    />
-                  } @else {
-                    <strong
-                      class="lf-matrix__name"
-                      [attr.title]="command.name"
-                      (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
-                    >{{ command.name }}</strong>
-                  }
                   <i
                     class="lf-kind-dot"
                     [class.lf-kind-dot--reserved]="commandKind(command) === 'reserved'"
@@ -206,6 +189,23 @@
                     "
                     aria-hidden="true"
                   ></i>
+                  @if (isEditingCell(commandTrackId(command), 'name')) {
+                    <input
+                      type="text"
+                      class="lf-inline-edit lf-inline-edit--row"
+                      [value]="getEditingValue(commandTrackId(command), 'name')"
+                      (input)="updateEditingValue(commandTrackId(command), 'name', $any($event.target).value)"
+                      (keydown.enter)="saveCellEdit()"
+                      (keydown.escape)="cancelEdit()"
+                      (click)="$event.stopPropagation()"
+                    />
+                  } @else {
+                    <span
+                      class="lf-matrix__name"
+                      [attr.title]="command.name"
+                      (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
+                    >{{ command.name }}</span>
+                  }
                 </span>
 
                 <span>
