@@ -36,41 +36,46 @@
           <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
             {{ planTier() }}
           </span>
-          <span class="lf-spotlight__count">{{ t('commands.placeholder.status') }}</span>
+          <span class="lf-spotlight__count">{{ t('commands.legend.title') }}</span>
         </div>
-        <p class="lf-label">{{ t('commands.heading') }}</p>
-        <p class="lf-spotlight__rule">
-          {{ totalCommands() }} {{ t('commands.heading').toLowerCase() }} ·
-          {{ enabledCommands() }} {{ t('common.statusOn').toLowerCase() }} ·
-          {{ reservedCommands() }} {{ t('commands.placeholder.reservedCommand').toLowerCase() }}
-        </p>
-        <div class="lf-spotlight__meta-row">
-          <div>
-            <p class="lf-label">{{ t('common.statusOn') }}</p>
-            <p class="lf-value lf-value--sm">{{ enabledCommands() }}</p>
-          </div>
-          <div>
-            <p class="lf-label">{{ t('common.statusOff') }}</p>
-            <p class="lf-value lf-value--sm">{{ disabledCommands() }}</p>
-          </div>
-        </div>
-      </article>
 
-      <article class="lf-tile lf-metric">
-        <p class="lf-label">{{ t('commands.heading') }}</p>
-        <p class="lf-value">{{ totalCommands() }}</p>
-      </article>
-      <article class="lf-tile lf-metric">
-        <p class="lf-label">{{ t('common.statusOn') }}</p>
-        <p class="lf-value">{{ enabledCommands() }}</p>
-      </article>
-      <article class="lf-tile lf-metric lf-metric--accent">
-        <p class="lf-label">{{ t('common.statusOff') }}</p>
-        <p class="lf-value">{{ disabledCommands() }}</p>
-      </article>
-      <article class="lf-tile lf-metric">
-        <p class="lf-label">{{ t('commands.placeholder.reservedCommand') }}</p>
-        <p class="lf-value">{{ reservedCommands() }}</p>
+        <div class="lf-legend" [attr.aria-label]="t('commands.legend.title')">
+          <span class="lf-legend__item">
+            <i class="lf-legend__swatch lf-legend__swatch--normal" aria-hidden="true"></i>
+            {{ t('commands.legend.normal') }}
+          </span>
+          <span class="lf-legend__item">
+            <i class="lf-legend__swatch lf-legend__swatch--reserved" aria-hidden="true"></i>
+            {{ t('commands.legend.reserved') }}
+          </span>
+          <span class="lf-legend__item">
+            <i class="lf-legend__swatch lf-legend__swatch--timer" aria-hidden="true"></i>
+            {{ t('commands.legend.timer') }}
+          </span>
+        </div>
+
+        <div class="lf-stats-strip" [attr.aria-label]="t('commands.heading')">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('commands.heading') }}</span>
+            <strong class="lf-stats-strip__value">{{ totalCommands() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('common.statusOn') }}</span>
+            <strong class="lf-stats-strip__value">{{ enabledCommands() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('common.statusOff') }}</span>
+            <strong class="lf-stats-strip__value">{{ disabledCommands() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('commands.placeholder.reservedCommand') }}</span>
+            <strong class="lf-stats-strip__value">{{ reservedCommands() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('commands.legend.timer') }}</span>
+            <strong class="lf-stats-strip__value">{{ timerLinkedCommands() }}</strong>
+          </div>
+        </div>
       </article>
     </section>
 
@@ -162,6 +167,8 @@
               <div
                 class="lf-matrix__row lf-matrix__row--cmds"
                 [class.lf-matrix__row--off]="command.enabled === false"
+                [class.lf-matrix__row--reserved]="commandKind(command) === 'reserved'"
+                [class.lf-matrix__row--timer]="commandKind(command) === 'timer'"
                 [class.lf-matrix__row--pending]="isPending(commandTrackId(command))"
                 [class.lf-matrix__row--optimistic]="command.optimistic || isPendingDelete(commandTrackId(command))"
                 [class.lf-matrix__row--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
@@ -180,11 +187,14 @@
                     />
                   } @else {
                     <strong
+                      class="lf-matrix__name"
                       (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
                     >{{ command.name }}</strong>
                   }
                   @if (command.reserved) {
-                    <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
+                    <span class="lf-chip lf-chip--reserved">{{ t('commands.placeholder.reservedCommand') }}</span>
+                  } @else if (isTimerLinked(command)) {
+                    <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
                   }
                 </span>
 
@@ -255,9 +265,9 @@
                   }
                 </span>
 
-                <span>
+                <span class="lf-status-cell">
                   <span
-                    class="lf-chip"
+                    class="lf-chip lf-chip--status"
                     [class.lf-chip--live]="command.enabled !== false"
                     [class.lf-chip--muted]="command.enabled === false"
                   >
@@ -267,7 +277,7 @@
 
                 <span class="lf-actions-cell">
                   @if (isPending(commandTrackId(command))) {
-                    <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
+                    <span class="lf-chip lf-chip--muted lf-chip--status">{{ getPendingLabel(commandTrackId(command)) }}</span>
                   } @else {
                     <button type="button" class="lf-text-link" (click)="openEditModal(command)">
                       {{ t('common.edit') }}
@@ -295,45 +305,53 @@
             }
           </div>
 
-          @if (totalPages() > 1) {
+          @if (filteredCommands().length > 0) {
             <div class="lf-pager">
               <div class="lf-pager__meta">
                 <span>{{ t('common.show') }}</span>
-                <select class="lf-inline-edit" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                <select
+                  class="lf-select-compact"
+                  [value]="itemsPerPage()"
+                  (change)="onItemsPerPageChange($event)"
+                >
                   @for (option of itemsPerPageOptions; track option) {
-                    <option [value]="option">{{ option }}</option>
+                    <option [value]="option" [selected]="itemsPerPage() === option">
+                      {{ option }}
+                    </option>
                   }
                 </select>
                 <span>{{ t('common.entries') }}</span>
               </div>
-              <nav class="lf-pager__pages" aria-label="Pagination">
-                <button
-                  type="button"
-                  class="lf-pager__btn"
-                  [disabled]="currentPage() === 1"
-                  (click)="changePage(currentPage() - 1)"
-                >
-                  {{ t('common.previous') }}
-                </button>
-                @for (page of pages(); track page) {
+              @if (totalPages() > 1) {
+                <nav class="lf-pager__pages" aria-label="Pagination">
                   <button
                     type="button"
                     class="lf-pager__btn"
-                    [class.lf-pager__btn--active]="currentPage() === page"
-                    (click)="changePage(page)"
+                    [disabled]="currentPage() === 1"
+                    (click)="changePage(currentPage() - 1)"
                   >
-                    {{ page }}
+                    {{ t('common.previous') }}
                   </button>
-                }
-                <button
-                  type="button"
-                  class="lf-pager__btn"
-                  [disabled]="currentPage() === totalPages()"
-                  (click)="changePage(currentPage() + 1)"
-                >
-                  {{ t('common.next') }}
-                </button>
-              </nav>
+                  @for (page of pages(); track page) {
+                    <button
+                      type="button"
+                      class="lf-pager__btn"
+                      [class.lf-pager__btn--active]="currentPage() === page"
+                      (click)="changePage(page)"
+                    >
+                      {{ page }}
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="lf-pager__btn"
+                    [disabled]="currentPage() === totalPages()"
+                    (click)="changePage(currentPage() + 1)"
+                  >
+                    {{ t('common.next') }}
+                  </button>
+                </nav>
+              }
             </div>
           }
         </div>
@@ -346,6 +364,8 @@
               <article
                 class="lf-tile lf-cmd"
                 [class.lf-cmd--off]="command.enabled === false"
+                [class.lf-cmd--reserved]="commandKind(command) === 'reserved'"
+                [class.lf-cmd--timer]="commandKind(command) === 'timer'"
                 [class.lf-cmd--pending]="isPending(commandTrackId(command))"
                 [class.lf-cmd--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
                 [class.lf-cmd--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
@@ -353,7 +373,7 @@
                 <div class="lf-cmd__top">
                   <code class="lf-code">!{{ command.cmd }}</code>
                   <span
-                    class="lf-chip"
+                    class="lf-chip lf-chip--status"
                     [class.lf-chip--live]="command.enabled !== false"
                     [class.lf-chip--muted]="command.enabled === false"
                   >
@@ -363,7 +383,9 @@
                 <h3 class="lf-cmd__name">
                   {{ command.name }}
                   @if (command.reserved) {
-                    <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
+                    <span class="lf-chip lf-chip--reserved">{{ t('commands.placeholder.reservedCommand') }}</span>
+                  } @else if (isTimerLinked(command)) {
+                    <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
                   }
                 </h3>
                 <p class="lf-cmd__desc">

@@ -1420,6 +1420,12 @@
       "searchButton": "Search",
       "notFoundHint": "No commands found. Press Enter to search the API.",
       "noResultsInCache": "No commands found in cached data. Try searching."
+    },
+    "legend": {
+      "title": "Command types",
+      "normal": "Custom commands",
+      "reserved": "Reserved commands",
+      "timer": "Timer-linked commands"
     }
   },
   "common": {

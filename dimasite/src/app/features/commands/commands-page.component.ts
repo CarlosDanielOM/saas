@@ -13,9 +13,11 @@ import { List, LayoutGrid, Edit3, Trash2, Power, PowerOff } from 'lucide-angular
 import { LucideAngularModule } from 'lucide-angular';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 
+import { HttpClient } from '@angular/common/http';
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES } from '../../models/command.model';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
+import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
@@ -45,6 +47,8 @@ interface CommandListItem extends Command {
 export class CommandsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+  private readonly linksService = inject(LinksService);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly commandsApi = inject(CommandsApiService);
@@ -101,7 +105,9 @@ export class CommandsPageComponent {
   readonly viewMode = signal<ViewMode>('table');
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal(10);
-  readonly itemsPerPageOptions = [5, 10, 15, 20];
+  readonly itemsPerPageOptions = [5, 10, 15, 20] as const;
+  /** Timer names from GET /timers/:channelID — used only for list styling/legend. */
+  readonly timerNames = signal<Set<string>>(new Set());
 
   // Edit state (cell edit only - modal handles full edit)
   readonly editMode = signal<EditMode>(null);
@@ -144,6 +150,9 @@ export class CommandsPageComponent {
   );
   readonly reservedCommands = computed(
     () => this.commands().filter((command) => Boolean(command.reserved)).length
+  );
+  readonly timerLinkedCommands = computed(
+    () => this.commands().filter((command) => this.isTimerLinked(command)).length
   );
 
   readonly totalPages = computed(() =>
@@ -200,6 +209,9 @@ export class CommandsPageComponent {
 
     if (channelID) {
       this.loadCommands(channelID);
+      this.loadTimerNames(channelID);
+    } else {
+      this.timerNames.set(new Set());
     }
   });
 
@@ -412,12 +424,35 @@ export class CommandsPageComponent {
   }
 
   onItemsPerPageChange(event: Event): void {
-    const value = parseInt((event.target as HTMLSelectElement).value, 10);
-    if (this.itemsPerPageOptions.includes(value)) {
+    const value = Number((event.target as HTMLSelectElement).value);
+    if (this.itemsPerPageOptions.includes(value as 5 | 10 | 15 | 20)) {
       this.itemsPerPage.set(value);
       this.currentPage.set(1);
       this.saveToSession('itemsPerPage', value);
     }
+  }
+
+  isTimerLinked(command: Pick<Command, 'cmd' | 'name' | 'reserved'>): boolean {
+    if (command.reserved) {
+      return false;
+    }
+    const names = this.timerNames();
+    if (names.size === 0) {
+      return false;
+    }
+    const cmd = (command.cmd || '').trim().toLowerCase();
+    const name = (command.name || '').trim().toLowerCase();
+    return (cmd !== '' && names.has(cmd)) || (name !== '' && names.has(name));
+  }
+
+  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved'>): 'reserved' | 'timer' | 'normal' {
+    if (command.reserved) {
+      return 'reserved';
+    }
+    if (this.isTimerLinked(command)) {
+      return 'timer';
+    }
+    return 'normal';
   }
 
   // ========== View Mode ==========
@@ -903,7 +938,7 @@ export class CommandsPageComponent {
       this.viewMode.set(view);
     } else {
       const sessionMode = this.getFromSession('viewMode') as ViewMode | null;
-      if (sessionMode) {
+      if (sessionMode === 'table' || sessionMode === 'card') {
         this.viewMode.set(sessionMode);
       }
     }
@@ -911,16 +946,47 @@ export class CommandsPageComponent {
     if (!isNaN(page) && page > 0) {
       this.currentPage.set(page);
     } else {
-      const sessionPage = this.getFromSession('currentPage') as number | null;
-      if (sessionPage) {
+      const sessionPage = Number(this.getFromSession('currentPage'));
+      if (Number.isFinite(sessionPage) && sessionPage > 0) {
         this.currentPage.set(sessionPage);
       }
     }
 
-    const sessionItemsPerPage = this.getFromSession('itemsPerPage') as number | null;
-    if (sessionItemsPerPage && this.itemsPerPageOptions.includes(sessionItemsPerPage)) {
+    const sessionItemsPerPage = Number(this.getFromSession('itemsPerPage'));
+    if (
+      Number.isFinite(sessionItemsPerPage) &&
+      this.itemsPerPageOptions.includes(sessionItemsPerPage as 5 | 10 | 15 | 20)
+    ) {
       this.itemsPerPage.set(sessionItemsPerPage);
     }
+  }
+
+  private loadTimerNames(channelID: string): void {
+    this.http
+      .get<{ data?: Array<{ name?: string; timerName?: string; cmd?: string }> }>(
+        `${this.linksService.getApiUrl()}/timers/${encodeURIComponent(channelID)}`
+      )
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          const names = new Set<string>();
+          for (const row of rows) {
+            for (const key of [row.name, row.timerName, row.cmd]) {
+              const value = String(key || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^!/, '');
+              if (value) {
+                names.add(value);
+              }
+            }
+          }
+          this.timerNames.set(names);
+        },
+        error: () => {
+          this.timerNames.set(new Set());
+        }
+      });
   }
 
   private saveToSession(key: string, value: unknown): void {

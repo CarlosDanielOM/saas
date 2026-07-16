@@ -344,6 +344,195 @@
   border-color: rgba(139, 92, 246, 0.28);
 }
 
+/* Compact stats + legend (replaces 4 separate metric tiles) */
+.lf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  margin: 0.15rem 0 0.85rem;
+}
+
+.lf-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.lf-legend__swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 0.3rem;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.lf-legend__swatch--normal {
+  background: color-mix(in srgb, var(--tile) 90%, var(--accent) 10%);
+}
+
+.lf-legend__swatch--reserved {
+  background: color-mix(in srgb, #f59e0b 22%, var(--tile));
+  border-color: color-mix(in srgb, #f59e0b 40%, var(--line));
+}
+
+.lf-legend__swatch--timer {
+  background: color-mix(in srgb, #38bdf8 22%, var(--tile));
+  border-color: color-mix(in srgb, #38bdf8 40%, var(--line));
+}
+
+.lf-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.lf-stats-strip__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.lf-stats-strip__label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.lf-stats-strip__value {
+  font-size: 1rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 640px) {
+  .lf-stats-strip {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .lf-stats-strip__item {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 3.4rem;
+  }
+
+  .lf-stats-strip__value {
+    font-size: 1.2rem;
+  }
+}
+
+/* Row kind backgrounds */
+.lf-matrix__row--reserved,
+.lf-cmd--reserved {
+  background: color-mix(in srgb, #f59e0b 12%, var(--tile));
+  border-color: color-mix(in srgb, #f59e0b 28%, var(--line));
+}
+
+.lf-matrix__row--timer,
+.lf-cmd--timer {
+  background: color-mix(in srgb, #38bdf8 12%, var(--tile));
+  border-color: color-mix(in srgb, #38bdf8 28%, var(--line));
+}
+
+.lf-chip--reserved {
+  background: color-mix(in srgb, #f59e0b 18%, transparent);
+  color: #b45309;
+}
+
+.lf-chip--timer {
+  background: color-mix(in srgb, #38bdf8 18%, transparent);
+  color: #0284c7;
+}
+
+:host-context(html.dark) .lf-chip--reserved {
+  color: #fbbf24;
+}
+
+:host-context(html.dark) .lf-chip--timer {
+  color: #7dd3fc;
+}
+
+/* Table density: keep rows single-height */
+.lf-matrix__row--cmds {
+  min-height: 2.85rem;
+  padding-block: 0.45rem;
+}
+
+.lf-matrix__primary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.lf-matrix__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-chip--status,
+.lf-chip--reserved,
+.lf-chip--timer {
+  flex: 0 0 auto;
+  max-width: 100%;
+  padding: 0.12rem 0.4rem;
+  font-size: 0.62rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.lf-status-cell {
+  display: flex;
+  align-items: center;
+}
+
+.lf-actions-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.lf-actions-cell .lf-text-link {
+  white-space: nowrap;
+  font-size: 0.74rem;
+  padding: 0.2rem 0.3rem;
+  min-height: 0;
+}
+
+.lf-select-compact {
+  width: auto;
+  min-width: 3.25rem;
+  height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  padding: 0.2rem 0.45rem;
+}
+
 .lf-plan-switch {
   display: flex;
   flex-wrap: wrap;
@@ -1091,7 +1280,7 @@
 
   .lf-tile--intro,
   .lf-tile--spotlight {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .lf-bento--cmds,
@@ -1119,13 +1308,13 @@
   }
 
   .lf-bento--hero {
-    grid-template-columns: 1.2fr 1.15fr 0.85fr 0.85fr;
+    grid-template-columns: 1.15fr 1.1fr;
     grid-auto-rows: minmax(6.5rem, auto);
   }
 
   .lf-tile--intro {
     grid-column: 1 / 2;
-    grid-row: 1 / 4;
+    grid-row: auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -1133,7 +1322,7 @@
 
   .lf-tile--spotlight {
     grid-column: 2 / 3;
-    grid-row: 1 / 4;
+    grid-row: auto;
   }
 
   .lf-bento--cmds {

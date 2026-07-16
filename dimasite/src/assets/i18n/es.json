@@ -1420,6 +1420,12 @@
       "searchButton": "Buscar",
       "notFoundHint": "No se encontraron comandos. Presiona Enter para buscar en la API.",
       "noResultsInCache": "No se encontraron comandos en los datos cacheados. Intenta buscar."
+    },
+    "legend": {
+      "title": "Tipos de comando",
+      "normal": "Comandos personalizados",
+      "reserved": "Comandos reservados",
+      "timer": "Comandos con timer"
     }
   },
   "common": {
