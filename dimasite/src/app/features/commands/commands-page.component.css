@@ -477,25 +477,65 @@
   color: #7dd3fc;
 }
 
-/* Table density: keep rows single-height */
+/* Table density: fixed row height (no pill wrap) */
 .lf-matrix__row--cmds {
-  min-height: 2.85rem;
-  padding-block: 0.45rem;
+  height: 3rem;
+  min-height: 3rem;
+  max-height: 3rem;
+  padding-block: 0;
+  padding-inline: 0.85rem;
+  overflow: hidden;
+}
+
+.lf-matrix__row--cmds > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .lf-matrix__primary {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   min-width: 0;
   flex-wrap: nowrap;
+  height: 100%;
 }
 
 .lf-matrix__name {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 750;
+}
+
+/* Compact type marker instead of wrapping text pills */
+.lf-kind-dot {
+  flex: 0 0 auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--fg) 12%, var(--tile));
+}
+
+.lf-kind-dot--normal {
+  background: color-mix(in srgb, var(--accent) 35%, var(--tile));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+}
+
+.lf-kind-dot--reserved {
+  background: #f59e0b;
+  border-color: color-mix(in srgb, #f59e0b 50%, var(--line));
+}
+
+.lf-kind-dot--timer {
+  background: #38bdf8;
+  border-color: color-mix(in srgb, #38bdf8 50%, var(--line));
 }
 
 .lf-chip--status,
@@ -512,21 +552,39 @@
 .lf-status-cell {
   display: flex;
   align-items: center;
+  height: 100%;
+}
+
+.lf-status-cell .lf-chip--status {
+  max-width: 100%;
 }
 
 .lf-actions-cell {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.15rem;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .lf-actions-cell .lf-text-link {
   white-space: nowrap;
-  font-size: 0.74rem;
-  padding: 0.2rem 0.3rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.28rem;
   min-height: 0;
+  line-height: 1.1;
+}
+
+.lf-inline-edit--row {
+  height: 1.85rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.lf-clip {
+  display: block;
 }
 
 .lf-select-compact {
@@ -1425,28 +1483,40 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
-  margin-top: 0.85rem;
+  gap: 0.75rem;
+  margin-top: 0;
+  padding: 1rem 1rem 1.1rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--fg) 2%, transparent);
+}
+
+.lf-pager__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .lf-pager__pages {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .lf-pager__btn {
-  min-height: 36px;
-  min-width: 36px;
+  min-height: 40px;
+  min-width: 40px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: transparent;
+  background: var(--tile);
   color: var(--muted);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 650;
   cursor: pointer;
-  padding: 0.3rem 0.65rem;
+  padding: 0.35rem 0.7rem;
 }
 
 .lf-pager__btn--active {

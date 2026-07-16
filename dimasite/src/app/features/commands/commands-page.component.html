@@ -178,7 +178,7 @@
                   @if (isEditingCell(commandTrackId(command), 'name')) {
                     <input
                       type="text"
-                      class="lf-inline-edit"
+                      class="lf-inline-edit lf-inline-edit--row"
                       [value]="getEditingValue(commandTrackId(command), 'name')"
                       (input)="updateEditingValue(commandTrackId(command), 'name', $any($event.target).value)"
                       (keydown.enter)="saveCellEdit()"
@@ -188,14 +188,24 @@
                   } @else {
                     <strong
                       class="lf-matrix__name"
+                      [attr.title]="command.name"
                       (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
                     >{{ command.name }}</strong>
                   }
-                  @if (command.reserved) {
-                    <span class="lf-chip lf-chip--reserved">{{ t('commands.placeholder.reservedCommand') }}</span>
-                  } @else if (isTimerLinked(command)) {
-                    <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
-                  }
+                  <i
+                    class="lf-kind-dot"
+                    [class.lf-kind-dot--reserved]="commandKind(command) === 'reserved'"
+                    [class.lf-kind-dot--timer]="commandKind(command) === 'timer'"
+                    [class.lf-kind-dot--normal]="commandKind(command) === 'normal'"
+                    [attr.title]="
+                      commandKind(command) === 'reserved'
+                        ? t('commands.legend.reserved')
+                        : commandKind(command) === 'timer'
+                          ? t('commands.legend.timer')
+                          : t('commands.legend.normal')
+                    "
+                    aria-hidden="true"
+                  ></i>
                 </span>
 
                 <span>
