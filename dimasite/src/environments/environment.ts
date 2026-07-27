@@ -6,7 +6,5 @@ export const environment = {
   DIMA_API: 'https://api.domdimabot.com',
   CLIENT_ID: 'jl9k3mi67pmrbl1bh67y07ezjdc4cf',
   TWITCH_API: 'https://api.twitch.tv/helix',
-  DISCORD_URL: 'https://discord.gg/HdubYrkPXt',
-  /** Dev-only mock login token. Must stay null in production. */
-  MOCK_LOGIN_TOKEN: null as string | null
+  DISCORD_URL: 'https://discord.gg/HdubYrkPXt'
 };

@@ -51,7 +51,6 @@ export class LoginPageComponent implements OnInit {
   readonly stage = signal<LoginStage>('idle');
   readonly errorMessage = signal<string | null>(null);
   readonly debugLines = signal<string[]>([]);
-  readonly mockLoginEnabled = this.sessionAuth.isMockLoginEnabled();
 
   readonly loaderStage = computed<LoaderStage>(() => {
     const current = this.stage();

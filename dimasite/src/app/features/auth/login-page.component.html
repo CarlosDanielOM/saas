@@ -5,15 +5,9 @@
     <h1 class="login-title">{{ t('login.title') }}</h1>
     <p class="login-subtitle">{{ t('login.subtitle') }}</p>
 
-    @if (mockLoginEnabled) {
-      <p class="login-dev-banner" role="note">
-        Dev mock login active — continues as CDOM201 without Twitch OAuth.
-      </p>
-    }
-
     @if (stage() === 'idle') {
       <button type="button" class="login-button" (click)="loginWithTwitch()">
-        {{ mockLoginEnabled ? 'Continue with mock login' : t('login.actions.continue') }}
+        {{ t('login.actions.continue') }}
       </button>
     } @else if (stage() === 'error') {
       <div class="login-error" role="alert">
