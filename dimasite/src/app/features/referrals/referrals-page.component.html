@@ -1,291 +1,313 @@
-<section class="referrals-page">
-  <header class="referrals-page__hero">
-    <a class="referrals-page__back-link" [routerLink]="['/', streamer(), 'modules']">
-      <lucide-icon [name]="backIcon" class="referrals-page__back-icon"></lucide-icon>
-      <span>{{ t('referrals.backToModules') }}</span>
-    </a>
-
-    <div class="referrals-page__hero-head">
-      <div>
-        <p class="referrals-page__eyebrow">{{ t('referrals.eyebrow') }}</p>
-        <h1>{{ t('referrals.title') }}</h1>
-        <p class="referrals-page__subtitle">
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('referrals.title')">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
+          ← {{ t('referrals.backToModules') }}
+        </a>
+        <p class="lf-kicker">{{ t('referrals.eyebrow') }}</p>
+        <h1 class="lf-title">
+          {{ t('referrals.title') }}
+          <span>{{ planLabel() }}</span>
+        </h1>
+        <p class="lf-copy">
           {{ isOwnerView() ? t('referrals.subtitleOwner') : t('referrals.subtitleAdmin') }}
         </p>
-      </div>
 
-      <div class="referrals-page__viewer-badge" [class.referrals-page__viewer-badge--admin]="!isOwnerView()">
-        @if (isOwnerView()) {
-          {{ t('referrals.viewer.owner') }}
-        } @else {
-          {{ t('referrals.viewer.admin') }}
-        }
-      </div>
-    </div>
-  </header>
-
-  @if (errorMessage()) {
-    <section class="referrals-page__error" role="alert">
-      <div>
-        <p class="referrals-page__error-title">{{ t('referrals.errors.loadTitle') }}</p>
-        <p class="referrals-page__error-copy">{{ errorMessage() }}</p>
-      </div>
-      <button type="button" class="referrals-page__retry-btn" (click)="retryLoad()">
-        <lucide-icon [name]="refreshIcon" class="referrals-page__retry-icon"></lucide-icon>
-        <span>{{ t('common.retry') }}</span>
-      </button>
-    </section>
-  } @else if (loading()) {
-    <loading-indicator [loading]="true" size="lg" message="common.loading" />
-  } @else if (stats(); as referralStats) {
-    <section class="referrals-page__summary-grid">
-      <article class="referrals-summary-card">
-        <div class="referrals-summary-card__icon-wrap">
-          <lucide-icon [name]="summaryIcons.balance" class="referrals-summary-card__icon"></lucide-icon>
-        </div>
-        <div class="referrals-summary-card__content">
-          <p class="referrals-summary-card__label">{{ t('referrals.summary.currentBalance') }}</p>
-          <strong class="referrals-summary-card__value">{{ formatNumber(referralStats.currentBalance) }}</strong>
-        </div>
-      </article>
-
-      <article class="referrals-summary-card">
-        <div class="referrals-summary-card__icon-wrap">
-          <lucide-icon [name]="summaryIcons.earned" class="referrals-summary-card__icon"></lucide-icon>
-        </div>
-        <div class="referrals-summary-card__content">
-          <p class="referrals-summary-card__label">{{ t('referrals.summary.totalEarned') }}</p>
-          <strong class="referrals-summary-card__value">{{ formatNumber(referralStats.totalEarned) }}</strong>
-        </div>
-      </article>
-
-      <article class="referrals-summary-card">
-        <div class="referrals-summary-card__icon-wrap">
-          <lucide-icon [name]="summaryIcons.conversions" class="referrals-summary-card__icon"></lucide-icon>
-        </div>
-        <div class="referrals-summary-card__content">
-          <p class="referrals-summary-card__label">{{ t('referrals.summary.totalConversions') }}</p>
-          <strong class="referrals-summary-card__value">{{ formatNumber(referralStats.totalConversions) }}</strong>
-        </div>
-      </article>
-
-      <article class="referrals-summary-card">
-        <div class="referrals-summary-card__icon-wrap">
-          <lucide-icon [name]="summaryIcons.codes" class="referrals-summary-card__icon"></lucide-icon>
-        </div>
-        <div class="referrals-summary-card__content">
-          <p class="referrals-summary-card__label">{{ t('referrals.summary.codesUsed') }}</p>
-          <strong class="referrals-summary-card__value">
-            {{ formatNumber(referralStats.codesUsed) }}/{{ formatNumber(referralStats.codeLimit) }}
-          </strong>
-        </div>
-      </article>
-    </section>
-
-    @if (!isOwnerView()) {
-      <section class="referrals-page__notice" role="status">
-        <lucide-icon [name]="lockIcon" class="referrals-page__notice-icon"></lucide-icon>
-        <div>
-          <p class="referrals-page__notice-title">{{ t('referrals.readOnly.title') }}</p>
-          <p class="referrals-page__notice-copy">{{ t('referrals.readOnly.description') }}</p>
-        </div>
-      </section>
-    }
-
-    <section class="referrals-page__cards-panel referrals-page__cards-panel--full">
-      <div class="referrals-page__panel-heading referrals-page__panel-heading--cards">
-        <div>
-          <p class="referrals-page__section-kicker">{{ t('referrals.cards.kicker') }}</p>
-          <h2>{{ t('referrals.cards.title') }}</h2>
-          <p class="referrals-page__panel-copy">{{ t('referrals.cards.description') }}</p>
-        </div>
-
-        <div class="referrals-page__cards-tools">
-          <span class="referrals-page__count-chip">
-            {{ formatNumber(referralStats.codes.length) }} {{ t('referrals.cards.countSuffix') }}
-          </span>
-          <span class="referrals-page__plan-chip">{{ planLabel() }}</span>
-          @if (isOwnerView()) {
-            <span class="referrals-page__slots-chip">
-              {{ t('referrals.manage.slotsRemaining', { count: referralStats.codesRemaining, limit: referralStats.codeLimit }) }}
-            </span>
+        <div class="lf-actions">
+          <button
+            type="button"
+            class="lf-btn"
+            [disabled]="loading() || !channelID()"
+            (click)="retryLoad()"
+          >
+            {{ t('common.retry') }}
+          </button>
+          @if (isOwnerView() && stats()) {
             <button
               type="button"
-              class="referrals-page__create-trigger"
+              class="lf-btn lf-btn--primary"
               [disabled]="isAtLimit()"
               (click)="openCreateModal()"
             >
-              <lucide-icon [name]="addIcon" class="referrals-page__create-icon"></lucide-icon>
-              <span>{{ t('referrals.manage.openModal') }}</span>
+              {{ t('referrals.manage.openModal') }}
             </button>
           }
         </div>
+
+        <p class="lf-feed" [class.lf-feed--on]="isOwnerView()">
+          {{ isOwnerView() ? t('referrals.viewer.owner') : t('referrals.viewer.admin') }}
+          @if (streamer()) {
+            · {{ streamer() }}
+          }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            {{ planLabel() }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('referrals.summary.codesUsed') }}</span>
+        </div>
+
+        @if (stats(); as s) {
+          <div class="lf-stats-strip">
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('referrals.summary.currentBalance') }}</span>
+              <strong class="lf-stats-strip__value">{{ formatNumber(s.currentBalance) }}</strong>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('referrals.summary.totalEarned') }}</span>
+              <strong class="lf-stats-strip__value">{{ formatNumber(s.totalEarned) }}</strong>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('referrals.summary.totalConversions') }}</span>
+              <strong class="lf-stats-strip__value">{{ formatNumber(s.totalConversions) }}</strong>
+            </div>
+          </div>
+        } @else {
+          <div class="lf-stats-strip">
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('referrals.summary.codesUsed') }}</span>
+              <strong class="lf-stats-strip__value">—</strong>
+            </div>
+          </div>
+        }
+      </article>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="lf-banner lf-banner--error" role="alert">
+        <div>
+          <p class="lf-banner__title">{{ t('referrals.errors.loadTitle') }}</p>
+          <p class="lf-banner__copy">{{ errorMessage() }}</p>
+        </div>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
+          {{ t('common.retry') }}
+        </button>
       </div>
+    } @else if (loading()) {
+      <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
+    } @else if (stats(); as referralStats) {
+      @if (!isOwnerView()) {
+        <div class="lf-banner lf-banner--info" role="status">
+          <div>
+            <p class="lf-banner__title">{{ t('referrals.readOnly.title') }}</p>
+            <p class="lf-banner__copy">{{ t('referrals.readOnly.description') }}</p>
+          </div>
+        </div>
+      }
 
-      @if (hasCodes()) {
-        <div class="referrals-card-grid">
-          @for (code of referralStats.codes; track code._id) {
-            <article class="referral-card" [style.--referral-card-hue]="cardHue(code)">
-              <div class="referral-card__mesh"></div>
-              <div class="referral-card__depth"></div>
+      <section class="lf-section" [attr.aria-label]="t('referrals.cards.title')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('referrals.cards.kicker') }}</p>
+            <h2 class="lf-h2">{{ t('referrals.cards.title') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('referrals.cards.description') }}</p>
+          </div>
+          <div class="lf-section__tools">
+            <span class="lf-chip">
+              {{ formatNumber(referralStats.codes.length) }} {{ t('referrals.cards.countSuffix') }}
+            </span>
+            <span class="lf-chip">
+              {{ formatNumber(referralStats.codesUsed) }}/{{ formatNumber(referralStats.codeLimit) }}
+            </span>
+            @if (isOwnerView()) {
+              <span class="lf-chip lf-chip--soft">
+                {{
+                  t('referrals.manage.slotsRemaining', {
+                    count: referralStats.codesRemaining,
+                    limit: referralStats.codeLimit
+                  })
+                }}
+              </span>
+              <button
+                type="button"
+                class="lf-btn lf-btn--primary lf-btn--compact"
+                [disabled]="isAtLimit()"
+                (click)="openCreateModal()"
+              >
+                {{ t('referrals.manage.openModal') }}
+              </button>
+            }
+          </div>
+        </div>
 
-              <div class="referral-card__topline">
-                <span class="referral-card__brand">DomDimaBot</span>
-                <span class="referral-card__plan">{{ planLabel() }}</span>
-              </div>
+        @if (hasCodes()) {
+          <div class="lf-bento lf-bento--cards">
+            @for (code of referralStats.codes; track code._id) {
+              <article class="lf-tile lf-card" [style.--card-hue]="cardHue(code)">
+                <div class="lf-card__top">
+                  <span class="lf-chip lf-chip--soft">DomDimaBot</span>
+                  <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+                    {{ planLabel() }}
+                  </span>
+                </div>
 
-              <div class="referral-card__body">
-                <p class="referral-card__label">{{ cardDisplayName(code) }}</p>
+                <p class="lf-card__label">{{ cardDisplayName(code) }}</p>
                 <button
                   type="button"
-                  class="referral-card__code-button"
-                  [class.referral-card__code-button--copied]="isCopied(code)"
+                  class="lf-card__code"
+                  [class.lf-card__code--copied]="isCopied(code)"
                   [attr.aria-label]="t('referrals.actions.copyLink', { code: code.code.toUpperCase() })"
                   (click)="copyReferralLink(code)"
                 >
-                  <span class="referral-card__code">{{ code.code.toUpperCase() }}</span>
-                  <span class="referral-card__copy-affordance" aria-hidden="true">
-                    <lucide-icon
-                      [name]="isCopied(code) ? copiedIcon : copyIcon"
-                      class="referral-card__copy-icon"
-                    ></lucide-icon>
+                  <span>{{ code.code.toUpperCase() }}</span>
+                  <span class="lf-card__copy-hint">
+                    {{ isCopied(code) ? t('referrals.actions.copied') : t('referrals.actions.copy') }}
                   </span>
                 </button>
-              </div>
 
-              <div class="referral-card__footer">
-                <div class="referral-card__meta-block">
-                  <span class="referral-card__meta-label">{{ t('referrals.card.conversions') }}</span>
-                  <strong>{{ formatNumber(code.stats.conversions) }}</strong>
+                <div class="lf-card__meta">
+                  <div>
+                    <span class="lf-meta-label">{{ t('referrals.card.conversions') }}</span>
+                    <strong>{{ formatNumber(code.stats.conversions) }}</strong>
+                  </div>
+                  <div>
+                    <span class="lf-meta-label">{{ t('referrals.card.created') }}</span>
+                    <strong>{{ formatDate(code.createdAt) }}</strong>
+                  </div>
                 </div>
-                <div class="referral-card__meta-block">
-                  <span class="referral-card__meta-label">{{ t('referrals.card.created') }}</span>
-                  <strong>{{ formatDate(code.createdAt) }}</strong>
-                </div>
+
+                @if (isOwnerView()) {
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--danger lf-btn--compact lf-btn--block"
+                    [disabled]="isDeleting(code._id)"
+                    (click)="deleteCode(code)"
+                  >
+                    @if (isDeleting(code._id)) {
+                      {{ t('referrals.actions.deleting') }}
+                    } @else {
+                      {{ t('common.delete') }}
+                    }
+                  </button>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="lf-tile lf-empty" role="status">
+            @if (isOwnerView()) {
+              <h3 class="lf-empty__title">{{ t('referrals.empty.ownerTitle') }}</h3>
+              <p class="lf-empty__copy">{{ t('referrals.empty.ownerDescription') }}</p>
+              <button
+                type="button"
+                class="lf-btn lf-btn--primary"
+                [disabled]="isAtLimit()"
+                (click)="openCreateModal()"
+              >
+                {{ t('referrals.manage.openModal') }}
+              </button>
+            } @else {
+              <h3 class="lf-empty__title">{{ t('referrals.empty.adminTitle') }}</h3>
+              <p class="lf-empty__copy">{{ t('referrals.empty.adminDescription') }}</p>
+            }
+          </div>
+        }
+      </section>
+
+      @if (isOwnerView() && isCreateModalOpen()) {
+        <div class="lf-modal-overlay" (click)="onCreateModalBackdropClick($event)">
+          <div
+            class="lf-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="referrals-create-title"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="lf-modal__head">
+              <div>
+                <p class="lf-kicker">{{ t('referrals.manage.kicker') }}</p>
+                <h2 id="referrals-create-title" class="lf-modal__title">
+                  {{ t('referrals.manage.modalTitle') }}
+                </h2>
               </div>
-
-              @if (isOwnerView()) {
-                <button
-                  type="button"
-                  class="referral-card__delete-btn"
-                  [disabled]="isDeleting(code._id)"
-                  (click)="deleteCode(code)"
-                >
-                  <lucide-icon [name]="deleteIcon" class="referral-card__delete-icon"></lucide-icon>
-                  @if (isDeleting(code._id)) {
-                    <span>{{ t('referrals.actions.deleting') }}</span>
-                  } @else {
-                    <span>{{ t('common.delete') }}</span>
-                  }
-                </button>
-              }
-            </article>
-          }
-        </div>
-      } @else {
-        <div class="referrals-page__empty-state" role="status">
-          <lucide-icon [name]="summaryIcons.codes" class="referrals-page__empty-icon"></lucide-icon>
-          @if (isOwnerView()) {
-            <h3>{{ t('referrals.empty.ownerTitle') }}</h3>
-            <p>{{ t('referrals.empty.ownerDescription') }}</p>
-          } @else {
-            <h3>{{ t('referrals.empty.adminTitle') }}</h3>
-            <p>{{ t('referrals.empty.adminDescription') }}</p>
-          }
-        </div>
-      }
-    </section>
-
-    @if (isOwnerView() && isCreateModalOpen()) {
-      <div
-        class="referrals-modal__overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="referrals-create-title"
-        (click)="onCreateModalBackdropClick($event)"
-      >
-        <section class="referrals-modal__container" (click)="$event.stopPropagation()">
-          <header class="referrals-modal__header">
-            <div>
-              <p class="referrals-modal__eyebrow">{{ t('referrals.manage.kicker') }}</p>
-              <h2 id="referrals-create-title">{{ t('referrals.manage.modalTitle') }}</h2>
-              <p class="referrals-modal__copy">{{ t('referrals.manage.modalDescription') }}</p>
+              <button
+                type="button"
+                class="lf-modal__close"
+                [attr.aria-label]="t('common.close')"
+                (click)="closeCreateModal()"
+              >
+                ×
+              </button>
             </div>
 
-            <button
-              type="button"
-              class="referrals-modal__close-btn"
-              [attr.aria-label]="t('common.close')"
-              (click)="closeCreateModal()"
-            >
-              <lucide-icon [name]="closeIcon" class="referrals-modal__close-icon"></lucide-icon>
-            </button>
-          </header>
+            <p class="lf-modal__copy">{{ t('referrals.manage.modalDescription') }}</p>
 
-          <div class="referrals-modal__body">
-            <div class="referrals-modal__meta-strip">
-              <span class="referrals-page__plan-chip">{{ planLabel() }}</span>
-              <span class="referrals-page__slots-chip referrals-page__slots-chip--modal">
-                {{ t('referrals.manage.slotsRemaining', { count: referralStats.codesRemaining, limit: referralStats.codeLimit }) }}
+            <div class="lf-modal__meta">
+              <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+                {{ planLabel() }}
+              </span>
+              <span class="lf-chip lf-chip--soft">
+                {{
+                  t('referrals.manage.slotsRemaining', {
+                    count: referralStats.codesRemaining,
+                    limit: referralStats.codeLimit
+                  })
+                }}
               </span>
             </div>
 
-            <label class="referrals-page__field">
-              <span>{{ t('referrals.manage.codeLabel') }}</span>
-              <input
-                type="text"
-                class="referrals-page__input"
-                [placeholder]="t('referrals.manage.codePlaceholder')"
-                [value]="draftCode()"
-                maxlength="16"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                (input)="onCodeInput($event)"
-              />
-            </label>
+            <div class="lf-form">
+              <label class="lf-field">
+                <span>{{ t('referrals.manage.codeLabel') }}</span>
+                <input
+                  type="text"
+                  [placeholder]="t('referrals.manage.codePlaceholder')"
+                  [value]="draftCode()"
+                  maxlength="16"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  (input)="onCodeInput($event)"
+                />
+              </label>
 
-            <label class="referrals-page__field">
-              <span>{{ t('referrals.manage.labelLabel') }}</span>
-              <input
-                type="text"
-                class="referrals-page__input"
-                [placeholder]="t('referrals.manage.labelPlaceholder')"
-                [value]="draftLabel()"
-                maxlength="50"
-                autocomplete="off"
-                (input)="onLabelInput($event)"
-              />
-            </label>
+              <label class="lf-field">
+                <span>{{ t('referrals.manage.labelLabel') }}</span>
+                <input
+                  type="text"
+                  [placeholder]="t('referrals.manage.labelPlaceholder')"
+                  [value]="draftLabel()"
+                  maxlength="50"
+                  autocomplete="off"
+                  (input)="onLabelInput($event)"
+                />
+              </label>
 
-            <div class="referrals-page__helper-row referrals-page__helper-row--modal">
-              <p class="referrals-page__helper-copy">{{ t('referrals.manage.codeHint') }}</p>
-            </div>
+              <p class="lf-note">{{ t('referrals.manage.codeHint') }}</p>
 
-            @if (formError()) {
-              <p class="referrals-page__form-error" role="alert">{{ formError() }}</p>
-            }
-
-            @if (isAtLimit()) {
-              <p class="referrals-page__limit-note">{{ t('referrals.manage.limitReached') }}</p>
-            }
-          </div>
-
-          <footer class="referrals-modal__actions">
-            <button type="button" class="referrals-modal__secondary-btn" (click)="closeCreateModal()">
-              {{ t('common.cancel') }}
-            </button>
-            <button type="button" class="referrals-page__create-btn" [disabled]="!canSubmit()" (click)="createCode()">
-              <lucide-icon [name]="addIcon" class="referrals-page__create-icon"></lucide-icon>
-              @if (isSubmitting()) {
-                <span>{{ t('referrals.manage.submitting') }}</span>
-              } @else {
-                <span>{{ t('referrals.manage.submit') }}</span>
+              @if (formError()) {
+                <p class="lf-form-error" role="alert">{{ formError() }}</p>
               }
-            </button>
-          </footer>
-        </section>
-      </div>
+
+              @if (isAtLimit()) {
+                <p class="lf-note">{{ t('referrals.manage.limitReached') }}</p>
+              }
+
+              <div class="lf-form__actions">
+                <button type="button" class="lf-btn" (click)="closeCreateModal()">
+                  {{ t('common.cancel') }}
+                </button>
+                <button
+                  type="button"
+                  class="lf-btn lf-btn--primary"
+                  [disabled]="!canSubmit()"
+                  (click)="createCode()"
+                >
+                  @if (isSubmitting()) {
+                    {{ t('referrals.manage.submitting') }}
+                  } @else {
+                    {{ t('referrals.manage.submit') }}
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     }
-  }
-</section>
+  </main>
+</div>

@@ -1,112 +1,173 @@
-<div class="modules-page">
-  <!-- Three.js Particle Background -->
-  <app-particle-field></app-particle-field>
+<div class="lf" [attr.data-plan]="userPlanTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.title')">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">{{ t('modules.hero.badge') }}</p>
+        <h1 class="lf-title">
+          {{ t('modules.title') }}
+          <span>{{ planTierLabel() }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('modules.subtitle') }}</p>
 
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="hero-content">
-      <div class="hero-badge">
-        <lucide-icon [name]="sparklesIcon" class="badge-icon"></lucide-icon>
-        <span>{{ t('modules.hero.badge') }}</span>
-      </div>
-
-      <h1 class="hero-title">
-        <span class="gradient-text">{{ t('modules.title') }}</span>
-      </h1>
-
-      <p class="hero-description">
-        {{ t('modules.subtitle') }}
-      </p>
-
-      <!-- Search Bar -->
-      <div class="search-container">
-        <div class="search-wrapper" [class.focused]="searchQuery()">
-          <lucide-icon [name]="searchIcon" class="search-icon"></lucide-icon>
+        <label class="lf-search lf-search--hero" [attr.aria-label]="t('modules.searchPlaceholder')">
+          <span class="visually-hidden">{{ t('modules.searchPlaceholder') }}</span>
           <input
-            type="text"
-            class="search-input"
+            type="search"
             [placeholder]="t('modules.searchPlaceholder')"
             [value]="searchQuery()"
             (input)="onSearchChange($event)"
           />
           @if (searchQuery()) {
-            <button type="button" class="search-clear" (click)="searchQuery.set('')">
-              <lucide-icon [name]="clearIcon" class="clear-icon"></lucide-icon>
+            <button
+              type="button"
+              class="lf-search__clear"
+              [attr.aria-label]="t('modules.resetFilters')"
+              (click)="clearSearch()"
+            >
+              ×
             </button>
           }
-        </div>
-      </div>
+        </label>
 
-      <!-- Category Filter -->
-      <div class="category-filter">
-        <div class="category-filter-track">
+        <div class="lf-categories" role="tablist" [attr.aria-label]="t('modules.categories.all')">
           @for (category of categories; track category.id) {
             <button
               type="button"
-              class="category-chip"
-              [class.active]="selectedCategory() === category.id"
+              class="lf-cat"
+              role="tab"
+              [class.lf-cat--active]="selectedCategory() === category.id"
+              [attr.aria-selected]="selectedCategory() === category.id"
               (click)="onCategoryChange(category.id)"
             >
-              <lucide-icon [name]="category.icon" class="chip-icon"></lucide-icon>
-              <span>{{ t(category.labelKey) }}</span>
+              {{ t(category.labelKey) }}
             </button>
           }
         </div>
-      </div>
-    </div>
 
-    <!-- Decorative floating shapes -->
-    <div class="hero-decoration">
-      <div class="floating-shape shape-1"></div>
-      <div class="floating-shape shape-2"></div>
-      <div class="floating-shape shape-3"></div>
-    </div>
-  </section>
+        <p class="lf-feed">
+          {{ streamer() || '—' }}
+          · {{ filteredModules().length }} {{ t('modules.moduleCount') }}
+        </p>
+      </article>
 
-  <!-- Loading State -->
-  @if (isLoading()) {
-    <loading-indicator [loading]="true" size="fullscreen" message="common.loading" />
-  }
+      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="userPlanTier() !== 'free'">
+        <div class="lf-spotlight__head">
+          <span
+            class="lf-chip"
+            [class.lf-chip--gold]="userPlanTier() !== 'free'"
+          >
+            {{ planTierLabel() }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('modules.allModules') }}</span>
+        </div>
 
-  <!-- Modules Grid -->
-  @if (!isLoading()) {
-    <section class="modules-section">
-      <div class="section-header">
-        <lucide-icon [name]="gridIcon" class="section-icon"></lucide-icon>
-        <h2>{{ t('modules.allModules') }}</h2>
-        <span class="module-count">
+        <div class="lf-stats-strip" [attr.aria-label]="t('modules.allModules')">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('modules.allModules') }}</span>
+            <strong class="lf-stats-strip__value">{{ modules().length }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('modules.stats.available') }}</span>
+            <strong class="lf-stats-strip__value">{{ availableCount() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('modules.stats.locked') }}</span>
+            <strong class="lf-stats-strip__value">{{ lockedCount() }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lf-section" [attr.aria-label]="t('modules.allModules')">
+      <div class="lf-section__head">
+        <div>
+          <p class="lf-kicker">{{ t('modules.allModules') }}</p>
+          <h2 class="lf-h2">{{ t('modules.allModules') }}</h2>
+        </div>
+        <span class="lf-chip">
           {{ filteredModules().length }} {{ t('modules.moduleCount') }}
         </span>
       </div>
 
-      <div class="modules-grid" [class.empty]="filteredModules().length === 0">
-        @for (module of filteredModules(); track module.id; let i = $index) {
-          <app-module-card
-            [module]="toModule(module)"
-            [staggerDelay]="i * 100"
-            [accessText]="getAccessText(module)"
-            [lockedSubtext]="getLockedSubtext(module)"
-            (upgradeClick)="onUpgradeClick($event)"
-          ></app-module-card>
-        }
-      </div>
-
-      <!-- Empty State -->
       @if (filteredModules().length === 0) {
-        <div class="empty-state">
-          <div class="empty-icon">
-            <lucide-icon [name]="emptyIcon" class="empty-search-icon"></lucide-icon>
-          </div>
-          <h3>{{ t('modules.noResults') }}</h3>
-          <p>{{ t('modules.adjustFilters') }}</p>
-          <button type="button" class="reset-button" (click)="resetFilters()">
+        <div class="lf-tile lf-empty" role="status">
+          <h3 class="lf-empty__title">{{ t('modules.noResults') }}</h3>
+          <p class="lf-empty__copy">{{ t('modules.adjustFilters') }}</p>
+          <button type="button" class="lf-btn" (click)="resetFilters()">
             {{ t('modules.resetFilters') }}
           </button>
         </div>
+      } @else {
+        <div class="lf-bento lf-bento--modules">
+          @for (module of filteredModules(); track module.id) {
+            <article
+              class="lf-tile lf-mod"
+              [class.lf-mod--locked]="module.isLocked"
+              [class.lf-mod--soon]="module.status === 'coming_soon'"
+              [class.lf-mod--premium]="module.minTier === 'premium'"
+              [class.lf-mod--pro]="module.minTier === 'pro'"
+            >
+              <div class="lf-mod__top">
+                <div
+                  class="lf-avatar"
+                  [class.lf-avatar--gold]="module.minTier !== 'free'"
+                  aria-hidden="true"
+                >
+                  {{ moduleInitial(module.name) }}
+                </div>
+                <div class="lf-mod__badges">
+                  <span
+                    class="lf-chip lf-chip--status"
+                    [class.lf-chip--ok]="module.status === 'stable'"
+                    [class.lf-chip--beta]="module.status === 'beta'"
+                    [class.lf-chip--alpha]="module.status === 'alpha'"
+                    [class.lf-chip--muted]="module.status === 'coming_soon'"
+                  >
+                    {{ statusLabel(module.status) }}
+                  </span>
+                  @if (module.minTier === 'pro') {
+                    <span class="lf-chip lf-chip--gold lf-chip--pro">Pro</span>
+                  } @else if (module.minTier === 'premium') {
+                    <span class="lf-chip lf-chip--gold">Premium</span>
+                  }
+                </div>
+              </div>
+
+              <h3 class="lf-mod__name">{{ module.name }}</h3>
+              <p class="lf-mod__desc">{{ module.description }}</p>
+              <p class="lf-mod__cat">{{ categoryLabel(module.category) }}</p>
+
+              @if (lockedSubtext(module); as sub) {
+                <p class="lf-mod__locked-note">{{ sub }}</p>
+              }
+
+              <div class="lf-mod__footer">
+                @if (isOpenable(module)) {
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--primary lf-btn--block"
+                    (click)="openModule(module)"
+                  >
+                    {{ accessText(module) }}
+                  </button>
+                } @else if (isUpgradeable(module)) {
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--gold lf-btn--block"
+                    (click)="onUpgradeClick(module)"
+                  >
+                    {{ accessText(module) }}
+                  </button>
+                } @else {
+                  <button type="button" class="lf-btn lf-btn--block" disabled>
+                    {{ accessText(module) }}
+                  </button>
+                }
+              </div>
+            </article>
+          }
+        </div>
       }
     </section>
-  }
-
-  <!-- Background Pattern -->
-  <div class="background-pattern"></div>
+  </main>
 </div>

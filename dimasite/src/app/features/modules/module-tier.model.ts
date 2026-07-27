@@ -126,7 +126,7 @@ export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequi
     id: 'clip-recommendations',
     minTier: 'free',
     displayName: 'Clip Recommendations',
-    defaultStatus: 'beta',
+    defaultStatus: 'alpha',
     category: 'content'
   },
   library: {

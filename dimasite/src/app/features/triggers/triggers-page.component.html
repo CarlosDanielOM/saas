@@ -1,391 +1,359 @@
-<div class="triggers-shell">
-  <section class="triggers-hero">
-    <div class="triggers-hero__content">
-      <a [routerLink]="['/', streamer(), 'modules']" class="triggers-back-link">
-        <lucide-icon [name]="backIcon" class="triggers-back-link__icon"></lucide-icon>
-        <span>{{ t('triggers.backToModules') }}</span>
-      </a>
-
-      <div class="triggers-hero__badge">
-        <lucide-icon [name]="sparklesIcon" class="triggers-hero__badge-icon"></lucide-icon>
-        <span>{{ t('triggers.heroBadge') }}</span>
-      </div>
-
-      <div class="triggers-hero__copy">
-        <div>
-          <h1 class="triggers-title">{{ t('triggers.title') }}</h1>
-          <p class="triggers-subtitle">{{ t('triggers.subtitle') }}</p>
-        </div>
-
-        <div class="triggers-actions">
-          <button type="button" class="triggers-action triggers-action--ghost" (click)="copyObsLink()">
-            <lucide-icon [name]="copiedObsLink() ? copiedIcon : copyIcon" class="triggers-action__icon"></lucide-icon>
-            <span>{{ copiedObsLink() ? t('triggers.obsCopiedCta') : t('triggers.copyObsLink') }}</span>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">← {{ t('triggers.backToModules') }}</a>
+        <p class="lf-kicker">{{ t('triggers.heroBadge') }}</p>
+        <h1 class="lf-title">{{ t('triggers.title') }} <span>{{ t('triggers.triggersEyebrow') }}</span></h1>
+        <p class="lf-copy">{{ t('triggers.subtitle') }}</p>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn" (click)="copyObsLink()">
+            {{ copiedObsLink() ? t('triggers.obsCopiedCta') : t('triggers.copyObsLink') }}
           </button>
-          <button type="button" class="triggers-action triggers-action--ghost" [disabled]="refreshCooldown() > 0" (click)="refreshAll()">
-            <lucide-icon [name]="refreshIcon" class="triggers-action__icon" [class.triggers-spin]="isLoadingTriggers() || isLoadingLibrary()"></lucide-icon>
-            <span>
-              @if (refreshCooldown() > 0) {
-                {{ t('triggers.refreshCooldown', { seconds: refreshCooldown() }) }}
-              } @else {
-                {{ t('common.refresh') }}
-              }
-            </span>
+          <button type="button" class="lf-btn" [disabled]="refreshCooldown() > 0" (click)="refreshAll()">
+            <span [class.lf-spin]="isLoadingTriggers() || isLoadingLibrary()">↻</span>
+            @if (refreshCooldown() > 0) {
+              {{ t('triggers.refreshCooldown', { seconds: refreshCooldown() }) }}
+            } @else {
+              {{ t('common.refresh') }}
+            }
           </button>
-          <button type="button" class="triggers-action triggers-action--secondary" (click)="openUploadModal()">
-            <lucide-icon [name]="uploadIcon" class="triggers-action__icon"></lucide-icon>
-            <span>{{ t('triggers.uploadMedia') }}</span>
+          <button type="button" class="lf-btn" (click)="openUploadModal()">
+            {{ t('triggers.uploadMedia') }}
           </button>
-          <button type="button" class="triggers-action triggers-action--primary" (click)="openCreateModal()">
-            <lucide-icon [name]="plusIcon" class="triggers-action__icon"></lucide-icon>
-            <span>{{ t('triggers.createTrigger') }}</span>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+            + {{ t('triggers.createTrigger') }}
           </button>
         </div>
-      </div>
-    </div>
-  </section>
+      </article>
 
-  @if (pageError() && !triggers().length && !libraryItems().length && !isLoadingTriggers() && !isLoadingLibrary()) {
-    <section class="triggers-empty-state triggers-empty-state--error">
-      <lucide-icon [name]="alertIcon" class="triggers-empty-state__icon"></lucide-icon>
-      <h2>{{ t('triggers.errors.loadTitle') }}</h2>
-      <p>{{ pageError() }}</p>
-      <button type="button" class="triggers-action triggers-action--primary" (click)="refreshAll()">
-        {{ t('common.retry') }}
-      </button>
-    </section>
-  } @else {
-    <section class="triggers-layout">
-      <div class="triggers-main-panel">
-        <section class="triggers-metrics">
-          <article class="triggers-metric-card">
-            <div class="triggers-metric-card__label">{{ t('triggers.stats.activeTriggers') }}</div>
-            <div class="triggers-metric-card__value">{{ triggers().length }}</div>
-            <div class="triggers-metric-card__meta">{{ t('triggers.stats.liveAutomation') }}</div>
-          </article>
-          <article class="triggers-metric-card">
-            <div class="triggers-metric-card__label">{{ t('triggers.stats.libraryItems') }}</div>
-            <div class="triggers-metric-card__value">{{ libraryCount() }}</div>
-            <div class="triggers-metric-card__meta">{{ t('triggers.stats.readyAssets') }}</div>
-          </article>
-          <article class="triggers-metric-card triggers-metric-card--quota">
-            <div class="triggers-metric-card__head">
-              <div class="triggers-metric-card__label">{{ t('triggers.stats.storageQuota') }}</div>
-              <div class="triggers-metric-card__tier">{{ planTierLabel() }}</div>
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-stats-strip lf-stats-strip--3">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('triggers.stats.activeTriggers') }}</span>
+            <span class="lf-stats-strip__value">{{ triggers().length }}</span>
+            <span class="lf-stats-strip__meta">{{ t('triggers.stats.liveAutomation') }}</span>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('triggers.stats.libraryItems') }}</span>
+            <span class="lf-stats-strip__value">{{ libraryCount() }}</span>
+            <span class="lf-stats-strip__meta">{{ t('triggers.stats.readyAssets') }}</span>
+          </div>
+          <div class="lf-stats-strip__item lf-stats-strip__item--quota">
+            <div class="lf-quota-head">
+              <span class="lf-stats-strip__label">{{ t('triggers.stats.storageQuota') }}</span>
+              <span class="lf-chip lf-chip--gold">{{ planTierLabel() }}</span>
             </div>
-            <div class="triggers-metric-card__value triggers-metric-card__value--quota">
+            <span class="lf-stats-strip__value lf-stats-strip__value--sm">
               {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-              <span>{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
+              <span class="lf-muted">{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
+            </span>
+            <div class="lf-bar" aria-hidden="true">
+              <div class="lf-bar__fill" [style.width.%]="quotaPercent()"></div>
             </div>
-            <div class="triggers-quota-bar" aria-hidden="true">
-              <div class="triggers-quota-bar__fill" [style.width.%]="quotaPercent()"></div>
-            </div>
-            <div class="triggers-metric-card__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</div>
-          </article>
-        </section>
-
-        <div class="triggers-section-head">
-          <div>
-            <p class="triggers-section-head__eyebrow">{{ t('triggers.triggersEyebrow') }}</p>
-            <h2>{{ t('triggers.activeSectionTitle') }}</h2>
+            <span class="lf-stats-strip__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</span>
           </div>
-          <p class="triggers-section-head__caption">{{ t('triggers.activeSectionCaption') }}</p>
         </div>
+      </article>
+    </section>
 
-        @if (isLoadingTriggers() && !triggers().length) {
-          <div class="triggers-panel-state">
-            <loading-indicator [loading]="true" size="lg" [message]="'triggers.loading'" />
-          </div>
-        } @else if (!triggers().length) {
-          <div class="triggers-empty-state">
-            <lucide-icon [name]="triggerIcon" class="triggers-empty-state__icon"></lucide-icon>
-            <h3>{{ t('triggers.emptyTitle') }}</h3>
-            <p>{{ t('triggers.emptyMessage') }}</p>
-            <button type="button" class="triggers-action triggers-action--primary" (click)="openCreateModal()">
-              {{ t('triggers.createFirstTrigger') }}
+    @if (pageError() && !triggers().length && !libraryItems().length && !isLoadingTriggers() && !isLoadingLibrary()) {
+      <section class="lf-banner lf-banner--error" role="alert">
+        <div>
+          <p class="lf-banner__title">{{ t('triggers.errors.loadTitle') }}</p>
+          <p class="lf-note">{{ pageError() }}</p>
+        </div>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="refreshAll()">{{ t('common.retry') }}</button>
+      </section>
+    } @else {
+      <section class="lf-bento lf-bento--workspace">
+        <!-- Trigger board -->
+        <div class="lf-tile lf-tile--list">
+          <div class="lf-section-head">
+            <div>
+              <p class="lf-kicker">{{ t('triggers.triggersEyebrow') }}</p>
+              <h2 class="lf-h2">{{ t('triggers.activeSectionTitle') }}</h2>
+              <p class="lf-note">{{ t('triggers.activeSectionCaption') }}</p>
+            </div>
+            <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
+              + {{ t('triggers.createTrigger') }}
             </button>
           </div>
-        } @else {
-          <div class="triggers-grid">
-            @for (trigger of triggers(); track trigger._id) {
-              <article class="trigger-card" [class.trigger-card--disabled]="!trigger.isEnabled">
-                <!-- Visual Card Preview at top -->
-                @if (getTriggerAsset(trigger); as asset) {
-                  <div class="trigger-card__preview">
-                    @if (asset.mediaType === 'image') {
-                      <img [src]="asset.playbackUrl" class="trigger-card__preview-element" loading="lazy" />
-                    }
-                    @if (asset.mediaType === 'gif') {
-                      <img [src]="asset.playbackUrl" class="trigger-card__preview-element" loading="lazy" />
-                    }
-                    @if (asset.mediaType === 'video') {
-                      <video [src]="asset.playbackUrl" muted preload="metadata" class="trigger-card__preview-element"></video>
-                      <div class="trigger-card__preview-badge">
-                        <lucide-icon [name]="previewIcon" class="h-3.5 w-3.5 text-white"></lucide-icon>
-                      </div>
-                    }
-                    @if (asset.mediaType === 'audio') {
-                      <div class="trigger-card__audio-box">
-                        <div class="triggers-mini-wave">
-                          <div class="triggers-mini-wave-bar"></div>
-                          <div class="triggers-mini-wave-bar"></div>
-                          <div class="triggers-mini-wave-bar"></div>
-                          <div class="triggers-mini-wave-bar"></div>
-                        </div>
-                        <lucide-icon [name]="audioIcon" class="h-6 w-6 text-purple-400"></lucide-icon>
-                      </div>
-                    }
 
-                    <!-- Preview Action Button (Float) -->
-                    @if (asset.playbackUrl) {
-                      <button
-                        type="button"
-                        class="trigger-card__preview-btn"
-                        (click)="openPreviewModal($event, asset)"
-                        title="Preview"
-                      >
-                        <lucide-icon [name]="previewIcon" class="h-3.5 w-3.5"></lucide-icon>
-                      </button>
-                    }
-                  </div>
-                }
-
-                <div class="trigger-card__content">
-                  <div class="trigger-card__head">
-                    <div>
-                      <h3 class="trigger-card__title">{{ trigger.name }}</h3>
-                      <p class="trigger-card__media">{{ trigger.file }}</p>
-                    </div>
-                    <span class="trigger-card__badge" [class.trigger-card__badge--off]="!trigger.isEnabled">
-                      {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
-                    </span>
-                  </div>
-
-                  <p class="trigger-card__prompt">
-                    @if (trigger.reward) {
-                      {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
+          @if (isLoadingTriggers() && !triggers().length) {
+            <div class="lf-empty"><p>{{ t('triggers.loading') }}</p></div>
+          } @else if (!triggers().length) {
+            <div class="lf-empty">
+              <h3 class="lf-h3">{{ t('triggers.emptyTitle') }}</h3>
+              <p>{{ t('triggers.emptyMessage') }}</p>
+              <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+                {{ t('triggers.createFirstTrigger') }}
+              </button>
+            </div>
+          } @else {
+            <div class="lf-item-grid">
+              @for (trigger of triggers(); track trigger._id) {
+                <article class="lf-item-card" [class.lf-item-card--off]="!trigger.isEnabled">
+                  <div class="lf-item-card__thumb">
+                    @if (getTriggerAsset(trigger); as asset) {
+                      @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
+                        <img [src]="asset.playbackUrl" class="lf-item-card__media" loading="lazy" [alt]="trigger.name" />
+                      } @else if (asset.mediaType === 'video') {
+                        <video [src]="asset.playbackUrl" muted preload="metadata" class="lf-item-card__media"></video>
+                      } @else {
+                        <div class="lf-item-card__audio">{{ mediaGlyph(asset.mediaType) }}</div>
+                      }
+                      @if (asset.playbackUrl) {
+                        <button
+                          type="button"
+                          class="lf-item-card__preview-btn"
+                          (click)="openPreviewModal($event, asset)"
+                          title="Preview"
+                        >
+                          ◎
+                        </button>
+                      }
                     } @else {
-                      {{ t('triggers.noLinkedReward') }}
+                      <div class="lf-item-card__audio">⚡</div>
                     }
-                  </p>
-
-                  <div class="trigger-card__stats">
-                    <div>
-                      <span>{{ t('triggers.assetLabel') }}</span>
-                      <strong>{{ trigger.file }}</strong>
-                    </div>
-                    <div>
-                      <span>{{ t('triggers.rewardState') }}</span>
-                      <strong>{{ trigger.reward ? t('triggers.rewardLinked') : t('triggers.rewardless') }}</strong>
-                    </div>
-                    <div>
-                      <span>{{ t('triggers.volume') }}</span>
-                      <strong>{{ trigger.volume }}%</strong>
-                    </div>
                   </div>
 
-                  <div class="trigger-card__actions">
-                    <button type="button" class="trigger-card__action" (click)="openTestModal(trigger)">
-                      <lucide-icon [name]="playIcon" class="trigger-card__action-icon"></lucide-icon>
-                      <span>{{ t('triggers.testAction') }}</span>
-                    </button>
-                    <button type="button" class="trigger-card__action" (click)="openEditModal(trigger)">
-                      <lucide-icon [name]="editIcon" class="trigger-card__action-icon"></lucide-icon>
-                      <span>{{ t('common.edit') }}</span>
-                    </button>
-                    <button type="button" class="trigger-card__action" (click)="toggleTrigger(trigger)">
-                      <lucide-icon [name]="triggerIcon" class="trigger-card__action-icon"></lucide-icon>
-                      <span>{{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}</span>
-                    </button>
-                    <button type="button" class="trigger-card__action trigger-card__action--danger" (click)="openDeleteTrigger(trigger)">
-                      <lucide-icon [name]="deleteIcon" class="trigger-card__action-icon"></lucide-icon>
-                      <span>{{ t('common.delete') }}</span>
-                    </button>
+                  <div class="lf-item-card__body">
+                    <div class="lf-item-card__head">
+                      <h3 class="lf-item-card__title" [title]="trigger.name">{{ trigger.name }}</h3>
+                      <span
+                        class="lf-chip lf-chip--compact"
+                        [class.lf-chip--ok]="trigger.isEnabled"
+                        [class.lf-chip--muted]="!trigger.isEnabled"
+                      >
+                        {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
+                      </span>
+                    </div>
+                    <p class="lf-item-card__sub">
+                      @if (trigger.reward) {
+                        {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
+                      } @else {
+                        {{ t('triggers.rewardless') }} · {{ trigger.volume }}%
+                      }
+                    </p>
+                    <div class="lf-item-card__actions">
+                      <button type="button" class="lf-btn lf-btn--xs" (click)="openTestModal(trigger)">
+                        {{ t('triggers.testAction') }}
+                      </button>
+                      <button type="button" class="lf-btn lf-btn--xs" (click)="openEditModal(trigger)">
+                        {{ t('common.edit') }}
+                      </button>
+                      <button type="button" class="lf-btn lf-btn--xs" (click)="toggleTrigger(trigger)">
+                        {{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}
+                      </button>
+                      <button type="button" class="lf-btn lf-btn--xs lf-btn--danger" (click)="openDeleteTrigger(trigger)">
+                        {{ t('common.delete') }}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </article>
-            }
-          </div>
-        }
-      </div>
-
-      <aside class="triggers-side-panel">
-        <div class="triggers-rail-panel">
-          <div class="triggers-rail-panel__head">
-            <div>
-              <h2>{{ t('triggers.myLibrary') }}</h2>
-              <p>{{ t('triggers.libraryDescription') }}</p>
-            </div>
-            <div class="triggers-rail-panel__actions">
-              <button type="button" class="triggers-mini-button" (click)="openPublicLibraryModal()">
-                <lucide-icon [name]="marketplaceIcon" class="triggers-mini-button__icon"></lucide-icon>
-                <span>{{ t('triggers.browsePublicLibrary') }}</span>
-              </button>
-              <button type="button" class="triggers-mini-button" (click)="openUploadModal()">
-                <lucide-icon [name]="uploadIcon" class="triggers-mini-button__icon"></lucide-icon>
-                <span>{{ t('triggers.uploadMedia') }}</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="triggers-toolbar">
-            <label class="triggers-search-field">
-              <lucide-icon [name]="searchIcon" class="triggers-search-field__icon"></lucide-icon>
-              <input type="search" [placeholder]="t('triggers.searchLibrary')" [value]="librarySearch()" (input)="updateLibrarySearch($event)">
-            </label>
-            <div class="triggers-filter-chips">
-              @for (filter of filterOptions; track filter) {
-                <button type="button" class="triggers-filter-chip" [class.triggers-filter-chip--active]="mediaFilter() === filter" (click)="setMediaFilter(filter)">
-                  {{ t('triggers.filters.' + filter) }}
-                </button>
+                </article>
               }
             </div>
+          }
+        </div>
+
+        <!-- Library rail -->
+        <aside class="lf-tile lf-tile--rail">
+          <div class="lf-section-head">
+            <div>
+              <p class="lf-kicker">{{ t('triggers.myLibrary') }}</p>
+              <h2 class="lf-h2">{{ t('triggers.myLibrary') }}</h2>
+              <p class="lf-note">{{ t('triggers.libraryDescription') }}</p>
+            </div>
+          </div>
+
+          <div class="lf-rail-actions">
+            <button type="button" class="lf-btn lf-btn--compact" (click)="openPublicLibraryModal()">
+              {{ t('triggers.browsePublicLibrary') }}
+            </button>
+            <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="openUploadModal()">
+              {{ t('triggers.uploadMedia') }}
+            </button>
+          </div>
+
+          <label class="lf-search-wrap">
+            <input
+              type="search"
+              class="lf-search"
+              [placeholder]="t('triggers.searchLibrary')"
+              [value]="librarySearch()"
+              (input)="updateLibrarySearch($event)"
+            />
+          </label>
+
+          <div class="lf-filter-tabs">
+            @for (filter of filterOptions; track filter) {
+              <button
+                type="button"
+                class="lf-filter-tab"
+                [class.lf-filter-tab--active]="mediaFilter() === filter"
+                (click)="setMediaFilter(filter)"
+              >
+                {{ t('triggers.filters.' + filter) }}
+              </button>
+            }
           </div>
 
           @if (isLoadingLibrary() && !libraryItems().length) {
-            <div class="triggers-panel-state triggers-panel-state--compact">
-              <loading-indicator [loading]="true" size="md" [message]="'triggers.loadingLibrary'" />
-            </div>
+            <div class="lf-empty lf-empty--compact"><p>{{ t('triggers.loadingLibrary') }}</p></div>
           } @else {
-            <div class="media-list">
+            <div class="lf-media-list">
               @for (item of displayedLibraryItems(); track item._id) {
-                <article class="media-card" [class.media-card--muted]="!canAttachItem(item)">
-                  <!-- Sidebar Preview or Image Thumbnail -->
-                  <div class="media-card__icon-wrap relative group cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">
+                <article class="lf-media-row" [class.lf-media-row--muted]="!canAttachItem(item)">
+                  <button
+                    type="button"
+                    class="lf-media-row__thumb"
+                    (click)="item.asset ? openPreviewModal($event, item.asset) : null"
+                  >
                     @if (item.asset && (item.asset.mediaType === 'image' || item.asset.mediaType === 'gif')) {
-                      <img [src]="item.asset.playbackUrl" class="w-full h-full object-cover rounded" />
+                      <img [src]="item.asset.playbackUrl" alt="" />
                     } @else {
-                      <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="media-card__icon"></lucide-icon>
+                      <span>{{ mediaGlyph(item.asset?.mediaType || 'video') }}</span>
                     }
-                    @if (item.asset?.playbackUrl) {
-                      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded">
-                        <lucide-icon [name]="previewIcon" class="h-4 w-4 text-white"></lucide-icon>
-                      </div>
-                    }
-                  </div>
-
-                  <div class="media-card__body">
-                    <div class="media-card__head">
-                      <h3 class="cursor-pointer" (click)="item.asset ? openPreviewModal($event, item.asset) : null">{{ (item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName }}</h3>
-                      <span class="media-card__scope" [class.media-card__scope--public]="item.assetScope === 'public'">
+                  </button>
+                  <div class="lf-media-row__body">
+                    <div class="lf-media-row__head">
+                      <strong [title]="(item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName">
+                        {{ (item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName }}
+                      </strong>
+                      <span
+                        class="lf-chip lf-chip--compact"
+                        [class.lf-chip--accent]="item.assetScope === 'public'"
+                      >
                         {{ t('triggers.scope.' + item.assetScope) }}
                       </span>
                     </div>
-                    <p>{{ item.asset?.ownerChannelName }} - {{ formatBytes(item.quotaBytesCharged) }}</p>
-                    <div class="media-card__meta">
-                      <span>{{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }}</span>
-                      <span>{{ formatDate(item.createdAt) }}</span>
+                    <p class="lf-media-row__meta">
+                      {{ item.asset?.ownerChannelName }} · {{ formatBytes(item.quotaBytesCharged) }}
+                    </p>
+                    <p class="lf-media-row__meta">
+                      {{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }}
+                      · {{ formatDate(item.createdAt) }}
                       @if (!canAttachItem(item)) {
-                        <span>{{ t('triggers.mediaComingSoon') }}</span>
+                        · {{ t('triggers.mediaComingSoon') }}
                       }
-                    </div>
+                    </p>
                   </div>
-                  <div class="media-card__actions">
-                    <button type="button" class="media-card__button media-card__button--danger" (click)="openDeleteLibraryItem(item)">
-                      <lucide-icon [name]="deleteIcon" class="media-card__button-icon"></lucide-icon>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--xs lf-btn--danger"
+                    (click)="openDeleteLibraryItem(item)"
+                    [attr.aria-label]="t('common.delete')"
+                  >
+                    ×
+                  </button>
                 </article>
               } @empty {
-                <div class="triggers-empty-state triggers-empty-state--compact">
-                  <lucide-icon [name]="libraryIcon" class="triggers-empty-state__icon"></lucide-icon>
-                  <h3>{{ t('triggers.libraryEmptyTitle') }}</h3>
+                <div class="lf-empty lf-empty--compact">
+                  <h3 class="lf-h3">{{ t('triggers.libraryEmptyTitle') }}</h3>
                   <p>{{ t('triggers.libraryEmptyMessage') }}</p>
                 </div>
               }
             </div>
           }
-        </div>
-      </aside>
-    </section>
-  }
+        </aside>
+      </section>
+    }
+  </main>
+</div>
 
-  @if (isTriggerModalOpen()) {
-    <div class="triggers-modal-backdrop" (click)="closeTriggerModal()">
-      <section class="triggers-modal" (click)="$event.stopPropagation()">
-        <div class="triggers-modal__head">
-          <div>
-            <p class="triggers-modal__eyebrow">{{ triggerFormMode() === 'create' ? t('triggers.modalCreateEyebrow') : t('triggers.modalEditEyebrow') }}</p>
-            <h2>{{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('triggers.editTrigger') }}</h2>
-          </div>
-          <button type="button" class="triggers-icon-button" (click)="closeTriggerModal()">
-            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
-          </button>
+<!-- Create / Edit trigger modal -->
+@if (isTriggerModalOpen()) {
+  <div class="lf-modal-overlay" (click)="closeTriggerModal()">
+    <div class="lf-modal lf-modal--wide" (click)="$event.stopPropagation()">
+      <div class="lf-modal__head">
+        <div>
+          <p class="lf-kicker">
+            {{ triggerFormMode() === 'create' ? t('triggers.modalCreateEyebrow') : t('triggers.modalEditEyebrow') }}
+          </p>
+          <h2 class="lf-modal__title">
+            {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('triggers.editTrigger') }}
+          </h2>
         </div>
+        <button type="button" class="lf-modal__close" (click)="closeTriggerModal()" [attr.aria-label]="t('common.close')">×</button>
+      </div>
 
-        <div class="triggers-form-grid">
-          <label class="triggers-field">
+      <div class="lf-modal__body">
+        <div class="lf-form-grid">
+          <label class="lf-field">
             <span>{{ t('triggers.form.nameLabel') }}</span>
-            <input type="text" [value]="triggerForm().name" (input)="updateTriggerForm('name', $any($event.target).value)" [placeholder]="t('triggers.form.namePlaceholder')" pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+            <input
+              type="text"
+              [value]="triggerForm().name"
+              (input)="updateTriggerForm('name', $any($event.target).value)"
+              [placeholder]="t('triggers.form.namePlaceholder')"
+              pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
+              maxlength="60"
+              autocapitalize="off"
+              autocomplete="off"
+              spellcheck="false"
+            />
           </label>
 
-          <label class="triggers-field">
+          <label class="lf-field">
             <span>{{ t('triggers.volume') }}</span>
-            <div class="triggers-volume-control">
+            <div class="lf-volume">
               <input
                 type="range"
-                class="triggers-volume-slider"
                 min="0"
                 max="100"
                 [value]="triggerForm().volume"
                 [attr.aria-label]="t('triggers.volume')"
                 (input)="updateTriggerForm('volume', $any($event.target).value)"
-              >
-              <div class="triggers-volume-display" aria-live="polite">
-                <span class="triggers-volume-display__value">{{ triggerForm().volume }}</span>
-                <span class="triggers-volume-display__unit">%</span>
-              </div>
+              />
+              <span class="lf-volume__value">{{ triggerForm().volume }}%</span>
             </div>
           </label>
         </div>
 
         @if (triggerFormMode() === 'create') {
-          <div class="triggers-media-picker">
-            <div class="triggers-media-picker__head">
-              <div>
-                <h3>{{ t('triggers.form.mediaLabel') }}</h3>
-                <p>{{ t('triggers.form.mediaHint') }}</p>
-              </div>
+          <div class="lf-picker">
+            <div class="lf-picker__head">
+              <h3 class="lf-h3">{{ t('triggers.form.mediaLabel') }}</h3>
+              <p class="lf-note">{{ t('triggers.form.mediaHint') }}</p>
             </div>
-
-            <div class="triggers-media-picker__list">
+            <div class="lf-picker__list">
               @for (item of triggerCapableLibraryItems(); track item._id) {
                 <button
                   type="button"
-                  class="triggers-media-picker__item"
-                  [class.triggers-media-picker__item--selected]="triggerForm().libraryItemID === item._id"
+                  class="lf-picker__item"
+                  [class.lf-picker__item--selected]="triggerForm().libraryItemID === item._id"
                   (click)="updateTriggerForm('libraryItemID', item._id)"
                 >
-                  <lucide-icon [name]="getMediaIcon(item.asset?.mediaType || 'video')" class="triggers-media-picker__icon"></lucide-icon>
-                  <div>
+                  <span class="lf-picker__icon">{{ mediaGlyph(item.asset?.mediaType || 'video') }}</span>
+                  <span class="lf-picker__text">
                     <strong>{{ (item.localAlias || item.asset?.displayName) | displayName }}</strong>
-                    <span>{{ formatBytes(item.quotaBytesCharged) }} - {{ t('triggers.scope.' + item.assetScope) }}</span>
-                  </div>
+                    <span>{{ formatBytes(item.quotaBytesCharged) }} · {{ t('triggers.scope.' + item.assetScope) }}</span>
+                  </span>
                 </button>
               } @empty {
-                <div class="triggers-empty-state triggers-empty-state--compact">
-                  <lucide-icon [name]="uploadIcon" class="triggers-empty-state__icon"></lucide-icon>
-                  <h3>{{ t('triggers.form.noMediaTitle') }}</h3>
+                <div class="lf-empty lf-empty--compact">
+                  <h3 class="lf-h3">{{ t('triggers.form.noMediaTitle') }}</h3>
                   <p>{{ t('triggers.form.noMediaMessage') }}</p>
                 </div>
               }
             </div>
           </div>
         } @else if (selectedTriggerFormItem()) {
-          <div class="triggers-form-locked-media">
-            <lucide-icon [name]="getMediaIcon(selectedTriggerFormItem()!.asset?.mediaType || 'video')" class="triggers-form-locked-media__icon"></lucide-icon>
+          <div class="lf-locked-media">
+            <span class="lf-picker__icon">{{ mediaGlyph(selectedTriggerFormItem()!.asset?.mediaType || 'video') }}</span>
             <div>
               <strong>{{ (selectedTriggerFormItem()!.localAlias || selectedTriggerFormItem()!.asset?.displayName) | displayName }}</strong>
-              <p>{{ t('triggers.form.mediaLockedMessage') }}</p>
+              <p class="lf-note">{{ t('triggers.form.mediaLockedMessage') }}</p>
             </div>
           </div>
         }
 
-        <div class="triggers-reward-builder">
-          <div class="triggers-reward-builder__head">
+        <div class="lf-reward">
+          <div class="lf-reward__head">
             <div>
-              <h3>{{ t('triggers.rewardBuilderTitle') }}</h3>
-              <p>
+              <h3 class="lf-h3">{{ t('triggers.rewardBuilderTitle') }}</h3>
+              <p class="lf-note">
                 @if (hasLinkedRewardInEditor()) {
                   {{ t('triggers.rewardBuilderLinkedHint') }}
                 } @else {
@@ -393,13 +361,22 @@
                 }
               </p>
             </div>
-
             @if (!hasLinkedRewardInEditor()) {
-              <div class="triggers-scope-toggle">
-                <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="!triggerForm().reward.enabled" (click)="toggleRewardSection(false)">
+              <div class="lf-segment">
+                <button
+                  type="button"
+                  class="lf-segment__btn"
+                  [class.lf-segment__btn--active]="!triggerForm().reward.enabled"
+                  (click)="toggleRewardSection(false)"
+                >
                   {{ t('triggers.rewardless') }}
                 </button>
-                <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="triggerForm().reward.enabled" (click)="toggleRewardSection(true)">
+                <button
+                  type="button"
+                  class="lf-segment__btn"
+                  [class.lf-segment__btn--active]="triggerForm().reward.enabled"
+                  (click)="toggleRewardSection(true)"
+                >
                   {{ t('triggers.rewardLinked') }}
                 </button>
               </div>
@@ -407,269 +384,245 @@
           </div>
 
           @if (triggerForm().reward.enabled) {
-            <div class="triggers-form-grid triggers-form-grid--reward">
-              <label class="triggers-field">
+            <div class="lf-form-grid lf-form-grid--reward">
+              <label class="lf-field">
                 <span>{{ t('triggers.rewardFields.title') }}</span>
-                <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)">
+                <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)" />
               </label>
-
-              <label class="triggers-field">
+              <label class="lf-field">
                 <span>{{ t('common.cost') }}</span>
-                <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))">
+                <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))" />
               </label>
-
-              <label class="triggers-field">
+              <label class="lf-field">
                 <span>{{ t('common.cooldown') }}</span>
-                <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))">
+                <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))" />
               </label>
-
-              <label class="triggers-field">
+              <label class="lf-field">
                 <span>{{ t('triggers.rewardFields.duration') }}</span>
-                <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))">
+                <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))" />
               </label>
-
-              <label class="triggers-field">
+              <label class="lf-field">
                 <span>{{ t('triggers.rewardFields.costChange') }}</span>
-                <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))">
+                <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))" />
               </label>
-
-              <label class="triggers-field">
+              <label class="lf-field">
                 <span>{{ t('triggers.rewardFields.background') }}</span>
-                <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb">
+                <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb" />
+              </label>
+              <label class="lf-field lf-field--full">
+                <span>{{ t('triggers.rewardFields.prompt') }}</span>
+                <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
+              </label>
+              <label class="lf-field lf-field--full">
+                <span>{{ t('triggers.rewardFields.message') }}</span>
+                <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
               </label>
             </div>
-
-            <label class="triggers-field triggers-field--full">
-              <span>{{ t('triggers.rewardFields.prompt') }}</span>
-              <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
-            </label>
-
-            <label class="triggers-field triggers-field--full">
-              <span>{{ t('triggers.rewardFields.message') }}</span>
-              <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
-            </label>
-
-            <div class="triggers-checkbox-row">
-              <label class="triggers-checkbox-pill">
-                <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)">
+            <div class="lf-check-row">
+              <label class="lf-check">
+                <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)" />
                 <span>{{ t('triggers.rewardFields.userInput') }}</span>
               </label>
-              <label class="triggers-checkbox-pill">
-                <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)">
+              <label class="lf-check">
+                <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)" />
                 <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
               </label>
-              <label class="triggers-checkbox-pill">
-                <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)">
+              <label class="lf-check">
+                <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)" />
                 <span>{{ t('triggers.rewardFields.resetCost') }}</span>
               </label>
             </div>
           }
         </div>
+      </div>
 
-        <div class="triggers-modal__actions">
-          <button type="button" class="triggers-action triggers-action--ghost" (click)="closeTriggerModal()">
-            {{ t('common.cancel') }}
-          </button>
-          <button type="button" class="triggers-action triggers-action--primary" [disabled]="isSubmittingTrigger()" (click)="submitTriggerForm()">
-            @if (isSubmittingTrigger()) {
-              {{ t('triggers.saving') }}
-            } @else {
-              {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('common.save') }}
-            }
-          </button>
-        </div>
-      </section>
+      <div class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="closeTriggerModal()">{{ t('common.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSubmittingTrigger()" (click)="submitTriggerForm()">
+          @if (isSubmittingTrigger()) {
+            {{ t('triggers.saving') }}
+          } @else {
+            {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('common.save') }}
+          }
+        </button>
+      </div>
     </div>
-  }
+  </div>
+}
 
-  @if (isUploadModalOpen()) {
-    <div class="triggers-modal-backdrop" (click)="closeUploadModal()">
-      <section class="triggers-modal triggers-modal--upload" (click)="$event.stopPropagation()">
-        <div class="triggers-modal__head">
-          <div>
-            <p class="triggers-modal__eyebrow">{{ t('triggers.upload.kicker') }}</p>
-            <h2>{{ t('triggers.uploadMedia') }}</h2>
-          </div>
-          <button type="button" class="triggers-icon-button" (click)="closeUploadModal()">
-            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
-          </button>
+<!-- Upload modal -->
+@if (isUploadModalOpen()) {
+  <div class="lf-modal-overlay" (click)="closeUploadModal()">
+    <div class="lf-modal" (click)="$event.stopPropagation()">
+      <div class="lf-modal__head">
+        <div>
+          <p class="lf-kicker">{{ t('triggers.upload.kicker') }}</p>
+          <h2 class="lf-modal__title">{{ t('triggers.uploadMedia') }}</h2>
         </div>
+        <button type="button" class="lf-modal__close" (click)="closeUploadModal()">×</button>
+      </div>
 
-        <div class="triggers-upload-note">
-          <lucide-icon [name]="infoIcon" class="triggers-upload-note__icon"></lucide-icon>
-          <div>
-            <strong>{{ t('triggers.upload.limitTitle') }}</strong>
-            <p>{{ t('triggers.upload.limitMessage', { size: uploadLimitLabel() }) }}</p>
-          </div>
+      <div class="lf-modal__body">
+        <div class="lf-help">
+          <strong>{{ t('triggers.upload.limitTitle') }}</strong>
+          <p>{{ t('triggers.upload.limitMessage', { size: uploadLimitLabel() }) }}</p>
         </div>
 
         @if (planTier() === 'free') {
-          <div class="triggers-upload-note triggers-upload-note--accent">
-            <lucide-icon [name]="marketplaceIcon" class="triggers-upload-note__icon"></lucide-icon>
-            <div>
-              <strong>{{ t('triggers.upload.freePlanTitle') }}</strong>
-              <p>{{ t('triggers.upload.freePlanMessage') }}</p>
-            </div>
+          <div class="lf-help lf-help--gold">
+            <strong>{{ t('triggers.upload.freePlanTitle') }}</strong>
+            <p>{{ t('triggers.upload.freePlanMessage') }}</p>
           </div>
         } @else {
-          <div class="triggers-scope-toggle">
-            <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="uploadForm().scope === 'private'" (click)="updateUploadScope('private')">
+          <div class="lf-segment">
+            <button
+              type="button"
+              class="lf-segment__btn"
+              [class.lf-segment__btn--active]="uploadForm().scope === 'private'"
+              (click)="updateUploadScope('private')"
+            >
               {{ t('triggers.scope.private') }}
             </button>
-            <button type="button" class="triggers-scope-toggle__option" [class.triggers-scope-toggle__option--active]="uploadForm().scope === 'public'" (click)="updateUploadScope('public')">
+            <button
+              type="button"
+              class="lf-segment__btn"
+              [class.lf-segment__btn--active]="uploadForm().scope === 'public'"
+              (click)="updateUploadScope('public')"
+            >
               {{ t('triggers.scope.public') }}
             </button>
           </div>
         }
 
-        <label class="triggers-field triggers-field--full">
+        <label class="lf-field">
           <span>{{ t('triggers.upload.nameLabel') }}</span>
-          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)" [placeholder]="t('triggers.upload.namePlaceholder')" pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false">
+          <input
+            type="text"
+            [value]="uploadForm().name"
+            (input)="updateUploadName($event)"
+            [placeholder]="t('triggers.upload.namePlaceholder')"
+            pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
+            maxlength="60"
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck="false"
+          />
         </label>
 
         <label
-          class="triggers-file-drop"
-          [class.triggers-file-drop--dragging]="isDraggingUpload()"
+          class="lf-drop"
+          [class.lf-drop--dragging]="isDraggingUpload()"
           (dragover)="handleUploadDragOver($event)"
           (dragleave)="handleUploadDragLeave($event)"
           (drop)="handleUploadDrop($event)"
         >
-          <input #uploadFileInput type="file" class="triggers-file-drop__input" accept="video/*,audio/*" (change)="onUploadFileChange($event)">
-          <div class="triggers-file-drop__content">
-            <lucide-icon [name]="uploadIcon" class="triggers-file-drop__icon"></lucide-icon>
-            <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
-            <span>
-              @if (isDraggingUpload() && !uploadForm().file) {
-                {{ t('triggers.upload.dropNow') }}
-              } @else {
-                {{ uploadForm().file ? formatBytes(uploadForm().file?.size || 0) : t('triggers.upload.fileHint') }}
-              }
-            </span>
-          </div>
+          <input #uploadFileInput type="file" class="lf-drop__input" accept="video/*,audio/*" (change)="onUploadFileChange($event)" />
+          <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
+          <span>
+            @if (isDraggingUpload() && !uploadForm().file) {
+              {{ t('triggers.upload.dropNow') }}
+            } @else {
+              {{ uploadForm().file ? formatBytes(uploadForm().file?.size || 0) : t('triggers.upload.fileHint') }}
+            }
+          </span>
         </label>
+      </div>
 
-        <div class="triggers-modal__actions">
-          <button type="button" class="triggers-action triggers-action--ghost" (click)="closeUploadModal()">
-            {{ t('common.cancel') }}
-          </button>
-          <button type="button" class="triggers-action triggers-action--secondary" [disabled]="isUploadingMedia()" (click)="submitUpload()">
-            @if (isUploadingMedia()) {
-              {{ t('triggers.upload.uploading') }}
-            } @else {
-              {{ t('triggers.upload.submit') }}
-            }
-          </button>
-        </div>
-      </section>
-    </div>
-  }
-
-  @if (isTestModalOpen()) {
-    <div class="triggers-modal-backdrop" (click)="closeTestModal()">
-      <section class="triggers-modal triggers-modal--test" (click)="$event.stopPropagation()">
-        <div class="triggers-modal__head">
-          <div>
-            <p class="triggers-modal__eyebrow">{{ t('triggers.test.kicker') }}</p>
-            <h2>{{ testingTrigger()?.name }}</h2>
-          </div>
-          <button type="button" class="triggers-icon-button" (click)="closeTestModal()">
-            <lucide-icon [name]="closeIcon" class="triggers-icon-button__icon"></lucide-icon>
-          </button>
-        </div>
-
-        <div class="triggers-test-frame">
-          @if (testPreviewOverlayUrl()) {
-            <iframe
-              #testPreviewFrame
-              [src]="testPreviewOverlayUrl() | safeUrl"
-              (load)="handleTestPreviewLoad()"
-              allow="autoplay"
-              class="triggers-test-frame__iframe"
-            ></iframe>
+      <div class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="closeUploadModal()">{{ t('common.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isUploadingMedia()" (click)="submitUpload()">
+          @if (isUploadingMedia()) {
+            {{ t('triggers.upload.uploading') }}
+          } @else {
+            {{ t('triggers.upload.submit') }}
           }
-        </div>
-
-        <div class="triggers-test-actions">
-          <p>{{ t('triggers.test.description') }}</p>
-          <button type="button" class="triggers-action triggers-action--primary" [disabled]="isSendingTest()" (click)="fireTriggerTest()">
-            @if (isSendingTest()) {
-              {{ t('triggers.test.sending') }}
-            } @else {
-              {{ t('triggers.test.sendAgain') }}
-            }
-          </button>
-        </div>
-      </section>
+        </button>
+      </div>
     </div>
-  }
+  </div>
+}
 
-  @if (isPublicLibraryModalOpen() && channelID()) {
-    <app-public-library-modal
-      [channelId]="channelID()!"
-      [libraryMeta]="libraryMeta()"
-      [ownedAssetIds]="libraryAssetIds()"
-      (close)="closePublicLibraryModal()"
-      (assetAdded)="handlePublicLibraryAssetAdded($event)"
-    />
-  }
+<!-- Test modal -->
+@if (isTestModalOpen()) {
+  <div class="lf-modal-overlay" (click)="closeTestModal()">
+    <div class="lf-modal lf-modal--test" (click)="$event.stopPropagation()">
+      <div class="lf-modal__head">
+        <div>
+          <p class="lf-kicker">{{ t('triggers.test.kicker') }}</p>
+          <h2 class="lf-modal__title">{{ testingTrigger()?.name }}</h2>
+        </div>
+        <button type="button" class="lf-modal__close" (click)="closeTestModal()">×</button>
+      </div>
+      <div class="lf-test-frame">
+        @if (testPreviewOverlayUrl()) {
+          <iframe
+            #testPreviewFrame
+            [src]="testPreviewOverlayUrl() | safeUrl"
+            (load)="handleTestPreviewLoad()"
+            allow="autoplay"
+            class="lf-test-frame__iframe"
+          ></iframe>
+        }
+      </div>
+      <div class="lf-modal__footer lf-modal__footer--split">
+        <p class="lf-note">{{ t('triggers.test.description') }}</p>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSendingTest()" (click)="fireTriggerTest()">
+          @if (isSendingTest()) {
+            {{ t('triggers.test.sending') }}
+          } @else {
+            {{ t('triggers.test.sendAgain') }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
 
-  <app-confirmation-modal
-    [isOpen]="isDeleteModalOpen()"
-    [title]="pendingDelete()?.type === 'trigger' ? t('triggers.deleteTriggerTitle') : t('triggers.deleteMediaTitle')"
-    [message]="getDeleteMessage()"
-    [confirmText]="t('common.delete')"
-    [cancelText]="t('common.cancel')"
-    variant="danger"
-    (confirm)="confirmDelete()"
-    (cancel)="closeDeleteModal()"
+@if (isPublicLibraryModalOpen() && channelID()) {
+  <app-public-library-modal
+    [channelId]="channelID()!"
+    [libraryMeta]="libraryMeta()"
+    [ownedAssetIds]="libraryAssetIds()"
+    (close)="closePublicLibraryModal()"
+    (assetAdded)="handlePublicLibraryAssetAdded($event)"
   />
-</div>
+}
 
-<!-- Inner Preview Popup Sub-Modal -->
+<app-confirmation-modal
+  [isOpen]="isDeleteModalOpen()"
+  [title]="pendingDelete()?.type === 'trigger' ? t('triggers.deleteTriggerTitle') : t('triggers.deleteMediaTitle')"
+  [message]="getDeleteMessage()"
+  [confirmText]="t('common.delete')"
+  [cancelText]="t('common.cancel')"
+  variant="danger"
+  (confirm)="confirmDelete()"
+  (cancel)="closeDeleteModal()"
+/>
+
 @if (activePreviewAsset(); as previewAsset) {
-  <div class="triggers-preview-overlay" (click)="closePreviewModal()">
-    <div class="triggers-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="triggers-preview-modal__close" (click)="closePreviewModal()">
-        <lucide-icon [name]="closeIcon" class="h-4 w-4"></lucide-icon>
-      </button>
-
-      <div class="triggers-preview-modal__body">
-        <h4 class="triggers-preview-modal__title">{{ previewAsset.displayName | displayName }}</h4>
-        <p class="triggers-preview-modal__meta">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
-
-        <div class="triggers-preview-modal__content-box">
-          <!-- Audio Waveform Visualizer -->
-          @if (previewAsset.mediaType === 'audio') {
-            <div class="triggers-waveform-visualizer">
-              <div class="triggers-waveform-bars" [class.triggers-waveform-bars--playing]="isAudioPlaying()">
-                @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]; track bar) {
-                  <div class="triggers-waveform-bar" [style.animation-delay.ms]="bar * 40"></div>
-                }
-              </div>
-              <p class="triggers-waveform-status">
-                {{ isAudioPlaying() ? 'Playing Audio Demo...' : 'Audio Paused' }}
-              </p>
-              <button type="button" class="triggers-preview-play-btn" (click)="toggleAudioPlayPause()">
-                <lucide-icon [name]="isAudioPlaying() ? pauseIcon : playIcon" class="h-5 w-5"></lucide-icon>
-                <span>{{ isAudioPlaying() ? 'Pause Preview' : 'Play Preview' }}</span>
-              </button>
-            </div>
-          }
-
-          <!-- Image Preview -->
-          @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
-            <div class="triggers-image-preview-container">
-              <img [src]="previewAsset.playbackUrl" alt="Preview Asset" class="triggers-image-preview-element" />
-            </div>
-          }
-
-          <!-- Video Preview -->
-          @if (previewAsset.mediaType === 'video') {
-            <div class="triggers-video-preview-container">
-              <video [src]="previewAsset.playbackUrl" autoplay controls class="triggers-video-preview-element"></video>
-            </div>
-          }
-        </div>
+  <div class="lf-preview-overlay" (click)="closePreviewModal()">
+    <div class="lf-preview-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()">×</button>
+      <h3 class="lf-h3">{{ previewAsset.displayName | displayName }}</h3>
+      <p class="lf-note">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
+      <div class="lf-preview-modal__content">
+        @if (previewAsset.mediaType === 'audio') {
+          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()">
+            @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]; track bar) {
+              <span class="lf-waveform__bar" [style.animation-delay.ms]="bar * 40"></span>
+            }
+          </div>
+          <p class="lf-note">{{ isAudioPlaying() ? 'Playing…' : 'Paused' }}</p>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="toggleAudioPlayPause()">
+            {{ isAudioPlaying() ? 'Pause' : 'Play' }}
+          </button>
+        }
+        @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
+          <img class="lf-preview-image" [src]="previewAsset.playbackUrl" [alt]="previewAsset.displayName" />
+        }
+        @if (previewAsset.mediaType === 'video') {
+          <video class="lf-preview-video" [src]="previewAsset.playbackUrl" autoplay controls></video>
+        }
       </div>
     </div>
   </div>

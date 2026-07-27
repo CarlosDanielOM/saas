@@ -1,190 +1,198 @@
-<section class="settings-page">
-  <header class="settings-page__hero">
-    <div>
-      <p class="settings-page__eyebrow">{{ t('settings.hero.eyebrow') }}</p>
-      <h1>{{ t('settings.title') }}</h1>
-      <p class="settings-page__subtitle">{{ t('settings.hero.subtitle') }}</p>
-    </div>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('settings.title')">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">{{ t('settings.hero.eyebrow') }}</p>
+        <h1 class="lf-title">
+          {{ t('settings.title') }}
+          <span>{{ streamer() || '—' }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('settings.hero.subtitle') }}</p>
 
-    <div class="settings-page__hero-badge" [class.settings-page__hero-badge--owner]="isOwnerView()">
-      <lucide-icon
-        [img]="isOwnerView() ? addAdminIcon : adminIcon"
-        class="settings-page__hero-badge-icon"
-      ></lucide-icon>
-      <span>
-        {{ isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode') }}
-      </span>
-    </div>
-  </header>
+        <div class="lf-actions">
+          <button
+            type="button"
+            class="lf-btn"
+            (click)="retryLoad()"
+            [disabled]="loading() || !channelID()"
+          >
+            {{ t('common.retry') }}
+          </button>
+        </div>
 
-  @if (errorMessage()) {
-    <div class="settings-admins__banner settings-admins__banner--error" role="alert">
-      <lucide-icon [img]="alertIcon" class="settings-admins__banner-icon"></lucide-icon>
-      <div>
+        <p class="lf-feed" [class.lf-feed--on]="isOwnerView()">
+          {{
+            isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode')
+          }}
+          @if (channelID()) {
+            · {{ channelID() }}
+          }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="isOwnerView()">
+            {{ isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode') }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('settings.admins.current.kicker') }}</span>
+        </div>
+
+        <div class="lf-stats-strip" [attr.aria-label]="t('settings.admins.current.title')">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('settings.admins.current.countLabel') }}</span>
+            <strong class="lf-stats-strip__value">{{ admins().length }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('settings.admins.search.kicker') }}</span>
+            <strong class="lf-stats-strip__value">{{ isOwnerView() ? candidates().length : '—' }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('settings.hero.eyebrow') }}</span>
+            <strong class="lf-stats-strip__value lf-stats-strip__value--text">
+              {{ streamer() || '—' }}
+            </strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="lf-banner lf-banner--error" role="alert">
         <p>{{ errorMessage() }}</p>
-        <button type="button" class="settings-admins__link-btn" (click)="retryLoad()">
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
           {{ t('common.retry') }}
         </button>
       </div>
-    </div>
-  }
+    }
 
-  <div class="settings-admins__layout">
-    <article class="settings-admins__panel settings-admins__panel--primary">
-      <div class="settings-admins__panel-header">
+    <section class="lf-section" [attr.aria-label]="t('settings.admins.current.title')">
+      <div class="lf-section__head">
         <div>
-          <p class="settings-admins__panel-kicker">{{ t('settings.admins.current.kicker') }}</p>
-          <h2>{{ t('settings.admins.current.title') }}</h2>
-          <p>{{ t('settings.admins.current.subtitle') }}</p>
+          <p class="lf-kicker">{{ t('settings.admins.current.kicker') }}</p>
+          <h2 class="lf-h2">{{ t('settings.admins.current.title') }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ t('settings.admins.current.subtitle') }}</p>
         </div>
 
-        <div class="settings-admins__toolbar">
-          <span class="settings-admins__count-pill"
-            >{{ admins().length }} {{ t('settings.admins.current.countLabel') }}</span
-          >
+        <div class="lf-section__tools">
+          <span class="lf-chip">{{ admins().length }} {{ t('settings.admins.current.countLabel') }}</span>
 
           @if (isOwnerView()) {
-            <div class="settings-admins__search-stack">
-              <label
-                class="settings-admins__search"
-                [attr.aria-label]="t('settings.admins.search.inputLabel')"
-              >
-                <lucide-icon [img]="searchIcon" class="settings-admins__search-icon"></lucide-icon>
+            <div class="lf-search-stack">
+              <label class="lf-search" [attr.aria-label]="t('settings.admins.search.inputLabel')">
+                <span class="visually-hidden">{{ t('settings.admins.search.inputLabel') }}</span>
                 <input
                   type="search"
-                  class="settings-admins__search-input"
                   [value]="searchQuery()"
                   [placeholder]="t('settings.admins.search.placeholder')"
                   (input)="onSearchInput($event)"
                 />
-
                 @if (searchQuery()) {
                   <button
                     type="button"
-                    class="settings-admins__search-clear"
+                    class="lf-search__clear"
                     [attr.aria-label]="t('settings.admins.search.clearAriaLabel')"
                     (click)="clearSearch()"
                   >
-                    <lucide-icon [img]="clearIcon"></lucide-icon>
+                    ×
                   </button>
                 }
               </label>
 
               @if (showSearchDropdown()) {
                 <div
-                  class="settings-admins__dropdown"
+                  class="lf-dropdown"
                   role="listbox"
                   [attr.aria-label]="t('settings.admins.search.dropdownLabel')"
                 >
                   @if (hasCandidateResults()) {
-                    <p class="settings-admins__dropdown-meta">
+                    <p class="lf-dropdown__meta">
                       {{ t('settings.admins.search.matchesMeta', { count: searchResultCount() }) }}
                     </p>
-
                     @for (candidate of filteredCandidates(); track candidate.id) {
-                      <article class="settings-admins__dropdown-item">
+                      <article class="lf-dropdown__item">
                         <div>
-                          <p class="settings-admins__name">{{ candidate.display_name }}</p>
-                          <p class="settings-admins__meta">
-                            {{ candidate.login }} · {{ candidate.id }}
-                          </p>
+                          <p class="lf-person__name">{{ candidate.display_name }}</p>
+                          <p class="lf-person__meta">{{ candidate.login }} · {{ candidate.id }}</p>
                         </div>
-
                         <button
                           type="button"
-                          class="settings-admins__action-btn settings-admins__action-btn--primary"
+                          class="lf-btn lf-btn--primary lf-btn--compact"
                           [disabled]="isAdding(candidate.id)"
                           (click)="addAdmin(candidate)"
                         >
-                          <lucide-icon [img]="addAdminIcon"></lucide-icon>
-                          <span>
-                            {{
-                              isAdding(candidate.id)
-                                ? t('settings.admins.actions.adding')
-                                : t('settings.admins.actions.add')
-                            }}
-                          </span>
+                          {{
+                            isAdding(candidate.id)
+                              ? t('settings.admins.actions.adding')
+                              : t('settings.admins.actions.add')
+                          }}
                         </button>
                       </article>
                     }
                   } @else {
-                    <div class="settings-admins__dropdown-empty">
-                      <p>{{ t('settings.admins.states.noSearchMatches') }}</p>
-                    </div>
+                    <p class="lf-dropdown__empty">{{ t('settings.admins.states.noSearchMatches') }}</p>
                   }
                 </div>
               }
             </div>
           } @else if (isChannelResolving()) {
-            <div class="settings-admins__inline-note" aria-live="polite">
-              <loading-indicator [loading]="true" variant="three" size="sm"></loading-indicator>
-              <p>{{ t('settings.admins.states.resolvingViewer') }}</p>
-            </div>
+            <p class="lf-note">{{ t('settings.admins.states.resolvingViewer') }}</p>
           } @else {
-            <div class="settings-admins__inline-note settings-admins__inline-note--muted">
-              <lucide-icon [img]="adminIcon"></lucide-icon>
-              <p>{{ t('settings.admins.states.adminReadOnly') }}</p>
-            </div>
+            <p class="lf-note">{{ t('settings.admins.states.adminReadOnly') }}</p>
           }
         </div>
       </div>
 
       @if (isOwnerView() && isSearchIdle()) {
-        <p class="settings-admins__search-helper">{{ t('settings.admins.search.ownerHint') }}</p>
+        <p class="lf-note lf-note--pad">{{ t('settings.admins.search.ownerHint') }}</p>
       }
 
       @if (loading() && !admins().length) {
-        <div class="settings-admins__state-card" aria-live="polite">
-          <loading-indicator [loading]="true" variant="three" size="md"></loading-indicator>
-          <p>{{ t('settings.admins.states.loadingAdmins') }}</p>
-        </div>
+        <div class="lf-tile lf-empty">{{ t('settings.admins.states.loadingAdmins') }}</div>
       } @else {
-        <div class="settings-admins__list">
+        <div class="lf-tile lf-list">
           @for (admin of admins(); track admin.adminID) {
-            <article class="settings-admins__list-item">
-              <div class="settings-admins__identity">
-                <div class="settings-admins__avatar">
-                  <lucide-icon [img]="userIcon"></lucide-icon>
+            <article class="lf-list__row">
+              <div class="lf-person">
+                <div class="lf-avatar" aria-hidden="true">
+                  {{ (admin.adminName || '?').slice(0, 1).toUpperCase() }}
                 </div>
-
                 <div>
-                  <p class="settings-admins__name">{{ admin.adminName }}</p>
-                  <p class="settings-admins__meta">ID {{ admin.adminID }}</p>
+                  <p class="lf-person__name">{{ admin.adminName }}</p>
+                  <p class="lf-person__meta">ID {{ admin.adminID }}</p>
                 </div>
               </div>
 
-              <div class="settings-admins__actions">
-                <span class="settings-admins__status-pill">{{
-                  admin.actived ? t('common.enabled') : t('common.disabled')
-                }}</span>
+              <div class="lf-list__actions">
+                <span
+                  class="lf-chip lf-chip--status"
+                  [class.lf-chip--live]="admin.actived"
+                  [class.lf-chip--muted]="!admin.actived"
+                >
+                  {{ admin.actived ? t('common.enabled') : t('common.disabled') }}
+                </span>
 
                 @if (isOwnerView()) {
                   <button
                     type="button"
-                    class="settings-admins__action-btn settings-admins__action-btn--danger"
+                    class="lf-btn lf-btn--danger lf-btn--compact"
                     [disabled]="isDeleting(admin.adminID)"
                     (click)="deleteAdmin(admin)"
                   >
-                    <lucide-icon [img]="deleteIcon"></lucide-icon>
-                    <span>
-                      {{
-                        isDeleting(admin.adminID)
-                          ? t('settings.admins.actions.removing')
-                          : t('settings.admins.actions.remove')
-                      }}
-                    </span>
+                    {{
+                      isDeleting(admin.adminID)
+                        ? t('settings.admins.actions.removing')
+                        : t('settings.admins.actions.remove')
+                    }}
                   </button>
                 }
               </div>
             </article>
           } @empty {
-            <div class="settings-admins__state-card settings-admins__state-card--empty">
-              <lucide-icon [img]="adminIcon"></lucide-icon>
-              <p>{{ t('settings.admins.states.noAdmins') }}</p>
-            </div>
+            <div class="lf-empty-inline">{{ t('settings.admins.states.noAdmins') }}</div>
           }
         </div>
       }
-    </article>
-  </div>
-</section>
+    </section>
+  </main>
+</div>

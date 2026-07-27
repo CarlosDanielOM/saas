@@ -9,27 +9,7 @@ import {
   type OnDestroy,
   type OnInit
 } from '@angular/core';
-import {
-  AudioLines,
-  Check,
-  Globe2,
-  HardDrive,
-  Image,
-  LucideAngularModule,
-  Plus,
-  RefreshCw,
-  Search,
-  Video,
-  X,
-  LayoutGrid,
-  List,
-  Eye,
-  Play,
-  Pause,
-  type LucideIconData
-} from 'lucide-angular';
 
-import { LoadingIndicatorComponent } from '../../../components/loading';
 import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
 import {
@@ -45,7 +25,7 @@ type MediaFilter = 'all' | MediaType;
 
 @Component({
   selector: 'app-public-library-modal',
-  imports: [LucideAngularModule, LoadingIndicatorComponent, DisplayNamePipe],
+  imports: [DisplayNamePipe],
   styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,22 +47,6 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   readonly close = output<void>();
   readonly assetAdded = output<MediaLibraryMutationResult>();
-
-  readonly closeIcon = X;
-  readonly searchIcon = Search;
-  readonly refreshIcon = RefreshCw;
-  readonly marketplaceIcon = Globe2;
-  readonly storageIcon = HardDrive;
-  readonly plusIcon = Plus;
-  readonly checkIcon = Check;
-  readonly videoIcon = Video;
-  readonly audioIcon = AudioLines;
-  readonly imageIcon = Image;
-  readonly layoutGridIcon = LayoutGrid;
-  readonly listIcon = List;
-  readonly previewIcon = Eye;
-  readonly playIcon = Play;
-  readonly pauseIcon = Pause;
 
   readonly assets = signal<MediaAsset[]>([]);
   readonly isLoading = signal(true);
@@ -180,7 +144,7 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
         this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
       });
       this.previewAudio.play();
-    } catch (err) {
+    } catch {
       this.isAudioPlaying.set(false);
       this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
     }
@@ -235,16 +199,16 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
     });
   }
 
-  getMediaIcon(type: MediaType): LucideIconData {
+  mediaGlyph(type: MediaType | string): string {
     switch (type) {
       case 'audio':
-        return this.audioIcon;
+        return '♪';
       case 'image':
       case 'gif':
-        return this.imageIcon;
+        return '▣';
       case 'video':
       default:
-        return this.videoIcon;
+        return '▶';
     }
   }
 

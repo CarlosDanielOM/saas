@@ -1,19 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import {
-  AlertCircle,
-  LucideAngularModule,
-  Search,
-  Shield,
-  ShieldPlus,
-  Trash2,
-  UserRound,
-  X
-} from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { AdminCandidate, AdminRecord } from '../../models/admin.model';
 import { AdminApiService } from '../../services/admin-api.service';
 import { LanguageService } from '../../services/language.service';
@@ -29,8 +18,8 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-settings-page',
-  imports: [LucideAngularModule, LoadingIndicatorComponent],
   templateUrl: './settings-page.component.html',
+  styleUrl: './settings-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SettingsPageComponent {
@@ -39,14 +28,6 @@ export class SettingsPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly adminApi = inject(AdminApiService);
   private readonly toastService = inject(ToastService);
-
-  readonly searchIcon = Search;
-  readonly clearIcon = X;
-  readonly adminIcon = Shield;
-  readonly addAdminIcon = ShieldPlus;
-  readonly deleteIcon = Trash2;
-  readonly userIcon = UserRound;
-  readonly alertIcon = AlertCircle;
 
   readonly admins = signal<AdminRecord[]>([]);
   readonly candidates = signal<AdminCandidate[]>([]);
@@ -101,6 +82,13 @@ export class SettingsPageComponent {
   readonly channelID = computed(() => this.channelResolution().channelID);
   readonly isChannelResolving = computed(() => this.channelResolution().status === 'loading');
   readonly session = this.sessionAuth.session;
+  readonly planTier = computed(() => {
+    const tier = this.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') {
+      return tier;
+    }
+    return 'free';
+  });
   readonly ownerChannelID = computed(() => this.session()?.appUser.twitch_user_id ?? '');
   readonly ownerLogin = computed(() => (this.session()?.twitchUser.login || '').trim().toLowerCase());
   readonly isOwnerView = computed(() => {

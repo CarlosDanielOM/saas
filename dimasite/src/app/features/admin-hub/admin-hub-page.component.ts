@@ -1,21 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import {
-  AlertCircle,
-  ArrowRight,
-  LayoutDashboard,
-  Loader2,
-  LucideAngularModule,
-  Search,
-  SearchX,
-  Shield,
-  Sparkles,
-  Users,
-  X,
-} from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 
-import { ParticleFieldComponent } from '../../components/particle-field/particle-field.component';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 
@@ -24,41 +10,33 @@ interface ChannelOption {
   channelName: string;
 }
 
-const CHANNEL_GRADIENTS = [
-  'linear-gradient(135deg, #7c3aed, #a855f7)',
-  'linear-gradient(135deg, #3b82f6, #2563eb)',
-  'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-  'linear-gradient(135deg, #6366f1, #7c3aed)',
-  'linear-gradient(135deg, #a855f7, #ec4899)',
-  'linear-gradient(135deg, #0ea5e9, #3b82f6)',
-] as const;
-
 @Component({
   selector: 'app-admin-hub-page',
-  imports: [LucideAngularModule, RouterLink, ParticleFieldComponent],
+  imports: [RouterLink],
   styleUrl: './admin-hub-page.component.css',
   templateUrl: './admin-hub-page.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AdminHubPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly router = inject(Router);
 
-  readonly sparklesIcon = Sparkles;
-  readonly shieldIcon = Shield;
-  readonly searchIcon = Search;
-  readonly clearIcon = X;
-  readonly arrowIcon = ArrowRight;
-  readonly dashboardIcon = LayoutDashboard;
-  readonly usersIcon = Users;
-  readonly alertIcon = AlertCircle;
-  readonly emptyIcon = SearchX;
-  readonly loaderIcon = Loader2;
-
   readonly errorMessage = signal<string | null>(null);
   readonly switchingChannelID = signal<string | null>(null);
   readonly searchQuery = signal('');
+
+  readonly planTier = computed(() => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') {
+      return tier;
+    }
+    return 'free';
+  });
+
+  readonly ownerLogin = computed(() =>
+    (this.sessionAuth.session()?.twitchUser.login || '').trim().toLowerCase()
+  );
 
   readonly channels = computed<ChannelOption[]>(() => {
     const current = this.sessionAuth.session();
@@ -77,12 +55,12 @@ export class AdminHubPageComponent {
 
       merged.set(channelID, {
         channelID,
-        channelName: adminChannel.channelName || channelID,
+        channelName: adminChannel.channelName || channelID
       });
     }
 
     return Array.from(merged.values()).sort((left, right) =>
-      left.channelName.localeCompare(right.channelName, undefined, { sensitivity: 'base' }),
+      left.channelName.localeCompare(right.channelName, undefined, { sensitivity: 'base' })
     );
   });
 
@@ -103,7 +81,7 @@ export class AdminHubPageComponent {
 
     const streamer = this.sessionAuth.toRouteStreamer(
       current.appUser.twitch_user_id,
-      current.twitchUser.login,
+      current.twitchUser.login
     );
 
     return streamer ? ['/', streamer, 'dashboard'] : null;
@@ -119,21 +97,9 @@ export class AdminHubPageComponent {
     return this.languageService.translate(key);
   }
 
-  staggerDelay(index: number): number {
-    return index * 80;
-  }
-
   channelInitial(channelName: string): string {
     const trimmed = channelName.trim();
     return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
-  }
-
-  channelGradient(channelName: string): string {
-    let hash = 0;
-    for (const char of channelName) {
-      hash = (hash + char.charCodeAt(0) * 17) % CHANNEL_GRADIENTS.length;
-    }
-    return CHANNEL_GRADIENTS[hash] ?? CHANNEL_GRADIENTS[0];
   }
 
   onSearchInput(event: Event): void {
@@ -155,7 +121,7 @@ export class AdminHubPageComponent {
 
     try {
       const allowed = await firstValueFrom(
-        this.sessionAuth.checkPermission(channel.channelID, 'dashboard:view'),
+        this.sessionAuth.checkPermission(channel.channelID, 'dashboard:view')
       );
 
       if (!allowed) {

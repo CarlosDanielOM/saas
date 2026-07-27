@@ -1,20 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  ArrowLeft,
-  BarChart3,
-  Lock,
-  LucideAngularModule,
-  RefreshCw,
-  Search,
-  Sparkles,
-  Users,
-  X
-} from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   FollowLedgerMutualFilter,
   FollowLedgerPagination,
@@ -37,7 +25,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-follow-ledger-page',
-  imports: [RouterLink, LucideAngularModule, LoadingIndicatorComponent],
+  imports: [RouterLink],
   styleUrl: './follow-ledger-page.component.css',
   templateUrl: './follow-ledger-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -48,15 +36,6 @@ export class FollowLedgerPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly analyticsApi = inject(AnalyticsApiService);
   private readonly upgradeService = inject(UpgradeService);
-
-  readonly backIcon = ArrowLeft;
-  readonly searchIcon = Search;
-  readonly clearIcon = X;
-  readonly refreshIcon = RefreshCw;
-  readonly followersIcon = Users;
-  readonly sparklesIcon = Sparkles;
-  readonly analyticsIcon = BarChart3;
-  readonly lockIcon = Lock;
 
   readonly rows = signal<FollowLedgerRow[]>([]);
   readonly summary = signal<FollowLedgerSummary>({

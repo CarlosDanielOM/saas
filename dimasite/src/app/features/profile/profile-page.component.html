@@ -1,58 +1,85 @@
-<div class="profile-page" [attr.data-plan-tier]="planTier()">
-  @if (isLoading()) {
-    <loading-indicator
-      [loading]="true"
-      size="fullscreen"
-      message="common.loading" />
-  } @else {
-    <header class="profile-page__header">
-      <h1>{{ t('profile.title') }}</h1>
-      <p class="profile-page__subtitle">{{ t('profile.subtitle') }}</p>
-    </header>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    @if (isLoading()) {
+      <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
+    } @else {
+      <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('profile.title')">
+        <article class="lf-tile lf-tile--intro">
+          <p class="lf-kicker">{{ t('profile.title') }}</p>
+          <h1 class="lf-title">
+            {{ displayName() }}
+            <span>@{{ login() }}</span>
+          </h1>
+          <p class="lf-copy">{{ t('profile.subtitle') }}</p>
 
-    <section class="profile-subscription" [attr.data-plan-tier]="planTier()">
-      <header class="profile-subscription__header">
-        <div>
-          <p class="profile-subscription__eyebrow">{{ t('profile.subscription.eyebrow') }}</p>
-          <h2 class="profile-subscription__title">{{ t('profile.subscription.title') }}</h2>
-        </div>
-        <span [class]="planBadgeClass()">{{ planTierLabel() }}</span>
-      </header>
+          <div class="lf-identity">
+            @if (avatarUrl()) {
+              <img class="lf-avatar lf-avatar--img" [src]="avatarUrl()!" [alt]="displayName()" width="56" height="56" />
+            } @else {
+              <div class="lf-avatar" aria-hidden="true">{{ initials() }}</div>
+            }
+            <div class="lf-identity__body">
+              <p class="lf-identity__name">{{ displayName() }}</p>
+              <div class="lf-email">
+                <p class="lf-identity__meta" [attr.aria-label]="t('profile.email.label')">
+                  {{ emailDisplay() }}
+                </p>
+                @if (email()) {
+                  <button
+                    type="button"
+                    class="lf-email__toggle"
+                    (click)="toggleEmailVisibility()"
+                    [attr.aria-pressed]="emailVisible()"
+                    [attr.aria-label]="
+                      emailVisible() ? t('profile.email.hide') : t('profile.email.show')
+                    "
+                  >
+                    {{ emailVisible() ? t('profile.email.hide') : t('profile.email.show') }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        </article>
 
-      <p class="profile-subscription__body">
-        {{ t('profile.subscription.currentLabel', { tier: planTierLabel() }) }}
-      </p>
+        <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
+          <div class="lf-spotlight__head">
+            <span
+              class="lf-chip"
+              [class.lf-chip--gold]="planTier() !== 'free'"
+              [class.lf-chip--pro]="planTier() === 'pro'"
+            >
+              {{ planTierLabel() }}
+            </span>
+            <span class="lf-spotlight__count">{{ t('profile.subscription.eyebrow') }}</span>
+          </div>
 
-      <ul class="profile-subscription__benefits">
-        <li class="profile-subscription__benefit">
-          <span class="profile-subscription__benefit-icon" aria-hidden="true">★</span>
-          <span>{{ t('profile.subscription.benefitCredits') }}</span>
-        </li>
-        <li class="profile-subscription__benefit">
-          <span class="profile-subscription__benefit-icon" aria-hidden="true">★</span>
-          <span>{{ t('profile.subscription.benefitTts') }}</span>
-        </li>
-        <li class="profile-subscription__benefit">
-          <span class="profile-subscription__benefit-icon" aria-hidden="true">★</span>
-          <span>{{ t('profile.subscription.benefitSupport') }}</span>
-        </li>
-      </ul>
+          <h2 class="lf-h2">{{ t('profile.subscription.title') }}</h2>
+          <p class="lf-copy lf-copy--tight">
+            {{ t('profile.subscription.currentLabel', { tier: planTierLabel() }) }}
+          </p>
 
-      @if (showUpgradeCta()) {
-        <button
-          type="button"
-          class="profile-subscription__upgrade-btn"
-          [class]="'profile-subscription__upgrade-btn--' + planTier()"
-          (click)="onUpgradeClick()"
-        >
-          <lucide-icon [img]="sparklesIcon" class="profile-subscription__upgrade-icon"></lucide-icon>
-          <span>{{ upgradeCtaLabel() }}</span>
-        </button>
-      } @else {
-        <p class="profile-subscription__max-tier-note">
-          {{ t('profile.subscription.maxTierNote') }}
-        </p>
-      }
-    </section>
-  }
+          @if (planUntilLabel()) {
+            <p class="lf-note">{{ planUntilLabel() }}</p>
+          }
+
+          <ul class="lf-benefits">
+            <li>{{ t('profile.subscription.benefitCredits') }}</li>
+            <li>{{ t('profile.subscription.benefitTts') }}</li>
+            <li>{{ t('profile.subscription.benefitSupport') }}</li>
+          </ul>
+
+          @if (showUpgradeCta()) {
+            <div class="lf-actions">
+              <button type="button" class="lf-btn lf-btn--primary lf-btn--gold" (click)="onUpgradeClick()">
+                {{ upgradeCtaLabel() }}
+              </button>
+            </div>
+          } @else {
+            <p class="lf-note lf-note--ok">{{ t('profile.subscription.maxTierNote') }}</p>
+          }
+        </article>
+      </section>
+    }
+  </main>
 </div>

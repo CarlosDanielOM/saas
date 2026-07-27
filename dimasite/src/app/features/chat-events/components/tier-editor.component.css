@@ -1,0 +1,157 @@
+/* Live First — cheer tier editor */
+:host {
+  display: block;
+  --fg: #14151a;
+  --muted: #667085;
+  --line: rgba(15, 17, 21, 0.08);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --gold: #b45309;
+  --gold-soft: rgba(180, 83, 9, 0.12);
+  --danger: #dc2626;
+  --btn: #eef0f5;
+  --btn-border: rgba(15, 17, 21, 0.1);
+  --input-bg: #f8f9fc;
+  --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host-context(html.dark) {
+  --fg: #f5f7fb;
+  --muted: #9aa3b5;
+  --line: rgba(255, 255, 255, 0.07);
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --gold: #fbbf24;
+  --gold-soft: rgba(251, 191, 36, 0.14);
+  --danger: #fca5a5;
+  --btn: #1d2230;
+  --btn-border: rgba(255, 255, 255, 0.07);
+  --input-bg: rgba(0, 0, 0, 0.22);
+}
+
+.lf-tiers {
+  display: grid;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+  font-family: var(--font);
+  color: var(--fg);
+}
+
+.lf-tier {
+  position: relative;
+  padding: 0.75rem 2.25rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--fg) 2%, transparent);
+}
+
+.lf-tier__remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--btn);
+  color: var(--danger);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lf-tier__remove:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lf-tier__grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.lf-tier__field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.lf-tier__field--full {
+  grid-column: 1 / -1;
+}
+
+.lf-tier__field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--input-bg);
+  color: var(--fg);
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-weight: 500;
+  outline: none;
+}
+
+.lf-tier__field input:focus {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lf-tier__field input:disabled {
+  opacity: 0.55;
+}
+
+.lf-tier-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-tier-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lf-tier-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.lf-tier-info--upsell {
+  background: var(--gold-soft);
+  border-color: color-mix(in srgb, var(--gold) 30%, transparent);
+  color: var(--gold);
+}
+
+.lf-tier-info--limit {
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.lf-tier-info__badge {
+  flex-shrink: 0;
+  font-weight: 750;
+}

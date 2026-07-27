@@ -1,10 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import {
-  Edit3, Eye, ImagePlus, LucideAngularModule, Plus, RefreshCw, Trash2, Zap, Search, X,
-  Volume2, Clock, Layers, Play, Pause, HardDrive, Globe2, ArrowLeft, Check, Sparkles, LayoutGrid, List
-} from 'lucide-angular';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -25,7 +21,7 @@ interface AssetOption {
 
 @Component({
   selector: 'app-dimafx-page',
-  imports: [LucideAngularModule, RouterLink],
+  imports: [RouterLink],
   templateUrl: './dimafx-page.component.html',
   styleUrl: './dimafx-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -37,28 +33,6 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   private readonly triggersService = inject(TriggersService);
   private readonly toastService = inject(ToastService);
   private readonly languageService = inject(LanguageService);
-
-  readonly zapIcon = Zap;
-  readonly plusIcon = Plus;
-  readonly refreshIcon = RefreshCw;
-  readonly trashIcon = Trash2;
-  readonly editIcon = Edit3;
-  readonly previewIcon = Eye;
-  readonly imageIcon = ImagePlus;
-  readonly searchIcon = Search;
-  readonly xIcon = X;
-  readonly volumeIcon = Volume2;
-  readonly clockIcon = Clock;
-  readonly layersIcon = Layers;
-  readonly arrowLeftIcon = ArrowLeft;
-  readonly playIcon = Play;
-  readonly pauseIcon = Pause;
-  readonly checkIcon = Check;
-  readonly sparklesIcon = Sparkles;
-  readonly globeIcon = Globe2;
-  readonly databaseIcon = HardDrive;
-  readonly layoutGridIcon = LayoutGrid;
-  readonly listIcon = List;
 
   readonly modalViewMode = signal<'grid' | 'list'>('grid');
 
@@ -88,6 +62,15 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly channelID = signal('');
   readonly isEditing = computed(() => Boolean(this.selectedItemId()));
   readonly canSubmit = computed(() => Boolean(this.channelID() && this.selectedAssetID() && this.name().trim() && this.bitsPrice() >= 0));
+  readonly enabledCount = computed(() => this.items().filter((item) => item.isEnabled).length);
+  /** Image/GIF only — visibility length. Video/audio duration comes from media metadata. */
+  readonly showVisibilityDuration = computed(() => {
+    const mediaType = this.getSelectedAssetMediaType();
+    if (mediaType === 'image') return true;
+    if (mediaType === 'video' || mediaType === 'audio') return false;
+    // Fallback when editing without asset list match: category gif
+    return this.category() === 'gif';
+  });
 
   readonly filteredAssetOptions = computed(() => {
     const query = this.mediaSearchQuery().toLowerCase().trim();

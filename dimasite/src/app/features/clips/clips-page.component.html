@@ -1,0 +1,207 @@
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('clips.title')">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
+          ← {{ t('clips.backToModules') }}
+        </a>
+        <p class="lf-kicker">{{ t('clips.headerBadge') }}</p>
+        <h1 class="lf-title">
+          {{ t('clips.title') }}
+          <span>{{ planTierLabel() }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('clips.description') }}</p>
+        <p class="lf-feed">{{ streamer() || '—' }} · {{ designs().length }} {{ t('clips.metrics.designs') }}</p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            {{ planTierLabel() }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('clips.chooseDesign') }}</span>
+        </div>
+        <div class="lf-stats-strip">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('clips.metrics.designs') }}</span>
+            <strong class="lf-stats-strip__value">{{ designs().length }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('clips.metrics.premiumDesigns') }}</span>
+            <strong class="lf-stats-strip__value">{{ premiumDesignCount() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('clips.timeoutLabel') }}</span>
+            <strong class="lf-stats-strip__value">{{ config().timeoutSeconds }}s</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lf-section" [attr.aria-label]="t('clips.chooseDesign')">
+      <div class="lf-section__head">
+        <div>
+          <p class="lf-kicker">{{ t('clips.chooseDesign') }}</p>
+          <h2 class="lf-h2">{{ t('clips.chooseDesign') }}</h2>
+        </div>
+      </div>
+
+      <!-- Mobile: compact horizontal design switcher -->
+      <div class="lf-design-strip" role="listbox" [attr.aria-label]="t('clips.chooseDesign')">
+        @for (design of designs(); track design.id) {
+          <button
+            type="button"
+            class="lf-design-pill"
+            role="option"
+            [attr.aria-selected]="selectedDesign()?.id === design.id"
+            [class.lf-design-pill--selected]="selectedDesign()?.id === design.id"
+            [class.lf-design-pill--locked]="isDesignLocked(design)"
+            [style.--design-accent]="design.accentColor"
+            (click)="selectDesign(design)"
+          >
+            <span class="lf-design-pill__num">{{ design.designNumber }}</span>
+            <span class="lf-design-pill__body">
+              <span class="lf-design-pill__name">{{ design.name }}</span>
+              <span class="lf-design-pill__meta">
+                {{ statusLabel(design.status) }}
+                @if (design.premium || design.premiumPlus) {
+                  · Premium
+                }
+              </span>
+            </span>
+          </button>
+        }
+      </div>
+
+      <!-- Tablet/desktop: fuller design cards -->
+      <div class="lf-bento lf-bento--designs">
+        @for (design of designs(); track design.id) {
+          <button
+            type="button"
+            class="lf-tile lf-design"
+            [class.lf-design--selected]="selectedDesign()?.id === design.id"
+            [class.lf-design--locked]="isDesignLocked(design)"
+            [style.--design-accent]="design.accentColor"
+            (click)="selectDesign(design)"
+          >
+            <div class="lf-design__top">
+              <span class="lf-design__num" aria-hidden="true">{{ design.designNumber }}</span>
+              <div class="lf-design__badges">
+                <span
+                  class="lf-chip lf-chip--status"
+                  [class.lf-chip--ok]="design.status === 'stable'"
+                  [class.lf-chip--beta]="design.status === 'beta'"
+                  [class.lf-chip--muted]="design.status === 'coming_soon' || design.status === 'alpha'"
+                >
+                  {{ statusLabel(design.status) }}
+                </span>
+                @if (design.premium || design.premiumPlus) {
+                  <span class="lf-chip lf-chip--gold">Premium</span>
+                }
+              </div>
+            </div>
+
+            <h3 class="lf-design__name">{{ design.name }}</h3>
+            <p class="lf-design__desc">{{ design.description }}</p>
+
+            <div class="lf-design__features">
+              @for (feature of design.features.slice(0, 3); track feature) {
+                <span class="lf-feature">{{ feature }}</span>
+              }
+            </div>
+
+            @if (selectedDesign()?.id === design.id) {
+              <span class="lf-design__selected-mark">{{ t('clips.selected') }}</span>
+            }
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (selectedDesign(); as design) {
+      <section class="lf-section lf-bento lf-bento--workspace" [attr.aria-label]="t('clips.configuration')">
+        <article class="lf-tile">
+          <p class="lf-kicker">{{ t('clips.configuration') }}</p>
+          <h2 class="lf-h2">{{ design.name }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ design.description }}</p>
+
+          <label class="lf-field">
+            <span>{{ t('clips.timeoutLabel') }}</span>
+            <div class="lf-range-row">
+              <input
+                type="range"
+                class="lf-range"
+                min="1"
+                max="30"
+                [value]="config().timeoutSeconds"
+                (input)="updateTimeout($event)"
+              />
+              <strong class="lf-range-value">
+                {{ config().timeoutSeconds }}
+                <span>{{ t('clips.seconds') }}</span>
+              </strong>
+            </div>
+          </label>
+        </article>
+
+        <article class="lf-tile lf-preview">
+          <div class="lf-preview__head">
+            <p class="lf-kicker">{{ t('clips.preview') }}</p>
+            <span class="lf-chip lf-chip--live">{{ t('clips.livePreview') }}</span>
+          </div>
+
+          <div class="lf-preview__frame-wrap">
+            <iframe
+              class="lf-preview__frame"
+              [src]="previewUrl() | safeUrl"
+              title="Clip overlay preview"
+              allow="autoplay"
+            ></iframe>
+          </div>
+
+          <div class="lf-preview__actions">
+            <button
+              type="button"
+              class="lf-btn lf-btn--primary"
+              (click)="copyUrl()"
+            >
+              {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
+            </button>
+
+            <button
+              type="button"
+              class="lf-btn"
+              [disabled]="!canTest()"
+              (click)="openTestModal()"
+            >
+              {{ t('clips.testDesign') }}
+            </button>
+
+            <a class="lf-btn" [href]="previewUrl()" target="_blank" rel="noopener noreferrer">
+              {{ t('clips.openInNewTab') }}
+            </a>
+          </div>
+
+          @if (!canTest()) {
+            <p class="lf-note">{{ t('clips.testWarning') }}</p>
+          }
+        </article>
+      </section>
+    } @else {
+      <div class="lf-tile lf-empty" role="status">
+        <h3 class="lf-empty__title">{{ t('clips.selectDesignTitle') }}</h3>
+        <p class="lf-empty__copy">{{ t('clips.selectDesignDescription') }}</p>
+      </div>
+    }
+  </main>
+
+  @if (showTestModal() && selectedDesign()) {
+    <app-clip-test-modal
+      [channelID]="userSettings().channelID"
+      [streamer]="userSettings().login"
+      [design]="selectedDesign()!"
+      [timeout]="config().timeoutSeconds"
+      (closed)="showTestModal.set(false)"
+    />
+  }
+</div>

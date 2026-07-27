@@ -1,302 +1,309 @@
-<div class="summaries-page">
-  <!-- Hero Section -->
-  <section class="summaries-hero">
-    <div class="summaries-hero__content">
-      <a [routerLink]="modulePath()" class="summaries-back-link">
-        <lucide-icon [img]="sparklesIcon" class="summaries-back-link__icon"></lucide-icon>
-        <span>{{ t('streamSummaries.backToModules') }}</span>
-      </a>
-
-      <div class="summaries-hero__chips">
-        <span class="summaries-chip">
-          <lucide-icon [img]="videoIcon" class="summaries-chip__icon"></lucide-icon>
-          {{ t('streamSummaries.heroBadge') }}
-        </span>
-        @if (isUsingMockData()) {
-          <span class="summaries-chip summaries-chip--mock">
-            <lucide-icon [img]="databaseIcon" class="summaries-chip__icon"></lucide-icon>
-            Demo Sandbox Mode
-          </span>
-        }
-      </div>
-
-      <div class="summaries-hero__body">
-        <div class="summaries-hero__copy">
-          <h1 class="summaries-hero__title">{{ t('streamSummaries.title') }}</h1>
-          <p class="summaries-hero__subtitle">{{ t('streamSummaries.subtitle') }}</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  @if (isLoading() && !hasSummaries()) {
-    <section class="summaries-loading" aria-live="polite">
-      <loading-indicator [loading]="true" variant="three" size="md"></loading-indicator>
-      <p>{{ t('streamSummaries.states.loading') }}</p>
-    </section>
-  } @else if (!hasSummaries()) {
-    <section class="summaries-empty">
-      <lucide-icon [img]="videoIcon" class="summaries-empty__icon"></lucide-icon>
-      <p>{{ t('streamSummaries.states.empty') }}</p>
-    </section>
-  } @else {
-    <div class="summaries-layout" [class.show-detail]="showDetailOnMobile()">
-      <!-- Master List Side -->
-      <aside class="summaries-sidebar">
-        <header class="summaries-sidebar__header">
-          <h2>{{ t('streamSummaries.list.headline') }}</h2>
-          <span class="summaries-sidebar__count">{{ totalCount() }} total</span>
-        </header>
-
-        <div class="summaries-list">
-          @for (summary of summaries(); track summary._id) {
-            <button
-              type="button"
-              class="summary-card"
-              [class.summary-card--active]="selectedSummary()?._id === summary._id"
-              (click)="selectSummary(summary)"
-            >
-              <div class="summary-card__header">
-                <span class="summary-card__date">
-                  <lucide-icon [img]="calendarIcon" class="summary-card__icon-small"></lucide-icon>
-                  {{ formatDate(summary.ended_at) }}
-                </span>
-                <span class="summary-card__status summary-card__status--{{ summary.status }}">
-                  {{ t('streamSummaries.list.status.' + summary.status) }}
-                </span>
-              </div>
-              <h3 class="summary-card__title">
-                {{ summary.headline || t('streamSummaries.list.noHeadline') }}
-              </h3>
-              <div class="summary-card__meta">
-                <span class="summary-card__meta-item">
-                  <lucide-icon [img]="clockIcon" class="summary-card__icon-small"></lucide-icon>
-                  {{ t('streamSummaries.list.duration', { minutes: summary.duration_minutes }) }}
-                </span>
-                <span class="summary-card__meta-item">
-                  <lucide-icon [img]="usersIcon" class="summary-card__icon-small"></lucide-icon>
-                  {{ t('streamSummaries.list.avgViewers', { count: summary.average_viewers }) }}
-                </span>
-              </div>
-            </button>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('streamSummaries.title')">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="modulePath()">
+          ← {{ t('streamSummaries.backToModules') }}
+        </a>
+        <p class="lf-kicker">{{ t('streamSummaries.heroBadge') }}</p>
+        <h1 class="lf-title">
+          {{ t('streamSummaries.title') }}
+          <span>{{ streamer() || '—' }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('streamSummaries.subtitle') }}</p>
+        <p class="lf-feed" [class.lf-feed--mock]="isUsingMockData()">
+          @if (isUsingMockData()) {
+            {{ t('streamSummaries.demoMode') }}
+          } @else {
+            {{ totalCount() }} {{ t('streamSummaries.list.totalSuffix') }}
           }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--gold]="isUsingMockData()">
+            {{ isUsingMockData() ? t('streamSummaries.demoMode') : t('streamSummaries.heroBadge') }}
+          </span>
+          <span class="lf-spotlight__count">{{ t('streamSummaries.list.headline') }}</span>
         </div>
+        <div class="lf-stats-strip">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('streamSummaries.list.headline') }}</span>
+            <strong class="lf-stats-strip__value">{{ totalCount() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('streamSummaries.details.tabs.recap') }}</span>
+            <strong class="lf-stats-strip__value">{{ summaries().length }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('common.show') }}</span>
+            <strong class="lf-stats-strip__value">{{ currentPage() }}/{{ totalPages() || 1 }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
 
-        <!-- Pagination -->
-        @if (totalPages() > 1) {
-          <footer class="summaries-pagination">
-            <button
-              type="button"
-              class="pagination-btn"
-              [disabled]="currentPage() === 1"
-              (click)="changePage(currentPage() - 1)"
-            >
-              <lucide-icon [img]="prevIcon"></lucide-icon>
+    @if (isLoading() && !hasSummaries()) {
+      <div class="lf-tile lf-empty">{{ t('streamSummaries.states.loading') }}</div>
+    } @else if (!hasSummaries()) {
+      <div class="lf-tile lf-empty" role="status">
+        <h3 class="lf-empty__title">{{ t('streamSummaries.states.empty') }}</h3>
+        <p class="lf-empty__copy">{{ t('streamSummaries.states.emptyDetail') }}</p>
+      </div>
+    } @else {
+      <div class="lf-workspace" [class.lf-workspace--detail]="showDetailOnMobile()">
+        <aside class="lf-tile lf-sidebar" [attr.aria-label]="t('streamSummaries.list.headline')">
+          <div class="lf-sidebar__head">
+            <h2 class="lf-h3">{{ t('streamSummaries.list.headline') }}</h2>
+            <span class="lf-chip">{{ totalCount() }}</span>
+          </div>
+
+          <div class="lf-session-list">
+            @for (summary of summaries(); track summary._id) {
+              <button
+                type="button"
+                class="lf-session"
+                [class.lf-session--active]="selectedSummary()?._id === summary._id"
+                (click)="selectSummary(summary)"
+              >
+                <div class="lf-session__top">
+                  <span class="lf-session__date">{{ formatDate(summary.ended_at) }}</span>
+                  <span
+                    class="lf-chip lf-chip--status"
+                    [class.lf-chip--ok]="summary.status === 'applied'"
+                    [class.lf-chip--warn]="summary.status === 'pending'"
+                    [class.lf-chip--muted]="summary.status === 'noop'"
+                    [class.lf-chip--danger]="summary.status === 'failed'"
+                  >
+                    {{ t('streamSummaries.list.status.' + summary.status) }}
+                  </span>
+                </div>
+                <h3 class="lf-session__title">
+                  {{ summary.headline || t('streamSummaries.list.noHeadline') }}
+                </h3>
+                <p class="lf-session__meta">
+                  {{ t('streamSummaries.list.duration', { minutes: summary.duration_minutes }) }}
+                  ·
+                  {{ t('streamSummaries.list.avgViewers', { count: summary.average_viewers }) }}
+                </p>
+              </button>
+            }
+          </div>
+
+          @if (totalPages() > 1) {
+            <div class="lf-pager">
+              <button
+                type="button"
+                class="lf-btn lf-btn--compact"
+                [disabled]="currentPage() === 1"
+                (click)="changePage(currentPage() - 1)"
+              >
+                {{ t('common.previous') }}
+              </button>
+              <span class="lf-pager__text">{{ currentPage() }} / {{ totalPages() }}</span>
+              <button
+                type="button"
+                class="lf-btn lf-btn--compact"
+                [disabled]="currentPage() === totalPages()"
+                (click)="changePage(currentPage() + 1)"
+              >
+                {{ t('common.next') }}
+              </button>
+            </div>
+          }
+        </aside>
+
+        <section class="lf-tile lf-detail" [attr.aria-label]="t('streamSummaries.details.title')">
+          @if (selectedSummary(); as active) {
+            <button type="button" class="lf-detail__back" (click)="closeDetailMobile()">
+              ← {{ t('streamSummaries.details.backToSessions') }}
             </button>
-            <span class="pagination-text">{{ currentPage() }} / {{ totalPages() }}</span>
-            <button
-              type="button"
-              class="pagination-btn"
-              [disabled]="currentPage() === totalPages()"
-              (click)="changePage(currentPage() + 1)"
-            >
-              <lucide-icon [img]="nextIcon"></lucide-icon>
-            </button>
-          </footer>
-        }
-      </aside>
 
-      <!-- Details View Side -->
-      <main class="summaries-content">
-        @if (selectedSummary(); as active) {
-          <!-- Back link for mobile view -->
-          <button type="button" class="detail-back-btn" (click)="closeDetailMobile()">
-            <lucide-icon [img]="arrowLeftIcon"></lucide-icon>
-            <span>Back to Sessions</span>
-          </button>
+            <header class="lf-detail__head">
+              <div>
+                <p class="lf-detail__date">{{ formatDate(active.ended_at) }}</p>
+                <h2 class="lf-h2">{{ active.headline || t('streamSummaries.list.noHeadline') }}</h2>
+              </div>
+              <span
+                class="lf-chip lf-chip--status"
+                [class.lf-chip--ok]="active.status === 'applied'"
+                [class.lf-chip--warn]="active.status === 'pending'"
+                [class.lf-chip--muted]="active.status === 'noop'"
+                [class.lf-chip--danger]="active.status === 'failed'"
+              >
+                {{ t('streamSummaries.list.status.' + active.status) }}
+              </span>
+            </header>
 
-          <header class="detail-header">
-            <div class="detail-header__main">
-              <span class="detail-header__date">{{ formatDate(active.ended_at) }}</span>
-              <h2 class="detail-header__title">{{ active.headline || t('streamSummaries.list.noHeadline') }}</h2>
+            <div class="lf-metrics">
+              <div class="lf-metric">
+                <span class="lf-metric__label">{{ t('streamSummaries.details.metrics.duration') }}</span>
+                <strong class="lf-metric__value">{{ active.duration_minutes }}m</strong>
+              </div>
+              <div class="lf-metric">
+                <span class="lf-metric__label">{{ t('streamSummaries.details.metrics.avgViewers') }}</span>
+                <strong class="lf-metric__value">{{ active.average_viewers }}</strong>
+              </div>
+              <div class="lf-metric">
+                <span class="lf-metric__label">{{ t('streamSummaries.details.metrics.peakViewers') }}</span>
+                <strong class="lf-metric__value">{{ active.peak_viewers }}</strong>
+              </div>
+              <div class="lf-metric">
+                <span class="lf-metric__label">{{ t('streamSummaries.details.metrics.chatSampled') }}</span>
+                <strong class="lf-metric__value">{{ active.chat_messages_sampled }}</strong>
+              </div>
             </div>
-            <div class="detail-header__status-badge detail-header__status-badge--{{ active.status }}">
-              {{ t('streamSummaries.list.status.' + active.status) }}
-            </div>
-          </header>
 
-          <!-- Metrics Widgets -->
-          <section class="metrics-grid">
-            <div class="metric-card">
-              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.duration') }}</span>
-              <strong class="metric-card__value">{{ active.duration_minutes }}m</strong>
+            <div class="lf-perf">
+              <div class="lf-perf__item">
+                <span>{{ t('streamSummaries.details.performance.follows') }}</span>
+                <strong>+{{ active.follows }}</strong>
+              </div>
+              <div class="lf-perf__item">
+                <span>{{ t('streamSummaries.details.performance.subs') }}</span>
+                <strong>+{{ active.subs }}</strong>
+              </div>
+              <div class="lf-perf__item">
+                <span>{{ t('streamSummaries.details.performance.bits') }}</span>
+                <strong>{{ active.bits }}</strong>
+              </div>
+              <div class="lf-perf__item">
+                <span>{{ t('streamSummaries.details.performance.donations') }}</span>
+                <strong>${{ active.donations | number: '1.2-2' }}</strong>
+              </div>
             </div>
-            <div class="metric-card">
-              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.avgViewers') }}</span>
-              <strong class="metric-card__value">{{ active.average_viewers }}</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.peakViewers') }}</span>
-              <strong class="metric-card__value">{{ active.peak_viewers }}</strong>
-            </div>
-            <div class="metric-card">
-              <span class="metric-card__label">{{ t('streamSummaries.details.metrics.chatSampled') }}</span>
-              <strong class="metric-card__value">{{ active.chat_messages_sampled }}</strong>
-            </div>
-          </section>
 
-          <!-- Performance Gains -->
-          <section class="performance-section">
-            <div class="perf-card">
-              <span class="perf-card__label">{{ t('streamSummaries.details.performance.follows') }}</span>
-              <span class="perf-card__value">+{{ active.follows }}</span>
+            <div class="lf-tabs" role="tablist">
+              <button
+                type="button"
+                class="lf-tabs__btn"
+                role="tab"
+                [class.lf-tabs__btn--active]="detailTab() === 'recap'"
+                [attr.aria-selected]="detailTab() === 'recap'"
+                (click)="detailTab.set('recap')"
+              >
+                {{ t('streamSummaries.details.tabs.recap') }}
+              </button>
+              <button
+                type="button"
+                class="lf-tabs__btn"
+                role="tab"
+                [class.lf-tabs__btn--active]="detailTab() === 'memories'"
+                [attr.aria-selected]="detailTab() === 'memories'"
+                (click)="detailTab.set('memories')"
+              >
+                {{ t('streamSummaries.details.tabs.memories') }}
+                @if (active.proposed_actions.length > 0) {
+                  <span class="lf-tabs__badge">{{ active.proposed_actions.length }}</span>
+                }
+              </button>
             </div>
-            <div class="perf-card">
-              <span class="perf-card__label">{{ t('streamSummaries.details.performance.subs') }}</span>
-              <span class="perf-card__value">+{{ active.subs }}</span>
-            </div>
-            <div class="perf-card">
-              <span class="perf-card__label">{{ t('streamSummaries.details.performance.bits') }}</span>
-              <span class="perf-card__value">{{ active.bits }}</span>
-            </div>
-            <div class="perf-card">
-              <span class="perf-card__label">{{ t('streamSummaries.details.performance.donations') }}</span>
-              <span class="perf-card__value">${{ active.donations | number:'1.2-2' }}</span>
-            </div>
-          </section>
 
-          <!-- Details Navigation Tab -->
-          <nav class="detail-tabs">
-            <button
-              type="button"
-              class="tab-btn"
-              [class.tab-btn--active]="detailTab() === 'recap'"
-              (click)="detailTab.set('recap')"
-            >
-              <lucide-icon [img]="messageIcon" class="tab-btn__icon"></lucide-icon>
-              <span>{{ t('streamSummaries.details.tabs.recap') }}</span>
-            </button>
-            <button
-              type="button"
-              class="tab-btn"
-              [class.tab-btn--active]="detailTab() === 'memories'"
-              (click)="detailTab.set('memories')"
-            >
-              <lucide-icon [img]="trendingIcon" class="tab-btn__icon"></lucide-icon>
-              <span>{{ t('streamSummaries.details.tabs.memories') }}</span>
-              @if (active.proposed_actions.length > 0) {
-                <span class="tab-btn__badge">{{ active.proposed_actions.length }}</span>
-              }
-            </button>
-          </nav>
-
-          <!-- Tab Content Panels -->
-          <div class="tab-content">
             @if (detailTab() === 'recap') {
-              <div class="recap-panel">
-                <section class="glass-section">
-                  <h3>{{ t('streamSummaries.details.recapHeader') }}</h3>
-                  <p class="recap-text">
+              <div class="lf-panel">
+                <article class="lf-block">
+                  <h3 class="lf-h3">{{ t('streamSummaries.details.recapHeader') }}</h3>
+                  <p class="lf-body">
                     {{ active.recap || t('streamSummaries.details.recapPlaceholder') }}
                   </p>
-                </section>
+                </article>
 
-                <section class="glass-section">
-                  <h3>{{ t('streamSummaries.details.highlightsHeader') }}</h3>
+                <article class="lf-block">
+                  <h3 class="lf-h3">{{ t('streamSummaries.details.highlightsHeader') }}</h3>
                   @if (active.highlights.length > 0) {
-                    <ul class="highlights-list">
+                    <ul class="lf-highlights">
                       @for (highlight of active.highlights; track highlight) {
-                        <li>
-                          <span class="bullet-glow"></span>
-                          <span>{{ highlight }}</span>
-                        </li>
+                        <li>{{ highlight }}</li>
                       }
                     </ul>
                   } @else {
-                    <p class="empty-text">{{ t('streamSummaries.details.noHighlights') }}</p>
+                    <p class="lf-muted">{{ t('streamSummaries.details.noHighlights') }}</p>
                   }
-                </section>
+                </article>
               </div>
-            } @else if (detailTab() === 'memories') {
-              <div class="memories-panel">
-                <header class="memories-header">
-                  <h3>{{ t('streamSummaries.details.memoriesHeader') }}</h3>
+            } @else {
+              <div class="lf-panel">
+                <div class="lf-panel__head">
+                  <h3 class="lf-h3">{{ t('streamSummaries.details.memoriesHeader') }}</h3>
                   @if (active.proposed_actions.length > 0) {
-                    <div class="memories-summary-badge">
-                      Proposed: {{ active.totals.proposed }} | Applied: {{ active.totals.applied }}
-                    </div>
+                    <span class="lf-chip lf-chip--soft">
+                      {{
+                        t('streamSummaries.details.memoryTotals', {
+                          proposed: active.totals.proposed,
+                          applied: active.totals.applied
+                        })
+                      }}
+                    </span>
                   }
-                </header>
+                </div>
 
                 @if (active.proposed_actions.length > 0) {
-                  <div class="proposals-list">
-                    @for (proposal of active.proposed_actions; track proposal.summary; let idx = $index) {
-                      <div class="proposal-card">
-                        <div class="proposal-card__header">
-                          <div class="proposal-card__identity">
-                            <span class="action-tag action-tag--{{ proposal.action }}">{{ proposal.action }}</span>
+                  <div class="lf-proposals">
+                    @for (proposal of active.proposed_actions; track proposal.summary) {
+                      <article class="lf-proposal">
+                        <div class="lf-proposal__top">
+                          <div class="lf-proposal__tags">
+                            <span class="lf-chip lf-chip--accent">{{ proposal.action }}</span>
                             @if (proposal.type) {
-                              <span class="type-tag">{{ proposal.type }}</span>
+                              <span class="lf-chip lf-chip--soft">{{ proposal.type }}</span>
                             }
                           </div>
-                          <div class="proposal-card__badges">
+                          <div class="lf-proposal__tags">
                             @if (proposal.risk) {
-                              <span class="risk-badge risk-badge--{{ proposal.risk }}">
+                              <span class="lf-chip lf-chip--soft">
                                 {{ t('streamSummaries.details.memoryCard.risk') }}: {{ proposal.risk }}
                               </span>
                             }
                             @if (proposal.confidence) {
-                              <span class="confidence-badge">
-                                {{ Math.trunc(proposal.confidence * 100) }}% Match
+                              <span class="lf-chip">
+                                {{
+                                  t('streamSummaries.details.memoryCard.match', {
+                                    percent: confidencePercent(proposal.confidence)
+                                  })
+                                }}
                               </span>
                             }
                           </div>
                         </div>
 
-                        <h4 class="proposal-card__summary">{{ proposal.summary }}</h4>
+                        <h4 class="lf-proposal__summary">{{ proposal.summary }}</h4>
                         @if (proposal.content) {
-                          <p class="proposal-card__content">"{{ proposal.content }}"</p>
+                          <p class="lf-proposal__content">"{{ proposal.content }}"</p>
                         }
 
                         @if (proposal.reason) {
-                          <div class="proposal-meta-section">
-                            <h5>{{ t('streamSummaries.details.memoryCard.reason') }}</h5>
+                          <div class="lf-proposal__meta">
+                            <span class="lf-meta-label">{{ t('streamSummaries.details.memoryCard.reason') }}</span>
                             <p>{{ proposal.reason }}</p>
                           </div>
                         }
 
                         @if (proposal.evidence && proposal.evidence.length > 0) {
-                          <div class="proposal-meta-section">
-                            <h5>{{ t('streamSummaries.details.memoryCard.evidence') }}</h5>
-                            <ul class="evidence-list">
+                          <div class="lf-proposal__meta">
+                            <span class="lf-meta-label">{{ t('streamSummaries.details.memoryCard.evidence') }}</span>
+                            <ul class="lf-evidence">
                               @for (ev of proposal.evidence; track ev) {
-                                <li>
-                                  <lucide-icon [img]="infoIcon" class="evidence-list__icon"></lucide-icon>
-                                  <span>{{ ev }}</span>
-                                </li>
+                                <li>{{ ev }}</li>
                               }
                             </ul>
                           </div>
                         }
-                      </div>
+                      </article>
                     }
                   </div>
                 } @else {
-                  <div class="empty-panel">
-                    <lucide-icon [img]="helpIcon" class="empty-panel__icon"></lucide-icon>
-                    <p class="empty-panel__text">{{ t('streamSummaries.details.noMemories') }}</p>
-                  </div>
+                  <p class="lf-muted">{{ t('streamSummaries.details.noMemories') }}</p>
                 }
               </div>
             }
-          </div>
-        } @else {
-          <div class="empty-panel empty-panel--centered">
-            <lucide-icon [img]="infoIcon" class="empty-panel__icon"></lucide-icon>
-            <p class="empty-panel__text">{{ t('streamSummaries.states.emptyDetail') }}</p>
-          </div>
-        }
-      </main>
-    </div>
-  }
+          } @else {
+            <div class="lf-empty lf-empty--inset">
+              <p class="lf-empty__copy">{{ t('streamSummaries.states.emptyDetail') }}</p>
+            </div>
+          }
+        </section>
+      </div>
+    }
+  </main>
 </div>

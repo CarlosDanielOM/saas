@@ -553,7 +553,9 @@
         "delete": "Delete",
         "save": "Save",
         "cancel": "Cancel",
-        "confirm": "Confirm"
+        "confirm": "Confirm",
+        "loadMore": "Load more",
+        "saving": "Saving..."
       },
       "empty": {
         "title": "No memories found",
@@ -577,7 +579,7 @@
       }
     },
     "analytics": {
-      "description": "Open the analytics hub for live follower intelligence, mutual highlights, and audience clarity."
+      "description": "Beta hub for channel analytics. Start with Follow Ledger: search current followers, filter mutuals, and see follow age (Premium/Pro)."
     },
     "openModule": "Open Module",
     "upgradeToAccess": "Upgrade to Access",
@@ -592,6 +594,18 @@
     },
     "streamSummaries": {
       "description": "Access past stream session metrics, read AI-generated summaries, and review AI proposed memory updates."
+    },
+    "stats": {
+      "available": "Available",
+      "locked": "Locked"
+    },
+    "status": {
+      "stable": "Stable",
+      "beta": "Beta",
+      "alpha": "Alpha",
+      "comingSoon": "Coming Soon",
+      "underConstruction": "Building",
+      "maintenance": "Maintenance"
     }
   },
   "streamSummaries": {
@@ -617,7 +631,8 @@
         "applied": "Memories Updated",
         "noop": "No Actions",
         "failed": "Processing Failed"
-      }
+      },
+      "totalSuffix": "sessions"
     },
     "details": {
       "title": "Session Details",
@@ -649,9 +664,13 @@
         "risk": "Risk",
         "confidence": "Confidence",
         "reason": "AI Reason",
-        "evidence": "Evidence"
-      }
-    }
+        "evidence": "Evidence",
+        "match": "{{percent}}% match"
+      },
+      "backToSessions": "Back to sessions",
+      "memoryTotals": "Proposed {{proposed}} · Applied {{applied}}"
+    },
+    "demoMode": "Demo sandbox"
   },
   "followDefense": {
     "badge": "Protection",
@@ -763,48 +782,49 @@
     }
   },
   "analyticsHub": {
-    "badge": "Audience Intelligence",
+    "badge": "Beta",
     "title": "Analytics Hub",
-    "subtitle": "Live follower intelligence for your channel. The Follow Ledger delivers searchable, filterable access to everyone currently following you, with mutual relationships clearly highlighted.",
+    "subtitle": "Channel analytics tools in one place. Right now this hub ships Follow Ledger (beta): a searchable list of people currently following you, with mutuals and follow age.",
     "backToModules": "Back to Modules",
     "chips": {
-      "activeFollowers": "Live follow tracking",
-      "mutualHighlights": "Mutual spotlight"
+      "activeFollowers": "Current followers only",
+      "mutualHighlights": "Mutual filter"
     },
     "metrics": {
       "ariaLabel": "Analytics overview metrics",
-      "modules": "Active modules",
-      "modulesMeta": "Production-ready analytics",
-      "plan": "Access tier",
-      "planMeta": "Current channel plan",
-      "tracking": "Audience mode",
-      "trackingMeta": "Live follower intelligence"
+      "modules": "Tools available",
+      "modulesMeta": "Follow Ledger is live in beta",
+      "plan": "Your plan",
+      "planMeta": "Premium or Pro unlocks Follow Ledger",
+      "tracking": "What it tracks",
+      "trackingMeta": "Who follows you now — not historical unfollowers"
     },
     "panel": {
-      "kicker": "Premium analytics",
+      "kicker": "Premium · Beta",
       "title": "Follow Ledger",
-      "description": "A complete, production-ready tool for tracking your active audience. Premium and Pro channels get powerful search, mutual filters, and clean visual ledgers.",
-      "paidPlan": "Premium unlocked",
-      "freePlan": "Premium required"
+      "description": "Browse and search your current follower list. Filter mutuals vs one-way follows, sort by newest or oldest, and see how long someone has been following. Needs Premium or Pro.",
+      "paidPlan": "Unlocked on your plan",
+      "freePlan": "Premium or Pro required"
     },
     "followLedger": {
-      "activeOnly": "Live audience",
-      "eyebrow": "Core analytics module",
+      "activeOnly": "Current followers",
+      "eyebrow": "Available now · beta",
       "title": "Follow Ledger",
-      "description": "Search your current followers, isolate mutuals, and understand exactly who is in your live audience with a fast, filterable ledger.",
+      "description": "Search by name or login, filter mutuals, sort by follow date, and page through your full current audience. Data refreshes from Twitch — great for spotting mutuals and long-time fans.",
+      "tierLabel": "Premium · Pro",
       "open": "Open Follow Ledger",
-      "lockedCta": "Premium required"
+      "lockedCta": "Upgrade to unlock"
     },
     "future": {
-      "teaser": "More analytics modules are coming soon."
+      "teaser": "More analytics tools (chat activity, stream retention, and similar) are planned. This hub will grow as each tool leaves beta."
     }
   },
   "analytics": {
     "follows": {
       "title": "Follow Ledger",
-      "subtitle": "Search your current followers, highlight mutual relationships, and get a complete picture of your live audience in a fast, filterable ledger.",
-      "backToAnalytics": "Back to analytics",
-      "activeOnly": "Live audience",
+    "subtitle": "Search people currently following you, filter mutuals, sort by follow date, and see how long each follow has lasted. Beta — current followers only (not historical unfollows).",
+    "backToAnalytics": "Back to analytics",
+    "activeOnly": "Current followers",
       "filters": "Filters",
       "sort": "Sort",
       "searchLabel": "Search followers",
@@ -833,9 +853,9 @@
       "refreshing": "Refreshing...",
       "ownerView": "Owner view",
       "adminView": "Admin view",
-      "lockedTitle": "Follow Ledger is a premium analytics module",
-      "lockedDescription": "Follow Ledger gives you a complete, searchable view of your live audience. Upgrade to Premium or Pro to unlock full access.",
-      "lockedCta": "See premium access",
+    "lockedTitle": "Follow Ledger needs Premium or Pro",
+    "lockedDescription": "Unlock search, mutual filters, follow age, and pagination over your current follower list. Free plans can still use the rest of the bot.",
+    "lockedCta": "Upgrade to unlock",
       "durationYears": "{{count}} year(s)",
       "durationMonths": "{{count}} month(s)",
       "durationDays": "{{count}} day(s)",
@@ -922,7 +942,8 @@
       "actionTitle": "Action failed",
       "actionMessage": "We could not update that clip recommendation.",
       "genericJob": "The analysis job failed. Please try another VOD later."
-    }
+    },
+    "alphaBadge": "Alpha"
   },
   "clips": {
     "title": "Clip Overlay Designs",
@@ -957,7 +978,30 @@
       "premiumMeta": "Requires paid plan",
       "yourPlan": "Your Plan",
       "planMeta": "Access level"
-    }
+    },
+    "selected": "Selected",
+    "status": {
+      "stable": "Stable",
+      "beta": "Beta",
+      "alpha": "Alpha",
+      "comingSoon": "Coming Soon"
+    },
+    "test": {
+      "title": "Clip test",
+      "sendingTitle": "Sending test…",
+      "sendingCopy": "Triggering clip playback on your overlay.",
+      "endedTitle": "Test sent",
+      "endedCopy": "If the overlay is open, the clip should play now.",
+      "errorTitle": "Test could not start",
+      "errorFallback": "Something went wrong while testing the clip.",
+      "sendFailed": "Failed to send the test request.",
+      "timeout": "No response came back from the test request. Please try again.",
+      "retry": "Try again"
+    },
+    "statusStable": "Stable",
+    "statusBeta": "Beta",
+    "statusAlpha": "Alpha",
+    "statusComingSoon": "Coming Soon"
   },
   "profile": {
     "title": "Profile Settings",
@@ -972,6 +1016,18 @@
       "benefitCredits": "Up to 500,000 AI credits / month",
       "benefitTts": "Voice cloning TTS and human-like voices",
       "benefitSupport": "Priority+ support"
+    },
+    "meta": {
+      "twitchId": "Twitch ID",
+      "plan": "Plan",
+      "language": "Language",
+      "chat": "Chat bot",
+      "planUntil": "Active until {{date}}"
+    },
+    "email": {
+      "label": "Email",
+      "show": "Show",
+      "hide": "Hide"
     }
   },
   "referrals": {
@@ -1035,7 +1091,9 @@
     "actions": {
       "copyLink": "Copy referral link for {{code}}",
       "deleting": "Deleting...",
-      "deleteConfirm": "Delete referral code {{code}}?"
+      "deleteConfirm": "Delete referral code {{code}}?",
+      "copy": "Copy",
+      "copied": "Copied"
     },
     "toasts": {
       "copiedTitle": "Referral link copied",
@@ -1383,7 +1441,13 @@
       "createErrorTitle": "Could not create command",
       "createErrorMessage": "Please review the form and try again.",
       "rateLimitTitle": "Slow down a bit",
-      "rateLimitMessage": "Please wait {{seconds}} seconds before making more command changes."
+      "rateLimitMessage": "Please wait {{seconds}} seconds before making more command changes.",
+      "timerSavedTitle": "Timer updated",
+      "timerSavedMessage": "This command will now repeat on schedule.",
+      "timerRemovedTitle": "Timer removed",
+      "timerRemovedMessage": "The linked timer was deleted.",
+      "timerErrorTitle": "Timer could not be saved",
+      "timerErrorMessage": "The command was saved, but the timer failed. Try again from edit."
     },
     "placeholder": {
       "name": "Name",
@@ -1413,7 +1477,18 @@
     "modal": {
       "createTitle": "Create Command",
       "editTitle": "Edit Command",
-      "createButton": "Create"
+      "createButton": "Create",
+      "planLabel": "Plan · {{tier}}",
+      "timerToggle": "Repeat this command on a timer",
+      "timerToggleHint": "Uses a channel timer (limit {{limit}}). Message matches the command response.",
+      "repeatEvery": "Repeat every",
+      "minutes": "minutes",
+      "timerHintFree": "Free: 15, 30, 45, or 60 minutes only.",
+      "timerHintPremium": "Premium: 5–180 minutes in steps of 5.",
+      "timerHintPro": "Pro: 1–180 minutes.",
+      "timerInvalid": "Choose a valid timer interval for your plan.",
+      "timerReservedBlocked": "Reserved commands cannot use timers.",
+      "validationRequired": "Fill in the required fields."
     },
     "search": {
       "placeholder": "Search by name or command...",
@@ -1873,8 +1948,8 @@
       "needsPro": "Requires Pro"
     },
     "tooltips": {
-      "disableNotAllowed": "This event cannot be disabled. To turn it off, clear the message in its configuration.",
-      "deleteNotAllowed": "This event cannot be deleted because it is essential for the bot to work properly.",
+      "disableNotAllowed": "This event stays on for tracking and analytics. Leave the message empty if you do not want the bot to say anything.",
+      "deleteNotAllowed": "This event stays on for tracking and analytics. Leave the message empty if you do not want the bot to say anything.",
       "addTierDefault": "Add a new message tier",
       "addTierRequiresPremium": "Upgrade to Premium to add more tiers",
       "addTierUpgradePrompt": "Upgrade to Pro for up to {{limit}} tiers",
@@ -1901,7 +1976,11 @@
       "tierAddedTitle": "Tier Added",
       "tierAddedMsg": "A new message tier has been added.",
       "tierRemovedTitle": "Tier Removed",
-      "tierRemovedMsg": "The tier has been removed."
+      "tierRemovedMsg": "The tier has been removed.",
+      "disableNotAllowedTitle": "Cannot disable this event",
+      "disableNotAllowedMsg": "Stream online/offline events stay enabled for tracking and analytics. If you do not want the bot to say anything, open Configure and leave the message field empty.",
+      "deleteNotAllowedTitle": "Cannot delete this event",
+      "deleteNotAllowedMsg": "Stream online/offline events stay enabled for tracking and analytics. If you do not want the bot to say anything, leave the message field empty."
     }
   },
   "chatErrors": {

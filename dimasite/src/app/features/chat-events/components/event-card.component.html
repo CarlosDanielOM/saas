@@ -1,0 +1,83 @@
+<article
+  class="lf-card"
+  [class.lf-card--open]="event().isConfiguring"
+  [class.lf-card--premium]="event().premium && !event().pro"
+  [class.lf-card--pro]="event().pro"
+>
+  <div class="lf-card__head">
+    <div class="lf-card__icon" aria-hidden="true">{{ eventGlyph(event().icon) }}</div>
+    <div class="lf-card__info">
+      <h3 class="lf-card__name">
+        {{ event().name }}
+        @if (event().pro) {
+          <span class="lf-chip lf-chip--gold">★+</span>
+        } @else if (event().premium) {
+          <span class="lf-chip lf-chip--gold">★</span>
+        }
+      </h3>
+      <p class="lf-card__desc">{{ getEventDescription(event().description) }}</p>
+    </div>
+  </div>
+
+  <div class="lf-card__bar">
+    <div class="lf-status" [attr.data-tone]="displayStatus().tone">
+      <span class="lf-status__glyph">{{ displayStatus().glyph }}</span>
+      <span class="lf-status__text">{{ displayStatus().text }}</span>
+    </div>
+
+    <div class="lf-card__actions">
+      @if (userAccess().canAccess) {
+        @if (event().enabled) {
+          @if (event().config) {
+            <button
+              type="button"
+              class="lf-btn lf-btn--xs"
+              [class.lf-btn--active]="event().isConfiguring"
+              [disabled]="isBusy()"
+              (click)="toggleConfigure()"
+            >
+              {{ configureButtonLabel() }}
+            </button>
+          }
+          <button
+            type="button"
+            class="lf-btn lf-btn--xs lf-btn--warn"
+            [class.lf-btn--locked]="!canDisable()"
+            [disabled]="isBusy()"
+            [title]="!canDisable() ? t('chatEvents.tooltips.disableNotAllowed') : ''"
+            (click)="toggleFeature()"
+          >
+            {{ isDisabling() ? t('chatEvents.pending.disabling') : t('chatEvents.disable') }}
+          </button>
+        } @else if (event().releaseStage !== 'coming_soon' && event().releaseStage !== 'maintenance') {
+          <button
+            type="button"
+            class="lf-btn lf-btn--xs lf-btn--primary"
+            [disabled]="isBusy()"
+            (click)="toggleFeature()"
+          >
+            {{ isEnabling() ? t('chatEvents.pending.enabling') : t('chatEvents.enable') }}
+          </button>
+        } @else {
+          <button type="button" class="lf-btn lf-btn--xs" disabled>
+            {{ t('chatEvents.configure') }}
+          </button>
+        }
+      } @else {
+        <button type="button" class="lf-btn lf-btn--xs lf-btn--gold" (click)="onUpgradeClick()">
+          {{ t('chatEvents.upgrade') }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (event().isConfiguring && event().config) {
+    <app-config-panel
+      [event]="event()"
+      [userPlan]="userPlan()"
+      [pendingAction]="pendingAction()"
+      (save)="saveConfiguration()"
+      (delete)="deleteEvent()"
+    />
+  }
+</article>

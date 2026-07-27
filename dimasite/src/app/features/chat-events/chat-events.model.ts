@@ -1,5 +1,3 @@
-import type { LucideIconData } from 'lucide-angular';
-
 export type ReleaseStage = 'stable' | 'beta' | 'alpha' | 'coming_soon' | 'maintenance' | 'unavailable' | 'deprecated';
 
 export type PlanTier = 'none' | 'premium' | 'premium_plus';
@@ -77,10 +75,12 @@ export interface BackendSubscription {
   [key: string]: unknown;
 }
 
+export type EventStatusTone = 'ok' | 'danger' | 'warn' | 'info' | 'muted' | 'alpha' | 'beta';
+
 export interface EventDisplayStatus {
   text: string;
-  icon: LucideIconData;
-  color: string;
+  glyph: string;
+  tone: EventStatusTone;
 }
 
 export interface UserAccess {

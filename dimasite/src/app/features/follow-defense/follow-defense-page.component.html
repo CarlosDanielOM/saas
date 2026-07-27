@@ -1,580 +1,361 @@
-<div class="follow-defense-page">
-  <!-- Page Header -->
-  <header class="fd-header">
-    <a class="fd-back" [routerLink]="modulePath()">
-      <lucide-icon [img]="chevronLeftIcon" class="fd-back-icon"></lucide-icon>
-      {{ t('followDefense.backToModules') }}
-    </a>
-
-    <div class="fd-header-badge">
-      <lucide-icon [img]="shieldIcon" class="fd-header-badge-icon"></lucide-icon>
-      {{ t('followDefense.badge') }}
-    </div>
-    <h1 class="fd-header-title">{{ t('followDefense.title') }}</h1>
-    <p class="fd-header-subtitle">{{ t('followDefense.subtitle') }}</p>
-
-    @if (errorMessage()) {
-      <div class="fd-error" role="alert">
-        <lucide-icon [img]="alertIcon" class="fd-error-icon"></lucide-icon>
-        <span class="fd-error-text">{{ errorMessage() }}</span>
-        <button type="button" class="fd-error-retry" (click)="retryLoad()">
-          <lucide-icon [img]="refreshIcon" class="fd-error-retry-icon"></lucide-icon>
-          {{ t('common.retry') }}
-        </button>
-      </div>
-    }
-  </header>
-
-  @if (settingsLoading() && !settings()) {
-    <div class="fd-loading">
-      <lucide-icon [img]="loaderIcon" class="fd-loading-icon fd-spin"></lucide-icon>
-      <p class="fd-loading-text">{{ t('followDefense.states.loading') }}</p>
-    </div>
-  } @else if (settings()) {
-    <!-- Status Summary Bar -->
-    <section class="fd-status-bar" aria-label="{{ t('followDefense.status.currentStatus') }}">
-      <div class="fd-status-left">
-        <span [class]="statusChipClass().chip">
-          <lucide-icon [img]="statusChipClass().icon" class="fd-chip-icon"></lucide-icon>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('followDefense.title')">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="modulePath()">← {{ t('followDefense.backToModules') }}</a>
+        <p class="lf-kicker">{{ t('followDefense.badge') }}</p>
+        <h1 class="lf-title">
+          {{ t('followDefense.title') }}
+          <span>{{ streamer() || '—' }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('followDefense.subtitle') }}</p>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn" (click)="retryLoad()" [disabled]="settingsLoading()">
+            {{ t('common.retry') }}
+          </button>
+          <button type="button" class="lf-btn" (click)="refreshStatus()" [disabled]="statusLoading()">
+            {{ t('common.refresh') }}
+          </button>
+        </div>
+        <p class="lf-feed" [class.lf-feed--ok]="currentStatusMode() === 'normal'" [class.lf-feed--warn]="currentStatusMode() === 'silent' || currentStatusMode() === 'protection'" [class.lf-feed--danger]="currentStatusMode() === 'attack'">
           {{ statusLabel() }}
-        </span>
-        @if (status()?.trackedCount !== undefined) {
-          <span class="fd-status-tracked">
-            {{ status()!.trackedCount }} {{ t('followDefense.status.trackedFollowers') }}
+          @if (status()?.trackedCount !== undefined) {
+            · {{ status()!.trackedCount }} {{ t('followDefense.status.trackedFollowers') }}
+          }
+        </p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--danger]="currentStatusMode() === 'attack'" [class.lf-tile--warn]="currentStatusMode() === 'protection' || currentStatusMode() === 'silent'">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip" [class.lf-chip--ok]="currentStatusMode() === 'normal'" [class.lf-chip--warn]="currentStatusMode() === 'silent' || currentStatusMode() === 'protection'" [class.lf-chip--danger]="currentStatusMode() === 'attack'" [class.lf-chip--muted]="currentStatusMode() === 'disabled'">
+            {{ statusLabel() }}
           </span>
+          <span class="lf-spotlight__count">{{ t('followDefense.status.currentMode') }}</span>
+        </div>
+        <div class="lf-stats-strip">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('followDefense.status.trackedCount') }}</span>
+            <strong class="lf-stats-strip__value">{{ status()?.trackedCount ?? 0 }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('followDefense.status.activeFor') }}</span>
+            <strong class="lf-stats-strip__value lf-stats-strip__value--text">{{ getStatusAge(status()) || '—' }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('followDefense.status.triggeredBy') }}</span>
+            <strong class="lf-stats-strip__value lf-stats-strip__value--text">{{ titleCase(status()?.triggeredBy || '—') }}</strong>
+          </div>
+        </div>
+        @if (status()?.raid; as raid) {
+          <p class="lf-raid-note">
+            {{ t('followDefense.status.raidActive') }}:
+            <strong>{{ raid.raiderChannelName }}</strong>
+            ({{ raid.raidViewers }} {{ t('followDefense.status.viewers') }})
+            · {{ t('followDefense.status.expiresIn') }} {{ getRaidExpiresIn(status()) }}
+          </p>
         }
-      </div>
-      <div class="fd-status-right">
-        @if (status()?.raid) {
-          <span class="fd-status-raid">
-            <lucide-icon [img]="zapIcon" class="fd-status-raid-icon"></lucide-icon>
-            {{ t('followDefense.status.raidActive') }}: {{ status()!.raid!.raiderChannelName }}
-            ({{ status()!.raid!.raidViewers }} {{ t('followDefense.status.viewers') }})
-          </span>
-        }
-        <button
-          type="button"
-          class="fd-refresh-btn"
-          (click)="refreshStatus()"
-          [disabled]="statusLoading()"
-          aria-label="{{ t('common.refresh') }}"
-        >
-          <lucide-icon [img]="refreshIcon" class="fd-refresh-btn-icon" [class.fd-spin]="statusLoading()"></lucide-icon>
-        </button>
-      </div>
+      </article>
     </section>
 
-    <!-- Live Status Card -->
-    @if (status() || statusLoading()) {
-      <section class="fd-card" aria-labelledby="status-card-title">
-        <div class="fd-card-header">
-          <h2 id="status-card-title" class="fd-card-title">
-            <lucide-icon [img]="activityIcon" class="fd-card-title-icon"></lucide-icon>
-            {{ t('followDefense.status.currentMode') }}
-          </h2>
+    @if (errorMessage()) {
+      <div class="lf-banner lf-banner--error" role="alert">
+        <div>
+          <p class="lf-banner__title">{{ errorMessage() }}</p>
         </div>
-        <div class="fd-card-body">
-          @if (statusLoading() && !status()) {
-            <div class="fd-skeleton">
-              <div class="fd-skeleton-line fd-skeleton-line--md"></div>
-              <div class="fd-skeleton-line fd-skeleton-line--lg"></div>
-              <div class="fd-skeleton-line fd-skeleton-line--sm"></div>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">{{ t('common.retry') }}</button>
+      </div>
+    }
+
+    @if (settingsLoading() && !settings()) {
+      <div class="lf-tile lf-empty">{{ t('followDefense.states.loading') }}</div>
+    } @else if (settings(); as cfg) {
+      @if (status()) {
+        <section class="lf-tile" [attr.aria-label]="t('followDefense.status.currentMode')">
+          <p class="lf-kicker">{{ t('followDefense.status.currentMode') }}</p>
+          <dl class="lf-status-grid">
+            <div>
+              <dt>{{ t('followDefense.status.mode') }}</dt>
+              <dd><span class="lf-chip" [class]="modeChipClass(status()!.mode)">{{ titleCase(status()!.mode) }}</span></dd>
             </div>
-          } @else if (status()) {
-            <dl class="fd-status-grid">
-              <div class="fd-status-grid-item">
-                <dt class="fd-status-grid-label">{{ t('followDefense.status.mode') }}</dt>
-                <dd class="fd-status-grid-value">
-                  <span [class]="getModeChipClass(status()!.mode)">{{ status()!.mode | titlecase }}</span>
-                </dd>
+            <div>
+              <dt>{{ t('followDefense.status.triggeredBy') }}</dt>
+              <dd>{{ titleCase(status()!.triggeredBy) }}</dd>
+            </div>
+            <div>
+              <dt>{{ t('followDefense.status.activeFor') }}</dt>
+              <dd>{{ getStatusAge(status()) || '—' }}</dd>
+            </div>
+            <div>
+              <dt>{{ t('followDefense.status.trackedCount') }}</dt>
+              <dd>{{ status()!.trackedCount ?? 0 }}</dd>
+            </div>
+            <div class="lf-status-grid__full">
+              <dt>{{ t('followDefense.status.lastTransition') }}</dt>
+              <dd>{{ status()!.lastTransitionReason || '—' }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      <section class="lf-tile" [class.lf-tile--dim]="!cfg.enabled">
+        <div class="lf-row-head">
+          <div>
+            <p class="lf-kicker">{{ t('followDefense.enabled') }}</p>
+            <h2 class="lf-h2">{{ t('followDefense.enabled') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('followDefense.enabledDescription') }}</p>
+            @if (!cfg.enabled) {
+              <p class="lf-note lf-note--warn">{{ t('followDefense.enabledDisabledNote') }}</p>
+            }
+          </div>
+          <label class="lf-switch">
+            <input type="checkbox" [checked]="cfg.enabled" (change)="updateEnabled($any($event.target).checked)" [attr.aria-label]="t('followDefense.enabled')" />
+            <span class="lf-switch__track" aria-hidden="true"></span>
+          </label>
+        </div>
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('followDefense.modeConfiguration')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('followDefense.modeConfiguration') }}</p>
+            <h2 class="lf-h2">{{ t('followDefense.modeConfiguration') }}</h2>
+          </div>
+        </div>
+
+        <div class="lf-bento lf-bento--modes">
+          <article class="lf-tile" [class.lf-tile--dim]="!cfg.enabled || !cfg.silentModeEnabled">
+            <div class="lf-row-head">
+              <h3 class="lf-h3">{{ t('followDefense.silentMode') }}</h3>
+              <label class="lf-switch">
+                <input type="checkbox" [checked]="cfg.silentModeEnabled" (change)="updateSilentModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.silentMode')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p class="lf-copy lf-copy--tight">{{ t('followDefense.silentModeDescription') }}</p>
+            <div class="lf-form-grid">
+              <label class="lf-field">
+                <span>{{ t('followDefense.followsThreshold') }}</span>
+                <input type="number" min="1" [value]="cfg.silentThresholdX" (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <small>{{ t('followDefense.silentModeThresholdHint') }}</small>
+              </label>
+              <label class="lf-field">
+                <span>{{ t('followDefense.detectionWindow') }}</span>
+                <input type="number" min="1" [value]="cfg.silentWindowYSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <small>{{ t('followDefense.seconds') }}</small>
+              </label>
+              <label class="lf-field">
+                <span>{{ t('followDefense.trackingDuration') }}</span>
+                <input type="number" min="1" [value]="cfg.silentDurationSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <small>{{ t('followDefense.seconds') }}</small>
+              </label>
+            </div>
+          </article>
+
+          <article class="lf-tile" [class.lf-tile--dim]="!cfg.enabled || !cfg.protectionModeEnabled">
+            <div class="lf-row-head">
+              <h3 class="lf-h3">{{ t('followDefense.protectionMode') }}</h3>
+              <label class="lf-switch">
+                <input type="checkbox" [checked]="cfg.protectionModeEnabled" (change)="updateProtectionModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.protectionMode')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p class="lf-copy lf-copy--tight">{{ t('followDefense.protectionModeDescription') }}</p>
+            <div class="lf-form-grid">
+              <label class="lf-field">
+                <span>{{ t('followDefense.protectionThreshold') }}</span>
+                <input type="number" min="1" [value]="cfg.protectionThresholdB" (change)="updateProtectionThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.protectionModeEnabled" />
+                <small>{{ t('followDefense.protectionThresholdHint') }}</small>
+              </label>
+            </div>
+          </article>
+
+          <article class="lf-tile" [class.lf-tile--dim]="!cfg.enabled || !cfg.attackModeEnabled">
+            <div class="lf-row-head">
+              <h3 class="lf-h3">{{ t('followDefense.attackMode') }}</h3>
+              <label class="lf-switch">
+                <input type="checkbox" [checked]="cfg.attackModeEnabled" (change)="updateAttackModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.attackMode')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p class="lf-copy lf-copy--tight">{{ t('followDefense.attackModeDescription') }}</p>
+            <div class="lf-form-grid">
+              <label class="lf-field">
+                <span>{{ t('followDefense.attackThreshold') }}</span>
+                <input type="number" min="1" [value]="cfg.attackThreshold" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.attackModeEnabled" />
+                <small>{{ t('followDefense.attackThresholdHint') }}</small>
+              </label>
+              <div class="lf-field">
+                <span>{{ t('followDefense.manualCommand') }}</span>
+                <code class="lf-code">!defmode</code>
               </div>
-              <div class="fd-status-grid-item">
-                <dt class="fd-status-grid-label">{{ t('followDefense.status.triggeredBy') }}</dt>
-                <dd class="fd-status-grid-value">{{ status()!.triggeredBy | titlecase }}</dd>
-              </div>
-              <div class="fd-status-grid-item">
-                <dt class="fd-status-grid-label">{{ t('followDefense.status.activeFor') }}</dt>
-                <dd class="fd-status-grid-value">{{ getStatusAge(status()) }}</dd>
-              </div>
-              <div class="fd-status-grid-item">
-                <dt class="fd-status-grid-label">{{ t('followDefense.status.trackedCount') }}</dt>
-                <dd class="fd-status-grid-value">{{ status()!.trackedCount ?? 0 }}</dd>
-              </div>
-              <div class="fd-status-grid-item fd-status-grid-item--full">
-                <dt class="fd-status-grid-label">{{ t('followDefense.status.lastTransition') }}</dt>
-                <dd class="fd-status-grid-value">{{ status()!.lastTransitionReason }}</dd>
-              </div>
-              @if (status()!.raid) {
-                <div class="fd-status-grid-item fd-status-grid-item--full">
-                  <dt class="fd-status-grid-label">{{ t('followDefense.status.raidInfo') }}</dt>
-                  <dd class="fd-status-grid-value">
-                    <strong>{{ status()!.raid!.raiderChannelName }}</strong>
-                    ({{ status()!.raid!.raidViewers }} {{ t('followDefense.status.viewers') }})
-                    - {{ t('followDefense.status.expiresIn') }}: {{ getRaidExpiresIn(status()) }}
-                  </dd>
-                </div>
-              }
-            </dl>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="lf-tile">
+        <p class="lf-kicker">{{ t('followDefense.baseline.title') }}</p>
+        <h2 class="lf-h2">{{ t('followDefense.baseline.title') }}</h2>
+        <p class="lf-copy lf-copy--tight">{{ t('followDefense.baseline.description') }}</p>
+        <label class="lf-field lf-field--narrow">
+          <span>{{ t('followDefense.expectedFollowsPerHour') }}</span>
+          <input type="number" min="0" [value]="cfg.baselineFollowsPerHour ?? ''" (change)="updateBaselineFollowsPerHour($any($event.target).value)" [disabled]="!cfg.enabled" [placeholder]="t('followDefense.baseline.placeholder')" />
+        </label>
+      </section>
+
+      <section class="lf-tile lf-tile--actions">
+        <p class="lf-note lf-note--warn">{{ t('followDefense.attackWarning') }}</p>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn lf-btn--danger" (click)="openAttackDialog()" [disabled]="!canActivateAttack()">
+            {{ t('followDefense.activateAttack') }}
+          </button>
+          @if (isAttackMode()) {
+            <button type="button" class="lf-btn" (click)="resetMode()">{{ t('followDefense.resetMode') }}</button>
           }
         </div>
       </section>
-    }
 
-    <!-- Global Enable Card -->
-    <section class="fd-card" [class.fd-card--disabled]="!settings()!.enabled" aria-labelledby="enable-card-title">
-      <div class="fd-card-header">
-        <h2 id="enable-card-title" class="fd-card-title">
-          <lucide-icon [img]="shieldIcon" class="fd-card-title-icon"></lucide-icon>
-          {{ t('followDefense.enabled') }}
-        </h2>
-        <label class="fd-toggle fd-toggle--lg">
-          <input
-            type="checkbox"
-            [checked]="settings()!.enabled"
-            (change)="updateEnabled($any($event.target).checked)"
-            [attr.aria-label]="t('followDefense.enabled')"
-          />
-          <span class="fd-toggle-slider"></span>
-        </label>
-      </div>
-      <div class="fd-card-body">
-        <p class="fd-card-desc">{{ t('followDefense.enabledDescription') }}</p>
-        @if (!settings()!.enabled) {
-          <p class="fd-card-note">{{ t('followDefense.enabledDisabledNote') }}</p>
-        }
-      </div>
-    </section>
-
-    <!-- Mode Configuration Cards -->
-    <section class="fd-mode-cards" aria-labelledby="mode-cards-title">
-      <h2 id="mode-cards-title" class="visually-hidden">{{ t('followDefense.modeConfiguration') }}</h2>
-
-      <!-- Silent Mode Card -->
-      <div class="fd-card" [class.fd-card--disabled]="!settings()!.enabled || !settings()!.silentModeEnabled">
-        <div class="fd-card-header">
-          <h3 class="fd-card-title">
-            <lucide-icon [img]="shieldIcon" class="fd-card-title-icon"></lucide-icon>
-            {{ t('followDefense.silentMode') }}
-          </h3>
-          <label class="fd-toggle">
-            <input
-              type="checkbox"
-              [checked]="settings()!.silentModeEnabled"
-              (change)="updateSilentModeEnabled($any($event.target).checked)"
-              [disabled]="!settings()!.enabled"
-              [attr.aria-label]="t('followDefense.silentMode')"
-            />
-            <span class="fd-toggle-slider"></span>
-          </label>
-        </div>
-        <div class="fd-card-body">
-          <p class="fd-card-desc">{{ t('followDefense.silentModeDescription') }}</p>
-          <div class="fd-form-grid">
-            <div class="fd-field">
-              <label class="fd-field-label" for="silent-threshold">{{ t('followDefense.followsThreshold') }}</label>
-              <input
-                type="number"
-                id="silent-threshold"
-                class="fd-field-input"
-                [value]="settings()!.silentThresholdX"
-                (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')"
-                [disabled]="!settings()!.enabled || !settings()!.silentModeEnabled"
-                min="1"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.silentModeThresholdHint') }}</span>
-            </div>
-            <div class="fd-field">
-              <label class="fd-field-label" for="silent-window">{{ t('followDefense.detectionWindow') }}</label>
-              <input
-                type="number"
-                id="silent-window"
-                class="fd-field-input"
-                [value]="settings()!.silentWindowYSeconds"
-                (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')"
-                [disabled]="!settings()!.enabled || !settings()!.silentModeEnabled"
-                min="1"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.seconds') }}</span>
-            </div>
-            <div class="fd-field">
-              <label class="fd-field-label" for="silent-duration">{{ t('followDefense.trackingDuration') }}</label>
-              <input
-                type="number"
-                id="silent-duration"
-                class="fd-field-input"
-                [value]="settings()!.silentDurationSeconds"
-                (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')"
-                [disabled]="!settings()!.enabled || !settings()!.silentModeEnabled"
-                min="1"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.seconds') }}</span>
-            </div>
+      <section class="lf-section" [attr.aria-label]="t('followDefense.history')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('followDefense.history') }}</p>
+            <h2 class="lf-h2">{{ t('followDefense.history') }}</h2>
           </div>
         </div>
-      </div>
-
-      <!-- Protection Mode Card -->
-      <div class="fd-card" [class.fd-card--disabled]="!settings()!.enabled || !settings()!.protectionModeEnabled">
-        <div class="fd-card-header">
-          <h3 class="fd-card-title">
-            <lucide-icon [img]="shieldAlertIcon" class="fd-card-title-icon"></lucide-icon>
-            {{ t('followDefense.protectionMode') }}
-          </h3>
-          <label class="fd-toggle">
-            <input
-              type="checkbox"
-              [checked]="settings()!.protectionModeEnabled"
-              (change)="updateProtectionModeEnabled($any($event.target).checked)"
-              [disabled]="!settings()!.enabled"
-              [attr.aria-label]="t('followDefense.protectionMode')"
-            />
-            <span class="fd-toggle-slider"></span>
-          </label>
-        </div>
-        <div class="fd-card-body">
-          <p class="fd-card-desc">{{ t('followDefense.protectionModeDescription') }}</p>
-          <div class="fd-form-grid">
-            <div class="fd-field">
-              <label class="fd-field-label" for="protection-threshold">{{ t('followDefense.protectionThreshold') }}</label>
-              <input
-                type="number"
-                id="protection-threshold"
-                class="fd-field-input"
-                [value]="settings()!.protectionThresholdB"
-                (change)="updateProtectionThreshold($any($event.target).value)"
-                [disabled]="!settings()!.enabled || !settings()!.protectionModeEnabled"
-                min="1"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.protectionThresholdHint') }}</span>
+        <div class="lf-tile lf-tile--flush">
+          @if (logsLoading() && attackLogs().length === 0) {
+            <div class="lf-empty">{{ t('common.loading') }}</div>
+          } @else if (attackLogs().length === 0) {
+            <div class="lf-empty">{{ t('followDefense.noHistory') }}</div>
+          } @else {
+            <div class="lf-table-wrap">
+              <table class="lf-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('followDefense.table.dateTime') }}</th>
+                    <th>{{ t('followDefense.table.mode') }}</th>
+                    <th>{{ t('followDefense.table.triggeredBy') }}</th>
+                    <th>{{ t('followDefense.table.totalFollows') }}</th>
+                    <th>{{ t('followDefense.table.velocity') }}</th>
+                    <th>{{ t('followDefense.table.raid') }}</th>
+                    <th>{{ t('followDefense.table.bannedCount') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (log of attackLogs(); track log.id) {
+                    <tr>
+                      <td>{{ formatTimestamp(log.createdAt) }}</td>
+                      <td><span class="lf-chip" [class]="modeChipClass(log.triggeredMode)">{{ titleCase(log.triggeredMode) }}</span></td>
+                      <td>{{ titleCase(log.triggeredBy) }}</td>
+                      <td>{{ log.totalFollows }}</td>
+                      <td>{{ log.velocity }}/s</td>
+                      <td>{{ log.isRaid ? (log.raiderChannelName ?? 'Yes') : '—' }}</td>
+                      <td>{{ log.bannedCount }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
+            @if (logsPagination().total > logsPagination().limit) {
+              <div class="lf-pager">
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="logsPagination().page <= 1" (click)="goToLogsPage(logsPagination().page - 1)">{{ t('common.previous') }}</button>
+                @for (page of getLogsPageNumbers(); track page) {
+                  <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--active]="page === logsPagination().page" (click)="goToLogsPage(page)">{{ page }}</button>
+                }
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="logsPagination().page >= totalLogsPages()" (click)="goToLogsPage(logsPagination().page + 1)">{{ t('common.next') }}</button>
+              </div>
+            }
+          }
+        </div>
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('followDefense.hateRaidSources')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('followDefense.hateRaidSources') }}</p>
+            <h2 class="lf-h2">{{ t('followDefense.hateRaidSources') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('followDefense.hateRaidSourcesDescription') }}</p>
           </div>
         </div>
-      </div>
-
-      <!-- Attack Mode Card -->
-      <div class="fd-card" [class.fd-card--disabled]="!settings()!.enabled || !settings()!.attackModeEnabled">
-        <div class="fd-card-header">
-          <h3 class="fd-card-title">
-            <lucide-icon [img]="banIcon" class="fd-card-title-icon"></lucide-icon>
-            {{ t('followDefense.attackMode') }}
-          </h3>
-          <label class="fd-toggle">
-            <input
-              type="checkbox"
-              [checked]="settings()!.attackModeEnabled"
-              (change)="updateAttackModeEnabled($any($event.target).checked)"
-              [disabled]="!settings()!.enabled"
-              [attr.aria-label]="t('followDefense.attackMode')"
-            />
-            <span class="fd-toggle-slider"></span>
-          </label>
-        </div>
-        <div class="fd-card-body">
-          <p class="fd-card-desc">{{ t('followDefense.attackModeDescription') }}</p>
-          <div class="fd-form-grid">
-            <div class="fd-field">
-              <label class="fd-field-label" for="attack-threshold">{{ t('followDefense.attackThreshold') }}</label>
-              <input
-                type="number"
-                id="attack-threshold"
-                class="fd-field-input"
-                [value]="settings()!.attackThreshold"
-                (change)="updateAttackThreshold($any($event.target).value)"
-                [disabled]="!settings()!.enabled || !settings()!.attackModeEnabled"
-                min="1"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.attackThresholdHint') }}</span>
+        <div class="lf-tile lf-tile--flush">
+          @if (hateRaidSources().length === 0) {
+            <div class="lf-empty">{{ t('followDefense.noHateRaids') }}</div>
+          } @else {
+            <div class="lf-table-wrap">
+              <table class="lf-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('followDefense.table.raiderChannel') }}</th>
+                    <th>{{ t('followDefense.table.count') }}</th>
+                    <th>{{ t('followDefense.table.firstSeen') }}</th>
+                    <th>{{ t('followDefense.table.lastSeen') }}</th>
+                    <th>{{ t('followDefense.table.lastViewers') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (source of hateRaidSources(); track source.id) {
+                    <tr>
+                      <td>
+                        <a class="lf-link" [href]="'https://twitch.tv/' + source.raiderChannelLogin" target="_blank" rel="noopener noreferrer">
+                          {{ source.raiderChannelName }}
+                        </a>
+                      </td>
+                      <td>{{ source.count }}</td>
+                      <td>{{ formatTimestamp(source.firstSeen) }}</td>
+                      <td>{{ formatTimestamp(source.lastSeen) }}</td>
+                      <td>{{ source.lastRaidViewers ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
-            <div class="fd-field">
-              <span class="fd-field-label">{{ t('followDefense.manualCommand') }}</span>
-              <code class="fd-field-code">!defmode</code>
-            </div>
-          </div>
+            @if (hateRaidsPagination().total > hateRaidsPagination().limit) {
+              <div class="lf-pager">
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="hateRaidsPagination().page <= 1" (click)="goToHateRaidsPage(hateRaidsPagination().page - 1)">{{ t('common.previous') }}</button>
+                @for (page of getHateRaidsPageNumbers(); track page) {
+                  <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--active]="page === hateRaidsPagination().page" (click)="goToHateRaidsPage(page)">{{ page }}</button>
+                }
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="hateRaidsPagination().page >= totalHateRaidsPages()" (click)="goToHateRaidsPage(hateRaidsPagination().page + 1)">{{ t('common.next') }}</button>
+              </div>
+            }
+          }
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Baseline Card -->
-    <section class="fd-card" aria-labelledby="baseline-card-title">
-      <div class="fd-card-header">
-        <h2 id="baseline-card-title" class="fd-card-title">
-          <lucide-icon [img]="activityIcon" class="fd-card-title-icon"></lucide-icon>
-          {{ t('followDefense.baseline.title') }}
-        </h2>
-      </div>
-      <div class="fd-card-body">
-        <p class="fd-card-desc">{{ t('followDefense.baseline.description') }}</p>
-        <div class="fd-form-grid fd-form-grid--single">
-          <div class="fd-field">
-            <label class="fd-field-label" for="baseline-follows">{{ t('followDefense.expectedFollowsPerHour') }}</label>
-            <input
-              type="number"
-              id="baseline-follows"
-              class="fd-field-input"
-              [value]="settings()!.baselineFollowsPerHour ?? ''"
-              (change)="updateBaselineFollowsPerHour($any($event.target).value)"
-              [disabled]="!settings()!.enabled"
-              min="0"
-              placeholder="{{ t('followDefense.baseline.placeholder') }}"
-            />
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Manual Attack Actions -->
-    <section class="fd-actions" aria-labelledby="attack-actions-title">
-      <h2 id="attack-actions-title" class="visually-hidden">{{ t('followDefense.attackActions') }}</h2>
-      <p class="fd-actions-warning">
-        <lucide-icon [img]="alertIcon" class="fd-actions-warning-icon"></lucide-icon>
-        {{ t('followDefense.attackWarning') }}
-      </p>
-      <div class="fd-actions-btns">
-        <button
-          type="button"
-          class="fd-btn fd-btn--danger fd-btn--lg"
-          (click)="openAttackDialog()"
-          [disabled]="!canActivateAttack()"
-        >
-          <lucide-icon [img]="banIcon" class="fd-btn-icon"></lucide-icon>
-          {{ t('followDefense.activateAttack') }}
+      <div class="lf-save-bar">
+        <button type="button" class="lf-btn lf-btn--primary" (click)="saveSettings()" [disabled]="savingSettings() || !settingsDirty()">
+          @if (savingSettings()) {
+            {{ t('followDefense.actions.saving') }}
+          } @else {
+            {{ t('followDefense.actions.save') }}
+          }
         </button>
-        @if (isAttackMode()) {
-          <button
-            type="button"
-            class="fd-btn fd-btn--secondary fd-btn--lg"
-            (click)="resetMode()"
-          >
-            <lucide-icon [img]="refreshIcon" class="fd-btn-icon"></lucide-icon>
-            {{ t('followDefense.resetMode') }}
-          </button>
-        }
       </div>
-    </section>
+    }
+  </main>
 
-    <!-- Attack History Table -->
-    <section class="fd-card" aria-labelledby="history-card-title">
-      <div class="fd-card-header">
-        <h2 id="history-card-title" class="fd-card-title">
-          <lucide-icon [img]="shieldAlertIcon" class="fd-card-title-icon"></lucide-icon>
-          {{ t('followDefense.history') }}
-        </h2>
-      </div>
-      <div class="fd-card-body fd-card-body--flush">
-        @if (logsLoading() && attackLogs().length === 0) {
-          <div class="fd-empty">
-            <lucide-icon [img]="loaderIcon" class="fd-loading-icon fd-spin"></lucide-icon>
-          </div>
-        } @else if (attackLogs().length === 0) {
-          <div class="fd-empty">
-            <lucide-icon [img]="shieldIcon" class="fd-empty-icon"></lucide-icon>
-            <p class="fd-empty-text">{{ t('followDefense.noHistory') }}</p>
-          </div>
-        } @else {
-          <div class="fd-table-wrap">
-            <table class="fd-table" aria-label="{{ t('followDefense.history') }}">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t('followDefense.table.dateTime') }}</th>
-                  <th scope="col">{{ t('followDefense.table.mode') }}</th>
-                  <th scope="col">{{ t('followDefense.table.triggeredBy') }}</th>
-                  <th scope="col">{{ t('followDefense.table.totalFollows') }}</th>
-                  <th scope="col">{{ t('followDefense.table.velocity') }}</th>
-                  <th scope="col">{{ t('followDefense.table.raid') }}</th>
-                  <th scope="col">{{ t('followDefense.table.bannedCount') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (log of attackLogs(); track log.id) {
-                  <tr>
-                    <td>{{ formatTimestamp(log.createdAt) }}</td>
-                    <td><span [class]="getModeChipClass(log.triggeredMode)">{{ log.triggeredMode | titlecase }}</span></td>
-                    <td>{{ log.triggeredBy | titlecase }}</td>
-                    <td>{{ log.totalFollows }}</td>
-                    <td>{{ log.velocity }}/s</td>
-                    <td>{{ log.isRaid ? (log.raiderChannelName ?? 'Yes') : '-' }}</td>
-                    <td>{{ log.bannedCount }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          @if (logsPagination().total > logsPagination().limit) {
-            <div class="fd-pagination">
-              <button
-                type="button"
-                class="fd-page-btn"
-                [disabled]="logsPagination().page <= 1"
-                (click)="goToLogsPage(logsPagination().page - 1)"
-                aria-label="{{ t('common.previous') }}"
-              >
-                <lucide-icon [img]="chevronLeftIcon" class="fd-page-btn-icon"></lucide-icon>
-              </button>
-              @for (page of getLogsPageNumbers(); track page) {
-                <button
-                  type="button"
-                  class="fd-page-btn"
-                  [class.fd-page-btn--active]="page === logsPagination().page"
-                  (click)="goToLogsPage(page)"
-                >{{ page }}</button>
-              }
-              <button
-                type="button"
-                class="fd-page-btn"
-                [disabled]="logsPagination().page >= Math.ceil(logsPagination().total / logsPagination().limit)"
-                (click)="goToLogsPage(logsPagination().page + 1)"
-                aria-label="{{ t('common.next') }}"
-              >
-                <lucide-icon [img]="chevronRightIcon" class="fd-page-btn-icon"></lucide-icon>
-              </button>
-            </div>
-          }
-        }
-      </div>
-    </section>
-
-    <!-- Hate Raid Sources -->
-    <section class="fd-card" aria-labelledby="hate-raids-card-title">
-      <div class="fd-card-header">
-        <h2 id="hate-raids-card-title" class="fd-card-title">
-          <lucide-icon [img]="userXIcon" class="fd-card-title-icon"></lucide-icon>
-          {{ t('followDefense.hateRaidSources') }}
-        </h2>
-      </div>
-      <div class="fd-card-body">
-        <p class="fd-card-desc">{{ t('followDefense.hateRaidSourcesDescription') }}</p>
-        @if (hateRaidSources().length === 0) {
-          <div class="fd-empty">
-            <lucide-icon [img]="userXIcon" class="fd-empty-icon"></lucide-icon>
-            <p class="fd-empty-text">{{ t('followDefense.noHateRaids') }}</p>
-          </div>
-        } @else {
-          <div class="fd-table-wrap">
-            <table class="fd-table" aria-label="{{ t('followDefense.hateRaidSources') }}">
-              <thead>
-                <tr>
-                  <th scope="col">{{ t('followDefense.table.raiderChannel') }}</th>
-                  <th scope="col">{{ t('followDefense.table.count') }}</th>
-                  <th scope="col">{{ t('followDefense.table.firstSeen') }}</th>
-                  <th scope="col">{{ t('followDefense.table.lastSeen') }}</th>
-                  <th scope="col">{{ t('followDefense.table.lastViewers') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (source of hateRaidSources(); track source.id) {
-                  <tr>
-                    <td>
-                      <a [href]="'https://twitch.tv/' + source.raiderChannelLogin" target="_blank" rel="noopener" class="fd-table-link">
-                        {{ source.raiderChannelName }}
-                      </a>
-                    </td>
-                    <td>{{ source.count }}</td>
-                    <td>{{ formatTimestamp(source.firstSeen) }}</td>
-                    <td>{{ formatTimestamp(source.lastSeen) }}</td>
-                    <td>{{ source.lastRaidViewers ?? '-' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          @if (hateRaidsPagination().total > hateRaidsPagination().limit) {
-            <div class="fd-pagination">
-              <button
-                type="button"
-                class="fd-page-btn"
-                [disabled]="hateRaidsPagination().page <= 1"
-                (click)="goToHateRaidsPage(hateRaidsPagination().page - 1)"
-                aria-label="{{ t('common.previous') }}"
-              >
-                <lucide-icon [img]="chevronLeftIcon" class="fd-page-btn-icon"></lucide-icon>
-              </button>
-              @for (page of getHateRaidsPageNumbers(); track page) {
-                <button
-                  type="button"
-                  class="fd-page-btn"
-                  [class.fd-page-btn--active]="page === hateRaidsPagination().page"
-                  (click)="goToHateRaidsPage(page)"
-                >{{ page }}</button>
-              }
-              <button
-                type="button"
-                class="fd-page-btn"
-                [disabled]="hateRaidsPagination().page >= Math.ceil(hateRaidsPagination().total / hateRaidsPagination().limit)"
-                (click)="goToHateRaidsPage(hateRaidsPagination().page + 1)"
-                aria-label="{{ t('common.next') }}"
-              >
-                <lucide-icon [img]="chevronRightIcon" class="fd-page-btn-icon"></lucide-icon>
-              </button>
-            </div>
-          }
-        }
-      </div>
-    </section>
-
-    <!-- Save Button (sticky) -->
-    <div class="fd-save-bar">
-      <button
-        type="button"
-        class="fd-btn fd-btn--primary fd-btn--lg"
-        (click)="saveSettings()"
-        [disabled]="savingSettings() || !settingsDirty()"
-      >
-        @if (savingSettings()) {
-          <lucide-icon [img]="loaderIcon" class="fd-btn-icon fd-spin"></lucide-icon>
-          {{ t('followDefense.actions.saving') }}
-        } @else {
-          {{ t('followDefense.actions.save') }}
-        }
-      </button>
-    </div>
-  }
-
-  <!-- Attack Mode Confirmation Dialog -->
   @if (showAttackDialog()) {
-    <div class="fd-dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="attack-dialog-title">
-      <div class="fd-dialog">
-        <div class="fd-dialog-header">
-          <h2 id="attack-dialog-title" class="fd-dialog-title">
-            <lucide-icon [img]="alertIcon" class="fd-dialog-title-icon fd-dialog-title-icon--danger"></lucide-icon>
-            {{ t('followDefense.dialog.attackTitle') }}
-          </h2>
+    <div class="lf-modal-overlay" (click)="onAttackBackdrop($event)">
+      <div class="lf-modal" role="dialog" aria-modal="true" aria-labelledby="attack-dialog-title" (click)="$event.stopPropagation()">
+        <div class="lf-modal__head">
+          <h2 id="attack-dialog-title" class="lf-modal__title">{{ t('followDefense.dialog.attackTitle') }}</h2>
+          <button type="button" class="lf-modal__close" (click)="closeAttackDialog()" [attr.aria-label]="t('common.close')">×</button>
         </div>
-        <div class="fd-dialog-body">
-          <p>{{ t('followDefense.dialog.attackBody') }}</p>
-          @if (status()?.raid) {
-            <div class="fd-dialog-warning">
-              <lucide-icon [img]="zapIcon" class="fd-dialog-warning-icon"></lucide-icon>
-              {{ t('followDefense.dialog.raidWarning') }}
-            </div>
-          }
-          @if ((status()?.trackedCount ?? 0) > 50) {
-            <div class="fd-dialog-confirm">
-              <label class="fd-field-label" for="attack-confirm">{{ t('followDefense.dialog.confirmLabel') }}</label>
-              <input
-                type="text"
-                id="attack-confirm"
-                class="fd-field-input"
-                [ngModel]="attackConfirmText()"
-                (ngModelChange)="attackConfirmText.set($event)"
-                placeholder="{{ t('followDefense.dialog.confirmPlaceholder') }}"
-                autocomplete="off"
-              />
-              <span class="fd-field-hint">{{ t('followDefense.dialog.confirmHint') }}</span>
-            </div>
-          }
-        </div>
-        <div class="fd-dialog-footer">
-          <button type="button" class="fd-btn fd-btn--secondary" (click)="closeAttackDialog()" [disabled]="activatingAttack()">
-            {{ t('followDefense.dialog.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="fd-btn fd-btn--danger"
-            (click)="activateAttackMode()"
-            [disabled]="activatingAttack() || !canSubmitAttackDialog()"
-          >
+        <p class="lf-modal__copy">{{ t('followDefense.dialog.attackBody') }}</p>
+        @if (status()?.raid) {
+          <p class="lf-note lf-note--warn">{{ t('followDefense.dialog.raidWarning') }}</p>
+        }
+        @if ((status()?.trackedCount ?? 0) > 50) {
+          <label class="lf-field">
+            <span>{{ t('followDefense.dialog.confirmLabel') }}</span>
+            <input type="text" [value]="attackConfirmText()" (input)="attackConfirmText.set($any($event.target).value)" [placeholder]="t('followDefense.dialog.confirmPlaceholder')" autocomplete="off" />
+            <small>{{ t('followDefense.dialog.confirmHint') }}</small>
+          </label>
+        }
+        <div class="lf-form__actions">
+          <button type="button" class="lf-btn" (click)="closeAttackDialog()" [disabled]="activatingAttack()">{{ t('followDefense.dialog.cancel') }}</button>
+          <button type="button" class="lf-btn lf-btn--danger" (click)="activateAttackMode()" [disabled]="activatingAttack() || !canSubmitAttackDialog()">
             @if (activatingAttack()) {
-              <lucide-icon [img]="loaderIcon" class="fd-btn-icon fd-spin"></lucide-icon>
               {{ t('followDefense.dialog.activating') }}
             } @else {
               {{ t('followDefense.dialog.confirm') }}
@@ -585,17 +366,3 @@
     </div>
   }
 </div>
-
-<style>
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-</style>

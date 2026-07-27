@@ -11,36 +11,8 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-  ArrowLeft,
-  AudioLines,
-  Check,
-  Copy,
-  Edit3,
-  Globe2,
-  HardDrive,
-  Image,
-  Info,
-  LibraryBig,
-  LucideAngularModule,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldAlert,
-  Sparkles,
-  Trash2,
-  Upload,
-  Video,
-  X,
-  Zap,
-  Eye,
-  Pause,
-  type LucideIconData
-} from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
 import { DisplayNamePipe } from '../../pipes/display-name.pipe';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
@@ -117,8 +89,6 @@ const SAFE_NAME_MAX_LENGTH = 60;
   selector: 'app-triggers-page',
   imports: [
     RouterLink,
-    LucideAngularModule,
-    LoadingIndicatorComponent,
     SafeUrlPipe,
     DisplayNamePipe,
     ConfirmationModalComponent,
@@ -147,30 +117,6 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
   readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('uploadFileInput');
   readonly testPreviewFrame = viewChild<ElementRef<HTMLIFrameElement>>('testPreviewFrame');
-
-  readonly backIcon = ArrowLeft;
-  readonly sparklesIcon = Sparkles;
-  readonly refreshIcon = RefreshCw;
-  readonly plusIcon = Plus;
-  readonly uploadIcon = Upload;
-  readonly copyIcon = Copy;
-  readonly copiedIcon = Check;
-  readonly playIcon = Play;
-  readonly deleteIcon = Trash2;
-  readonly editIcon = Edit3;
-  readonly libraryIcon = LibraryBig;
-  readonly marketplaceIcon = Globe2;
-  readonly storageIcon = HardDrive;
-  readonly searchIcon = Search;
-  readonly videoIcon = Video;
-  readonly audioIcon = AudioLines;
-  readonly imageIcon = Image;
-  readonly triggerIcon = Zap;
-  readonly alertIcon = ShieldAlert;
-  readonly closeIcon = X;
-  readonly infoIcon = Info;
-  readonly previewIcon = Eye;
-  readonly pauseIcon = Pause;
 
   readonly streamer = toSignal(this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))), {
     requireSync: true
@@ -919,16 +865,16 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     return Boolean(item.asset && SUPPORTED_TRIGGER_MEDIA_TYPES.has(item.asset.mediaType));
   }
 
-  getMediaIcon(type: MediaType): LucideIconData {
+  mediaGlyph(type: MediaType | string): string {
     switch (type) {
       case 'audio':
-        return this.audioIcon;
+        return '♪';
       case 'image':
       case 'gif':
-        return this.imageIcon;
+        return '▣';
       case 'video':
       default:
-        return this.videoIcon;
+        return '▶';
     }
   }
 

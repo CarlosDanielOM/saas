@@ -13,15 +13,14 @@ import { List, LayoutGrid, Edit3, Trash2, Power, PowerOff } from 'lucide-angular
 import { LucideAngularModule } from 'lucide-angular';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 
-import { HttpClient } from '@angular/common/http';
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES } from '../../models/command.model';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
-import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { TimersApiService } from '../../services/timers-api.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
-import { CommandModalComponent } from './command-modal.component';
+import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
 
 type ViewMode = 'table' | 'card';
 type EditMode = { type: 'cell'; commandId: string; field: string } | null;
@@ -47,11 +46,10 @@ interface CommandListItem extends Command {
 export class CommandsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly http = inject(HttpClient);
-  private readonly linksService = inject(LinksService);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly commandsApi = inject(CommandsApiService);
+  private readonly timersApi = inject(TimersApiService);
   private readonly toastService = inject(ToastService);
 
   // Icons
@@ -106,8 +104,10 @@ export class CommandsPageComponent {
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal(10);
   readonly itemsPerPageOptions = [5, 10, 15, 20] as const;
-  /** Timer names from GET /timers/:channelID — used only for list styling/legend. */
+  /** Timer names from GET /timers/:channelID — used for list styling + modal prefill. */
   readonly timerNames = signal<Set<string>>(new Set());
+  /** Timer interval (minutes) keyed by timer name. */
+  readonly timerMinutesByName = signal<Map<string, number>>(new Map());
 
   // Edit state (cell edit only - modal handles full edit)
   readonly editMode = signal<EditMode>(null);
@@ -133,7 +133,22 @@ export class CommandsPageComponent {
   private readonly commandFeedbackTimers = new Map<string, number>();
 
   // Computed
-  readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly planTier = computed((): PlanTier => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') {
+      return tier;
+    }
+    return 'free';
+  });
+
+  /** Prefill interval when editing a timer-linked command. */
+  readonly editingTimerMinutes = computed((): number | null => {
+    const command = this.editingCommand();
+    if (!command) {
+      return null;
+    }
+    return this.getTimerMinutesForCommand(command);
+  });
   readonly streamerLabel = computed(() => {
     const fromRoute =
       this.route.snapshot.paramMap.get('streamer') ||
@@ -212,6 +227,7 @@ export class CommandsPageComponent {
       this.loadTimerNames(channelID);
     } else {
       this.timerNames.set(new Set());
+      this.timerMinutesByName.set(new Map());
     }
   });
 
@@ -481,17 +497,18 @@ export class CommandsPageComponent {
     this.editingCommand.set(null);
   }
 
-  onModalSave(request: CreateCommandRequest): void {
+  onModalSave(payload: CommandModalSavePayload): void {
     const channelID = this.channelID();
     if (!channelID) return;
 
     const session = this.sessionAuth.session();
     if (!session) return;
 
+    const request = payload.command;
     const editingCmd = this.editingCommand();
+    const previousTimerName = editingCmd ? this.resolveTimerName(editingCmd) : null;
 
     if (editingCmd) {
-      // Update existing command
       const commandId = this.getCommandId(editingCmd);
       const updates: UpdateCommandRequest = {
         name: request.name,
@@ -515,6 +532,7 @@ export class CommandsPageComponent {
           this.clearCommandSnapshot(commandId);
           this.setCommandFeedbackState(this.getCommandId(updated), 'success');
           this.toastService.success(this.t('commands.toast.savedTitle'), this.t('commands.toast.savedMessage'));
+          this.syncCommandTimer(channelID, updated.cmd || request.cmd, previousTimerName, request.message, payload.timer);
         } else {
           this.restoreCommandSnapshot(commandId);
           this.setCommandFeedbackState(commandId, 'error');
@@ -522,7 +540,6 @@ export class CommandsPageComponent {
         }
       });
     } else {
-      // Create new command
       const newCommand: CreateCommandRequest = {
         ...request,
         channel: session.twitchUser.login || channelID
@@ -540,6 +557,7 @@ export class CommandsPageComponent {
           this.replaceCommandItem(tempId, created);
           this.setCommandFeedbackState(this.getCommandId(created), 'success');
           this.toastService.success(this.t('commands.toast.createdTitle'), this.t('commands.toast.createdMessage'));
+          this.syncCommandTimer(channelID, created.cmd || request.cmd, null, request.message, payload.timer);
         } else {
           this.setCommandFeedbackState(tempId, 'error');
           window.setTimeout(() => {
@@ -776,12 +794,17 @@ export class CommandsPageComponent {
     }));
     this.closeDeleteModal();
 
+    const timerName = this.resolveTimerName(command);
+
     this.commandsApi.deleteCommand(channelID, commandId).subscribe((success) => {
       if (success) {
         this.commands.update((cmds) => cmds.filter((c) => !this.matchesCommand(c, commandId)));
         this.clearCommandSnapshot(commandId);
         this.syncCurrentPage();
         this.toastService.success(this.t('commands.toast.deletedTitle'), this.t('commands.toast.deletedMessage'));
+        if (timerName) {
+          this.timersApi.deleteTimer(channelID, timerName).subscribe(() => this.loadTimerNames(channelID));
+        }
       } else {
         this.restoreCommandSnapshot(commandId);
         this.setCommandFeedbackState(commandId, 'error');
@@ -962,31 +985,139 @@ export class CommandsPageComponent {
   }
 
   private loadTimerNames(channelID: string): void {
-    this.http
-      .get<{ data?: Array<{ name?: string; timerName?: string; cmd?: string }> }>(
-        `${this.linksService.getApiUrl()}/timers/${encodeURIComponent(channelID)}`
-      )
-      .subscribe({
-        next: (response) => {
-          const rows = Array.isArray(response.data) ? response.data : [];
-          const names = new Set<string>();
-          for (const row of rows) {
-            for (const key of [row.name, row.timerName, row.cmd]) {
-              const value = String(key || '')
-                .trim()
-                .toLowerCase()
-                .replace(/^!/, '');
-              if (value) {
-                names.add(value);
-              }
-            }
+    this.timersApi.listTimers(channelID).subscribe({
+      next: (rows) => {
+        const names = new Set<string>();
+        const minutes = new Map<string, number>();
+        for (const row of rows) {
+          const value = String(row.name || '')
+            .trim()
+            .toLowerCase()
+            .replace(/^!/, '');
+          if (!value) {
+            continue;
           }
-          this.timerNames.set(names);
-        },
-        error: () => {
-          this.timerNames.set(new Set());
+          names.add(value);
+          const interval = Number(row.minutes ?? row.frequency) || 0;
+          if (interval > 0) {
+            minutes.set(value, interval);
+          }
+        }
+        this.timerNames.set(names);
+        this.timerMinutesByName.set(minutes);
+      },
+      error: () => {
+        this.timerNames.set(new Set());
+        this.timerMinutesByName.set(new Map());
+      }
+    });
+  }
+
+  private getTimerMinutesForCommand(command: Pick<Command, 'cmd' | 'name'>): number | null {
+    const map = this.timerMinutesByName();
+    const cmd = (command.cmd || '').trim().toLowerCase().replace(/^!/, '');
+    const name = (command.name || '').trim().toLowerCase();
+    if (cmd && map.has(cmd)) {
+      return map.get(cmd) ?? null;
+    }
+    if (name && map.has(name)) {
+      return map.get(name) ?? null;
+    }
+    return null;
+  }
+
+  private resolveTimerName(command: Pick<Command, 'cmd' | 'name'>): string | null {
+    const names = this.timerNames();
+    const cmd = (command.cmd || '').trim().toLowerCase().replace(/^!/, '');
+    const name = (command.name || '').trim().toLowerCase();
+    if (cmd && names.has(cmd)) {
+      return cmd;
+    }
+    if (name && names.has(name)) {
+      return name;
+    }
+    return null;
+  }
+
+  private normalizeTimerName(value: string): string {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^!/, '');
+  }
+
+  private syncCommandTimer(
+    channelID: string,
+    commandCmd: string,
+    previousTimerName: string | null,
+    message: string,
+    timer: CommandModalSavePayload['timer']
+  ): void {
+    const timerName = this.normalizeTimerName(commandCmd);
+    if (!timerName) {
+      return;
+    }
+
+    const hadPrevious = Boolean(previousTimerName && this.timerNames().has(previousTimerName));
+    const hasCurrent = this.timerNames().has(timerName);
+    const timerMessage = String(message || '').slice(0, 350);
+
+    if (!timer.enabled) {
+      const toDelete = hadPrevious ? previousTimerName : hasCurrent ? timerName : null;
+      if (!toDelete) {
+        return;
+      }
+      this.timersApi.deleteTimer(channelID, toDelete).subscribe((ok) => {
+        if (ok) {
+          this.loadTimerNames(channelID);
+          this.toastService.success(
+            this.t('commands.toast.timerRemovedTitle'),
+            this.t('commands.toast.timerRemovedMessage')
+          );
         }
       });
+      return;
+    }
+
+    const minutes = Number(timer.minutes);
+    if (!Number.isInteger(minutes) || minutes <= 0) {
+      return;
+    }
+
+    const finishOk = (ok: boolean, failMessage?: string): void => {
+      if (ok) {
+        this.loadTimerNames(channelID);
+        this.toastService.success(
+          this.t('commands.toast.timerSavedTitle'),
+          this.t('commands.toast.timerSavedMessage')
+        );
+        return;
+      }
+      this.toastService.error(
+        this.t('commands.toast.timerErrorTitle'),
+        failMessage || this.t('commands.toast.timerErrorMessage')
+      );
+    };
+
+    if (hadPrevious && previousTimerName && previousTimerName !== timerName) {
+      this.timersApi.deleteTimer(channelID, previousTimerName).subscribe(() => {
+        this.timersApi.createTimer(channelID, timerName, minutes, timerMessage).subscribe((result) => {
+          finishOk(result.ok, result.message);
+        });
+      });
+      return;
+    }
+
+    if (hasCurrent || hadPrevious) {
+      this.timersApi
+        .updateTimer(channelID, timerName, { frequency: minutes, message: timerMessage })
+        .subscribe((result) => finishOk(result.ok, result.message));
+      return;
+    }
+
+    this.timersApi
+      .createTimer(channelID, timerName, minutes, timerMessage)
+      .subscribe((result) => finishOk(result.ok, result.message));
   }
 
   private saveToSession(key: string, value: unknown): void {

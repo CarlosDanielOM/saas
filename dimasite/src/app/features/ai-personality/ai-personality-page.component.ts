@@ -1,28 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
-import {
-  AlertCircle,
-  Bot,
-  Brain,
-  ChevronDown,
-  ChevronUp,
-  Crown,
-  Database,
-  HelpCircle,
-  LucideAngularModule,
-  Plus,
-  Save,
-  Settings2,
-  ShieldAlert,
-  Sparkles,
-  Trash2,
-  User,
-  Users
-} from 'lucide-angular';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   AiKnownUser,
   AiLearningConfig,
@@ -49,7 +29,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-ai-personality-page',
-  imports: [LucideAngularModule, LoadingIndicatorComponent],
+  imports: [RouterLink],
   templateUrl: './ai-personality-page.component.html',
   styleUrl: './ai-personality-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -60,23 +40,6 @@ export class AiPersonalityPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly toastService = inject(ToastService);
   private readonly aiPersonalityApi = inject(AiPersonalityApiService);
-
-  readonly brainIcon = Brain;
-  readonly sparklesIcon = Sparkles;
-  readonly alertIcon = AlertCircle;
-  readonly addIcon = Plus;
-  readonly saveIcon = Save;
-  readonly trashIcon = Trash2;
-  readonly crownIcon = Crown;
-  readonly usersIcon = Users;
-  readonly botIcon = Bot;
-  readonly userIcon = User;
-  readonly learningIcon = Settings2;
-  readonly memoryIcon = Database;
-  readonly policyIcon = ShieldAlert;
-  readonly chevronDownIcon = ChevronDown;
-  readonly chevronUpIcon = ChevronUp;
-  readonly helpIcon = HelpCircle;
 
   readonly settings = signal<AiPersonalitySettings | null>(null);
   readonly learningExpanded = signal(true);
@@ -130,7 +93,13 @@ export class AiPersonalityPageComponent {
   readonly channelID = computed(() => this.channelResolution().channelID);
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
-    return streamer ? `/${streamer}/modules` : '/';
+    return streamer ? (['/', streamer, 'modules'] as const) : (['/'] as const);
+  });
+  readonly planTier = computed(() => {
+    const t = this.tier();
+    if (t.isPremiumPlus) return 'pro' as const;
+    if (t.isPremium) return 'premium' as const;
+    return 'free' as const;
   });
   readonly tier = computed(() => this.settings()?.tier ?? this.getFallbackTier());
   readonly isAiEnabled = computed(() => this.settings()?.enabled !== false);
@@ -481,12 +450,6 @@ export class AiPersonalityPageComponent {
         this.t('modules.aiPersonality.toasts.savedMessage')
       );
     } catch (error) {
-      console.error('Failed to save AI personality settings:', {
-        channelID,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      });
-
       const message =
         error instanceof Error ? error.message : this.t('modules.aiPersonality.errors.saveFailed');
       this.errorMessage.set(message);
@@ -506,12 +469,6 @@ export class AiPersonalityPageComponent {
       this.settings.set(normalized);
       this.initialSettings.set(this.cloneSettings(normalized));
     } catch (error) {
-      console.error('Failed to load AI personality settings:', {
-        channelID,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString()
-      });
-
       this.settings.set(null);
       this.initialSettings.set(null);
       this.errorMessage.set(
@@ -539,11 +496,13 @@ export class AiPersonalityPageComponent {
   }
 
   private normalizeSettings(settings: AiPersonalitySettings): AiPersonalitySettings {
-    const profiles = Array.isArray(settings.profiles) && settings.profiles.length
-      ? settings.profiles.map((profile) => this.normalizeProfile(profile))
-      : [this.createProfile(1)];
+    const profiles =
+      Array.isArray(settings.profiles) && settings.profiles.length
+        ? settings.profiles.map((profile) => this.normalizeProfile(profile))
+        : [this.createProfile(1)];
     const activeProfileId =
-      profiles.find((profile) => profile.profileID === settings.activeProfileId)?.profileID || profiles[0].profileID;
+      profiles.find((profile) => profile.profileID === settings.activeProfileId)?.profileID ||
+      profiles[0].profileID;
     const activeProfile = profiles.find((profile) => profile.profileID === activeProfileId) || profiles[0];
 
     return {
@@ -580,7 +539,9 @@ export class AiPersonalityPageComponent {
         tone: profile.voiceProfile?.tone || this.t('modules.aiPersonality.defaults.voiceTone'),
         cadence: profile.voiceProfile?.cadence || this.t('modules.aiPersonality.defaults.voiceCadence'),
         style: profile.voiceProfile?.style || this.t('modules.aiPersonality.defaults.voiceStyle'),
-        catchphrases: Array.isArray(profile.voiceProfile?.catchphrases) ? [...profile.voiceProfile.catchphrases] : []
+        catchphrases: Array.isArray(profile.voiceProfile?.catchphrases)
+          ? [...profile.voiceProfile.catchphrases]
+          : []
       }
     };
   }

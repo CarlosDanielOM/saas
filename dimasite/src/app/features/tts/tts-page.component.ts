@@ -1,25 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  AlertCircle,
-  Bot,
-  Check,
-  Copy,
-  Crown,
-  Globe2,
-  Lock,
-  LucideAngularModule,
-  Mic2,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Volume2,
-  Waves
-} from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   type AiTtsProvider,
   type OpenRouterTtsModel,
@@ -114,7 +97,7 @@ function mergeCurrentOption(options: VoiceOption[], currentValue: string | null 
 
 @Component({
   selector: 'app-tts-page',
-  imports: [RouterLink, LucideAngularModule, LoadingIndicatorComponent],
+  imports: [RouterLink],
   templateUrl: './tts-page.component.html',
   styleUrl: './tts-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -125,20 +108,6 @@ export class TtsPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly ttsSettingsApi = inject(TtsSettingsApiService);
   private readonly toastService = inject(ToastService);
-
-  readonly alertIcon = AlertCircle;
-  readonly botIcon = Bot;
-  readonly checkIcon = Check;
-  readonly copyIcon = Copy;
-  readonly crownIcon = Crown;
-  readonly languageIcon = Globe2;
-  readonly lockIcon = Lock;
-  readonly micIcon = Mic2;
-  readonly queueIcon = ShieldCheck;
-  readonly slidersIcon = SlidersHorizontal;
-  readonly sparklesIcon = Sparkles;
-  readonly voiceIcon = Volume2;
-  readonly wavesIcon = Waves;
 
   readonly inlineExpressiveTagCategories: ExpressiveTagCategory<InlineExpressiveTagKey>[] = [
     {

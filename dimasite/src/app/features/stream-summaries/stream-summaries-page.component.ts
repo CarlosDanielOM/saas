@@ -1,32 +1,13 @@
+import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  AlertCircle,
-  ArrowLeft,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Database,
-  HelpCircle,
-  Info,
-  LucideAngularModule,
-  MessageSquare,
-  Sparkles,
-  TrendingUp,
-  Users,
-  Video
-} from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { DecimalPipe } from '@angular/common';
-import { LoadingIndicatorComponent } from '../../components/loading';
-import { StreamSummary, MemoryProposal, MemoryActionResult } from '../../models/stream-summary.model';
+import { StreamSummary } from '../../models/stream-summary.model';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { StreamSummaryApiService } from '../../services/stream-summary-api.service';
-import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -50,9 +31,10 @@ const MOCK_SUMMARIES: StreamSummary[] = [
     follows: 15,
     subs: 8,
     bits: 1500,
-    donations: 50.00,
+    donations: 50.0,
     headline: 'Completed Minecraft in under 30 minutes!',
-    recap: 'The streamer spent the first 10 minutes gathering resources in the Nether, then successfully located the Stronghold at 20 minutes. After a tense fight with the Ender Dragon, they finished the run at 28:45, achieving a new speedrun personal best. Chat was extremely hype and cheered with bits.',
+    recap:
+      'The streamer spent the first 10 minutes gathering resources in the Nether, then successfully located the Stronghold at 20 minutes. After a tense fight with the Ender Dragon, they finished the run at 28:45, achieving a new speedrun personal best. Chat was extremely hype and cheered with bits.',
     highlights: [
       'Gathered 12 ender pearls in record time',
       'Defeated Ender Dragon with bed method',
@@ -99,9 +81,10 @@ const MOCK_SUMMARIES: StreamSummary[] = [
     follows: 5,
     subs: 3,
     bits: 500,
-    donations: 0.00,
+    donations: 0.0,
     headline: 'Discussing AI bot upgrades and testing voice configurations',
-    recap: 'Streamer showed viewers the new glassmorphic UI designs. Chat was very active testing the new xAI rex voice commands. The streamer also talked about target plans for the next week and requested feedback on features.',
+    recap:
+      'Streamer showed viewers the new glassmorphic UI designs. Chat was very active testing the new xAI rex voice commands. The streamer also talked about target plans for the next week and requested feedback on features.',
     highlights: [
       'Showcased new TTS page design',
       'Tested the Rex voice live in chat',
@@ -148,9 +131,10 @@ const MOCK_SUMMARIES: StreamSummary[] = [
     follows: 2,
     subs: 1,
     bits: 200,
-    donations: 5.00,
+    donations: 5.0,
     headline: 'Playing classic Donkey Kong Country on SNES',
-    recap: 'A fun nostalgia trip playing SNES classics. Viewers redeemed several triggers causing custom overlay alerts. Streamer struggled a bit in the minecart levels but completed World 1 successfully.',
+    recap:
+      'A fun nostalgia trip playing SNES classics. Viewers redeemed several triggers causing custom overlay alerts. Streamer struggled a bit in the minecart levels but completed World 1 successfully.',
     highlights: [
       'Completed World 1 without losing a life',
       'Viewer triggers triggered the monkey screech alert multiple times',
@@ -171,7 +155,7 @@ const MOCK_SUMMARIES: StreamSummary[] = [
 
 @Component({
   selector: 'app-stream-summaries-page',
-  imports: [RouterLink, LucideAngularModule, LoadingIndicatorComponent, DecimalPipe],
+  imports: [RouterLink, DecimalPipe],
   templateUrl: './stream-summaries-page.component.html',
   styleUrl: './stream-summaries-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -181,22 +165,6 @@ export class StreamSummariesPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly summariesApi = inject(StreamSummaryApiService);
-  private readonly toastService = inject(ToastService);
-  readonly Math = Math;
-
-  readonly sparklesIcon = Sparkles;
-  readonly arrowLeftIcon = ArrowLeft;
-  readonly calendarIcon = Calendar;
-  readonly clockIcon = Clock;
-  readonly usersIcon = Users;
-  readonly messageIcon = MessageSquare;
-  readonly trendingIcon = TrendingUp;
-  readonly infoIcon = Info;
-  readonly helpIcon = HelpCircle;
-  readonly prevIcon = ChevronLeft;
-  readonly nextIcon = ChevronRight;
-  readonly videoIcon = Video;
-  readonly databaseIcon = Database;
 
   readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -236,7 +204,12 @@ export class StreamSummariesPageComponent {
     return streamer ? ['/', streamer, 'modules'] : ['/'];
   });
 
-  // State Signals
+  readonly planTier = computed(() => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') return tier;
+    return 'free';
+  });
+
   readonly summaries = signal<StreamSummary[]>([]);
   readonly totalCount = signal(0);
   readonly currentPage = signal(1);
@@ -245,14 +218,10 @@ export class StreamSummariesPageComponent {
   readonly selectedSummary = signal<StreamSummary | null>(null);
   readonly detailTab = signal<'recap' | 'memories'>('recap');
   readonly isUsingMockData = signal(false);
-
-  // Mobile navigation helper
   readonly showDetailOnMobile = signal(false);
 
   readonly hasSummaries = computed(() => this.summaries().length > 0);
-  readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
-
-  private lastLoadedChannelID = '';
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / this.pageSize()) || 1));
 
   constructor() {
     effect(() => {
@@ -261,7 +230,7 @@ export class StreamSummariesPageComponent {
       const limit = this.pageSize();
 
       if (resolution.status === 'resolved' && resolution.channelID) {
-        this.loadSummaries(resolution.channelID, page, limit);
+        void this.loadSummaries(resolution.channelID, page, limit);
       }
     });
   }
@@ -282,8 +251,13 @@ export class StreamSummariesPageComponent {
     });
   }
 
+  confidencePercent(value: number): number {
+    return Math.trunc(value * 100);
+  }
+
   selectSummary(summary: StreamSummary): void {
     this.selectedSummary.set(summary);
+    this.detailTab.set('recap');
     this.showDetailOnMobile.set(true);
   }
 
@@ -307,16 +281,15 @@ export class StreamSummariesPageComponent {
         this.totalCount.set(result.total);
         this.isUsingMockData.set(false);
 
-        // Auto select first summary if none selected
-        if (!this.selectedSummary() && result.items[0]) {
-          this.selectedSummary.set(result.items[0]);
+        const selected = this.selectedSummary();
+        const stillVisible = selected && result.items.some((item) => item._id === selected._id);
+        if (!stillVisible) {
+          this.selectedSummary.set(result.items[0] ?? null);
         }
       } else {
-        // Fallback to mock data in case DB is empty
         this.loadMockData();
       }
-    } catch (err) {
-      console.warn('Failed to load real stream summaries, falling back to mock data:', err);
+    } catch {
       this.loadMockData();
     } finally {
       this.isLoading.set(false);

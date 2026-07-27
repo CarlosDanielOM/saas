@@ -553,7 +553,9 @@
         "delete": "Eliminar",
         "save": "Guardar",
         "cancel": "Cancelar",
-        "confirm": "Confirmar"
+        "confirm": "Confirmar",
+        "loadMore": "Cargar más",
+        "saving": "Guardando..."
       },
       "empty": {
         "title": "No se encontraron memorias",
@@ -577,7 +579,7 @@
       }
     },
     "analytics": {
-      "description": "Abre el hub de analiticas para ver inteligencia de seguidores en vivo, mutuos destacados y claridad de audiencia."
+      "description": "Hub beta de analíticas del canal. Empieza con el Registro de Seguidores: busca followers actuales, filtra mutuos y ve la antigüedad del follow (Premium/Pro)."
     },
     "openModule": "Abrir Modulo",
     "upgradeToAccess": "Actualizar para Acceder",
@@ -592,6 +594,18 @@
     },
     "streamSummaries": {
       "description": "Accede a las métricas de tus transmisiones pasadas, lee resúmenes de IA y revisa actualizaciones de memoria propuestas por IA."
+    },
+    "stats": {
+      "available": "Disponibles",
+      "locked": "Bloqueados"
+    },
+    "status": {
+      "stable": "Estable",
+      "beta": "Beta",
+      "alpha": "Alpha",
+      "comingSoon": "Pronto",
+      "underConstruction": "En construcción",
+      "maintenance": "Mantenimiento"
     }
   },
   "streamSummaries": {
@@ -617,7 +631,8 @@
         "applied": "Memorias Actualizadas",
         "noop": "Sin Acciones",
         "failed": "Fallo de Procesamiento"
-      }
+      },
+      "totalSuffix": "sesiones"
     },
     "details": {
       "title": "Detalles de Sesión",
@@ -649,9 +664,13 @@
         "risk": "Riesgo",
         "confidence": "Confianza",
         "reason": "Razón de IA",
-        "evidence": "Evidencia"
-      }
-    }
+        "evidence": "Evidencia",
+        "match": "{{percent}}% coincidencia"
+      },
+      "backToSessions": "Volver a sesiones",
+      "memoryTotals": "Propuestas {{proposed}} · Aplicadas {{applied}}"
+    },
+    "demoMode": "Modo demo"
   },
   "followDefense": {
     "badge": "Proteccion",
@@ -763,48 +782,49 @@
     }
   },
   "analyticsHub": {
-    "badge": "Inteligencia de Audiencia",
-    "title": "Hub de Analiticas",
-    "subtitle": "Inteligencia de seguidores en vivo para tu canal. El Registro de Seguidores ofrece acceso filtrable y buscable a todos los que te siguen actualmente, con relaciones mutuas claramente destacadas.",
-    "backToModules": "Volver a Modulos",
+    "badge": "Beta",
+    "title": "Hub de Analíticas",
+    "subtitle": "Herramientas de analíticas del canal en un solo lugar. Por ahora incluye el Registro de Seguidores (beta): lista buscable de quienes te siguen ahora, con mutuos y antigüedad del follow.",
+    "backToModules": "Volver a Módulos",
     "chips": {
-      "activeFollowers": "Seguimiento en vivo",
-      "mutualHighlights": "Destacado de mutuos"
+      "activeFollowers": "Solo seguidores actuales",
+      "mutualHighlights": "Filtro de mutuos"
     },
     "metrics": {
-      "ariaLabel": "Metricas generales de analiticas",
-      "modules": "Modulos activos",
-      "modulesMeta": "Analiticas listas para produccion",
-      "plan": "Nivel de acceso",
-      "planMeta": "Plan actual del canal",
-      "tracking": "Modo de audiencia",
-      "trackingMeta": "Inteligencia de seguidores en vivo"
+      "ariaLabel": "Resumen de analíticas",
+      "modules": "Herramientas disponibles",
+      "modulesMeta": "Registro de Seguidores en beta",
+      "plan": "Tu plan",
+      "planMeta": "Premium o Pro desbloquea el Registro",
+      "tracking": "Qué rastrea",
+      "trackingMeta": "Quién te sigue ahora — no unfollows históricos"
     },
     "panel": {
-      "kicker": "Analiticas premium",
+      "kicker": "Premium · Beta",
       "title": "Registro de Seguidores",
-      "description": "Una herramienta completa y lista para produccion para rastrear tu audiencia activa. Los canales Premium y Pro obtienen busqueda potente, filtros de mutuos y ledgers visuales limpios.",
-      "paidPlan": "Premium desbloqueado",
-      "freePlan": "Requiere premium"
+      "description": "Explora y busca tu lista actual de followers. Filtra mutuos vs follows de un solo lado, ordena por más nuevos o antiguos y ve cuánto tiempo llevan siguiéndote. Requiere Premium o Pro.",
+      "paidPlan": "Desbloqueado en tu plan",
+      "freePlan": "Requiere Premium o Pro"
     },
     "followLedger": {
-      "activeOnly": "Audiencia en vivo",
-      "eyebrow": "Modulo principal de analiticas",
+      "activeOnly": "Seguidores actuales",
+      "eyebrow": "Disponible ahora · beta",
       "title": "Registro de Seguidores",
-      "description": "Busca tus seguidores actuales, aisla mutuos y entiende exactamente quien esta en tu audiencia en vivo con un ledger rapido y filtrable.",
+      "description": "Busca por nombre o login, filtra mutuos, ordena por fecha de follow y pagina toda tu audiencia actual. Los datos se actualizan desde Twitch — útil para encontrar mutuos y fans de larga data.",
+      "tierLabel": "Premium · Pro",
       "open": "Abrir Registro de Seguidores",
-      "lockedCta": "Requiere premium"
+      "lockedCta": "Mejorar plan para desbloquear"
     },
     "future": {
-      "teaser": "Mas modulos de analiticas estaran disponibles pronto."
+      "teaser": "Se planean más herramientas (actividad en chat, retención de stream y similares). Este hub crecerá a medida que cada una salga de beta."
     }
   },
   "analytics": {
     "follows": {
       "title": "Registro de Seguidores",
-      "subtitle": "Busca tus seguidores actuales, destaca relaciones mutuas y obten una vision completa de tu audiencia en vivo con un ledger rapido y filtrable.",
+      "subtitle": "Busca a quienes te siguen ahora, filtra mutuos, ordena por fecha de follow y ve la antigüedad. Beta — solo followers actuales (no unfollows históricos).",
       "backToAnalytics": "Volver a analiticas",
-      "activeOnly": "Audiencia en vivo",
+      "activeOnly": "Seguidores actuales",
       "filters": "Filtros",
       "sort": "Orden",
       "searchLabel": "Buscar seguidores",
@@ -833,9 +853,9 @@
       "refreshing": "Actualizando...",
       "ownerView": "Vista owner",
       "adminView": "Vista admin",
-      "lockedTitle": "Registro de Seguidores es un modulo premium de analiticas",
-      "lockedDescription": "El Registro de Seguidores te da una vista completa y buscable de tu audiencia en vivo. Actualiza a Premium o Pro para desbloquear acceso completo.",
-      "lockedCta": "Ver acceso premium",
+      "lockedTitle": "El Registro de Seguidores necesita Premium o Pro",
+      "lockedDescription": "Desbloquea búsqueda, filtros de mutuos, antigüedad del follow y paginación sobre tu lista actual de followers. Los planes free siguen pudiendo usar el resto del bot.",
+      "lockedCta": "Mejorar plan para desbloquear",
       "durationYears": "{{count}} año(s)",
       "durationMonths": "{{count}} mes(es)",
       "durationDays": "{{count}} dia(s)",
@@ -922,7 +942,8 @@
       "actionTitle": "Accion fallida",
       "actionMessage": "No pudimos actualizar esa recomendacion.",
       "genericJob": "El trabajo de analisis fallo. Prueba con otro VOD mas tarde."
-    }
+    },
+    "alphaBadge": "Alpha"
   },
   "clips": {
     "title": "Diseños de Overlay de Clips",
@@ -957,7 +978,30 @@
       "premiumMeta": "Requiere plan de pago",
       "yourPlan": "Tu Plan",
       "planMeta": "Nivel de acceso"
-    }
+    },
+    "selected": "Seleccionado",
+    "status": {
+      "stable": "Estable",
+      "beta": "Beta",
+      "alpha": "Alpha",
+      "comingSoon": "Pronto"
+    },
+    "test": {
+      "title": "Prueba de clip",
+      "sendingTitle": "Enviando prueba…",
+      "sendingCopy": "Activando la reproducción en tu overlay.",
+      "endedTitle": "Prueba enviada",
+      "endedCopy": "Si el overlay está abierto, el clip debería reproducirse ahora.",
+      "errorTitle": "No se pudo iniciar la prueba",
+      "errorFallback": "Algo salió mal al probar el clip.",
+      "sendFailed": "No se pudo enviar la solicitud de prueba.",
+      "timeout": "No hubo respuesta de la prueba. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "statusStable": "Estable",
+    "statusBeta": "Beta",
+    "statusAlpha": "Alpha",
+    "statusComingSoon": "Pronto"
   },
   "profile": {
     "title": "Configuracion de Perfil",
@@ -972,6 +1016,18 @@
       "benefitCredits": "Hasta 500,000 creditos de IA / mes",
       "benefitTts": "Clonacion de voz TTS y voces humanas",
       "benefitSupport": "Soporte prioritario+"
+    },
+    "meta": {
+      "twitchId": "ID de Twitch",
+      "plan": "Plan",
+      "language": "Idioma",
+      "chat": "Bot de chat",
+      "planUntil": "Activo hasta {{date}}"
+    },
+    "email": {
+      "label": "Correo",
+      "show": "Mostrar",
+      "hide": "Ocultar"
     }
   },
   "referrals": {
@@ -1035,7 +1091,9 @@
     "actions": {
       "copyLink": "Copiar enlace de referido para {{code}}",
       "deleting": "Eliminando...",
-      "deleteConfirm": "Eliminar el codigo de referido {{code}}?"
+      "deleteConfirm": "Eliminar el codigo de referido {{code}}?",
+      "copy": "Copiar",
+      "copied": "Copiado"
     },
     "toasts": {
       "copiedTitle": "Enlace de referido copiado",
@@ -1383,7 +1441,13 @@
       "createErrorTitle": "No se pudo crear el comando",
       "createErrorMessage": "Revisa el formulario y vuelve a intentarlo.",
       "rateLimitTitle": "Espera un momento",
-      "rateLimitMessage": "Espera {{seconds}} segundos antes de hacer mas cambios en comandos."
+      "rateLimitMessage": "Espera {{seconds}} segundos antes de hacer mas cambios en comandos.",
+      "timerSavedTitle": "Temporizador actualizado",
+      "timerSavedMessage": "Este comando se repetirá según el intervalo.",
+      "timerRemovedTitle": "Temporizador eliminado",
+      "timerRemovedMessage": "Se eliminó el temporizador vinculado.",
+      "timerErrorTitle": "No se pudo guardar el temporizador",
+      "timerErrorMessage": "El comando se guardó, pero falló el temporizador. Intenta de nuevo al editar."
     },
     "placeholder": {
       "name": "Nombre",
@@ -1411,9 +1475,20 @@
       "streamer": "Streamer"
     },
     "modal": {
-      "createTitle": "Crear Comando",
-      "editTitle": "Editar Comando",
-      "createButton": "Crear"
+      "createTitle": "Crear comando",
+      "editTitle": "Editar comando",
+      "createButton": "Crear",
+      "planLabel": "Plan · {{tier}}",
+      "timerToggle": "Repetir este comando con un temporizador",
+      "timerToggleHint": "Usa un temporizador del canal (límite {{limit}}). El mensaje coincide con la respuesta del comando.",
+      "repeatEvery": "Repetir cada",
+      "minutes": "minutos",
+      "timerHintFree": "Gratis: solo 15, 30, 45 o 60 minutos.",
+      "timerHintPremium": "Premium: 5–180 minutos en pasos de 5.",
+      "timerHintPro": "Pro: 1–180 minutos.",
+      "timerInvalid": "Elige un intervalo válido para tu plan.",
+      "timerReservedBlocked": "Los comandos reservados no pueden usar temporizadores.",
+      "validationRequired": "Completa los campos obligatorios."
     },
     "search": {
       "placeholder": "Buscar por nombre o comando...",
@@ -1873,8 +1948,8 @@
       "needsPro": "Requiere Pro"
     },
     "tooltips": {
-      "disableNotAllowed": "Este evento no se puede desactivar. Para apagarlo, borra el contenido del mensaje en su configuracion.",
-      "deleteNotAllowed": "Este evento no se puede eliminar porque es esencial para el funcionamiento del bot.",
+      "disableNotAllowed": "Este evento se mantiene activo por seguimiento y analiticas. Deja el mensaje vacio si no quieres que el bot diga nada.",
+      "deleteNotAllowed": "Este evento se mantiene activo por seguimiento y analiticas. Deja el mensaje vacio si no quieres que el bot diga nada.",
       "addTierDefault": "Agregar un nuevo tier de mensaje",
       "addTierRequiresPremium": "Actualiza a Premium para agregar mas tiers",
       "addTierUpgradePrompt": "Actualiza a Pro para hasta {{limit}} tiers",
@@ -1901,7 +1976,11 @@
       "tierAddedTitle": "Tier Agregado",
       "tierAddedMsg": "Se ha agregado un nuevo tier de mensaje.",
       "tierRemovedTitle": "Tier Eliminado",
-      "tierRemovedMsg": "El tier ha sido eliminado."
+      "tierRemovedMsg": "El tier ha sido eliminado.",
+      "disableNotAllowedTitle": "No se puede desactivar este evento",
+      "disableNotAllowedMsg": "Los eventos de stream online/offline se mantienen activos por seguimiento y analiticas. Si no quieres que el bot diga nada, abre Configurar y deja el campo de mensaje vacio.",
+      "deleteNotAllowedTitle": "No se puede eliminar este evento",
+      "deleteNotAllowedMsg": "Los eventos de stream online/offline se mantienen activos por seguimiento y analiticas. Si no quieres que el bot diga nada, deja el campo de mensaje vacio."
     }
   },
   "chatErrors": {

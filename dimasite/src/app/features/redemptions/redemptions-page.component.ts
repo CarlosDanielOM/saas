@@ -1,612 +1,46 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  OnInit,
   OnDestroy,
+  OnInit,
   computed,
   inject,
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
-import {
-  LucideAngularModule,
-  Gift,
-  ArrowLeft,
-  Sparkles,
-  RefreshCw,
-  Plus,
-  Crown,
-  Edit3,
-  Trash2,
-  Power,
-  PowerOff,
-  Lock,
-  Info,
-  AlertCircle,
-} from 'lucide-angular';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 
-import { FormsModule } from '@angular/forms';
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
-import { RedemptionsService } from './redemptions.service';
-import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { getRouteParam } from '../../shared/utils/route-param.util';
+import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import {
-  Redemption,
-  TwitchRedemption,
-  RedemptionCreateRequest,
-  PlanTier,
-  EditingState,
   BulkEditState,
   ColorPickerState,
+  EditingState,
   PRESET_COLORS,
   PendingAction,
+  PlanTier,
+  Redemption,
+  RedemptionCreateRequest,
+  TwitchRedemption,
 } from './redemptions.model';
-import { getRouteParam } from '../../shared/utils/route-param.util';
+import { RedemptionsService } from './redemptions.service';
 
 @Component({
   selector: 'app-redemptions-page',
-  imports: [
-    LucideAngularModule,
-    FormsModule,
-    LoadingIndicatorComponent,
-    CreateRewardModalComponent,
-    ConfirmationModalComponent,
-  ],
+  imports: [FormsModule, RouterLink, CreateRewardModalComponent, ConfirmationModalComponent],
   styleUrl: './redemptions-page.component.css',
-  template: `
-    <div class="redemptions-page">
-      <div class="redemptions-hero">
-        <div class="redemptions-hero-content">
-          <button type="button" class="redemptions-back-btn" (click)="goBack()">
-            <lucide-icon [name]="arrowLeftIcon" class="redemptions-back-icon"></lucide-icon>
-            {{ t('redemptions.backToModules') }}
-          </button>
-
-          <div class="redemptions-hero-badge">
-            <lucide-icon [name]="sparklesIcon" class="redemptions-hero-badge-icon"></lucide-icon>
-            {{ t('redemptions.heroBadge') }}
-          </div>
-
-          <h1 class="redemptions-title">{{ t('redemptions.title') }}</h1>
-          <p class="redemptions-subtitle">{{ t('redemptions.subtitle') }}</p>
-        </div>
-      </div>
-
-      <!-- Main Content -->
-      <div class="redemptions-content">
-        <!-- Actions Bar -->
-        <div class="redemptions-actions">
-          <button type="button" class="btn btn-primary" (click)="openCreateModal()">
-            <lucide-icon [name]="plusIcon" class="button-icon"></lucide-icon>
-            {{ t('redemptions.createRewardButton') }}
-          </button>
-
-          <button
-            type="button"
-            class="btn btn-secondary"
-            [class.btn-disabled]="refreshCooldown() > 0"
-            [disabled]="isLoading() || refreshCooldown() > 0"
-            (click)="refreshAll()"
-          >
-            <lucide-icon [name]="refreshIcon" class="button-icon" [class.spinning]="isLoading()"
-            ></lucide-icon>
-            @if (refreshCooldown() > 0) {
-              {{ t('redemptions.cooldown', { seconds: refreshCooldown() }) }}
-            } @else {
-              {{ t('common.refresh') }}
-            }
-          </button>
-        </div>
-
-        <!-- Loading State -->
-        @if (isLoading()) {
-          <div class="redemptions-loading">
-            <loading-indicator [loading]="true" [message]="t('redemptions.loading')" size="lg" />
-          </div>
-        } @else {
-          <!-- Custom Redemptions Section -->
-          <section class="redemptions-section">
-            <div class="section-header">
-              <h2 class="section-title">
-                <lucide-icon [name]="giftIcon" class="section-title-icon"></lucide-icon>
-                {{ t('redemptions.customRedemptions') }}
-                <span class="section-count">({{ customRedemptions().length }})</span>
-              </h2>
-            </div>
-
-            @if (customRedemptions().length === 0) {
-              <div class="empty-state">
-                <p class="empty-state-text">{{ t('redemptions.noCustomRedemptions') }}</p>
-                <button type="button" class="btn btn-primary" (click)="openCreateModal()">
-                  {{ t('redemptions.createFirstReward') }}
-                </button>
-              </div>
-            } @else {
-              <div class="redemptions-grid">
-                @for (redemption of customRedemptions(); track getRedemptionId(redemption)) {
-                  <div
-                    class="redemption-card"
-                    [attr.data-redemption-card]="getRedemptionId(redemption)"
-                    [class.redemption-card-disabled]="!redemption.isEnabled"
-                    [class.redemption-card-bulk-edit]="isInBulkEditMode(redemption)"
-                  >
-                    <!-- Color Bar -->
-                    <div
-                      class="redemption-color-bar"
-                      [style.background-color]="getCardColor(redemption)"
-                      (dblclick)="openColorPicker(redemption)"
-                      [title]="t('redemptions.doubleClickToChangeColor')"
-                    ></div>
-
-                    <!-- Color Picker Popup -->
-                    @if (isColorPickerOpen(getRedemptionId(redemption))) {
-                      <div class="color-picker-popup">
-                        <div class="color-picker-header">
-                          <span>{{ t('redemptions.selectColor') }}</span>
-                          <button type="button" class="color-picker-close" (click)="closeColorPicker(redemption)">
-                            ×
-                          </button>
-                        </div>
-                        <div class="color-presets">
-                          @for (color of presetColors; track color) {
-                            <button
-                              type="button"
-                              class="color-preset"
-                              [style.background-color]="color"
-                              [class.selected]="getColorPickerValue(getRedemptionId(redemption)) === color"
-                              (click)="selectPresetColor(redemption, color)"
-                            ></button>
-                          }
-                        </div>
-                        <div class="color-custom">
-                          <input
-                            type="text"
-                            [value]="getColorPickerValue(getRedemptionId(redemption))"
-                            (input)="updateColorPickerValue(getRedemptionId(redemption), $event)"
-                            (blur)="saveColorPicker(redemption)"
-                            placeholder="#6366f1"
-                          />
-                        </div>
-                      </div>
-                    }
-
-                    <div class="redemption-content">
-                      <div class="redemption-card-head">
-                        <div class="redemption-card-badges">
-                          <span class="redemption-surface-tag">
-                            {{ t('redemptions.customTag') }}
-                          </span>
-                          <span
-                            class="status-badge"
-                            [class.status-enabled]="redemption.isEnabled"
-                            [class.status-disabled]="!redemption.isEnabled"
-                          >
-                            {{ redemption.isEnabled ? t('common.enabled') : t('common.disabled') }}
-                          </span>
-                        </div>
-                      </div>
-
-                      <!-- Title -->
-                      <div class="redemption-field">
-                        @if (isEditingField(getRedemptionId(redemption), 'title')) {
-                          <input
-                            type="text"
-                            class="field-input field-input-large"
-                            [value]="getEditingValue(getRedemptionId(redemption))"
-                            (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                            (blur)="saveFieldEdit(redemption, 'title')"
-                            (keyup.enter)="saveFieldEdit(redemption, 'title')"
-                            (keyup.escape)="cancelFieldEdit(redemption)"
-                            #editInput
-                          />
-                        } @else if (isInBulkEditMode(redemption)) {
-                          <input
-                            type="text"
-                            class="field-input field-input-large"
-                            [ngModel]="redemption.title"
-                            (ngModelChange)="updateRedemptionField(redemption, 'title', $event)"
-                          />
-                        } @else {
-                          <h3
-                            class="redemption-title"
-                            (dblclick)="startFieldEdit(redemption, 'title')"
-                            [title]="t('redemptions.doubleClickToEdit')"
-                          >
-                            {{ redemption.title }}
-                          </h3>
-                        }
-                      </div>
-
-                      <!-- Prompt -->
-                      <div class="redemption-field">
-                        @if (isEditingField(getRedemptionId(redemption), 'prompt')) {
-                          <textarea
-                            class="field-textarea"
-                            [value]="getEditingValue(getRedemptionId(redemption))"
-                            (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                            (blur)="saveFieldEdit(redemption, 'prompt')"
-                            (keyup.escape)="cancelFieldEdit(redemption)"
-                            rows="2"
-                          ></textarea>
-                        } @else if (isInBulkEditMode(redemption)) {
-                          <textarea
-                            class="field-textarea"
-                            [ngModel]="redemption.prompt"
-                            (ngModelChange)="updateRedemptionField(redemption, 'prompt', $event)"
-                            rows="2"
-                          ></textarea>
-                        } @else {
-                          <p
-                            class="redemption-prompt"
-                            (dblclick)="startFieldEdit(redemption, 'prompt')"
-                            [title]="t('redemptions.doubleClickToEdit')"
-                          >
-                            {{ redemption.prompt || t('redemptions.noPrompt') }}
-                          </p>
-                        }
-                      </div>
-
-                      <!-- Message -->
-                      <div class="redemption-field">
-                        <label class="field-label">{{ t('common.message') }}</label>
-                        @if (isEditingField(getRedemptionId(redemption), 'message')) {
-                          <textarea
-                            class="field-textarea"
-                            [value]="getEditingValue(getRedemptionId(redemption))"
-                            (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                            (blur)="saveFieldEdit(redemption, 'message')"
-                            (keyup.escape)="cancelFieldEdit(redemption)"
-                            rows="2"
-                          ></textarea>
-                        } @else if (isInBulkEditMode(redemption)) {
-                          <textarea
-                            class="field-textarea"
-                            [ngModel]="redemption.message"
-                            (ngModelChange)="updateRedemptionField(redemption, 'message', $event)"
-                            rows="2"
-                          ></textarea>
-                        } @else {
-                          <p
-                            class="redemption-message"
-                            (dblclick)="startFieldEdit(redemption, 'message')"
-                            [title]="t('redemptions.doubleClickToEdit')"
-                          >
-                            {{ redemption.message || t('redemptions.noMessage') }}
-                          </p>
-                        }
-                      </div>
-
-                      <!-- Cost and Cooldown -->
-                      <div class="redemption-stats">
-                        <div class="stat-box">
-                          <label class="stat-label">{{ t('common.cost') }}</label>
-                          @if (isEditingField(getRedemptionId(redemption), 'cost')) {
-                            <input
-                              type="number"
-                              class="field-input"
-                              [value]="getEditingValue(getRedemptionId(redemption))"
-                              (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                              (blur)="saveFieldEdit(redemption, 'cost')"
-                              (keyup.enter)="saveFieldEdit(redemption, 'cost')"
-                              min="0"
-                            />
-                          } @else if (isInBulkEditMode(redemption)) {
-                            <input
-                              type="number"
-                              class="field-input"
-                              [ngModel]="redemption.cost"
-                              (ngModelChange)="updateRedemptionField(redemption, 'cost', $event)"
-                              min="0"
-                            />
-                          } @else {
-                            <span
-                              class="stat-value"
-                              (dblclick)="startFieldEdit(redemption, 'cost')"
-                              [title]="t('redemptions.doubleClickToEdit')"
-                            >
-                              {{ redemption.cost }}
-                            </span>
-                          }
-                        </div>
-
-                        <div class="stat-box">
-                          <label class="stat-label">{{ t('common.cooldown') }}</label>
-                          @if (isEditingField(getRedemptionId(redemption), 'cooldown')) {
-                            <input
-                              type="number"
-                              class="field-input"
-                              [value]="getEditingValue(getRedemptionId(redemption))"
-                              (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                              (blur)="saveFieldEdit(redemption, 'cooldown')"
-                              (keyup.enter)="saveFieldEdit(redemption, 'cooldown')"
-                              min="0"
-                            />
-                          } @else if (isInBulkEditMode(redemption)) {
-                            <input
-                              type="number"
-                              class="field-input"
-                              [ngModel]="redemption.cooldown"
-                              (ngModelChange)="updateRedemptionField(redemption, 'cooldown', $event)"
-                              min="0"
-                            />
-                          } @else {
-                            <span
-                              class="stat-value"
-                              (dblclick)="startFieldEdit(redemption, 'cooldown')"
-                              [title]="t('redemptions.doubleClickToEdit')"
-                            >
-                              {{ redemption.cooldown }}s
-                            </span>
-                          }
-                        </div>
-                      </div>
-
-                      <!-- Premium Fields -->
-                      @if (showPremiumFields() || hasPremiumData(redemption)) {
-                        <div class="premium-section">
-                          <div class="premium-header">
-                            <lucide-icon [name]="crownIcon" class="premium-icon"></lucide-icon>
-                            <span>{{ t('common.premiumFeature') }}</span>
-                            @if (!canEditPremiumFields()) {
-                              <lucide-icon [name]="lockIcon" class="premium-lock"></lucide-icon>
-                            }
-                          </div>
-
-                          <div class="premium-fields">
-                            <div class="premium-field">
-                              <label>{{ t('redemptions.originalCost') }}</label>
-                              @if (canEditPremiumFields()) {
-                                @if (isEditingField(getRedemptionId(redemption), 'originalCost')) {
-                                  <input
-                                    type="number"
-                                    class="field-input"
-                                    [value]="getEditingValue(getRedemptionId(redemption))"
-                                    (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                                    (blur)="saveFieldEdit(redemption, 'originalCost')"
-                                    min="0"
-                                  />
-                                } @else if (isInBulkEditMode(redemption)) {
-                                  <input
-                                    type="number"
-                                    class="field-input"
-                                    [ngModel]="redemption.originalCost"
-                                    (ngModelChange)="updateRedemptionField(redemption, 'originalCost', $event)"
-                                    min="0"
-                                  />
-                                } @else {
-                                  <span
-                                    (dblclick)="startFieldEdit(redemption, 'originalCost')"
-                                    [title]="t('redemptions.doubleClickToEdit')"
-                                  >
-                                    {{ redemption.originalCost ?? '--' }}
-                                  </span>
-                                }
-                              } @else {
-                                <span class="premium-locked">{{ redemption.originalCost ?? '--' }}</span>
-                              }
-                            </div>
-
-                            <div class="premium-field">
-                              <label>{{ t('redemptions.costChange') }}</label>
-                              @if (canEditPremiumFields()) {
-                                @if (isEditingField(getRedemptionId(redemption), 'costChange')) {
-                                  <input
-                                    type="number"
-                                    class="field-input"
-                                    [value]="getEditingValue(getRedemptionId(redemption))"
-                                    (input)="updateEditingValue(getRedemptionId(redemption), $event)"
-                                    (blur)="saveFieldEdit(redemption, 'costChange')"
-                                  />
-                                } @else if (isInBulkEditMode(redemption)) {
-                                  <input
-                                    type="number"
-                                    class="field-input"
-                                    [ngModel]="redemption.costChange"
-                                    (ngModelChange)="updateRedemptionField(redemption, 'costChange', $event)"
-                                  />
-                                } @else {
-                                  <span
-                                    (dblclick)="startFieldEdit(redemption, 'costChange')"
-                                    [title]="t('redemptions.doubleClickToEdit')"
-                                  >
-                                    {{ formatCostChange(redemption.costChange) }}
-                                  </span>
-                                }
-                              } @else {
-                                <span class="premium-locked">{{ formatCostChange(redemption.costChange) }}</span>
-                              }
-                            </div>
-
-                            <div class="premium-field premium-field-full">
-                              <label class="checkbox-label">
-                                <input
-                                  type="checkbox"
-                                  [checked]="redemption.returnToOriginalCost"
-                                  [disabled]="!canEditPremiumFields()"
-                                  (change)="
-                                    canEditPremiumFields()
-                                      && (isInBulkEditMode(redemption)
-                                        ? updateRedemptionField(redemption, 'returnToOriginalCost', $any($event.target).checked)
-                                        : toggleReturnToOriginal(redemption))
-                                  "
-                                />
-                                <span>{{ t('redemptions.returnToOriginalCost') }}</span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      <!-- Actions -->
-                      <div class="redemption-actions">
-                        @if (isInBulkEditMode(redemption)) {
-                          <button type="button" class="btn btn-success" (click)="saveBulkEdit(redemption)">
-                            {{ t('common.save') }}
-                          </button>
-                          <button type="button" class="btn btn-secondary" (click)="cancelBulkEdit(redemption)">
-                            {{ t('common.cancel') }}
-                          </button>
-                        } @else {
-                          <button
-                            type="button"
-                            class="btn btn-icon"
-                            [title]="t('redemptions.editAll')"
-                            (click)="enterBulkEditMode(redemption)"
-                          >
-                            <lucide-icon [name]="editIcon"></lucide-icon>
-                          </button>
-
-                          <button
-                            type="button"
-                            class="btn btn-icon btn-danger"
-                            [title]="t('common.delete')"
-                            (click)="deleteRedemption(redemption)"
-                          >
-                            <lucide-icon [name]="trashIcon"></lucide-icon>
-                          </button>
-
-                          <button
-                            type="button"
-                            class="btn btn-icon"
-                            [class.btn-success]="!redemption.isEnabled"
-                            [class.btn-warning]="redemption.isEnabled"
-                            [title]="redemption.isEnabled ? t('common.disable') : t('common.enable')"
-                            (click)="toggleEnabled(redemption)"
-                          >
-                            <lucide-icon [name]="redemption.isEnabled ? powerOffIcon : powerIcon"
-                            ></lucide-icon>
-                          </button>
-                        }
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-
-          <!-- Twitch Native Redemptions Section -->
-          <section class="redemptions-section redemptions-section-twitch">
-            <div class="section-header">
-              <h2 class="section-title">
-                <lucide-icon [name]="giftIcon" class="section-title-icon"></lucide-icon>
-                {{ t('redemptions.twitchRedemptions') }}
-                <span class="section-count">({{ uniqueTwitchRedemptions().length }})</span>
-              </h2>
-
-              <button
-                type="button"
-                class="btn btn-twitch"
-                [class.btn-disabled]="twitchRefreshCooldown() > 0"
-                [disabled]="twitchRefreshCooldown() > 0"
-                (click)="refreshTwitch()"
-              >
-                <lucide-icon [name]="refreshIcon" class="button-icon" [class.spinning]="isLoadingTwitch()"
-                ></lucide-icon>
-                @if (twitchRefreshCooldown() > 0) {
-                  {{ t('redemptions.cooldown', { seconds: twitchRefreshCooldown() }) }}
-                } @else {
-                  {{ t('common.refresh') }}
-                }
-              </button>
-            </div>
-
-            @if (isLoadingTwitch()) {
-              <div class="redemptions-loading">
-                <loading-indicator [loading]="true" [message]="t('redemptions.loadingTwitch')" size="md" />
-              </div>
-            } @else if (uniqueTwitchRedemptions().length === 0) {
-              <div class="empty-state empty-state-twitch">
-                <lucide-icon [name]="infoIcon" class="empty-state-icon"></lucide-icon>
-                <p class="empty-state-text">{{ t('redemptions.noUniqueTwitchRedemptions') }}</p>
-              </div>
-            } @else {
-              <div class="redemptions-grid">
-                @for (redemption of uniqueTwitchRedemptions(); track redemption.id) {
-                  <div class="redemption-card redemption-card-twitch">
-                    <div
-                      class="redemption-color-bar"
-                      [style.background-color]="redemption.background_color || '#9146ff'"
-                    ></div>
-
-                    <div class="redemption-content">
-                      <div class="redemption-card-head">
-                        <div class="redemption-card-badges">
-                          <div class="redemption-readonly-badge">
-                            <lucide-icon [name]="lockIcon"></lucide-icon>
-                            {{ t('redemptions.readOnly') }}
-                          </div>
-                          <span
-                            class="status-badge"
-                            [class.status-enabled]="redemption.is_enabled"
-                            [class.status-disabled]="!redemption.is_enabled"
-                          >
-                            {{ redemption.is_enabled ? t('common.enabled') : t('common.disabled') }}
-                          </span>
-                        </div>
-                      </div>
-
-                      <h3 class="redemption-title">{{ redemption.title }}</h3>
-                      <p class="redemption-prompt">{{ redemption.prompt || t('redemptions.noPrompt') }}</p>
-
-                      <div class="redemption-stats">
-                        <div class="stat-box stat-box-twitch">
-                          <label class="stat-label">{{ t('common.cost') }}</label>
-                          <span class="stat-value">{{ redemption.cost }}</span>
-                        </div>
-
-                        <div class="stat-box stat-box-twitch">
-                          <label class="stat-label">{{ t('common.cooldown') }}</label>
-                          <span class="stat-value">
-                            {{ redemption.global_cooldown_setting?.global_cooldown_seconds || 0 }}s
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="redemption-actions">
-                        <span class="twitch-hint">
-                          <lucide-icon [name]="alertCircleIcon"></lucide-icon>
-                          {{ t('redemptions.manageOnTwitch') }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-        }
-      </div>
-    </div>
-
-    <!-- Create Reward Modal -->
-    <app-create-reward-modal
-      [isOpen]="isCreateModalOpen()"
-      (isOpenChange)="isCreateModalOpen.set($event)"
-      (rewardCreated)="onRewardCreated($event)"
-    />
-
-    <app-confirmation-modal
-      [isOpen]="showDeleteModal()"
-      [title]="t('redemptions.deleteModal.title')"
-      [message]="deleteModalMessage()"
-      [confirmText]="t('common.delete')"
-      [cancelText]="t('common.cancel')"
-      variant="danger"
-      (confirm)="confirmDeleteRedemption()"
-      (cancel)="closeDeleteModal()"
-    />
-  `,
+  templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
-    '(document:keydown.escape)': 'onDocumentEscape()'
-  }
+    '(document:keydown.escape)': 'onDocumentEscape()',
+  },
 })
 export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -618,28 +52,11 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   private cooldownTimer: number | null = null;
 
-  // Icons
-  readonly giftIcon = Gift;
-  readonly arrowLeftIcon = ArrowLeft;
-  readonly sparklesIcon = Sparkles;
-  readonly refreshIcon = RefreshCw;
-  readonly plusIcon = Plus;
-  readonly crownIcon = Crown;
-  readonly editIcon = Edit3;
-  readonly trashIcon = Trash2;
-  readonly powerIcon = Power;
-  readonly powerOffIcon = PowerOff;
-  readonly lockIcon = Lock;
-  readonly infoIcon = Info;
-  readonly alertCircleIcon = AlertCircle;
-
-  // Constants
   readonly presetColors = PRESET_COLORS;
 
-  // State signals
   readonly streamer = toSignal(
     this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))),
-    { initialValue: getRouteParam(this.route, 'streamer') }
+    { initialValue: getRouteParam(this.route, 'streamer') },
   );
   readonly channelID = signal<string | null>(null);
 
@@ -655,7 +72,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly showDeleteModal = signal(false);
   readonly redemptionToDelete = signal<Redemption | null>(null);
 
-  // Editing state
   readonly editingState = signal<EditingState | null>(null);
   readonly bulkEditState = signal<BulkEditState | null>(null);
   readonly colorPickerState = signal<ColorPickerState | null>(null);
@@ -664,7 +80,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly numericFields = new Set(['cost', 'cooldown', 'originalCost', 'costChange']);
   private readonly requiredNumericFields = new Set(['cost', 'cooldown']);
 
-  // Computed values
   readonly userPlan = computed<PlanTier>(() => {
     const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'free';
     return tier === 'free' ? 'none' : tier === 'pro' ? 'premium_plus' : 'premium';
@@ -672,17 +87,23 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   readonly canEditPremiumFields = computed(() => this.userPlan() !== 'none');
   readonly showPremiumFields = computed(() => true);
+
   readonly uniqueTwitchRedemptions = computed(() => {
     const customTitles = new Set(
       this.customRedemptions()
         .map((redemption) => redemption.title.toLowerCase().trim())
-        .filter((title) => title.length > 0)
+        .filter((title) => title.length > 0),
     );
 
     return this.twitchRedemptions().filter(
-      (redemption) => !customTitles.has(redemption.title.toLowerCase().trim())
+      (redemption) => !customTitles.has(redemption.title.toLowerCase().trim()),
     );
   });
+
+  readonly enabledCustomCount = computed(
+    () => this.customRedemptions().filter((r) => r.isEnabled).length,
+  );
+
   readonly deleteModalMessage = computed(() => {
     const redemption = this.redemptionToDelete();
     return redemption
@@ -715,7 +136,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Translation helper
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
   }
@@ -724,7 +144,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     return redemption.id || redemption.rewardID || redemption.eventsubID || redemption.title;
   }
 
-  // Loading methods
   loadRedemptions(channelId: string, forceRefresh = false): void {
     this.isLoading.set(true);
 
@@ -750,15 +169,20 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.isLoadingTwitch.set(false);
-        this.toastService.error(this.t('redemptions.errors.loadTwitchTitle'), this.t('redemptions.errors.loadTwitchMessage'));
+        this.toastService.error(
+          this.t('redemptions.errors.loadTwitchTitle'),
+          this.t('redemptions.errors.loadTwitchMessage'),
+        );
       },
     });
   }
 
-  // Refresh methods
   refreshAll(): void {
     if (this.refreshCooldown() > 0) {
-      this.toastService.warning(this.t('redemptions.cooldownTitle'), this.t('redemptions.cooldownMessage', { seconds: this.refreshCooldown() }));
+      this.toastService.warning(
+        this.t('redemptions.cooldownTitle'),
+        this.t('redemptions.cooldownMessage', { seconds: this.refreshCooldown() }),
+      );
       return;
     }
 
@@ -775,7 +199,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   refreshTwitch(): void {
     if (this.twitchRefreshCooldown() > 0) {
-      this.toastService.warning(this.t('redemptions.cooldownTitle'), this.t('redemptions.cooldownMessage', { seconds: this.twitchRefreshCooldown() }));
+      this.toastService.warning(
+        this.t('redemptions.cooldownTitle'),
+        this.t('redemptions.cooldownMessage', { seconds: this.twitchRefreshCooldown() }),
+      );
       return;
     }
 
@@ -788,7 +215,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     this.toastService.success(this.t('redemptions.refreshSuccessTitle'), this.t('redemptions.refreshSuccessMessage'));
   }
 
-  // Cooldown timer
   private startCooldownTimers(): void {
     if (this.cooldownTimer !== null) {
       window.clearInterval(this.cooldownTimer);
@@ -800,7 +226,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  // Create reward
   openCreateModal(): void {
     this.isCreateModalOpen.set(true);
   }
@@ -814,13 +239,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
         this.loadRedemptions(channelId, true);
         this.toastService.success(this.t('redemptions.createSuccessTitle'), this.t('redemptions.createSuccessMessage'));
       },
-      error: () => {
-        // Error handled by service
-      },
+      error: () => {},
     });
   }
 
-  // Inline editing
   startFieldEdit(redemption: Redemption, field: string): void {
     if (this.isFieldPremium(field) && !this.canEditPremiumFields()) {
       this.toastService.warning(this.t('common.premiumFeature'), this.t('common.premiumSubscriptionRequired'));
@@ -871,7 +293,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Don't save if value hasn't changed
     if (!this.hasFieldChanged(field, nextValue, originalValue)) {
       this.editingState.set(null);
       return;
@@ -887,7 +308,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     this.redemptionsService.updateRedemption(channelId, redemption.rewardID || redemption.id, updateData).subscribe({
       next: () => {
         this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: nextValue } : r))
+          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: nextValue } : r)),
         );
         this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
       },
@@ -895,11 +316,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  cancelFieldEdit(redemption: Redemption): void {
+  cancelFieldEdit(_redemption: Redemption): void {
     this.editingState.set(null);
   }
 
-  // Bulk editing
   enterBulkEditMode(redemption: Redemption): void {
     this.bulkEditState.set({
       redemptionId: this.getRedemptionId(redemption),
@@ -915,7 +335,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     const redemptionId = this.getRedemptionId(redemption);
     const normalizedValue = this.normalizeFieldValue(field, value);
     this.customRedemptions.update((reds) =>
-      reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: normalizedValue } : r))
+      reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: normalizedValue } : r)),
     );
   }
 
@@ -947,7 +367,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...originalValues } : r))
+          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...originalValues } : r)),
         );
       },
     });
@@ -958,13 +378,12 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     const redemptionId = this.getRedemptionId(redemption);
     if (original) {
       this.customRedemptions.update((reds) =>
-        reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...original } : r))
+        reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...original } : r)),
       );
     }
     this.bulkEditState.set(null);
   }
 
-  // Color picker
   openColorPicker(redemption: Redemption): void {
     this.colorPickerState.set({
       redemptionId: this.getRedemptionId(redemption),
@@ -973,7 +392,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  closeColorPicker(redemption: Redemption): void {
+  closeColorPicker(_redemption: Redemption): void {
     this.colorPickerState.set(null);
   }
 
@@ -1016,21 +435,25 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.redemptionsService.updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'background_color', color).subscribe({
-      next: () => {
-        this.colorPickerState.set(null);
-        this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, background_color: color } : r))
-        );
-        this.toastService.success(this.t('redemptions.colorUpdateSuccessTitle'), this.t('redemptions.colorUpdateSuccessMessage'));
-      },
-      error: () => {
-        this.colorPickerState.set(null);
-      },
-    });
+    this.redemptionsService
+      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'background_color', color)
+      .subscribe({
+        next: () => {
+          this.colorPickerState.set(null);
+          this.customRedemptions.update((reds) =>
+            reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, background_color: color } : r)),
+          );
+          this.toastService.success(
+            this.t('redemptions.colorUpdateSuccessTitle'),
+            this.t('redemptions.colorUpdateSuccessMessage'),
+          );
+        },
+        error: () => {
+          this.colorPickerState.set(null);
+        },
+      });
   }
 
-  // Actions
   toggleEnabled(redemption: Redemption): void {
     const channelId = this.channelID();
     if (!channelId) return;
@@ -1038,19 +461,19 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
     const newValue = !redemption.isEnabled;
 
-    this.redemptionsService.updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'isEnabled', newValue).subscribe({
-      next: () => {
-        this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, isEnabled: newValue } : r))
-        );
-        const title = newValue ? this.t('redemptions.enabledTitle') : this.t('redemptions.disabledTitle');
-        const message = newValue ? this.t('redemptions.enabledMessage') : this.t('redemptions.disabledMessage');
-        this.toastService.success(title, message);
-      },
-      error: () => {
-        // Error handled by service
-      },
-    });
+    this.redemptionsService
+      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'isEnabled', newValue)
+      .subscribe({
+        next: () => {
+          this.customRedemptions.update((reds) =>
+            reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, isEnabled: newValue } : r)),
+          );
+          const title = newValue ? this.t('redemptions.enabledTitle') : this.t('redemptions.disabledTitle');
+          const message = newValue ? this.t('redemptions.enabledMessage') : this.t('redemptions.disabledMessage');
+          this.toastService.success(title, message);
+        },
+        error: () => {},
+      });
   }
 
   deleteRedemption(redemption: Redemption): void {
@@ -1096,16 +519,18 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
     const newValue = !redemption.returnToOriginalCost;
 
-    this.redemptionsService.updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'returnToOriginalCost', newValue).subscribe({
-      next: () => {
-        this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, returnToOriginalCost: newValue } : r))
-        );
-      },
-      error: () => {
-        // Error handled by service
-      },
-    });
+    this.redemptionsService
+      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'returnToOriginalCost', newValue)
+      .subscribe({
+        next: () => {
+          this.customRedemptions.update((reds) =>
+            reds.map((r) =>
+              this.getRedemptionId(r) === redemptionId ? { ...r, returnToOriginalCost: newValue } : r,
+            ),
+          );
+        },
+        error: () => {},
+      });
   }
 
   onDocumentClick(event: Event): void {
@@ -1139,7 +564,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Helpers
   getCardColor(redemption: Redemption): string {
     const color = redemption.background_color?.trim();
     if (!color) return '#6366f1';
@@ -1156,11 +580,15 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   hasPremiumData(redemption: Redemption): boolean {
-    return redemption.originalCost !== undefined || redemption.costChange !== undefined || redemption.returnToOriginalCost !== undefined;
+    return (
+      redemption.originalCost !== undefined ||
+      redemption.costChange !== undefined ||
+      redemption.returnToOriginalCost !== undefined
+    );
   }
 
   formatCostChange(value: number | undefined): string {
-    if (value === undefined) return '--';
+    if (value === undefined) return '—';
     return value >= 0 ? `+${value}` : `${value}`;
   }
 
@@ -1206,8 +634,14 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     const updateData: Partial<Redemption> = {};
 
     for (const field of this.getBulkEditableFields()) {
-      const currentValue = this.normalizeFieldValue(field, ((redemption as unknown) as Record<string, unknown>)[field]);
-      const originalValue = this.normalizeFieldValue(field, ((originalValues as unknown) as Record<string, unknown>)[field]);
+      const currentValue = this.normalizeFieldValue(
+        field,
+        ((redemption as unknown) as Record<string, unknown>)[field],
+      );
+      const originalValue = this.normalizeFieldValue(
+        field,
+        ((originalValues as unknown) as Record<string, unknown>)[field],
+      );
 
       if (!this.hasFieldChanged(field, currentValue, originalValue)) {
         continue;
@@ -1229,7 +663,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (target.closest('.field-input') || target.closest('.field-textarea')) {
+    if (target.closest('.field-input') || target.closest('.field-textarea') || target.closest('.lf-input') || target.closest('.lf-textarea')) {
       return;
     }
 
@@ -1274,7 +708,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (target.closest('.color-picker-popup') || target.closest('.redemption-color-bar')) {
+    if (target.closest('.lf-color-picker') || target.closest('.lf-reward-color')) {
       return;
     }
 

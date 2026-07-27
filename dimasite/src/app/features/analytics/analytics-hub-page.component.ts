@@ -1,15 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  Activity,
-  ArrowLeft,
-  ArrowRight,
-  Lock,
-  LucideAngularModule,
-  Sparkles,
-  Users,
-  Zap,
-} from 'lucide-angular';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -18,7 +8,7 @@ import { getRouteParam } from '../../shared/utils/route-param.util';
 
 @Component({
   selector: 'app-analytics-hub-page',
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink],
   styleUrl: './analytics-hub-page.component.css',
   templateUrl: './analytics-hub-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,14 +18,6 @@ export class AnalyticsHubPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
-
-  readonly sparklesIcon = Sparkles;
-  readonly followersIcon = Users;
-  readonly arrowIcon = ArrowRight;
-  readonly lockIcon = Lock;
-  readonly backIcon = ArrowLeft;
-  readonly activityIcon = Activity;
-  readonly zapIcon = Zap;
 
   readonly streamer = computed(() => {
     const routeStreamer = getRouteParam(this.route, 'streamer');

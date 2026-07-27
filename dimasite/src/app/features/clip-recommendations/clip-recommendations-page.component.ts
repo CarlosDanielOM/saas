@@ -1,33 +1,30 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
-  ArrowLeft,
-  Calendar,
-  Check,
-  Clock,
-  Clapperboard,
-  Loader,
-  LucideAngularModule,
-  Play,
-  RefreshCw,
-  Sparkles,
-  X,
-  Zap
-} from 'lucide-angular';
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
-import { ClipRecommendation, ClipRecommendationCandidate, TwitchVodInfo } from './clip-recommendations.model';
+import {
+  ClipRecommendation,
+  ClipRecommendationCandidate,
+  TwitchVodInfo
+} from './clip-recommendations.model';
 import { ClipRecommendationsService } from './clip-recommendations.service';
 
 @Component({
   selector: 'app-clip-recommendations-page',
-  imports: [RouterLink, DatePipe, DecimalPipe, LucideAngularModule, LoadingIndicatorComponent],
+  imports: [RouterLink, DatePipe, DecimalPipe],
   templateUrl: './clip-recommendations-page.component.html',
   styleUrl: './clip-recommendations-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -41,20 +38,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private hasLoadedOnce = false;
   private readonly completedSeen = new Set<string>();
-  /** VODs currently queued for analysis (by vodId) — local only, cleared on successful queue. */
   private readonly queuedVodIds = new Set<string>();
-
-  readonly sparklesIcon = Sparkles;
-  readonly arrowLeftIcon = ArrowLeft;
-  readonly videoIcon = Clapperboard;
-  readonly refreshIcon = RefreshCw;
-  readonly clockIcon = Clock;
-  readonly checkIcon = Check;
-  readonly xIcon = X;
-  readonly calendarIcon = Calendar;
-  readonly playIcon = Play;
-  readonly loaderIcon = Loader;
-  readonly zapIcon = Zap;
 
   readonly streamer = signal('');
   readonly channelID = signal<string | null>(null);
@@ -112,6 +96,13 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     return this.languageService.translate(key, params);
   }
 
+  planTierLabel(): string {
+    const tier = this.planTier();
+    if (tier === 'pro') return this.t('navbar.planPro');
+    if (tier === 'premium') return this.t('navbar.planPremium');
+    return this.t('navbar.planFree');
+  }
+
   async loadAll(showToast = true): Promise<void> {
     const channelID = this.channelID();
     if (!channelID) return;
@@ -133,10 +124,16 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
       this.recommendations.set(items);
       this.total.set(listResponse.data?.total ?? 0);
       if (showToast) {
-        this.toastService.success(this.t('clipRecommendations.toasts.refreshedTitle'), this.t('clipRecommendations.toasts.refreshedMessage'));
+        this.toastService.success(
+          this.t('clipRecommendations.toasts.refreshedTitle'),
+          this.t('clipRecommendations.toasts.refreshedMessage')
+        );
       }
     } catch {
-      this.toastService.error(this.t('clipRecommendations.errors.loadTitle'), this.t('clipRecommendations.errors.loadMessage'));
+      this.toastService.error(
+        this.t('clipRecommendations.errors.loadTitle'),
+        this.t('clipRecommendations.errors.loadMessage')
+      );
     } finally {
       this.loading.set(false);
       this.hasLoadedOnce = true;
@@ -153,13 +150,18 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
       if (showToast) {
         this.toastService.success(
           this.t('clipRecommendations.toasts.vodsLoadedTitle'),
-          this.t('clipRecommendations.toasts.vodsLoadedMessage', { count: response.data?.vods?.length ?? 0 })
+          this.t('clipRecommendations.toasts.vodsLoadedMessage', {
+            count: response.data?.vods?.length ?? 0
+          })
         );
       }
     } catch {
       this.vods.set([]);
       if (showToast) {
-        this.toastService.error(this.t('clipRecommendations.errors.vodsLoadTitle'), this.t('clipRecommendations.errors.vodsLoadMessage'));
+        this.toastService.error(
+          this.t('clipRecommendations.errors.vodsLoadTitle'),
+          this.t('clipRecommendations.errors.vodsLoadMessage')
+        );
       }
     } finally {
       this.loadingVods.set(false);
@@ -174,9 +176,15 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     try {
       await firstValueFrom(this.api.updateConfig(channelID, nextValue));
       this.autoAnalyzeEnabled.set(nextValue);
-      this.toastService.success(this.t('clipRecommendations.toasts.configTitle'), this.t('clipRecommendations.toasts.configMessage'));
+      this.toastService.success(
+        this.t('clipRecommendations.toasts.configTitle'),
+        this.t('clipRecommendations.toasts.configMessage')
+      );
     } catch {
-      this.toastService.error(this.t('clipRecommendations.errors.configTitle'), this.t('clipRecommendations.errors.configMessage'));
+      this.toastService.error(
+        this.t('clipRecommendations.errors.configTitle'),
+        this.t('clipRecommendations.errors.configMessage')
+      );
     } finally {
       this.savingConfig.set(false);
     }
@@ -198,28 +206,41 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
       );
       await Promise.all([this.loadAll(false), this.loadVods(false)]);
     } catch {
-      this.toastService.error(this.t('clipRecommendations.errors.queueTitle'), this.t('clipRecommendations.errors.queueMessage'));
+      this.toastService.error(
+        this.t('clipRecommendations.errors.queueTitle'),
+        this.t('clipRecommendations.errors.queueMessage')
+      );
     } finally {
       this.queuedVodIds.delete(vod.id);
-      // Keep last highlight for a moment so the button visibly settles.
       if (this.queueingVodId() === vod.id) {
         this.queueingVodId.set(null);
       }
     }
   }
 
-  async setCandidateStatus(recommendationID: string, candidateID: string, action: 'confirm' | 'deny'): Promise<void> {
+  async setCandidateStatus(
+    recommendationID: string,
+    candidateID: string,
+    action: 'confirm' | 'deny'
+  ): Promise<void> {
     const channelID = this.channelID();
     if (!channelID) return;
     try {
       await firstValueFrom(this.api.setCandidateStatus(channelID, recommendationID, candidateID, action));
       this.toastService.success(
-        action === 'confirm' ? this.t('clipRecommendations.toasts.confirmedTitle') : this.t('clipRecommendations.toasts.deniedTitle'),
-        action === 'confirm' ? this.t('clipRecommendations.toasts.confirmedMessage') : this.t('clipRecommendations.toasts.deniedMessage')
+        action === 'confirm'
+          ? this.t('clipRecommendations.toasts.confirmedTitle')
+          : this.t('clipRecommendations.toasts.deniedTitle'),
+        action === 'confirm'
+          ? this.t('clipRecommendations.toasts.confirmedMessage')
+          : this.t('clipRecommendations.toasts.deniedMessage')
       );
       await this.loadAll(false);
     } catch {
-      this.toastService.error(this.t('clipRecommendations.errors.actionTitle'), this.t('clipRecommendations.errors.actionMessage'));
+      this.toastService.error(
+        this.t('clipRecommendations.errors.actionTitle'),
+        this.t('clipRecommendations.errors.actionMessage')
+      );
     }
   }
 
@@ -235,7 +256,6 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
   formatDurationLabel(duration: string): string {
     const normalized = String(duration || '').trim();
     if (!normalized) return '';
-    // Twitch returns durations like "2h34m22s" — prettify for display.
     const hours = Number(normalized.match(/(\d+)h/)?.[1] || 0);
     const minutes = Number(normalized.match(/(\d+)m/)?.[1] || 0);
     const seconds = Number(normalized.match(/(\d+)s/)?.[1] || 0);

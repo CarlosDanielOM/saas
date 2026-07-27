@@ -1,0 +1,51 @@
+<div class="lf" [attr.data-plan]="userPlan() === 'premium_plus' ? 'pro' : userPlan() === 'premium' ? 'premium' : 'free'">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">← {{ t('chatEvents.backToModules') }}</a>
+        <p class="lf-kicker">{{ t('chatEvents.heroBadge') }}</p>
+        <h1 class="lf-title">{{ t('chatEvents.title') }} <span>Events</span></h1>
+        <p class="lf-copy">{{ t('chatEvents.subtitle') }}</p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-stats-strip lf-stats-strip--3">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('chatEvents.title') }}</span>
+            <span class="lf-stats-strip__value">{{ events().length }}</span>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('chatEvents.enabled') }}</span>
+            <span class="lf-stats-strip__value">{{ enabledCount() }}</span>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">Premium / Pro</span>
+            <span class="lf-stats-strip__value">{{ premiumCount() }}</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    @if (isLoading()) {
+      <section class="lf-tile lf-empty">
+        <p>{{ t('chatEvents.loading') }}</p>
+      </section>
+    } @else {
+      <section class="lf-event-grid">
+        @for (event of events(); track event.type) {
+          <app-event-card
+            [event]="event"
+            [userPlan]="userPlan()"
+            [userAccess]="getUserAccess(event)"
+            [pendingAction]="getPendingAction(event.type)"
+            (configure)="toggleConfigure(event)"
+            (toggle)="toggleFeature(event)"
+            (save)="saveConfiguration(event)"
+            (delete)="deleteEvent(event)"
+            (upgrade)="onUpgrade()"
+          />
+        }
+      </section>
+    }
+  </main>
+</div>

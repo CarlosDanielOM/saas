@@ -8,33 +8,16 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  AlertTriangle,
-  Archive,
-  Brain,
-  Check,
-  ChevronLeft,
-  Edit3,
-  LucideAngularModule,
-  Search,
-  Trash2,
-  X,
-  type LucideIconData
-} from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   Memory,
   MemoryRisk,
   MemoryStatus,
-  MemoryType,
-  MEMORY_RISK_LABELS,
-  MEMORY_STATUS_LABELS,
-  MEMORY_TYPE_LABELS
+  MemoryType
 } from '../../models/memory.model';
-import { MemoriesApiService } from '../../services/memories-api.service';
 import { LanguageService } from '../../services/language.service';
+import { MemoriesApiService } from '../../services/memories-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -55,7 +38,7 @@ interface PendingAction {
 
 @Component({
   selector: 'app-memories-page',
-  imports: [LucideAngularModule, LoadingIndicatorComponent, RouterLink],
+  imports: [RouterLink],
   templateUrl: './memories-page.component.html',
   styleUrl: './memories-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -67,20 +50,7 @@ export class MemoriesPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly toastService = inject(ToastService);
 
-  // Icons
-  readonly brainIcon = Brain;
-  readonly checkIcon = Check;
-  readonly xIcon = X;
-  readonly archiveIcon = Archive;
-  readonly editIcon = Edit3;
-  readonly trashIcon = Trash2;
-  readonly searchIcon = Search;
-  readonly backIcon = ChevronLeft;
-  readonly alertIcon = AlertTriangle;
-
-  // Route & channel resolution
   private readonly streamerParam$ = this.route.paramMap.pipe(
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     map(() => getRouteParam(this.route, 'streamer') ?? '')
   );
 
@@ -90,25 +60,21 @@ export class MemoriesPageComponent {
 
   readonly channelID = signal<string | null>(null);
 
-  // Data state
   readonly memories = signal<Memory[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly hasLoaded = signal(false);
 
-  // Filter state
   readonly filterStatus = signal<MemoryFilterStatus>('all');
   readonly filterType = signal<MemoryType | 'all'>('all');
   readonly filterRisk = signal<MemoryRisk | 'all'>('all');
   readonly searchQuery = signal('');
 
-  // Pagination
   readonly page = signal(1);
   readonly pageSize = signal(50);
   readonly hasMore = computed(() => this.memories().length < this.total());
 
-  // Edit modal
   readonly editModalOpen = signal(false);
   readonly editingMemory = signal<Memory | null>(null);
   readonly editForm = signal<EditFormState>({
@@ -119,42 +85,59 @@ export class MemoriesPageComponent {
   });
   readonly editSaving = signal(false);
 
-  // Pending actions (optimistic UI)
   readonly pendingActions = signal<Map<string, PendingAction>>(new Map());
 
-  // Confirmation dialog
   readonly confirmDialogOpen = signal(false);
   readonly confirmAction = signal<'approve' | 'deny' | 'archive' | 'delete' | null>(null);
   readonly confirmMemory = signal<Memory | null>(null);
 
-  // Filter status options for tabs
-  readonly filterStatusOptions = computed<Array<{ value: MemoryFilterStatus; labelKey: string }>>(() => [
-    { value: 'all', labelKey: 'modules.memories.filters.all' },
-    { value: 'pending_review', labelKey: 'modules.memories.status.pending_review' },
-    { value: 'confirmed', labelKey: 'modules.memories.status.confirmed' },
-    { value: 'rejected', labelKey: 'modules.memories.status.rejected' },
-    { value: 'archived', labelKey: 'modules.memories.status.archived' }
-  ]);
+  readonly planTier = computed(() => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') return tier;
+    return 'free';
+  });
 
-  // Type options
-  readonly memoryTypeOptions = computed<Array<{ value: MemoryType | 'all'; labelKey: string }>>(() => [
-    { value: 'all', labelKey: 'modules.memories.filters.allTypes' },
-    { value: 'preference', labelKey: 'modules.memories.type.preference' },
-    { value: 'running_joke', labelKey: 'modules.memories.type.running_joke' },
-    { value: 'known_user_fact', labelKey: 'modules.memories.type.known_user_fact' },
-    { value: 'channel_lore', labelKey: 'modules.memories.type.channel_lore' },
-    { value: 'boundary', labelKey: 'modules.memories.type.boundary' }
-  ]);
+  readonly pendingCount = computed(
+    () =>
+      this.memories().filter(
+        (m) => m.status === 'pending_review' || m.status === 'candidate'
+      ).length
+  );
 
-  // Risk options
-  readonly memoryRiskOptions = computed<Array<{ value: MemoryRisk | 'all'; labelKey: string }>>(() => [
-    { value: 'all', labelKey: 'modules.memories.filters.allRisks' },
-    { value: 'low', labelKey: 'modules.memories.risk.low' },
-    { value: 'medium', labelKey: 'modules.memories.risk.medium' },
-    { value: 'high', labelKey: 'modules.memories.risk.high' }
-  ]);
+  readonly activeCount = computed(
+    () => this.memories().filter((m) => m.status === 'confirmed').length
+  );
 
-  // Computed filtered memories (client-side search only; API handles status/type/risk filters)
+  readonly filterStatusOptions = computed<Array<{ value: MemoryFilterStatus; labelKey: string }>>(
+    () => [
+      { value: 'all', labelKey: 'modules.memories.filters.all' },
+      { value: 'pending_review', labelKey: 'modules.memories.status.pending_review' },
+      { value: 'confirmed', labelKey: 'modules.memories.status.confirmed' },
+      { value: 'rejected', labelKey: 'modules.memories.status.rejected' },
+      { value: 'archived', labelKey: 'modules.memories.status.archived' }
+    ]
+  );
+
+  readonly memoryTypeOptions = computed<Array<{ value: MemoryType | 'all'; labelKey: string }>>(
+    () => [
+      { value: 'all', labelKey: 'modules.memories.filters.allTypes' },
+      { value: 'preference', labelKey: 'modules.memories.type.preference' },
+      { value: 'running_joke', labelKey: 'modules.memories.type.running_joke' },
+      { value: 'known_user_fact', labelKey: 'modules.memories.type.known_user_fact' },
+      { value: 'channel_lore', labelKey: 'modules.memories.type.channel_lore' },
+      { value: 'boundary', labelKey: 'modules.memories.type.boundary' }
+    ]
+  );
+
+  readonly memoryRiskOptions = computed<Array<{ value: MemoryRisk | 'all'; labelKey: string }>>(
+    () => [
+      { value: 'all', labelKey: 'modules.memories.filters.allRisks' },
+      { value: 'low', labelKey: 'modules.memories.risk.low' },
+      { value: 'medium', labelKey: 'modules.memories.risk.medium' },
+      { value: 'high', labelKey: 'modules.memories.risk.high' }
+    ]
+  );
+
   readonly displayedMemories = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     if (!query) return this.memories();
@@ -169,13 +152,12 @@ export class MemoriesPageComponent {
 
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
-    return streamer ? `/${streamer}/modules` : '/';
+    return streamer ? ['/', streamer, 'modules'] : ['/'];
   });
 
   private lastLoadedChannelID = '';
 
   constructor() {
-    // Resolve channel ID
     effect(() => {
       const streamer = this.streamer();
       if (!streamer) {
@@ -183,12 +165,11 @@ export class MemoriesPageComponent {
         return;
       }
 
-      firstValueFrom(this.sessionAuth.resolveChannelID(streamer)).then((channelID) => {
+      void firstValueFrom(this.sessionAuth.resolveChannelID(streamer)).then((channelID) => {
         this.channelID.set(channelID);
       });
     });
 
-    // Load memories when channel ID is resolved
     effect(() => {
       const channelID = this.channelID();
       if (!channelID) return;
@@ -198,13 +179,11 @@ export class MemoriesPageComponent {
       void this.loadMemories(true);
     });
 
-    // Reload when filters change (track filter signals without creating channelID dependency)
     effect(() => {
       this.filterStatus();
       this.filterType();
       this.filterRisk();
 
-      // Only reload if we've already loaded at least once
       if (this.hasLoaded() && this.channelID()) {
         void this.loadMemories(true);
       }
@@ -257,12 +236,8 @@ export class MemoriesPageComponent {
           ? ['candidate', 'pending_review', 'confirmed', 'rejected', 'archived']
           : [statusFilter as MemoryStatus];
 
-      const types: MemoryType[] =
-        typeFilter === 'all' ? [] : [typeFilter as MemoryType];
-
-      const risks: MemoryRisk[] =
-        riskFilter === 'all' ? [] : [riskFilter as MemoryRisk];
-
+      const types: MemoryType[] = typeFilter === 'all' ? [] : [typeFilter as MemoryType];
+      const risks: MemoryRisk[] = riskFilter === 'all' ? [] : [riskFilter as MemoryRisk];
       const skip = (this.page() - 1) * this.pageSize();
 
       const result = await firstValueFrom(
@@ -331,8 +306,15 @@ export class MemoriesPageComponent {
   }
 
   closeEditModal(): void {
+    if (this.editSaving()) return;
     this.editModalOpen.set(false);
     this.editingMemory.set(null);
+  }
+
+  onEditBackdrop(event: Event): void {
+    if (event.target === event.currentTarget) {
+      this.closeEditModal();
+    }
   }
 
   async saveEdit(): Promise<void> {
@@ -353,10 +335,7 @@ export class MemoriesPageComponent {
         })
       );
 
-      // Update in list
-      this.memories.update((list) =>
-        list.map((m) => (m._id === updated._id ? updated : m))
-      );
+      this.memories.update((list) => list.map((m) => (m._id === updated._id ? updated : m)));
 
       this.closeEditModal();
       this.toastService.success(
@@ -371,10 +350,7 @@ export class MemoriesPageComponent {
     }
   }
 
-  openConfirmDialog(
-    action: 'approve' | 'deny' | 'archive' | 'delete',
-    memory: Memory
-  ): void {
+  openConfirmDialog(action: 'approve' | 'deny' | 'archive' | 'delete', memory: Memory): void {
     this.confirmAction.set(action);
     this.confirmMemory.set(memory);
     this.confirmDialogOpen.set(true);
@@ -384,6 +360,12 @@ export class MemoriesPageComponent {
     this.confirmDialogOpen.set(false);
     this.confirmAction.set(null);
     this.confirmMemory.set(null);
+  }
+
+  onConfirmBackdrop(event: Event): void {
+    if (event.target === event.currentTarget) {
+      this.closeConfirmDialog();
+    }
   }
 
   async confirmActionHandler(): Promise<void> {
@@ -431,9 +413,7 @@ export class MemoriesPageComponent {
           );
           break;
         case 'delete':
-          await firstValueFrom(
-            this.memoriesApi.deleteMemory(channelID, memory._id)
-          );
+          await firstValueFrom(this.memoriesApi.deleteMemory(channelID, memory._id));
           this.toastService.success(
             this.t('modules.memories.toasts.deleteSuccessTitle'),
             this.t('modules.memories.toasts.deleteSuccessMessage')
@@ -441,7 +421,6 @@ export class MemoriesPageComponent {
           break;
       }
 
-      // Remove from list (or update status in place for approve/deny/archive)
       if (action === 'delete') {
         this.memories.update((list) => list.filter((m) => m._id !== memory._id));
       } else {
@@ -453,7 +432,7 @@ export class MemoriesPageComponent {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Action failed';
-      this.toastService.error('Action failed', message);
+      this.toastService.error(this.t('modules.memories.actions.confirm'), message);
     } finally {
       this.pendingActions.update((m) => {
         const newMap = new Map(m);
@@ -467,12 +446,24 @@ export class MemoriesPageComponent {
     return this.pendingActions().has(`${action}-${memoryId}`);
   }
 
-  getRiskBadgeClass(risk: MemoryRisk): string {
-    return `memory-badge--risk-${risk}`;
+  riskChipClass(risk: MemoryRisk): string {
+    return `lf-chip lf-chip--risk-${risk}`;
   }
 
-  getStatusBadgeClass(status: MemoryStatus): string {
-    return `memory-badge--status-${status.replace('_', '-')}`;
+  statusChipClass(status: MemoryStatus): string {
+    return `lf-chip lf-chip--status-${status.replace('_', '-')}`;
+  }
+
+  riskLabelKey(risk: MemoryRisk): string {
+    return `modules.memories.risk.${risk}`;
+  }
+
+  statusLabelKey(status: MemoryStatus): string {
+    return `modules.memories.status.${status}`;
+  }
+
+  typeLabelKey(type: MemoryType): string {
+    return `modules.memories.type.${type}`;
   }
 
   getConfirmMessage(action: 'approve' | 'deny' | 'archive' | 'delete'): string {
@@ -522,21 +513,5 @@ export class MemoriesPageComponent {
     return this.t('modules.memories.fields.userSpecific', {
       username: memory.subject.username
     });
-  }
-
-  trackByMemoryId(_index: number, memory: Memory): string {
-    return memory._id;
-  }
-
-  getRiskLabel(risk: MemoryRisk): string {
-    return MEMORY_RISK_LABELS[risk];
-  }
-
-  getStatusLabel(status: MemoryStatus): string {
-    return MEMORY_STATUS_LABELS[status];
-  }
-
-  getTypeLabel(type: MemoryType): string {
-    return MEMORY_TYPE_LABELS[type];
   }
 }

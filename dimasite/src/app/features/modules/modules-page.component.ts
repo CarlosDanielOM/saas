@@ -1,46 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import {
-  BarChart3,
-  Brain,
-  CreditCard,
-  Gift,
-  Heart,
-  LayoutGrid,
-  LucideAngularModule,
-  MessageSquare,
-  Mic2,
-  Clapperboard,
-  Search,
-  SearchX,
-  Shield,
-  Sparkles,
-  Video,
-  HardDrive,
-  X,
-  Zap,
-  type LucideIconData,
-} from 'lucide-angular';
+import { ActivatedRoute, Router } from '@angular/router';
+
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
-import { ParticleFieldComponent } from '../../components/particle-field/particle-field.component';
-import { ModuleCardComponent, Module } from '../../components/module-card/module-card.component';
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import {
   type ModuleId,
   type PlanTier,
   type ModuleStatus,
   MODULE_TIER_REQUIREMENTS,
-  isModuleAccessible,
+  isModuleAccessible
 } from './module-tier.model';
 
 type Category = 'all' | 'engagement' | 'automation' | 'content';
 
 interface ModuleCategoryOption {
   id: Category;
-  icon: LucideIconData;
   labelKey: string;
 }
 
@@ -48,9 +24,8 @@ interface ModuleDisplay {
   id: ModuleId;
   name: string;
   description: string;
-  icon: LucideIconData;
   path: string | null;
-  category: Category;
+  category: Exclude<Category, 'all'>;
   status: ModuleStatus;
   minTier: PlanTier;
   isLocked: boolean;
@@ -58,45 +33,40 @@ interface ModuleDisplay {
 
 @Component({
   selector: 'app-modules-page',
-  imports: [
-    LucideAngularModule,
-    ParticleFieldComponent,
-    ModuleCardComponent,
-    LoadingIndicatorComponent,
-  ],
   templateUrl: './modules-page.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './modules-page.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ModulesPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
-  readonly sparklesIcon = Sparkles;
-  readonly searchIcon = Search;
-  readonly clearIcon = X;
-  readonly gridIcon = LayoutGrid;
-  readonly emptyIcon = SearchX;
+  readonly userPlanTier = computed<PlanTier>(() => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') {
+      return tier;
+    }
+    return 'free';
+  });
 
-  readonly userPlanTier = computed<PlanTier>(
-    () => this.sessionAuth.session()?.appUser.plan_tier ?? 'free',
-  );
   readonly streamer = computed(() => {
     const routeStreamer = getRouteParam(this.route, 'streamer');
-    const sessionStreamer = this.sessionAuth.session()?.appUser?.name;
-    return routeStreamer || sessionStreamer || '';
+    const sessionStreamer =
+      this.sessionAuth.session()?.twitchUser.login || this.sessionAuth.session()?.appUser?.name;
+    return (routeStreamer || sessionStreamer || '').trim().toLowerCase();
   });
 
   readonly searchQuery = signal('');
   readonly selectedCategory = signal<Category>('all');
-  readonly isLoading = signal(false);
 
   readonly categories: ModuleCategoryOption[] = [
-    { id: 'all', icon: LayoutGrid, labelKey: 'modules.categories.all' },
-    { id: 'engagement', icon: Heart, labelKey: 'modules.categories.engagement' },
-    { id: 'automation', icon: Zap, labelKey: 'modules.categories.automation' },
-    { id: 'content', icon: Video, labelKey: 'modules.categories.content' },
+    { id: 'all', labelKey: 'modules.categories.all' },
+    { id: 'engagement', labelKey: 'modules.categories.engagement' },
+    { id: 'automation', labelKey: 'modules.categories.automation' },
+    { id: 'content', labelKey: 'modules.categories.content' }
   ];
 
   readonly modules = computed<ModuleDisplay[]>(() => {
@@ -105,230 +75,192 @@ export class ModulesPageComponent {
     const streamerName = this.streamer();
 
     return [
-      {
-        id: 'clips',
-        name: 'Clips',
-        description: this.t('modules.clips.description'),
-        icon: Video,
-        path: streamerName ? `/${streamerName}/modules/clips` : null,
-        category: 'content',
-        status: MODULE_TIER_REQUIREMENTS['clips'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['clips'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['clips'], userPlanTier),
-      },
-      {
-        id: 'chat-events',
-        name: 'Chat Events',
-        description: this.t('modules.chatEvents.description'),
-        icon: MessageSquare,
-        path: streamerName ? `/${streamerName}/modules/chat-events` : null,
-        category: 'engagement',
-        status: MODULE_TIER_REQUIREMENTS['chat-events'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['chat-events'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['chat-events'], userPlanTier),
-      },
-      {
-        id: 'triggers',
-        name: 'Triggers',
-        description: this.t('modules.triggers.description'),
-        icon: Zap,
-        path: streamerName ? `/${streamerName}/modules/triggers` : null,
-        category: 'automation',
-        status: MODULE_TIER_REQUIREMENTS['triggers'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['triggers'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['triggers'], userPlanTier),
-      },
-      {
-        id: 'dimafx',
-        name: 'DimaFX',
-        description: this.t('modules.dimafx.description'),
-        icon: Sparkles,
-        path: streamerName ? `/${streamerName}/modules/dimafx` : null,
-        category: 'engagement',
-        status: MODULE_TIER_REQUIREMENTS['dimafx'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['dimafx'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['dimafx'], userPlanTier),
-      },
-      {
-        id: 'tts',
-        name: 'Text to Speech',
-        description: this.t('modules.tts.description'),
-        icon: Mic2,
-        path: streamerName ? `/${streamerName}/modules/tts` : null,
-        category: 'automation',
-        status: MODULE_TIER_REQUIREMENTS['tts'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['tts'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['tts'], userPlanTier),
-      },
-      {
-        id: 'referrals',
-        name: 'Referrals',
-        description: this.t('modules.referrals.description'),
-        icon: CreditCard,
-        path: streamerName ? `/${streamerName}/modules/referrals` : null,
-        category: 'engagement',
-        status: MODULE_TIER_REQUIREMENTS['referrals'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['referrals'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['referrals'], userPlanTier),
-      },
-      {
-        id: 'redemptions',
-        name: 'Redemptions',
-        description: this.t('modules.redemptions.description'),
-        icon: Gift,
-        path: streamerName ? `/${streamerName}/modules/redemptions` : null,
-        category: 'engagement',
-        status: MODULE_TIER_REQUIREMENTS['redemptions'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['redemptions'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['redemptions'], userPlanTier),
-      },
-      {
-        id: 'ai-personality',
-        name: 'AI Personality',
-        description: this.t('modules.aiPersonality.description'),
-        icon: Brain,
-        path: streamerName ? `/${streamerName}/modules/ai-personality` : null,
-        category: 'automation',
-        status: MODULE_TIER_REQUIREMENTS['ai-personality'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['ai-personality'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['ai-personality'], userPlanTier),
-      },
-      {
-        id: 'memories',
-        name: 'Memories',
-        description: this.t('modules.memories.description'),
-        icon: Brain,
-        path: streamerName ? `/${streamerName}/modules/memories` : null,
-        category: 'automation',
-        status: MODULE_TIER_REQUIREMENTS['memories'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['memories'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['memories'], userPlanTier),
-      },
-      {
-        id: 'analytics',
-        name: 'Analytics',
-        description: this.t('modules.analytics.description'),
-        icon: BarChart3,
-        path: streamerName ? `/${streamerName}/modules/analytics` : null,
-        category: 'engagement',
-        status: MODULE_TIER_REQUIREMENTS['analytics'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['analytics'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['analytics'], userPlanTier),
-      },
-      {
-        id: 'follow-defense',
-        name: 'Follow Defense',
-        description: this.t('modules.followDefense.description'),
-        icon: Shield,
-        path: streamerName ? `/${streamerName}/modules/follow-defense` : null,
-        category: 'automation',
-        status: MODULE_TIER_REQUIREMENTS['follow-defense'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['follow-defense'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['follow-defense'], userPlanTier),
-      },
-      {
-        id: 'stream-summaries',
-        name: 'Stream Summaries',
-        description: this.t('modules.streamSummaries.description'),
-        icon: Video,
-        path: streamerName ? `/${streamerName}/modules/stream-summaries` : null,
-        category: 'content',
-        status: MODULE_TIER_REQUIREMENTS['stream-summaries'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['stream-summaries'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['stream-summaries'], userPlanTier),
-      },
-      {
-        id: 'clip-recommendations',
-        name: 'Clip Recommendations',
-        description: this.t('modules.clipRecommendations.description'),
-        icon: Clapperboard,
-        path: streamerName ? `/${streamerName}/modules/clip-recommendations` : null,
-        category: 'content',
-        status: MODULE_TIER_REQUIREMENTS['clip-recommendations'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['clip-recommendations'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['clip-recommendations'], userPlanTier),
-      },
-      {
-        id: 'library',
-        name: 'Media Library',
-        description: this.t('modules.library.description'),
-        icon: HardDrive,
-        path: streamerName ? `/${streamerName}/modules/library` : null,
-        category: 'content',
-        status: MODULE_TIER_REQUIREMENTS['library'].defaultStatus,
-        minTier: MODULE_TIER_REQUIREMENTS['library'].minTier,
-        isLocked: !isModuleAccessible(MODULE_TIER_REQUIREMENTS['library'], userPlanTier),
-      },
+      this.buildModule('clips', 'Clips', 'modules.clips.description', streamerName, userPlanTier),
+      this.buildModule(
+        'chat-events',
+        'Chat Events',
+        'modules.chatEvents.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'triggers',
+        'Triggers',
+        'modules.triggers.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule('dimafx', 'DimaFX', 'modules.dimafx.description', streamerName, userPlanTier),
+      this.buildModule(
+        'tts',
+        'Text to Speech',
+        'modules.tts.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'referrals',
+        'Referrals',
+        'modules.referrals.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'redemptions',
+        'Redemptions',
+        'modules.redemptions.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'ai-personality',
+        'AI Personality',
+        'modules.aiPersonality.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'memories',
+        'Memories',
+        'modules.memories.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'analytics',
+        'Analytics',
+        'modules.analytics.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'follow-defense',
+        'Follow Defense',
+        'modules.followDefense.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'stream-summaries',
+        'Stream Summaries',
+        'modules.streamSummaries.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'clip-recommendations',
+        'Clip Recommendations',
+        'modules.clipRecommendations.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
+        'library',
+        'Media Library',
+        'modules.library.description',
+        streamerName,
+        userPlanTier
+      )
     ];
   });
 
   readonly filteredModules = computed(() => {
     let filtered = this.modules();
 
-    // Filter by category
     if (this.selectedCategory() !== 'all') {
       filtered = filtered.filter((module) => module.category === this.selectedCategory());
     }
 
-    // Filter by search query
     const query = this.searchQuery().toLowerCase().trim();
     if (query) {
       filtered = filtered.filter(
         (module) =>
           module.name.toLowerCase().includes(query) ||
-          module.description.toLowerCase().includes(query),
+          module.description.toLowerCase().includes(query)
       );
     }
 
     return filtered;
   });
 
+  readonly availableCount = computed(
+    () => this.modules().filter((module) => !module.isLocked && Boolean(module.path)).length
+  );
+  readonly lockedCount = computed(() => this.modules().filter((module) => module.isLocked).length);
+
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
   }
 
-  toModule(display: ModuleDisplay): Module {
-    return {
-      id: display.id,
-      name: display.name,
-      description: display.description,
-      icon: display.icon,
-      path: display.path,
-      category: display.category as 'engagement' | 'automation' | 'content',
-      status: display.status as 'stable' | 'beta' | 'alpha' | 'coming_soon',
-      isPremium: display.minTier === 'premium',
-      isPro: display.minTier === 'pro',
-      isLocked: display.isLocked,
-    };
+  planTierLabel(): string {
+    const tier = this.userPlanTier();
+    if (tier === 'pro') return this.t('navbar.planPro');
+    if (tier === 'premium') return this.t('navbar.planPremium');
+    return this.t('navbar.planFree');
   }
 
-  getAccessText(display: ModuleDisplay): string {
-    if (!display.path) {
-      if (display.status === 'coming_soon') {
+  moduleInitial(name: string): string {
+    const trimmed = name.trim();
+    return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+  }
+
+  statusLabel(status: ModuleStatus): string {
+    switch (status) {
+      case 'stable':
+        return this.t('modules.status.stable');
+      case 'beta':
+        return this.t('modules.status.beta');
+      case 'alpha':
+        return this.t('modules.status.alpha');
+      case 'coming_soon':
+        return this.t('modules.status.comingSoon');
+      case 'under_construction':
+        return this.t('modules.status.underConstruction');
+      case 'maintenance':
+        return this.t('modules.status.maintenance');
+      default:
+        return status;
+    }
+  }
+
+  categoryLabel(category: Exclude<Category, 'all'>): string {
+    return this.t(`modules.categories.${category}`);
+  }
+
+  accessText(module: ModuleDisplay): string {
+    if (!module.path) {
+      if (module.status === 'coming_soon') {
         return this.t('modules.comingSoon');
       }
-
       return this.t('modules.unavailable');
     }
 
-    if (display.isLocked) {
+    if (module.isLocked) {
       return this.t('modules.upgradeToAccess');
     }
 
-    if (display.status === 'coming_soon') {
+    if (module.status === 'coming_soon') {
       return this.t('modules.comingSoon');
     }
 
     return this.t('modules.openModule');
   }
 
-  getLockedSubtext(display: ModuleDisplay): string | null {
-    if (display.isLocked && display.status === 'coming_soon') {
+  lockedSubtext(module: ModuleDisplay): string | null {
+    if (module.isLocked && module.status === 'coming_soon') {
       const tierName =
-        display.minTier === 'pro' ? this.t('navbar.planPro') : this.t('navbar.planPremium');
+        module.minTier === 'pro' ? this.t('navbar.planPro') : this.t('navbar.planPremium');
       return this.t('modules.comingSoonLocked', { tier: tierName });
     }
     return null;
+  }
+
+  isOpenable(module: ModuleDisplay): boolean {
+    return Boolean(module.path) && module.status !== 'coming_soon' && !module.isLocked;
+  }
+
+  isUpgradeable(module: ModuleDisplay): boolean {
+    return Boolean(module.path) && module.status !== 'coming_soon' && module.isLocked;
   }
 
   onCategoryChange(category: Category): void {
@@ -340,15 +272,46 @@ export class ModulesPageComponent {
     this.searchQuery.set(value);
   }
 
-  onUpgradeClick(module: Module): void {
+  clearSearch(): void {
+    this.searchQuery.set('');
+  }
+
+  openModule(module: ModuleDisplay): void {
+    if (!this.isOpenable(module) || !module.path) {
+      return;
+    }
+    void this.router.navigateByUrl(module.path);
+  }
+
+  onUpgradeClick(module: ModuleDisplay): void {
     void this.upgradeService.promptUpgradeForModule({
-      moduleId: module.id as ModuleId,
-      source: 'modules_page_card',
+      moduleId: module.id,
+      source: 'modules_page_card'
     });
   }
 
   resetFilters(): void {
     this.searchQuery.set('');
     this.selectedCategory.set('all');
+  }
+
+  private buildModule(
+    id: ModuleId,
+    name: string,
+    descriptionKey: string,
+    streamerName: string,
+    userPlanTier: PlanTier
+  ): ModuleDisplay {
+    const req = MODULE_TIER_REQUIREMENTS[id];
+    return {
+      id,
+      name,
+      description: this.t(descriptionKey),
+      path: streamerName ? `/${streamerName}/modules/${id}` : null,
+      category: req.category,
+      status: req.defaultStatus,
+      minTier: req.minTier,
+      isLocked: !isModuleAccessible(req, userPlanTier)
+    };
   }
 }

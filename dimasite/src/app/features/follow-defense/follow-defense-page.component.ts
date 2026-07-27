@@ -1,41 +1,37 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TitleCasePipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import {
-  AlertTriangle,
-  Activity,
-  ArrowLeft,
-  Ban,
-  ChevronLeft,
-  ChevronRight,
-  Crown,
-  Globe2,
-  Loader2,
-  LucideAngularModule,
-  RefreshCw,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldOff,
-  UserX,
-  Zap,
-  type LucideIconData
-} from 'lucide-angular';
-import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, Subject, switchMap, takeUntil } from 'rxjs';
+  distinctUntilChanged,
+  firstValueFrom,
+  map,
+  of,
+  shareReplay,
+  startWith,
+  Subject,
+  switchMap,
+  takeUntil
+} from 'rxjs';
 
-import {
-  type FollowDefenseAttackLogEntry,
-  type FollowDefenseHateRaidSource,
-  type FollowDefenseMode,
-  type FollowDefenseSettings,
-  type FollowDefenseStatus
+import type {
+  FollowDefenseAttackLogEntry,
+  FollowDefenseHateRaidSource,
+  FollowDefenseMode,
+  FollowDefenseSettings,
+  FollowDefenseStatus
 } from '../../models/follow-defense.model';
+import { FollowDefenseApiService } from '../../services/follow-defense-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
-import { FollowDefenseApiService } from '../../services/follow-defense-api.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -50,18 +46,9 @@ interface PaginationState {
   total: number;
 }
 
-const STATUS_CHIP_CLASSES: Record<FollowDefenseMode | 'disabled' | 'raid', { chip: string; icon: LucideIconData }> = {
-  disabled: { chip: 'status-chip status-chip--disabled', icon: ShieldOff },
-  normal: { chip: 'status-chip status-chip--normal', icon: ShieldCheck },
-  silent: { chip: 'status-chip status-chip--silent', icon: Shield },
-  protection: { chip: 'status-chip status-chip--protection', icon: ShieldAlert },
-  attack: { chip: 'status-chip status-chip--attack', icon: Ban },
-  raid: { chip: 'status-chip status-chip--raid', icon: Zap }
-};
-
 @Component({
   selector: 'app-follow-defense-page',
-  imports: [RouterLink, LucideAngularModule, TitleCasePipe, FormsModule],
+  imports: [RouterLink],
   templateUrl: './follow-defense-page.component.html',
   styleUrl: './follow-defense-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -74,34 +61,12 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
 
-  // Expose Math to template
-  readonly Math = Math;
-
-  // Icons
-  readonly shieldOffIcon = ShieldOff;
-  readonly shieldCheckIcon = ShieldCheck;
-  readonly shieldIcon = Shield;
-  readonly shieldAlertIcon = ShieldAlert;
-  readonly banIcon = Ban;
-  readonly zapIcon = Zap;
-  readonly activityIcon = Activity;
-  readonly chevronLeftIcon = ChevronLeft;
-  readonly chevronRightIcon = ChevronRight;
-  readonly arrowLeftIcon = ArrowLeft;
-  readonly crownIcon = Crown;
-  readonly globeIcon = Globe2;
-  readonly loaderIcon = Loader2;
-  readonly refreshIcon = RefreshCw;
-  readonly userXIcon = UserX;
-  readonly alertIcon = AlertTriangle;
-
-  // Signals for page state
   readonly settings = signal<FollowDefenseSettings | null>(null);
   readonly initialSettings = signal<FollowDefenseSettings | null>(null);
   readonly status = signal<FollowDefenseStatus | null>(null);
   readonly attackLogs = signal<FollowDefenseAttackLogEntry[]>([]);
   readonly hateRaidSources = signal<FollowDefenseHateRaidSource[]>([]);
-  readonly settingsLoading = signal(true); // Start with loading true
+  readonly settingsLoading = signal(true);
   readonly statusLoading = signal(false);
   readonly logsLoading = signal(false);
   readonly savingSettings = signal(false);
@@ -114,7 +79,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   readonly showAttackDialog = signal(false);
   readonly attackConfirmText = signal('');
 
-  // Channel resolution
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
     distinctUntilChanged(),
@@ -139,7 +103,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     initialValue: (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()
   });
 
-  // Use signal for channel resolution that we manually update
   readonly channelResolution = signal<ChannelResolutionState>({
     streamer: '',
     channelID: null,
@@ -150,6 +113,12 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];
+  });
+
+  readonly planTier = computed(() => {
+    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') return tier;
+    return 'free';
   });
 
   readonly settingsDirty = computed(() => {
@@ -165,11 +134,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     if (!settings?.enabled) return 'disabled';
     if (s?.raid?.expiresAt && s.raid.expiresAt > Date.now()) return 'raid';
     return s?.mode ?? 'normal';
-  });
-
-  readonly statusChipClass = computed(() => {
-    const mode = this.currentStatusMode();
-    return STATUS_CHIP_CLASSES[mode];
   });
 
   readonly statusLabel = computed(() => {
@@ -188,16 +152,15 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   readonly isAttackMode = computed(() => this.currentStatusMode() === 'attack');
   readonly canActivateAttack = computed(() => {
     const settings = this.settings();
-    return settings?.enabled && settings.attackModeEnabled && !this.isAttackMode && !this.activatingAttack();
+    return Boolean(
+      settings?.enabled && settings.attackModeEnabled && !this.isAttackMode() && !this.activatingAttack()
+    );
   });
 
   private lastLoadedChannelID = '';
 
   ngOnInit(): void {
-    // Subscribe to channel resolution changes
-    this.channelID$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe((resolution) => {
+    this.channelID$.pipe(takeUntil(this.destroy$)).subscribe((resolution) => {
       this.channelResolution.set(resolution);
 
       if (resolution.status === 'idle') {
@@ -211,7 +174,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Status is 'resolved'
       this.settingsLoading.set(false);
 
       if (!resolution.channelID) {
@@ -219,7 +181,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Only load if channel changed
       if (this.lastLoadedChannelID !== resolution.channelID) {
         this.lastLoadedChannelID = resolution.channelID;
         void this.loadAllData(resolution.channelID);
@@ -234,6 +195,25 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  titleCase(value: string): string {
+    if (!value) return '';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  modeChipClass(mode: FollowDefenseMode): string {
+    return `lf-chip lf-chip--mode-${mode}`;
+  }
+
+  totalLogsPages(): number {
+    const { total, limit } = this.logsPagination();
+    return Math.max(1, Math.ceil(total / limit));
+  }
+
+  totalHateRaidsPages(): number {
+    const { total, limit } = this.hateRaidsPagination();
+    return Math.max(1, Math.ceil(total / limit));
   }
 
   async loadAllData(channelID: string): Promise<void> {
@@ -264,8 +244,9 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       this.settings.set(response.data);
       this.initialSettings.set(JSON.parse(JSON.stringify(response.data)));
     } catch (error) {
-      console.error('Failed to load Follow Defense settings:', error);
-      this.errorMessage.set(error instanceof Error ? error.message : this.t('followDefense.errors.loadSettingsFailed'));
+      this.errorMessage.set(
+        error instanceof Error ? error.message : this.t('followDefense.errors.loadSettingsFailed')
+      );
     } finally {
       this.settingsLoading.set(false);
     }
@@ -273,15 +254,13 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   private async loadStatus(channelID: string): Promise<void> {
     this.statusLoading.set(true);
-
     try {
       const response = await firstValueFrom(this.followDefenseApi.getStatus(channelID));
       if (!response.error && response.data) {
         this.status.set(response.data);
       }
-    } catch (error) {
-      console.error('Failed to load Follow Defense status:', error);
-      // Status is not critical, don't show error
+    } catch {
+      // non-critical
     } finally {
       this.statusLoading.set(false);
     }
@@ -289,17 +268,16 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   private async loadAttackLogs(channelID: string): Promise<void> {
     this.logsLoading.set(true);
-
     try {
       const page = this.logsPagination().page;
       const limit = this.logsPagination().limit;
       const response = await firstValueFrom(this.followDefenseApi.getAttackLogs(channelID, page, limit));
       if (!response.error && response.data) {
         this.attackLogs.set(response.data.entries);
-        this.logsPagination.update(p => ({ ...p, total: response.data!.total }));
+        this.logsPagination.update((p) => ({ ...p, total: response.data!.total }));
       }
-    } catch (error) {
-      console.error('Failed to load attack logs:', error);
+    } catch {
+      // non-critical
     } finally {
       this.logsLoading.set(false);
     }
@@ -309,13 +287,15 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     try {
       const page = this.hateRaidsPagination().page;
       const limit = this.hateRaidsPagination().limit;
-      const response = await firstValueFrom(this.followDefenseApi.getHateRaidSources(channelID, page, limit));
+      const response = await firstValueFrom(
+        this.followDefenseApi.getHateRaidSources(channelID, page, limit)
+      );
       if (!response.error && response.data) {
         this.hateRaidSources.set(response.data.sources);
-        this.hateRaidsPagination.update(p => ({ ...p, total: response.data!.total }));
+        this.hateRaidsPagination.update((p) => ({ ...p, total: response.data!.total }));
       }
-    } catch (error) {
-      console.error('Failed to load hate raid sources:', error);
+    } catch {
+      // non-critical
     }
   }
 
@@ -328,7 +308,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Build patch only for changed fields
     const patch: Partial<FollowDefenseSettings> = {};
     const fields: Array<keyof FollowDefenseSettings> = [
       'enabled',
@@ -349,9 +328,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (Object.keys(patch).length === 0) {
-      return;
-    }
+    if (Object.keys(patch).length === 0) return;
 
     this.savingSettings.set(true);
     this.errorMessage.set(null);
@@ -363,10 +340,13 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       }
       this.settings.set(response.data);
       this.initialSettings.set(JSON.parse(JSON.stringify(response.data)));
-      this.toastService.success(this.t('followDefense.toasts.savedTitle'), this.t('followDefense.toasts.savedMessage'));
+      this.toastService.success(
+        this.t('followDefense.toasts.savedTitle'),
+        this.t('followDefense.toasts.savedMessage')
+      );
     } catch (error) {
-      console.error('Failed to save Follow Defense settings:', error);
-      const message = error instanceof Error ? error.message : this.t('followDefense.errors.saveSettingsFailed');
+      const message =
+        error instanceof Error ? error.message : this.t('followDefense.errors.saveSettingsFailed');
       this.errorMessage.set(message);
       this.toastService.error(this.t('followDefense.toasts.errorTitle'), message);
     } finally {
@@ -375,46 +355,49 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   updateEnabled(enabled: boolean): void {
-    this.settings.update(s => s ? { ...s, enabled } : s);
+    this.settings.update((s) => (s ? { ...s, enabled } : s));
   }
 
   updateSilentModeEnabled(enabled: boolean): void {
-    this.settings.update(s => s ? { ...s, silentModeEnabled: enabled } : s);
+    this.settings.update((s) => (s ? { ...s, silentModeEnabled: enabled } : s));
   }
 
   updateProtectionModeEnabled(enabled: boolean): void {
-    this.settings.update(s => s ? { ...s, protectionModeEnabled: enabled } : s);
+    this.settings.update((s) => (s ? { ...s, protectionModeEnabled: enabled } : s));
   }
 
   updateAttackModeEnabled(enabled: boolean): void {
-    this.settings.update(s => s ? { ...s, attackModeEnabled: enabled } : s);
+    this.settings.update((s) => (s ? { ...s, attackModeEnabled: enabled } : s));
   }
 
-  updateSilentThreshold(value: string, field: 'silentThresholdX' | 'silentWindowYSeconds' | 'silentDurationSeconds'): void {
+  updateSilentThreshold(
+    value: string,
+    field: 'silentThresholdX' | 'silentWindowYSeconds' | 'silentDurationSeconds'
+  ): void {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) return;
-    this.settings.update(s => s ? { ...s, [field]: parsed } : s);
+    this.settings.update((s) => (s ? { ...s, [field]: parsed } : s));
   }
 
   updateProtectionThreshold(value: string): void {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) return;
-    this.settings.update(s => s ? { ...s, protectionThresholdB: parsed } : s);
+    this.settings.update((s) => (s ? { ...s, protectionThresholdB: parsed } : s));
   }
 
   updateAttackThreshold(value: string): void {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) return;
-    this.settings.update(s => s ? { ...s, attackThreshold: parsed } : s);
+    this.settings.update((s) => (s ? { ...s, attackThreshold: parsed } : s));
   }
 
   updateBaselineFollowsPerHour(value: string): void {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      this.settings.update(s => s ? { ...s, baselineFollowsPerHour: null } : s);
+      this.settings.update((s) => (s ? { ...s, baselineFollowsPerHour: null } : s));
       return;
     }
-    this.settings.update(s => s ? { ...s, baselineFollowsPerHour: parsed } : s);
+    this.settings.update((s) => (s ? { ...s, baselineFollowsPerHour: parsed } : s));
   }
 
   openAttackDialog(): void {
@@ -427,12 +410,17 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     this.attackConfirmText.set('');
   }
 
+  onAttackBackdrop(event: Event): void {
+    if (event.target === event.currentTarget) {
+      this.closeAttackDialog();
+    }
+  }
+
   async activateAttackMode(): Promise<void> {
     const channelID = this.channelID();
     const status = this.status();
     const trackedCount = status?.trackedCount ?? 0;
 
-    // Require typed confirmation if tracked count is high
     if (trackedCount > 50 && this.attackConfirmText() !== 'ATTACK') {
       return;
     }
@@ -446,12 +434,17 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       if (response.error) {
         throw new Error(response.message || this.t('followDefense.errors.activateFailed'));
       }
-      this.toastService.success(this.t('followDefense.toasts.attackActivatedTitle'), this.t('followDefense.toasts.attackActivatedMessage'));
+      this.toastService.success(
+        this.t('followDefense.toasts.attackActivatedTitle'),
+        this.t('followDefense.toasts.attackActivatedMessage')
+      );
       this.closeAttackDialog();
       await this.loadStatus(channelID);
     } catch (error) {
-      console.error('Failed to activate attack mode:', error);
-      this.toastService.error(this.t('followDefense.toasts.errorTitle'), error instanceof Error ? error.message : this.t('followDefense.errors.activateFailed'));
+      this.toastService.error(
+        this.t('followDefense.toasts.errorTitle'),
+        error instanceof Error ? error.message : this.t('followDefense.errors.activateFailed')
+      );
     } finally {
       this.activatingAttack.set(false);
     }
@@ -466,11 +459,16 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       if (response.error) {
         throw new Error(response.message || this.t('followDefense.errors.resetFailed'));
       }
-      this.toastService.success(this.t('followDefense.toasts.resetSuccessTitle'), this.t('followDefense.toasts.resetSuccessMessage'));
+      this.toastService.success(
+        this.t('followDefense.toasts.resetSuccessTitle'),
+        this.t('followDefense.toasts.resetSuccessMessage')
+      );
       await this.loadStatus(channelID);
     } catch (error) {
-      console.error('Failed to reset mode:', error);
-      this.toastService.error(this.t('followDefense.toasts.errorTitle'), error instanceof Error ? error.message : this.t('followDefense.errors.resetFailed'));
+      this.toastService.error(
+        this.t('followDefense.toasts.errorTitle'),
+        error instanceof Error ? error.message : this.t('followDefense.errors.resetFailed')
+      );
     }
   }
 
@@ -489,16 +487,6 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     if (seconds < 60) return `${seconds}s`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
     return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-  }
-
-  getModeChipClass(mode: FollowDefenseMode): string {
-    const classMap: Record<FollowDefenseMode, string> = {
-      normal: 'mode-chip mode-chip--normal',
-      silent: 'mode-chip mode-chip--silent',
-      protection: 'mode-chip mode-chip--protection',
-      attack: 'mode-chip mode-chip--attack'
-    };
-    return classMap[mode];
   }
 
   getLogsPageNumbers(): number[] {
@@ -522,7 +510,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   async goToLogsPage(page: number): Promise<void> {
-    this.logsPagination.update(p => ({ ...p, page }));
+    this.logsPagination.update((p) => ({ ...p, page }));
     const channelID = this.channelID();
     if (channelID) {
       await this.loadAttackLogs(channelID);
@@ -530,7 +518,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   async goToHateRaidsPage(page: number): Promise<void> {
-    this.hateRaidsPagination.update(p => ({ ...p, page }));
+    this.hateRaidsPagination.update((p) => ({ ...p, page }));
     const channelID = this.channelID();
     if (channelID) {
       await this.loadHateRaidSources(channelID);

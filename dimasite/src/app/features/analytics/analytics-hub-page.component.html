@@ -1,118 +1,76 @@
-<section class="analytics-shell" [attr.data-plan-tier]="planTier()">
-  <div class="analytics-shell__glow" aria-hidden="true"></div>
-  <div class="analytics-shell__grid" aria-hidden="true"></div>
-
-  <header class="analytics-command">
-    <div class="analytics-command__main">
-      <a class="analytics-command__back" [routerLink]="modulesLink()">
-        <lucide-icon [img]="backIcon" class="analytics-command__back-icon"></lucide-icon>
-        <span>{{ t('analyticsHub.backToModules') }}</span>
-      </a>
-
-      <div class="analytics-command__signals">
-        <span class="analytics-signal analytics-signal--live">
-          <span class="analytics-signal__dot" aria-hidden="true"></span>
-          {{ t('analyticsHub.chips.activeFollowers') }}
-        </span>
-        <span class="analytics-signal">
-          <lucide-icon [img]="sparklesIcon" class="analytics-signal__icon"></lucide-icon>
-          {{ t('analyticsHub.chips.mutualHighlights') }}
-        </span>
-      </div>
-
-      <p class="analytics-command__eyebrow">{{ t('analyticsHub.badge') }}</p>
-      <h1 class="analytics-command__title">{{ t('analyticsHub.title') }}</h1>
-      <p class="analytics-command__subtitle">{{ t('analyticsHub.subtitle') }}</p>
-    </div>
-
-    <aside class="analytics-command__status">
-      <p class="analytics-command__status-kicker">{{ t('analyticsHub.panel.kicker') }}</p>
-      <h2 class="analytics-command__status-title">{{ t('analyticsHub.panel.title') }}</h2>
-      <p class="analytics-command__status-copy">{{ t('analyticsHub.panel.description') }}</p>
-
-      <span
-        class="analytics-plan-pill"
-        [class.analytics-plan-pill--paid]="hasPaidAccess()"
-        [class.analytics-plan-pill--locked]="!hasPaidAccess()"
-      >
-        <lucide-icon
-          [img]="hasPaidAccess() ? zapIcon : lockIcon"
-          class="analytics-plan-pill__icon"
-        ></lucide-icon>
-        <span>{{ planStatusLabel() }}</span>
-      </span>
-    </aside>
-  </header>
-
-  <section class="analytics-metrics" [attr.aria-label]="t('analyticsHub.metrics.ariaLabel')">
-    <article class="analytics-metric analytics-metric--modules">
-      <p class="analytics-metric__label">{{ t('analyticsHub.metrics.modules') }}</p>
-      <strong class="analytics-metric__value">01</strong>
-      <span class="analytics-metric__meta">{{ t('analyticsHub.metrics.modulesMeta') }}</span>
-    </article>
-
-    <article class="analytics-metric analytics-metric--plan">
-      <p class="analytics-metric__label">{{ t('analyticsHub.metrics.plan') }}</p>
-      <strong class="analytics-metric__value">{{ planTierLabel() }}</strong>
-      <span class="analytics-metric__meta">{{ t('analyticsHub.metrics.planMeta') }}</span>
-    </article>
-
-    <article class="analytics-metric analytics-metric--tracking">
-      <p class="analytics-metric__label">{{ t('analyticsHub.metrics.tracking') }}</p>
-      <strong class="analytics-metric__value">{{
-        t('analyticsHub.followLedger.activeOnly')
-      }}</strong>
-      <span class="analytics-metric__meta">{{ t('analyticsHub.metrics.trackingMeta') }}</span>
-    </article>
-  </section>
-
-  <section class="analytics-launchpad">
-    <article class="analytics-launch-card" [class.analytics-launch-card--locked]="!hasPaidAccess()">
-      <div class="analytics-launch-card__scanline" aria-hidden="true"></div>
-
-      <div class="analytics-launch-card__header">
-        <div class="analytics-launch-card__icon">
-          <lucide-icon [img]="followersIcon"></lucide-icon>
-        </div>
-
-        <div class="analytics-launch-card__badges">
-          <span class="analytics-launch-card__badge analytics-launch-card__badge--tier"
-            >Premium / Pro</span
-          >
-          <span class="analytics-launch-card__badge analytics-launch-card__badge--live">
-            {{ t('analyticsHub.followLedger.activeOnly') }}
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="modulesLink()">← {{ t('analyticsHub.backToModules') }}</a>
+        <div class="lf-chip-row">
+          <span class="lf-chip lf-chip--live">
+            <span class="lf-pulse" aria-hidden="true"></span>
+            {{ t('analyticsHub.chips.activeFollowers') }}
           </span>
+          <span class="lf-chip">{{ t('analyticsHub.chips.mutualHighlights') }}</span>
         </div>
-      </div>
+        <p class="lf-kicker">{{ t('analyticsHub.badge') }}</p>
+        <h1 class="lf-title">{{ t('analyticsHub.title') }} <span>{{ t('analyticsHub.badge') }}</span></h1>
+        <p class="lf-copy">{{ t('analyticsHub.subtitle') }}</p>
+      </article>
 
-      <div class="analytics-launch-card__body">
-        <p class="analytics-launch-card__eyebrow">{{ t('analyticsHub.followLedger.eyebrow') }}</p>
-        <h2>{{ t('analyticsHub.followLedger.title') }}</h2>
-        <p>{{ t('analyticsHub.followLedger.description') }}</p>
-      </div>
+      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="hasPaidAccess()">
+        <p class="lf-kicker">{{ t('analyticsHub.panel.kicker') }}</p>
+        <h2 class="lf-h2">{{ t('analyticsHub.panel.title') }}</h2>
+        <p class="lf-copy lf-copy--tight">{{ t('analyticsHub.panel.description') }}</p>
+        <span class="lf-chip" [class.lf-chip--gold]="hasPaidAccess()" [class.lf-chip--muted]="!hasPaidAccess()">
+          {{ planStatusLabel() }}
+        </span>
+      </article>
+    </section>
 
-      <div class="analytics-launch-card__footer">
-        @if (hasPaidAccess()) {
-          <a class="analytics-launch-card__cta" [routerLink]="followLedgerLink()">
-            <span>{{ t('analyticsHub.followLedger.open') }}</span>
-            <lucide-icon [img]="arrowIcon" class="analytics-launch-card__cta-icon"></lucide-icon>
-          </a>
-        } @else {
-          <button
-            type="button"
-            class="analytics-launch-card__cta analytics-launch-card__cta--locked"
-            (click)="openLockedNotice()"
-          >
-            <lucide-icon [img]="lockIcon" class="analytics-launch-card__cta-icon"></lucide-icon>
-            <span>{{ t('analyticsHub.followLedger.lockedCta') }}</span>
-          </button>
-        }
+    <section class="lf-stats-strip lf-stats-strip--3" [attr.aria-label]="t('analyticsHub.metrics.ariaLabel')">
+      <div class="lf-stats-strip__item">
+        <span class="lf-stats-strip__label">{{ t('analyticsHub.metrics.modules') }}</span>
+        <span class="lf-stats-strip__value">01</span>
+        <span class="lf-stats-strip__meta">{{ t('analyticsHub.metrics.modulesMeta') }}</span>
       </div>
-    </article>
-  </section>
+      <div class="lf-stats-strip__item">
+        <span class="lf-stats-strip__label">{{ t('analyticsHub.metrics.plan') }}</span>
+        <span class="lf-stats-strip__value lf-stats-strip__value--sm">{{ planTierLabel() }}</span>
+        <span class="lf-stats-strip__meta">{{ t('analyticsHub.metrics.planMeta') }}</span>
+      </div>
+      <div class="lf-stats-strip__item">
+        <span class="lf-stats-strip__label">{{ t('analyticsHub.metrics.tracking') }}</span>
+        <span class="lf-stats-strip__value lf-stats-strip__value--sm">{{ t('analyticsHub.followLedger.activeOnly') }}</span>
+        <span class="lf-stats-strip__meta">{{ t('analyticsHub.metrics.trackingMeta') }}</span>
+      </div>
+    </section>
 
-  <footer class="analytics-roadmap">
-    <lucide-icon [img]="activityIcon" class="analytics-roadmap__icon"></lucide-icon>
-    <p>{{ t('analyticsHub.future.teaser') }}</p>
-  </footer>
-</section>
+    <section class="lf-bento">
+      <article class="lf-tile lf-module" [class.lf-module--locked]="!hasPaidAccess()" [class.lf-module--gold]="hasPaidAccess()">
+        <div class="lf-module__head">
+          <div class="lf-module__icon" aria-hidden="true">👥</div>
+          <div class="lf-module__badges">
+            <span class="lf-chip lf-chip--gold">{{ t('analyticsHub.followLedger.tierLabel') }}</span>
+            <span class="lf-chip lf-chip--ok">{{ t('analyticsHub.followLedger.activeOnly') }}</span>
+          </div>
+        </div>
+
+        <p class="lf-kicker">{{ t('analyticsHub.followLedger.eyebrow') }}</p>
+        <h2 class="lf-h2">{{ t('analyticsHub.followLedger.title') }}</h2>
+        <p class="lf-copy lf-copy--tight">{{ t('analyticsHub.followLedger.description') }}</p>
+
+        <div class="lf-module__footer">
+          @if (hasPaidAccess()) {
+            <a class="lf-btn lf-btn--primary" [routerLink]="followLedgerLink()">
+              {{ t('analyticsHub.followLedger.open') }} →
+            </a>
+          } @else {
+            <button type="button" class="lf-btn lf-btn--gold" (click)="openLockedNotice()">
+              🔒 {{ t('analyticsHub.followLedger.lockedCta') }}
+            </button>
+          }
+        </div>
+      </article>
+    </section>
+
+    <p class="lf-footer-note">{{ t('analyticsHub.future.teaser') }}</p>
+  </main>
+</div>

@@ -1,0 +1,79 @@
+<div class="lf-config">
+  <h4 class="lf-config__title">{{ t('chatEvents.configuration') }}</h4>
+
+  <div class="lf-config__controls">
+    @for (control of event()?.config; track control.id) {
+      @if (shouldShowControl(control)) {
+        <div class="lf-config__control">
+          <label [for]="'control-' + control.id" class="lf-config__label">
+            <span>{{ getControlLabel(control.label) }}</span>
+            @if (control.id === 'cheerTiers') {
+              <span class="lf-config__premium">★</span>
+            }
+          </label>
+
+          @switch (control.type) {
+            @case ('text') {
+              <input
+                type="text"
+                [id]="'control-' + control.id"
+                [(ngModel)]="control.value"
+                [disabled]="isBusy()"
+                [placeholder]="control.placeholder || ''"
+                class="lf-config__input"
+              />
+            }
+            @case ('number') {
+              <input
+                type="number"
+                [id]="'control-' + control.id"
+                [(ngModel)]="control.value"
+                [disabled]="isBusy()"
+                class="lf-config__input lf-config__input--number"
+              />
+            }
+            @case ('checkbox') {
+              <label class="lf-config__check">
+                <input
+                  type="checkbox"
+                  [id]="'control-' + control.id"
+                  [(ngModel)]="control.value"
+                  [disabled]="isBusy()"
+                />
+                <span>{{ t('chatEvents.enabled') }}</span>
+              </label>
+            }
+            @case ('message-tiers') {
+              @if (isCheerTierArray(control.value)) {
+                <app-tier-editor
+                  [tiers]="control.value"
+                  [tierLimits]="event()?.tierLimits"
+                  [userPlan]="userPlan()"
+                  [disabled]="isBusy()"
+                  (tiersChange)="onTiersChange(control, $event)"
+                />
+              }
+            }
+          }
+        </div>
+      }
+    }
+  </div>
+
+  <div class="lf-config__actions">
+    <button
+      type="button"
+      class="lf-btn lf-btn--danger"
+      [class.lf-btn--locked]="!canDelete()"
+      [disabled]="isBusy()"
+      [title]="!canDelete() ? t('chatEvents.tooltips.deleteNotAllowed') : t('chatEvents.deleteEvent')"
+      (click)="onDelete()"
+    >
+      {{ isDeleting() ? t('chatEvents.pending.deleting') : t('chatEvents.deleteEvent') }}
+    </button>
+
+    <button type="button" class="lf-btn lf-btn--primary" [disabled]="isBusy()" (click)="onSave()">
+      {{ isSaving() ? t('chatEvents.pending.saving') : t('chatEvents.saveChanges') }}
+    </button>
+  </div>
+</div>

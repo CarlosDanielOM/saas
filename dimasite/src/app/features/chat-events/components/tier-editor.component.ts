@@ -1,126 +1,15 @@
-import { ChangeDetectionStrategy, Component, input, output, computed, inject } from '@angular/core';
-import { LucideAngularModule, Crown, Trash2, PlusCircle } from 'lucide-angular';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 
 import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
-import { CheerTier, TierLimits, PlanTier, TierInfoMessage } from '../chat-events.model';
+import { CheerTier, PlanTier, TierInfoMessage, TierLimits } from '../chat-events.model';
 import { ChatEventsService } from '../chat-events.service';
 
 @Component({
   selector: 'app-tier-editor',
-  imports: [LucideAngularModule],
-  template: `
-    @if (tiers().length > 0) {
-      <div class="tier-editor__tiers">
-        @for (tier of tiers(); track tier.id) {
-          <div 
-            class="tier-editor__tier">
-            
-            <button
-              type="button"
-              class="tier-editor__remove-btn"
-              [disabled]="disabled()"
-              (click)="removeTier(tier.id)"
-              [attr.aria-label]="t('chatEvents.tierRemoveAria', { name: tier.name })">
-              <lucide-icon [name]="trashIcon" class="tier-editor__remove-icon"></lucide-icon>
-            </button>
-
-            <div class="tier-editor__tier-grid">
-              <!-- Tier Name -->
-              <div class="tier-editor__field tier-editor__field--full">
-                <label [for]="'tier-name-' + tier.id" class="tier-editor__label">
-                  {{ t('chatEvents.tierName') }}
-                </label>
-                <input
-                  [id]="'tier-name-' + tier.id"
-                  type="text"
-                  [value]="tier.name"
-                  [disabled]="disabled()"
-                  (input)="updateTier(tier.id, 'name', $event)"
-                  class="tier-editor__input"
-                  [placeholder]="t('chatEvents.tierNamePlaceholder')" />
-              </div>
-
-              <!-- Min Amount -->
-              <div class="tier-editor__field">
-                <label [for]="'tier-min-' + tier.id" class="tier-editor__label">
-                  {{ t('chatEvents.minBits') }}
-                </label>
-                <input
-                  [id]="'tier-min-' + tier.id"
-                  type="number"
-                  [value]="tier.minAmount"
-                  [disabled]="disabled()"
-                  (input)="updateTier(tier.id, 'minAmount', $event)"
-                  class="tier-editor__input tier-editor__input--number"
-                  min="0" />
-              </div>
-
-              <!-- Max Amount -->
-              <div class="tier-editor__field">
-                <label [for]="'tier-max-' + tier.id" class="tier-editor__label">
-                  {{ t('chatEvents.maxBits') }}
-                </label>
-                <input
-                  [id]="'tier-max-' + tier.id"
-                  type="number"
-                  [value]="tier.maxAmount"
-                  [disabled]="disabled()"
-                  (input)="updateTier(tier.id, 'maxAmount', $event)"
-                  class="tier-editor__input tier-editor__input--number"
-                  min="0" />
-              </div>
-
-              <!-- Message -->
-              <div class="tier-editor__field tier-editor__field--full">
-                <label [for]="'tier-msg-' + tier.id" class="tier-editor__label">
-                  {{ t('chatEvents.message') }}
-                </label>
-                <input
-                  [id]="'tier-msg-' + tier.id"
-                  type="text"
-                  [value]="tier.message"
-                  [disabled]="disabled()"
-                  (input)="updateTier(tier.id, 'message', $event)"
-                  class="tier-editor__input"
-                  [placeholder]="t('chatEvents.messagePlaceholder')" />
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-    }
-
-    <!-- Add Tier Button -->
-    <button
-      type="button"
-      class="tier-editor__add-btn"
-      [class.tier-editor__add-btn--disabled]="disabled() || !canAdd()"
-      [disabled]="disabled() || !canAdd()"
-      [title]="addTierTooltip()"
-      (click)="addTier()">
-      <lucide-icon [name]="plusCircleIcon" class="tier-editor__add-icon"></lucide-icon>
-      <span>{{ t('chatEvents.addMessageTier') }}</span>
-    </button>
-
-    <!-- Tier Info Message -->
-    @if (tierInfoMessage()) {
-      <div 
-        class="tier-editor__info"
-        [class.tier-editor__info--upsell]="tierInfoMessage()?.level === 'upsell-premium' || tierInfoMessage()?.level === 'upsell-pro'"
-        [class.tier-editor__info--limit]="tierInfoMessage()?.level === 'limit-reached'">
-        @if (tierInfoMessage()?.level === 'upsell-premium') {
-          <lucide-icon [name]="crownIcon" class="tier-editor__info-icon tier-editor__info-icon--premium"></lucide-icon>
-        } @else if (tierInfoMessage()?.level === 'upsell-pro') {
-          <div class="tier-editor__info-icon tier-editor__info-icon--pro-wrapper">
-            <lucide-icon [name]="crownIcon" class="tier-editor__info-icon tier-editor__info-icon--pro"></lucide-icon>
-            <span class="tier-editor__info-icon-plus">+</span>
-          </div>
-        }
-        <span class="tier-editor__info-text">{{ tierInfoMessage()?.message }}</span>
-      </div>
-    }
-  `,
+  imports: [],
+  styleUrl: './tier-editor.component.css',
+  templateUrl: './tier-editor.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TierEditorComponent {
@@ -134,16 +23,8 @@ export class TierEditorComponent {
   readonly disabled = input(false);
   readonly tiersChange = output<CheerTier[]>();
 
-  readonly crownIcon = Crown;
-  readonly trashIcon = Trash2;
-  readonly plusCircleIcon = PlusCircle;
-
   readonly canAdd = computed(() => {
-    return this.chatEventsService.canAddTier(
-      this.tierLimits(),
-      this.tiers(),
-      this.userPlan()
-    );
+    return this.chatEventsService.canAddTier(this.tierLimits(), this.tiers(), this.userPlan());
   });
 
   readonly tierInfoMessage = computed((): TierInfoMessage | null => {
@@ -179,7 +60,7 @@ export class TierEditorComponent {
     }
 
     const limit = this.chatEventsService.getTierLimit(this.tierLimits(), this.userPlan());
-    
+
     if (this.userPlan() === 'none') {
       return this.t('chatEvents.tooltips.addTierRequiresPremium');
     }
@@ -199,10 +80,7 @@ export class TierEditorComponent {
     }
 
     if (!this.canAdd()) {
-      this.toastService.info(
-        this.t('chatEvents.toasts.limitReachedTitle'),
-        this.addTierTooltip()
-      );
+      this.toastService.info(this.t('chatEvents.toasts.limitReachedTitle'), this.addTierTooltip());
       return;
     }
 
@@ -214,8 +92,7 @@ export class TierEditorComponent {
       maxAmount: 0
     };
 
-    const updatedTiers = [...this.tiers(), newTier];
-    this.tiersChange.emit(updatedTiers);
+    this.tiersChange.emit([...this.tiers(), newTier]);
 
     this.toastService.success(
       this.t('chatEvents.toasts.tierAddedTitle'),
@@ -228,8 +105,7 @@ export class TierEditorComponent {
       return;
     }
 
-    const updatedTiers = this.tiers().filter(t => t.id !== tierId);
-    this.tiersChange.emit(updatedTiers);
+    this.tiersChange.emit(this.tiers().filter((t) => t.id !== tierId));
 
     this.toastService.success(
       this.t('chatEvents.toasts.tierRemovedTitle'),
@@ -243,17 +119,10 @@ export class TierEditorComponent {
     }
 
     const input = event.target as HTMLInputElement;
-    const value = field === 'name' || field === 'message' 
-      ? input.value 
-      : parseInt(input.value, 10) || 0;
+    const value = field === 'name' || field === 'message' ? input.value : parseInt(input.value, 10) || 0;
 
-    const updatedTiers = this.tiers().map(tier => {
-      if (tier.id === tierId) {
-        return { ...tier, [field]: value };
-      }
-      return tier;
-    });
-
-    this.tiersChange.emit(updatedTiers);
+    this.tiersChange.emit(
+      this.tiers().map((tier) => (tier.id === tierId ? { ...tier, [field]: value } : tier))
+    );
   }
 }

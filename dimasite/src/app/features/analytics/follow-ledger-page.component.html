@@ -1,277 +1,243 @@
-<section class="follow-ledger" [attr.data-plan-tier]="planTier()">
-  <header class="follow-ledger__hero">
-    <div>
-      <a class="follow-ledger__back-link" [routerLink]="['/', streamer(), 'modules', 'analytics']">
-        <lucide-icon [img]="backIcon" class="follow-ledger__back-icon"></lucide-icon>
-        <span>{{ t('analytics.follows.backToAnalytics') }}</span>
-      </a>
-
-      <div class="follow-ledger__eyebrow">
-        <lucide-icon [img]="sparklesIcon" class="follow-ledger__eyebrow-icon"></lucide-icon>
-        <span>{{ t('analytics.follows.activeOnly') }}</span>
-      </div>
-
-      <h1>{{ t('analytics.follows.title') }}</h1>
-      <p class="follow-ledger__subtitle">{{ t('analytics.follows.subtitle') }}</p>
-    </div>
-
-    <div class="follow-ledger__hero-meta">
-      @if (channelName()) {
-        <span class="follow-ledger__meta-pill">{{ channelName() }}</span>
-      }
-      @if (getRoleLabel()) {
-        <span class="follow-ledger__meta-pill follow-ledger__meta-pill--accent">{{ getRoleLabel() }}</span>
-      }
-    </div>
-  </header>
-
-  @if (!hasPaidAccess()) {
-    <section class="follow-ledger__locked-state">
-      <div class="follow-ledger__locked-shell">
-        <div class="follow-ledger__locked-icon">
-          <lucide-icon [img]="lockIcon"></lucide-icon>
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer(), 'modules', 'analytics']">
+          ← {{ t('analytics.follows.backToAnalytics') }}
+        </a>
+        <p class="lf-kicker">{{ t('analytics.follows.activeOnly') }} · Beta</p>
+        <h1 class="lf-title">{{ t('analytics.follows.title') }} <span>{{ channelName() || streamer() }}</span></h1>
+        <p class="lf-copy">{{ t('analytics.follows.subtitle') }}</p>
+        <div class="lf-chip-row">
+          @if (getRoleLabel()) {
+            <span class="lf-chip lf-chip--accent">{{ getRoleLabel() }}</span>
+          }
+          <span class="lf-chip" [class.lf-chip--gold]="hasPaidAccess()">
+            {{ hasPaidAccess() ? t('navbar.plan' + (planTier() === 'pro' ? 'Pro' : planTier() === 'premium' ? 'Premium' : 'Free')) : t('analytics.follows.lockedCta') }}
+          </span>
         </div>
-        <h2>{{ t('analytics.follows.lockedTitle') }}</h2>
-        <p>{{ t('analytics.follows.lockedDescription') }}</p>
-        <button type="button" class="follow-ledger__locked-cta" (click)="showUpgradeNotice()">
+      </article>
+
+      @if (hasPaidAccess()) {
+        <article class="lf-tile lf-tile--spotlight">
+          <div class="lf-stats-strip lf-stats-strip--3">
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('analytics.follows.activeTotal') }}</span>
+              <span class="lf-stats-strip__value">{{ summary().activeCount }}</span>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('analytics.follows.mutualTotal') }}</span>
+              <span class="lf-stats-strip__value">{{ summary().mutualCount }}</span>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('analytics.follows.nonMutualTotal') }}</span>
+              <span class="lf-stats-strip__value">{{ summary().nonMutualCount }}</span>
+            </div>
+          </div>
+        </article>
+      }
+    </section>
+
+    @if (!hasPaidAccess()) {
+      <section class="lf-tile lf-locked">
+        <span class="lf-chip lf-chip--gold">🔒 Premium · Pro</span>
+        <h2 class="lf-h2">{{ t('analytics.follows.lockedTitle') }}</h2>
+        <p class="lf-copy lf-copy--tight">{{ t('analytics.follows.lockedDescription') }}</p>
+        <button type="button" class="lf-btn lf-btn--primary" (click)="showUpgradeNotice()">
           {{ t('analytics.follows.lockedCta') }}
         </button>
-      </div>
-    </section>
-  } @else {
-    @if (errorMessage()) {
-      <div class="follow-ledger__banner" role="alert">
-        <div>
-          <p class="follow-ledger__banner-title">{{ t('analytics.follows.loadError') }}</p>
-          <p>{{ errorMessage() }}</p>
-        </div>
-        <button type="button" class="follow-ledger__banner-action" (click)="retryLoad()">
-          <lucide-icon [img]="refreshIcon"></lucide-icon>
-          <span>{{ t('common.retry') }}</span>
-        </button>
-      </div>
-    }
+      </section>
+    } @else {
+      @if (errorMessage()) {
+        <section class="lf-banner lf-banner--error" role="alert">
+          <div>
+            <p class="lf-banner__title">{{ t('analytics.follows.loadError') }}</p>
+            <p class="lf-note">{{ errorMessage() }}</p>
+          </div>
+          <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
+            ↻ {{ t('common.retry') }}
+          </button>
+        </section>
+      }
 
-    <section class="follow-ledger__stats" aria-label="Follow ledger summary">
-      <article class="follow-ledger-stat-card">
-        <div class="follow-ledger-stat-card__icon-shell">
-          <lucide-icon [img]="followersIcon" class="follow-ledger-stat-card__icon"></lucide-icon>
-        </div>
-        <div>
-          <p class="follow-ledger-stat-card__label">{{ t('analytics.follows.activeTotal') }}</p>
-          <strong>{{ summary().activeCount }}</strong>
-        </div>
-      </article>
-
-      <article class="follow-ledger-stat-card follow-ledger-stat-card--mutual">
-        <div class="follow-ledger-stat-card__icon-shell">
-          <lucide-icon [img]="sparklesIcon" class="follow-ledger-stat-card__icon"></lucide-icon>
-        </div>
-        <div>
-          <p class="follow-ledger-stat-card__label">{{ t('analytics.follows.mutualTotal') }}</p>
-          <strong>{{ summary().mutualCount }}</strong>
-        </div>
-      </article>
-
-      <article class="follow-ledger-stat-card">
-        <div class="follow-ledger-stat-card__icon-shell">
-          <lucide-icon [img]="analyticsIcon" class="follow-ledger-stat-card__icon"></lucide-icon>
-        </div>
-        <div>
-          <p class="follow-ledger-stat-card__label">{{ t('analytics.follows.nonMutualTotal') }}</p>
-          <strong>{{ summary().nonMutualCount }}</strong>
-        </div>
-      </article>
-    </section>
-
-    <section class="follow-ledger__controls" aria-label="Follow ledger filters">
-      <div class="follow-ledger__search-stack">
-        <label class="follow-ledger__search" [attr.aria-label]="t('analytics.follows.searchLabel')">
-          <lucide-icon [img]="searchIcon" class="follow-ledger__search-icon"></lucide-icon>
+      <section class="lf-tile lf-controls" [attr.aria-label]="t('analytics.follows.filters')">
+        <label class="lf-search-wrap" [attr.aria-label]="t('analytics.follows.searchLabel')">
           <input
             type="search"
-            class="follow-ledger__search-input"
+            class="lf-search"
             [value]="searchInput()"
             [placeholder]="t('analytics.follows.searchPlaceholder')"
             (input)="onSearchInput($event)"
           />
-
           @if (searchInput()) {
             <button
               type="button"
-              class="follow-ledger__search-clear"
+              class="lf-search-clear"
               [attr.aria-label]="t('analytics.follows.clearSearchAriaLabel')"
               (click)="clearSearch()"
             >
-              <lucide-icon [img]="clearIcon"></lucide-icon>
+              ×
             </button>
           }
         </label>
-      </div>
 
-      <div class="follow-ledger__toolbar-group">
-        <div class="follow-ledger__chip-group" [attr.aria-label]="t('analytics.follows.filters')">
-          <button
-            type="button"
-            class="follow-ledger__chip"
-            [class.follow-ledger__chip--active]="mutualFilter() === 'all'"
-            (click)="setMutualFilter('all')"
-          >
-            {{ t('analytics.follows.all') }}
-          </button>
-          <button
-            type="button"
-            class="follow-ledger__chip"
-            [class.follow-ledger__chip--active]="mutualFilter() === 'mutual'"
-            (click)="setMutualFilter('mutual')"
-          >
-            {{ t('analytics.follows.mutuals') }}
-          </button>
-          <button
-            type="button"
-            class="follow-ledger__chip"
-            [class.follow-ledger__chip--active]="mutualFilter() === 'non-mutual'"
-            (click)="setMutualFilter('non-mutual')"
-          >
-            {{ t('analytics.follows.nonMutuals') }}
-          </button>
-        </div>
-
-        <div class="follow-ledger__chip-group" [attr.aria-label]="t('analytics.follows.sort')">
-          <button
-            type="button"
-            class="follow-ledger__chip follow-ledger__chip--ghost"
-            [class.follow-ledger__chip--active]="sortOrder() === 'desc'"
-            (click)="setSortOrder('desc')"
-          >
-            {{ t('analytics.follows.newest') }}
-          </button>
-          <button
-            type="button"
-            class="follow-ledger__chip follow-ledger__chip--ghost"
-            [class.follow-ledger__chip--active]="sortOrder() === 'asc'"
-            (click)="setSortOrder('asc')"
-          >
-            {{ t('analytics.follows.oldest') }}
-          </button>
-        </div>
-      </div>
-    </section>
-
-    @if (showInitialLoading()) {
-      <div class="follow-ledger__state-card" aria-live="polite">
-        <loading-indicator [loading]="true" size="md" variant="three" message="analytics.follows.loading"></loading-indicator>
-      </div>
-    } @else {
-      <section class="follow-ledger__results" aria-live="polite">
-        <div class="follow-ledger__results-header">
-          <div>
-            <p class="follow-ledger__results-title">{{ t('analytics.follows.resultsTitle') }}</p>
-            <p class="follow-ledger__results-meta">
-              {{ t('analytics.follows.showingResults', resultRange()) }}
-            </p>
+        <div class="lf-controls__row">
+          <div class="lf-filter-tabs" [attr.aria-label]="t('analytics.follows.filters')">
+            <button
+              type="button"
+              class="lf-filter-tab"
+              [class.lf-filter-tab--active]="mutualFilter() === 'all'"
+              (click)="setMutualFilter('all')"
+            >
+              {{ t('analytics.follows.all') }}
+            </button>
+            <button
+              type="button"
+              class="lf-filter-tab"
+              [class.lf-filter-tab--active]="mutualFilter() === 'mutual'"
+              (click)="setMutualFilter('mutual')"
+            >
+              {{ t('analytics.follows.mutuals') }}
+            </button>
+            <button
+              type="button"
+              class="lf-filter-tab"
+              [class.lf-filter-tab--active]="mutualFilter() === 'non-mutual'"
+              (click)="setMutualFilter('non-mutual')"
+            >
+              {{ t('analytics.follows.nonMutuals') }}
+            </button>
           </div>
 
-          <div class="follow-ledger__results-actions">
-            @if (refreshing()) {
-              <span class="follow-ledger__refreshing">{{ t('analytics.follows.refreshing') }}</span>
-            }
-
-            <button type="button" class="follow-ledger__refresh-btn" [disabled]="loading() || refreshing()" (click)="retryLoad()">
-              <lucide-icon [img]="refreshIcon"></lucide-icon>
-              <span>{{ t('common.refresh') }}</span>
+          <div class="lf-filter-tabs lf-filter-tabs--ghost" [attr.aria-label]="t('analytics.follows.sort')">
+            <button
+              type="button"
+              class="lf-filter-tab"
+              [class.lf-filter-tab--active]="sortOrder() === 'desc'"
+              (click)="setSortOrder('desc')"
+            >
+              {{ t('analytics.follows.newest') }}
+            </button>
+            <button
+              type="button"
+              class="lf-filter-tab"
+              [class.lf-filter-tab--active]="sortOrder() === 'asc'"
+              (click)="setSortOrder('asc')"
+            >
+              {{ t('analytics.follows.oldest') }}
             </button>
           </div>
         </div>
+      </section>
 
-        @if (showEmptyState()) {
-          <div class="follow-ledger__state-card follow-ledger__state-card--empty">
-            <div class="follow-ledger__state-icon">
-              <lucide-icon [img]="followersIcon"></lucide-icon>
+      @if (showInitialLoading()) {
+        <section class="lf-tile lf-empty" aria-live="polite">
+          <p>{{ t('analytics.follows.loading') }}</p>
+        </section>
+      } @else {
+        <section class="lf-tile" aria-live="polite">
+          <div class="lf-results-head">
+            <div>
+              <p class="lf-kicker">{{ t('analytics.follows.resultsTitle') }}</p>
+              <p class="lf-note">{{ t('analytics.follows.showingResults', resultRange()) }}</p>
             </div>
-            <h2>{{ searchQuery() ? t('analytics.follows.searchNoResults', { query: searchQuery() }) : t('analytics.follows.empty') }}</h2>
-            <p>{{ t('analytics.follows.emptyHint') }}</p>
+            <div class="lf-results-actions">
+              @if (refreshing()) {
+                <span class="lf-note">{{ t('analytics.follows.refreshing') }}</span>
+              }
+              <button
+                type="button"
+                class="lf-btn lf-btn--compact"
+                [disabled]="loading() || refreshing()"
+                (click)="retryLoad()"
+              >
+                <span [class.lf-spin]="refreshing() || loading()">↻</span>
+                {{ t('common.refresh') }}
+              </button>
+            </div>
           </div>
-        } @else {
-          <div class="follow-ledger__grid">
-            @for (row of rows(); track trackFollower(row)) {
-              <article class="follow-ledger-card" [class.follow-ledger-card--mutual]="row.mutual">
-                <div class="follow-ledger-card__glow"></div>
 
-                <div class="follow-ledger-card__header">
-                  <div>
-                    <p class="follow-ledger-card__name">{{ row.follower_name || row.follower_login || row.follower_id }}</p>
-                    <p class="follow-ledger-card__meta">{{ row.follower_login || row.follower_id }}</p>
+          @if (showEmptyState()) {
+            <div class="lf-empty">
+              <h2 class="lf-h3">
+                {{ searchQuery() ? t('analytics.follows.searchNoResults', { query: searchQuery() }) : t('analytics.follows.empty') }}
+              </h2>
+              <p>{{ t('analytics.follows.emptyHint') }}</p>
+            </div>
+          } @else {
+            <div class="lf-follower-grid">
+              @for (row of rows(); track trackFollower(row)) {
+                <article class="lf-follower" [class.lf-follower--mutual]="row.mutual">
+                  <div class="lf-follower__head">
+                    <div class="lf-follower__identity">
+                      <p class="lf-follower__name">{{ row.follower_name || row.follower_login || row.follower_id }}</p>
+                      <p class="lf-follower__login">{{ row.follower_login || row.follower_id }}</p>
+                    </div>
+                    @if (row.mutual) {
+                      <span class="lf-chip lf-chip--gold">{{ t('analytics.follows.mutualBadge') }}</span>
+                    }
                   </div>
+                  <dl class="lf-follower__meta">
+                    <div>
+                      <dt>{{ t('analytics.follows.followedAt') }}</dt>
+                      <dd>{{ formatFollowedAt(row.followed_at) }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ t('analytics.follows.followAge') }}</dt>
+                      <dd>{{ formatFollowAge(row.followed_at) }}</dd>
+                    </div>
+                  </dl>
+                </article>
+              }
+            </div>
 
-                  @if (row.mutual) {
-                    <span class="follow-ledger-card__badge">
-                      <lucide-icon [img]="sparklesIcon" class="follow-ledger-card__badge-icon"></lucide-icon>
-                      <span>{{ t('analytics.follows.mutualBadge') }}</span>
-                    </span>
-                  }
+            @if (pagination().totalPages > 1) {
+              <div class="lf-pagination">
+                <div class="lf-pagination__info">
+                  <span>{{ t('common.show') }}</span>
+                  <select class="lf-select" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                    @for (option of itemsPerPageOptions; track option) {
+                      <option [value]="option" [attr.selected]="itemsPerPage() === option ? '' : null">{{ option }}</option>
+                    }
+                  </select>
+                  <span>{{ t('common.entries') }}</span>
                 </div>
 
-                <dl class="follow-ledger-card__stats">
-                  <div>
-                    <dt>{{ t('analytics.follows.followedAt') }}</dt>
-                    <dd>{{ formatFollowedAt(row.followed_at) }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ t('analytics.follows.followAge') }}</dt>
-                    <dd>{{ formatFollowAge(row.followed_at) }}</dd>
-                  </div>
-                </dl>
-              </article>
-            }
-          </div>
-
-          @if (pagination().totalPages > 1) {
-            <div class="follow-ledger__pagination">
-              <div class="follow-ledger__pagination-info">
-                <span>{{ t('common.show') }}</span>
-                <select class="follow-ledger__select" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
-                  @for (option of itemsPerPageOptions; track option) {
-                    <option [value]="option" [attr.selected]="itemsPerPage() === option ? '' : null">{{ option }}</option>
-                  }
-                </select>
-                <span>{{ t('common.entries') }}</span>
-              </div>
-
-              <nav class="follow-ledger__pagination-nav" [attr.aria-label]="t('analytics.follows.pagination')">
-                <button
-                  type="button"
-                  class="follow-ledger__pagination-btn"
-                  [disabled]="currentPage() === 1"
-                  (click)="changePage(currentPage() - 1)"
-                >
-                  {{ t('common.previous') }}
-                </button>
-
-                @for (page of pages(); track page) {
+                <nav class="lf-pagination__nav" [attr.aria-label]="t('analytics.follows.pagination')">
                   <button
                     type="button"
-                    class="follow-ledger__pagination-btn"
-                    [class.follow-ledger__pagination-btn--active]="currentPage() === page"
-                    (click)="changePage(page)"
+                    class="lf-btn lf-btn--xs"
+                    [disabled]="currentPage() === 1"
+                    (click)="changePage(currentPage() - 1)"
                   >
-                    {{ page }}
+                    {{ t('common.previous') }}
                   </button>
-                }
 
-                <button
-                  type="button"
-                  class="follow-ledger__pagination-btn"
-                  [disabled]="currentPage() === pagination().totalPages"
-                  (click)="changePage(currentPage() + 1)"
-                >
-                  {{ t('common.next') }}
-                </button>
-              </nav>
-            </div>
+                  @for (page of pages(); track page) {
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--xs"
+                      [class.lf-btn--primary]="currentPage() === page"
+                      (click)="changePage(page)"
+                    >
+                      {{ page }}
+                    </button>
+                  }
+
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--xs"
+                    [disabled]="currentPage() === pagination().totalPages"
+                    (click)="changePage(currentPage() + 1)"
+                  >
+                    {{ t('common.next') }}
+                  </button>
+                </nav>
+              </div>
+            }
           }
-        }
-      </section>
+        </section>
+      }
     }
-  }
-</section>
+  </main>
+</div>

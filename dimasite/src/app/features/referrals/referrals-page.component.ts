@@ -1,24 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import {
-  ArrowLeft,
-  BarChart3,
-  Coins,
-  CreditCard,
-  Copy,
-  Gift,
-  Check,
-  Lock,
-  LucideAngularModule,
-  Plus,
-  RefreshCw,
-  Trash2,
-  X
-} from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { LoadingIndicatorComponent } from '../../components/loading';
 import { ReferralCodeRecord, ReferralStatsData } from '../../models/referrals.model';
 import { LanguageService } from '../../services/language.service';
 import { ReferralsApiService } from '../../services/referrals-api.service';
@@ -34,8 +18,9 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-referrals-page',
-  imports: [RouterLink, LucideAngularModule, LoadingIndicatorComponent],
+  imports: [RouterLink],
   templateUrl: './referrals-page.component.html',
+  styleUrl: './referrals-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReferralsPageComponent implements OnDestroy {
@@ -82,21 +67,6 @@ export class ReferralsPageComponent implements OnDestroy {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  readonly backIcon = ArrowLeft;
-  readonly refreshIcon = RefreshCw;
-  readonly addIcon = Plus;
-  readonly deleteIcon = Trash2;
-  readonly lockIcon = Lock;
-  readonly closeIcon = X;
-  readonly copyIcon = Copy;
-  readonly copiedIcon = Check;
-  readonly summaryIcons = {
-    balance: Coins,
-    earned: Gift,
-    conversions: BarChart3,
-    codes: CreditCard
-  };
-
   readonly streamer = toSignal(this.streamerParam$, {
     initialValue: (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()
   });
@@ -122,6 +92,14 @@ export class ReferralsPageComponent implements OnDestroy {
     }
 
     return Boolean(channelID) && channelID === ownerChannelID;
+  });
+  readonly planTier = computed(() => {
+    const fromStats = this.stats()?.planType;
+    if (fromStats === 'PREMIUM') return 'premium' as const;
+    if (fromStats === 'PRO') return 'pro' as const;
+    const tier = this.session()?.appUser.plan_tier ?? 'free';
+    if (tier === 'premium' || tier === 'pro') return tier;
+    return 'free' as const;
   });
   readonly stats = signal<ReferralStatsData | null>(null);
   readonly loading = signal(true);

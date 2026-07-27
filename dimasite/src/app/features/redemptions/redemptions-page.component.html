@@ -1,0 +1,521 @@
+<div class="lf" [attr.data-plan]="canEditPremiumFields() ? 'premium' : 'free'">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">← {{ t('redemptions.backToModules') }}</a>
+        <p class="lf-kicker">{{ t('redemptions.heroBadge') }}</p>
+        <h1 class="lf-title">{{ t('redemptions.title') }} <span>{{ t('redemptions.customTag') }}</span></h1>
+        <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+            + {{ t('redemptions.createRewardButton') }}
+          </button>
+          <button
+            type="button"
+            class="lf-btn"
+            [disabled]="isLoading() || refreshCooldown() > 0"
+            (click)="refreshAll()"
+          >
+            <span [class.lf-spin]="isLoading()">↻</span>
+            @if (refreshCooldown() > 0) {
+              {{ t('redemptions.cooldown', { seconds: refreshCooldown() }) }}
+            } @else {
+              {{ t('common.refresh') }}
+            }
+          </button>
+        </div>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight">
+        <div class="lf-spotlight__head">
+          <h2 class="lf-h2">{{ t('redemptions.customRedemptions') }}</h2>
+          <span class="lf-chip" [class.lf-chip--gold]="canEditPremiumFields()">
+            {{ canEditPremiumFields() ? t('common.premiumFeature') : t('navbar.planFree') }}
+          </span>
+        </div>
+        <div class="lf-stats-strip lf-stats-strip--3">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('redemptions.customRedemptions') }}</span>
+            <span class="lf-stats-strip__value">{{ customRedemptions().length }}</span>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('redemptions.twitchRedemptions') }}</span>
+            <span class="lf-stats-strip__value">{{ uniqueTwitchRedemptions().length }}</span>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('common.enabled') }}</span>
+            <span class="lf-stats-strip__value">{{ enabledCustomCount() }}</span>
+          </div>
+        </div>
+        <p class="lf-note">{{ t('redemptions.doubleClickToEdit') }} · {{ t('redemptions.doubleClickToChangeColor') }}</p>
+      </article>
+    </section>
+
+    @if (isLoading()) {
+      <section class="lf-tile lf-empty">
+        <p>{{ t('redemptions.loading') }}</p>
+      </section>
+    } @else {
+      <!-- Custom redemptions -->
+      <section class="lf-tile">
+        <div class="lf-section-head">
+          <div>
+            <p class="lf-kicker">{{ t('redemptions.customTag') }}</p>
+            <h2 class="lf-h2">
+              {{ t('redemptions.customRedemptions') }}
+              <span class="lf-count">({{ customRedemptions().length }})</span>
+            </h2>
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
+            + {{ t('redemptions.createRewardButton') }}
+          </button>
+        </div>
+
+        @if (customRedemptions().length === 0) {
+          <div class="lf-empty">
+            <p>{{ t('redemptions.noCustomRedemptions') }}</p>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+              {{ t('redemptions.createFirstReward') }}
+            </button>
+          </div>
+        } @else {
+          <div class="lf-reward-grid">
+            @for (redemption of customRedemptions(); track getRedemptionId(redemption)) {
+              <article
+                class="lf-reward-card"
+                [attr.data-redemption-card]="getRedemptionId(redemption)"
+                [class.lf-reward-card--disabled]="!redemption.isEnabled"
+                [class.lf-reward-card--bulk]="isInBulkEditMode(redemption)"
+              >
+                <div
+                  class="lf-reward-color"
+                  [style.background-color]="getCardColor(redemption)"
+                  (dblclick)="openColorPicker(redemption)"
+                  [title]="t('redemptions.doubleClickToChangeColor')"
+                ></div>
+
+                @if (isColorPickerOpen(getRedemptionId(redemption))) {
+                  <div class="lf-color-picker">
+                    <div class="lf-color-picker__head">
+                      <span>{{ t('redemptions.selectColor') }}</span>
+                      <button type="button" class="lf-icon-btn" (click)="closeColorPicker(redemption)">×</button>
+                    </div>
+                    <div class="lf-color-presets">
+                      @for (color of presetColors; track color) {
+                        <button
+                          type="button"
+                          class="lf-color-swatch"
+                          [style.background-color]="color"
+                          [class.lf-color-swatch--selected]="getColorPickerValue(getRedemptionId(redemption)) === color"
+                          (click)="selectPresetColor(redemption, color)"
+                        ></button>
+                      }
+                    </div>
+                    <input
+                      type="text"
+                      class="lf-input lf-input--compact"
+                      [value]="getColorPickerValue(getRedemptionId(redemption))"
+                      (input)="updateColorPickerValue(getRedemptionId(redemption), $event)"
+                      (blur)="saveColorPicker(redemption)"
+                      placeholder="#6366f1"
+                    />
+                  </div>
+                }
+
+                <div class="lf-reward-body">
+                  <div class="lf-reward-badges">
+                    <span class="lf-chip lf-chip--accent">{{ t('redemptions.customTag') }}</span>
+                    <span
+                      class="lf-chip"
+                      [class.lf-chip--ok]="redemption.isEnabled"
+                      [class.lf-chip--muted]="!redemption.isEnabled"
+                    >
+                      {{ redemption.isEnabled ? t('common.enabled') : t('common.disabled') }}
+                    </span>
+                  </div>
+
+                  <!-- Title -->
+                  <div class="lf-reward-field">
+                    @if (isEditingField(getRedemptionId(redemption), 'title')) {
+                      <input
+                        type="text"
+                        class="lf-input lf-input--title field-input"
+                        [value]="getEditingValue(getRedemptionId(redemption))"
+                        (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                        (blur)="saveFieldEdit(redemption, 'title')"
+                        (keyup.enter)="saveFieldEdit(redemption, 'title')"
+                        (keyup.escape)="cancelFieldEdit(redemption)"
+                      />
+                    } @else if (isInBulkEditMode(redemption)) {
+                      <input
+                        type="text"
+                        class="lf-input lf-input--title field-input"
+                        [ngModel]="redemption.title"
+                        (ngModelChange)="updateRedemptionField(redemption, 'title', $event)"
+                      />
+                    } @else {
+                      <h3
+                        class="lf-reward-title"
+                        (dblclick)="startFieldEdit(redemption, 'title')"
+                        [title]="t('redemptions.doubleClickToEdit')"
+                      >
+                        {{ redemption.title }}
+                      </h3>
+                    }
+                  </div>
+
+                  <!-- Prompt -->
+                  <div class="lf-reward-field">
+                    @if (isEditingField(getRedemptionId(redemption), 'prompt')) {
+                      <textarea
+                        class="lf-textarea field-textarea"
+                        [value]="getEditingValue(getRedemptionId(redemption))"
+                        (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                        (blur)="saveFieldEdit(redemption, 'prompt')"
+                        (keyup.escape)="cancelFieldEdit(redemption)"
+                        rows="2"
+                      ></textarea>
+                    } @else if (isInBulkEditMode(redemption)) {
+                      <textarea
+                        class="lf-textarea field-textarea"
+                        [ngModel]="redemption.prompt"
+                        (ngModelChange)="updateRedemptionField(redemption, 'prompt', $event)"
+                        rows="2"
+                      ></textarea>
+                    } @else {
+                      <p
+                        class="lf-reward-prompt"
+                        (dblclick)="startFieldEdit(redemption, 'prompt')"
+                        [title]="t('redemptions.doubleClickToEdit')"
+                      >
+                        {{ redemption.prompt || t('redemptions.noPrompt') }}
+                      </p>
+                    }
+                  </div>
+
+                  <!-- Message -->
+                  <div class="lf-reward-field">
+                    <label class="lf-field-label">{{ t('common.message') }}</label>
+                    @if (isEditingField(getRedemptionId(redemption), 'message')) {
+                      <textarea
+                        class="lf-textarea field-textarea"
+                        [value]="getEditingValue(getRedemptionId(redemption))"
+                        (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                        (blur)="saveFieldEdit(redemption, 'message')"
+                        (keyup.escape)="cancelFieldEdit(redemption)"
+                        rows="2"
+                      ></textarea>
+                    } @else if (isInBulkEditMode(redemption)) {
+                      <textarea
+                        class="lf-textarea field-textarea"
+                        [ngModel]="redemption.message"
+                        (ngModelChange)="updateRedemptionField(redemption, 'message', $event)"
+                        rows="2"
+                      ></textarea>
+                    } @else {
+                      <p
+                        class="lf-reward-prompt"
+                        (dblclick)="startFieldEdit(redemption, 'message')"
+                        [title]="t('redemptions.doubleClickToEdit')"
+                      >
+                        {{ redemption.message || t('redemptions.noMessage') }}
+                      </p>
+                    }
+                  </div>
+
+                  <!-- Cost / Cooldown -->
+                  <div class="lf-reward-stats">
+                    <div class="lf-stat-box">
+                      <label class="lf-field-label">{{ t('common.cost') }}</label>
+                      @if (isEditingField(getRedemptionId(redemption), 'cost')) {
+                        <input
+                          type="number"
+                          class="lf-input field-input"
+                          [value]="getEditingValue(getRedemptionId(redemption))"
+                          (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                          (blur)="saveFieldEdit(redemption, 'cost')"
+                          (keyup.enter)="saveFieldEdit(redemption, 'cost')"
+                          min="0"
+                        />
+                      } @else if (isInBulkEditMode(redemption)) {
+                        <input
+                          type="number"
+                          class="lf-input field-input"
+                          [ngModel]="redemption.cost"
+                          (ngModelChange)="updateRedemptionField(redemption, 'cost', $event)"
+                          min="0"
+                        />
+                      } @else {
+                        <span
+                          class="lf-stat-value"
+                          (dblclick)="startFieldEdit(redemption, 'cost')"
+                          [title]="t('redemptions.doubleClickToEdit')"
+                        >
+                          {{ redemption.cost }}
+                        </span>
+                      }
+                    </div>
+
+                    <div class="lf-stat-box">
+                      <label class="lf-field-label">{{ t('common.cooldown') }}</label>
+                      @if (isEditingField(getRedemptionId(redemption), 'cooldown')) {
+                        <input
+                          type="number"
+                          class="lf-input field-input"
+                          [value]="getEditingValue(getRedemptionId(redemption))"
+                          (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                          (blur)="saveFieldEdit(redemption, 'cooldown')"
+                          (keyup.enter)="saveFieldEdit(redemption, 'cooldown')"
+                          min="0"
+                        />
+                      } @else if (isInBulkEditMode(redemption)) {
+                        <input
+                          type="number"
+                          class="lf-input field-input"
+                          [ngModel]="redemption.cooldown"
+                          (ngModelChange)="updateRedemptionField(redemption, 'cooldown', $event)"
+                          min="0"
+                        />
+                      } @else {
+                        <span
+                          class="lf-stat-value"
+                          (dblclick)="startFieldEdit(redemption, 'cooldown')"
+                          [title]="t('redemptions.doubleClickToEdit')"
+                        >
+                          {{ redemption.cooldown }}s
+                        </span>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Premium fields -->
+                  @if (showPremiumFields() || hasPremiumData(redemption)) {
+                    <div class="lf-premium" [class.lf-premium--locked]="!canEditPremiumFields()">
+                      <div class="lf-premium__head">
+                        <span>★ {{ t('common.premiumFeature') }}</span>
+                        @if (!canEditPremiumFields()) {
+                          <span class="lf-chip lf-chip--muted">🔒</span>
+                        }
+                      </div>
+                      <div class="lf-premium__grid">
+                        <div class="lf-stat-box">
+                          <label class="lf-field-label">{{ t('redemptions.originalCost') }}</label>
+                          @if (canEditPremiumFields()) {
+                            @if (isEditingField(getRedemptionId(redemption), 'originalCost')) {
+                              <input
+                                type="number"
+                                class="lf-input field-input"
+                                [value]="getEditingValue(getRedemptionId(redemption))"
+                                (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                                (blur)="saveFieldEdit(redemption, 'originalCost')"
+                                min="0"
+                              />
+                            } @else if (isInBulkEditMode(redemption)) {
+                              <input
+                                type="number"
+                                class="lf-input field-input"
+                                [ngModel]="redemption.originalCost"
+                                (ngModelChange)="updateRedemptionField(redemption, 'originalCost', $event)"
+                                min="0"
+                              />
+                            } @else {
+                              <span
+                                class="lf-stat-value"
+                                (dblclick)="startFieldEdit(redemption, 'originalCost')"
+                                [title]="t('redemptions.doubleClickToEdit')"
+                              >
+                                {{ redemption.originalCost ?? '—' }}
+                              </span>
+                            }
+                          } @else {
+                            <span class="lf-stat-value lf-stat-value--muted">{{ redemption.originalCost ?? '—' }}</span>
+                          }
+                        </div>
+
+                        <div class="lf-stat-box">
+                          <label class="lf-field-label">{{ t('redemptions.costChange') }}</label>
+                          @if (canEditPremiumFields()) {
+                            @if (isEditingField(getRedemptionId(redemption), 'costChange')) {
+                              <input
+                                type="number"
+                                class="lf-input field-input"
+                                [value]="getEditingValue(getRedemptionId(redemption))"
+                                (input)="updateEditingValue(getRedemptionId(redemption), $event)"
+                                (blur)="saveFieldEdit(redemption, 'costChange')"
+                              />
+                            } @else if (isInBulkEditMode(redemption)) {
+                              <input
+                                type="number"
+                                class="lf-input field-input"
+                                [ngModel]="redemption.costChange"
+                                (ngModelChange)="updateRedemptionField(redemption, 'costChange', $event)"
+                              />
+                            } @else {
+                              <span
+                                class="lf-stat-value"
+                                (dblclick)="startFieldEdit(redemption, 'costChange')"
+                                [title]="t('redemptions.doubleClickToEdit')"
+                              >
+                                {{ formatCostChange(redemption.costChange) }}
+                              </span>
+                            }
+                          } @else {
+                            <span class="lf-stat-value lf-stat-value--muted">{{ formatCostChange(redemption.costChange) }}</span>
+                          }
+                        </div>
+                      </div>
+                      <label class="lf-check">
+                        <input
+                          type="checkbox"
+                          [checked]="redemption.returnToOriginalCost"
+                          [disabled]="!canEditPremiumFields()"
+                          (change)="
+                            canEditPremiumFields() &&
+                              (isInBulkEditMode(redemption)
+                                ? updateRedemptionField(redemption, 'returnToOriginalCost', $any($event.target).checked)
+                                : toggleReturnToOriginal(redemption))
+                          "
+                        />
+                        <span>{{ t('redemptions.returnToOriginalCost') }}</span>
+                      </label>
+                    </div>
+                  }
+
+                  <!-- Actions -->
+                  <div class="lf-reward-actions">
+                    @if (isInBulkEditMode(redemption)) {
+                      <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="saveBulkEdit(redemption)">
+                        {{ t('common.save') }}
+                      </button>
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="cancelBulkEdit(redemption)">
+                        {{ t('common.cancel') }}
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="lf-btn lf-btn--compact"
+                        [title]="t('redemptions.editAll')"
+                        (click)="enterBulkEditMode(redemption)"
+                      >
+                        ✎ {{ t('redemptions.editAll') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="lf-btn lf-btn--compact"
+                        [class.lf-btn--ok]="!redemption.isEnabled"
+                        [class.lf-btn--warn]="redemption.isEnabled"
+                        [title]="redemption.isEnabled ? t('common.disable') : t('common.enable')"
+                        (click)="toggleEnabled(redemption)"
+                      >
+                        {{ redemption.isEnabled ? t('common.disable') : t('common.enable') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="lf-btn lf-btn--compact lf-btn--danger"
+                        [title]="t('common.delete')"
+                        (click)="deleteRedemption(redemption)"
+                      >
+                        {{ t('common.delete') }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Twitch native -->
+      <section class="lf-tile">
+        <div class="lf-section-head">
+          <div>
+            <p class="lf-kicker">Twitch</p>
+            <h2 class="lf-h2">
+              {{ t('redemptions.twitchRedemptions') }}
+              <span class="lf-count">({{ uniqueTwitchRedemptions().length }})</span>
+            </h2>
+          </div>
+          <button
+            type="button"
+            class="lf-btn lf-btn--compact lf-btn--twitch"
+            [disabled]="twitchRefreshCooldown() > 0"
+            (click)="refreshTwitch()"
+          >
+            <span [class.lf-spin]="isLoadingTwitch()">↻</span>
+            @if (twitchRefreshCooldown() > 0) {
+              {{ t('redemptions.cooldown', { seconds: twitchRefreshCooldown() }) }}
+            } @else {
+              {{ t('common.refresh') }}
+            }
+          </button>
+        </div>
+
+        @if (isLoadingTwitch()) {
+          <div class="lf-empty">
+            <p>{{ t('redemptions.loadingTwitch') }}</p>
+          </div>
+        } @else if (uniqueTwitchRedemptions().length === 0) {
+          <div class="lf-empty">
+            <p>{{ t('redemptions.noUniqueTwitchRedemptions') }}</p>
+          </div>
+        } @else {
+          <div class="lf-reward-grid">
+            @for (redemption of uniqueTwitchRedemptions(); track redemption.id) {
+              <article class="lf-reward-card lf-reward-card--twitch">
+                <div
+                  class="lf-reward-color"
+                  [style.background-color]="redemption.background_color || '#9146ff'"
+                ></div>
+                <div class="lf-reward-body">
+                  <div class="lf-reward-badges">
+                    <span class="lf-chip lf-chip--muted">🔒 {{ t('redemptions.readOnly') }}</span>
+                    <span
+                      class="lf-chip"
+                      [class.lf-chip--ok]="redemption.is_enabled"
+                      [class.lf-chip--muted]="!redemption.is_enabled"
+                    >
+                      {{ redemption.is_enabled ? t('common.enabled') : t('common.disabled') }}
+                    </span>
+                  </div>
+                  <h3 class="lf-reward-title">{{ redemption.title }}</h3>
+                  <p class="lf-reward-prompt">{{ redemption.prompt || t('redemptions.noPrompt') }}</p>
+                  <div class="lf-reward-stats">
+                    <div class="lf-stat-box">
+                      <label class="lf-field-label">{{ t('common.cost') }}</label>
+                      <span class="lf-stat-value">{{ redemption.cost }}</span>
+                    </div>
+                    <div class="lf-stat-box">
+                      <label class="lf-field-label">{{ t('common.cooldown') }}</label>
+                      <span class="lf-stat-value">
+                        {{ redemption.global_cooldown_setting?.global_cooldown_seconds || 0 }}s
+                      </span>
+                    </div>
+                  </div>
+                  <p class="lf-twitch-hint">ⓘ {{ t('redemptions.manageOnTwitch') }}</p>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>
+
+<app-create-reward-modal
+  [isOpen]="isCreateModalOpen()"
+  (isOpenChange)="isCreateModalOpen.set($event)"
+  (rewardCreated)="onRewardCreated($event)"
+/>
+
+<app-confirmation-modal
+  [isOpen]="showDeleteModal()"
+  [title]="t('redemptions.deleteModal.title')"
+  [message]="deleteModalMessage()"
+  [confirmText]="t('common.delete')"
+  [cancelText]="t('common.cancel')"
+  variant="danger"
+  (confirm)="confirmDeleteRedemption()"
+  (cancel)="closeDeleteModal()"
+/>

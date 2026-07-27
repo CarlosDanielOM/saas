@@ -490,6 +490,8 @@
   <app-command-modal
     [isOpen]="showCommandModal()"
     [command]="editingCommand()"
+    [planTier]="planTier()"
+    [existingTimerMinutes]="editingTimerMinutes()"
     (save)="onModalSave($event)"
     (cancel)="closeModal()"
   />

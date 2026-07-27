@@ -1,0 +1,86 @@
+@if (tiers().length > 0) {
+  <div class="lf-tiers">
+    @for (tier of tiers(); track tier.id) {
+      <div class="lf-tier">
+        <button
+          type="button"
+          class="lf-tier__remove"
+          [disabled]="disabled()"
+          (click)="removeTier(tier.id)"
+          [attr.aria-label]="t('chatEvents.tierRemoveAria', { name: tier.name })"
+        >
+          ×
+        </button>
+
+        <div class="lf-tier__grid">
+          <label class="lf-tier__field lf-tier__field--full">
+            <span>{{ t('chatEvents.tierName') }}</span>
+            <input
+              type="text"
+              [value]="tier.name"
+              [disabled]="disabled()"
+              (input)="updateTier(tier.id, 'name', $event)"
+              [placeholder]="t('chatEvents.tierNamePlaceholder')"
+            />
+          </label>
+
+          <label class="lf-tier__field">
+            <span>{{ t('chatEvents.minBits') }}</span>
+            <input
+              type="number"
+              [value]="tier.minAmount"
+              [disabled]="disabled()"
+              (input)="updateTier(tier.id, 'minAmount', $event)"
+              min="0"
+            />
+          </label>
+
+          <label class="lf-tier__field">
+            <span>{{ t('chatEvents.maxBits') }}</span>
+            <input
+              type="number"
+              [value]="tier.maxAmount"
+              [disabled]="disabled()"
+              (input)="updateTier(tier.id, 'maxAmount', $event)"
+              min="0"
+            />
+          </label>
+
+          <label class="lf-tier__field lf-tier__field--full">
+            <span>{{ t('chatEvents.message') }}</span>
+            <input
+              type="text"
+              [value]="tier.message"
+              [disabled]="disabled()"
+              (input)="updateTier(tier.id, 'message', $event)"
+              [placeholder]="t('chatEvents.messagePlaceholder')"
+            />
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+<button
+  type="button"
+  class="lf-tier-add"
+  [disabled]="disabled() || !canAdd()"
+  [title]="addTierTooltip()"
+  (click)="addTier()"
+>
+  + {{ t('chatEvents.addMessageTier') }}
+</button>
+
+@if (tierInfoMessage(); as info) {
+  <div
+    class="lf-tier-info"
+    [class.lf-tier-info--upsell]="info.level === 'upsell-premium' || info.level === 'upsell-pro'"
+    [class.lf-tier-info--limit]="info.level === 'limit-reached'"
+  >
+    @if (info.level === 'upsell-premium' || info.level === 'upsell-pro') {
+      <span class="lf-tier-info__badge">★{{ info.level === 'upsell-pro' ? '+' : '' }}</span>
+    }
+    <span>{{ info.message }}</span>
+  </div>
+}
