@@ -6,9 +6,21 @@ sidebar:
   order: 2
 ---
 
-Los comandos de DomDimaBot se dividen en dos áreas principales:
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-- **Comandos Overview** — comandos integrados, permisos y el set de comandos por defecto
-- **Comandos Personalizados Avanzados (AST)** — sintaxis, funciones, reglas de ejecución y recetas para comandos complejos
+Los comandos de DomDimaBot impulsan la automatización del chat — desde respuestas simples hasta flujos AST programables.
 
-Empieza con [Commands Overview](/es/commands/overview/) si quieres lo básico, o salta a [Comandos Personalizados Avanzados (AST)](/es/commands/advanced/) si quieres lógica programable para comandos.
+Elige tu camino:
+
+<CardGrid>
+  <LinkCard
+    title="Resumen de comandos"
+    href="/es/commands/overview/"
+    description="Comandos integrados, permisos, cooldowns y el set de comandos por defecto."
+  />
+  <LinkCard
+    title="Comandos avanzados (AST)"
+    href="/es/commands/advanced/"
+    description="Sintaxis, funciones, reglas de ejecución y recetas para lógica compleja."
+  />
+</CardGrid>

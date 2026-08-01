@@ -1,12 +1,13 @@
 ---
 title: Bienvenido a los Docs de DomDimaBot
-description: Todo lo que necesitas saber sobre DomDimaBot - tu compañero de streaming en Twitch.
+description: Todo lo que necesitas saber sobre DomDimaBot — tu compañero de streaming en Twitch.
 template: splash
+editUrl: false
 sidebar:
   hidden: true
 hero:
-  title: DomDimaBot
-  tagline: Tu compañero definitivo de streaming en Twitch. Automatiza comandos, gestiona recompensas, involucra a tu comunidad y más.
+  title: Docs al ritmo de tu stream
+  tagline: Configura DomDimaBot, automatiza el chat, lanza recompensas y TTS, y protege tu canal — sin perderte en un muro de páginas.
   image:
     file: ../../../assets/logo.svg
   actions:
@@ -14,19 +15,19 @@ hero:
       link: /es/getting-started/
       icon: right-arrow
       variant: primary
-    - text: Panel de Control
+    - text: Abrir panel
       link: https://domdimabot.com
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard, LinkButton } from '@astrojs/starlight/components';
 
 <div class="hero-showcase">
   <div class="chat-container">
     <div class="chat-header">
       <div class="chat-status-dot"></div>
-      <span>Chat de Twitch</span>
+      <span>Vista previa del chat</span>
     </div>
     <div class="chat-messages">
       <div class="chat-message user">
@@ -36,7 +37,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
       <div class="chat-message bot">
         <span class="chat-bot-badge">BOT</span>
         <span class="chat-user">DomDimaBot:</span>
-        <span class="chat-text">Comandos activos actuales: !ping, !socials, !tts, !play... ¡Escribe !help <span class="accent-glow">[Premium]</span> para más!</span>
+        <span class="chat-text">Activos: !ping, !socials, !tts, !play… Prueba !help <span class="accent-glow">[Premium]</span></span>
       </div>
       <div class="chat-message user">
         <span class="chat-user-vip">VIP_Streamer:</span>
@@ -45,35 +46,96 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
       <div class="chat-message bot voice">
         <span class="chat-bot-badge">BOT</span>
         <span class="chat-user">DomDimaBot:</span>
-        <span class="chat-text">🔊 Reproduciendo texto a voz... <span class="premium-glow">[Tier Pro]</span></span>
+        <span class="chat-text">Reproduciendo voz… <span class="premium-glow">[Pro]</span></span>
       </div>
     </div>
   </div>
 </div>
 
-<CardGrid stagger>
-  <Card title="Configuración Rápida" icon="rocket" href="/es/getting-started/">
-    Ponlo en marcha en minutos con nuestra guía de configuración directa. Conecta tu cuenta de Twitch y empieza a automatizar.
-  </Card>
-  <Card title="Comandos" icon="command" href="/es/commands/">
-    Crea comandos personalizados para cualquier cosa que necesite tu comunidad. Desde respuestas de texto simples hasta integraciones complejas.
-  </Card>
-  <Card title="Texto a Voz" icon="voice" href="/es/tts/">
-    Configura proveedores TTS, etiquetas expresivas de voz IA y costos de créditos IA.
-  </Card>
-  <Card title="Recompensas y Canjes" icon="gift" href="/es/rewards/">
-    Gestiona puntos del canal, recompensas personalizadas y canjes automatizados sin problemas.
-  </Card>
-  <Card title="Personalidad IA" icon="sparkle" href="/es/ai-personality/">
-    Dale a tu bot una personalidad única impulsada por IA. Puede chatear, responder al contexto y participar de forma natural.
-  </Card>
-  <Card title="Disparadores y Medios" icon="play" href="/es/triggers/">
-    Configura acciones basadas en disparadores para sonidos, overlays, animaciones y más durante tus transmisiones.
-  </Card>
-  <Card title="Defensa de Follows" icon="shield" href="/es/follow-defense/">
-    Protege tu stream de avalanchas de follows, ataques con bots y hate raids con modos de defensa configurables.
-  </Card>
-  <Card title="Analíticas" icon="chart" href="https://domdimabot.com" target="_blank">
-    Rastrea el rendimiento de tu transmisión, crecimiento de seguidores y métricas de engagement en tiempo real.
-  </Card>
-</CardGrid>
+<section class="docs-section">
+  <div class="docs-section__head">
+    <p class="docs-kicker">Empieza aquí</p>
+    <h2 class="docs-section__title">¿Nuevo en DomDimaBot?</h2>
+    <p class="docs-section__lead">Conecta Twitch, desbloquea permisos y aprende dónde está cada cosa en el panel.</p>
+  </div>
+  <div class="link-card-grid docs-feature-grid">
+    <LinkCard
+      title="Primeros pasos"
+      href="/es/getting-started/"
+      description="Conecta tu cuenta, entiende acceso Básico vs Completo y arranca con lo esencial."
+    />
+    <LinkCard
+      title="Tour del panel"
+      href="/es/dashboard/"
+      description="Un mapa de Overview, Comandos, Recompensas, Disparadores y las herramientas de cada stream."
+    />
+  </div>
+</section>
+
+<section class="docs-section">
+  <div class="docs-section__head">
+    <p class="docs-kicker">Funciones principales</p>
+    <h2 class="docs-section__title">Arma tu kit de stream</h2>
+    <p class="docs-section__lead">Elige una función y salta directo a la guía. Cada tarjeta es un tema completo — no un listado suelto.</p>
+  </div>
+  <div class="link-card-grid docs-feature-grid">
+    <LinkCard
+      title="Comandos"
+      href="/es/commands/"
+      description="Comandos de chat integrados y flujos AST avanzados para respuestas programables."
+    />
+    <LinkCard
+      title="Texto a voz"
+      href="/es/tts/"
+      description="Proveedores, etiquetas expresivas de voz y cómo se usan los créditos de IA."
+    />
+    <LinkCard
+      title="Recompensas del canal"
+      href="/es/rewards/"
+      description="Puntos del canal, canjes automáticos y flujos de recompensas."
+    />
+    <LinkCard
+      title="Disparadores y medios"
+      href="/es/triggers/"
+      description="Sonidos, overlays y medios activados por eventos durante tu stream."
+    />
+  </div>
+</section>
+
+<section class="docs-section">
+  <div class="docs-section__head">
+    <p class="docs-kicker">Streams más inteligentes</p>
+    <h2 class="docs-section__title">Personalidad y protección</h2>
+    <p class="docs-section__lead">Mantén el chat vivo y tu canal a salvo cuando se pone ruidoso.</p>
+  </div>
+  <div class="link-card-grid docs-feature-grid">
+    <LinkCard
+      title="Personalidad IA"
+      href="/es/ai-personality/"
+      description="Dale al bot una voz, memoria de usuarios conocidos y un estilo natural de chat."
+    />
+    <LinkCard
+      title="Defensa de follows"
+      href="/es/follow-defense/"
+      description="Detecta avalanchas de follows, silencia alertas spam y escala modos de protección."
+    />
+  </div>
+</section>
+
+<section class="docs-section docs-section--cta">
+  <div class="docs-cta">
+    <div class="docs-cta__copy">
+      <p class="docs-kicker">Cuando quieras</p>
+      <h2 class="docs-section__title">Abre el panel</h2>
+      <p class="docs-section__lead">Configura en vivo en domdimabot.com y vuelve aquí cuando necesites la guía completa.</p>
+    </div>
+    <div class="docs-cta__actions">
+      <LinkButton href="https://domdimabot.com" variant="primary" icon="external">
+        Ir al panel
+      </LinkButton>
+      <LinkButton href="/es/getting-started/" variant="minimal" icon="right-arrow">
+        Leer guía de setup
+      </LinkButton>
+    </div>
+  </div>
+</section>
