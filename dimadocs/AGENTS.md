@@ -34,10 +34,16 @@
 - Maintain both English and Spanish versions for all new pages.
 - Update screenshots or examples when UI/UX changes.
 
-## Styling
+## Styling — Live First (docs)
 
-- Global styles live in `src/styles/custom.css`.
-- Follow the design tokens and plan-tier conventions from the root design system when applicable.
+Docs share the **Live First (OC3c)** design language with `dimasite/`.
+
+- Global theme: `src/styles/custom.css` (tokens + Starlight overrides only).
+- Tokens: `--bg`, `--tile`, `--fg`, `--muted`, `--line`, `--accent`, `--accent-soft`, `--kicker`, `--live`, `--radius`, `--shadow`, `--font` (Plus Jakarta Sans).
+- Patterns: bento tiles (`.lf-tile`), kickers, pill buttons — **not** glassmorphism / aurora shells.
+- Homepage splash markup uses `.lf-docs` / `.lf-hero` / `.lf-bento` / `.lf-feature`.
+- Dark/light via Starlight `data-theme`; both themes must stay readable (4.5:1 body text).
+- Reference: `.opencode/skills/live-first/SKILL.md` and dimasite landing/dashboard.
 
 ---
 

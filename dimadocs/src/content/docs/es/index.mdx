@@ -1,141 +1,150 @@
 ---
-title: Bienvenido a los Docs de DomDimaBot
-description: Todo lo que necesitas saber sobre DomDimaBot — tu compañero de streaming en Twitch.
+title: Docs de DomDimaBot
+description: Guías de DomDimaBot — configuración, comandos, recompensas, TTS, disparadores, IA y protección del stream.
 template: splash
 editUrl: false
+prev: false
+next: false
 sidebar:
   hidden: true
 hero:
-  title: Docs al ritmo de tu stream
-  tagline: Configura DomDimaBot, automatiza el chat, lanza recompensas y TTS, y protege tu canal — sin perderte en un muro de páginas.
-  image:
-    file: ../../../assets/logo.svg
-  actions:
-    - text: Comenzar
-      link: /es/getting-started/
-      icon: right-arrow
-      variant: primary
-    - text: Abrir panel
-      link: https://domdimabot.com
-      icon: external
-      variant: minimal
+  title: Docs de DomDimaBot
+  tagline: Guías para streamers
+  actions: []
 ---
 
-import { LinkCard, LinkButton } from '@astrojs/starlight/components';
+import { LinkButton } from '@astrojs/starlight/components';
 
-<div class="hero-showcase">
-  <div class="chat-container">
-    <div class="chat-header">
-      <div class="chat-status-dot"></div>
-      <span>Vista previa del chat</span>
-    </div>
-    <div class="chat-messages">
-      <div class="chat-message user">
-        <span class="chat-user">Espectador:</span>
-        <span class="chat-text">!commands</span>
-      </div>
-      <div class="chat-message bot">
-        <span class="chat-bot-badge">BOT</span>
-        <span class="chat-user">DomDimaBot:</span>
-        <span class="chat-text">Activos: !ping, !socials, !tts, !play… Prueba !help <span class="accent-glow">[Premium]</span></span>
-      </div>
-      <div class="chat-message user">
-        <span class="chat-user-vip">VIP_Streamer:</span>
-        <span class="chat-text">!tts ¡Hola chat!</span>
-      </div>
-      <div class="chat-message bot voice">
-        <span class="chat-bot-badge">BOT</span>
-        <span class="chat-user">DomDimaBot:</span>
-        <span class="chat-text">Reproduciendo voz… <span class="premium-glow">[Pro]</span></span>
+<div class="lf-docs">
+  <section class="lf-hero">
+    <div class="lf-tile lf-tile--intro">
+      <p class="lf-kicker"><span class="lf-kicker__dot" aria-hidden="true"></span> Documentación</p>
+      <h1 class="lf-title">Docs al ritmo de tu <span>stream</span></h1>
+      <p class="lf-copy">
+        Configura DomDimaBot, automatiza el chat, lanza recompensas y TTS, y protege tu canal —
+        organizado como el producto.
+      </p>
+      <div class="lf-actions">
+        <LinkButton href="/es/getting-started/" variant="primary" icon="right-arrow">
+          Comenzar
+        </LinkButton>
+        <LinkButton href="https://domdimabot.com" variant="minimal" icon="external">
+          Abrir panel
+        </LinkButton>
       </div>
     </div>
-  </div>
-</div>
 
-<section class="docs-section">
-  <div class="docs-section__head">
-    <p class="docs-kicker">Empieza aquí</p>
-    <h2 class="docs-section__title">¿Nuevo en DomDimaBot?</h2>
-    <p class="docs-section__lead">Conecta Twitch, desbloquea permisos y aprende dónde está cada cosa en el panel.</p>
-  </div>
-  <div class="link-card-grid docs-feature-grid">
-    <LinkCard
-      title="Primeros pasos"
-      href="/es/getting-started/"
-      description="Conecta tu cuenta, entiende acceso Básico vs Completo y arranca con lo esencial."
-    />
-    <LinkCard
-      title="Tour del panel"
-      href="/es/dashboard/"
-      description="Un mapa de Overview, Comandos, Recompensas, Disparadores y las herramientas de cada stream."
-    />
-  </div>
-</section>
-
-<section class="docs-section">
-  <div class="docs-section__head">
-    <p class="docs-kicker">Funciones principales</p>
-    <h2 class="docs-section__title">Arma tu kit de stream</h2>
-    <p class="docs-section__lead">Elige una función y salta directo a la guía. Cada tarjeta es un tema completo — no un listado suelto.</p>
-  </div>
-  <div class="link-card-grid docs-feature-grid">
-    <LinkCard
-      title="Comandos"
-      href="/es/commands/"
-      description="Comandos de chat integrados y flujos AST avanzados para respuestas programables."
-    />
-    <LinkCard
-      title="Texto a voz"
-      href="/es/tts/"
-      description="Proveedores, etiquetas expresivas de voz y cómo se usan los créditos de IA."
-    />
-    <LinkCard
-      title="Recompensas del canal"
-      href="/es/rewards/"
-      description="Puntos del canal, canjes automáticos y flujos de recompensas."
-    />
-    <LinkCard
-      title="Disparadores y medios"
-      href="/es/triggers/"
-      description="Sonidos, overlays y medios activados por eventos durante tu stream."
-    />
-  </div>
-</section>
-
-<section class="docs-section">
-  <div class="docs-section__head">
-    <p class="docs-kicker">Streams más inteligentes</p>
-    <h2 class="docs-section__title">Personalidad y protección</h2>
-    <p class="docs-section__lead">Mantén el chat vivo y tu canal a salvo cuando se pone ruidoso.</p>
-  </div>
-  <div class="link-card-grid docs-feature-grid">
-    <LinkCard
-      title="Personalidad IA"
-      href="/es/ai-personality/"
-      description="Dale al bot una voz, memoria de usuarios conocidos y un estilo natural de chat."
-    />
-    <LinkCard
-      title="Defensa de follows"
-      href="/es/follow-defense/"
-      description="Detecta avalanchas de follows, silencia alertas spam y escala modos de protección."
-    />
-  </div>
-</section>
-
-<section class="docs-section docs-section--cta">
-  <div class="docs-cta">
-    <div class="docs-cta__copy">
-      <p class="docs-kicker">Cuando quieras</p>
-      <h2 class="docs-section__title">Abre el panel</h2>
-      <p class="docs-section__lead">Configura en vivo en domdimabot.com y vuelve aquí cuando necesites la guía completa.</p>
+    <div class="lf-tile lf-tile--proof" aria-label="Vista previa del chat">
+      <div class="lf-proof-head">
+        <span class="lf-kicker__dot" aria-hidden="true"></span>
+        Vista previa del chat
+      </div>
+      <ul class="lf-proof-list">
+        <li class="lf-proof-msg">
+          <span class="lf-user">Espectador</span>
+          !commands
+        </li>
+        <li class="lf-proof-msg lf-proof-msg--bot">
+          <span class="lf-badge">BOT</span>
+          <span class="lf-user">DomDimaBot</span>
+          Activos: !ping, !socials, !tts… prueba !help <span class="lf-chip lf-chip--gold">Premium</span>
+        </li>
+        <li class="lf-proof-msg">
+          <span class="lf-user lf-user--vip">VIP_Streamer</span>
+          !tts ¡Hola chat!
+        </li>
+        <li class="lf-proof-msg lf-proof-msg--bot">
+          <span class="lf-badge">BOT</span>
+          <span class="lf-user">DomDimaBot</span>
+          Reproduciendo voz… <span class="lf-chip lf-chip--accent">Pro</span>
+        </li>
+      </ul>
     </div>
-    <div class="docs-cta__actions">
+  </section>
+
+  <section class="lf-section">
+    <div class="lf-section__head">
+      <p class="lf-kicker">Empieza aquí</p>
+      <h2 class="lf-h2">¿Nuevo en DomDimaBot?</h2>
+      <p class="lf-note">Conecta Twitch, desbloquea permisos y conoce el mapa del panel.</p>
+    </div>
+    <div class="lf-bento lf-bento--2">
+      <a class="lf-tile lf-feature" href="/es/getting-started/">
+        <p class="lf-feature__label">Primeros pasos</p>
+        <p class="lf-feature__desc">Conecta tu cuenta, acceso Básico vs Completo, y arranca con lo esencial.</p>
+        <span class="lf-feature__go">Leer guía →</span>
+      </a>
+      <a class="lf-tile lf-feature" href="/es/dashboard/">
+        <p class="lf-feature__label">Tour del panel</p>
+        <p class="lf-feature__desc">Overview, Comandos, Recompensas, Disparadores — dónde está cada cosa.</p>
+        <span class="lf-feature__go">Explorar →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="lf-section">
+    <div class="lf-section__head">
+      <p class="lf-kicker">Funciones principales</p>
+      <h2 class="lf-h2">Arma tu kit de stream</h2>
+      <p class="lf-note">Una tarjeta por tema. Salta directo a la guía que necesitas.</p>
+    </div>
+    <div class="lf-bento lf-bento--4">
+      <a class="lf-tile lf-feature" href="/es/commands/">
+        <p class="lf-feature__label">Comandos</p>
+        <p class="lf-feature__desc">Comandos integrados y flujos AST avanzados.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+      <a class="lf-tile lf-feature" href="/es/tts/">
+        <p class="lf-feature__label">Texto a voz</p>
+        <p class="lf-feature__desc">Proveedores, etiquetas de voz y créditos de IA.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+      <a class="lf-tile lf-feature" href="/es/rewards/">
+        <p class="lf-feature__label">Recompensas</p>
+        <p class="lf-feature__desc">Puntos, canjes automáticos y flujos de rewards.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+      <a class="lf-tile lf-feature" href="/es/triggers/">
+        <p class="lf-feature__label">Disparadores</p>
+        <p class="lf-feature__desc">Sonidos, overlays y medios por eventos.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="lf-section">
+    <div class="lf-section__head">
+      <p class="lf-kicker">Streams más inteligentes</p>
+      <h2 class="lf-h2">Personalidad y protección</h2>
+      <p class="lf-note">Chat vivo y canal a salvo cuando sube el tráfico.</p>
+    </div>
+    <div class="lf-bento lf-bento--2">
+      <a class="lf-tile lf-feature" href="/es/ai-personality/">
+        <p class="lf-feature__label">Personalidad IA</p>
+        <p class="lf-feature__desc">Voz, usuarios conocidos y estilo natural de chat.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+      <a class="lf-tile lf-feature" href="/es/follow-defense/">
+        <p class="lf-feature__label">Defensa de follows</p>
+        <p class="lf-feature__desc">Avalanchas de follows, silenciar spam y escalar modos.</p>
+        <span class="lf-feature__go">Abrir →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="lf-tile lf-cta">
+    <div class="lf-cta__copy">
+      <p class="lf-kicker">Cuando quieras</p>
+      <h2 class="lf-h2">Configura en el panel</h2>
+      <p class="lf-note">Los ajustes en vivo están en domdimabot.com. Vuelve aquí para la guía completa.</p>
+    </div>
+    <div class="lf-cta__actions">
       <LinkButton href="https://domdimabot.com" variant="primary" icon="external">
         Ir al panel
       </LinkButton>
       <LinkButton href="/es/getting-started/" variant="minimal" icon="right-arrow">
-        Leer guía de setup
+        Guía de setup
       </LinkButton>
     </div>
-  </div>
-</section>
+  </section>
+</div>

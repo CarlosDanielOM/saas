@@ -118,11 +118,37 @@ export default defineConfig({
         },
       },
       customCss: ['./src/styles/custom.css'],
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'preconnect',
+            href: 'https://fonts.googleapis.com',
+          },
+        },
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'preconnect',
+            href: 'https://fonts.gstatic.com',
+            crossorigin: true,
+          },
+        },
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'stylesheet',
+            href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap',
+          },
+        },
+      ],
       logo: {
         light: './src/assets/logo.svg',
         dark: './src/assets/logo-dark.svg',
+        alt: 'DomDimaBot',
         replacesTitle: true,
       },
+      favicon: '/favicon.svg',
       social: [
         {
           icon: 'twitch',
@@ -134,9 +160,10 @@ export default defineConfig({
       pagination: true,
       lastUpdated: false,
       expressiveCode: {
-        themes: ['github-dark', 'github-light'],
+        themes: ['github-dark-dimmed', 'github-light'],
         styleOverrides: {
           borderRadius: '0.75rem',
+          borderWidth: '1px',
           frames: {
             shadowColor: 'transparent',
           },
