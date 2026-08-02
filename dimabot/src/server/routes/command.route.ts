@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { CommandsSchema } from "../../schemas/commands.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
@@ -120,6 +121,15 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
             const body = req.body;
 
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            if (!access.allowed) {
+                return res.status(403).send({
+                    error: true,
+                    message: 'You do not have access to this channel',
+                    status: 403
+                });
+            }
+
             if (!body.name || !body.cmd || !body.func || !body.message || !body.channel) {
                 return res.status(400).send({
                     error: true,
@@ -196,6 +206,15 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
             const body = req.body;
             const language = typeof req.query.language === 'string' ? req.query.language : undefined;
 
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            if (!access.allowed) {
+                return res.status(403).send({
+                    error: true,
+                    message: 'You do not have access to this channel',
+                    status: 403
+                });
+            }
+
             const cacheClient = await getDragonflyClient();
 
             const command = await CommandsSchema.findOne({
@@ -211,7 +230,13 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 });
             }
 
-            const updatePayload = { ...body };
+            const updatePayload: Record<string, unknown> = {};
+            const updatableFields = ['name', 'cmd', 'func', 'message', 'responses', 'type', 'description', 'cooldown', 'enabled', 'userLevelName', 'userLevel'] as const;
+            for (const field of updatableFields) {
+                if (field in body) {
+                    updatePayload[field] = body[field];
+                }
+            }
 
             if (command.reserved && 'message' in updatePayload) {
                 delete updatePayload.message;
@@ -275,6 +300,15 @@ router.delete('/:channelID/:commandID', authMiddleware as any, async (req: Reque
             const { channelID, commandID } = req.params;
             const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
             const commandIdStr = Array.isArray(commandID) ? commandID[0] : commandID;
+
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            if (!access.allowed) {
+                return res.status(403).send({
+                    error: true,
+                    message: 'You do not have access to this channel',
+                    status: 403
+                });
+            }
 
             const cacheClient = await getDragonflyClient();
 

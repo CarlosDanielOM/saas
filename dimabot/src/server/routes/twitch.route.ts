@@ -3,6 +3,7 @@ import TwitchStreamers from "../../classes/twitch_streamers.class.js";
 import { getTwitchStreamerHeaderById } from "../../utils/header.js";
 import { getTwitchHelixUrl } from "../../utils/links.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 
 const router = express.Router();
 
@@ -21,6 +22,15 @@ router.get('/twitch/rewards', authMiddleware as any, async (req: Request, res: R
 
             if (!channelID) {
                 return res.status(400).send('Missing channelID');
+            }
+
+            const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+            if (!access.allowed) {
+                return res.status(403).send({
+                    error: true,
+                    message: 'You do not have access to this channel',
+                    status: 403
+                });
             }
 
             const streamer = await TwitchStreamers.getTwitchAccountById(channelID);

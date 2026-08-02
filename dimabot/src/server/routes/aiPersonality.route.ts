@@ -5,6 +5,7 @@ import { ChannelAIPersonalitySchema, type IChannelAIPersonality } from "../../sc
 import UsersSchema from "../../schemas/users.schema.js";
 import type { IUsers } from "../../schemas/users.schema.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 
 interface UpdatePersonalityRequest {
     enabled?: boolean;
@@ -366,8 +367,17 @@ function sanitizeMemoryPolicy(
 
 const router = express.Router();
 
-router.get('/:channelID', async (req: Request, res: Response) => {
+router.get('/:channelID', authMiddleware as any, async (req: any, res: Response) => {
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
+
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
 
         try {
             const user = await getChannelTierInfo(channelID);
@@ -409,6 +419,15 @@ router.get('/:channelID', async (req: Request, res: Response) => {
 router.put('/:channelID', authMiddleware as any, async (req: any, res: Response) => {
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
         const body = req.body as UpdatePersonalityRequest;
+
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
 
         try {
             const user = await getChannelTierInfo(channelID);
@@ -547,6 +566,15 @@ router.put('/:channelID', authMiddleware as any, async (req: any, res: Response)
 router.post('/:channelID/known-users', authMiddleware as any, async (req: any, res: Response) => {
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
         const body = req.body as AddKnownUserRequest;
+
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
 
         if (!body.username) {
             return res.status(400).json({

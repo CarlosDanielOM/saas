@@ -1,8 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
-import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.js';
-import { AdminSchema } from '../../schemas/admin.schema.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import { FollowRelationshipLedgerSchema } from '../../schemas/follow_relationship_ledger.schema.js';
 import { StreamSubscriptionLedgerSchema } from '../../schemas/stream_subscription_ledger.schema.js';
 import UsersSchema from '../../schemas/users.schema.js';
@@ -65,26 +64,7 @@ async function getLiveStatus(channelID: string): Promise<{ isLive: boolean; stre
 }
 
 async function getAccessContext(requesterID: string, channelID: string): Promise<{ allowed: boolean; role: 'owner' | 'admin' | 'none' }> {
-    if (requesterID === channelID) {
-        return { allowed: true, role: 'owner' };
-    }
-
-    if (await hasGlobalChannelOwnerAccess(requesterID, channelID)) {
-        return { allowed: true, role: 'owner' };
-    }
-
-    const admin = await AdminSchema.findOne({
-        channelID,
-        adminID: requesterID,
-        actived: true,
-        permissions: { $in: ['*', 'dashboard:view'] }
-    }).lean();
-
-    if (admin) {
-        return { allowed: true, role: 'admin' };
-    }
-
-    return { allowed: false, role: 'none' };
+    return getChannelAccessContext(requesterID, channelID, 'dashboard:view');
 }
 
 async function getChannelChatEnabled(channelID: string, fallback: boolean): Promise<boolean> {

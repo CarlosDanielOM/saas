@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { createTimer, deleteTimer, editTimer, getTimer, listTimers, toggleTimer } from '../../commands/timer_manager.command.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import { error as logError } from '../../utils/logger.js';
 
 const router = express.Router();
@@ -9,6 +10,15 @@ router.get('/:channelID', authMiddleware as any, async (req: Request, res: Respo
     try {
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const result = await listTimers(channelIdStr);
 
         return res.status(result.status || 200).json({
@@ -38,6 +48,15 @@ router.get('/:channelID/:timerName', authMiddleware as any, async (req: Request,
     try {
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const timerNameStr = Array.isArray(timerName) ? timerName[0] : timerName;
         const result = await getTimer(channelIdStr, timerNameStr);
 
@@ -69,6 +88,15 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
     try {
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const { name, frequency, message } = req.body as { name?: string; frequency?: number; message?: string };
 
         if (!name) {
@@ -125,6 +153,15 @@ router.patch('/:channelID/:timerName', authMiddleware as any, async (req: Reques
     try {
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const timerNameStr = Array.isArray(timerName) ? timerName[0] : timerName;
         const { frequency, message } = req.body as { frequency?: number; message?: string };
 
@@ -167,6 +204,15 @@ router.patch('/:channelID/:timerName/toggle', authMiddleware as any, async (req:
     try {
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const timerNameStr = Array.isArray(timerName) ? timerName[0] : timerName;
         const { active } = req.body as { active?: boolean };
         const result = await toggleTimer(channelIdStr, timerNameStr, active);
@@ -200,6 +246,15 @@ router.delete('/:channelID/:timerName', authMiddleware as any, async (req: Reque
     try {
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const timerNameStr = Array.isArray(timerName) ? timerName[0] : timerName;
         const result = await deleteTimer(channelIdStr, timerNameStr);
 

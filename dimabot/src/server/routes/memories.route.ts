@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from "express";
 import { Types } from "mongoose";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import {
     listChannelMemories,
     setChannelMemoryStatus,
@@ -30,6 +31,15 @@ function getStringParam(value: string | string[] | undefined): string {
 router.get('/:channelID', authMiddleware as any, async (req: Request, res: Response) => {
     try {
         const channelID = getStringParam(req.params.channelID);
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
 
         // Parse query params
         const statusParam = String(req.query.status || '');
@@ -92,6 +102,15 @@ router.get('/:channelID', authMiddleware as any, async (req: Request, res: Respo
 router.get('/:channelID/:memoryId', authMiddleware as any, async (req: Request, res: Response) => {
     try {
         const channelID = getStringParam(req.params.channelID);
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const memoryId = getStringParam(req.params.memoryId);
 
         if (!Types.ObjectId.isValid(memoryId)) {
@@ -137,6 +156,15 @@ router.get('/:channelID/:memoryId', authMiddleware as any, async (req: Request, 
 router.patch('/:channelID/:memoryId', authMiddleware as any, async (req: Request, res: Response) => {
     try {
         const channelID = getStringParam(req.params.channelID);
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const memoryId = getStringParam(req.params.memoryId);
         const { content, summary, type, risk } = req.body as {
             content?: string;
@@ -204,6 +232,15 @@ router.patch('/:channelID/:memoryId', authMiddleware as any, async (req: Request
 router.patch('/:channelID/:memoryId/status', authMiddleware as any, async (req: Request, res: Response) => {
     try {
         const channelID = getStringParam(req.params.channelID);
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const memoryId = getStringParam(req.params.memoryId);
         const { status, reason } = req.body as {
             status: MemoryStatus;
@@ -269,6 +306,15 @@ router.patch('/:channelID/:memoryId/status', authMiddleware as any, async (req: 
 router.delete('/:channelID/:memoryId', authMiddleware as any, async (req: Request, res: Response) => {
     try {
         const channelID = getStringParam(req.params.channelID);
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const memoryId = getStringParam(req.params.memoryId);
 
         if (!Types.ObjectId.isValid(memoryId)) {

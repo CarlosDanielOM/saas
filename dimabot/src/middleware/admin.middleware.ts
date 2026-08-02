@@ -86,6 +86,43 @@ export async function hasGlobalChannelOwnerAccess(
     return false;
 }
 
+export interface ChannelAccessContext {
+    allowed: boolean;
+    role: 'owner' | 'admin' | 'none';
+}
+
+export async function getChannelAccessContext(
+    requesterID: string | undefined | null,
+    targetChannelID: string | undefined | null,
+    permission: string | string[]
+): Promise<ChannelAccessContext> {
+    if (!requesterID || !targetChannelID) {
+        return { allowed: false, role: 'none' };
+    }
+
+    if (requesterID === targetChannelID) {
+        return { allowed: true, role: 'owner' };
+    }
+
+    if (await hasGlobalChannelOwnerAccess(requesterID, targetChannelID)) {
+        return { allowed: true, role: 'owner' };
+    }
+
+    const permissionsToCheck = ['*', ...(Array.isArray(permission) ? permission : [permission])];
+    const admin = await AdminSchema.findOne({
+        channelID: targetChannelID,
+        adminID: requesterID,
+        actived: true,
+        permissions: { $in: permissionsToCheck }
+    }).lean();
+
+    if (admin) {
+        return { allowed: true, role: 'admin' };
+    }
+
+    return { allowed: false, role: 'none' };
+}
+
 export async function adminMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     console.log('adminMiddleware');
     try {

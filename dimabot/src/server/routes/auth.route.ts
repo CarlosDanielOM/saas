@@ -25,7 +25,7 @@ import { CommandTimerSchema } from "../../schemas/command_timer.schema.js";
 import { ChannelAIPersonalitySchema } from "../../schemas/channel_ai_personality.schema.js";
 import { CommandUserVariablesSchema } from "../../schemas/command_user_variables.schema.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
-import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
+import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { ensureReservedCommands } from "../services/command_defaults.service.js";
 import { cleanupChannelMediaOwnership } from '../../utils/media_cleanup.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
@@ -246,27 +246,7 @@ async function getTwitchUserFromToken(accessToken: string): Promise<{
 }
 
 async function getAccessContext(requesterID: string, channelID: string, permission: string): Promise<{ allowed: boolean; role: 'owner' | 'admin' | 'none' }> {
-    if (requesterID === channelID) {
-        return { allowed: true, role: 'owner' };
-    }
-
-    if (await hasGlobalChannelOwnerAccess(requesterID, channelID)) {
-        return { allowed: true, role: 'owner' };
-    }
-
-    const permissionsToCheck = ['*', permission];
-    const admin = await AdminSchema.findOne({
-        channelID,
-        adminID: requesterID,
-        actived: true,
-        permissions: { $in: permissionsToCheck }
-    }).lean();
-
-    if (admin) {
-        return { allowed: true, role: 'admin' };
-    }
-
-    return { allowed: false, role: 'none' };
+    return getChannelAccessContext(requesterID, channelID, permission);
 }
 
 function buildSessionPayload(user: IUsers, administrating: AdminChannelSummary[]): AuthenticatedUserSession {

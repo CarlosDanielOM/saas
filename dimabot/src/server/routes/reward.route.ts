@@ -4,6 +4,7 @@ import { RedemptionRewardSchema, type IRedemptionReward } from '../../schemas/re
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import { createRewardWithEventsub } from '../services/reward_creation.service.js';
 
 const router = express.Router();
@@ -76,6 +77,15 @@ router.get('/twitch/:channelID', authMiddleware as any, async (req: Request, res
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
+
         const params = new URLSearchParams();
         params.append('broadcaster_id', channelIdStr);
 
@@ -132,6 +142,15 @@ router.get('/:channelID', authMiddleware as any, async (req: Request, res: Respo
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
+
         const { type, id } = req.query;
 
         if (id) {
@@ -181,6 +200,15 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
     try {
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const body = req.body;
 
         if (!body.title || body.cost === undefined) {
@@ -247,6 +275,15 @@ router.delete('/:channelID/:id', authMiddleware as any, async (req: Request, res
     try {
         const { channelID, id } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const rewardIdStr = Array.isArray(id) ? id[0] : id;
 
         let reward = await RedemptionRewardSchema.findOne({ channelID: channelIdStr, rewardID: rewardIdStr });
@@ -327,6 +364,15 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: Request, res:
     try {
         const { channelID, id } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
+
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        if (!access.allowed) {
+            return res.status(403).json({
+                error: true,
+                message: 'You do not have access to this channel',
+                status: 403
+            });
+        }
         const rewardIdStr = Array.isArray(id) ? id[0] : id;
         const body = req.body;
 
