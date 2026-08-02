@@ -80,8 +80,12 @@ router.get('/:channelID', async (req: Request, res: Response) => {
                 return res.status(404).json({ error: true, message: 'Streamer not found' });
             }
 
-            const streamerResponse = { ...streamer };
-            delete (streamerResponse as any).refresh_token;
+            const streamerResponse = {
+                id: streamer.id,
+                name: streamer.name,
+                actived: streamer.actived,
+                chat_enabled: streamer.chat_enabled
+            };
 
             return res.status(200).json({ error: false, streamer: streamerResponse });
         } catch (error) {
