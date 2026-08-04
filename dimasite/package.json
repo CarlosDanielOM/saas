@@ -34,7 +34,7 @@
     "echarts": "^6.0.0",
     "lucide-angular": "^0.577.0",
     "ngx-echarts": "^21.0.0",
-    "ngx-socket-io": "^4.10.0",
+    "ngx-socket-io": "4.10.0",
     "posthog-js": "^1.358.1",
     "rxjs": "~7.8.0",
     "three": "^0.183.2",

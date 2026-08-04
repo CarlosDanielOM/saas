@@ -148,11 +148,11 @@ connect.lock
 .gitnexus/
 
 # Per-project lockfiles (each subproject manages its own npm dependencies)
- !dimabot/package-lock.json
- !dimasite/package-lock.json
- !admin/package-lock.json
- !dimadocs/package-lock.json
- !dimafx/package-lock.json
- !dimafx/server/package-lock.json
+!dimabot/package-lock.json
+!dimasite/package-lock.json
+!admin/package-lock.json
+!dimadocs/package-lock.json
+!dimafx/package-lock.json
+!dimafx/server/package-lock.json
 # Generated Graphify knowledge graph output
 graphify-out/
