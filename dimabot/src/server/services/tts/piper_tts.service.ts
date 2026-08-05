@@ -103,7 +103,7 @@ async function runPiperCli(request: TtsSynthesisRequest): Promise<TtsSynthesisRe
 }
 
 async function runPiperHttp(request: TtsSynthesisRequest, baseUrl: string): Promise<TtsSynthesisResult> {
-    const response = await fetch(baseUrl, {
+    const response = await fetch(`${baseUrl}/synthesize`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
