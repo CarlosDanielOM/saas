@@ -24,11 +24,14 @@ import { CountdownTimerConfigSchema } from "../../schemas/countdown_timer_config
 import { CommandTimerSchema } from "../../schemas/command_timer.schema.js";
 import { ChannelAIPersonalitySchema } from "../../schemas/channel_ai_personality.schema.js";
 import { CommandUserVariablesSchema } from "../../schemas/command_user_variables.schema.js";
+import { timingSafeEqual } from "node:crypto";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { ensureReservedCommands } from "../services/command_defaults.service.js";
 import { cleanupChannelMediaOwnership } from '../../utils/media_cleanup.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import { decrypt } from "../../utils/crypto.js";
+import { refreshTwitchToken } from "../../utils/tokens.js";
 
 const __dirname = getDirname(import.meta.url);
 
@@ -55,6 +58,10 @@ interface ExchangeCodeRequestBody {
     code?: string;
     redirectUri?: string;
     state?: string;
+}
+
+interface MockLoginRequestBody {
+    token?: string;
 }
 
 interface StandardResponse {
@@ -342,6 +349,27 @@ async function resolveOAuthUser(accessToken: string, fallbackUsername?: string):
         user: null,
         twitchUser
     };
+}
+
+function mockLoginTokensMatch(provided: string, expected: string): boolean {
+    const providedBuffer = Buffer.from(provided);
+    const expectedBuffer = Buffer.from(expected);
+    if (providedBuffer.length !== expectedBuffer.length) {
+        timingSafeEqual(expectedBuffer, expectedBuffer);
+        return false;
+    }
+
+    return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function resolveMockLoginChannelID(token: string): string | null {
+    const configured = process.env.MOCK_LOGIN_TWITCH_ID?.trim();
+    if (configured) {
+        return configured;
+    }
+
+    const suffix = token.split('-').pop() || '';
+    return /^\d+$/.test(suffix) ? suffix : null;
 }
 
 function isAllowedRedirectUri(redirectUri: string): boolean {
@@ -1039,6 +1067,121 @@ router.post('/login', async (req: Request, res: Response) => {
                 timestamp: new Date().toISOString(),
                 id,
                 name: normalizedLogin
+            });
+
+            return res.status(500).json({
+                error: true,
+                message: 'Internal server error',
+                status: 500
+            });
+        }
+    });
+
+router.post('/mock-login', async (req: Request<{}, {}, MockLoginRequestBody>, res: Response) => {
+        const expectedToken = process.env.MOCK_LOGIN_TOKEN?.trim() || '';
+        if (!expectedToken) {
+            return res.status(404).json({
+                error: true,
+                message: 'Not found',
+                status: 404
+            });
+        }
+
+        const providedToken = typeof req.body?.token === 'string' ? req.body.token : '';
+        if (!providedToken || !mockLoginTokensMatch(providedToken, expectedToken)) {
+            return res.status(401).json({
+                error: true,
+                message: 'Unauthorized',
+                status: 401
+            });
+        }
+
+        const channelID = resolveMockLoginChannelID(providedToken);
+        if (!channelID) {
+            return res.status(400).json({
+                error: true,
+                message: 'Mock login channel is not configured',
+                status: 400
+            });
+        }
+
+        try {
+            const user = await getUserByTwitchID(channelID);
+            if (!user) {
+                return res.status(404).json({
+                    error: true,
+                    message: 'User not found',
+                    status: 404
+                });
+            }
+
+            const twitchAccount = user.accounts.find((account) => account.type === 'twitch' && account.id === channelID);
+            if (!twitchAccount) {
+                return res.status(404).json({
+                    error: true,
+                    message: 'Twitch account not found',
+                    status: 404
+                });
+            }
+
+            let accessToken = decrypt(twitchAccount.access_token) || '';
+            let refreshToken = decrypt(twitchAccount.refresh_token) || '';
+
+            if (!accessToken && !refreshToken) {
+                return res.status(401).json({
+                    error: true,
+                    message: 'Stored Twitch tokens are missing',
+                    status: 401
+                });
+            }
+
+            let twitchUser = accessToken ? await getTwitchUserFromToken(accessToken) : null;
+            if (!twitchUser && refreshToken) {
+                const refreshed = await refreshTwitchToken(refreshToken, channelID, {
+                    endpoint: 'POST /auth/mock-login',
+                    url: '/auth/mock-login'
+                });
+
+                if (refreshed.kind !== 'success' || !refreshed.token || !refreshed.refreshToken) {
+                    return res.status(401).json({
+                        error: true,
+                        message: 'Unable to refresh stored Twitch token',
+                        status: 401
+                    });
+                }
+
+                accessToken = refreshed.token;
+                refreshToken = refreshed.refreshToken;
+                twitchUser = await getTwitchUserFromToken(accessToken);
+            }
+
+            if (!twitchUser) {
+                return res.status(401).json({
+                    error: true,
+                    message: 'Unable to fetch Twitch user from token',
+                    status: 401
+                });
+            }
+
+            const administrating = await getAdministratingChannels(channelID);
+            const session = buildSessionPayloadWithAuthenticatedUser(user, administrating, twitchUser);
+
+            return res.status(200).json({
+                error: false,
+                message: 'Mock login successful',
+                status: 200,
+                data: {
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                    twitch_user: twitchUser,
+                    app: session.app
+                }
+            });
+        } catch (error) {
+            console.error('Error in POST /auth/mock-login:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString()
             });
 
             return res.status(500).json({

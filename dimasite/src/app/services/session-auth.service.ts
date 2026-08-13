@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, map, Observable, of, tap, throwError } from 'rxjs';
 
+import { environment } from '../../environments/environment';
 import { CheckoutIntentService } from './checkout-intent.service';
 import { LinksService } from './links.service';
 import { LanguageService, type SupportedLanguage } from './language.service';
@@ -61,6 +62,13 @@ interface ExchangeCodeData {
   state: string | null;
 }
 
+interface MockLoginData {
+  access_token: string;
+  refresh_token: string;
+  twitch_user: TwitchUserProfile;
+  app: AppLoginData;
+}
+
 interface StoredSessionRecord {
   version?: number;
   token?: string;
@@ -115,7 +123,16 @@ export class SessionAuthService {
     window.addEventListener('storage', this.storageSyncHandler);
   }
 
+  isMockLoginEnabled(): boolean {
+    return !environment.production && Boolean(environment.MOCK_LOGIN_TOKEN);
+  }
+
   startTwitchLogin(): void {
+    if (this.isMockLoginEnabled()) {
+      this.runMockLoginFlow();
+      return;
+    }
+
     const state = this.createOAuthState();
     localStorage.setItem(this.oauthStateKey, state);
     window.location.href = this.linksService.getTwitchAuthUrl(state);
@@ -125,8 +142,48 @@ export class SessionAuthService {
    * Start Twitch login with a custom state (used for admin redirect flow)
    */
   startTwitchLoginWithState(state: string): void {
+    if (this.isMockLoginEnabled()) {
+      this.runMockLoginFlow(state);
+      return;
+    }
+
     localStorage.setItem(this.oauthStateKey, state);
     window.location.href = this.linksService.getTwitchAuthUrl(state);
+  }
+
+  mockLogin(token = environment.MOCK_LOGIN_TOKEN): Observable<MockLoginData> {
+    if (environment.production) {
+      return throwError(() => new Error('Mock login is disabled in production'));
+    }
+
+    if (!token) {
+      return throwError(() => new Error('Mock login token is not configured'));
+    }
+
+    return this.http
+      .post<ApiEnvelope<MockLoginData>>(`${this.linksService.getApiUrl()}/auth/mock-login`, {
+        token
+      })
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data?.access_token || !response.data.twitch_user || !response.data.app) {
+            throw new AuthLoginError(
+              response.message || 'Mock login failed',
+              response.code,
+              response.type,
+              response.status
+            );
+          }
+
+          this.completeSession(
+            response.data.access_token,
+            response.data.twitch_user,
+            response.data.app
+          );
+
+          return response.data;
+        })
+      );
   }
 
   consumeOAuthState(): string | null {
@@ -336,6 +393,31 @@ export class SessionAuthService {
     }
 
     return current.appUser.twitch_user_id || current.twitchUser.id || null;
+  }
+
+  private runMockLoginFlow(state?: string): void {
+    this.mockLogin().subscribe({
+      next: (data) => {
+        if (state?.startsWith('admin-')) {
+          const returnTo = state.replace(/^admin-/, '') || 'https://admin.domdimabot.com';
+          const sessionData = {
+            token: data.access_token,
+            twitchUser: data.twitch_user,
+            appUser: data.app
+          };
+          const adminUrl = new URL('/login', returnTo);
+          adminUrl.searchParams.set('token', btoa(JSON.stringify(sessionData)));
+          window.location.href = adminUrl.toString();
+          return;
+        }
+
+        window.location.assign('/login');
+      },
+      error: (error: unknown) => {
+        console.error('[dev] mock login failed', error);
+        window.location.assign('/login?debug=mock_login_failed');
+      }
+    });
   }
 
   private createOAuthState(): string {
