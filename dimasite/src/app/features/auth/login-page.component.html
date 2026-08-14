@@ -1,58 +1,112 @@
 <app-toast-container />
-<section class="login-shell" aria-live="polite">
-  <div class="login-card">
-    <p class="login-eyebrow">DomDimaBot</p>
-    <h1 class="login-title">{{ t('login.title') }}</h1>
-    <p class="login-subtitle">{{ t('login.subtitle') }}</p>
+<div class="lf" aria-live="polite">
+  <header class="lf-nav">
+    <a class="lf-brand" routerLink="/">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <div class="lf-nav__actions">
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool"
+        (click)="toggleLanguage()"
+        [attr.aria-label]="t('commands.public.languageToggle')"
+      >
+        {{ languageLabel() }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+      >
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+        <span>{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
+      </button>
+    </div>
+  </header>
 
-    @if (stage() === 'idle') {
-      <button type="button" class="login-button" (click)="loginWithTwitch()">
-        {{ t('login.actions.continue') }}
-      </button>
-    } @else if (stage() === 'error') {
-      <div class="login-error" role="alert">
-        <p>{{ errorMessage() }}</p>
-      </div>
-      <button type="button" class="login-button" (click)="loginWithTwitch()">
-        {{ t('login.actions.tryAgain') }}
-      </button>
-    } @else {
-      <div class="login-loader-enhanced" role="status">
-        <app-login-loader-3d 
-          [stage]="loaderStage()" 
-          [progress]="progress()"
-        >
-        </app-login-loader-3d>
-        
-        <div class="login-loader-info">
-          <p class="login-loader__label">{{ stageLabel() }}</p>
-          <div class="login-progress" aria-hidden="true">
-            <div class="login-progress__bar" [style.width.%]="progress()"></div>
+  <main class="lf-main">
+    <div class="lf-login">
+      <article class="lf-tile lf-tile--card" aria-labelledby="login-title">
+        <p class="lf-kicker">DomDimaBot</p>
+        <h1 id="login-title" class="lf-title">
+          {{ t('login.title') }}
+        </h1>
+        <p class="lf-copy">{{ t('login.subtitle') }}</p>
+
+        @if (mockLoginEnabled) {
+          <p class="lf-dev-banner" role="note">
+            Dev mock login active — continues as CDOM201 without Twitch OAuth.
+          </p>
+        }
+
+        @if (stage() === 'idle') {
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--block" (click)="loginWithTwitch()">
+            {{ mockLoginEnabled ? 'Continue with mock login' : t('login.actions.continue') }}
+          </button>
+          <p class="lf-note">{{ t('login.privacyNote') }}</p>
+        } @else if (stage() === 'error') {
+          <div class="lf-alert" role="alert">
+            <p class="lf-alert__title">{{ t('login.stages.error') }}</p>
+            <p class="lf-alert__copy">{{ errorMessage() }}</p>
           </div>
-        </div>
-      </div>
-    }
-
-    @if (debugLines().length) {
-      <section class="login-logs" aria-label="Login logs">
-        <div class="login-logs__header">
-          <h2 class="login-logs__title">System Logs</h2>
-          <span class="login-logs__status" [class.login-logs__status--active]="stage() !== 'idle' && stage() !== 'error'">
-            {{ stage() === 'idle' || stage() === 'error' ? 'STANDBY' : 'ACTIVE' }}
-          </span>
-        </div>
-        <div class="login-logs__terminal">
-          <div class="login-logs__lines">
-            @for (line of debugLines(); track $index) {
-              <div class="login-logs__line">
-                <span class="login-logs__timestamp">{{ extractTimestamp(line) }}</span>
-                <span class="login-logs__content">{{ extractContent(line) }}</span>
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--block" (click)="loginWithTwitch()">
+            {{ t('login.actions.tryAgain') }}
+          </button>
+          <a class="lf-link" routerLink="/">{{ t('login.actions.home') }}</a>
+        } @else {
+          <div class="lf-loading" role="status">
+            <div class="lf-ring" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <circle class="lf-ring__track" cx="24" cy="24" r="18" />
+                <circle
+                  class="lf-ring__value"
+                  cx="24"
+                  cy="24"
+                  r="18"
+                  [style.stroke-dashoffset]="113 - (113 * progress()) / 100"
+                />
+              </svg>
+            </div>
+            <div class="lf-loading__meta">
+              <p class="lf-loading__label">{{ stageLabel() }}</p>
+              <div class="lf-progress" aria-hidden="true">
+                <div class="lf-progress__bar" [style.width.%]="progress()"></div>
               </div>
-            }
+            </div>
           </div>
-          <div class="login-logs__cursor" [class.login-logs__cursor--blink]="stage() !== 'idle' && stage() !== 'error'"></div>
-        </div>
-      </section>
-    }
-  </div>
-</section>
+        }
+
+        @if (debugLines().length) {
+          <section class="lf-log" [attr.aria-label]="t('login.activity.label')">
+            <div class="lf-log__head">
+              <span class="lf-log__title">{{ t('login.activity.label') }}</span>
+              <span
+                class="lf-chip"
+                [class.lf-chip--live]="isBusy()"
+                [class.lf-chip--muted]="!isBusy()"
+              >
+                {{
+                  isBusy()
+                    ? t('login.activity.live')
+                    : stage() === 'error'
+                      ? t('login.activity.stopped')
+                      : t('login.activity.standby')
+                }}
+              </span>
+            </div>
+            <ul class="lf-log__list">
+              @for (line of debugLines(); track $index) {
+                <li>
+                  <time>{{ extractTimestamp(line) }}</time>
+                  <span>{{ extractContent(line) }}</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </article>
+    </div>
+  </main>
+</div>

@@ -1307,11 +1307,19 @@
     }
   },
   "login": {
-    "title": "Sign in to DomDimaBot",
-    "subtitle": "We are preparing your account, permissions, and dashboard.",
+    "title": "Sign in to your control center",
+    "subtitle": "Connect with Twitch to manage commands, modules, and live tools for your channel.",
+    "privacyNote": "We’ll never post without your permission.",
     "actions": {
       "continue": "Continue with Twitch",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "home": "Back to home"
+    },
+    "activity": {
+      "label": "Activity",
+      "live": "Live",
+      "standby": "Standby",
+      "stopped": "Stopped"
     },
     "stages": {
       "idle": "Ready to authenticate",
@@ -1320,7 +1328,7 @@
       "permissions": "Loading channel permissions",
       "dashboard": "Preparing dashboard data",
       "redirecting": "Redirecting to your dashboard",
-      "error": "Login failed"
+      "error": "Couldn’t finish sign-in"
     },
     "toast": {
       "sessionExpiredTitle": "Session expired",
@@ -1346,37 +1354,82 @@
     }
   },
   "notFound": {
-    "eyebrow": "Signal corrupted",
-    "title": "You hit a dead zone.",
-    "message": "This route is ripped out, broken, or never existed. The map ends in static here. Get back to login, punch back in, and take the right gate before the trail goes cold.",
-    "messageAuthenticated": "This route is ripped out, broken, or never existed. The map ends in static here. Get back to your dashboard and pick a valid route before the trail goes cold.",
-    "messageAdminAuthenticated": "This route is ripped out, broken, or never existed. The map ends in static here. Jump back to the last channel you were managing or head to your own dashboard and pick a valid route.",
+    "eyebrow": "Lost signal",
+    "title": "This page isn’t on the map",
+    "message": "The route doesn’t exist, or that channel couldn’t be found. Double-check the URL or head back to somewhere familiar.",
+    "messageAuthenticated": "The route doesn’t exist, or that channel couldn’t be found. Open your dashboard and pick a page you know is valid.",
+    "messageAdminAuthenticated": "The route doesn’t exist, or that channel couldn’t be found. Jump back to the last channel you managed or open your own dashboard.",
+    "tipsTitle": "What you can do",
+    "tips": {
+      "0": "Check the streamer slug in the URL",
+      "1": "Open your last dashboard from the menu",
+      "2": "Return home and navigate from there"
+    },
     "actions": {
-      "login": "Re-enter via Login",
-      "dashboard": "Return to Dashboard",
-      "dashboardNamed": "Return to {{name}} Dashboard",
-      "lastViewedDashboard": "Last Viewed Dashboard",
-      "lastViewedDashboardNamed": "Last Viewed: {{name}}",
-      "myDashboard": "My Dashboard",
-      "myDashboardNamed": "My Dashboard: {{name}}"
+      "login": "Sign in",
+      "home": "Back home",
+      "dashboard": "Go to dashboard",
+      "dashboardNamed": "Go to {{name}} dashboard",
+      "lastViewedDashboard": "Last viewed dashboard",
+      "lastViewedDashboardNamed": "Last viewed: {{name}}",
+      "myDashboard": "My dashboard",
+      "myDashboardNamed": "My dashboard: {{name}}"
     }
   },
   "forbidden": {
-    "eyebrow": "Access restricted",
-    "badge": "Requires",
-    "title": "You do not have clearance for this area.",
-    "message": "This route is real, but your current role is not allowed to open it. Head back to the dashboard or switch accounts and try again with the right level of access.",
-    "messageAdminAuthenticated": "This route is real, but your current role is not allowed to open it. Jump back to the last channel you were managing or head to your own dashboard and try again from a route you can access.",
-    "requestedRoute": "Requested route:",
+    "eyebrow": "Access denied",
+    "badge": "Permission",
+    "title": "You don’t have permission here",
+    "message": "This area needs a role or plan you don’t currently have on this channel. Ask the owner, or open a page you can manage.",
+    "messageAdminAuthenticated": "This area needs a role you don’t have on this channel. Jump back to the last channel you managed or open your own dashboard.",
+    "requestedRoute": "Path",
+    "tipsTitle": "What you can do",
+    "tips": {
+      "0": "Confirm you’re on the right channel",
+      "1": "Ask the owner for the missing permission",
+      "2": "Use pages your role already allows"
+    },
     "actions": {
-      "dashboard": "Back to Dashboard",
-      "dashboardNamed": "Back to {{name}} Dashboard",
-      "home": "Back to Home",
-      "login": "Switch via Login",
-      "lastViewedDashboard": "Last Viewed Dashboard",
-      "lastViewedDashboardNamed": "Last Viewed: {{name}}",
-      "myDashboard": "My Dashboard",
-      "myDashboardNamed": "My Dashboard: {{name}}"
+      "dashboard": "Open dashboard",
+      "dashboardNamed": "Open {{name}} dashboard",
+      "home": "Back home",
+      "login": "Sign in",
+      "lastViewedDashboard": "Last viewed dashboard",
+      "lastViewedDashboardNamed": "Last viewed: {{name}}",
+      "myDashboard": "My dashboard",
+      "myDashboardNamed": "My dashboard: {{name}}"
+    }
+  },
+  "status500": {
+    "eyebrow": "Server hiccup",
+    "title": "Something broke on our side",
+    "message": "We hit an unexpected error. Your channel data is safe — try again in a moment. If it keeps happening, ping support.",
+    "tipsTitle": "What you can do",
+    "tips": {
+      "0": "Retry in a few seconds",
+      "1": "Hard-refresh if the app looks stuck",
+      "2": "Report it if it repeats"
+    },
+    "actions": {
+      "retry": "Try again",
+      "home": "Back home",
+      "login": "Sign in"
+    }
+  },
+  "status503": {
+    "eyebrow": "Temporarily offline",
+    "title": "We’re catching our breath",
+    "message": "DomDimaBot is unavailable right now — maintenance or heavy load. Check back shortly.",
+    "tipsTitle": "What you can do",
+    "tips": {
+      "0": "Wait a bit and refresh",
+      "1": "Follow status on Discord / socials",
+      "2": "Come back when we’re green again"
+    },
+    "actions": {
+      "retry": "Refresh",
+      "home": "Back home",
+      "login": "Sign in"
     }
   },
   "commands": {

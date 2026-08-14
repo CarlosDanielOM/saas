@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
+import { LucideAngularModule, Moon, Sun } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 
 import { DashboardApiService } from '../../services/dashboard-api.service';
@@ -9,9 +10,9 @@ import { BillingContextData, BillingService } from '../../services/billing.servi
 import { CheckoutIntentService } from '../../services/checkout-intent.service';
 import { LanguageService } from '../../services/language.service';
 import { AuthLoginError, SessionAuthService } from '../../services/session-auth.service';
+import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
-import { LoginLoader3DComponent, type LoaderStage } from './login-loader-3d.component';
 import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 
 type LoginStage =
@@ -29,8 +30,9 @@ const LOGIN_RESET_TOAST_DURATION_MS = LOGIN_RESET_REDIRECT_DELAY_MS + 200;
 @Component({
   selector: 'app-login-page',
   templateUrl: './login-page.component.html',
+  styleUrl: './login-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoginLoader3DComponent, ToastContainerComponent]
+  imports: [RouterLink, LucideAngularModule, ToastContainerComponent]
 })
 export class LoginPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
@@ -40,6 +42,7 @@ export class LoginPageComponent implements OnInit {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly checkoutIntent = inject(CheckoutIntentService);
   private readonly languageService = inject(LanguageService);
+  private readonly themeService = inject(ThemeService);
   private readonly billingService = inject(BillingService);
   private readonly dashboardApi = inject(DashboardApiService);
   private readonly toastService = inject(ToastService);
@@ -48,17 +51,13 @@ export class LoginPageComponent implements OnInit {
   private redirectTimeoutHandle: number | null = null;
   private hasAutoTriggeredLogin = false;
 
+  readonly sunIcon = Sun;
+  readonly moonIcon = Moon;
+
   readonly stage = signal<LoginStage>('idle');
   readonly errorMessage = signal<string | null>(null);
   readonly debugLines = signal<string[]>([]);
-
-  readonly loaderStage = computed<LoaderStage>(() => {
-    const current = this.stage();
-    if (current === 'idle' || current === 'error') {
-      return 'validating';
-    }
-    return current;
-  });
+  readonly mockLoginEnabled = this.sessionAuth.isMockLoginEnabled();
 
   readonly progress = computed(() => {
     switch (this.stage()) {
@@ -78,6 +77,11 @@ export class LoginPageComponent implements OnInit {
   });
 
   readonly stageLabel = computed(() => this.t(`login.stages.${this.stage()}`));
+
+  readonly isBusy = computed(() => {
+    const current = this.stage();
+    return current !== 'idle' && current !== 'error';
+  });
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -138,7 +142,24 @@ export class LoginPageComponent implements OnInit {
   }
 
   t(key: string): string {
+    this.languageService.currentLanguage();
     return this.languageService.translate(key);
+  }
+
+  languageLabel(): string {
+    return this.languageService.currentLanguage() === 'en' ? 'English · ES' : 'Español · EN';
+  }
+
+  isDarkMode(): boolean {
+    return this.themeService.isDarkMode();
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
+  }
+
+  toggleLanguage(): void {
+    this.languageService.toggleLanguage();
   }
 
   loginWithTwitch(): void {
@@ -573,6 +594,11 @@ export class LoginPageComponent implements OnInit {
 
     if (debug === 'unresolved_streamer' || debug === 'missing_channel_param') {
       this.errorMessage.set(this.t('login.errors.navigationFailed'));
+      return;
+    }
+
+    if (debug === 'mock_login_failed') {
+      this.errorMessage.set('Mock login failed. Check MOCK_LOGIN_TOKEN on the API.');
       return;
     }
 

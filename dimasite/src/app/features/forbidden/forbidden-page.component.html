@@ -1,93 +1,99 @@
-<section
-  #shell
-  class="forbidden-shell"
-  [class.forbidden-shell--embedded]="isEmbeddedLayout()"
-  [attr.data-scene-mode]="sceneMode()"
+<div
+  class="lf"
+  data-code="403"
+  [class.lf--embedded]="isEmbeddedLayout()"
   aria-labelledby="forbidden-title"
 >
-  <canvas
-    #canvas
-    class="forbidden-canvas"
-    [class.forbidden-canvas--visible]="isThreeJsReady()"
-    aria-hidden="true"
-  ></canvas>
-
-  <div class="forbidden-backdrop" aria-hidden="true">
-    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--left"></div>
-    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--right"></div>
-    <div class="forbidden-backdrop__glow forbidden-backdrop__glow--core"></div>
-    <div class="forbidden-grid"></div>
-    <div class="forbidden-scanline"></div>
-
-    <div
-      class="forbidden-css-shield"
-      [class.forbidden-css-shield--visible]="!isThreeJsReady() || shouldUseCSSFallback()"
-    >
-      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--one"></span>
-      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--two"></span>
-      <span class="forbidden-css-shield__ring forbidden-css-shield__ring--three"></span>
-      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--one"></span>
-      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--two"></span>
-      <span class="forbidden-css-shield__bar forbidden-css-shield__bar--three"></span>
-    </div>
-
-    <div class="forbidden-particles">
-      @for (particle of particleIndexes; track particle) {
-        <span class="forbidden-particle" [style.--particle-index]="particle"></span>
-      }
-    </div>
-  </div>
-
-  <div class="forbidden-content">
-    <p class="forbidden-eyebrow">{{ t('forbidden.eyebrow') }}</p>
-
-    <div class="forbidden-code" aria-hidden="true">
-      <span class="forbidden-digit forbidden-digit--left" data-digit="4">4</span>
-      <span class="forbidden-digit forbidden-digit--center" data-digit="0">0</span>
-      <span class="forbidden-digit forbidden-digit--right" data-digit="3">3</span>
-    </div>
-
-    <div class="forbidden-panel glass-card">
-      @if (showPermissionBadge()) {
-        <div class="forbidden-badge">
-          <span class="forbidden-badge__label">{{ t('forbidden.badge') }}</span>
-          <span class="forbidden-badge__value">{{ requestedPermissionLabel() }}</span>
-        </div>
-      }
-
-      <h1 id="forbidden-title" class="forbidden-title">{{ t('forbidden.title') }}</h1>
-      <p class="forbidden-copy">{{ t(messageKey()) }}</p>
-
-      @if (requestedRouteLabel()) {
-        <p class="forbidden-meta">
-          {{ t('forbidden.requestedRoute') }}
-          <span class="forbidden-meta__path">{{ requestedRouteLabel() }}</span>
-        </p>
-      }
-
-      <div class="forbidden-actions">
-        @if (session()) {
-          @if (hasSeparateLastViewedDashboard()) {
-            <a class="forbidden-button forbidden-button--primary" [routerLink]="lastViewedDashboardLink()">
-              {{ lastViewedDashboardLabel() }}
-            </a>
-            <a class="forbidden-button forbidden-button--secondary" [routerLink]="ownDashboardLink()">
-              {{ myDashboardLabel() }}
-            </a>
-          } @else {
-            <a class="forbidden-button forbidden-button--primary" [routerLink]="primaryActionLink()">
-              {{ primaryDashboardLabel() }}
-            </a>
-          }
-        } @else {
-          <a class="forbidden-button forbidden-button--primary" [routerLink]="primaryActionLink()">
-            {{ primaryDashboardLabel() }}
-          </a>
-          <a class="forbidden-button forbidden-button--secondary" routerLink="/login">
-            {{ t('forbidden.actions.login') }}
-          </a>
+  @if (!isEmbeddedLayout()) {
+    <header class="lf-nav">
+      <a class="lf-brand" routerLink="/">
+        <span class="lf-brand__live" aria-hidden="true"></span>
+        DomDimaBot
+      </a>
+      <div class="lf-nav__actions">
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--tool"
+          (click)="toggleLanguage()"
+          [attr.aria-label]="t('commands.public.languageToggle')"
+        >
+          {{ languageLabel() }}
+        </button>
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+        >
+          <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+          <span>{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
+        </button>
+        @if (!session()) {
+          <a class="lf-btn lf-btn--primary" routerLink="/login">{{ t('forbidden.actions.login') }}</a>
         }
       </div>
-    </div>
-  </div>
-</section>
+    </header>
+  }
+
+  <main class="lf-main">
+    <section class="lf-bento" aria-labelledby="forbidden-title">
+      <article class="lf-tile lf-tile--hero">
+        <p class="lf-kicker">{{ t('forbidden.eyebrow') }}</p>
+        <p class="lf-code lf-code--warn" aria-hidden="true">403</p>
+        <h1 id="forbidden-title" class="lf-title">{{ t('forbidden.title') }}</h1>
+        <p class="lf-copy">{{ t(messageKey()) }}</p>
+
+        @if (showPermissionBadge() || requestedRouteLabel()) {
+          <div class="lf-meta">
+            @if (showPermissionBadge()) {
+              <span class="lf-chip lf-chip--warn">
+                <span class="lf-chip__label">{{ t('forbidden.badge') }}</span>
+                <span class="lf-chip__value">{{ requestedPermissionLabel() }}</span>
+              </span>
+            }
+            @if (requestedRouteLabel()) {
+              <span class="lf-chip lf-chip--muted">
+                <span class="lf-chip__label">{{ t('forbidden.requestedRoute') }}</span>
+                <span class="lf-chip__value">{{ requestedRouteLabel() }}</span>
+              </span>
+            }
+          </div>
+        }
+
+        <div class="lf-actions">
+          @if (session()) {
+            @if (hasSeparateLastViewedDashboard()) {
+              <a class="lf-btn lf-btn--primary" [routerLink]="lastViewedDashboardLink()">
+                {{ lastViewedDashboardLabel() }}
+              </a>
+              <a class="lf-btn" [routerLink]="ownDashboardLink()">
+                {{ myDashboardLabel() }}
+              </a>
+            } @else {
+              <a class="lf-btn lf-btn--primary" [routerLink]="primaryActionLink()">
+                {{ primaryDashboardLabel() }}
+              </a>
+              <a class="lf-btn" routerLink="/">{{ t('forbidden.actions.home') }}</a>
+            }
+          } @else {
+            <a class="lf-btn lf-btn--primary" [routerLink]="primaryActionLink()">
+              {{ primaryDashboardLabel() }}
+            </a>
+            <a class="lf-btn" routerLink="/login">
+              {{ t('forbidden.actions.login') }}
+            </a>
+          }
+        </div>
+      </article>
+
+      <aside class="lf-tile lf-tile--side">
+        <p class="lf-side__kicker">{{ t('forbidden.tipsTitle') }}</p>
+        <ul class="lf-side__list">
+          <li>{{ t('forbidden.tips.0') }}</li>
+          <li>{{ t('forbidden.tips.1') }}</li>
+          <li>{{ t('forbidden.tips.2') }}</li>
+        </ul>
+      </aside>
+    </section>
+  </main>
+</div>

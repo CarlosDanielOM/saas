@@ -1,0 +1,120 @@
+<div class="lf" [class.lf--embedded]="model().embedded" [attr.data-code]="model().code">
+  <aside class="mock-bar" aria-label="Mock controls">
+    <a routerLink="/mocks/dev/lf-status" class="mock-bar__back">← Status hub</a>
+    <span class="mock-bar__label">{{ model().code }} mock{{ model().embedded ? ' · embedded' : '' }}</span>
+    <nav class="mock-bar__links" aria-label="Other status mocks">
+      <a routerLink="/mocks/dev/lf-404">404</a>
+      <a routerLink="/mocks/dev/lf-403">403</a>
+      <a routerLink="/mocks/dev/lf-403-embedded">403·app</a>
+      <a routerLink="/mocks/dev/lf-500">500</a>
+      <a routerLink="/mocks/dev/lf-503">503</a>
+    </nav>
+  </aside>
+
+  @if (model().embedded) {
+    <header class="auth-nav" aria-label="Mock app navbar">
+      <a class="lf-brand" routerLink="/mocks/dev/prod-dashboard">
+        <span class="lf-brand__live" aria-hidden="true"></span>
+        DomDimaBot
+      </a>
+      <nav class="auth-nav__links" aria-label="Mock primary">
+        <span class="auth-nav__pill">Dashboard</span>
+        <span class="auth-nav__pill">Commands</span>
+        <span class="auth-nav__pill is-muted">Modules</span>
+      </nav>
+      <div class="auth-nav__end">
+        <span class="auth-nav__channel">cdom201</span>
+        <span class="auth-nav__avatar" aria-hidden="true">C</span>
+      </div>
+    </header>
+  } @else {
+    <header class="lf-nav">
+      <a class="lf-brand" routerLink="/">
+        <span class="lf-brand__live" aria-hidden="true"></span>
+        DomDimaBot
+      </a>
+      <div class="lf-nav__actions">
+        <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" disabled>EN · ES</button>
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+          (click)="toggleTheme()"
+        >
+          <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+          <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+        </button>
+        <a class="lf-btn lf-btn--primary" routerLink="/mocks/dev/lf-login">Sign in</a>
+      </div>
+    </header>
+  }
+
+  <main class="lf-main">
+    <section class="lf-bento" aria-labelledby="err-title">
+      <article class="lf-tile lf-tile--hero">
+        <p class="lf-kicker">{{ model().kicker }}</p>
+
+        <p class="lf-code" [attr.data-tone]="codeTone()" aria-hidden="true">
+          {{ model().code }}
+        </p>
+
+        <h1 id="err-title" class="lf-title">{{ model().title }}</h1>
+        <p class="lf-copy">{{ model().copy }}</p>
+
+        @if (model().permission || model().fromPath) {
+          <div class="lf-meta">
+            @if (model().permission) {
+              <span class="lf-chip lf-chip--warn">
+                <span class="lf-chip__label">Permission</span>
+                <span class="lf-chip__value">{{ model().permission }}</span>
+              </span>
+            }
+            @if (model().fromPath) {
+              <span class="lf-chip lf-chip--muted">
+                <span class="lf-chip__label">Path</span>
+                <span class="lf-chip__value">{{ model().fromPath }}</span>
+              </span>
+            }
+          </div>
+        }
+
+        <div class="lf-actions">
+          <a class="lf-btn lf-btn--primary" [routerLink]="model().primaryLink">
+            {{ model().primaryLabel }}
+          </a>
+          <a class="lf-btn" [routerLink]="model().secondaryLink">
+            {{ model().secondaryLabel }}
+          </a>
+        </div>
+      </article>
+
+      <aside class="lf-tile lf-tile--side">
+        <p class="lf-side__kicker">What you can do</p>
+        <ul class="lf-side__list">
+          @switch (model().code) {
+            @case ('404') {
+              <li>Check the streamer slug in the URL</li>
+              <li>Open your last dashboard from the menu</li>
+              <li>Return home and navigate from there</li>
+            }
+            @case ('403') {
+              <li>Confirm you’re on the right channel</li>
+              <li>Ask the owner for the missing permission</li>
+              <li>Use pages your role already allows</li>
+            }
+            @case ('500') {
+              <li>Retry in a few seconds</li>
+              <li>Hard-refresh if the app looks stuck</li>
+              <li>Report it if it repeats</li>
+            }
+            @default {
+              <li>Wait a bit and refresh</li>
+              <li>Follow status on Discord / Twitter</li>
+              <li>Come back when we’re green again</li>
+            }
+          }
+        </ul>
+        <p class="lf-side__note">Mock · no Three.js · Live First tiles only</p>
+      </aside>
+    </section>
+  </main>
+</div>

@@ -139,6 +139,13 @@ interface DevMockCard {
 export class DevMockIndexComponent {
   readonly mocks: DevMockCard[] = [
     {
+      id: 'lf-status',
+      title: 'Auth & status (LF)',
+      badge: 'Design mocks',
+      description:
+        'Login + 404 / 403 / 500 / 503 Live First proposals. No OAuth, no guards — visual only before productize.'
+    },
+    {
       id: 'prod-dashboard',
       title: 'Prod Dashboard',
       badge: 'Live First · OC3c',

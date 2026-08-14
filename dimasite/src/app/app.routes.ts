@@ -212,6 +212,20 @@ export const routes: Routes = [
     title: '404 | DomDimaBot'
   },
   {
+    path: '500',
+    loadComponent: () =>
+      import('./features/status/status-error-page.component').then((m) => m.StatusErrorPageComponent),
+    data: { code: '500' },
+    title: '500 | DomDimaBot'
+  },
+  {
+    path: '503',
+    loadComponent: () =>
+      import('./features/status/status-error-page.component').then((m) => m.StatusErrorPageComponent),
+    data: { code: '503' },
+    title: '503 | DomDimaBot'
+  },
+  {
     path: 'mocks/dev',
     children: [
       {
@@ -222,6 +236,72 @@ export const routes: Routes = [
             (m) => m.DevMockIndexComponent
           ),
         title: 'Dev Mocks | DomDimaBot'
+      },
+      {
+        path: 'lf-status',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-auth-status-hub.component').then(
+            (m) => m.LfAuthStatusHubComponent
+          ),
+        title: 'LF Auth & Status Mocks | DomDimaBot'
+      },
+      {
+        path: 'lf-login',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-login-mock.component').then(
+            (m) => m.LfLoginMockComponent
+          ),
+        title: 'LF Login Mock | DomDimaBot'
+      },
+      {
+        path: 'lf-404',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-error-mock.component').then(
+            (m) => m.LfErrorMockComponent
+          ),
+        data: { code: '404' },
+        title: 'LF 404 Mock | DomDimaBot'
+      },
+      {
+        path: 'lf-403',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-error-mock.component').then(
+            (m) => m.LfErrorMockComponent
+          ),
+        data: { code: '403', permission: 'settings:view', fromPath: '/cdom201/settings' },
+        title: 'LF 403 Mock | DomDimaBot'
+      },
+      {
+        path: 'lf-403-embedded',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-error-mock.component').then(
+            (m) => m.LfErrorMockComponent
+          ),
+        data: {
+          code: '403',
+          embedded: true,
+          permission: 'modules:edit',
+          fromPath: '/cdom201/modules/follow-defense'
+        },
+        title: 'LF 403 Embedded Mock | DomDimaBot'
+      },
+      {
+        path: 'lf-500',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-error-mock.component').then(
+            (m) => m.LfErrorMockComponent
+          ),
+        data: { code: '500' },
+        title: 'LF 500 Mock | DomDimaBot'
+      },
+      {
+        path: 'lf-503',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/lf-error-mock.component').then(
+            (m) => m.LfErrorMockComponent
+          ),
+        data: { code: '503' },
+        title: 'LF 503 Mock | DomDimaBot'
       },
       {
         path: '',

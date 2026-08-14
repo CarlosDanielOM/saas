@@ -1,0 +1,117 @@
+<div class="lf">
+  <!-- Dev-only chrome -->
+  <aside class="mock-bar" aria-label="Mock controls">
+    <a routerLink="/mocks/dev/lf-status" class="mock-bar__back">← Status hub</a>
+    <span class="mock-bar__label">Login mock</span>
+    <div class="mock-bar__stages" role="group" aria-label="Stage">
+      <button type="button" [class.is-on]="stage() === 'idle'" (click)="setStage('idle')">Idle</button>
+      <button type="button" [class.is-on]="stage() === 'loading'" (click)="setStage('loading')">Loading</button>
+      <button type="button" [class.is-on]="stage() === 'error'" (click)="setStage('error')">Error</button>
+    </div>
+    <button type="button" class="mock-bar__toggle" (click)="toggleLog()">
+      Log {{ showLog() ? 'on' : 'off' }}
+    </button>
+  </aside>
+
+  <header class="lf-nav">
+    <a class="lf-brand" routerLink="/">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <div class="lf-nav__actions">
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" disabled>EN · ES</button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? 'Dark theme' : 'Light theme'"
+      >
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+        <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="lf-main">
+    <div class="lf-login">
+      <article class="lf-tile lf-tile--card" aria-labelledby="login-title">
+        <p class="lf-kicker">DomDimaBot</p>
+        <h1 id="login-title" class="lf-title">Sign in to your <span>control center</span></h1>
+        <p class="lf-copy">
+          Connect with Twitch to manage commands, modules, and live tools for your channel.
+        </p>
+
+        @if (stage() === 'idle') {
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--block">
+            Continue with Twitch
+          </button>
+          <p class="lf-note">We’ll never post without your permission.</p>
+        } @else if (stage() === 'error') {
+          <div class="lf-alert" role="alert">
+            <p class="lf-alert__title">Couldn’t finish sign-in</p>
+            <p class="lf-alert__copy">
+              Twitch denied access or the session expired. Try again — nothing was changed on your channel.
+            </p>
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--block">Try again</button>
+          <a class="lf-link" routerLink="/">Back to home</a>
+        } @else {
+          <div class="lf-loading" role="status" aria-live="polite">
+            <div class="lf-ring" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <circle class="lf-ring__track" cx="24" cy="24" r="18" />
+                <circle
+                  class="lf-ring__value"
+                  cx="24"
+                  cy="24"
+                  r="18"
+                  [style.stroke-dashoffset]="113 - (113 * progress()) / 100"
+                />
+              </svg>
+            </div>
+            <div class="lf-loading__meta">
+              <p class="lf-loading__label">{{ stageLabel() }}</p>
+              <div class="lf-progress" aria-hidden="true">
+                <div class="lf-progress__bar" [style.width.%]="progress()"></div>
+              </div>
+              <p class="lf-note">Validating session · syncing permissions</p>
+            </div>
+          </div>
+        }
+
+        @if (showLog() && (stage() === 'loading' || stage() === 'error' || logLines().length)) {
+          <section class="lf-log" aria-label="Sign-in activity">
+            <div class="lf-log__head">
+              <span class="lf-log__title">Activity</span>
+              <span
+                class="lf-chip"
+                [class.lf-chip--live]="stage() === 'loading'"
+                [class.lf-chip--muted]="stage() !== 'loading'"
+              >
+                {{ stage() === 'loading' ? 'Live' : stage() === 'error' ? 'Stopped' : 'Standby' }}
+              </span>
+            </div>
+            <ul class="lf-log__list">
+              @for (line of logLines(); track line.t + line.msg) {
+                <li>
+                  <time>{{ line.t }}</time>
+                  <span>{{ line.msg }}</span>
+                </li>
+              }
+              @if (stage() === 'error') {
+                <li class="lf-log__err">
+                  <time>—</time>
+                  <span>Exchange failed · state mismatch or denied scope</span>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </article>
+
+      <p class="lf-footnote">
+        Mock only · replaces heavy 3D loader + terminal debug with calm LF chrome.
+      </p>
+    </div>
+  </main>
+</div>

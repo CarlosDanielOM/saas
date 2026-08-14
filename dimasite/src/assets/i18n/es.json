@@ -1307,11 +1307,19 @@
     }
   },
   "login": {
-    "title": "Inicia sesion en DomDimaBot",
-    "subtitle": "Estamos preparando tu cuenta, permisos y panel.",
+    "title": "Entra a tu centro de control",
+    "subtitle": "Conecta con Twitch para gestionar comandos, modulos y herramientas en vivo de tu canal.",
+    "privacyNote": "Nunca publicaremos sin tu permiso.",
     "actions": {
       "continue": "Continuar con Twitch",
-      "tryAgain": "Intentar de nuevo"
+      "tryAgain": "Intentar de nuevo",
+      "home": "Volver al inicio"
+    },
+    "activity": {
+      "label": "Actividad",
+      "live": "En vivo",
+      "standby": "En espera",
+      "stopped": "Detenido"
     },
     "stages": {
       "idle": "Listo para autenticar",
@@ -1320,7 +1328,7 @@
       "permissions": "Cargando permisos del canal",
       "dashboard": "Preparando datos del panel",
       "redirecting": "Redirigiendo a tu panel",
-      "error": "Error de inicio de sesion"
+      "error": "No se pudo completar el acceso"
     },
     "toast": {
       "sessionExpiredTitle": "Sesion expirada",
@@ -1346,37 +1354,82 @@
     }
   },
   "notFound": {
-    "eyebrow": "Senal corrupta",
-    "title": "Caiste en una zona muerta.",
-    "message": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve al login, entra de nuevo y toma la puerta correcta antes de que el rastro se enfrie.",
-    "messageAuthenticated": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve a tu dashboard y elige una ruta valida antes de que el rastro se enfrie.",
-    "messageAdminAuthenticated": "Esta ruta esta rota, arrancada del mapa o nunca existio. Aqui todo termina en estatica. Vuelve al ultimo canal que estabas gestionando o entra a tu propio dashboard y elige una ruta valida.",
+    "eyebrow": "Senal perdida",
+    "title": "Esta pagina no esta en el mapa",
+    "message": "La ruta no existe o no encontramos ese canal. Revisa la URL o vuelve a un lugar conocido.",
+    "messageAuthenticated": "La ruta no existe o no encontramos ese canal. Abre tu panel y elige una pagina valida.",
+    "messageAdminAuthenticated": "La ruta no existe o no encontramos ese canal. Vuelve al ultimo canal que gestionabas o abre tu propio panel.",
+    "tipsTitle": "Que puedes hacer",
+    "tips": {
+      "0": "Revisa el slug del streamer en la URL",
+      "1": "Abre tu ultimo panel desde el menu",
+      "2": "Vuelve al inicio y navega desde ahi"
+    },
     "actions": {
-      "login": "Reingresar por Login",
-      "dashboard": "Volver al Dashboard",
-      "dashboardNamed": "Volver al Dashboard de {{name}}",
-      "lastViewedDashboard": "Ultimo Dashboard visto",
+      "login": "Iniciar sesion",
+      "home": "Volver al inicio",
+      "dashboard": "Ir al panel",
+      "dashboardNamed": "Ir al panel de {{name}}",
+      "lastViewedDashboard": "Ultimo panel visto",
       "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
-      "myDashboard": "Mi Dashboard",
-      "myDashboardNamed": "Mi Dashboard: {{name}}"
+      "myDashboard": "Mi panel",
+      "myDashboardNamed": "Mi panel: {{name}}"
     }
   },
   "forbidden": {
-    "eyebrow": "Acceso restringido",
-    "badge": "Requiere",
-    "title": "No tienes autorizacion para esta area.",
-    "message": "Esta ruta si existe, pero tu rol actual no tiene permiso para abrirla. Vuelve al dashboard o cambia de cuenta e intentalo otra vez con el nivel de acceso correcto.",
-    "messageAdminAuthenticated": "Esta ruta si existe, pero tu rol actual no tiene permiso para abrirla. Vuelve al ultimo canal que estabas gestionando o entra a tu propio dashboard e intentalo desde una ruta que si puedas abrir.",
-    "requestedRoute": "Ruta solicitada:",
+    "eyebrow": "Acceso denegado",
+    "badge": "Permiso",
+    "title": "No tienes permiso aqui",
+    "message": "Esta zona necesita un rol o plan que no tienes en este canal. Pide acceso al dueno o abre una pagina que si puedas gestionar.",
+    "messageAdminAuthenticated": "Esta zona necesita un rol que no tienes en este canal. Vuelve al ultimo canal que gestionabas o abre tu propio panel.",
+    "requestedRoute": "Ruta",
+    "tipsTitle": "Que puedes hacer",
+    "tips": {
+      "0": "Confirma que estas en el canal correcto",
+      "1": "Pide al dueno el permiso que falta",
+      "2": "Usa las paginas que tu rol ya permite"
+    },
     "actions": {
-      "dashboard": "Volver al Dashboard",
-      "dashboardNamed": "Volver al Dashboard de {{name}}",
-      "home": "Volver al Inicio",
-      "login": "Cambiar por Login",
-      "lastViewedDashboard": "Ultimo Dashboard visto",
+      "dashboard": "Abrir panel",
+      "dashboardNamed": "Abrir panel de {{name}}",
+      "home": "Volver al inicio",
+      "login": "Iniciar sesion",
+      "lastViewedDashboard": "Ultimo panel visto",
       "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
-      "myDashboard": "Mi Dashboard",
-      "myDashboardNamed": "Mi Dashboard: {{name}}"
+      "myDashboard": "Mi panel",
+      "myDashboardNamed": "Mi panel: {{name}}"
+    }
+  },
+  "status500": {
+    "eyebrow": "Fallo del servidor",
+    "title": "Algo se rompio de nuestro lado",
+    "message": "Hubo un error inesperado. Los datos de tu canal estan a salvo — intenta de nuevo en un momento. Si se repite, avisa a soporte.",
+    "tipsTitle": "Que puedes hacer",
+    "tips": {
+      "0": "Reintenta en unos segundos",
+      "1": "Recarga fuerte si la app se queda trabada",
+      "2": "Reportalo si se repite"
+    },
+    "actions": {
+      "retry": "Intentar de nuevo",
+      "home": "Volver al inicio",
+      "login": "Iniciar sesion"
+    }
+  },
+  "status503": {
+    "eyebrow": "Temporalmente fuera",
+    "title": "Estamos tomando aire",
+    "message": "DomDimaBot no esta disponible ahora — mantenimiento o mucha carga. Vuelve en un rato.",
+    "tipsTitle": "Que puedes hacer",
+    "tips": {
+      "0": "Espera un poco y recarga",
+      "1": "Sigue el estado en Discord / redes",
+      "2": "Vuelve cuando estemos en verde"
+    },
+    "actions": {
+      "retry": "Recargar",
+      "home": "Volver al inicio",
+      "login": "Iniciar sesion"
     }
   },
   "commands": {

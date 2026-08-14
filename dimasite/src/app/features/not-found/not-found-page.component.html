@@ -1,72 +1,73 @@
-<section
-  #shell
-  class="not-found-shell"
-  [attr.data-scene-mode]="sceneMode()"
-  aria-labelledby="not-found-title"
->
-  <canvas
-    #canvas
-    class="not-found-canvas"
-    [class.not-found-canvas--visible]="isThreeJsReady()"
-    aria-hidden="true"
-  ></canvas>
-
-  <div class="not-found-backdrop" aria-hidden="true">
-    <div class="not-found-backdrop__glow not-found-backdrop__glow--left"></div>
-    <div class="not-found-backdrop__glow not-found-backdrop__glow--right"></div>
-    <div class="not-found-backdrop__glow not-found-backdrop__glow--core"></div>
-    <div class="not-found-grid"></div>
-    <div class="not-found-scanline"></div>
-
-    <div
-      class="not-found-css-orbits"
-      [class.not-found-css-orbits--visible]="!isThreeJsReady() || shouldUseCSSFallback()"
-    >
-      <span class="not-found-css-orbit not-found-css-orbit--one"></span>
-      <span class="not-found-css-orbit not-found-css-orbit--two"></span>
-      <span class="not-found-css-orbit not-found-css-orbit--three"></span>
-    </div>
-
-    <div class="not-found-particles">
-      @for (particle of particleIndexes; track particle) {
-        <span class="not-found-particle" [style.--particle-index]="particle"></span>
+<div class="lf" data-code="404">
+  <header class="lf-nav">
+    <a class="lf-brand" routerLink="/">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <div class="lf-nav__actions">
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool"
+        (click)="toggleLanguage()"
+        [attr.aria-label]="t('commands.public.languageToggle')"
+      >
+        {{ languageLabel() }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+      >
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+        <span>{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
+      </button>
+      @if (!session()) {
+        <a class="lf-btn lf-btn--primary" routerLink="/login">{{ t('notFound.actions.login') }}</a>
       }
     </div>
-  </div>
+  </header>
 
-  <div class="not-found-content">
-    <p class="not-found-eyebrow">{{ t('notFound.eyebrow') }}</p>
+  <main class="lf-main">
+    <section class="lf-bento" aria-labelledby="not-found-title">
+      <article class="lf-tile lf-tile--hero">
+        <p class="lf-kicker">{{ t('notFound.eyebrow') }}</p>
+        <p class="lf-code" aria-hidden="true">404</p>
+        <h1 id="not-found-title" class="lf-title">{{ t('notFound.title') }}</h1>
+        <p class="lf-copy">{{ t(messageKey()) }}</p>
 
-    <div class="not-found-code" aria-hidden="true">
-      <span class="not-found-digit not-found-digit--left" data-digit="4">4</span>
-      <span class="not-found-digit not-found-digit--center" data-digit="0">0</span>
-      <span class="not-found-digit not-found-digit--right" data-digit="4">4</span>
-    </div>
-
-    <div class="not-found-panel glass-card">
-      <h1 id="not-found-title" class="not-found-title">{{ t('notFound.title') }}</h1>
-      <p class="not-found-copy">{{ t(messageKey()) }}</p>
-
-      <div class="not-found-actions">
-        @if (session()) {
-          @if (hasSeparateLastViewedDashboard()) {
-            <a class="not-found-button" [routerLink]="lastViewedDashboardLink()">
-              {{ lastViewedDashboardLabel() }}
-            </a>
-            <a class="not-found-button not-found-button--secondary" [routerLink]="ownDashboardLink()">
-              {{ myDashboardLabel() }}
-            </a>
+        <div class="lf-actions">
+          @if (session()) {
+            @if (hasSeparateLastViewedDashboard()) {
+              <a class="lf-btn lf-btn--primary" [routerLink]="lastViewedDashboardLink()">
+                {{ lastViewedDashboardLabel() }}
+              </a>
+              <a class="lf-btn" [routerLink]="ownDashboardLink()">
+                {{ myDashboardLabel() }}
+              </a>
+            } @else {
+              <a class="lf-btn lf-btn--primary" [routerLink]="ownDashboardLink()">
+                {{ ownDashboardLabel() }}
+              </a>
+              <a class="lf-btn" routerLink="/">{{ t('notFound.actions.home') }}</a>
+            }
           } @else {
-            <a class="not-found-button" [routerLink]="ownDashboardLink()">
-              {{ ownDashboardLabel() }}
+            <a class="lf-btn lf-btn--primary" routerLink="/login">
+              {{ t('notFound.actions.login') }}
             </a>
+            <a class="lf-btn" routerLink="/">{{ t('notFound.actions.home') }}</a>
           }
-        } @else {
-          <a class="not-found-button" routerLink="/login">
-            {{ t('notFound.actions.login') }}
-          </a>
-        }
-      </div>
-    </div>
-  </div>
-</section>
+        </div>
+      </article>
+
+      <aside class="lf-tile lf-tile--side">
+        <p class="lf-side__kicker">{{ t('notFound.tipsTitle') }}</p>
+        <ul class="lf-side__list">
+          <li>{{ t('notFound.tips.0') }}</li>
+          <li>{{ t('notFound.tips.1') }}</li>
+          <li>{{ t('notFound.tips.2') }}</li>
+        </ul>
+      </aside>
+    </section>
+  </main>
+</div>

@@ -383,44 +383,16 @@ This project is indexed by GitNexus as **saas** (9910 symbols, 24095 relationshi
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-When the user types `/graphify`, invoke the `skill` tool with `skill: "graphify"` before doing anything else.
+This project has a graphify knowledge graph at .graphify/.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-
-### Graphify LLM Re-Extraction Policy
-
-The post-commit git hook automatically rebuilds the **AST graph** (code structure) for free after every commit using Tree-sitter — no LLM calls needed. This keeps `graph.json` and `GRAPH_REPORT.md` structurally fresh.
-
-However, the **LLM-driven semantic extraction** (community labels, doc-to-code concept relationships, image understanding, surprising connections) is NOT re-run automatically because it costs MiniMax M3 tokens and takes ~4 minutes. This extraction only needs to run when the *meaning* of the codebase changes, not just the structure.
-
-**Agent responsibility — assess and act:**
-
-After completing a work session (especially before committing), the agent should assess whether the changes warrant an LLM re-extraction. Use this criteria:
-
-| Trigger | Action |
-|---------|--------|
-| **Minor changes** (bug fixes, small refactors, config tweaks, 1-3 files) | Do nothing. AST-only rebuild is sufficient. |
-| **Moderate changes** (new features, 4-15 files, new routes/components) | **Notify the user**: "These changes are significant enough that the Graphify semantic graph (community labels, doc relationships) may be stale. Run `graphify extract . --update --backend minimax` when convenient to refresh the LLM-extracted layer." |
-| **Major changes** (new subsystem, 15+ files, new worker/module, architectural shift, docs added/changed) | **Run it yourself** if: (1) the build/type-check passes, (2) no known bugs from your work, (3) you're confident the changes are stable. Use: `MINIMAX_API_KEY=<key> graphify extract . --update --backend minimax` then `graphify cluster-only . --backend minimax`. If any of those conditions are NOT met, **notify the user instead** and explain what's blocking. |
-| **Documentation changes** (`.mdx`, `.md`, planning docs, images) | **Always notify**: "Documentation/images changed — Graphify's LLM layer needs a manual refresh to pick up new concepts. Run `graphify extract . --update --backend minimax` when ready." |
-
-**How to run the LLM re-extraction:**
-
-```bash
-# Re-extract only changed files (incremental, fast for small changes):
-MINIMAX_API_KEY=sk-cp-... graphify extract . --update --backend minimax
-
-# Then re-label communities (if community structure shifted):
-MINIMAX_API_KEY=sk-cp-... graphify cluster-only . --backend minimax
-```
-
-**The MiniMax M3 config** (512K max tokens, reasoning_split) is stored in `~/.graphify/providers.json`. The API key is in `~/.config/opencode/opencode.json` under `mcp.minimax.environment.MINIMAX_API_KEY`.
-
-**Do NOT** run LLM re-extraction on every commit. The AST hook handles structural freshness. Only trigger the LLM layer when meaning changes, not just structure.
+- For codebase or architecture questions, when `.graphify/graph.json` exists, first run `graphify query "<question>"` (or `graphify path "<A>" "<B>"` / `graphify explain "<concept>"`); these return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output
+- If .graphify/wiki/index.md exists, navigate it instead of reading raw files
+- If .graphify/graph.json is missing but graphify-out/graph.json exists, run `graphify migrate-state --dry-run` first; if tracked legacy artifacts are reported, ask before using the recommended `git mv -f graphify-out .graphify` and commit message
+- If .graphify/needs_update exists or .graphify/branch.json has stale=true, warn before relying on semantic results and run the graphify skill with --update when appropriate
+- If the user asks to build, update, query, path, or explain the graph, use the installed `graphify` skill instead of ad-hoc file traversal
+- Before proposing or committing .graphify artifacts, run `graphify portable-check .graphify`; commit-safe graph artifacts must use repo-relative paths, and never commit .graphify/branch.json, .graphify/worktree.json, .graphify/needs_update, or .graphify/cache/. If a repo already tracks any of them, first add them to .gitignore, then propose `git rm --cached .graphify/branch.json .graphify/worktree.json .graphify/needs_update` and `git rm -r --cached .graphify/cache`; never mutate git state without asking
+- Before deep graph traversal, prefer `graphify summary --graph .graphify/graph.json` for compact first-hop orientation
+- For review impact on changed files, use `graphify review-delta --graph .graphify/graph.json` instead of generic traversal
+- Read `.graphify/GRAPH_REPORT.md` only for broad architecture review or when `query` / `path` / `explain` do not surface enough context
+- After modifying code files in this session, run `npx graphify hook-rebuild` to keep the graph current
