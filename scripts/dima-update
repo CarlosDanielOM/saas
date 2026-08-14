@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+
+usage() {
+  cat <<'EOF'
+Usage: dima-update [target ...]
+
+Pulls the current branch with a fast-forward-only update, then rebuilds the
+requested deployment targets. With no targets, updates every service/site.
+
+Targets:
+  api                  dimabot API server
+  bot                  dimabot chat bot
+  cron                 dimabot cron workers
+  backend              API server, chat bot, and cron workers
+  piper                Piper TTS container
+  embeddings           LFM embeddings container
+  site | dimasite      Angular public site bundle
+  admin                Angular admin bundle
+  docs | dimadocs      Astro documentation bundle
+  dimafx               Twitch extension server container
+  all                  Every target (the default)
+
+Examples:
+  dima-update
+  dima-update bot api
+  dima-update site docs
+EOF
+}
+
+declare -a dimabot_services=()
+build_site=false
+build_admin=false
+build_docs=false
+build_dimafx=false
+all=false
+
+add_dimabot_service() {
+  local service=$1
+  local existing
+
+  for existing in "${dimabot_services[@]}"; do
+    [[ $existing == "$service" ]] && return
+  done
+
+  dimabot_services+=("$service")
+}
+
+select_all() {
+  all=true
+  build_site=true
+  build_admin=true
+  build_docs=true
+  build_dimafx=true
+}
+
+if (( $# == 0 )); then
+  select_all
+else
+  for target in "$@"; do
+    case "$target" in
+      api)
+        add_dimabot_service api-server
+        ;;
+      bot)
+        add_dimabot_service chat-bot
+        ;;
+      cron)
+        add_dimabot_service dima-cron
+        ;;
+      backend)
+        add_dimabot_service api-server
+        add_dimabot_service chat-bot
+        add_dimabot_service dima-cron
+        ;;
+      piper)
+        add_dimabot_service piper-tts
+        ;;
+      embeddings)
+        add_dimabot_service lfm2.5-embeddings
+        ;;
+      site|dimasite)
+        build_site=true
+        ;;
+      admin)
+        build_admin=true
+        ;;
+      docs|dimadocs)
+        build_docs=true
+        ;;
+      dimafx)
+        build_dimafx=true
+        ;;
+      all)
+        select_all
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        printf 'Unknown target: %s\n\n' "$target" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+fi
+
+printf 'Pulling updates...\n'
+git -C "$repo_root" pull --ff-only
+
+if [[ $all == true ]]; then
+  printf 'Rebuilding all dimabot containers...\n'
+  docker compose -f "$repo_root/dimabot/docker-compose.yaml" up --detach --build
+elif (( ${#dimabot_services[@]} > 0 )); then
+  printf 'Rebuilding dimabot services: %s\n' "${dimabot_services[*]}"
+  docker compose -f "$repo_root/dimabot/docker-compose.yaml" up --detach --build "${dimabot_services[@]}"
+fi
+
+if [[ $build_site == true ]]; then
+  printf 'Building dimasite...\n'
+  npm --prefix "$repo_root/dimasite" run build
+fi
+
+if [[ $build_admin == true ]]; then
+  printf 'Building admin...\n'
+  npm --prefix "$repo_root/admin" run build
+fi
+
+if [[ $build_docs == true ]]; then
+  printf 'Building dimadocs...\n'
+  npm --prefix "$repo_root/dimadocs" run build
+fi
+
+if [[ $build_dimafx == true ]]; then
+  if [[ $all == true ]]; then
+    printf 'Rebuilding all dimafx containers...\n'
+    docker compose -f "$repo_root/dimafx/docker-compose.yml" up --detach --build
+  else
+    printf 'Rebuilding dimafx server...\n'
+    docker compose -f "$repo_root/dimafx/docker-compose.yml" up --detach --build dimafx-server
+  fi
+fi
