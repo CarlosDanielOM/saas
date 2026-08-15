@@ -5,22 +5,22 @@
  */
 
 export const MODELS = {
-  free: "deepseek/deepseek-v4-flash",
+  free: "deepseek/deepseek-v4-flash-0731",
   exhausted: "sao10k/l3-lunaris-8b:nitro",
-  premium: "deepseek/deepseek-v4-flash",
-  pro: "deepseek/deepseek-v4-flash",
+  premium: "deepseek/deepseek-v4-flash-0731",
+  pro: "deepseek/deepseek-v4-flash-0731",
 } as const;
 
 // Background LLM models for stream summaries and weekly maintenance
 // Free tier uses same as chat model, Premium/Pro use better models
 export const BACKGROUND_MODELS = {
   free: "qwen/qwen3-235b-a22b-2507",
-  premium: "deepseek/deepseek-v4-flash",
+  premium: "deepseek/deepseek-v4-flash-0731",
   pro: "deepseek/deepseek-v4-pro",
 } as const;
 
 // Fallback model for pro users if v4-pro fails
-export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4-flash";
+export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4-flash-0731";
 
 /**
  * Per-model upstream provider restrictions for OpenRouter.

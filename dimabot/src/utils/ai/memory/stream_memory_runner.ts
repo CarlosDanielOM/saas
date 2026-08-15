@@ -362,7 +362,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
             step: 'GENERATE_DECISION',
             channelID,
             source: input.source,
-            modelSelection: planTier === 'pro' ? 'deepseek/deepseek-v4-pro' : planTier === 'premium' ? 'deepseek/deepseek-v4-flash' : 'qwen/qwen3-235b-a22b-2507'
+            modelSelection: planTier === 'pro' ? 'deepseek/deepseek-v4-pro' : planTier === 'premium' ? 'deepseek/deepseek-v4-flash-0731' : 'qwen/qwen3-235b-a22b-2507'
         }, { channelId: channelID, destination: 'both' });
 
         const decisionResult = await generateStreamSummaryDecision(context, input.source);

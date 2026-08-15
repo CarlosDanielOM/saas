@@ -306,7 +306,7 @@ interface AttemptResult {
  */
 const STREAM_SUMMARY_MAX_TOKENS_BY_MODEL: Readonly<Record<string, number>> = {
     "deepseek/deepseek-v4-pro": 256000,
-    "deepseek/deepseek-v4-flash": 256000
+    "deepseek/deepseek-v4-flash-0731": 256000
 };
 
 function resolveMaxTokens(model: string): number {

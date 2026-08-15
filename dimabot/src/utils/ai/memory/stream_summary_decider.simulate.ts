@@ -185,7 +185,7 @@ before(() => {
     // eslint-disable-next-line no-console
     console.log(`[SIMULATION] Primary model: deepseek/deepseek-v4-pro`);
     // eslint-disable-next-line no-console
-    console.log(`[SIMULATION] Fallback model: deepseek/deepseek-v4-flash`);
+    console.log(`[SIMULATION] Fallback model: deepseek/deepseek-v4-flash-0731`);
     // eslint-disable-next-line no-console
     console.log(`[SIMULATION] Real OpenRouter calls will be made. Real LLM cost.\n`);
 });
