@@ -9,6 +9,7 @@ import { createOrUpdateChannelMemory } from '../memory/memory.service.js';
 import { getChannelLearningConfig } from '../memory/memory.service.js';
 import type { IStreamerData } from './index.js';
 import { error, debug } from '../../logger.js';
+import { resolveChatMemorySubject } from '../memory/memory_policy.js';
 
 export interface CreateMemoryToolResult {
     success: boolean;
@@ -55,12 +56,25 @@ export async function execute(
         const triggeringMessage = tags?.message || tags?.text || content;
         const timestamp = Math.floor(Date.now() / 1000);
 
-        // User facts default to the current chatter so they cannot leak into channel-wide context.
-        const subjectUsername = username || (type === 'known_user_fact' ? triggeringUsername : '');
-        const subjectScope = subjectUsername ? 'user' : 'channel';
-        const subjectUserID = subjectUsername.toLowerCase() === triggeringUsername.toLowerCase()
-            ? triggeringUserID
-            : '';
+        const subjectResult = resolveChatMemorySubject({
+            type,
+            requestedUsername: username,
+            triggeringUsername,
+            triggeringUserID
+        });
+        if (!subjectResult.subject) {
+            return {
+                success: false,
+                confirmed: false,
+                pending: false,
+                message: 'Memory requires a verified current-user identity',
+                error: subjectResult.error
+            };
+        }
+        const isTrustedActor = triggeringUserID === channelID ||
+            (Array.isArray(tags?.badges) && tags.badges.some((badge: { set_id?: string }) =>
+                badge?.set_id === 'moderator' || badge?.set_id === 'lead_moderator'
+            ));
 
         // Call createOrUpdateChannelMemory
         const result = await createOrUpdateChannelMemory({
@@ -69,11 +83,7 @@ export async function execute(
             type,
             risk,
             confidence, // Use streamer's threshold value
-            subject: {
-                scope: subjectScope,
-                username: subjectUsername,
-                userID: subjectUserID
-            },
+            subject: subjectResult.subject,
             content,
             summary,
             evidence: [
@@ -89,7 +99,9 @@ export async function execute(
                 source: 'chat',
                 username: triggeringUsername,
                 userID: triggeringUserID
-            }
+            },
+            forceStatus: isTrustedActor ? undefined : 'pending_review',
+            preserveConfirmed: true
         });
 
         if (result.error) {

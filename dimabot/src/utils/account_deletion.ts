@@ -18,6 +18,7 @@ import UsersSchema from '../schemas/users.schema.js';
 import { unsubscribeTwitchEvent } from './eventsub.js';
 import { cleanupChannelMediaOwnership } from './media_cleanup.js';
 import { decrementSiteAnalytics } from './siteanalytics.js';
+import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
 
 export interface IDeleteAccountOptions {
     channelID: string;
@@ -70,6 +71,8 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
         count: existingEventsubs.length
     });
 
+    let unsubscribedEventsubs = 0;
+    let failedEventsubUnsubscribes = 0;
     for (const eventsub of existingEventsubs) {
         if (!eventsub.id) {
             continue;
@@ -77,15 +80,18 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
 
         try {
             const unsubscribeResult = await unsubscribeTwitchEvent(eventsub.id);
-            if (unsubscribeResult?.error) {
+            if (unsubscribeResult?.error || Number(unsubscribeResult?.status || 0) !== 204) {
+                failedEventsubUnsubscribes++;
                 console.error('[ACCOUNT_DELETION] Failed to unsubscribe eventsub', {
                     channelID,
                     eventsubID: eventsub.id,
-                    unsubscribeResult,
                     timestamp: new Date().toISOString()
                 });
+            } else {
+                unsubscribedEventsubs++;
             }
         } catch (error) {
+            failedEventsubUnsubscribes++;
             console.error('[ACCOUNT_DELETION] Error unsubscribing eventsub', {
                 channelID,
                 eventsubID: eventsub.id,
@@ -93,6 +99,14 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
                 timestamp: new Date().toISOString()
             });
         }
+    }
+    if (failedEventsubUnsubscribes > 0) {
+        throw new Error(`Failed to unsubscribe ${failedEventsubUnsubscribes} Twitch event subscription(s)`);
+    }
+
+    const memoryEmbeddingDelete = await deleteChannelMemoryEmbeddingsByChannel(channelID);
+    if (memoryEmbeddingDelete.error) {
+        throw new Error(memoryEmbeddingDelete.message || 'Failed to delete channel memory embeddings');
     }
 
     const [commandsDelete, commandVariablesDelete, eventsubsDelete, rewardsDelete, triggersDelete, adminsDelete] = await Promise.all([
@@ -171,7 +185,7 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
     const result: IDeleteAccountResult = {
         commandsDeleted: commandsDelete.deletedCount ?? 0,
         commandVariablesDeleted: commandVariablesDelete.deletedCount ?? 0,
-        eventsubsDeleted: eventsubsDelete.deletedCount ?? 0,
+        eventsubsDeleted: unsubscribedEventsubs + (eventsubsDelete.deletedCount ?? 0),
         rewardsDeleted: rewardsDelete.deletedCount ?? 0,
         triggersDeleted: triggersDelete.deletedCount ?? 0,
         adminsDeleted: adminsDelete.deletedCount ?? 0,

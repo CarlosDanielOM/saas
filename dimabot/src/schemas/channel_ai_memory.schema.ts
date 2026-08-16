@@ -131,6 +131,7 @@ channelAIMemorySchema.index({ qdrantPointID: 1 }, { unique: true, sparse: true }
 channelAIMemorySchema.index({ channelID: 1, fingerprint: 1 }, { unique: true });
 channelAIMemorySchema.index({ channelID: 1, updatedAt: -1 });
 channelAIMemorySchema.index({ channelID: 1, 'subject.username': 1, type: 1 });
+channelAIMemorySchema.index({ channelID: 1, 'subject.userID': 1, status: 1, type: 1 });
 
 export const ChannelAIMemorySchema = model<IChannelAIMemory>('ChannelAIMemory', channelAIMemorySchema);
 

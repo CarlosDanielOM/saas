@@ -6,3 +6,12 @@ export function generateQdrantPointId(namespace: string, entityID: string, times
         .digest('hex');
     return parseInt(hash.substring(0, 8), 16);
 }
+
+export function qdrantPointBelongsToMemory(
+    payload: Record<string, unknown> | null | undefined,
+    memoryID: string,
+    channelID: string
+): boolean {
+    return String(payload?.memory_id || '') === memoryID &&
+        String(payload?.channel_id || '') === channelID;
+}

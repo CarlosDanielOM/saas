@@ -1,10 +1,18 @@
 import { createHash } from 'node:crypto';
+import { Types } from 'mongoose';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { ChannelAIMemorySchema, type MemorySource, type MemorySubjectScope, type MemoryStatus, type MemoryType, type MemoryRisk, type IMemorySubject, type IMemoryEvidence, type IMemoryActor, type IChannelAIMemory } from '../../../schemas/channel_ai_memory.schema.js';
 import { ChannelAIPersonalitySchema } from '../../../schemas/channel_ai_personality.schema.js';
 import { deleteChannelMemoryEmbedding, upsertChannelMemoryEmbedding } from '../../qdrant/functions/memory/sync_memory.qdrant.js';
 import { generateQdrantPointId } from '../../qdrant/qdrant_point_id.js';
 import { error, warn } from '../../logger.js';
+import {
+    getMemoryPolicyViolation,
+    selectValidatedChannelMemories,
+    type IMemoryCandidate,
+    type IMemoryPolicySettings,
+    type IValidatedMemoryContextItem
+} from './memory_policy.js';
 
 const DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.82;
 const DEFAULT_MAX_PENDING = 250;
@@ -22,7 +30,11 @@ function clampConfidence(value: unknown): number {
 
 function normalizeSummary(content: string, summary?: string): string {
     const normalizedSummary = normalizeText(summary);
-    if (normalizedSummary) return normalizedSummary;
+    if (normalizedSummary) {
+        return normalizedSummary.length <= 180
+            ? normalizedSummary
+            : `${normalizedSummary.slice(0, 177)}...`;
+    }
     const normalizedContent = normalizeText(content);
     if (normalizedContent.length <= 180) return normalizedContent;
     return `${normalizedContent.slice(0, 177)}...`;
@@ -78,6 +90,17 @@ async function resolveLearningConfig(channelID: string): Promise<ILearningConfig
         autoConfirmThreshold: Number(config?.autoConfirmThreshold ?? DEFAULT_AUTO_CONFIRM_THRESHOLD),
         maxPendingMemories: Number(config?.maxPendingMemories ?? DEFAULT_MAX_PENDING),
         maxConfirmedMemories: Number(config?.maxConfirmedMemories ?? DEFAULT_MAX_CONFIRMED)
+    };
+}
+
+async function resolveMemoryPolicy(channelID: string): Promise<IMemoryPolicySettings> {
+    const personality = await ChannelAIPersonalitySchema.findOne({ channelID })
+        .select('memoryPolicy')
+        .lean();
+    return {
+        allowSensitiveMemories: Boolean(personality?.memoryPolicy?.allowSensitiveMemories ?? false),
+        allowUserPreferenceMemories: Boolean(personality?.memoryPolicy?.allowUserPreferenceMemories ?? true),
+        allowRunningJokes: Boolean(personality?.memoryPolicy?.allowRunningJokes ?? true)
     };
 }
 
@@ -146,11 +169,7 @@ export async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void
         );
     }
 
-    // Sync to Qdrant for confirmed, archived, and rejected statuses
-    // These form the "mental map" - confirmed = approved knowledge, archived = historical context, rejected = negative signal
-    const syncedStatuses = ['confirmed', 'archived', 'rejected'];
-    
-    if (syncedStatuses.includes(memory.status)) {
+    if (memory.status === 'confirmed') {
         const syncResult = await upsertChannelMemoryEmbedding({
             qdrantPointID,
             memoryId: String(memory._id),
@@ -171,9 +190,11 @@ export async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void
             throw new Error(syncResult.message || 'Failed to sync memory to Qdrant');
         }
     } else {
-        // Delete from Qdrant for candidate and pending_review statuses
-        // These are not yet validated and should not appear in semantic search
-        const deleteResult = await deleteChannelMemoryEmbedding(qdrantPointID, memory.channelID);
+        const deleteResult = await deleteChannelMemoryEmbedding(
+            qdrantPointID,
+            memory.channelID,
+            String(memory._id)
+        );
         if (deleteResult.error) {
             throw new Error(deleteResult.message || 'Failed to remove memory from Qdrant');
         }
@@ -214,6 +235,8 @@ export interface ICreateOrUpdateChannelMemoryInput {
     };
     forceStatus?: MemoryStatus;
     bypassLearningConfig?: boolean;
+    bypassMemoryPolicy?: boolean;
+    preserveConfirmed?: boolean;
 }
 
 export interface ICreateOrUpdateChannelMemoryResult {
@@ -241,6 +264,18 @@ export async function createOrUpdateChannelMemory(
             username: normalizeText(input.subject?.username),
             userID: normalizeText(input.subject?.userID)
         };
+        if ((subject.scope === 'user' || input.type === 'known_user_fact') && !subject.userID) {
+            return {
+                error: true,
+                message: 'User-scoped memories require a stable Twitch user ID'
+            };
+        }
+        if (input.type === 'known_user_fact' && subject.scope !== 'user') {
+            return {
+                error: true,
+                message: 'Known user facts require a user subject'
+            };
+        }
         const fingerprint = buildFingerprint({
             channelID,
             type: input.type,
@@ -254,6 +289,19 @@ export async function createOrUpdateChannelMemory(
                 message: 'Learning disabled for this channel'
             };
         }
+        const memoryPolicy = await resolveMemoryPolicy(channelID);
+        const policyViolation = getMemoryPolicyViolation(
+            input.type,
+            input.risk || 'low',
+            subject.scope,
+            memoryPolicy
+        );
+        if (policyViolation && !input.bypassMemoryPolicy) {
+            return {
+                error: true,
+                message: policyViolation
+            };
+        }
         let targetStatus: MemoryStatus;
         if (input.forceStatus) {
             targetStatus = input.forceStatus;
@@ -264,20 +312,45 @@ export async function createOrUpdateChannelMemory(
         }
         const existing = await ChannelAIMemorySchema.findOne({ channelID, fingerprint });
         if (existing) {
+            if (input.preserveConfirmed && existing.status === 'confirmed') {
+                return {
+                    error: false,
+                    memory: existing
+                };
+            }
+            let nextStatus = existing.status;
+            if (input.forceStatus) {
+                nextStatus = targetStatus;
+            } else if (existing.status !== 'confirmed') {
+                nextStatus = shouldAutoConfirm(
+                    input.risk || existing.risk,
+                    Math.max(existing.confidence || 0, confidence),
+                    learningConfig
+                )
+                    ? 'confirmed'
+                    : targetStatus;
+            }
+            existing.qdrantPointID = resolveMemoryQdrantPointID(existing);
+            if (nextStatus !== 'confirmed') {
+                const deleteResult = await deleteChannelMemoryEmbedding(
+                    existing.qdrantPointID,
+                    existing.channelID,
+                    String(existing._id)
+                );
+                if (deleteResult.error) {
+                    throw new Error(deleteResult.message || 'Failed to remove memory from Qdrant');
+                }
+            }
             existing.content = content;
             existing.summary = summary;
             existing.risk = input.risk || existing.risk;
             existing.confidence = Math.max(existing.confidence || 0, confidence);
             existing.type = input.type;
             existing.subject = subject;
-            if (!input.forceStatus && existing.status !== 'confirmed') {
-                if (shouldAutoConfirm(existing.risk, existing.confidence, learningConfig)) {
-                    existing.status = 'confirmed';
-                    existing.reviewReason = 'auto_confirm_threshold_met';
-                }
-            } else {
-                existing.status = targetStatus;
-            }
+            existing.status = nextStatus;
+            existing.reviewReason = nextStatus === 'confirmed'
+                ? 'auto_confirm_threshold_met'
+                : (input.forceStatus ? 'manual_status_set' : 'awaiting_review');
             const evidence = Array.isArray(input.evidence) ? input.evidence : [];
             if (evidence.length > 0) {
                 const existingEvidence = Array.isArray(existing.sourceEvidence) ? existing.sourceEvidence : [];
@@ -293,8 +366,10 @@ export async function createOrUpdateChannelMemory(
                     }));
             }
             existing.updatedAt = new Date();
+            if (existing.status === 'confirmed') {
+                await syncMemoryToQdrant(existing);
+            }
             await existing.save();
-            await syncMemoryToQdrant(existing);
             return {
                 error: false,
                 memory: existing
@@ -319,7 +394,15 @@ export async function createOrUpdateChannelMemory(
             }
         }
         const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
-        const memory = await ChannelAIMemorySchema.create({
+        const memoryID = new Types.ObjectId();
+        const qdrantPointID = generateQdrantPointId(
+            channelID,
+            String(memoryID),
+            Math.floor(memoryID.getTimestamp().getTime() / 1000)
+        );
+        const memory = new ChannelAIMemorySchema({
+            _id: memoryID,
+            qdrantPointID,
             channelID,
             channel: normalizeText(input.channelName) || streamer?.name || 'Unknown',
             type: input.type,
@@ -345,7 +428,17 @@ export async function createOrUpdateChannelMemory(
             } as IMemoryActor,
             reviewReason: input.forceStatus ? 'manual_status_set' : (targetStatus === 'confirmed' ? 'auto_confirm_threshold_met' : 'awaiting_review')
         });
-        await syncMemoryToQdrant(memory);
+        if (memory.status === 'confirmed') {
+            await syncMemoryToQdrant(memory);
+        }
+        try {
+            await memory.save();
+        } catch (saveError) {
+            if (memory.status === 'confirmed') {
+                await deleteChannelMemoryEmbedding(qdrantPointID, channelID, String(memory._id));
+            }
+            throw saveError;
+        }
         return {
             error: false,
             memory: memory
@@ -396,6 +489,39 @@ export async function setChannelMemoryStatus(
                 message: 'Memory not found'
             };
         }
+        if (params.status === 'confirmed') {
+            if (memory.type === 'known_user_fact' &&
+                (memory.subject.scope !== 'user' || !normalizeText(memory.subject.userID))) {
+                return {
+                    error: true,
+                    message: 'Known user facts require a verified Twitch user ID before confirmation'
+                };
+            }
+            const memoryPolicy = await resolveMemoryPolicy(params.channelID);
+            const policyViolation = getMemoryPolicyViolation(
+                memory.type,
+                memory.risk,
+                memory.subject.scope,
+                memoryPolicy
+            );
+            if (policyViolation) {
+                return { error: true, message: policyViolation };
+            }
+        } else {
+            const qdrantPointID = resolveMemoryQdrantPointID(memory);
+            const deleteResult = await deleteChannelMemoryEmbedding(
+                qdrantPointID,
+                memory.channelID,
+                String(memory._id)
+            );
+            if (deleteResult.error) {
+                return {
+                    error: true,
+                    message: deleteResult.message || 'Failed to remove memory from Qdrant'
+                };
+            }
+            memory.qdrantPointID = qdrantPointID;
+        }
         memory.status = params.status;
         memory.reviewReason = normalizeText(params.reviewReason);
         memory.reviewedAt = new Date();
@@ -405,8 +531,10 @@ export async function setChannelMemoryStatus(
             userID: normalizeText(params.reviewer.userID)
         } as IMemoryActor : undefined;
         memory.updatedAt = new Date();
+        if (memory.status === 'confirmed') {
+            await syncMemoryToQdrant(memory);
+        }
         await memory.save();
-        await syncMemoryToQdrant(memory);
         return {
             error: false,
             memory: memory
@@ -461,17 +589,52 @@ export async function updateChannelMemory(
                 message: 'Memory not found'
             };
         }
+        const nextType = params.type || memory.type;
+        const nextRisk = params.risk || memory.risk;
+        const nextSubject: IMemorySubject = params.subject ? {
+            scope: (params.subject.scope === 'user' ? 'user' : 'channel') as MemorySubjectScope,
+            username: normalizeText(params.subject.username),
+            userID: normalizeText(params.subject.userID)
+        } : memory.subject;
+        if ((nextSubject.scope === 'user' || nextType === 'known_user_fact') && !nextSubject.userID) {
+            return {
+                error: true,
+                message: 'User-scoped memories require a stable Twitch user ID'
+            };
+        }
+        if (nextType === 'known_user_fact' && nextSubject.scope !== 'user') {
+            return {
+                error: true,
+                message: 'Known user facts require a user subject'
+            };
+        }
+        const memoryPolicy = await resolveMemoryPolicy(params.channelID);
+        const policyViolation = getMemoryPolicyViolation(nextType, nextRisk, nextSubject.scope, memoryPolicy);
+        if (policyViolation) {
+            return { error: true, message: policyViolation };
+        }
+        if (memory.status !== 'confirmed') {
+            const qdrantPointID = resolveMemoryQdrantPointID(memory);
+            const deleteResult = await deleteChannelMemoryEmbedding(
+                qdrantPointID,
+                memory.channelID,
+                String(memory._id)
+            );
+            if (deleteResult.error) {
+                return {
+                    error: true,
+                    message: deleteResult.message || 'Failed to remove stale memory from Qdrant'
+                };
+            }
+            memory.qdrantPointID = qdrantPointID;
+        }
         if (params.type) memory.type = params.type;
         if (params.risk) memory.risk = params.risk;
         if (typeof params.confidence === 'number') memory.confidence = clampConfidence(params.confidence);
         if (typeof params.content === 'string') memory.content = normalizeText(params.content);
         if (typeof params.summary === 'string') memory.summary = normalizeSummary(memory.content, params.summary);
         if (params.subject) {
-            memory.subject = {
-                scope: (params.subject.scope === 'user' ? 'user' : 'channel') as MemorySubjectScope,
-                username: normalizeText(params.subject.username),
-                userID: normalizeText(params.subject.userID)
-            };
+            memory.subject = nextSubject;
         }
         if (memory.content && !memory.summary) {
             memory.summary = normalizeSummary(memory.content);
@@ -486,8 +649,10 @@ export async function updateChannelMemory(
             summary: memory.summary
         });
         memory.updatedAt = new Date();
+        if (memory.status === 'confirmed') {
+            await syncMemoryToQdrant(memory);
+        }
         await memory.save();
-        await syncMemoryToQdrant(memory);
         return {
             error: false,
             memory: memory
@@ -558,14 +723,9 @@ export interface IKnownUserMemoryContextItem {
 
 export interface IGetKnownUserMemoryContextParams {
     channelID: string;
-    userID?: string;
-    username?: string;
+    userID: string;
     limit: number;
     allowSensitiveMemories?: boolean;
-}
-
-function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 export async function getKnownUserMemoryContext(
@@ -573,33 +733,8 @@ export async function getKnownUserMemoryContext(
 ): Promise<IKnownUserMemoryContextItem[]> {
     const channelID = normalizeText(params.channelID);
     const userID = normalizeText(params.userID);
-    const username = normalizeText(params.username);
     const limit = Math.max(1, Math.min(10, Number(params.limit || 1)));
-    const identityQueries: Record<string, unknown>[] = [];
-
-    const usernameQuery = username
-        ? { 'subject.username': { $regex: `^${escapeRegExp(username)}$`, $options: 'i' } }
-        : null;
-    if (userID) {
-        identityQueries.push({ 'subject.userID': userID });
-        if (usernameQuery) {
-            identityQueries.push({
-                $and: [
-                    {
-                        $or: [
-                            { 'subject.userID': { $exists: false } },
-                            { 'subject.userID': '' },
-                            { 'subject.userID': null }
-                        ]
-                    },
-                    usernameQuery
-                ]
-            });
-        }
-    } else if (usernameQuery) {
-        identityQueries.push(usernameQuery);
-    }
-    if (!channelID || identityQueries.length === 0) {
+    if (!channelID || !userID) {
         return [];
     }
 
@@ -609,8 +744,8 @@ export async function getKnownUserMemoryContext(
             status: 'confirmed',
             type: 'known_user_fact',
             'subject.scope': 'user',
+            'subject.userID': userID,
             $and: [
-                { $or: identityQueries },
                 {
                     $or: [
                         { expiresAt: { $exists: false } },
@@ -646,6 +781,56 @@ export async function getKnownUserMemoryContext(
             error: err instanceof Error ? err.message : String(err),
             channelID
         }, { channelId: channelID, destination: 'console' });
+        return [];
+    }
+}
+
+export interface IValidateChannelMemoryContextParams {
+    channelID: string;
+    candidates: IMemoryCandidate[];
+    limit: number;
+    policy: IMemoryPolicySettings;
+}
+
+export async function validateChannelMemoryContext(
+    params: IValidateChannelMemoryContextParams
+): Promise<IValidatedMemoryContextItem[]> {
+    const candidates = params.candidates.filter((candidate) => Types.ObjectId.isValid(candidate.memory_id));
+    if (!params.channelID || candidates.length === 0 || params.limit <= 0) {
+        return [];
+    }
+
+    try {
+        const memories = await ChannelAIMemorySchema.find({
+            _id: { $in: candidates.map((candidate) => candidate.memory_id) },
+            channelID: params.channelID
+        })
+            .select('_id channelID status type risk subject summary expiresAt')
+            .lean();
+
+        return selectValidatedChannelMemories({
+            channelID: params.channelID,
+            candidates,
+            records: memories.map((memory) => ({
+                memoryID: String(memory._id),
+                channelID: memory.channelID,
+                status: memory.status,
+                type: memory.type,
+                risk: memory.risk,
+                subjectScope: memory.subject.scope,
+                summary: memory.summary,
+                expiresAt: memory.expiresAt
+            })),
+            policy: params.policy,
+            limit: params.limit
+        });
+    } catch (err) {
+        await warn({
+            function: 'validateChannelMemoryContext',
+            error: err instanceof Error ? err.message : String(err),
+            channelID: params.channelID,
+            candidateCount: candidates.length
+        }, { channelId: params.channelID, destination: 'console' });
         return [];
     }
 }
@@ -768,7 +953,8 @@ export async function deleteChannelMemoryPermanently(
         }
         const deleteResult = await deleteChannelMemoryEmbedding(
             resolveMemoryQdrantPointID(memory),
-            params.channelID
+            params.channelID,
+            String(memory._id)
         );
         if (deleteResult.error) {
             return {

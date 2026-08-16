@@ -1,6 +1,7 @@
 import { generateEmbedding } from '../../../ai/lfm2_embeddings/index.js';
 import { getQdrantConnection } from '../../../databases/qdrant.database.js';
 import { error, debug } from '../../../logger.js';
+import { qdrantPointBelongsToMemory } from '../../qdrant_point_id.js';
 
 const COLLECTION_NAME = 'twitch_channel_memories';
 
@@ -37,12 +38,39 @@ function buildEmbeddingInput(summary: string | undefined, content: string | unde
     return `${cleanSummary}\n${cleanContent}`.trim();
 }
 
+async function retrievePointPayload(
+    qdrantClient: { retrieve: Function },
+    qdrantPointID: number
+): Promise<Record<string, unknown> | null> {
+    const points = await qdrantClient.retrieve(COLLECTION_NAME, {
+        ids: [qdrantPointID],
+        with_payload: true,
+        with_vector: false
+    });
+    if (!Array.isArray(points) || points.length === 0) {
+        return null;
+    }
+    const payload = points[0]?.payload;
+    return payload && typeof payload === 'object'
+        ? payload as Record<string, unknown>
+        : {};
+}
+
 export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryParams): Promise<IUpsertChannelMemoryResult> {
     try {
         if (!Number.isInteger(params.qdrantPointID) || params.qdrantPointID < 0 || !params.memoryId || !params.channelID) {
             return {
                 error: true,
                 message: 'Missing or invalid qdrantPointID, memoryId, or channelID'
+            };
+        }
+
+        const qdrantClient = await getQdrantConnection('upsertChannelMemoryEmbedding');
+        const existingPayload = await retrievePointPayload(qdrantClient, params.qdrantPointID);
+        if (existingPayload && !qdrantPointBelongsToMemory(existingPayload, params.memoryId, params.channelID)) {
+            return {
+                error: true,
+                message: 'Qdrant point ID collision detected; refusing to overwrite another memory'
             };
         }
 
@@ -62,7 +90,6 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
             };
         }
 
-        const qdrantClient = await getQdrantConnection('upsertChannelMemoryEmbedding');
         await qdrantClient.upsert(COLLECTION_NAME, {
             wait: true,
             points: [
@@ -114,7 +141,11 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
     }
 }
 
-export async function deleteChannelMemoryEmbedding(qdrantPointID: number, channelID?: string): Promise<IDeleteChannelMemoryResult> {
+export async function deleteChannelMemoryEmbedding(
+    qdrantPointID: number,
+    channelID: string,
+    memoryID?: string
+): Promise<IDeleteChannelMemoryResult> {
     try {
         if (!Number.isInteger(qdrantPointID) || qdrantPointID < 0) {
             return {
@@ -124,6 +155,16 @@ export async function deleteChannelMemoryEmbedding(qdrantPointID: number, channe
         }
 
         const qdrantClient = await getQdrantConnection('deleteChannelMemoryEmbedding');
+        const existingPayload = await retrievePointPayload(qdrantClient, qdrantPointID);
+        if (!existingPayload) {
+            return { error: false };
+        }
+        if (memoryID && !qdrantPointBelongsToMemory(existingPayload, memoryID, channelID)) {
+            return {
+                error: true,
+                message: 'Qdrant point ID collision detected; refusing to delete another memory'
+            };
+        }
         await qdrantClient.delete(COLLECTION_NAME, {
             wait: true,
             points: [qdrantPointID]
@@ -141,6 +182,37 @@ export async function deleteChannelMemoryEmbedding(qdrantPointID: number, channe
         return {
             error: true,
             message: 'Failed to delete channel memory embedding'
+        };
+    }
+}
+
+
+export async function deleteChannelMemoryEmbeddingsByChannel(
+    channelID: string
+): Promise<IDeleteChannelMemoryResult> {
+    try {
+        if (!channelID) {
+            return { error: true, message: 'Missing channelID' };
+        }
+        const qdrantClient = await getQdrantConnection('deleteChannelMemoryEmbeddingsByChannel');
+        await qdrantClient.delete(COLLECTION_NAME, {
+            wait: true,
+            filter: {
+                must: [
+                    { key: 'channel_id', match: { value: channelID } }
+                ]
+            }
+        });
+        return { error: false };
+    } catch (err) {
+        await error({
+            function: 'deleteChannelMemoryEmbeddingsByChannel',
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined
+        }, { channelId: channelID, destination: 'both' });
+        return {
+            error: true,
+            message: 'Failed to delete channel memory embeddings'
         };
     }
 }

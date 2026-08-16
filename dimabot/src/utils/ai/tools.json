@@ -90,7 +90,7 @@
             },
             "username": {
               "type": "string",
-              "description": "If this is about a specific user, include their username"
+              "description": "Only for a fact about the current chatter. Never provide another user's username; the system binds user facts to the verified current chatter identity."
             }
           },
           "required": ["type", "content", "summary"]

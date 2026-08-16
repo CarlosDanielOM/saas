@@ -17,12 +17,6 @@ import { AdminSchema } from "../../schemas/admin.schema.js";
 import { TriggerSchema } from "../../schemas/trigger.schema.js";
 import { TriggerFileSchema } from "../../schemas/trigger_file.schema.js";
 import { RedemptionRewardSchema } from "../../schemas/redemption_reward.schema.js";
-import { ClipDesignSchema } from "../../schemas/clip_design.schema.js";
-import { TitleConfigSchema } from "../../schemas/title_config.schema.js";
-import { CountdownTimerSchema } from "../../schemas/countdown_timer.schema.js";
-import { CountdownTimerConfigSchema } from "../../schemas/countdown_timer_config.schema.js";
-import { CommandTimerSchema } from "../../schemas/command_timer.schema.js";
-import { ChannelAIPersonalitySchema } from "../../schemas/channel_ai_personality.schema.js";
 import { CommandUserVariablesSchema } from "../../schemas/command_user_variables.schema.js";
 import { timingSafeEqual } from "node:crypto";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
@@ -32,6 +26,7 @@ import { cleanupChannelMediaOwnership } from '../../utils/media_cleanup.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { decrypt } from "../../utils/crypto.js";
 import { refreshTwitchToken } from "../../utils/tokens.js";
+import { deleteAccountPermanently } from "../../utils/account_deletion.js";
 
 const __dirname = getDirname(import.meta.url);
 
@@ -1527,50 +1522,18 @@ router.delete('/account', authMiddleware as any, async (req: any, res: Response)
             const twitchAccount = user.accounts.find(acc => acc.type === 'twitch');
             const channelName = twitchAccount?.name || req.user?.login || channelID;
 
-            const counts = await performFactoryReset(channelID, channelName, String(user._id));
-
-            const [
-                clipDesignsDelete,
-                titleConfigsDelete,
-                countdownTimersDelete,
-                countdownConfigsDelete,
-                commandTimersDelete,
-                personalitiesDelete
-            ] = await Promise.all([
-                ClipDesignSchema.deleteMany({ channelID }),
-                TitleConfigSchema.deleteMany({ channelID }),
-                CountdownTimerSchema.deleteMany({ channelID }),
-                CountdownTimerConfigSchema.deleteMany({ channelID }),
-                CommandTimerSchema.deleteMany({ channelID }),
-                ChannelAIPersonalitySchema.deleteMany({ channelID })
-            ]);
-
-            const [adminsAsAdminDelete, userDelete] = await Promise.all([
-                AdminSchema.deleteMany({ adminID: channelID }),
-                UsersSchema.deleteOne({
-                    _id: user._id,
-                    'accounts.id': channelID,
-                    'accounts.type': 'twitch'
-                })
-            ]);
-
-            await TwitchStreamers.updateTwitchAccountsInCache();
+            const counts = await deleteAccountPermanently({
+                channelID,
+                channelName,
+                userID: String(user._id),
+                authorizedAccountsCount: user.accounts.filter((account) => account.actived).length
+            });
 
             return res.status(200).json({
                 error: false,
                 message: 'Account and related data deleted permanently',
                 status: 200,
-                data: {
-                    ...counts,
-                    clipDesignsDeleted: clipDesignsDelete.deletedCount ?? 0,
-                    titleConfigsDeleted: titleConfigsDelete.deletedCount ?? 0,
-                    countdownTimersDeleted: countdownTimersDelete.deletedCount ?? 0,
-                    countdownConfigsDeleted: countdownConfigsDelete.deletedCount ?? 0,
-                    commandTimersDeleted: commandTimersDelete.deletedCount ?? 0,
-                    personalitiesDeleted: personalitiesDelete.deletedCount ?? 0,
-                    adminAssignmentsDeleted: adminsAsAdminDelete.deletedCount ?? 0,
-                    usersDeleted: userDelete.deletedCount ?? 0
-                }
+                data: counts
             });
         } catch (error) {
             console.error('Error in DELETE /auth/account:', {

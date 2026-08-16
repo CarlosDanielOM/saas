@@ -34,6 +34,7 @@ import { retrieveChannelMemoryContext } from "../../qdrant/functions/memory/retr
 import {
   getKnownUserMemoryContext,
   recordChannelMemoryUsage,
+  validateChannelMemoryContext,
 } from "../memory/memory.service.js";
 import type { ChatMemoryContext } from "../prompts.ai.js";
 
@@ -789,6 +790,12 @@ export async function chat(
 
   const memoryLimits = getMemoryContextLimitsForTier(streamer?.plan_tier);
   const memoryPolicy = effectivePersonality.memoryPolicy;
+  const effectiveMemoryPolicy = {
+    allowSensitiveMemories: memoryPolicy?.allowSensitiveMemories ?? false,
+    allowUserPreferenceMemories:
+      memoryPolicy?.allowUserPreferenceMemories ?? true,
+    allowRunningJokes: memoryPolicy?.allowRunningJokes ?? true,
+  };
   let memoryContext: ChatMemoryContext = {
     channelMemories: [],
     currentUserFacts: [],
@@ -806,21 +813,23 @@ export async function chat(
         : getKnownUserMemoryContext({
             channelID,
             userID: userContext.userID,
-            username: userContext.username,
             limit: memoryLimits.currentUser,
             allowSensitiveMemories:
-              memoryPolicy?.allowSensitiveMemories ?? false,
+              effectiveMemoryPolicy.allowSensitiveMemories,
           }),
     ]);
 
     if (!channelMemoryResult.error) {
-      memoryContext.channelMemories = channelMemoryResult.items
-        .filter(
-          (item) =>
-            (memoryPolicy?.allowSensitiveMemories || item.risk === "low") &&
-            (memoryPolicy?.allowRunningJokes || item.memory_type !== "running_joke"),
-        )
-        .slice(0, memoryLimits.channel)
+      const validatedMemories = await validateChannelMemoryContext({
+        channelID,
+        candidates: channelMemoryResult.items.map((item) => ({
+          memory_id: item.memory_id,
+          score: item.score,
+        })),
+        limit: memoryLimits.channel,
+        policy: effectiveMemoryPolicy,
+      });
+      memoryContext.channelMemories = validatedMemories
         .map((item) => ({
           memoryID: item.memory_id,
           type: item.memory_type,
