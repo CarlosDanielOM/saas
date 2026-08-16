@@ -5,6 +5,7 @@ import { error, debug } from '../../../logger.js';
 const COLLECTION_NAME = 'twitch_channel_memories';
 
 export interface IUpsertChannelMemoryParams {
+    qdrantPointID: number;
     memoryId: string;
     channelID: string;
     memoryType?: string;
@@ -13,6 +14,7 @@ export interface IUpsertChannelMemoryParams {
     confidence?: number;
     subjectScope?: string;
     subjectUsername?: string;
+    subjectUserID?: string;
     content: string;
     summary: string;
     createdAtUnix?: number;
@@ -37,10 +39,10 @@ function buildEmbeddingInput(summary: string | undefined, content: string | unde
 
 export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryParams): Promise<IUpsertChannelMemoryResult> {
     try {
-        if (!params.memoryId || !params.channelID) {
+        if (!Number.isInteger(params.qdrantPointID) || params.qdrantPointID < 0 || !params.memoryId || !params.channelID) {
             return {
                 error: true,
-                message: 'Missing memoryId or channelID'
+                message: 'Missing or invalid qdrantPointID, memoryId, or channelID'
             };
         }
 
@@ -62,10 +64,10 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
 
         const qdrantClient = await getQdrantConnection('upsertChannelMemoryEmbedding');
         await qdrantClient.upsert(COLLECTION_NAME, {
-            wait: false,
+            wait: true,
             points: [
                 {
-                    id: params.memoryId,
+                    id: params.qdrantPointID,
                     vector: embeddingResult.embedding,
                     payload: {
                         memory_id: params.memoryId,
@@ -76,6 +78,7 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
                         confidence: params.confidence,
                         subject_scope: params.subjectScope,
                         subject_username: params.subjectUsername || '',
+                        subject_user_id: params.subjectUserID || '',
                         content: params.content,
                         summary: params.summary,
                         created_at: params.createdAtUnix,
@@ -88,6 +91,7 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
         debug({
             message: 'Channel memory embedding upserted',
             memoryId: params.memoryId,
+            qdrantPointID: params.qdrantPointID,
             channelID: params.channelID,
             status: params.status,
             type: params.memoryType
@@ -110,19 +114,19 @@ export async function upsertChannelMemoryEmbedding(params: IUpsertChannelMemoryP
     }
 }
 
-export async function deleteChannelMemoryEmbedding(memoryId: string, channelID?: string): Promise<IDeleteChannelMemoryResult> {
+export async function deleteChannelMemoryEmbedding(qdrantPointID: number, channelID?: string): Promise<IDeleteChannelMemoryResult> {
     try {
-        if (!memoryId) {
+        if (!Number.isInteger(qdrantPointID) || qdrantPointID < 0) {
             return {
                 error: true,
-                message: 'Missing memoryId'
+                message: 'Missing or invalid qdrantPointID'
             };
         }
 
         const qdrantClient = await getQdrantConnection('deleteChannelMemoryEmbedding');
         await qdrantClient.delete(COLLECTION_NAME, {
-            wait: false,
-            points: [memoryId]
+            wait: true,
+            points: [qdrantPointID]
         });
 
         return { error: false };
@@ -131,7 +135,7 @@ export async function deleteChannelMemoryEmbedding(memoryId: string, channelID?:
             function: 'deleteChannelMemoryEmbedding',
             error: err instanceof Error ? err.message : String(err),
             stack: err instanceof Error ? err.stack : undefined,
-            memoryId
+            qdrantPointID
         }, { channelId: channelID, destination: 'both' });
 
         return {

@@ -272,7 +272,11 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     message: messageEventData.message.text.replace('@domdimabot', '').replace('@DomDimaBot', ''),
                     streamer: STREAMER,
                     history: aiHistory,
-                    tags: { badges: messageEventData.badges, username: messageEventData.chatter_user_name }
+                    tags: {
+                        badges: messageEventData.badges,
+                        username: messageEventData.chatter_user_name,
+                        chatter_user_id: messageEventData.chatter_user_id
+                    }
                 });
                 
                 if (!aiResponse.error && aiResponse.message) {

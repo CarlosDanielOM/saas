@@ -7,6 +7,7 @@ const DEFAULT_MIN_SCORE = 0.72;
 
 export interface IRetrievedMemoryItem {
     score: number;
+    qdrant_point_id: string;
     memory_id: string;
     channel_id: string;
     memory_type: string;
@@ -15,6 +16,7 @@ export interface IRetrievedMemoryItem {
     confidence: number;
     subject_scope: string;
     subject_username?: string;
+    subject_user_id?: string;
     content: string;
     summary: string;
     updated_at: number;
@@ -47,6 +49,7 @@ interface IQdrantPoint {
         confidence?: number;
         subject_scope?: string;
         subject_username?: string;
+        subject_user_id?: string;
         summary?: string;
         updated_at?: number;
     };
@@ -82,6 +85,7 @@ function parsePoint(point: IQdrantPoint): IRetrievedMemoryItem | null {
 
     return {
         score,
+        qdrant_point_id: String(point?.id ?? ''),
         memory_id: memoryId,
         channel_id: channelId,
         memory_type: String(payload.memory_type || 'channel_lore'),
@@ -90,6 +94,7 @@ function parsePoint(point: IQdrantPoint): IRetrievedMemoryItem | null {
         confidence: Number(payload.confidence || 0),
         subject_scope: String(payload.subject_scope || 'channel'),
         subject_username: payload.subject_username ? String(payload.subject_username) : undefined,
+        subject_user_id: payload.subject_user_id ? String(payload.subject_user_id) : undefined,
         content,
         summary: String(payload.summary || content),
         updated_at: Number(payload.updated_at || 0)
@@ -112,6 +117,10 @@ async function queryPoints(
             {
                 key: 'status',
                 match: { value: 'confirmed' }
+            },
+            {
+                key: 'subject_scope',
+                match: { value: 'channel' }
             }
         ]
     };

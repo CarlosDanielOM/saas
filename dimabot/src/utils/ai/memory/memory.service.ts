@@ -3,6 +3,7 @@ import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { ChannelAIMemorySchema, type MemorySource, type MemorySubjectScope, type MemoryStatus, type MemoryType, type MemoryRisk, type IMemorySubject, type IMemoryEvidence, type IMemoryActor, type IChannelAIMemory } from '../../../schemas/channel_ai_memory.schema.js';
 import { ChannelAIPersonalitySchema } from '../../../schemas/channel_ai_personality.schema.js';
 import { deleteChannelMemoryEmbedding, upsertChannelMemoryEmbedding } from '../../qdrant/functions/memory/sync_memory.qdrant.js';
+import { generateQdrantPointId } from '../../qdrant/qdrant_point_id.js';
 import { error, warn } from '../../logger.js';
 
 const DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.82;
@@ -108,6 +109,7 @@ function shouldAutoConfirm(
 }
 
 interface ISyncMemoryToQdrantParams {
+    qdrantPointID: number;
     memoryId: string;
     channelID: string;
     memoryType?: string;
@@ -116,19 +118,41 @@ interface ISyncMemoryToQdrantParams {
     confidence?: number;
     subjectScope?: string;
     subjectUsername?: string;
+    subjectUserID?: string;
     content: string;
     summary: string;
     createdAtUnix?: number;
     updatedAtUnix?: number;
 }
 
-async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void> {
+function resolveMemoryQdrantPointID(memory: IChannelAIMemory): number {
+    if (Number.isInteger(memory.qdrantPointID) && Number(memory.qdrantPointID) >= 0) {
+        return Number(memory.qdrantPointID);
+    }
+
+    const createdAt = memory.createdAt instanceof Date
+        ? Math.floor(memory.createdAt.getTime() / 1000)
+        : Math.floor(memory._id.getTimestamp().getTime() / 1000);
+    return generateQdrantPointId(memory.channelID, String(memory._id), createdAt);
+}
+
+export async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void> {
+    const qdrantPointID = resolveMemoryQdrantPointID(memory);
+    if (memory.qdrantPointID !== qdrantPointID) {
+        memory.qdrantPointID = qdrantPointID;
+        await ChannelAIMemorySchema.updateOne(
+            { _id: memory._id },
+            { $set: { qdrantPointID } }
+        );
+    }
+
     // Sync to Qdrant for confirmed, archived, and rejected statuses
     // These form the "mental map" - confirmed = approved knowledge, archived = historical context, rejected = negative signal
     const syncedStatuses = ['confirmed', 'archived', 'rejected'];
     
     if (syncedStatuses.includes(memory.status)) {
-        await upsertChannelMemoryEmbedding({
+        const syncResult = await upsertChannelMemoryEmbedding({
+            qdrantPointID,
             memoryId: String(memory._id),
             channelID: memory.channelID,
             memoryType: memory.type,
@@ -137,15 +161,22 @@ async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void> {
             confidence: memory.confidence,
             subjectScope: memory.subject.scope,
             subjectUsername: memory.subject.username,
+            subjectUserID: memory.subject.userID,
             content: memory.content,
             summary: memory.summary,
             createdAtUnix: Math.floor(memory.createdAt.getTime() / 1000),
             updatedAtUnix: Math.floor(memory.updatedAt.getTime() / 1000)
         } as ISyncMemoryToQdrantParams);
+        if (syncResult.error) {
+            throw new Error(syncResult.message || 'Failed to sync memory to Qdrant');
+        }
     } else {
         // Delete from Qdrant for candidate and pending_review statuses
         // These are not yet validated and should not appear in semantic search
-        await deleteChannelMemoryEmbedding(String(memory._id), memory.channelID);
+        const deleteResult = await deleteChannelMemoryEmbedding(qdrantPointID, memory.channelID);
+        if (deleteResult.error) {
+            throw new Error(deleteResult.message || 'Failed to remove memory from Qdrant');
+        }
     }
 }
 
@@ -486,6 +517,7 @@ export interface IListChannelMemoriesParams {
 
 export interface IMemoryLean {
     _id: string;
+    qdrantPointID?: number;
     channelID: string;
     channel: string;
     type: MemoryType;
@@ -513,6 +545,109 @@ export interface IListChannelMemoriesResult {
     items: IMemoryLean[];
     total: number;
     message?: string;
+}
+
+export interface IKnownUserMemoryContextItem {
+    memory_id: string;
+    memory_type: MemoryType;
+    risk: MemoryRisk;
+    confidence: number;
+    summary: string;
+    updated_at: number;
+}
+
+export interface IGetKnownUserMemoryContextParams {
+    channelID: string;
+    userID?: string;
+    username?: string;
+    limit: number;
+    allowSensitiveMemories?: boolean;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export async function getKnownUserMemoryContext(
+    params: IGetKnownUserMemoryContextParams
+): Promise<IKnownUserMemoryContextItem[]> {
+    const channelID = normalizeText(params.channelID);
+    const userID = normalizeText(params.userID);
+    const username = normalizeText(params.username);
+    const limit = Math.max(1, Math.min(10, Number(params.limit || 1)));
+    const identityQueries: Record<string, unknown>[] = [];
+
+    const usernameQuery = username
+        ? { 'subject.username': { $regex: `^${escapeRegExp(username)}$`, $options: 'i' } }
+        : null;
+    if (userID) {
+        identityQueries.push({ 'subject.userID': userID });
+        if (usernameQuery) {
+            identityQueries.push({
+                $and: [
+                    {
+                        $or: [
+                            { 'subject.userID': { $exists: false } },
+                            { 'subject.userID': '' },
+                            { 'subject.userID': null }
+                        ]
+                    },
+                    usernameQuery
+                ]
+            });
+        }
+    } else if (usernameQuery) {
+        identityQueries.push(usernameQuery);
+    }
+    if (!channelID || identityQueries.length === 0) {
+        return [];
+    }
+
+    try {
+        const query: Record<string, unknown> = {
+            channelID,
+            status: 'confirmed',
+            type: 'known_user_fact',
+            'subject.scope': 'user',
+            $and: [
+                { $or: identityQueries },
+                {
+                    $or: [
+                        { expiresAt: { $exists: false } },
+                        { expiresAt: null },
+                        { expiresAt: { $gt: new Date() } }
+                    ]
+                }
+            ]
+        };
+        if (!params.allowSensitiveMemories) {
+            query.risk = 'low';
+        }
+
+        const memories = await ChannelAIMemorySchema.find(query)
+            .sort({ confidence: -1, lastUsedAt: -1, updatedAt: -1 })
+            .limit(limit)
+            .select('_id type risk confidence summary updatedAt')
+            .lean();
+
+        return memories.map((memory) => ({
+            memory_id: String(memory._id),
+            memory_type: memory.type,
+            risk: memory.risk,
+            confidence: Number(memory.confidence || 0),
+            summary: memory.summary,
+            updated_at: memory.updatedAt instanceof Date
+                ? Math.floor(memory.updatedAt.getTime() / 1000)
+                : 0
+        }));
+    } catch (err) {
+        await warn({
+            function: 'getKnownUserMemoryContext',
+            error: err instanceof Error ? err.message : String(err),
+            channelID
+        }, { channelId: channelID, destination: 'console' });
+        return [];
+    }
 }
 
 export async function listChannelMemories(
@@ -621,7 +756,7 @@ export async function deleteChannelMemoryPermanently(
     params: IDeleteChannelMemoryPermanentlyParams
 ): Promise<IDeleteChannelMemoryPermanentlyResult> {
     try {
-        const memory = await ChannelAIMemorySchema.findOneAndDelete({
+        const memory = await ChannelAIMemorySchema.findOne({
             _id: params.memoryID,
             channelID: params.channelID
         });
@@ -631,7 +766,20 @@ export async function deleteChannelMemoryPermanently(
                 message: 'Memory not found'
             };
         }
-        await deleteChannelMemoryEmbedding(String(memory._id), params.channelID);
+        const deleteResult = await deleteChannelMemoryEmbedding(
+            resolveMemoryQdrantPointID(memory),
+            params.channelID
+        );
+        if (deleteResult.error) {
+            return {
+                error: true,
+                message: deleteResult.message || 'Failed to remove memory embedding'
+            };
+        }
+        await ChannelAIMemorySchema.deleteOne({
+            _id: params.memoryID,
+            channelID: params.channelID
+        });
         return {
             error: false,
             deleted: true

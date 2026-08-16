@@ -2,8 +2,8 @@ import { getQdrantConnection } from '../../../databases/qdrant.database.js';
 import { generateEmbedding } from '../../../ai/lfm2_embeddings/index.js';
 import { detectLanguage } from '../../../ai/openrouter/embeddings.ai.js';
 import { error, debug } from '../../../logger.js';
-import { createHash } from 'crypto';
 import EmbeddingBatcher from '../../../../classes/embedding_batcher.class.js';
+import { generateQdrantPointId } from '../../qdrant_point_id.js';
 
 export interface IChatMessageData {
     channel_id: string;
@@ -24,13 +24,6 @@ export interface IStoreChatLogResult {
 }
 
 const COLLECTION_NAME = 'twitch_chat_logs';
-
-function generatePointId(channelId: string, userId: string, timestamp: number): number {
-    const hash = createHash('md5')
-        .update(`${channelId}:${userId}:${timestamp}`)
-        .digest('hex');
-    return parseInt(hash.substring(0, 8), 16);
-}
 
 /**
  * @deprecated This function is deprecated in favor of storeChatMessageEmbeddingBatched.
@@ -75,7 +68,7 @@ export async function storeChatMessageEmbedding(data: IChatMessageData): Promise
         const qdrantStart = Date.now();
         const qdrantClient = await getQdrantConnection('storeChatMessageEmbedding');
         
-        const pointId = generatePointId(data.channel_id, data.user_id, data.timestamp);
+        const pointId = generateQdrantPointId(data.channel_id, data.user_id, data.timestamp);
         
         await qdrantClient.upsert(COLLECTION_NAME, {
             wait: false,

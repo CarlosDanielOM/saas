@@ -30,6 +30,12 @@ import {
   retrieveSemanticChatContext,
   getSemanticMemoryLimitForTier,
 } from "../../qdrant/functions/chat_logs/retrieve_chat_context.qdrant.js";
+import { retrieveChannelMemoryContext } from "../../qdrant/functions/memory/retrieve_memory_context.qdrant.js";
+import {
+  getKnownUserMemoryContext,
+  recordChannelMemoryUsage,
+} from "../memory/memory.service.js";
+import type { ChatMemoryContext } from "../prompts.ai.js";
 
 const OPENROUTER_TIMEOUT = 30000;
 const fetchWithRetry = createFetchWithRetry({
@@ -295,6 +301,15 @@ function getCombinedHistoryLimitForTier(planTier: string | undefined): number {
   if (planTier === "pro") return 100;
   if (planTier === "premium") return 35;
   return 15;
+}
+
+function getMemoryContextLimitsForTier(planTier: string | undefined): {
+  channel: number;
+  currentUser: number;
+} {
+  if (planTier === "pro") return { channel: 6, currentUser: 5 };
+  if (planTier === "premium") return { channel: 4, currentUser: 3 };
+  return { channel: 2, currentUser: 2 };
 }
 
 /**
@@ -699,6 +714,7 @@ export async function chat(
       tags?.chatter_user_name ||
       tags?.chatter_user_login ||
       "Anonymous",
+    userID: String(tags?.chatter_user_id || tags?.userID || tags?.id || ""),
     badges: formattedBadges,
   };
 
@@ -771,6 +787,83 @@ export async function chat(
     }
   }
 
+  const memoryLimits = getMemoryContextLimitsForTier(streamer?.plan_tier);
+  const memoryPolicy = effectivePersonality.memoryPolicy;
+  let memoryContext: ChatMemoryContext = {
+    channelMemories: [],
+    currentUserFacts: [],
+  };
+
+  try {
+    const [channelMemoryResult, currentUserFacts] = await Promise.all([
+      retrieveChannelMemoryContext({
+        channelID,
+        query: message,
+        limit: memoryLimits.channel,
+      }),
+      memoryPolicy?.allowUserPreferenceMemories === false
+        ? Promise.resolve([])
+        : getKnownUserMemoryContext({
+            channelID,
+            userID: userContext.userID,
+            username: userContext.username,
+            limit: memoryLimits.currentUser,
+            allowSensitiveMemories:
+              memoryPolicy?.allowSensitiveMemories ?? false,
+          }),
+    ]);
+
+    if (!channelMemoryResult.error) {
+      memoryContext.channelMemories = channelMemoryResult.items
+        .filter(
+          (item) =>
+            (memoryPolicy?.allowSensitiveMemories || item.risk === "low") &&
+            (memoryPolicy?.allowRunningJokes || item.memory_type !== "running_joke"),
+        )
+        .slice(0, memoryLimits.channel)
+        .map((item) => ({
+          memoryID: item.memory_id,
+          type: item.memory_type,
+          summary: item.summary,
+          relevanceScore: item.score,
+        }));
+    }
+
+    memoryContext.currentUserFacts = currentUserFacts.map((item) => ({
+      memoryID: item.memory_id,
+      type: item.memory_type,
+      summary: item.summary,
+    }));
+
+    const memoryIDs = [
+      ...memoryContext.channelMemories,
+      ...memoryContext.currentUserFacts,
+    ].map((item) => item.memoryID);
+    void recordChannelMemoryUsage(channelID, memoryIDs);
+
+    await debug(
+      {
+        message: "[AI Harness] Confirmed memory context retrieved",
+        channelID,
+        channelMemoryCount: memoryContext.channelMemories.length,
+        currentUserFactCount: memoryContext.currentUserFacts.length,
+      },
+      { channelId: channelID, destination: "console" },
+    );
+  } catch (memoryError) {
+    await error(
+      {
+        function: "chat.memoryRetrieval",
+        error:
+          memoryError instanceof Error
+            ? memoryError.message
+            : String(memoryError),
+        channelID,
+      },
+      { channelId: channelID, destination: "both" },
+    );
+  }
+
   // Get combined history limit based on tier
   const combinedLimit = getCombinedHistoryLimitForTier(streamer?.plan_tier);
 
@@ -790,6 +883,7 @@ export async function chat(
     message,
     chatHistory,
     [], // tool context will be added by AI as needed
+    memoryContext,
   );
 
   // Convert to OpenRouter message format
@@ -918,6 +1012,7 @@ export async function chat(
         channelID,
         streamer: streamerData || streamer,
         username: userContext.username,
+        userID: userContext.userID,
         tags,
       };
 

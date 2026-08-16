@@ -29,6 +29,7 @@ export interface IMemoryActor {
 
 export interface IChannelAIMemory extends Document {
     _id: Types.ObjectId;
+    qdrantPointID?: number;
     channelID: string;
     channel: string;
     type: MemoryType;
@@ -88,6 +89,7 @@ const memoryActorSchema = new Schema<IMemoryActor>({
 }, { _id: false });
 
 const channelAIMemorySchema = new Schema<IChannelAIMemory>({
+    qdrantPointID: { type: Number, required: false },
     channelID: { type: String, required: true },
     channel: { type: String, required: true, default: 'Unknown' },
     type: {
@@ -125,6 +127,7 @@ const channelAIMemorySchema = new Schema<IChannelAIMemory>({
 });
 
 channelAIMemorySchema.index({ channelID: 1, status: 1, type: 1 });
+channelAIMemorySchema.index({ qdrantPointID: 1 }, { unique: true, sparse: true });
 channelAIMemorySchema.index({ channelID: 1, fingerprint: 1 }, { unique: true });
 channelAIMemorySchema.index({ channelID: 1, updatedAt: -1 });
 channelAIMemorySchema.index({ channelID: 1, 'subject.username': 1, type: 1 });

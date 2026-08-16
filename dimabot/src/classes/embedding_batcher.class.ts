@@ -3,7 +3,7 @@ import { detectLanguage } from '../utils/ai/openrouter/embeddings.ai.js';
 import { EMBEDDING_MODELS } from '../utils/ai/constants.js';
 import { getQdrantConnection } from '../utils/databases/qdrant.database.js';
 import { error, debug } from '../utils/logger.js';
-import { createHash } from 'crypto';
+import { generateQdrantPointId } from '../utils/qdrant/qdrant_point_id.js';
 
 export interface IQueuedMessage {
     text: string;
@@ -16,13 +16,6 @@ export interface IQueuedMessage {
 }
 
 const COLLECTION_NAME = 'twitch_chat_logs';
-
-function generatePointId(channelId: string, userId: string, timestamp: number): number {
-    const hash = createHash('md5')
-        .update(`${channelId}:${userId}:${timestamp}`)
-        .digest('hex');
-    return parseInt(hash.substring(0, 8), 16);
-}
 
 class EmbeddingBatcher {
     private queue: IQueuedMessage[] = [];
@@ -118,7 +111,7 @@ class EmbeddingBatcher {
             const qdrantClient = await getQdrantConnection('EmbeddingBatcher');
 
             const points = messages.map((msg, index) => {
-                const pointId = generatePointId(msg.channel_id, msg.user_id, msg.timestamp);
+                const pointId = generateQdrantPointId(msg.channel_id, msg.user_id, msg.timestamp);
                 return {
                     id: pointId,
                     vector: embeddings[index],

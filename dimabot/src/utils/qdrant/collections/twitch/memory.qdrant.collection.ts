@@ -23,6 +23,7 @@ export const TwitchChannelMemoriesQdrantCollection: IQdrantCollectionOptions = {
         { field_name: 'confidence', field_schema: 'float' },
         { field_name: 'subject_scope', field_schema: 'keyword' },
         { field_name: 'subject_username', field_schema: 'keyword' },
+        { field_name: 'subject_user_id', field_schema: 'keyword' },
         { field_name: 'content', field_schema: 'text', tokenizer: 'multilingual' },
         { field_name: 'summary', field_schema: 'text', tokenizer: 'multilingual' },
         { field_name: 'created_at', field_schema: 'integer' },

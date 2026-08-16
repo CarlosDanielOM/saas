@@ -12,6 +12,7 @@
     "bot:dev": "cross-env NODE_ENV=development tsx watch src/bot/index.ts",
     "dev-all": "concurrently \"npm run start\" \"npm run bot\"",
     "test-bot": "cross-env ENVIRONMENT=test nodemon src/bot",
+    "test:ai-memory": "tsx src/scripts/test_ai_memory_context.script.ts",
     "cron:dev": "cross-env NODE_ENV=development CRON_WORKER_RUNTIME=tsx tsx src/workers/cron.index.ts",
     "cron:prod": "cross-env NODE_ENV=production CRON_WORKER_RUNTIME=node node dist/workers/cron.index.js",
     "build": "tsc",
@@ -23,6 +24,7 @@
     "cleanup:invalid-trigger-files": "tsx src/scripts/cleanup_invalid_legacy_trigger_files.script.ts",
     "migrate:legacy-trigger-rewards": "tsx src/scripts/migrate_legacy_trigger_rewards.script.ts",
     "migrate:ai-feature-flags": "tsx src/scripts/migrate_ai_feature_flags.script.ts",
+    "resync:ai-memories": "tsx src/scripts/resync_ai_memories.script.ts",
     "migrate:timer-frequency-minutes": "tsx src/scripts/migrate_timer_frequency_minutes.script.ts",
     "invalidate:all-user-permissions": "tsx src/scripts/invalidate_all_user_permissions.script.ts"
   },

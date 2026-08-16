@@ -61,6 +61,7 @@ export interface ToolContext {
     channelID: string;
     streamer: IStreamerData;
     username?: string;
+    userID?: string;
     tags?: Record<string, any>;
 }
 

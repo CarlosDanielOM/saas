@@ -31,6 +31,7 @@ interface ToolContext {
     channelID: string;
     streamer: IStreamerData;
     username?: string;
+    userID?: string;
     tags?: Record<string, any>;
 }
 
@@ -38,7 +39,7 @@ export async function execute(
     args: CreateMemoryArgs,
     context: ToolContext
 ): Promise<CreateMemoryToolResult> {
-    const { channelID, streamer, username: triggeredBy, tags } = context;
+    const { channelID, streamer, username: triggeredBy, userID: triggeredByUserID, tags } = context;
     const { type, content, summary, risk = 'low', username } = args;
 
     try {
@@ -50,11 +51,16 @@ export async function execute(
 
         // Get the triggering user's info and message for evidence
         const triggeringUsername = triggeredBy || tags?.username || tags?.chatter_user_name || 'unknown';
+        const triggeringUserID = triggeredByUserID || tags?.chatter_user_id || tags?.userID || '';
         const triggeringMessage = tags?.message || tags?.text || content;
         const timestamp = Math.floor(Date.now() / 1000);
 
-        // Determine subject scope
-        const subjectScope = username ? 'user' : 'channel';
+        // User facts default to the current chatter so they cannot leak into channel-wide context.
+        const subjectUsername = username || (type === 'known_user_fact' ? triggeringUsername : '');
+        const subjectScope = subjectUsername ? 'user' : 'channel';
+        const subjectUserID = subjectUsername.toLowerCase() === triggeringUsername.toLowerCase()
+            ? triggeringUserID
+            : '';
 
         // Call createOrUpdateChannelMemory
         const result = await createOrUpdateChannelMemory({
@@ -65,7 +71,8 @@ export async function execute(
             confidence, // Use streamer's threshold value
             subject: {
                 scope: subjectScope,
-                username: username || ''
+                username: subjectUsername,
+                userID: subjectUserID
             },
             content,
             summary,
@@ -73,13 +80,15 @@ export async function execute(
                 {
                     source: 'chat',
                     username: triggeringUsername,
+                    userID: triggeringUserID,
                     message: triggeringMessage,
                     timestamp
                 }
             ],
             createdBy: {
                 source: 'chat',
-                username: triggeringUsername
+                username: triggeringUsername,
+                userID: triggeringUserID
             }
         });
 
