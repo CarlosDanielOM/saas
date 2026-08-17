@@ -29,6 +29,21 @@ export interface RedisScanResult {
   keys: RedisKeyRow[];
 }
 
+export interface RedisTreeFolder {
+  prefix: string;
+  label: string;
+  seen: number;
+}
+
+export interface RedisTreeResult {
+  prefix: string;
+  match: string;
+  cursor: string;
+  folders: RedisTreeFolder[];
+  keys: RedisKeyRow[];
+  scanned: number;
+}
+
 export interface RedisKeyDetail {
   key: string;
   type: string;

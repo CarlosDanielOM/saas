@@ -2,11 +2,20 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ApiEnvelope, RedisKeyDetail, RedisScanResult } from './api.types';
+import { ApiEnvelope, RedisKeyDetail, RedisScanResult, RedisTreeResult } from './api.types';
 
 @Injectable({ providedIn: 'root' })
 export class RedisService {
   private readonly http = inject(HttpClient);
+
+  tree(connectionId: string, prefix = '', query = '', cursor = '0'): Promise<RedisTreeResult> {
+    return this.unwrap(
+      this.http.get<ApiEnvelope<RedisTreeResult>>(`/api/redis/${connectionId}/tree`, {
+        params: { prefix, query, cursor },
+      }),
+      'Tree scan failed',
+    );
+  }
 
   scan(connectionId: string, cursor = '0', match = '*'): Promise<RedisScanResult> {
     return this.unwrap(

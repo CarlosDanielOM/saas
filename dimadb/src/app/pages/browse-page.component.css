@@ -1,0 +1,21 @@
+@import './pages-shared.css';
+
+.tree {
+  display: grid;
+  gap: 8px;
+}
+
+.tree-block {
+  display: grid;
+  gap: 8px;
+}
+
+.tree-row,
+.tree-more {
+  margin-left: calc(var(--depth, 0) * 14px);
+}
+
+button.tree-row {
+  width: 100%;
+  text-align: left;
+}

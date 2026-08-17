@@ -200,13 +200,22 @@ async function handleApi(req, res, url) {
       }
     }
 
-    const redisMatch = url.pathname.match(/^\/api\/redis\/([^/]+)\/(keys|key|command)$/);
+    const redisMatch = url.pathname.match(/^\/api\/redis\/([^/]+)\/(keys|key|command|tree)$/);
     if (redisMatch) {
       if (!requireUser(req, res)) {
         return;
       }
       const id = decodeURIComponent(redisMatch[1]);
       const action = redisMatch[2];
+
+      if (action === 'tree' && req.method === 'GET') {
+        ok(res, await redis.tree(id, {
+          prefix: url.searchParams.get('prefix') || '',
+          query: url.searchParams.get('query') || '',
+          cursor: url.searchParams.get('cursor') || '0',
+        }));
+        return;
+      }
 
       if (action === 'keys' && req.method === 'GET') {
         ok(res, await redis.scan(id, {

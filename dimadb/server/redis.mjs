@@ -122,6 +122,59 @@ export function createRedisHub(store) {
       }
       return { cursor: result.cursor, keys };
     },
+    async tree(id, { prefix = '', query = '', cursor = '0' } = {}) {
+      const client = await clientFor(id);
+      const match = treeMatch(prefix, query);
+      const folders = new Map();
+      const leaves = [];
+      let nextCursor = String(cursor || '0');
+      let scanned = 0;
+      const maxKeys = 1200;
+      const maxRounds = 8;
+
+      for (let round = 0; round < maxRounds && scanned < maxKeys; round += 1) {
+        const result = await client.scan(nextCursor, {
+          MATCH: match,
+          COUNT: 400,
+        });
+        nextCursor = String(result.cursor);
+        scanned += result.keys.length;
+
+        for (const key of result.keys) {
+          const node = splitTreeNode(String(key), prefix);
+          if (node.kind === 'folder') {
+            const current = folders.get(node.prefix) || { prefix: node.prefix, label: node.label, seen: 0 };
+            current.seen += 1;
+            folders.set(node.prefix, current);
+          } else {
+            leaves.push(node.name);
+          }
+        }
+
+        if (nextCursor === '0') {
+          break;
+        }
+        if (folders.size >= 80 && leaves.length >= 40) {
+          break;
+        }
+      }
+
+      const uniqueLeaves = [...new Set(leaves)].slice(0, 40);
+      const keys = [];
+      for (const name of uniqueLeaves) {
+        const [type, ttl] = await Promise.all([client.type(name), client.ttl(name)]);
+        keys.push({ name, type, ttl });
+      }
+
+      return {
+        prefix,
+        match,
+        cursor: nextCursor,
+        folders: [...folders.values()].sort((a, b) => a.label.localeCompare(b.label)),
+        keys,
+        scanned,
+      };
+    },
     async inspect(id, key) {
       const client = await clientFor(id);
       const type = await client.type(key);
@@ -150,6 +203,30 @@ export function createRedisHub(store) {
       return client.sendCommand(args.map(String));
     },
   };
+}
+
+function treeMatch(prefix, query) {
+  const q = String(query || '').trim();
+  if (prefix) {
+    return `${prefix}*`;
+  }
+  if (!q || q === '*') {
+    return '*';
+  }
+  if (q.includes('*')) {
+    return q;
+  }
+  return `*${q}*`;
+}
+
+function splitTreeNode(key, prefix) {
+  const rest = prefix && key.startsWith(prefix) ? key.slice(prefix.length) : key;
+  const index = rest.indexOf(':');
+  if (index === -1) {
+    return { kind: 'key', name: key };
+  }
+  const label = rest.slice(0, index);
+  return { kind: 'folder', prefix: `${prefix}${label}:`, label };
 }
 
 function maskUrl(url) {
