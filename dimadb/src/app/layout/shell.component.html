@@ -4,7 +4,7 @@
       <span class="mark">db</span>
       <div>
         <strong>dimadb</strong>
-        <small>mock</small>
+        <small>console</small>
       </div>
     </div>
     <nav class="rail-nav">
@@ -19,8 +19,18 @@
 
   <div class="stage">
     <header class="top">
-      <span class="chip">Mock UI</span>
-      <span class="conn">dragonfly · db0</span>
+      <span class="chip">Live</span>
+      <label class="conn">
+        <span class="sr-only">Connection</span>
+        <select [value]="connections.selectedId() || ''" (change)="onSelect($event)">
+          @for (item of connections.items(); track item.id) {
+            <option [value]="item.id">{{ item.name }}</option>
+          }
+          @if (connections.items().length === 0) {
+            <option value="">No connections</option>
+          }
+        </select>
+      </label>
     </header>
     <main class="main">
       <router-outlet />

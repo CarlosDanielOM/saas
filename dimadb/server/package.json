@@ -1,0 +1,8 @@
+{
+  "name": "dimadb-server",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "redis": "^5.8.2"
+  }
+}

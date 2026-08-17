@@ -1,16 +1,18 @@
 <section class="stack">
   <div class="head">
     <h1>Console</h1>
-    <p class="sub">FLUSH*, EVAL, CONFIG need a second confirm later.</p>
+    <p class="sub">FLUSH*, EVAL, CONFIG and similar need a second confirm.</p>
   </div>
-  <input class="cmd" value="SCAN 0 MATCH overlay:* COUNT 50" aria-label="Redis command" />
-  <div class="actions">
-    <button class="btn" type="button">Run</button>
-    <button class="btn ghost" type="button">Clear</button>
-  </div>
+  <form class="stack" (submit)="run($event)">
+    <input class="cmd" name="command" value="SCAN 0 MATCH * COUNT 50" aria-label="Redis command" />
+    <div class="actions">
+      <button class="btn" type="submit" [disabled]="running() || !connections.selectedId()">
+        {{ running() ? 'Running…' : 'Run' }}
+      </button>
+      <button class="btn ghost" type="button" (click)="clear()">Clear</button>
+    </div>
+  </form>
   <article class="card out">
-    <pre class="pre">1) "0"
-2) 1) "overlay:active:123456"
-   2) "overlay:scene:miyu"</pre>
+    <pre class="pre">{{ output() }}</pre>
   </article>
 </section>

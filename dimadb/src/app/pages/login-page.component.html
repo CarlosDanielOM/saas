@@ -3,21 +3,26 @@
     <span class="mark">db</span>
     <strong>dimadb</strong>
   </div>
-  <span class="chip">Mock</span>
+  <span class="chip">Local login</span>
   <div>
     <h1>Sign in</h1>
-    <p>Local users only. Nothing is saved yet.</p>
+    <p>Username and password stay on this server.</p>
   </div>
-  <form (submit)="$event.preventDefault()">
+  <form (submit)="submit($event)">
     <label>
       Username
-      <input name="username" autocomplete="username" value="dom" />
+      <input name="username" autocomplete="username" required />
     </label>
     <label>
       Password
-      <input name="password" type="password" autocomplete="current-password" value="••••••••" />
+      <input name="password" type="password" autocomplete="current-password" required />
     </label>
-    <button class="btn" type="submit" routerLink="/browse">Continue</button>
+    @if (errorMessage(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+    <button class="btn" type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Signing in…' : 'Continue' }}
+    </button>
   </form>
   <p class="alt">First boot? <a routerLink="/setup">Create the admin</a></p>
 </section>

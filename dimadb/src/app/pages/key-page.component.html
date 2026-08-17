@@ -4,16 +4,28 @@
     <h1 class="key">{{ key() }}</h1>
     <div class="chips">
       <span class="pill" [class]="type()">{{ type() }}</span>
-      <span class="pill">ttl 12m</span>
-      <span class="pill">db0</span>
+      <span class="pill">ttl {{ detail()?.ttl ?? '—' }}</span>
     </div>
   </div>
-  <article class="card">
-    <pre class="pre">1</pre>
-  </article>
-  <div class="actions">
-    <button class="btn" type="button">Save</button>
-    <button class="btn ghost" type="button">Refresh TTL</button>
-    <button class="btn danger" type="button">Delete</button>
-  </div>
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
+  @if (type() === 'string') {
+    <form class="stack" (submit)="save($event)">
+      <textarea class="cmd" name="value" rows="8">{{ pretty() }}</textarea>
+      <div class="actions">
+        <button class="btn" type="submit" [disabled]="saving()">Save</button>
+        <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+        <button class="btn danger" type="button" (click)="remove()">Delete</button>
+      </div>
+    </form>
+  } @else {
+    <article class="card out">
+      <pre class="pre">{{ pretty() }}</pre>
+    </article>
+    <div class="actions">
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete</button>
+    </div>
+  }
 </section>

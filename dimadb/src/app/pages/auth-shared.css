@@ -25,16 +25,16 @@
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: var(--purple-dim);
+  color: var(--purple);
   font-family: var(--mono);
   font-weight: 700;
 }
 
 .chip {
   width: fit-content;
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--purple);
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, transparent);
   border-radius: 999px;
   padding: 4px 10px;
   font-size: 12px;
@@ -101,4 +101,13 @@ input {
 .alt a {
   color: var(--accent);
   font-weight: 600;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+button:disabled {
+  opacity: 0.55;
 }

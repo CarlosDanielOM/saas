@@ -1,18 +1,30 @@
 <section>
   <div class="head">
     <h1>Browse</h1>
-    <p class="sub">SCAN only. Fake keys for layout review.</p>
-    <input class="search" type="search" placeholder="match overlay:*" value="*" />
+    <p class="sub">SCAN only. Pick a pattern, then tap a key.</p>
+    <input class="search" type="search" placeholder="match overlay:*" [value]="match()" (change)="onSearch($event)" />
   </div>
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
   <div class="list">
-    @for (item of keys; track item.name) {
+    @for (item of keys(); track item.name) {
       <a class="row" routerLink="/key" [queryParams]="{ k: item.name, t: item.type }">
         <div>
           <div class="key">{{ item.name }}</div>
-          <div class="meta">ttl {{ item.ttl }} · {{ item.size }}</div>
+          <div class="meta">ttl {{ ttlLabel(item.ttl) }}</div>
         </div>
         <span class="pill" [class]="item.type">{{ item.type }}</span>
       </a>
+    } @empty {
+      <article class="card">
+        <p class="sub">{{ loading() ? 'Scanning…' : 'No keys for this pattern.' }}</p>
+      </article>
     }
   </div>
+  @if (cursor() !== '0') {
+    <div class="actions">
+      <button class="btn ghost" type="button" [disabled]="loading()" (click)="load(false)">More</button>
+    </div>
+  }
 </section>

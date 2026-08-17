@@ -1,22 +1,26 @@
 import { Routes } from '@angular/router';
 
+import { authGuard, guestGuard, setupGuard } from './guards/auth.guard';
 import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '', pathMatch: 'full', redirectTo: 'browse' },
   {
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () => import('./pages/login-page.component').then((m) => m.LoginPageComponent),
     title: 'Login | dimadb',
   },
   {
     path: 'setup',
+    canActivate: [setupGuard],
     loadComponent: () => import('./pages/setup-page.component').then((m) => m.SetupPageComponent),
     title: 'Setup | dimadb',
   },
   {
     path: '',
     component: ShellComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: 'browse',

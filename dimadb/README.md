@@ -9,4 +9,6 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Mock screens: `/login`, `/setup`, `/browse`, `/console`, `/connections`, `/account`.
+First visit opens `/setup`. Then `/browse`, `/console`, `/connections`, `/account`.
+
+Optional env: `DIMADB_REDIS_DRAGONFLY=redis://dragonfly:6379`

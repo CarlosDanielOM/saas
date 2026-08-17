@@ -8,20 +8,25 @@
     <h1>Create admin</h1>
     <p>This screen locks after the first user exists.</p>
   </div>
-  <form (submit)="$event.preventDefault()">
+  <form (submit)="submit($event)">
     <label>
       Username
-      <input name="username" autocomplete="username" value="dom" />
+      <input name="username" autocomplete="username" required />
     </label>
     <label>
       Password
-      <input name="password" type="password" autocomplete="new-password" />
+      <input name="password" type="password" autocomplete="new-password" minlength="8" required />
     </label>
     <label>
       Confirm password
-      <input name="confirm" type="password" autocomplete="new-password" />
+      <input name="confirm" type="password" autocomplete="new-password" minlength="8" required />
     </label>
-    <button class="btn" type="submit" routerLink="/browse">Create and enter</button>
+    @if (errorMessage(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+    <button class="btn" type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Creating…' : 'Create and enter' }}
+    </button>
     <a class="btn ghost" routerLink="/login">Back to login</a>
   </form>
 </section>

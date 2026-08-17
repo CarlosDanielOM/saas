@@ -1,17 +1,44 @@
 <section class="stack">
   <div class="head">
     <h1>Connections</h1>
-    <p class="sub">Env seeds stay. Local ones persist on /data later.</p>
+    <p class="sub">Env seeds stay. Local ones persist on /data.</p>
   </div>
-  @for (item of connections; track item.name) {
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
+  @for (item of connections.items(); track item.id) {
     <article class="card">
       <div class="key">{{ item.name }}</div>
       <div class="meta">{{ item.url }}</div>
       <div class="chips">
         <span class="pill">{{ item.source }}</span>
-        <span class="pill" [class.string]="item.ok">{{ item.ok ? 'online' : 'down' }}</span>
+        @if (pings()[item.id]; as ping) {
+          <span class="pill string">{{ ping }}</span>
+        }
+      </div>
+      <div class="actions">
+        <button class="btn ghost" type="button" (click)="ping(item.id)">Ping</button>
+        @if (item.source === 'local') {
+          <button class="btn danger" type="button" (click)="remove(item.id)">Delete</button>
+        }
       </div>
     </article>
+  } @empty {
+    <article class="card">
+      <p class="sub">No connections yet. Add one or set DIMADB_REDIS_* in compose.</p>
+    </article>
   }
-  <button class="btn" type="button">Add connection</button>
+  <form class="card" (submit)="add($event)">
+    <label>
+      Name
+      <input class="search" name="name" placeholder="Dragonfly" required />
+    </label>
+    <label>
+      URL
+      <input class="search" name="url" placeholder="redis://dragonfly:6379" required />
+    </label>
+    <button class="btn" type="submit" [disabled]="adding()">
+      {{ adding() ? 'Saving…' : 'Add connection' }}
+    </button>
+  </form>
 </section>

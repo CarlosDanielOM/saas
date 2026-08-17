@@ -26,4 +26,8 @@
 
 ## Current Status
 
-Skeleton + visual mocks. Auth, Redis, and persistence are not wired yet.
+Auth, `/data` persistence, connections, and Redis browse/console are wired.
+
+- First visit with no users → `/setup`
+- Session cookie + `X-Dimadb: 1`
+- Seed Redis with `DIMADB_REDIS_*` env vars or add URLs in the UI

@@ -38,8 +38,8 @@
 }
 
 .chip {
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--purple);
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, transparent);
   border-radius: 999px;
   padding: 4px 10px;
 }
@@ -47,6 +47,26 @@
 .conn {
   color: var(--muted);
   font-family: var(--mono);
+}
+
+.conn select {
+  min-height: 36px;
+  max-width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--tile);
+  color: var(--fg);
+  padding: 0 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .main {
@@ -63,7 +83,6 @@
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--tile) 94%, transparent);
   border-top: 1px solid var(--line);
-  backdrop-filter: blur(18px);
   z-index: 20;
 }
 
@@ -145,8 +164,8 @@
     border-radius: 10px;
     display: grid;
     place-items: center;
-    background: var(--accent-dim);
-    color: var(--accent);
+    background: var(--purple-dim);
+    color: var(--purple);
     font-family: var(--mono);
     font-weight: 700;
   }

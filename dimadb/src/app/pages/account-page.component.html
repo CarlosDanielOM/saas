@@ -1,14 +1,31 @@
 <section class="stack">
   <div class="head">
     <h1>Account</h1>
-    <p class="sub">Users will live in /data after first-run setup.</p>
+    <p class="sub">Users persist in /data. Signed in as {{ auth.user()?.username }}.</p>
   </div>
-  <article class="card">
-    <div class="key">dom</div>
-    <div class="meta">admin · local</div>
-  </article>
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
+  @for (item of users(); track item.id) {
+    <article class="card">
+      <div class="key">{{ item.username }}</div>
+      <div class="meta">{{ item.role }} · local</div>
+    </article>
+  }
+  <form class="card" (submit)="add($event)">
+    <label>
+      New username
+      <input class="search" name="username" autocomplete="off" required />
+    </label>
+    <label>
+      Password
+      <input class="search" name="password" type="password" minlength="8" required />
+    </label>
+    <button class="btn" type="submit" [disabled]="adding()">
+      {{ adding() ? 'Adding…' : 'Add user' }}
+    </button>
+  </form>
   <div class="actions">
-    <button class="btn ghost" type="button">Add user</button>
-    <a class="btn danger" routerLink="/login">Sign out</a>
+    <button class="btn danger" type="button" (click)="logout()">Sign out</button>
   </div>
 </section>
