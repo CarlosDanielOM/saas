@@ -1,0 +1,17 @@
+<section class="stack">
+  <div class="head">
+    <h1>Connections</h1>
+    <p class="sub">Env seeds stay. Local ones persist on /data later.</p>
+  </div>
+  @for (item of connections; track item.name) {
+    <article class="card">
+      <div class="key">{{ item.name }}</div>
+      <div class="meta">{{ item.url }}</div>
+      <div class="chips">
+        <span class="pill">{{ item.source }}</span>
+        <span class="pill" [class.string]="item.ok">{{ item.ok ? 'online' : 'down' }}</span>
+      </div>
+    </article>
+  }
+  <button class="btn" type="button">Add connection</button>
+</section>

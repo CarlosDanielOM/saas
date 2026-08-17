@@ -1,0 +1,38 @@
+<div class="shell">
+  <aside class="rail" aria-label="Primary">
+    <div class="brand">
+      <span class="mark">db</span>
+      <div>
+        <strong>dimadb</strong>
+        <small>mock</small>
+      </div>
+    </div>
+    <nav class="rail-nav">
+      @for (item of nav; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="is-active">
+          <span class="ico" aria-hidden="true" [attr.data-icon]="item.icon"></span>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="stage">
+    <header class="top">
+      <span class="chip">Mock UI</span>
+      <span class="conn">dragonfly · db0</span>
+    </header>
+    <main class="main">
+      <router-outlet />
+    </main>
+  </div>
+
+  <nav class="dock" aria-label="Primary">
+    @for (item of nav; track item.route) {
+      <a [routerLink]="item.route" routerLinkActive="is-active">
+        <span class="ico" aria-hidden="true" [attr.data-icon]="item.icon"></span>
+        {{ item.label }}
+      </a>
+    }
+  </nav>
+</div>

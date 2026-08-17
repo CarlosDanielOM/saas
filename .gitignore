@@ -154,6 +154,7 @@ connect.lock
 !dimadocs/package-lock.json
 !dimafx/package-lock.json
 !dimafx/server/package-lock.json
+!dimadb/package-lock.json
 # Generated Graphify knowledge graph output
 graphify-out/
 .graphify/

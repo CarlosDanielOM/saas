@@ -1,0 +1,23 @@
+services:
+  dimadb:
+    build:
+      context: .
+      dockerfile: dockerfile
+    image: dimadb:latest
+    container_name: dimadb
+    restart: unless-stopped
+    environment:
+      PORT: 80
+      PUBLIC_DIR: /app/public
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    networks:
+      - web-proxy
+      - databases
+
+networks:
+  web-proxy:
+    external: true
+  databases:
+    external: true

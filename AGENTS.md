@@ -19,6 +19,7 @@ This workspace is a **single git repository** (`saas/`) containing five related 
 | `admin/`    | Internal admin panel                 | Angular v21                 | `src/app/app.routes.ts`                       |
 | `dimadocs/` | Documentation site (public)          | Astro + MDX                 | `astro.config.mjs`, `src/content/docs/`       |
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
+| `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -269,6 +270,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `admin/AGENTS.md` – Internal admin panel patterns and access control.
 - `dimadocs/AGENTS.md` – Astro + MDX documentation authoring guidelines.
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
+- `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 

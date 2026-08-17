@@ -1,0 +1,27 @@
+<section class="wrap">
+  <div class="brand">
+    <span class="mark">db</span>
+    <strong>dimadb</strong>
+  </div>
+  <span class="chip">First run</span>
+  <div>
+    <h1>Create admin</h1>
+    <p>This screen locks after the first user exists.</p>
+  </div>
+  <form (submit)="$event.preventDefault()">
+    <label>
+      Username
+      <input name="username" autocomplete="username" value="dom" />
+    </label>
+    <label>
+      Password
+      <input name="password" type="password" autocomplete="new-password" />
+    </label>
+    <label>
+      Confirm password
+      <input name="confirm" type="password" autocomplete="new-password" />
+    </label>
+    <button class="btn" type="submit" routerLink="/browse">Create and enter</button>
+    <a class="btn ghost" routerLink="/login">Back to login</a>
+  </form>
+</section>
