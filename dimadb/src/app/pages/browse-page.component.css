@@ -1,21 +1,78 @@
 @import './pages-shared.css';
 
 .tree {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.node,
+.kids {
   display: grid;
-  gap: 8px;
+  justify-items: start;
 }
 
-.tree-block {
-  display: grid;
-  gap: 8px;
+.kids {
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--purple) 35%, var(--line));
 }
 
-.tree-row,
-.tree-more {
-  margin-left: calc(var(--depth, 0) * 14px);
-}
-
-button.tree-row {
-  width: 100%;
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 2px 8px 2px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
   text-align: left;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--tile);
+}
+
+.item.muted {
+  color: var(--muted);
+  min-height: 24px;
+}
+
+.label {
+  overflow-wrap: anywhere;
+}
+
+.chevron,
+.dot {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+
+.chevron {
+  background: var(--purple);
+  mask: no-repeat center / contain
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='black' d='M6 3.5 11 8 6 12.5z'/></svg>");
+  transition: transform 150ms ease;
+}
+
+.item.open .chevron {
+  transform: rotate(90deg);
+}
+
+.dot {
+  border-radius: 99px;
+  background: var(--accent);
+  transform: scale(0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
 }

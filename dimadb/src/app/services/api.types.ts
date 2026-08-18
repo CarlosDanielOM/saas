@@ -20,8 +20,8 @@ export interface DbConnection {
 
 export interface RedisKeyRow {
   name: string;
-  type: string;
-  ttl: number;
+  type?: string;
+  ttl?: number;
 }
 
 export interface RedisScanResult {

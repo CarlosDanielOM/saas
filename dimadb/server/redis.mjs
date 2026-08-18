@@ -126,16 +126,16 @@ export function createRedisHub(store) {
       const client = await clientFor(id);
       const match = treeMatch(prefix, query);
       const folders = new Map();
-      const leaves = [];
+      const leafSet = new Set();
       let nextCursor = String(cursor || '0');
       let scanned = 0;
-      const maxKeys = 1200;
-      const maxRounds = 8;
+      const maxKeys = 40000;
+      const maxRounds = 120;
 
       for (let round = 0; round < maxRounds && scanned < maxKeys; round += 1) {
         const result = await client.scan(nextCursor, {
           MATCH: match,
-          COUNT: 400,
+          COUNT: 1000,
         });
         nextCursor = String(result.cursor);
         scanned += result.keys.length;
@@ -147,23 +147,13 @@ export function createRedisHub(store) {
             current.seen += 1;
             folders.set(node.prefix, current);
           } else {
-            leaves.push(node.name);
+            leafSet.add(node.name);
           }
         }
 
         if (nextCursor === '0') {
           break;
         }
-        if (folders.size >= 80 && leaves.length >= 40) {
-          break;
-        }
-      }
-
-      const uniqueLeaves = [...new Set(leaves)].slice(0, 40);
-      const keys = [];
-      for (const name of uniqueLeaves) {
-        const [type, ttl] = await Promise.all([client.type(name), client.ttl(name)]);
-        keys.push({ name, type, ttl });
       }
 
       return {
@@ -171,7 +161,7 @@ export function createRedisHub(store) {
         match,
         cursor: nextCursor,
         folders: [...folders.values()].sort((a, b) => a.label.localeCompare(b.label)),
-        keys,
+        keys: [...leafSet].sort().map((name) => ({ name })),
         scanned,
       };
     },

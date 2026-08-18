@@ -1,7 +1,7 @@
 <section>
   <div class="head">
     <h1>Browse</h1>
-    <p class="sub">Live prefix tree. Type to filter, tap a group to expand.</p>
+    <p class="sub">Type to filter. Expand a group like a folder tree.</p>
     <input
       class="search"
       type="search"
@@ -14,7 +14,7 @@
     <p class="sub">{{ message }}</p>
   }
   @if (loading() && !branch('')) {
-    <article class="card"><p class="sub">Scanning…</p></article>
+    <p class="sub">Scanning…</p>
   }
   <div class="tree">
     <ng-container [ngTemplateOutlet]="level" [ngTemplateOutletContext]="{ prefix: '', depth: 0 }" />
@@ -24,44 +24,37 @@
 <ng-template #level let-prefix="prefix" let-depth="depth">
   @if (branch(prefix); as node) {
     @for (folder of node.folders; track folder.prefix) {
-      <div class="tree-block" [style.--depth]="depth">
-        <button class="row tree-row" type="button" (click)="toggle(folder.prefix)">
-          <div>
-            <div class="key">{{ folder.label }}:*</div>
-            <div class="meta">{{ folder.seen }}+ in this scan</div>
-          </div>
-          <span class="pill">{{ expanded()[folder.prefix] ? 'open' : 'group' }}</span>
+      <div class="node">
+        <button
+          class="item folder"
+          type="button"
+          [class.open]="expanded()[folder.prefix]"
+          (click)="toggle(folder.prefix)"
+        >
+          <span class="chevron" aria-hidden="true"></span>
+          <span class="label">{{ folder.label }}</span>
         </button>
         @if (expanded()[folder.prefix]) {
-          <ng-container [ngTemplateOutlet]="level" [ngTemplateOutletContext]="{ prefix: folder.prefix, depth: depth + 1 }" />
+          <div class="kids">
+            @if (!branch(folder.prefix) && loading()) {
+              <span class="item muted">…</span>
+            }
+            <ng-container [ngTemplateOutlet]="level" [ngTemplateOutletContext]="{ prefix: folder.prefix, depth: depth + 1 }" />
+          </div>
         }
       </div>
     }
     @for (item of node.keys; track item.name) {
-      <a
-        class="row tree-row"
-        [style.--depth]="depth"
-        routerLink="/key"
-        [queryParams]="{ k: item.name, t: item.type }"
-      >
-        <div>
-          <div class="key">{{ item.name }}</div>
-          <div class="meta">ttl {{ ttlLabel(item.ttl) }}</div>
-        </div>
-        <span class="pill" [class]="item.type">{{ item.type }}</span>
+      <a class="item leaf" routerLink="/key" [queryParams]="{ k: item.name }">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="label">{{ leafLabel(item.name, prefix) }}</span>
       </a>
     }
     @if (node.cursor !== '0') {
-      <div class="actions tree-more" [style.--depth]="depth">
-        <button class="btn ghost" type="button" [disabled]="loading()" (click)="more(prefix)">
-          More groups
-        </button>
-      </div>
+      <div class="item muted" [attr.data-more]="prefix">{{ loading() ? '…' : '' }}</div>
     }
-    @if (node.folders.length === 0 && node.keys.length === 0) {
-      <article class="card tree-row" [style.--depth]="depth">
-        <p class="sub">{{ loading() ? 'Scanning…' : 'No keys in this group.' }}</p>
-      </article>
+    @if (!loading() && node.folders.length === 0 && node.keys.length === 0) {
+      <span class="item muted">empty</span>
     }
   }
 </ng-template>

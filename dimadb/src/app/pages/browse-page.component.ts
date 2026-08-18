@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { extractApiError } from '../services/api-error';
@@ -15,6 +15,7 @@ import { RedisService } from '../services/redis.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BrowsePageComponent {
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly redis = inject(RedisService);
   readonly connections = inject(ConnectionsService);
 
@@ -22,10 +23,12 @@ export class BrowsePageComponent {
   readonly branches = signal<Record<string, RedisTreeResult>>({});
   readonly expanded = signal<Record<string, boolean>>({});
   readonly loading = signal(false);
+  readonly pending = signal<Record<string, boolean>>({});
   readonly errorMessage = signal<string | null>(null);
 
   private debounce: ReturnType<typeof setTimeout> | null = null;
-  private request = 0;
+  private tickets = new Map<string, number>();
+  private observer: IntersectionObserver | null = null;
 
   constructor() {
     effect(() => {
@@ -33,6 +36,7 @@ export class BrowsePageComponent {
       if (id) {
         this.branches.set({});
         this.expanded.set({});
+        this.tickets.clear();
         void this.load('');
       }
     });
@@ -47,6 +51,7 @@ export class BrowsePageComponent {
     this.debounce = setTimeout(() => {
       this.branches.set({});
       this.expanded.set({});
+      this.tickets.clear();
       void this.load('');
     }, 220);
   }
@@ -64,25 +69,26 @@ export class BrowsePageComponent {
     return this.branches()[prefix] ?? null;
   }
 
+  leafLabel(name: string, prefix: string): string {
+    return prefix && name.startsWith(prefix) ? name.slice(prefix.length) : name;
+  }
+
+  watchMore(prefix: string, node: HTMLElement): void {
+    this.observer?.disconnect();
+    this.observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void this.more(prefix);
+      }
+    }, { rootMargin: '160px' });
+    this.observer.observe(node);
+  }
+
   async more(prefix: string): Promise<void> {
     const current = this.branches()[prefix];
-    if (!current || current.cursor === '0') {
+    if (!current || current.cursor === '0' || this.pending()[prefix]) {
       return;
     }
     await this.load(prefix, current.cursor, true);
-  }
-
-  ttlLabel(ttl: number): string {
-    if (ttl < 0) {
-      return '—';
-    }
-    if (ttl < 60) {
-      return `${ttl}s`;
-    }
-    if (ttl < 3600) {
-      return `${Math.round(ttl / 60)}m`;
-    }
-    return `${Math.round(ttl / 3600)}h`;
   }
 
   private async load(prefix: string, cursor = '0', append = false): Promise<void> {
@@ -92,44 +98,61 @@ export class BrowsePageComponent {
       return;
     }
 
-    const ticket = ++this.request;
+    const ticket = (this.tickets.get(prefix) || 0) + 1;
+    this.tickets.set(prefix, ticket);
+    this.pending.update((current) => ({ ...current, [prefix]: true }));
     this.loading.set(true);
     this.errorMessage.set(null);
     try {
       const result = await this.redis.tree(id, prefix, this.query(), cursor);
-      if (ticket !== this.request) {
+      if (this.tickets.get(prefix) !== ticket) {
         return;
       }
       const current = this.branches();
-      if (append && current[prefix]) {
-        const mergedFolders = [...current[prefix].folders];
-        for (const folder of result.folders) {
-          if (!mergedFolders.some((item) => item.prefix === folder.prefix)) {
-            mergedFolders.push(folder);
-          }
-        }
-        this.branches.set({
-          ...current,
-          [prefix]: {
+      const merged = append && current[prefix]
+        ? {
             ...result,
-            folders: mergedFolders,
+            folders: mergeFolders(current[prefix].folders, result.folders),
             keys: uniqueKeys([...current[prefix].keys, ...result.keys]),
-          },
-        });
-        return;
+          }
+        : result;
+      this.branches.set({ ...current, [prefix]: merged });
+      if (merged.cursor !== '0') {
+        setTimeout(() => this.bindSentinel(prefix), 0);
       }
-      this.branches.set({ ...current, [prefix]: result });
     } catch (error) {
-      if (ticket !== this.request) {
+      if (this.tickets.get(prefix) !== ticket) {
         return;
       }
       this.errorMessage.set(extractApiError(error, 'Scan failed').message);
     } finally {
-      if (ticket === this.request) {
-        this.loading.set(false);
+      if (this.tickets.get(prefix) === ticket) {
+        this.pending.update((current) => ({ ...current, [prefix]: false }));
+        this.loading.set(!Object.values(this.pending()).some(Boolean));
       }
     }
   }
+
+  private bindSentinel(prefix: string): void {
+    const node = this.host.nativeElement.querySelector(`[data-more="${cssEscape(prefix)}"]`);
+    if (node instanceof HTMLElement) {
+      this.watchMore(prefix, node);
+    }
+  }
+}
+
+function mergeFolders(
+  current: RedisTreeResult['folders'],
+  incoming: RedisTreeResult['folders'],
+): RedisTreeResult['folders'] {
+  const map = new Map(current.map((folder) => [folder.prefix, folder]));
+  for (const folder of incoming) {
+    const existing = map.get(folder.prefix);
+    map.set(folder.prefix, existing
+      ? { ...existing, seen: existing.seen + folder.seen }
+      : folder);
+  }
+  return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function uniqueKeys(keys: RedisTreeResult['keys']): RedisTreeResult['keys'] {
@@ -141,4 +164,8 @@ function uniqueKeys(keys: RedisTreeResult['keys']): RedisTreeResult['keys'] {
     seen.add(key.name);
     return true;
   });
+}
+
+function cssEscape(value: string): string {
+  return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }
