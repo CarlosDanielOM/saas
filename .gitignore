@@ -159,3 +159,6 @@ connect.lock
 # Generated Graphify knowledge graph output
 graphify-out/
 .graphify/
+
+# Machine-local agent notes (never commit)
+dev-agent.md
