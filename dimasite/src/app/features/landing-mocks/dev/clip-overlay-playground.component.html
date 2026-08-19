@@ -3,8 +3,8 @@
     <p class="pg__eyebrow">Dev mocks · overlay</p>
     <h1>Clip Design 1</h1>
     <p class="pg__sub">
-      Frontend-only sandbox. Test injects fixture <code>play-clip</code> data and plays locally — no API.
-      Idle stage stays empty; nothing lingers after exit.
+      Frontend-only sandbox. Classic and Third are free; the rest are premium labels only — still playable here.
+      Smooth in/out, then the stage clears.
     </p>
     <a class="pg__back" routerLink="/mocks/dev">← Dev mocks</a>
   </header>
@@ -17,6 +17,7 @@
           class="pg__chip"
           role="tab"
           [class.pg__chip--on]="variant() === item.id"
+          [class.pg__chip--premium]="item.premium"
           [attr.aria-selected]="variant() === item.id"
           (click)="selectVariant(item.id)"
         >
@@ -90,7 +91,6 @@
       class="overlay"
       [attr.data-variant]="variant()"
       [class.is-in]="phase() === 'in'"
-      [class.is-out]="phase() === 'out'"
       [class.is-idle]="phase() === 'idle'"
       [style.--clip-accent]="accent()"
       [style.transform]="'scale(' + scale() + ')'"
