@@ -238,6 +238,14 @@ export const routes: Routes = [
         title: 'Dev Mocks | DomDimaBot'
       },
       {
+        path: 'clips',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/clip-overlay-playground.component').then(
+            (m) => m.ClipOverlayPlaygroundComponent
+          ),
+        title: 'Clip Overlay Mocks | DomDimaBot'
+      },
+      {
         path: 'lf-status',
         loadComponent: () =>
           import('./features/landing-mocks/dev/lf-auth-status-hub.component').then(

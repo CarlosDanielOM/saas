@@ -139,6 +139,13 @@ interface DevMockCard {
 export class DevMockIndexComponent {
   readonly mocks: DevMockCard[] = [
     {
+      id: 'clips',
+      title: 'Clip overlay · Design 1',
+      badge: 'Design mocks',
+      description:
+        'OBS overlay sandbox. Test button injects fixture play-clip data and plays locally — no API. Current Classic vs Live First riff.'
+    },
+    {
       id: 'lf-status',
       title: 'Auth & status (LF)',
       badge: 'Design mocks',
