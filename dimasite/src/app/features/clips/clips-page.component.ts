@@ -79,7 +79,7 @@ export class ClipsPageComponent {
 
   readonly canTest = computed(() => {
     const design = this.selectedDesign();
-    if (!design || design.premium || design.premiumPlus) {
+    if (!design || this.isDesignLocked(design)) {
       return false;
     }
     return Boolean(this.userSettings().channelID);
@@ -112,27 +112,15 @@ export class ClipsPageComponent {
   }
 
   isDesignLocked(design: ClipDesign): boolean {
-    // Premium designs currently under construction — keep locked for all tiers.
-    if (design.premium || design.premiumPlus) {
-      return true;
-    }
-    return false;
+    return this.clipsService.isDesignLocked(design, this.userSettings().planTier);
   }
 
   selectDesign(design: ClipDesign): void {
     if (this.isDesignLocked(design)) {
-      const userPlan = this.userSettings().planTier;
-      if (userPlan === 'premium' || userPlan === 'pro') {
-        this.toastService.info(
-          this.t('clips.underConstructionTitle'),
-          this.t('clips.underConstructionMessage')
-        );
-      } else {
-        void this.upgradeService.promptUpgradeForModule({
-          moduleId: 'clips',
-          source: 'clips_design'
-        });
-      }
+      void this.upgradeService.promptUpgradeForModule({
+        moduleId: 'clips',
+        source: 'clips_design'
+      });
       return;
     }
 

@@ -947,7 +947,7 @@
   },
   "clips": {
     "title": "Diseños de Overlay de Clips",
-    "description": "Elige entre impresionantes diseños de overlay para mostrar tus mejores momentos con estilo. Configura y visualiza en tiempo real.",
+    "description": "Elige un overlay, copia la URL en OBS y pruébalo. Classic y Third son gratis. El resto es Premium beta v1 — aún se está refinando.",
     "headerBadge": "Overlays de Clips",
     "backToModules": "Volver a Módulos",
     "chooseDesign": "Elige tu Diseño",
