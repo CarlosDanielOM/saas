@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-export type ClipOverlayVariant = 'current' | 'lf';
+export type ClipOverlayVariant = 'classic' | 'tile' | 'third' | 'cinema' | 'orbit';
 export type ClipStageBg = 'checker' | 'green' | 'dark' | 'dim';
 export type ClipPlayPhase = 'idle' | 'in' | 'out';
 
@@ -114,22 +114,40 @@ export class ClipOverlayPlaygroundComponent {
 
   readonly variants: OverlayVariantCard[] = [
     {
-      id: 'current',
-      label: 'Design 1 · Current',
+      id: 'classic',
+      label: 'Classic',
       badge: 'Prod',
-      note: 'Faithful recreation of clip.html Classic — split 400/400, seam avatar, streamer-color panel.'
+      note: 'Current Design 1. Split 400/400, seam avatar, streamer-color panel. Everything must fully clear.'
     },
     {
-      id: 'lf',
-      label: 'Design 1 · Live First',
-      badge: 'Riff',
-      note: 'Same 800×225 OBS box. Dark readable card, color as accent only, avatar in the info row.'
+      id: 'tile',
+      label: 'Tile',
+      badge: '1',
+      note: 'Live First card. Video tile + readable info card. Color is an accent bar only.'
+    },
+    {
+      id: 'third',
+      label: 'Third',
+      badge: '2',
+      note: 'Broadcast lower-third. Clean video, bar slides up with kicker / name / line.'
+    },
+    {
+      id: 'cinema',
+      label: 'Cinema',
+      badge: '3',
+      note: 'Full-bleed clip. Bottom glass strip, chips, no standing chrome after exit.'
+    },
+    {
+      id: 'orbit',
+      label: 'Orbit',
+      badge: '4',
+      note: 'Avatar-forward. Pulse ring, compact video window, type stacked beside it.'
     }
   ];
 
   readonly fixtures = FIXTURES;
   readonly stageOptions: ClipStageBg[] = ['checker', 'green', 'dark', 'dim'];
-  readonly variant = signal<ClipOverlayVariant>('current');
+  readonly variant = signal<ClipOverlayVariant>('classic');
   readonly stageBg = signal<ClipStageBg>('checker');
   readonly hold = signal(false);
   readonly timeoutSeconds = signal(8);
@@ -170,7 +188,7 @@ export class ClipOverlayPlaygroundComponent {
     };
   });
 
-  readonly lfAccent = computed(() => this.clip()?.streamerColor ?? '#8b5cf6');
+  readonly accent = computed(() => this.clip()?.streamerColor ?? '#8b5cf6');
 
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private endTimer: ReturnType<typeof setTimeout> | null = null;
@@ -178,10 +196,7 @@ export class ClipOverlayPlaygroundComponent {
   private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
-    afterNextRender(() => {
-      this.bindStageScale();
-      this.playTest();
-    });
+    afterNextRender(() => this.bindStageScale());
 
     this.destroyRef.onDestroy(() => {
       this.clearTimers();
@@ -193,7 +208,6 @@ export class ClipOverlayPlaygroundComponent {
   selectVariant(id: ClipOverlayVariant): void {
     this.resetStage();
     this.variant.set(id);
-    setTimeout(() => this.playTest());
   }
 
   onFixtureChange(event: Event): void {
@@ -228,28 +242,7 @@ export class ClipOverlayPlaygroundComponent {
     this.clip.set(payload);
     this.phase.set('idle');
 
-    queueMicrotask(() => {
-      const video = this.videoRef()?.nativeElement;
-      if (!video) {
-        this.lastError.set('Video element missing — replay the test.');
-        return;
-      }
-
-      this.stopCanvas();
-      video.srcObject = this.startCanvasClip(payload);
-      video.muted = true;
-      video.playsInline = true;
-      void video.play().then(() => {
-        this.phase.set('in');
-        if (this.hold()) return;
-        const hideAt = Math.max(1200, duration * 1000 - 500);
-        this.hideTimer = setTimeout(() => this.phase.set('out'), hideAt);
-        this.endTimer = setTimeout(() => this.resetStage(), duration * 1000 + 700);
-      }).catch((error: unknown) => {
-        this.lastError.set(error instanceof Error ? error.message : 'Autoplay blocked');
-        this.phase.set('in');
-      });
-    });
+    queueMicrotask(() => this.attachAndPlay(duration));
   }
 
   resetStage(): void {
@@ -259,8 +252,33 @@ export class ClipOverlayPlaygroundComponent {
     const video = this.videoRef()?.nativeElement;
     if (video) {
       video.pause();
+      video.removeAttribute('src');
       video.srcObject = null;
+      video.load();
     }
+  }
+
+  private attachAndPlay(duration: number): void {
+    const video = this.videoRef()?.nativeElement;
+    if (!video) {
+      this.lastError.set('Video element missing — replay the test.');
+      return;
+    }
+
+    this.stopCanvas();
+    video.srcObject = this.startCanvasClip(this.clip()!);
+    video.muted = true;
+    video.playsInline = true;
+    void video.play().then(() => {
+      this.phase.set('in');
+      if (this.hold()) return;
+      const hideAt = Math.max(1400, duration * 1000 - 500);
+      this.hideTimer = setTimeout(() => this.phase.set('out'), hideAt);
+      this.endTimer = setTimeout(() => this.resetStage(), duration * 1000 + 800);
+    }).catch((error: unknown) => {
+      this.lastError.set(error instanceof Error ? error.message : 'Autoplay blocked');
+      this.phase.set('in');
+    });
   }
 
   private pickFixture() {

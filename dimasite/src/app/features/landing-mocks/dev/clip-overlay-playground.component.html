@@ -3,12 +3,13 @@
     <p class="pg__eyebrow">Dev mocks · overlay</p>
     <h1>Clip Design 1</h1>
     <p class="pg__sub">
-      Frontend-only sandbox. Test injects fixture <code>play-clip</code> data and plays locally — no API, no socket.
+      Frontend-only sandbox. Test injects fixture <code>play-clip</code> data and plays locally — no API.
+      Idle stage stays empty; nothing lingers after exit.
     </p>
     <a class="pg__back" routerLink="/mocks/dev">← Dev mocks</a>
   </header>
 
-  <section class="pg__controls" [attr.aria-label]="'Overlay playground controls'">
+  <section class="pg__controls" aria-label="Overlay playground controls">
     <div class="pg__variants" role="tablist">
       @for (item of variants; track item.id) {
         <button
@@ -30,10 +31,7 @@
     <div class="pg__row">
       <label class="pg__field">
         <span>Fixture</span>
-        <select
-          [value]="selectedLogin()"
-          (change)="onFixtureChange($event)"
-        >
+        <select [value]="selectedLogin()" (change)="onFixtureChange($event)">
           <option value="random">Random streamer</option>
           @for (item of fixtures; track item.streamerLogin) {
             <option [value]="item.streamerLogin">{{ item.streamer }} · {{ item.game }}</option>
@@ -90,56 +88,39 @@
   <section class="stage" #stage [attr.data-bg]="stageBg()" aria-label="OBS overlay stage">
     <div
       class="overlay"
-      [class.overlay--current]="variant() === 'current'"
-      [class.overlay--lf]="variant() === 'lf'"
+      [attr.data-variant]="variant()"
       [class.is-in]="phase() === 'in'"
       [class.is-out]="phase() === 'out'"
+      [class.is-idle]="phase() === 'idle'"
+      [style.--clip-accent]="accent()"
       [style.transform]="'scale(' + scale() + ')'"
     >
-      @if (variant() === 'current') {
-        <div class="d1">
-          <div class="d1__left">
-            <video #vplayer class="d1__video" playsinline muted></video>
-          </div>
-          <div class="d1__avatar">
-            @if (clip(); as data) {
-              <img [src]="data.profileImage" [alt]="data.streamer" />
-            }
-          </div>
-          <div
-            class="d1__right"
-            [style.background-color]="panelStyle().backgroundColor"
-            [style.backdrop-filter]="panelStyle().backdropFilter"
-            [style.border]="panelStyle().border"
-            [style.color]="panelStyle().color"
-          >
-            @if (clip(); as data) {
-              <h2>{{ data.streamer }}</h2>
-              <h4>{{ data.description }}</h4>
-              <h3>{{ data.game }}</h3>
-            }
-          </div>
+      <div class="skin">
+        <div class="skin__video">
+          <video #vplayer playsinline muted></video>
         </div>
-      } @else {
-        <div class="lf1" [style.--clip-accent]="lfAccent()">
-          <div class="lf1__video">
-            <video #vplayer class="lf1__player" playsinline muted></video>
-          </div>
-          <aside class="lf1__card">
-            @if (clip(); as data) {
-              <div class="lf1__row">
-                <img class="lf1__avatar" [src]="data.profileImage" [alt]="data.streamer" />
-                <div class="lf1__meta">
-                  <p class="lf1__kicker">{{ data.game }}</p>
-                  <h2>{{ data.streamer }}</h2>
-                </div>
-              </div>
-              <p class="lf1__copy">{{ data.description }}</p>
-              <p class="lf1__title">{{ data.title }}</p>
-            }
-          </aside>
+
+        <div class="skin__avatar">
+          @if (clip(); as data) {
+            <img [src]="data.profileImage" [alt]="data.streamer" />
+          }
         </div>
-      }
+
+        <div
+          class="skin__meta"
+          [style.background-color]="variant() === 'classic' ? panelStyle().backgroundColor : null"
+          [style.backdrop-filter]="variant() === 'classic' ? panelStyle().backdropFilter : null"
+          [style.border]="variant() === 'classic' ? panelStyle().border : null"
+          [style.color]="variant() === 'classic' ? panelStyle().color : null"
+        >
+          @if (clip(); as data) {
+            <p class="skin__kicker">{{ data.game }}</p>
+            <h2 class="skin__name">{{ data.streamer }}</h2>
+            <p class="skin__copy">{{ data.description }}</p>
+            <p class="skin__title">{{ data.title }}</p>
+          }
+        </div>
+      </div>
     </div>
   </section>
 
