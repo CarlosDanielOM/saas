@@ -37,6 +37,8 @@ import {
   validateChannelMemoryContext,
 } from "../memory/memory.service.js";
 import type { ChatMemoryContext } from "../prompts.ai.js";
+import { getAIStreamContext } from "../stream_context.ai.js";
+import { getChannelEmoteNames } from "../emote_context.ai.js";
 
 const OPENROUTER_TIMEOUT = 30000;
 const fetchWithRetry = createFetchWithRetry({
@@ -142,6 +144,8 @@ export interface AIHarnessOptions {
   threadHistory?: IChatHistoryMessage[];
   tags?: IChatMessageTags;
   options?: Record<string, any>[];
+  /** Skip tool definitions entirely (e.g. system-generated announcements). */
+  disableTools?: boolean;
 }
 
 interface IUsageData {
@@ -676,6 +680,7 @@ export async function chat(
     threadHistory = [],
     tags = { badges: [] },
     options: extraOptions = [],
+    disableTools = false,
   } = options;
 
   const cacheClient = await getDragonflyClient("Messages");
@@ -894,6 +899,13 @@ export async function chat(
     combinedLimit,
   );
 
+  // Fetch ambient context (stream state, channel emotes) - best effort,
+  // cached, never blocks the response on failure.
+  const [streamContext, emoteNames] = await Promise.all([
+    getAIStreamContext(channelID).catch(() => null),
+    getChannelEmoteNames(channelID).catch(() => null),
+  ]);
+
   // Use shared utility to construct messages (no tools yet at this stage)
   // constructChatSystemMessages returns: [system_message, user_message_with_prompt]
   const systemMessages = constructChatSystemMessages(
@@ -904,6 +916,8 @@ export async function chat(
     chatHistory,
     [], // tool context will be added by AI as needed
     memoryContext,
+    streamContext,
+    emoteNames,
   );
 
   // Convert to OpenRouter message format
@@ -912,8 +926,8 @@ export async function chat(
     content: msg.content,
   }));
 
-  // Get tool definitions
-  const toolDefinitions = getToolDefinitions();
+  // Get tool definitions (skipped for system-generated announcements)
+  const toolDefinitions = disableTools ? [] : getToolDefinitions();
 
   // Track tool calls to prevent infinite loops
   let toolCallCount = 0;

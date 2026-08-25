@@ -9,6 +9,8 @@ import { execute as searchExecute, type SearchToolResult } from './search.tool.j
 import { execute as codeExecutionExecute, type CodeExecutionToolResult, type IStreamerData } from './code_execution.tool.js';
 import { execute as astParserExecute, type ASTParserToolResult } from './ast_parser.tool.js';
 import { execute as createMemoryExecute, type CreateMemoryToolResult } from './create_memory.tool.js';
+import { execute as chatSummaryExecute, type ChatSummaryToolResult } from './chat_summary.tool.js';
+import { execute as streamStatsExecute, type StreamStatsToolResult } from './stream_stats.tool.js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -68,7 +70,7 @@ export interface ToolContext {
 /**
  * Union type for all tool results
  */
-export type ToolResult = SearchToolResult | CodeExecutionToolResult | ASTParserToolResult | CreateMemoryToolResult;
+export type ToolResult = SearchToolResult | CodeExecutionToolResult | ASTParserToolResult | CreateMemoryToolResult | ChatSummaryToolResult | StreamStatsToolResult;
 
 // ============================================================================
 // TOOL REGISTRY
@@ -81,7 +83,9 @@ const toolExecutors: Record<string, (args: any, context: ToolContext) => Promise
     search: searchExecute,
     code_execution: codeExecutionExecute,
     AST_PARSER: astParserExecute,
-    create_memory: createMemoryExecute
+    create_memory: createMemoryExecute,
+    chat_summary: chatSummaryExecute,
+    stream_stats: streamStatsExecute
 };
 
 /**
@@ -139,3 +143,5 @@ export { type SearchToolResult, type SearchResult, type ISearchResult } from './
 export { type CodeExecutionToolResult, type IStreamerData, type IToolContext, type ICodePlanResult, type ICodeGenerationResult, type ISandboxExecutionResult } from './code_execution.tool.js';
 export { type ASTParserToolResult } from './ast_parser.tool.js';
 export { type CreateMemoryToolResult } from './create_memory.tool.js';
+export { type ChatSummaryToolResult } from './chat_summary.tool.js';
+export { type StreamStatsToolResult } from './stream_stats.tool.js';

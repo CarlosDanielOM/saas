@@ -20,6 +20,8 @@ export interface AiCommandResponse {
 export interface UserContext {
     username: string;
     badges?: string;
+    /** Verified permission level of the invoking user (1-10). Used to clamp tool permissions. */
+    userLevel?: number;
 }
 
 export interface ModelInfo {
@@ -111,7 +113,8 @@ export async function executeAiCommand(
             history: [],  // No history for command-style $(ai) calls
             tags: {
                 badges: [],  // Command-style calls don't have badge context
-                username: userContext.username
+                username: userContext.username,
+                userLevel: userContext.userLevel ?? 1
             }
         });
 

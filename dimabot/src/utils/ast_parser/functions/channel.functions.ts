@@ -159,7 +159,8 @@ const aiHandler: FunctionHandler = async (args, ctx) => {
         user_id: streamer.id
     }, {
         username: ctx.userDisplayName || ctx.userLogin || 'unknown user',
-        badges: badgeFormatting.formattedBadges
+        badges: badgeFormatting.formattedBadges,
+        userLevel: ctx.userLevel ?? 1
     }, prompt, 'ast_parser');
 
     return result.message;

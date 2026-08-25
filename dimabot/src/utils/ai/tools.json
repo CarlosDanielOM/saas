@@ -55,10 +55,39 @@
             },
             "userlevel": {
               "type": "number",
-              "description": "The userlevel for permission checking. Use 7 for mod actions (ban, vip, clear.chat), 8 for broadcaster actions (set.title, set.game, add.mod). For automated AI calls, use 7."
+              "description": "Requested permission level: 7 for mod actions (ban, vip, clear.chat), 8 for broadcaster actions (set.title, set.game, add.mod). The system clamps this to the requesting chatter's actual permission level, so never claim a level above what the chatter has."
             }
           },
           "required": ["command", "userlevel"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "chat_summary",
+        "description": "Get the most recent chat messages to summarize recent chat activity. Use when a mod or the streamer asks what happened in chat, what they missed, or what users have been talking about.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "number",
+              "description": "How many recent messages to include (capped by plan tier)."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "stream_stats",
+        "description": "Get live stream session metrics: uptime, current/average/peak viewers, follows, subs, bits, chat messages and commands used. Use when the streamer or mods ask how the stream is going.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
         }
       }
     },

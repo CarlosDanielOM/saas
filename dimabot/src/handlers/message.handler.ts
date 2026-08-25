@@ -277,7 +277,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     tags: {
                         badges: messageEventData.badges,
                         username: messageEventData.chatter_user_name,
-                        chatter_user_id: messageEventData.chatter_user_id
+                        chatter_user_id: messageEventData.chatter_user_id,
+                        userLevel
                     }
                 });
                 
@@ -285,8 +286,11 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     const aiResponseChunks = splitAiResponseForTwitch(aiResponse.message);
                     const deliveryResults = [];
 
-                    for (const chunk of aiResponseChunks) {
-                        deliveryResults.push(await sendTwitchChatMessage(channelID, chunk));
+                    // Reply-thread the first chunk to the user's mention so the
+                    // answer is visually tied to the right chatter in busy chats.
+                    for (let chunkIndex = 0; chunkIndex < aiResponseChunks.length; chunkIndex++) {
+                        const replyTo = chunkIndex === 0 ? messageEventData.message_id : null;
+                        deliveryResults.push(await sendTwitchChatMessage(channelID, aiResponseChunks[chunkIndex], replyTo));
                     }
 
                     const delivered = deliveryResults.length > 0 && deliveryResults.every((result) => !result.error);

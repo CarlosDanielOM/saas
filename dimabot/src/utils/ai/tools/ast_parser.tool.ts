@@ -31,7 +31,7 @@ export interface ASTParserArgs {
     /** The userlevel to use for permission checking.
      * - 7 for mod actions (ban, vip, clear.chat)
      * - 8 for broadcaster actions (set.title, set.game, add.mod)
-     * For automated AI calls, use 7. */
+     * Clamped to the requesting chatter's actual permission level by the system. */
     userlevel: number;
 }
 
@@ -68,6 +68,16 @@ export async function execute(
         };
     }
 
+    // SECURITY: never trust the model-supplied userlevel. Clamp it to the
+    // actual permission level of the chatter who triggered this request
+    // (threaded through tags.userLevel by the message handler). Defaults to
+    // 1 (regular chatter) when no verified level is present.
+    const rawActualLevel = Number(context.tags?.userLevel ?? context.tags?.['user-level'] ?? 1);
+    const actualLevel = Number.isFinite(rawActualLevel)
+        ? Math.max(1, Math.min(10, Math.trunc(rawActualLevel)))
+        : 1;
+    const effectiveLevel = Math.min(userlevel, actualLevel);
+
     try {
         // Get streamer data for context
         const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
@@ -82,7 +92,7 @@ export async function execute(
             userLogin: context.username || 'AI',
             userDisplayName: context.username || 'AI',
             userPlan: (streamerData?.plan_tier as 'free' | 'premium' | 'pro') || 'free',
-            userLevel: userlevel,
+            userLevel: effectiveLevel,
             streamer: streamerData
         };
 

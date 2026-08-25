@@ -17,6 +17,8 @@ import {
     type FollowDefenseTriggerSource
 } from './follow_defense_queue.js';
 import { error as logError, info as logInfo, warn as logWarn } from './logger.js';
+import TwitchStreamers from '../classes/twitch_streamers.class.js';
+import { chat as aiChat } from './ai/openrouter/ai.js';
 
 const BOT_ID = '698614112';
 const QUEUE_BATCH_SIZE = Math.max(25, Number(process.env.FOLLOW_DEFENSE_QUEUE_BATCH_SIZE || 250));
@@ -209,10 +211,51 @@ function formatMessage(template: string, params: Record<string, string | number>
     }, template);
 }
 
+const DEFENSE_EVENT_DESCRIPTIONS: Record<FollowDefenseLanguage, Record<string, string>> = {
+    en: {
+        protection: 'A follow flood was detected in the channel. Follow protection mode is now enabled and suspicious followers will be banned. Moderators can activate attack mode with the !defmode command.',
+        attack: 'Attack mode is now activated. The bot is banning all followers from this follow-bot wave.'
+    },
+    es: {
+        protection: 'Se detectó una avalancha de follows en el canal. La protección de follows está activada y los follows sospechosos serán baneados. Los moderadores pueden activar el modo ataque con el comando !defmode.',
+        attack: 'El modo ataque está activado. El bot está baneando todos los follows de esta ola de follow-bots.'
+    }
+};
+
 async function sendDefenseMessage(channelID: string, settings: FollowDefenseRuntimeSettings, messageKey: keyof typeof MESSAGES.en): Promise<void> {
-    const message = MESSAGES[settings.language][messageKey];
-    if (!message) return;
-    await sendTwitchChatMessage(channelID, message, null, { channelID });
+    const fallbackMessage = MESSAGES[settings.language][messageKey];
+    if (!fallbackMessage) return;
+
+    // Try an in-personality announcement first; fall back to the static
+    // message if the AI is unavailable, disabled, or errors out.
+    try {
+        const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+        const eventDescription = DEFENSE_EVENT_DESCRIPTIONS[settings.language]?.[messageKey] || fallbackMessage;
+        if (streamer) {
+            const aiResult = await aiChat({
+                channelID,
+                message: `[SYSTEM EVENT - not a chat message, do not tag anyone] ${eventDescription} Announce this to chat in one short message using your personality. Keep the warning clear.`,
+                streamer: streamer as any,
+                history: [],
+                disableTools: true,
+                tags: { badges: [], username: 'system', userLevel: 1 }
+            });
+            const aiMessage = !aiResult.error ? String(aiResult.message || '').trim() : '';
+            if (aiMessage) {
+                await sendTwitchChatMessage(channelID, aiMessage.slice(0, 450), null, { channelID });
+                return;
+            }
+        }
+    } catch (aiAnnounceError) {
+        await logWarn({
+            function: 'followDefense.sendDefenseMessage.ai',
+            channelID,
+            messageKey,
+            error: aiAnnounceError instanceof Error ? aiAnnounceError.message : String(aiAnnounceError)
+        }, { channelId: channelID, destination: 'cache' });
+    }
+
+    await sendTwitchChatMessage(channelID, fallbackMessage, null, { channelID });
 }
 
 async function transitionMode(
