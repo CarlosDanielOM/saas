@@ -23,6 +23,7 @@ Targets:
   admin                Angular admin bundle
   docs | dimadocs      Astro documentation bundle
   dimafx               Twitch extension server container
+  dbs | dimadb | db    Internal DB console container
   all                  Every target (the default)
 
 Examples:
@@ -37,6 +38,7 @@ build_site=false
 build_admin=false
 build_docs=false
 build_dimafx=false
+build_dbs=false
 all=false
 
 add_dimabot_service() {
@@ -56,6 +58,7 @@ select_all() {
   build_admin=true
   build_docs=true
   build_dimafx=true
+  build_dbs=true
 }
 
 if (( $# == 0 )); then
@@ -94,6 +97,9 @@ else
         ;;
       dimafx)
         build_dimafx=true
+        ;;
+      dbs|dimadb|db)
+        build_dbs=true
         ;;
       all)
         select_all
@@ -143,6 +149,11 @@ if [[ $build_dimafx == true ]]; then
     docker compose -f "$repo_root/dimafx/docker-compose.yml" up --detach --build
   else
     printf 'Rebuilding dimafx server...\n'
-    docker compose -f "$repo_root/dimafx/docker-compose.yml" up --detach --build dimafx-server
+      docker compose -f "$repo_root/dimafx/docker-compose.yml" up --detach --build dimafx-server
   fi
+fi
+
+if [[ $build_dbs == true ]]; then
+  printf 'Rebuilding dimadb...\n'
+  docker compose -f "$repo_root/dimadb/docker-compose.yaml" up --detach --build
 fi
