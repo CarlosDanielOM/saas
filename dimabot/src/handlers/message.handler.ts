@@ -235,6 +235,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 if (STREAMER.name == 'ozbellvt' || STREAMER.name == 'littlehuntervt') return;
 
                 const planTier = STREAMER.plan_tier === 'pro' || STREAMER.plan_tier === 'premium' ? STREAMER.plan_tier : 'free';
+                const aiMessageText = messageEventData.message.text.replace(/@domdimabot/ig, '').trim();
                 let threadID: string | null = null;
                 let threadContext: Array<{ timestamp: number; badges?: string; username: string; message: string }> = [];
 
@@ -243,7 +244,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                         channelID,
                         userID: String(messageEventData.chatter_user_id || 'unknown'),
                         username: String(messageEventData.chatter_user_name || messageEventData.chatter_user_login || 'unknown'),
-                        message: messageEventData.message.text,
+                        message: aiMessageText,
                         planTier,
                         sourceMessageId: messageEventData.message_id
                     });
@@ -257,21 +258,22 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                         timestamp: new Date().toISOString()
                     });
                 }
-                
-                const recentMessages = await ChatHistory.getRecentMessages(channelID, STREAMER.plan_tier === 'pro' ? 15 : 7);
+
+                const contextWindowLimit = aiPersonality?.contextWindow ?? (STREAMER.plan_tier === 'pro' ? 15 : 7);
+                const recentMessages = await ChatHistory.getRecentMessages(channelID, contextWindowLimit);
                 const chatHistory = recentMessages.map((msg: any) => ({
                     timestamp: msg.timestamp,
                     badges: msg.badges ? msg.badges.join(' ') : undefined,
                     username: msg.username,
                     message: msg.message
                 }));
-                const aiHistory = threadContext.length > 0 ? threadContext : chatHistory;
-                
+
                 const aiResponse = await aiChat({
                     channelID,
-                    message: messageEventData.message.text.replace('@domdimabot', '').replace('@DomDimaBot', ''),
+                    message: aiMessageText,
                     streamer: STREAMER,
-                    history: aiHistory,
+                    history: chatHistory,
+                    threadHistory: threadContext,
                     tags: {
                         badges: messageEventData.badges,
                         username: messageEventData.chatter_user_name,

@@ -62,6 +62,8 @@ function safeJsonParse<T>(payload: string | null): T | null {
     }
 }
 
+const KEYWORD_STOPWORDS = ['the', 'and', 'that', 'with', 'this', 'you', 'que', 'pero', 'para', 'como', 'con', 'una', 'por', 'wow', 'domdimabot'];
+
 function extractKeywords(text: string): string[] {
     const normalized = String(text || '').toLowerCase();
     const tokens = normalized
@@ -69,7 +71,7 @@ function extractKeywords(text: string): string[] {
         .split(/\s+/)
         .map((token) => token.trim())
         .filter((token) => token.length >= 3)
-        .filter((token) => !['the', 'and', 'that', 'with', 'this', 'you', 'que', 'pero', 'para', 'como', 'con', 'una', 'por', 'wow'].includes(token));
+        .filter((token) => !KEYWORD_STOPWORDS.includes(token));
     return Array.from(new Set(tokens)).slice(0, 12);
 }
 

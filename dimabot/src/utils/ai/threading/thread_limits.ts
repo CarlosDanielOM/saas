@@ -10,24 +10,24 @@ export type PlanTier = 'pro' | 'premium' | 'free';
 export function getThreadLimitsForTier(planTier: PlanTier): ThreadLimits {
     if (planTier === 'pro') {
         return {
-            maxChannelThreads: 100,
-            maxUserThreads: 5,
-            maxTurnsStored: 50,
-            promptTurns: 12
+            maxChannelThreads: 360,
+            maxUserThreads: 27,
+            maxTurnsStored: 180,
+            promptTurns: 54
         };
     }
     if (planTier === 'premium') {
         return {
-            maxChannelThreads: 40,
-            maxUserThreads: 2,
-            maxTurnsStored: 20,
-            promptTurns: 5
+            maxChannelThreads: 120,
+            maxUserThreads: 9,
+            maxTurnsStored: 60,
+            promptTurns: 18
         };
     }
     return {
-        maxChannelThreads: 20,
-        maxUserThreads: 1,
-        maxTurnsStored: 10,
-        promptTurns: 2
+        maxChannelThreads: 40,
+        maxUserThreads: 3,
+        maxTurnsStored: 20,
+        promptTurns: 6
     };
 }

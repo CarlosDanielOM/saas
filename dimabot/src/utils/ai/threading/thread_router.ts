@@ -15,6 +15,11 @@ import {
 import { recordThreadRoutingMetric } from '../../observability/bot_runtime_metrics.js';
 
 const THREAD_MATCH_THRESHOLD = 0.35;
+// If the user's most recent thread had activity within this window, keep the
+// conversation in it without scoring - prevents interleaved chatters from
+// fragmenting a user's ongoing conversation into new threads.
+const STICKY_THREAD_WINDOW_MS = 45 * 60 * 1000;
+const TOKEN_STOPWORDS = new Set(['domdimabot']);
 
 export interface ResolveThreadParams {
     channelID: string;
@@ -51,7 +56,7 @@ function tokenize(text: string): string[] {
         .replace(/[^\p{L}\p{N}\s]/gu, ' ')
         .split(/\s+/)
         .map((token) => token.trim())
-        .filter((token) => token.length >= 3)
+        .filter((token) => token.length >= 3 && !TOKEN_STOPWORDS.has(token))
         .slice(0, 64);
 }
 
@@ -98,11 +103,19 @@ export async function resolveUserThreadForMessage(params: ResolveThreadParams): 
         );
         let bestMeta: ThreadMeta | null = null;
         let bestScore = 0;
-        for (const candidate of candidates) {
-            const score = await scoreThread(candidate, params.message, params.userID);
-            if (score > bestScore) {
-                bestScore = score;
-                bestMeta = candidate;
+        // Fast path: the user's most recent thread is still warm, so this message
+        // is almost certainly a continuation of it. Skip scoring entirely.
+        const mostRecent = candidates[0];
+        if (mostRecent && nowTs - mostRecent.lastActivityTs <= STICKY_THREAD_WINDOW_MS) {
+            bestMeta = mostRecent;
+            bestScore = 1;
+        } else {
+            for (const candidate of candidates) {
+                const score = await scoreThread(candidate, params.message, params.userID);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMeta = candidate;
+                }
             }
         }
         let selectedThread: ThreadMeta;

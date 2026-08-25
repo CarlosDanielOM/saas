@@ -50,10 +50,10 @@ interface AIPersonality {
 }
 
 /**
- * Chat history message (supports both live and semantic sources)
+ * Chat history message (supports thread, live and semantic sources)
  */
 interface ChatHistoryMessage {
-    source?: 'live' | 'semantic';
+    source?: 'live' | 'semantic' | 'thread';
     timestamp: Date | string | number;
     badges?: string;
     username: string;
@@ -215,16 +215,34 @@ export function constructChatSystemMessages(
         rulesContext = personality.rules.join('\n');
     }
     
-    // Build chat history context
+    // Build chat history context, split into the direct thread with the current
+    // user and the global channel chat.
+    // [THREAD] = Your direct conversation thread with the current user (highest priority)
     // [LIVE] = Recent messages from this stream session (fresh context)
     // [SEMANTIC] = Past messages found because they're semantically related to the current topic (historical context)
+    const formatHistoryMessage = (msg: ChatHistoryMessage, sourceTag: string): string => {
+        const msgTimestamp = new Date(msg.timestamp);
+        const timeInHours = `${msgTimestamp.getHours().toString().padStart(2, '0')}:${msgTimestamp.getMinutes().toString().padStart(2, '0')}`;
+        return `${sourceTag} [${timeInHours}] ${msg.badges || ''} ${msg.username}: ${msg.message}`;
+    };
+
+    const threadMessages = chatHistory
+        .filter((msg) => msg.source === 'thread')
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    const channelMessages = chatHistory.filter((msg) => msg.source !== 'thread');
+
+    let threadContext = "No previous direct conversation with this user.";
+    if (threadMessages.length > 0) {
+        threadContext = threadMessages
+            .map((msg) => formatHistoryMessage(msg, '[THREAD]'))
+            .join('\n');
+    }
+
     let chatHistoryContext = "No previous chat history.";
-    if (chatHistory.length > 0) {
-        chatHistoryContext = chatHistory.map(msg => {
-            const msgTimestamp = new Date(msg.timestamp);
-            const timeInHours = `${msgTimestamp.getHours().toString().padStart(2, '0')}:${msgTimestamp.getMinutes().toString().padStart(2, '0')}`;
+    if (channelMessages.length > 0) {
+        chatHistoryContext = channelMessages.map(msg => {
             const sourceTag = msg.source === 'semantic' ? '[SEMANTIC]' : '[LIVE]';
-            return `${sourceTag} [${timeInHours}] ${msg.badges || ''} ${msg.username}: ${msg.message}`;
+            return formatHistoryMessage(msg, sourceTag);
         }).join('\n');
     }
     
@@ -252,7 +270,7 @@ export function constructChatSystemMessages(
     // Construct the enhanced system message
     const systemContent = `<system-instructions>
     <system-rules>
-        You are a livestream chatbot where multiple people hang in. You will receive a personality, some users with history with the streamer, channel rules and chat history for context. Only use the chat history to formulate a correct answer to the user that actually spoke to you and not to all the chat history. Personality was given to you by the streamer of the channel you are in which is ${streamerName}.
+        You are a livestream chatbot where multiple people hang in. You will receive a personality, some users with history with the streamer, channel rules, your direct conversation thread with the current user, and the global channel chat history for context. Prioritize the current thread to continue your conversation with the user that actually spoke to you, and use the global chat history as background context. Personality was given to you by the streamer of the channel you are in which is ${streamerName}.
     </system-rules>
     
     <identity>
@@ -283,13 +301,18 @@ export function constructChatSystemMessages(
         </current-user-facts>
     </memory-context>
 
+    <current-thread>
+        This is YOUR direct conversation thread with ${userContext?.username || 'the current user'} - the user who just spoke to you. It contains your previous replies to them and their earlier messages to you. Prioritize this thread for continuity of your conversation with them.
+        ${threadContext}
+    </current-thread>
+
     <chat-history>
-        This is the chat history of the channel, only use it to formulate a correct answer to the user that actually spoke to you.
-        
+        This is the global channel chat with messages from ALL users. Use it as background context to understand what is happening in the stream - for example when the current user asks what someone else said, or refers to the general conversation, other users, or running jokes.
+
         Source tags:
         - [LIVE] = Recent messages from this stream session (fresh context)
         - [SEMANTIC] = Past messages found because they're semantically related to the current topic (historical context)
-        
+
         You can use it to understand the context, how users interact with each other and the streamer, and their jokes.
         ${chatHistoryContext}
     </chat-history>

@@ -111,7 +111,7 @@ export interface IChatHistoryMessage {
 }
 
 export interface ISemanticChatHistoryItem {
-  source: "live" | "semantic";
+  source: "live" | "semantic" | "thread";
   timestamp: number;
   badges?: string;
   username: string;
@@ -139,6 +139,7 @@ export interface AIHarnessOptions {
   message: string;
   streamer: IStreamerData;
   history?: IChatHistoryMessage[];
+  threadHistory?: IChatHistoryMessage[];
   tags?: IChatMessageTags;
   options?: Record<string, any>[];
 }
@@ -314,30 +315,29 @@ function getMemoryContextLimitsForTier(planTier: string | undefined): {
 }
 
 /**
- * Merge live (Redis) and semantic (Qdrant) chat histories
- * - Live messages are always included (recency/freshness)
+ * Merge thread, live (Redis), and semantic (Qdrant) chat histories
+ * - Thread messages take priority (direct conversation with the current user)
+ * - Live messages are always included next (recency/freshness)
  * - Semantic messages are added if not duplicates
  * - Results sorted by timestamp, newest first
  * - Total limited by tier-based cap
  */
 function mergeChatHistories(
+  threadHistory: ISemanticChatHistoryItem[],
   liveHistory: ISemanticChatHistoryItem[],
   semanticHistory: ISemanticChatHistoryItem[],
   maxLimit: number,
 ): ISemanticChatHistoryItem[] {
-  // Use a Map to deduplicate by message content, preferring live version
+  // Deduplicate by message content, keeping the highest-priority version
+  // (groups are processed in priority order: thread > live > semantic)
   const uniqueByMessage = new Map<string, ISemanticChatHistoryItem>();
 
-  // First add all live messages (they take priority)
-  for (const item of liveHistory) {
-    uniqueByMessage.set(item.message.toLowerCase(), item);
-  }
-
-  // Then add semantic messages that aren't duplicates
-  for (const item of semanticHistory) {
-    const key = item.message.toLowerCase();
-    if (!uniqueByMessage.has(key)) {
-      uniqueByMessage.set(key, item);
+  for (const group of [threadHistory, liveHistory, semanticHistory]) {
+    for (const item of group) {
+      const key = item.message.toLowerCase();
+      if (!uniqueByMessage.has(key)) {
+        uniqueByMessage.set(key, item);
+      }
     }
   }
 
@@ -673,6 +673,7 @@ export async function chat(
     message,
     streamer,
     history = [],
+    threadHistory = [],
     tags = { badges: [] },
     options: extraOptions = [],
   } = options;
@@ -722,6 +723,15 @@ export async function chat(
   // Build chat history context (live/recent messages from Redis)
   const liveHistory: ISemanticChatHistoryItem[] = history.map((msg) => ({
     source: "live" as const,
+    timestamp: msg.timestamp,
+    badges: msg.badges || "",
+    username: msg.username,
+    message: msg.message,
+  }));
+
+  // Build the direct conversation thread with the current user (mini-thread)
+  const threadItems: ISemanticChatHistoryItem[] = threadHistory.map((msg) => ({
+    source: "thread" as const,
     timestamp: msg.timestamp,
     badges: msg.badges || "",
     username: msg.username,
@@ -876,8 +886,9 @@ export async function chat(
   // Get combined history limit based on tier
   const combinedLimit = getCombinedHistoryLimitForTier(streamer?.plan_tier);
 
-  // Merge live and semantic histories
+  // Merge thread, live and semantic histories (thread > live > semantic priority)
   const chatHistory = mergeChatHistories(
+    threadItems,
     liveHistory,
     semanticHistory,
     combinedLimit,
