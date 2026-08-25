@@ -6,7 +6,11 @@ import { getTwitchOAuthUrl } from "./links.js";
 import { cacheOAuthTokenRefreshFailure } from "./oauth_debug_cache.js";
 
 const BOT_USER_ID = '698614112';
+const REFRESH_MAX_ATTEMPTS = 3;
+const REFRESH_RETRY_BACKOFF_MS = [400, 900];
 let count = 0;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type RefreshFailureKind = 'transient_failure' | 'permanent_failure';
 
@@ -61,17 +65,20 @@ async function invalidateStoredTwitchTokens(userId: string): Promise<void> {
             $set: {
                 'accounts.$.refresh_token': nullToken,
                 'accounts.$.access_token': nullToken,
+                'accounts.$.access_token_expires_at': null,
                 'accounts.$.has_permissions': false,
                 'accounts.$.up_to_date_permissions': false
             }
         }
     );
 
-    await cache.hSet(`accounts:twitch:${userId}:data`, 'access_token', '');
-    await cache.hSet(`accounts:twitch:${userId}:data`, 'refresh_token', '');
-    await cache.hSet(`accounts:twitch:${userId}:data`, 'expires_at', '');
-    await cache.hSet(`accounts:twitch:${userId}:data`, 'has_permissions', 'false');
-    await cache.hSet(`accounts:twitch:${userId}:data`, 'up_to_date_permissions', 'false');
+    await cache.hSet(`accounts:twitch:${userId}:data`, {
+        access_token: '',
+        refresh_token: '',
+        expires_at: '',
+        has_permissions: 'false',
+        up_to_date_permissions: 'false'
+    });
 }
 
 // @deprecated This function is deprecated. Tokens are now refreshed automatically when needed via smart refresh system.
@@ -128,23 +135,56 @@ export const refreshTwitchToken = async (
 ): Promise<RefreshTwitchTokenResult> => {
     try {
         const cache = await getDragonflyClient('Tokens');
-        
-        // URL encode the refresh token to handle special characters
+
+        // URLSearchParams already URL-encodes values — do NOT encodeURIComponent here.
         const params = new URLSearchParams({
             client_id: process.env.CLIENT_ID!,
             client_secret: process.env.CLIENT_SECRET!,
             grant_type: 'refresh_token',
-            refresh_token: encodeURIComponent(refresh_token)
+            refresh_token
         });
 
-        const twitchRefreshResponse = await fetch(getTwitchOAuthUrl('token', params.toString()), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+        // Send credentials in the POST body, never in the URL query string.
+        // Retry transient failures (network errors, Twitch 5xx) so a single blip
+        // does not surface as an auth error to the user.
+        let twitchRefreshResponse: Response | null = null;
+        let responseText = '';
+
+        for (let attempt = 0; attempt < REFRESH_MAX_ATTEMPTS; attempt++) {
+            try {
+                twitchRefreshResponse = await fetch(getTwitchOAuthUrl('token'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params.toString()
+                });
+                responseText = await twitchRefreshResponse.text();
+            } catch (fetchError) {
+                twitchRefreshResponse = null;
+                responseText = '';
+                console.error(`Network error refreshing Twitch token for ${user_id} (attempt ${attempt + 1}/${REFRESH_MAX_ATTEMPTS}):`, {
+                    error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+                    timestamp: new Date().toISOString()
+                });
             }
-        });
 
-        const responseText = await twitchRefreshResponse.text();
+            const retryable = !twitchRefreshResponse || twitchRefreshResponse.status >= 500;
+            if (!retryable || attempt === REFRESH_MAX_ATTEMPTS - 1) break;
+
+            await sleep(REFRESH_RETRY_BACKOFF_MS[attempt] ?? 900);
+        }
+
+        if (!twitchRefreshResponse) {
+            return {
+                token: null,
+                refreshToken: null,
+                expiresIn: null,
+                kind: 'transient_failure',
+                message: 'Network error while refreshing Twitch token'
+            };
+        }
+
         let refreshTokenData: Record<string, unknown> = {};
 
         try {
@@ -190,10 +230,44 @@ export const refreshTwitchToken = async (
                 status: twitchRefreshResponse.status,
                 responseBody: responseText,
                 endpoint: context?.endpoint || 'unknown',
-                url: context?.url || getTwitchOAuthUrl('token', params.toString())
+                // Never store the full request URL here — it carries client_secret
+                // and the complete refresh token in the query string.
+                url: context?.url || getTwitchOAuthUrl('token')
             });
 
             if (failureKind === 'permanent_failure') {
+                // Compare-before-invalidate: only wipe the stored tokens if the refresh
+                // token that just failed is still the one we have stored. If another
+                // process already rotated it (concurrent refresh), the stored
+                // credentials are valid — reuse them instead of logging the user out.
+                const storedRefreshToken = await TwitchStreamers.getAccountRefreshTokenById(user_id, 'twitch');
+
+                if (storedRefreshToken && storedRefreshToken !== refresh_token) {
+                    const storedAccessToken = await cache.hGet(`accounts:twitch:${user_id}:data`, 'access_token');
+                    const storedExpiresAtRaw = await cache.hGet(`accounts:twitch:${user_id}:data`, 'expires_at');
+                    const storedExpiresAt = storedExpiresAtRaw ? Number.parseInt(storedExpiresAtRaw, 10) : NaN;
+                    const now = Math.floor(Date.now() / 1000);
+
+                    if (storedAccessToken && Number.isFinite(storedExpiresAt) && now < storedExpiresAt - 60) {
+                        console.info(`Refresh token for ${user_id} was already rotated by a concurrent refresh; returning stored access token`);
+                        return {
+                            token: storedAccessToken,
+                            refreshToken: storedRefreshToken,
+                            expiresIn: storedExpiresAt - now,
+                            kind: 'success'
+                        };
+                    }
+
+                    return {
+                        token: null,
+                        refreshToken: null,
+                        expiresIn: null,
+                        kind: 'transient_failure',
+                        status: twitchRefreshResponse.status,
+                        message: `${message} (stored token already rotated by a concurrent refresh)`
+                    };
+                }
+
                 await invalidateStoredTwitchTokens(user_id);
             }
 
@@ -230,6 +304,7 @@ export const refreshTwitchToken = async (
 
         const encryptedToken = encrypt(token);
         const encryptedRefreshToken = encrypt(refreshToken);
+        const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
 
         // Update database
         const userDoc = await UsersSchema.findOne({ 'accounts.id': user_id }) as IUsers;
@@ -246,25 +321,25 @@ export const refreshTwitchToken = async (
 
         await UsersSchema.findOneAndUpdate(
             { 'accounts.id': user_id },
-            { 
-                $set: { 
-                    'accounts.$.refresh_token': encryptedRefreshToken, 
+            {
+                $set: {
+                    'accounts.$.refresh_token': encryptedRefreshToken,
                     'accounts.$.access_token': encryptedToken,
+                    'accounts.$.access_token_expires_at': expiresAt,
                     'accounts.$.has_permissions': true,
                     'accounts.$.up_to_date_permissions': true
                 }
             }
         );
 
-        // Update cache with correct key
-        await cache.hSet(`accounts:twitch:${user_id}:data`, 'access_token', token);
-        await cache.hSet(`accounts:twitch:${user_id}:data`, 'refresh_token', refreshToken);
-        
-        // Store expiration timestamp (access_token expires, refresh_token doesn't)
-        const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
-        await cache.hSet(`accounts:twitch:${user_id}:data`, 'expires_at', String(expiresAt));
-        await cache.hSet(`accounts:twitch:${user_id}:data`, 'has_permissions', 'true');
-        await cache.hSet(`accounts:twitch:${user_id}:data`, 'up_to_date_permissions', 'true');
+        // Update cache in a single multi-field write (access_token expires, refresh_token doesn't)
+        await cache.hSet(`accounts:twitch:${user_id}:data`, {
+            access_token: token,
+            refresh_token: refreshToken,
+            expires_at: String(expiresAt),
+            has_permissions: 'true',
+            up_to_date_permissions: 'true'
+        });
         
         return {
             token,
@@ -294,11 +369,12 @@ export const getNewTwitchAppToken = async () => {
             grant_type: 'client_credentials',
         });
 
-        const twitchAppResponse = await fetch(getTwitchOAuthUrl('token', params.toString()), {
+        const twitchAppResponse = await fetch(getTwitchOAuthUrl('token'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            },
+            body: params.toString()
         });
 
         const appTokenData = await twitchAppResponse.json();

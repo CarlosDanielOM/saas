@@ -13,6 +13,7 @@ export interface IAccounts {
     email: string;
     refresh_token: IToken;
     access_token: IToken;
+    access_token_expires_at: number | null;
     actived: boolean;
     chat_enabled: boolean;
     has_permissions: boolean;
@@ -51,6 +52,7 @@ const accountsSchema = new Schema<IAccounts>({
         iv: { type: String, default: null },
         content: { type: String, default: null },
     },
+    access_token_expires_at: { type: Number, default: null },
     actived: { type: Boolean, default: true },
     chat_enabled: { type: Boolean, default: true },
     has_permissions: { type: Boolean, default: true },

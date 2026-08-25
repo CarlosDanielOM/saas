@@ -36,6 +36,7 @@ export async function channelsToUsers() {
                         iv: channel.twitch_user_refresh_token?.iv ?? null,
                         content: channel.twitch_user_refresh_token?.content ?? null,
                     },
+                    access_token_expires_at: null,
                     actived: channel.actived,
                     chat_enabled: channel.chat_enabled,
                     has_permissions: channel.up_to_date_twitch_permissions ?? false,

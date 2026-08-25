@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 
 import { decrypt } from "../utils/crypto.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
@@ -8,6 +9,11 @@ import type { IUsersCache } from '../interfaces/cache/users.cache.interface.js';
 import { error, info } from "../utils/logger.js";
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
+
+const REFRESH_LOCK_TTL_MS = 5000;
+const REFRESH_WAIT_TIMEOUT_MS = 4500;
+const REFRESH_WAIT_POLL_MS = 150;
+const TOKEN_EXPIRY_SKEW_SECONDS = 300;
 
 function sanitizeCachePayload(payload: Record<string, unknown>): Record<string, string> {
     const sanitized: Record<string, string> = {};
@@ -63,6 +69,7 @@ class TwitchStreamers {
                 const twitchAccount = user.accounts.find((account) => account.type === 'twitch');
                 const cacheKey = `accounts:${twitchAccount!.type}:${twitchAccount!.id}:data`;
                 const existingExpiresAt = await cache.hGet(cacheKey, 'expires_at');
+                const persistedExpiresAt = twitchAccount?.access_token_expires_at ? String(twitchAccount.access_token_expires_at) : undefined;
 
                 const twitchAccountCache: IUsersCache = {
                     id: twitchAccount?.id ?? '',
@@ -73,7 +80,7 @@ class TwitchStreamers {
                     polar_sh_customer_id: user.polar_sh_customer_id ?? '',
                     refresh_token: decrypt(twitchAccount!.refresh_token) ?? '',
                     access_token: decrypt(twitchAccount!.access_token) ?? '',
-                    expires_at: existingExpiresAt || undefined,
+                    expires_at: existingExpiresAt || persistedExpiresAt,
                     actived: twitchAccount?.actived ? 'true' : 'false',
                     chat_enabled: twitchAccount?.chat_enabled ? 'true' : 'false',
                     has_permissions: twitchAccount?.has_permissions ? 'true' : 'false',
@@ -132,21 +139,88 @@ class TwitchStreamers {
         }
     }
 
+    private isAccessTokenUsable(token: string | null | undefined, expiresAtRaw: string | null | undefined, skewSeconds = TOKEN_EXPIRY_SKEW_SECONDS): boolean {
+        if (!token) return false;
+        const expiration = expiresAtRaw ? Number.parseInt(expiresAtRaw, 10) : NaN;
+        if (!Number.isFinite(expiration)) return false;
+        const now = Math.floor(Date.now() / 1000);
+        return now < expiration - skewSeconds;
+    }
+
+    private async acquireRefreshLock(cache: DragonflyClient, lockKey: string): Promise<string | null> {
+        const lockValue = randomUUID();
+        const result = await cache.set(lockKey, lockValue, { NX: true, PX: REFRESH_LOCK_TTL_MS });
+        return result === 'OK' ? lockValue : null;
+    }
+
+    private async releaseRefreshLock(cache: DragonflyClient, lockKey: string, lockValue: string): Promise<void> {
+        try {
+            const current = await cache.get(lockKey);
+            if (current === lockValue) {
+                await cache.del(lockKey);
+            }
+        } catch {
+            // Lock expires on its own (PX TTL); nothing else to do.
+        }
+    }
+
+    private async waitForRefreshedToken(cache: DragonflyClient, dataKey: string, lockKey: string): Promise<string | null> {
+        const deadline = Date.now() + REFRESH_WAIT_TIMEOUT_MS;
+
+        while (Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, REFRESH_WAIT_POLL_MS));
+
+            const token = await cache.hGet(dataKey, 'access_token');
+            const expiresAt = await cache.hGet(dataKey, 'expires_at');
+            if (this.isAccessTokenUsable(token, expiresAt, 60)) {
+                return token!;
+            }
+
+            // Winner finished without producing a usable token — stop waiting early.
+            const lockHeld = await cache.exists(lockKey);
+            if (lockHeld !== 1) break;
+        }
+
+        return null;
+    }
+
+    private async performTwitchTokenRefresh(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
+        const refreshToken = await this.getAccountRefreshTokenById(id, account_type);
+
+        if (!refreshToken) {
+            await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh token not found for ${account_type}:${id}` }, { channelId: id, destination: 'cache' });
+            return null;
+        }
+
+        const { refreshTwitchToken } = await import('../utils/tokens.js');
+        const refreshResult = await refreshTwitchToken(refreshToken, id, {
+            endpoint: 'token_refresh',
+            url: 'https://id.twitch.tv/oauth2/token'
+        });
+
+        if (!refreshResult.token) {
+            await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Failed to refresh Twitch token for ${id}` }, { channelId: id, destination: 'cache' });
+            return null;
+        }
+
+        await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'token_refreshed_successfully' }, { channelId: id, destination: 'cache' });
+        return refreshResult.token;
+    }
+
     async getAccountTokenById(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
         try {
             const cache = await this.cachePromise;
-            
-            let token = await cache.hGet(`accounts:${account_type}:${id}:data`, 'access_token');
-            let expiresAt = await cache.hGet(`accounts:${account_type}:${id}:data`, 'expires_at');
-            
+            const dataKey = `accounts:${account_type}:${id}:data`;
+
+            let token = await cache.hGet(dataKey, 'access_token');
+            let expiresAt = await cache.hGet(dataKey, 'expires_at');
+
             await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, hasToken: !!token, hasExpiresAt: !!expiresAt, expiresAt: expiresAt || 'not set' }, { channelId: id, destination: 'cache' });
 
-            const now = Math.floor(Date.now() / 1000);
             if (token) {
-                const expiration = expiresAt ? Number.parseInt(expiresAt, 10) : NaN;
-
-                if (Number.isFinite(expiration) && now < expiration - 300) {
-                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'returning_cached_token', secondsUntilExpiry: expiration - now }, { channelId: id, destination: 'cache' });
+                if (this.isAccessTokenUsable(token, expiresAt)) {
+                    const expiration = Number.parseInt(expiresAt!, 10);
+                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'returning_cached_token', secondsUntilExpiry: expiration - Math.floor(Date.now() / 1000) }, { channelId: id, destination: 'cache' });
                     return token;
                 }
 
@@ -154,35 +228,48 @@ class TwitchStreamers {
                     function: 'TwitchStreamers.getAccountTokenById',
                     id,
                     action: 'token_needs_refresh',
-                    reason: Number.isFinite(expiration) ? 'near_or_expired' : 'missing_or_invalid_expires_at'
+                    reason: Number.isFinite(expiresAt ? Number.parseInt(expiresAt, 10) : NaN) ? 'near_or_expired' : 'missing_or_invalid_expires_at'
                 }, { channelId: id, destination: 'cache' });
             }
-            
-            const refreshToken = await this.getAccountRefreshTokenById(id, account_type);
 
-            if (!refreshToken) {
-                await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh token not found for ${account_type}:${id}` }, { channelId: id, destination: 'cache' });
+            if (account_type !== 'twitch') {
+                await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh not implemented for ${account_type}` }, { channelId: id, destination: 'cache' });
                 return null;
             }
-            
-            if (account_type === 'twitch') {
-                const { refreshTwitchToken } = await import('../utils/tokens.js');
-                const refreshResult = await refreshTwitchToken(refreshToken, id, {
-                    endpoint: 'token_refresh',
-                    url: 'https://id.twitch.tv/oauth2/token'
-                });
 
-                if (!refreshResult.token) {
-                    await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Failed to refresh Twitch token for ${id}` }, { channelId: id, destination: 'cache' });
-                    return null;
+            // Distributed lock: only one process/container refreshes a given user's
+            // token at a time. Concurrent callers wait for the winner's result instead
+            // of firing a duplicate refresh that would consume the rotated refresh token.
+            const lockKey = `locks:refresh:${account_type}:${id}`;
+            let lockValue = await this.acquireRefreshLock(cache, lockKey);
+
+            if (!lockValue) {
+                const winnerToken = await this.waitForRefreshedToken(cache, dataKey, lockKey);
+                if (winnerToken) {
+                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'returned_token_from_concurrent_refresh' }, { channelId: id, destination: 'cache' });
+                    return winnerToken;
                 }
 
-                await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'token_refreshed_successfully' }, { channelId: id, destination: 'cache' });
-                return refreshResult.token;
+                // Winner failed or timed out — take over the refresh ourselves, once.
+                lockValue = await this.acquireRefreshLock(cache, lockKey);
+                if (!lockValue) {
+                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'refresh_lock_unavailable' }, { channelId: id, destination: 'cache' });
+                    return null;
+                }
             }
 
-            await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh not implemented for ${account_type}` }, { channelId: id, destination: 'cache' });
-            return null;
+            try {
+                // Double-check under the lock: the previous holder may have just refreshed.
+                token = await cache.hGet(dataKey, 'access_token');
+                expiresAt = await cache.hGet(dataKey, 'expires_at');
+                if (this.isAccessTokenUsable(token, expiresAt)) {
+                    return token!;
+                }
+
+                return await this.performTwitchTokenRefresh(id, account_type);
+            } finally {
+                await this.releaseRefreshLock(cache, lockKey, lockValue);
+            }
         } catch (err) {
             await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, error: err instanceof Error ? err.message : String(err) }, { channelId: id, destination: 'cache' });
             return null;
@@ -226,6 +313,7 @@ class TwitchStreamers {
 
             const cacheKey = `accounts:twitch:${id}:data`;
             const existingExpiresAt = await cache.hGet(cacheKey, 'expires_at');
+            const persistedExpiresAt = twitchAccount.access_token_expires_at ? String(twitchAccount.access_token_expires_at) : undefined;
 
             const accountCache: IUsersCache = {
                 id: twitchAccount.id,
@@ -236,7 +324,7 @@ class TwitchStreamers {
                 polar_sh_customer_id: user.polar_sh_customer_id ?? '',
                 refresh_token: decrypt(twitchAccount.refresh_token) ?? '',
                 access_token: decrypt(twitchAccount.access_token) ?? '',
-                expires_at: existingExpiresAt || undefined,
+                expires_at: existingExpiresAt || persistedExpiresAt,
                 actived: twitchAccount.actived ? 'true' : 'false',
                 chat_enabled: twitchAccount.chat_enabled ? 'true' : 'false',
                 has_permissions: twitchAccount.has_permissions ? 'true' : 'false',

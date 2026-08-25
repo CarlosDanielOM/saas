@@ -449,7 +449,7 @@ async function cleanupLegacyBitsSubscriptions(channelID: string): Promise<void> 
     }
 }
 
-async function updateUserDataTokens(userId: string, accessToken: string, refreshToken: string, activate: boolean = false): Promise<UserDocument | StandardResponse | null> {
+async function updateUserDataTokens(userId: string, accessToken: string, refreshToken: string, activate: boolean = false, expiresIn?: number): Promise<UserDocument | StandardResponse | null> {
     if (!accessToken || !refreshToken) {
         return {
             error: true,
@@ -466,6 +466,10 @@ async function updateUserDataTokens(userId: string, accessToken: string, refresh
         'accounts.$.access_token': encryptedToken,
         'accounts.$.refresh_token': encryptedRefreshToken,
     };
+
+    if (typeof expiresIn === 'number' && Number.isFinite(expiresIn) && expiresIn > 0) {
+        updateData['accounts.$.access_token_expires_at'] = Math.floor(Date.now() / 1000) + expiresIn;
+    }
 
     if (activate) {
         updateData['accounts.$.actived'] = true;
@@ -554,7 +558,8 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
                 user._id.toString(),
                 access_token,
                 refresh_token,
-                true
+                true,
+                expires_in
             );
 
             if (!updatedUser) {
@@ -682,7 +687,8 @@ router.get('/reauthenticate', async (req: Request<{}, {}, {}, OAuthCallbackReque
                 user._id.toString(),
                 access_token,
                 refresh_token,
-                true
+                true,
+                expires_in
             );
 
             if (!updatedUser) {
