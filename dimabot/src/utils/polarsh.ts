@@ -111,7 +111,7 @@ export async function ingestPolarSHEvent(
     const cacheKey = `twitch:${channelID}:ai:polarshevent`;
 
     let eventData: EventData = {
-      name: "ai_credits",
+      name: "ai_usage",
       customerId: customerId,
       metadata: {
         cost: cost,
@@ -278,7 +278,7 @@ export async function grantPolarAiCredits(
     const ingestResult = (await polarshClientInstance.events.ingest({
       events: [
         {
-          name: "ai_credits",
+          name: "ai_usage",
           customerId: options.customerId,
           metadata: {
             credits: -credits,
