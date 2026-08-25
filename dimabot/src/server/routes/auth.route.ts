@@ -397,11 +397,13 @@ async function exchangeOAuthCode(code: string, redirectUri: string): Promise<{ a
         redirect_uri: redirectUri
     });
 
-    const response = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, {
+    // Credentials go in the POST body (per Twitch docs), never in the URL query string.
+    const response = await fetch('https://id.twitch.tv/oauth2/token', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
-        }
+        },
+        body: params.toString()
     });
 
     const data = await response.json();
