@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ApiEnvelope, RedisKeyDetail, RedisScanResult, RedisTreeResult } from './api.types';
+import {
+  ApiEnvelope,
+  RedisCreateRequest,
+  RedisKeyDetail,
+  RedisMutateRequest,
+  RedisScanResult,
+  RedisTreeResult,
+} from './api.types';
 
 @Injectable({ providedIn: 'root' })
 export class RedisService {
@@ -39,6 +46,20 @@ export class RedisService {
     return this.unwrap(
       this.http.put<ApiEnvelope<RedisKeyDetail>>(`/api/redis/${connectionId}/key`, { key, value }),
       'Save failed',
+    );
+  }
+
+  create(connectionId: string, body: RedisCreateRequest): Promise<RedisKeyDetail> {
+    return this.unwrap(
+      this.http.post<ApiEnvelope<RedisKeyDetail>>(`/api/redis/${connectionId}/key`, body),
+      'Create failed',
+    );
+  }
+
+  mutate(connectionId: string, body: RedisMutateRequest): Promise<RedisKeyDetail> {
+    return this.unwrap(
+      this.http.patch<ApiEnvelope<RedisKeyDetail>>(`/api/redis/${connectionId}/key`, body),
+      'Edit failed',
     );
   }
 

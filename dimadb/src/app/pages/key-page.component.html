@@ -4,21 +4,130 @@
     <h1 class="key">{{ key() }}</h1>
     <div class="chips">
       <span class="pill" [class]="type()">{{ type() }}</span>
-      <span class="pill">ttl {{ detail()?.ttl ?? '—' }}</span>
+      <span class="pill">ttl {{ ttlLabel() }}</span>
     </div>
   </div>
   @if (errorMessage(); as message) {
     <p class="sub">{{ message }}</p>
   }
+
+  <form class="ttl" (submit)="saveTtl($event)">
+    <input
+      class="search"
+      name="ttl"
+      type="number"
+      min="1"
+      step="1"
+      [value]="detail()?.ttl && detail()!.ttl > 0 ? detail()!.ttl : ''"
+      placeholder="seconds"
+      aria-label="TTL seconds"
+    />
+    <button class="btn" type="submit" [disabled]="busy()">Set TTL</button>
+    <button class="btn ghost" type="button" [disabled]="busy()" (click)="persist()">Persist</button>
+  </form>
+
   @if (type() === 'string') {
-    <form class="stack" (submit)="save($event)">
+    <form class="stack" (submit)="saveString($event)">
       <textarea class="cmd" name="value" rows="8">{{ pretty() }}</textarea>
       <div class="actions">
-        <button class="btn" type="submit" [disabled]="saving()">Save</button>
+        <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save' }}</button>
         <button class="btn ghost" type="button" (click)="reload()">Reload</button>
         <button class="btn danger" type="button" (click)="remove()">Delete</button>
       </div>
     </form>
+  } @else if (type() === 'hash') {
+    @for (entry of hashEntries(); track entry.field) {
+      <form class="edit-row" (submit)="saveHash($event, entry.field)">
+        <input class="search" name="field" [value]="entry.field" aria-label="Hash field" />
+        <textarea class="cmd compact" name="value" rows="2">{{ entry.value }}</textarea>
+        <div class="actions">
+          <button class="btn" type="submit" [disabled]="busy()">Save</button>
+          <button class="btn danger" type="button" [disabled]="busy()" (click)="deleteHash(entry.field)">Delete</button>
+        </div>
+      </form>
+    } @empty {
+      <p class="sub">No fields.</p>
+    }
+    <form class="edit-row add" (submit)="addHash($event)">
+      <input class="search" name="field" placeholder="field" aria-label="New hash field" />
+      <textarea class="cmd compact" name="value" rows="2" placeholder="value"></textarea>
+      <div class="actions">
+        <button class="btn" type="submit" [disabled]="busy()">Add field</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete key</button>
+    </div>
+  } @else if (type() === 'list') {
+    @for (item of listItems(); track $index) {
+      <form class="edit-row" (submit)="saveList($event, $index)">
+        <span class="meta">{{ $index }}</span>
+        <textarea class="cmd compact" name="value" rows="2">{{ item }}</textarea>
+        <div class="actions">
+          <button class="btn" type="submit" [disabled]="busy()">Save</button>
+          <button class="btn danger" type="button" [disabled]="busy()" (click)="deleteList($index)">Delete</button>
+        </div>
+      </form>
+    } @empty {
+      <p class="sub">Empty list.</p>
+    }
+    <form #pushForm class="edit-row add" (submit)="$event.preventDefault()">
+      <textarea class="cmd compact" name="value" rows="2" placeholder="value"></textarea>
+      <div class="actions">
+        <button class="btn ghost" type="button" [disabled]="busy()" (click)="pushList(pushForm, 'lpush')">Push left</button>
+        <button class="btn" type="button" [disabled]="busy()" (click)="pushList(pushForm, 'rpush')">Push right</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete key</button>
+    </div>
+  } @else if (type() === 'set') {
+    @for (member of setMembers(); track member) {
+      <article class="edit-row">
+        <div class="key">{{ member }}</div>
+        <div class="actions">
+          <button class="btn danger" type="button" [disabled]="busy()" (click)="deleteSet(member)">Remove</button>
+        </div>
+      </article>
+    } @empty {
+      <p class="sub">Empty set.</p>
+    }
+    <form class="edit-row add" (submit)="addSet($event)">
+      <input class="search" name="member" placeholder="member" aria-label="New set member" />
+      <div class="actions">
+        <button class="btn" type="submit" [disabled]="busy()">Add member</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete key</button>
+    </div>
+  } @else if (type() === 'zset') {
+    @for (entry of zsetEntries(); track entry.member) {
+      <form class="edit-row" (submit)="saveZset($event, entry.member)">
+        <input class="search" name="member" [value]="entry.member" aria-label="Zset member" />
+        <input class="search" name="score" type="number" [value]="entry.score" aria-label="Zset score" />
+        <div class="actions">
+          <button class="btn" type="submit" [disabled]="busy()">Save</button>
+          <button class="btn danger" type="button" [disabled]="busy()" (click)="deleteZset(entry.member)">Delete</button>
+        </div>
+      </form>
+    } @empty {
+      <p class="sub">Empty zset.</p>
+    }
+    <form class="edit-row add" (submit)="addZset($event)">
+      <input class="search" name="member" placeholder="member" aria-label="New zset member" />
+      <input class="search" name="score" type="number" value="0" aria-label="New zset score" />
+      <div class="actions">
+        <button class="btn" type="submit" [disabled]="busy()">Add member</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete key</button>
+    </div>
   } @else {
     <article class="card out">
       <pre class="pre">{{ pretty() }}</pre>

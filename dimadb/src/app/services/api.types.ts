@@ -50,3 +50,38 @@ export interface RedisKeyDetail {
   ttl: number;
   value: unknown;
 }
+
+export type RedisKeyType = 'string' | 'hash' | 'list' | 'set' | 'zset';
+
+export type RedisMutateOp =
+  | 'ttl'
+  | 'hset'
+  | 'hdel'
+  | 'lset'
+  | 'lpush'
+  | 'rpush'
+  | 'ldel'
+  | 'sadd'
+  | 'srem'
+  | 'zadd'
+  | 'zrem';
+
+export interface RedisMutateRequest {
+  key: string;
+  op: RedisMutateOp;
+  field?: string;
+  renameFrom?: string;
+  value?: string;
+  index?: number;
+  member?: string;
+  score?: number;
+  ttl?: number;
+}
+
+export interface RedisCreateRequest {
+  key: string;
+  type: RedisKeyType;
+  value?: string;
+  field?: string;
+  score?: number;
+}

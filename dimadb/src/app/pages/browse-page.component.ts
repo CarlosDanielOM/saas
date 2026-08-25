@@ -1,9 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { extractApiError } from '../services/api-error';
-import { RedisTreeResult } from '../services/api.types';
+import { RedisKeyType, RedisTreeResult } from '../services/api.types';
 import { ConnectionsService } from '../services/connections.service';
 import { RedisService } from '../services/redis.service';
 
@@ -17,6 +17,7 @@ import { RedisService } from '../services/redis.service';
 export class BrowsePageComponent {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly redis = inject(RedisService);
+  private readonly router = inject(Router);
   readonly connections = inject(ConnectionsService);
 
   readonly query = signal('');
@@ -25,6 +26,8 @@ export class BrowsePageComponent {
   readonly loading = signal(false);
   readonly pending = signal<Record<string, boolean>>({});
   readonly errorMessage = signal<string | null>(null);
+  readonly createType = signal<RedisKeyType>('string');
+  readonly creating = signal(false);
 
   private debounce: ReturnType<typeof setTimeout> | null = null;
   private tickets = new Map<string, number>();
@@ -40,6 +43,40 @@ export class BrowsePageComponent {
         void this.load('');
       }
     });
+  }
+
+  onCreateType(event: Event): void {
+    this.createType.set((event.target as HTMLSelectElement).value as RedisKeyType);
+  }
+
+  async create(event: Event): Promise<void> {
+    event.preventDefault();
+    const id = this.connections.selectedId();
+    if (!id) {
+      return;
+    }
+    const form = new FormData(event.target as HTMLFormElement);
+    const key = String(form.get('key') || '').trim();
+    if (!key) {
+      this.errorMessage.set('key is required');
+      return;
+    }
+    this.creating.set(true);
+    try {
+      const created = await this.redis.create(id, {
+        key,
+        type: this.createType(),
+        value: String(form.get('value') || ''),
+        field: String(form.get('field') || ''),
+        score: Number(form.get('score')) || 0,
+      });
+      this.errorMessage.set(null);
+      await this.router.navigate(['/key'], { queryParams: { k: created.key } });
+    } catch (error) {
+      this.errorMessage.set(extractApiError(error, 'Create failed').message);
+    } finally {
+      this.creating.set(false);
+    }
   }
 
   onSearch(event: Event): void {

@@ -246,6 +246,26 @@ async function handleApi(req, res, url) {
         return;
       }
 
+      if (action === 'key' && req.method === 'POST') {
+        const body = await readBody(req);
+        if (!body.key) {
+          fail(res, 400, 'key is required');
+          return;
+        }
+        ok(res, await redis.create(id, body));
+        return;
+      }
+
+      if (action === 'key' && req.method === 'PATCH') {
+        const body = await readBody(req);
+        if (!body.key) {
+          fail(res, 400, 'key is required');
+          return;
+        }
+        ok(res, await redis.mutate(id, body));
+        return;
+      }
+
       if (action === 'key' && req.method === 'DELETE') {
         const key = url.searchParams.get('key');
         if (!key) {

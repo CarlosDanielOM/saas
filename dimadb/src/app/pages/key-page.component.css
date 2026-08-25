@@ -1,0 +1,38 @@
+@import './pages-shared.css';
+
+.ttl,
+.edit-row {
+  display: grid;
+  gap: 8px;
+}
+
+.ttl {
+  grid-template-columns: 1fr;
+}
+
+.edit-row {
+  background: var(--tile);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.edit-row.add {
+  background: var(--tile-2);
+}
+
+textarea.cmd.compact {
+  min-height: 72px;
+}
+
+.pill.stream {
+  color: #86efac;
+}
+
+@media (min-width: 640px) {
+  .ttl {
+    grid-template-columns: minmax(8rem, 10rem) auto auto;
+    justify-content: start;
+    align-items: center;
+  }
+}

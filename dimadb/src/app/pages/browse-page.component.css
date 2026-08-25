@@ -1,5 +1,31 @@
 @import './pages-shared.css';
 
+.create {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--tile);
+}
+
+select.search {
+  appearance: none;
+}
+
+@media (min-width: 640px) {
+  .create {
+    grid-template-columns: minmax(8rem, 1fr) 7.5rem minmax(8rem, 1fr) auto;
+    align-items: center;
+  }
+
+  .create:has([name='field']),
+  .create:has([name='score']) {
+    grid-template-columns: minmax(7rem, 1fr) 7.5rem minmax(6rem, 1fr) minmax(6rem, 1fr) auto;
+  }
+}
+
 .tree {
   font-family: var(--mono);
   font-size: 13px;

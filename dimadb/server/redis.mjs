@@ -6,6 +6,10 @@ const DANGEROUS = new Set([
   'REPLICAOF', 'SLAVEOF', 'MODULE', 'ACL', 'SWAPDB', 'MIGRATE', 'RESTORE',
 ]);
 
+const MUTATE_OPS = new Set([
+  'ttl', 'hset', 'hdel', 'lset', 'lpush', 'rpush', 'ldel', 'sadd', 'srem', 'zadd', 'zrem',
+]);
+
 export function createRedisHub(store) {
   const clients = new Map();
 
@@ -177,8 +181,73 @@ export function createRedisHub(store) {
     },
     async setString(id, key, value) {
       const client = await clientFor(id);
-      await client.set(key, String(value ?? ''));
+      const type = await client.type(key);
+      if (type !== 'none' && type !== 'string') {
+        throw Object.assign(new Error(`Cannot SET a ${type} key`), { status: 409 });
+      }
+      if (type === 'string') {
+        await client.set(key, String(value ?? ''), { KEEPTTL: true });
+      } else {
+        await client.set(key, String(value ?? ''));
+      }
       return this.inspect(id, key);
+    },
+    async create(id, body) {
+      const key = String(body.key || '');
+      const type = String(body.type || 'string');
+      if (!key) {
+        throw Object.assign(new Error('key is required'), { status: 400 });
+      }
+      const client = await clientFor(id);
+      const existing = await client.type(key);
+      if (existing !== 'none') {
+        throw Object.assign(new Error('Key already exists'), { status: 409 });
+      }
+      switch (type) {
+        case 'string':
+          await client.set(key, String(body.value ?? ''));
+          break;
+        case 'hash': {
+          const field = String(body.field || '');
+          if (!field) {
+            throw Object.assign(new Error('field is required'), { status: 400 });
+          }
+          await client.hSet(key, field, String(body.value ?? ''));
+          break;
+        }
+        case 'list':
+          await client.rPush(key, String(body.value ?? ''));
+          break;
+        case 'set':
+          await client.sAdd(key, String(body.value ?? ''));
+          break;
+        case 'zset':
+          await client.zAdd(key, {
+            score: Number(body.score) || 0,
+            value: String(body.value ?? ''),
+          });
+          break;
+        default:
+          throw Object.assign(new Error('Unsupported type'), { status: 400 });
+      }
+      return this.inspect(id, key);
+    },
+    async mutate(id, body) {
+      const key = String(body.key || '');
+      const op = String(body.op || '');
+      if (!key) {
+        throw Object.assign(new Error('key is required'), { status: 400 });
+      }
+      if (!MUTATE_OPS.has(op)) {
+        throw Object.assign(new Error('unknown op'), { status: 400 });
+      }
+      const client = await clientFor(id);
+      const type = await client.type(key);
+      if (type === 'none') {
+        throw Object.assign(new Error('Key not found'), { status: 404 });
+      }
+      await applyMutate(client, key, type, op, body);
+      return inspectOrGone(this, id, key);
     },
     async del(id, key) {
       const client = await clientFor(id);
@@ -235,6 +304,119 @@ function injectPassword(url, password) {
   const parsed = new URL(url);
   parsed.password = password;
   return parsed.toString();
+}
+
+function requireType(actual, expected) {
+  if (actual !== expected) {
+    throw Object.assign(new Error(`Expected ${expected}, got ${actual}`), { status: 409 });
+  }
+}
+
+async function inspectOrGone(hub, id, key) {
+  try {
+    return await hub.inspect(id, key);
+  } catch (error) {
+    if (error.status === 404) {
+      return { key, type: 'none', ttl: -2, value: null };
+    }
+    throw error;
+  }
+}
+
+async function applyMutate(client, key, type, op, body) {
+  switch (op) {
+    case 'ttl': {
+      if (body.ttl === undefined || body.ttl === null || Number(body.ttl) === -1) {
+        await client.persist(key);
+        return;
+      }
+      const ttl = Number(body.ttl);
+      if (!Number.isInteger(ttl) || ttl < 1) {
+        throw Object.assign(new Error('ttl must be a positive integer or -1'), { status: 400 });
+      }
+      await client.expire(key, ttl);
+      return;
+    }
+    case 'hset': {
+      requireType(type, 'hash');
+      const field = String(body.field ?? '');
+      if (!field) {
+        throw Object.assign(new Error('field is required'), { status: 400 });
+      }
+      await client.hSet(key, field, String(body.value ?? ''));
+      const renameFrom = body.renameFrom == null ? '' : String(body.renameFrom);
+      if (renameFrom && renameFrom !== field) {
+        await client.hDel(key, renameFrom);
+      }
+      return;
+    }
+    case 'hdel': {
+      requireType(type, 'hash');
+      const field = String(body.field ?? '');
+      if (!field) {
+        throw Object.assign(new Error('field is required'), { status: 400 });
+      }
+      await client.hDel(key, field);
+      return;
+    }
+    case 'lset': {
+      requireType(type, 'list');
+      const index = Number(body.index);
+      if (!Number.isInteger(index) || index < 0) {
+        throw Object.assign(new Error('index is required'), { status: 400 });
+      }
+      await client.lSet(key, index, String(body.value ?? ''));
+      return;
+    }
+    case 'lpush':
+    case 'rpush': {
+      requireType(type, 'list');
+      if (op === 'lpush') {
+        await client.lPush(key, String(body.value ?? ''));
+      } else {
+        await client.rPush(key, String(body.value ?? ''));
+      }
+      return;
+    }
+    case 'ldel': {
+      requireType(type, 'list');
+      const index = Number(body.index);
+      if (!Number.isInteger(index) || index < 0) {
+        throw Object.assign(new Error('index is required'), { status: 400 });
+      }
+      const marker = `__dimadb_del_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      await client.lSet(key, index, marker);
+      await client.lRem(key, 1, marker);
+      return;
+    }
+    case 'sadd':
+    case 'srem': {
+      requireType(type, 'set');
+      const member = String(body.member ?? body.value ?? '');
+      if (!member) {
+        throw Object.assign(new Error('member is required'), { status: 400 });
+      }
+      if (op === 'sadd') {
+        await client.sAdd(key, member);
+      } else {
+        await client.sRem(key, member);
+      }
+      return;
+    }
+    case 'zadd':
+    case 'zrem': {
+      requireType(type, 'zset');
+      const member = String(body.member ?? body.value ?? '');
+      if (!member) {
+        throw Object.assign(new Error('member is required'), { status: 400 });
+      }
+      if (op === 'zadd') {
+        await client.zAdd(key, { score: Number(body.score) || 0, value: member });
+      } else {
+        await client.zRem(key, member);
+      }
+    }
+  }
 }
 
 async function readValue(client, key, type) {

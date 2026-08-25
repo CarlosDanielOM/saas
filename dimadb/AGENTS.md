@@ -26,7 +26,7 @@
 
 ## Current Status
 
-Auth, `/data` persistence, connections, and Redis browse/console are wired.
+Auth, `/data` persistence, connections, and Redis browse/console/edit are wired.
 
 - First visit with no users → `/setup`
 - Session cookie + `X-Dimadb: 1`

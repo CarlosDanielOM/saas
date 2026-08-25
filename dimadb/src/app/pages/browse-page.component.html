@@ -13,6 +13,26 @@
   @if (errorMessage(); as message) {
     <p class="sub">{{ message }}</p>
   }
+  <form class="create" (submit)="create($event)">
+    <input class="search" name="key" placeholder="new:key" required aria-label="New key" />
+    <select class="search" name="type" [value]="createType()" (change)="onCreateType($event)" aria-label="Key type">
+      <option value="string">string</option>
+      <option value="hash">hash</option>
+      <option value="list">list</option>
+      <option value="set">set</option>
+      <option value="zset">zset</option>
+    </select>
+    @if (createType() === 'hash') {
+      <input class="search" name="field" placeholder="field" required aria-label="Hash field" />
+    }
+    <input class="search" name="value" placeholder="value" aria-label="Initial value" />
+    @if (createType() === 'zset') {
+      <input class="search" name="score" type="number" value="0" aria-label="Zset score" />
+    }
+    <button class="btn" type="submit" [disabled]="creating() || !connections.selectedId()">
+      {{ creating() ? 'Creating…' : 'Create key' }}
+    </button>
+  </form>
   @if (loading() && !branch('')) {
     <p class="sub">Scanning…</p>
   }
