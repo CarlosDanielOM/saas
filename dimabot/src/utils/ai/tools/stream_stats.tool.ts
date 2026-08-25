@@ -7,6 +7,7 @@
  */
 
 import { getLiveSessionMetrics } from '../../stream_analytics.js';
+import { getCachedLiveStatus } from '../../siteanalytics.js';
 import type { IStreamerData } from './code_execution.tool.js';
 
 export interface StreamStatsToolResult {
@@ -30,7 +31,12 @@ export async function execute(
     }
 
     try {
-        const metrics = await getLiveSessionMetrics(channelID);
+        // Same pipeline as the streamer dashboard live stats: session metrics
+        // enriched with the current viewer count from the cached live board.
+        const liveStatus = await getCachedLiveStatus(channelID);
+        const metrics = await getLiveSessionMetrics(channelID, {
+            currentViewers: liveStatus.isLive ? Number(liveStatus.stream?.viewer_count || 0) : null
+        });
         if (!metrics) {
             return {
                 success: true,
