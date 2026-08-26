@@ -353,6 +353,54 @@ function parseArrayLiteral(content: string, registry: Map<string, SyntaxDefiniti
     };
 }
 
+// Optional accessor after a literal array: `%[1,2,3][random]`, `%[1,2,3][0]`, `%[1,2,3][].length`
+function parseArrayLiteralAccessor(
+    tokens: string[],
+    startIndex: number,
+    registry: Map<string, SyntaxDefinition>
+): { accessor?: ArrayAccessor; newIndex: number } {
+    if (tokens[startIndex] !== '[') {
+        return { newIndex: startIndex };
+    }
+
+    let i = startIndex + 1;
+
+    if (tokens[i] === ']') {
+        i++;
+        if (tokens[i] === '.' && tokens[i + 1] === 'length') {
+            return { accessor: { type: 'length' }, newIndex: i + 2 };
+        }
+        // Bare `[]` without `.length` is not a valid accessor; leave tokens untouched
+        return { newIndex: startIndex };
+    }
+
+    if (tokens[i] === 'random') {
+        i++;
+        if (tokens[i] === ']') i++;
+        return { accessor: { type: 'random' }, newIndex: i };
+    }
+
+    const indexResult = parseStarExpression(tokens, i, registry, 0);
+    i = indexResult.newIndex;
+    if (tokens[i] === ']') i++;
+    return { accessor: { type: 'index', index: indexResult.node }, newIndex: i };
+}
+
+function parseArrayLiteralToken(
+    tokens: string[],
+    currentIndex: number,
+    registry: Map<string, SyntaxDefinition>
+): ParseResult {
+    const token = tokens[currentIndex];
+    const content = token.slice('__ARRAY__:'.length);
+    const arrayNode = parseArrayLiteral(content, registry);
+    const { accessor, newIndex } = parseArrayLiteralAccessor(tokens, currentIndex + 1, registry);
+    if (accessor) {
+        arrayNode.accessor = accessor;
+    }
+    return { node: arrayNode, newIndex };
+}
+
 export const parseExpression = (
     tokens: string[],
     currentIndex: number,
@@ -389,18 +437,30 @@ export const parseExpression = (
     }
 
     if (token.startsWith('__ARRAY__:')) {
-        const content = token.slice('__ARRAY__:'.length);
-        const arrayNode = parseArrayLiteral(content, registry);
-        return { node: arrayNode, newIndex: currentIndex + 1 };
+        return parseArrayLiteralToken(tokens, currentIndex, registry);
     }
     
     return parseLiteral(tokens, currentIndex);
 };
 
-const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
-    const rawName = tokens[currentIndex + 1];
-    const { storage } = parseVarName(rawName);
-    let i = currentIndex + 2;
+interface VarTarget {
+    userSelector?: AstNode;
+    accessor?: ArrayAccessor;
+    newIndex: number;
+}
+
+// Parses the optional user selector and array accessor shared by %(...), ^(...) and %del(...).
+// Index expressions go through parseStarExpression so unary/expression indexes
+// like -1 or 1+1 work. In 'delete' mode `[]` maps to 'clear', `[expr]` to 'remove',
+// and `[random]`/`.length` are not supported.
+function parseVarTarget(
+    tokens: string[],
+    startIndex: number,
+    registry: Map<string, SyntaxDefinition>,
+    storage: VariableStorage,
+    mode: 'read' | 'delete'
+): VarTarget {
+    let i = startIndex;
 
     let userSelector: AstNode | undefined;
     if ((storage === 'cacheUser' || storage === 'dbUser') && tokens[i] === '(') {
@@ -411,42 +471,53 @@ const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
             i++;
         }
     }
-    
+
     let accessor: ArrayAccessor | undefined;
-    
+
     if (tokens[i] === '[') {
         i++;
-        
+
         if (tokens[i] === ']') {
             i++;
-            accessor = { type: 'array' };
-        } else if (tokens[i] === 'random') {
+            accessor = { type: mode === 'delete' ? 'clear' : 'array' };
+        } else if (mode === 'read' && tokens[i] === 'random') {
             i++;
             if (tokens[i] === ']') i++;
             accessor = { type: 'random' };
         } else {
-            const indexResult = parseExpression(tokens, i, registry);
+            const indexResult = parseStarExpression(tokens, i, registry, 0);
             i = indexResult.newIndex;
             if (tokens[i] === ']') i++;
-            accessor = { type: 'index', index: indexResult.node };
+            accessor = mode === 'delete'
+                ? { type: 'remove', index: indexResult.node }
+                : { type: 'index', index: indexResult.node };
         }
     }
 
-    if (tokens[i] === '.') {
+    if (mode === 'read' && tokens[i] === '.') {
         i++;
         if (tokens[i] === 'length') {
             i++;
             accessor = { type: 'length' };
         }
     }
-    
+
+    return { userSelector, accessor, newIndex: i };
+}
+
+const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
+    const rawName = tokens[currentIndex + 1];
+    const { storage } = parseVarName(rawName);
+    const { userSelector, accessor, newIndex } = parseVarTarget(tokens, currentIndex + 2, registry, storage, 'read');
+    let i = newIndex;
+
     const nextToken = tokens[i];
-    
+
     if (accessor?.type === 'array' && nextToken && nextToken !== ')' && nextToken !== '.') {
         const valueResult = parseExpression(tokens, i, registry);
         i = valueResult.newIndex;
         if (tokens[i] === ')') i++;
-        
+
         const setNode: SetVarNode = {
             type: 'setVar',
             name: rawName,
@@ -457,12 +528,12 @@ const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
         };
         return { node: setNode, newIndex: i };
     }
-    
+
     if (accessor?.type === 'index' && nextToken && nextToken !== ')') {
         const valueResult = parseExpression(tokens, i, registry);
         i = valueResult.newIndex;
         if (tokens[i] === ')') i++;
-        
+
         const setNode: SetVarNode = {
             type: 'setVar',
             name: rawName,
@@ -473,12 +544,12 @@ const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
         };
         return { node: setNode, newIndex: i };
     }
-    
+
     if (!accessor && nextToken && nextToken !== ')') {
         const valueResult = parseExpression(tokens, i, registry);
         i = valueResult.newIndex;
         if (tokens[i] === ')') i++;
-        
+
         const setNode: SetVarNode = {
             type: 'setVar',
             name: rawName,
@@ -488,9 +559,9 @@ const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
         };
         return { node: setNode, newIndex: i };
     }
-    
+
     if (tokens[i] === ')') i++;
-    
+
     const getNode: GetVarNode = {
         type: 'getVar',
         name: rawName,
@@ -504,48 +575,11 @@ const parseVariable: ParserHandler = (tokens, currentIndex, registry) => {
 const parseExists: ParserHandler = (tokens, currentIndex, registry) => {
     const rawName = tokens[currentIndex + 1];
     const { storage } = parseVarName(rawName);
-    let i = currentIndex + 2;
+    const { userSelector, accessor, newIndex } = parseVarTarget(tokens, currentIndex + 2, registry, storage, 'read');
+    let i = newIndex;
 
-    let userSelector: AstNode | undefined;
-    if ((storage === 'cacheUser' || storage === 'dbUser') && tokens[i] === '(') {
-        const selectorResult = parseExpression(tokens, i + 1, registry);
-        userSelector = selectorResult.node;
-        i = selectorResult.newIndex;
-        if (tokens[i] === ')') {
-            i++;
-        }
-    }
-    
-    let accessor: ArrayAccessor | undefined;
-    
-    if (tokens[i] === '[') {
-        i++;
-        
-        if (tokens[i] === ']') {
-            i++;
-            accessor = { type: 'array' };
-        } else if (tokens[i] === 'random') {
-            i++;
-            if (tokens[i] === ']') i++;
-            accessor = { type: 'random' };
-        } else {
-            const indexResult = parseExpression(tokens, i, registry);
-            i = indexResult.newIndex;
-            if (tokens[i] === ']') i++;
-            accessor = { type: 'index', index: indexResult.node };
-        }
-    }
-
-    if (tokens[i] === '.') {
-        i++;
-        if (tokens[i] === 'length') {
-            i++;
-            accessor = { type: 'length' };
-        }
-    }
-    
     if (tokens[i] === ')') i++;
-    
+
     const existsNode: ExistsNode = {
         type: 'exists',
         name: rawName,
@@ -559,36 +593,11 @@ const parseExists: ParserHandler = (tokens, currentIndex, registry) => {
 const parseDelete: ParserHandler = (tokens, currentIndex, registry) => {
     const rawName = tokens[currentIndex + 1];
     const { storage } = parseVarName(rawName);
-    let i = currentIndex + 2;
+    const { userSelector, accessor, newIndex } = parseVarTarget(tokens, currentIndex + 2, registry, storage, 'delete');
+    let i = newIndex;
 
-    let userSelector: AstNode | undefined;
-    if ((storage === 'cacheUser' || storage === 'dbUser') && tokens[i] === '(') {
-        const selectorResult = parseExpression(tokens, i + 1, registry);
-        userSelector = selectorResult.node;
-        i = selectorResult.newIndex;
-        if (tokens[i] === ')') {
-            i++;
-        }
-    }
-    
-    let accessor: ArrayAccessor | undefined;
-    
-    if (tokens[i] === '[') {
-        i++;
-        
-        if (tokens[i] === ']') {
-            i++;
-            accessor = { type: 'clear' };
-        } else {
-            const indexResult = parseExpression(tokens, i, registry);
-            i = indexResult.newIndex;
-            if (tokens[i] === ']') i++;
-            accessor = { type: 'remove', index: indexResult.node };
-        }
-    }
-    
     if (tokens[i] === ')') i++;
-    
+
     const deleteNode: DeleteVarNode = {
         type: 'deleteVar',
         name: rawName,
@@ -777,9 +786,7 @@ function parseAtom(
     }
 
     if (token.startsWith('__ARRAY__:')) {
-        const content = token.slice('__ARRAY__:'.length);
-        const arrayNode = parseArrayLiteral(content, registry);
-        return { node: arrayNode, newIndex: i + 1 };
+        return parseArrayLiteralToken(tokens, i, registry);
     }
     
     const definition = registry.get(token);

@@ -323,7 +323,14 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
             if (char === '{' || char === '}') break;
             if (char === ';') break;
             if (char === '?' || char === ':') break;
-            if (char === '[' || char === ']' || char === '.') break;
+            if (char === '[' || char === ']') break;
+            if (char === '.') {
+                // Keep digit.dot.digit sequences (decimal literals like 5.5) as one
+                // token; split every other `.` (member access like .length).
+                const prev = input[literalEnd - 1];
+                const next = input[literalEnd + 1];
+                if (!(prev !== undefined && next !== undefined && /\d/.test(prev) && /\d/.test(next))) break;
+            }
             if (char === '(') break;
             if (char === '+' || char === '/') break;
             if (char === '-' && literalEnd > i) break;

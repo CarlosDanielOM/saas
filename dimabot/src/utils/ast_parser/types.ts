@@ -125,6 +125,8 @@ export interface LiteralNode extends BaseNode {
 export interface ArrayLiteralNode extends BaseNode {
     type: 'arrayLiteral';
     items: AstNode[];
+    /** Optional trailing accessor: `%[1,2,3][random]`, `%[1,2,3][0]`, `%[1,2,3][].length` */
+    accessor?: ArrayAccessor;
 }
 
 export interface ForLoopNode extends BaseNode {

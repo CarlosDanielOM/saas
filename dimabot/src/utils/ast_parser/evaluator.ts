@@ -67,9 +67,11 @@ function safeCompare(left: string, operator: InternalComparisonOperator, right: 
     const trimmedLeft = String(left).trim();
     const trimmedRight = String(right).trim();
 
-    const leftNum = parseFloat(trimmedLeft);
-    const rightNum = parseFloat(trimmedRight);
-    const bothNumeric = !isNaN(leftNum) && !isNaN(rightNum);
+    // Full-string numeric check: parseFloat would treat "5abc" as 5
+    const NUMERIC_REGEX = /^-?\d+(\.\d+)?$/;
+    const bothNumeric = NUMERIC_REGEX.test(trimmedLeft) && NUMERIC_REGEX.test(trimmedRight);
+    const leftNum = bothNumeric ? Number(trimmedLeft) : NaN;
+    const rightNum = bothNumeric ? Number(trimmedRight) : NaN;
 
     switch (operator) {
         case '==':
@@ -108,6 +110,51 @@ function buildCacheKey(
         return `${platform}:${channelId}:scope:${normalizedScopeType}:${normalizedScopeName}:${varName}:${userScope}`;
     }
     return `${platform}:${channelId}:scope:${normalizedScopeType}:${normalizedScopeName}:${varName}`;
+}
+
+// Resolves an array index expression value against an array length.
+// Supports negative indexes (`-1` = last element). Returns -1 when invalid/out of range.
+function resolveArrayIndex(value: unknown, length: number): number {
+    let idx = typeof value === 'number' ? Math.trunc(value) : parseInt(String(value).trim(), 10);
+    if (!Number.isFinite(idx)) return -1;
+    if (idx < 0) idx = length + idx;
+    return idx >= 0 && idx < length ? idx : -1;
+}
+
+type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
+
+// Iterates every candidate cache key for a variable (scope aliases × user scopes),
+// stopping early when fn signals a hit by returning true.
+async function walkCacheKeys(
+    name: string,
+    storage: VariableStorage,
+    context: ExecutionContext,
+    targetUserLogin: string | undefined,
+    fn: (key: string, redis: DragonflyClient) => Promise<boolean | void>
+): Promise<boolean> {
+    const redis = await getDragonflyClient();
+    const strippedName = stripVarPrefix(name, storage);
+    const scopeCandidates = getScopeCandidates(context);
+    const userScopeCandidates = storage === 'cacheUser'
+        ? getCacheUserScopeCandidates(context, targetUserLogin)
+        : [undefined];
+
+    for (const scopeName of scopeCandidates) {
+        for (const userScope of userScopeCandidates) {
+            const key = buildCacheKey(
+                context.platform,
+                context.broadcasterId,
+                context.scopeType,
+                scopeName,
+                strippedName,
+                userScope
+            );
+            const hit = await fn(key, redis);
+            if (hit === true) return true;
+        }
+    }
+
+    return false;
 }
 
 function normalizeUserLogin(login: string): string {
@@ -262,29 +309,16 @@ async function getValueFromStorage(
 
         case 'cache':
         case 'cacheUser': {
-            const redis = await getDragonflyClient();
-            const scopeCandidates = getScopeCandidates(context);
-            const userScopeCandidates = storage === 'cacheUser'
-                ? getCacheUserScopeCandidates(context, targetUserLogin)
-                : [undefined];
-
-            for (const scopeName of scopeCandidates) {
-                for (const userScope of userScopeCandidates) {
-                    const key = buildCacheKey(
-                        context.platform,
-                        context.broadcasterId,
-                        context.scopeType,
-                        scopeName,
-                        strippedName,
-                        userScope
-                    );
-                    const cached = await redis.get(key);
-                    if (cached !== null && cached !== undefined) {
-                        return cached;
-                    }
+            let found = '';
+            await walkCacheKeys(name, storage, context, targetUserLogin, async (key, redis) => {
+                const cached = await redis.get(key);
+                if (cached !== null && cached !== undefined) {
+                    found = cached;
+                    return true;
                 }
-            }
-            return '';
+                return false;
+            });
+            return found;
         }
 
         case 'db': {
@@ -354,29 +388,10 @@ async function checkKeyExists(
 
         case 'cache':
         case 'cacheUser': {
-            const redis = await getDragonflyClient();
-            const scopeCandidates = getScopeCandidates(context);
-            const userScopeCandidates = storage === 'cacheUser'
-                ? getCacheUserScopeCandidates(context, targetUserLogin)
-                : [undefined];
-
-            for (const scopeName of scopeCandidates) {
-                for (const userScope of userScopeCandidates) {
-                    const key = buildCacheKey(
-                        context.platform,
-                        context.broadcasterId,
-                        context.scopeType,
-                        scopeName,
-                        strippedName,
-                        userScope
-                    );
-                    const exists = await redis.exists(key);
-                    if (exists === 1) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            return walkCacheKeys(name, storage, context, targetUserLogin, async (key, redis) => {
+                const exists = await redis.exists(key);
+                return exists === 1;
+            });
         }
 
         case 'db': {
@@ -511,8 +526,8 @@ async function deleteValueFromStorage(
                     }
                 }
                 const idxResult = await evaluate(accessor.index, context);
-                const idx = parseInt(String(idxResult.value), 10);
-                if (!isNaN(idx) && idx >= 0 && idx < arr.length) {
+                const idx = resolveArrayIndex(idxResult.value, arr.length);
+                if (idx >= 0) {
                     arr.splice(idx, 1);
                     context.variables.set(strippedName, JSON.stringify(arr));
                 }
@@ -522,83 +537,32 @@ async function deleteValueFromStorage(
 
         case 'cache':
         case 'cacheUser': {
-            const redis = await getDragonflyClient();
-            if (!accessor) {
-                // Delete entire variable
-                const scopeCandidates = getScopeCandidates(context);
-                const userScopeCandidates = storage === 'cacheUser'
-                    ? getCacheUserScopeCandidates(context, targetUserLogin)
-                    : [undefined];
-
-                for (const scopeName of scopeCandidates) {
-                    for (const userScope of userScopeCandidates) {
-                        const key = buildCacheKey(
-                            context.platform,
-                            context.broadcasterId,
-                            context.scopeType,
-                            scopeName,
-                            strippedName,
-                            userScope
-                        );
-                        await redis.del(key);
-                    }
-                }
-            } else if (accessor.type === 'clear') {
-                // Clear entire array
-                const scopeCandidates = getScopeCandidates(context);
-                const userScopeCandidates = storage === 'cacheUser'
-                    ? getCacheUserScopeCandidates(context, targetUserLogin)
-                    : [undefined];
-
-                for (const scopeName of scopeCandidates) {
-                    for (const userScope of userScopeCandidates) {
-                        const key = buildCacheKey(
-                            context.platform,
-                            context.broadcasterId,
-                            context.scopeType,
-                            scopeName,
-                            strippedName,
-                            userScope
-                        );
-                        await redis.del(key);
-                    }
-                }
+            if (!accessor || accessor.type === 'clear') {
+                // Delete entire variable / clear entire array
+                await walkCacheKeys(name, storage, context, targetUserLogin, async (key, redis) => {
+                    await redis.del(key);
+                });
             } else if (accessor.type === 'remove') {
                 // Remove specific index
-                const scopeCandidates = getScopeCandidates(context);
-                const userScopeCandidates = storage === 'cacheUser'
-                    ? getCacheUserScopeCandidates(context, targetUserLogin)
-                    : [undefined];
+                const idxResult = await evaluate(accessor.index, context);
+                await walkCacheKeys(name, storage, context, targetUserLogin, async (key, redis) => {
+                    const value = await redis.get(key);
+                    if (!value) return;
 
-                for (const scopeName of scopeCandidates) {
-                    for (const userScope of userScopeCandidates) {
-                        const key = buildCacheKey(
-                            context.platform,
-                            context.broadcasterId,
-                            context.scopeType,
-                            scopeName,
-                            strippedName,
-                            userScope
-                        );
-                        const value = await redis.get(key);
-                        if (value) {
-                            try {
-                                const arr = JSON.parse(value);
-                                if (Array.isArray(arr)) {
-                                    const idxResult = await evaluate(accessor.index, context);
-                                    const idx = parseInt(String(idxResult.value), 10);
-                                    if (!isNaN(idx) && idx >= 0 && idx < arr.length) {
-                                        arr.splice(idx, 1);
-                                        await redis.set(key, JSON.stringify(arr));
-                                        await redis.expire(key, 86400);
-                                    }
-                                }
-                            } catch {
-                                // Not a JSON array, ignore
-                            }
+                    try {
+                        const arr = JSON.parse(value);
+                        if (!Array.isArray(arr)) return;
+
+                        const idx = resolveArrayIndex(idxResult.value, arr.length);
+                        if (idx >= 0) {
+                            arr.splice(idx, 1);
+                            await redis.set(key, JSON.stringify(arr));
+                            await redis.expire(key, 86400);
                         }
+                    } catch {
+                        // Not a JSON array, ignore
                     }
-                }
+                });
             }
             break;
         }
@@ -635,8 +599,8 @@ async function deleteValueFromStorage(
                                 arr = [];
                             } else {
                                 const idxResult = await evaluate(accessor.index, context);
-                                const idx = parseInt(String(idxResult.value), 10);
-                                if (!isNaN(idx) && idx >= 0 && idx < arr.length) {
+                                const idx = resolveArrayIndex(idxResult.value, arr.length);
+                                if (idx >= 0) {
                                     arr.splice(idx, 1);
                                 }
                             }
@@ -725,8 +689,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                     case 'index': {
                         const indexResult = await evaluate(accessor.index, context);
-                        const index = parseInt(String(indexResult.value), 10);
-                        if (isNaN(index) || index < 0 || index >= context.commandResponses.length) {
+                        const index = resolveArrayIndex(indexResult.value, context.commandResponses.length);
+                        if (index < 0) {
                             return { value: '', context };
                         }
                         return { value: context.commandResponses[index], context };
@@ -759,8 +723,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                 case 'index': {
                     const indexResult = await evaluate(accessor.index, workingContext);
-                    const index = parseInt(String(indexResult.value), 10);
-                    if (isNaN(index) || index < 0 || index >= arrayData.length) {
+                    const index = resolveArrayIndex(indexResult.value, arrayData.length);
+                    if (index < 0) {
                         return { value: '', context: workingContext };
                     }
                     return { value: arrayData[index], context: workingContext };
@@ -798,8 +762,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                 if (accessor?.type === 'setIndex') {
                     const indexResult = await evaluate(accessor.index, currentContext);
-                    const index = parseInt(String(indexResult.value), 10);
-                    if (!isNaN(index) && index >= 0 && index < context.commandResponses.length) {
+                    const index = resolveArrayIndex(indexResult.value, context.commandResponses.length);
+                    if (index >= 0) {
                         context.commandResponses[index] = valueStr;
                         await context.saveResponses();
                     }
@@ -824,8 +788,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                 case 'setIndex': {
                     const indexResult = await evaluate(accessor.index, currentContext);
-                    const index = parseInt(String(indexResult.value), 10);
-                    if (!isNaN(index) && index >= 0 && index < arrayData.length) {
+                    const index = resolveArrayIndex(indexResult.value, arrayData.length);
+                    if (index >= 0) {
                         arrayData[index] = valueStr;
                         await saveValueToStorage(name, storage, JSON.stringify(arrayData), context);
                     }
@@ -881,8 +845,7 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                     case 'index': {
                         const indexResult = await evaluate(accessor.index, context);
-                        const index = parseInt(String(indexResult.value), 10);
-                        const exists = !isNaN(index) && index >= 0 && index < context.commandResponses.length;
+                        const exists = resolveArrayIndex(indexResult.value, context.commandResponses.length) >= 0;
                         return { value: exists ? 'true' : 'false', context: indexResult.context };
                     }
 
@@ -915,8 +878,7 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                     }
                     const arrayData = await getArrayFromStorage(name, storage, workingContext, targetUserLogin);
                     const indexResult = await evaluate(accessor.index, workingContext);
-                    const index = parseInt(String(indexResult.value), 10);
-                    const exists = !isNaN(index) && index >= 0 && index < arrayData.length;
+                    const exists = resolveArrayIndex(indexResult.value, arrayData.length) >= 0;
                     return { value: exists ? 'true' : 'false', context: indexResult.context };
                 }
 
@@ -1055,6 +1017,27 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                 const result = await evaluate(item, currentContext);
                 currentContext = result.context;
                 values.push(String(result.value ?? ''));
+            }
+
+            // Trailing accessor: %[1,2,3][random] / %[1,2,3][0] / %[1,2,3][].length
+            if (arrayNode.accessor) {
+                switch (arrayNode.accessor.type) {
+                    case 'index': {
+                        const indexResult = await evaluate(arrayNode.accessor.index, currentContext);
+                        const index = resolveArrayIndex(indexResult.value, values.length);
+                        return { value: index >= 0 ? values[index] : '', context: indexResult.context };
+                    }
+
+                    case 'random': {
+                        if (values.length === 0) return { value: '', context: currentContext };
+                        const idx = Math.floor(Math.random() * values.length);
+                        return { value: values[idx], context: currentContext };
+                    }
+
+                    case 'length': {
+                        return { value: String(values.length), context: currentContext };
+                    }
+                }
             }
 
             return { value: values, context: currentContext };
