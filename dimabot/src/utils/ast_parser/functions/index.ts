@@ -13,6 +13,7 @@ import { registerDelayFunctions } from './delay.functions.js';
 import { registerChatFunctions } from './chat.functions.js';
 import { registerDefenseFunctions } from './defense.functions.js';
 import { registerPinFunctions } from './pin.functions.js';
+import { registerStringFunctions } from './string.functions.js';
 
 let registered = false;
 
@@ -35,6 +36,7 @@ export function registerAllFunctions(): void {
     registerChatFunctions();
     registerDefenseFunctions();
     registerPinFunctions();
+    registerStringFunctions();
 }
 
 export { registerFunction, getFunctionHandler, type FunctionHandler } from '../evaluator.js';

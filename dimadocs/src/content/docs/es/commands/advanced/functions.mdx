@@ -30,9 +30,24 @@ Algunas funciones solo leen datos. Otras ejecutan acciones como banear, cambiar 
 ## Funciones aleatorias
 
 | Función | Descripción | Uso |
-|---------|-------------|-----|
+|----------|-------------|-------|
 | `$(random N)` | Entero aleatorio de `0` a `N-1` | `$(random 10)` |
-| `$(random)` | Entero aleatorio usando el rango por defecto | `$(random)` |
+| `$(random)` | Entero aleatorio con el rango por defecto | `$(random)` |
+
+## Funciones de texto
+
+| Función | Descripción | Uso |
+|----------|-------------|-------|
+| `$(upper texto)` | Convierte a mayúsculas | `$(upper hola)` → `HOLA` |
+| `$(lower texto)` | Convierte a minúsculas | `$(lower HOLA)` → `hola` |
+| `$(title texto)` | Capitaliza cada palabra | `$(title hola mundo)` → `Hola Mundo` |
+| `$(capitalize texto)` | Capitaliza solo la primera letra | `$(capitalize hola)` → `Hola` |
+| `$(trim texto)` | Quita espacios al inicio y al final | `$(trim "  hola  ")` → `hola` |
+| `$(length texto)` | Longitud del texto | `$(length hola)` → `4` |
+| `$(slice inicio [fin] texto)` | Corta texto por posición; negativos cuentan desde el final | `$(slice 0 4 hola mundo)` → `hola` |
+| `$(replace buscar reemplazo texto)` | Reemplaza todas las ocurrencias (literal, sin regex) | `$(replace o 0 foo)` → `f00` |
+
+Para buscar o reemplazar valores de varias palabras, usa comillas: `$(replace "texto viejo" "texto nuevo" el texto viejo aquí)`.
 
 ## Funciones de Twitch
 
