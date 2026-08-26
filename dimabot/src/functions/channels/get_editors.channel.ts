@@ -3,12 +3,7 @@ import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js'
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { error as logError } from '../../utils/logger.js';
-
-interface Editor {
-    user_id: string;
-    user_login: string;
-    user_name: string;
-}
+import { normalizeEditors, type Editor } from './editor_list.js';
 
 interface GetEditorsResponse {
     error: boolean;
@@ -55,28 +50,18 @@ export async function getChannelEditors(channelID: string, cache: boolean = fals
             };
          }
         
-         editorList = data.data;
+         editorList = normalizeEditors(data.data);
          let reset = cache ? false : true;
 
-         for (let i = 0; i < editorList.length; i++) {
-             const editor = editorList[i];
-
-             const editorData: Editor = {
-                 user_id: editor.user_id,
-                 user_login: editor.user_name.toLowerCase(),
-                 user_name: editor.user_name
-             };
-
+         for (const editor of editorList) {
             if (cache) {
                 if (!reset) {
                     await cacheClient.del(`twitch:${channelID}:editors`);
                     reset = true;
                 }
-                await cacheClient.sAdd(`twitch:${channelID}:editors`, editor.user_name.toLowerCase());
+                await cacheClient.sAdd(`twitch:${channelID}:editors`, editor.user_login);
                 await cacheClient.expire(`twitch:${channelID}:editors`, 60 * 60 * 24);
             }
-
-            editorList.push(editorData);
         }
 
         return {
