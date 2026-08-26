@@ -104,6 +104,38 @@ Usa comillas dobles y `${}` cuando quieras interpolación dentro de un string.
 "Has ganado ${%(#wins)} veces!"
 ```
 
+## Caracteres especiales y escapes
+
+Los paréntesis definen dónde empieza y termina una expresión, así que un `)` literal dentro de una la cerraría antes de tiempo. Tienes tres herramientas para incluir caracteres especiales como texto plano:
+
+1. **Los pares balanceados funcionan directamente.** Los paréntesis que abren y cierran dentro de una expresión se mantienen como texto:
+
+   ```bash
+   $(say score (5-3))
+   → score ( 5 - 3 )
+   ```
+
+2. **Las comillas dobles** protegen cualquier texto, incluidos caracteres desbalanceados:
+
+   ```bash
+   $(say "quoted :) here")
+   → quoted :) here
+   ```
+
+3. **Los escapes con barra invertida** protegen un solo carácter. Usa `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` y `\\`:
+
+   ```bash
+   $(say hello \:\))
+   → hello :)
+
+   %(mood \:\)) %(mood)
+   → :)
+   ```
+
+<Aside type="tip">
+Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, `\)`) o envuelve el texto en comillas.
+</Aside>
+
 ## Arrays
 
 ### Arrays literales

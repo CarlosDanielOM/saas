@@ -1,11 +1,7 @@
-import type { AstNode, ParseResult, ParserHandler, SyntaxDefinition, LiteralNode, GetVarNode, SetVarNode, ExistsNode, DeleteVarNode, FunctionNode, ConditionalNode, BinaryExpressionNode, UnaryExpressionNode, TernaryExpressionNode, TemplateNode, TemplateSegment, VariableStorage, ArrayAccessor, BinaryOperator, UnaryOperator, ArrayLiteralNode, LoopAssignNode, LoopAssignOperator, LoopVarNode, ForLoopNode } from './types.js';
-import { tokenize } from './tokenizer.js';
+import type { AstNode, ParseResult, ParserHandler, SyntaxDefinition, LiteralNode, GetVarNode, SetVarNode, ExistsNode, DeleteVarNode, FunctionNode, BinaryExpressionNode, UnaryExpressionNode, TernaryExpressionNode, TemplateNode, TemplateSegment, VariableStorage, ArrayAccessor, BinaryOperator, UnaryOperator, ArrayLiteralNode, LoopAssignNode, LoopAssignOperator, LoopVarNode, ForLoopNode } from './types.js';
+import { tokenize, unescapeLiteral } from './tokenizer.js';
 
 export type { SyntaxDefinition } from './types.js';
-
-export function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function parseVarName(rawName: string): { name: string; storage: VariableStorage } {
     if (rawName.startsWith('**')) {
@@ -27,7 +23,7 @@ function parseLiteral(tokens: string[], currentIndex: number): ParseResult {
     const token = tokens[currentIndex];
     const literalNode: LiteralNode = {
         type: 'literal',
-        value: token
+        value: unescapeLiteral(token)
     };
     return { node: literalNode, newIndex: currentIndex + 1 };
 }
@@ -613,8 +609,24 @@ const parseCommandRef: ParserHandler = (tokens, currentIndex, registry) => {
 
     i++;
     const args: AstNode[] = [];
+    let parenDepth = 0;
 
-    while (i < tokens.length && tokens[i] !== ')') {
+    while (i < tokens.length) {
+        const token = tokens[i];
+
+        if (token === ')') {
+            if (parenDepth === 0) break;
+            // Balanced inner paren group: keep the closer as literal arg content
+            parenDepth--;
+            args.push({ type: 'literal', value: ')' });
+            i++;
+            continue;
+        }
+
+        if (token === '(') {
+            parenDepth++;
+        }
+
         const result = parseExpression(tokens, i, registry);
         if (result.node.type !== 'literal' || (result.node as LiteralNode).value !== '') {
             args.push(result.node);
@@ -662,15 +674,32 @@ const parseFunction: ParserHandler = (tokens, currentIndex, registry) => {
     
     const funcName = nameParts.join('.');
     const args: AstNode[] = [];
-    
-    while (i < tokens.length && tokens[i] !== ')') {
+    let parenDepth = 0;
+
+    while (i < tokens.length) {
+        const token = tokens[i];
+
+        if (token === ')') {
+            if (parenDepth === 0) break;
+            // Balanced inner paren group: keep the closer as literal arg content
+            // instead of cutting the function call early (e.g. `$(say score (5-3))`).
+            parenDepth--;
+            args.push({ type: 'literal', value: ')' });
+            i++;
+            continue;
+        }
+
+        if (token === '(') {
+            parenDepth++;
+        }
+
         const result = parseExpression(tokens, i, registry);
         if (result.node.type !== 'literal' || (result.node as LiteralNode).value !== '') {
             args.push(result.node);
         }
         i = result.newIndex;
     }
-    
+
     if (tokens[i] === ')') {
         i++;
     }
@@ -699,10 +728,6 @@ function getPrecedence(token: string): number {
     if (ARITHMETIC_LOW.includes(token)) return 3;
     if (ARITHMETIC_HIGH.includes(token)) return 4;
     return 0;
-}
-
-function isRightAssociative(_token: string): boolean {
-    return false;
 }
 
 function parseAtom(
@@ -831,8 +856,7 @@ function parseStarExpression(
         }
         
         const op = token as BinaryOperator;
-        const rightAssociative = isRightAssociative(token);
-        const nextMinPrecedence = rightAssociative ? precedence : precedence + 1;
+        const nextMinPrecedence = precedence + 1;
         
         currentIndex++;
         const rightResult = parseStarExpression(tokens, currentIndex, registry, nextMinPrecedence);
@@ -944,79 +968,6 @@ const parseCompute: ParserHandler = (tokens, currentIndex, registry) => {
     }
     
     return { node: result.node, newIndex: i };
-};
-
-const parseConditional: ParserHandler = (tokens, currentIndex, registry) => {
-    let i = currentIndex + 1;
-    
-    const firstResult = parseExpression(tokens, i, registry);
-    i = firstResult.newIndex;
-    
-    let operator = '';
-    for (const op of COMPARISON_OPERATORS) {
-        if (tokens[i] === op) {
-            operator = op;
-            i++;
-            break;
-        }
-    }
-    
-    if (!operator) {
-        for (const op of COMPARISON_OPERATORS) {
-            const combined = tokens[i] + (tokens[i + 1] || '');
-            if (combined === op) {
-                operator = op;
-                i += 2;
-                break;
-            }
-        }
-    }
-    
-    let left: AstNode | undefined;
-    let right: AstNode | undefined;
-    let condition: AstNode | undefined;
-    
-    if (operator) {
-        left = firstResult.node;
-        const rightResult = parseExpression(tokens, i, registry);
-        right = rightResult.node;
-        i = rightResult.newIndex;
-    } else {
-        condition = firstResult.node;
-    }
-    
-    let trueBranch: AstNode = { type: 'literal', value: '' };
-    let falseBranch: AstNode = { type: 'literal', value: '' };
-    
-    if (tokens[i] === '?') {
-        i++;
-        const trueResult = parseExpression(tokens, i, registry);
-        trueBranch = trueResult.node;
-        i = trueResult.newIndex;
-        
-        if (tokens[i] === ':') {
-            i++;
-            const falseResult = parseExpression(tokens, i, registry);
-            falseBranch = falseResult.node;
-            i = falseResult.newIndex;
-        }
-    }
-    
-    if (tokens[i] === ')') {
-        i++;
-    }
-    
-    const condNode: ConditionalNode = {
-        type: 'conditional',
-        ...(condition ? { condition } : {}),
-        ...(left ? { left } : {}),
-        operator: operator || undefined,
-        ...(right ? { right } : {}),
-        trueBranch,
-        falseBranch
-    };
-    
-    return { node: condNode, newIndex: i };
 };
 
 export const createSyntaxRegistry = (): Map<string, SyntaxDefinition> => {

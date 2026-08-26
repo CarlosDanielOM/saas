@@ -94,29 +94,6 @@ export function printAst(node: AstNode, indent: number = 0): string {
             }
             break;
             
-        case 'conditional':
-            output += `${prefix}Conditional\n`;
-            if (node.condition) {
-                output += `${prefix}  condition:\n`;
-                output += printAst(node.condition, indent + 2);
-            }
-            if (node.left) {
-                output += `${prefix}  left:\n`;
-                output += printAst(node.left, indent + 2);
-            }
-            if (node.operator) {
-                output += `${prefix}  operator: "${node.operator}"\n`;
-            }
-            if (node.right) {
-                output += `${prefix}  right:\n`;
-                output += printAst(node.right, indent + 2);
-            }
-            output += `${prefix}  trueBranch:\n`;
-            output += printAst(node.trueBranch, indent + 2);
-            output += `${prefix}  falseBranch:\n`;
-            output += printAst(node.falseBranch, indent + 2);
-            break;
-            
         case 'binary':
             output += `${prefix}Binary("${node.operator}")\n`;
             output += `${prefix}  left:\n`;

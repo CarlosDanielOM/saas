@@ -104,6 +104,38 @@ Use double quotes and `${}` when you want interpolation inside a string.
 "You've won ${%(#wins)} times!"
 ```
 
+## Special characters and escaping
+
+Parentheses define where an expression starts and ends, so a literal `)` inside one would close it early. You have three tools to include special characters as plain text:
+
+1. **Balanced pairs just work.** Parentheses that open and close inside an expression are kept as text:
+
+   ```bash
+   $(say score (5-3))
+   → score ( 5 - 3 )
+   ```
+
+2. **Double quotes** protect any text, including unbalanced characters:
+
+   ```bash
+   $(say "quoted :) here")
+   → quoted :) here
+   ```
+
+3. **Backslash escapes** protect a single character. Use `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` and `\\`:
+
+   ```bash
+   $(say hello \:\))
+   → hello :)
+
+   %(mood \:\)) %(mood)
+   → :)
+   ```
+
+<Aside type="tip">
+Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\)`) or wrap the text in quotes.
+</Aside>
+
 ## Arrays
 
 ### Literal arrays

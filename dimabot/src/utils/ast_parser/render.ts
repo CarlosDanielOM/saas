@@ -37,6 +37,12 @@ function findExpressionEnd(input: string, startIndex: number): number {
             continue;
         }
 
+        if (char === '\\') {
+            // Escaped char (e.g. `\)`): not structural, skip it for depth counting
+            i++;
+            continue;
+        }
+
         if (char === '"') {
             inQuote = 'double';
             continue;

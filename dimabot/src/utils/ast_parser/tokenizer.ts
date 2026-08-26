@@ -1,5 +1,17 @@
 import type { TokenizeResult, SyntaxDefinition } from './types.js';
-import { escapeRegExp, SyntaxRegistry } from './registry.js';
+import { SyntaxRegistry } from './registry.js';
+
+// Characters that can be escaped with a backslash inside literals.
+// Used so text like `$(say hi :)\))` or `%(mood :\))` keeps the `)` as data
+// instead of closing the expression early. The escape is preserved in the
+// token stream (so `\)` never collides with a structural `)`) and only
+// resolved when a literal node is created (see parseLiteral in registry.ts).
+const ESCAPABLE_CHARS = new Set(['(', ')', '[', ']', '{', '}', ';', '?', ':', '\\']);
+const ESCAPE_REGEX = /\\([()\[\]{};?:\\])/g;
+
+export function unescapeLiteral(literal: string): string {
+    return literal.includes('\\') ? literal.replace(ESCAPE_REGEX, '$1') : literal;
+}
 
 export function tokenize(input: string, registry: Map<string, SyntaxDefinition> = SyntaxRegistry): TokenizeResult {
     const tokens: string[] = [];
@@ -297,7 +309,15 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
         while (literalEnd < input.length) {
             const char = input[literalEnd];
             const slice = input.slice(literalEnd);
-            
+
+            // Backslash escape: keep `\X` (X in ESCAPABLE_CHARS) inside the literal
+            // so escaped structural chars (e.g. `\)`) don't terminate the literal.
+            if (char === '\\' && literalEnd + 1 < input.length && ESCAPABLE_CHARS.has(input[literalEnd + 1])) {
+                hasNonPrefixChar = true;
+                literalEnd += 2;
+                continue;
+            }
+
             if (/\s/.test(char)) break;
             if (char === ')') break;
             if (char === '{' || char === '}') break;
@@ -337,8 +357,9 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
         }
         
         if (literalEnd > i) {
-            const literal = input.slice(i, literalEnd);
-            tokens.push(literal);
+            // Keep escape sequences intact here; they are resolved in parseLiteral
+            // so an escaped `\)` token never equals the structural `)` token.
+            tokens.push(input.slice(i, literalEnd));
             i = literalEnd;
         } else {
             i++;
@@ -346,11 +367,4 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
     }
     
     return { tokens };
-}
-
-export function buildTokenizerRegex(registry: Map<string, SyntaxDefinition>): RegExp {
-    const startTokens = Array.from(registry.keys());
-    const escaped = startTokens.map(t => escapeRegExp(t));
-    
-    return new RegExp(`(${escaped.join('|')}|\\s+|"|\\?|:|;|\\{|\\}|\\)|\\+\\+|--|\\+=|-=|\\*=|\\/=|%=|==|!=|>=|<=|~=|<>|[=<>])`);
 }

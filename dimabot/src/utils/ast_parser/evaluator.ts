@@ -5,7 +5,6 @@ import type {
     AstNode,
     BinaryExpressionNode,
     CommandRefNode,
-    ConditionalNode,
     CustomNode,
     EvaluateResult,
     ExecutionContext,
@@ -838,54 +837,24 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
         case 'function': {
             const funcNode = node as FunctionNode;
-            const evaluatedArgs = await Promise.all(
-                funcNode.args.map((arg) => evaluate(arg, context))
-            );
-            const args = evaluatedArgs.map((r) => r.value);
+            // Evaluate args sequentially, threading context, so side effects
+            // (e.g. `$(fn %(a 1) %(a 2))`) apply in deterministic left-to-right order.
+            const args: unknown[] = [];
+            let currentContext = context;
+
+            for (const arg of funcNode.args) {
+                const argResult = await evaluate(arg, currentContext);
+                currentContext = argResult.context;
+                args.push(argResult.value);
+            }
 
             const handler = functionRegistry.get(funcNode.name);
             if (!handler) {
-                return { value: `[Unknown function: ${funcNode.name}]`, context };
+                return { value: `[Unknown function: ${funcNode.name}]`, context: currentContext };
             }
 
-            const result = await handler(args, context);
-            return { value: result, context };
-        }
-
-        case 'conditional': {
-            const condNode = node as ConditionalNode;
-            let result: boolean;
-            let evalContext = context;
-
-            if (condNode.condition) {
-                const condResult = await evaluate(condNode.condition, context);
-                evalContext = condResult.context;
-                const condValue = String(condResult.value).toLowerCase().trim();
-                if (condValue === 'true' || condValue === '1') {
-                    result = true;
-                } else if (condValue === 'false' || condValue === '0' || condValue === '') {
-                    result = false;
-                } else {
-                    result = true;
-                }
-            } else if (condNode.left && condNode.right && condNode.operator) {
-                const leftResult = await evaluate(condNode.left, context);
-                const rightResult = await evaluate(condNode.right, leftResult.context);
-                evalContext = rightResult.context;
-
-                const leftValue = String(leftResult.value);
-                const rightValue = String(rightResult.value);
-                result = safeCompare(leftValue, condNode.operator as InternalComparisonOperator, rightValue);
-            } else {
-                result = false;
-            }
-
-            const branchResult = await evaluate(
-                result ? condNode.trueBranch : condNode.falseBranch,
-                evalContext
-            );
-
-            return { value: branchResult.value, context: branchResult.context };
+            const result = await handler(args, currentContext);
+            return { value: result, context: currentContext };
         }
 
         case 'exists': {
@@ -1262,11 +1231,13 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
                 const { ast, error } = parse(result.message);
                 if (error) {
-                    return { value: result.message, context: nestedContext };
+                    // Restore the original visited set: cycle protection is per
+                    // reference path, so siblings may reuse the same command.
+                    return { value: result.message, context: { ...nestedContext, visitedCommands: context.visitedCommands } };
                 }
 
                 const nestedResult = await evaluate(ast, nestedContext);
-                return { value: nestedResult.value, context: nestedResult.context };
+                return { value: nestedResult.value, context: { ...nestedResult.context, visitedCommands: context.visitedCommands } };
             } catch (error) {
                 console.error('Error in commandRef evaluation:', {
                     commandName,

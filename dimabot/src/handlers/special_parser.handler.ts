@@ -125,7 +125,9 @@ function unescapeInput(input: unknown): string {
     return input
         .replace(/\\\$/g, '$')
         .replace(/\\%/g, '%')
-        .replace(/\\\*/g, '*');
+        .replace(/\\\*/g, '*')
+        .replace(/\\#/g, '#')
+        .replace(/\\\^/g, '^');
 }
 
 function resolveArgumentPlaceholders(template: string, argument: string): IPlaceholderResolution {

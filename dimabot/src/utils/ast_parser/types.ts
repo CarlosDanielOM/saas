@@ -1,4 +1,4 @@
-export type NodeType = 'root' | 'setVar' | 'getVar' | 'deleteVar' | 'function' | 'conditional' | 'literal' | 'custom' | 'exists' | 'binary' | 'unary' | 'ternary' | 'template' | 'arrayLiteral' | 'commandRef' | 'loopVar' | 'loopAssign' | 'forLoop';
+export type NodeType = 'root' | 'setVar' | 'getVar' | 'deleteVar' | 'function' | 'literal' | 'custom' | 'exists' | 'binary' | 'unary' | 'ternary' | 'template' | 'arrayLiteral' | 'commandRef' | 'loopVar' | 'loopAssign' | 'forLoop';
 
 export type TemplateSegment = { type: 'text'; value: string } | { type: 'expr'; node: AstNode };
 
@@ -92,16 +92,6 @@ export interface FunctionNode extends BaseNode {
     args: AstNode[];
 }
 
-export interface ConditionalNode extends BaseNode {
-    type: 'conditional';
-    condition?: AstNode;
-    left?: AstNode;
-    operator?: string;
-    right?: AstNode;
-    trueBranch: AstNode;
-    falseBranch: AstNode;
-}
-
 export interface BinaryExpressionNode extends BaseNode {
     type: 'binary';
     operator: BinaryOperator;
@@ -154,7 +144,7 @@ export interface CustomNode<T = unknown> extends BaseNode {
     data: T;
 }
 
-export type AstNode = RootNode | SetVarNode | GetVarNode | ExistsNode | DeleteVarNode | FunctionNode | ConditionalNode | BinaryExpressionNode | UnaryExpressionNode | TernaryExpressionNode | TemplateNode | LiteralNode | ArrayLiteralNode | CustomNode | CommandRefNode | LoopVarNode | LoopAssignNode | ForLoopNode;
+export type AstNode = RootNode | SetVarNode | GetVarNode | ExistsNode | DeleteVarNode | FunctionNode | BinaryExpressionNode | UnaryExpressionNode | TernaryExpressionNode | TemplateNode | LiteralNode | ArrayLiteralNode | CustomNode | CommandRefNode | LoopVarNode | LoopAssignNode | ForLoopNode;
 
 export type LoopExitType = 'break' | 'continue';
 
