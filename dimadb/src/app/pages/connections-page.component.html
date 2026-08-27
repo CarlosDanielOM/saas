@@ -12,6 +12,7 @@
       <div class="meta">{{ item.url }}</div>
       <div class="chips">
         <span class="pill">{{ item.source }}</span>
+        <span class="pill" [class]="item.engine">{{ item.engine }}</span>
         @if (pings()[item.id]; as ping) {
           <span class="pill string">{{ ping }}</span>
         }
@@ -25,17 +26,29 @@
     </article>
   } @empty {
     <article class="card">
-      <p class="sub">No connections yet. Add one or set DIMADB_REDIS_* in compose.</p>
+      <p class="sub">No connections yet. Add one or set DIMADB_REDIS_* / DIMADB_MONGO_* in compose.</p>
     </article>
   }
   <form class="card" (submit)="add($event)">
     <label>
+      Engine
+      <select class="search" name="engine" [value]="engine()" (change)="onEngine($event)">
+        <option value="redis">Redis</option>
+        <option value="mongo">MongoDB</option>
+      </select>
+    </label>
+    <label>
       Name
-      <input class="search" name="name" placeholder="Dragonfly" required />
+      <input class="search" name="name" [placeholder]="engine() === 'mongo' ? 'dimabot' : 'Dragonfly'" required />
     </label>
     <label>
       URL
-      <input class="search" name="url" placeholder="redis://dragonfly:6379" required />
+      <input
+        class="search"
+        name="url"
+        [placeholder]="engine() === 'mongo' ? 'mongodb://mongo:27017/dimabot' : 'redis://dragonfly:6379'"
+        required
+      />
     </label>
     <button class="btn" type="submit" [disabled]="adding()">
       {{ adding() ? 'Saving…' : 'Add connection' }}

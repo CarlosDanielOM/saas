@@ -1,10 +1,22 @@
 <section class="stack">
   <div class="head">
     <h1>Console</h1>
-    <p class="sub">FLUSH*, EVAL, CONFIG and similar need a second confirm.</p>
+    <p class="sub">
+      @if (connections.engine() === 'mongo') {
+        Find documents with a JSON filter. Edit full documents from Browse.
+      } @else {
+        FLUSH*, EVAL, CONFIG and similar need a second confirm.
+      }
+    </p>
   </div>
   <form class="stack" (submit)="run($event)">
-    <input class="cmd" name="command" value="SCAN 0 MATCH * COUNT 50" aria-label="Redis command" />
+    @if (connections.engine() === 'mongo') {
+      <input class="cmd" name="db" placeholder="database" aria-label="Database" />
+      <input class="cmd" name="collection" placeholder="collection" aria-label="Collection" />
+      <textarea class="cmd" name="filter" rows="4" aria-label="Filter JSON">{}</textarea>
+    } @else {
+      <input class="cmd" name="command" value="SCAN 0 MATCH * COUNT 50" aria-label="Redis command" />
+    }
     <div class="actions">
       <button class="btn" type="submit" [disabled]="running() || !connections.selectedId()">
         {{ running() ? 'Running…' : 'Run' }}

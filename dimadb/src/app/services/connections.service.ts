@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ApiEnvelope, DbConnection } from './api.types';
+import { ApiEnvelope, DbConnection, DbEngine } from './api.types';
 
 @Injectable({ providedIn: 'root' })
 export class ConnectionsService {
@@ -15,6 +15,7 @@ export class ConnectionsService {
   readonly selected = computed(
     () => this.itemsState().find((item) => item.id === this.selectedId()) ?? null,
   );
+  readonly engine = computed<DbEngine>(() => this.selected()?.engine === 'mongo' ? 'mongo' : 'redis');
 
   select(id: string): void {
     this.selectedState.set(id);
@@ -31,9 +32,9 @@ export class ConnectionsService {
     }
   }
 
-  async add(name: string, url: string): Promise<void> {
+  async add(name: string, url: string, engine: DbEngine): Promise<void> {
     const response = await firstValueFrom(
-      this.http.post<ApiEnvelope<DbConnection>>('/api/connections', { name, url }),
+      this.http.post<ApiEnvelope<DbConnection>>('/api/connections', { name, url, engine }),
     );
     if (response.error || !response.data) {
       throw new Error(response.message || 'Failed to add connection');

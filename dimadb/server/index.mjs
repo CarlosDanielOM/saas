@@ -4,7 +4,9 @@ import { extname, join, resolve } from 'node:path';
 
 import { createStore } from './store.mjs';
 import { createAuth, publicUser } from './auth.mjs';
+import { createConnectionRegistry } from './connections.mjs';
 import { createRedisHub } from './redis.mjs';
+import { createMongoHub } from './mongo.mjs';
 import {
   clearSessionCookie,
   fail,
@@ -35,7 +37,9 @@ const MIME = {
 
 const store = createStore(DATA_DIR);
 const auth = createAuth(store);
-const redis = createRedisHub(store);
+const connections = createConnectionRegistry(store);
+const redis = createRedisHub(connections);
+const mongo = createMongoHub(connections);
 
 function sendFile(res, filePath, cache = true) {
   const type = MIME[extname(filePath)] || 'application/octet-stream';
@@ -169,7 +173,7 @@ async function handleApi(req, res, url) {
       if (!requireUser(req, res)) {
         return;
       }
-      ok(res, redis.list());
+      ok(res, connections.list());
       return;
     }
 
@@ -178,7 +182,7 @@ async function handleApi(req, res, url) {
         return;
       }
       const body = await readBody(req);
-      ok(res, redis.add(body));
+      ok(res, connections.add(body));
       return;
     }
 
@@ -189,13 +193,76 @@ async function handleApi(req, res, url) {
       }
       const id = decodeURIComponent(connectionMatch[1]);
       if (req.method === 'DELETE' && !connectionMatch[2]) {
-        redis.remove(id);
+        redis.drop(id);
+        mongo.drop(id);
+        connections.remove(id);
         ok(res, { ok: true });
         return;
       }
       if (req.method === 'POST' && connectionMatch[2] === 'ping') {
-        const pong = await redis.ping(id);
+        const row = connections.require(id);
+        const pong = row.engine === 'mongo' ? await mongo.ping(id) : await redis.ping(id);
         ok(res, { ok: true, pong });
+        return;
+      }
+    }
+
+    const mongoMatch = url.pathname.match(/^\/api\/mongo\/([^/]+)\/(dbs|collections|docs|doc)$/);
+    if (mongoMatch) {
+      if (!requireUser(req, res)) {
+        return;
+      }
+      const id = decodeURIComponent(mongoMatch[1]);
+      const action = mongoMatch[2];
+
+      if (action === 'dbs' && req.method === 'GET') {
+        ok(res, await mongo.databases(id));
+        return;
+      }
+
+      if (action === 'collections' && req.method === 'GET') {
+        ok(res, await mongo.collections(id, url.searchParams.get('db') || ''));
+        return;
+      }
+
+      if (action === 'docs' && req.method === 'GET') {
+        ok(res, await mongo.docs(id, {
+          db: url.searchParams.get('db') || '',
+          collection: url.searchParams.get('collection') || '',
+          skip: url.searchParams.get('skip') || 0,
+          limit: url.searchParams.get('limit') || 50,
+          filter: url.searchParams.get('filter') || '{}',
+        }));
+        return;
+      }
+
+      if (action === 'doc' && req.method === 'GET') {
+        ok(res, await mongo.inspect(id, {
+          db: url.searchParams.get('db') || '',
+          collection: url.searchParams.get('collection') || '',
+          docId: url.searchParams.get('id') || '',
+        }));
+        return;
+      }
+
+      if (action === 'doc' && req.method === 'POST') {
+        const body = await readBody(req);
+        ok(res, await mongo.insert(id, body));
+        return;
+      }
+
+      if (action === 'doc' && req.method === 'PUT') {
+        const body = await readBody(req);
+        ok(res, await mongo.save(id, body));
+        return;
+      }
+
+      if (action === 'doc' && req.method === 'DELETE') {
+        ok(res, await mongo.del(id, {
+          db: url.searchParams.get('db') || '',
+          collection: url.searchParams.get('collection') || '',
+          docId: url.searchParams.get('id') || '',
+        }));
         return;
       }
     }

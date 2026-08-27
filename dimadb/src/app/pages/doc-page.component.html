@@ -1,0 +1,22 @@
+<section class="stack">
+  <div class="head">
+    <a routerLink="/browse">← Browse</a>
+    <h1 class="key">{{ id() }}</h1>
+    <div class="chips">
+      <span class="pill mongo">mongo</span>
+      <span class="pill">{{ db() }}</span>
+      <span class="pill">{{ collection() }}</span>
+    </div>
+  </div>
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
+  <form class="stack" (submit)="save($event)">
+    <textarea class="cmd" name="document" rows="16">{{ pretty() }}</textarea>
+    <div class="actions">
+      <button class="btn" type="submit" [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save JSON' }}</button>
+      <button class="btn ghost" type="button" (click)="reload()">Reload</button>
+      <button class="btn danger" type="button" (click)="remove()">Delete</button>
+    </div>
+  </form>
+</section>

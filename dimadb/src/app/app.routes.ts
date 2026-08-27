@@ -33,6 +33,11 @@ export const routes: Routes = [
         title: 'Key | dimadb',
       },
       {
+        path: 'doc',
+        loadComponent: () => import('./pages/doc-page.component').then((m) => m.DocPageComponent),
+        title: 'Document | dimadb',
+      },
+      {
         path: 'console',
         loadComponent: () => import('./pages/console-page.component').then((m) => m.ConsolePageComponent),
         title: 'Console | dimadb',

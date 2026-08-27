@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 
 import { extractApiError } from '../services/api-error';
+import { DbEngine } from '../services/api.types';
 import { ConnectionsService } from '../services/connections.service';
 
 @Component({
@@ -14,6 +15,11 @@ export class ConnectionsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly adding = signal(false);
   readonly pings = signal<Record<string, string>>({});
+  readonly engine = signal<DbEngine>('redis');
+
+  onEngine(event: Event): void {
+    this.engine.set((event.target as HTMLSelectElement).value as DbEngine);
+  }
 
   async add(event: Event): Promise<void> {
     event.preventDefault();
@@ -23,8 +29,9 @@ export class ConnectionsPageComponent {
     this.adding.set(true);
     this.errorMessage.set(null);
     try {
-      await this.connections.add(name, url);
+      await this.connections.add(name, url, this.engine());
       (event.target as HTMLFormElement).reset();
+      this.engine.set('redis');
     } catch (error) {
       this.errorMessage.set(extractApiError(error, 'Could not add connection').message);
     } finally {

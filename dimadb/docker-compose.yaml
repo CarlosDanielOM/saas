@@ -11,6 +11,7 @@ services:
       PUBLIC_DIR: /app/public
       DATA_DIR: /data
       DIMADB_REDIS_DRAGONFLY: ${DIMADB_REDIS_DRAGONFLY:-redis://dragonfly:6379}
+      DIMADB_MONGO_DIMABOT: ${DIMADB_MONGO_DIMABOT:-}
     volumes:
       - ./data:/data
     networks:

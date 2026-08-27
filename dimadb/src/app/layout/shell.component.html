@@ -24,7 +24,7 @@
         <span class="sr-only">Connection</span>
         <select [value]="connections.selectedId() || ''" (change)="onSelect($event)">
           @for (item of connections.items(); track item.id) {
-            <option [value]="item.id">{{ item.name }}</option>
+            <option [value]="item.id">{{ item.name }} · {{ item.engine }}</option>
           }
           @if (connections.items().length === 0) {
             <option value="">No connections</option>

@@ -92,6 +92,12 @@ textarea.cmd {
 .pill.list { color: #fbbf24; }
 .pill.set { color: #c4b5fd; }
 .pill.zset { color: #fda4af; }
+.pill.redis { color: var(--accent); }
+.pill.mongo { color: #86efac; }
+
+select.search {
+  appearance: none;
+}
 
 .btn {
   min-height: 44px;

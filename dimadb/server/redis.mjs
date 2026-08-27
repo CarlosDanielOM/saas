@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { createClient } from 'redis';
 
 const DANGEROUS = new Set([
@@ -10,64 +9,16 @@ const MUTATE_OPS = new Set([
   'ttl', 'hset', 'hdel', 'lset', 'lpush', 'rpush', 'ldel', 'sadd', 'srem', 'zadd', 'zrem',
 ]);
 
-export function createRedisHub(store) {
+export function createRedisHub(registry) {
   const clients = new Map();
 
-  function envConnections() {
-    return Object.entries(process.env)
-      .filter(([key, value]) => key.startsWith('DIMADB_REDIS_') && value)
-      .map(([key, value]) => ({
-        id: `env:${key.slice('DIMADB_REDIS_'.length).toLowerCase()}`,
-        name: key.slice('DIMADB_REDIS_'.length).replaceAll('_', ' ').toLowerCase(),
-        url: String(value),
-        source: 'env',
-      }));
-  }
-
-  function localConnections() {
-    return store.connections().map((row) => ({
-      ...row,
-      source: 'local',
-    }));
-  }
-
-  function allConnections() {
-    return [...envConnections(), ...localConnections()];
-  }
-
-  function publicConnection(row) {
-    return {
-      id: row.id,
-      name: row.name,
-      url: maskUrl(resolveUrl(row)),
-      source: row.source,
-    };
-  }
-
-  function resolveUrl(row) {
-    if (row.source === 'env') {
-      return row.url;
-    }
-    if (row.passwordEnc) {
-      return injectPassword(row.url, store.decrypt(row.passwordEnc));
-    }
-    return row.url;
-  }
-
-  function getConnection(id) {
-    return allConnections().find((row) => row.id === id) || null;
-  }
-
   async function clientFor(id) {
-    const connection = getConnection(id);
-    if (!connection) {
-      throw Object.assign(new Error('Connection not found'), { status: 404 });
-    }
+    const connection = registry.require(id, 'redis');
     const cached = clients.get(id);
     if (cached) {
       return cached;
     }
-    const client = createClient({ url: resolveUrl(connection) });
+    const client = createClient({ url: registry.resolveUrl(connection) });
     client.on('error', (error) => {
       console.error(`redis ${id}`, error.message);
     });
@@ -77,32 +28,7 @@ export function createRedisHub(store) {
   }
 
   return {
-    list() {
-      return allConnections().map(publicConnection);
-    },
-    add({ name, url }) {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'redis:' && parsed.protocol !== 'rediss:') {
-        throw Object.assign(new Error('URL must start with redis:// or rediss://'), { status: 400 });
-      }
-      const password = parsed.password;
-      parsed.password = '';
-      const row = {
-        id: randomUUID(),
-        name: String(name || parsed.hostname || 'redis').trim(),
-        url: parsed.toString(),
-        passwordEnc: password ? store.encrypt(password) : '',
-        createdAt: new Date().toISOString(),
-      };
-      store.saveConnections([...store.connections(), row]);
-      return publicConnection({ ...row, source: 'local' });
-    },
-    remove(id) {
-      const row = store.connections().find((item) => item.id === id);
-      if (!row) {
-        throw Object.assign(new Error('Local connection not found'), { status: 404 });
-      }
-      store.saveConnections(store.connections().filter((item) => item.id !== id));
+    drop(id) {
       const client = clients.get(id);
       if (client) {
         clients.delete(id);
@@ -286,24 +212,6 @@ function splitTreeNode(key, prefix) {
   }
   const label = rest.slice(0, index);
   return { kind: 'folder', prefix: `${prefix}${label}:`, label };
-}
-
-function maskUrl(url) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.password) {
-      parsed.password = '***';
-    }
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
-function injectPassword(url, password) {
-  const parsed = new URL(url);
-  parsed.password = password;
-  return parsed.toString();
 }
 
 function requireType(actual, expected) {
