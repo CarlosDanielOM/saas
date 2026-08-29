@@ -160,13 +160,23 @@
           </div>
 
           <div class="lf-preview__actions">
-            <button
-              type="button"
-              class="lf-btn lf-btn--primary"
-              (click)="copyUrl()"
-            >
-              {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
-            </button>
+            @if (isDesignLocked(design)) {
+              <button
+                type="button"
+                class="lf-btn lf-btn--gold"
+                (click)="openUpgrade()"
+              >
+                {{ t('clips.upgradeToAccess') }}
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="lf-btn lf-btn--primary"
+                (click)="copyUrl()"
+              >
+                {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
+              </button>
+            }
 
             <button
               type="button"
@@ -177,9 +187,11 @@
               {{ t('clips.testDesign') }}
             </button>
 
-            <a class="lf-btn" [href]="previewUrl()" target="_blank" rel="noopener noreferrer">
-              {{ t('clips.openInNewTab') }}
-            </a>
+            @if (!isDesignLocked(design)) {
+              <a class="lf-btn" [href]="previewUrl()" target="_blank" rel="noopener noreferrer">
+                {{ t('clips.openInNewTab') }}
+              </a>
+            }
           </div>
 
           @if (!canTest()) {

@@ -25,7 +25,7 @@
         [disabled]="isBusy()"
         [attr.aria-label]="t('common.close')"
       >
-        <lucide-icon [img]="xIcon" class="upgrade-modal-close-icon"></lucide-icon>
+         <lucide-icon [name]="xIcon" class="upgrade-modal-close-icon"></lucide-icon>
       </button>
 
       <div class="upgrade-modal-content">
@@ -42,10 +42,10 @@
           @case ('winback') {
             <div class="upgrade-modal-state">
               <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--winback" aria-hidden="true">
-                <lucide-icon [img]="sparklesIcon" class="upgrade-modal-icon"></lucide-icon>
+                <lucide-icon [name]="sparklesIcon" class="upgrade-modal-icon"></lucide-icon>
               </div>
               <span class="upgrade-modal-winback-pill">
-                <lucide-icon [img]="sparklesIcon" class="upgrade-modal-winback-pill-icon"></lucide-icon>
+                <lucide-icon [name]="sparklesIcon" class="upgrade-modal-winback-pill-icon"></lucide-icon>
                 {{ t('upgradeModal.winbackBadge') }}
               </span>
               <h2 id="upgrade-modal-title" class="upgrade-modal-title">
@@ -59,7 +59,7 @@
           @case ('reactivate') {
             <div class="upgrade-modal-state">
               <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--reactivate" aria-hidden="true">
-                <lucide-icon [img]="refreshIcon" class="upgrade-modal-icon"></lucide-icon>
+                <lucide-icon [name]="refreshIcon" class="upgrade-modal-icon"></lucide-icon>
               </div>
               <h2 id="upgrade-modal-title" class="upgrade-modal-title">
                 {{ t('upgradeModal.reactivateTitle') }}
@@ -72,7 +72,7 @@
           @case ('already_subscribed') {
             <div class="upgrade-modal-state">
               <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--success" aria-hidden="true">
-                <lucide-icon [img]="checkIcon" class="upgrade-modal-icon"></lucide-icon>
+                <lucide-icon [name]="checkIcon" class="upgrade-modal-icon"></lucide-icon>
               </div>
               <h2 id="upgrade-modal-title" class="upgrade-modal-title">
                 {{ t('upgradeModal.alreadySubscribed.title', { tier: tierName(p.currentTier) }) }}
@@ -95,7 +95,7 @@
           @case ('error') {
             <div class="upgrade-modal-state">
               <div class="upgrade-modal-icon-badge upgrade-modal-icon-badge--error" aria-hidden="true">
-                <lucide-icon [img]="alertIcon" class="upgrade-modal-icon"></lucide-icon>
+                <lucide-icon [name]="alertIcon" class="upgrade-modal-icon"></lucide-icon>
               </div>
               <h2 id="upgrade-modal-title" class="upgrade-modal-title">
                 {{ t('upgradeModal.errorTitle') }}
@@ -143,14 +143,13 @@
                   [class.upgrade-tier-card--pro]="offer.tier === 'pro'"
                   [class.upgrade-tier-card--recommended]="offer.recommended"
                 >
-                  @if (offer.recommended) {
-                    <span class="upgrade-tier-card__recommended-badge">
-                      <lucide-icon [img]="sparklesIcon" class="upgrade-tier-card__recommended-icon"></lucide-icon>
-                      {{ t('upgradeModal.recommended') }}
-                    </span>
-                  }
-
                   <header class="upgrade-tier-card__header">
+                    @if (offer.recommended) {
+                      <span class="upgrade-tier-card__recommended-badge">
+                        <lucide-icon [name]="sparklesIcon" class="upgrade-tier-card__recommended-icon"></lucide-icon>
+                        {{ t('upgradeModal.recommended') }}
+                      </span>
+                    }
                     <h3 class="upgrade-tier-card__name">{{ offer.name }}</h3>
                     <p class="upgrade-tier-card__price">{{ offer.priceLabel }}</p>
                   </header>
@@ -158,7 +157,7 @@
                   <ul class="upgrade-tier-card__benefits">
                     @for (benefit of offer.benefits; track benefit) {
                       <li class="upgrade-tier-card__benefit">
-                        <lucide-icon [img]="checkIcon" class="upgrade-tier-card__benefit-icon"></lucide-icon>
+                        <lucide-icon [name]="checkIcon" class="upgrade-tier-card__benefit-icon"></lucide-icon>
                         <span>{{ benefit }}</span>
                       </li>
                     }

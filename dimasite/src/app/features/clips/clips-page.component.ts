@@ -79,7 +79,7 @@ export class ClipsPageComponent {
 
   readonly canTest = computed(() => {
     const design = this.selectedDesign();
-    if (!design || this.isDesignLocked(design)) {
+    if (!design) {
       return false;
     }
     return Boolean(this.userSettings().channelID);
@@ -116,19 +116,15 @@ export class ClipsPageComponent {
   }
 
   selectDesign(design: ClipDesign): void {
-    if (this.isDesignLocked(design)) {
-      void this.upgradeService.promptUpgradeForModule({
-        moduleId: 'clips',
-        source: 'clips_design'
-      });
-      return;
-    }
-
     this.selectedDesign.set(design);
     this.config.update((cfg) => ({
       ...cfg,
       selectedDesignId: design.id
     }));
+  }
+
+  openUpgrade(): void {
+    void this.upgradeService.promptUpgradeForAnyPlan('clips_design');
   }
 
   updateTimeout(event: Event): void {

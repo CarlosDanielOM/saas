@@ -74,13 +74,12 @@
 
 .upgrade-modal-canvas {
   position: absolute;
-  inset: 0 0 auto;
-  height: 7.5rem;
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
   background:
-    radial-gradient(420px 160px at 80% -20%, var(--gold-soft), transparent 70%),
-    radial-gradient(320px 140px at 12% 0%, var(--accent-soft), transparent 65%);
+    radial-gradient(420px 180px at 88% -8%, var(--gold-soft), transparent 62%),
+    radial-gradient(340px 160px at 8% 0%, var(--accent-soft), transparent 58%);
 }
 
 .upgrade-modal-particles,
@@ -91,7 +90,7 @@
 }
 
 .upgrade-modal-particles-fallback {
-  background: linear-gradient(180deg, var(--gold-soft), transparent 80%);
+  background: linear-gradient(180deg, var(--gold-soft), transparent 42%);
 }
 
 .upgrade-modal-close {
@@ -126,12 +125,26 @@
   height: 1.15rem;
 }
 
+lucide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+lucide-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .upgrade-modal-content {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 1rem;
-  padding: 1.15rem 1.1rem 1.25rem;
+  gap: 1.1rem;
+  padding: 1.35rem 1.15rem 1.35rem;
 }
 
 .upgrade-modal-header {
@@ -162,12 +175,14 @@
 
 .upgrade-tier-card {
   position: relative;
-  display: grid;
-  gap: 0.85rem;
-  padding: 1rem 0.95rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-height: 100%;
+  padding: 1.1rem 1rem 1rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--tile) 88%, var(--bg));
+  background: color-mix(in srgb, var(--tile) 92%, var(--bg));
   box-shadow: 0 8px 24px rgba(15, 15, 20, 0.06);
 }
 
@@ -184,17 +199,15 @@
 }
 
 .upgrade-tier-card__recommended-badge {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.25rem 0.55rem;
+  width: fit-content;
+  padding: 0.28rem 0.6rem;
   border-radius: 999px;
   background: var(--gold-soft);
   color: var(--gold);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -207,8 +220,7 @@
 
 .upgrade-tier-card__header {
   display: grid;
-  gap: 0.15rem;
-  padding-right: 5.5rem;
+  gap: 0.28rem;
 }
 
 .upgrade-tier-card__name {
@@ -257,6 +269,7 @@
   justify-content: center;
   min-height: 44px;
   width: 100%;
+  margin-top: auto;
   padding: 0.7rem 1rem;
   border: 1px solid var(--btn-border);
   border-radius: 999px;
