@@ -61,7 +61,7 @@ export function createMongoHub(registry) {
       const from = Math.max(Number(skip) || 0, 0);
       const [items, total] = await Promise.all([
         col.find(parsed).skip(from).limit(take).toArray(),
-        col.estimatedDocumentCount(),
+        Object.keys(parsed).length ? col.countDocuments(parsed) : col.estimatedDocumentCount(),
       ]);
       return {
         db,
@@ -71,7 +71,7 @@ export function createMongoHub(registry) {
         total,
         docs: items.map((doc) => ({
           id: idOf(doc),
-          preview: preview(doc),
+          document: EJSON.serialize(doc),
         })),
       };
     },
@@ -162,11 +162,4 @@ function idQuery(docId) {
   return { _id: value };
 }
 
-function preview(doc) {
-  try {
-    const text = JSON.stringify(EJSON.serialize(doc));
-    return text.length > 96 ? `${text.slice(0, 96)}…` : text;
-  } catch {
-    return idOf(doc);
-  }
-}
+

@@ -1,0 +1,109 @@
+@import './pages-shared.css';
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.crumbs a {
+  color: var(--accent);
+}
+
+.picks {
+  display: grid;
+  gap: 10px;
+}
+
+.pick {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick:hover,
+.pick:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.toolbar,
+.create {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.create {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--tile);
+}
+
+textarea.cmd.compact {
+  min-height: 88px;
+}
+
+.docs {
+  display: grid;
+  gap: 10px;
+}
+
+.doc {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--tile);
+}
+
+.doc:hover,
+.doc:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+
+.doc-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.doc-json {
+  margin: 0;
+  max-height: 14rem;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--fg);
+}
+
+@media (min-width: 640px) {
+  .picks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .create {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+}
+
+@media (min-width: 960px) {
+  .picks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

@@ -1,34 +1,21 @@
-<section>
-  <div class="head">
-    <h1>Browse</h1>
-    <p class="sub">
-      @if (connections.engine() === 'mongo') {
-        Expand a database, then a collection. Paste JSON to filter documents.
-      } @else {
-        Type to filter. Expand a group like a folder tree.
-      }
-    </p>
-    <input
-      class="search"
-      type="search"
-      [placeholder]="searchPlaceholder()"
-      [value]="query()"
-      (input)="onSearch($event)"
-    />
-  </div>
-  @if (errorMessage(); as message) {
-    <p class="sub">{{ message }}</p>
-  }
-  @if (connections.engine() === 'mongo') {
-    <form class="create" (submit)="create($event)">
-      <input class="search" name="db" placeholder="database" required aria-label="Database" />
-      <input class="search" name="collection" placeholder="collection" required aria-label="Collection" />
-      <textarea class="cmd compact" name="document" rows="3" placeholder="{}" aria-label="Document JSON"></textarea>
-      <button class="btn" type="submit" [disabled]="creating() || !connections.selectedId()">
-        {{ creating() ? 'Creating…' : 'Insert document' }}
-      </button>
-    </form>
-  } @else {
+@if (connections.engine() === 'mongo') {
+  <app-mongo-browse />
+} @else {
+  <section>
+    <div class="head">
+      <h1>Browse</h1>
+      <p class="sub">Type to filter. Expand a group like a folder tree.</p>
+      <input
+        class="search"
+        type="search"
+        placeholder="twitch"
+        [value]="query()"
+        (input)="onSearch($event)"
+      />
+    </div>
+    @if (errorMessage(); as message) {
+      <p class="sub">{{ message }}</p>
+    }
     <form class="create" (submit)="create($event)">
       <input class="search" name="key" placeholder="new:key" required aria-label="New key" />
       <select class="search" name="type" [value]="createType()" (change)="onCreateType($event)" aria-label="Key type">
@@ -49,18 +36,14 @@
         {{ creating() ? 'Creating…' : 'Create key' }}
       </button>
     </form>
-  }
-  @if (loading() && (connections.engine() === 'mongo' ? !mongoBranch('') : !branch(''))) {
-    <p class="sub">Scanning…</p>
-  }
-  <div class="tree">
-    @if (connections.engine() === 'mongo') {
-      <ng-container [ngTemplateOutlet]="mongoLevel" [ngTemplateOutletContext]="{ prefix: '' }" />
-    } @else {
-      <ng-container [ngTemplateOutlet]="level" [ngTemplateOutletContext]="{ prefix: '', depth: 0 }" />
+    @if (loading() && !branch('')) {
+      <p class="sub">Scanning…</p>
     }
-  </div>
-</section>
+    <div class="tree">
+      <ng-container [ngTemplateOutlet]="level" [ngTemplateOutletContext]="{ prefix: '', depth: 0 }" />
+    </div>
+  </section>
+}
 
 <ng-template #level let-prefix="prefix" let-depth="depth">
   @if (branch(prefix); as node) {
@@ -95,48 +78,6 @@
       <div class="item muted" [attr.data-more]="prefix">{{ loading() ? '…' : '' }}</div>
     }
     @if (!loading() && node.folders.length === 0 && node.keys.length === 0) {
-      <span class="item muted">empty</span>
-    }
-  }
-</ng-template>
-
-<ng-template #mongoLevel let-prefix="prefix">
-  @if (mongoBranch(prefix); as node) {
-    @for (folder of node.folders; track folder.prefix) {
-      <div class="node">
-        <button
-          class="item folder"
-          type="button"
-          [class.open]="expanded()[folder.prefix]"
-          (click)="toggle(folder.prefix)"
-        >
-          <span class="chevron" aria-hidden="true"></span>
-          <span class="label">{{ folder.label }}</span>
-        </button>
-        @if (expanded()[folder.prefix]) {
-          <div class="kids">
-            @if (!mongoBranch(folder.prefix) && loading()) {
-              <span class="item muted">…</span>
-            }
-            <ng-container [ngTemplateOutlet]="mongoLevel" [ngTemplateOutletContext]="{ prefix: folder.prefix }" />
-          </div>
-        }
-      </div>
-    }
-    @for (item of node.docs; track item.id) {
-      <a
-        class="item leaf"
-        routerLink="/doc"
-        [queryParams]="mongoDocParams(prefix, item.id)"
-      >
-        <span class="dot" aria-hidden="true"></span>
-        <span class="label">{{ item.id }}</span>
-      </a>
-    }
-    @if (node.more) {
-      <div class="item muted" [attr.data-more]="prefix">{{ loading() ? '…' : '' }}</div>
-    }
-    @if (!loading() && node.folders.length === 0 && node.docs.length === 0) {
       <span class="item muted">empty</span>
     }
   }

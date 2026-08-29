@@ -1,0 +1,106 @@
+<section class="mongo">
+  <div class="head">
+    <h1>Browse</h1>
+    <nav class="crumbs" aria-label="Mongo path">
+      <a routerLink="/browse" [queryParams]="rootParams">Databases</a>
+      @if (db()) {
+        <span>/</span>
+        <a routerLink="/browse" [queryParams]="dbParams()">{{ db() }}</a>
+      }
+      @if (collection()) {
+        <span>/</span>
+        <strong>{{ collection() }}</strong>
+      }
+    </nav>
+    <p class="sub">
+      @if (view() === 'databases') {
+        Pick a database.
+      } @else if (view() === 'collections') {
+        Pick a collection.
+      } @else {
+        Click a row to edit the document.
+      }
+    </p>
+  </div>
+
+  @if (errorMessage(); as message) {
+    <p class="sub">{{ message }}</p>
+  }
+
+  @if (view() === 'databases') {
+    @if (loading() && databases().length === 0) {
+      <p class="sub">Loading databases…</p>
+    }
+    <div class="picks">
+      @for (item of databases(); track item.name) {
+        <button class="card pick" type="button" (click)="openDb(item.name)">
+          <div class="key">{{ item.name }}</div>
+          <div class="meta">{{ size(item.sizeOnDisk) || (item.empty ? 'empty' : 'database') }}</div>
+        </button>
+      } @empty {
+        @if (!loading()) {
+          <p class="sub">No databases.</p>
+        }
+      }
+    </div>
+  }
+
+  @if (view() === 'collections') {
+    @if (loading() && collections().length === 0) {
+      <p class="sub">Loading collections…</p>
+    }
+    <div class="picks">
+      @for (item of collections(); track item.name) {
+        <button class="card pick" type="button" (click)="openCollection(item.name)">
+          <div class="key">{{ item.name }}</div>
+          <div class="meta">{{ item.type || 'collection' }}</div>
+        </button>
+      } @empty {
+        @if (!loading()) {
+          <p class="sub">No collections.</p>
+        }
+      }
+    </div>
+  }
+
+  @if (view() === 'documents') {
+    <form class="toolbar" (submit)="$event.preventDefault(); applyFilter()">
+      <input
+        class="search"
+        type="search"
+        [value]="filter()"
+        (input)="onFilter($event)"
+        placeholder="filter json"
+        aria-label="Document filter"
+      />
+      <button class="btn" type="submit" [disabled]="loading()">Filter</button>
+    </form>
+    <form class="create" (submit)="insert($event)">
+      <textarea class="cmd compact" name="document" rows="3" placeholder="{}" aria-label="New document JSON"></textarea>
+      <button class="btn" type="submit" [disabled]="creating()">
+        {{ creating() ? 'Inserting…' : 'Insert document' }}
+      </button>
+    </form>
+    <p class="sub">{{ docs().length }} / {{ total() }} documents</p>
+    @if (loading() && docs().length === 0) {
+      <p class="sub">Loading documents…</p>
+    }
+    <div class="docs">
+      @for (item of docs(); track item.id) {
+        <a class="doc" routerLink="/doc" [queryParams]="docParams(item.id)">
+          <div class="doc-id">{{ item.id }}</div>
+          <pre class="doc-json">{{ pretty(item.document) }}</pre>
+        </a>
+      } @empty {
+        @if (!loading()) {
+          <p class="sub">No documents.</p>
+        }
+      }
+    </div>
+    @if (docs().length < total()) {
+      <button class="btn ghost" type="button" [disabled]="loading()" (click)="loadMore()">
+        {{ loading() ? 'Loading…' : 'Load more' }}
+      </button>
+    }
+  }
+</section>

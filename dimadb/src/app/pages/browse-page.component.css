@@ -19,11 +19,6 @@ textarea.cmd.compact {
   grid-column: 1 / -1;
 }
 
-textarea.cmd.compact {
-  min-height: 88px;
-  grid-column: 1 / -1;
-}
-
 @media (min-width: 640px) {
   .create {
     grid-template-columns: minmax(8rem, 1fr) 7.5rem minmax(8rem, 1fr) auto;

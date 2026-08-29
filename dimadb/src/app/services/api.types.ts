@@ -102,7 +102,7 @@ export interface MongoCollectionRow {
 
 export interface MongoDocRow {
   id: string;
-  preview: string;
+  document: unknown;
 }
 
 export interface MongoDocsResult {
