@@ -738,3 +738,12 @@ export function blockTone(type: MockNode['type']): string {
       return 'text';
   }
 }
+
+export type BlockShape = 'stack' | 'oval' | 'hex' | 'c';
+
+export function blockShape(type: MockNode['type'], inset: boolean): BlockShape {
+  if (type === 'forLoop' || type === 'ternary' || type === 'group') return 'c';
+  if (type === 'binary') return 'hex';
+  if (inset) return 'oval';
+  return 'stack';
+}

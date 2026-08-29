@@ -33,10 +33,14 @@ export class CommandAstMockComponent {
   readonly categories = PALETTE_CATEGORIES;
   readonly samples = SAMPLES;
   readonly panel = signal<MockPanel>('canvas');
-  readonly preview = signal<'source' | 'ast'>('source');
+  readonly sourceDraft = signal<string | null>(null);
 
   itemsFor(category: PaletteCategory): PaletteItem[] {
     return this.palette.filter((item) => item.category === category);
+  }
+
+  sourceValue(): string {
+    return this.sourceDraft() ?? this.store.source();
   }
 
   isDarkMode(): boolean {
@@ -71,15 +75,39 @@ export class CommandAstMockComponent {
     this.store.dropOn(target);
   }
 
+  onSourceInput(event: Event): void {
+    this.sourceDraft.set((event.target as HTMLTextAreaElement).value);
+  }
+
+  onSourcePaste(event: ClipboardEvent): void {
+    const text = event.clipboardData?.getData('text') ?? '';
+    if (!text.trim()) return;
+    event.preventDefault();
+    this.sourceDraft.set(null);
+    this.store.loadFromSource(text);
+  }
+
+  loadSample(id: string): void {
+    this.sourceDraft.set(null);
+    this.store.loadSample(id);
+  }
+
+  applySource(): void {
+    const draft = this.sourceDraft();
+    if (draft === null) return;
+    if (draft === this.store.source()) {
+      this.sourceDraft.set(null);
+      return;
+    }
+    this.store.loadFromSource(draft);
+    if (!this.store.parseError()) this.sourceDraft.set(null);
+  }
+
   patchUser(event: Event): void {
     this.store.patchContext({ user: (event.target as HTMLInputElement).value });
   }
 
   patchArg(event: Event): void {
     this.store.patchContext({ argument: (event.target as HTMLInputElement).value });
-  }
-
-  copySource(): void {
-    void navigator.clipboard?.writeText(this.store.source());
   }
 }

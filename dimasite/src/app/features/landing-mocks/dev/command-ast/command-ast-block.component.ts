@@ -4,9 +4,14 @@ import {
   BINARY_OPS,
   type DropTarget,
   type ListSlot,
+  type MockForLoop,
   type MockNode,
   type SingleSlot,
-  blockTone
+  binary,
+  blockShape,
+  blockTone,
+  lit,
+  loopVar
 } from './command-ast-mock.model';
 import { CommandAstMockStore } from './command-ast-mock.store';
 
@@ -15,16 +20,24 @@ import { CommandAstMockStore } from './command-ast-mock.store';
   imports: [CommandAstBlockComponent],
   templateUrl: './command-ast-block.component.html',
   styleUrl: './command-ast-block.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class.is-inset]': 'inset()'
+  }
 })
 export class CommandAstBlockComponent {
   readonly store = inject(CommandAstMockStore);
   readonly node = input.required<MockNode>();
+  readonly inset = input(false);
 
   readonly ops = BINARY_OPS;
 
   tone(type: MockNode['type']): string {
     return blockTone(type);
+  }
+
+  shape(type: MockNode['type']): string {
+    return blockShape(type, this.inset());
   }
 
   isSelected(id: string): boolean {
@@ -105,9 +118,18 @@ export class CommandAstBlockComponent {
     this.store.patch(id, { operator: value } as Partial<MockNode>);
   }
 
-  patchStorage(id: string, event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.store.patch(id, { storage: value } as Partial<MockNode>);
+  repeatCount(node: MockForLoop): string {
+    if (node.condition?.type === 'binary' && node.condition.right?.type === 'literal') {
+      return node.condition.right.value;
+    }
+    return '3';
+  }
+
+  patchRepeat(node: MockForLoop, event: Event): void {
+    const count = (event.target as HTMLInputElement).value.replace(/\D/g, '') || '0';
+    this.store.patch(node.id, {
+      condition: binary(loopVar(node.loopVar), '<', lit(count))
+    } as Partial<MockNode>);
   }
 
   remove(event: Event, id: string): void {

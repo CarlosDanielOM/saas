@@ -14,6 +14,7 @@ import {
   removeNode
 } from './command-ast-mock.model';
 import { DEFAULT_MOCK_CONTEXT, type MockChatContext, mockEvaluate } from './command-ast-mock.eval';
+import { parseSource } from './command-ast-mock.parse';
 import { astPreview, toSource } from './command-ast-mock.source';
 
 export type DragPayload = { mode: 'new'; itemId: string } | { mode: 'move'; nodeId: string };
@@ -27,6 +28,7 @@ export class CommandAstMockStore {
   readonly hoverTarget = signal<DropTarget | null>(null);
   readonly runOutput = signal<string>('');
   readonly runError = signal<string | null>(null);
+  readonly parseError = signal<string | null>(null);
   readonly context = signal<MockChatContext>({ ...DEFAULT_MOCK_CONTEXT });
 
   private readonly history = signal<MockRoot[]>([this.root()]);
@@ -61,6 +63,7 @@ export class CommandAstMockStore {
     this.dropTarget.set(null);
     this.runOutput.set('');
     this.runError.set(null);
+    this.parseError.set(null);
   }
 
   clear(): void {
@@ -69,6 +72,19 @@ export class CommandAstMockStore {
     this.dropTarget.set(null);
     this.runOutput.set('');
     this.runError.set(null);
+    this.parseError.set(null);
+  }
+
+  loadFromSource(text: string): void {
+    const { root, error } = parseSource(text);
+    if (error) {
+      this.parseError.set(error);
+      return;
+    }
+    this.parseError.set(null);
+    this.commit(root);
+    this.selectedId.set(null);
+    this.dropTarget.set(null);
   }
 
   placePalette(item: PaletteItem): void {
