@@ -28,22 +28,8 @@ export type UpgradePromptResult =
   | { readonly kind: 'redirected'; readonly tier: 'premium' | 'pro' }
   | { readonly kind: 'error'; readonly message: string };
 
-const PREMIUM_BENEFITS: readonly string[] = [
-  '125,000 AI credits / month',
-  'Human-like TTS voices',
-  'Memory learning from chat',
-  'Public or private upload visibility',
-  'Priority support'
-];
-
-const PRO_BENEFITS: readonly string[] = [
-  '500,000 AI credits / month',
-  'Voice cloning TTS',
-  'Learns from chat + stream summaries',
-  'Public or private upload visibility',
-  'Priority+ support',
-  'Custom SO overlay design'
-];
+const PREMIUM_BENEFIT_COUNT = 5;
+const PRO_BENEFIT_COUNT = 6;
 
 @Injectable({
   providedIn: 'root'
@@ -275,7 +261,10 @@ export class UpgradeService {
 
   private buildOffer(tier: 'premium' | 'pro', currentTier: PlanTier): UpgradeTierOffer {
     const recommended = tier === 'pro' && currentTier === 'free';
-    const benefits = tier === 'pro' ? PRO_BENEFITS : PREMIUM_BENEFITS;
+    const benefitCount = tier === 'pro' ? PRO_BENEFIT_COUNT : PREMIUM_BENEFIT_COUNT;
+    const benefits = Array.from({ length: benefitCount }, (_, index) =>
+      this.t(`upgradeModal.tiers.${tier}.benefits.${index}`)
+    );
 
     let ctaLabel: string;
     if (currentTier === 'free') {

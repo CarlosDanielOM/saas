@@ -16,8 +16,8 @@
     "planFree": "Gratis",
     "planPremium": "Premium",
     "planPro": "Pro",
-    "upgrade": "Actualizar",
-    "upgradeToPro": "Actualizar a Pro"
+    "upgrade": "Mejorar plan",
+    "upgradeToPro": "Mejorar a Pro"
   },
   "modules": {
     "title": "Modulos",
@@ -582,7 +582,7 @@
       "description": "Hub beta de analíticas del canal. Empieza con el Registro de Seguidores: busca followers actuales, filtra mutuos y ve la antigüedad del follow (Premium/Pro)."
     },
     "openModule": "Abrir Modulo",
-    "upgradeToAccess": "Actualizar para Acceder",
+    "upgradeToAccess": "Mejorar plan para acceder",
     "comingSoon": "Proximamente",
     "comingSoonLocked": "Proximamente — necesitaras un plan {{tier}} para acceder cuando se publique.",
     "unavailable": "No disponible",
@@ -963,7 +963,7 @@
     "selectDesignTitle": "Selecciona un Diseño",
     "selectDesignDescription": "Elige un diseño de overlay de clips de arriba para comenzar",
     "premiumRequired": "Premium Requerido",
-    "upgradeToAccess": "Actualiza tu plan para acceder a este diseño",
+    "upgradeToAccess": "Mejora tu plan para acceder a este diseño",
     "underConstructionTitle": "En Construcción",
     "underConstructionMessage": "Este diseño aún no está disponible. ¡Vuelve pronto!",
     "testWarning": "Abre primero la URL del overlay de clips en OBS o navegador para habilitar las pruebas",
@@ -1010,8 +1010,8 @@
       "eyebrow": "Plan actual",
       "title": "Suscripcion",
       "currentLabel": "Actualmente estas en el plan {{tier}}.",
-      "upgradeCta": "Actualizar a Premium o Pro",
-      "upgradeToProCta": "Actualizar a Pro",
+      "upgradeCta": "Mejorar a Premium o Pro",
+      "upgradeToProCta": "Mejorar a Pro",
       "maxTierNote": "Estas en el plan mas alto — gracias por el apoyo!",
       "benefitCredits": "Hasta 500,000 creditos de IA / mes",
       "benefitTts": "Clonacion de voz TTS y voces humanas",
@@ -1962,7 +1962,7 @@
     "enabled": "Habilitado",
     "saveChanges": "Guardar Cambios",
     "deleteEvent": "Eliminar Evento",
-    "upgrade": "Actualizar",
+    "upgrade": "Mejorar plan",
     "configuration": "Configuracion",
     "pending": {
       "saving": "Guardando...",
@@ -2300,8 +2300,8 @@
   "upgradeModal": {
     "title": "Desbloquear {{module}}",
     "subtitle": {
-      "free": "Estas en el plan Gratis. Actualiza para desbloquear este modulo y todo lo que incluye.",
-      "premium": "Estas en Premium. Actualiza a Pro para desbloquear este modulo.",
+      "free": "Estas en el plan Gratis. Mejora tu plan para desbloquear este modulo y todo lo que incluye.",
+      "premium": "Estas en Premium. Mejora a Pro para desbloquear este modulo.",
       "pro": "Estas en Pro. Este modulo ya deberia estar desbloqueado — contacta a soporte si no es asi."
     },
     "recommended": "Recomendado",
@@ -2336,7 +2336,7 @@
           "Soporte prioritario"
         ],
         "cta": "Suscribirse a Premium",
-        "upgradeCta": "Actualizar a Premium",
+        "upgradeCta": "Mejorar a Premium",
         "reactivateCta": "Reactivar Premium"
       },
       "pro": {
@@ -2351,7 +2351,7 @@
           "Diseno de overlay SO personalizado"
         ],
         "cta": "Suscribirse a Pro",
-        "upgradeCta": "Actualizar a Pro",
+        "upgradeCta": "Mejorar a Pro",
         "reactivateCta": "Reactivar Pro",
         "winbackCta": "Reclamar oferta y reactivar Pro"
       }

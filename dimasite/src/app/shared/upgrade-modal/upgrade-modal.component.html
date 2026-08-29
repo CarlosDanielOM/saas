@@ -7,6 +7,7 @@
       #modalContainer
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
       [attr.aria-labelledby]="'upgrade-modal-title'"
     >
       <div class="upgrade-modal-canvas" aria-hidden="true">
@@ -138,7 +139,8 @@
               @for (offer of p.offers; track offer.tier) {
                 <article
                   class="upgrade-tier-card"
-                  [class]="'upgrade-tier-card--' + offer.tier"
+                  [class.upgrade-tier-card--premium]="offer.tier === 'premium'"
+                  [class.upgrade-tier-card--pro]="offer.tier === 'pro'"
                   [class.upgrade-tier-card--recommended]="offer.recommended"
                 >
                   @if (offer.recommended) {
@@ -165,7 +167,8 @@
                   <button
                     type="button"
                     class="upgrade-tier-card__cta"
-                    [class]="'upgrade-tier-card__cta--' + offer.tier"
+                    [class.upgrade-tier-card__cta--premium]="offer.tier === 'premium'"
+                    [class.upgrade-tier-card__cta--pro]="offer.tier === 'pro'"
                     [disabled]="isBusy()"
                     (click)="onSubscribe(offer.tier)"
                   >

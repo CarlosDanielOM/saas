@@ -19,6 +19,7 @@ import { UpgradeModalService } from '../../services/upgrade-modal.service';
   selector: 'app-upgrade-modal',
   imports: [LucideAngularModule],
   templateUrl: './upgrade-modal.component.html',
+  styleUrl: './upgrade-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UpgradeModalComponent {
@@ -56,6 +57,9 @@ export class UpgradeModalComponent {
   constructor() {
     effect(() => {
       const current = this.prompt();
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = current ? 'hidden' : '';
+      }
       if (current) {
         queueMicrotask(() => this.showModal());
       } else {
@@ -84,6 +88,9 @@ export class UpgradeModalComponent {
   }
 
   ngOnDestroy(): void {
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
     this.cleanupThreeJS();
     this.teardownReducedMotionListener();
   }
@@ -143,6 +150,7 @@ export class UpgradeModalComponent {
   private showModal(): void {
     requestAnimationFrame(() => {
       this.isVisible.set(true);
+      this.modalContainer()?.nativeElement.focus();
     });
   }
 
