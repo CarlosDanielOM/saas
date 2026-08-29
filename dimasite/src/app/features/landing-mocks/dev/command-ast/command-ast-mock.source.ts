@@ -38,6 +38,13 @@ function wrapCompute(inner: string, wrap: boolean): string {
   return `*(${inner})`;
 }
 
+function computeAtom(node: MockNode): string {
+  if (node.type === 'literal' && /[\s?:]/.test(node.value)) {
+    return `"${node.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+  return toSource(node, false);
+}
+
 export function toSource(node: MockNode, wrapComputeExpr = true): string {
   switch (node.type) {
     case 'literal':
@@ -60,13 +67,13 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
       return `%del(${storagePrefix(node.storage)}${node.name})`;
     case 'binary': {
       const left = node.left ? toSource(node.left, false) : '?';
-      const right = node.right ? toSource(node.right, false) : '?';
+      const right = node.right ? computeAtom(node.right) : '?';
       return wrapCompute(`${left} ${node.operator} ${right}`, wrapComputeExpr);
     }
     case 'ternary': {
       const test = node.test ? toSource(node.test, false) : '?';
-      const yes = node.consequent ? toSource(node.consequent, false) : '';
-      const no = node.alternate ? toSource(node.alternate, false) : '';
+      const yes = node.consequent ? computeAtom(node.consequent) : '';
+      const no = node.alternate ? computeAtom(node.alternate) : '';
       return wrapCompute(`${test} ? ${yes} : ${no}`, wrapComputeExpr);
     }
     case 'commandRef': {

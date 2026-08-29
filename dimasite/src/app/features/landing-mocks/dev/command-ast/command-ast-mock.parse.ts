@@ -48,12 +48,33 @@ function parseSequence(input: string): MockNode[] {
       i = parsed.next;
       continue;
     }
+    if (input[i] === '"' || input[i] === "'") {
+      const end = skipQuote(input, i);
+      nodes.push(lit(unquote(input.slice(i, end + 1))));
+      i = end + 1;
+      continue;
+    }
     const nextStart = findStart(input, i);
     const text = input.slice(i, nextStart);
+    const cut = nextQuote(text);
+    if (cut >= 0) {
+      const before = text.slice(0, cut);
+      if (before) nodes.push(lit(before));
+      i += cut;
+      continue;
+    }
     if (text) nodes.push(lit(text));
     i = nextStart;
   }
   return nodes.filter((node) => node.type !== 'literal' || node.value !== '');
+}
+
+function nextQuote(text: string): number {
+  const d = text.indexOf('"');
+  const s = text.indexOf("'");
+  if (d < 0) return s;
+  if (s < 0) return d;
+  return Math.min(d, s);
 }
 
 function matchStart(input: string, index: number): (typeof STARTS)[number] | null {
@@ -102,6 +123,10 @@ function parseStart(
 function matchingParen(input: string, from: number): number {
   let depth = 1;
   for (let i = from; i < input.length; i++) {
+    if (input[i] === '"' || input[i] === "'") {
+      i = skipQuote(input, i);
+      continue;
+    }
     const hit = matchStart(input, i);
     if (hit) {
       i += hit.length - 1;
@@ -153,13 +178,19 @@ function parseComputeInner(inner: string): MockNode {
   const trimmed = inner.trim();
   const forNode = parseFor(trimmed);
   if (forNode) return forNode;
+  return parseStar(trimmed);
+}
+
+function parseStar(input: string): MockNode {
+  const trimmed = input.trim();
+  if (!trimmed) return lit('');
   const q = splitTop(trimmed, '?');
   if (q) {
     const colon = splitTop(q.right, ':');
     return ternary(
       parseExpr(q.left),
-      parseOneOrGroup(colon?.left ?? q.right),
-      colon ? parseOneOrGroup(colon.right) : lit('')
+      parseStar(colon?.left ?? q.right),
+      colon ? parseStar(colon.right) : lit('')
     );
   }
   return parseExpr(trimmed);
@@ -211,10 +242,14 @@ function parseExpr(input: string): MockNode {
 function parsePrimary(input: string): MockNode {
   const trimmed = input.trim();
   if (!trimmed) return lit('');
+  if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
+    return lit(unquote(trimmed));
+  }
   const start = matchStart(trimmed, 0);
   if (start) {
-    const nodes = parseSequence(trimmed);
-    return nodes.length === 1 ? nodes[0] : group(nodes);
+    const parsed = parseStart(trimmed, 0, start);
+    if (parsed.next >= trimmed.length) return parsed.node;
+    return parseOneOrGroup(trimmed);
   }
   if (/^#[A-Za-z_][\w]*$/.test(trimmed)) return loopVar(trimmed.slice(1));
   return lit(trimmed);
@@ -226,6 +261,12 @@ function parseArgs(input: string): MockNode[] {
   while (i < input.length) {
     while (input[i] === ' ') i++;
     if (i >= input.length) break;
+    if (input[i] === '"' || input[i] === "'") {
+      const end = skipQuote(input, i);
+      out.push(lit(unquote(input.slice(i, end + 1))));
+      i = end + 1;
+      continue;
+    }
     const start = matchStart(input, i);
     if (start) {
       const parsed = parseStart(input, i, start);
@@ -241,7 +282,9 @@ function parseArgs(input: string): MockNode[] {
       continue;
     }
     let j = i;
-    while (j < input.length && input[j] !== ' ' && !matchStart(input, j)) j++;
+    while (j < input.length && input[j] !== ' ' && !matchStart(input, j) && input[j] !== '"' && input[j] !== "'") {
+      j++;
+    }
     const atom = input.slice(i, j);
     if (atom) out.push(lit(atom));
     i = j;
@@ -272,6 +315,10 @@ function parseStorage(raw: string): { name: string; storage: MockVarStorage } {
 function splitTop(input: string, sep: string): { left: string; right: string } | null {
   let depth = 0;
   for (let i = 0; i < input.length; i++) {
+    if (input[i] === '"' || input[i] === "'") {
+      i = skipQuote(input, i);
+      continue;
+    }
     const start = matchStart(input, i);
     if (start) {
       const close = matchingParen(input, i + start.length);
@@ -282,8 +329,32 @@ function splitTop(input: string, sep: string): { left: string; right: string } |
     if (ch === '(' || ch === '{') depth++;
     else if (ch === ')' || ch === '}') depth = Math.max(0, depth - 1);
     if (depth === 0 && input.startsWith(sep, i)) {
+      if (sep === '<' && input[i + 1] === '=') continue;
+      if (sep === '>' && input[i + 1] === '=') continue;
       return { left: input.slice(0, i), right: input.slice(i + sep.length) };
     }
   }
   return null;
+}
+
+function skipQuote(input: string, i: number): number {
+  const q = input[i];
+  i++;
+  while (i < input.length) {
+    if (input[i] === '\\') {
+      i += 2;
+      continue;
+    }
+    if (input[i] === q) return i;
+    i++;
+  }
+  return Math.max(i - 1, 0);
+}
+
+function unquote(raw: string): string {
+  const q = raw[0];
+  if ((q === '"' || q === "'") && raw.length >= 2 && raw.endsWith(q)) {
+    return raw.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+  }
+  return raw;
 }

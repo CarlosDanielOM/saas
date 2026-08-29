@@ -33,15 +33,17 @@
           <app-command-ast-block [node]="arg" [inset]="true" />
         </span>
       }
-      <button
-        type="button"
-        class="blk__plus"
-        [class.is-mark]="isMarked(listTarget(n.id, 'args', n.args.length))"
-        (dragover)="onDragOver($event, listTarget(n.id, 'args', n.args.length))"
-        (drop)="onDrop($event, listTarget(n.id, 'args', n.args.length))"
-        (click)="markSlot($event, listTarget(n.id, 'args', n.args.length))"
-        aria-label="Add argument"
-      ></button>
+      @if (isSelected(n.id)) {
+        <button
+          type="button"
+          class="blk__plus"
+          [class.is-mark]="isMarked(listTarget(n.id, 'args', n.args.length))"
+          (dragover)="onDragOver($event, listTarget(n.id, 'args', n.args.length))"
+          (drop)="onDrop($event, listTarget(n.id, 'args', n.args.length))"
+          (click)="markSlot($event, listTarget(n.id, 'args', n.args.length))"
+          aria-label="Add argument"
+        ></button>
+      }
     }
     @case ('getVar') {
       <span class="blk__w">var</span>
@@ -108,9 +110,9 @@
           <app-command-ast-block [node]="n.left" [inset]="true" />
         }
       </span>
-      <select class="blk__op" [value]="n.operator" (change)="patchOp(n.id, $event)" (mousedown)="stop($event)" aria-label="Operator">
+      <select class="blk__op" (change)="patchOp(n.id, $event)" (mousedown)="stop($event)" aria-label="Operator">
         @for (op of ops; track op) {
-          <option [value]="op">{{ op }}</option>
+          <option [value]="op" [selected]="op === n.operator">{{ op }}</option>
         }
       </select>
       <span
@@ -126,43 +128,45 @@
       </span>
     }
     @case ('ternary') {
-      <div class="blk__hat">
-        <span class="blk__w">if</span>
-        <span
-          class="blk__hole"
-          [class.is-hot]="isHot(singleTarget(n.id, 'test'))"
-          (dragover)="onDragOver($event, singleTarget(n.id, 'test'))"
-          (drop)="onDrop($event, singleTarget(n.id, 'test'))"
-          (click)="markSlot($event, singleTarget(n.id, 'test'))"
+      @for (branch of ifChain(n); track branch.id; let i = $index) {
+        <div class="blk__hat">
+          <span class="blk__w">{{ i === 0 ? 'if' : 'else if' }}</span>
+          <span
+            class="blk__hole"
+            [class.is-hot]="isHot(singleTarget(branch.id, 'test'))"
+            (dragover)="onDragOver($event, singleTarget(branch.id, 'test'))"
+            (drop)="onDrop($event, singleTarget(branch.id, 'test'))"
+            (click)="markSlot($event, singleTarget(branch.id, 'test'))"
+          >
+            @if (branch.test) {
+              <app-command-ast-block [node]="branch.test" [inset]="true" />
+            }
+          </span>
+        </div>
+        <div
+          class="blk__mouth"
+          [class.is-hot]="isHot(singleTarget(branch.id, 'consequent'))"
+          (dragover)="onDragOver($event, singleTarget(branch.id, 'consequent'))"
+          (drop)="onDrop($event, singleTarget(branch.id, 'consequent'))"
+          (click)="markSlot($event, singleTarget(branch.id, 'consequent'))"
         >
-          @if (n.test) {
-            <app-command-ast-block [node]="n.test" [inset]="true" />
+          @if (branch.consequent) {
+            <app-command-ast-block [node]="branch.consequent" />
           }
-        </span>
-      </div>
-      <div
-        class="blk__mouth"
-        [class.is-hot]="isHot(singleTarget(n.id, 'consequent'))"
-        (dragover)="onDragOver($event, singleTarget(n.id, 'consequent'))"
-        (drop)="onDrop($event, singleTarget(n.id, 'consequent'))"
-        (click)="markSlot($event, singleTarget(n.id, 'consequent'))"
-      >
-        @if (n.consequent) {
-          <app-command-ast-block [node]="n.consequent" />
-        }
-      </div>
-      <div class="blk__hat"><span class="blk__w">else</span></div>
-      <div
-        class="blk__mouth"
-        [class.is-hot]="isHot(singleTarget(n.id, 'alternate'))"
-        (dragover)="onDragOver($event, singleTarget(n.id, 'alternate'))"
-        (drop)="onDrop($event, singleTarget(n.id, 'alternate'))"
-        (click)="markSlot($event, singleTarget(n.id, 'alternate'))"
-      >
-        @if (n.alternate) {
-          <app-command-ast-block [node]="n.alternate" />
-        }
-      </div>
+        </div>
+      }
+      @if (ifElse(n); as elseBody) {
+        <div class="blk__hat"><span class="blk__w">else</span></div>
+        <div
+          class="blk__mouth"
+          [class.is-hot]="isHot(singleTarget(ifElseParent(n).id, 'alternate'))"
+          (dragover)="onDragOver($event, singleTarget(ifElseParent(n).id, 'alternate'))"
+          (drop)="onDrop($event, singleTarget(ifElseParent(n).id, 'alternate'))"
+          (click)="markSlot($event, singleTarget(ifElseParent(n).id, 'alternate'))"
+        >
+          <app-command-ast-block [node]="elseBody" />
+        </div>
+      }
     }
     @case ('commandRef') {
       <span class="blk__w">run</span>

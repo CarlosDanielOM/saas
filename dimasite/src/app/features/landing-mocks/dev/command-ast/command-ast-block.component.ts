@@ -6,6 +6,7 @@ import {
   type ListSlot,
   type MockForLoop,
   type MockNode,
+  type MockTernary,
   type SingleSlot,
   binary,
   blockShape,
@@ -116,6 +117,37 @@ export class CommandAstBlockComponent {
   patchOp(id: string, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     this.store.patch(id, { operator: value } as Partial<MockNode>);
+  }
+
+  ifChain(node: MockTernary): MockTernary[] {
+    const chain: MockTernary[] = [node];
+    let alt = node.alternate;
+    while (alt?.type === 'ternary') {
+      chain.push(alt);
+      alt = alt.alternate;
+    }
+    return chain;
+  }
+
+  ifElse(node: MockTernary): MockNode | null {
+    let alt = node.alternate;
+    let last = node;
+    while (alt?.type === 'ternary') {
+      last = alt;
+      alt = alt.alternate;
+    }
+    if (!alt || (alt.type === 'literal' && alt.value === '')) return null;
+    return alt;
+  }
+
+  ifElseParent(node: MockTernary): MockTernary {
+    let last = node;
+    let alt = node.alternate;
+    while (alt?.type === 'ternary') {
+      last = alt;
+      alt = alt.alternate;
+    }
+    return last;
   }
 
   repeatCount(node: MockForLoop): string {
