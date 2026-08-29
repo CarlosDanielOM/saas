@@ -98,11 +98,53 @@ const channelLoginHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerTwitchFunctions(): void {
-    registerFunction('twitch.subs', subsHandler);
-    registerFunction('twitch.title', titleHandler);
-    registerFunction('twitch.game', gameHandler);
-    registerFunction('twitch.viewers', viewersHandler);
-    registerFunction('twitch.follows', followsHandler);
-    registerFunction('twitch.channel', channelHandler);
-    registerFunction('twitch.login', channelLoginHandler);
+    registerFunction('twitch.subs', subsHandler, {
+        description: 'Returns the total subscriber count of the channel.',
+        syntax: 'twitch.subs',
+        category: 'twitch-data',
+        examples: ['twitch.subs'],
+        keywords: ['subscribers', 'subs', 'suscriptores', 'cuantos subs']
+    });
+    registerFunction('twitch.title', titleHandler, {
+        description: 'Returns the current stream title.',
+        syntax: 'twitch.title',
+        category: 'twitch-data',
+        examples: ['twitch.title'],
+        keywords: ['title', 'stream title', 'titulo actual']
+    });
+    registerFunction('twitch.game', gameHandler, {
+        description: 'Returns the current game/category of the stream.',
+        syntax: 'twitch.game',
+        category: 'twitch-data',
+        examples: ['twitch.game'],
+        keywords: ['game', 'category', 'juego actual', 'categoria actual']
+    });
+    registerFunction('twitch.viewers', viewersHandler, {
+        description: 'Returns the current viewer count.',
+        syntax: 'twitch.viewers',
+        category: 'twitch-data',
+        examples: ['twitch.viewers'],
+        keywords: ['viewers', 'espectadores', 'cuanta gente', 'cuantos viewers']
+    });
+    registerFunction('twitch.follows', followsHandler, {
+        description: 'Returns the total follower count of the channel.',
+        syntax: 'twitch.follows',
+        category: 'twitch-data',
+        examples: ['twitch.follows'],
+        keywords: ['followers', 'follows', 'seguidores', 'cuantos followers']
+    });
+    registerFunction('twitch.channel', channelHandler, {
+        description: 'Returns the display name of the channel.',
+        syntax: 'twitch.channel',
+        category: 'twitch-data',
+        examples: ['twitch.channel'],
+        keywords: ['channel name', 'nombre del canal', 'broadcaster name']
+    });
+    registerFunction('twitch.login', channelLoginHandler, {
+        description: 'Returns the login name (lowercase, URL-safe) of the channel.',
+        syntax: 'twitch.login',
+        category: 'twitch-data',
+        examples: ['twitch.login'],
+        keywords: ['channel login', 'login del canal', 'username del canal']
+    });
 }

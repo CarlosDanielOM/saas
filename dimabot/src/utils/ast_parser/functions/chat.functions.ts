@@ -14,5 +14,11 @@ const chatSendHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerChatFunctions(): void {
-    registerFunction('chat.send', chatSendHandler);
+    registerFunction('chat.send', chatSendHandler, {
+        description: 'Sends a message to chat as the bot.',
+        syntax: 'chat.send message',
+        category: 'chat',
+        examples: ['chat.send Hello everyone!'],
+        keywords: ['send message', 'say', 'enviar mensaje', 'decir en chat', 'hablar']
+    });
 }

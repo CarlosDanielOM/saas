@@ -1,4 +1,5 @@
 import { registerFunction, type FunctionHandler } from "../evaluator.js";
+import type { FunctionMetadata } from "../types.js";
 import * as ChatFunctions from "../../../functions/chats/index.js";
 import { error as logError } from "../../../utils/logger.js";
 
@@ -241,9 +242,33 @@ const pinHandler: FunctionHandler = async (args, ctx) => {
 // Register all pin functions
 // ============================================================================
 export function registerPinFunctions(): void {
-  registerFunction("pin", pinHandler);
-  registerFunction("pin.create", pinCreateHandler);
-  registerFunction("pin.update", pinUpdateHandler);
-  registerFunction("pin.del", pinDeleteHandler);
-  registerFunction("pin.delete", pinDeleteHandler); // Alias for pin.del
+  const pinCreateMetadata: FunctionMetadata = {
+    description: 'Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument.',
+    syntax: 'pin.create [duration] message',
+    category: 'pin',
+    examples: ['pin.create Giveaway ends at 9pm', 'pin.create 300 Rules: be kind'],
+    minUserLevel: 7,
+    keywords: ['pin message', 'pin chat', 'fijar mensaje', 'mensaje fijado']
+  };
+  registerFunction("pin", pinHandler, { ...pinCreateMetadata, aliasOf: "pin.create" });
+  registerFunction("pin.create", pinCreateHandler, pinCreateMetadata);
+  registerFunction("pin.update", pinUpdateHandler, {
+    description: 'Updates the duration of the currently pinned message (30-1800 seconds).',
+    syntax: 'pin.update duration',
+    category: 'pin',
+    examples: ['pin.update 600'],
+    minUserLevel: 7,
+    keywords: ['update pin', 'pin duration', 'cambiar duracion del pin']
+  });
+  const pinDeleteMetadata: FunctionMetadata = {
+    description: 'Unpins the currently pinned chat message.',
+    syntax: 'pin.del',
+    category: 'pin',
+    examples: ['pin.del'],
+    minUserLevel: 7,
+    destructive: true,
+    keywords: ['unpin', 'remove pin', 'quitar pin', 'desfijar']
+  };
+  registerFunction("pin.del", pinDeleteHandler, pinDeleteMetadata);
+  registerFunction("pin.delete", pinDeleteHandler, { ...pinDeleteMetadata, aliasOf: "pin.del" }); // Alias for pin.del
 }

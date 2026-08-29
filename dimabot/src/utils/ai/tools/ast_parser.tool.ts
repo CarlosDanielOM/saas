@@ -7,6 +7,8 @@
  */
 
 import { parseAndEvaluate } from '../../ast_parser/index.js';
+import { findAstCatalogEntry } from '../ast_catalog/index.js';
+import type { AstCatalogEntry } from '../ast_catalog/types.js';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import type { IStreamerData } from './code_execution.tool.js';
 import type { IUsersCache } from '../../../interfaces/cache/users.cache.interface.js';
@@ -15,6 +17,10 @@ export interface ASTParserToolResult {
     success: boolean;
     result?: string;
     error?: string;
+    /** Attached when execution failed: catalog docs for the attempted command (self-healing). */
+    docs?: AstCatalogEntry;
+    /** Present with docs: the model may correct the call and retry exactly once. */
+    retryHint?: string;
 }
 
 export interface ASTParserToolContext {
@@ -33,6 +39,26 @@ export interface ASTParserArgs {
      * - 8 for broadcaster actions (set.title, set.game, add.mod)
      * Clamped to the requesting chatter's actual permission level by the system. */
     userlevel: number;
+}
+
+/**
+ * Detects AST results that are really usage/error messages. Most handlers
+ * return error text as a string instead of throwing.
+ */
+function looksLikeAstFailure(resultStr: string): boolean {
+    return /usage:|\[parse error|\[loop error|^error\b|\berror |not found|invalid |is disabled|failed to/i.test(resultStr);
+}
+
+function buildFailureDocs(command: string): { docs?: AstCatalogEntry; retryHint?: string } {
+    const firstToken = command.trim().split(/\s+/)[0] ?? '';
+    const docs = firstToken ? findAstCatalogEntry(firstToken) : undefined;
+    if (!docs) {
+        return {};
+    }
+    return {
+        docs,
+        retryHint: 'Command failed. Documentation for the attempted command is attached in docs. You may retry exactly once with the corrected syntax; if it fails again, respond normally.'
+    };
 }
 
 /**
@@ -115,6 +141,16 @@ export async function execute(
             };
         }
 
+        // Handlers report usage/format errors as return values, not exceptions.
+        // Surface those as failures with docs attached so the model can self-correct.
+        if (looksLikeAstFailure(resultStr)) {
+            return {
+                success: false,
+                error: resultStr,
+                ...buildFailureDocs(command)
+            };
+        }
+
         return {
             success: true,
             result: resultStr
@@ -131,7 +167,8 @@ export async function execute(
 
         return {
             success: false,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? error.message : String(error),
+            ...buildFailureDocs(command)
         };
     }
 }

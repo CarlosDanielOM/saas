@@ -1,0 +1,36 @@
+# AST SYNTAX CORE (for command & reward message fields)
+# These tags are processed inside command 'message' fields and reward messages.
+
+# Special Syntax:
+# $(function args)       - Execute a function
+# %(variable)            - Get a temporary variable
+# %(variable value)      - Set a temporary variable
+# *(condition ? T : F)   - Logic/Ternary (if/else), also arithmetic
+# ^(variable)            - Check if a variable exists
+# %del(variable)         - Delete a variable
+# #(commandName args)    - Reference another command's response
+
+# Variable storage prefixes (inside %() names):
+# %(name)     - In-memory (per execution)
+# %(#name)    - Channel cache (Redis, per channel)
+# %(##name)   - Per-user cache (Redis). Per-user selector: %(##name(username))
+# %(*name)    - Channel DB (persistent, per channel)
+# %(**name)   - Per-user DB (persistent). Per-user selector: %(**name(username))
+
+# Arrays:
+# %([1,2,3])             - Array literal; accessors: [index], [random], [].length
+# %(var)                 - With array value: append via %(var[] item), set index via %(var[i] value)
+
+# Loops (inside *( ) compute blocks):
+# *(for #i 1;#i <= 3;#i++ { ... })   - Range loop
+# *(for #item in %(myarray) { ... }) - Foreach loop
+# $(break) / $(continue) control loop flow.
+
+# Templates:
+# "text ${expression} more" - Double-quoted strings interpolate ${...} expressions
+
+# Logic operators (inside *() ):
+# ==, !=, >, <, >=, <=, ~= (contains, case-insensitive), +, -, *, /, %
+# Example: *($(user) == "admin" ? "Welcome Boss" : "Welcome $(user)")
+
+# Available functions:

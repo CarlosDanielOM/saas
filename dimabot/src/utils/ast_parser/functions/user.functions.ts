@@ -53,7 +53,25 @@ const randomuserHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerUserFunctions(): void {
-    registerFunction('user', userHandler);
-    registerFunction('touser', touserHandler);
-    registerFunction('randomuser', randomuserHandler);
+    registerFunction('user', userHandler, {
+        description: 'Returns the username of the caller / current chatter.',
+        syntax: 'user',
+        category: 'user',
+        examples: ['user'],
+        keywords: ['caller', 'username', 'who', 'usuario', 'nombre', 'quien']
+    });
+    registerFunction('touser', touserHandler, {
+        description: 'Returns the target username from the first argument; falls back to the caller when no argument is given.',
+        syntax: 'touser [target]',
+        category: 'user',
+        examples: ['touser', 'touser $(randomuser)'],
+        keywords: ['target', 'argument', 'objetivo', 'destinatario']
+    });
+    registerFunction('randomuser', randomuserHandler, {
+        description: 'Returns the name of a random active chatter in the channel.',
+        syntax: 'randomuser',
+        category: 'user',
+        examples: ['randomuser'],
+        keywords: ['random chatter', 'random viewer', 'usuario aleatorio', 'alguien random']
+    });
 }

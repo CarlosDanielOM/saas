@@ -45,7 +45,7 @@
       "type": "function",
       "function": {
         "name": "AST_PARSER",
-        "description": "Execute bot commands using AST syntax. Use this to perform moderation actions (ban, timeout, vip), channel management (set.title, set.game), or other bot operations. The channel ID is automatically provided by the system. Examples: 'ban username 300', 'set.title New Stream Title', 'add.vip username', 'clear.chat'",
+        "description": "Execute bot commands using AST syntax. Use this to perform moderation actions (ban, timeout, vip), channel management (set.title, set.game), or other bot operations. The channel ID is automatically provided by the system. If you are not 100% sure of a command's exact syntax or arguments, call ast_docs FIRST to look it up. Examples: 'ban username 300', 'set.title New Stream Title', 'add.vip username', 'clear.chat'",
         "parameters": {
           "type": "object",
           "properties": {
@@ -59,6 +59,32 @@
             }
           },
           "required": ["command", "userlevel"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ast_docs",
+        "description": "Look up the bot's AST command catalog. Returns the exact syntax, arguments, and examples for commands. Use BEFORE calling AST_PARSER whenever a command takes multiple or structured arguments, whenever you are unsure of the exact format, or when checking if a command exists for what the user wants. Read-only and safe to call. Search by function name ('start.poll') or by intent ('start a vote in chat').",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Function name ('start.poll', 'tts.clone') or natural-language intent ('ban a user for 10 minutes', 'start a prediction')."
+            },
+            "surface": {
+              "type": "string",
+              "enum": ["action", "authoring"],
+              "description": "Optional. 'action' (default) for things the bot executes in chat; 'authoring' for functions used inside command/reward message templates (counters, event data, string helpers)."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Optional max number of matches (1-10, default 3)."
+            }
+          },
+          "required": ["query"]
         }
       }
     },

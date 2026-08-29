@@ -1,0 +1,1415 @@
+{
+  "version": "69726b93e4a0",
+  "generatedAt": "2026-08-29T20:02:01.954Z",
+  "model": "lfm2.5-embedding-350m",
+  "dim": 1024,
+  "functionCount": 64,
+  "entries": [
+    {
+      "name": "user",
+      "description": "Returns the username of the caller / current chatter.",
+      "syntax": "user",
+      "category": "user",
+      "examples": [
+        "user"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "caller",
+        "username",
+        "who",
+        "usuario",
+        "nombre",
+        "quien"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "touser",
+      "description": "Returns the target username from the first argument; falls back to the caller when no argument is given.",
+      "syntax": "touser [target]",
+      "category": "user",
+      "examples": [
+        "touser",
+        "touser $(randomuser)"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "target",
+        "argument",
+        "objetivo",
+        "destinatario"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "randomuser",
+      "description": "Returns the name of a random active chatter in the channel.",
+      "syntax": "randomuser",
+      "category": "user",
+      "examples": [
+        "randomuser"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "random chatter",
+        "random viewer",
+        "usuario aleatorio",
+        "alguien random"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "random",
+      "description": "Returns a random integer from 0 up to max-1. Max defaults to 100.",
+      "syntax": "random [max]",
+      "category": "random",
+      "examples": [
+        "random",
+        "random 50"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "dice",
+        "random number",
+        "numero aleatorio",
+        "dado",
+        "azar"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "add.vip",
+      "description": "Grants VIP to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).",
+      "syntax": "add.vip username [days]",
+      "category": "moderation",
+      "examples": [
+        "add.vip gooduser",
+        "add.vip gooduser 7"
+      ],
+      "aliases": [
+        "vip",
+        "channel.add.vip",
+        "twitch.add.vip"
+      ],
+      "minUserLevel": 7,
+      "keywords": [
+        "vip",
+        "grant vip",
+        "dar vip",
+        "agregar vip"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "unvip",
+      "description": "Removes VIP from a user.",
+      "syntax": "unvip username",
+      "category": "moderation",
+      "examples": [
+        "unvip someuser"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "remove vip",
+        "quitar vip",
+        "revocar vip"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "ban",
+      "description": "Bans or times out a user. Provide seconds for a timeout, omit it for a permanent ban.",
+      "syntax": "ban username [seconds]",
+      "category": "moderation",
+      "examples": [
+        "ban trolluser",
+        "ban trolluser 600"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "ban",
+        "timeout",
+        "temporal",
+        "banear",
+        "suspender",
+        "castigar",
+        "silenciar"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "ban.mod",
+      "description": "Bans/times out a moderator: removes their mod status first, then applies the ban/timeout. With return_mod=true the mod status is restored after the timeout ends (requires a valid timeout). Seconds must be 1-604800. Level 8 applies to bot-driven (AST_PARSER) use; inside streamer-authored commands the command permission level controls who can trigger it.",
+      "syntax": "ban.mod username seconds [true|false]",
+      "category": "moderation",
+      "examples": [
+        "ban.mod badmod 300",
+        "ban.mod badmod 300 true"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "ban moderator",
+        "timeout mod",
+        "banear mod",
+        "castigar moderador"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "add.mod",
+      "description": "Grants moderator to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).",
+      "syntax": "add.mod username [days]",
+      "category": "moderation",
+      "examples": [
+        "add.mod trusteduser",
+        "add.mod trusteduser 30"
+      ],
+      "aliases": [
+        "mod",
+        "channel.add.mod",
+        "twitch.add.mod"
+      ],
+      "minUserLevel": 8,
+      "keywords": [
+        "moderator",
+        "grant mod",
+        "dar mod",
+        "agregar moderador"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "unmod",
+      "description": "Removes moderator from a user.",
+      "syntax": "unmod username",
+      "category": "moderation",
+      "examples": [
+        "unmod someuser"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "remove mod",
+        "demod",
+        "quitar mod",
+        "revocar moderador"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "clear.chat",
+      "description": "Clears the entire chat history.",
+      "syntax": "clear.chat",
+      "category": "moderation",
+      "examples": [
+        "clear.chat"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "clear chat",
+        "purge chat",
+        "limpiar chat",
+        "borrar chat"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "emoteonly",
+      "description": "Toggles emote-only mode on/off. Optional seconds auto-disables it after the duration when enabling.",
+      "syntax": "emoteonly [seconds]",
+      "category": "moderation",
+      "examples": [
+        "emoteonly",
+        "emoteonly 600"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "emote only",
+        "solo emotes",
+        "modo emotes"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.subs",
+      "description": "Returns the total subscriber count of the channel.",
+      "syntax": "twitch.subs",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.subs"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "subscribers",
+        "subs",
+        "suscriptores",
+        "cuantos subs"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.title",
+      "description": "Returns the current stream title.",
+      "syntax": "twitch.title",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.title"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "title",
+        "stream title",
+        "titulo actual"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.game",
+      "description": "Returns the current game/category of the stream.",
+      "syntax": "twitch.game",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.game"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "game",
+        "category",
+        "juego actual",
+        "categoria actual"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.viewers",
+      "description": "Returns the current viewer count.",
+      "syntax": "twitch.viewers",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.viewers"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "viewers",
+        "espectadores",
+        "cuanta gente",
+        "cuantos viewers"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.follows",
+      "description": "Returns the total follower count of the channel.",
+      "syntax": "twitch.follows",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.follows"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "followers",
+        "follows",
+        "seguidores",
+        "cuantos followers"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.channel",
+      "description": "Returns the display name of the channel.",
+      "syntax": "twitch.channel",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.channel"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "channel name",
+        "nombre del canal",
+        "broadcaster name"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.login",
+      "description": "Returns the login name (lowercase, URL-safe) of the channel.",
+      "syntax": "twitch.login",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.login"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "channel login",
+        "login del canal",
+        "username del canal"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "count",
+      "description": "Persistent per-command counter: adds the increment to the stored count and returns the new value.",
+      "syntax": "count [increment]",
+      "category": "counters",
+      "examples": [
+        "count",
+        "count 5",
+        "count +3"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "counter",
+        "contador",
+        "increment",
+        "times used",
+        "veces usado"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "scount",
+      "description": "Simple counter: increments the per-command count by 1 and returns the new value.",
+      "syntax": "scount",
+      "category": "counters",
+      "examples": [
+        "scount"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "counter",
+        "contador",
+        "increment by one"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "bits",
+      "description": "Returns the bits amount of the current cheer event context (0 outside cheer events).",
+      "syntax": "bits",
+      "category": "counters",
+      "examples": [
+        "bits"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "bits",
+        "cheer",
+        "cheer amount"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "raid",
+      "description": "Starts a raid to another channel.",
+      "syntax": "raid channel",
+      "category": "channel",
+      "examples": [
+        "raid friendlystreamer"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "raid",
+        "raidear",
+        "raid to channel"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "unraid",
+      "description": "Cancels an active raid.",
+      "syntax": "unraid",
+      "category": "channel",
+      "examples": [
+        "unraid"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "cancel raid",
+        "unraid",
+        "cancelar raid"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "set.title",
+      "description": "Changes the stream title.",
+      "syntax": "set.title new title text",
+      "category": "channel",
+      "examples": [
+        "set.title Cozy late night stream"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "title",
+        "stream title",
+        "titulo",
+        "cambiar titulo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "set.game",
+      "description": "Changes the stream category. Searches Twitch categories by name and picks the best match.",
+      "syntax": "set.game game name",
+      "category": "channel",
+      "examples": [
+        "set.game Just Chatting"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "game",
+        "category",
+        "juego",
+        "categoria",
+        "cambiar juego"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "start.prediction",
+      "description": "Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.",
+      "syntax": "start.prediction title;option1/option2;seconds",
+      "category": "channel",
+      "examples": [
+        "start.prediction Will we win?;Yes/No;120"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "prediction",
+        "prediccion",
+        "bet",
+        "apuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "start.poll",
+      "description": "Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.",
+      "syntax": "start.poll title;option1/option2;seconds",
+      "category": "channel",
+      "examples": [
+        "start.poll Best map?;Nuke/Mirage/Inferno;120"
+      ],
+      "aliases": [],
+      "minUserLevel": 8,
+      "keywords": [
+        "poll",
+        "encuesta",
+        "vote",
+        "votar",
+        "votacion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "ad.time",
+      "description": "Returns the duration in seconds of the current ad break (event data).",
+      "syntax": "ad.time",
+      "category": "event-data",
+      "examples": [
+        "ad.time"
+      ],
+      "aliases": [
+        "ad"
+      ],
+      "minUserLevel": 1,
+      "keywords": [
+        "ad",
+        "commercial",
+        "anuncio",
+        "publicidad"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "ai",
+      "description": "Generates an AI response for the given prompt using the channel AI personality.",
+      "syntax": "ai prompt",
+      "category": "ai",
+      "examples": [
+        "ai tell me a joke"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "ai",
+        "ask ai",
+        "preguntar a la ia",
+        "generar respuesta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "create.clip",
+      "description": "Creates a clip of the current stream moment and returns the clip URL. Optional clip title.",
+      "syntax": "create.clip [title]",
+      "category": "clip",
+      "examples": [
+        "create.clip",
+        "create.clip Epic win"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "clip",
+        "create clip",
+        "crear clip",
+        "clip this",
+        "momento"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "followage",
+      "description": "Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.",
+      "syntax": "followage [username]",
+      "category": "twitch-data",
+      "examples": [
+        "followage",
+        "followage someuser"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "followage",
+        "follow age",
+        "following since",
+        "cuanto tiempo siguiendo",
+        "antiguedad"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "raid.channel",
+      "description": "Display name of the channel raiding us (raid event data).",
+      "syntax": "raid.channel",
+      "category": "event-data",
+      "examples": [
+        "raid.channel"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "raid",
+        "who raids",
+        "quien raidea",
+        "canal del raid"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "raid.login",
+      "description": "Login name of the channel raiding us (raid event data).",
+      "syntax": "raid.login",
+      "category": "event-data",
+      "examples": [
+        "raid.login"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "raid login",
+        "login del raid"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "raid.viewers",
+      "description": "Number of viewers brought by the incoming raid (raid event data).",
+      "syntax": "raid.viewers",
+      "category": "event-data",
+      "examples": [
+        "raid.viewers"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "raid viewers",
+        "viewers del raid",
+        "cuantos en el raid"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "cheer.amount",
+      "description": "Bits amount of the current cheer event.",
+      "syntax": "cheer.amount",
+      "category": "event-data",
+      "examples": [
+        "cheer.amount"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "bits",
+        "cheer",
+        "cuantos bits"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "cheer.message",
+      "description": "Text message attached to the current cheer event.",
+      "syntax": "cheer.message",
+      "category": "event-data",
+      "examples": [
+        "cheer.message"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "cheer message",
+        "mensaje del cheer"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "sub.tier",
+      "description": "Subscription tier of the current sub event (Prime, Tier 1, Tier 2, Tier 3).",
+      "syntax": "sub.tier",
+      "category": "event-data",
+      "examples": [
+        "sub.tier"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "sub tier",
+        "tier de sub",
+        "nivel de suscripcion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "sub.months",
+      "description": "Cumulative subscription months of the current sub event.",
+      "syntax": "sub.months",
+      "category": "event-data",
+      "examples": [
+        "sub.months"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "sub months",
+        "meses de sub",
+        "antiguedad sub"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "gifted.user",
+      "description": "Recipient username of a gifted subscription event.",
+      "syntax": "gifted.user",
+      "category": "event-data",
+      "examples": [
+        "gifted.user"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "gifted sub",
+        "sub regalada",
+        "quien recibio el gift"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "hypetrain.progress",
+      "description": "Current hype train progress points.",
+      "syntax": "hypetrain.progress",
+      "category": "event-data",
+      "examples": [
+        "hypetrain.progress"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "hype train",
+        "tren del hype",
+        "progreso"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "hypetrain.level",
+      "description": "Current hype train level.",
+      "syntax": "hypetrain.level",
+      "category": "event-data",
+      "examples": [
+        "hypetrain.level"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "hype train level",
+        "nivel del hype train"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "hypetrain.end",
+      "description": "End time of the current hype train.",
+      "syntax": "hypetrain.end",
+      "category": "event-data",
+      "examples": [
+        "hypetrain.end"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "hype train end",
+        "fin del hype train"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "shoutout.channel",
+      "description": "Target channel of a shoutout event.",
+      "syntax": "shoutout.channel",
+      "category": "event-data",
+      "examples": [
+        "shoutout.channel"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "shoutout",
+        "canal del shoutout"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "reward.input",
+      "description": "User input text from a channel point reward redemption.",
+      "syntax": "reward.input",
+      "category": "event-data",
+      "examples": [
+        "reward.input"
+      ],
+      "aliases": [
+        "redemption.input"
+      ],
+      "minUserLevel": 1,
+      "keywords": [
+        "reward input",
+        "user input",
+        "texto del canje",
+        "input de la recompensa"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts",
+      "description": "Speaks a message out loud using the channel default TTS voice.",
+      "syntax": "tts message",
+      "category": "tts",
+      "examples": [
+        "tts Hello chat!"
+      ],
+      "aliases": [
+        "tts.speak",
+        "tts.ai"
+      ],
+      "minUserLevel": 1,
+      "keywords": [
+        "tts",
+        "speak",
+        "text to speech",
+        "hablar",
+        "voz",
+        "di esto"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts.clone",
+      "description": "Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message.",
+      "syntax": "tts.clone voice_name message",
+      "category": "tts",
+      "examples": [
+        "tts.clone gojo Hello chat!",
+        "tts.clone rias_gremory Welcome!"
+      ],
+      "aliases": [
+        "tts.fish"
+      ],
+      "minUserLevel": 1,
+      "keywords": [
+        "clone voice",
+        "fish audio",
+        "voz clonada",
+        "hablar con voz",
+        "gojo",
+        "rias_gremory",
+        "carlos_bodoque",
+        "toji_fushiguro"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "trigger.send",
+      "description": "Fires a configured sound/video trigger by name. Optional true/false last argument controls queueing.",
+      "syntax": "trigger.send trigger_name [true|false]",
+      "category": "trigger",
+      "examples": [
+        "trigger.send airhorn",
+        "trigger.send airhorn true"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "trigger",
+        "alert",
+        "sound",
+        "video",
+        "alerta",
+        "sonido",
+        "reproducir alerta"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "delay",
+      "description": "Pauses execution for the given number of seconds (0-60). Used to sequence multi-step command flows.",
+      "syntax": "delay seconds",
+      "category": "flow",
+      "examples": [
+        "delay 3"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "delay",
+        "wait",
+        "pause",
+        "esperar",
+        "pausa",
+        "segundos"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "break",
+      "description": "Exits the current loop immediately.",
+      "syntax": "break",
+      "category": "flow",
+      "examples": [
+        "break"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "break",
+        "exit loop",
+        "salir del bucle"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "continue",
+      "description": "Skips the rest of the current loop iteration and continues with the next one.",
+      "syntax": "continue",
+      "category": "flow",
+      "examples": [
+        "continue"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "continue",
+        "skip iteration",
+        "continuar bucle"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "chat.send",
+      "description": "Sends a message to chat as the bot.",
+      "syntax": "chat.send message",
+      "category": "chat",
+      "examples": [
+        "chat.send Hello everyone!"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "send message",
+        "say",
+        "enviar mensaje",
+        "decir en chat",
+        "hablar"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "bot.mode",
+      "description": "Follow-defense control: \"attack\" queues attack mode, \"status\" reports the current defense mode and time remaining.",
+      "syntax": "bot.mode attack|status",
+      "category": "defense",
+      "examples": [
+        "bot.mode attack",
+        "bot.mode status"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "follow defense",
+        "attack mode",
+        "defensa de follows",
+        "modo ataque",
+        "bot mode"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "pin.create",
+      "description": "Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument.",
+      "syntax": "pin.create [duration] message",
+      "category": "pin",
+      "examples": [
+        "pin.create Giveaway ends at 9pm",
+        "pin.create 300 Rules: be kind"
+      ],
+      "aliases": [
+        "pin"
+      ],
+      "minUserLevel": 7,
+      "keywords": [
+        "pin message",
+        "pin chat",
+        "fijar mensaje",
+        "mensaje fijado"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "pin.update",
+      "description": "Updates the duration of the currently pinned message (30-1800 seconds).",
+      "syntax": "pin.update duration",
+      "category": "pin",
+      "examples": [
+        "pin.update 600"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "update pin",
+        "pin duration",
+        "cambiar duracion del pin"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "pin.del",
+      "description": "Unpins the currently pinned chat message.",
+      "syntax": "pin.del",
+      "category": "pin",
+      "examples": [
+        "pin.del"
+      ],
+      "aliases": [
+        "pin.delete"
+      ],
+      "minUserLevel": 7,
+      "keywords": [
+        "unpin",
+        "remove pin",
+        "quitar pin",
+        "desfijar"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "upper",
+      "description": "Converts text to UPPERCASE.",
+      "syntax": "upper text",
+      "category": "string",
+      "examples": [
+        "upper hello"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "uppercase",
+        "mayusculas",
+        "caps"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "lower",
+      "description": "Converts text to lowercase.",
+      "syntax": "lower text",
+      "category": "string",
+      "examples": [
+        "lower HELLO"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "lowercase",
+        "minusculas"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "title",
+      "description": "Converts text to Title Case (first letter of each word capitalized).",
+      "syntax": "title text",
+      "category": "string",
+      "examples": [
+        "title hello world"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "title case",
+        "capitalizar palabras"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "capitalize",
+      "description": "Capitalizes only the first character of the text.",
+      "syntax": "capitalize text",
+      "category": "string",
+      "examples": [
+        "capitalize hello world"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "capitalize",
+        "primera letra mayuscula"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "trim",
+      "description": "Removes leading and trailing whitespace from text.",
+      "syntax": "trim text",
+      "category": "string",
+      "examples": [
+        "trim $(touser)"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "trim",
+        "whitespace",
+        "espacios"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "length",
+      "description": "Returns the character count of the text.",
+      "syntax": "length text",
+      "category": "string",
+      "examples": [
+        "length hello"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "length",
+        "count characters",
+        "longitud",
+        "cuantas letras"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "slice",
+      "description": "Extracts a substring by index. Negative indexes wrap from the end. Numeric args come first, then the text.",
+      "syntax": "slice start [end] text",
+      "category": "string",
+      "examples": [
+        "slice 0 5 hello world",
+        "slice -5 hello world"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "substring",
+        "slice",
+        "cut",
+        "recortar",
+        "parte del texto"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "replace",
+      "description": "Literal replace-all of a search string with a replacement (no regex). Quote multi-word search/replacement.",
+      "syntax": "replace search replacement text",
+      "category": "string",
+      "examples": [
+        "replace a o banana"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "replace",
+        "sustituir",
+        "reemplazar",
+        "cambiar texto"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ]
+    }
+  ]
+}

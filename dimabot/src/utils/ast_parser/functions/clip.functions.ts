@@ -20,5 +20,12 @@ const createClipHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerClipFunctions(): void {
-    registerFunction('create.clip', createClipHandler);
+    registerFunction('create.clip', createClipHandler, {
+        description: 'Creates a clip of the current stream moment and returns the clip URL. Optional clip title.',
+        syntax: 'create.clip [title]',
+        category: 'clip',
+        examples: ['create.clip', 'create.clip Epic win'],
+        minUserLevel: 7,
+        keywords: ['clip', 'create clip', 'crear clip', 'clip this', 'momento']
+    });
 }

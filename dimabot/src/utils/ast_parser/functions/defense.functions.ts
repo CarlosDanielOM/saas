@@ -38,5 +38,12 @@ const botModeHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerDefenseFunctions(): void {
-    registerFunction('bot.mode', botModeHandler);
+    registerFunction('bot.mode', botModeHandler, {
+        description: 'Follow-defense control: "attack" queues attack mode, "status" reports the current defense mode and time remaining.',
+        syntax: 'bot.mode attack|status',
+        category: 'defense',
+        examples: ['bot.mode attack', 'bot.mode status'],
+        minUserLevel: 7,
+        keywords: ['follow defense', 'attack mode', 'defensa de follows', 'modo ataque', 'bot mode']
+    });
 }

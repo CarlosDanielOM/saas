@@ -110,5 +110,12 @@ const triggerSendHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerTriggerFunctions(): void {
-    registerFunction('trigger.send', triggerSendHandler);
+    registerFunction('trigger.send', triggerSendHandler, {
+        description: 'Fires a configured sound/video trigger by name. Optional true/false last argument controls queueing.',
+        syntax: 'trigger.send trigger_name [true|false]',
+        category: 'trigger',
+        examples: ['trigger.send airhorn', 'trigger.send airhorn true'],
+        minUserLevel: 7,
+        keywords: ['trigger', 'alert', 'sound', 'video', 'alerta', 'sonido', 'reproducir alerta']
+    });
 }

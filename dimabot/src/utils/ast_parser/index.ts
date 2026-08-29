@@ -1,7 +1,7 @@
-import type { ExecutionContext, EvaluateResult, AstNode, RootNode, SyntaxDefinition } from './types.js';
+import type { ExecutionContext, EvaluateResult, AstNode, RootNode, SyntaxDefinition, FunctionMetadata, AstFunctionSurface } from './types.js';
 import { parse, parseToAst, printAst } from './parser.js';
 import { tokenize } from './tokenizer.js';
-import { evaluate, createExecutionContext, registerFunction, getFunctionHandler, FunctionHandler } from './evaluator.js';
+import { evaluate, createExecutionContext, registerFunction, getFunctionHandler, getFunctionMetadata, getAllRegisteredFunctions, FunctionHandler, RegisteredFunctionEntry } from './evaluator.js';
 import { SyntaxRegistry, createSyntaxRegistry, registerSyntax, parseExpression } from './registry.js';
 import { renderAstWithSourceReference } from './render.js';
 import { registerAllFunctions } from './functions/index.js';
@@ -12,7 +12,10 @@ export type {
     AstNode,
     RootNode,
     SyntaxDefinition,
-    FunctionHandler
+    FunctionHandler,
+    FunctionMetadata,
+    AstFunctionSurface,
+    RegisteredFunctionEntry
 };
 
 export {
@@ -24,6 +27,8 @@ export {
     createExecutionContext,
     registerFunction,
     getFunctionHandler,
+    getFunctionMetadata,
+    getAllRegisteredFunctions,
     SyntaxRegistry,
     createSyntaxRegistry,
     registerSyntax,

@@ -39,4 +39,4 @@ export function registerAllFunctions(): void {
     registerStringFunctions();
 }
 
-export { registerFunction, getFunctionHandler, type FunctionHandler } from '../evaluator.js';
+export { registerFunction, getFunctionHandler, getFunctionMetadata, getAllRegisteredFunctions, type FunctionHandler, type RegisteredFunctionEntry } from '../evaluator.js';

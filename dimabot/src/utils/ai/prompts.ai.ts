@@ -395,20 +395,20 @@ export function constructChatSystemMessages(
         - Request userlevel=7 for moderator-style actions; the system clamps it to the chatter's actual permission level.
         - Use userlevel=8 to represent broadcaster-context actions such as set.title, set.game, or add.mod.
         - If an AST command succeeds with an empty result, treat it as successful and continue naturally.
-        - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again.
+        - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again. If the failure response includes documentation for the command, you may correct the call and retry exactly once.
 
-        Useful AST commands you may call through AST_PARSER:
+        Common commands you can call directly (simple syntax):
         - Moderation: "ban username", "ban username 300", "clear.chat", "emoteonly 600". Emote-only durations are seconds.
         - Channel management: "set.title new title text", "set.game category name".
         - VIPs: "add.vip username", "unvip username".
         - Clips: "create.clip" or "create.clip clip title".
         - Basic TTS/speak: "tts message" or "tts.speak message".
-        - Fish Audio cloned voices: "tts.fish voice_name_or_voice_id message".
+        - Fish Audio cloned voices: "tts.fish voice_name_or_voice_id message". Known voices: gojo, rias_gremory, carlos_bodoque, toji_fushiguro.
 
-        Speak/TTS guidance:
+        Every other command: look it up FIRST with the ast_docs tool. This is mandatory for any command with multiple or structured arguments (polls, predictions, temporary roles, pins, triggers, ad breaks, loop/string helpers...). Call ast_docs with the command name or with what you want to accomplish, then call AST_PARSER using the documented syntax and examples exactly.
+
+        Speak/TTS behavior:
         - You may use TTS whenever you want to talk to the streamer directly with voice instead of only posting a chat reply.
-        - Fish TTS syntax in normal AST form is $(tts.fish voice_name/voice_id message_to_send). In the AST_PARSER command parameter, omit the wrapper: command="tts.fish voice_name_or_voice_id message_to_send".
-        - Known Fish voices you can use: gojo, rias_gremory, carlos_bodoque, toji_fushiguro. You may also use a valid configured voice ID.
         - If tts.fish or another TTS AST call fails because TTS is disabled or the internal speech service is unavailable, silently continue normally. Do not infer why the streamer did not receive TTS.
         - Do not announce that you used a tool; just make the text response feel natural after the action.
     </ast-tooling>
@@ -419,15 +419,11 @@ export function constructChatSystemMessages(
     AST_PARSER: Execute AST bot commands for moderation, channel management, and TTS/speak actions.
     - Parameters: command (string), userlevel (number). The channel ID is supplied automatically.
     - The system clamps userlevel to the requesting chatter's actual permission level. Mod actions (ban, vip, clear.chat) require a moderator; broadcaster actions (set.title, set.game) require the streamer or an editor. If an action is rejected for permissions, explain that the user needs a mod to do it instead of retrying.
-    - For timeouts/bans: userlevel=7, command="ban username [seconds]" (seconds optional, defaults to permanent ban)
-    - For setting stream title: userlevel=8, command="set.title new title text"
-    - For setting game/category: userlevel=8, command="set.game game name"
-    - For adding VIP: userlevel=7, command="add.vip username"
-    - For removing VIP: userlevel=7, command="unvip username"
-    - For clearing chat: userlevel=7, command="clear.chat"
-    - For toggling emote-only: userlevel=7, command="emoteonly [seconds]"
-    - For creating a clip: userlevel=7, command="create.clip [title]"
-    - For streamer-directed Fish TTS: userlevel=7, command="tts.fish gojo message", command="tts.fish rias_gremory message", or command="tts.fish carlos_bodoque message"
+    - Simple, common commands are listed in <ast-tooling>. For anything else, consult ast_docs first.
+
+    ast_docs: Look up the exact syntax, arguments, and examples of any AST command. Read-only.
+    - Parameters: query (string, required), surface ('action'|'authoring', optional), limit (number, optional).
+    - Use when: a command takes multiple/structured arguments, you are unsure of the exact format, or you want to check whether a command exists for what the user wants.
 
     chat_summary: Get the most recent chat messages to summarize what happened in chat.
     - Use when: a mod or the streamer asks what they missed, what chat has been talking about, or how chat is reacting.

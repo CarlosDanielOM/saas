@@ -22,7 +22,8 @@ import type {
     UnaryExpressionNode,
     VariableStorage,
     DeleteVarNode,
-    ArrayAccessor
+    ArrayAccessor,
+    FunctionMetadata
 } from './types.js';
 
 type InternalComparisonOperator = '==' | '=' | '!=' | '<>' | '>' | '<' | '>=' | '<=' | '~=';
@@ -626,13 +627,35 @@ async function deleteValueFromStorage(
 export type FunctionHandler = (args: unknown[], context: ExecutionContext) => Promise<unknown>;
 
 const functionRegistry = new Map<string, FunctionHandler>();
+const functionMetadataRegistry = new Map<string, FunctionMetadata>();
 
-export function registerFunction(name: string, handler: FunctionHandler): void {
+export function registerFunction(name: string, handler: FunctionHandler, metadata?: FunctionMetadata): void {
     functionRegistry.set(name, handler);
+    if (metadata) {
+        functionMetadataRegistry.set(name, metadata);
+    }
 }
 
 export function getFunctionHandler(name: string): FunctionHandler | undefined {
     return functionRegistry.get(name);
+}
+
+export function getFunctionMetadata(name: string): FunctionMetadata | undefined {
+    return functionMetadataRegistry.get(name);
+}
+
+export interface RegisteredFunctionEntry {
+    name: string;
+    handler: FunctionHandler;
+    metadata?: FunctionMetadata;
+}
+
+export function getAllRegisteredFunctions(): RegisteredFunctionEntry[] {
+    return [...functionRegistry.keys()].map((name) => ({
+        name,
+        handler: functionRegistry.get(name) as FunctionHandler,
+        metadata: functionMetadataRegistry.get(name)
+    }));
 }
 
 export async function evaluate(node: AstNode, context: ExecutionContext): Promise<EvaluateResult> {

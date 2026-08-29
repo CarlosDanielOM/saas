@@ -1,0 +1,218 @@
+# ==========================================
+# COMMAND VARIABLES & LOGIC (generated from the AST function registry)
+# Catalog version: 69726b93e4a0
+# ==========================================
+
+# AST SYNTAX CORE (for command & reward message fields)
+# These tags are processed inside command 'message' fields and reward messages.
+
+# Special Syntax:
+# $(function args)       - Execute a function
+# %(variable)            - Get a temporary variable
+# %(variable value)      - Set a temporary variable
+# *(condition ? T : F)   - Logic/Ternary (if/else), also arithmetic
+# ^(variable)            - Check if a variable exists
+# %del(variable)         - Delete a variable
+# #(commandName args)    - Reference another command's response
+
+# Variable storage prefixes (inside %() names):
+# %(name)     - In-memory (per execution)
+# %(#name)    - Channel cache (Redis, per channel)
+# %(##name)   - Per-user cache (Redis). Per-user selector: %(##name(username))
+# %(*name)    - Channel DB (persistent, per channel)
+# %(**name)   - Per-user DB (persistent). Per-user selector: %(**name(username))
+
+# Arrays:
+# %([1,2,3])             - Array literal; accessors: [index], [random], [].length
+# %(var)                 - With array value: append via %(var[] item), set index via %(var[i] value)
+
+# Loops (inside *( ) compute blocks):
+# *(for #i 1;#i <= 3;#i++ { ... })   - Range loop
+# *(for #item in %(myarray) { ... }) - Foreach loop
+# $(break) / $(continue) control loop flow.
+
+# Templates:
+# "text ${expression} more" - Double-quoted strings interpolate ${...} expressions
+
+# Logic operators (inside *() ):
+# ==, !=, >, <, >=, <=, ~= (contains, case-insensitive), +, -, *, /, %
+# Example: *($(user) == "admin" ? "Welcome Boss" : "Welcome $(user)")
+
+# Available functions:
+
+# --- ai ---
+# $(ai prompt) - Generates an AI response for the given prompt using the channel AI personality.
+#   Example: $(ai tell me a joke)
+#
+# --- channel ---
+# $(raid channel) - Starts a raid to another channel.
+#   Example: $(raid friendlystreamer)
+# $(set.game game name) - Changes the stream category. Searches Twitch categories by name and picks the best match.
+#   Example: $(set.game Just Chatting)
+# $(set.title new title text) - Changes the stream title.
+#   Example: $(set.title Cozy late night stream)
+# $(start.poll title;option1/option2;seconds) - Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.
+#   Example: $(start.poll Best map?;Nuke/Mirage/Inferno;120)
+# $(start.prediction title;option1/option2;seconds) - Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.
+#   Example: $(start.prediction Will we win?;Yes/No;120)
+# $(unraid) - Cancels an active raid.
+#   Example: $(unraid)
+#
+# --- chat ---
+# $(chat.send message) - Sends a message to chat as the bot.
+#   Example: $(chat.send Hello everyone!)
+#
+# --- clip ---
+# $(create.clip [title]) - Creates a clip of the current stream moment and returns the clip URL. Optional clip title.
+#   Example: $(create.clip)
+#   Example: $(create.clip Epic win)
+#
+# --- counters ---
+# $(bits) - Returns the bits amount of the current cheer event context (0 outside cheer events).
+#   Example: $(bits)
+# $(count [increment]) - Persistent per-command counter: adds the increment to the stored count and returns the new value.
+#   Example: $(count)
+#   Example: $(count 5)
+#   Example: $(count +3)
+# $(scount) - Simple counter: increments the per-command count by 1 and returns the new value.
+#   Example: $(scount)
+#
+# --- defense ---
+# $(bot.mode attack|status) - Follow-defense control: "attack" queues attack mode, "status" reports the current defense mode and time remaining.
+#   Example: $(bot.mode attack)
+#   Example: $(bot.mode status)
+#
+# --- event-data ---
+# $(ad.time) - Returns the duration in seconds of the current ad break (event data). (aliases: ad)
+#   Example: $(ad.time)
+# $(cheer.amount) - Bits amount of the current cheer event.
+#   Example: $(cheer.amount)
+# $(cheer.message) - Text message attached to the current cheer event.
+#   Example: $(cheer.message)
+# $(gifted.user) - Recipient username of a gifted subscription event.
+#   Example: $(gifted.user)
+# $(hypetrain.end) - End time of the current hype train.
+#   Example: $(hypetrain.end)
+# $(hypetrain.level) - Current hype train level.
+#   Example: $(hypetrain.level)
+# $(hypetrain.progress) - Current hype train progress points.
+#   Example: $(hypetrain.progress)
+# $(raid.channel) - Display name of the channel raiding us (raid event data).
+#   Example: $(raid.channel)
+# $(raid.login) - Login name of the channel raiding us (raid event data).
+#   Example: $(raid.login)
+# $(raid.viewers) - Number of viewers brought by the incoming raid (raid event data).
+#   Example: $(raid.viewers)
+# $(reward.input) - User input text from a channel point reward redemption. (aliases: redemption.input)
+#   Example: $(reward.input)
+# $(shoutout.channel) - Target channel of a shoutout event.
+#   Example: $(shoutout.channel)
+# $(sub.months) - Cumulative subscription months of the current sub event.
+#   Example: $(sub.months)
+# $(sub.tier) - Subscription tier of the current sub event (Prime, Tier 1, Tier 2, Tier 3).
+#   Example: $(sub.tier)
+#
+# --- flow ---
+# $(break) - Exits the current loop immediately.
+#   Example: $(break)
+# $(continue) - Skips the rest of the current loop iteration and continues with the next one.
+#   Example: $(continue)
+# $(delay seconds) - Pauses execution for the given number of seconds (0-60). Used to sequence multi-step command flows.
+#   Example: $(delay 3)
+#
+# --- moderation ---
+# $(add.mod username [days]) - Grants moderator to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days). (aliases: mod, channel.add.mod, twitch.add.mod)
+#   Example: $(add.mod trusteduser)
+#   Example: $(add.mod trusteduser 30)
+# $(add.vip username [days]) - Grants VIP to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days). (aliases: vip, channel.add.vip, twitch.add.vip)
+#   Example: $(add.vip gooduser)
+#   Example: $(add.vip gooduser 7)
+# $(ban username [seconds]) - Bans or times out a user. Provide seconds for a timeout, omit it for a permanent ban.
+#   Example: $(ban trolluser)
+#   Example: $(ban trolluser 600)
+# $(ban.mod username seconds [true|false]) - Bans/times out a moderator: removes their mod status first, then applies the ban/timeout. With return_mod=true the mod status is restored after the timeout ends (requires a valid timeout). Seconds must be 1-604800. Level 8 applies to bot-driven (AST_PARSER) use; inside streamer-authored commands the command permission level controls who can trigger it.
+#   Example: $(ban.mod badmod 300)
+#   Example: $(ban.mod badmod 300 true)
+# $(clear.chat) - Clears the entire chat history.
+#   Example: $(clear.chat)
+# $(emoteonly [seconds]) - Toggles emote-only mode on/off. Optional seconds auto-disables it after the duration when enabling.
+#   Example: $(emoteonly)
+#   Example: $(emoteonly 600)
+# $(unmod username) - Removes moderator from a user.
+#   Example: $(unmod someuser)
+# $(unvip username) - Removes VIP from a user.
+#   Example: $(unvip someuser)
+#
+# --- pin ---
+# $(pin.create [duration] message) - Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument. (aliases: pin)
+#   Example: $(pin.create Giveaway ends at 9pm)
+#   Example: $(pin.create 300 Rules: be kind)
+# $(pin.del) - Unpins the currently pinned chat message. (aliases: pin.delete)
+#   Example: $(pin.del)
+# $(pin.update duration) - Updates the duration of the currently pinned message (30-1800 seconds).
+#   Example: $(pin.update 600)
+#
+# --- random ---
+# $(random [max]) - Returns a random integer from 0 up to max-1. Max defaults to 100.
+#   Example: $(random)
+#   Example: $(random 50)
+#
+# --- string ---
+# $(capitalize text) - Capitalizes only the first character of the text.
+#   Example: $(capitalize hello world)
+# $(length text) - Returns the character count of the text.
+#   Example: $(length hello)
+# $(lower text) - Converts text to lowercase.
+#   Example: $(lower HELLO)
+# $(replace search replacement text) - Literal replace-all of a search string with a replacement (no regex). Quote multi-word search/replacement.
+#   Example: $(replace a o banana)
+# $(slice start [end] text) - Extracts a substring by index. Negative indexes wrap from the end. Numeric args come first, then the text.
+#   Example: $(slice 0 5 hello world)
+#   Example: $(slice -5 hello world)
+# $(title text) - Converts text to Title Case (first letter of each word capitalized).
+#   Example: $(title hello world)
+# $(trim text) - Removes leading and trailing whitespace from text.
+#   Example: $(trim $(touser))
+# $(upper text) - Converts text to UPPERCASE.
+#   Example: $(upper hello)
+#
+# --- trigger ---
+# $(trigger.send trigger_name [true|false]) - Fires a configured sound/video trigger by name. Optional true/false last argument controls queueing.
+#   Example: $(trigger.send airhorn)
+#   Example: $(trigger.send airhorn true)
+#
+# --- tts ---
+# $(tts message) - Speaks a message out loud using the channel default TTS voice. (aliases: tts.speak, tts.ai)
+#   Example: $(tts Hello chat!)
+# $(tts.clone voice_name message) - Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message. (aliases: tts.fish)
+#   Example: $(tts.clone gojo Hello chat!)
+#   Example: $(tts.clone rias_gremory Welcome!)
+#
+# --- twitch-data ---
+# $(followage [username]) - Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.
+#   Example: $(followage)
+#   Example: $(followage someuser)
+# $(twitch.channel) - Returns the display name of the channel.
+#   Example: $(twitch.channel)
+# $(twitch.follows) - Returns the total follower count of the channel.
+#   Example: $(twitch.follows)
+# $(twitch.game) - Returns the current game/category of the stream.
+#   Example: $(twitch.game)
+# $(twitch.login) - Returns the login name (lowercase, URL-safe) of the channel.
+#   Example: $(twitch.login)
+# $(twitch.subs) - Returns the total subscriber count of the channel.
+#   Example: $(twitch.subs)
+# $(twitch.title) - Returns the current stream title.
+#   Example: $(twitch.title)
+# $(twitch.viewers) - Returns the current viewer count.
+#   Example: $(twitch.viewers)
+#
+# --- user ---
+# $(randomuser) - Returns the name of a random active chatter in the channel.
+#   Example: $(randomuser)
+# $(touser [target]) - Returns the target username from the first argument; falls back to the caller when no argument is given.
+#   Example: $(touser)
+#   Example: $(touser $(randomuser))
+# $(user) - Returns the username of the caller / current chatter.
+#   Example: $(user)
+#

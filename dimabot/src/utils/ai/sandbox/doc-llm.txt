@@ -57,54 +57,11 @@ Delete a command.
 ###
 
 # ==========================================
-# COMMAND VARIABLES & LOGIC (for 'message' field)
+# COMMAND VARIABLES & LOGIC
 # ==========================================
-# These tags are processed inside the command message.
-
-# Special Syntax:
-# $(function args)       - Execute a function
-# %(variable)            - Get a temporary variable
-# %(variable value)      - Set a temporary variable
-# *(condition ? T : F)   - Logic/Ternary (if/else)
-
-# Available Functions ($):
-# --- User & Target ---
-# $(user)                - Username of the caller
-# $(touser)              - Username of target (argument) or caller if no arg
-# $(random)              - Random number 0-100
-# $(random <max>)        - Random number 0-max
-# $(randomuser)          - Random active chatter name
-#
-# --- Twitch Data ---
-# $(twitch.subs)         - Total subscriber count
-# $(twitch.viewers)      - Current viewer count
-# $(twitch.follows)      - Total follower count
-# $(twitch.title)        - Current stream title
-# $(twitch.game)         - Current game name
-# $(twitch.channel)      - Channel name
-#
-# --- Stream Management (Requires Mod/Broadcaster) ---
-# $(set.game <name>)     - Change stream category
-# $(set.title <text>)    - Change stream title
-# $(start.poll <args>)   - Start a poll
-# $(start.prediction <args>) - Start a prediction
-# $(raid <user>)         - Raid a target channel
-# $(unraid)              - Cancel an active raid
-# $(vip <user>)          - Add VIP role to a user
-# $(vip <user> <days>)   - Add VIP role to a user for the amount of days  (max 30)
-# $(ban <user> [time])   - Ban a user (time optional in seconds)
-#
-# --- Counters ---
-# $(count)               - Get current count and increment
-# $(count <num>)         - Get count and increment by num
-# $(scount)              - Simple count increment (+1)
-#
-# --- AI ---
-# $(ai <prompt>)         - Generate a response using AI
-
-# Logic Operators (*):
-# ==, !=, >, <, >=, <=, ~= (contains, case-insensitive)
-# Example: *($(user) == "admin" ? "Welcome Boss" : "Welcome $(user)")
+# The full, auto-generated AST syntax reference (all $(...) functions,
+# variables, logic, loops and arrays) lives in doc-ast.txt next to this
+# file. Regenerate it with: npm run gen:ast-docs
 
 ###
 

@@ -932,6 +932,10 @@ export async function chat(
   // Track tool calls to prevent infinite loops
   let toolCallCount = 0;
 
+  // Self-healing AST budget: one attempt + at most one corrected retry.
+  const MAX_AST_PARSER_ATTEMPTS = 2;
+  let astParserAttempts = 0;
+
   // Main AI loop
   while (toolCallCount < MAX_TOOL_CALLS) {
     // Make API call with tools
@@ -1049,6 +1053,33 @@ export async function chat(
         userID: userContext.userID,
         tags,
       };
+
+      // Enforce the AST self-healing budget: initial attempt + one retry.
+      // Beyond that, refuse to execute and tell the model to respond instead.
+      if (toolCall.name === "AST_PARSER") {
+        astParserAttempts++;
+        if (astParserAttempts > MAX_AST_PARSER_ATTEMPTS) {
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({
+              success: false,
+              error:
+                "AST command attempts exhausted for this turn. Do not retry the AST_PARSER tool again. Respond to the user normally and explain the action could not be completed.",
+            }),
+          });
+          debug(
+            {
+              message: "[AI Harness] AST_PARSER budget exhausted, refusing retry",
+              sessionId,
+              traceId,
+              attempts: astParserAttempts,
+            },
+            { channelId: channelID, destination: "console" },
+          );
+          continue;
+        }
+      }
 
       const result = await executeTool(
         toolCall.name,

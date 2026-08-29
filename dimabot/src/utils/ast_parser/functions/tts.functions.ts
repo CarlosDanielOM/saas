@@ -223,9 +223,23 @@ const ttsCloneHandler = createCloneHandler('tts.clone');
 const ttsFishHandler = createCloneHandler('tts.fish');
 
 export function registerTtsFunctions(): void {
-    registerFunction('tts', ttsSpeakHandler);
-    registerFunction('tts.speak', ttsExplicitSpeakHandler);
-    registerFunction('tts.ai', ttsAiHandler);
-    registerFunction('tts.clone', ttsCloneHandler);
-    registerFunction('tts.fish', ttsFishHandler);
+    const ttsMetadata = {
+        description: 'Speaks a message out loud using the channel default TTS voice.',
+        syntax: 'tts message',
+        category: 'tts',
+        examples: ['tts Hello chat!'],
+        keywords: ['tts', 'speak', 'text to speech', 'hablar', 'voz', 'di esto']
+    };
+    registerFunction('tts', ttsSpeakHandler, ttsMetadata);
+    registerFunction('tts.speak', ttsExplicitSpeakHandler, { ...ttsMetadata, aliasOf: 'tts' });
+    registerFunction('tts.ai', ttsAiHandler, { ...ttsMetadata, aliasOf: 'tts' });
+    const cloneMetadata = {
+        description: 'Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message.',
+        syntax: 'tts.clone voice_name message',
+        category: 'tts',
+        examples: ['tts.clone gojo Hello chat!', 'tts.clone rias_gremory Welcome!'],
+        keywords: ['clone voice', 'fish audio', 'voz clonada', 'hablar con voz', 'gojo', 'rias_gremory', 'carlos_bodoque', 'toji_fushiguro']
+    };
+    registerFunction('tts.clone', ttsCloneHandler, cloneMetadata);
+    registerFunction('tts.fish', ttsFishHandler, { ...cloneMetadata, aliasOf: 'tts.clone' });
 }

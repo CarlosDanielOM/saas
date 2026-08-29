@@ -1,4 +1,4 @@
-import type { ExecutionContext } from '../types.js';
+import type { ExecutionContext, FunctionMetadata } from '../types.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import * as ChannelFunctions from '../../../functions/channels/index.js';
 import * as ChatFunctions from '../../../functions/chats/index.js';
@@ -557,18 +557,81 @@ const emoteonlyHandler: FunctionHandler = async (args, ctx) => {
 export function registerModerationFunctions(): void {
     startRestoreModeratorWorker();
 
-    registerFunction('vip', vipHandler);
-    registerFunction('add.vip', vipHandler);
-    registerFunction('channel.add.vip', vipHandler);
-    registerFunction('twitch.add.vip', vipHandler);
-    registerFunction('unvip', unvipHandler);
-    registerFunction('ban', banHandler);
-    registerFunction('ban.mod', banModHandler);
-    registerFunction('mod', modHandler);
-    registerFunction('add.mod', modHandler);
-    registerFunction('channel.add.mod', modHandler);
-    registerFunction('twitch.add.mod', modHandler);
-    registerFunction('unmod', unmodHandler);
-    registerFunction('clear.chat', clearChatHandler);
-    registerFunction('emoteonly', emoteonlyHandler);
+    const vipMetadata: FunctionMetadata = {
+        description: 'Grants VIP to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).',
+        syntax: 'add.vip username [days]',
+        category: 'moderation',
+        examples: ['add.vip gooduser', 'add.vip gooduser 7'],
+        minUserLevel: 7,
+        keywords: ['vip', 'grant vip', 'dar vip', 'agregar vip']
+    };
+    registerFunction('vip', vipHandler, { ...vipMetadata, aliasOf: 'add.vip' });
+    registerFunction('add.vip', vipHandler, vipMetadata);
+    registerFunction('channel.add.vip', vipHandler, { ...vipMetadata, aliasOf: 'add.vip' });
+    registerFunction('twitch.add.vip', vipHandler, { ...vipMetadata, aliasOf: 'add.vip' });
+    registerFunction('unvip', unvipHandler, {
+        description: 'Removes VIP from a user.',
+        syntax: 'unvip username',
+        category: 'moderation',
+        examples: ['unvip someuser'],
+        minUserLevel: 7,
+        destructive: true,
+        keywords: ['remove vip', 'quitar vip', 'revocar vip']
+    });
+    registerFunction('ban', banHandler, {
+        description: 'Bans or times out a user. Provide seconds for a timeout, omit it for a permanent ban.',
+        syntax: 'ban username [seconds]',
+        category: 'moderation',
+        examples: ['ban trolluser', 'ban trolluser 600'],
+        minUserLevel: 7,
+        destructive: true,
+        keywords: ['ban', 'timeout', 'temporal', 'banear', 'suspender', 'castigar', 'silenciar']
+    });
+    registerFunction('ban.mod', banModHandler, {
+        description: 'Bans/times out a moderator: removes their mod status first, then applies the ban/timeout. With return_mod=true the mod status is restored after the timeout ends (requires a valid timeout). Seconds must be 1-604800. Level 8 applies to bot-driven (AST_PARSER) use; inside streamer-authored commands the command permission level controls who can trigger it.',
+        syntax: 'ban.mod username seconds [true|false]',
+        category: 'moderation',
+        examples: ['ban.mod badmod 300', 'ban.mod badmod 300 true'],
+        minUserLevel: 8,
+        destructive: true,
+        keywords: ['ban moderator', 'timeout mod', 'banear mod', 'castigar moderador']
+    });
+    const modMetadata: FunctionMetadata = {
+        description: 'Grants moderator to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).',
+        syntax: 'add.mod username [days]',
+        category: 'moderation',
+        examples: ['add.mod trusteduser', 'add.mod trusteduser 30'],
+        minUserLevel: 8,
+        keywords: ['moderator', 'grant mod', 'dar mod', 'agregar moderador']
+    };
+    registerFunction('mod', modHandler, { ...modMetadata, aliasOf: 'add.mod' });
+    registerFunction('add.mod', modHandler, modMetadata);
+    registerFunction('channel.add.mod', modHandler, { ...modMetadata, aliasOf: 'add.mod' });
+    registerFunction('twitch.add.mod', modHandler, { ...modMetadata, aliasOf: 'add.mod' });
+    registerFunction('unmod', unmodHandler, {
+        description: 'Removes moderator from a user.',
+        syntax: 'unmod username',
+        category: 'moderation',
+        examples: ['unmod someuser'],
+        minUserLevel: 8,
+        destructive: true,
+        keywords: ['remove mod', 'demod', 'quitar mod', 'revocar moderador']
+    });
+    registerFunction('clear.chat', clearChatHandler, {
+        description: 'Clears the entire chat history.',
+        syntax: 'clear.chat',
+        category: 'moderation',
+        examples: ['clear.chat'],
+        minUserLevel: 7,
+        destructive: true,
+        keywords: ['clear chat', 'purge chat', 'limpiar chat', 'borrar chat']
+    });
+    registerFunction('emoteonly', emoteonlyHandler, {
+        description: 'Toggles emote-only mode on/off. Optional seconds auto-disables it after the duration when enabling.',
+        syntax: 'emoteonly [seconds]',
+        category: 'moderation',
+        examples: ['emoteonly', 'emoteonly 600'],
+        minUserLevel: 7,
+        keywords: ['emote only', 'solo emotes', 'modo emotes']
+    });
 }

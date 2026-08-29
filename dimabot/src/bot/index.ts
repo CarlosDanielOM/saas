@@ -13,6 +13,7 @@ import { getPolarShClient } from '../utils/polarsh.js';
 import { info } from '../utils/logger.js';
 import { startBotRuntimeMetricsLoop } from '../utils/observability/bot_runtime_metrics.js';
 import startSDKLogger from '../utils/opentelemetry_posthog.js';
+import { ensureAstCatalogVectors } from '../utils/ai/ast_catalog/index.js';
 //? TODO: Add other eventsub imports
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -38,5 +39,9 @@ await pubSubManager.init();
 await TwitchStreamers.getTwitchAccountsFromDB();
 
 twitchEventsub();
+
+// Warm the AST command catalog vector index in the background (ast_docs).
+// Never blocks boot; searches degrade to keyword matching until it is ready.
+void ensureAstCatalogVectors();
 
 //? TODO: Add refresh Tokens intervals

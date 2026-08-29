@@ -94,13 +94,23 @@ export interface CodeExecutionToolResult {
 // ============================================================================
 
 function loadApiDocumentation(): string {
+    const sections: string[] = [];
     try {
         const docPath = path.join(process.cwd(), 'src/utils/ai/sandbox/doc-llm.txt');
-        return fs.readFileSync(docPath, 'utf-8');
+        sections.push(fs.readFileSync(docPath, 'utf-8'));
     } catch (err) {
         error({ function: 'loadApiDocumentation', error: 'Failed to load API documentation', err: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
-        return '';
     }
+    try {
+        // Generated AST authoring reference (npm run gen:ast-docs). May be
+        // absent in a stale checkout; the command message syntax then falls
+        // back to whatever doc-llm.txt still documents.
+        const astDocPath = path.join(process.cwd(), 'src/utils/ai/sandbox/doc-ast.txt');
+        sections.push(fs.readFileSync(astDocPath, 'utf-8'));
+    } catch {
+        // Optional; not fatal.
+    }
+    return sections.join('\n\n');
 }
 
 // ============================================================================

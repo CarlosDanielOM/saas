@@ -75,12 +75,68 @@ const replaceHandler: FunctionHandler = async (args) => {
 };
 
 export function registerStringFunctions(): void {
-    registerFunction('upper', upperHandler);
-    registerFunction('lower', lowerHandler);
-    registerFunction('title', titleHandler);
-    registerFunction('capitalize', capitalizeHandler);
-    registerFunction('trim', trimHandler);
-    registerFunction('length', lengthHandler);
-    registerFunction('slice', sliceHandler);
-    registerFunction('replace', replaceHandler);
+    registerFunction('upper', upperHandler, {
+        description: 'Converts text to UPPERCASE.',
+        syntax: 'upper text',
+        category: 'string',
+        examples: ['upper hello'],
+        keywords: ['uppercase', 'mayusculas', 'caps'],
+        surfaces: ['authoring']
+    });
+    registerFunction('lower', lowerHandler, {
+        description: 'Converts text to lowercase.',
+        syntax: 'lower text',
+        category: 'string',
+        examples: ['lower HELLO'],
+        keywords: ['lowercase', 'minusculas'],
+        surfaces: ['authoring']
+    });
+    registerFunction('title', titleHandler, {
+        description: 'Converts text to Title Case (first letter of each word capitalized).',
+        syntax: 'title text',
+        category: 'string',
+        examples: ['title hello world'],
+        keywords: ['title case', 'capitalizar palabras'],
+        surfaces: ['authoring']
+    });
+    registerFunction('capitalize', capitalizeHandler, {
+        description: 'Capitalizes only the first character of the text.',
+        syntax: 'capitalize text',
+        category: 'string',
+        examples: ['capitalize hello world'],
+        keywords: ['capitalize', 'primera letra mayuscula'],
+        surfaces: ['authoring']
+    });
+    registerFunction('trim', trimHandler, {
+        description: 'Removes leading and trailing whitespace from text.',
+        syntax: 'trim text',
+        category: 'string',
+        examples: ['trim $(touser)'],
+        keywords: ['trim', 'whitespace', 'espacios'],
+        surfaces: ['authoring']
+    });
+    registerFunction('length', lengthHandler, {
+        description: 'Returns the character count of the text.',
+        syntax: 'length text',
+        category: 'string',
+        examples: ['length hello'],
+        keywords: ['length', 'count characters', 'longitud', 'cuantas letras'],
+        surfaces: ['authoring']
+    });
+    registerFunction('slice', sliceHandler, {
+        description: 'Extracts a substring by index. Negative indexes wrap from the end. Numeric args come first, then the text.',
+        syntax: 'slice start [end] text',
+        category: 'string',
+        examples: ['slice 0 5 hello world', 'slice -5 hello world'],
+        keywords: ['substring', 'slice', 'cut', 'recortar', 'parte del texto'],
+        surfaces: ['authoring']
+    });
+    registerFunction('replace', replaceHandler, {
+        description: 'Literal replace-all of a search string with a replacement (no regex). Quote multi-word search/replacement.',
+        syntax: 'replace search replacement text',
+        category: 'string',
+        examples: ['replace a o banana'],
+        keywords: ['replace', 'sustituir', 'reemplazar', 'cambiar texto'],
+        surfaces: ['authoring']
+    });
 }

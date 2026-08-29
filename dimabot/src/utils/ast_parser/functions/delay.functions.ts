@@ -35,7 +35,28 @@ const continueHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerDelayFunctions(): void {
-    registerFunction('delay', delayHandler);
-    registerFunction('break', breakHandler);
-    registerFunction('continue', continueHandler);
+    registerFunction('delay', delayHandler, {
+        description: 'Pauses execution for the given number of seconds (0-60). Used to sequence multi-step command flows.',
+        syntax: 'delay seconds',
+        category: 'flow',
+        examples: ['delay 3'],
+        keywords: ['delay', 'wait', 'pause', 'esperar', 'pausa', 'segundos'],
+        surfaces: ['authoring']
+    });
+    registerFunction('break', breakHandler, {
+        description: 'Exits the current loop immediately.',
+        syntax: 'break',
+        category: 'flow',
+        examples: ['break'],
+        keywords: ['break', 'exit loop', 'salir del bucle'],
+        surfaces: ['authoring']
+    });
+    registerFunction('continue', continueHandler, {
+        description: 'Skips the rest of the current loop iteration and continues with the next one.',
+        syntax: 'continue',
+        category: 'flow',
+        examples: ['continue'],
+        keywords: ['continue', 'skip iteration', 'continuar bucle'],
+        surfaces: ['authoring']
+    });
 }

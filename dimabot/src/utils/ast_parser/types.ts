@@ -224,3 +224,41 @@ export interface EvaluateResult {
     value: unknown;
     context: ExecutionContext;
 }
+
+/**
+ * Which consumer a function is relevant for:
+ * - 'action': the chat AI executing it through the AST_PARSER tool
+ * - 'authoring': command/reward message templates built via code_execution
+ */
+export type AstFunctionSurface = 'action' | 'authoring';
+
+/**
+ * Self-describing metadata attached to each registered AST function.
+ * Single source of truth for the generated AI command catalog (ast_docs).
+ */
+export interface FunctionMetadata {
+    /** Short human/LLM-readable description of what the function does */
+    description: string;
+    /** Literal call syntax WITHOUT the $() wrapper, e.g. 'start.poll title;option1/option2;seconds' */
+    syntax: string;
+    /** Functional category used for grouping and filtering */
+    category: string;
+    /** One or more complete usage examples WITHOUT the $() wrapper */
+    examples: string[];
+    /** Minimum user level required (1=Everyone … 10=Broadcaster). Defaults to 1 */
+    minUserLevel?: number;
+    /** Search keywords for intent-based lookup; include English and Spanish terms */
+    keywords?: string[];
+    /** Other registered names that resolve to this same function */
+    aliases?: string[];
+    /** When set, this name is an alias of the given canonical function name */
+    aliasOf?: string;
+    /** When set, this name is deprecated; value names the recommended replacement */
+    deprecated?: string;
+    /** True for destructive actions (ban, unmod, clear.chat, ...) that deserve double-checking */
+    destructive?: boolean;
+    /** Minimum plan tier when the function (or part of it) is plan-gated */
+    planTier?: 'free' | 'premium' | 'pro';
+    /** Which consumers this function matters for. Defaults to both surfaces */
+    surfaces?: AstFunctionSurface[];
+}

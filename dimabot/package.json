@@ -26,7 +26,10 @@
     "migrate:ai-feature-flags": "tsx src/scripts/migrate_ai_feature_flags.script.ts",
     "resync:ai-memories": "tsx src/scripts/resync_ai_memories.script.ts",
     "migrate:timer-frequency-minutes": "tsx src/scripts/migrate_timer_frequency_minutes.script.ts",
-    "invalidate:all-user-permissions": "tsx src/scripts/invalidate_all_user_permissions.script.ts"
+    "invalidate:all-user-permissions": "tsx src/scripts/invalidate_all_user_permissions.script.ts",
+    "gen:ast-docs": "tsx src/scripts/generate_ast_catalog.script.ts",
+    "ast:lookup": "tsx src/scripts/ast_lookup.script.ts",
+    "check:ast-metadata": "tsx src/scripts/check_ast_metadata.script.ts"
   },
   "keywords": [
     "Bot",

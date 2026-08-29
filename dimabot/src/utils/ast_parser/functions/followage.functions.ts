@@ -94,5 +94,11 @@ const followageHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerFollowageFunctions(): void {
-    registerFunction('followage', followageHandler);
+    registerFunction('followage', followageHandler, {
+        description: 'Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.',
+        syntax: 'followage [username]',
+        category: 'twitch-data',
+        examples: ['followage', 'followage someuser'],
+        keywords: ['followage', 'follow age', 'following since', 'cuanto tiempo siguiendo', 'antiguedad']
+    });
 }

@@ -1,4 +1,5 @@
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
+import type { FunctionMetadata } from '../types.js';
 import * as ChannelFunctions from '../../../functions/channels/index.js';
 import * as ChatFunctions from '../../../functions/chats/index.js';
 import * as UserFunctions from '../../../functions/users/index.js';
@@ -167,13 +168,69 @@ const aiHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerChannelFunctions(): void {
-    registerFunction('raid', raidHandler);
-    registerFunction('unraid', unraidHandler);
-    registerFunction('set.title', setTitleHandler);
-    registerFunction('set.game', setGameHandler);
-    registerFunction('start.prediction', startPredictionHandler);
-    registerFunction('start.poll', startPollHandler);
-    registerFunction('ad', adHandler);
-    registerFunction('ad.time', adHandler);
-    registerFunction('ai', aiHandler);
+    registerFunction('raid', raidHandler, {
+        description: 'Starts a raid to another channel.',
+        syntax: 'raid channel',
+        category: 'channel',
+        examples: ['raid friendlystreamer'],
+        minUserLevel: 8,
+        keywords: ['raid', 'raidear', 'raid to channel']
+    });
+    registerFunction('unraid', unraidHandler, {
+        description: 'Cancels an active raid.',
+        syntax: 'unraid',
+        category: 'channel',
+        examples: ['unraid'],
+        minUserLevel: 8,
+        keywords: ['cancel raid', 'unraid', 'cancelar raid']
+    });
+    registerFunction('set.title', setTitleHandler, {
+        description: 'Changes the stream title.',
+        syntax: 'set.title new title text',
+        category: 'channel',
+        examples: ['set.title Cozy late night stream'],
+        minUserLevel: 8,
+        keywords: ['title', 'stream title', 'titulo', 'cambiar titulo']
+    });
+    registerFunction('set.game', setGameHandler, {
+        description: 'Changes the stream category. Searches Twitch categories by name and picks the best match.',
+        syntax: 'set.game game name',
+        category: 'channel',
+        examples: ['set.game Just Chatting'],
+        minUserLevel: 8,
+        keywords: ['game', 'category', 'juego', 'categoria', 'cambiar juego']
+    });
+    registerFunction('start.prediction', startPredictionHandler, {
+        description: 'Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.',
+        syntax: 'start.prediction title;option1/option2;seconds',
+        category: 'channel',
+        examples: ['start.prediction Will we win?;Yes/No;120'],
+        minUserLevel: 8,
+        keywords: ['prediction', 'prediccion', 'bet', 'apuesta']
+    });
+    registerFunction('start.poll', startPollHandler, {
+        description: 'Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.',
+        syntax: 'start.poll title;option1/option2;seconds',
+        category: 'channel',
+        examples: ['start.poll Best map?;Nuke/Mirage/Inferno;120'],
+        minUserLevel: 8,
+        keywords: ['poll', 'encuesta', 'vote', 'votar', 'votacion']
+    });
+    const adMetadata: FunctionMetadata = {
+        description: 'Returns the duration in seconds of the current ad break (event data).',
+        syntax: 'ad.time',
+        category: 'event-data',
+        examples: ['ad.time'],
+        keywords: ['ad', 'commercial', 'anuncio', 'publicidad'],
+        surfaces: ['authoring']
+    };
+    registerFunction('ad', adHandler, { ...adMetadata, aliasOf: 'ad.time' });
+    registerFunction('ad.time', adHandler, adMetadata);
+    registerFunction('ai', aiHandler, {
+        description: 'Generates an AI response for the given prompt using the channel AI personality.',
+        syntax: 'ai prompt',
+        category: 'ai',
+        examples: ['ai tell me a joke'],
+        keywords: ['ai', 'ask ai', 'preguntar a la ia', 'generar respuesta']
+    });
 }
