@@ -249,37 +249,17 @@ export class TtsPageComponent {
     return planTier === 'pro';
   });
 
-  readonly defaultProviderOptions = computed<VoiceOption[]>(() => {
-    const options: VoiceOption[] = [{ value: 'piper', label: this.t('modules.tts.fields.providerPiper') }];
+  readonly defaultProviderOptions = computed<VoiceOption[]>(() => [
+    { value: 'piper', label: this.t('modules.tts.fields.providerPiper') },
+    { value: 'xai', label: this.t('modules.tts.fields.providerXai') },
+    { value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') },
+    { value: 'fish', label: this.t('modules.tts.fields.providerFish') }
+  ]);
 
-    if (this.canUseProvider('xai')) {
-      options.push({ value: 'xai', label: this.t('modules.tts.fields.providerXai') });
-    }
-
-    if (this.canUseProvider('openrouter')) {
-      options.push({ value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') });
-    }
-
-    if (this.canUseProvider('fish')) {
-      options.push({ value: 'fish', label: this.t('modules.tts.fields.providerFish') });
-    }
-
-    return options;
-  });
-
-  readonly aiProviderOptions = computed<VoiceOption[]>(() => {
-    const options: VoiceOption[] = [];
-
-    if (this.canUseProvider('xai')) {
-      options.push({ value: 'xai', label: this.t('modules.tts.fields.providerXai') });
-    }
-
-    if (this.canUseProvider('openrouter')) {
-      options.push({ value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') });
-    }
-
-    return options;
-  });
+  readonly aiProviderOptions = computed<VoiceOption[]>(() => [
+    { value: 'xai', label: this.t('modules.tts.fields.providerXai') },
+    { value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') }
+  ]);
 
   readonly englishVoiceOptions = computed(() =>
     mergeCurrentOption(
@@ -319,12 +299,11 @@ export class TtsPageComponent {
       this.t('modules.tts.fields.savedValueOption', { value: this.getDisplayedOpenRouterModel() })
     )
   );
-  readonly showAiSettings = computed(() => this.isPremiumOrPro());
   readonly showOpenRouterModelSettings = computed(() => {
     const settings = this.ttsSettings();
-    return settings?.provider === 'openrouter' || (this.showAiSettings() && settings?.aiProvider === 'openrouter');
+    return settings?.provider === 'openrouter' || settings?.aiProvider === 'openrouter';
   });
-  readonly showExpressiveTagsSection = computed(() => this.isPremiumOrPro() || this.ttsSettings()?.provider === 'xai');
+  readonly showExpressiveTagsSection = computed(() => true);
   readonly showCloneSettings = computed(() => this.ttsSettings()?.provider === 'fish');
   readonly cloneDefaultVoiceOptions = computed(() => {
     const current = this.ttsSettings()?.voices.cloneDefault;
@@ -632,27 +611,6 @@ export class TtsPageComponent {
     }
   }
 
-  private canUseProvider(provider: TtsProvider | AiTtsProvider): boolean {
-    if (provider === 'piper') {
-      return true;
-    }
-
-    if (provider === 'fish') {
-      return this.isPro();
-    }
-
-    return this.isPremiumOrPro();
-  }
-
-  private clampSettingsToPlan(settings: TtsSettings): TtsSettings {
-    const next = this.deepCloneSettings(settings);
-    if (!this.canUseProvider(next.provider)) {
-      next.provider = 'piper';
-    }
-
-    return next;
-  }
-
   private async loadTtsSettings(channelID: string): Promise<void> {
     this.ttsLoading.set(true);
     this.ttsErrorMessage.set(null);
@@ -663,7 +621,7 @@ export class TtsPageComponent {
       // Backend normalizes on save, so server response is already canonical.
       // Normalizing on read was replacing saved values with defaults.
       this.ttsRole.set(response.role);
-      const settings = this.clampSettingsToPlan(response.settings);
+      const settings = response.settings;
       this.ttsSettings.set(settings);
       this.initialTtsSettings.set(this.deepCloneSettings(settings));
     } catch (error) {

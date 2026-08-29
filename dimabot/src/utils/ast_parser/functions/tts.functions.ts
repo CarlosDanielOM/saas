@@ -60,18 +60,6 @@ function parseVoiceOverrideArgument(args: unknown[], fallback?: string): { voice
     };
 }
 
-function isModeAllowed(mode: 'speak' | 'ai' | 'clone', userPlan: 'free' | 'premium' | 'pro'): boolean {
-    if (mode === 'speak') {
-        return true;
-    }
-
-    if (mode === 'ai') {
-        return userPlan === 'premium' || userPlan === 'pro';
-    }
-
-    return userPlan === 'pro';
-}
-
 async function queueTts(
     mode: 'default' | 'speak' | 'ai' | 'clone',
     message: string,
@@ -109,15 +97,6 @@ async function queueTts(
             success: false,
             mode: mode as 'ai' | 'clone',
             errorMessage: 'TTS is disabled for this channel'
-        };
-    }
-
-    if (!isModeAllowed(mode, ctx.userPlan)) {
-        return {
-            output: 'Your plan does not include this TTS mode',
-            success: false,
-            mode: mode as 'ai' | 'clone',
-            errorMessage: 'Your plan does not include this TTS mode'
         };
     }
 

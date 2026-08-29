@@ -257,8 +257,8 @@
         }
       },
       "future": {
-        "title": "Reservado para tiers premium",
-        "copy": "Las voces IA estan disponibles para planes de pago. `tts.clone` sigue reservado para un provider futuro de clonacion de voz."
+        "title": "Usa creditos de IA",
+        "copy": "Todos los proveedores de TTS estan disponibles en todos los planes. El uso se cobra de tus creditos mensuales de IA."
       },
       "defaultMode": {
         "title": "Como funciona la voz por defecto",
@@ -1014,7 +1014,7 @@
       "upgradeToProCta": "Mejorar a Pro",
       "maxTierNote": "Estas en el plan mas alto — gracias por el apoyo!",
       "benefitCredits": "Hasta 500,000 creditos de IA / mes",
-      "benefitTts": "Clonacion de voz TTS y voces humanas",
+      "benefitTts": "Todos los proveedores TTS, cobrados con creditos de IA",
       "benefitSupport": "Soporte prioritario+"
     },
     "meta": {
@@ -1785,7 +1785,7 @@
       "analyticsTitle": "Analiticas avanzadas",
       "analyticsDescription": "Mide actividad de usuarios, uso de comandos y tendencias de engagement con mayor retencion.",
       "ttsTitle": "TTS y funciones de voz",
-      "ttsDescription": "Desde TTS basico hasta voces premium mas naturales y capacidades avanzadas.",
+      "ttsDescription": "Todos los proveedores TTS en todos los planes. El uso se descuenta de tus creditos de IA.",
       "comparePlansCta": "Comparar planes →"
     },
     "pricing": {
@@ -2330,7 +2330,7 @@
         "price": "$6/mes",
         "benefits": [
           "125,000 creditos de IA / mes",
-          "Voces TTS similares a humanos",
+          "Todos los proveedores TTS",
           "Aprendizaje de memoria del chat",
           "Visibilidad de subidas publica o privada",
           "Soporte prioritario"
@@ -2344,7 +2344,7 @@
         "price": "$15/mes",
         "benefits": [
           "500,000 creditos de IA / mes",
-          "Clonacion de voz TTS",
+          "Todos los proveedores TTS",
           "Aprende del chat + resúmenes de stream",
           "Visibilidad de subidas publica o privada",
           "Soporte prioritario+",

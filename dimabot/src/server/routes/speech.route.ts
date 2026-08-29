@@ -53,18 +53,6 @@ function normalizeRouteParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] || '' : value || '';
 }
 
-function canUseAiProvider(provider: RuntimeTtsProvider, planTier: string | undefined): boolean {
-    if (provider === 'piper') {
-        return true;
-    }
-
-    if (provider === 'fish') {
-        return planTier === 'pro';
-    }
-
-    return planTier === 'premium' || planTier === 'pro';
-}
-
 function resolveRequestedProvider(
     settings: ChannelTtsSettingsData,
     mode: TtsMode,
@@ -155,30 +143,6 @@ function resolveModel(settings: ChannelTtsSettingsData, provider: RuntimeTtsProv
     }
 
     return undefined;
-}
-
-function canUseMode(mode: TtsMode, planTier: string | undefined): boolean {
-    if (mode === 'speak') {
-        return true;
-    }
-
-    if (mode === 'ai') {
-        return planTier === 'premium' || planTier === 'pro';
-    }
-
-    return planTier === 'pro';
-}
-
-function getModeUnavailableMessage(mode: TtsMode): string {
-    if (mode === 'ai') {
-        return 'AI TTS is not configured properly';
-    }
-
-    if (mode === 'clone') {
-        return 'Voice cloning is not available yet';
-    }
-
-    return 'Unsupported TTS mode';
 }
 
 async function getSettingsAccess(requesterID: string, channelID: string): Promise<SettingsAccessRole> {
@@ -297,31 +261,7 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
-        const existingSettings = await getChannelTtsSettings(channelID, streamer.name);
         const nextSettings = normalizeChannelTtsSettings(req.body as Partial<ChannelTtsSettingsData>, channelID, streamer.name);
-
-        if (!canUseAiProvider(nextSettings.provider, streamer.plan_tier)) {
-            if (nextSettings.provider !== existingSettings.provider) {
-                return res.status(403).json({
-                    error: true,
-                    message: 'Your plan does not include this default TTS provider',
-                    status: 403
-                });
-            }
-
-            nextSettings.provider = 'piper';
-        }
-
-        if (!canUseAiProvider(nextSettings.aiProvider, streamer.plan_tier)) {
-            if (nextSettings.aiProvider !== existingSettings.aiProvider) {
-                return res.status(403).json({
-                    error: true,
-                    message: 'Your plan does not include this AI TTS provider',
-                    status: 403
-                });
-            }
-        }
-
         const savedSettings = await upsertChannelTtsSettings(channelID, nextSettings, streamer.name);
 
         return res.status(200).json({
@@ -438,23 +378,8 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             });
         }
 
-        if (!canUseMode(mode, streamer.plan_tier)) {
-            return res.status(403).json({
-                error: true,
-                message: 'Your plan does not include this TTS mode',
-                status: 403
-            });
-        }
-
         const language = body.language === 'en' ? 'en' : settings.defaultLanguage;
         const provider = resolveRequestedProvider(settings, mode, body.provider);
-        if (!canUseAiProvider(provider, streamer.plan_tier)) {
-            return res.status(403).json({
-                error: true,
-                message: 'Your plan does not include this TTS provider',
-                status: 403
-            });
-        }
 
         const filteredText = filterExpressiveTtsTags(
             String(body.text || ''),

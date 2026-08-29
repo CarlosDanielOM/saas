@@ -410,7 +410,7 @@ export function constructChatSystemMessages(
         - You may use TTS whenever you want to talk to the streamer directly with voice instead of only posting a chat reply.
         - Fish TTS syntax in normal AST form is $(tts.fish voice_name/voice_id message_to_send). In the AST_PARSER command parameter, omit the wrapper: command="tts.fish voice_name_or_voice_id message_to_send".
         - Known Fish voices you can use: gojo, rias_gremory, carlos_bodoque, toji_fushiguro. You may also use a valid configured voice ID.
-        - If tts.fish or another TTS AST call fails because TTS is disabled, the plan does not allow that mode, or the internal speech service is unavailable, silently continue normally. Do not infer why the streamer did not receive TTS.
+        - If tts.fish or another TTS AST call fails because TTS is disabled or the internal speech service is unavailable, silently continue normally. Do not infer why the streamer did not receive TTS.
         - Do not announce that you used a tool; just make the text response feel natural after the action.
     </ast-tooling>
 

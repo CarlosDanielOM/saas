@@ -129,7 +129,7 @@ export class LandingPageComponent implements OnInit {
     },
     { label: 'Temporary VIP/Mod', free: 'X', premium: 'Check', pro: 'Check' },
     { label: 'Variables', free: 'Cache (24h)', premium: 'Cache + DB', pro: 'Cache + DB' },
-    { label: 'TTS', free: 'Basic', premium: 'Human-like', pro: 'Voice cloning' },
+    { label: 'TTS', free: 'All providers', premium: 'All providers', pro: 'All providers' },
     { label: 'AI bot personalities', free: '1', premium: '2', pro: '3' },
     {
       label: 'AI mode quality',

@@ -211,83 +211,66 @@
         </article>
 
         <!-- AI provider -->
-        <article class="lf-tile" [class.lf-tile--gold]="showAiSettings()">
+        <article class="lf-tile lf-tile--gold">
           <p class="lf-kicker">{{ t('modules.tts.cards.aiKicker') }}</p>
           <h2 class="lf-h2">{{ t('modules.tts.cards.aiTitle') }}</h2>
 
-          @if (showAiSettings()) {
-            <div class="lf-form-grid">
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span>{{ t('modules.tts.fields.aiProviderLabel') }}</span>
+              <select
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiProvider($any($event.target).value)"
+              >
+                @for (provider of aiProviderOptions(); track provider.value) {
+                  <option [value]="provider.value" [selected]="provider.value === tts.aiProvider">{{ provider.label }}</option>
+                }
+              </select>
+            </label>
+
+            @if (showOpenRouterModelSettings()) {
               <label class="lf-field">
-                <span>{{ t('modules.tts.fields.aiProviderLabel') }}</span>
+                <span>{{ t('modules.tts.fields.openRouterModelLabel') }}</span>
                 <select
                   [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsAiProvider($any($event.target).value)"
+                  (change)="updateOpenRouterModel($any($event.target).value)"
                 >
-                  @for (provider of aiProviderOptions(); track provider.value) {
-                    <option [value]="provider.value" [selected]="provider.value === tts.aiProvider">{{ provider.label }}</option>
+                  @for (model of openRouterModelOptions(); track model.value) {
+                    <option [value]="model.value" [selected]="model.value === getDisplayedOpenRouterModel()">{{ model.label }}</option>
                   }
                 </select>
               </label>
+            }
 
-              @if (showOpenRouterModelSettings()) {
-                <label class="lf-field">
-                  <span>{{ t('modules.tts.fields.openRouterModelLabel') }}</span>
-                  <select
-                    [disabled]="ttsReadOnly() || ttsSaving()"
-                    (change)="updateOpenRouterModel($any($event.target).value)"
-                  >
-                    @for (model of openRouterModelOptions(); track model.value) {
-                      <option [value]="model.value" [selected]="model.value === getDisplayedOpenRouterModel()">{{ model.label }}</option>
-                    }
-                  </select>
-                </label>
-              }
+            <label class="lf-field">
+              <span>{{ t('modules.tts.fields.aiEnglishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
+              <select
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiVoice('en', $any($event.target).value)"
+              >
+                @for (voice of englishAiVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('en')">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
 
-              <label class="lf-field">
-                <span>{{ t('modules.tts.fields.aiEnglishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
-                <select
-                  [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsAiVoice('en', $any($event.target).value)"
-                >
-                  @for (voice of englishAiVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('en')">{{ voice.label }}</option>
-                  }
-                </select>
-              </label>
+            <label class="lf-field">
+              <span>{{ t('modules.tts.fields.aiSpanishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
+              <select
+                [disabled]="ttsReadOnly() || ttsSaving()"
+                (change)="updateTtsAiVoice('es', $any($event.target).value)"
+              >
+                @for (voice of spanishAiVoiceOptions(); track voice.value) {
+                  <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('es')">{{ voice.label }}</option>
+                }
+              </select>
+            </label>
+          </div>
 
-              <label class="lf-field">
-                <span>{{ t('modules.tts.fields.aiSpanishVoiceLabel', { provider: currentAiProviderLabel() }) }}</span>
-                <select
-                  [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsAiVoice('es', $any($event.target).value)"
-                >
-                  @for (voice of spanishAiVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value" [selected]="voice.value === getDisplayedAiVoice('es')">{{ voice.label }}</option>
-                  }
-                </select>
-              </label>
-            </div>
-
-            <div class="lf-help lf-help--subtle">
-              <strong>{{ t('modules.tts.future.title') }}</strong>
-              <p>{{ t('modules.tts.future.copy') }}</p>
-            </div>
-          } @else {
-            <div class="lf-upgrade">
-              <span class="lf-chip lf-chip--gold">★ {{ t('modules.tts.badges.premium') }}</span>
-              <h3 class="lf-h3">{{ t('modules.tts.upgrade.title') }}</h3>
-              <p class="lf-copy lf-copy--tight">{{ t('modules.tts.upgrade.description') }}</p>
-              <ul class="lf-upgrade__list">
-                <li>{{ t('modules.tts.upgrade.features.aiVoices') }}</li>
-                <li>{{ t('modules.tts.upgrade.features.expressiveTags') }}</li>
-                <li>{{ t('modules.tts.upgrade.features.openRouter') }}</li>
-              </ul>
-              <p class="lf-note">
-                {{ t('modules.tts.upgrade.currentPlan') }}:
-                <strong>{{ getCurrentPlanLabel() }}</strong>
-              </p>
-            </div>
-          }
+          <div class="lf-help lf-help--subtle">
+            <strong>{{ t('modules.tts.future.title') }}</strong>
+            <p>{{ t('modules.tts.future.copy') }}</p>
+          </div>
         </article>
 
         <!-- Filters -->

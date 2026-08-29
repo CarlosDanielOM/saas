@@ -257,8 +257,8 @@
         }
       },
       "future": {
-        "title": "Reserved for premium voice tiers",
-        "copy": "AI voices are available for paid plans. `tts.clone` is still reserved for a future voice-cloning provider."
+        "title": "Uses AI credits",
+        "copy": "Every TTS provider is available on all plans. Usage is billed from your monthly AI credits."
       },
       "defaultMode": {
         "title": "How the default voice works",
@@ -1014,7 +1014,7 @@
       "upgradeToProCta": "Upgrade to Pro",
       "maxTierNote": "You're on the top-tier plan — thanks for the support!",
       "benefitCredits": "Up to 500,000 AI credits / month",
-      "benefitTts": "Voice cloning TTS and human-like voices",
+      "benefitTts": "All TTS providers, billed from AI credits",
       "benefitSupport": "Priority+ support"
     },
     "meta": {
@@ -1785,7 +1785,7 @@
       "analyticsTitle": "Advanced Analytics",
       "analyticsDescription": "Track user activity, command usage, and engagement trends with deeper retention.",
       "ttsTitle": "TTS & Voice Features",
-      "ttsDescription": "From basic TTS to premium human-like voices and pro-level voice capabilities.",
+      "ttsDescription": "Every TTS provider on every plan. Usage comes out of your AI credits.",
       "comparePlansCta": "Compare plans →"
     },
     "pricing": {
@@ -2330,7 +2330,7 @@
         "price": "$6/mo",
         "benefits": [
           "125,000 AI credits / month",
-          "Human-like TTS voices",
+          "All TTS providers",
           "Memory learning from chat",
           "Public or private upload visibility",
           "Priority support"
@@ -2344,7 +2344,7 @@
         "price": "$15/mo",
         "benefits": [
           "500,000 AI credits / month",
-          "Voice cloning TTS",
+          "All TTS providers",
           "Learns from chat + stream summaries",
           "Public or private upload visibility",
           "Priority+ support",

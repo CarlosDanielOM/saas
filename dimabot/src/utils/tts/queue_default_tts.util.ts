@@ -1,5 +1,4 @@
 import { requestTts, type TtsRequestBody } from '../../functions/chats/speech.chat.js';
-import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { getChannelTtsSettings, type TtsProvider } from '../../schemas/channel_tts_settings.schema.js';
 import {
     buildSpokenUserMessage,
@@ -33,10 +32,6 @@ function resolveDisplayName(input: QueueDefaultTtsInput): string {
     return String(input.userName || input.userLogin || '').trim();
 }
 
-function canUseAiTts(planTier: string | undefined): boolean {
-    return planTier === 'premium' || planTier === 'pro';
-}
-
 async function resolveTtsMode(input: QueueDefaultTtsInput): Promise<{ mode: 'speak' | 'ai' | 'clone'; provider: TtsProvider }> {
     const settings = await getChannelTtsSettings(input.channelID);
     const preferredMode = input.preferredMode || 'default';
@@ -55,11 +50,6 @@ async function resolveTtsMode(input: QueueDefaultTtsInput): Promise<{ mode: 'spe
 
     if (settings.provider === 'fish') {
         return { mode: 'clone', provider: 'fish' };
-    }
-
-    const streamer = await TwitchStreamers.getTwitchAccountById(input.channelID);
-    if (!canUseAiTts(streamer?.plan_tier)) {
-        return { mode: 'speak', provider: 'piper' };
     }
 
     return { mode: 'ai', provider: settings.provider };

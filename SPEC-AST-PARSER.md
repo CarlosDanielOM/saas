@@ -391,8 +391,8 @@ These functions read from EventSub webhook payloads. They only return meaningful
 |----------|------|-------------|-------|
 | `$(tts message)` | All | Queue default TTS | `$(tts Hello world)` |
 | `$(tts.speak message)` | All | Same as `$(tts ...)` | `$(tts.speak Hello)` |
-| `$(tts.ai message)` | Premium/Pro | AI voice TTS | `$(tts.ai Hello world)` |
-| `$(tts.clone name message)` | Pro only | Voice clone TTS | `$(tts.clone voice1 Hello)` |
+| `$(tts.ai message)` | All | AI voice TTS | `$(tts.ai Hello world)` |
+| `$(tts.clone name message)` | All | Voice clone TTS | `$(tts.clone voice1 Hello)` |
 
 ### Trigger Functions
 
@@ -564,8 +564,8 @@ These only return meaningful data when the command is triggered by a matching Ev
 |----------|------|--------------|
 | `$(tts message)` | All | `"$(tts Hello world)"` |
 | `$(tts.speak message)` | All | `"$(tts.speak Hello world)"` |
-| `$(tts.ai message)` | Premium/Pro | `"$(tts.ai Hello world)"` |
-| `$(tts.clone name message)` | Pro only | `"$(tts.clone voice1 Hello world)"` |
+| `$(tts.ai message)` | All | `"$(tts.ai Hello world)"` |
+| `$(tts.clone name message)` | All | `"$(tts.clone voice1 Hello world)"` |
 
 ### Trigger Functions
 
