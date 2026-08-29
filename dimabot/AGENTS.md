@@ -27,6 +27,7 @@
 - Reusable functions (Helix calls, chat actions, moderation) live in `src/functions/`.
 - Handlers for EventSub, chat messages, redemptions, etc. are in `src/handlers/`.
 - Heavy or scheduled work belongs in `src/workers/` (see root AGENTS.md for worker criteria).
+- **Moderation actions are always executed by the bot account** (`TWITCH_BOT_ACCOUNT_ID` in `src/utils/header.ts`), whether triggered by the streamer, a mod, a `!`command, or the AI via AST. Helix moderation endpoints require `moderator_id` to match the token owner — always pair the bot token with `moderator_id=TWITCH_BOT_ACCOUNT_ID` via `getTwitchModeratorHeader()`. Never pass a chatter/streamer ID as `moderator_id`.
 
 ## Development Commands
 

@@ -1,4 +1,4 @@
-import { getTwitchModeratorHeader } from '../../utils/header.js';
+import { getTwitchModeratorHeader, TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -29,7 +29,7 @@ export async function deleteMessage(
         const streamerHeader = streamerHeaderResult.header;
 
         const response = await fetch(
-            getTwitchHelixUrl('moderation/chat', `broadcaster_id=${channelID}&message_id=${messageID}&moderator_id=${modID}`),
+            getTwitchHelixUrl('moderation/chat', `broadcaster_id=${channelID}&message_id=${messageID}&moderator_id=${TWITCH_BOT_ACCOUNT_ID}`),
             {
                 method: 'DELETE',
                 headers: streamerHeader as unknown as Record<string, string>

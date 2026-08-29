@@ -1,4 +1,4 @@
-import { getTwitchModeratorHeader } from '../../utils/header.js';
+import { getTwitchModeratorHeader, TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -12,7 +12,7 @@ interface GetChatSettingsResponse {
 
 export async function getChatSettings(
     channelID: string,
-    modId: string = '698614112'
+    modId: string = TWITCH_BOT_ACCOUNT_ID
 ): Promise<GetChatSettingsResponse> {
     try {
         const streamerHeaderResult = await getTwitchModeratorHeader(channelID, modId);
@@ -28,7 +28,7 @@ export async function getChatSettings(
         const streamerHeader = streamerHeaderResult.header;
 
         const response = await fetch(
-            getTwitchHelixUrl('chat/settings', `broadcaster_id=${channelID}&moderator_id=${modId}`),
+            getTwitchHelixUrl('chat/settings', `broadcaster_id=${channelID}&moderator_id=${TWITCH_BOT_ACCOUNT_ID}`),
             {
                 headers: streamerHeader as unknown as Record<string, string>
             }

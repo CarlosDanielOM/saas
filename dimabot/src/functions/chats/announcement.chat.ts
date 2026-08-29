@@ -1,4 +1,4 @@
-import { getTwitchBotHeader } from '../../utils/header.js';
+import { getTwitchModeratorHeader, TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { error as logError } from '../../utils/logger.js';
 
@@ -16,7 +16,7 @@ export async function sendAnnouncement(
     color: string = 'purple'
 ): Promise<SendAnnouncementResponse> {
     try {
-        const botHeaderResult = await getTwitchBotHeader();
+        const botHeaderResult = await getTwitchModeratorHeader(channelID, moderatorID);
 
         if (botHeaderResult.error || !botHeaderResult.header) {
             return {
@@ -31,7 +31,7 @@ export async function sendAnnouncement(
 
         const params = new URLSearchParams({
             broadcaster_id: channelID,
-            moderator_id: moderatorID
+            moderator_id: TWITCH_BOT_ACCOUNT_ID
         });
 
         const bodyData = {

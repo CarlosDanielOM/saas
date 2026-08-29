@@ -109,16 +109,19 @@ export const TWITCH_BOT_ACCOUNT_ID = '698614112';
 /**
  * Helix moderation endpoints reject requests whose moderator_id does not match
  * the user behind the access token ("incorrect user authorization", 401).
- * Resolve the correct header for the acting moderator:
- * - bot account ID  -> bot token (bot must be a mod in the channel)
- * - anything else   -> the channel streamer's token (only valid when the
- *   moderator IS the streamer, i.e. moderatorID === channelID)
+ *
+ * Policy: bot-executed moderation. Every moderation action (chat clear,
+ * message delete, emote-only, announcements, pins, chatters reads) is
+ * performed BY THE BOT account — whether triggered by the streamer, a mod,
+ * a !command, or the AI via AST — never under the requesting user's ID.
+ * The bot is a mod in every channel it serves, so its user token paired with
+ * moderator_id=TWITCH_BOT_ACCOUNT_ID always satisfies the Helix rule.
+ *
+ * The channelID/moderatorID arguments identify the REQUESTING party and are
+ * kept for logging/attribution only; they never influence token selection.
  */
-export const getTwitchModeratorHeader = async (channelID: string, moderatorID: string): Promise<TwitchHeaderResult> => {
-    if (moderatorID === TWITCH_BOT_ACCOUNT_ID) {
-        return getTwitchBotHeader();
-    }
-    return getTwitchStreamerHeaderById(channelID);
+export const getTwitchModeratorHeader = async (_channelID: string, _moderatorID: string): Promise<TwitchHeaderResult> => {
+    return getTwitchBotHeader();
 };
 
 export { twitchAppHeader, twitchStreamerHeader };

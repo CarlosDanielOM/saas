@@ -1,4 +1,4 @@
-import { getTwitchModeratorHeader } from '../../utils/header.js';
+import { getTwitchModeratorHeader, TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -30,7 +30,7 @@ export async function getChatters(
 
         const params = new URLSearchParams();
         params.append('broadcaster_id', channelID);
-        params.append('moderator_id', moderatorID);
+        params.append('moderator_id', TWITCH_BOT_ACCOUNT_ID);
 
         const response = await fetch(getTwitchHelixUrl('chat/chatters', params.toString()), {
             headers: streamerHeader as unknown as Record<string, string>

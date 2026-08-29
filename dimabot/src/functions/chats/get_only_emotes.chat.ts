@@ -1,4 +1,4 @@
-import { getTwitchModeratorHeader } from '../../utils/header.js';
+import { getTwitchModeratorHeader, TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -12,7 +12,7 @@ interface GetOnlyEmotesResponse {
 
 export async function getOnlyEmotes(
     channelID: string,
-    modID: string = '698614112'
+    modID: string = TWITCH_BOT_ACCOUNT_ID
 ): Promise<GetOnlyEmotesResponse> {
     try {
         const streamerHeaderResult = await getTwitchModeratorHeader(channelID, modID);
@@ -29,9 +29,7 @@ export async function getOnlyEmotes(
 
         let params = `?broadcaster_id=${channelID}`;
 
-        if (modID) {
-            params += `&moderator_id=${modID}`;
-        }
+        params += `&moderator_id=${TWITCH_BOT_ACCOUNT_ID}`;
 
         const response = await fetch(`${getTwitchHelixUrl('chat/settings', params)}`, {
             headers: streamerHeader as unknown as Record<string, string>
