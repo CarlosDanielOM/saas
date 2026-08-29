@@ -3,12 +3,41 @@ import express from 'express';
 import type { ITwitchEventData, ITwitchSubscriptionData } from '../interfaces/twitch/eventsub.interface.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { endEventsubHandlerMetric, observeEventsubNotification, startEventsubHandlerMetric } from '../utils/observability/bot_runtime_metrics.js';
-import { normalizeTwitchEventsubDomainEvent } from '../domain_events/twitch_eventsub_events.js';
+import {
+    isDurableTwitchEventsubType,
+    normalizeTwitchEventsubDomainEvent
+} from '../domain_events/twitch_eventsub_events.js';
 import { journalDomainEvent } from '../utils/domain_events.js';
 
 const EVENTSUB_MESSAGE_DEDUPE_TTL_SECONDS = Math.max(300, Number(process.env.TWITCH_EVENTSUB_MESSAGE_TTL_SECONDS || 600));
 const EVENTSUB_MESSAGE_MAX_AGE_MS = Math.max(60_000, Number(process.env.TWITCH_EVENTSUB_MESSAGE_MAX_AGE_MS || 10 * 60 * 1000));
+const EVENTSUB_RETRY_MAX_AGE_MS = Math.max(
+    EVENTSUB_MESSAGE_MAX_AGE_MS,
+    Number(process.env.TWITCH_EVENTSUB_RETRY_MAX_AGE_MS || 24 * 60 * 60 * 1000)
+);
 const EVENTSUB_PORT = 3333;
+
+export function acceptEventsubMessageTimestamp(
+    timestamp: string,
+    retryHeader: string,
+    durableNotification: boolean
+): { accepted: boolean; staleRetry: boolean } {
+    const parsed = new Date(timestamp).getTime();
+    if (!Number.isFinite(parsed)) {
+        return { accepted: false, staleRetry: false };
+    }
+    const ageMs = Date.now() - parsed;
+    if (Math.abs(ageMs) <= EVENTSUB_MESSAGE_MAX_AGE_MS) {
+        return { accepted: true, staleRetry: false };
+    }
+    const retryCount = Number(retryHeader);
+    const accepted = durableNotification
+        && Number.isInteger(retryCount)
+        && retryCount > 0
+        && ageMs > EVENTSUB_MESSAGE_MAX_AGE_MS
+        && ageMs <= EVENTSUB_RETRY_MAX_AGE_MS;
+    return { accepted, staleRetry: accepted };
+}
 
 export function createTwitchEventsubApp() {
     if (!getSecret()) {
@@ -19,6 +48,7 @@ export function createTwitchEventsubApp() {
     const TWITCH_MESSAGE_ID = 'Twitch-Eventsub-Message-Id'.toLocaleLowerCase();
     const TWITCH_MESSAGE_TIMESTAMP = 'Twitch-Eventsub-Message-Timestamp'.toLocaleLowerCase();
     const TWITCH_MESSAGE_SIGNATURE = 'Twitch-Eventsub-Message-Signature'.toLocaleLowerCase();
+    const TWITCH_MESSAGE_RETRY = 'Twitch-Eventsub-Message-Retry'.toLocaleLowerCase();
     const MESSAGE_TYPE = 'Twitch-Eventsub-Message-Type'.toLocaleLowerCase();
 
     //? Notification message types
@@ -65,7 +95,7 @@ export function createTwitchEventsubApp() {
         const secret = getSecret();
         const hmac = HMAC_PREFIX + getHmac(secret, messageId, messageTimestamp, req.body);
 
-        if (verifyMessage(hmac, messageSignature) && isFreshMessageTimestamp(messageTimestamp)) {
+        if (verifyMessage(hmac, messageSignature)) {
             let notification: any;
             try {
                 notification = JSON.parse(req.body.toString('utf8'));
@@ -75,11 +105,21 @@ export function createTwitchEventsubApp() {
             }
 
             const eventType = String(notification?.subscription?.type || 'unknown');
+            const messageType = String(req.headers[MESSAGE_TYPE] || '');
+            const messageRetry = String(req.headers[TWITCH_MESSAGE_RETRY] || '');
+            const timestampDecision = acceptEventsubMessageTimestamp(
+                messageTimestamp,
+                messageRetry,
+                messageType === MESSAGE_TYPE_NOTIFICATION && isDurableTwitchEventsubType(eventType)
+            );
+            if (!timestampDecision.accepted) {
+                console.log('Message timestamp verification failed');
+                res.sendStatus(403);
+                return;
+            }
             const payloadBytes = Buffer.isBuffer(req.body)
                 ? req.body.length
                 : Buffer.byteLength(String(req.body || ''));
-
-            const messageType = String(req.headers[MESSAGE_TYPE] || '');
 
             if (MESSAGE_TYPE_VERIFICATION === messageType) {
                 if (typeof notification.challenge !== 'string') {
@@ -117,6 +157,8 @@ export function createTwitchEventsubApp() {
                     durableEvent = normalizeTwitchEventsubDomainEvent({
                         messageId,
                         messageTimestamp,
+                        messageRetry: Number.parseInt(messageRetry, 10) || 0,
+                        staleRetry: timestampDecision.staleRetry,
                         subscription: notification.subscription,
                         event: notification.event
                     });
@@ -205,14 +247,6 @@ export function createTwitchEventsubApp() {
             return false;
         }
         return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(verifySignature));
-    }
-
-    function isFreshMessageTimestamp(timestamp: string): boolean {
-        const parsed = new Date(timestamp).getTime();
-        if (!Number.isFinite(parsed)) {
-            return false;
-        }
-        return Math.abs(Date.now() - parsed) <= EVENTSUB_MESSAGE_MAX_AGE_MS;
     }
 
     return app;

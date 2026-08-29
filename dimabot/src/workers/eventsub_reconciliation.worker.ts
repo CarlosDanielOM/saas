@@ -12,6 +12,8 @@ const REQUEST_DELAY_MS = Math.max(0, Number(process.env.EVENTSUB_RECONCILIATION_
 const LOCK_KEY = String(process.env.EVENTSUB_RECONCILIATION_LOCK_KEY || 'worker:eventsub-reconciliation:lock');
 const LOCK_TTL_SECONDS = Math.max(600, Number(process.env.EVENTSUB_RECONCILIATION_LOCK_TTL_SECONDS || 3 * 60 * 60));
 const MISSING_GRACE_MS = Math.max(60_000, Number(process.env.EVENTSUB_RECONCILIATION_MISSING_GRACE_MS || 12 * 60 * 60_000));
+const UNHEALTHY_CIRCUIT_BREAKER_RATIO = Math.min(1, Math.max(0, Number(process.env.EVENTSUB_RECONCILIATION_UNHEALTHY_RATIO || 0.25)));
+const UNHEALTHY_CIRCUIT_BREAKER_MIN_COUNT = Math.max(1, Number(process.env.EVENTSUB_RECONCILIATION_UNHEALTHY_MIN_COUNT || 5));
 const RUN_ON_START = process.env.EVENTSUB_RECONCILIATION_RUN_ON_START !== 'false';
 const RUN_ONCE = process.argv.includes('--once');
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -39,7 +41,7 @@ async function bootstrap(): Promise<void> {
         console.log(JSON.stringify({
             worker: 'eventsub_reconciliation',
             message: 'Dry run mode - resolved configuration',
-            config: { intervalMs: INTERVAL_MS, requestDelayMs: REQUEST_DELAY_MS, missingGraceMs: MISSING_GRACE_MS, lockKey: LOCK_KEY, lockTtlSeconds: LOCK_TTL_SECONDS, runOnStart: RUN_ON_START, runOnce: RUN_ONCE }
+            config: { intervalMs: INTERVAL_MS, requestDelayMs: REQUEST_DELAY_MS, missingGraceMs: MISSING_GRACE_MS, unhealthyCircuitBreakerRatio: UNHEALTHY_CIRCUIT_BREAKER_RATIO, unhealthyCircuitBreakerMinCount: UNHEALTHY_CIRCUIT_BREAKER_MIN_COUNT, lockKey: LOCK_KEY, lockTtlSeconds: LOCK_TTL_SECONDS, runOnStart: RUN_ON_START, runOnce: RUN_ONCE }
         }, null, 2));
         return;
     }
@@ -98,6 +100,8 @@ async function bootstrap(): Promise<void> {
             const result = await reconcileEventsubs({
                 requestDelayMs: REQUEST_DELAY_MS,
                 missingGraceMs: MISSING_GRACE_MS,
+                unhealthyCircuitBreakerRatio: UNHEALTHY_CIRCUIT_BREAKER_RATIO,
+                unhealthyCircuitBreakerMinCount: UNHEALTHY_CIRCUIT_BREAKER_MIN_COUNT,
                 shouldContinue: async () => !shutdownRequested
                     && !lockLost
                     && await cache.get(LOCK_KEY) === owner

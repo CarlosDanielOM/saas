@@ -10,11 +10,11 @@ import { enqueueStreamMemorySummaryJob } from './ai/memory/stream_memory_queue.j
 import { ClipRecommendationConfigSchema } from '../schemas/clip_recommendation_config.schema.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { enqueueClipRecommendationJob } from './ai/clip_recommendations/clip_recommendations_queue.js';
+import { incrementSessionMetricAtEventTime } from './stream_session_event_projection.js';
 
 const DEFAULT_DASHBOARD_DAYS = 30;
 const OFFLINE_CHECK_THRESHOLD = 2;
 const SNAPSHOT_RETENTION_DAYS = 90;
-const SESSION_EVENT_KEY_HISTORY_LIMIT = 10_000;
 const LEDGER_EVENT_KEY_HISTORY_LIMIT = 10_000;
 const RETENTION_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const CACHED_LIVE_BOARD_MAX_AGE_MS = Math.max(30_000, Number(process.env.STREAM_ANALYTICS_CACHED_LIVE_BOARD_MAX_AGE_MS || 60_000));
@@ -96,7 +96,6 @@ interface RecordStreamOfflineInput {
     channelID: string;
     endedAt?: string | Date;
     eventKey?: string;
-    requireSession?: boolean;
 }
 
 function toDate(value?: string | Date): Date {
@@ -153,52 +152,6 @@ function toPositiveInteger(value: unknown, fallback = 0): number {
         return fallback;
     }
     return Math.max(0, Math.round(parsed));
-}
-
-async function incrementSessionMetricAtEventTime(input: {
-    channelID: string;
-    occurredAt?: string | Date;
-    eventKey?: string;
-    field: 'bits' | 'subs' | 'follows';
-    quantity: number;
-}): Promise<void> {
-    const occurredAt = toDate(input.occurredAt);
-    const filter: Record<string, unknown> = {
-        channelID: input.channelID,
-        started_at: { $lte: occurredAt },
-        $or: [
-            { ended_at: null },
-            { ended_at: { $gte: occurredAt } }
-        ]
-    };
-    const update: Record<string, unknown> = { $inc: { [input.field]: input.quantity } };
-    if (input.eventKey) {
-        filter.applied_domain_event_keys = { $ne: input.eventKey };
-        update.$push = {
-            applied_domain_event_keys: {
-                $each: [input.eventKey],
-                $slice: -SESSION_EVENT_KEY_HISTORY_LIMIT
-            }
-        };
-    }
-
-    const session = await StreamSessionSchema.findOneAndUpdate(filter, update, {
-        sort: { started_at: -1 },
-        new: true
-    }).select('_id').lean();
-    if (session) {
-        return;
-    }
-    if (input.eventKey) {
-        const alreadyApplied = await StreamSessionSchema.exists({
-            channelID: input.channelID,
-            applied_domain_event_keys: input.eventKey
-        });
-        if (alreadyApplied) {
-            return;
-        }
-        throw new Error(`No stream session contains event ${input.eventKey} at ${occurredAt.toISOString()}`);
-    }
 }
 
 function normalizeSubTier(tier: unknown): 'tier1' | 'tier2' | 'tier3' | 'unknown' {
@@ -700,19 +653,6 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
         );
 
         if (!activeSession) {
-            if (input.eventKey) {
-                const alreadyApplied = await StreamSessionSchema.exists({
-                    channelID,
-                    applied_domain_event_keys: input.eventKey
-                });
-                if (alreadyApplied) {
-                    return;
-                }
-            }
-            if (input.requireSession) {
-                throw new Error(`No stream session contains the offline event time for channel ${channelID}`);
-            }
-            console.warn('recordStreamOfflineEvent: No active session found for channel', { channelID });
             return;
         }
 

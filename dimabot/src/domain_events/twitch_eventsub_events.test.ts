@@ -122,3 +122,18 @@ test('defaults a missing gift total without changing the payload', () => {
     assert.ok(event);
     assert.equal((event.payload.event as Record<string, unknown>).total, undefined);
 });
+
+test('records stale retry audit metadata', () => {
+    const event = normalizeTwitchEventsubDomainEvent({
+        messageId: 'message-stale-retry',
+        messageTimestamp: '2026-08-28T10:00:00Z',
+        messageRetry: 2,
+        staleRetry: true,
+        subscription: { type: 'channel.follow', version: '2' },
+        event: { broadcaster_user_id: '1234', user_id: '5678' }
+    });
+
+    assert.ok(event);
+    assert.equal(event.metadata?.messageRetry, 2);
+    assert.equal(event.metadata?.staleRetry, true);
+});

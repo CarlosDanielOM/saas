@@ -10,6 +10,7 @@ import {
     unsubscribeTwitchEvent,
 } from './eventsub.js';
 import { buildExpectedEventsubCondition } from './eventsub_condition.js';
+import { shouldTripEventsubCircuitBreaker } from './eventsub_reconciliation_policy.js';
 
 interface RemoteEventsub {
     id: string;
@@ -34,6 +35,13 @@ export interface EventsubReconciliationResult {
 
 const DEFAULT_MISSING_GRACE_MS = 12 * 60 * 60_000;
 const PENDING_VERIFICATION_GRACE_MS = 30 * 60_000;
+function remoteIsHealthy(remote: RemoteEventsub): boolean {
+    const pendingAgeMs = Date.now() - new Date(remote.created_at).getTime();
+    return remote.status === 'enabled'
+        || (remote.status === 'webhook_callback_verification_pending'
+            && Number.isFinite(pendingAgeMs)
+            && pendingAgeMs <= PENDING_VERIFICATION_GRACE_MS);
+}
 
 function stableCondition(condition: ICondition): string {
     return JSON.stringify(Object.fromEntries(
@@ -86,6 +94,8 @@ function configurationScore(eventsub: Partial<IEventsub>): number {
 export async function reconcileEventsubs(options?: {
     requestDelayMs?: number;
     missingGraceMs?: number;
+    unhealthyCircuitBreakerRatio?: number;
+    unhealthyCircuitBreakerMinCount?: number;
     shouldContinue?: () => boolean | Promise<boolean>;
 }): Promise<EventsubReconciliationResult> {
     const requestDelayMs = Math.max(0, Number(options?.requestDelayMs || 0));
@@ -130,6 +140,24 @@ export async function reconcileEventsubs(options?: {
         throw new Error(String(remoteResponse?.message || remoteResponse?.error || 'Failed to list Twitch EventSub subscriptions'));
     }
     let remoteSubscriptions = remoteResponse.data as RemoteEventsub[];
+    const managedRemoteSubscriptions = remoteSubscriptions.filter((remote) => {
+        const channelID = resolveRemoteChannelID(remote);
+        if (!activeChannels.has(channelID)) return false;
+        return SUBSCRIPTION_TYPES.some((subscription) => {
+            return subscription.type === remote.type && subscription.version === remote.version;
+        }) || LEGACY_BITS_EVENT_TYPES.includes(remote.type as (typeof LEGACY_BITS_EVENT_TYPES)[number]);
+    });
+    const unhealthyManagedCount = managedRemoteSubscriptions.filter((remote) => !remoteIsHealthy(remote)).length;
+    if (shouldTripEventsubCircuitBreaker(
+        managedRemoteSubscriptions.length,
+        unhealthyManagedCount,
+        options?.unhealthyCircuitBreakerRatio,
+        options?.unhealthyCircuitBreakerMinCount
+    )) {
+        throw new Error(
+            `EventSub reconciliation circuit breaker tripped: ${unhealthyManagedCount}/${managedRemoteSubscriptions.length} managed subscriptions are unhealthy`
+        );
+    }
     const initialRemoteIDs = new Set(remoteSubscriptions.map((subscription) => subscription.id));
     const legacyChannels = new Set<string>();
     for (const remote of remoteSubscriptions) {
@@ -247,13 +275,7 @@ export async function reconcileEventsubs(options?: {
             ) === key;
         });
         if (!expected) continue;
-        const healthy = remotes.filter((remote) => {
-            const pendingAgeMs = Date.now() - new Date(remote.created_at).getTime();
-            return remote.status === 'enabled'
-                || (remote.status === 'webhook_callback_verification_pending'
-                    && Number.isFinite(pendingAgeMs)
-                    && pendingAgeMs <= PENDING_VERIFICATION_GRACE_MS);
-        }).sort((left, right) => {
+        const healthy = remotes.filter(remoteIsHealthy).sort((left, right) => {
             const statusDifference = Number(left.status !== 'enabled') - Number(right.status !== 'enabled');
             if (statusDifference !== 0) return statusDifference;
             const createdDifference = new Date(left.created_at).getTime() - new Date(right.created_at).getTime();

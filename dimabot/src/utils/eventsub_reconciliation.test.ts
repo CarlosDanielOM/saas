@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildExpectedEventsubCondition } from './eventsub_condition.js';
+import { shouldTripEventsubCircuitBreaker } from './eventsub_reconciliation_policy.js';
 
 test('builds channel-specific EventSub conditions without replacing bot identities', () => {
     const chat = { type: 'channel.chat.message', condition: { broadcaster_user_id: 'template', user_id: '698614112' } };
@@ -22,4 +23,11 @@ test('builds channel-specific EventSub conditions without replacing bot identiti
     assert.deepEqual(buildExpectedEventsubCondition(userUpdate, 'channel-1'), {
         user_id: 'channel-1'
     });
+});
+
+test('trips reconciliation circuit breaker only for bulk unhealthy subscriptions', () => {
+    assert.equal(shouldTripEventsubCircuitBreaker(20, 6, 0.25, 5), true);
+    assert.equal(shouldTripEventsubCircuitBreaker(20, 4, 0.25, 5), false);
+    assert.equal(shouldTripEventsubCircuitBreaker(100, 10, 0.25, 5), false);
+    assert.equal(shouldTripEventsubCircuitBreaker(0, 0, 0.25, 5), false);
 });

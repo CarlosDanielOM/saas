@@ -30,7 +30,7 @@ function signedHeaders(body: string, options?: {
 test('EventSub webhook validates transport before notification processing', async (context) => {
     process.env.TWITCH_EVENTSUB_SECRET = SECRET;
     process.env.SECRET_KEY = 'eventsub-test-encryption-key';
-    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const { acceptEventsubMessageTimestamp, createTwitchEventsubApp } = await import('./eventsub.twitch.js');
     const configuredSecret = process.env.TWITCH_EVENTSUB_SECRET;
     delete process.env.TWITCH_EVENTSUB_SECRET;
     assert.throws(() => createTwitchEventsubApp(), /TWITCH_EVENTSUB_SECRET is not set/);
@@ -42,6 +42,30 @@ test('EventSub webhook validates transport before notification processing', asyn
     }));
     const { port } = server.address() as AddressInfo;
     const endpoint = `http://127.0.0.1:${port}/eventsub`;
+
+    await context.test('accepts only bounded stale retries for durable notifications', () => {
+        const staleTimestamp = new Date(Date.now() - 20 * 60_000).toISOString();
+        assert.deepEqual(acceptEventsubMessageTimestamp(staleTimestamp, '1', true), {
+            accepted: true,
+            staleRetry: true
+        });
+        assert.deepEqual(acceptEventsubMessageTimestamp(staleTimestamp, '1', false), {
+            accepted: false,
+            staleRetry: false
+        });
+        assert.deepEqual(acceptEventsubMessageTimestamp(staleTimestamp, '1invalid', true), {
+            accepted: false,
+            staleRetry: false
+        });
+        assert.deepEqual(acceptEventsubMessageTimestamp(
+            new Date(Date.now() - 25 * 60 * 60_000).toISOString(),
+            '1',
+            true
+        ), {
+            accepted: false,
+            staleRetry: false
+        });
+    });
 
     await context.test('answers verification challenges without an event payload', async () => {
         const body = JSON.stringify({

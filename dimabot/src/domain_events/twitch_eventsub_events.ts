@@ -10,6 +10,8 @@ interface TwitchEventsubSubscriptionLike {
 export interface NormalizeTwitchEventsubInput {
     messageId: string;
     messageTimestamp?: string;
+    messageRetry?: number;
+    staleRetry?: boolean;
     subscription: TwitchEventsubSubscriptionLike;
     event: Record<string, unknown>;
     source?: 'twitch-eventsub' | 'twitch-eventsub-test';
@@ -84,7 +86,9 @@ export function normalizeTwitchEventsubDomainEvent(
             originalEventType,
             subscriptionID: firstString(input.subscription.id),
             subscriptionVersion: firstString(input.subscription.version),
-            messageTimestamp: firstString(input.messageTimestamp)
+            messageTimestamp: firstString(input.messageTimestamp),
+            messageRetry: input.messageRetry || 0,
+            staleRetry: Boolean(input.staleRetry)
         }
     };
 }

@@ -149,8 +149,7 @@ export async function applyStreamAnalyticsDomainEvent(event: DomainEventEnvelope
             await recordStreamOfflineEvent({
                 channelID: event.channelID,
                 endedAt: event.occurredAt,
-                eventKey: event.eventKey,
-                requireSession: true
+                eventKey: event.eventKey
             });
             return;
         default:
