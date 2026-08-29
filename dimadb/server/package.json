@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "mongodb": "^6.21.0",
+    "mongoose": "^8.24.4",
     "redis": "^5.8.2"
   }
 }

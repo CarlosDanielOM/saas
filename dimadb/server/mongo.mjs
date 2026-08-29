@@ -1,38 +1,44 @@
-import { EJSON, MongoClient, ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
+
+const { ObjectId } = mongoose.Types;
+const { EJSON } = mongoose.mongo.BSON;
 
 export function createMongoHub(registry) {
-  const clients = new Map();
+  const connections = new Map();
 
-  async function clientFor(id) {
+  async function connFor(id) {
     registry.require(id, 'mongo');
-    const cached = clients.get(id);
+    const cached = connections.get(id);
     if (cached) {
       return cached;
     }
-    const client = new MongoClient(registry.resolveUrl(registry.get(id)), {
+    const conn = await mongoose.createConnection(registry.resolveUrl(registry.get(id)), {
       serverSelectionTimeoutMS: 8000,
-    });
-    await client.connect();
-    clients.set(id, client);
-    return client;
+    }).asPromise();
+    connections.set(id, conn);
+    return conn;
+  }
+
+  function dbFor(conn, name) {
+    return name ? conn.useDb(name, { useCache: true }).db : conn.db;
   }
 
   return {
     drop(id) {
-      const client = clients.get(id);
-      if (client) {
-        clients.delete(id);
-        client.close().catch(() => undefined);
+      const conn = connections.get(id);
+      if (conn) {
+        connections.delete(id);
+        conn.close().catch(() => undefined);
       }
     },
     async ping(id) {
-      const client = await clientFor(id);
-      const result = await client.db('admin').command({ ping: 1 });
+      const conn = await connFor(id);
+      const result = await dbFor(conn, 'admin').command({ ping: 1 });
       return result.ok === 1 ? 'PONG' : JSON.stringify(result);
     },
     async databases(id) {
-      const client = await clientFor(id);
-      const { databases } = await client.db().admin().listDatabases();
+      const conn = await connFor(id);
+      const { databases } = await dbFor(conn, 'admin').admin().listDatabases();
       return databases.map((item) => ({
         name: item.name,
         sizeOnDisk: item.sizeOnDisk,
@@ -41,16 +47,16 @@ export function createMongoHub(registry) {
     },
     async collections(id, db) {
       requireName(db, 'db');
-      const client = await clientFor(id);
-      const items = await client.db(db).listCollections({}, { nameOnly: true }).toArray();
+      const conn = await connFor(id);
+      const items = await dbFor(conn, db).listCollections({}, { nameOnly: true }).toArray();
       return items.map((item) => ({ name: item.name, type: item.type || 'collection' }));
     },
     async docs(id, { db, collection, skip = 0, limit = 50, filter = '{}' } = {}) {
       requireName(db, 'db');
       requireName(collection, 'collection');
-      const client = await clientFor(id);
+      const conn = await connFor(id);
       const parsed = parseFilter(filter);
-      const col = client.db(db).collection(collection);
+      const col = dbFor(conn, db).collection(collection);
       const take = Math.min(Math.max(Number(limit) || 50, 1), 100);
       const from = Math.max(Number(skip) || 0, 0);
       const [items, total] = await Promise.all([
@@ -73,8 +79,8 @@ export function createMongoHub(registry) {
       requireName(db, 'db');
       requireName(collection, 'collection');
       requireName(docId, 'id');
-      const client = await clientFor(id);
-      const doc = await client.db(db).collection(collection).findOne(idQuery(docId));
+      const conn = await connFor(id);
+      const doc = await dbFor(conn, db).collection(collection).findOne(idQuery(docId));
       if (!doc) {
         throw Object.assign(new Error('Document not found'), { status: 404 });
       }
@@ -89,9 +95,9 @@ export function createMongoHub(registry) {
       requireName(db, 'db');
       requireName(collection, 'collection');
       requireName(docId, 'id');
-      const client = await clientFor(id);
+      const conn = await connFor(id);
       const value = decodeDocument(document);
-      const result = await client.db(db).collection(collection).replaceOne(idQuery(docId), value);
+      const result = await dbFor(conn, db).collection(collection).replaceOne(idQuery(docId), value);
       if (result.matchedCount === 0) {
         throw Object.assign(new Error('Document not found'), { status: 404 });
       }
@@ -100,17 +106,17 @@ export function createMongoHub(registry) {
     async insert(id, { db, collection, document }) {
       requireName(db, 'db');
       requireName(collection, 'collection');
-      const client = await clientFor(id);
+      const conn = await connFor(id);
       const value = decodeDocument(document);
-      const result = await client.db(db).collection(collection).insertOne(value);
+      const result = await dbFor(conn, db).collection(collection).insertOne(value);
       return this.inspect(id, { db, collection, docId: String(result.insertedId) });
     },
     async del(id, { db, collection, docId }) {
       requireName(db, 'db');
       requireName(collection, 'collection');
       requireName(docId, 'id');
-      const client = await clientFor(id);
-      const result = await client.db(db).collection(collection).deleteOne(idQuery(docId));
+      const conn = await connFor(id);
+      const result = await dbFor(conn, db).collection(collection).deleteOne(idQuery(docId));
       return { deleted: result.deletedCount };
     },
   };
