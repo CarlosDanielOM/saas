@@ -297,22 +297,29 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
+        const existingSettings = await getChannelTtsSettings(channelID, streamer.name);
         const nextSettings = normalizeChannelTtsSettings(req.body as Partial<ChannelTtsSettingsData>, channelID, streamer.name);
 
         if (!canUseAiProvider(nextSettings.provider, streamer.plan_tier)) {
-            return res.status(403).json({
-                error: true,
-                message: 'Your plan does not include this default TTS provider',
-                status: 403
-            });
+            if (nextSettings.provider !== existingSettings.provider) {
+                return res.status(403).json({
+                    error: true,
+                    message: 'Your plan does not include this default TTS provider',
+                    status: 403
+                });
+            }
+
+            nextSettings.provider = 'piper';
         }
 
         if (!canUseAiProvider(nextSettings.aiProvider, streamer.plan_tier)) {
-            return res.status(403).json({
-                error: true,
-                message: 'Your plan does not include this AI TTS provider',
-                status: 403
-            });
+            if (nextSettings.aiProvider !== existingSettings.aiProvider) {
+                return res.status(403).json({
+                    error: true,
+                    message: 'Your plan does not include this AI TTS provider',
+                    status: 403
+                });
+            }
         }
 
         const savedSettings = await upsertChannelTtsSettings(channelID, nextSettings, streamer.name);

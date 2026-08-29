@@ -250,18 +250,17 @@ export class TtsPageComponent {
   });
 
   readonly defaultProviderOptions = computed<VoiceOption[]>(() => {
-    const settings = this.ttsSettings();
     const options: VoiceOption[] = [{ value: 'piper', label: this.t('modules.tts.fields.providerPiper') }];
 
-    if (this.isPremiumOrPro() || settings?.provider === 'xai') {
+    if (this.canUseProvider('xai')) {
       options.push({ value: 'xai', label: this.t('modules.tts.fields.providerXai') });
     }
 
-    if (this.isPremiumOrPro() || settings?.provider === 'openrouter') {
+    if (this.canUseProvider('openrouter')) {
       options.push({ value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') });
     }
 
-    if (this.isPro() || settings?.provider === 'fish') {
+    if (this.canUseProvider('fish')) {
       options.push({ value: 'fish', label: this.t('modules.tts.fields.providerFish') });
     }
 
@@ -269,14 +268,13 @@ export class TtsPageComponent {
   });
 
   readonly aiProviderOptions = computed<VoiceOption[]>(() => {
-    const settings = this.ttsSettings();
     const options: VoiceOption[] = [];
 
-    if (this.isPremiumOrPro() || settings?.aiProvider === 'xai') {
+    if (this.canUseProvider('xai')) {
       options.push({ value: 'xai', label: this.t('modules.tts.fields.providerXai') });
     }
 
-    if (this.isPremiumOrPro() || settings?.aiProvider === 'openrouter') {
+    if (this.canUseProvider('openrouter')) {
       options.push({ value: 'openrouter', label: this.t('modules.tts.fields.providerOpenRouter') });
     }
 
@@ -321,7 +319,7 @@ export class TtsPageComponent {
       this.t('modules.tts.fields.savedValueOption', { value: this.getDisplayedOpenRouterModel() })
     )
   );
-  readonly showAiSettings = computed(() => this.isPremiumOrPro() || this.ttsSettings()?.provider !== 'piper');
+  readonly showAiSettings = computed(() => this.isPremiumOrPro());
   readonly showOpenRouterModelSettings = computed(() => {
     const settings = this.ttsSettings();
     return settings?.provider === 'openrouter' || (this.showAiSettings() && settings?.aiProvider === 'openrouter');
@@ -634,6 +632,27 @@ export class TtsPageComponent {
     }
   }
 
+  private canUseProvider(provider: TtsProvider | AiTtsProvider): boolean {
+    if (provider === 'piper') {
+      return true;
+    }
+
+    if (provider === 'fish') {
+      return this.isPro();
+    }
+
+    return this.isPremiumOrPro();
+  }
+
+  private clampSettingsToPlan(settings: TtsSettings): TtsSettings {
+    const next = this.deepCloneSettings(settings);
+    if (!this.canUseProvider(next.provider)) {
+      next.provider = 'piper';
+    }
+
+    return next;
+  }
+
   private async loadTtsSettings(channelID: string): Promise<void> {
     this.ttsLoading.set(true);
     this.ttsErrorMessage.set(null);
@@ -644,8 +663,9 @@ export class TtsPageComponent {
       // Backend normalizes on save, so server response is already canonical.
       // Normalizing on read was replacing saved values with defaults.
       this.ttsRole.set(response.role);
-      this.ttsSettings.set(response.settings);
-      this.initialTtsSettings.set(this.deepCloneSettings(response.settings));
+      const settings = this.clampSettingsToPlan(response.settings);
+      this.ttsSettings.set(settings);
+      this.initialTtsSettings.set(this.deepCloneSettings(settings));
     } catch (error) {
       console.error('Failed to load TTS settings:', {
         channelID,
