@@ -1,6 +1,6 @@
 {
-  "version": "69726b93e4a0",
-  "generatedAt": "2026-08-29T20:02:01.954Z",
+  "version": "3f288c0ac47d",
+  "generatedAt": "2026-08-29T20:46:15.680Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
   "functionCount": 64,
@@ -592,11 +592,11 @@
     },
     {
       "name": "start.prediction",
-      "description": "Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.",
-      "syntax": "start.prediction title;option1/option2;seconds",
+      "description": "Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.",
+      "syntax": "start.prediction \"title;option1/option2;seconds\"",
       "category": "channel",
       "examples": [
-        "start.prediction Will we win?;Yes/No;120"
+        "start.prediction \"Will we win?;Yes/No;120\""
       ],
       "aliases": [],
       "minUserLevel": 8,
@@ -614,11 +614,11 @@
     },
     {
       "name": "start.poll",
-      "description": "Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.",
-      "syntax": "start.poll title;option1/option2;seconds",
+      "description": "Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.",
+      "syntax": "start.poll \"title;option1/option2;seconds\"",
       "category": "channel",
       "examples": [
-        "start.poll Best map?;Nuke/Mirage/Inferno;120"
+        "start.poll \"Best map?;Nuke/Mirage/Inferno;120\""
       ],
       "aliases": [],
       "minUserLevel": 8,

@@ -90,7 +90,7 @@ const setGameHandler: FunctionHandler = async (args, ctx) => {
 const startPredictionHandler: FunctionHandler = async (args, ctx) => {
     const rawInput = parseRawArgument(args, ctx.argument);
     if (!rawInput) {
-        return 'Usage: $(start.prediction title;option1/option2;seconds)';
+        return 'Usage: $(start.prediction "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
     const [title = '', optionsRaw = '', durationRaw = ''] = rawInput.split(';').map(part => part.trim());
@@ -102,7 +102,7 @@ const startPredictionHandler: FunctionHandler = async (args, ctx) => {
     const duration = Number(durationRaw);
 
     if (!title || options.length < 2 || isNaN(duration) || duration <= 0) {
-        return 'Invalid prediction format. Use: title;option1/option2;seconds';
+        return 'Invalid prediction format. Use: $(start.prediction "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
     const result = await createPrediction(ctx.broadcasterId, title, options, duration);
@@ -112,7 +112,7 @@ const startPredictionHandler: FunctionHandler = async (args, ctx) => {
 const startPollHandler: FunctionHandler = async (args, ctx) => {
     const rawInput = parseRawArgument(args, ctx.argument);
     if (!rawInput) {
-        return 'Usage: $(start.poll title;option1/option2;seconds)';
+        return 'Usage: $(start.poll "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
     const [title = '', optionsRaw = '', durationRaw = ''] = rawInput.split(';').map(part => part.trim());
@@ -124,7 +124,7 @@ const startPollHandler: FunctionHandler = async (args, ctx) => {
     const duration = Number(durationRaw);
 
     if (!title || options.length < 2 || isNaN(duration) || duration <= 0) {
-        return 'Invalid poll format. Use: title;option1/option2;seconds';
+        return 'Invalid poll format. Use: $(start.poll "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
     const result = await createPoll(ctx.broadcasterId, title, options, duration);
@@ -201,18 +201,18 @@ export function registerChannelFunctions(): void {
         keywords: ['game', 'category', 'juego', 'categoria', 'cambiar juego']
     });
     registerFunction('start.prediction', startPredictionHandler, {
-        description: 'Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.',
-        syntax: 'start.prediction title;option1/option2;seconds',
+        description: 'Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.',
+        syntax: 'start.prediction "title;option1/option2;seconds"',
         category: 'channel',
-        examples: ['start.prediction Will we win?;Yes/No;120'],
+        examples: ['start.prediction "Will we win?;Yes/No;120"'],
         minUserLevel: 8,
         keywords: ['prediction', 'prediccion', 'bet', 'apuesta']
     });
     registerFunction('start.poll', startPollHandler, {
-        description: 'Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.',
-        syntax: 'start.poll title;option1/option2;seconds',
+        description: 'Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.',
+        syntax: 'start.poll "title;option1/option2;seconds"',
         category: 'channel',
-        examples: ['start.poll Best map?;Nuke/Mirage/Inferno;120'],
+        examples: ['start.poll "Best map?;Nuke/Mirage/Inferno;120"'],
         minUserLevel: 8,
         keywords: ['poll', 'encuesta', 'vote', 'votar', 'votacion']
     });

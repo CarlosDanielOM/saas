@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 69726b93e4a0
+# Catalog version: 3f288c0ac47d
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -51,10 +51,10 @@
 #   Example: $(set.game Just Chatting)
 # $(set.title new title text) - Changes the stream title.
 #   Example: $(set.title Cozy late night stream)
-# $(start.poll title;option1/option2;seconds) - Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options.
-#   Example: $(start.poll Best map?;Nuke/Mirage/Inferno;120)
-# $(start.prediction title;option1/option2;seconds) - Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options.
-#   Example: $(start.prediction Will we win?;Yes/No;120)
+# $(start.poll "title;option1/option2;seconds") - Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.
+#   Example: $(start.poll "Best map?;Nuke/Mirage/Inferno;120")
+# $(start.prediction "title;option1/option2;seconds") - Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.
+#   Example: $(start.prediction "Will we win?;Yes/No;120")
 # $(unraid) - Cancels an active raid.
 #   Example: $(unraid)
 #
