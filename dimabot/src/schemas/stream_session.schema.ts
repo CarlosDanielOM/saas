@@ -21,6 +21,7 @@ export interface IStreamSession {
     donations: number;
     messages: number;
     commands: number;
+    applied_domain_event_keys: string[];
     last_seen_live_at: Date | null;
     consecutive_offline_checks: number;
     created_at: Date;
@@ -45,6 +46,7 @@ const streamSessionSchema = new Schema<IStreamSession>({
     donations: { type: Number, default: 0 },
     messages: { type: Number, default: 0 },
     commands: { type: Number, default: 0 },
+    applied_domain_event_keys: { type: [String], default: [], select: false },
     last_seen_live_at: { type: Date, default: null },
     consecutive_offline_checks: { type: Number, default: 0 }
 }, {
@@ -52,6 +54,7 @@ const streamSessionSchema = new Schema<IStreamSession>({
 });
 
 streamSessionSchema.index({ channelID: 1, started_at: -1 });
+streamSessionSchema.index({ channelID: 1, started_at: -1, ended_at: 1 });
 streamSessionSchema.index({ channelID: 1, stream_id: 1 }, { unique: true });
 streamSessionSchema.index(
     { channelID: 1, ended_at: 1 },

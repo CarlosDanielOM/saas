@@ -16,6 +16,8 @@ export interface IStreamSubscriptionLedger {
     subbed_at: Date;
     ended_at: Date | null;
     last_event_at: Date;
+    event_key?: string;
+    applied_event_keys: string[];
     created_at?: Date;
     updated_at?: Date;
 }
@@ -34,12 +36,16 @@ const streamSubscriptionLedgerSchema = new Schema<IStreamSubscriptionLedger>({
     status: { type: String, enum: ['active', 'ended'], default: 'active', index: true },
     subbed_at: { type: Date, required: true, default: Date.now },
     ended_at: { type: Date, default: null },
-    last_event_at: { type: Date, required: true, default: Date.now, index: true }
+    last_event_at: { type: Date, required: true, default: Date.now, index: true },
+    event_key: { type: String, default: undefined },
+    applied_event_keys: { type: [String], default: [], select: false }
 }, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 streamSubscriptionLedgerSchema.index({ streamer_id: 1, status: 1 });
+streamSubscriptionLedgerSchema.index({ platform: 1, streamer_id: 1, user_id: 1, last_event_at: -1 });
+streamSubscriptionLedgerSchema.index({ event_key: 1 }, { unique: true, sparse: true });
 streamSubscriptionLedgerSchema.index(
     { platform: 1, streamer_id: 1, user_id: 1, status: 1 },
     { unique: true, partialFilterExpression: { status: 'active' } }

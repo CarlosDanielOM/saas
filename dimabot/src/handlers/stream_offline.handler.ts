@@ -8,7 +8,6 @@ import { decrementSiteAnalytics } from "../utils/siteanalytics.js";
 import ChatHistory from "../classes/chat_history.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
-import { recordStreamOfflineEvent } from "../utils/stream_analytics.js";
 import { unloadChannelTimersFromCache } from "../utils/timer_cache.js";
 
 /**
@@ -42,11 +41,10 @@ export async function streamOfflineHandler(
 
         if (!chatEnabled) {
             await logInfo({
-                message: 'Chat disabled - calling recordStreamOfflineEvent',
+                message: 'Chat disabled - completing stream offline cleanup',
                 channelID: broadcaster_user_id
             }, { channelId: broadcaster_user_id, destination: 'both' });
 
-            await recordStreamOfflineEvent({ channelID: broadcaster_user_id });
             await unloadChannelTimersFromCache(broadcaster_user_id);
             await resetRedemptionCost(broadcaster_user_id);
             await resetSumimetro(broadcaster_user_id);
@@ -78,18 +76,6 @@ export async function streamOfflineHandler(
         }
 
         await resetRedemptionCost(broadcaster_user_id);
-
-        await logInfo({
-            message: 'About to call recordStreamOfflineEvent',
-            channelID: broadcaster_user_id
-        }, { channelId: broadcaster_user_id, destination: 'both' });
-
-        await recordStreamOfflineEvent({ channelID: broadcaster_user_id });
-
-        await logInfo({
-            message: 'recordStreamOfflineEvent completed',
-            channelID: broadcaster_user_id
-        }, { channelId: broadcaster_user_id, destination: 'both' });
 
         await unloadChannelTimersFromCache(broadcaster_user_id);
 

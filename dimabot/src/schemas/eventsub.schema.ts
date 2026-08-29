@@ -42,6 +42,7 @@ export interface IEventsub {
     delay: number;
     cheerTiers: ICheerTiers[];
     todayFollows?: boolean;
+    remote_missing_since?: Date | null;
 }
 
 const eventsubSchema = new Schema<IEventsub>({
@@ -65,6 +66,7 @@ const eventsubSchema = new Schema<IEventsub>({
     delay: { type: Number, default: 0 },
     cheerTiers: { type: [Object], default: [] },
     todayFollows: { type: Boolean, default: false },
+    remote_missing_since: { type: Date, default: null },
 });
 
 const EventsubSchema = model('eventsub', eventsubSchema);

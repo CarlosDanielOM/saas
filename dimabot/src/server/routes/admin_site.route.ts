@@ -15,6 +15,12 @@ import {
 } from '../../utils/billing.js';
 import { sendEmail, EMAIL_AUTH_BASE_URL, signEmailActivationToken } from '../../utils/email/email.service.js';
 import { ActivationReminderEmail, getActivationReminderSubject } from '../../utils/email/templates/activation-reminder.js';
+import {
+    DomainEventDeliverySchema,
+    type DomainEventDeliveryStatus
+} from '../../schemas/domain_event_delivery.schema.js';
+import { DomainEventSchema } from '../../schemas/domain_event.schema.js';
+import { replayDeadDomainEvent } from '../../utils/domain_event_consumer.js';
 
 interface AuthRequest extends Request {
     user?: {
@@ -58,6 +64,13 @@ const MAX_LIMIT = 100;
 const DEFAULT_SORT_BY = 'channel';
 const DEFAULT_SORT_ORDER = 'asc';
 const MAX_AI_CREDIT_GRANT = 5_000_000;
+const DOMAIN_EVENT_DELIVERY_STATUSES = new Set<DomainEventDeliveryStatus>([
+    'pending',
+    'processing',
+    'retry',
+    'succeeded',
+    'dead'
+]);
 
 type SortOrder = 'asc' | 'desc';
 
@@ -829,6 +842,102 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
         return res.status(500).json({
             error: true,
             message: 'Internal server error',
+            status: 500
+        });
+    }
+});
+
+router.get('/domain-events', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!ensureSuperAdmin(req, res)) {
+            return;
+        }
+
+        const requestedStatus = String(req.query.status || '').trim() as DomainEventDeliveryStatus;
+        if (requestedStatus && !DOMAIN_EVENT_DELIVERY_STATUSES.has(requestedStatus)) {
+            return res.status(400).json({
+                error: true,
+                message: 'Invalid delivery status',
+                status: 400
+            });
+        }
+        const consumer = String(req.query.consumer || '').trim();
+        const limit = Math.min(MAX_LIMIT, parsePositiveInt(req.query.limit, DEFAULT_LIMIT));
+        const filter: Record<string, unknown> = {};
+        if (requestedStatus) filter.status = requestedStatus;
+        if (consumer) filter.consumer = consumer;
+
+        const [deliveries, total, statusCounts] = await Promise.all([
+            DomainEventDeliverySchema.find(filter).sort({ updatedAt: -1 }).limit(limit).lean(),
+            DomainEventDeliverySchema.countDocuments(filter),
+            DomainEventDeliverySchema.aggregate<{ _id: DomainEventDeliveryStatus; count: number }>([
+                { $match: consumer ? { consumer } : {} },
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ])
+        ]);
+        const eventIDs = deliveries.map((delivery) => delivery.eventID);
+        const events = await DomainEventSchema.find({ _id: { $in: eventIDs } })
+            .select('_id type channelID occurredAt journaledAt')
+            .lean();
+        const eventsByID = new Map(events.map((event) => [String(event._id), event]));
+
+        return res.status(200).json({
+            error: false,
+            message: 'Domain event deliveries retrieved',
+            status: 200,
+            data: {
+                total,
+                statusCounts: Object.fromEntries(statusCounts.map((entry) => [entry._id, entry.count])),
+                deliveries: deliveries.map((delivery) => ({
+                    ...delivery,
+                    event: eventsByID.get(String(delivery.eventID)) || null
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('Error in GET /admin-site/domain-events:', error);
+        return res.status(500).json({
+            error: true,
+            message: 'Failed to retrieve domain event deliveries',
+            status: 500
+        });
+    }
+});
+
+router.post('/domain-events/:eventKey/replay', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!ensureSuperAdmin(req, res)) {
+            return;
+        }
+        const consumer = String(req.body?.consumer || '').trim();
+        const eventKey = String(req.params.eventKey || '').trim();
+        if (!consumer || !eventKey) {
+            return res.status(400).json({
+                error: true,
+                message: 'consumer and eventKey are required',
+                status: 400
+            });
+        }
+
+        const replayed = await replayDeadDomainEvent(consumer, eventKey);
+        if (!replayed) {
+            return res.status(404).json({
+                error: true,
+                message: 'Dead-letter delivery not found',
+                status: 404
+            });
+        }
+        return res.status(202).json({
+            error: false,
+            message: 'Domain event replay scheduled',
+            status: 202,
+            data: { consumer, eventKey }
+        });
+    } catch (error) {
+        console.error('Error in POST /admin-site/domain-events/:eventKey/replay:', error);
+        return res.status(500).json({
+            error: true,
+            message: 'Failed to schedule domain event replay',
             status: 500
         });
     }

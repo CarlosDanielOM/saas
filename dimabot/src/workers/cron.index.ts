@@ -50,6 +50,16 @@ const WORKERS: WorkerDefinition[] = [
         distEntry: 'dist/workers/stream_analytics.worker.js'
     },
     {
+        name: 'domain-events',
+        sourceEntry: 'src/workers/domain_events.worker.ts',
+        distEntry: 'dist/workers/domain_events.worker.js'
+    },
+    {
+        name: 'eventsub-reconciliation',
+        sourceEntry: 'src/workers/eventsub_reconciliation.worker.ts',
+        distEntry: 'dist/workers/eventsub_reconciliation.worker.js'
+    },
+    {
         name: 'stream-memory',
         sourceEntry: 'src/workers/stream_memory.worker.ts',
         distEntry: 'dist/workers/stream_memory.worker.js'

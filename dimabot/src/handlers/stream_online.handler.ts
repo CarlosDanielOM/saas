@@ -6,7 +6,6 @@ import { unVIPExpiredUser } from "../functions/redemptions/unvipexpired.redempti
 import { incrementSiteAnalytics } from "../utils/siteanalytics.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
-import { recordStreamOnlineEvent } from "../utils/stream_analytics.js";
 import { loadChannelTimersIntoCache } from "../utils/timer_cache.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { loadChannelAdminsIntoCache } from "../utils/cache.js";
@@ -50,17 +49,11 @@ export async function streamOnlineHandler(
 
         if (!chatEnabled) {
             await logInfo({
-                message: 'Chat disabled - calling recordStreamOnlineEvent',
+                message: 'Chat disabled - completing stream online setup',
                 channelID: broadcaster_user_id,
                 streamID
             }, { channelId: broadcaster_user_id, destination: 'both' });
 
-            await recordStreamOnlineEvent({
-                channelID: broadcaster_user_id,
-                channel: broadcaster_user_login,
-                streamID,
-                startedAt: eventData.started_at
-            });
             await loadChannelTimersIntoCache(broadcaster_user_id);
             await getChannelEditors(broadcaster_user_id, true);
             await loadChannelAdminsIntoCache(broadcaster_user_id);
@@ -136,26 +129,6 @@ export async function streamOnlineHandler(
         await loadChannelAdminsIntoCache(broadcaster_user_id);
 
         await unVIPExpiredUser(eventData);
-
-        await logInfo({
-            message: 'About to call recordStreamOnlineEvent',
-            channelID: broadcaster_user_id,
-            streamID,
-            startedAt: eventData.started_at
-        }, { channelId: broadcaster_user_id, destination: 'both' });
-
-        await recordStreamOnlineEvent({
-            channelID: broadcaster_user_id,
-            channel: broadcaster_user_login,
-            streamID,
-            startedAt: eventData.started_at
-        });
-
-        await logInfo({
-            message: 'recordStreamOnlineEvent completed',
-            channelID: broadcaster_user_id,
-            streamID
-        }, { channelId: broadcaster_user_id, destination: 'both' });
 
         await loadChannelTimersIntoCache(broadcaster_user_id);
 

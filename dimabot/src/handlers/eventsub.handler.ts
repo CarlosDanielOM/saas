@@ -15,13 +15,6 @@ import { adBreakHandler } from "./ad_break.handler.js";
 import { banHandler } from "./ban.handler.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
 import {
-    recordStreamBitsEvent,
-    recordStreamFollowEvent,
-    recordStreamSubEvent,
-    recordSubscriptionLedgerEnd,
-    recordSubscriptionLedgerStart
-} from "../utils/stream_analytics.js";
-import {
     CANONICAL_BITS_EVENT_TYPE,
     canonicalizeEventsubType,
     getEquivalentEventsubTypes,
@@ -31,24 +24,6 @@ import {
 import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 //* TODO Redeem handler
 //* TODO Functions
-
-interface SubscriptionEventData {
-    broadcaster_user_id?: string;
-    broadcaster_user_login?: string;
-    broadcaster_user_name?: string;
-    user_id?: string;
-    user_login?: string;
-    user_name?: string;
-    tier?: string;
-    sub_tier?: string;
-    subscription_tier?: string;
-    is_gift?: boolean;
-    subscribed_at?: string;
-    ended_at?: string;
-    total?: number;
-}
-
-
 
 export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData, eventData: ITwitchEventData) => {
     const cache = await getDragonflyClient('Eventsub');
@@ -151,109 +126,6 @@ export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData,
         // logger({channelID: STREAMER.id, channel: STREAMER.name, error: 'No data found', type, condition: subscriptionData.condition}, true, STREAMER.id, 'eventsub not found');
         console.log({error: 'No data found', type, condition: subscriptionData.condition});
     }
-
-    const resolveTier = (source: unknown): string | undefined => {
-        if (!source || typeof source !== 'object') {
-            return undefined;
-        }
-
-        const data = source as SubscriptionEventData;
-        const rawTier = data.tier ?? data.sub_tier ?? data.subscription_tier;
-        return typeof rawTier === 'string' ? rawTier : undefined;
-    };
-
-    const resolveGiftQuantity = (source: unknown): number => {
-        if (!source || typeof source !== 'object') {
-            return 1;
-        }
-
-        const data = source as SubscriptionEventData;
-        const total = Number(data.total);
-        if (Number.isFinite(total) && total > 0) {
-            return Math.round(total);
-        }
-        return 1;
-    };
-
-    const trackAnalytics = async (): Promise<void> => {
-        const subscriptionEvent = eventData as unknown as SubscriptionEventData;
-
-        switch (type) {
-            case CANONICAL_BITS_EVENT_TYPE:
-            case 'channel.cheer':
-            case 'channel.bit.use': {
-                if (type !== CANONICAL_BITS_EVENT_TYPE && bitsMigrationResult?.hadCanonicalBeforeMigration) {
-                        break;
-                }
-
-                const bits = Number((eventData as IBitUseEvent).bits);
-                if (Number.isFinite(bits) && bits > 0) {
-                    await recordStreamBitsEvent({
-                        channelID: STREAMER.id,
-                        bits: Math.round(bits)
-                    });
-                }
-                break;
-            }
-            case 'channel.follow':
-                await recordStreamFollowEvent({ channelID: STREAMER.id });
-                break;
-            case 'channel.subscribe':
-            case 'channel.subscription.message':
-                await recordSubscriptionLedgerStart({
-                    platform: 'twitch',
-                    streamer_id: STREAMER.id,
-                    streamer_login: subscriptionEvent.broadcaster_user_login,
-                    streamer_name: subscriptionEvent.broadcaster_user_name,
-                    user_id: String(subscriptionEvent.user_id || ''),
-                    user_login: subscriptionEvent.user_login,
-                    user_name: subscriptionEvent.user_name,
-                    tier: resolveTier(subscriptionEvent),
-                    is_gift: Boolean(subscriptionEvent.is_gift),
-                    subbed_at: subscriptionEvent.subscribed_at
-                });
-                await recordStreamSubEvent({
-                    channelID: STREAMER.id,
-                    quantity: 1,
-                    tier: resolveTier(subscriptionEvent)
-                });
-                break;
-            case 'channel.subscription.gift':
-                await recordStreamSubEvent({
-                    channelID: STREAMER.id,
-                    quantity: resolveGiftQuantity(subscriptionEvent),
-                    tier: resolveTier(subscriptionEvent)
-                });
-                break;
-            case 'channel.subscription.end':
-                await recordSubscriptionLedgerEnd({
-                    platform: 'twitch',
-                    streamer_id: STREAMER.id,
-                    user_id: String(subscriptionEvent.user_id || ''),
-                    ended_at: subscriptionEvent.ended_at
-                });
-                break;
-        }
-    };
-
-    await trackAnalytics().catch(async (analyticsError) => {
-        console.error('Error in eventsubHandler.trackAnalytics:', {
-            type,
-            channelID: STREAMER.id,
-            error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
-            stack: analyticsError instanceof Error ? analyticsError.stack : undefined,
-            timestamp: new Date().toISOString()
-        });
-
-        await logError({
-            function: 'eventsubHandler.trackAnalytics',
-            type,
-            channelID: STREAMER.id,
-            error: analyticsError instanceof Error ? analyticsError.message : String(analyticsError),
-            stack: analyticsError instanceof Error ? analyticsError.stack : undefined,
-            timestamp: new Date().toISOString()
-        }, { channelId: STREAMER.id, destination: 'both' });
-    });
 
     if(!eventsubData.enabled) return;
 

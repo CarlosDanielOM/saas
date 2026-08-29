@@ -3,8 +3,7 @@ import { getTwitchHelixUrl } from './links.js';
 import { getAppToken } from './tokens.js';
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import EventsubSchema, { type IEventsub, type ICondition } from '../schemas/eventsub.schema.js';
-
-type EventsubConfig = Partial<Pick<IEventsub, 'enabled' | 'message' | 'endMessage' | 'endEnabled' | 'clipEnabled' | 'minViewers' | 'delay' | 'cheerTiers'>>;
+import { buildBitsEventsubConfig, type EventsubConfig } from './eventsub_bits_config.js';
 
 export const CANONICAL_BITS_EVENT_TYPE = 'channel.bits.use';
 export const LEGACY_BITS_EVENT_TYPES = ['channel.cheer', 'channel.bit.use'] as const;
@@ -295,6 +294,13 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
         }
     },
     {
+        type: 'channel.subscription.end',
+        version: '1',
+        condition: {
+            broadcaster_user_id: '698614112'
+        }
+    },
+    {
         type: 'channel.update',
         version: '1',
         condition: {
@@ -325,8 +331,16 @@ export async function subscribeTwitchEvent(
     type: string,
     version: string,
     condition: ICondition,
-    config?: EventsubConfig
+    config?: EventsubConfig,
+    options?: { ignoreExisting?: boolean }
 ): Promise<SubscribeTwitchEventResponse | SubscribeTwitchEventError> {
+    if (!process.env.TWITCH_EVENTSUB_SECRET) {
+        return {
+            error: 'EventSub secret is not configured',
+            message: 'TWITCH_EVENTSUB_SECRET is not set',
+            status: 500
+        };
+    }
     const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
     if (!streamer) {
         return {
@@ -336,9 +350,11 @@ export async function subscribeTwitchEvent(
         };
     }
 
-    const existingEventsub = await findExistingEventsub(channelID, type, version, condition);
-    if (existingEventsub?.id) {
-        return toEventsubResponse(existingEventsub);
+    if (!options?.ignoreExisting) {
+        const existingEventsub = await findExistingEventsub(channelID, type, version, condition);
+        if (existingEventsub?.id) {
+            return toEventsubResponse(existingEventsub);
+        }
     }
 
     const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
@@ -352,15 +368,16 @@ export async function subscribeTwitchEvent(
 
     const appAccessToken = await getAppToken('twitch');
 
-    if (!appAccessToken) {
-        console.error('Error getting app access token');
+    if (!appAccessToken || !process.env.CLIENT_ID) {
+        console.error('Error getting Twitch app credentials');
         return {
-            error: 'Error getting app access token',
-            message: 'Error getting app access token',
+            error: 'Error getting Twitch app credentials',
+            message: 'An app access token and client ID are required',
             status: 500
         };
     }
 
+    // Twitch requires app authorization for EventSub webhook transport.
     const headers = {
         ...streamerHeaderResult.header,
         Authorization: `Bearer ${appAccessToken}`
@@ -383,9 +400,14 @@ export async function subscribeTwitchEvent(
 
     const data = await response.json();
 
-    if (data.error) {
-        console.error(`Error subscribing to ${type} for ${channelID}: ${data.error}`);
-        return data;
+    if (!response.ok || data?.error || !Array.isArray(data?.data) || !data.data[0]) {
+        const error = String(data?.error || `Twitch returned HTTP ${response.status}`);
+        console.error(`Error subscribing to ${type} for ${channelID}: ${error}`);
+        return {
+            error,
+            message: String(data?.message || error),
+            status: response.status || 502
+        };
     }
 
     const subscriptionData = data.data[0];
@@ -423,6 +445,13 @@ export async function subscribeTwitchEvent(
 
 export async function getEventsubs(): Promise<any> {
     const appToken = await getAppToken('twitch');
+    if (!appToken || !process.env.CLIENT_ID) {
+        return {
+            error: 'Twitch app credentials are not configured',
+            message: 'Unable to list EventSub subscriptions without an app token and client ID',
+            status: 500
+        };
+    }
 
     const headers = {
         'Authorization': `Bearer ${appToken}`,
@@ -430,21 +459,59 @@ export async function getEventsubs(): Promise<any> {
         'Content-Type': 'application/json'
     };
 
-    const response = await fetch(getTwitchHelixUrl('eventsub/subscriptions'), {
-        headers: headers as unknown as Record<string, string>
-    });
+    const data: unknown[] = [];
+    const seenCursors = new Set<string>();
+    let cursor = '';
+    let summary: Record<string, unknown> = {};
+    let pageCount = 0;
 
-    return await response.json();
+    do {
+        pageCount += 1;
+        if (pageCount > 1_000) {
+            return { error: 'EventSub pagination exceeded safety limit', status: 502 };
+        }
+        const params = new URLSearchParams({ first: '100' });
+        if (cursor) params.set('after', cursor);
+        const response = await fetch(getTwitchHelixUrl('eventsub/subscriptions', params.toString()), {
+            headers: headers as unknown as Record<string, string>
+        });
+        const page = await response.json();
+        if (!response.ok || page?.error) {
+            return page;
+        }
+        if (Array.isArray(page?.data)) {
+            data.push(...page.data);
+        }
+        summary = page;
+        const nextCursor = String(page?.pagination?.cursor || '');
+        if (seenCursors.has(nextCursor)) {
+            return { error: 'EventSub pagination returned a repeated cursor', status: 502 };
+        }
+        if (!nextCursor) {
+            cursor = '';
+        } else {
+            seenCursors.add(nextCursor);
+            cursor = nextCursor;
+        }
+    } while (cursor);
+
+    return {
+        ...summary,
+        data,
+        total: data.length,
+        pagination: {},
+        complete: true
+    };
 }
 
 export async function unsubscribeTwitchEvent(id: string): Promise<Response | any> {
     const appAccessToken = await getAppToken('twitch');
 
-    if (!appAccessToken) {
-        console.error('Error getting app access token');
+    if (!appAccessToken || !process.env.CLIENT_ID) {
+        console.error('Error getting Twitch app credentials');
         return {
-            error: 'Error getting app access token',
-            message: 'Error getting app access token',
+            error: 'Error getting Twitch app credentials',
+            message: 'An app access token and client ID are required',
             status: 500
         };
     }
@@ -460,82 +527,20 @@ export async function unsubscribeTwitchEvent(id: string): Promise<Response | any
         headers: headers as unknown as Record<string, string>
     });
 
-    if (response.status === 204) {
+    if (response.status === 204 || response.status === 404) {
         await EventsubSchema.deleteOne({ id });
         return response;
     }
 
     const data = await response.json();
 
-    if (data.error) {
-        console.error(`Error unsubscribing to ${id}: ${data.error}`);
-        return data;
-    }
-
-    return data;
-}
-
-function resolveBitsEventsubConfigValue<K extends keyof EventsubConfig>(
-    canonical: Partial<IEventsub> | null,
-    legacy: Partial<IEventsub> | null,
-    key: K
-): EventsubConfig[K] | undefined {
-    const canonicalValue = canonical?.[key] as EventsubConfig[K] | undefined;
-    const legacyValue = legacy?.[key] as EventsubConfig[K] | undefined;
-
-    const isCustomValue = (value: EventsubConfig[K] | undefined): boolean => {
-        switch (key) {
-            case 'enabled':
-                return value === false;
-            case 'message':
-            case 'endMessage':
-                return typeof value === 'string' && value.trim().length > 0;
-            case 'endEnabled':
-            case 'clipEnabled':
-                return value === true;
-            case 'minViewers':
-                return typeof value === 'number' && Number.isFinite(value) && value !== 2;
-            case 'delay':
-                return typeof value === 'number' && Number.isFinite(value) && value !== 0;
-            case 'cheerTiers':
-                return Array.isArray(value) && value.length > 0;
-            default:
-                return false;
-        }
+    const errorMessage = String(data?.message || data?.error || `Twitch returned HTTP ${response.status}`);
+    console.error(`Error unsubscribing to ${id}: ${errorMessage}`);
+    return {
+        error: String(data?.error || 'Failed to unsubscribe EventSub'),
+        message: errorMessage,
+        status: response.status
     };
-
-    const canonicalHasCustomValue = isCustomValue(canonicalValue);
-    const legacyHasCustomValue = isCustomValue(legacyValue);
-
-    if (canonicalHasCustomValue) {
-        return canonicalValue;
-    }
-
-    if (legacyHasCustomValue) {
-        return legacyValue;
-    }
-
-    return canonicalValue ?? legacyValue;
-}
-
-function buildBitsEventsubConfig(
-    canonical: Partial<IEventsub> | null,
-    legacy: Partial<IEventsub> | null
-): EventsubConfig {
-    const config: EventsubConfig = {
-        enabled: resolveBitsEventsubConfigValue(canonical, legacy, 'enabled'),
-        message: resolveBitsEventsubConfigValue(canonical, legacy, 'message'),
-        endMessage: resolveBitsEventsubConfigValue(canonical, legacy, 'endMessage'),
-        endEnabled: resolveBitsEventsubConfigValue(canonical, legacy, 'endEnabled'),
-        clipEnabled: resolveBitsEventsubConfigValue(canonical, legacy, 'clipEnabled'),
-        minViewers: resolveBitsEventsubConfigValue(canonical, legacy, 'minViewers'),
-        delay: resolveBitsEventsubConfigValue(canonical, legacy, 'delay'),
-        cheerTiers: resolveBitsEventsubConfigValue(canonical, legacy, 'cheerTiers'),
-    };
-
-    return Object.fromEntries(
-        Object.entries(config).filter(([, value]) => typeof value !== 'undefined')
-    ) as EventsubConfig;
 }
 
 export async function migrateLegacyBitsEventsubs(channelID: string): Promise<BitsEventsubMigrationResult> {
@@ -558,17 +563,9 @@ export async function migrateLegacyBitsEventsubs(channelID: string): Promise<Bit
         return result;
     }
 
-    const legacyConfigSource = legacyEventsubs.find((eventsub) => {
-        return Boolean(
-            (typeof eventsub.message === 'string' && eventsub.message.trim().length > 0)
-            || (Array.isArray(eventsub.cheerTiers) && eventsub.cheerTiers.length > 0)
-            || eventsub.enabled === false
-        );
-    }) || legacyEventsubs[0];
-
     const mergedConfig = buildBitsEventsubConfig(
         typedCanonicalEventsub as Partial<IEventsub> | null,
-        legacyConfigSource as Partial<IEventsub> | null
+        legacyEventsubs as Array<Partial<IEventsub>>
     );
 
     let currentCanonicalEventsub = typedCanonicalEventsub;

@@ -27,6 +27,7 @@ import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js'
 import { decrypt } from "../../utils/crypto.js";
 import { refreshTwitchToken } from "../../utils/tokens.js";
 import { deleteAccountPermanently } from "../../utils/account_deletion.js";
+import { buildExpectedEventsubCondition } from '../../utils/eventsub_condition.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -146,13 +147,7 @@ async function createReservedCommands(channelID: string, channelName: string): P
 
 async function subscribeAllEventSubs(channelID: string): Promise<void> {
     for (const subscription of SUBSCRIPTION_TYPES) {
-        const condition = { ...subscription.condition };
-        
-        if (subscription.type === 'channel.raid') {
-            condition.to_broadcaster_user_id = channelID;
-        } else {
-            condition.broadcaster_user_id = channelID;
-        }
+        const condition = buildExpectedEventsubCondition(subscription, channelID);
 
         const response = await subscribeTwitchEvent(
             channelID,
@@ -1400,13 +1395,7 @@ router.post('/repair', authMiddleware as any, async (req: any, res: Response) =>
             let subscribedCount = 0;
 
             for (const subscription of missingSubscriptions) {
-                const condition = { ...subscription.condition };
-
-                if (subscription.type === 'channel.raid') {
-                    condition.to_broadcaster_user_id = channelID;
-                } else {
-                    condition.broadcaster_user_id = channelID;
-                }
+                const condition = buildExpectedEventsubCondition(subscription, channelID);
 
                 const response = await subscribeTwitchEvent(
                     channelID,

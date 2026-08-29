@@ -14,6 +14,8 @@ import { enqueueClipRecommendationJob } from './ai/clip_recommendations/clip_rec
 const DEFAULT_DASHBOARD_DAYS = 30;
 const OFFLINE_CHECK_THRESHOLD = 2;
 const SNAPSHOT_RETENTION_DAYS = 90;
+const SESSION_EVENT_KEY_HISTORY_LIMIT = 10_000;
+const LEDGER_EVENT_KEY_HISTORY_LIMIT = 10_000;
 const RETENTION_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const CACHED_LIVE_BOARD_MAX_AGE_MS = Math.max(30_000, Number(process.env.STREAM_ANALYTICS_CACHED_LIVE_BOARD_MAX_AGE_MS || 60_000));
 
@@ -86,11 +88,15 @@ interface RecordStreamOnlineInput {
     channel: string;
     streamID?: string;
     startedAt?: string | Date;
+    eventKey?: string;
+    reopenClosed?: boolean;
 }
 
 interface RecordStreamOfflineInput {
     channelID: string;
     endedAt?: string | Date;
+    eventKey?: string;
+    requireSession?: boolean;
 }
 
 function toDate(value?: string | Date): Date {
@@ -147,6 +153,52 @@ function toPositiveInteger(value: unknown, fallback = 0): number {
         return fallback;
     }
     return Math.max(0, Math.round(parsed));
+}
+
+async function incrementSessionMetricAtEventTime(input: {
+    channelID: string;
+    occurredAt?: string | Date;
+    eventKey?: string;
+    field: 'bits' | 'subs' | 'follows';
+    quantity: number;
+}): Promise<void> {
+    const occurredAt = toDate(input.occurredAt);
+    const filter: Record<string, unknown> = {
+        channelID: input.channelID,
+        started_at: { $lte: occurredAt },
+        $or: [
+            { ended_at: null },
+            { ended_at: { $gte: occurredAt } }
+        ]
+    };
+    const update: Record<string, unknown> = { $inc: { [input.field]: input.quantity } };
+    if (input.eventKey) {
+        filter.applied_domain_event_keys = { $ne: input.eventKey };
+        update.$push = {
+            applied_domain_event_keys: {
+                $each: [input.eventKey],
+                $slice: -SESSION_EVENT_KEY_HISTORY_LIMIT
+            }
+        };
+    }
+
+    const session = await StreamSessionSchema.findOneAndUpdate(filter, update, {
+        sort: { started_at: -1 },
+        new: true
+    }).select('_id').lean();
+    if (session) {
+        return;
+    }
+    if (input.eventKey) {
+        const alreadyApplied = await StreamSessionSchema.exists({
+            channelID: input.channelID,
+            applied_domain_event_keys: input.eventKey
+        });
+        if (alreadyApplied) {
+            return;
+        }
+        throw new Error(`No stream session contains event ${input.eventKey} at ${occurredAt.toISOString()}`);
+    }
 }
 
 function normalizeSubTier(tier: unknown): 'tier1' | 'tier2' | 'tier3' | 'unknown' {
@@ -455,7 +507,8 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                             consecutive_offline_checks: 0,
                             status: 'live',
                             ended_at: null
-                        }
+                        },
+                        ...(input.eventKey ? { $addToSet: { applied_domain_event_keys: input.eventKey } } : {})
                     }
                 ),
                 'updateExistingSession',
@@ -467,14 +520,47 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
         }
 
         if (existingLive && existingLive.stream_id !== streamID) {
+            const existingStartedAt = new Date(existingLive.started_at);
+            if (startedAt <= existingStartedAt) {
+                const historicalUpdate: Record<string, unknown> = {
+                    $setOnInsert: {
+                        channelID,
+                        stream_id: streamID,
+                        started_at: startedAt,
+                        ended_at: existingStartedAt,
+                        status: 'orphaned',
+                        channel,
+                        peak_viewers: 0,
+                        average_viewers: 0,
+                        sample_count: 0,
+                        sample_total_viewers: 0,
+                        duration_minutes: getDurationMinutes(startedAt, existingStartedAt),
+                        follows: 0,
+                        subs: 0,
+                        bits: 0,
+                        donations: 0,
+                        messages: 0,
+                        commands: 0
+                    }
+                };
+                if (input.eventKey) {
+                    historicalUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
+                }
+                await StreamSessionSchema.updateOne(
+                    { channelID, stream_id: streamID },
+                    historicalUpdate,
+                    { upsert: true }
+                );
+                return;
+            }
             console.log('recordStreamOnlineEvent: New stream detected, orphaning old session', {
                 channelID,
                 oldStreamID: existingLive.stream_id,
                 newStreamID: streamID
             });
-            await executeWithRetry(
+            const orphanResult = await executeWithRetry(
                 () => StreamSessionSchema.updateOne(
-                    { _id: existingLive._id },
+                    { _id: existingLive._id, status: 'live', ended_at: null },
                     {
                         $set: {
                             ended_at: startedAt,
@@ -487,6 +573,9 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                 channelID,
                 streamID
             );
+            if (orphanResult.modifiedCount === 0) {
+                throw new Error(`Live session changed while applying stream.online for ${channelID}`);
+            }
 
             await enqueuePostStreamSummaryJob({
                 channelID,
@@ -497,35 +586,47 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
             });
         }
 
+        const existingStream = await StreamSessionSchema.findOne({
+            channelID,
+            stream_id: streamID
+        }).select('status ended_at').lean();
+        if (existingStream && existingStream.status !== 'live' && input.reopenClosed === false) {
+            return;
+        }
+
         console.log('recordStreamOnlineEvent: Creating new session', { channelID, streamID });
+        const sessionUpdate: Record<string, unknown> = {
+            $setOnInsert: {
+                channelID,
+                stream_id: streamID,
+                started_at: startedAt,
+                peak_viewers: 0,
+                average_viewers: 0,
+                sample_count: 0,
+                sample_total_viewers: 0,
+                duration_minutes: 0,
+                follows: 0,
+                subs: 0,
+                bits: 0,
+                donations: 0,
+                messages: 0,
+                commands: 0
+            },
+            $set: {
+                channel,
+                status: 'live',
+                ended_at: null,
+                last_seen_live_at: new Date(),
+                consecutive_offline_checks: 0
+            }
+        };
+        if (input.eventKey) {
+            sessionUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
+        }
         await executeWithRetry(
             () => StreamSessionSchema.findOneAndUpdate(
                 { channelID, stream_id: streamID },
-                {
-                    $setOnInsert: {
-                        channelID,
-                        stream_id: streamID,
-                        started_at: startedAt,
-                        peak_viewers: 0,
-                        average_viewers: 0,
-                        sample_count: 0,
-                        sample_total_viewers: 0,
-                        duration_minutes: 0,
-                        follows: 0,
-                        subs: 0,
-                        bits: 0,
-                        donations: 0,
-                        messages: 0,
-                        commands: 0
-                    },
-                    $set: {
-                        channel,
-                        status: 'live',
-                        ended_at: null,
-                        last_seen_live_at: new Date(),
-                        consecutive_offline_checks: 0
-                    }
-                },
+                sessionUpdate,
                 { upsert: true, new: true }
             ),
             'createSession',
@@ -588,14 +689,29 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
         const activeSession = await executeOfflineWithRetry(
             () => StreamSessionSchema.findOne({
                 channelID,
-                status: 'live',
-                ended_at: null
+                started_at: { $lte: endedAt },
+                $or: [
+                    { ended_at: null },
+                    { ended_at: { $gte: endedAt } }
+                ]
             }).sort({ started_at: -1 }).lean(),
             'findActiveSession',
             channelID
         );
 
         if (!activeSession) {
+            if (input.eventKey) {
+                const alreadyApplied = await StreamSessionSchema.exists({
+                    channelID,
+                    applied_domain_event_keys: input.eventKey
+                });
+                if (alreadyApplied) {
+                    return;
+                }
+            }
+            if (input.requireSession) {
+                throw new Error(`No stream session contains the offline event time for channel ${channelID}`);
+            }
             console.warn('recordStreamOfflineEvent: No active session found for channel', { channelID });
             return;
         }
@@ -606,21 +722,31 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
             streamID: String(activeSession.stream_id)
         });
 
-        await executeOfflineWithRetry(
+        const offlineUpdate: Record<string, unknown> = {
+            $set: {
+                ended_at: endedAt,
+                status: 'offline',
+                duration_minutes: getDurationMinutes(activeSession.started_at, endedAt),
+                consecutive_offline_checks: 0
+            }
+        };
+        if (input.eventKey) {
+            offlineUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
+        }
+        const offlineResult = await executeOfflineWithRetry(
             () => StreamSessionSchema.updateOne(
-                { _id: activeSession._id },
                 {
-                    $set: {
-                        ended_at: endedAt,
-                        status: 'offline',
-                        duration_minutes: getDurationMinutes(activeSession.started_at, endedAt),
-                        consecutive_offline_checks: 0
-                    }
-                }
+                    _id: activeSession._id,
+                    ...(input.eventKey ? { applied_domain_event_keys: { $ne: input.eventKey } } : {})
+                },
+                offlineUpdate
             ),
             'markSessionOffline',
             channelID
         );
+        if (input.eventKey && offlineResult.modifiedCount === 0) {
+            return;
+        }
 
         console.log('recordStreamOfflineEvent: Session marked offline, enqueuing summary job', {
             channelID,
@@ -656,7 +782,7 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
     }
 }
 
-export async function recordStreamBitsEvent(input: { channelID: string; bits: number }): Promise<void> {
+export async function recordStreamBitsEvent(input: { channelID: string; bits: number; occurredAt?: string | Date; eventKey?: string }): Promise<void> {
     const channelID = String(input.channelID || '').trim();
     if (!channelID) {
         return;
@@ -668,12 +794,12 @@ export async function recordStreamBitsEvent(input: { channelID: string; bits: nu
     }
 
     try {
-        await StreamSessionSchema.updateOne({
+        await incrementSessionMetricAtEventTime({
             channelID,
-            status: 'live',
-            ended_at: null
-        }, {
-            $inc: { bits }
+            occurredAt: input.occurredAt,
+            eventKey: input.eventKey,
+            field: 'bits',
+            quantity: bits
         });
     } catch (error) {
         logAnalyticsError('recordStreamBitsEvent', {
@@ -683,10 +809,11 @@ export async function recordStreamBitsEvent(input: { channelID: string; bits: nu
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
+        throw error;
     }
 }
 
-export async function recordStreamSubEvent(input: { channelID: string; quantity?: number; tier?: string }): Promise<void> {
+export async function recordStreamSubEvent(input: { channelID: string; quantity?: number; tier?: string; occurredAt?: string | Date; eventKey?: string }): Promise<void> {
     const channelID = String(input.channelID || '').trim();
     if (!channelID) {
         return;
@@ -696,12 +823,12 @@ export async function recordStreamSubEvent(input: { channelID: string; quantity?
     const normalizedTier = normalizeSubTier(input.tier);
 
     try {
-        await StreamSessionSchema.updateOne({
+        await incrementSessionMetricAtEventTime({
             channelID,
-            status: 'live',
-            ended_at: null
-        }, {
-            $inc: { subs: quantity }
+            occurredAt: input.occurredAt,
+            eventKey: input.eventKey,
+            field: 'subs',
+            quantity
         });
 
         if (normalizedTier === 'unknown' && input.tier) {
@@ -723,22 +850,23 @@ export async function recordStreamSubEvent(input: { channelID: string; quantity?
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
+        throw error;
     }
 }
 
-export async function recordStreamFollowEvent(input: { channelID: string }): Promise<void> {
+export async function recordStreamFollowEvent(input: { channelID: string; occurredAt?: string | Date; eventKey?: string }): Promise<void> {
     const channelID = String(input.channelID || '').trim();
     if (!channelID) {
         return;
     }
 
     try {
-        await StreamSessionSchema.updateOne({
+        await incrementSessionMetricAtEventTime({
             channelID,
-            status: 'live',
-            ended_at: null
-        }, {
-            $inc: { follows: 1 }
+            occurredAt: input.occurredAt,
+            eventKey: input.eventKey,
+            field: 'follows',
+            quantity: 1
         });
     } catch (error) {
         logAnalyticsError('recordStreamFollowEvent', {
@@ -747,6 +875,7 @@ export async function recordStreamFollowEvent(input: { channelID: string }): Pro
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
+        throw error;
     }
 }
 
@@ -845,6 +974,7 @@ export async function recordSubscriptionLedgerStart(input: {
     tier?: string;
     is_gift?: boolean;
     subbed_at?: string | Date;
+    eventKey?: string;
 }): Promise<void> {
     const streamerID = String(input.streamer_id || '').trim();
     const userID = String(input.user_id || '').trim();
@@ -857,6 +987,23 @@ export async function recordSubscriptionLedgerStart(input: {
     const eventAt = toDate(input.subbed_at);
 
     try {
+        if (input.eventKey) {
+            const alreadyApplied = await StreamSubscriptionLedgerSchema.exists({ applied_event_keys: input.eventKey });
+            if (alreadyApplied) {
+                return;
+            }
+        }
+        const latest = await StreamSubscriptionLedgerSchema.findOne({
+            platform,
+            streamer_id: streamerID,
+            user_id: userID
+        }).sort({ last_event_at: -1 }).select('_id status last_event_at').lean();
+        if (latest && new Date(latest.last_event_at).getTime() > eventAt.getTime()) {
+            return;
+        }
+        if (latest?.status === 'ended' && new Date(latest.last_event_at).getTime() >= eventAt.getTime()) {
+            return;
+        }
         const active = await StreamSubscriptionLedgerSchema.findOne({
             platform,
             streamer_id: streamerID,
@@ -865,7 +1012,11 @@ export async function recordSubscriptionLedgerStart(input: {
         }).select('_id').lean();
 
         if (active) {
-            await StreamSubscriptionLedgerSchema.updateOne({ _id: active._id }, {
+            await StreamSubscriptionLedgerSchema.updateOne({
+                _id: active._id,
+                last_event_at: { $lte: eventAt },
+                ...(input.eventKey ? { applied_event_keys: { $ne: input.eventKey } } : {})
+            }, {
                 $set: {
                     streamer_login: String(input.streamer_login || '').trim(),
                     streamer_name: String(input.streamer_name || '').trim(),
@@ -876,8 +1027,17 @@ export async function recordSubscriptionLedgerStart(input: {
                     is_gift: Boolean(input.is_gift),
                     last_event_at: eventAt,
                     ended_at: null,
-                    status: 'active'
-                }
+                    status: 'active',
+                    event_key: input.eventKey || undefined
+                },
+                ...(input.eventKey ? {
+                    $push: {
+                        applied_event_keys: {
+                            $each: [input.eventKey],
+                            $slice: -LEDGER_EVENT_KEY_HISTORY_LIMIT
+                        }
+                    }
+                } : {})
             });
             return;
         }
@@ -896,9 +1056,15 @@ export async function recordSubscriptionLedgerStart(input: {
             status: 'active',
             subbed_at: eventAt,
             ended_at: null,
-            last_event_at: eventAt
+            last_event_at: eventAt,
+            event_key: input.eventKey || undefined,
+            applied_event_keys: input.eventKey ? [input.eventKey] : []
         }).save();
     } catch (error) {
+        if (input.eventKey && Number((error as { code?: unknown })?.code) === 11000) {
+            const alreadyApplied = await StreamSubscriptionLedgerSchema.exists({ applied_event_keys: input.eventKey });
+            if (alreadyApplied) return;
+        }
         logAnalyticsError('recordSubscriptionLedgerStart', {
             channelID: streamerID,
             streamerID,
@@ -908,6 +1074,7 @@ export async function recordSubscriptionLedgerStart(input: {
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
+        throw error;
     }
 }
 
@@ -916,6 +1083,7 @@ export async function recordSubscriptionLedgerEnd(input: {
     streamer_id: string;
     user_id: string;
     ended_at?: string | Date;
+    eventKey?: string;
 }): Promise<void> {
     const streamerID = String(input.streamer_id || '').trim();
     const userID = String(input.user_id || '').trim();
@@ -927,20 +1095,68 @@ export async function recordSubscriptionLedgerEnd(input: {
     const endedAt = toDate(input.ended_at);
 
     try {
-        const active = await StreamSubscriptionLedgerSchema.findOne({
+        if (input.eventKey) {
+            const alreadyApplied = await StreamSubscriptionLedgerSchema.exists({ applied_event_keys: input.eventKey });
+            if (alreadyApplied) {
+                return;
+            }
+        }
+
+        const latest = await StreamSubscriptionLedgerSchema.findOne({
             platform,
             streamer_id: streamerID,
-            user_id: userID,
-            status: 'active'
-        }).sort({ subbed_at: -1 }).lean();
+            user_id: userID
+        }).sort({ last_event_at: -1 }).lean();
 
-        if (active) {
-            await StreamSubscriptionLedgerSchema.updateOne({ _id: active._id }, {
+        if (latest?.status === 'active') {
+            if (new Date(latest.last_event_at).getTime() > endedAt.getTime()) {
+                return;
+            }
+            await StreamSubscriptionLedgerSchema.updateOne({
+                _id: latest._id,
+                last_event_at: { $lte: endedAt },
+                ...(input.eventKey ? { applied_event_keys: { $ne: input.eventKey } } : {})
+            }, {
                 $set: {
                     status: 'ended',
                     ended_at: endedAt,
-                    last_event_at: endedAt
-                }
+                    last_event_at: endedAt,
+                    event_key: input.eventKey || undefined
+                },
+                ...(input.eventKey ? {
+                    $push: {
+                        applied_event_keys: {
+                            $each: [input.eventKey],
+                            $slice: -LEDGER_EVENT_KEY_HISTORY_LIMIT
+                        }
+                    }
+                } : {})
+            });
+            return;
+        }
+
+        if (latest?.status === 'ended') {
+            if (new Date(latest.last_event_at).getTime() >= endedAt.getTime()) {
+                return;
+            }
+            await StreamSubscriptionLedgerSchema.updateOne({
+                _id: latest._id,
+                last_event_at: { $lte: endedAt },
+                ...(input.eventKey ? { applied_event_keys: { $ne: input.eventKey } } : {})
+            }, {
+                $set: {
+                    ended_at: endedAt,
+                    last_event_at: endedAt,
+                    event_key: input.eventKey || undefined
+                },
+                ...(input.eventKey ? {
+                    $push: {
+                        applied_event_keys: {
+                            $each: [input.eventKey],
+                            $slice: -LEDGER_EVENT_KEY_HISTORY_LIMIT
+                        }
+                    }
+                } : {})
             });
             return;
         }
@@ -959,9 +1175,15 @@ export async function recordSubscriptionLedgerEnd(input: {
             status: 'ended',
             subbed_at: endedAt,
             ended_at: endedAt,
-            last_event_at: endedAt
+            last_event_at: endedAt,
+            event_key: input.eventKey || undefined,
+            applied_event_keys: input.eventKey ? [input.eventKey] : []
         }).save();
     } catch (error) {
+        if (input.eventKey && Number((error as { code?: unknown })?.code) === 11000) {
+            const alreadyApplied = await StreamSubscriptionLedgerSchema.exists({ applied_event_keys: input.eventKey });
+            if (alreadyApplied) return;
+        }
         logAnalyticsError('recordSubscriptionLedgerEnd', {
             channelID: streamerID,
             streamerID,
@@ -970,6 +1192,7 @@ export async function recordSubscriptionLedgerEnd(input: {
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
+        throw error;
     }
 }
 

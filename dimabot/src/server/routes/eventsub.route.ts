@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from "express";
+import { randomUUID } from "node:crypto";
 import mongoose from "mongoose";
 import EventsubSchema from "../../schemas/eventsub.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
@@ -16,6 +17,8 @@ import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
 import type { ICheerTiers } from "../../schemas/eventsub.schema.js";
 import { eventsubHandler } from "../../handlers/eventsub.handler.js";
+import { normalizeTwitchEventsubDomainEvent } from "../../domain_events/twitch_eventsub_events.js";
+import { journalDomainEvent } from "../../utils/domain_events.js";
 
 const router = express.Router();
 const NON_DISABLEABLE_EVENT_TYPES = new Set(['stream.online', 'stream.offline']);
@@ -335,20 +338,50 @@ router.post('/:channelID/test', authMiddleware as any, async (req: EventsubReque
         const subscriptionData = body.subscription as any;
         const eventData = body.event as any;
 
-        // Override broadcaster_user_id in the event to match the channel
-        if (!eventData.broadcaster_user_id) {
-            eventData.broadcaster_user_id = channelIdStr;
+        const conditionData = subscriptionData.condition && typeof subscriptionData.condition === 'object'
+            ? subscriptionData.condition as Record<string, unknown>
+            : {};
+        const addressedChannelIDs = [
+            eventData.broadcaster_user_id,
+            eventData.to_broadcaster_user_id,
+            conditionData.broadcaster_user_id,
+            conditionData.to_broadcaster_user_id,
+            ...(subscriptionData.type === 'user.update' ? [eventData.user_id, conditionData.user_id] : [])
+        ].filter((value) => value !== undefined && value !== null && String(value).trim().length > 0)
+            .map((value) => String(value).trim());
+        if (addressedChannelIDs.some((addressedChannelID) => addressedChannelID !== channelIdStr)) {
+            return res.status(400).send({
+                error: true,
+                message: 'Event broadcaster does not match the requested channel',
+                status: 400
+            });
+        }
+        eventData.broadcaster_user_id = channelIdStr;
+        if ('to_broadcaster_user_id' in eventData) eventData.to_broadcaster_user_id = channelIdStr;
+        if (subscriptionData.type === 'user.update') eventData.user_id = channelIdStr;
+        if (subscriptionData.condition && typeof subscriptionData.condition === 'object') {
+            if ('broadcaster_user_id' in conditionData) conditionData.broadcaster_user_id = channelIdStr;
+            if ('to_broadcaster_user_id' in conditionData) conditionData.to_broadcaster_user_id = channelIdStr;
+            if (subscriptionData.type === 'user.update') conditionData.user_id = channelIdStr;
         }
 
-        // Call the eventsub handler directly (bypasses webhook signature verification)
-        // Fire and forget - we return 202 Accepted immediately
+        const durableEvent = normalizeTwitchEventsubDomainEvent({
+            messageId: randomUUID(),
+            messageTimestamp: new Date().toISOString(),
+            subscription: subscriptionData,
+            event: eventData,
+            source: 'twitch-eventsub-test'
+        });
+        if (durableEvent) {
+            await journalDomainEvent(durableEvent);
+        }
+
         res.status(202).send({
             error: false,
             message: 'Test event accepted and being processed',
             status: 202
         });
 
-        // Process the event asynchronously
         void eventsubHandler(subscriptionData, eventData).catch((handlerError) => {
             console.error('Error in POST /:channelID/test eventsubHandler:', {
                 channelID: channelIdStr,
