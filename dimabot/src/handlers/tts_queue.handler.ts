@@ -14,8 +14,6 @@ import {
   piperTtsService,
   PIPER_PUBLIC_SPEECH_DIR,
 } from "../server/services/tts/piper_tts.service.js";
-import { xaiTtsService } from "../server/services/tts/xai_tts.service.js";
-import { openRouterTtsService } from "../server/services/tts/openrouter_tts.service.js";
 import { fishTtsService } from "../server/services/tts/fish_tts.service.js";
 import type {
   RuntimeTtsProvider,
@@ -72,8 +70,6 @@ class TtsQueueHandler {
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
   private readonly services: Record<RuntimeTtsProvider, TtsServiceContract> = {
     piper: piperTtsService,
-    xai: xaiTtsService,
-    openrouter: openRouterTtsService,
     fish: fishTtsService,
   };
 

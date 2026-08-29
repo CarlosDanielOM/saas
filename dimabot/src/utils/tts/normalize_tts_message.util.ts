@@ -1,9 +1,4 @@
-import type {
-    TtsLanguage,
-    TtsProvider,
-    XaiExpressiveTagSettings
-} from '../../schemas/channel_tts_settings.schema.js';
-import type { RuntimeTtsProvider } from '../../server/services/tts/tts_provider.interface.js';
+import type { TtsLanguage } from '../../schemas/channel_tts_settings.schema.js';
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const LINK_REGEX = /((http|https):\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]{2,})+(:\d+)?(\/\S*)?(\?\S+)?/gi;
@@ -45,33 +40,15 @@ function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function filterExpressiveTtsTags(
-    rawText: string,
-    provider: TtsProvider | RuntimeTtsProvider,
-    expressiveTags: XaiExpressiveTagSettings
-): string {
+export function filterExpressiveTtsTags(rawText: string): string {
     let text = String(rawText || '');
-    // Only xAI understands these expressive tags. Fish Audio does not, so we
-    // always strip every `[emotion]` and `<tag>` token for the fish provider,
-    // regardless of any per-tag setting.
-    const allowExpressiveTags = provider === 'xai';
 
     for (const definition of XAI_INLINE_TAG_DEFINITIONS) {
-        const isEnabled = allowExpressiveTags && expressiveTags.inline[definition.key];
-        if (isEnabled) {
-            continue;
-        }
-
         const tagRegex = new RegExp(`\\[${escapeRegExp(definition.tag)}\\]`, 'gi');
         text = text.replace(tagRegex, ' ');
     }
 
     for (const definition of XAI_WRAPPING_TAG_DEFINITIONS) {
-        const isEnabled = allowExpressiveTags && expressiveTags.wrapping[definition.key];
-        if (isEnabled) {
-            continue;
-        }
-
         const tagRegex = new RegExp(`</?${escapeRegExp(definition.tag)}>`, 'gi');
         text = text.replace(tagRegex, '');
     }

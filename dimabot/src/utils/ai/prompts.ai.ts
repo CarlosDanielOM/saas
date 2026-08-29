@@ -403,7 +403,6 @@ export function constructChatSystemMessages(
         - VIPs: "add.vip username", "unvip username".
         - Clips: "create.clip" or "create.clip clip title".
         - Basic TTS/speak: "tts message" or "tts.speak message".
-        - AI/voice TTS: "tts.ai message", "tts.xai voice message", "tts.or message".
         - Fish Audio cloned voices: "tts.fish voice_name_or_voice_id message".
 
         Speak/TTS guidance:

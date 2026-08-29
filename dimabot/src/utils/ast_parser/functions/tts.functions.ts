@@ -1,5 +1,4 @@
-import { getChannelTtsSettings, type TtsProvider } from '../../../schemas/channel_tts_settings.schema.js';
-import { FISH_VOICES } from '../../../server/services/tts/fish_tts.service.js';
+import { getChannelTtsSettings } from '../../../schemas/channel_tts_settings.schema.js';
 import { requestTts } from '../../../functions/chats/speech.chat.js';
 import { queueDefaultTts } from '../../../utils/tts/queue_default_tts.util.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
@@ -11,8 +10,8 @@ import { trackTts } from '../../../utils/posthog_events.js';
 interface QueueTtsResult {
     output: string;
     success: boolean;
-    mode: 'speak' | 'ai' | 'clone';
-    provider?: 'piper' | 'xai' | 'openrouter' | 'fish';
+    mode: 'speak' | 'clone';
+    provider?: 'piper' | 'fish';
     errorMessage?: string;
 }
 
@@ -44,29 +43,11 @@ function parseCloneArgument(args: unknown[], fallback?: string): { cloneName: st
     };
 }
 
-function parseVoiceOverrideArgument(args: unknown[], fallback?: string): { voice: string; message: string } {
-    const raw = args.length > 0
-        ? args.map((arg) => String(arg)).join(' ').trim()
-        : String(fallback || '').trim();
-
-    if (!raw) {
-        return { voice: '', message: '' };
-    }
-
-    const [voice, ...messageParts] = raw.split(/\s+/).filter(Boolean);
-    return {
-        voice: String(voice || '').trim(),
-        message: messageParts.join(' ').trim()
-    };
-}
-
 async function queueTts(
-    mode: 'default' | 'speak' | 'ai' | 'clone',
+    mode: 'default' | 'speak' | 'clone',
     message: string,
     ctx: Parameters<FunctionHandler>[1],
-    provider?: TtsProvider,
-    cloneName?: string,
-    voice?: string
+    cloneName?: string
 ): Promise<QueueTtsResult> {
     if (mode === 'default' || mode === 'speak') {
         const result = await queueDefaultTts({
@@ -95,26 +76,17 @@ async function queueTts(
         return {
             output: 'TTS is disabled for this channel',
             success: false,
-            mode: mode as 'ai' | 'clone',
+            mode: 'clone',
             errorMessage: 'TTS is disabled for this channel'
         };
     }
 
-    // Resolve provider for AI mode
-    let resolvedProvider: 'xai' | 'openrouter' = 'xai';
-    if (provider === 'openrouter') {
-        resolvedProvider = 'openrouter';
-    } else if (settings.aiProvider === 'openrouter') {
-        resolvedProvider = 'openrouter';
-    }
-
     const result = await requestTts(ctx.broadcasterId, {
-        mode,
-        provider: provider || settings.aiProvider,
+        mode: 'clone',
+        provider: 'fish',
         text: message,
         language: settings.defaultLanguage,
         cloneName,
-        voice,
         requestedBy: {
             userID: ctx.userId,
             userLogin: ctx.userLogin,
@@ -129,13 +101,13 @@ async function queueTts(
         }
     });
 
-        return {
-            output: result.error ? result.message : '',
-            success: !result.error,
-            mode: mode as 'ai' | 'clone',
-            provider: mode === 'ai' ? resolvedProvider : 'fish',
-            errorMessage: result.error ? result.message : undefined
-        };
+    return {
+        output: result.error ? result.message : '',
+        success: !result.error,
+        mode: 'clone',
+        provider: 'fish',
+        errorMessage: result.error ? result.message : undefined
+    };
 }
 
 const ttsSpeakHandler: FunctionHandler = async (args, ctx) => {
@@ -198,9 +170,8 @@ const ttsAiHandler: FunctionHandler = async (args, ctx) => {
         return 'Usage: $(tts.ai message)';
     }
 
-    const result = await queueTts('ai', message, ctx);
+    const result = await queueTts('default', message, ctx);
 
-    // Track TTS usage in PostHog
     trackTts({
         channelID: ctx.broadcasterId,
         channelName: ctx.streamer?.name || ctx.broadcasterId,
@@ -219,60 +190,6 @@ const ttsAiHandler: FunctionHandler = async (args, ctx) => {
     return result.output;
 };
 
-const ttsXaiHandler: FunctionHandler = async (args, ctx) => {
-    const { voice, message } = parseVoiceOverrideArgument(args, ctx.argument);
-    if (!voice || !message) {
-        return 'Usage: $(tts.xai voice message)';
-    }
-
-    const result = await queueTts('ai', message, ctx, 'xai', undefined, voice);
-
-    // Track TTS usage in PostHog
-    trackTts({
-        channelID: ctx.broadcasterId,
-        channelName: ctx.streamer?.name || ctx.broadcasterId,
-        source: 'ast',
-        ttsType: 'tts.xai',
-        characters: message.length,
-        message,
-        status: result.success ? 'success' : 'error',
-        mode: result.mode,
-        provider: 'xai', // explicitly xai provider
-        userID: ctx.userId,
-        username: ctx.userDisplayName,
-        errorMessage: result.errorMessage,
-    });
-
-    return result.output;
-};
-
-const ttsOpenRouterHandler: FunctionHandler = async (args, ctx) => {
-    const message = parseRawArgument(args, ctx.argument);
-    if (!message) {
-        return 'Usage: $(tts.or message)';
-    }
-
-    const result = await queueTts('ai', message, ctx, 'openrouter');
-
-    // Track TTS usage in PostHog
-    trackTts({
-        channelID: ctx.broadcasterId,
-        channelName: ctx.streamer?.name || ctx.broadcasterId,
-        source: 'ast',
-        ttsType: 'tts.or',
-        characters: message.length,
-        message,
-        status: result.success ? 'success' : 'error',
-        mode: result.mode,
-        provider: 'openrouter', // explicitly openrouter provider
-        userID: ctx.userId,
-        username: ctx.userDisplayName,
-        errorMessage: result.errorMessage,
-    });
-
-    return result.output;
-};
-
 function createCloneHandler(ttsType: 'tts.clone' | 'tts.fish'): FunctionHandler {
     return async (args, ctx) => {
         const { cloneName, message } = parseCloneArgument(args, ctx.argument);
@@ -281,7 +198,7 @@ function createCloneHandler(ttsType: 'tts.clone' | 'tts.fish'): FunctionHandler 
             return `Usage: $(${ttsType} clone_name message)`;
         }
 
-        const result = await queueTts('clone', message, ctx, undefined, cloneName);
+        const result = await queueTts('clone', message, ctx, cloneName);
 
         trackTts({
             channelID: ctx.broadcasterId,
@@ -309,9 +226,6 @@ export function registerTtsFunctions(): void {
     registerFunction('tts', ttsSpeakHandler);
     registerFunction('tts.speak', ttsExplicitSpeakHandler);
     registerFunction('tts.ai', ttsAiHandler);
-    registerFunction('tts.xai', ttsXaiHandler);
-    registerFunction('tts.or', ttsOpenRouterHandler);
-    registerFunction('tts.openrouter', ttsOpenRouterHandler);
     registerFunction('tts.clone', ttsCloneHandler);
     registerFunction('tts.fish', ttsFishHandler);
 }

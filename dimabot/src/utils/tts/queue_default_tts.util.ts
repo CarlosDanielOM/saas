@@ -10,7 +10,7 @@ interface QueueDefaultTtsInput {
     channelID: string;
     rawMessage: string;
     source: 'chat-command' | 'ast' | 'redemption';
-    preferredMode?: 'default' | 'speak' | 'ai';
+    preferredMode?: 'default' | 'speak';
     userID?: string;
     userLogin?: string;
     userName?: string;
@@ -32,27 +32,15 @@ function resolveDisplayName(input: QueueDefaultTtsInput): string {
     return String(input.userName || input.userLogin || '').trim();
 }
 
-async function resolveTtsMode(input: QueueDefaultTtsInput): Promise<{ mode: 'speak' | 'ai' | 'clone'; provider: TtsProvider }> {
+async function resolveTtsMode(input: QueueDefaultTtsInput): Promise<{ mode: 'speak' | 'clone'; provider: TtsProvider }> {
     const settings = await getChannelTtsSettings(input.channelID);
     const preferredMode = input.preferredMode || 'default';
 
-    if (preferredMode === 'speak') {
+    if (preferredMode === 'speak' || settings.provider !== 'fish') {
         return { mode: 'speak', provider: 'piper' };
     }
 
-    if (preferredMode === 'ai') {
-        return { mode: 'ai', provider: settings.aiProvider };
-    }
-
-    if (settings.provider === 'piper') {
-        return { mode: 'speak', provider: 'piper' };
-    }
-
-    if (settings.provider === 'fish') {
-        return { mode: 'clone', provider: 'fish' };
-    }
-
-    return { mode: 'ai', provider: settings.provider };
+    return { mode: 'clone', provider: 'fish' };
 }
 
 export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<QueueDefaultTtsResult> {

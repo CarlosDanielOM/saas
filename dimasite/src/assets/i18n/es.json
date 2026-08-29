@@ -206,12 +206,8 @@
         "defaultLanguageLabel": "Idioma hablado por defecto",
         "defaultProviderLabel": "Motor TTS por defecto para !s y $(tts)",
         "providerPiper": "Piper (voz local gratis)",
-        "providerXai": "xAI (voz IA premium)",
-        "providerOpenRouter": "OpenRouter (voz IA economica)",
         "providerFish": "Fish Audio (voces clonadas)",
         "cloneVoiceLabel": "Voz clonada",
-        "aiProviderLabel": "Provider IA para $(tts.ai)",
-        "openRouterModelLabel": "Modelo de voz OpenRouter",
         "languageSpanish": "Espanol",
         "languageEnglish": "Ingles",
         "maxLengthLabel": "Longitud maxima normalizada",
@@ -262,7 +258,7 @@
       },
       "defaultMode": {
         "title": "Como funciona la voz por defecto",
-        "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, `$(tts.ai ...)` para usar tu provider IA seleccionado, `$(tts.xai ...)` para forzar xAI, o `$(tts.or ...)` para forzar OpenRouter."
+        "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, o `$(tts.fish ...)` / `$(tts.clone ...)` para voces de Fish Audio."
       },
       "footer": {
         "owner": "Los propietarios pueden cambiar estos valores por defecto. Los administradores pueden revisar la configuracion sin editarla.",

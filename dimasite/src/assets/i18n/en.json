@@ -206,12 +206,8 @@
         "defaultLanguageLabel": "Default spoken language",
         "defaultProviderLabel": "Default TTS engine for !s and $(tts)",
         "providerPiper": "Piper (local free voice)",
-        "providerXai": "xAI (premium AI voice)",
-        "providerOpenRouter": "OpenRouter (cheap AI voice)",
         "providerFish": "Fish Audio (cloned voices)",
         "cloneVoiceLabel": "Clone voice",
-        "aiProviderLabel": "AI provider for $(tts.ai)",
-        "openRouterModelLabel": "OpenRouter voice model",
         "languageSpanish": "Spanish",
         "languageEnglish": "English",
         "maxLengthLabel": "Max normalized length",
@@ -262,7 +258,7 @@
       },
       "defaultMode": {
         "title": "How the default voice works",
-        "copy": "`!s` and `$(tts ...)` use the default engine selected above. Use `$(tts.speak ...)` to force Piper, `$(tts.ai ...)` to use your selected AI provider, `$(tts.xai ...)` to force xAI, or `$(tts.or ...)` to force OpenRouter."
+        "copy": "`!s` and `$(tts ...)` use the default engine selected above. Use `$(tts.speak ...)` to force Piper, or `$(tts.fish ...)` / `$(tts.clone ...)` for Fish Audio voices."
       },
       "footer": {
         "owner": "Owners can change these defaults now. Admins can still review the current setup without editing it.",

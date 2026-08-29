@@ -391,7 +391,7 @@ These functions read from EventSub webhook payloads. They only return meaningful
 |----------|------|-------------|-------|
 | `$(tts message)` | All | Queue default TTS | `$(tts Hello world)` |
 | `$(tts.speak message)` | All | Same as `$(tts ...)` | `$(tts.speak Hello)` |
-| `$(tts.ai message)` | All | AI voice TTS | `$(tts.ai Hello world)` |
+| `$(tts.ai message)` | All | Same as `$(tts ...)` | `$(tts.ai Hello world)` |
 | `$(tts.clone name message)` | All | Voice clone TTS | `$(tts.clone voice1 Hello)` |
 
 ### Trigger Functions

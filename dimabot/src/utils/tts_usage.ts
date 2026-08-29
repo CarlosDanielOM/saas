@@ -8,8 +8,6 @@ import { error } from "./logger.js";
  * One credit is approximate to 0.001 cent of USD so 0.00001 USD per AI token
  */
 const TTS_CREDITS_PER_CHARACTER: Record<string, number> = {
-  openrouter: 14, // 14 characters = 1 credit
-  xai: 1.5, // 1.5 credits per character
   piper: 100, // Local, Cheaper cost for users
   fish: 1.5, // 1.5 credits per character
 };
@@ -32,7 +30,7 @@ export interface TtsUsageTrackOptions {
     polar_sh_customer_id?: string;
     plan_tier?: string;
   };
-  provider: "xai" | "openrouter" | "piper" | "fish";
+  provider: "piper" | "fish";
   characters: number;
   text: string;
 }
@@ -56,7 +54,7 @@ export function calculateTtsUsage(
 ): TtsUsageResult {
   const ratio = TTS_CREDITS_PER_CHARACTER[provider] ?? 100;
   const creditsConsumed = ratio > 0
-    ? provider === "fish" || provider === "xai"
+    ? provider === "fish"
       ? Math.ceil(characters * ratio)
       : Math.ceil(characters / ratio)
     : 0;

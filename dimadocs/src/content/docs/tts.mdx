@@ -7,7 +7,7 @@ sidebar:
 
 import { Aside } from '@astrojs/starlight/components';
 
-Text-to-speech (TTS) reads viewer messages aloud during your stream. DomDimaBot supports three TTS providers with different voice qualities, costs, and capabilities.
+Text-to-speech (TTS) reads viewer messages aloud during your stream. DomDimaBot supports two TTS providers with different voice qualities, costs, and capabilities.
 
 ## Providers
 
@@ -29,95 +29,26 @@ Piper is a local neural voice engine running on the DomDimaBot server. It is ava
 
 ---
 
-### OpenRouter — Budget AI (All Plans)
+### Fish Audio — Cloned Voices (All Plans)
 
-OpenRouter provides access to OpenAI's TTS models through a unified API. It is available on all plan tiers and uses AI credits.
-
-**AI Credit cost:** 1 credit per 14 characters
+Fish Audio provides cloned character voices. It is available on all plan tiers and uses AI credits.
 
 **Voices available:**
-- Alloy, Ash, Ballad, Coral, Echo, Sage, Shimmer, Verse
+- Gojo, Rias Gremory, Carlos Bodoque, Toji Fushiguro
 
 **Characteristics:**
-- High-quality AI voices via OpenAI TTS
-- No expressive tag support (all xAI emotion tags are stripped)
-- Good balance of quality and cost efficiency
-
----
-
-### xAI — Natural AI (All Plans)
-
-xAI uses Grok's TTS model for natural, human-like AI voices. It is available on all plan tiers and uses AI credits.
-
-**AI Credit cost:** 1.5 credits per character
-
-**Voices available:**
-- Eve, Ara, Rex, Sal, Leo
-
-**Characteristics:**
-- Natural, expressive AI voices
-- **Supports expressive emotion tags** — allows `<whisper>`, `[laugh]`, `[cry]`, and more
-- Control which expressive tags are allowed or blocked per-channel
-- Streaming-quality audio output
-
-#### Expressive Tags
-
-xAI voices support inline and wrapping tags that add emotion and vocal expression to TTS messages. As a streamer you can enable or disable each tag individually in your TTS settings.
-
-**Inline tags** — insert between words:
-
-| Tag | Description |
-|-----|-------------|
-| `[pause]` | Short pause |
-| `[long-pause]` | Longer pause |
-| `[hum-tune]` | Hum a tune |
-| `[laugh]` | Laugh |
-| `[chuckle]` | Soft laugh |
-| `[giggle]` | Giggle |
-| `[cry]` | Crying sound |
-| `[tsk]` | Tongue click |
-| `[tongue-click]` | Tongue click |
-| `[lip-smack]` | Lip smacking |
-| `[breath]` | Breathing sound |
-| `[inhale]` | Inhale |
-| `[exhale]` | Exhale |
-| `[sigh]` | Sigh |
-
-**Wrapping tags** — wrap around text to change delivery:
-
-| Tag | Effect |
-|-----|--------|
-| `<soft>` | Soft, gentle delivery |
-| `<whisper>` | Whispered speech |
-| `<loud>` | Louder delivery |
-| `<build-intensity>` | Builds intensity |
-| `<decrease-intensity>` | Decreases intensity |
-| `<higher-pitch>` | Higher pitch |
-| `<lower-pitch>` | Lower pitch |
-| `<slow>` | Slower delivery |
-| `<fast>` | Faster delivery |
-| `<sing-song>` | Sing-song rhythm |
-| `<singing>` | Singing delivery |
-| `<laugh-speak>` | Laughing while speaking |
-| `<emphasis>` | Emphasized words |
-
-**Example:**
-
-```
-<whisper>Hello everyone</whisper> welcome to the stream [laugh]
-```
-
-If a tag is disabled in your settings, the tag is stripped but the inner text is still spoken. Non-xAI providers strip all expressive tags automatically.
+- Cloned character voices
+- Available through `$(tts.fish ...)` and `$(tts.clone ...)`
+- Also usable as the channel default engine
 
 ---
 
 ## AI Credit Costs Summary
 
-| Provider | AI Credits per Character |
-|---------|--------------------------|
+| Provider | AI Credits |
+|---------|------------|
 | Piper | 1 per 50 characters |
-| OpenRouter (OpenAI TTS) | 1 per 14 characters |
-| xAI (Grok TTS) | 1.5 per character |
+| Fish Audio | Uses AI credits |
 
 ## Monthly AI Credits by Plan
 
@@ -128,7 +59,7 @@ If a tag is disabled in your settings, the tag is stripped but the inner text is
 | Pro | 500,000 |
 
 <Aside type="note">
-AI credits are consumed when a TTS message is queued for synthesis. The credit cost is calculated on the raw character count of the message before expressive tags are stripped.
+AI credits are consumed when a TTS message is queued for synthesis. The credit cost is calculated on the character count of the spoken message.
 </Aside>
 
 ## Commands
@@ -153,28 +84,23 @@ In custom commands and the AST system, use these functions for fine-grained cont
 | Function | Provider | Notes |
 |----------|----------|-------|
 | `$(tts ...)` | Default provider | Uses channel's default TTS engine |
-| `$(tts.speak ...)` | Piper only | Forces the free local voice |
-| `$(tts.ai ...)` | Channel's AI provider | Uses xAI or OpenRouter based on settings |
-| `$(tts.xai ...)` | xAI only | Forces the xAI provider |
-| `$(tts.or ...)` | OpenRouter only | Forces OpenRouter provider |
+| `$(tts.speak ...)` | Piper only | Forces the local Piper voice |
+| `$(tts.ai ...)` | Default provider | Same as `$(tts ...)` |
+| `$(tts.clone ...)` | Fish Audio | Cloned voice TTS |
+| `$(tts.fish ...)` | Fish Audio | Same as `$(tts.clone ...)` |
 
 **Examples:**
 ```
-$(tts.xai <whisper>Welcome to the show</whisper>)
-$(tts.or Hello from OpenRouter!)
+$(tts.speak Hello from Piper)
+$(tts.fish gojo Hello from Fish Audio)
 ```
-
-<Aside type="tip">
-Expressive tags like `<whisper>` and `[laugh]` only work with the xAI provider. Using them with Piper or OpenRouter will strip the tags automatically.
-</Aside>
 
 ## Channel Settings
 
 Configure TTS in your dashboard under **Modules → Text to Speech**:
 
 - **Enable/disable** channel TTS
-- **Default provider** and **AI provider** selection
-- **Voice selection** per language
+- **Default provider** selection (Piper or Fish Audio)
+- **Voice selection** per language or cloned voice
 - **Message filters** — skip emotes, replace links, normalize whitespace, max length
 - **Queue settings** — maximum pending TTS items
-- **Expressive tag controls** (xAI only) — per-tag enable/disable for whisper, laugh, pauses, and more

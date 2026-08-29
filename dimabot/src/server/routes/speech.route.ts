@@ -58,55 +58,18 @@ function resolveRequestedProvider(
     mode: TtsMode,
     requestedProvider?: TtsProvider
 ): RuntimeTtsProvider {
-    if (mode === 'speak') {
-        if (settings.provider === 'fish') return 'fish';
-        return 'piper';
+    if (mode === 'clone' || requestedProvider === 'fish') {
+        return 'fish';
     }
 
-    if (mode === 'ai') {
-        if (requestedProvider === 'xai' || requestedProvider === 'openrouter') {
-            return requestedProvider;
-        }
-
-        return settings.aiProvider;
+    if (mode === 'speak' && settings.provider === 'fish') {
+        return 'fish';
     }
 
-    return 'fish';
+    return 'piper';
 }
 
-function normalizeRequestedVoice(provider: RuntimeTtsProvider, requestedVoice?: string): string | null {
-    if (provider !== 'xai') {
-        return null;
-    }
-
-    const voice = String(requestedVoice || '').trim();
-    return voice || null;
-}
-
-function resolveAiVoice(settings: ChannelTtsSettingsData, provider: RuntimeTtsProvider, language: TtsLanguage, requestedVoice?: string): string {
-    const overrideVoice = normalizeRequestedVoice(provider, requestedVoice);
-    if (overrideVoice) {
-        return overrideVoice;
-    }
-
-    const aiVoicesByProvider = settings.voices.aiVoicesByProvider;
-
-    if (provider === 'openrouter') {
-        return language === 'en'
-            ? aiVoicesByProvider?.openrouter?.en || 'alloy'
-            : aiVoicesByProvider?.openrouter?.es || 'alloy';
-    }
-
-    return language === 'en'
-        ? aiVoicesByProvider?.xai?.en || settings.voices.aiVoices?.en || 'eve'
-        : aiVoicesByProvider?.xai?.es || settings.voices.aiVoices?.es || 'eve';
-}
-
-function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string, requestedVoice?: string): string | null {
-    if (mode === 'ai') {
-        return resolveAiVoice(settings, provider, language, requestedVoice);
-    }
-
+function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string): string | null {
     if (mode === 'speak' && provider === 'fish') {
         const voiceName = settings.voices.cloneDefault;
         if (voiceName && voiceName in FISH_VOICES) {
@@ -135,14 +98,6 @@ function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider:
     }
 
     return language === 'en' ? settings.voices.en : settings.voices.es;
-}
-
-function resolveModel(settings: ChannelTtsSettingsData, provider: RuntimeTtsProvider): string | undefined {
-    if (provider === 'openrouter') {
-        return settings.providerSettings.openrouter.model;
-    }
-
-    return undefined;
 }
 
 async function getSettingsAccess(requesterID: string, channelID: string): Promise<SettingsAccessRole> {
@@ -381,11 +336,7 @@ router.post('/:channelID', async (req: Request, res: Response) => {
         const language = body.language === 'en' ? 'en' : settings.defaultLanguage;
         const provider = resolveRequestedProvider(settings, mode, body.provider);
 
-        const filteredText = filterExpressiveTtsTags(
-            String(body.text || ''),
-            provider,
-            settings.filters.expressiveTags
-        );
+        const filteredText = filterExpressiveTtsTags(String(body.text || ''));
 
         const normalizedText = normalizeTtsMessage(filteredText, {
             skipEmotes: false,
@@ -403,7 +354,7 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             });
         }
 
-        const voice = resolveVoice(settings, mode, provider, language, body.cloneName, body.voice);
+        const voice = resolveVoice(settings, mode, provider, language, body.cloneName);
         if (!voice) {
             return res.status(400).json({
                 error: true,
@@ -417,7 +368,6 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             source: body.meta?.source || 'chat-command',
             mode,
             provider,
-            model: resolveModel(settings, provider),
             text: normalizedText.text,
             language,
             voice,
