@@ -28,7 +28,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
-import { getRouteParam } from '../../shared/utils/route-param.util';
+import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { StreamHealthStatus } from './components/stream-health.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
 import { ReferralPromoBannerComponent } from '../../shared/referral-promo-banner/referral-promo-banner.component';
@@ -92,8 +92,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     year: 'numeric',
     timeZone: 'UTC'
   });
-  private readonly streamerParam$ = this.route.paramMap.pipe(
-    map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
+  private readonly streamerParam$ = watchRouteParam(this.route, 'streamer').pipe(
+    map((value) => (value ?? '').trim().toLowerCase()),
     distinctUntilChanged(),
     shareReplay({ bufferSize: 1, refCount: true })
   );
