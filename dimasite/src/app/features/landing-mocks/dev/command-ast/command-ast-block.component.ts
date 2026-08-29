@@ -8,6 +8,7 @@ import {
   type MockNode,
   type MockSetVar,
   type MockTernary,
+  STORAGE_OPTIONS,
   isListSet,
   listItems,
   type SingleSlot,
@@ -35,6 +36,7 @@ export class CommandAstBlockComponent {
   readonly inset = input(false);
 
   readonly ops = BINARY_OPS;
+  readonly storageOpts = STORAGE_OPTIONS;
 
   tone(type: MockNode['type']): string {
     return blockTone(type);
@@ -174,6 +176,11 @@ export class CommandAstBlockComponent {
   patchOp(id: string, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     this.store.patch(id, { operator: value } as Partial<MockNode>);
+  }
+
+  patchStorage(id: string, event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.store.patch(id, { storage: value } as Partial<MockNode>);
   }
 
   ifChain(node: MockTernary): MockTernary[] {

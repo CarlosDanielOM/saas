@@ -14,6 +14,7 @@ import {
   lit,
   loopVar,
   nid,
+  say,
   setVar,
   ternary
 } from './command-ast-mock.model';
@@ -73,7 +74,7 @@ function parseSequence(input: string): MockNode[] {
     if (text) nodes.push(lit(text));
     i = nextStart;
   }
-  return nodes.filter((node) => node.type !== 'literal' || node.value !== '');
+  return nodes.filter((node) => node.type !== 'literal' || node.value.trim() !== '');
 }
 
 function nextQuote(text: string): number {
@@ -165,30 +166,68 @@ function parseCommandInner(inner: string): MockNode {
   return commandRef(name, rest ? parseArgs(rest) : []);
 }
 
+function parseVarParts(inner: string): {
+  name: string;
+  storage: MockVarStorage;
+  userSelector: MockNode | null;
+  indexRaw: string | null;
+  rest: string;
+} {
+  let s = inner.trim();
+  let storage: MockVarStorage = 'memory';
+  if (s.startsWith('**')) {
+    storage = 'dbUser';
+    s = s.slice(2);
+  } else if (s.startsWith('*')) {
+    storage = 'db';
+    s = s.slice(1);
+  } else if (s.startsWith('##')) {
+    storage = 'cacheUser';
+    s = s.slice(2);
+  } else if (s.startsWith('#')) {
+    storage = 'cache';
+    s = s.slice(1);
+  }
+  const nameMatch = /^[A-Za-z_][\w]*/.exec(s);
+  const name = nameMatch?.[0] ?? 'var';
+  s = s.slice(name.length).trimStart();
+
+  let userSelector: MockNode | null = null;
+  if ((storage === 'dbUser' || storage === 'cacheUser') && s.startsWith('(')) {
+    const close = matchingParen(s, 1);
+    userSelector = parseValue(s.slice(1, close));
+    s = s.slice(close + 1).trimStart();
+  }
+
+  let indexRaw: string | null = null;
+  if (s.startsWith('[')) {
+    const close = matchingBracket(s, 1);
+    indexRaw = s.slice(1, close);
+    s = s.slice(close + 1).trimStart();
+  }
+
+  return { name, storage, userSelector, indexRaw, rest: s.trim() };
+}
+
 function parseVarInner(inner: string): MockNode {
-  const trimmed = inner.trim();
-  const head = /^([^\s\[]+)(\[([^\]]*)\])?\s*([\s\S]*)$/.exec(trimmed);
-  const raw = head?.[1] ?? trimmed;
-  const indexRaw = head?.[2] ? (head[3] ?? '') : null;
-  const rest = (head?.[4] ?? '').trim();
-  const { name, storage } = parseStorage(raw);
+  const { name, storage, userSelector, indexRaw, rest } = parseVarParts(inner);
 
   if (indexRaw !== null && indexRaw === '' && rest) {
-    return setVar(name || 'list', parseValue(rest), storage, { type: 'append' });
+    return setVar(name, parseValue(rest), storage, { type: 'append' }, userSelector);
   }
   if (indexRaw !== null && indexRaw !== '') {
     const index = parsePrimary(indexRaw);
-    if (rest) return setVar(name || 'list', parseValue(rest), storage, { type: 'setIndex', index });
-    return getVar(name || 'list', storage, { type: 'index', index });
+    if (rest) return setVar(name, parseValue(rest), storage, { type: 'setIndex', index }, userSelector);
+    return getVar(name, storage, { type: 'index', index }, userSelector);
   }
   if (rest) {
     const value = parseValue(rest);
     if (value.type === 'arrayLiteral') {
-      return setVar(name || 'list', value, storage, { type: 'append' });
+      return setVar(name, value, storage, { type: 'append' }, userSelector);
     }
-    return setVar(name || 'var', value, storage);
+    return setVar(name, value, storage, undefined, userSelector);
   }
-  return getVar(name || 'var', storage);
+  return getVar(name, storage, undefined, userSelector);
 }
 
 function parseValue(input: string): MockNode {
@@ -251,13 +290,13 @@ function parseArrayContent(inner: string): MockNode {
 }
 
 function parseDeleteInner(inner: string): MockNode {
-  const { name, storage } = parseStorage(inner.trim());
-  return deleteVar(name || 'var', storage);
+  const { name, storage, userSelector } = parseVarParts(inner);
+  return deleteVar(name, storage, userSelector);
 }
 
 function parseExistsInner(inner: string): MockNode {
-  const { name, storage } = parseStorage(inner.trim());
-  return existsVar(name || 'var', storage);
+  const { name, storage, userSelector } = parseVarParts(inner);
+  return existsVar(name, storage, userSelector);
 }
 
 function parseComputeInner(inner: string): MockNode {
@@ -329,7 +368,10 @@ function parsePrimary(input: string): MockNode {
   const trimmed = input.trim();
   if (!trimmed) return lit('');
   if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
-    return lit(unquote(trimmed));
+    const parts = parseSequence(unquote(trimmed));
+    if (parts.length === 0) return lit('');
+    if (parts.length === 1) return parts[0];
+    return say(parts);
   }
   if (trimmed.startsWith('%[')) return parseArrayAt(trimmed, 0).node;
   const start = matchStart(trimmed, 0);

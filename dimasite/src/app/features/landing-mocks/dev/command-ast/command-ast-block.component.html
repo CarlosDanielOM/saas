@@ -46,34 +46,59 @@
       }
     }
     @case ('getVar') {
+      <select
+        class="blk__store"
+        [attr.title]="n.storage"
+        (change)="patchStorage(n.id, $event)"
+        (mousedown)="stop($event)"
+        aria-label="Storage"
+      >
+        @for (opt of storageOpts; track opt.id) {
+          <option [value]="opt.id" [selected]="opt.id === n.storage">{{ opt.mark }}</option>
+        }
+      </select>
       @if (listIndex(n); as idx) {
         <span class="blk__w">item</span>
         <span class="blk__hole">
           <app-command-ast-block [node]="idx" [inset]="true" />
         </span>
         <span class="blk__w">of</span>
-        <input
-          class="blk__in"
-          [value]="n.name"
-          (input)="patchName(n.id, $event)"
-          (mousedown)="stop($event)"
-          aria-label="List name"
-        />
-      } @else {
-        <span class="blk__w">var</span>
-        <input
-          class="blk__in"
-          [value]="n.name"
-          (input)="patchName(n.id, $event)"
-          (mousedown)="stop($event)"
-          aria-label="Variable name"
-        />
       }
+      <input
+        class="blk__in"
+        [value]="n.name"
+        (input)="patchName(n.id, $event)"
+        (mousedown)="stop($event)"
+        aria-label="Variable name"
+      />
+      @if (n.userSelector) {
+        <span class="blk__w">of</span>
+        <span class="blk__hole">
+          <app-command-ast-block [node]="n.userSelector" [inset]="true" />
+        </span>
+      }
+    }
+    @case ('template') {
+      <div class="blk__say">
+        @for (part of n.parts; track part.id) {
+          <app-command-ast-block [node]="part" [inset]="true" />
+        }
+      </div>
     }
     @case ('setVar') {
       @if (listSet(n)) {
         <div class="blk__hat">
           <span class="blk__w">set list</span>
+          <select
+            class="blk__store"
+            (change)="patchStorage(n.id, $event)"
+            (mousedown)="stop($event)"
+            aria-label="Storage"
+          >
+            @for (opt of storageOpts; track opt.id) {
+              <option [value]="opt.id" [selected]="opt.id === n.storage">{{ opt.mark }}</option>
+            }
+          </select>
           <input
             class="blk__in"
             [value]="n.name"
@@ -116,6 +141,16 @@
         </div>
       } @else {
         <span class="blk__w">set</span>
+        <select
+          class="blk__store"
+          (change)="patchStorage(n.id, $event)"
+          (mousedown)="stop($event)"
+          aria-label="Storage"
+        >
+          @for (opt of storageOpts; track opt.id) {
+            <option [value]="opt.id" [selected]="opt.id === n.storage">{{ opt.mark }}</option>
+          }
+        </select>
         <input
           class="blk__in"
           [value]="n.name"
@@ -123,6 +158,12 @@
           (mousedown)="stop($event)"
           aria-label="Variable name"
         />
+        @if (n.userSelector) {
+          <span class="blk__w">of</span>
+          <span class="blk__hole">
+            <app-command-ast-block [node]="n.userSelector" [inset]="true" />
+          </span>
+        }
         <span class="blk__w">to</span>
         <span
           class="blk__hole"
@@ -162,6 +203,16 @@
     }
     @case ('exists') {
       <span class="blk__w">has</span>
+      <select
+        class="blk__store"
+        (change)="patchStorage(n.id, $event)"
+        (mousedown)="stop($event)"
+        aria-label="Storage"
+      >
+        @for (opt of storageOpts; track opt.id) {
+          <option [value]="opt.id" [selected]="opt.id === n.storage">{{ opt.mark }}</option>
+        }
+      </select>
       <input
         class="blk__in"
         [value]="n.name"
@@ -169,9 +220,25 @@
         (mousedown)="stop($event)"
         aria-label="Variable name"
       />
+      @if (n.userSelector) {
+        <span class="blk__w">of</span>
+        <span class="blk__hole">
+          <app-command-ast-block [node]="n.userSelector" [inset]="true" />
+        </span>
+      }
     }
     @case ('deleteVar') {
       <span class="blk__w">delete</span>
+      <select
+        class="blk__store"
+        (change)="patchStorage(n.id, $event)"
+        (mousedown)="stop($event)"
+        aria-label="Storage"
+      >
+        @for (opt of storageOpts; track opt.id) {
+          <option [value]="opt.id" [selected]="opt.id === n.storage">{{ opt.mark }}</option>
+        }
+      </select>
       <input
         class="blk__in"
         [value]="n.name"
@@ -179,6 +246,12 @@
         (mousedown)="stop($event)"
         aria-label="Variable name"
       />
+      @if (n.userSelector) {
+        <span class="blk__w">of</span>
+        <span class="blk__hole">
+          <app-command-ast-block [node]="n.userSelector" [inset]="true" />
+        </span>
+      }
     }
     @case ('binary') {
       <span

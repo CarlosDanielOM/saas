@@ -30,6 +30,7 @@ export interface MockGetVar {
   name: string;
   storage: MockVarStorage;
   accessor?: MockArrayAccessor;
+  userSelector?: MockNode | null;
 }
 
 export interface MockSetVar {
@@ -39,6 +40,7 @@ export interface MockSetVar {
   storage: MockVarStorage;
   value: MockNode | null;
   accessor?: MockArrayAccessor;
+  userSelector?: MockNode | null;
 }
 
 export interface MockArrayLiteral {
@@ -52,6 +54,7 @@ export interface MockExists {
   type: 'exists';
   name: string;
   storage: MockVarStorage;
+  userSelector?: MockNode | null;
 }
 
 export interface MockDeleteVar {
@@ -59,6 +62,13 @@ export interface MockDeleteVar {
   type: 'deleteVar';
   name: string;
   storage: MockVarStorage;
+  userSelector?: MockNode | null;
+}
+
+export interface MockTemplate {
+  id: string;
+  type: 'template';
+  parts: MockNode[];
 }
 
 export interface MockBinary {
@@ -127,6 +137,7 @@ export type MockNode =
   | MockLoopVar
   | MockForLoop
   | MockGroup
+  | MockTemplate
   | MockArrayLiteral
   | MockRoot;
 
@@ -184,19 +195,33 @@ export function fn(name: string, args: MockNode[] = []): MockFunction {
 export function getVar(
   name: string,
   storage: MockVarStorage = 'memory',
-  accessor?: MockArrayAccessor
+  accessor?: MockArrayAccessor,
+  userSelector?: MockNode | null
 ): MockGetVar {
-  return { id: nid('gv'), type: 'getVar', name, storage, accessor };
+  return { id: nid('gv'), type: 'getVar', name, storage, accessor, userSelector };
 }
 
 export function setVar(
   name: string,
   value: MockNode | null,
   storage: MockVarStorage = 'memory',
-  accessor?: MockArrayAccessor
+  accessor?: MockArrayAccessor,
+  userSelector?: MockNode | null
 ): MockSetVar {
-  return { id: nid('sv'), type: 'setVar', name, storage, value, accessor };
+  return { id: nid('sv'), type: 'setVar', name, storage, value, accessor, userSelector };
 }
+
+export function say(parts: MockNode[]): MockTemplate {
+  return { id: nid('say'), type: 'template', parts };
+}
+
+export const STORAGE_OPTIONS: { id: MockVarStorage; mark: string; label: string }[] = [
+  { id: 'memory', mark: 'tmp', label: 'Temporary (this command)' },
+  { id: 'cache', mark: '#', label: 'Cache (this stream)' },
+  { id: 'cacheUser', mark: '##', label: 'Cache per user' },
+  { id: 'db', mark: '*', label: 'Saved (channel)' },
+  { id: 'dbUser', mark: '**', label: 'Saved per user' }
+];
 
 export function arrayLit(items: MockNode[]): MockArrayLiteral {
   return { id: nid('arr'), type: 'arrayLiteral', items };
@@ -212,12 +237,20 @@ export function listItems(node: MockSetVar | MockArrayLiteral): MockNode[] {
   return node.value?.type === 'arrayLiteral' ? node.value.items : [];
 }
 
-export function existsVar(name: string, storage: MockVarStorage = 'memory'): MockExists {
-  return { id: nid('ex'), type: 'exists', name, storage };
+export function existsVar(
+  name: string,
+  storage: MockVarStorage = 'memory',
+  userSelector?: MockNode | null
+): MockExists {
+  return { id: nid('ex'), type: 'exists', name, storage, userSelector };
 }
 
-export function deleteVar(name: string, storage: MockVarStorage = 'memory'): MockDeleteVar {
-  return { id: nid('dv'), type: 'deleteVar', name, storage };
+export function deleteVar(
+  name: string,
+  storage: MockVarStorage = 'memory',
+  userSelector?: MockNode | null
+): MockDeleteVar {
+  return { id: nid('dv'), type: 'deleteVar', name, storage, userSelector };
 }
 
 export function binary(
@@ -568,6 +601,7 @@ export function cloneNode(node: MockNode, newIds = true): MockNode {
       return {
         ...node,
         id,
+        userSelector: node.userSelector ? cloneNode(node.userSelector, newIds) : node.userSelector,
         accessor:
           node.accessor?.type === 'index' || node.accessor?.type === 'setIndex'
             ? { ...node.accessor, index: node.accessor.index ? cloneNode(node.accessor.index, newIds) : null }
@@ -575,6 +609,11 @@ export function cloneNode(node: MockNode, newIds = true): MockNode {
       };
     case 'exists':
     case 'deleteVar':
+      return {
+        ...node,
+        id,
+        userSelector: node.userSelector ? cloneNode(node.userSelector, newIds) : node.userSelector
+      };
     case 'loopVar':
       return { ...node, id };
     case 'setVar':
@@ -582,6 +621,7 @@ export function cloneNode(node: MockNode, newIds = true): MockNode {
         ...node,
         id,
         value: node.value ? cloneNode(node.value, newIds) : null,
+        userSelector: node.userSelector ? cloneNode(node.userSelector, newIds) : node.userSelector,
         accessor:
           node.accessor?.type === 'index' || node.accessor?.type === 'setIndex'
             ? { ...node.accessor, index: node.accessor.index ? cloneNode(node.accessor.index, newIds) : null }
@@ -616,6 +656,8 @@ export function cloneNode(node: MockNode, newIds = true): MockNode {
         iterable: node.iterable ? cloneNode(node.iterable, newIds) : null,
         body: node.body.map((child) => cloneNode(child, newIds))
       };
+    case 'template':
+      return { ...node, id, parts: node.parts.map((child) => cloneNode(child, newIds)) };
     case 'group':
     case 'root':
       return { ...node, id, children: node.children.map((child) => cloneNode(child, newIds)) };
@@ -640,11 +682,14 @@ export function childNodes(node: MockNode): MockNode[] {
     case 'root':
     case 'group':
       return node.children;
+    case 'template':
+      return node.parts;
     case 'function':
     case 'commandRef':
       return node.args;
     case 'setVar': {
       const kids = node.value ? [node.value] : [];
+      if (node.userSelector) kids.push(node.userSelector);
       if ((node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') && node.accessor.index) {
         kids.push(node.accessor.index);
       }
@@ -653,10 +698,19 @@ export function childNodes(node: MockNode): MockNode[] {
     case 'arrayLiteral':
       return node.items;
     case 'getVar':
-      if ((node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') && node.accessor.index) {
-        return [node.accessor.index];
+    case 'exists':
+    case 'deleteVar': {
+      const kids: MockNode[] = [];
+      if (node.userSelector) kids.push(node.userSelector);
+      if (
+        node.type === 'getVar' &&
+        (node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') &&
+        node.accessor.index
+      ) {
+        kids.push(node.accessor.index);
       }
-      return [];
+      return kids;
+    }
     case 'binary':
       return [node.left, node.right].filter((child): child is MockNode => child !== null);
     case 'ternary':
@@ -692,6 +746,7 @@ export function transformTree(node: MockNode, fn: (node: MockNode) => MockNode |
       current = {
         ...current,
         value: current.value ? transformTree(current.value, fn) : null,
+        userSelector: current.userSelector ? transformTree(current.userSelector, fn) : current.userSelector,
         accessor:
           current.accessor?.type === 'index' || current.accessor?.type === 'setIndex'
             ? {
@@ -705,16 +760,23 @@ export function transformTree(node: MockNode, fn: (node: MockNode) => MockNode |
       current = { ...current, items: mapList(current.items, (child) => transformTree(child, fn)) };
       break;
     case 'getVar':
+    case 'exists':
+    case 'deleteVar':
       current = {
         ...current,
-        accessor:
-          current.accessor?.type === 'index' || current.accessor?.type === 'setIndex'
-            ? {
-                ...current.accessor,
-                index: current.accessor.index ? transformTree(current.accessor.index, fn) : null
-              }
-            : current.accessor
-      };
+        userSelector: current.userSelector ? transformTree(current.userSelector, fn) : current.userSelector,
+        ...(current.type === 'getVar'
+          ? {
+              accessor:
+                current.accessor?.type === 'index' || current.accessor?.type === 'setIndex'
+                  ? {
+                      ...current.accessor,
+                      index: current.accessor.index ? transformTree(current.accessor.index, fn) : null
+                    }
+                  : current.accessor
+            }
+          : {})
+      } as MockNode;
       break;
     case 'binary':
       current = {
@@ -740,6 +802,9 @@ export function transformTree(node: MockNode, fn: (node: MockNode) => MockNode |
         iterable: current.iterable ? transformTree(current.iterable, fn) : null,
         body: mapList(current.body, (child) => transformTree(child, fn))
       };
+      break;
+    case 'template':
+      current = { ...current, parts: mapList(current.parts, (child) => transformTree(child, fn)) };
       break;
     case 'group':
     case 'root':
@@ -833,6 +898,7 @@ export function moveNode(root: MockRoot, nodeId: string, target: DropTarget): Mo
 export function blockTone(type: MockNode['type']): string {
   switch (type) {
     case 'literal':
+    case 'template':
       return 'text';
     case 'function':
       return 'fn';
@@ -860,6 +926,7 @@ export type BlockShape = 'stack' | 'oval' | 'hex' | 'c';
 export function blockShape(node: MockNode, inset: boolean): BlockShape {
   if (node.type === 'forLoop' || node.type === 'ternary' || node.type === 'group') return 'c';
   if (node.type === 'arrayLiteral' || (node.type === 'setVar' && isListSet(node))) return 'c';
+  if (node.type === 'template') return inset ? 'oval' : 'stack';
   if (node.type === 'binary') return 'hex';
   if (inset) return 'oval';
   return 'stack';

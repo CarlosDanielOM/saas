@@ -218,6 +218,9 @@ function findById(node: MockNode, id: string): MockNode | null {
     case 'group':
       kids.push(...node.children);
       break;
+    case 'template':
+      kids.push(...node.parts);
+      break;
     case 'function':
     case 'commandRef':
       kids.push(...node.args);

@@ -45,6 +45,10 @@ function computeAtom(node: MockNode): string {
   return toSource(node, false);
 }
 
+function selectorSource(selector: MockNode | null | undefined): string {
+  return selector ? `(${toSource(selector, false)})` : '';
+}
+
 function accessorSource(accessor: MockArrayAccessor | undefined, writing = false): string {
   if (!accessor) return '';
   switch (accessor.type) {
@@ -75,21 +79,25 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
     }
     case 'getVar': {
       const acc = accessorSource(node.accessor);
-      return `%(${storagePrefix(node.storage)}${node.name}${acc})`;
+      return `%(${storagePrefix(node.storage)}${node.name}${selectorSource(node.userSelector)}${acc})`;
     }
     case 'setVar': {
       const acc = accessorSource(node.accessor, true);
       const value = node.value ? ` ${computeAtom(node.value)}` : '';
-      return `%(${storagePrefix(node.storage)}${node.name}${acc}${value})`;
+      return `%(${storagePrefix(node.storage)}${node.name}${selectorSource(node.userSelector)}${acc}${value})`;
+    }
+    case 'template': {
+      const inner = node.parts.map((part) => (part.type === 'literal' ? part.value : toSource(part, false))).join('');
+      return `"${inner.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     }
     case 'arrayLiteral': {
       const items = node.items.map((item) => computeAtom(item)).join(', ');
       return `%[${items}]`;
     }
     case 'exists':
-      return `^(${storagePrefix(node.storage)}${node.name})`;
+      return `^(${storagePrefix(node.storage)}${node.name}${selectorSource(node.userSelector)})`;
     case 'deleteVar':
-      return `%del(${storagePrefix(node.storage)}${node.name})`;
+      return `%del(${storagePrefix(node.storage)}${node.name}${selectorSource(node.userSelector)})`;
     case 'binary': {
       const left = node.left ? toSource(node.left, false) : '?';
       const right = node.right ? computeAtom(node.right) : '?';
@@ -159,6 +167,8 @@ function stripIds(node: MockNode): unknown {
         iterable: node.iterable ? stripIds(node.iterable) : null,
         body: node.body.map(stripIds)
       };
+    case 'template':
+      return { ...rest, parts: node.parts.map(stripIds) };
     case 'group':
     case 'root':
       return { ...rest, children: node.children.map(stripIds) };

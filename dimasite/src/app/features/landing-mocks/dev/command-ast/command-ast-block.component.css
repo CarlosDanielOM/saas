@@ -134,6 +134,27 @@
   text-align: center;
 }
 
+.blk__store {
+  min-width: 2.4rem;
+  min-height: 1.35rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.28);
+  color: inherit;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0 0.3rem;
+}
+
+.blk__say {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+}
+
 .blk__hole {
   display: inline-flex;
   min-width: 1.5rem;

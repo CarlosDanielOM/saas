@@ -163,6 +163,8 @@ function evalNode(
       loopVars.delete(node.loopVar);
       return out.join(' ');
     }
+    case 'template':
+      return node.parts.map((part) => evalNode(part, ctx, vars, loopVars)).join('');
     case 'group':
     case 'root':
       return evalList(node.children, ctx, vars, loopVars);
