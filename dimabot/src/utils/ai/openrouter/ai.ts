@@ -594,6 +594,79 @@ async function callOpenRouter(
 }
 
 // ============================================================================
+// DSML TOOL-CALL RECOVERY
+// ============================================================================
+// Some providers (notably DeepSeek upstreams) return tool calls as raw DSML
+// markup inside message.content instead of the structured tool_calls field:
+//   <｜DSML｜tool_calls><｜DSML｜invoke name="X">
+//   <｜DSML｜parameter name="y" string="true">value</｜DSML｜parameter>
+//   </｜DSML｜invoke></｜DSML｜tool_calls>
+// Without recovery this markup leaks into chat as the bot's reply.
+
+const DSML_TOOL_CALLS_MARKER = "<｜DSML｜tool_calls>";
+
+/**
+ * Removes DSML tool-call markup from assistant text. The block is always the
+ * tail of the message; anything before it is the model's actual reply.
+ * Returns '' when the message was only a tool call.
+ */
+function stripDsmlMarkup(content: string): string {
+  const markerIndex = content.indexOf(DSML_TOOL_CALLS_MARKER);
+  const withoutBlock =
+    markerIndex === -1 ? content : content.slice(0, markerIndex);
+  // Drop any stray DSML tags left over from truncated generations.
+  return withoutBlock.replace(/<\/?｜DSML｜[^>]*>?/g, "").trim();
+}
+
+/**
+ * Converts DSML tool-call markup into the structured tool_calls shape the
+ * harness already knows how to execute. Tolerant of truncated output
+ * (missing closing tags). Returns null when no usable invoke is found.
+ */
+function recoverDsmlToolCalls(
+  content: string,
+): IOpenRouterMessage["tool_calls"] | null {
+  const invokePattern =
+    /<｜DSML｜invoke name="([^"]+)"\s*>([\s\S]*?)(?:<\/｜DSML｜invoke>|$)/g;
+  const parameterPattern =
+    /<｜DSML｜parameter name="([^"]+)" string="(true|false)"\s*>([\s\S]*?)(?:<\/｜DSML｜parameter>|$)/g;
+
+  const recovered: NonNullable<IOpenRouterMessage["tool_calls"]> = [];
+  let invokeMatch: RegExpExecArray | null;
+  let recoveredIndex = 0;
+
+  while ((invokeMatch = invokePattern.exec(content)) !== null) {
+    const name = invokeMatch[1];
+    const body = invokeMatch[2];
+    const args: Record<string, unknown> = {};
+
+    let paramMatch: RegExpExecArray | null;
+    parameterPattern.lastIndex = 0;
+    while ((paramMatch = parameterPattern.exec(body)) !== null) {
+      const [, paramName, isString, rawValue] = paramMatch;
+      const value = rawValue.trim();
+      if (isString === "true") {
+        args[paramName] = value;
+      } else if (value === "true" || value === "false") {
+        args[paramName] = value === "true";
+      } else if (value !== "" && !Number.isNaN(Number(value))) {
+        args[paramName] = Number(value);
+      } else {
+        args[paramName] = value;
+      }
+    }
+
+    recovered.push({
+      id: `dsml_${Date.now()}_${recoveredIndex++}`,
+      type: "function",
+      function: { name, arguments: JSON.stringify(args) },
+    });
+  }
+
+  return recovered.length > 0 ? recovered : null;
+}
+
+// ============================================================================
 // TRACK USAGE
 // ============================================================================
 
@@ -978,6 +1051,44 @@ export async function chat(
 
     const choice = data.choices?.[0];
     const assistantMessage = choice?.message;
+
+    // DSML fallback: some providers return tool calls as markup inside
+    // content instead of the structured tool_calls field. Recover them into
+    // real tool calls when possible; otherwise strip the markup so it never
+    // leaks into chat as the bot's reply.
+    if (
+      assistantMessage &&
+      !(assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) &&
+      typeof assistantMessage.content === "string" &&
+      assistantMessage.content.includes(DSML_TOOL_CALLS_MARKER)
+    ) {
+      const recoveredCalls = recoverDsmlToolCalls(assistantMessage.content);
+      const cleanedContent = stripDsmlMarkup(assistantMessage.content);
+      if (recoveredCalls) {
+        debug(
+          {
+            message: "[AI Harness] Recovered DSML tool calls from content",
+            toolCalls: recoveredCalls.map((call) => call.function.name),
+            sessionId,
+            traceId,
+          },
+          { channelId: channelID, destination: "console" },
+        );
+        assistantMessage.tool_calls = recoveredCalls;
+        assistantMessage.content = cleanedContent || undefined;
+      } else {
+        debug(
+          {
+            message: "[AI Harness] Stripped unparseable DSML markup from content",
+            sessionId,
+            traceId,
+          },
+          { channelId: channelID, destination: "console" },
+        );
+        assistantMessage.content = cleanedContent;
+      }
+    }
+
     const hasToolCalls =
       assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0;
 
@@ -1159,7 +1270,9 @@ export async function chat(
     };
   }
 
-  const finalContent = finalData.choices?.[0]?.message?.content || "";
+  const finalContent = stripDsmlMarkup(
+    finalData.choices?.[0]?.message?.content || "",
+  );
 
   // Track final usage
   if (finalData.usage) {
