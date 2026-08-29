@@ -1,0 +1,151 @@
+<div class="lf">
+  <aside class="mock-bar" aria-label="Mock controls">
+    <a routerLink="/mocks/dev" class="mock-bar__back">← Dev mocks</a>
+    <span class="mock-bar__chip">LOCAL ONLY</span>
+    <span class="mock-bar__note">No command API · no chat · fixture eval only</span>
+  </aside>
+
+  <header class="lf-nav">
+    <a class="lf-brand" routerLink="/">
+      <span class="lf-brand__live" aria-hidden="true"></span>
+      DomDimaBot
+    </a>
+    <div class="lf-nav__actions">
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? 'Dark theme' : 'Light theme'"
+      >
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+        <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="lf-main">
+    <section class="lf-tile lf-tile--intro">
+      <p class="lf-kicker">Command AST · mock</p>
+      <h1 class="lf-title">Snap blocks. Break freely. <span>Prod stays untouched.</span></h1>
+      <p class="lf-copy">
+        Visual coding blocks for the live command AST. Palette → canvas → source string. Run uses a fake chat
+        context so $(ban) never bans anyone.
+      </p>
+      <div class="lf-actions">
+        <button type="button" class="lf-btn lf-btn--primary" (click)="store.run()">Run mock</button>
+        <button type="button" class="lf-btn" (click)="store.undo()" [disabled]="!store.canUndo()">Undo</button>
+        <button type="button" class="lf-btn" (click)="store.redo()" [disabled]="!store.canRedo()">Redo</button>
+        <button type="button" class="lf-btn" (click)="store.clear()">Clear</button>
+      </div>
+      <div class="sample-row" role="group" aria-label="Sample commands">
+        @for (sample of samples; track sample.id) {
+          <button type="button" class="lf-chip" (click)="store.loadSample(sample.id)">
+            {{ sample.label }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <nav class="lf-mobile-tabs" aria-label="Editor panels">
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'palette'" (click)="setPanel('palette')">
+        Palette
+      </button>
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'canvas'" (click)="setPanel('canvas')">
+        Blocks
+      </button>
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'output'" (click)="setPanel('output')">
+        Output
+      </button>
+    </nav>
+
+    <div class="lf-bento ast-bento">
+      <aside class="lf-tile ast-palette" [class.is-open]="panel() === 'palette'">
+        <p class="lf-kicker">Palette</p>
+        <p class="lf-note">Tap a slot, then a block. Or drag onto the canvas.</p>
+        @for (cat of categories; track cat.id) {
+          <h2 class="lf-h3">{{ cat.label }}</h2>
+          <div class="palette-grid">
+            @for (item of itemsFor(cat.id); track item.id) {
+              <button
+                type="button"
+                class="pal"
+                [attr.data-cat]="item.category"
+                draggable="true"
+                (dragstart)="onPaletteDrag($event, item)"
+                (dragend)="store.endDrag()"
+                (click)="store.placePalette(item)"
+              >
+                <span>{{ item.label }}</span>
+                <small>{{ item.hint }}</small>
+              </button>
+            }
+          </div>
+        }
+      </aside>
+
+      <section class="lf-tile ast-canvas" [class.is-open]="panel() === 'canvas'" aria-label="Block canvas">
+        <p class="lf-kicker">Command body</p>
+        <div
+          class="canvas"
+          (dragover)="onCanvasDragOver($event, rootTarget(store.root().children.length))"
+          (drop)="onCanvasDrop($event, rootTarget(store.root().children.length))"
+          (click)="store.setDropTarget(rootTarget(store.root().children.length))"
+        >
+          @for (child of store.root().children; track child.id; let i = $index) {
+            <div
+              class="canvas__gap"
+              [class.is-hot]="store.sameTarget(store.hoverTarget(), rootTarget(i))"
+              (dragover)="onCanvasDragOver($event, rootTarget(i))"
+              (drop)="onCanvasDrop($event, rootTarget(i))"
+              (click)="store.setDropTarget(rootTarget(i)); $event.stopPropagation()"
+            ></div>
+            <app-command-ast-block [node]="child" />
+          }
+          @if (store.root().children.length === 0) {
+            <p class="canvas__empty">Drop blocks here, or tap Text / user in the palette.</p>
+          }
+        </div>
+      </section>
+
+      <section class="lf-tile ast-out" [class.is-open]="panel() === 'output'">
+        <div class="out-head">
+          <p class="lf-kicker">Preview</p>
+          <div class="lf-range" role="group" aria-label="Preview mode">
+            <button type="button" class="lf-range__btn" [class.is-on]="preview() === 'source'" (click)="preview.set('source')">
+              Source
+            </button>
+            <button type="button" class="lf-range__btn" [class.is-on]="preview() === 'ast'" (click)="preview.set('ast')">
+              AST
+            </button>
+          </div>
+        </div>
+
+        @if (preview() === 'source') {
+          <pre class="code">{{ store.source() || '(empty)' }}</pre>
+          <button type="button" class="lf-btn lf-btn--ghost" (click)="copySource()">Copy source</button>
+        } @else {
+          <pre class="code code--ast">{{ store.astJson() }}</pre>
+        }
+
+        <h2 class="lf-h3">Fake chat</h2>
+        <label class="field">
+          <span>$(user)</span>
+          <input [value]="store.context().user" (input)="patchUser($event)" />
+        </label>
+        <label class="field">
+          <span>$(touser) / argument</span>
+          <input [value]="store.context().argument" (input)="patchArg($event)" />
+        </label>
+
+        <h2 class="lf-h3">Mock run</h2>
+        @if (store.runError()) {
+          <p class="lf-alert" role="alert">{{ store.runError() }}</p>
+        } @else if (store.runOutput()) {
+          <pre class="code code--out">{{ store.runOutput() }}</pre>
+        } @else {
+          <p class="lf-note">Run mock to evaluate locally. Nothing is saved or sent.</p>
+        }
+      </section>
+    </div>
+  </main>
+</div>

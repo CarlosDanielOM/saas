@@ -246,6 +246,14 @@ export const routes: Routes = [
         title: 'Clip Overlay Mocks | DomDimaBot'
       },
       {
+        path: 'command-ast',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/command-ast/command-ast-mock.component').then(
+            (m) => m.CommandAstMockComponent
+          ),
+        title: 'Command AST Blocks | DomDimaBot'
+      },
+      {
         path: 'lf-status',
         loadComponent: () =>
           import('./features/landing-mocks/dev/lf-auth-status-hub.component').then(

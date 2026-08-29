@@ -1,0 +1,156 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.blk {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.55rem 1.7rem 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--tile);
+  box-shadow: 0 6px 16px rgba(15, 15, 20, 0.05);
+  border-left-width: 4px;
+}
+
+.blk--text {
+  border-left-color: var(--muted);
+}
+
+.blk--fn {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--tile));
+}
+
+.blk--var {
+  border-left-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 10%, var(--tile));
+}
+
+.blk--logic {
+  border-left-color: #2563eb;
+  background: color-mix(in srgb, #2563eb 8%, var(--tile));
+}
+
+.blk--flow {
+  border-left-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 8%, var(--tile));
+}
+
+.blk.is-on {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.blk__x {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.blk__x:hover,
+.blk__x:focus-visible {
+  background: var(--btn);
+  color: var(--fg);
+}
+
+.blk__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kicker);
+}
+
+.blk__row,
+.blk__logic {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.blk__token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.blk__name,
+.blk__grow,
+select {
+  min-height: 2.2rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 0.65rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  padding: 0 0.55rem;
+}
+
+.blk__name {
+  width: 7.5rem;
+}
+
+.blk__grow {
+  width: 100%;
+}
+
+.blk__slots,
+.blk__c {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.blk__well {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 2.75rem;
+  min-width: 4.5rem;
+  padding: 0.35rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.blk__well--fill {
+  width: 100%;
+}
+
+.blk__well.is-hot,
+.blk__gap.is-hot,
+.blk__well.is-mark,
+.blk__gap.is-mark {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
+.blk__gap {
+  height: 0.45rem;
+  border-radius: 99px;
+  border: 1px dashed transparent;
+}
+
+@media (min-width: 640px) {
+  .blk__logic {
+    flex-wrap: nowrap;
+  }
+}

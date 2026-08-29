@@ -146,6 +146,13 @@ export class DevMockIndexComponent {
         'OBS overlay sandbox. Test button injects fixture play-clip data and plays locally — no API. Current Classic vs Live First riff.'
     },
     {
+      id: 'command-ast',
+      title: 'Command AST blocks',
+      badge: 'Local playground',
+      description:
+        'Visual coding blocks for command AST. Snap, nest, preview source, mock-run with fake chat. No command API.'
+    },
+    {
       id: 'lf-status',
       title: 'Auth & status (LF)',
       badge: 'Design mocks',
