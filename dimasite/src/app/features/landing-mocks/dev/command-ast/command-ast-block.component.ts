@@ -42,6 +42,22 @@ export class CommandAstBlockComponent {
     return blockTone(type);
   }
 
+  varPaint(node: MockNode): string | null {
+    if (
+      node.type !== 'getVar' &&
+      node.type !== 'setVar' &&
+      node.type !== 'exists' &&
+      node.type !== 'deleteVar' &&
+      node.type !== 'loopVar'
+    ) {
+      return null;
+    }
+    const name = node.name.trim().toLowerCase();
+    if (!name) return null;
+    const scope = node.type === 'loopVar' ? 'loop' : node.storage;
+    return hashVarColor(`${scope}:${name}`);
+  }
+
   shape(node: MockNode): string {
     return blockShape(node, this.inset());
   }
@@ -236,4 +252,28 @@ export class CommandAstBlockComponent {
   stop(event: Event): void {
     event.stopPropagation();
   }
+}
+
+const VAR_COLORS = [
+  '#7c3aed',
+  '#2563eb',
+  '#dc2626',
+  '#db2777',
+  '#0d9488',
+  '#ea580c',
+  '#4f46e5',
+  '#65a30d',
+  '#c026d3',
+  '#0284c7',
+  '#b45309',
+  '#e11d48'
+];
+
+function hashVarColor(name: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < name.length; i++) {
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return VAR_COLORS[Math.abs(hash) % VAR_COLORS.length];
 }

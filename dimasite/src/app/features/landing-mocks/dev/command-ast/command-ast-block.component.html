@@ -3,6 +3,8 @@
 <div
   class="blk"
   [class]="'blk blk--' + tone(n.type) + ' blk--' + shape(n)"
+  [class.blk--named]="!!varPaint(n)"
+  [style.--chip]="varPaint(n)"
   [class.is-on]="isSelected(n.id)"
   draggable="true"
   (click)="onSelect($event, n.id)"

@@ -72,6 +72,10 @@
   background: #ff8c1a;
 }
 
+.blk--named {
+  background: var(--chip, #ff8c1a);
+}
+
 .blk--logic {
   background: #59c059;
 }
