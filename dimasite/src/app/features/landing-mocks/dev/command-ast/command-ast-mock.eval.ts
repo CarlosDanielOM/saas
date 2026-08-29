@@ -101,8 +101,23 @@ function evalNode(
       return node.value;
     case 'loopVar':
       return loopVars.get(node.name) ?? `#${node.name}`;
-    case 'getVar':
-      return vars.get(node.name) ?? '';
+    case 'getVar': {
+      const raw = vars.get(node.name) ?? '';
+      if (node.accessor?.type === 'index') {
+        try {
+          const arr = JSON.parse(raw) as unknown;
+          if (Array.isArray(arr)) {
+            const idx = Number(evalNode(node.accessor.index, ctx, vars, loopVars));
+            return asText(arr[idx] ?? '');
+          }
+        } catch {
+          return raw;
+        }
+      }
+      return raw;
+    }
+    case 'arrayLiteral':
+      return JSON.stringify(node.items.map((item) => evalNode(item, ctx, vars, loopVars)));
     case 'exists':
       return vars.has(node.name) ? 'true' : '';
     case 'deleteVar':

@@ -209,6 +209,14 @@ function findById(node: MockNode, id: string): MockNode | null {
     case 'setVar':
       if (node.value) kids.push(node.value);
       break;
+    case 'arrayLiteral':
+      kids.push(...node.items);
+      break;
+    case 'getVar':
+      if ((node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') && node.accessor.index) {
+        kids.push(node.accessor.index);
+      }
+      break;
     case 'binary':
       if (node.left) kids.push(node.left);
       if (node.right) kids.push(node.right);

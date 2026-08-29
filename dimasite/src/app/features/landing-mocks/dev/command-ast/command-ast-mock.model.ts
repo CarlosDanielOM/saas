@@ -16,11 +16,20 @@ export interface MockFunction {
   args: MockNode[];
 }
 
+export type MockArrayAccessor =
+  | { type: 'array' }
+  | { type: 'append' }
+  | { type: 'index'; index: MockNode | null }
+  | { type: 'setIndex'; index: MockNode | null }
+  | { type: 'random' }
+  | { type: 'length' };
+
 export interface MockGetVar {
   id: string;
   type: 'getVar';
   name: string;
   storage: MockVarStorage;
+  accessor?: MockArrayAccessor;
 }
 
 export interface MockSetVar {
@@ -29,6 +38,13 @@ export interface MockSetVar {
   name: string;
   storage: MockVarStorage;
   value: MockNode | null;
+  accessor?: MockArrayAccessor;
+}
+
+export interface MockArrayLiteral {
+  id: string;
+  type: 'arrayLiteral';
+  items: MockNode[];
 }
 
 export interface MockExists {
@@ -111,6 +127,7 @@ export type MockNode =
   | MockLoopVar
   | MockForLoop
   | MockGroup
+  | MockArrayLiteral
   | MockRoot;
 
 export type MockChildNode = Exclude<MockNode, MockRoot>;
@@ -127,7 +144,7 @@ export type SingleSlot =
   | 'update'
   | 'iterable';
 
-export type ListSlot = 'children' | 'args' | 'body';
+export type ListSlot = 'children' | 'args' | 'body' | 'items';
 
 export type DropTarget =
   | { kind: 'root'; index: number }
@@ -164,16 +181,35 @@ export function fn(name: string, args: MockNode[] = []): MockFunction {
   return { id: nid('fn'), type: 'function', name, args };
 }
 
-export function getVar(name: string, storage: MockVarStorage = 'memory'): MockGetVar {
-  return { id: nid('gv'), type: 'getVar', name, storage };
+export function getVar(
+  name: string,
+  storage: MockVarStorage = 'memory',
+  accessor?: MockArrayAccessor
+): MockGetVar {
+  return { id: nid('gv'), type: 'getVar', name, storage, accessor };
 }
 
 export function setVar(
   name: string,
   value: MockNode | null,
-  storage: MockVarStorage = 'memory'
+  storage: MockVarStorage = 'memory',
+  accessor?: MockArrayAccessor
 ): MockSetVar {
-  return { id: nid('sv'), type: 'setVar', name, storage, value };
+  return { id: nid('sv'), type: 'setVar', name, storage, value, accessor };
+}
+
+export function arrayLit(items: MockNode[]): MockArrayLiteral {
+  return { id: nid('arr'), type: 'arrayLiteral', items };
+}
+
+export function isListSet(node: MockSetVar): boolean {
+  const acc = node.accessor?.type;
+  return acc === 'append' || acc === 'array' || acc === 'setIndex' || node.value?.type === 'arrayLiteral';
+}
+
+export function listItems(node: MockSetVar | MockArrayLiteral): MockNode[] {
+  if (node.type === 'arrayLiteral') return node.items;
+  return node.value?.type === 'arrayLiteral' ? node.value.items : [];
 }
 
 export function existsVar(name: string, storage: MockVarStorage = 'memory'): MockExists {
@@ -357,6 +393,21 @@ export const PALETTE: PaletteItem[] = [
     factory: () => setVar('target', fn('touser'))
   },
   {
+    id: 'setList',
+    label: 'Set list',
+    hint: '%(name[] %[...])',
+    category: 'var',
+    factory: () =>
+      setVar('list', arrayLit([lit('one'), lit('two'), lit('three')]), 'memory', { type: 'append' })
+  },
+  {
+    id: 'getItem',
+    label: 'Item of list',
+    hint: '%(name[0])',
+    category: 'var',
+    factory: () => getVar('list', 'memory', { type: 'index', index: lit('0') })
+  },
+  {
     id: 'exists',
     label: 'Exists',
     hint: '^(name)',
@@ -514,12 +565,30 @@ export function cloneNode(node: MockNode, newIds = true): MockNode {
     case 'function':
       return { ...node, id, args: node.args.map((child) => cloneNode(child, newIds)) };
     case 'getVar':
+      return {
+        ...node,
+        id,
+        accessor:
+          node.accessor?.type === 'index' || node.accessor?.type === 'setIndex'
+            ? { ...node.accessor, index: node.accessor.index ? cloneNode(node.accessor.index, newIds) : null }
+            : node.accessor
+      };
     case 'exists':
     case 'deleteVar':
     case 'loopVar':
       return { ...node, id };
     case 'setVar':
-      return { ...node, id, value: node.value ? cloneNode(node.value, newIds) : null };
+      return {
+        ...node,
+        id,
+        value: node.value ? cloneNode(node.value, newIds) : null,
+        accessor:
+          node.accessor?.type === 'index' || node.accessor?.type === 'setIndex'
+            ? { ...node.accessor, index: node.accessor.index ? cloneNode(node.accessor.index, newIds) : null }
+            : node.accessor
+      };
+    case 'arrayLiteral':
+      return { ...node, id, items: node.items.map((child) => cloneNode(child, newIds)) };
     case 'binary':
       return {
         ...node,
@@ -574,8 +643,20 @@ export function childNodes(node: MockNode): MockNode[] {
     case 'function':
     case 'commandRef':
       return node.args;
-    case 'setVar':
-      return node.value ? [node.value] : [];
+    case 'setVar': {
+      const kids = node.value ? [node.value] : [];
+      if ((node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') && node.accessor.index) {
+        kids.push(node.accessor.index);
+      }
+      return kids;
+    }
+    case 'arrayLiteral':
+      return node.items;
+    case 'getVar':
+      if ((node.accessor?.type === 'index' || node.accessor?.type === 'setIndex') && node.accessor.index) {
+        return [node.accessor.index];
+      }
+      return [];
     case 'binary':
       return [node.left, node.right].filter((child): child is MockNode => child !== null);
     case 'ternary':
@@ -610,7 +691,29 @@ export function transformTree(node: MockNode, fn: (node: MockNode) => MockNode |
     case 'setVar':
       current = {
         ...current,
-        value: current.value ? transformTree(current.value, fn) : null
+        value: current.value ? transformTree(current.value, fn) : null,
+        accessor:
+          current.accessor?.type === 'index' || current.accessor?.type === 'setIndex'
+            ? {
+                ...current.accessor,
+                index: current.accessor.index ? transformTree(current.accessor.index, fn) : null
+              }
+            : current.accessor
+      };
+      break;
+    case 'arrayLiteral':
+      current = { ...current, items: mapList(current.items, (child) => transformTree(child, fn)) };
+      break;
+    case 'getVar':
+      current = {
+        ...current,
+        accessor:
+          current.accessor?.type === 'index' || current.accessor?.type === 'setIndex'
+            ? {
+                ...current.accessor,
+                index: current.accessor.index ? transformTree(current.accessor.index, fn) : null
+              }
+            : current.accessor
       };
       break;
     case 'binary':
@@ -683,6 +786,18 @@ export function insertNode(root: MockRoot, target: DropTarget, node: MockChildNo
       if (current.type === 'forLoop' && target.slot === 'body') {
         return { ...current, body: insertInList(current.body, target.index, node) };
       }
+      if (current.type === 'arrayLiteral' && target.slot === 'items') {
+        return { ...current, items: insertInList(current.items, target.index, node) };
+      }
+      if (current.type === 'setVar' && target.slot === 'items') {
+        const items = current.value?.type === 'arrayLiteral' ? current.value.items : [];
+        const nextItems = insertInList(items, target.index, node);
+        const arr: MockArrayLiteral =
+          current.value?.type === 'arrayLiteral'
+            ? { ...current.value, items: nextItems }
+            : arrayLit(nextItems);
+        return { ...current, value: arr, accessor: current.accessor ?? { type: 'append' } };
+      }
       return current;
     }
     if (
@@ -725,6 +840,7 @@ export function blockTone(type: MockNode['type']): string {
     case 'setVar':
     case 'exists':
     case 'deleteVar':
+    case 'arrayLiteral':
       return 'var';
     case 'binary':
     case 'ternary':
@@ -741,9 +857,10 @@ export function blockTone(type: MockNode['type']): string {
 
 export type BlockShape = 'stack' | 'oval' | 'hex' | 'c';
 
-export function blockShape(type: MockNode['type'], inset: boolean): BlockShape {
-  if (type === 'forLoop' || type === 'ternary' || type === 'group') return 'c';
-  if (type === 'binary') return 'hex';
+export function blockShape(node: MockNode, inset: boolean): BlockShape {
+  if (node.type === 'forLoop' || node.type === 'ternary' || node.type === 'group') return 'c';
+  if (node.type === 'arrayLiteral' || (node.type === 'setVar' && isListSet(node))) return 'c';
+  if (node.type === 'binary') return 'hex';
   if (inset) return 'oval';
   return 'stack';
 }

@@ -2,7 +2,7 @@
 
 <div
   class="blk"
-  [class]="'blk blk--' + tone(n.type) + ' blk--' + shape(n.type)"
+  [class]="'blk blk--' + tone(n.type) + ' blk--' + shape(n)"
   [class.is-on]="isSelected(n.id)"
   draggable="true"
   (click)="onSelect($event, n.id)"
@@ -46,37 +46,113 @@
       }
     }
     @case ('getVar') {
-      <span class="blk__w">var</span>
-      <input
-        class="blk__in"
-        [value]="n.name"
-        (input)="patchName(n.id, $event)"
-        (mousedown)="stop($event)"
-        aria-label="Variable name"
-      />
+      @if (listIndex(n); as idx) {
+        <span class="blk__w">item</span>
+        <span class="blk__hole">
+          <app-command-ast-block [node]="idx" [inset]="true" />
+        </span>
+        <span class="blk__w">of</span>
+        <input
+          class="blk__in"
+          [value]="n.name"
+          (input)="patchName(n.id, $event)"
+          (mousedown)="stop($event)"
+          aria-label="List name"
+        />
+      } @else {
+        <span class="blk__w">var</span>
+        <input
+          class="blk__in"
+          [value]="n.name"
+          (input)="patchName(n.id, $event)"
+          (mousedown)="stop($event)"
+          aria-label="Variable name"
+        />
+      }
     }
     @case ('setVar') {
-      <span class="blk__w">set</span>
-      <input
-        class="blk__in"
-        [value]="n.name"
-        (input)="patchName(n.id, $event)"
-        (mousedown)="stop($event)"
-        aria-label="Variable name"
-      />
-      <span class="blk__w">to</span>
-      <span
-        class="blk__hole"
-        [class.is-hot]="isHot(singleTarget(n.id, 'value'))"
-        [class.is-mark]="isMarked(singleTarget(n.id, 'value'))"
-        (dragover)="onDragOver($event, singleTarget(n.id, 'value'))"
-        (drop)="onDrop($event, singleTarget(n.id, 'value'))"
-        (click)="markSlot($event, singleTarget(n.id, 'value'))"
-      >
-        @if (n.value) {
-          <app-command-ast-block [node]="n.value" [inset]="true" />
+      @if (listSet(n)) {
+        <div class="blk__hat">
+          <span class="blk__w">set list</span>
+          <input
+            class="blk__in"
+            [value]="n.name"
+            (input)="patchName(n.id, $event)"
+            (mousedown)="stop($event)"
+            aria-label="List name"
+          />
+        </div>
+        <div class="blk__mouth">
+          @if (n.value?.type === 'arrayLiteral') {
+            @for (item of itemsOf(n); track item.id; let i = $index) {
+              <div class="blk__item">
+                <span class="blk__num">{{ i + 1 }}</span>
+                <app-command-ast-block [node]="item" [inset]="true" />
+              </div>
+            }
+            <button
+              type="button"
+              class="blk__plus blk__plus--row"
+              (dragover)="onDragOver($event, listTarget(n.id, 'items', itemsOf(n).length))"
+              (drop)="onDrop($event, listTarget(n.id, 'items', itemsOf(n).length))"
+              (click)="markSlot($event, listTarget(n.id, 'items', itemsOf(n).length))"
+              aria-label="Add list item"
+            ></button>
+          } @else {
+            <span
+              class="blk__hole"
+              (dragover)="onDragOver($event, singleTarget(n.id, 'value'))"
+              (drop)="onDrop($event, singleTarget(n.id, 'value'))"
+              (click)="markSlot($event, singleTarget(n.id, 'value'))"
+            >
+              @if (n.value) {
+                <app-command-ast-block [node]="n.value" [inset]="true" />
+              }
+            </span>
+          }
+        </div>
+      } @else {
+        <span class="blk__w">set</span>
+        <input
+          class="blk__in"
+          [value]="n.name"
+          (input)="patchName(n.id, $event)"
+          (mousedown)="stop($event)"
+          aria-label="Variable name"
+        />
+        <span class="blk__w">to</span>
+        <span
+          class="blk__hole"
+          [class.is-hot]="isHot(singleTarget(n.id, 'value'))"
+          [class.is-mark]="isMarked(singleTarget(n.id, 'value'))"
+          (dragover)="onDragOver($event, singleTarget(n.id, 'value'))"
+          (drop)="onDrop($event, singleTarget(n.id, 'value'))"
+          (click)="markSlot($event, singleTarget(n.id, 'value'))"
+        >
+          @if (n.value) {
+            <app-command-ast-block [node]="n.value" [inset]="true" />
+          }
+        </span>
+      }
+    }
+    @case ('arrayLiteral') {
+      <div class="blk__hat"><span class="blk__w">list</span></div>
+      <div class="blk__mouth">
+        @for (item of n.items; track item.id; let i = $index) {
+          <div class="blk__item">
+            <span class="blk__num">{{ i + 1 }}</span>
+            <app-command-ast-block [node]="item" [inset]="true" />
+          </div>
         }
-      </span>
+        <button
+          type="button"
+          class="blk__plus blk__plus--row"
+          (dragover)="onDragOver($event, listTarget(n.id, 'items', n.items.length))"
+          (drop)="onDrop($event, listTarget(n.id, 'items', n.items.length))"
+          (click)="markSlot($event, listTarget(n.id, 'items', n.items.length))"
+          aria-label="Add list item"
+        ></button>
+      </div>
     }
     @case ('exists') {
       <span class="blk__w">has</span>

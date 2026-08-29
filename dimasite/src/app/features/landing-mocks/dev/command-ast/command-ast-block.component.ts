@@ -6,7 +6,10 @@ import {
   type ListSlot,
   type MockForLoop,
   type MockNode,
+  type MockSetVar,
   type MockTernary,
+  isListSet,
+  listItems,
   type SingleSlot,
   binary,
   blockShape,
@@ -37,8 +40,23 @@ export class CommandAstBlockComponent {
     return blockTone(type);
   }
 
-  shape(type: MockNode['type']): string {
-    return blockShape(type, this.inset());
+  shape(node: MockNode): string {
+    return blockShape(node, this.inset());
+  }
+
+  listSet(node: MockSetVar): boolean {
+    return isListSet(node);
+  }
+
+  itemsOf(node: MockSetVar): MockNode[] {
+    return listItems(node);
+  }
+
+  listIndex(node: MockNode): MockNode | null {
+    if (node.type !== 'getVar' && node.type !== 'setVar') return null;
+    const acc = node.accessor;
+    if (acc?.type === 'index' || acc?.type === 'setIndex') return acc.index;
+    return null;
   }
 
   isSelected(id: string): boolean {

@@ -195,6 +195,20 @@
   height: 0.28rem;
 }
 
+.blk__item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.blk__num {
+  flex: 0 0 1.1rem;
+  font-size: 0.68rem;
+  opacity: 0.8;
+  text-align: right;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .blk {
     cursor: pointer;

@@ -3,6 +3,7 @@ import {
   type MockNode,
   type MockRoot,
   type MockVarStorage,
+  arrayLit,
   binary,
   commandRef,
   deleteVar,
@@ -41,6 +42,12 @@ function parseSequence(input: string): MockNode[] {
   const nodes: MockNode[] = [];
   let i = 0;
   while (i < input.length) {
+    if (input.startsWith('%[', i)) {
+      const parsed = parseArrayAt(input, i);
+      nodes.push(parsed.node);
+      i = parsed.next;
+      continue;
+    }
     const start = matchStart(input, i);
     if (start) {
       const parsed = parseStart(input, i, start);
@@ -91,6 +98,8 @@ function findStart(input: string, from: number): number {
     const at = input.indexOf(start, from);
     if (at >= 0 && at < best) best = at;
   }
+  const arr = input.indexOf('%[', from);
+  if (arr >= 0 && arr < best) best = arr;
   return best;
 }
 
@@ -158,10 +167,87 @@ function parseCommandInner(inner: string): MockNode {
 
 function parseVarInner(inner: string): MockNode {
   const trimmed = inner.trim();
-  const [raw, rest] = splitName(trimmed);
+  const head = /^([^\s\[]+)(\[([^\]]*)\])?\s*([\s\S]*)$/.exec(trimmed);
+  const raw = head?.[1] ?? trimmed;
+  const indexRaw = head?.[2] ? (head[3] ?? '') : null;
+  const rest = (head?.[4] ?? '').trim();
   const { name, storage } = parseStorage(raw);
-  if (!rest) return getVar(name || 'var', storage);
-  return setVar(name || 'var', parseOneOrGroup(rest), storage);
+
+  if (indexRaw !== null && indexRaw === '' && rest) {
+    return setVar(name || 'list', parseValue(rest), storage, { type: 'append' });
+  }
+  if (indexRaw !== null && indexRaw !== '') {
+    const index = parsePrimary(indexRaw);
+    if (rest) return setVar(name || 'list', parseValue(rest), storage, { type: 'setIndex', index });
+    return getVar(name || 'list', storage, { type: 'index', index });
+  }
+  if (rest) {
+    const value = parseValue(rest);
+    if (value.type === 'arrayLiteral') {
+      return setVar(name || 'list', value, storage, { type: 'append' });
+    }
+    return setVar(name || 'var', value, storage);
+  }
+  return getVar(name || 'var', storage);
+}
+
+function parseValue(input: string): MockNode {
+  const trimmed = input.trim();
+  if (trimmed.startsWith('%[')) return parseArrayAt(trimmed, 0).node;
+  const start = matchStart(trimmed, 0);
+  if (start) {
+    const parsed = parseStart(trimmed, 0, start);
+    if (parsed.next >= trimmed.length) return parsed.node;
+  }
+  return parseOneOrGroup(trimmed);
+}
+
+function parseArrayAt(input: string, index: number): { node: MockNode; next: number } {
+  const close = matchingBracket(input, index + 2);
+  const inner = input.slice(index + 2, close);
+  return { node: parseArrayContent(inner), next: Math.min(close + 1, input.length) };
+}
+
+function matchingBracket(input: string, from: number): number {
+  let depth = 1;
+  for (let i = from; i < input.length; i++) {
+    if (input[i] === '"' || input[i] === "'") {
+      i = skipQuote(input, i);
+      continue;
+    }
+    if (input[i] === '[') depth++;
+    else if (input[i] === ']') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return input.length;
+}
+
+function parseArrayContent(inner: string): MockNode {
+  const items: MockNode[] = [];
+  let buf = '';
+  let depth = 0;
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === '"' || inner[i] === "'") {
+      const end = skipQuote(inner, i);
+      buf += inner.slice(i, end + 1);
+      i = end;
+      continue;
+    }
+    if (inner[i] === '[' || inner[i] === '(') depth++;
+    else if (inner[i] === ']' || inner[i] === ')') depth = Math.max(0, depth - 1);
+    if (inner[i] === ',' && depth === 0) {
+      const piece = buf.trim();
+      if (piece) items.push(parsePrimary(piece));
+      buf = '';
+      continue;
+    }
+    buf += inner[i];
+  }
+  const last = buf.trim();
+  if (last) items.push(parsePrimary(last));
+  return arrayLit(items);
 }
 
 function parseDeleteInner(inner: string): MockNode {
@@ -245,6 +331,7 @@ function parsePrimary(input: string): MockNode {
   if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
     return lit(unquote(trimmed));
   }
+  if (trimmed.startsWith('%[')) return parseArrayAt(trimmed, 0).node;
   const start = matchStart(trimmed, 0);
   if (start) {
     const parsed = parseStart(trimmed, 0, start);
@@ -265,6 +352,12 @@ function parseArgs(input: string): MockNode[] {
       const end = skipQuote(input, i);
       out.push(lit(unquote(input.slice(i, end + 1))));
       i = end + 1;
+      continue;
+    }
+    if (input.startsWith('%[', i)) {
+      const parsed = parseArrayAt(input, i);
+      out.push(parsed.node);
+      i = parsed.next;
       continue;
     }
     const start = matchStart(input, i);

@@ -1,4 +1,4 @@
-import type { MockNode, MockRoot, MockVarStorage } from './command-ast-mock.model';
+import type { MockArrayAccessor, MockNode, MockRoot, MockVarStorage } from './command-ast-mock.model';
 
 function storagePrefix(storage: MockVarStorage): string {
   switch (storage) {
@@ -45,6 +45,24 @@ function computeAtom(node: MockNode): string {
   return toSource(node, false);
 }
 
+function accessorSource(accessor: MockArrayAccessor | undefined, writing = false): string {
+  if (!accessor) return '';
+  switch (accessor.type) {
+    case 'array':
+    case 'append':
+      return '[]';
+    case 'index':
+    case 'setIndex':
+      return `[${accessor.index ? toSource(accessor.index, false) : '0'}]`;
+    case 'random':
+      return '[random]';
+    case 'length':
+      return '[].length';
+    default:
+      return writing ? '[]' : '';
+  }
+}
+
 export function toSource(node: MockNode, wrapComputeExpr = true): string {
   switch (node.type) {
     case 'literal':
@@ -55,11 +73,18 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
       const args = node.args.map((arg) => toSource(arg, false)).join(' ');
       return args ? `$(${node.name} ${args})` : `$(${node.name})`;
     }
-    case 'getVar':
-      return `%(${storagePrefix(node.storage)}${node.name})`;
+    case 'getVar': {
+      const acc = accessorSource(node.accessor);
+      return `%(${storagePrefix(node.storage)}${node.name}${acc})`;
+    }
     case 'setVar': {
-      const value = node.value ? ` ${toSource(node.value, false)}` : '';
-      return `%(${storagePrefix(node.storage)}${node.name}${value})`;
+      const acc = accessorSource(node.accessor, true);
+      const value = node.value ? ` ${computeAtom(node.value)}` : '';
+      return `%(${storagePrefix(node.storage)}${node.name}${acc}${value})`;
+    }
+    case 'arrayLiteral': {
+      const items = node.items.map((item) => computeAtom(item)).join(', ');
+      return `%[${items}]`;
     }
     case 'exists':
       return `^(${storagePrefix(node.storage)}${node.name})`;
@@ -110,6 +135,8 @@ function stripIds(node: MockNode): unknown {
       return { ...rest, args: node.args.map(stripIds) };
     case 'setVar':
       return { ...rest, value: node.value ? stripIds(node.value) : null };
+    case 'arrayLiteral':
+      return { ...rest, items: node.items.map(stripIds) };
     case 'binary':
       return {
         ...rest,
