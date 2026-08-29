@@ -46,7 +46,7 @@ export interface ASTParserArgs {
  * return error text as a string instead of throwing.
  */
 function looksLikeAstFailure(resultStr: string): boolean {
-    return /usage:|\[parse error|\[loop error|^error\b|\berror |not found|invalid |is disabled|failed to/i.test(resultStr);
+    return /usage:|\[parse error|\[loop error|^error\b|\berror |not found|invalid |is disabled|failed to|unauthorized|incorrect user authorization|does not have (valid |the )?permissions/i.test(resultStr);
 }
 
 function buildFailureDocs(command: string): { docs?: AstCatalogEntry; retryHint?: string } {

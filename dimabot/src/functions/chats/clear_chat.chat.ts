@@ -1,4 +1,4 @@
-import { getTwitchStreamerHeaderById } from '../../utils/header.js';
+import { getTwitchModeratorHeader } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -14,7 +14,7 @@ export async function clearChat(
     modID: string
 ): Promise<ClearChatResponse> {
     try {
-        const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
+        const streamerHeaderResult = await getTwitchModeratorHeader(channelID, modID);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
             return {

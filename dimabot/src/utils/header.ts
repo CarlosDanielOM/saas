@@ -100,5 +100,26 @@ export const getTwitchStreamerHeaderById = async (streamerId: string): Promise<T
     };
 };
 
+/**
+ * Twitch's own bot account ID. Kept here so every moderator-acting call can
+ * pick the token that matches the moderator_id it sends to Helix.
+ */
+export const TWITCH_BOT_ACCOUNT_ID = '698614112';
+
+/**
+ * Helix moderation endpoints reject requests whose moderator_id does not match
+ * the user behind the access token ("incorrect user authorization", 401).
+ * Resolve the correct header for the acting moderator:
+ * - bot account ID  -> bot token (bot must be a mod in the channel)
+ * - anything else   -> the channel streamer's token (only valid when the
+ *   moderator IS the streamer, i.e. moderatorID === channelID)
+ */
+export const getTwitchModeratorHeader = async (channelID: string, moderatorID: string): Promise<TwitchHeaderResult> => {
+    if (moderatorID === TWITCH_BOT_ACCOUNT_ID) {
+        return getTwitchBotHeader();
+    }
+    return getTwitchStreamerHeaderById(channelID);
+};
+
 export { twitchAppHeader, twitchStreamerHeader };
 export type { TwitchHeaderResult };

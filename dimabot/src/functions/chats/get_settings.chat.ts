@@ -1,4 +1,4 @@
-import { getTwitchStreamerHeaderById } from '../../utils/header.js';
+import { getTwitchModeratorHeader } from '../../utils/header.js';
 import { error as logError } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from '../../utils/links.js';
 
@@ -15,7 +15,7 @@ export async function getChatSettings(
     modId: string = '698614112'
 ): Promise<GetChatSettingsResponse> {
     try {
-        const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
+        const streamerHeaderResult = await getTwitchModeratorHeader(channelID, modId);
 
         if (streamerHeaderResult.error || !streamerHeaderResult.header) {
             return {
