@@ -65,14 +65,41 @@ export class CommandAstMockComponent {
     this.store.startDragNew(item.id);
   }
 
-  onCanvasDragOver(event: DragEvent, target: DropTarget): void {
+  onCanvasDragOver(event: DragEvent): void {
     event.preventDefault();
-    this.store.hoverTarget.set(target);
+    if (event.target === event.currentTarget) {
+      this.store.hoverTarget.set(this.rootTarget(this.store.root().children.length));
+    }
   }
 
-  onCanvasDrop(event: DragEvent, target: DropTarget): void {
+  onCanvasDrop(event: DragEvent): void {
     event.preventDefault();
+    const target = this.store.hoverTarget() ?? this.rootTarget(this.store.root().children.length);
     this.store.dropOn(target);
+  }
+
+  onRowDragOver(event: DragEvent, index: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.store.hoverTarget.set(this.rootTarget(this.indexFromY(event, index)));
+  }
+
+  onRowDrop(event: DragEvent, index: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.store.dropOn(this.rootTarget(this.indexFromY(event, index)));
+  }
+
+  ghostAt(index: number): boolean {
+    const hover = this.store.hoverTarget();
+    return !!this.store.draggingNow() && hover?.kind === 'root' && hover.index === index;
+  }
+
+  private indexFromY(event: DragEvent, index: number): number {
+    const el = event.currentTarget as HTMLElement | null;
+    if (!el) return index;
+    const rect = el.getBoundingClientRect();
+    return event.clientY > rect.top + rect.height / 2 ? index + 1 : index;
   }
 
   onSourceInput(event: Event): void {

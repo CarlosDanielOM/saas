@@ -82,22 +82,25 @@
             aria-label="List name"
           />
         </div>
-        <div class="blk__mouth">
+        <div
+          class="blk__mouth"
+          (dragover)="onListOver($event, n.id, itemsOf(n).length)"
+          (drop)="onListDrop($event, n.id, itemsOf(n).length)"
+        >
           @if (n.value?.type === 'arrayLiteral') {
             @for (item of itemsOf(n); track item.id; let i = $index) {
+              @if (ghostItem(n.id, i)) {
+                <div class="blk__ghost" aria-hidden="true">drop here</div>
+              }
               <div class="blk__item">
                 <span class="blk__num">{{ i + 1 }}</span>
                 <app-command-ast-block [node]="item" [inset]="true" />
               </div>
             }
-            <button
-              type="button"
-              class="blk__plus blk__plus--row"
-              (dragover)="onDragOver($event, listTarget(n.id, 'items', itemsOf(n).length))"
-              (drop)="onDrop($event, listTarget(n.id, 'items', itemsOf(n).length))"
-              (click)="markSlot($event, listTarget(n.id, 'items', itemsOf(n).length))"
-              aria-label="Add list item"
-            ></button>
+            @if (ghostItem(n.id, itemsOf(n).length)) {
+              <div class="blk__ghost" aria-hidden="true">drop here</div>
+            }
+            <button type="button" class="blk__add" (click)="addListItem($event, n.id)">+ add</button>
           } @else {
             <span
               class="blk__hole"
@@ -137,21 +140,24 @@
     }
     @case ('arrayLiteral') {
       <div class="blk__hat"><span class="blk__w">list</span></div>
-      <div class="blk__mouth">
+      <div
+        class="blk__mouth"
+        (dragover)="onListOver($event, n.id, n.items.length)"
+        (drop)="onListDrop($event, n.id, n.items.length)"
+      >
         @for (item of n.items; track item.id; let i = $index) {
+          @if (ghostItem(n.id, i)) {
+            <div class="blk__ghost" aria-hidden="true">drop here</div>
+          }
           <div class="blk__item">
             <span class="blk__num">{{ i + 1 }}</span>
             <app-command-ast-block [node]="item" [inset]="true" />
           </div>
         }
-        <button
-          type="button"
-          class="blk__plus blk__plus--row"
-          (dragover)="onDragOver($event, listTarget(n.id, 'items', n.items.length))"
-          (drop)="onDrop($event, listTarget(n.id, 'items', n.items.length))"
-          (click)="markSlot($event, listTarget(n.id, 'items', n.items.length))"
-          aria-label="Add list item"
-        ></button>
+        @if (ghostItem(n.id, n.items.length)) {
+          <div class="blk__ghost" aria-hidden="true">drop here</div>
+        }
+        <button type="button" class="blk__add" (click)="addListItem($event, n.id)">+ add</button>
       </div>
     }
     @case ('exists') {

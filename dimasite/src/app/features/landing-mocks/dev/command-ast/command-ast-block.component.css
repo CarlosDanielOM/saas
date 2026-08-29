@@ -209,6 +209,34 @@
   text-align: right;
 }
 
+.blk__add {
+  min-height: 1.7rem;
+  margin-top: 0.15rem;
+  border: 1px dashed rgb(255 255 255 / 0.45);
+  border-radius: 0.45rem;
+  background: rgb(255 255 255 / 0.16);
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.blk__ghost {
+  min-height: 1.55rem;
+  border-radius: 0.45rem;
+  border: 2px dashed rgb(255 255 255 / 0.85);
+  background: rgb(255 255 255 / 0.2);
+  color: rgb(255 255 255 / 0.9);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .blk {
     cursor: pointer;

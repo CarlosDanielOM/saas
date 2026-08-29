@@ -99,6 +99,45 @@ export class CommandAstBlockComponent {
     this.store.dropOn(target);
   }
 
+  onListOver(event: DragEvent, parentId: string, count: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.store.hoverTarget.set(this.listTarget(parentId, 'items', this.listIndexFromY(event, count)));
+  }
+
+  onListDrop(event: DragEvent, parentId: string, count: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.store.dropOn(this.listTarget(parentId, 'items', this.listIndexFromY(event, count)));
+  }
+
+  addListItem(event: Event, parentId: string): void {
+    event.stopPropagation();
+    this.store.addListItem(parentId);
+  }
+
+  ghostItem(parentId: string, index: number): boolean {
+    const hover = this.store.hoverTarget();
+    return (
+      !!this.store.draggingNow() &&
+      hover?.kind === 'list' &&
+      hover.slot === 'items' &&
+      hover.parentId === parentId &&
+      hover.index === index
+    );
+  }
+
+  private listIndexFromY(event: DragEvent, count: number): number {
+    const mouth = event.currentTarget as HTMLElement | null;
+    if (!mouth) return count;
+    const rows = mouth.querySelectorAll('.blk__item');
+    for (let i = 0; i < rows.length; i++) {
+      const rect = rows[i].getBoundingClientRect();
+      if (event.clientY < rect.top + rect.height / 2) return i;
+    }
+    return count;
+  }
+
   markSlot(event: Event, target: DropTarget): void {
     event.stopPropagation();
     this.store.setDropTarget(target);

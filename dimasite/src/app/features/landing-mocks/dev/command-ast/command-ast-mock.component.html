@@ -69,17 +69,20 @@
       <section class="lf-tile ast-canvas" [class.is-open]="panel() === 'canvas'" aria-label="Block canvas">
         <div
           class="canvas"
-          (dragover)="onCanvasDragOver($event, rootTarget(store.root().children.length))"
-          (drop)="onCanvasDrop($event, rootTarget(store.root().children.length))"
+          [class.is-drag]="store.draggingNow()"
+          (dragover)="onCanvasDragOver($event)"
+          (drop)="onCanvasDrop($event)"
         >
           @for (child of store.root().children; track child.id; let i = $index) {
-            <div
-              class="canvas__gap"
-              [class.is-hot]="store.sameTarget(store.hoverTarget(), rootTarget(i))"
-              (dragover)="onCanvasDragOver($event, rootTarget(i))"
-              (drop)="onCanvasDrop($event, rootTarget(i))"
-            ></div>
-            <app-command-ast-block [node]="child" />
+            @if (ghostAt(i)) {
+              <div class="canvas__ghost" aria-hidden="true">drop here</div>
+            }
+            <div class="canvas__row" (dragover)="onRowDragOver($event, i)" (drop)="onRowDrop($event, i)">
+              <app-command-ast-block [node]="child" />
+            </div>
+          }
+          @if (ghostAt(store.root().children.length)) {
+            <div class="canvas__ghost" aria-hidden="true">drop here</div>
           }
           @if (store.root().children.length === 0) {
             <p class="canvas__empty">Drag a block in, or paste command text on the right.</p>

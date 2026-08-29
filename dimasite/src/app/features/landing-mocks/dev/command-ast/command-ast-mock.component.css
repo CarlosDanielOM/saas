@@ -336,13 +336,27 @@
   text-align: center;
 }
 
-.canvas__gap {
-  height: 0.5rem;
-  border-radius: 99px;
+.canvas__row {
+  min-width: 0;
 }
 
-.canvas__gap.is-hot {
-  background: var(--accent-soft);
+.canvas__ghost {
+  min-height: 2rem;
+  border-radius: 0.55rem;
+  border: 2px dashed color-mix(in srgb, var(--accent) 70%, #fff);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--fg);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.canvas.is-drag {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .out-head {

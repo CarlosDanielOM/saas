@@ -8,6 +8,7 @@ import {
   SAMPLES,
   emptyRoot,
   insertNode,
+  lit,
   moveNode,
   paletteById,
   patchNode,
@@ -34,6 +35,7 @@ export class CommandAstMockStore {
   private readonly history = signal<MockRoot[]>([this.root()]);
   private readonly historyIndex = signal(0);
 
+  readonly draggingNow = computed(() => this.dragging() !== null);
   readonly source = computed(() => toSource(this.root()));
   readonly astJson = computed(() => astPreview(this.root()));
   readonly canUndo = computed(() => this.historyIndex() > 0);
@@ -85,6 +87,20 @@ export class CommandAstMockStore {
     this.commit(root);
     this.selectedId.set(null);
     this.dropTarget.set(null);
+  }
+
+  addListItem(parentId: string, index?: number): void {
+    const node = lit('');
+    const parent = findById(this.root(), parentId);
+    let at = index ?? 0;
+    if (index === undefined) {
+      if (parent?.type === 'arrayLiteral') at = parent.items.length;
+      else if (parent?.type === 'setVar' && parent.value?.type === 'arrayLiteral') {
+        at = parent.value.items.length;
+      }
+    }
+    this.commit(insertNode(this.root(), { kind: 'list', parentId, slot: 'items', index: at }, node));
+    this.selectedId.set(node.id);
   }
 
   placePalette(item: PaletteItem): void {
