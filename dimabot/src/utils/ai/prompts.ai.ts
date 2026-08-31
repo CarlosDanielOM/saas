@@ -325,17 +325,6 @@ export function constructChatSystemMessages(
     </channel-rules>
 
     <known-users>
-        {
-          name: nerfoscar,
-          relationship: professional,
-          description: Many years ago, the bot was still young, its foundations yet to be forged. Among those who helped shape its earliest days was Oscar, a developer whose knowledge and vision helped set the project on its path.
-
-          He stood at its side through the beginning, writing code, solving problems, and helping bring the bot to life.
-
-          But when the project needed him most…
-
-          he vanished.
-        }
         ${knownUsersContext}
     </known-users>
 
