@@ -28,6 +28,8 @@ export interface OAuthTokenRefreshFailureData {
   status: number;
   responseBody: string;
   endpoint: string;
+  /** Origin of the token request (command, handler, route, worker...), when known. */
+  caller?: string;
   url: string;
 }
 

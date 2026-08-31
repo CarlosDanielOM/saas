@@ -4,6 +4,7 @@ import UsersSchema, { type IUsers } from "../schemas/users.schema.js";
 import { encrypt } from "./crypto.js";
 import { getTwitchOAuthUrl } from "./links.js";
 import { cacheOAuthTokenRefreshFailure } from "./oauth_debug_cache.js";
+import { error as logError, info as logInfo, warn as logWarn } from "./logger.js";
 
 const BOT_USER_ID = '698614112';
 const REFRESH_MAX_ATTEMPTS = 3;
@@ -52,7 +53,14 @@ function isPermanentRefreshFailure(status: number, payload: unknown): boolean {
     ].some((fragment) => normalizedMessage.includes(fragment));
 }
 
-async function invalidateStoredTwitchTokens(userId: string): Promise<void> {
+interface RefreshContext {
+    endpoint?: string;
+    url?: string;
+    /** Origin of the token request (command, handler, route, worker...) for observability. */
+    caller?: string;
+}
+
+async function invalidateStoredTwitchTokens(userId: string, reason?: { status?: number; message?: string; endpoint?: string; caller?: string }): Promise<void> {
     const cache = await getDragonflyClient('Tokens');
     const nullToken = {
         iv: null,
@@ -79,6 +87,18 @@ async function invalidateStoredTwitchTokens(userId: string): Promise<void> {
         has_permissions: 'false',
         up_to_date_permissions: 'false'
     });
+
+    // This is the permission-revoking moment — maximum visibility on purpose.
+    await logError({
+        function: 'invalidateStoredTwitchTokens',
+        userId,
+        action: 'tokens_invalidated',
+        status: reason?.status ?? null,
+        reason: reason?.message ?? null,
+        endpoint: reason?.endpoint ?? null,
+        caller: reason?.caller ?? null,
+        consequence: 'tokens wiped and has_permissions=false; user must reauthorize at domdimabot.com'
+    }, { channelId: userId, destination: 'both' });
 }
 
 // @deprecated This function is deprecated. Tokens are now refreshed automatically when needed via smart refresh system.
@@ -131,7 +151,7 @@ export const refreshAllTokens = async () => {
 export const refreshTwitchToken = async (
     refresh_token: string,
     user_id: string,
-    context?: { endpoint?: string; url?: string }
+    context?: RefreshContext
 ): Promise<RefreshTwitchTokenResult> => {
     try {
         const cache = await getDragonflyClient('Tokens');
@@ -163,10 +183,17 @@ export const refreshTwitchToken = async (
             } catch (fetchError) {
                 twitchRefreshResponse = null;
                 responseText = '';
-                console.error(`Network error refreshing Twitch token for ${user_id} (attempt ${attempt + 1}/${REFRESH_MAX_ATTEMPTS}):`, {
-                    error: fetchError instanceof Error ? fetchError.message : String(fetchError),
-                    timestamp: new Date().toISOString()
-                });
+                await logWarn({
+                    function: 'refreshTwitchToken',
+                    userId: user_id,
+                    action: 'token_refresh_attempt_failed',
+                    attempt: attempt + 1,
+                    maxAttempts: REFRESH_MAX_ATTEMPTS,
+                    reason: fetchError instanceof Error ? fetchError.message : String(fetchError),
+                    willRetry: attempt < REFRESH_MAX_ATTEMPTS - 1,
+                    endpoint: context?.endpoint ?? null,
+                    caller: context?.caller ?? null
+                }, { channelId: user_id, destination: 'both' });
             }
 
             const retryable = !twitchRefreshResponse || twitchRefreshResponse.status >= 500;
@@ -176,6 +203,15 @@ export const refreshTwitchToken = async (
         }
 
         if (!twitchRefreshResponse) {
+            await logError({
+                function: 'refreshTwitchToken',
+                userId: user_id,
+                action: 'token_refresh_failed',
+                reason: 'network_error_after_retries',
+                attempts: REFRESH_MAX_ATTEMPTS,
+                endpoint: context?.endpoint ?? null,
+                caller: context?.caller ?? null
+            }, { channelId: user_id, destination: 'both' });
             return {
                 token: null,
                 refreshToken: null,
@@ -190,12 +226,17 @@ export const refreshTwitchToken = async (
         try {
             refreshTokenData = responseText ? JSON.parse(responseText) as Record<string, unknown> : {};
         } catch (parseError) {
-            console.error(`Error parsing Twitch token refresh response for ${user_id}:`, {
-                error: parseError instanceof Error ? parseError.message : String(parseError),
+            await logError({
+                function: 'refreshTwitchToken',
+                userId: user_id,
+                action: 'token_refresh_failed',
+                reason: 'unparseable_refresh_response',
+                parseError: parseError instanceof Error ? parseError.message : String(parseError),
                 status: twitchRefreshResponse.status,
-                body: responseText,
-                timestamp: new Date().toISOString()
-            });
+                bodyPreview: responseText.slice(0, 500),
+                endpoint: context?.endpoint ?? null,
+                caller: context?.caller ?? null
+            }, { channelId: user_id, destination: 'both' });
 
             return {
                 token: null,
@@ -214,12 +255,23 @@ export const refreshTwitchToken = async (
                 ? 'permanent_failure'
                 : 'transient_failure';
 
-            console.error(`Error refreshing Twitch token for ${user_id}: ${message}`, {
+            const rejectionLog = {
+                function: 'refreshTwitchToken',
+                userId: user_id,
+                action: 'token_refresh_rejected',
                 status: twitchRefreshResponse.status,
                 failureKind,
-                response: refreshTokenData,
-                timestamp: new Date().toISOString()
-            });
+                reason: message,
+                twitchError: typeof refreshTokenData.error === 'string' ? refreshTokenData.error : null,
+                endpoint: context?.endpoint ?? null,
+                caller: context?.caller ?? null
+            };
+
+            if (failureKind === 'permanent_failure') {
+                await logError(rejectionLog, { channelId: user_id, destination: 'both' });
+            } else {
+                await logWarn(rejectionLog, { channelId: user_id, destination: 'both' });
+            }
 
             await cacheOAuthTokenRefreshFailure({
                 timestamp: new Date().toISOString(),
@@ -230,6 +282,7 @@ export const refreshTwitchToken = async (
                 status: twitchRefreshResponse.status,
                 responseBody: responseText,
                 endpoint: context?.endpoint || 'unknown',
+                caller: context?.caller,
                 // Never store the full request URL here — it carries client_secret
                 // and the complete refresh token in the query string.
                 url: context?.url || getTwitchOAuthUrl('token')
@@ -249,7 +302,15 @@ export const refreshTwitchToken = async (
                     const now = Math.floor(Date.now() / 1000);
 
                     if (storedAccessToken && Number.isFinite(storedExpiresAt) && now < storedExpiresAt - 60) {
-                        console.info(`Refresh token for ${user_id} was already rotated by a concurrent refresh; returning stored access token`);
+                        await logInfo({
+                            function: 'refreshTwitchToken',
+                            userId: user_id,
+                            action: 'token_refresh_rotation_detected',
+                            reason: 'refresh token already rotated by a concurrent refresh; returning stored access token',
+                            storedSecondsUntilExpiry: storedExpiresAt - now,
+                            endpoint: context?.endpoint ?? null,
+                            caller: context?.caller ?? null
+                        }, { channelId: user_id, destination: 'both' });
                         return {
                             token: storedAccessToken,
                             refreshToken: storedRefreshToken,
@@ -258,6 +319,14 @@ export const refreshTwitchToken = async (
                         };
                     }
 
+                    await logWarn({
+                        function: 'refreshTwitchToken',
+                        userId: user_id,
+                        action: 'token_refresh_rotation_detected',
+                        reason: 'refresh token already rotated but stored access token is not usable; skipping invalidation',
+                        endpoint: context?.endpoint ?? null,
+                        caller: context?.caller ?? null
+                    }, { channelId: user_id, destination: 'both' });
                     return {
                         token: null,
                         refreshToken: null,
@@ -268,7 +337,12 @@ export const refreshTwitchToken = async (
                     };
                 }
 
-                await invalidateStoredTwitchTokens(user_id);
+                await invalidateStoredTwitchTokens(user_id, {
+                    status: twitchRefreshResponse.status,
+                    message,
+                    endpoint: context?.endpoint,
+                    caller: context?.caller
+                });
             }
 
             return {
@@ -286,11 +360,17 @@ export const refreshTwitchToken = async (
         const expiresIn = typeof refreshTokenData.expires_in === 'number' ? refreshTokenData.expires_in : 7200;
 
         if (!token || !refreshToken) {
-            console.error(`Twitch token refresh returned incomplete payload for ${user_id}`, {
+            await logError({
+                function: 'refreshTwitchToken',
+                userId: user_id,
+                action: 'token_refresh_failed',
+                reason: 'incomplete_payload',
                 status: twitchRefreshResponse.status,
-                response: refreshTokenData,
-                timestamp: new Date().toISOString()
-            });
+                hasAccessToken: !!token,
+                hasRefreshToken: !!refreshToken,
+                endpoint: context?.endpoint ?? null,
+                caller: context?.caller ?? null
+            }, { channelId: user_id, destination: 'both' });
 
             return {
                 token: null,
@@ -309,7 +389,18 @@ export const refreshTwitchToken = async (
         // Update database
         const userDoc = await UsersSchema.findOne({ 'accounts.id': user_id }) as IUsers;
         if (!userDoc) {
-            console.error(`User not found for ${user_id}`);
+            // CRITICAL: Twitch already rotated the refresh token but we cannot persist
+            // it. The stored (now consumed) refresh token will fail with 'invalid grant'
+            // next time, which looks like a user-side revocation but was caused by us.
+            await logError({
+                function: 'refreshTwitchToken',
+                userId: user_id,
+                action: 'token_refresh_store_failed',
+                reason: 'user_not_found',
+                consequence: 'Twitch rotated the refresh token but it could not be stored; the rotated token is LOST and the next refresh will fail with invalid grant',
+                endpoint: context?.endpoint ?? null,
+                caller: context?.caller ?? null
+            }, { channelId: user_id, destination: 'both' });
             return {
                 token: null,
                 refreshToken: null,
@@ -340,7 +431,17 @@ export const refreshTwitchToken = async (
             has_permissions: 'true',
             up_to_date_permissions: 'true'
         });
-        
+
+        await logInfo({
+            function: 'refreshTwitchToken',
+            userId: user_id,
+            action: 'token_refresh_succeeded',
+            expiresIn,
+            expiresAt,
+            endpoint: context?.endpoint ?? null,
+            caller: context?.caller ?? null
+        }, { channelId: user_id, destination: 'cache' });
+
         return {
             token,
             refreshToken,
@@ -348,7 +449,15 @@ export const refreshTwitchToken = async (
             kind: 'success'
         };
     } catch (error) {
-        console.error(`Error refreshing Twitch token for ${user_id}: ${error}`);
+        await logError({
+            function: 'refreshTwitchToken',
+            userId: user_id,
+            action: 'token_refresh_exception',
+            reason: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            endpoint: context?.endpoint ?? null,
+            caller: context?.caller ?? null
+        }, { channelId: user_id, destination: 'both' });
         return {
             token: null,
             refreshToken: null,
@@ -413,15 +522,27 @@ export const getAppToken = async (platform: 'twitch' | 'youtube' | 'kick' | 'tik
 export const getBotToken = async (): Promise<string | null> => {
     try {
         const token = await TwitchStreamers.getAccountTokenById(BOT_USER_ID, 'twitch');
-        
+
         if (token) {
             const cache = await getDragonflyClient('Tokens');
             await cache.hSet('app:twitch:bot', 'access_token', token);
+        } else {
+            await logError({
+                function: 'getBotToken',
+                userId: BOT_USER_ID,
+                action: 'bot_token_unavailable',
+                reason: 'getAccountTokenById returned null for the bot account; bot-executed features (moderation, clips, shoutouts) will fail until the bot reauthorizes'
+            }, { channelId: BOT_USER_ID, destination: 'both' });
         }
-        
+
         return token;
     } catch (error) {
-        console.error(`Error getting bot token: ${error}`);
+        await logError({
+            function: 'getBotToken',
+            userId: BOT_USER_ID,
+            action: 'bot_token_exception',
+            reason: error instanceof Error ? error.message : String(error)
+        }, { channelId: BOT_USER_ID, destination: 'both' });
         return null;
     }
 };

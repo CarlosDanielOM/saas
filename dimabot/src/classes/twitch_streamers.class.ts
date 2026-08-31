@@ -6,7 +6,7 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import UsersSchema, { type IUsers } from '../schemas/users.schema.js';
 import type { ITwitchAccountCache } from '../interfaces/cache/twitch_account.cache.interface.js';
 import type { IUsersCache } from '../interfaces/cache/users.cache.interface.js';
-import { error, info } from "../utils/logger.js";
+import { debug, error, info, warn } from "../utils/logger.js";
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
@@ -25,6 +25,27 @@ function sanitizeCachePayload(payload: Record<string, unknown>): Record<string, 
     }
 
     return sanitized;
+}
+
+// Frames from the token pipeline itself are skipped so `caller` points at the
+// real origin of the token request (command, handler, route, worker...).
+const TOKEN_PIPELINE_FRAME_MARKERS = ['twitch_streamers.class.', 'tokens.', 'header.'];
+
+function getTokenCaller(): string {
+    const frames = new Error().stack?.split('\n').slice(1) ?? [];
+
+    for (const frame of frames) {
+        if (frame.includes('node:internal') || frame.includes('node_modules')) continue;
+        if (TOKEN_PIPELINE_FRAME_MARKERS.some((marker) => frame.includes(marker))) continue;
+
+        const location = frame.match(/([^\/\\()\s]+\.(?:ts|js)):(\d+):\d+/);
+        if (!location) continue;
+
+        const fn = frame.match(/at\s+(?:async\s+)?([\w$.<>]+)/)?.[1] ?? 'anonymous';
+        return `${fn} (${location[1]}:${location[2]})`;
+    }
+
+    return 'unknown';
 }
 
 class TwitchStreamers {
@@ -184,30 +205,48 @@ class TwitchStreamers {
         return null;
     }
 
-    private async performTwitchTokenRefresh(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
+    private async performTwitchTokenRefresh(id: string, account_type: 'twitch' | 'kick', caller: string): Promise<string | null> {
         const refreshToken = await this.getAccountRefreshTokenById(id, account_type);
 
         if (!refreshToken) {
-            await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh token not found for ${account_type}:${id}` }, { channelId: id, destination: 'cache' });
+            await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'refresh_failed', reason: 'refresh_token_not_found' }, { channelId: id, destination: 'cache' });
             return null;
         }
 
         const { refreshTwitchToken } = await import('../utils/tokens.js');
         const refreshResult = await refreshTwitchToken(refreshToken, id, {
             endpoint: 'token_refresh',
-            url: 'https://id.twitch.tv/oauth2/token'
+            url: 'https://id.twitch.tv/oauth2/token',
+            caller
         });
 
         if (!refreshResult.token) {
-            await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Failed to refresh Twitch token for ${id}` }, { channelId: id, destination: 'cache' });
+            await error({
+                function: 'TwitchStreamers.getAccountTokenById',
+                id,
+                account_type,
+                caller,
+                action: 'refresh_failed',
+                reason: refreshResult.kind,
+                status: refreshResult.status ?? null,
+                message: refreshResult.message ?? null
+            }, { channelId: id, destination: 'cache' });
             return null;
         }
 
-        await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'token_refreshed_successfully' }, { channelId: id, destination: 'cache' });
+        await info({
+            function: 'TwitchStreamers.getAccountTokenById',
+            id,
+            account_type,
+            caller,
+            action: 'token_refreshed_successfully',
+            expiresIn: refreshResult.expiresIn
+        }, { channelId: id, destination: 'cache' });
         return refreshResult.token;
     }
 
     async getAccountTokenById(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
+        const caller = getTokenCaller();
         try {
             const cache = await this.cachePromise;
             const dataKey = `accounts:${account_type}:${id}:data`;
@@ -215,25 +254,48 @@ class TwitchStreamers {
             let token = await cache.hGet(dataKey, 'access_token');
             let expiresAt = await cache.hGet(dataKey, 'expires_at');
 
-            await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, hasToken: !!token, hasExpiresAt: !!expiresAt, expiresAt: expiresAt || 'not set' }, { channelId: id, destination: 'cache' });
+            const now = Math.floor(Date.now() / 1000);
+            const parsedExpiry = expiresAt ? Number.parseInt(expiresAt, 10) : NaN;
+            const secondsUntilExpiry = Number.isFinite(parsedExpiry) ? parsedExpiry - now : null;
 
-            if (token) {
-                if (this.isAccessTokenUsable(token, expiresAt)) {
-                    const expiration = Number.parseInt(expiresAt!, 10);
-                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'returning_cached_token', secondsUntilExpiry: expiration - Math.floor(Date.now() / 1000) }, { channelId: id, destination: 'cache' });
-                    return token;
-                }
+            await debug({
+                function: 'TwitchStreamers.getAccountTokenById',
+                id,
+                account_type,
+                caller,
+                hasToken: !!token,
+                hasExpiresAt: !!expiresAt,
+                expiresAt: expiresAt || 'not set',
+                secondsUntilExpiry
+            }, { channelId: id, destination: 'cache' });
 
-                await error({
+            if (token && this.isAccessTokenUsable(token, expiresAt)) {
+                await debug({
                     function: 'TwitchStreamers.getAccountTokenById',
                     id,
-                    action: 'token_needs_refresh',
-                    reason: Number.isFinite(expiresAt ? Number.parseInt(expiresAt, 10) : NaN) ? 'near_or_expired' : 'missing_or_invalid_expires_at'
+                    account_type,
+                    caller,
+                    action: 'returning_cached_token',
+                    secondsUntilExpiry
                 }, { channelId: id, destination: 'cache' });
+                return token;
             }
 
+            await info({
+                function: 'TwitchStreamers.getAccountTokenById',
+                id,
+                account_type,
+                caller,
+                action: 'token_needs_refresh',
+                reason: !token
+                    ? 'no_cached_token'
+                    : Number.isFinite(parsedExpiry) ? 'near_or_expired' : 'missing_or_invalid_expires_at',
+                secondsUntilExpiry,
+                skewSeconds: TOKEN_EXPIRY_SKEW_SECONDS
+            }, { channelId: id, destination: 'cache' });
+
             if (account_type !== 'twitch') {
-                await error({ function: 'TwitchStreamers.getAccountTokenById', error: `Refresh not implemented for ${account_type}` }, { channelId: id, destination: 'cache' });
+                await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'refresh_failed', reason: `refresh_not_implemented_for_${account_type}` }, { channelId: id, destination: 'cache' });
                 return null;
             }
 
@@ -246,16 +308,18 @@ class TwitchStreamers {
             if (!lockValue) {
                 const winnerToken = await this.waitForRefreshedToken(cache, dataKey, lockKey);
                 if (winnerToken) {
-                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'returned_token_from_concurrent_refresh' }, { channelId: id, destination: 'cache' });
+                    await debug({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'returned_token_from_concurrent_refresh' }, { channelId: id, destination: 'cache' });
                     return winnerToken;
                 }
 
                 // Winner failed or timed out — take over the refresh ourselves, once.
                 lockValue = await this.acquireRefreshLock(cache, lockKey);
                 if (!lockValue) {
-                    await error({ function: 'TwitchStreamers.getAccountTokenById', id, action: 'refresh_lock_unavailable' }, { channelId: id, destination: 'cache' });
+                    await warn({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'refresh_lock_unavailable' }, { channelId: id, destination: 'cache' });
                     return null;
                 }
+
+                await info({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'refresh_lock_takeover' }, { channelId: id, destination: 'cache' });
             }
 
             try {
@@ -263,15 +327,16 @@ class TwitchStreamers {
                 token = await cache.hGet(dataKey, 'access_token');
                 expiresAt = await cache.hGet(dataKey, 'expires_at');
                 if (this.isAccessTokenUsable(token, expiresAt)) {
+                    await debug({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'returned_token_refreshed_before_lock' }, { channelId: id, destination: 'cache' });
                     return token!;
                 }
 
-                return await this.performTwitchTokenRefresh(id, account_type);
+                return await this.performTwitchTokenRefresh(id, account_type, caller);
             } finally {
                 await this.releaseRefreshLock(cache, lockKey, lockValue);
             }
         } catch (err) {
-            await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, error: err instanceof Error ? err.message : String(err) }, { channelId: id, destination: 'cache' });
+            await error({ function: 'TwitchStreamers.getAccountTokenById', id, account_type, caller, action: 'exception', error: err instanceof Error ? err.message : String(err) }, { channelId: id, destination: 'cache' });
             return null;
         }
     }
