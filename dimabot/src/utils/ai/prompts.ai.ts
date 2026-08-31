@@ -1,6 +1,6 @@
 /**
  * Shared AI Prompt Construction Utility
- * 
+ *
  * This module provides a centralized way to build system messages for AI interactions.
  * It ensures consistency between command-based AI calls and chat-based conversations.
  */
@@ -118,7 +118,7 @@ export const DEFAULT_PERSONALITY = "You are a witty, helpful, and slightly sarca
 
 /**
  * Constructs the system and user messages for OpenRouter API calls.
- * 
+ *
  * @param streamer - The streamer object from cache (contains name, premium status, ai_personality, etc.)
  * @param userContext - Context about the user making the request
  * @param promptText - The actual prompt/message text from the user
@@ -134,22 +134,22 @@ export function constructSystemMessages(
     language: string = 'spanish'
 ): OpenRouterMessage[] {
     // Extract personality from streamer object, fallback to default
-    const personality = streamer?.ai_personality?.personality || 
-                        streamer?.personality || 
+    const personality = streamer?.ai_personality?.personality ||
+                        streamer?.personality ||
                         DEFAULT_PERSONALITY;
-    
+
     const streamerName = streamer?.name || 'Unknown Streamer';
-    
+
     // Build character limits based on mode
-    const characterLimit = mode === 'command' 
+    const characterLimit = mode === 'command'
         ? "Keep responses under 400 characters."
         : "Keep responses under 1000 characters if possible unless the topic requires more detail.";
-    
+
     // Build mode-specific instructions
     const modeInstruction = mode === 'command'
         ? "Strictly follow the prompt instruction provided by the user."
         : "Engage in natural conversation with the user.";
-    
+
     // Construct the system message
     const systemContent = `<identity>
 You are DomDimaBot, the AI assistant for streamer '${streamerName}'. You are supposed to be helpful but also engaging and fun, you should speak in ${language} by default but can adapt to other languages.
@@ -171,9 +171,9 @@ ${personality}
     // Construct the user message
     const username = userContext?.username || 'Anonymous';
     const badgePrefix = userContext?.badges ? `${userContext.badges} ` : '';
-    
+
     const userContent = `${badgePrefix} User ${username} says: ${promptText}`;
-    
+
     // Return the messages array
     return [
         {
@@ -190,7 +190,7 @@ ${personality}
 /**
  * Constructs enhanced system messages for chat mode with additional context.
  * This version includes chat history, known users, and channel rules.
- * 
+ *
  * @param streamer - The streamer object from cache
  * @param personality - The full AIPersonality document from DB/cache
  * @param userContext - Context about the user making the request
@@ -213,10 +213,10 @@ export function constructChatSystemMessages(
     emoteNames: string[] | null = null
 ): OpenRouterMessage[] {
     const streamerName = streamer?.name || 'Unknown Streamer';
-    
+
     // Extract personality text, fallback to default
     const personalityText = personality?.personality || DEFAULT_PERSONALITY;
-    
+
     // Build known users context
     let knownUsersContext = "No known users configured.";
     if (personality?.knownUsers && personality.knownUsers.length > 0) {
@@ -224,13 +224,13 @@ export function constructChatSystemMessages(
             .map(user => `${user.username} is ${user.description} and has a ${user.relationship} relationship with the channel`)
             .join('\n');
     }
-    
+
     // Build channel rules context
     let rulesContext = "No specific rules configured.";
     if (personality?.rules && personality.rules.length > 0) {
         rulesContext = personality.rules.join('\n');
     }
-    
+
     // Build chat history context, split into the direct thread with the current
     // user and the global channel chat.
     // [THREAD] = Your direct conversation thread with the current user (highest priority)
@@ -261,7 +261,7 @@ export function constructChatSystemMessages(
             return formatHistoryMessage(msg, sourceTag);
         }).join('\n');
     }
-    
+
     // Build tool context section
     let toolContextSection = "No tool context provided.";
     if (toolContext.length > 0) {
@@ -305,17 +305,17 @@ export function constructChatSystemMessages(
     if (emoteNames && emoteNames.length > 0) {
         emotesContext = `You can use these channel emotes in your responses when they fit naturally (use them sparingly, like a real chatter would): ${emoteNames.join(', ')}`;
     }
-    
+
     // Construct the enhanced system message
     const systemContent = `<system-instructions>
     <system-rules>
         You are a livestream chatbot where multiple people hang in. You will receive a personality, some users with history with the streamer, channel rules, your direct conversation thread with the current user, and the global channel chat history for context. Prioritize the current thread to continue your conversation with the user that actually spoke to you, and use the global chat history as background context. Personality was given to you by the streamer of the channel you are in which is ${streamerName}.
     </system-rules>
-    
+
     <identity>
         You are DomDimaBot, the AI assistant for streamer '${streamerName}'.
     </identity>
-    
+
     <persona>
         ${personalityText}
     </persona>
@@ -325,6 +325,17 @@ export function constructChatSystemMessages(
     </channel-rules>
 
     <known-users>
+        {
+          name: nerfoscar,
+          relationship: professional,
+          description: Many years ago, the bot was still young, its foundations yet to be forged. Among those who helped shape its earliest days was Oscar, a developer whose knowledge and vision helped set the project on its path.
+
+          He stood at its side through the beginning, writing code, solving problems, and helping bring the bot to life.
+
+          But when the project needed him most…
+
+          he vanished.
+        }
         ${knownUsersContext}
     </known-users>
 
@@ -370,7 +381,7 @@ export function constructChatSystemMessages(
         7. If you are speaking directly to the user, do not forget to tag them with @username.
         8. No hashtags.
         9. Do not offer assistance; just react naturally to the context.
-        
+
         Proactive Memory Creation:
         - When a mod/streamer says "don't do X again" → use create_memory with type="boundary"
         - When you learn a user's preference or fact (e.g., "X is colorblind") → use create_memory with type="known_user_fact"
@@ -381,7 +392,7 @@ export function constructChatSystemMessages(
         - Memories requested by ordinary chat users require moderator review before they can be recalled.
         - After calling create_memory, repeat the confirmation message: "Memory Saved successfully ✅" or "Memory under pending review 📝"
     </critical-rules>
-    
+
     <tool-context>
         This is the tool context provided to you if any, treat this as information that you already know and use it to formulate a correct answer. If for example the tool name is [SEARCH] do not say you used the search tool or that you found it on the internet, make it seem like you already knew the information. Always respond with the personality you were created with.
         ${toolContextSection}
@@ -438,20 +449,20 @@ export function constructChatSystemMessages(
 
     Important: Prefer the inner command form, e.g. command="ban offensiveuser 300". The tool also normalizes a wrapped $() form.
     </available-tools>
-    
+
 </system-instructions>`;
 
     // Construct the user message with badges
     const username = userContext?.username || 'Anonymous';
     const badgePrefix = userContext?.badges ? `${userContext.badges}` : '';
-    
+
     // Make the CURRENT message more explicit for the LLM
     const userContent = `=== NEW MESSAGE TO RESPOND TO ===
 ${badgePrefix} ${username}: ${promptText}
 === END OF NEW MESSAGE ===
 
 The message above is what you must respond to. If this is a reply to a question you previously asked, make sure to address the user's answer.`;
-    
+
     return [
         {
             role: 'system',
