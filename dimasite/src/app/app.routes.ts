@@ -12,7 +12,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () =>
       import('./features/landing/landing-page.component').then((m) => m.LandingPageComponent),
-    title: 'DomDimaBot - Your Ultimate Twitch Chat Companion'
+    title: 'DomDimaBot — A Twitch chatbot that grows with you'
   },
   // === Design Mocks (public, no auth) ===
   {
