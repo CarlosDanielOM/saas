@@ -38,7 +38,6 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
       return;
     }
 
-    this.elementRef.nativeElement.textContent = '0';
     this.observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
