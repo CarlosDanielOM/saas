@@ -212,8 +212,8 @@ Nginx reads files on every request, so the new bundle is live the moment `ng bui
 
 With prerendering enabled, the SPA fallback target changes from `index.html`
 to `index.csr.html`, otherwise CSR routes would receive the prerendered
-landing DOM and hydration would mismatch. The nginx `location /` block on the
-prod host must be:
+landing DOM and hydration would mismatch. The `location /` block in
+`dimasite/nginx.conf` is:
 
 ```nginx
 location / {
@@ -222,11 +222,18 @@ location / {
 ```
 
 - `/` resolves to the prerendered `index.html` via `$uri/index.html`.
-- Static assets (chunks, fonts, `robots.txt`, `sitemap.xml`) resolve via `$uri`.
+- Static assets (chunks, fonts, `robots.txt`, `sitemap.xml`, `og-image.jpg`) resolve via `$uri`.
 - Everything else falls back to `index.csr.html` and bootstraps as CSR.
 
-This config lives in `nginx-proxy-manager` on the production host — it is **not**
-in this repo. It must be applied there before/with the first hybrid-rendering deploy.
+`dimasite/nginx.conf` is bind-mounted into the `dimabot-site` container
+(`nginx:alpine`, stock image — there is no custom image to rebuild) as
+`/etc/nginx/conf.d/default.conf`. Unlike the content bind-mount, **config
+changes are not picked up per-request** — after changing `nginx.conf`,
+reload nginx on the prod host:
+
+```bash
+git pull && docker exec dimabot-site nginx -s reload   # or: docker restart dimabot-site
+```
 
 ### Verify the deploy
 
