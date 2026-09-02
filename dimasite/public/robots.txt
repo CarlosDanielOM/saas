@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Auth flows, referral capture, design mocks and status pages are not indexable
+# marketing content. Authenticated app routes (/:streamer/*) require a session
+# and carry no public content for crawlers.
+Disallow: /login
+Disallow: /r/
+Disallow: /mock
+Disallow: /mocks
+Disallow: /403
+Disallow: /404
+Disallow: /500
+Disallow: /503
+
+Sitemap: https://domdimabot.com/sitemap.xml

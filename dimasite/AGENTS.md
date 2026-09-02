@@ -177,6 +177,26 @@ This invokes `ng build` in production mode (no flags needed). Output is written 
 dimasite/dist/dimasite/browser/
 ```
 
+### Hybrid rendering (prerender + CSR)
+
+The app uses Angular hybrid rendering (`outputMode: "static"`, no Node SSR server):
+
+- `src/app/app.routes.server.ts` assigns render modes. `/` is prerendered
+  (`RenderMode.Prerender`); every other route is `RenderMode.Client`.
+- `src/app/app.config.server.ts` + `src/main.server.ts` are the build-time server entry.
+- Client hydration is enabled in `app.config.ts` via
+  `provideClientHydration(withEventReplay())`.
+- Build output in `dist/dimasite/browser/`:
+  - `index.html` — **prerendered landing page** (static marketing content,
+    SEO meta, empty live board; no SSE telemetry baked in).
+  - `index.csr.html` — CSR shell that must be served for all non-prerendered
+    routes (`/login`, `/:streamer/*`, mocks, status pages, unknown paths).
+- The landing live board (`SiteAnalyticsService`) connects to its SSE endpoint
+  **only in the browser** (`isPlatformBrowser` guard). Do not remove that guard.
+- Only add new prerendered routes for genuinely public, static, indexable
+  marketing pages. Never prerender authenticated, mock, or live-data-driven
+  content.
+
 ### How the bundle reaches production
 
 The `dimabot-site` nginx container (managed by `nginx-proxy-manager`, **not** part of `dimabot/docker-compose.yaml`) has a **read-only bind-mount**:
@@ -187,6 +207,26 @@ container:   /usr/share/nginx/html
 ```
 
 Nginx reads files on every request, so the new bundle is live the moment `ng build` finishes — **no container restart, no `cp`, no service reload**.
+
+### Required nginx routing rule (hybrid rendering)
+
+With prerendering enabled, the SPA fallback target changes from `index.html`
+to `index.csr.html`, otherwise CSR routes would receive the prerendered
+landing DOM and hydration would mismatch. The nginx `location /` block on the
+prod host must be:
+
+```nginx
+location / {
+  try_files $uri $uri/index.html /index.csr.html;
+}
+```
+
+- `/` resolves to the prerendered `index.html` via `$uri/index.html`.
+- Static assets (chunks, fonts, `robots.txt`, `sitemap.xml`) resolve via `$uri`.
+- Everything else falls back to `index.csr.html` and bootstraps as CSR.
+
+This config lives in `nginx-proxy-manager` on the production host — it is **not**
+in this repo. It must be applied there before/with the first hybrid-rendering deploy.
 
 ### Verify the deploy
 

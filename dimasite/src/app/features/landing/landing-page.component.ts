@@ -1,7 +1,9 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  PLATFORM_ID,
   computed,
   inject,
   signal
@@ -65,6 +67,7 @@ export class LandingPageComponent implements OnInit {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly checkoutIntent = inject(CheckoutIntentService);
   private readonly themeService = inject(ThemeService);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly fallbackAvatar =
     'https://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_70x70.png';
@@ -197,8 +200,15 @@ export class LandingPageComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    // start() is browser-only internally: no SSE connection, no snapshot fetch
+    // and no live telemetry is serialized during prerender. The live board
+    // hydrates in its deterministic empty state and updates once the browser
+    // establishes the stream.
     this.siteAnalytics.start();
-    this.onWindowScroll();
+
+    if (this.isBrowser) {
+      this.onWindowScroll();
+    }
   }
 
   t(key: string): string {

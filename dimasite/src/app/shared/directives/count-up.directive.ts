@@ -1,3 +1,4 @@
+import { isPlatformBrowser } from '@angular/common';
 import {
   Directive,
   ElementRef,
@@ -5,6 +6,7 @@ import {
   OnChanges,
   OnDestroy,
   OnInit,
+  PLATFORM_ID,
   SimpleChanges,
   inject
 } from '@angular/core';
@@ -19,6 +21,7 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
   @Input() staggerDelay = 0;
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private observer: IntersectionObserver | null = null;
   private frameId = 0;
   private hasEnteredViewport = false;
@@ -28,6 +31,13 @@ export class CountUpDirective implements OnInit, OnChanges, OnDestroy {
   private animationTarget = 0;
 
   ngOnInit(): void {
+    // IntersectionObserver is browser-only. During prerender/SSR the template's
+    // static "0" text is kept as the deterministic empty state; the animation
+    // wiring is attached after hydration in the browser.
+    if (!this.isBrowser) {
+      return;
+    }
+
     this.elementRef.nativeElement.textContent = '0';
     this.observer = new IntersectionObserver(
       (entries) => {

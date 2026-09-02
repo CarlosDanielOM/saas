@@ -1,5 +1,6 @@
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { catchError, map, Observable, of, tap, throwError } from 'rxjs';
 
 import { environment } from '../../environments/environment';
@@ -97,6 +98,8 @@ export class SessionAuthService {
   private readonly checkoutIntent = inject(CheckoutIntentService);
   private readonly linksService = inject(LinksService);
   private readonly languageService = inject(LanguageService);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
   private readonly storageKey = 'dimasite.session.v1';
   private readonly lastViewedStreamerKey = 'dimasite.last-viewed-streamer.v1';
   private readonly oauthStateKey = 'dimasite.oauth.state';
@@ -120,7 +123,9 @@ export class SessionAuthService {
   readonly isAuthenticated = computed(() => Boolean(this.session()?.token));
 
   constructor() {
-    window.addEventListener('storage', this.storageSyncHandler);
+    if (this.isBrowser) {
+      window.addEventListener('storage', this.storageSyncHandler);
+    }
   }
 
   isMockLoginEnabled(): boolean {
@@ -425,6 +430,10 @@ export class SessionAuthService {
   }
 
   private readSession(): StoredSession | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+
     const raw = localStorage.getItem(this.storageKey);
     if (!raw) {
       return null;
@@ -471,6 +480,10 @@ export class SessionAuthService {
   }
 
   private readLastViewedStreamer(): string | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+
     const value = localStorage.getItem(this.lastViewedStreamerKey)?.trim().toLowerCase();
     return value || null;
   }

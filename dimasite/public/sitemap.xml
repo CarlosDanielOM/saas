@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Canonical public/indexable routes only. Dashboard, settings, admin,
+       auth-only, callback, mock and utility routes are intentionally excluded. -->
+  <url>
+    <loc>https://domdimabot.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

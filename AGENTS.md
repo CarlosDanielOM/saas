@@ -112,6 +112,8 @@ npm run build --prefix dimasite
 
 The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. nginx reads files per-request, so the new bundle is live the moment the build finishes — no `cp`, no container restart. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
 
+**Hybrid rendering**: the build prerenders `/` (output `browser/index.html`) and emits `browser/index.csr.html` as the CSR fallback for all app routes. Render modes live in `dimasite/src/app/app.routes.server.ts`. The nginx fallback on the prod host must target `index.csr.html` (see `dimasite/AGENTS.md` → "Required nginx routing rule").
+
 - Plan-tier styling: use `plan_tier` (`free|premium|pro`) as source of truth. Premium = subtle gold, Pro = stronger gold treatment.
 - **Responsive priority**: All site projects (`dimasite/`, `admin/`, `dimadocs/`) follow a **mobile-first** approach. Design for 320–480px base, then enhance for tablet/desktop. Use `min-width` media queries. Test on real mobile devices or emulation before finalizing desktop.
 - **Visual verification**: When checking frontend design or layout, agents may use Playwright through its MCP tools or CLI to inspect the running application at desktop and mobile viewports.
@@ -341,7 +343,7 @@ Agent: Claude 4 via claude-code
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **saas** (12044 symbols, 28398 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **saas** (12017 symbols, 28332 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

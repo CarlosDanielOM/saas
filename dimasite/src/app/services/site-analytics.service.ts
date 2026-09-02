@@ -1,4 +1,5 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 
 import { SiteStats } from '../models/site-stats.model';
 
@@ -30,6 +31,8 @@ export interface LiveChannelBoardEntry {
 @Injectable({ providedIn: 'root' })
 export class SiteAnalyticsService {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly siteStats = signal<SiteStats>({
     registeredUsers: 0,
@@ -54,9 +57,13 @@ export class SiteAnalyticsService {
     this.destroyRef.onDestroy(() => this.teardown());
   }
 
-  /** Idempotent — safe to call from multiple consumers. */
+  /**
+   * Idempotent — safe to call from multiple consumers.
+   * Browser-only: during prerender/SSR no snapshot is fetched and no SSE
+   * connection is opened, so live telemetry is never baked into static HTML.
+   */
   start(): void {
-    if (typeof window === 'undefined' || this.started) {
+    if (!this.isBrowser || this.started) {
       return;
     }
     this.started = true;
@@ -129,7 +136,7 @@ export class SiteAnalyticsService {
       clearTimeout(this.reconnectTimer);
     }
     this.reconnectTimer = setTimeout(() => {
-      if (typeof window !== 'undefined' && this.started) {
+      if (this.isBrowser && this.started) {
         this.connectStream();
       }
     }, 3500);

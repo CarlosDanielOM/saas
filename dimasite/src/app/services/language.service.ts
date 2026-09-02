@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Injectable, PLATFORM_ID, afterNextRender, inject, signal } from '@angular/core';
 
 import enDictionary from '../../assets/i18n/en.json';
 import esDictionary from '../../assets/i18n/es.json';
@@ -13,9 +14,14 @@ type TranslationRecord = {
   providedIn: 'root'
 })
 export class LanguageService {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
   private readonly storageKey = 'userLanguage';
   private readonly defaultLanguage: SupportedLanguage = 'en';
 
+  // The default language ('en') is used for prerender/SSR so the server DOM
+  // always matches the initial client render. The stored/detected language is
+  // applied after hydration via afterNextRender to avoid hydration mismatches.
   readonly currentLanguage = signal<SupportedLanguage>(this.defaultLanguage);
   private readonly dictionaries = signal<Record<SupportedLanguage, TranslationRecord>>({
     en: enDictionary as unknown as TranslationRecord,
@@ -28,8 +34,10 @@ export class LanguageService {
   } as const;
 
   constructor() {
-    const initialLanguage = this.getStoredLanguage() ?? this.detectBrowserLanguage();
-    this.currentLanguage.set(initialLanguage);
+    afterNextRender(() => {
+      const initialLanguage = this.getStoredLanguage() ?? this.detectBrowserLanguage();
+      this.currentLanguage.set(initialLanguage);
+    });
   }
 
   translate(key: string, params?: Record<string, string | number>): string {
@@ -83,6 +91,10 @@ export class LanguageService {
   }
 
   private detectBrowserLanguage(): SupportedLanguage {
+    if (!this.isBrowser) {
+      return this.defaultLanguage;
+    }
+
     const browser = navigator.language.toLowerCase();
     if (browser.startsWith('es')) {
       return 'es';
@@ -91,11 +103,17 @@ export class LanguageService {
   }
 
   private getStoredLanguage(): SupportedLanguage | null {
+    if (!this.isBrowser) {
+      return null;
+    }
+
     const value = localStorage.getItem(this.storageKey);
     return value === 'en' || value === 'es' ? value : null;
   }
 
   private saveLanguage(language: SupportedLanguage): void {
-    localStorage.setItem(this.storageKey, language);
+    if (this.isBrowser) {
+      localStorage.setItem(this.storageKey, language);
+    }
   }
 }
