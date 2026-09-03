@@ -8,6 +8,7 @@ import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { VipSchema } from '../../../schemas/vip.schema.js';
 import { TemporaryModeratorSchema } from '../../../schemas/temporary_moderator.schema.js';
 import { getDragonflyClient } from '../../../utils/databases/dragonfly.database.js';
+import { shouldRemoveModerator } from './moderation.helpers.js';
 
 const BOT_ID = '698614112';
 const MAX_TIMEOUT_SECONDS = 604800;
@@ -425,8 +426,15 @@ const banModHandler: FunctionHandler = async (args, ctx) => {
     const targetUserLogin = userResult.data.login || user;
 
     const modStatus = await ModerationFunctions.isTwitchModeratorById(ctx.broadcasterId, targetUserId);
-    if (modStatus.error || modStatus.isModerator) {
-        await ChannelFunctions.removeChannelModerator(ctx.broadcasterId, targetUserId);
+    if (modStatus.error) {
+        return modStatus.message || 'Unable to determine whether the user is a moderator';
+    }
+
+    if (shouldRemoveModerator(modStatus)) {
+        const removeModeratorResult = await ChannelFunctions.removeChannelModerator(ctx.broadcasterId, targetUserId);
+        if (removeModeratorResult.error) {
+            return removeModeratorResult.message || 'Unable to remove moderator status before banning';
+        }
     }
 
     const banResult = await ModerationFunctions.ban(
