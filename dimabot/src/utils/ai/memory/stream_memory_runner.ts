@@ -4,6 +4,7 @@ import UsersSchema from '../../../schemas/users.schema.js';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { buildStreamSummaryContext, type StreamSummaryContext } from './stream_summary_context.js';
 import { generateStreamSummaryDecision } from './stream_summary_decider.js';
+import { getBackgroundSummaryModel } from '../constants.js';
 import { applyStreamMemoryActions, type IApplyStreamMemoryActionsResult, type IMemoryAction } from './stream_memory_apply.js';
 import { recordStreamMemoryActionMetric } from '../../observability/bot_runtime_metrics.js';
 import { sendEmail, DASHBOARD_URL } from '../../email/email.service.js';
@@ -362,7 +363,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
             step: 'GENERATE_DECISION',
             channelID,
             source: input.source,
-            modelSelection: planTier === 'pro' ? 'deepseek/deepseek-v4-pro' : planTier === 'premium' ? 'deepseek/deepseek-v4-flash-0731' : 'qwen/qwen3-235b-a22b-2507'
+            modelSelection: getBackgroundSummaryModel(planTier, input.source)
         }, { channelId: channelID, destination: 'both' });
 
         const decisionResult = await generateStreamSummaryDecision(context, input.source);

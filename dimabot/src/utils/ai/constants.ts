@@ -19,6 +19,19 @@ export const BACKGROUND_MODELS = {
   pro: "deepseek/deepseek-v4-pro",
 } as const;
 
+const FREE_MAINTENANCE_MODEL = "meta/muse-spark-1.2-contributor";
+
+export function getBackgroundSummaryModel(planTier: string | undefined, source: string): string {
+  if (planTier === 'pro') return BACKGROUND_MODELS.pro;
+  if (planTier === 'premium') return BACKGROUND_MODELS.premium;
+
+  if (source === 'weekly_maintenance' || source === 'monthly_maintenance') {
+    return FREE_MAINTENANCE_MODEL;
+  }
+
+  return BACKGROUND_MODELS.free;
+}
+
 // Fallback model for pro users if v4-pro fails
 export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4-flash-0731";
 

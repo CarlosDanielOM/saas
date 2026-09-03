@@ -1,6 +1,6 @@
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { ChannelAIPersonalitySchema } from '../../../schemas/channel_ai_personality.schema.js';
-import { BACKGROUND_MODELS, BACKGROUND_MODEL_FALLBACK, getProviderRestriction } from '../constants.js';
+import { BACKGROUND_MODEL_FALLBACK, getBackgroundSummaryModel, getProviderRestriction } from '../constants.js';
 import { createFetchWithRetry, type RetryOptions } from '../fetch.utils.js';
 import { ingestPolarSHEvent } from '../../polarsh.js';
 import { warn as logWarn, error as logError, debug as logDebug } from '../../logger.js';
@@ -156,16 +156,6 @@ function normalizeText(value: unknown): string {
     return String(value || '').trim();
 }
 
-function selectBackgroundModel(planTier: string | undefined): string {
-    if (planTier === 'pro') {
-        return BACKGROUND_MODELS.pro;
-    }
-    if (planTier === 'premium') {
-        return BACKGROUND_MODELS.premium;
-    }
-    return BACKGROUND_MODELS.free;
-}
-
 function fallbackOutput(context: StreamSummaryContext): SummaryOutput {
     const highlights: string[] = [];
     highlights.push(`Stream lasted ${context.session.durationMinutes} minutes with peak ${context.session.peakViewers} viewers.`);
@@ -296,9 +286,9 @@ interface AttemptResult {
  * higher-budget requests to the DeepSeek provider instead of the cheaper
  * third-party hosts.
  *
- * Free tier (qwen/qwen3-235b-a22b-2507) keeps 50,000; bumping to 256k is
- * left for a later change since the affected callers are low-priority and
- * the cost spike on qwen is not currently budgeted.
+ * Free tier retains the 50,000-token default for both ordinary Qwen stream
+ * summaries and Muse Spark weekly/monthly maintenance; a larger budget is
+ * reserved for the higher paid-tier models.
  *
  * NOTE: deepseek/deepseek-v4-pro is hard-pinned to provider `deepseek` in
  * MODEL_PROVIDER_RESTRICTIONS (constants.ts) — that pin is what gives us
@@ -399,7 +389,7 @@ export async function generateStreamSummaryDecision(
         streamer = await TwitchStreamers.getTwitchAccountById(context.channelID);
         personalityDoc = await ChannelAIPersonalitySchema.findOne({ channelID: context.channelID }).lean();
         const isProUser = streamer?.plan_tier === 'pro';
-        primaryModel = selectBackgroundModel(streamer?.plan_tier);
+        primaryModel = getBackgroundSummaryModel(streamer?.plan_tier, mode);
         personaInfo = extractPersonaInfo(personalityDoc);
 
         const userPayload = {
