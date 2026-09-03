@@ -22,8 +22,10 @@ const DEFAULT_MAX_AUDIO_CANDIDATES = Math.max(1, Number(process.env.CLIP_RECOMME
 const audioFetch = createFetchWithRetry({ timeout: 60_000, retries: 3 });
 
 // Video verification batches multiple base64 video clips — request body is larger
-// and the model takes longer, so use a higher timeout.
-const videoFetch = createFetchWithRetry({ timeout: 120_000, retries: 3 });
+// and the model takes longer, so use a higher timeout. Larger batches need more
+// prefill/decode time, hence the env-tunable 5-minute default.
+const VIDEO_VERIFY_TIMEOUT_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_VIDEO_VERIFY_TIMEOUT_MS) || 5 * 60_000);
+const videoFetch = createFetchWithRetry({ timeout: VIDEO_VERIFY_TIMEOUT_MS, retries: 3 });
 
 /**
  * Build a useful diagnostic suffix when the response body is empty (e.g. a 502
@@ -483,7 +485,7 @@ export async function verifyCandidateVideosBatch(input: {
             { role: 'user', content: contentParts }
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 4000,
+        max_tokens: Math.max(4000, input.videos.length * 500),
         user: input.channelID
     };
 

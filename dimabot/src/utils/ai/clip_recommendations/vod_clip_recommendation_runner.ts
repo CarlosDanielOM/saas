@@ -18,9 +18,10 @@ import { VodClipAnalysisFinishedEmail, getVodClipAnalysisFinishedSubject } from 
 import {
     analyzeVodAudioForClipMoments,
     type AudioCandidate,
-    verifyCandidateVideosBatch
+    verifyCandidateVideosBatch,
+    type VideoVerificationResult
 } from './openrouter_clip_recommendations.client.js';
-import { CLIP_RECOMMENDATION_MODEL_ID, normalizeClipRecommendationLanguage } from './clip_recommendations_prompts.js';
+import { CLIP_RECOMMENDATION_MODEL_ID, normalizeClipRecommendationLanguage, type ClipRecommendationLanguage } from './clip_recommendations_prompts.js';
 import { decideClipRecommendationRecovery } from './clip_recommendation_recovery.js';
 import type { HydratedDocument } from 'mongoose';
 
@@ -257,6 +258,37 @@ function buildCandidateDocument(candidate: AudioCandidate) {
         twitchClipID: '',
         created_at: new Date()
     };
+}
+
+function isPayloadTooLargeError(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return /\b413\b|payload|too large|request entity/i.test(message);
+}
+
+interface VerifyVideoBatchInput {
+    videos: Array<{ videoPath: string; reason: string; startSeconds: number; endSeconds: number }>;
+    channelID: string;
+    modelID: string;
+    language: ClipRecommendationLanguage;
+}
+
+async function verifyVideoBatchResilient(input: VerifyVideoBatchInput): Promise<VideoVerificationResult[]> {
+    try {
+        return await verifyCandidateVideosBatch(input);
+    } catch (error) {
+        if (input.videos.length <= 1 || !isPayloadTooLargeError(error)) throw error;
+        const midpoint = Math.ceil(input.videos.length / 2);
+        await logWarn({
+            worker: 'clip_recommendations',
+            message: 'Video verification batch rejected for payload size; halving batch',
+            channelID: input.channelID,
+            batchSize: input.videos.length,
+            error: error instanceof Error ? error.message : String(error)
+        }, { channelId: input.channelID, destination: 'console' });
+        const firstHalf = await verifyVideoBatchResilient({ ...input, videos: input.videos.slice(0, midpoint) });
+        const secondHalf = await verifyVideoBatchResilient({ ...input, videos: input.videos.slice(midpoint) });
+        return [...firstHalf, ...secondHalf];
+    }
 }
 
 async function notifyFinished(input: {
@@ -595,18 +627,18 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             };
         }
 
-        // Batched video verification: one request per segment, passing all clips from that segment together.
+        // Batched video verification: candidates from all audio segments are pooled and
+        // verified in fixed-size batches. Short clip payloads are far below the upload
+        // limits that force 1h audio segmentation, so batches can be much larger than
+        // the per-segment candidate count. Oversized batches are halved automatically.
+        const videoBatchSize = Math.max(1, Number(process.env.CLIP_RECOMMENDATION_VIDEO_BATCH_SIZE) || 16);
         let approvedCount = 0;
-        let globalIndex = 0;
 
-        for (let segmentIndex = 0; segmentIndex < perSegmentCandidates.length; segmentIndex += 1) {
-            const segCands = perSegmentCandidates[segmentIndex];
-            if (segCands.length === 0) continue;
+        for (let batchStart = 0; batchStart < audioCandidates.length; batchStart += videoBatchSize) {
+            const batch = audioCandidates.slice(batchStart, Math.min(audioCandidates.length, batchStart + videoBatchSize));
 
-            // Extract video clips for this segment's candidates.
-            const videoInputs = await Promise.all(segCands.map(async (candidate, localIdx) => {
-                const candidateID = String(recommendation!.candidates[globalIndex + localIdx]._id || randomUUID());
-                const segmentPath = path.join(workDir, `candidate-seg${segmentIndex}-c${localIdx}.mp4`);
+            const videoInputs = await Promise.all(batch.map(async (candidate, localIdx) => {
+                const segmentPath = path.join(workDir, `candidate-c${batchStart + localIdx}.mp4`);
                 await cutVideoSegment(vodPath, segmentPath, candidate.startSeconds, candidate.endSeconds);
                 return {
                     videoPath: segmentPath,
@@ -616,15 +648,15 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 };
             }));
 
-            const verifications = await verifyCandidateVideosBatch({
+            const verifications = await verifyVideoBatchResilient({
                 videos: videoInputs,
                 channelID,
                 modelID,
                 language: outputLanguage
             });
 
-            for (let localIdx = 0; localIdx < segCands.length; localIdx += 1) {
-                const candidateDoc = recommendation.candidates[globalIndex + localIdx];
+            for (let localIdx = 0; localIdx < batch.length; localIdx += 1) {
+                const candidateDoc = recommendation.candidates[batchStart + localIdx];
                 const verification = verifications[localIdx] || { approved: false, why: 'No result' };
 
                 candidateDoc.videoApproved = verification.approved;
@@ -641,7 +673,6 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 }
             }
 
-            globalIndex += segCands.length;
             recommendation.approvedCount = approvedCount;
             await recommendation.save();
         }
