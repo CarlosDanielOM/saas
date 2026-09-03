@@ -143,12 +143,12 @@ export default defineConfig({
         },
       ],
       logo: {
-        light: './src/assets/logo.svg',
-        dark: './src/assets/logo-dark.svg',
+        light: './src/assets/logo.png',
+        dark: './src/assets/logo-dark.png',
         alt: 'DomDimaBot',
         replacesTitle: true,
       },
-      favicon: '/favicon.svg',
+      favicon: '/favicon.png',
       social: [
         {
           icon: 'twitch',

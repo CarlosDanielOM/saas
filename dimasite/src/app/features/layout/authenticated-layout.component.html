@@ -2,9 +2,8 @@
   <app-toast-container />
   <app-upgrade-modal />
   <header class="auth-navbar">
-    <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']">
-      <span class="auth-navbar__live" aria-hidden="true"></span>
-      <span>DomDimaBot</span>
+    <a class="auth-navbar__brand" [routerLink]="['/', streamer(), 'dashboard']" aria-label="DomDimaBot dashboard">
+      <app-brand-logo />
     </a>
 
     <nav class="auth-navbar__nav" aria-label="Primary">

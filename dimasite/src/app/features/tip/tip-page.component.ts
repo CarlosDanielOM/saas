@@ -27,6 +27,7 @@ import {
 import { map } from 'rxjs';
 
 import { AnalyticsService } from '../../services/analytics.service';
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
@@ -72,7 +73,7 @@ function normalizeMessageLimit(value: number | undefined): number {
 
 @Component({
   selector: 'app-tip-page',
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink, LucideAngularModule, BrandLogoComponent],
   templateUrl: './tip-page.component.html',
   styleUrl: './tip-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

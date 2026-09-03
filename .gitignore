@@ -162,3 +162,7 @@ graphify-out/
 
 # Machine-local agent notes (never commit)
 dev-agent.md
+
+# Source logo archives — processed copies live in app asset folders
+/logos.zip
+/dimafx-logos.zip

@@ -1,0 +1,80 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.lf-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lf-brand-logo__live {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--live, #ef4444);
+  box-shadow: 0 0 0 3px var(--live-soft, rgba(239, 68, 68, 0.12));
+  animation: lf-brand-pulse 1.6s ease-in-out infinite;
+}
+
+.lf-brand-logo__mark {
+  flex: 0 0 auto;
+  width: 1.7rem;
+  height: auto;
+  display: block;
+}
+
+.lf-brand-logo__on-dark {
+  display: none;
+}
+
+:host-context(html.dark) .lf-brand-logo__mark.lf-brand-logo__on-light,
+:host-context(html.dark) .lf-brand-logo__word.lf-brand-logo__on-light {
+  display: none;
+}
+
+:host-context(html.dark) .lf-brand-logo__mark.lf-brand-logo__on-dark {
+  display: block;
+}
+
+.lf-brand-logo__word {
+  display: none;
+  height: 0.92rem;
+  width: auto;
+  max-width: 7.5rem;
+  object-fit: contain;
+}
+
+.lf-brand-logo--compact .lf-brand-logo__word {
+  display: none;
+}
+
+@media (min-width: 400px) {
+  .lf-brand-logo:not(.lf-brand-logo--compact) .lf-brand-logo__word.lf-brand-logo__on-light {
+    display: block;
+  }
+
+  :host-context(html.dark) .lf-brand-logo:not(.lf-brand-logo--compact) .lf-brand-logo__word.lf-brand-logo__on-dark {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-brand-logo__live {
+    animation: none;
+  }
+}
+
+@keyframes lf-brand-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}

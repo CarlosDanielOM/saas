@@ -21,6 +21,7 @@ import {
   Sun
 } from 'lucide-angular';
 
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CheckoutIntentService } from '../../services/checkout-intent.service';
@@ -50,7 +51,7 @@ interface PricingRow {
 
 @Component({
   selector: 'app-landing-page',
-  imports: [LucideAngularModule, CountUpDirective],
+  imports: [LucideAngularModule, CountUpDirective, BrandLogoComponent],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

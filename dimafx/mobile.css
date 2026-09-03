@@ -69,12 +69,11 @@ header {
   gap: 6px;
 }
 
-.logo svg {
+.logo img {
   width: 20px;
-  height: 20px;
-  fill: none;
-  stroke: #a855f7;
-  stroke-width: 2.5;
+  height: 22px;
+  display: block;
+  object-fit: contain;
 }
 
 .header-controls {

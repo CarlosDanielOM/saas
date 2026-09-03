@@ -7,6 +7,7 @@ import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap } 
 import { Command, USER_LEVELS } from '../../models/command.model';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CommandsApiService } from '../../services/commands-api.service';
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
@@ -15,7 +16,7 @@ type ViewMode = 'table' | 'card';
 
 @Component({
   selector: 'app-public-commands-page',
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink, LucideAngularModule, BrandLogoComponent],
   templateUrl: './public-commands-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

@@ -12,12 +12,13 @@ import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
 import { UpgradeModalComponent } from '../../shared/upgrade-modal/upgrade-modal.component';
 
 @Component({
   selector: 'app-authenticated-layout',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule, ToastContainerComponent, UpgradeModalComponent, BrandLogoComponent],
   templateUrl: './authenticated-layout.component.html',
   styleUrl: './authenticated-layout.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

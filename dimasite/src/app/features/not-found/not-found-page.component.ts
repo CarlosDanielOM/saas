@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule, Moon, Sun } from 'lucide-angular';
 
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
@@ -10,7 +11,7 @@ type DashboardLink = ['/', string, 'dashboard'] | ['/login'];
 
 @Component({
   selector: 'app-not-found-page',
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink, LucideAngularModule, BrandLogoComponent],
   templateUrl: './not-found-page.component.html',
   styleUrl: './not-found-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

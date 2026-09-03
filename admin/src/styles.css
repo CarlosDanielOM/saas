@@ -126,11 +126,16 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.75rem;
-  background: #7c3aed;
+  background: rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+}
+
+.navbar__logo img {
+  width: 1.55rem;
+  height: auto;
+  display: block;
 }
 
 .navbar__title { font-size: 1.125rem; font-weight: 600; color: white; }
@@ -268,11 +273,16 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 0.75rem;
-  background: #7c3aed;
+  background: rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+}
+
+.navbar__sidebar-logo img {
+  width: 1.55rem;
+  height: auto;
+  display: block;
 }
 
 .navbar__sidebar-title { font-size: 1.25rem; font-weight: 700; color: white; }

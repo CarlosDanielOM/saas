@@ -12,6 +12,7 @@ import { LanguageService } from '../../services/language.service';
 import { AuthLoginError, SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { ToastService } from '../../services/toast.service';
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { ToastContainerComponent } from '../../shared/toast-container/toast-container.component';
 import { PendingActionsQueueService } from '../../services/pending-actions-queue.service';
 
@@ -32,7 +33,7 @@ const LOGIN_RESET_TOAST_DURATION_MS = LOGIN_RESET_REDIRECT_DELAY_MS + 200;
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, LucideAngularModule, ToastContainerComponent]
+  imports: [RouterLink, LucideAngularModule, ToastContainerComponent, BrandLogoComponent]
 })
 export class LoginPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);

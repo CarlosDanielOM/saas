@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, Moon, Sun } from 'lucide-angular';
 import { map } from 'rxjs';
 
+import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
 import { LanguageService } from '../../services/language.service';
 import { ThemeService } from '../../services/theme.service';
 
@@ -11,7 +12,7 @@ type StatusCode = '500' | '503';
 
 @Component({
   selector: 'app-status-error-page',
-  imports: [RouterLink, LucideAngularModule],
+  imports: [RouterLink, LucideAngularModule, BrandLogoComponent],
   templateUrl: './status-error-page.component.html',
   styleUrl: './status-error-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
