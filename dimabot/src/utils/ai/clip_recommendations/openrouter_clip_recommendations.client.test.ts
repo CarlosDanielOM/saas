@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     parseAudioCandidates,
+    parseAudioCandidatesWithTimestampBasis,
     parseVideoVerificationResults
 } from './openrouter_clip_recommendations.client.js';
 
@@ -22,6 +23,30 @@ test('audio candidates are bounded to the supplied segment and invalid values ar
         { startSeconds: 10, endSeconds: 30, reason: 'Strong reaction', confidence: 1 },
         { startSeconds: 50, endSeconds: 60, reason: 'Late payoff', confidence: 0 }
     ]);
+});
+
+test('audio candidates fall back to absolute VOD timestamps only when relative parsing yields none', () => {
+    const parsed = parseAudioCandidatesWithTimestampBasis({
+        candidates: [
+            { startSeconds: 3610, endSeconds: 3630, reason: 'Absolute timestamp', confidence: 0.8 }
+        ]
+    }, 24, 3600, 3600);
+
+    assert.equal(parsed.timestampBasis, 'vod_absolute');
+    assert.deepEqual(parsed.candidates, [
+        { startSeconds: 10, endSeconds: 30, reason: 'Absolute timestamp', confidence: 0.8 }
+    ]);
+
+    const mixedBasis = parseAudioCandidatesWithTimestampBasis({
+        candidates: [
+            { startSeconds: 120, endSeconds: 145, reason: 'Relative', confidence: 0.7 },
+            { startSeconds: 3620, endSeconds: 3645, reason: 'Absolute', confidence: 0.8 }
+        ]
+    }, 24, 3600, 3600);
+    assert.deepEqual(mixedBasis, {
+        candidates: [{ startSeconds: 120, endSeconds: 145, reason: 'Relative', confidence: 0.7 }],
+        timestampBasis: 'segment_relative'
+    });
 });
 
 test('video verification maps by index and fails closed on malformed approvals', () => {

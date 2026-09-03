@@ -43,6 +43,8 @@ interface LLMMetadata {
 interface IngestPolarSHEventOptions {
   customerId: string;
   channelID?: string;
+  /** Stable caller-provided ID used by Polar to deduplicate retries. */
+  externalId?: string;
   cost: number;
   reason: string;
   llm?: LLMMetadata;
@@ -69,6 +71,7 @@ interface GrantPolarAiCreditsOptions {
 interface EventData {
   name: string;
   customerId: string;
+  externalId?: string;
   metadata: {
     cost: number;
     currency: string;
@@ -161,6 +164,7 @@ export async function ingestPolarSHEvent(
   const {
     customerId,
     channelID,
+    externalId,
     cost,
     reason,
     llm,
@@ -187,6 +191,7 @@ export async function ingestPolarSHEvent(
     let eventData: EventData = {
       name: "ai_usage",
       customerId: customerId,
+      ...(externalId ? { externalId } : {}),
       metadata: {
         cost: cost,
         currency: "usd",

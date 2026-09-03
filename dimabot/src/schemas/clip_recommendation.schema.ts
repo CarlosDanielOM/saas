@@ -2,6 +2,7 @@ import { Schema, model, Types } from 'mongoose';
 
 export type ClipRecommendationStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type ClipRecommendationSource = 'stream_offline' | 'manual';
+export type ClipRecommendationBillingStatus = 'pending' | 'charged' | 'failed';
 export type ClipRecommendationCandidateStatus = 'pending' | 'approved' | 'rejected' | 'confirmed' | 'denied';
 
 export interface IClipRecommendationCandidate {
@@ -34,6 +35,10 @@ export interface IClipRecommendation {
     modelID: string;
     vodDurationMinutes: number;
     costCredits: number;
+    billingStatus: ClipRecommendationBillingStatus;
+    chargeError: string;
+    chargedAt: Date | null;
+    analysisCompletedAt: Date | null;
     candidateCount: number;
     approvedCount: number;
     errorMessage: string;
@@ -77,6 +82,10 @@ const clipRecommendationSchema = new Schema<IClipRecommendation>({
     modelID: { type: String, default: 'meta/muse-spark-1.2-contributor' },
     vodDurationMinutes: { type: Number, default: 0 },
     costCredits: { type: Number, default: 0 },
+    billingStatus: { type: String, enum: ['pending', 'charged', 'failed'], default: 'pending', index: true },
+    chargeError: { type: String, default: '' },
+    chargedAt: { type: Date, default: null },
+    analysisCompletedAt: { type: Date, default: null },
     candidateCount: { type: Number, default: 0 },
     approvedCount: { type: Number, default: 0 },
     errorMessage: { type: String, default: '' },

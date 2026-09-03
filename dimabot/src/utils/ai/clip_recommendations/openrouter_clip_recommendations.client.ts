@@ -118,9 +118,9 @@ function extractCandidateArray(parsed: unknown): unknown[] {
     return [];
 }
 
-function clampCandidate(candidate: Partial<AudioCandidate>, maxDurationSeconds: number): AudioCandidate | null {
-    const rawStart = Number(candidate.startSeconds);
-    const rawEnd = Math.floor(Number(candidate.endSeconds));
+function clampCandidate(candidate: Partial<AudioCandidate>, maxDurationSeconds: number, timestampOffsetSeconds: number): AudioCandidate | null {
+    const rawStart = Number(candidate.startSeconds) - timestampOffsetSeconds;
+    const rawEnd = Math.floor(Number(candidate.endSeconds) - timestampOffsetSeconds);
     const reason = String(candidate.reason || '').trim();
     if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd) || !reason) {
         return null;
@@ -145,11 +145,12 @@ function clampCandidate(candidate: Partial<AudioCandidate>, maxDurationSeconds: 
 export function parseAudioCandidates(
     parsed: unknown,
     maxCandidates = DEFAULT_MAX_AUDIO_CANDIDATES,
-    maxDurationSeconds = Number.POSITIVE_INFINITY
+    maxDurationSeconds = Number.POSITIVE_INFINITY,
+    timestampOffsetSeconds = 0
 ): AudioCandidate[] {
     const limit = Number.isFinite(maxCandidates) ? Math.max(0, Math.floor(maxCandidates)) : 0;
     const candidates = extractCandidateArray(parsed)
-        .map((item) => clampCandidate(item as Partial<AudioCandidate>, maxDurationSeconds))
+        .map((item) => clampCandidate(item as Partial<AudioCandidate>, maxDurationSeconds, timestampOffsetSeconds))
         .filter((item): item is AudioCandidate => Boolean(item))
         .sort((left, right) => left.startSeconds - right.startSeconds);
 
@@ -161,6 +162,69 @@ export function parseAudioCandidates(
         if (nonOverlapping.length >= limit) break;
     }
     return nonOverlapping;
+}
+
+export type AudioCandidateTimestampBasis = 'segment_relative' | 'vod_absolute' | 'none';
+
+function hasUnambiguousAbsoluteTimestamps(parsed: unknown, segmentDurationSeconds: number, segmentStartSeconds: number): boolean {
+    if (segmentStartSeconds <= 0 || segmentDurationSeconds <= 0) return false;
+    const timestampPairs = extractCandidateArray(parsed)
+        .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+        .map((item) => ({ start: Number(item.startSeconds), end: Number(item.endSeconds) }))
+        .filter((item) => Number.isFinite(item.start) && Number.isFinite(item.end));
+    const segmentEndSeconds = segmentStartSeconds + segmentDurationSeconds;
+    return timestampPairs.length > 0 && timestampPairs.every((item) => (
+        item.start >= segmentStartSeconds
+        && item.end > item.start
+        && item.end <= segmentEndSeconds
+    ));
+}
+
+export function parseAudioCandidatesWithTimestampBasis(
+    parsed: unknown,
+    maxCandidates: number,
+    segmentDurationSeconds: number,
+    segmentStartSeconds: number
+): { candidates: AudioCandidate[]; timestampBasis: AudioCandidateTimestampBasis } {
+    const declaredBasis = parsed && typeof parsed === 'object'
+        ? String((parsed as Record<string, unknown>).timestampBasis || '').trim().toLowerCase()
+        : '';
+    const canUseAbsoluteTimestamps = hasUnambiguousAbsoluteTimestamps(parsed, segmentDurationSeconds, segmentStartSeconds);
+    if (declaredBasis === 'vod_absolute' && canUseAbsoluteTimestamps) {
+        const candidates = parseAudioCandidates(parsed, maxCandidates, segmentDurationSeconds, segmentStartSeconds);
+        return { candidates, timestampBasis: candidates.length > 0 ? 'vod_absolute' : 'none' };
+    }
+
+    const relativeCandidates = parseAudioCandidates(parsed, maxCandidates, segmentDurationSeconds);
+    if (relativeCandidates.length > 0 || !canUseAbsoluteTimestamps) {
+        return {
+            candidates: relativeCandidates,
+            timestampBasis: relativeCandidates.length > 0 ? 'segment_relative' : 'none'
+        };
+    }
+
+    const absoluteCandidates = parseAudioCandidates(parsed, maxCandidates, segmentDurationSeconds, segmentStartSeconds);
+    return {
+        candidates: absoluteCandidates,
+        timestampBasis: absoluteCandidates.length > 0 ? 'vod_absolute' : 'none'
+    };
+}
+
+function buildTimestampDiagnostics(parsed: unknown): { rawCandidateCount: number; rawTimestampSample: unknown[] } {
+    const rawCandidates = extractCandidateArray(parsed);
+    return {
+        rawCandidateCount: rawCandidates.length,
+        rawTimestampSample: rawCandidates.slice(0, 5).map((item) => {
+            if (!item || typeof item !== 'object') return { type: typeof item };
+            const candidate = item as Record<string, unknown>;
+            const summarize = (value: unknown) => typeof value === 'string' ? value.slice(0, 64) : value;
+            return {
+                startSeconds: summarize(candidate.startSeconds),
+                endSeconds: summarize(candidate.endSeconds),
+                confidence: summarize(candidate.confidence)
+            };
+        })
+    };
 }
 
 export function parseVideoVerificationResults(parsed: unknown, expectedCount: number): VideoVerificationResult[] {
@@ -298,6 +362,7 @@ export async function analyzeVodAudioForClipMoments(input: {
     channelID: string;
     modelID?: string;
     durationSeconds?: number;
+    segmentStartSeconds?: number;
 }): Promise<AudioCandidate[]> {
     const parsed = await callOpenRouterJson({
         modelID: input.modelID,
@@ -309,13 +374,30 @@ export async function analyzeVodAudioForClipMoments(input: {
         user: input.channelID
     });
 
-    const candidates = parseAudioCandidates(parsed, DEFAULT_MAX_AUDIO_CANDIDATES, Number(input.durationSeconds));
+    const parsedCandidates = parseAudioCandidatesWithTimestampBasis(
+        parsed,
+        DEFAULT_MAX_AUDIO_CANDIDATES,
+        Number(input.durationSeconds),
+        Number(input.segmentStartSeconds || 0)
+    );
+    const candidates = parsedCandidates.candidates;
 
     if (candidates.length === 0) {
         await logWarn({
             worker: 'clip_recommendations',
             message: 'Audio discovery returned zero candidates',
-            channelID: input.channelID
+            channelID: input.channelID,
+            segmentStartSeconds: Number(input.segmentStartSeconds || 0),
+            ...buildTimestampDiagnostics(parsed)
+        }, { channelId: input.channelID, destination: 'console' });
+    } else if (parsedCandidates.timestampBasis === 'vod_absolute') {
+        await logWarn({
+            worker: 'clip_recommendations',
+            message: 'Audio discovery used absolute VOD timestamp fallback',
+            channelID: input.channelID,
+            segmentStartSeconds: Number(input.segmentStartSeconds || 0),
+            candidateCount: candidates.length,
+            ...buildTimestampDiagnostics(parsed)
         }, { channelId: input.channelID, destination: 'console' });
     } else {
         await logInfo({
