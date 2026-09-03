@@ -13,6 +13,7 @@ import {
     type IMemoryPolicySettings,
     type IValidatedMemoryContextItem
 } from './memory_policy.js';
+import { memoryUnixSeconds } from './memory_time.js';
 
 const DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.82;
 const DEFAULT_MAX_PENDING = 250;
@@ -153,10 +154,11 @@ function resolveMemoryQdrantPointID(memory: IChannelAIMemory): number {
         return Number(memory.qdrantPointID);
     }
 
-    const createdAt = memory.createdAt instanceof Date
-        ? Math.floor(memory.createdAt.getTime() / 1000)
-        : Math.floor(memory._id.getTimestamp().getTime() / 1000);
-    return generateQdrantPointId(memory.channelID, String(memory._id), createdAt);
+    return generateQdrantPointId(
+        memory.channelID,
+        String(memory._id),
+        memoryUnixSeconds(memory.createdAt, memory._id)
+    );
 }
 
 export async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void> {
@@ -183,8 +185,8 @@ export async function syncMemoryToQdrant(memory: IChannelAIMemory): Promise<void
             subjectUserID: memory.subject.userID,
             content: memory.content,
             summary: memory.summary,
-            createdAtUnix: Math.floor(memory.createdAt.getTime() / 1000),
-            updatedAtUnix: Math.floor(memory.updatedAt.getTime() / 1000)
+            createdAtUnix: memoryUnixSeconds(memory.createdAt, memory._id),
+            updatedAtUnix: memoryUnixSeconds(memory.updatedAt, memory._id)
         } as ISyncMemoryToQdrantParams);
         if (syncResult.error) {
             throw new Error(syncResult.message || 'Failed to sync memory to Qdrant');
@@ -395,10 +397,11 @@ export async function createOrUpdateChannelMemory(
         }
         const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
         const memoryID = new Types.ObjectId();
+        const now = new Date();
         const qdrantPointID = generateQdrantPointId(
             channelID,
             String(memoryID),
-            Math.floor(memoryID.getTimestamp().getTime() / 1000)
+            Math.floor(now.getTime() / 1000)
         );
         const memory = new ChannelAIMemorySchema({
             _id: memoryID,
@@ -426,7 +429,9 @@ export async function createOrUpdateChannelMemory(
                 username: normalizeText(input.createdBy?.username),
                 userID: normalizeText(input.createdBy?.userID)
             } as IMemoryActor,
-            reviewReason: input.forceStatus ? 'manual_status_set' : (targetStatus === 'confirmed' ? 'auto_confirm_threshold_met' : 'awaiting_review')
+            reviewReason: input.forceStatus ? 'manual_status_set' : (targetStatus === 'confirmed' ? 'auto_confirm_threshold_met' : 'awaiting_review'),
+            createdAt: now,
+            updatedAt: now
         });
         if (memory.status === 'confirmed') {
             await syncMemoryToQdrant(memory);
