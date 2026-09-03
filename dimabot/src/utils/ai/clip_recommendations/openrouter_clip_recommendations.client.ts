@@ -11,7 +11,7 @@ import { info as logInfo, warn as logWarn } from '../../logger.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
 
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MAX_AUDIO_CANDIDATES = Math.max(1, Number(process.env.CLIP_RECOMMENDATION_MAX_AUDIO_CANDIDATES || 24));
+const DEFAULT_MAX_AUDIO_CANDIDATES = Math.max(1, Number(process.env.CLIP_RECOMMENDATION_MAX_AUDIO_CANDIDATES) || 24);
 
 // Audio payloads can be ~5 MB+ base64 — give each request a generous timeout.
 // Retries use the shared default policy (1s/3s/5s backoff on 429/500/502/503/504),
@@ -39,7 +39,7 @@ function buildEmptyBodyDiagnostic(response: Response): string {
     return parts.length > 0 ? ` (${parts.join(', ')})` : ' (empty body)';
 }
 
-// Map of MIME type -> input_audio format hint supported by Xiaomi / mimo-v2.5.
+// Map of MIME type -> OpenRouter input_audio format hint.
 const AUDIO_MIME_TO_FORMAT: Record<string, string> = {
     'audio/mpeg': 'mp3',
     'audio/mp3': 'mp3',
@@ -118,18 +118,74 @@ function extractCandidateArray(parsed: unknown): unknown[] {
     return [];
 }
 
-function clampCandidate(candidate: Partial<AudioCandidate>): AudioCandidate | null {
-    const start = Math.max(0, Math.floor(Number(candidate.startSeconds)));
+function clampCandidate(candidate: Partial<AudioCandidate>, maxDurationSeconds: number): AudioCandidate | null {
+    const rawStart = Number(candidate.startSeconds);
     const rawEnd = Math.floor(Number(candidate.endSeconds));
     const reason = String(candidate.reason || '').trim();
-    if (!Number.isFinite(start) || !Number.isFinite(rawEnd) || !reason) {
+    if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd) || !reason) {
         return null;
     }
 
+    const start = Math.max(0, Math.floor(rawStart));
+    if (rawEnd <= start) return null;
+    const upperBound = Number.isFinite(maxDurationSeconds)
+        ? Math.max(1, Math.floor(maxDurationSeconds))
+        : Number.POSITIVE_INFINITY;
+    if (start >= upperBound) return null;
+
     const duration = Math.max(5, Math.min(60, rawEnd - start));
-    const endSeconds = start + duration;
-    const confidence = Math.max(0, Math.min(1, Number(candidate.confidence || 0)));
+    const endSeconds = Math.min(upperBound, start + duration);
+    if (endSeconds - start < 5) return null;
+
+    const rawConfidence = Number(candidate.confidence);
+    const confidence = Number.isFinite(rawConfidence) ? Math.max(0, Math.min(1, rawConfidence)) : 0;
     return { startSeconds: start, endSeconds, reason: reason.slice(0, 500), confidence };
+}
+
+export function parseAudioCandidates(
+    parsed: unknown,
+    maxCandidates = DEFAULT_MAX_AUDIO_CANDIDATES,
+    maxDurationSeconds = Number.POSITIVE_INFINITY
+): AudioCandidate[] {
+    const limit = Number.isFinite(maxCandidates) ? Math.max(0, Math.floor(maxCandidates)) : 0;
+    const candidates = extractCandidateArray(parsed)
+        .map((item) => clampCandidate(item as Partial<AudioCandidate>, maxDurationSeconds))
+        .filter((item): item is AudioCandidate => Boolean(item))
+        .sort((left, right) => left.startSeconds - right.startSeconds);
+
+    const nonOverlapping: AudioCandidate[] = [];
+    for (const candidate of candidates) {
+        const previous = nonOverlapping[nonOverlapping.length - 1];
+        if (previous && candidate.startSeconds < previous.endSeconds) continue;
+        nonOverlapping.push(candidate);
+        if (nonOverlapping.length >= limit) break;
+    }
+    return nonOverlapping;
+}
+
+export function parseVideoVerificationResults(parsed: unknown, expectedCount: number): VideoVerificationResult[] {
+    const count = Math.max(0, Math.floor(expectedCount));
+    const results = Array.from({ length: count }, () => ({
+        approved: false,
+        why: 'No valid verification result returned by model.'
+    }));
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as Record<string, unknown>).results)) {
+        return results;
+    }
+
+    const seenIndexes = new Set<number>();
+    for (const item of (parsed as { results: unknown[] }).results) {
+        if (!item || typeof item !== 'object') continue;
+        const raw = item as Record<string, unknown>;
+        const index = Number(raw.index);
+        if (!Number.isInteger(index) || index < 0 || index >= count || seenIndexes.has(index)) continue;
+        seenIndexes.add(index);
+        results[index] = {
+            approved: raw.approved === true,
+            why: String(raw.why || '').trim().slice(0, 1000) || 'No explanation provided.'
+        };
+    }
+    return results;
 }
 
 function resolveAudioFormat(mimeType: string): string {
@@ -185,14 +241,8 @@ async function callOpenRouterJson(options: {
         throw new Error(`OpenRouter clip recommendations accept only audio/video/image inputs (got ${options.mimeType}).`);
     }
 
-        const body: Record<string, unknown> = {
+    const body: Record<string, unknown> = {
         model: options.modelID || CLIP_RECOMMENDATION_MODEL_ID,
-        // Pin provider routing: OpenRouter's default balanced routing was
-        // randomly sending requests to Xiaomi's hosted backend, which silently
-        // dropped the `input_audio` content and returned `audio_tokens: 0`.
-        // Parasail is the only tested backend that actually bills audio tokens
-        // for input_audio and returns audio-aware results.
-        provider: { only: ['Parasail'] },
         messages: [
             { role: 'system', content: options.systemPrompt },
             { role: 'user', content: [
@@ -247,6 +297,7 @@ export async function analyzeVodAudioForClipMoments(input: {
     audioPath: string;
     channelID: string;
     modelID?: string;
+    durationSeconds?: number;
 }): Promise<AudioCandidate[]> {
     const parsed = await callOpenRouterJson({
         modelID: input.modelID,
@@ -258,23 +309,13 @@ export async function analyzeVodAudioForClipMoments(input: {
         user: input.channelID
     });
 
-    const rawItems = extractCandidateArray(parsed);
-
-    const candidates = rawItems
-        .map((item) => clampCandidate(item as Partial<AudioCandidate>))
-        .filter((item): item is AudioCandidate => Boolean(item))
-        .slice(0, DEFAULT_MAX_AUDIO_CANDIDATES);
+    const candidates = parseAudioCandidates(parsed, DEFAULT_MAX_AUDIO_CANDIDATES, Number(input.durationSeconds));
 
     if (candidates.length === 0) {
-        // Log the raw parsed response so we can diagnose zero-candidate runs.
-        // Truncated to 2 KB to keep log lines manageable.
-        const preview = JSON.stringify(parsed).slice(0, 2000);
         await logWarn({
             worker: 'clip_recommendations',
             message: 'Audio discovery returned zero candidates',
-            channelID: input.channelID,
-            rawResponse: preview,
-            audioFileSize: Number(process.env.AUDIO_FILE_SIZE_PLACEHOLDER) || undefined
+            channelID: input.channelID
         }, { channelId: input.channelID, destination: 'console' });
     } else {
         await logInfo({
@@ -349,7 +390,6 @@ export async function verifyCandidateVideosBatch(input: {
 
     const body: Record<string, unknown> = {
         model: input.modelID || CLIP_RECOMMENDATION_MODEL_ID,
-        provider: { only: ['Parasail'] },
         messages: [
             { role: 'system', content: VIDEO_VERIFICATION_SYSTEM_PROMPT },
             { role: 'user', content: contentParts }
@@ -391,18 +431,5 @@ export async function verifyCandidateVideosBatch(input: {
 
     const parsed = JSON.parse(normalizeJsonText(content));
 
-    const results: VideoVerificationResult[] = Array.isArray(parsed?.results)
-        ? parsed.results
-            .sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0))
-            .map((r: any) => ({
-                approved: Boolean(r.approved),
-                why: String(r.why || '').trim().slice(0, 1000) || 'No explanation provided.'
-            }))
-        : [];
-
-    while (results.length < input.videos.length) {
-        results.push({ approved: false, why: 'No verification result returned by model.' });
-    }
-
-    return results;
+    return parseVideoVerificationResults(parsed, input.videos.length);
 }

@@ -1,6 +1,7 @@
 import { enqueueCronJob, getCronJobDedupeKey } from '../../cron_jobs_queue.js';
 
 export const CLIP_RECOMMENDATIONS_QUEUE_KEY = 'cron:clip-recommendations:queue';
+export const CLIP_RECOMMENDATIONS_PROCESSING_KEY = 'cron:clip-recommendations:processing';
 export const CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY = 'cron:clip-recommendations:dead-letter';
 export const CLIP_RECOMMENDATION_ANALYSIS_JOB = 'clip-recommendation-analysis';
 

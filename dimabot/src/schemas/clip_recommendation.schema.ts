@@ -30,6 +30,7 @@ export interface IClipRecommendation {
     source: ClipRecommendationSource;
     status: ClipRecommendationStatus;
     requestedBy: string;
+    queueJobID?: string;
     modelID: string;
     vodDurationMinutes: number;
     costCredits: number;
@@ -72,7 +73,8 @@ const clipRecommendationSchema = new Schema<IClipRecommendation>({
     source: { type: String, enum: ['stream_offline', 'manual'], required: true, default: 'manual', index: true },
     status: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending', index: true },
     requestedBy: { type: String, default: '' },
-    modelID: { type: String, default: 'xiaomi/mimo-v2.5' },
+    queueJobID: { type: String },
+    modelID: { type: String, default: 'meta/muse-spark-1.2-contributor' },
     vodDurationMinutes: { type: Number, default: 0 },
     costCredits: { type: Number, default: 0 },
     candidateCount: { type: Number, default: 0 },
@@ -88,5 +90,6 @@ const clipRecommendationSchema = new Schema<IClipRecommendation>({
 clipRecommendationSchema.index({ channelID: 1, created_at: -1 });
 clipRecommendationSchema.index({ channelID: 1, sessionID: 1, source: 1 });
 clipRecommendationSchema.index({ status: 1, created_at: 1 });
+clipRecommendationSchema.index({ queueJobID: 1 }, { unique: true, sparse: true });
 
 export const ClipRecommendationSchema = model<IClipRecommendation>('ClipRecommendation', clipRecommendationSchema);

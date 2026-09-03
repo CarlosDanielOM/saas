@@ -50,6 +50,7 @@ export interface TwitchVodSummary {
 
 interface TwitchVideoApiItem {
     id: string;
+    user_id?: string;
     title?: string;
     url: string;
     duration?: string;
@@ -66,6 +67,7 @@ export interface RunVodClipRecommendationInput {
     vodUrl: string;
     source: 'stream_offline' | 'manual';
     requestedBy?: string;
+    queueJobID?: string;
     vodDurationMinutes?: number;
     modelID?: string;
 }
@@ -175,7 +177,7 @@ async function findUserByChannelID(channelID: string): Promise<IUsers | null> {
     return UsersSchema.findOne({ 'accounts.id': channelID, 'accounts.type': 'twitch' }).lean().exec();
 }
 
-async function chargeCredits(user: IUsers, channelID: string, credits: number, reason: string): Promise<void> {
+async function ensureCreditsAvailable(user: IUsers, channelID: string, credits: number): Promise<void> {
     const currentCredits = await getAiCredits(user, channelID);
     if (currentCredits.balance < credits) {
         throw new Error(`Not enough AI credits. Required ${credits}, available ${currentCredits.balance}.`);
@@ -184,7 +186,10 @@ async function chargeCredits(user: IUsers, channelID: string, credits: number, r
     if (!user.polar_sh_customer_id) {
         throw new Error('A billing customer is required to charge clip recommendation credits.');
     }
+}
 
+async function chargeCredits(user: IUsers, channelID: string, credits: number, reason: string): Promise<void> {
+    await ensureCreditsAvailable(user, channelID, credits);
     const ingestResult = await ingestPolarSHEvent({
         customerId: user.polar_sh_customer_id,
         channelID,
@@ -278,12 +283,13 @@ export async function fetchLatestVodForChannel(channelID: string): Promise<Twitc
     };
 }
 
-export async function fetchVodById(vodID: string): Promise<TwitchVodInfo | null> {
+export async function fetchVodById(vodID: string, expectedChannelID?: string): Promise<TwitchVodInfo | null> {
     if (!vodID) return null;
     const params = new URLSearchParams({ id: vodID });
     const items = await fetchTwitchVideos(params);
     const vod = items[0];
     if (!vod?.url) return null;
+    if (expectedChannelID && vod.user_id !== expectedChannelID) return null;
     return {
         id: vod.id,
         url: vod.url,
@@ -311,6 +317,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
     const channelID = normalizeValue(input.channelID);
     const vodUrl = normalizeValue(input.vodUrl);
     const modelID = normalizeValue(input.modelID) || CLIP_RECOMMENDATION_MODEL_ID;
+    const queueJobID = normalizeValue(input.queueJobID);
     const recommendationID = randomUUID();
     const workDir = path.join(os.tmpdir(), `clip-recommendations-${recommendationID}`);
     let recommendationObjectID = '';
@@ -321,15 +328,25 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
 
     try {
         await fs.mkdir(workDir, { recursive: true });
-        const user = await findUserByChannelID(channelID);
-        if (!user) {
-            throw new Error('User not found for channel');
+        if (queueJobID) {
+            const existing = await ClipRecommendationSchema.findOne({ queueJobID }).lean().exec();
+            if (existing) {
+                const completed = existing.status === 'completed';
+                return {
+                    error: !completed,
+                    status: completed ? 'completed' : 'failed',
+                    message: completed
+                        ? 'Clip recommendation job was already completed'
+                        : `Clip recommendation job was already claimed with status ${existing.status}; refusing duplicate execution`,
+                    recommendationID: String(existing._id),
+                    candidateCount: existing.candidateCount,
+                    approvedCount: existing.approvedCount
+                };
+            }
         }
 
         const durationMinutes = Math.max(1, Math.ceil(Number(input.vodDurationMinutes || 0)));
         const costCredits = calculateClipRecommendationCredits(durationMinutes);
-        await chargeCredits(user, channelID, costCredits, 'vod_clip_recommendation');
-
         const recommendation = await ClipRecommendationSchema.create({
             channelID,
             channel: normalizeValue(input.channel),
@@ -338,15 +355,25 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             vodID: normalizeValue(input.vodID),
             vodUrl,
             source: input.source,
-            status: 'processing',
+            status: 'pending',
             requestedBy: normalizeValue(input.requestedBy),
+            queueJobID: queueJobID || undefined,
             modelID,
             vodDurationMinutes: durationMinutes,
             costCredits,
-            startedAt: new Date(),
             candidates: []
         });
         recommendationObjectID = String(recommendation._id);
+
+        const user = await findUserByChannelID(channelID);
+        if (!user) {
+            throw new Error('User not found for channel');
+        }
+
+        await ensureCreditsAvailable(user, channelID, costCredits);
+        recommendation.status = 'processing';
+        recommendation.startedAt = new Date();
+        await recommendation.save();
 
         const vodPath = path.join(workDir, 'vod.mp4');
         await downloadVod(vodUrl, vodPath);
@@ -366,7 +393,12 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             const segmentAudioPath = path.join(workDir, `segment-${segmentIndex}.mp3`);
 
             await extractAudioSegment(vodPath, segmentAudioPath, segmentStartSeconds, segmentDurationSeconds);
-            const segmentCandidates = await analyzeVodAudioForClipMoments({ audioPath: segmentAudioPath, channelID, modelID });
+            const segmentCandidates = await analyzeVodAudioForClipMoments({
+                audioPath: segmentAudioPath,
+                channelID,
+                modelID,
+                durationSeconds: segmentDurationSeconds
+            });
 
             // Adjust candidate timestamps by the segment offset so they reference the full VOD timeline.
             for (const candidate of segmentCandidates) {
@@ -392,13 +424,10 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         recommendation.candidateCount = candidateDocs.length;
         await recommendation.save();
 
-        // Fail loudly if audio analysis produced zero candidates. Previously this
-        // case was treated as a successful "0 clip" completion — the workflow
-        // exited cleanly, the user got a "no clips found" email, and the credits
-        // they'd been charged stayed gone. Better to surface the failure clearly
-        // so we can investigate provider routing or prompt problems.
+        // Fail loudly if audio analysis produced zero candidates so provider or
+        // prompt failures are visible and the user is not charged for no output.
         if (audioCandidates.length === 0) {
-            const message = 'Audio analysis returned zero candidates. The model may not be processing the audio input correctly (provider routing or prompt issue). Credits have been charged but no clips were generated.';
+            const message = 'Audio analysis returned zero candidates. The model may not be processing the audio input correctly (provider routing or prompt issue). No credits were charged.';
             await ClipRecommendationSchema.findByIdAndUpdate(recommendationObjectID, {
                 $set: {
                     status: 'failed',
@@ -473,6 +502,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             await recommendation.save();
         }
 
+        await chargeCredits(user, channelID, costCredits, 'vod_clip_recommendation');
         recommendation.status = 'completed';
         recommendation.completedAt = new Date();
         recommendation.approvedCount = approvedCount;
@@ -538,6 +568,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 source: input.source,
                 status: 'failed',
                 requestedBy: normalizeValue(input.requestedBy),
+                queueJobID: queueJobID || undefined,
                 modelID,
                 vodDurationMinutes: Number(input.vodDurationMinutes || 0),
                 errorMessage: message,

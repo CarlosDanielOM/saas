@@ -33,6 +33,13 @@ function getRequesterID(req: AuthRequest): string {
     return String(req.user?.id || '').trim();
 }
 
+function parseBoundedInteger(value: unknown, fallback: number, minimum: number, maximum: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed)
+        ? Math.max(minimum, Math.min(maximum, Math.floor(parsed)))
+        : fallback;
+}
+
 async function getChannelUser(channelID: string) {
     return UsersSchema.findOne({ 'accounts.id': channelID, 'accounts.type': 'twitch' }).lean().exec();
 }
@@ -81,7 +88,10 @@ router.put('/:channelID/config', authMiddleware as any, async (req: AuthRequest,
         const user = await getChannelUser(channelID);
         if (!user) return res.status(404).json({ error: true, message: 'User not found', status: 404 });
 
-        const autoAnalyzeEnabled = Boolean(req.body?.autoAnalyzeEnabled);
+        if (typeof req.body?.autoAnalyzeEnabled !== 'boolean') {
+            return res.status(400).json({ error: true, message: 'autoAnalyzeEnabled must be a boolean', status: 400 });
+        }
+        const autoAnalyzeEnabled = req.body.autoAnalyzeEnabled;
         if (autoAnalyzeEnabled && user.plan_tier !== 'pro') {
             return res.status(403).json({
                 error: true,
@@ -115,8 +125,8 @@ router.get('/:channelID', authMiddleware as any, async (req: AuthRequest, res: R
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
         if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
-        const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
-        const skip = Math.max(0, Number(req.query.skip || 0));
+        const limit = parseBoundedInteger(req.query.limit, 10, 1, 50);
+        const skip = parseBoundedInteger(req.query.skip, 0, 0, 10_000);
         const [items, total] = await Promise.all([
             ClipRecommendationSchema.find({ channelID }).sort({ created_at: -1 }).skip(skip).limit(limit).lean().exec(),
             ClipRecommendationSchema.countDocuments({ channelID }).exec()
@@ -142,9 +152,12 @@ router.post('/:channelID/queue', authMiddleware as any, async (req: AuthRequest,
         if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
         const requestedVodId = String(req.body?.vodId || '').trim();
+        if (requestedVodId && !/^\d{1,30}$/.test(requestedVodId)) {
+            return res.status(400).json({ error: true, message: 'Invalid Twitch VOD ID', status: 400 });
+        }
         const [vod, user] = await Promise.all([
             requestedVodId
-                ? fetchVodById(requestedVodId)
+                ? fetchVodById(requestedVodId, channelID)
                 : fetchLatestVodForChannel(channelID),
             getChannelUser(channelID)
         ]);
@@ -190,7 +203,7 @@ router.get('/:channelID/vods', authMiddleware as any, async (req: AuthRequest, r
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
         if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
-        const days = Math.max(1, Math.min(60, Number(req.query?.days || 7)));
+        const days = parseBoundedInteger(req.query?.days, 7, 1, 60);
         const vods = await fetchRecentVodsForChannel(channelID, days);
 
         return res.status(200).json({
