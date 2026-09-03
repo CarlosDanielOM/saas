@@ -1210,9 +1210,9 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
             try {
                 const { commandHandler } = await import('../../handlers/commands.handler.js');
                 const fakeEventData = {
-                    chatter_user_id: context.broadcasterId,
+                    chatter_user_id: context.userId || context.broadcasterId,
                     chatter_user_login: context.userLogin || context.broadcasterId,
-                    chatter_user_name: context.userDisplayName || context.broadcasterId,
+                    chatter_user_name: context.userDisplayName || context.userLogin || context.broadcasterId,
                     badges: []
                 };
 

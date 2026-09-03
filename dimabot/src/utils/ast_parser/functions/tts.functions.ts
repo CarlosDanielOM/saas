@@ -15,6 +15,19 @@ interface QueueTtsResult {
     errorMessage?: string;
 }
 
+/**
+ * Resolve the user identity attached to TTS analytics. When the AST runs
+ * without a triggering chatter (timers, nested command refs, server-side
+ * renders), attribute the event to the channel instead of sending empty
+ * user fields to PostHog.
+ */
+function resolveTrackingIdentity(ctx: Parameters<FunctionHandler>[1]): { userID: string; username: string } {
+    return {
+        userID: ctx.userId || ctx.broadcasterId,
+        username: ctx.userDisplayName || ctx.userLogin || ctx.streamer?.name || ctx.broadcasterId
+    };
+}
+
 function parseRawArgument(args: unknown[], fallback?: string): string {
     if (args.length > 0) {
         return args.map((arg) => String(arg)).join(' ').trim();
@@ -129,8 +142,7 @@ const ttsSpeakHandler: FunctionHandler = async (args, ctx) => {
         status: result.success ? 'success' : 'error',
         mode: result.mode,
         provider: result.provider,
-        userID: ctx.userId,
-        username: ctx.userDisplayName,
+        ...resolveTrackingIdentity(ctx),
         errorMessage: result.errorMessage,
     });
 
@@ -156,8 +168,7 @@ const ttsExplicitSpeakHandler: FunctionHandler = async (args, ctx) => {
         status: result.success ? 'success' : 'error',
         mode: result.mode,
         provider: result.provider,
-        userID: ctx.userId,
-        username: ctx.userDisplayName,
+        ...resolveTrackingIdentity(ctx),
         errorMessage: result.errorMessage,
     });
 
@@ -182,8 +193,7 @@ const ttsAiHandler: FunctionHandler = async (args, ctx) => {
         status: result.success ? 'success' : 'error',
         mode: result.mode,
         provider: result.provider,
-        userID: ctx.userId,
-        username: ctx.userDisplayName,
+        ...resolveTrackingIdentity(ctx),
         errorMessage: result.errorMessage,
     });
 
@@ -210,8 +220,7 @@ function createCloneHandler(ttsType: 'tts.clone' | 'tts.fish'): FunctionHandler 
             status: result.success ? 'success' : 'error',
             mode: result.mode,
             provider: 'fish',
-            userID: ctx.userId,
-            username: ctx.userDisplayName,
+            ...resolveTrackingIdentity(ctx),
             errorMessage: result.errorMessage,
         });
 
