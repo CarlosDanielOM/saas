@@ -29,7 +29,7 @@ import { incrementSiteAnalytics } from "../utils/siteanalytics.js";
 import { recordStreamCommandEvent, recordStreamMessageEvent } from "../utils/stream_analytics.js";
 import { appendAssistantTurnToThread, resolveUserThreadForMessage } from "../utils/ai/threading/thread_router.js";
 import { endMessageHandlerMetric, recordRedisOpsEstimate, startMessageHandlerMetric } from "../utils/observability/bot_runtime_metrics.js";
-import { identifyStreamer, trackCommand } from "../utils/posthog_events.js";
+import { trackCommand } from "../utils/posthog_events.js";
 import { splitAiResponseForTwitch } from "../utils/twitch/chat_message_chunks.js";
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 
@@ -48,9 +48,6 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         if (!STREAMER) {
             return;
         }
-
-        // Identify streamer in PostHog for analytics
-        identifyStreamer(channelID, STREAMER.name);
 
         const userLevel = await giveUserLevel(channelID, messageEventData);
 

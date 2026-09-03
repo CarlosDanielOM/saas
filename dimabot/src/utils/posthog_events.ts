@@ -8,11 +8,21 @@ const posthog = new PostHog('phc_ApcLd2XbNHavPCcyD9fFDVHxs7cCBPozWmSBFTqugfP', {
     flushAt: 20,
 });
 
+// Tracks the last channel_name identified per channelID in this process so
+// identify() is only sent on first sight, after a restart, or on an actual
+// rename — never per chat message / command / event.
+const identifiedStreamers = new Map<string, string>();
+
 /**
  * Identify a streamer (channel) in PostHog.
  * This associates properties with the channelID distinct ID.
+ * No-op if this process already identified the channel with the same name.
  */
 export function identifyStreamer(channelID: string, channelName: string): void {
+    if (!channelID || !channelName) return;
+    if (identifiedStreamers.get(channelID) === channelName) return;
+
+    identifiedStreamers.set(channelID, channelName);
     posthog.identify({
         distinctId: channelID,
         properties: {

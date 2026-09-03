@@ -7,6 +7,7 @@ import UsersSchema, { type IUsers } from '../schemas/users.schema.js';
 import type { ITwitchAccountCache } from '../interfaces/cache/twitch_account.cache.interface.js';
 import type { IUsersCache } from '../interfaces/cache/users.cache.interface.js';
 import { debug, error, info, warn } from "../utils/logger.js";
+import { identifyStreamer } from "../utils/posthog_events.js";
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
@@ -111,6 +112,9 @@ class TwitchStreamers {
                 await cache.hSet(cacheKey, sanitizeCachePayload(twitchAccountCache as unknown as Record<string, unknown>));
 
                 await cache.sAdd(`streamers:by:id`, twitchAccount!.id);
+
+                // Identify in PostHog on load (deduped per process; re-fires on rename)
+                identifyStreamer(twitchAccount!.id, twitchAccount?.name ?? '');
             }
 
             info({ message: 'Accounts added to cache' }, { destination: 'console' });
@@ -399,6 +403,9 @@ class TwitchStreamers {
             await cache.hSet(cacheKey, sanitizeCachePayload(accountCache as unknown as Record<string, unknown>));
             await cache.sAdd('streamers:by:id', id);
             await cache.del('twitch:accounts');
+
+            // Identify in PostHog on first lazy load (deduped per process; re-fires on rename)
+            identifyStreamer(twitchAccount.id, twitchAccount.name ?? '');
 
             return accountCache;
         } catch (err) {
