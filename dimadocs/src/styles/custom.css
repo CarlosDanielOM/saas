@@ -185,9 +185,9 @@ header.header {
 }
 
 .site-title img {
-  height: 1.85rem;
+  height: 2.35rem;
   width: auto;
-  max-height: 1.85rem;
+  max-height: 2.35rem;
 }
 
 /* Social / theme controls stay quiet */
@@ -973,7 +973,7 @@ html[data-has-hero] .page {
 
 @media (max-width: 50rem) {
   .site-title {
-    max-inline-size: min(11rem, calc(100vw - 9rem));
+    max-inline-size: min(14rem, calc(100vw - 9rem));
   }
 
   .site-title img {
