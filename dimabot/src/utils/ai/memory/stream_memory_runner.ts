@@ -363,7 +363,7 @@ export async function runStreamMemoryWorkflow(input: IRunStreamMemoryWorkflowInp
             step: 'GENERATE_DECISION',
             channelID,
             source: input.source,
-            modelSelection: getBackgroundSummaryModel(planTier, input.source)
+            modelSelection: getBackgroundSummaryModel(planTier)
         }, { channelId: channelID, destination: 'both' });
 
         const decisionResult = await generateStreamSummaryDecision(context, input.source);

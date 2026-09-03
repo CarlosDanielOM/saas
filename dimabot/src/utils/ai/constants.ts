@@ -11,24 +11,16 @@ export const MODELS = {
   pro: "deepseek/deepseek-v4-flash-0731",
 } as const;
 
-// Background LLM models for stream summaries and weekly maintenance
-// Free tier uses same as chat model, Premium/Pro use better models
+// Background LLM models for stream summaries and maintenance
 export const BACKGROUND_MODELS = {
-  free: "qwen/qwen3-235b-a22b-2507",
+  free: "meta/muse-spark-1.2-contributor",
   premium: "deepseek/deepseek-v4-flash-0731",
   pro: "deepseek/deepseek-v4-pro",
 } as const;
 
-const FREE_MAINTENANCE_MODEL = "meta/muse-spark-1.2-contributor";
-
-export function getBackgroundSummaryModel(planTier: string | undefined, source: string): string {
+export function getBackgroundSummaryModel(planTier: string | undefined): string {
   if (planTier === 'pro') return BACKGROUND_MODELS.pro;
   if (planTier === 'premium') return BACKGROUND_MODELS.premium;
-
-  if (source === 'weekly_maintenance' || source === 'monthly_maintenance') {
-    return FREE_MAINTENANCE_MODEL;
-  }
-
   return BACKGROUND_MODELS.free;
 }
 
