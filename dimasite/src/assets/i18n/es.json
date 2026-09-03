@@ -1159,7 +1159,8 @@
     "referralPromo": {
       "title": "Gana con Referencias",
       "message": "Recibe 50 creditos por referencias Premium y 100 creditos por referencias Pro!",
-      "cta": "Gestionar Referencias"
+      "cta": "Gestionar Referencias",
+      "dismiss": "Cerrar el aviso de referencias"
     },
     "loading": "Cargando tu panel...",
     "empty": "Todavia no hay datos para mostrar.",

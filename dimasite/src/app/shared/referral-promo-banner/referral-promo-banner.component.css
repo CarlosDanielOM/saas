@@ -1,0 +1,211 @@
+:host {
+  display: block;
+  --bg: #f4f5f8;
+  --tile: #ffffff;
+  --fg: #14151a;
+  --muted: #667085;
+  --line: rgba(15, 17, 21, 0.08);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --gold: #b45309;
+  --gold-soft: rgba(180, 83, 9, 0.12);
+  --btn: #eef0f5;
+  --btn-border: rgba(15, 17, 21, 0.1);
+  --kicker: #6d28d9;
+  --radius: 1.25rem;
+  --shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
+  --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host-context(html.dark) {
+  --bg: #0f1115;
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #9aa3b5;
+  --line: rgba(255, 255, 255, 0.07);
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --gold: #fbbf24;
+  --gold-soft: rgba(251, 191, 36, 0.14);
+  --btn: #1d2230;
+  --btn-border: rgba(255, 255, 255, 0.07);
+  --kicker: #c4b5fd;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+.lf-promo {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'icon text'
+    'cta cta';
+  align-items: start;
+  gap: 0.75rem 0.85rem;
+  padding: 1rem 3.25rem 1rem 1rem;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--fg);
+  font-family: var(--font);
+  animation: lf-promo-in 220ms ease-out;
+}
+
+.lf-promo--exiting {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.lf-promo__icon {
+  grid-area: icon;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--kicker);
+  flex-shrink: 0;
+}
+
+.lf-promo__icon-svg,
+.lf-promo__close-icon {
+  display: inline-flex;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.lf-promo__icon-svg svg,
+.lf-promo__close-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lf-promo__text {
+  grid-area: text;
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.lf-promo__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--fg);
+}
+
+.lf-promo__copy {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.lf-promo__cta {
+  grid-area: cta;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.65rem 1.05rem;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.lf-promo__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.lf-promo__cta:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lf-promo__close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.lf-promo__close:hover {
+  background: var(--btn);
+  color: var(--fg);
+}
+
+.lf-promo__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+:host-context([data-plan='premium']) .lf-promo,
+:host-context(html[data-plan-tier='premium']) .lf-promo {
+  border-color: color-mix(in srgb, var(--gold) 32%, var(--line));
+}
+
+:host-context([data-plan='pro']) .lf-promo,
+:host-context(html[data-plan-tier='pro']) .lf-promo {
+  border-color: color-mix(in srgb, var(--gold) 48%, var(--line));
+  box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent);
+}
+
+@keyframes lf-promo-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 640px) {
+  .lf-promo {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'icon text cta';
+    align-items: center;
+    padding: 0.95rem 3.4rem 0.95rem 1rem;
+  }
+
+  .lf-promo__cta {
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-promo,
+  .lf-promo--exiting,
+  .lf-promo__cta {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}

@@ -251,8 +251,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
 
   private readonly REFERRAL_PROMO_DISMISS_KEY = 'dimasite.referral_promo.dismissed_at';
-  private readonly REFERRAL_PROMO_DAILY_KEY = 'dimasite.referral_promo.last_shown_at';
-  private readonly REFERRAL_PROMO_DAILY_TTL_MS = 24 * 60 * 60 * 1000;
   private readonly REFERRAL_PROMO_DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   readonly showReferralPromo = signal(false);
   readonly referralPromoTitle = signal('');
@@ -1165,28 +1163,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private shouldShowReferralPromoToday(): boolean {
+  private shouldShowReferralPromo(): boolean {
     if (typeof localStorage === 'undefined') {
       return false;
     }
 
     const dismissedAt = localStorage.getItem(this.REFERRAL_PROMO_DISMISS_KEY);
-    if (dismissedAt) {
-      const elapsed = Date.now() - Number(dismissedAt);
-      if (elapsed < this.REFERRAL_PROMO_DISMISS_TTL_MS) {
-        return false;
-      }
+    if (!dismissedAt) {
+      return true;
     }
 
-    const lastShownAt = localStorage.getItem(this.REFERRAL_PROMO_DAILY_KEY);
-    if (lastShownAt) {
-      const elapsed = Date.now() - Number(lastShownAt);
-      if (elapsed < this.REFERRAL_PROMO_DAILY_TTL_MS) {
-        return false;
-      }
-    }
-
-    return true;
+    const elapsed = Date.now() - Number(dismissedAt);
+    return !Number.isFinite(elapsed) || elapsed >= this.REFERRAL_PROMO_DISMISS_TTL_MS;
   }
 
   protected dismissReferralPromo(): void {
@@ -1196,19 +1184,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.showReferralPromo.set(false);
   }
 
-  private markReferralPromoShown(): void {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(this.REFERRAL_PROMO_DAILY_KEY, Date.now().toString());
-    }
-  }
-
   private checkAndShowReferralPromo(): void {
     const role = this.viewerRole();
     if (role === 'viewer' || role === null) {
       return;
     }
 
-    if (!this.shouldShowReferralPromoToday()) {
+    if (!this.shouldShowReferralPromo()) {
       return;
     }
 
@@ -1219,6 +1201,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.referralPromoLink.set(`/${streamer}/modules/referrals`);
 
     this.showReferralPromo.set(true);
-    this.markReferralPromoShown();
   }
 }

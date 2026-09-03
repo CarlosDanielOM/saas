@@ -1159,7 +1159,8 @@
     "referralPromo": {
       "title": "Earn with Referrals",
       "message": "Get 50 credits for Premium referrals and 100 credits for Pro referrals!",
-      "cta": "Manage Referrals"
+      "cta": "Manage Referrals",
+      "dismiss": "Dismiss referral banner"
     },
     "loading": "Loading your dashboard...",
     "empty": "No dashboard data is available yet.",
