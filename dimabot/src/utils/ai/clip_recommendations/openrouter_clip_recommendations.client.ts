@@ -2,10 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
     AUDIO_DISCOVERY_SYSTEM_PROMPT,
-    AUDIO_DISCOVERY_USER_PROMPT,
+    buildAudioDiscoveryUserPrompt,
     buildVideoVerificationUserPrompt,
     CLIP_RECOMMENDATION_MODEL_ID,
-    VIDEO_VERIFICATION_SYSTEM_PROMPT
+    normalizeClipRecommendationLanguage,
+    VIDEO_VERIFICATION_SYSTEM_PROMPT,
+    type ClipRecommendationLanguage
 } from './clip_recommendations_prompts.js';
 import { info as logInfo, warn as logWarn } from '../../logger.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
@@ -363,11 +365,12 @@ export async function analyzeVodAudioForClipMoments(input: {
     modelID?: string;
     durationSeconds?: number;
     segmentStartSeconds?: number;
+    language?: ClipRecommendationLanguage;
 }): Promise<AudioCandidate[]> {
     const parsed = await callOpenRouterJson({
         modelID: input.modelID,
         systemPrompt: AUDIO_DISCOVERY_SYSTEM_PROMPT,
-        userText: AUDIO_DISCOVERY_USER_PROMPT,
+        userText: buildAudioDiscoveryUserPrompt(normalizeClipRecommendationLanguage(input.language)),
         filePath: input.audioPath,
         mimeType: 'audio/mpeg',
         maxTokens: 12000,
@@ -418,6 +421,7 @@ export async function verifyCandidateVideo(input: {
     startSeconds: number;
     endSeconds: number;
     modelID?: string;
+    language?: ClipRecommendationLanguage;
 }): Promise<VideoVerificationResult> {
     const result = await verifyCandidateVideosBatch({
         videos: [{
@@ -427,7 +431,8 @@ export async function verifyCandidateVideo(input: {
             endSeconds: input.endSeconds
         }],
         channelID: input.channelID,
-        modelID: input.modelID
+        modelID: input.modelID,
+        language: input.language
     });
     return result[0] || { approved: false, why: 'No verification result' };
 }
@@ -441,6 +446,7 @@ export async function verifyCandidateVideosBatch(input: {
     }>;
     channelID: string;
     modelID?: string;
+    language?: ClipRecommendationLanguage;
 }): Promise<VideoVerificationResult[]> {
     if (input.videos.length === 0) return [];
 
@@ -451,7 +457,7 @@ export async function verifyCandidateVideosBatch(input: {
         segmentIndex: 0
     }));
 
-    const userText = buildVideoVerificationUserPrompt(promptCandidates);
+    const userText = buildVideoVerificationUserPrompt(promptCandidates, normalizeClipRecommendationLanguage(input.language));
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {

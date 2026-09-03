@@ -20,7 +20,7 @@ import {
     type AudioCandidate,
     verifyCandidateVideosBatch
 } from './openrouter_clip_recommendations.client.js';
-import { CLIP_RECOMMENDATION_MODEL_ID } from './clip_recommendations_prompts.js';
+import { CLIP_RECOMMENDATION_MODEL_ID, normalizeClipRecommendationLanguage } from './clip_recommendations_prompts.js';
 import { decideClipRecommendationRecovery } from './clip_recommendation_recovery.js';
 import type { HydratedDocument } from 'mongoose';
 
@@ -509,6 +509,8 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             throw new Error('User not found for channel');
         }
 
+        const outputLanguage = normalizeClipRecommendationLanguage(user.language);
+
         await ensureCreditsAvailable(user, channelID, costCredits);
         recommendation.status = 'processing';
         recommendation.startedAt = new Date();
@@ -537,7 +539,8 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 channelID,
                 modelID,
                 durationSeconds: segmentDurationSeconds,
-                segmentStartSeconds
+                segmentStartSeconds,
+                language: outputLanguage
             });
 
             // Adjust candidate timestamps by the segment offset so they reference the full VOD timeline.
@@ -616,7 +619,8 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             const verifications = await verifyCandidateVideosBatch({
                 videos: videoInputs,
                 channelID,
-                modelID
+                modelID,
+                language: outputLanguage
             });
 
             for (let localIdx = 0; localIdx < segCands.length; localIdx += 1) {
