@@ -40,6 +40,7 @@ async function bootstrap(): Promise<void> {
         { getDragonflyClient },
         { drainDomainEvents },
         { applyStreamAnalyticsDomainEvent },
+        { applyStreamOperationsDomainEvent },
         { DOMAIN_EVENTS_WAKEUP_STREAM },
         { info: logInfo, warn: logWarn }
     ] = await Promise.all([
@@ -47,6 +48,7 @@ async function bootstrap(): Promise<void> {
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/domain_event_consumer.js'),
         import('../domain_events/stream_analytics_events.js'),
+        import('../domain_events/stream_operations_events.js'),
         import('../utils/domain_events.js'),
         import('../utils/logger.js')
     ]);
@@ -95,16 +97,23 @@ async function bootstrap(): Promise<void> {
     }, { destination: 'console' });
 
     while (!shutdownRequested) {
-        const result = await drainDomainEvents({
+        const analyticsResult = await drainDomainEvents({
             consumer: 'stream-analytics-v1',
             topics: ['channel'],
             handler: applyStreamAnalyticsDomainEvent,
             batchSize: BATCH_SIZE,
             maxAttempts: MAX_ATTEMPTS
         });
+        const operationsResult = await drainDomainEvents({
+            consumer: 'stream-operations-v1',
+            topics: ['channel'],
+            handler: applyStreamOperationsDomainEvent,
+            batchSize: BATCH_SIZE,
+            maxAttempts: MAX_ATTEMPTS
+        });
 
         if (RUN_ONCE) break;
-        if (result.scanned >= BATCH_SIZE) continue;
+        if (analyticsResult.scanned >= BATCH_SIZE || operationsResult.scanned >= BATCH_SIZE) continue;
 
         if (!wakeupClient?.isReady) {
             await sleep(POLL_INTERVAL_MS);

@@ -21,7 +21,7 @@ export async function unVIPExpiredUser(eventData: EventData): Promise<UnVIPExpir
         const vipReward = await VipSchema.find({ channelID: broadcaster_user_id, vip: true });
 
         if (vipReward.length === 0) {
-            return { error: true, message: 'No VIPs found' };
+            return { error: true, message: 'No VIPs found', type: 'no_vips_found' };
         }
 
         const currentDate = Date.now();
@@ -56,5 +56,11 @@ export async function unVIPExpiredUser(eventData: EventData): Promise<UnVIPExpir
             error: err instanceof Error ? err.message : String(err),
             stack: err instanceof Error ? err.stack : undefined
         });
+        return {
+            error: true,
+            message: 'Internal server error',
+            status: 500,
+            type: 'error'
+        };
     }
 }

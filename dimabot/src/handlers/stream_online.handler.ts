@@ -1,14 +1,9 @@
 import { sendTwitchChatMessage, type SendMessageContext } from "../functions/chats/send_message.chat.js";
 import type { IEventsub } from "../schemas/eventsub.schema.js";
 import type { IStreamOnlineEvent } from "../interfaces/twitch/eventsub.interface.js";
-import { getChannelEditors } from "../functions/channels/get_editors.channel.js";
-import { unVIPExpiredUser } from "../functions/redemptions/unvipexpired.redemption.js";
-import { incrementSiteAnalytics } from "../utils/siteanalytics.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
-import { loadChannelTimersIntoCache } from "../utils/timer_cache.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
-import { loadChannelAdminsIntoCache } from "../utils/cache.js";
 import { CommandsSchema } from "../schemas/commands.schema.js";
 import UsersSchema from "../schemas/users.schema.js";
 
@@ -49,16 +44,11 @@ export async function streamOnlineHandler(
 
         if (!chatEnabled) {
             await logInfo({
-                message: 'Chat disabled - completing stream online setup',
+                message: 'Chat disabled - stream online announcement skipped',
                 channelID: broadcaster_user_id,
                 streamID
             }, { channelId: broadcaster_user_id, destination: 'both' });
 
-            await loadChannelTimersIntoCache(broadcaster_user_id);
-            await getChannelEditors(broadcaster_user_id, true);
-            await loadChannelAdminsIntoCache(broadcaster_user_id);
-            await unVIPExpiredUser(eventData);
-            await incrementSiteAnalytics('live', 1);
             return {
                 error: false,
                 message: 'Chat is disabled'
@@ -124,18 +114,8 @@ export async function streamOnlineHandler(
             }
         }
 
-        await getChannelEditors(broadcaster_user_id, true);
-
-        await loadChannelAdminsIntoCache(broadcaster_user_id);
-
-        await unVIPExpiredUser(eventData);
-
-        await loadChannelTimersIntoCache(broadcaster_user_id);
-
-        await incrementSiteAnalytics('live', 1);
-
         await logInfo({
-            message: 'Stream went online',
+            message: 'Stream online announcement handled',
             channelID: broadcaster_user_id
         }, { channelId: broadcaster_user_id, destination: 'both' });
 

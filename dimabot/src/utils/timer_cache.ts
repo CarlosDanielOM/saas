@@ -49,6 +49,7 @@ export async function loadChannelTimersIntoCache(channelID: string): Promise<voi
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         }, { channelId: channelID, destination: 'both' });
+        throw error;
     }
 }
 
@@ -75,6 +76,7 @@ export async function unloadChannelTimersFromCache(channelID: string): Promise<v
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         }, { channelId: channelID, destination: 'both' });
+        throw error;
     }
 }
 

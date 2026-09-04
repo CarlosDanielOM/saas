@@ -73,7 +73,7 @@ class ChatHistory {
             recordRedisOpsEstimate(1);
         } catch (err) {
             await error({ function: 'ChatHistory.clearHistory', error: err instanceof Error ? err.message : String(err) }, { channelId: channelID, destination: 'both' });
-            return;
+            throw err;
         }
     }
 }

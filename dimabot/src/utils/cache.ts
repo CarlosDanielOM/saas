@@ -46,6 +46,7 @@ export async function loadChannelAdminsIntoCache(channelID: string): Promise<voi
             channelID,
             error: err instanceof Error ? err.message : String(err)
         });
+        throw err;
     }
 }
 
@@ -60,6 +61,7 @@ export async function clearChannelCache(channelID: string): Promise<void> {
             channelID, 
             error: err instanceof Error ? err.message : String(err) 
         });
+        throw err;
     }
 }
 
@@ -79,5 +81,6 @@ export async function resetSumimetro(channelID: string): Promise<void> {
             channelID, 
             error: err instanceof Error ? err.message : String(err) 
         });
+        throw err;
     }
 }
