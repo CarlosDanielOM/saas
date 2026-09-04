@@ -173,7 +173,7 @@ export function registerChannelFunctions(): void {
         syntax: 'raid channel',
         category: 'channel',
         examples: ['raid friendlystreamer'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['raid', 'raidear', 'raid to channel']
     });
     registerFunction('unraid', unraidHandler, {
@@ -181,7 +181,7 @@ export function registerChannelFunctions(): void {
         syntax: 'unraid',
         category: 'channel',
         examples: ['unraid'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['cancel raid', 'unraid', 'cancelar raid']
     });
     registerFunction('set.title', setTitleHandler, {
@@ -189,7 +189,7 @@ export function registerChannelFunctions(): void {
         syntax: 'set.title new title text',
         category: 'channel',
         examples: ['set.title Cozy late night stream'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['title', 'stream title', 'titulo', 'cambiar titulo']
     });
     registerFunction('set.game', setGameHandler, {
@@ -197,7 +197,7 @@ export function registerChannelFunctions(): void {
         syntax: 'set.game game name',
         category: 'channel',
         examples: ['set.game Just Chatting'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['game', 'category', 'juego', 'categoria', 'cambiar juego']
     });
     registerFunction('start.prediction', startPredictionHandler, {
@@ -205,7 +205,7 @@ export function registerChannelFunctions(): void {
         syntax: 'start.prediction "title;option1/option2;seconds"',
         category: 'channel',
         examples: ['start.prediction "Will we win?;Yes/No;120"'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['prediction', 'prediccion', 'bet', 'apuesta']
     });
     registerFunction('start.poll', startPollHandler, {
@@ -213,7 +213,7 @@ export function registerChannelFunctions(): void {
         syntax: 'start.poll "title;option1/option2;seconds"',
         category: 'channel',
         examples: ['start.poll "Best map?;Nuke/Mirage/Inferno;120"'],
-        minUserLevel: 8,
+        minUserLevel: 7,
         keywords: ['poll', 'encuesta', 'vote', 'votar', 'votacion']
     });
     const adMetadata: FunctionMetadata = {

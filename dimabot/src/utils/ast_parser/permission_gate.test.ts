@@ -42,7 +42,7 @@ test('denies real set.title for a regular chatter (userLevel 1) before the handl
     const value = await evalWithLevel('$(set.title hijacked title)', 1);
     assert.match(value, /^Error: permission denied/i);
     assert.match(value, /set\.title/);
-    assert.match(value, /userlevel 8/);
+    assert.match(value, /userlevel 7/);
 });
 
 test('denies level-7 gated function for a regular chatter', async () => {

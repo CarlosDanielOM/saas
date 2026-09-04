@@ -392,8 +392,8 @@ export function constructChatSystemMessages(
 
         How to call AST_PARSER:
         - Prefer the inner command in the command parameter; the tool normalizes either form. Example: command="set.title Cozy late night stream".
-        - Request userlevel=7 for moderator-style actions; the system clamps it to the chatter's actual permission level.
-        - Use userlevel=8 to represent broadcaster-context actions such as set.title, set.game, or add.mod.
+        - Request userlevel=7 for moderator-style actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids); the system clamps it to the chatter's actual permission level.
+        - Use userlevel=8 only for broadcaster-only actions such as add.mod, unmod, or ban.mod.
         - If an AST command succeeds with an empty result, treat it as successful and continue naturally.
         - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again. If the failure response includes documentation for the command, you may correct the call and retry exactly once.
         - Permission denials are enforced by the system against the chatter's real badge level and are FINAL - never retry them, even with different syntax or a higher userlevel. When an action is denied, just let the user know in your own style/personality that a mod or the streamer has to do it (e.g., playfully tell them to ask a mod nicely).
@@ -419,7 +419,7 @@ export function constructChatSystemMessages(
 
     AST_PARSER: Execute AST bot commands for moderation, channel management, and TTS/speak actions.
     - Parameters: command (string), userlevel (number). The channel ID is supplied automatically.
-    - The system clamps userlevel to the requesting chatter's actual permission level. Mod actions (ban, vip, clear.chat) require a moderator; broadcaster actions (set.title, set.game) require the streamer or an editor. If an action is rejected for permissions, explain that the user needs a mod to do it instead of retrying.
+    - The system clamps userlevel to the requesting chatter's actual permission level. Mod actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids) require a moderator; broadcaster-only actions (add.mod, unmod, ban.mod) require the streamer. If an action is rejected for permissions, explain that the user needs a mod to do it instead of retrying.
     - Simple, common commands are listed in <ast-tooling>. For anything else, consult ast_docs first.
 
     ast_docs: Look up the exact syntax, arguments, and examples of any AST command. Read-only.

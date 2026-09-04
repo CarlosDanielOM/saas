@@ -35,8 +35,8 @@ export interface ASTParserArgs {
      * Examples: 'ban offensiveuser 300', 'set.title New Stream Title', 'add.vip gooduser' */
     command: string;
     /** The userlevel to use for permission checking.
-     * - 7 for mod actions (ban, vip, clear.chat)
-     * - 8 for broadcaster actions (set.title, set.game, add.mod)
+     * - 7 for mod actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids)
+     * - 8 for broadcaster-only actions (add.mod, unmod, ban.mod)
      * Clamped to the requesting chatter's actual permission level by the system. */
     userlevel: number;
 }

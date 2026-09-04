@@ -55,7 +55,7 @@
             },
             "userlevel": {
               "type": "number",
-              "description": "Requested permission level: 7 for mod actions (ban, vip, clear.chat), 8 for broadcaster actions (set.title, set.game, add.mod). The system clamps this to the requesting chatter's actual permission level, so never claim a level above what the chatter has."
+              "description": "Requested permission level: 7 for mod actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids), 8 for broadcaster-only actions (add.mod, unmod, ban.mod). The system clamps this to the requesting chatter's actual permission level, so never claim a level above what the chatter has."
             }
           },
           "required": ["command", "userlevel"]

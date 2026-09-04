@@ -1,6 +1,6 @@
 {
-  "version": "3f288c0ac47d",
-  "generatedAt": "2026-08-29T20:46:15.680Z",
+  "version": "ae27f9fb3938",
+  "generatedAt": "2026-09-04T05:13:15.095Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
   "functionCount": 64,
@@ -512,7 +512,7 @@
         "raid friendlystreamer"
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "raid",
         "raidear",
@@ -533,7 +533,7 @@
         "unraid"
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "cancel raid",
         "unraid",
@@ -554,7 +554,7 @@
         "set.title Cozy late night stream"
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "title",
         "stream title",
@@ -576,7 +576,7 @@
         "set.game Just Chatting"
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "game",
         "category",
@@ -599,7 +599,7 @@
         "start.prediction \"Will we win?;Yes/No;120\""
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "prediction",
         "prediccion",
@@ -621,7 +621,7 @@
         "start.poll \"Best map?;Nuke/Mirage/Inferno;120\""
       ],
       "aliases": [],
-      "minUserLevel": 8,
+      "minUserLevel": 7,
       "keywords": [
         "poll",
         "encuesta",
