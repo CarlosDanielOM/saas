@@ -49,6 +49,10 @@ function looksLikeAstFailure(resultStr: string): boolean {
     return /usage:|\[parse error|\[loop error|^error\b|\berror |not found|invalid |is disabled|failed to|unauthorized|incorrect user authorization|does not have (valid |the )?permissions/i.test(resultStr);
 }
 
+function isPermissionDenied(resultStr: string): boolean {
+    return /permission denied/i.test(resultStr);
+}
+
 function buildFailureDocs(command: string): { docs?: AstCatalogEntry; retryHint?: string } {
     const firstToken = command.trim().split(/\s+/)[0] ?? '';
     const docs = firstToken ? findAstCatalogEntry(firstToken) : undefined;
@@ -144,6 +148,16 @@ export async function execute(
         // Handlers report usage/format errors as return values, not exceptions.
         // Surface those as failures with docs attached so the model can self-correct.
         if (looksLikeAstFailure(resultStr)) {
+            // Permission denials are enforced against the chatter's verified
+            // level - retrying with different syntax will never succeed, so
+            // do not attach retry docs. The model should explain the refusal
+            // to the user in its own personality instead.
+            if (isPermissionDenied(resultStr)) {
+                return {
+                    success: false,
+                    error: resultStr
+                };
+            }
             return {
                 success: false,
                 error: resultStr,

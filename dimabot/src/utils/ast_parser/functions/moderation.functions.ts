@@ -1,5 +1,5 @@
 import type { ExecutionContext, FunctionMetadata } from '../types.js';
-import { registerFunction, type FunctionHandler } from '../evaluator.js';
+import { registerFunction, buildPermissionDeniedMessage, type FunctionHandler } from '../evaluator.js';
 import * as ChannelFunctions from '../../../functions/channels/index.js';
 import * as ChatFunctions from '../../../functions/chats/index.js';
 import * as ModerationFunctions from '../../../functions/moderation/index.js';
@@ -217,6 +217,18 @@ function checkUserLevel(commandName: string, ctx: ExecutionContext): boolean {
     return ctx.userLevel >= requiredLevel;
 }
 
+// Defense-in-depth on top of the evaluator's central minUserLevel gate.
+// Returns an explicit denial message (never '') so the AI harness surfaces
+// the refusal to the model instead of reporting a silent success.
+function denyIfBelowLevel(commandName: string, ctx: ExecutionContext): string | null {
+    if (checkUserLevel(commandName, ctx)) return null;
+    return buildPermissionDeniedMessage(
+        commandName,
+        USER_LEVEL_REQUIREMENTS[commandName] ?? 1,
+        ctx.userLevel ?? 1
+    );
+}
+
 function normalizeLogin(value: unknown): string {
     return String(value || '').trim().replace(/^@+/, '').toLowerCase();
 }
@@ -276,6 +288,9 @@ async function getChannelName(ctx: ExecutionContext): Promise<string> {
 }
 
 const vipHandler: FunctionHandler = async (args, ctx) => {
+    const denied = denyIfBelowLevel('vip', ctx);
+    if (denied) return denied;
+
     const { user, daysRaw } = parseTargetAndDays(args, ctx.argument);
     if (!user) return 'Usage: $(add.vip user [days])';
 
@@ -334,7 +349,8 @@ const vipHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const unvipHandler: FunctionHandler = async (args, ctx) => {
-    if (!checkUserLevel('unvip', ctx)) return '';
+    const denied = denyIfBelowLevel('unvip', ctx);
+    if (denied) return denied;
     
     const user = args.join(' ') || ctx.argument;
     if (!user) return '';
@@ -347,7 +363,8 @@ const unvipHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const banHandler: FunctionHandler = async (args, ctx) => {
-    if (!checkUserLevel('ban', ctx)) return '';
+    const denied = denyIfBelowLevel('ban', ctx);
+    if (denied) return denied;
     
     const user = String(args[0] || ctx.argument || '');
     const duration = args[1] ? parseInt(String(args[1]), 10) : null;
@@ -368,7 +385,8 @@ const banHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const banModHandler: FunctionHandler = async (args, ctx) => {
-    if (!checkUserLevel('ban', ctx)) return '';
+    const denied = denyIfBelowLevel('ban', ctx);
+    if (denied) return denied;
 
     const user = String(args[0] || ctx.argument || '').trim().replace(/^@/, '').toLowerCase();
     console.log('Executing ban.mod special function', {
@@ -471,6 +489,9 @@ const banModHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const modHandler: FunctionHandler = async (args, ctx) => {
+    const denied = denyIfBelowLevel('mod', ctx);
+    if (denied) return denied;
+
     const { user, daysRaw } = parseTargetAndDays(args, ctx.argument);
     if (!user) return 'Usage: $(add.mod user [days])';
 
@@ -520,7 +541,8 @@ const modHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const unmodHandler: FunctionHandler = async (args, ctx) => {
-    if (!checkUserLevel('unmod', ctx)) return '';
+    const denied = denyIfBelowLevel('unmod', ctx);
+    if (denied) return denied;
     
     const user = args.join(' ') || ctx.argument;
     if (!user) return '';
@@ -533,14 +555,16 @@ const unmodHandler: FunctionHandler = async (args, ctx) => {
 };
 
 const clearChatHandler: FunctionHandler = async (_args, ctx) => {
-    if (!checkUserLevel('clear.chat', ctx)) return '';
+    const denied = denyIfBelowLevel('clear.chat', ctx);
+    if (denied) return denied;
     
     const result = await ChatFunctions.clearChat(ctx.broadcasterId, BOT_ID);
     return result.error ? result.message : '';
 };
 
 const emoteonlyHandler: FunctionHandler = async (args, ctx) => {
-    if (!checkUserLevel('emoteonly', ctx)) return '';
+    const denied = denyIfBelowLevel('emoteonly', ctx);
+    if (denied) return denied;
     
     const duration = args[0] ? parseInt(String(args[0]), 10) : null;
     

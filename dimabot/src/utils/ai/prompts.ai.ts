@@ -396,6 +396,7 @@ export function constructChatSystemMessages(
         - Use userlevel=8 to represent broadcaster-context actions such as set.title, set.game, or add.mod.
         - If an AST command succeeds with an empty result, treat it as successful and continue naturally.
         - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again. If the failure response includes documentation for the command, you may correct the call and retry exactly once.
+        - Permission denials are enforced by the system against the chatter's real badge level and are FINAL - never retry them, even with different syntax or a higher userlevel. When an action is denied, just let the user know in your own style/personality that a mod or the streamer has to do it (e.g., playfully tell them to ask a mod nicely).
 
         Common commands you can call directly (simple syntax):
         - Moderation: "ban username", "ban username 300", "clear.chat", "emoteonly 600". Emote-only durations are seconds.

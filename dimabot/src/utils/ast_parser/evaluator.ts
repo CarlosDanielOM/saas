@@ -640,6 +640,23 @@ export function getFunctionHandler(name: string): FunctionHandler | undefined {
     return functionRegistry.get(name);
 }
 
+/**
+ * Builds the permission-denied message returned when a chatter's verified
+ * userLevel is below a function's required minUserLevel. Starts with "Error:"
+ * so the AI tool harness classifies it as a failure (looksLikeAstFailure) and
+ * surfaces it to the model instead of reporting a silent success.
+ */
+export function buildPermissionDeniedMessage(name: string, requiredLevel: number, actualLevel: number): string {
+    const levelNames: Record<number, string> = {
+        7: 'moderator',
+        8: 'broadcaster/editor',
+        9: 'broadcaster',
+        10: 'broadcaster'
+    };
+    const requiredName = levelNames[requiredLevel] || `level ${requiredLevel}`;
+    return `Error: permission denied - '${name}' requires ${requiredName} permissions (userlevel ${requiredLevel}), but the requesting user only has userlevel ${actualLevel}. Do not retry this action; explain to the user that someone with the required role has to do it.`;
+}
+
 export function getFunctionMetadata(name: string): FunctionMetadata | undefined {
     return functionMetadataRegistry.get(name);
 }
@@ -838,6 +855,22 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
             const handler = functionRegistry.get(funcNode.name);
             if (!handler) {
                 return { value: `[Unknown function: ${funcNode.name}]`, context: currentContext };
+            }
+
+            // Central permission gate: enforce the registered minUserLevel
+            // metadata at execution time, in every path (AI AST_PARSER tool,
+            // streamer-authored commands, timers, redemptions). Metadata alone
+            // is documentation - without this check any chatter could trigger
+            // gated actions (set.title, add.vip, ...) through paths whose
+            // handlers never inspect ctx.userLevel.
+            const metadata = functionMetadataRegistry.get(funcNode.name);
+            const requiredLevel = metadata?.minUserLevel ?? 1;
+            const actualLevel = currentContext.userLevel ?? 1;
+            if (actualLevel < requiredLevel) {
+                return {
+                    value: buildPermissionDeniedMessage(funcNode.name, requiredLevel, actualLevel),
+                    context: currentContext
+                };
             }
 
             const result = await handler(args, currentContext);
