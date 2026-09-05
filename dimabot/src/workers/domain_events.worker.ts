@@ -40,7 +40,7 @@ async function bootstrap(): Promise<void> {
     const [
         { getMongoDBConnection },
         { getDragonflyClient },
-        { drainDomainEvents },
+        { dispatchDomainEvents, drainDomainEvents },
         { DOMAIN_EVENTS_WAKEUP_STREAM },
         { info: logInfo, warn: logWarn }
     ] = await Promise.all([
@@ -96,6 +96,15 @@ async function bootstrap(): Promise<void> {
 
     while (!shutdownRequested) {
         let hasBacklog = false;
+        try {
+            hasBacklog = await dispatchDomainEvents(DOMAIN_EVENT_CONSUMERS, BATCH_SIZE) >= BATCH_SIZE;
+        } catch (error) {
+            await logWarn({
+                worker: 'domain_events',
+                message: 'Journal dispatch failed; pending receipts will be retried',
+                error: error instanceof Error ? error.message : String(error)
+            }, { destination: 'console' });
+        }
         for (const definition of DOMAIN_EVENT_CONSUMERS) {
             if (shutdownRequested) break;
             try {
@@ -104,7 +113,7 @@ async function bootstrap(): Promise<void> {
                     batchSize: BATCH_SIZE,
                     maxAttempts: MAX_ATTEMPTS
                 });
-                hasBacklog ||= result.scanned >= BATCH_SIZE;
+                hasBacklog ||= result.scanned >= BATCH_SIZE || result.ready >= BATCH_SIZE;
             } catch (error) {
                 await logWarn({
                     worker: 'domain_events',

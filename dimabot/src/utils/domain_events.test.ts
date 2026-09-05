@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildDomainEventKey, journalDomainEvent } from './domain_events.js';
+import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 
 test('domain event keys encode delimiter-bearing components without collisions', () => {
     assert.notEqual(
@@ -53,4 +54,21 @@ test('owner identity cannot be a provider channel ID', async () => {
         source: 'polar', sourceEventId: 'bad-owner', topic: 'domain',
         type: 'billing.order.paid', ownerUserId: '12345', payload: {}
     }), /ownerUserId must be an internal user ObjectId/);
+});
+
+test('dispatch recovery marker is persisted in the original journal insert', async (context) => {
+    const stopBeforeWakeup = new Error('Stop after inspecting the insert');
+    context.mock.method(DomainEventSchema, 'init', (async () => DomainEventSchema) as never);
+    context.mock.method(DomainEventSchema.collection, 'insertOne', (async (document: Record<string, unknown>, options: unknown) => {
+        assert.equal(document.dispatchPending, true);
+        assert.deepEqual(document.subject, { provider: 'polar', kind: 'customer', id: 'customer-1' });
+        assert.deepEqual(options, { writeConcern: { w: 1, j: true } });
+        throw stopBeforeWakeup;
+    }) as never);
+
+    await assert.rejects(journalDomainEvent({
+        source: 'polar-webhook', sourceEventId: 'receipt-1', topic: 'domain',
+        type: 'billing.order.paid', subject: { provider: 'polar', kind: 'customer', id: 'customer-1' },
+        payload: { paid: true }
+    }), (error) => error === stopBeforeWakeup);
 });

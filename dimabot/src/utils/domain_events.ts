@@ -114,7 +114,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
         kind: input.subject.kind,
         id: normalizeRequired(input.subject.id, 'subject.id')
     } : undefined;
-    if (subject && !['streaming-account', 'integration-account', 'customer'].includes(subject.kind)) {
+    if (subject && !['streaming-account', 'integration-account', 'customer', 'resource'].includes(subject.kind)) {
         throw new Error('Domain event subject.kind is invalid');
     }
     if (input.topic !== 'channel' && !subject && !ownerUserId) {
@@ -154,6 +154,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
             journaledAt,
             payload: input.payload,
             metadata: input.metadata || {},
+            dispatchPending: true,
             expiresAt
         });
         await Promise.all([eventDocument.validate(), DomainEventSchema.init()]);

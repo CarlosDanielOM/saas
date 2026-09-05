@@ -4,6 +4,7 @@ import type { DomainEventEnvelope, DomainEventTopic } from '../domain_events/dom
 export interface IDomainEvent extends DomainEventEnvelope {
     _id: Types.ObjectId;
     topic: DomainEventTopic;
+    dispatchPending?: boolean;
 }
 
 const domainEventSchema = new Schema<IDomainEvent>({
@@ -23,7 +24,7 @@ const domainEventSchema = new Schema<IDomainEvent>({
     subject: {
         type: new Schema({
             provider: { type: String, required: true },
-            kind: { type: String, enum: ['streaming-account', 'integration-account', 'customer'], required: true },
+            kind: { type: String, enum: ['streaming-account', 'integration-account', 'customer', 'resource'], required: true },
             id: { type: String, required: true }
         }, { _id: false }),
         immutable: true
@@ -34,7 +35,8 @@ const domainEventSchema = new Schema<IDomainEvent>({
     journaledAt: { type: Date, required: true, immutable: true, default: Date.now },
     payload: { type: Schema.Types.Mixed, required: true, immutable: true },
     metadata: { type: Schema.Types.Mixed, required: true, immutable: true, default: {} },
-    expiresAt: { type: Date, required: true, immutable: true }
+    expiresAt: { type: Date, required: true, immutable: true },
+    dispatchPending: { type: Boolean }
 }, {
     versionKey: false
 });
@@ -42,6 +44,8 @@ const domainEventSchema = new Schema<IDomainEvent>({
 domainEventSchema.index({ eventKey: 1 }, { unique: true });
 domainEventSchema.index({ source: 1, sourceEventId: 1, type: 1 }, { unique: true });
 domainEventSchema.index({ topic: 1, _id: 1 });
+domainEventSchema.index({ topic: 1, source: 1, _id: 1 });
+domainEventSchema.index({ dispatchPending: 1, _id: 1 }, { partialFilterExpression: { dispatchPending: true } });
 domainEventSchema.index({ topic: 1, 'metadata.durableChatHandled': 1, _id: 1 }, {
     partialFilterExpression: { 'metadata.durableChatHandled': true }
 });

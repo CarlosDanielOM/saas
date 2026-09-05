@@ -4,7 +4,7 @@ export type DomainEventTopic = 'channel' | 'activity' | 'telemetry' | 'domain';
 
 export interface DomainEventSubject {
     provider: string;
-    kind: 'streaming-account' | 'integration-account' | 'customer';
+    kind: 'streaming-account' | 'integration-account' | 'customer' | 'resource';
     id: string;
 }
 

@@ -26,6 +26,7 @@ export interface DomainEventConsumerOptions {
 }
 
 export interface DomainEventDrainResult {
+    ready: number;
     scanned: number;
     succeeded: number;
     retried: number;
@@ -94,7 +95,8 @@ async function ensureDelivery(consumer: string, event: IDomainEvent): Promise<ID
         }, {
             upsert: true,
             new: true,
-            setDefaultsOnInsert: true
+            setDefaultsOnInsert: true,
+            writeConcern: { w: 1, j: true }
         });
     } catch (error) {
         if (Number((error as { code?: unknown })?.code) !== 11000) throw error;
@@ -247,6 +249,34 @@ function applyOutcome(result: DomainEventDrainResult, outcome: DeliveryOutcome):
     if (outcome === 'deferred') result.deferred += 1;
 }
 
+export async function dispatchDomainEvents(
+    consumers: readonly DomainEventConsumerOptions[],
+    batchSize = 100
+): Promise<number> {
+    const events = await DomainEventSchema.find({ dispatchPending: true })
+        .sort({ _id: 1 }).limit(Math.max(1, Math.min(500, batchSize)));
+    if (events.length === 0) return 0;
+    await DomainEventDeliverySchema.init();
+    const eventIDs = events.map((event) => event._id);
+    for (const consumer of consumers) {
+        const matching = await DomainEventSchema.find({
+            ...consumer.eventFilter,
+            topic: { $in: consumer.topics },
+            _id: { $in: eventIDs }
+        }).select('_id').lean();
+        const matchingIDs = new Set(matching.map((event) => String(event._id)));
+        for (const event of events) {
+            if (matchingIDs.has(String(event._id))) await ensureDelivery(consumer.consumer, event);
+        }
+    }
+    // The marker is part of the journal insert. Clear it only after every delivery
+    // exists, so a crash or an out-of-order insert cannot strand an acknowledged event.
+    await DomainEventSchema.updateMany({ _id: { $in: eventIDs }, dispatchPending: true }, {
+        $set: { dispatchPending: false }
+    }, { writeConcern: { w: 1, j: true } });
+    return events.length;
+}
+
 export async function drainDomainEvents(options: DomainEventConsumerOptions): Promise<DomainEventDrainResult> {
     const consumer = normalizeRequired(options.consumer, 'name');
     const batchSize = Math.max(1, Math.min(500, Number(options.batchSize || 100)));
@@ -259,6 +289,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         await options.handler(event);
     };
     const result: DomainEventDrainResult = {
+        ready: 0,
         scanned: 0,
         succeeded: 0,
         retried: 0,
@@ -266,22 +297,30 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         deferred: 0
     };
 
-    const dueRetries = await DomainEventDeliverySchema.find({
+    const readyDeliveries = await DomainEventDeliverySchema.find({
         consumer,
         topic: { $in: options.topics },
-        status: 'retry',
-        nextAttemptAt: { $lte: new Date() }
-    }).sort({ nextAttemptAt: 1 }).limit(batchSize).lean();
+        $or: [
+            { status: 'pending' },
+            { status: 'retry', nextAttemptAt: { $lte: new Date() } },
+            { status: 'processing', $or: [{ lockedUntil: null }, { lockedUntil: { $lte: new Date() } }] }
+        ]
+    }).sort({ updatedAt: 1, _id: 1 }).limit(batchSize).lean();
+    result.ready = readyDeliveries.length;
 
-    for (const retry of dueRetries) {
-        const event = await DomainEventSchema.findById(retry.eventID);
+    for (const delivery of readyDeliveries) {
+        const event = await DomainEventSchema.findById(delivery.eventID);
         if (!event) {
-            await DomainEventDeliverySchema.updateOne({ _id: retry._id, status: 'retry' }, {
+            await DomainEventDeliverySchema.updateOne({
+                _id: delivery._id, status: delivery.status, leaseToken: delivery.leaseToken
+            }, {
                 $set: {
                     status: 'dead',
                     deadLetteredAt: new Date(),
                     nextAttemptAt: null,
-                    lastError: 'Journal event expired or was removed before retry'
+                    lockedUntil: null,
+                    leaseToken: null,
+                    lastError: 'Journal event expired or was removed before delivery'
                 }
             });
             result.dead += 1;
@@ -311,7 +350,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         }
     }
 
-    if (result.scanned > 0 || result.retried > 0 || result.dead > 0) {
+    if (result.ready > 0 || result.scanned > 0 || result.retried > 0 || result.dead > 0) {
         await logInfo({
             worker: consumer,
             message: 'Domain event drain completed',
