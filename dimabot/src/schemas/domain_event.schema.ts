@@ -33,6 +33,9 @@ const domainEventSchema = new Schema<IDomainEvent>({
 domainEventSchema.index({ eventKey: 1 }, { unique: true });
 domainEventSchema.index({ source: 1, sourceEventId: 1, type: 1 }, { unique: true });
 domainEventSchema.index({ topic: 1, _id: 1 });
+domainEventSchema.index({ topic: 1, 'metadata.durableChatHandled': 1, _id: 1 }, {
+    partialFilterExpression: { 'metadata.durableChatHandled': true }
+});
 domainEventSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const DomainEventSchema = model<IDomainEvent>('domain_event', domainEventSchema);

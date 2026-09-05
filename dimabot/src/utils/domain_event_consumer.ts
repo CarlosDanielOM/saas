@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Types } from 'mongoose';
+import { Types, type FilterQuery } from 'mongoose';
 import type {
     DomainEventEnvelope,
     DomainEventHandler,
@@ -17,6 +17,8 @@ export interface DomainEventConsumerOptions {
     consumer: string;
     topics: DomainEventTopic[];
     handler: DomainEventHandler;
+    // Restricts new journal scans; existing deliveries keep their retry ownership.
+    eventFilter?: FilterQuery<IDomainEvent>;
     batchSize?: number;
     maxAttempts?: number;
     leaseMs?: number;
@@ -283,6 +285,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         const checkpoint = await DomainEventCheckpointSchema.findOne({ consumer, topic }).lean();
         const lastEventID = checkpoint?.lastEventID || new Types.ObjectId('000000000000000000000000');
         const events = await DomainEventSchema.find({
+            ...options.eventFilter,
             topic,
             _id: { $gt: lastEventID }
         }).sort({ _id: 1 }).limit(batchSize);

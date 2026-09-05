@@ -39,7 +39,16 @@ export function acceptEventsubMessageTimestamp(
     return { accepted, staleRetry: accepted };
 }
 
-export function createTwitchEventsubApp() {
+export function createTwitchEventsubApp({
+    journalEvent = journalDomainEvent,
+    handleEvent = async (...args) => {
+        const { eventsubHandler } = await import('../handlers/eventsub.handler.js');
+        return eventsubHandler(...args);
+    }
+}: {
+    journalEvent?: typeof journalDomainEvent;
+    handleEvent?: typeof import('../handlers/eventsub.handler.js').eventsubHandler;
+} = {}) {
     if (!getSecret()) {
         throw new Error('TWITCH_EVENTSUB_SECRET is not set');
     }
@@ -175,7 +184,9 @@ export function createTwitchEventsubApp() {
 
                 if (durableEvent) {
                     try {
-                        const journalResult = await journalDomainEvent(durableEvent);
+                        // Persist chat ownership with the event, independent of worker startup order.
+                        durableEvent.metadata = { ...durableEvent.metadata, durableChatHandled: true };
+                        const journalResult = await journalEvent(durableEvent);
                         if (!journalResult.inserted) {
                             res.sendStatus(204);
                             return;
@@ -201,11 +212,11 @@ export function createTwitchEventsubApp() {
 
                 const tracker = startEventsubHandlerMetric(eventType);
                 res.sendStatus(204);
-                void import('../handlers/eventsub.handler.js')
-                    .then(({ eventsubHandler }) => eventsubHandler(
-                        notification.subscription as ITwitchSubscriptionData,
-                        notification.event as ITwitchEventData
-                    ))
+                void handleEvent(
+                    notification.subscription as ITwitchSubscriptionData,
+                    notification.event as ITwitchEventData,
+                    { durableChatHandled: Boolean(durableEvent) }
+                )
                     .then(() => {
                         endEventsubHandlerMetric(tracker, false);
                     })

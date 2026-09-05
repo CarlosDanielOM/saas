@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import test from 'node:test';
+import { Types } from 'mongoose';
+import type { JournalDomainEventInput } from '../domain_events/domain_event.types.js';
 
 const SECRET = 'eventsub-test-secret';
 
@@ -120,5 +122,71 @@ test('EventSub webhook validates transport before notification processing', asyn
             body
         });
         assert.equal(response.status, 403);
+    });
+});
+
+test('production webhook persists durable chat ownership before suppressing immediate announcements', async (context) => {
+    process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+    process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const journaled: JournalDomainEventInput[] = [];
+    const handled: Array<{ durableChatHandled?: boolean }> = [];
+    let journalFails = false;
+    let inserted = true;
+    const server = createTwitchEventsubApp({
+        async journalEvent(input) {
+            journaled.push(input);
+            assert.equal(input.metadata?.durableChatHandled, true);
+            if (journalFails) throw new Error('Simulated journal failure');
+            return {
+                inserted,
+                wakeupPublished: false,
+                event: {
+                    ...input,
+                    _id: new Types.ObjectId(),
+                    eventKey: 'test-event',
+                    schemaVersion: 1,
+                    occurredAt: new Date(input.occurredAt!),
+                    journaledAt: new Date(),
+                    metadata: input.metadata || {},
+                    expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60_000)
+                }
+            };
+        },
+        async handleEvent(_subscription, _event, options = {}) {
+            handled.push(options);
+        }
+    }).listen(0);
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    context.after(() => new Promise<void>((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+    }));
+    const { port } = server.address() as AddressInfo;
+    const body = JSON.stringify({
+        subscription: { type: 'stream.online', version: '1' },
+        event: { broadcaster_user_id: 'channel-1', id: 'stream-1', started_at: new Date().toISOString() }
+    });
+    const send = () => fetch(`http://127.0.0.1:${port}/eventsub`, {
+        method: 'POST',
+        headers: signedHeaders(body),
+        body
+    });
+
+    await context.test('suppresses immediate chat only after successful journaling, even without a wakeup', async () => {
+        assert.equal((await send()).status, 204);
+        assert.equal(journaled.length, 1);
+        assert.deepEqual(handled, [{ durableChatHandled: true }]);
+    });
+
+    await context.test('duplicate notifications do not call the immediate handler again', async () => {
+        inserted = false;
+        assert.equal((await send()).status, 204);
+        assert.equal(handled.length, 1);
+    });
+
+    await context.test('journal failure returns 503 without acknowledging or handling the event', async () => {
+        journalFails = true;
+        assert.equal((await send()).status, 503);
+        assert.equal(handled.length, 1);
     });
 });

@@ -25,7 +25,15 @@ import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 //* TODO Redeem handler
 //* TODO Functions
 
-export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData, eventData: ITwitchEventData) => {
+interface EventsubHandlerOptions {
+    durableChatHandled?: boolean;
+}
+
+export const eventsubHandler = async (
+    subscriptionData: ITwitchSubscriptionData,
+    eventData: ITwitchEventData,
+    options: EventsubHandlerOptions = {}
+) => {
     const cache = await getDragonflyClient('Eventsub');
     let chatEnabled = true;
     let STREAMER = await TwitchStreamers.getTwitchAccountById(eventData?.broadcaster_user_id ?? '');
@@ -38,6 +46,7 @@ export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData,
     }
 
     if(STREAMER.chat_enabled == 'false') chatEnabled = false
+    const immediateChatEnabled = chatEnabled && !options.durableChatHandled;
 
     const {type} = subscriptionData;
     const canonicalType = canonicalizeEventsubType(type);
@@ -158,19 +167,23 @@ export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData,
         case CANONICAL_BITS_EVENT_TYPE:
         case 'channel.bit.use':
         case 'channel.cheer':
-            await cheerHandler(eventData as IBitUseEvent, eventsubData, chatEnabled);
+            await cheerHandler(eventData as IBitUseEvent, eventsubData, immediateChatEnabled);
             break;
         case 'channel.channel_points_custom_reward_redemption.add':
             await redemptionHandler(eventData as IRedemptionEvent, chatEnabled);
             break;
         case 'channel.follow':
-            await followHandler(eventData as IFollowEvent, eventsubData, chatEnabled);
+            await followHandler(eventData as IFollowEvent, eventsubData, immediateChatEnabled);
             break;
         case 'stream.online':
-            await streamOnlineHandler(eventData as IStreamOnlineEvent, eventsubData, chatEnabled);
+            if (!options.durableChatHandled) {
+                await streamOnlineHandler(eventData as IStreamOnlineEvent, eventsubData, chatEnabled);
+            }
             break;
         case 'stream.offline':
-            await streamOfflineHandler(eventData as IStreamOfflineEvent, eventsubData, chatEnabled);
+            if (!options.durableChatHandled) {
+                await streamOfflineHandler(eventData as IStreamOfflineEvent, eventsubData, chatEnabled);
+            }
             break;
         case 'channel.ad_break.begin':
             adBreakHandler(eventData as IAdBreakEvent, eventsubData, chatEnabled);
@@ -182,6 +195,10 @@ export const eventsubHandler = async (subscriptionData: ITwitchSubscriptionData,
         case 'channel.subscription.gift':
         case 'channel.subscription.message':
         case 'channel.subscription.end':
+            if (!options.durableChatHandled) {
+                await handleMessageOnlyEvent();
+            }
+            break;
         case 'channel.shoutout.receive':
         case 'channel.hype_train.begin':
         case 'channel.hype_train.progress':

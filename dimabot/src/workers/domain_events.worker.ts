@@ -41,6 +41,7 @@ async function bootstrap(): Promise<void> {
         { drainDomainEvents },
         { applyStreamAnalyticsDomainEvent },
         { applyStreamOperationsDomainEvent },
+        { applyChatAnnouncementDomainEvent, applyAccountHealthNotificationDomainEvent },
         { DOMAIN_EVENTS_WAKEUP_STREAM },
         { info: logInfo, warn: logWarn }
     ] = await Promise.all([
@@ -49,6 +50,7 @@ async function bootstrap(): Promise<void> {
         import('../utils/domain_event_consumer.js'),
         import('../domain_events/stream_analytics_events.js'),
         import('../domain_events/stream_operations_events.js'),
+        import('../domain_events/chat_announcement_events.js'),
         import('../utils/domain_events.js'),
         import('../utils/logger.js')
     ]);
@@ -107,13 +109,44 @@ async function bootstrap(): Promise<void> {
         const operationsResult = await drainDomainEvents({
             consumer: 'stream-operations-v1',
             topics: ['channel'],
+            eventFilter: { type: { $in: ['stream.started', 'stream.ended'] } },
             handler: applyStreamOperationsDomainEvent,
+            batchSize: BATCH_SIZE,
+            maxAttempts: MAX_ATTEMPTS
+        });
+        const chatResult = await drainDomainEvents({
+            consumer: 'chat-announcements-v1',
+            topics: ['channel'],
+            eventFilter: {
+                'metadata.durableChatHandled': true,
+                type: { $in: [
+                    'channel.bits.received',
+                    'channel.follow.received',
+                    'channel.subscription.received',
+                    'channel.subscription.gifted',
+                    'channel.subscription.ended',
+                    'stream.started',
+                    'stream.ended'
+                ] }
+            },
+            handler: applyChatAnnouncementDomainEvent,
+            batchSize: BATCH_SIZE,
+            maxAttempts: MAX_ATTEMPTS
+        });
+        const accountHealthResult = await drainDomainEvents({
+            consumer: 'account-health-notifications-v1',
+            topics: ['channel'],
+            eventFilter: { 'metadata.durableChatHandled': true, type: 'stream.started' },
+            handler: applyAccountHealthNotificationDomainEvent,
             batchSize: BATCH_SIZE,
             maxAttempts: MAX_ATTEMPTS
         });
 
         if (RUN_ONCE) break;
-        if (analyticsResult.scanned >= BATCH_SIZE || operationsResult.scanned >= BATCH_SIZE) continue;
+        if (analyticsResult.scanned >= BATCH_SIZE
+            || operationsResult.scanned >= BATCH_SIZE
+            || chatResult.scanned >= BATCH_SIZE
+            || accountHealthResult.scanned >= BATCH_SIZE) continue;
 
         if (!wakeupClient?.isReady) {
             await sleep(POLL_INTERVAL_MS);
