@@ -69,6 +69,7 @@ const DOMAIN_EVENT_DELIVERY_STATUSES = new Set<DomainEventDeliveryStatus>([
     'processing',
     'retry',
     'succeeded',
+    'skipped',
     'dead'
 ]);
 
@@ -921,10 +922,10 @@ router.post('/domain-events/:eventKey/replay', authMiddleware as any, async (req
 
         const replayed = await replayDeadDomainEvent(consumer, eventKey);
         if (!replayed) {
-            return res.status(404).json({
+            return res.status(409).json({
                 error: true,
-                message: 'Dead-letter delivery not found',
-                status: 404
+                message: 'Replay denied: requires a registered replay-enabled consumer, a dead delivery, and a retained, unexpired journal event matching its schema, payload, and history policy',
+                status: 409
             });
         }
         return res.status(202).json({

@@ -243,7 +243,7 @@ test('the delivery engine only completes offline work after both downstream step
     h.state.failEnqueue = 'clips';
     assert.equal((await drain()).retried, 1);
     assert.equal(delivery.status, 'retry');
-    assert.equal(delivery.completedAt, undefined);
+    assert.equal(delivery.completedAt, null);
     assert.ok(h.session.offline_summary_enqueued_at);
     assert.equal(h.session.offline_clips_completed_at, null);
     delivery.nextAttemptAt = new Date(0);

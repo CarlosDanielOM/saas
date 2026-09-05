@@ -225,7 +225,7 @@ for (const type of ['channel.follow', 'channel.raid']) {
         await new Promise<void>((resolve) => server.once('listening', resolve));
         context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
         const endpoint = `http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`;
-        const body = JSON.stringify({ subscription: { type, version: '1' }, event: {
+        const body = JSON.stringify({ subscription: { type, version: type === 'channel.follow' ? '2' : '1' }, event: {
             broadcaster_user_id: type === 'channel.follow' ? 'channel' : undefined,
             to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', user_id: 'follower',
             followed_at: new Date().toISOString(), viewers: 5

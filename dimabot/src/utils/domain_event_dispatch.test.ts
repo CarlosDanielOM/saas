@@ -21,7 +21,9 @@ function createEvent() {
     return new DomainEventSchema({
         _id: new Types.ObjectId('000000000000000000000001'),
         source: 'polar-webhook', sourceEventId: 'late-insert', eventKey: 'polar:late-insert',
-        type: 'billing.order.paid', topic: 'domain', payload: {},
+        type: 'billing.order.paid', topic: 'domain',
+        payload: { customerId: 'customer-1', orderId: 'order-1', status: 'paid', paid: true },
+        metadata: { originalEventType: 'order.paid' },
         subject: { provider: 'polar', kind: 'customer', id: 'customer-1' },
         occurredAt: new Date('2026-09-05T12:00:00Z'),
         expiresAt: new Date('2026-12-05T12:00:00Z'), dispatchPending: true

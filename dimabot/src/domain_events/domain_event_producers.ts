@@ -2,6 +2,7 @@ import type { DomainEventOwnerResolver, DomainEventProducer, JournalDomainEventI
 import { twitchEventsubProducer } from './twitch_eventsub_events.js';
 import { polarWebhookProducer } from './polar_events.js';
 import { journalDomainEvent } from '../utils/domain_events.js';
+import { DomainEventContractError, validateDomainEventContract } from './domain_event_contracts.js';
 
 export const DOMAIN_EVENT_PRODUCERS = {
     twitch: twitchEventsubProducer,
@@ -19,8 +20,9 @@ export async function ingestDomainEvent<Input>(
     const event = producer.normalize(input);
     if (!event) return null;
     if (!event.subject || event.subject.provider !== producer.provider) {
-        throw new Error(`Producer ${producer.provider} must supply its own provider subject`);
+        throw new DomainEventContractError(`Producer ${producer.provider} must supply its own provider subject`);
     }
+    validateDomainEventContract(event, 'ingest');
     const resolvedOwner = await (dependencies.resolveOwner || producer.resolveOwner)?.(event);
     if (resolvedOwner !== undefined) event.ownerUserId = resolvedOwner;
     // Unresolved ownership is retained; consumers can resolve it on a later attempt.

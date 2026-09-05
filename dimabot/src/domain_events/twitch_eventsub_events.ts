@@ -1,5 +1,7 @@
 import type { DomainEventProducer, JournalDomainEventInput } from './domain_event.types.js';
 import { resolveDomainEventOwner } from './domain_event_identity.js';
+import { DomainEventContractError, TWITCH_DOMAIN_EVENT_TYPES } from './domain_event_contracts.js';
+export type { TwitchEventsubPayload } from './domain_event_contracts.js';
 
 interface TwitchEventsubSubscriptionLike {
     id?: string;
@@ -19,20 +21,6 @@ export interface NormalizeTwitchEventsubInput {
     durableChatHandled?: boolean;
     durableDefenseHandled?: boolean;
 }
-
-const DURABLE_EVENT_TYPES: Record<string, string> = {
-    'channel.bits.use': 'channel.bits.received',
-    'channel.cheer': 'channel.bits.received',
-    'channel.bit.use': 'channel.bits.received',
-    'channel.follow': 'channel.follow.received',
-    'channel.raid': 'channel.raid.received',
-    'channel.subscribe': 'channel.subscription.received',
-    'channel.subscription.message': 'channel.subscription.received',
-    'channel.subscription.gift': 'channel.subscription.gifted',
-    'channel.subscription.end': 'channel.subscription.ended',
-    'stream.online': 'stream.started',
-    'stream.offline': 'stream.ended'
-};
 
 function firstString(...values: unknown[]): string {
     for (const value of values) {
@@ -55,18 +43,29 @@ function resolveOccurredAt(eventType: string, event: Record<string, unknown>, me
 export function normalizeTwitchEventsubDomainEvent(
     input: NormalizeTwitchEventsubInput
 ): JournalDomainEventInput | null {
+    if (typeof input?.subscription?.type !== 'string' || !input.subscription.type.trim()) {
+        throw new DomainEventContractError('Twitch subscription.type is required');
+    }
     const originalEventType = firstString(input.subscription.type);
-    const normalizedType = DURABLE_EVENT_TYPES[originalEventType];
+    const normalizedType = Object.hasOwn(TWITCH_DOMAIN_EVENT_TYPES, originalEventType)
+        ? TWITCH_DOMAIN_EVENT_TYPES[originalEventType as keyof typeof TWITCH_DOMAIN_EVENT_TYPES] : undefined;
     if (!normalizedType) {
         return null;
     }
+    if (typeof input.messageId !== 'string' || !input.messageId.trim()) {
+        throw new DomainEventContractError('Twitch messageId is required');
+    }
+    if (input.source !== undefined && input.source !== 'twitch-eventsub' && input.source !== 'twitch-eventsub-test') {
+        throw new DomainEventContractError('Invalid Twitch producer source');
+    }
+    if (!input.event || typeof input.event !== 'object' || Array.isArray(input.event)) {
+        throw new DomainEventContractError('Twitch event must be a record');
+    }
 
-    const channelID = firstString(
-        input.event.broadcaster_user_id,
-        input.event.to_broadcaster_user_id
-    );
+    const channelID = firstString(originalEventType === 'channel.raid'
+        ? input.event.to_broadcaster_user_id : input.event.broadcaster_user_id);
     if (!channelID) {
-        throw new Error(`Durable Twitch event ${originalEventType} is missing a channel ID`);
+        throw new DomainEventContractError(`Durable Twitch event ${originalEventType} is missing a channel ID`);
     }
 
     const streamID = originalEventType === 'stream.online'
@@ -96,14 +95,14 @@ export function normalizeTwitchEventsubDomainEvent(
             subscriptionID: firstString(input.subscription.id),
             subscriptionVersion: firstString(input.subscription.version),
             messageTimestamp: firstString(input.messageTimestamp),
-            messageRetry: input.messageRetry || 0,
-            staleRetry: Boolean(input.staleRetry)
+            messageRetry: input.messageRetry ?? 0,
+            staleRetry: input.staleRetry ?? false
         }
     };
 }
 
 export function isDurableTwitchEventsubType(eventType: string): boolean {
-    return Boolean(DURABLE_EVENT_TYPES[String(eventType || '').trim()]);
+    return Object.hasOwn(TWITCH_DOMAIN_EVENT_TYPES, String(eventType || '').trim());
 }
 
 export const twitchEventsubProducer: DomainEventProducer<NormalizeTwitchEventsubInput> = {

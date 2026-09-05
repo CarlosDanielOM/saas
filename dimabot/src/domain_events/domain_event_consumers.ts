@@ -2,6 +2,7 @@ import type { DomainEventConsumerOptions } from '../utils/domain_event_consumer.
 
 export interface DomainEventConsumerDefinition extends DomainEventConsumerOptions {
     schemaVersions: readonly number[];
+    adminReplay: boolean;
 }
 
 const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
@@ -9,6 +10,8 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
         consumer: 'follow-defense-v1',
+        adminReplay: false,
+        maxEventAgeMs: 300_000,
         topics: ['channel'],
         schemaVersions: [1],
         eventFilter: {
@@ -20,6 +23,7 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     },
     {
         consumer: 'stream-analytics-v1',
+        adminReplay: true,
         topics: ['channel'],
         schemaVersions: [1],
         eventFilter: { source: twitchSources },
@@ -27,6 +31,8 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     },
     {
         consumer: 'stream-operations-v1',
+        // Retained lifecycle recovery uses the handler's newer-event guard, not a time cutoff.
+        adminReplay: true,
         topics: ['channel'],
         schemaVersions: [1],
         eventFilter: { source: twitchSources, type: { $in: ['stream.started', 'stream.ended'] } },
@@ -34,6 +40,8 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     },
     {
         consumer: 'chat-announcements-v1',
+        adminReplay: false,
+        maxEventAgeMs: 300_000,
         topics: ['channel'],
         schemaVersions: [1],
         eventFilter: {
@@ -49,6 +57,8 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     },
     {
         consumer: 'account-health-notifications-v1',
+        adminReplay: false,
+        maxEventAgeMs: 300_000,
         topics: ['channel'],
         schemaVersions: [1],
         eventFilter: { source: twitchSources, 'metadata.durableChatHandled': true, type: 'stream.started' },
@@ -56,16 +66,19 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     },
     {
         consumer: 'polar-plan-v1', topics: ['domain'], schemaVersions: [1],
+        adminReplay: true,
         eventFilter: { source: 'polar-webhook', type: { $in: ['billing.order.paid', 'billing.subscription.updated'] } },
         handler: async (event) => (await import('./polar_billing_events.js')).applyPolarPlanDomainEvent(event)
     },
     {
         consumer: 'polar-credits-v1', topics: ['domain'], schemaVersions: [1],
+        adminReplay: true,
         eventFilter: { source: 'polar-webhook', type: 'billing.customer.state.changed' },
         handler: async (event) => (await import('./polar_billing_events.js')).applyPolarCreditsDomainEvent(event)
     },
     {
         consumer: 'polar-rewards-v1', topics: ['domain'], schemaVersions: [1],
+        adminReplay: true,
         eventFilter: { source: 'polar-webhook', type: 'billing.order.paid' },
         handler: async (event) => (await import('./polar_billing_events.js')).applyPolarRewardDomainEvent(event)
     }

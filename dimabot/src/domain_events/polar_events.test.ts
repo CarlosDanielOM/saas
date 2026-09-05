@@ -6,6 +6,7 @@ import type { Subscription } from '@polar-sh/sdk/models/components/subscription.
 import { CustomerStateMeter$inboundSchema } from '@polar-sh/sdk/models/components/customerstatemeter.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { normalizePolarDomainEvent, polarWebhookProducer, type NormalizePolarWebhookInput } from './polar_events.js';
+import { DomainEventContractError } from './domain_event_contracts.js';
 
 const timestamp = new Date('2026-09-04T10:00:00Z');
 const periodEnd = new Date('2027-09-04T10:00:00Z');
@@ -189,6 +190,19 @@ test('unmapped SDK events retain JSON-safe provider data and a real resource sub
     assert.equal('ownerUserId' in event, false);
     assert.equal(await polarWebhookProducer.resolveOwner!(event), undefined);
     assert.ok(data.createdAt instanceof Date);
+});
+
+test('unmapped SDK normalization rejects lossy JSON instead of silently laundering invalid values', () => {
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    for (const value of [NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, 1n, () => {}, new Date(NaN), cycle, Object.create({ inherited: true })]) {
+        assert.throws(() => normalizePolarDomainEvent(input('product.created', { id: 'product', value })), DomainEventContractError);
+    }
+    const data = { id: 'product', absentSdkField: undefined, createdAt: timestamp };
+    assert.deepEqual(normalizePolarDomainEvent(input('product.created', data)).payload, {
+        providerData: { id: 'product', createdAt: timestamp.toISOString() }
+    });
+    assert.ok('absentSdkField' in data, 'SDK serialization does not mutate its input');
 });
 
 test('unmapped customer-related events retain customer identity but are not promoted to billing', () => {

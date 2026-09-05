@@ -7,6 +7,7 @@ import type {
 } from '../domain_events/domain_event.types.js';
 import { DomainEventSchema, type IDomainEvent } from '../schemas/domain_event.schema.js';
 import { domainEventWakeups } from './domain_event_wakeups.js';
+import { validateDomainEventContract } from '../domain_events/domain_event_contracts.js';
 
 const DEFAULT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
     channel: 90 * 24 * 60 * 60,
@@ -66,6 +67,7 @@ function toEnvelope(event: IDomainEvent): DomainEventEnvelope {
 }
 
 export async function journalDomainEvent(input: JournalDomainEventInput): Promise<JournalDomainEventResult> {
+    validateDomainEventContract(input, 'ingest');
     const source = normalizeRequired(input.source, 'source');
     const sourceEventId = normalizeRequired(input.sourceEventId, 'sourceEventId');
     const type = normalizeRequired(input.type, 'type');

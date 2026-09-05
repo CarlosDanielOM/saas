@@ -1,6 +1,6 @@
 import { Schema, model, Types } from 'mongoose';
 
-export type DomainEventDeliveryStatus = 'pending' | 'processing' | 'retry' | 'succeeded' | 'dead';
+export type DomainEventDeliveryStatus = 'pending' | 'processing' | 'retry' | 'succeeded' | 'skipped' | 'dead';
 
 export interface IDomainEventDelivery {
     _id: Types.ObjectId;
@@ -17,6 +17,7 @@ export interface IDomainEventDelivery {
     lastDeadLetterError: string;
     firstAttemptAt: Date | null;
     completedAt: Date | null;
+    skipReason?: string;
     deadLetteredAt: Date | null;
     replayCount: number;
     lastReplayedAt: Date | null;
@@ -32,7 +33,7 @@ const domainEventDeliverySchema = new Schema<IDomainEventDelivery>({
     eventKey: { type: String, required: true },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'retry', 'succeeded', 'dead'],
+        enum: ['pending', 'processing', 'retry', 'succeeded', 'skipped', 'dead'],
         required: true,
         default: 'pending',
         index: true
@@ -45,6 +46,7 @@ const domainEventDeliverySchema = new Schema<IDomainEventDelivery>({
     lastDeadLetterError: { type: String, default: '' },
     firstAttemptAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
+    skipReason: { type: String, default: '' },
     deadLetteredAt: { type: Date, default: null },
     replayCount: { type: Number, required: true, default: 0 },
     lastReplayedAt: { type: Date, default: null },

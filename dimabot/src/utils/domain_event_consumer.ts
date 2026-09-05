@@ -1,5 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { DomainEventPrerequisiteMissingError } from '../domain_events/domain_event.types.js';
+import { DomainEventContractError, validateDomainEventContract } from '../domain_events/domain_event_contracts.js';
+import {
+    canAdminReplayDomainEvent,
+    evaluateDomainEventDeliveryPolicy,
+    isDomainEventSchemaCompatible,
+    type DomainEventDeliveryPolicy,
+    type DomainEventPolicyDecision
+} from '../domain_events/domain_event_delivery_policy.js';
 import { Types, type FilterQuery } from 'mongoose';
 import type {
     DomainEventEnvelope,
@@ -30,13 +38,11 @@ export interface DomainEventConsumerRuntime {
     finished?(): void;
 }
 
-export interface DomainEventConsumerOptions {
-    consumer: string;
+export interface DomainEventConsumerOptions extends DomainEventDeliveryPolicy {
     topics: DomainEventTopic[];
     handler: DomainEventHandler;
     // Restricts new journal scans; existing deliveries keep their retry ownership.
     eventFilter?: FilterQuery<IDomainEvent>;
-    schemaVersions?: readonly number[];
     batchSize?: number;
     maxAttempts?: number;
     leaseMs?: number;
@@ -47,12 +53,14 @@ export interface DomainEventDrainResult {
     ready: number;
     scanned: number;
     succeeded: number;
+    skipped: number;
+    alreadyComplete: number;
     retried: number;
     dead: number;
     deferred: number;
 }
 
-type DeliveryOutcome = 'succeeded' | 'retry' | 'dead' | 'deferred' | 'retry-scheduled' | 'already-complete';
+type DeliveryOutcome = 'succeeded' | 'skipped' | 'retry' | 'dead' | 'deferred' | 'retry-scheduled' | 'already-complete';
 
 const RETRY_DELAYS_MS = [5_000, 30_000, 5 * 60_000, 30 * 60_000] as const;
 const PREREQUISITE_HORIZON_MS = 24 * 60 * 60_000;
@@ -107,6 +115,7 @@ async function ensureDelivery(consumer: string, event: IDomainEvent): Promise<ID
                 lastDeadLetterError: '',
                 firstAttemptAt: null,
                 completedAt: null,
+                skipReason: '',
                 deadLetteredAt: null,
                 replayCount: 0,
                 lastReplayedAt: null,
@@ -133,7 +142,7 @@ async function claimDelivery(
 ): Promise<IDomainEventDelivery | null> {
     const now = new Date();
     const leaseToken = randomUUID();
-    if (delivery.status === 'succeeded' || delivery.status === 'dead') {
+    if (delivery.status === 'succeeded' || delivery.status === 'dead' || delivery.status === 'skipped') {
         return null;
     }
     if (delivery.status === 'processing' && delivery.lockedUntil && delivery.lockedUntil > now) {
@@ -164,20 +173,24 @@ async function claimDelivery(
 }
 
 async function processDelivery(
-    consumer: string,
+    policy: DomainEventDeliveryPolicy,
     event: IDomainEvent,
     handler: DomainEventHandler,
     maxAttempts: number,
     leaseMs: number,
     runtime?: DomainEventConsumerRuntime
 ): Promise<DeliveryOutcome> {
+    const consumer = policy.consumer;
     if (runtime?.shouldStop?.()) return 'deferred';
     runtime?.beforeClaim?.(event.eventKey);
     try {
         const delivery = await ensureDelivery(consumer, event);
-        if (delivery.status === 'succeeded' || delivery.status === 'dead') {
+        if (delivery.status === 'succeeded' || delivery.status === 'dead' || delivery.status === 'skipped') {
             return 'already-complete';
         }
+
+        const decision = evaluateDomainEventDeliveryPolicy(policy, event);
+        if (decision.status !== 'eligible') return await finishPolicyDelivery(delivery, decision);
 
         // A crashed attempt cannot record its failure. Retire an expired final attempt
         // without claiming again, and fence the claim itself against stale snapshots.
@@ -193,7 +206,7 @@ async function processDelivery(
                 ]
             }, {
                 $set: {
-                    status: 'dead', deadLetteredAt: now, lockedUntil: null,
+                    status: 'dead', deadLetteredAt: now, completedAt: now, lockedUntil: null,
                     leaseToken: null, nextAttemptAt: null,
                     lastError: 'Attempt limit exhausted after interrupted execution',
                     lastDeadLetterError: 'Attempt limit exhausted after interrupted execution'
@@ -249,7 +262,20 @@ async function processDelivery(
             runtime?.claimed?.(lease());
             assertLease();
             if (runtime?.shouldStop?.()) return 'deferred';
-            await handler(toEnvelope(event));
+            // Recheck immediately before execution: admission or even the claim can
+            // precede the age boundary. Policy decisions never spend retry budget.
+            const executionDecision = evaluateDomainEventDeliveryPolicy(policy, event);
+            if (executionDecision.status !== 'eligible') {
+                clearInterval(heartbeat);
+                await renewal;
+                assertLease();
+                return await finishPolicyDelivery(claimed, executionDecision, true);
+            }
+            const envelope = toEnvelope(event);
+            if (['twitch-eventsub', 'twitch-eventsub-test', 'polar-webhook'].includes(event.source)) {
+                validateDomainEventContract(envelope);
+            }
+            await handler(envelope);
             clearInterval(heartbeat);
             await renewal;
             assertLease();
@@ -279,14 +305,15 @@ async function processDelivery(
             await renewal;
             assertLease();
             const prerequisiteMissing = error instanceof DomainEventPrerequisiteMissingError;
+            const contractInvalid = error instanceof DomainEventContractError;
             const now = Date.now();
             const prerequisiteDeadline = prerequisiteMissing ? Math.min(
                 new Date(event.journaledAt).getTime() + PREREQUISITE_HORIZON_MS,
                 new Date(event.expiresAt).getTime()
             ) : 0;
-            const exhausted = prerequisiteMissing
+            const exhausted = contractInvalid || (prerequisiteMissing
                 ? !Number.isFinite(prerequisiteDeadline) || now >= prerequisiteDeadline
-                : claimed.attempts >= maxAttempts;
+                : claimed.attempts >= maxAttempts);
             const errorMessage = prerequisiteMissing && exhausted
                 ? `Prerequisite horizon exceeded: ${error.prerequisite}`
                 : error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
@@ -307,9 +334,10 @@ async function processDelivery(
                     leaseToken: null,
                     lastError: errorMessage.slice(0, 8_000),
                     lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
+                    completedAt: exhausted ? new Date() : null,
                     deadLetteredAt: exhausted ? new Date() : null
                 },
-                ...(prerequisiteMissing ? { $inc: { attempts: -1 } } : {})
+                ...(prerequisiteMissing || contractInvalid ? { $inc: { attempts: -1 } } : {})
             }, { writeConcern: { w: 1, j: true } });
             if (failure.modifiedCount === 0) {
                 loseLease(new Error('Domain event failure update lost ownership'));
@@ -340,6 +368,38 @@ async function processDelivery(
     }
 }
 
+async function finishPolicyDelivery(
+    delivery: IDomainEventDelivery,
+    decision: Exclude<DomainEventPolicyDecision, { status: 'eligible' }>,
+    claimed = false
+): Promise<DeliveryOutcome> {
+    const now = new Date();
+    const result = await DomainEventDeliverySchema.updateOne({
+        _id: delivery._id,
+        ...(claimed ? {
+            status: 'processing', leaseToken: delivery.leaseToken, lockedUntil: { $gt: now }
+        } : {
+            status: { $in: ['pending', 'processing', 'retry'] },
+            $and: [
+                { $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }] },
+                { $or: [{ nextAttemptAt: null }, { nextAttemptAt: { $lte: now } }] }
+            ]
+        })
+    }, {
+        $set: {
+            status: decision.status,
+            completedAt: now,
+            skipReason: decision.status === 'skipped' ? decision.reason : '',
+            lastError: decision.status === 'dead' ? decision.reason : '',
+            lastDeadLetterError: decision.status === 'dead' ? decision.reason : delivery.lastDeadLetterError,
+            deadLetteredAt: decision.status === 'dead' ? now : null,
+            lockedUntil: null, leaseToken: null, nextAttemptAt: null
+        },
+        ...(claimed ? { $inc: { attempts: -1 } } : {})
+    }, { writeConcern: { w: 1, j: true } });
+    return result.modifiedCount > 0 ? decision.status : 'deferred';
+}
+
 async function advanceCheckpoint(consumer: string, topic: DomainEventTopic, event: IDomainEvent): Promise<void> {
     await DomainEventCheckpointSchema.updateOne({ consumer, topic }, {
         $max: { lastEventID: event._id },
@@ -351,7 +411,9 @@ async function advanceCheckpoint(consumer: string, topic: DomainEventTopic, even
 }
 
 function applyOutcome(result: DomainEventDrainResult, outcome: DeliveryOutcome): void {
-    if (outcome === 'succeeded' || outcome === 'already-complete') result.succeeded += 1;
+    if (outcome === 'succeeded') result.succeeded += 1;
+    if (outcome === 'skipped') result.skipped += 1;
+    if (outcome === 'already-complete') result.alreadyComplete += 1;
     if (outcome === 'retry') result.retried += 1;
     if (outcome === 'dead') result.dead += 1;
     if (outcome === 'deferred' || outcome === 'retry-scheduled') result.deferred += 1;
@@ -369,12 +431,17 @@ export async function dispatchDomainEvents(
     for (const consumer of consumers) {
         const matching = await DomainEventSchema.find({
             ...consumer.eventFilter,
+            ...(consumer.schemaVersions ? { schemaVersion: { $in: consumer.schemaVersions } } : {}),
             topic: { $in: consumer.topics },
             _id: { $in: eventIDs }
         }).select('_id').lean();
         const matchingIDs = new Set(matching.map((event) => String(event._id)));
         for (const event of events) {
-            if (matchingIDs.has(String(event._id))) await ensureDelivery(consumer.consumer, event);
+            if (matchingIDs.has(String(event._id)) && isDomainEventSchemaCompatible(consumer, event)) {
+                const delivery = await ensureDelivery(consumer.consumer, event);
+                const decision = evaluateDomainEventDeliveryPolicy(consumer, event);
+                if (decision.status !== 'eligible') await finishPolicyDelivery(delivery, decision);
+            }
         }
     }
     // The marker is part of the journal insert. Clear it only after every delivery
@@ -390,16 +457,13 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
     const batchSize = Math.max(1, Math.min(500, Number(options.batchSize || 100)));
     const maxAttempts = Math.max(1, Number(options.maxAttempts || 5));
     const leaseMs = Math.max(5_000, Number(options.leaseMs || 60_000));
-    const handler: DomainEventHandler = async (event) => {
-        if (options.schemaVersions && !options.schemaVersions.includes(event.schemaVersion)) {
-            throw new Error(`Unsupported schema version ${event.schemaVersion} for ${consumer}`);
-        }
-        await options.handler(event);
-    };
+    const policy = { ...options, consumer };
     const result: DomainEventDrainResult = {
         ready: 0,
         scanned: 0,
         succeeded: 0,
+        skipped: 0,
+        alreadyComplete: 0,
         retried: 0,
         dead: 0,
         deferred: 0
@@ -420,22 +484,25 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         if (options.runtime?.shouldStop?.()) break;
         const event = await DomainEventSchema.findById(delivery.eventID);
         if (!event) {
-            await DomainEventDeliverySchema.updateOne({
+            const missing = await DomainEventDeliverySchema.updateOne({
                 _id: delivery._id, status: delivery.status, leaseToken: delivery.leaseToken
             }, {
                 $set: {
                     status: 'dead',
+                    completedAt: new Date(),
                     deadLetteredAt: new Date(),
                     nextAttemptAt: null,
                     lockedUntil: null,
                     leaseToken: null,
-                    lastError: 'Journal event expired or was removed before delivery'
+                    lastError: 'Journal event expired or was removed before delivery',
+                    lastDeadLetterError: 'Journal event expired or was removed before delivery'
                 }
             });
-            result.dead += 1;
+            if (missing.modifiedCount > 0) result.dead += 1;
+            else result.deferred += 1;
             continue;
         }
-        applyOutcome(result, await processDelivery(consumer, event, handler, maxAttempts, leaseMs, options.runtime));
+        applyOutcome(result, await processDelivery(policy, event, options.handler, maxAttempts, leaseMs, options.runtime));
     }
 
     for (const topic of options.topics) {
@@ -444,6 +511,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         const lastEventID = checkpoint?.lastEventID || new Types.ObjectId('000000000000000000000000');
         const events = await DomainEventSchema.find({
             ...options.eventFilter,
+            ...(options.schemaVersions ? { schemaVersion: { $in: options.schemaVersions } } : {}),
             topic,
             _id: { $gt: lastEventID }
         }).sort({ _id: 1 }).limit(batchSize);
@@ -451,7 +519,11 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         for (const event of events) {
             if (options.runtime?.shouldStop?.()) break;
             result.scanned += 1;
-            const outcome = await processDelivery(consumer, event, handler, maxAttempts, leaseMs, options.runtime);
+            if (!isDomainEventSchemaCompatible(policy, event)) {
+                await advanceCheckpoint(consumer, topic, event);
+                continue;
+            }
+            const outcome = await processDelivery(policy, event, options.handler, maxAttempts, leaseMs, options.runtime);
             applyOutcome(result, outcome);
 
             if (outcome === 'deferred') {
@@ -473,10 +545,38 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
 }
 
 export async function replayDeadDomainEvent(consumer: string, eventKey: string): Promise<boolean> {
+    consumer = normalizeRequired(consumer, 'name');
+    eventKey = normalizeRequired(eventKey, 'eventKey');
+    // The registry imports only engine types; lazy lookup also keeps handler modules unloaded.
+    const { DOMAIN_EVENT_CONSUMERS } = await import('../domain_events/domain_event_consumers.js');
+    const definition = DOMAIN_EVENT_CONSUMERS.find((entry) => entry.consumer === consumer);
+    if (!definition?.adminReplay) return false;
+    const delivery = await DomainEventDeliverySchema.findOne({ consumer, eventKey, status: 'dead' }).lean();
+    if (!delivery || !(new Date(delivery.expiresAt).getTime() > Date.now())) return false;
+    // Mongo evaluates the history boundary and source/type scope, exactly as on admission.
+    const event = await DomainEventSchema.findOne({
+        ...definition.eventFilter,
+        _id: delivery.eventID,
+        eventKey,
+        topic: { $in: definition.topics },
+        schemaVersion: { $in: definition.schemaVersions },
+        expiresAt: { $gt: new Date() }
+    }).lean();
+    if (!event || !canAdminReplayDomainEvent(definition, event)) return false;
+    try {
+        validateDomainEventContract(event);
+    } catch (error) {
+        if (error instanceof DomainEventContractError) return false;
+        throw error;
+    }
     const result = await DomainEventDeliverySchema.updateOne({
-        consumer: normalizeRequired(consumer, 'name'),
-        eventKey: normalizeRequired(eventKey, 'eventKey'),
-        status: 'dead'
+        _id: delivery._id,
+        consumer,
+        eventKey,
+        status: 'dead',
+        expiresAt: { $gt: new Date() },
+        // TTL deletion is asynchronous; the journal's original horizon still bounds the reset.
+        $expr: { $lt: ['$$NOW', event.expiresAt] }
     }, {
         $set: {
             status: 'retry',
@@ -488,9 +588,10 @@ export async function replayDeadDomainEvent(consumer: string, eventKey: string):
             lastDeadLetterError: '',
             deadLetteredAt: null,
             completedAt: null,
+            skipReason: '',
             lastReplayedAt: new Date()
         },
         $inc: { replayCount: 1 }
-    });
+    }, { writeConcern: { w: 1, j: true } });
     return result.modifiedCount > 0;
 }

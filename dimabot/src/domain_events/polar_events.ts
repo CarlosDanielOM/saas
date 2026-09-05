@@ -1,5 +1,7 @@
 import type { DomainEventProducer, JournalDomainEventInput } from './domain_event.types.js';
 import { resolveDomainEventOwner } from './domain_event_identity.js';
+import { DomainEventContractError, serializeDomainEventProviderData, validateDomainEventContract } from './domain_event_contracts.js';
+export { getPolarBillingPayload } from './domain_event_contracts.js';
 
 /** Transport must verify the signature and supply the signed webhook-id header. */
 export interface NormalizePolarWebhookInput {
@@ -30,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function requiredString(value: unknown, field: string): string {
     if (typeof value !== 'string' || !value.trim()) {
-        throw new Error(`Polar webhook requires ${field}`);
+        throw new DomainEventContractError(`Polar webhook requires ${field}`);
     }
     return value;
 }
@@ -42,7 +44,7 @@ function optionalString(value: unknown, field: string): string | undefined {
 function serializeDate(value: unknown, field: string): string | null | undefined {
     if (value === undefined || value === null) return value;
     if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
-        throw new Error(`Polar webhook requires a finite Date for ${field}`);
+        throw new DomainEventContractError(`Polar webhook requires a finite Date for ${field}`);
     }
     return value.toISOString();
 }
@@ -50,7 +52,7 @@ function serializeDate(value: unknown, field: string): string | null | undefined
 function cadence(interval: unknown): 'monthly' | 'yearly' {
     if (interval === 'month') return 'monthly';
     if (interval === 'year') return 'yearly';
-    throw new Error('Polar webhook requires a supported subscription recurringInterval');
+    throw new DomainEventContractError('Polar webhook requires a supported subscription recurringInterval');
 }
 
 export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): JournalDomainEventInput {
@@ -58,13 +60,16 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
     const originalEventType = requiredString(input.event?.type, 'event.type');
     const timestamp = input.event.timestamp;
     if (!(timestamp instanceof Date) || !Number.isFinite(timestamp.getTime())) {
-        throw new Error('Polar webhook requires a finite event.timestamp');
+        throw new DomainEventContractError('Polar webhook requires a finite event.timestamp');
     }
     const data = input.event.data;
-    if (!isRecord(data)) throw new Error('Polar webhook requires record event.data');
+    if (!isRecord(data)) throw new DomainEventContractError('Polar webhook requires record event.data');
     const resourceId = requiredString(data.id, 'data.id');
     const customerEvent = originalEventType.startsWith('customer.');
     const customer = isRecord(data.customer) ? data.customer : undefined;
+    if (data.customerId != null && customer?.id != null && data.customerId !== customer.id) {
+        throw new DomainEventContractError('Polar customerId/customer.id mismatch');
+    }
     let customerId = customerEvent ? resourceId : optionalString(data.customerId ?? customer?.id, 'customerId');
     const externalCustomerId = optionalString(customerEvent ? data.externalId : customer?.externalId, 'externalCustomerId');
     const customerMetadata = isRecord(customer?.metadata) ? customer.metadata : undefined;
@@ -85,7 +90,7 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
             status: requiredString(data.status, 'status')
         };
         if (originalEventType === 'order.paid') {
-            if (data.paid !== true) throw new Error('Polar order.paid requires paid=true');
+            if (data.paid !== true) throw new DomainEventContractError('Polar order.paid requires paid=true');
             type = 'billing.order.paid';
             billing.orderId = resourceId;
             billing.paid = true;
@@ -94,12 +99,15 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
             if (productId !== undefined) billing.productId = productId;
             if (subscriptionId !== undefined) billing.subscriptionId = subscriptionId;
             if (data.subscription != null) {
-                if (!isRecord(data.subscription)) throw new Error('Polar webhook requires record subscription');
+                if (!isRecord(data.subscription)) throw new DomainEventContractError('Polar webhook requires record subscription');
+                if (subscriptionId !== undefined && data.subscription.id != null && data.subscription.id !== subscriptionId) {
+                    throw new DomainEventContractError('Polar subscriptionId/subscription.id mismatch');
+                }
                 billing.cadence = cadence(data.subscription.recurringInterval);
                 const periodEnd = serializeDate(data.subscription.currentPeriodEnd, 'subscription.currentPeriodEnd');
                 if (periodEnd !== undefined) billing.periodEnd = periodEnd;
             } else if (subscriptionId !== undefined) {
-                throw new Error('Polar paid subscription order requires subscription recurringInterval');
+                throw new DomainEventContractError('Polar paid subscription order requires subscription recurringInterval');
             }
         } else {
             type = 'billing.subscription.updated';
@@ -115,11 +123,11 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
         payload = billing;
     } else if (originalEventType === 'customer.state_changed') {
         type = 'billing.customer.state.changed';
-        if (!Array.isArray(data.activeMeters)) throw new Error('Polar webhook requires activeMeters');
+        if (!Array.isArray(data.activeMeters)) throw new DomainEventContractError('Polar webhook requires activeMeters');
         const billing: PolarBillingPayload = {
             customerId: resourceId,
             meters: data.activeMeters.map((meter: unknown) => {
-                if (!isRecord(meter)) throw new Error('Polar webhook requires record activeMeters entry');
+                if (!isRecord(meter)) throw new DomainEventContractError('Polar webhook requires record activeMeters entry');
                 const normalized: NonNullable<PolarBillingPayload['meters']>[number] = {
                     meter_id: requiredString(meter.meterId, 'meterId')
                 };
@@ -131,7 +139,7 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
                     const value = meter[sdkField];
                     if (value === undefined) continue;
                     if (typeof value !== 'number' || !Number.isFinite(value)) {
-                        throw new Error(`Polar webhook requires finite ${sdkField}`);
+                        throw new DomainEventContractError(`Polar webhook requires finite ${sdkField}`);
                     }
                     normalized[field] = value;
                 }
@@ -143,10 +151,10 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
         type = `provider.polar.${originalEventType}`;
         metadata.unmapped = true;
         // Keep validated SDK data JSON-safe without promoting it to a billing mutation.
-        payload = { providerData: JSON.parse(JSON.stringify(data)) };
+        payload = { providerData: serializeDomainEventProviderData(data) };
     }
 
-    return {
+    const normalized: JournalDomainEventInput = {
         source: 'polar-webhook',
         sourceEventId,
         type,
@@ -157,6 +165,8 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
         payload,
         metadata
     };
+    validateDomainEventContract(normalized, 'ingest');
+    return normalized;
 }
 
 export const polarWebhookProducer: DomainEventProducer<NormalizePolarWebhookInput> = {

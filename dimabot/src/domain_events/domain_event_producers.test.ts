@@ -5,6 +5,7 @@ import { DOMAIN_EVENT_PRODUCERS, ingestDomainEvent } from './domain_event_produc
 import type { DomainEventProducer, JournalDomainEventInput } from './domain_event.types.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { DOMAIN_EVENT_CONSUMERS } from './domain_event_consumers.js';
+import { DomainEventContractError } from './domain_event_contracts.js';
 
 test('Twitch producer adds internal ownership without changing provider channel identity', async () => {
     let journaled: JournalDomainEventInput | undefined;
@@ -103,5 +104,52 @@ test('existing consumer IDs and Twitch-only scope remain explicit in the registr
         assert.deepEqual(definition.schemaVersions, [1]);
         assert.deepEqual(definition.eventFilter?.source, definition.consumer === 'follow-defense-v1'
             ? 'twitch-eventsub' : { $in: ['twitch-eventsub', 'twitch-eventsub-test'] });
+    }
+});
+
+test('active Twitch producer rejects malformed contracts before any owner lookup or journal', async () => {
+    const dependencies = {
+        resolveOwner: async () => { assert.fail('Malformed event reached owner lookup'); },
+        journal: async () => { assert.fail('Malformed event reached journal'); }
+    };
+    for (const input of [
+        { subscription: { type: 'channel.bits.use' }, event: { broadcaster_user_id: 'channel', bits: '100' } },
+        { subscription: { type: 'channel.bits.use' }, event: { broadcaster_user_id: 'channel', bits: Number.MAX_SAFE_INTEGER + 1 } },
+        { subscription: { type: 'channel.follow' }, event: { broadcaster_user_id: 'channel' } },
+        { subscription: { type: 'channel.follow', version: '99' }, event: { broadcaster_user_id: 'channel', user_id: 'user' } },
+        { subscription: { type: 'channel.raid' }, event: { to_broadcaster_user_id: 'channel', viewers: 1 } },
+        { subscription: { type: 'stream.online' }, event: { broadcaster_user_id: 'channel' } }
+    ]) {
+        await assert.rejects(ingestDomainEvent(DOMAIN_EVENT_PRODUCERS.twitch, { messageId: 'receipt', ...input }, dependencies), DomainEventContractError);
+    }
+});
+
+test('producer output without its subject is rejected even when it claims to be a retained envelope', async () => {
+    await assert.rejects(ingestDomainEvent({ provider: 'twitch', normalize: () => ({
+        _id: new Types.ObjectId(), eventKey: 'twitch-eventsub:receipt:channel.follow.received',
+        source: 'twitch-eventsub', sourceEventId: 'receipt', type: 'channel.follow.received', topic: 'channel', schemaVersion: 1,
+        channelID: 'channel', occurredAt: new Date(), journaledAt: new Date(), expiresAt: new Date(),
+        payload: { subscription: { type: 'channel.follow' }, event: { broadcaster_user_id: 'channel', user_id: 'follower' } },
+        metadata: { originalEventType: 'channel.follow' }
+    }) }, undefined, {
+        resolveOwner: async () => assert.fail('Missing subject reached owner lookup'),
+        journal: async () => assert.fail('Missing subject reached journal')
+    }), DomainEventContractError);
+});
+
+test('active Polar producer rejects malformed SDK contracts before owner lookup or journal', async () => {
+    const dependencies = {
+        resolveOwner: async () => { assert.fail('Malformed event reached owner lookup'); },
+        journal: async () => { assert.fail('Malformed event reached journal'); }
+    };
+    for (const [type, data] of [
+        ['order.paid', { id: 'order', customerId: 'customer', status: 'paid', paid: false }],
+        ['order.paid', { id: 'order', customerId: 'customer', customer: { id: 'other' }, status: 'paid', paid: true }],
+        ['customer.state_changed', { id: 'customer', activeMeters: [{ meterId: 'meter', balance: Number.MAX_SAFE_INTEGER + 1 }] }],
+        ['product.created', { id: 'product', count: NaN }]
+    ] as const) {
+        await assert.rejects(ingestDomainEvent(DOMAIN_EVENT_PRODUCERS.polar, {
+            webhookId: 'receipt', event: { type, timestamp: new Date(), data }
+        }, dependencies), DomainEventContractError);
     }
 });

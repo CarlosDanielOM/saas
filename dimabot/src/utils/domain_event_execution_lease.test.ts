@@ -159,6 +159,8 @@ test('repeated crashed attempts stop at maxAttempts without a failure write from
     assert.equal(stored.attempts, 3);
     assert.equal(stored.status, 'dead');
     assert.equal(effects, 3);
-    assert.equal((await h.drain(async () => { effects++; })).succeeded, 1);
+    const completed = await h.drain(async () => { effects++; });
+    assert.equal(completed.succeeded, 0);
+    assert.equal(completed.alreadyComplete, 1);
     assert.equal(effects, 3, 'later scans cannot restart a terminal delivery');
 });

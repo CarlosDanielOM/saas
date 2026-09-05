@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeTwitchEventsubDomainEvent } from './twitch_eventsub_events.js';
+import { isDurableTwitchEventsubType, normalizeTwitchEventsubDomainEvent, type NormalizeTwitchEventsubInput } from './twitch_eventsub_events.js';
+import { DomainEventContractError } from './domain_event_contracts.js';
 
 test('normalizes a bits notification into a durable channel event', () => {
     const event = normalizeTwitchEventsubDomainEvent({
@@ -101,11 +102,11 @@ test('normalizes every durable contribution and lifecycle subscription type', ()
     }
 });
 
-test('uses the destination broadcaster as the channel fallback', () => {
+test('uses the destination broadcaster for raids', () => {
     const event = normalizeTwitchEventsubDomainEvent({
         messageId: 'message-destination',
-        subscription: { type: 'channel.follow', version: '2' },
-        event: { to_broadcaster_user_id: '4321' }
+        subscription: { type: 'channel.raid', version: '1' },
+        event: { to_broadcaster_user_id: '4321', from_broadcaster_user_id: '1234', viewers: 5 }
     });
 
     assert.ok(event);
@@ -159,7 +160,7 @@ test('defense ownership is opt-in, production-only and follow/raid-only', () => 
             for (const marked of [false, true]) {
                 const event = normalizeTwitchEventsubDomainEvent({
                     messageId: 'receipt', source, durableDefenseHandled: marked,
-                    subscription: { type }, event: { broadcaster_user_id: 'channel' }
+                    subscription: { type }, event: { broadcaster_user_id: 'channel', to_broadcaster_user_id: 'channel' }
                 });
                 assert.equal(event?.metadata?.durableDefenseHandled,
                     marked && source === 'twitch-eventsub' && ['channel.follow', 'channel.raid'].includes(type) ? true : undefined);
@@ -174,5 +175,20 @@ test('redemption AST, chat, ad and ban notifications remain unjournaled', () => 
             messageId: 'receipt', durableDefenseHandled: true,
             subscription: { type }, event: { broadcaster_user_id: 'channel' }
         }), null);
+    }
+});
+
+test('prototype property names cannot become durable Twitch event types', () => {
+    for (const type of ['constructor', '__proto__', 'toString']) {
+        assert.equal(isDurableTwitchEventsubType(type), false);
+        assert.equal(normalizeTwitchEventsubDomainEvent({ messageId: 'receipt', subscription: { type }, event: {} }), null);
+    }
+});
+
+test('malformed Twitch normalization keys fail permanently rather than coercing source or receipt identity', () => {
+    const valid = { messageId: 'receipt', subscription: { type: 'channel.follow' }, event: { broadcaster_user_id: 'channel', user_id: 'user' } };
+    for (const input of [null, { ...valid, subscription: null }, { ...valid, event: null },
+        { ...valid, event: [] }, { ...valid, messageId: 123 }, { ...valid, source: 'generic-bypass' }]) {
+        assert.throws(() => normalizeTwitchEventsubDomainEvent(input as NormalizeTwitchEventsubInput), DomainEventContractError);
     }
 });

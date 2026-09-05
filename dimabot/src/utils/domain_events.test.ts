@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Types } from 'mongoose';
 import { buildDomainEventKey, journalDomainEvent } from './domain_events.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { DomainEventWakeups, domainEventWakeups } from './domain_event_wakeups.js';
+import { DomainEventContractError, validateDomainEventContract } from '../domain_events/domain_event_contracts.js';
+import { normalizeTwitchEventsubDomainEvent } from '../domain_events/twitch_eventsub_events.js';
+import { normalizePolarDomainEvent } from '../domain_events/polar_events.js';
 
 test('domain event keys encode delimiter-bearing components without collisions', () => {
     assert.notEqual(
@@ -10,6 +14,38 @@ test('domain event keys encode delimiter-bearing components without collisions',
         buildDomainEventKey('a', 'b:c', 'd')
     );
     assert.equal(buildDomainEventKey('twitch', 'message-1', 'stream.started'), 'twitch:message-1:stream.started');
+});
+
+test('direct journal calls reject malformed known contracts and future versions before database access', async (context) => {
+    context.mock.method(DomainEventSchema, 'init', (() => assert.fail('Unexpected database init')) as never);
+    context.mock.method(DomainEventSchema.collection, 'insertOne', (() => assert.fail('Unexpected database write')) as never);
+    context.mock.method(domainEventWakeups, 'publish', () => assert.fail('Unexpected wakeup'));
+    const twitch = normalizeTwitchEventsubDomainEvent({ messageId: 'receipt', subscription: { type: 'channel.follow' }, event: { broadcaster_user_id: 'channel', user_id: 'follower' } })!;
+    const polar = normalizePolarDomainEvent({ webhookId: 'receipt', event: { type: 'order.paid', timestamp: new Date(), data: { id: 'order', customerId: 'customer', status: 'paid', paid: true } } });
+    for (const input of [twitch, polar]) {
+        await assert.rejects(journalDomainEvent({ ...input, payload: {} }), DomainEventContractError);
+        await assert.rejects(journalDomainEvent({ ...input, schemaVersion: 2 }), DomainEventContractError);
+        await assert.rejects(journalDomainEvent({ ...input, subject: undefined }), DomainEventContractError);
+    }
+    const retainedLooking = {
+        ...twitch, subject: undefined, _id: new Types.ObjectId(), eventKey: 'twitch-eventsub:receipt:channel.follow.received',
+        occurredAt: new Date(), journaledAt: new Date(), expiresAt: new Date()
+    };
+    await assert.rejects(journalDomainEvent(retainedLooking), DomainEventContractError);
+});
+
+test('a follow with no provider timestamps is journaled at now without inventing a payload timestamp', async (context) => {
+    context.mock.method(DomainEventSchema, 'init', (async () => DomainEventSchema) as never);
+    context.mock.method(DomainEventSchema.collection, 'insertOne', (async () => ({ acknowledged: true })) as never);
+    context.mock.method(domainEventWakeups, 'publish', () => undefined);
+    const before = Date.now();
+    const result = await journalDomainEvent(normalizeTwitchEventsubDomainEvent({
+        messageId: 'receipt', subscription: { type: 'channel.follow' },
+        event: { broadcaster_user_id: 'channel', user_id: 'follower' }
+    })!);
+    assert.ok(result.event.occurredAt.getTime() >= before && result.event.occurredAt.getTime() <= Date.now());
+    assert.equal((result.event.payload.event as Record<string, unknown>).followed_at, undefined);
+    validateDomainEventContract(result.event);
 });
 
 test('journalDomainEvent rejects an invalid occurrence time before database access', async () => {
@@ -71,7 +107,8 @@ test('dispatch recovery marker is persisted in the original journal insert', asy
     await assert.rejects(journalDomainEvent({
         source: 'polar-webhook', sourceEventId: 'receipt-1', topic: 'domain',
         type: 'billing.order.paid', subject: { provider: 'polar', kind: 'customer', id: 'customer-1' },
-        payload: { paid: true }
+        occurredAt: new Date('2026-09-04T10:00:00Z'), metadata: { originalEventType: 'order.paid' },
+        payload: { customerId: 'customer-1', orderId: 'order-1', status: 'paid', paid: true }
     }), (error) => error === stopBeforeWakeup);
 });
 
