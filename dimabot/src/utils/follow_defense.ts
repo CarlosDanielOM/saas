@@ -10,8 +10,10 @@ import {
     FOLLOW_DEFENSE_MAX_EVENT_AGE_MS,
     followDefenseKeys,
     followDefenseQueueDataKey,
+    projectFollowDefenseState,
     type FollowDefenseFollowPayload,
     type FollowDefenseMode,
+    type FollowDefenseManualAttackPayload,
     type FollowDefenseQueueEvent,
     type FollowDefenseRaidMarker,
     type FollowDefenseState,
@@ -133,29 +135,8 @@ async function getSettings(channelID: string, channel = ''): Promise<FollowDefen
 }
 
 async function getState(channelID: string): Promise<FollowDefenseState | null> {
-    const cache = await getDragonflyClient('followDefense.getState');
-    return parseJson<FollowDefenseState>(await cache.get(followDefenseKeys(channelID).state));
-}
-
-async function setState(state: FollowDefenseState): Promise<void> {
-    const cache = await getDragonflyClient('followDefense.setState');
-    const keys = followDefenseKeys(state.channelID);
-    await cache.set(keys.state, JSON.stringify(state));
-    if (state.expiresAt > 0) {
-        await cache.zAdd(keys.activeChannels, {
-            score: state.expiresAt,
-            value: state.channelID
-        });
-    }
-}
-
-function modeRank(mode: FollowDefenseMode): number {
-    switch (mode) {
-        case 'normal': return 0;
-        case 'silent': return 1;
-        case 'protection': return 2;
-        case 'attack': return 3;
-    }
+    // Repair the index from Redis's current value, never by rewriting a stale trigger-event retry snapshot.
+    return (await projectFollowDefenseState(channelID)).state;
 }
 
 async function zCount(key: string, min: number, max: number): Promise<number> {
@@ -266,15 +247,10 @@ async function transitionMode(
     triggeredBy: FollowDefenseTriggerSource,
     reason: string
 ): Promise<FollowDefenseState | null> {
-    const previous = await getState(follow.channelID);
     const now = Date.now();
     if (follow.moderationExpiresAt !== undefined && follow.moderationExpiresAt <= now) return null;
-    if (previous && modeRank(previous.mode) >= modeRank(mode) && previous.expiresAt > now) {
-        return previous;
-    }
 
     const startedAt = follow.moderationExpiresAt ? new Date(follow.followedAt).getTime() : now;
-    const burstStartedAt = previous && previous.expiresAt > now ? previous.burstStartedAt : startedAt;
     const expiresAt = startedAt + (settings.silentDurationSeconds * 1000);
     if (expiresAt <= now) return null;
     const state: FollowDefenseState = {
@@ -283,7 +259,7 @@ async function transitionMode(
         channelLogin: follow.channelLogin,
         channelName: follow.channelName,
         modeStartedAt: startedAt,
-        burstStartedAt,
+        burstStartedAt: startedAt,
         expiresAt,
         triggeredBy,
         lastTransitionReason: reason,
@@ -291,7 +267,8 @@ async function transitionMode(
         ...(follow.moderationExpiresAt ? { triggerEventID: follow.eventID } : {})
     };
 
-    await setState(state);
+    const projected = await projectFollowDefenseState(follow.channelID, { type: 'transition', state, moderationExpiresAt: follow.moderationExpiresAt });
+    if (!projected.changed) return null;
     await logInfo({
         worker: 'follow_defense',
         message: 'Follow defense mode transition',
@@ -300,25 +277,25 @@ async function transitionMode(
         triggeredBy,
         reason
     }, { channelId: follow.channelID, destination: 'both' });
-    return state;
+    return projected.state;
 }
 
-async function setManualAttackState(payload: { channelID: string; channelLogin: string; channelName: string; triggeredAt: number }, settings: FollowDefenseRuntimeSettings): Promise<FollowDefenseState> {
-    const existing = await getState(payload.channelID);
+async function setManualAttackState(payload: FollowDefenseManualAttackPayload, settings: FollowDefenseRuntimeSettings): Promise<FollowDefenseState | null> {
     const state: FollowDefenseState = {
         mode: 'attack',
         channelID: payload.channelID,
-        channelLogin: payload.channelLogin || existing?.channelLogin || '',
-        channelName: payload.channelName || existing?.channelName || '',
+        channelLogin: payload.channelLogin,
+        channelName: payload.channelName,
         modeStartedAt: payload.triggeredAt,
-        burstStartedAt: existing?.burstStartedAt || payload.triggeredAt,
+        burstStartedAt: payload.triggeredAt,
         expiresAt: payload.triggeredAt + (settings.silentDurationSeconds * 1000),
         triggeredBy: 'manual',
         lastTransitionReason: 'manual_attack_command',
-        lastUpdatedAt: Date.now()
+        lastUpdatedAt: Date.now(),
+        manualEventID: payload.eventID
     };
-    await setState(state);
-    return state;
+    const projected = await projectFollowDefenseState(payload.channelID, { type: 'manual', state });
+    return projected.changed ? projected.state : null;
 }
 
 async function cacheBanResult(channelID: string, eventID: string, result: BanCacheResult): Promise<void> {
@@ -445,14 +422,6 @@ async function persistAttackLog(state: FollowDefenseState): Promise<void> {
     }
 }
 
-async function resetDefenseState(channelID: string): Promise<void> {
-    const cache = await getDragonflyClient('followDefense.resetDefenseState');
-    const keys = followDefenseKeys(channelID);
-    await cache.del(keys.state);
-    await cache.del(keys.tracked);
-    await cache.zRem(keys.activeChannels, channelID);
-}
-
 async function sendSilentSummaryIfNeeded(state: FollowDefenseState, settings: FollowDefenseRuntimeSettings): Promise<void> {
     if (state.mode !== 'silent') return;
     const count = await zCount(followDefenseKeys(state.channelID).tracked, 0, Date.now());
@@ -487,10 +456,6 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
     const activeState = state && state.expiresAt > Date.now() ? state : null;
     // A delayed follow from before this wave must not inherit its moderation mode.
     if (durable && activeState && score < activeState.burstStartedAt - windowMs) return;
-    if (durable && activeState?.triggerEventID === follow.eventID) {
-        // Repair a partial state/index write before resuming the required wave effects.
-        await setState(activeState);
-    }
 
     if (raidMarker || (activeState && activeState.mode !== 'normal')) {
         await addTrackedFollow(follow.channelID, follow.eventID, score);
@@ -558,6 +523,7 @@ async function handleManualAttack(event: Extract<FollowDefenseQueueEvent, { type
     if (!settings.enabled || !settings.attackModeEnabled) return;
 
     const state = await setManualAttackState(event.payload, settings);
+    if (!state) return;
     await sendDefenseMessage(event.payload.channelID, settings, 'attack');
     await banTrackedFollows(event.payload.channelID);
     await persistAttackLog(state);
@@ -610,16 +576,14 @@ export async function expireFollowDefenseModes(): Promise<number> {
     let expired = 0;
 
     for (const channelID of channelIDs) {
-        await cache.zRem(activeKey, channelID);
-        const state = await getState(channelID);
+        const { state, token } = await projectFollowDefenseState(channelID);
         if (!state || state.expiresAt > now) continue;
 
         try {
             const settings = await getSettings(channelID, state.channelName || state.channelLogin);
             await sendSilentSummaryIfNeeded(state, settings);
             await persistAttackLog(state);
-            await resetDefenseState(channelID);
-            expired += 1;
+            if ((await projectFollowDefenseState(channelID, { type: 'reset', token })).changed) expired += 1;
         } catch (error) {
             await logWarn({
                 function: 'expireFollowDefenseModes',

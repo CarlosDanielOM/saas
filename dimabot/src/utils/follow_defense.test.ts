@@ -1,17 +1,24 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach, mock } from 'node:test';
 import type { FollowDefenseFollowPayload, FollowDefenseState } from './follow_defense_queue.js';
+import { runFollowDefenseStateLua } from './follow_defense_state.test-helper.js';
 
 const NOW = Date.parse('2026-09-05T12:00:00Z');
 let now = NOW;
 let values: Map<string, string>;
 let sorted: Map<string, Map<string, number>>;
 let bans: string[];
+let messages: string[];
 let cacheCalls = 0;
 let failure = '';
 let slowRead = '';
 let banResult: (user: string) => Promise<{ error: boolean; status?: number; message: string }>;
 const cache = {
+    async eval(script: string, options: { keys: string[]; arguments: string[] }) {
+        if (failure === options.keys[0]) throw new Error('cache read failed');
+        if (failure === `write:${options.keys[0]}`) { failure = ''; throw new Error('cache write failed'); }
+        return runFollowDefenseStateLua(script, options, values, sorted, now);
+    },
     async get(key: string) {
         if (failure === key) throw new Error('cache read failed');
         if (slowRead === key) now += 60_000;
@@ -26,8 +33,11 @@ const cache = {
         sorted.get(key)!.set(item.value, item.score);
     },
     async zRangeByScore(key: string, min: number, max: number) {
-        return [...(sorted.get(key) || [])].filter(([, score]) => score >= min && score <= max).map(([id]) => id);
+        return [...(sorted.get(key) || [])].filter(([, score]) => score >= min && score <= max)
+            .sort(([a, x], [b, y]) => x - y || a.localeCompare(b)).map(([id]) => id);
     },
+    async del(key: string) { values.delete(key); sorted.delete(key); },
+    async zRem(key: string, value: string) { return Number(sorted.get(key)?.delete(value) || false); },
     async sendCommand([command, key, min, max]: string[]) {
         const entries = sorted.get(key) || new Map<string, number>();
         const matches = [...entries].filter(([, score]) => score >= (min === '-inf' ? -Infinity : Number(min)) && score <= Number(max));
@@ -46,18 +56,18 @@ mock.module('../functions/moderation/ban.moderation.js', { namedExports: {
         bans.push(user); return banResult(user);
     }
 } });
-mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwitchChatMessage: async () => ({ error: false }) } });
+mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwitchChatMessage: async (_channel: string, message: string) => { messages.push(message); return { error: false }; } } });
 mock.module('../schemas/follow_defense_settings.schema.js', { namedExports: {
     FollowDefenseSettingsSchema: { findOne: () => ({ lean: async () => { throw new Error('settings lookup failed'); } }) }
 } });
-mock.module('../schemas/follow_attack_log.schema.js', { namedExports: { FollowAttackLogSchema: {} } });
+mock.module('../schemas/follow_attack_log.schema.js', { namedExports: { FollowAttackLogSchema: { create: async () => undefined } } });
 mock.module('../schemas/follow_hate_raid_source.schema.js', { namedExports: { FollowHateRaidSourceSchema: {} } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: async () => null } });
 mock.module('./ai/openrouter/ai.js', { namedExports: { chat: async () => assert.fail('No AI calls') } });
 mock.module('./logger.js', { namedExports: { info: async () => undefined, warn: async () => undefined, error: async () => undefined } });
 process.env.FOLLOW_DEFENSE_BAN_DELAY_MS = '0';
-const { processDurableFollowDefenseFollow } = await import('./follow_defense.js');
-const { followDefenseKeys } = await import('./follow_defense_queue.js');
+const { processDurableFollowDefenseFollow, expireFollowDefenseModes, processFollowDefenseQueue } = await import('./follow_defense.js');
+const { followDefenseKeys, triggerFollowDefenseAttackMode } = await import('./follow_defense_queue.js');
 const keys = followDefenseKeys('channel');
 
 function follow(eventID = 'stable-event', age = 1000): FollowDefenseFollowPayload {
@@ -77,7 +87,7 @@ function state(mode: FollowDefenseState['mode']): void {
 }
 
 beforeEach((context) => {
-    now = NOW; values = new Map(); sorted = new Map(); bans = []; cacheCalls = 0; failure = ''; slowRead = '';
+    now = NOW; values = new Map(); sorted = new Map(); bans = []; messages = []; cacheCalls = 0; failure = ''; slowRead = '';
     assert.ok('mock' in context);
     context.mock.method(Date, 'now', () => now);
     values.set(keys.settings, JSON.stringify({ enabled: true, attackThreshold: 2 }));
@@ -231,4 +241,134 @@ test('payload loss during a required ban is retried rather than silently complet
     read.mock.restore();
     await processDurableFollowDefenseFollow(follow());
     assert.deepEqual(bans, ['stable-event']);
+});
+
+test('manual attack interleaved after threshold read cannot be downgraded or announce a losing transition', async (context) => {
+    values.set(keys.settings, JSON.stringify({ attackModeEnabled: false, protectionThresholdB: 1 }));
+    const original = cache.zRangeByScore;
+    context.mock.method(cache, 'zRangeByScore', async (key: string, min: number, max: number) => {
+        if (key === keys.recent) await triggerFollowDefenseAttackMode('channel');
+        return original(key, min, max);
+    });
+    await processDurableFollowDefenseFollow(follow());
+    assert.equal(JSON.parse(values.get(keys.state)!).triggeredBy, 'manual');
+    assert.deepEqual(messages, []);
+    assert.deepEqual(bans, []);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), JSON.parse(values.get(keys.state)!).expiresAt);
+});
+
+test('expiry of a stale index entry repairs the current live state index', async () => {
+    state('attack');
+    await cache.zAdd(keys.activeChannels, { value: 'channel', score: NOW - 1 });
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), NOW + 60_000);
+});
+
+test('expiry racing a manual command cannot delete the new state, tracked followers or index', async (context) => {
+    state('silent');
+    const expired = { ...JSON.parse(values.get(keys.state)!), expiresAt: NOW - 1 };
+    values.set(keys.state, JSON.stringify(expired));
+    await cache.zAdd(keys.activeChannels, { value: 'channel', score: NOW - 1 });
+    const original = cache.get;
+    context.mock.method(cache, 'get', async (key: string) => {
+        if (key === keys.settings) {
+            await triggerFollowDefenseAttackMode('channel');
+            await cache.zAdd(keys.tracked, { value: 'new-follow', score: NOW });
+        }
+        return original(key);
+    });
+    assert.equal(await expireFollowDefenseModes(), 0);
+    const current = JSON.parse(values.get(keys.state)!);
+    assert.equal(current.triggeredBy, 'manual');
+    assert.equal(current.expiresAt, NOW + 60_000);
+    assert.equal(sorted.get(keys.tracked)?.has('new-follow'), true);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), current.expiresAt);
+});
+
+test('concurrent threshold contenders announce and start the attack wave only once', async () => {
+    await Promise.all([
+        processDurableFollowDefenseFollow(follow('first', 2000)),
+        processDurableFollowDefenseFollow(follow('second'))
+    ]);
+    assert.equal(messages.length, 1);
+    assert.deepEqual(bans.slice().sort(), ['first', 'second']);
+});
+
+test('trigger-event repair cannot rewrite a manual command committed after the retry snapshot', async (context) => {
+    await processDurableFollowDefenseFollow(follow('first', 2000));
+    banResult = async () => ({ error: true, status: 503, message: 'try again' });
+    await assert.rejects(processDurableFollowDefenseFollow(follow('second')), /ban failed/);
+    sorted.delete(keys.activeChannels);
+    const original = cache.eval;
+    let injected = false;
+    context.mock.method(cache, 'eval', async (script: string, options: { keys: string[]; arguments: string[] }) => {
+        const snapshot = await original(script, options);
+        if (!injected && options.arguments[1] === 'repair') {
+            injected = true;
+            await triggerFollowDefenseAttackMode('channel');
+        }
+        return snapshot;
+    });
+    banResult = async () => ({ error: false, message: 'Success' });
+    await processDurableFollowDefenseFollow(follow('second'));
+    const current = JSON.parse(values.get(keys.state)!);
+    assert.equal(current.triggeredBy, 'manual');
+    assert.equal(current.triggerEventID, undefined);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), current.expiresAt);
+    assert.equal(messages.length, 1);
+});
+
+test('required projection failure leaves no receipt and no partial state write', async () => {
+    values.set(keys.activeChannels, 'wrong-type');
+    await assert.rejects(processDurableFollowDefenseFollow(follow()), /WRONGTYPE/);
+    assert.equal(values.has(`${keys.completedPrefix}stable-event`), false);
+    assert.equal(values.has(keys.state), false);
+    assert.deepEqual(bans, []);
+});
+
+test('queued manual completion applies configured duration through the atomic projection', async () => {
+    values.set(keys.settings, JSON.stringify({ silentDurationSeconds: 120 }));
+    await triggerFollowDefenseAttackMode('channel');
+    assert.equal(await processFollowDefenseQueue(), 1);
+    const current = JSON.parse(values.get(keys.state)!);
+    assert.equal(current.triggeredBy, 'manual');
+    assert.equal(current.expiresAt, NOW + 120_000);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), current.expiresAt);
+    assert.equal(messages.length, 1);
+});
+
+test('superseded queued manual command does not announce or start a wave', async () => {
+    await triggerFollowDefenseAttackMode('channel');
+    now += 1000;
+    await triggerFollowDefenseAttackMode('channel');
+    assert.equal(await processFollowDefenseQueue(), 2);
+    assert.equal(messages.length, 1);
+    assert.equal(JSON.parse(values.get(keys.state)!).modeStartedAt, NOW + 1000);
+});
+
+test('same-millisecond manual commands use the last atomic writer, not random ID ordering', async (context) => {
+    const random = context.mock.method(Math, 'random', () => 0.9);
+    await triggerFollowDefenseAttackMode('channel', 'first', 'First');
+    random.mock.restore();
+    context.mock.method(Math, 'random', () => 0.1);
+    await triggerFollowDefenseAttackMode('channel', 'second', 'Second');
+    assert.equal(JSON.parse(values.get(keys.state)!).channelName, 'Second');
+    assert.equal(await processFollowDefenseQueue(), 2);
+    assert.equal(JSON.parse(values.get(keys.state)!).channelName, 'Second');
+    assert.equal(messages.length, 1);
+});
+
+test('expiry errors retain state and index for the next tick instead of stranding the expired mode', async () => {
+    state('attack');
+    const expired = { ...JSON.parse(values.get(keys.state)!), expiresAt: NOW - 1 };
+    values.set(keys.state, JSON.stringify(expired));
+    await cache.zAdd(keys.activeChannels, { value: 'channel', score: NOW - 1 });
+    failure = keys.settings;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(values.get(keys.state), JSON.stringify(expired));
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), NOW - 1);
+    failure = '';
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(values.has(keys.state), false);
+    assert.equal(sorted.get(keys.activeChannels)?.has('channel'), false);
 });

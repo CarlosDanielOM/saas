@@ -65,6 +65,8 @@ type DeliveryOutcome = 'succeeded' | 'skipped' | 'retry' | 'dead' | 'deferred' |
 const RETRY_DELAYS_MS = [5_000, 30_000, 5 * 60_000, 30 * 60_000] as const;
 const PREREQUISITE_HORIZON_MS = 24 * 60 * 60_000;
 const PREREQUISITE_RETRY_MS = 30_000;
+// Missing metric sessions are commonly legitimate offline activity, not broken billing.
+const METRIC_RETRY_OFFSETS_MS = [30_000, 90_000, 210_000, 450_000, 750_000, 900_000] as const;
 
 function normalizeRequired(value: unknown, field: string): string {
     const normalized = String(value || '').trim();
@@ -320,22 +322,30 @@ async function processDelivery(
             const errorCode = prerequisiteMissing ? 'prerequisite_missing' : contractInvalid ? 'contract_invalid' : 'handler_failed';
             const prerequisiteKind = prerequisiteMissing
                 ? error.prerequisite.startsWith('owner:') ? 'owner'
-                    : error.prerequisite.startsWith('subject:') ? 'subject' : 'other'
+                    : error.prerequisite.startsWith('subject:') ? 'subject'
+                        : error.prerequisite.startsWith('metric-session:') ? 'metric' : 'other'
                 : '';
             const durationMs = attemptDurationMs();
             const now = Date.now();
+            const metricMissing = prerequisiteKind === 'metric';
+            const journaledAt = new Date(event.journaledAt).getTime();
             const prerequisiteDeadline = prerequisiteMissing ? Math.min(
-                new Date(event.journaledAt).getTime() + PREREQUISITE_HORIZON_MS,
+                journaledAt + (metricMissing ? 900_000 : PREREQUISITE_HORIZON_MS),
                 new Date(event.expiresAt).getTime()
             ) : 0;
             const exhausted = contractInvalid || (prerequisiteMissing
                 ? !Number.isFinite(prerequisiteDeadline) || now >= prerequisiteDeadline
                 : claimed.attempts >= maxAttempts);
-            const errorMessage = prerequisiteMissing && exhausted
+            const metricSkipped = metricMissing && exhausted;
+            const errorMessage = metricSkipped
+                ? `Metric session recovery window exceeded: ${(error as DomainEventPrerequisiteMissingError).prerequisite}`
+                : prerequisiteMissing && exhausted
                 ? `Prerequisite horizon exceeded: ${error.prerequisite}`
                 : error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
             const nextAttemptAt = prerequisiteMissing
-                ? Math.min(now + PREREQUISITE_RETRY_MS, prerequisiteDeadline)
+                ? Math.min(metricMissing
+                    ? journaledAt + (METRIC_RETRY_OFFSETS_MS.find(offset => journaledAt + offset > now) ?? 900_000)
+                    : now + PREREQUISITE_RETRY_MS, prerequisiteDeadline)
                 : now + RETRY_DELAYS_MS[Math.min(claimed.attempts - 1, RETRY_DELAYS_MS.length - 1)];
 
             const failure = await DomainEventDeliverySchema.updateOne({
@@ -345,17 +355,18 @@ async function processDelivery(
                 lockedUntil: { $gt: new Date() }
             }, {
                 $set: {
-                    status: exhausted ? 'dead' : 'retry',
+                    status: metricSkipped ? 'skipped' : exhausted ? 'dead' : 'retry',
                     nextAttemptAt: exhausted ? null : new Date(nextAttemptAt),
                     lockedUntil: null,
                     leaseToken: null,
-                    lastError: errorMessage.slice(0, 8_000),
+                    lastError: metricSkipped ? '' : errorMessage.slice(0, 8_000),
+                    skipReason: metricSkipped ? errorMessage.slice(0, 8_000) : '',
                     lastErrorCode: errorCode,
                     lastPrerequisiteKind: prerequisiteKind,
                     lastAttemptDurationMs: durationMs,
-                    lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
+                    lastDeadLetterError: exhausted && !metricSkipped ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
                     completedAt: exhausted ? new Date() : null,
-                    deadLetteredAt: exhausted ? new Date() : null
+                    deadLetteredAt: exhausted && !metricSkipped ? new Date() : null
                 },
                 ...(prerequisiteMissing || contractInvalid ? { $inc: { attempts: -1 } } : {})
             }, { writeConcern: { w: 1, j: true } });
@@ -377,6 +388,10 @@ async function processDelivery(
                 durationMs,
                 leaseExpiresAt: new Date(lockedUntil).toISOString()
             };
+            if (metricSkipped) {
+                await logInfo(logPayload, { channelId: event.channelID, destination: 'console' });
+                return 'skipped';
+            }
             if (exhausted) {
                 await logError(logPayload, { channelId: event.channelID, destination: 'console' });
                 return 'dead';

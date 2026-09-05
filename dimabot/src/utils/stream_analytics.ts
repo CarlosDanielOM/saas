@@ -443,6 +443,14 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
     console.log('recordStreamOnlineEvent: Starting', { channelID, streamID, startedAt: startedAt.toISOString() });
 
     try {
+        if (input.eventKey && await StreamSessionSchema.exists({
+            channelID, applied_domain_event_keys: input.eventKey
+        })) return;
+
+        const existingStream = await StreamSessionSchema.findOne({
+            channelID, stream_id: streamID
+        }).select('status ended_at started_at consecutive_offline_checks offline_summary_enqueued_at offline_clips_completed_at').lean();
+
         // Check for existing live session with retry
         const existingLive = await executeWithRetry(
             () => StreamSessionSchema.findOne({
@@ -455,11 +463,53 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
             streamID
         );
 
+        // Superseding sessions remain authoritative even after they have gone offline.
+        const newerSession = await StreamSessionSchema.findOne({
+            channelID,
+            stream_id: { $ne: streamID },
+            started_at: { $gte: existingStream?.started_at || startedAt }
+        }).sort({ started_at: 1 }).select('started_at').lean();
+
+        if (existingStream && existingStream.status !== 'live') {
+            // Only a previously unapplied durable online can repair a provisional snapshot end.
+            // Offline receipts and newer/different sessions rule out a safe reopening.
+            const recoverSnapshot = Boolean(input.eventKey && input.streamID &&
+                existingStream.status === 'orphaned' &&
+                existingStream.consecutive_offline_checks >= OFFLINE_CHECK_THRESHOLD &&
+                !existingStream.offline_summary_enqueued_at && !existingStream.offline_clips_completed_at &&
+                !existingLive && !newerSession);
+            if (recoverSnapshot || input.reopenClosed === false || existingStream.status === 'offline') {
+                if (input.eventKey) {
+                    const result = await StreamSessionSchema.updateOne({
+                        _id: existingStream._id,
+                        status: existingStream.status,
+                        ended_at: existingStream.ended_at,
+                        ...(recoverSnapshot ? {
+                            consecutive_offline_checks: { $gte: OFFLINE_CHECK_THRESHOLD },
+                            offline_summary_enqueued_at: null,
+                            offline_clips_completed_at: null
+                        } : {}),
+                        applied_domain_event_keys: { $ne: input.eventKey }
+                    }, {
+                        ...(recoverSnapshot ? { $set: {
+                            channel, status: 'live', ended_at: null,
+                            last_seen_live_at: new Date(), consecutive_offline_checks: 0
+                        } } : {}),
+                        $addToSet: { applied_domain_event_keys: input.eventKey }
+                    }, { writeConcern: { w: 1, j: true } });
+                    if (result.matchedCount === 0) {
+                        throw new Error(`Session changed while applying stream.online for ${channelID}`);
+                    }
+                }
+                return;
+            }
+        }
+
         if (existingLive && existingLive.stream_id === streamID) {
             console.log('recordStreamOnlineEvent: Updating existing live session', { channelID, streamID });
-            await executeWithRetry(
+            const result = await executeWithRetry(
                 () => StreamSessionSchema.updateOne(
-                    { _id: existingLive._id },
+                    { _id: existingLive._id, status: 'live', ended_at: null },
                     {
                         $set: {
                             channel,
@@ -469,50 +519,57 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
                             ended_at: null
                         },
                         ...(input.eventKey ? { $addToSet: { applied_domain_event_keys: input.eventKey } } : {})
-                    }
+                    },
+                    { writeConcern: { w: 1, j: true } }
                 ),
                 'updateExistingSession',
                 channelID,
                 streamID
             );
+            if (result.matchedCount === 0) {
+                throw new Error(`Live session changed while applying stream.online for ${channelID}`);
+            }
             console.log('recordStreamOnlineEvent: Session updated successfully', { channelID, streamID });
             return;
         }
 
-        if (existingLive && existingLive.stream_id !== streamID) {
-            const existingStartedAt = new Date(existingLive.started_at);
-            if (startedAt <= existingStartedAt) {
-                const historicalUpdate: Record<string, unknown> = {
-                    $setOnInsert: {
-                        channelID,
-                        stream_id: streamID,
-                        started_at: startedAt,
-                        ended_at: existingStartedAt,
-                        status: 'orphaned',
-                        channel,
-                        peak_viewers: 0,
-                        average_viewers: 0,
-                        sample_count: 0,
-                        sample_total_viewers: 0,
-                        duration_minutes: getDurationMinutes(startedAt, existingStartedAt),
-                        follows: 0,
-                        subs: 0,
-                        bits: 0,
-                        donations: 0,
-                        messages: 0,
-                        commands: 0
-                    }
-                };
-                if (input.eventKey) {
-                    historicalUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
+        if (newerSession) {
+            const existingStartedAt = new Date(newerSession.started_at);
+            const historicalUpdate: Record<string, unknown> = {
+                $setOnInsert: {
+                    channelID,
+                    stream_id: streamID,
+                    started_at: startedAt,
+                    ended_at: existingStartedAt,
+                    status: 'orphaned',
+                    channel,
+                    peak_viewers: 0,
+                    average_viewers: 0,
+                    sample_count: 0,
+                    sample_total_viewers: 0,
+                    duration_minutes: getDurationMinutes(startedAt, existingStartedAt),
+                    follows: 0,
+                    subs: 0,
+                    bits: 0,
+                    donations: 0,
+                    messages: 0,
+                    commands: 0
                 }
-                await StreamSessionSchema.updateOne(
-                    { channelID, stream_id: streamID },
-                    historicalUpdate,
-                    { upsert: true }
-                );
-                return;
+            };
+            if (input.eventKey) {
+                historicalUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
             }
+            const result = await StreamSessionSchema.updateOne(
+                { channelID, stream_id: streamID },
+                historicalUpdate,
+                { upsert: true, writeConcern: { w: 1, j: true } }
+            );
+            if (result.matchedCount === 0 && !result.upsertedCount) {
+                throw new Error(`Historical session changed while applying stream.online for ${channelID}`);
+            }
+            return;
+        }
+        if (existingLive && existingLive.stream_id !== streamID) {
             console.log('recordStreamOnlineEvent: New stream detected, orphaning old session', {
                 channelID,
                 oldStreamID: existingLive.stream_id,
@@ -546,14 +603,6 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
             });
         }
 
-        const existingStream = await StreamSessionSchema.findOne({
-            channelID,
-            stream_id: streamID
-        }).select('status ended_at').lean();
-        if (existingStream && existingStream.status !== 'live' && input.reopenClosed === false) {
-            return;
-        }
-
         console.log('recordStreamOnlineEvent: Creating new session', { channelID, streamID });
         const sessionUpdate: Record<string, unknown> = {
             $setOnInsert: {
@@ -583,16 +632,23 @@ export async function recordStreamOnlineEvent(input: RecordStreamOnlineInput): P
         if (input.eventKey) {
             sessionUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
         }
-        await executeWithRetry(
+        const createdSession = await executeWithRetry(
             () => StreamSessionSchema.findOneAndUpdate(
-                { channelID, stream_id: streamID },
+                {
+                    channelID, stream_id: streamID,
+                    status: existingStream?.status || 'live',
+                    ended_at: existingStream?.ended_at || null
+                },
                 sessionUpdate,
-                { upsert: true, new: true }
+                { upsert: true, new: true, writeConcern: { w: 1, j: true } }
             ),
             'createSession',
             channelID,
             streamID
         );
+        if (!createdSession) {
+            throw new Error(`Session changed while creating stream.online for ${channelID}`);
+        }
 
         console.log('recordStreamOnlineEvent: Session created successfully', { channelID, streamID });
     } catch (error) {

@@ -199,3 +199,42 @@ test('lost deferral response leaves a durable retry that subsequent scans can pa
     assert.equal(h.checkpoint, h.started._id);
     assert.equal(h.deliveries.get('start').status, 'succeeded');
 });
+
+test('offline metrics have a bounded grace window and explicit skipped outcome, not a day of retries', async t => {
+    const h = setup(t);
+    let executions = 0;
+    const handler = async (e: any) => {
+        if (e.eventKey !== 'metric') return;
+        executions++;
+        throw new DomainEventPrerequisiteMissingError('metric-session:channel:occurrence');
+    };
+    await h.drain(handler, 1);
+    const delivery = h.deliveries.get('metric');
+    for (const offset of [30_000, 90_000, 210_000, 450_000, 750_000, 900_000]) {
+        assert.equal(delivery.nextAttemptAt.getTime(), NOW + offset);
+        t.mock.timers.setTime(NOW + offset);
+        await h.drain(handler, 1);
+    }
+    assert.equal(executions, 7);
+    assert.equal(delivery.status, 'skipped');
+    assert.equal(delivery.attempts, 0);
+    assert.equal(delivery.lastPrerequisiteKind, 'metric');
+    assert.match(delivery.skipReason, /Metric session recovery window exceeded/);
+    assert.equal(delivery.deadLetteredAt, null);
+    assert.equal(delivery.nextAttemptAt, null);
+    assert.equal((await h.drain(handler, 1)).succeeded, 0);
+});
+
+test('a metric session arriving within grace still applies, without changing the owner horizon', async t => {
+    const h = setup(t, 14 * 60_000);
+    let missing = true;
+    const handler = async (e: any) => {
+        if (e.eventKey === 'metric' && missing) throw new DomainEventPrerequisiteMissingError('metric-session:channel');
+    };
+    await h.drain(handler);
+    assert.equal(h.deliveries.get('metric').nextAttemptAt.getTime(), NOW + 60_000);
+    missing = false;
+    t.mock.timers.tick(60_000);
+    assert.equal((await h.drain(handler)).succeeded, 1);
+    assert.equal(h.deliveries.get('metric').status, 'succeeded');
+});

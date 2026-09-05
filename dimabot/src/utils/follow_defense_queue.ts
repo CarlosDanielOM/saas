@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import type { IFollowEvent } from '../interfaces/twitch/eventsub.interface.js';
 import { error as logError } from './logger.js';
@@ -44,6 +45,8 @@ export interface FollowDefenseState {
     lastTransitionReason: string;
     lastUpdatedAt: number;
     triggerEventID?: string;
+    version?: string;
+    manualEventID?: string;
 }
 
 export interface FollowDefenseRaidMarker {
@@ -81,6 +84,81 @@ export function followDefenseKeys(channelID: string) {
 
 export function followDefenseQueueDataKey(eventID: string): string {
     return `${QUEUE_DATA_PREFIX}${eventID}`;
+}
+
+type StateMutation =
+    | { type: 'repair' }
+    | { type: 'reset'; token: string }
+    | { type: 'transition'; state: FollowDefenseState; moderationExpiresAt?: number }
+    | { type: 'manual'; state: FollowDefenseState; preserveExpiry?: boolean };
+
+export async function projectFollowDefenseState(channelID: string, mutation: StateMutation = { type: 'repair' }): Promise<{
+    changed: boolean; state: FollowDefenseState | null; token: string;
+}> {
+    const cache = await getDragonflyClient('followDefense.projectState');
+    const keys = followDefenseKeys(channelID);
+    // All writers use the same projection. Check types before any mutation: Lua errors do not roll back Redis writes.
+    const result = await cache.eval(`
+local stateType = redis.call('TYPE', KEYS[1]).ok
+local indexType = redis.call('TYPE', KEYS[2]).ok
+local trackedType = redis.call('TYPE', KEYS[3]).ok
+if (stateType ~= 'none' and stateType ~= 'string') or
+   (indexType ~= 'none' and indexType ~= 'zset') or
+   (trackedType ~= 'none' and trackedType ~= 'zset') then
+    return redis.error_reply('WRONGTYPE follow defense state projection')
+end
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+local raw = redis.call('GET', KEYS[1])
+local current = raw and cjson.decode(raw) or nil
+local function project(state)
+    if state and state.expiresAt > 0 then
+        redis.call('ZADD', KEYS[2], state.expiresAt, ARGV[1])
+    else
+        redis.call('ZREM', KEYS[2], ARGV[1])
+    end
+end
+local function unchanged()
+    project(current)
+    return {0, raw or ''}
+end
+if ARGV[2] == 'repair' then return unchanged() end
+if ARGV[2] == 'reset' then
+    if not raw or raw ~= ARGV[3] or current.expiresAt > now then return unchanged() end
+    redis.call('DEL', KEYS[1], KEYS[3])
+    redis.call('ZREM', KEYS[2], ARGV[1])
+    return {1, ''}
+end
+local incoming = cjson.decode(ARGV[3])
+if incoming.expiresAt <= now or (tonumber(ARGV[4]) > 0 and tonumber(ARGV[4]) <= now) then
+    return unchanged()
+end
+local active = current and current.expiresAt > now
+if ARGV[2] == 'transition' then
+    local rank = {normal = 0, silent = 1, protection = 2, attack = 3}
+    if active and rank[current.mode] >= rank[incoming.mode] then return unchanged() end
+else
+    -- A queued older command must not replace a newer mode. The same command may finish its configured-duration write.
+    if current and current.modeStartedAt > incoming.modeStartedAt then return unchanged() end
+    if ARGV[5] ~= '1' and current and current.modeStartedAt == incoming.modeStartedAt and
+       current.manualEventID and current.manualEventID ~= incoming.manualEventID then return unchanged() end
+    if incoming.channelLogin == '' and current then incoming.channelLogin = current.channelLogin end
+    if incoming.channelName == '' and current then incoming.channelName = current.channelName end
+    if ARGV[5] == '1' and active then incoming.expiresAt = current.expiresAt end
+end
+if active then incoming.burstStartedAt = current.burstStartedAt end
+local nextRaw = cjson.encode(incoming)
+redis.call('SET', KEYS[1], nextRaw)
+project(incoming)
+return {1, nextRaw}
+`, {
+        keys: [keys.state, keys.activeChannels, keys.tracked],
+        arguments: [channelID, mutation.type,
+            'state' in mutation ? JSON.stringify({ ...mutation.state, version: randomUUID() }) : mutation.type === 'reset' ? mutation.token : '',
+            String(mutation.type === 'transition' ? mutation.moderationExpiresAt || 0 : 0),
+            mutation.type === 'manual' && mutation.preserveExpiry ? '1' : '0']
+    }) as [number, string];
+    return { changed: result[0] === 1, state: result[1] ? JSON.parse(result[1]) as FollowDefenseState : null, token: result[1] };
 }
 
 function createEventID(channelID: string, subjectID: string): string {
@@ -209,28 +287,28 @@ return 1
 export async function triggerFollowDefenseAttackMode(channelID: string, channelLogin = '', channelName = ''): Promise<void> {
     const eventID = createEventID(channelID, 'manual-attack');
     const now = Date.now();
-    const cache = await getDragonflyClient('triggerFollowDefenseAttackMode');
-    const existingState = parseJson<FollowDefenseState>(await cache.get(followDefenseKeys(channelID).state));
     const state: FollowDefenseState = {
         mode: 'attack',
         channelID,
-        channelLogin: channelLogin || existingState?.channelLogin || '',
-        channelName: channelName || existingState?.channelName || '',
+        channelLogin,
+        channelName,
         modeStartedAt: now,
-        burstStartedAt: existingState?.burstStartedAt || now,
-        expiresAt: existingState?.expiresAt || now + 60_000,
+        burstStartedAt: now,
+        expiresAt: now + 60_000,
         triggeredBy: 'manual',
         lastTransitionReason: 'manual_attack_command',
-        lastUpdatedAt: now
+        lastUpdatedAt: now,
+        manualEventID: eventID
     };
-    await cache.set(followDefenseKeys(channelID).state, JSON.stringify(state));
+    const projected = await projectFollowDefenseState(channelID, { type: 'manual', state, preserveExpiry: true });
+    if (!projected.changed) return;
     await enqueueFollowDefenseEvent({
         type: 'manual_attack',
         payload: {
             eventID,
             channelID,
-            channelLogin: state.channelLogin,
-            channelName: state.channelName,
+            channelLogin: projected.state!.channelLogin,
+            channelName: projected.state!.channelName,
             triggeredBy: 'manual',
             triggeredAt: now
         }

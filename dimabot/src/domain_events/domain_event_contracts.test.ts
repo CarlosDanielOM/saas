@@ -6,12 +6,26 @@ import {
     getTwitchEventsubPayload, TWITCH_DOMAIN_EVENT_TYPES, validateDomainEventContract
 } from './domain_event_contracts.js';
 import type { DomainEventEnvelope, JournalDomainEventInput } from './domain_event.types.js';
+import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
 import { normalizeTwitchEventsubDomainEvent } from './twitch_eventsub_events.js';
 import { normalizePolarDomainEvent } from './polar_events.js';
 import { generateTestPayload } from '../utils/eventsub.test-data.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 
 const timestamp = '2026-09-05T12:00:00.000Z';
+
+test('producer retention cannot exceed the bounded topic horizon', () => {
+    for (const topic of ['channel', 'activity', 'telemetry', 'domain'] as const) {
+        const input: JournalDomainEventInput = {
+            source: 'extension', sourceEventId: 'receipt', type: 'extension.event', topic,
+            channelID: 'channel', subject: { provider: 'extension', kind: 'resource', id: 'subject' },
+            payload: {}, retentionSeconds: DOMAIN_EVENT_RETENTION_SECONDS[topic]
+        };
+        assert.doesNotThrow(() => validateDomainEventContract(input, 'ingest'));
+        assert.throws(() => validateDomainEventContract({ ...input, retentionSeconds: input.retentionSeconds! + 1 }, 'ingest'), /topic retention limit/);
+        assert.throws(() => validateDomainEventContract({ ...input, retentionSeconds: 8e12 }, 'ingest'), /topic retention limit/);
+    }
+});
 
 function twitch(type = 'channel.follow', event: Record<string, unknown> = { broadcaster_user_id: 'channel', user_id: 'follower' }): JournalDomainEventInput {
     return normalizeTwitchEventsubDomainEvent({

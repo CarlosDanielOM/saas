@@ -1,4 +1,5 @@
 import type { JournalDomainEventInput } from './domain_event.types.js';
+import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
 import type { PolarBillingPayload } from './polar_events.js';
 
 export class DomainEventContractError extends Error {
@@ -139,7 +140,7 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
     count(input.schemaVersion === undefined ? 1 : input.schemaVersion, 'schemaVersion', 1);
     if (input.retentionSeconds !== undefined) {
         requireContract(typeof input.retentionSeconds === 'number' && Number.isFinite(input.retentionSeconds), 'retentionSeconds must be finite numbers');
-        requireContract(input.retentionSeconds > 0 && input.retentionSeconds <= 8e12, 'retentionSeconds is out of range');
+        requireContract(input.retentionSeconds > 0 && input.retentionSeconds <= DOMAIN_EVENT_RETENTION_SECONDS[input.topic], 'retentionSeconds exceeds the topic retention limit or is not positive');
     }
     if (input.channelID !== undefined || input.topic === 'channel') text(input.channelID, 'channelID');
     if (input.streamID !== undefined) text(input.streamID, 'streamID');

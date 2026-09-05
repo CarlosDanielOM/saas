@@ -1,20 +1,13 @@
 import { Types, type HydratedDocument } from 'mongoose';
 import type {
     DomainEventEnvelope,
-    DomainEventTopic,
     JournalDomainEventInput,
     JournalDomainEventResult
 } from '../domain_events/domain_event.types.js';
 import { DomainEventSchema, type IDomainEvent } from '../schemas/domain_event.schema.js';
 import { domainEventWakeups } from './domain_event_wakeups.js';
 import { validateDomainEventContract } from '../domain_events/domain_event_contracts.js';
-
-const DEFAULT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
-    channel: 90 * 24 * 60 * 60,
-    activity: 3 * 24 * 60 * 60,
-    telemetry: 7 * 24 * 60 * 60,
-    domain: 90 * 24 * 60 * 60
-};
+import { DOMAIN_EVENT_RETENTION_SECONDS } from '../domain_events/domain_event.types.js';
 
 function normalizeRequired(value: unknown, field: string): string {
     const normalized = String(value || '').trim();
@@ -92,7 +85,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
     const eventKey = buildDomainEventKey(source, sourceEventId, type);
     const occurredAt = normalizeDate(input.occurredAt);
     const journaledAt = new Date();
-    const requestedRetentionSeconds = Number(input.retentionSeconds ?? DEFAULT_RETENTION_SECONDS[input.topic]);
+    const requestedRetentionSeconds = Number(input.retentionSeconds ?? DOMAIN_EVENT_RETENTION_SECONDS[input.topic]);
     const requestedSchemaVersion = Number(input.schemaVersion ?? 1);
     if (!Number.isFinite(requestedRetentionSeconds) || !Number.isFinite(requestedSchemaVersion)) {
         throw new Error('Domain event retentionSeconds and schemaVersion must be finite numbers');

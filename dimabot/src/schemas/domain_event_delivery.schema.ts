@@ -16,7 +16,7 @@ export interface IDomainEventDelivery {
     leaseToken: string | null;
     lastError: string;
     lastErrorCode?: DomainEventDeliveryErrorCode;
-    lastPrerequisiteKind?: '' | 'owner' | 'subject' | 'other';
+    lastPrerequisiteKind?: '' | 'owner' | 'subject' | 'metric' | 'other';
     lastAttemptDurationMs?: number | null;
     lastDeadLetterError: string;
     firstAttemptAt: Date | null;
@@ -48,7 +48,7 @@ const domainEventDeliverySchema = new Schema<IDomainEventDelivery>({
     leaseToken: { type: String, default: null },
     lastError: { type: String, default: '' },
     lastErrorCode: { type: String, enum: ['', 'prerequisite_missing', 'contract_invalid', 'handler_failed', 'interrupted', 'journal_missing', 'policy_rejected'], default: '' },
-    lastPrerequisiteKind: { type: String, enum: ['', 'owner', 'subject', 'other'], default: '' },
+    lastPrerequisiteKind: { type: String, enum: ['', 'owner', 'subject', 'metric', 'other'], default: '' },
     lastAttemptDurationMs: { type: Number, min: 0, default: null },
     lastDeadLetterError: { type: String, default: '' },
     firstAttemptAt: { type: Date, default: null },
@@ -66,6 +66,7 @@ const domainEventDeliverySchema = new Schema<IDomainEventDelivery>({
 domainEventDeliverySchema.index({ consumer: 1, eventKey: 1 }, { unique: true });
 domainEventDeliverySchema.index({ consumer: 1, status: 1, nextAttemptAt: 1 });
 domainEventDeliverySchema.index({ consumer: 1, status: 1, lockedUntil: 1 });
+domainEventDeliverySchema.index({ consumer: 1, status: 1, updatedAt: 1, _id: 1 });
 domainEventDeliverySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const DomainEventDeliverySchema = model<IDomainEventDelivery>(

@@ -50,5 +50,5 @@ export async function incrementSessionMetricAtEventTime(input: {
         return 'already-applied';
     }
     // Absence alone (even with an older closed session) cannot prove an offline window.
-    throw new DomainEventPrerequisiteMissingError(`stream-session:${input.channelID}:${occurredAt.toISOString()}`);
+    throw new DomainEventPrerequisiteMissingError(`metric-session:${input.channelID}:${occurredAt.toISOString()}`);
 }

@@ -2,6 +2,13 @@ import type { Types } from 'mongoose';
 
 export type DomainEventTopic = 'channel' | 'activity' | 'telemetry' | 'domain';
 
+export const DOMAIN_EVENT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
+    channel: 90 * 24 * 60 * 60,
+    activity: 3 * 24 * 60 * 60,
+    telemetry: 7 * 24 * 60 * 60,
+    domain: 90 * 24 * 60 * 60
+};
+
 export interface DomainEventSubject {
     provider: string;
     kind: 'streaming-account' | 'integration-account' | 'customer' | 'resource';
