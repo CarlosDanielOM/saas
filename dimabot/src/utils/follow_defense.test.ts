@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach, mock } from 'node:test';
+import { Types } from 'mongoose';
+import type { IFollowAttackLog } from '../schemas/follow_attack_log.schema.js';
+import type { IFollowHateRaidSource } from '../schemas/follow_hate_raid_source.schema.js';
 import type { FollowDefenseFollowPayload, FollowDefenseState } from './follow_defense_queue.js';
 import { runFollowDefenseStateLua } from './follow_defense_state.test-helper.js';
 
@@ -12,9 +15,61 @@ let messages: string[];
 let cacheCalls = 0;
 let failure = '';
 let slowRead = '';
+let attackLogs: Map<string, IFollowAttackLog & { _id: Types.ObjectId }>;
+let loseLogResponse = false;
+let resetFailures = 0;
+let sources: Map<string, IFollowHateRaidSource>;
+let failSourceWrite = false;
+let loseSourceResponse = false;
+type SourceFilter = { targetChannelID: string; raiderChannelID: string; appliedLogIDs: { $ne: Types.ObjectId } };
+type SourceUpdate = {
+    $set: Pick<IFollowHateRaidSource, 'targetChannelLogin' | 'targetChannelName' | 'raiderChannelLogin' | 'raiderChannelName'>;
+    $inc: { count: number }; $addToSet: { appliedLogIDs: Types.ObjectId };
+    $min: { firstSeenAt: Date }; $max: { lastSeenAt: Date };
+};
+const sourceModel = {
+    async updateOne(filter: SourceFilter, update: SourceUpdate, options?: { upsert?: boolean; setDefaultsOnInsert?: boolean }) {
+        if (failSourceWrite) { failSourceWrite = false; throw new Error('source write failed'); }
+        const key = JSON.stringify([filter.targetChannelID, filter.raiderChannelID]);
+        const existing = sources.get(key);
+        if (existing?.appliedLogIDs?.some(id => id.equals(filter.appliedLogIDs.$ne))) {
+            if (options?.upsert) throw Object.assign(new Error('duplicate source'), { code: 11000 });
+            return { matchedCount: 0 };
+        }
+        if (!existing && !options?.upsert) return { matchedCount: 0 };
+        const source = existing ?? {
+            targetChannelID: filter.targetChannelID, raiderChannelID: filter.raiderChannelID, ...update.$set,
+            count: 0, firstSeenAt: update.$min.firstSeenAt, lastSeenAt: update.$max.lastSeenAt,
+            createdAt: new Date(now), updatedAt: new Date(now)
+        };
+        Object.assign(source, update.$set);
+        source.count += update.$inc.count;
+        source.appliedLogIDs = [...source.appliedLogIDs || [], update.$addToSet.appliedLogIDs];
+        source.firstSeenAt = new Date(Math.min(source.firstSeenAt.getTime(), update.$min.firstSeenAt.getTime()));
+        source.lastSeenAt = new Date(Math.max(source.lastSeenAt.getTime(), update.$max.lastSeenAt.getTime()));
+        sources.set(key, source);
+        if (loseSourceResponse) { loseSourceResponse = false; throw new Error('source response lost'); }
+        return { matchedCount: existing ? 1 : 0, upsertedCount: existing ? 0 : 1 };
+    },
+    async exists(filter: { targetChannelID: string; raiderChannelID: string; appliedLogIDs: Types.ObjectId }) {
+        const source = sources.get(JSON.stringify([filter.targetChannelID, filter.raiderChannelID]));
+        return source?.appliedLogIDs?.some(id => id.equals(filter.appliedLogIDs)) ? { _id: 'source' } : null;
+    }
+};
+const attackLogModel = {
+    findById(id: Types.ObjectId) { return { lean: async () => attackLogs.get(String(id)) ?? null }; },
+    async create(data: Omit<IFollowAttackLog, 'createdAt' | 'updatedAt'> & { _id: Types.ObjectId }) {
+        if (attackLogs.has(String(data._id))) throw Object.assign(new Error('duplicate log'), { code: 11000 });
+        const log = { ...data, createdAt: new Date(now), updatedAt: new Date(now) };
+        attackLogs.set(String(data._id), log);
+        if (loseLogResponse) { loseLogResponse = false; throw new Error('log response lost'); }
+        return { toObject: () => log };
+    }
+};
 let banResult: (user: string) => Promise<{ error: boolean; status?: number; message: string }>;
 const cache = {
     async eval(script: string, options: { keys: string[]; arguments: string[] }) {
+        if (options.arguments[1] === 'reset' && resetFailures > 0) { resetFailures--; throw new Error('reset failed'); }
         if (failure === options.keys[0]) throw new Error('cache read failed');
         if (failure === `write:${options.keys[0]}`) { failure = ''; throw new Error('cache write failed'); }
         return runFollowDefenseStateLua(script, options, values, sorted, now);
@@ -60,8 +115,8 @@ mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwi
 mock.module('../schemas/follow_defense_settings.schema.js', { namedExports: {
     FollowDefenseSettingsSchema: { findOne: () => ({ lean: async () => { throw new Error('settings lookup failed'); } }) }
 } });
-mock.module('../schemas/follow_attack_log.schema.js', { namedExports: { FollowAttackLogSchema: { create: async () => undefined } } });
-mock.module('../schemas/follow_hate_raid_source.schema.js', { namedExports: { FollowHateRaidSourceSchema: {} } });
+mock.module('../schemas/follow_attack_log.schema.js', { namedExports: { FollowAttackLogSchema: attackLogModel } });
+mock.module('../schemas/follow_hate_raid_source.schema.js', { namedExports: { FollowHateRaidSourceSchema: sourceModel } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: async () => null } });
 mock.module('./ai/openrouter/ai.js', { namedExports: { chat: async () => assert.fail('No AI calls') } });
 mock.module('./logger.js', { namedExports: { info: async () => undefined, warn: async () => undefined, error: async () => undefined } });
@@ -88,6 +143,8 @@ function state(mode: FollowDefenseState['mode']): void {
 
 beforeEach((context) => {
     now = NOW; values = new Map(); sorted = new Map(); bans = []; messages = []; cacheCalls = 0; failure = ''; slowRead = '';
+    attackLogs = new Map(); loseLogResponse = false; resetFailures = 0;
+    sources = new Map(); failSourceWrite = false; loseSourceResponse = false;
     assert.ok('mock' in context);
     context.mock.method(Date, 'now', () => now);
     values.set(keys.settings, JSON.stringify({ enabled: true, attackThreshold: 2 }));
@@ -371,4 +428,209 @@ test('expiry errors retain state and index for the next tick instead of strandin
     assert.equal(await expireFollowDefenseModes(), 1);
     assert.equal(values.has(keys.state), false);
     assert.equal(sorted.get(keys.activeChannels)?.has('channel'), false);
+});
+
+function expiredLogState(overrides: Partial<FollowDefenseState> = {}): FollowDefenseState {
+    const expired: FollowDefenseState = {
+        mode: 'attack', channelID: 'channel', channelLogin: 'channel', channelName: 'Channel',
+        expiresAt: NOW - 1, modeStartedAt: NOW - 60_000, burstStartedAt: NOW - 60_000,
+        triggeredBy: 'threshold', lastTransitionReason: 'test', lastUpdatedAt: NOW - 60_000,
+        version: 'state-version', ...overrides
+    };
+    const channelKeys = followDefenseKeys(expired.channelID);
+    values.set(channelKeys.state, JSON.stringify(expired));
+    values.set(channelKeys.settings, JSON.stringify({ enabled: true }));
+    values.set(`${channelKeys.followDataPrefix}tracked`, JSON.stringify({ ...follow('tracked'), channelID: expired.channelID }));
+    sorted.set(channelKeys.tracked, new Map([['tracked', NOW - 1000]]));
+    if (!sorted.has(channelKeys.activeChannels)) sorted.set(channelKeys.activeChannels, new Map());
+    sorted.get(channelKeys.activeChannels)!.set(expired.channelID, expired.expiresAt);
+    return expired;
+}
+
+function raid(channelID = 'channel', raiderChannelID = 'raider'): void {
+    values.set(followDefenseKeys(channelID).raid, JSON.stringify({
+        channelID, raiderChannelID, raiderChannelLogin: 'raider', raiderChannelName: 'Raider',
+        raidViewers: 10, createdAt: NOW - 120_000, expiresAt: NOW + 1000
+    }));
+}
+
+test('expiry reset failure retries the exact state without duplicating the durable log', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    resetFailures = 2;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    const saved = [...attackLogs.values()][0];
+    now += 1000;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(attackLogs.size, 1);
+    assert.deepEqual([...attackLogs.values()][0], saved);
+    assert.equal([...sources.values()][0].count, 1);
+});
+
+test('lost log create response is recovered without another log', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    loseLogResponse = true;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(attackLogs.size, 1);
+    assert.equal(sources.size, 0);
+    sorted.delete(keys.tracked);
+    values.delete(`${keys.followDataPrefix}tracked`);
+    now += 2000;
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(attackLogs.size, 1);
+    assert.equal([...sources.values()][0].count, 1);
+});
+
+test('saved hate-raid log repairs a failed source write after marker expiry and tracked payload loss', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    failSourceWrite = true;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    const saved = [...attackLogs.values()][0];
+    assert.equal(saved.isHateRaid, true);
+    assert.equal(sources.size, 0);
+    now += 300_000;
+    sorted.delete(keys.tracked);
+    values.delete(`${keys.followDataPrefix}tracked`);
+    raid('channel', 'different-raider');
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(attackLogs.size, 1);
+    const source = [...sources.values()][0];
+    assert.equal(source.raiderChannelID, 'raider');
+    assert.equal(source.count, 1);
+    assert.deepEqual(source.firstSeenAt, saved.createdAt);
+    assert.deepEqual(source.lastSeenAt, saved.createdAt);
+});
+
+test('lost source increment response never increments twice and preserves the legacy count baseline', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    const firstSeenAt = new Date(NOW - 86_400_000);
+    sources.set(JSON.stringify(['channel', 'raider']), {
+        targetChannelID: 'channel', targetChannelLogin: 'channel', targetChannelName: 'Channel',
+        raiderChannelID: 'raider', raiderChannelLogin: 'raider', raiderChannelName: 'Raider',
+        count: 7, firstSeenAt, lastSeenAt: firstSeenAt, createdAt: firstSeenAt, updatedAt: firstSeenAt
+    });
+    loseSourceResponse = true;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal([...sources.values()][0].count, 8);
+    now += 3000;
+    assert.equal(await expireFollowDefenseModes(), 1);
+    const source = [...sources.values()][0];
+    assert.equal(source.count, 8);
+    assert.equal(source.appliedLogIDs?.length, 1);
+    assert.deepEqual(source.firstSeenAt, firstSeenAt);
+    assert.equal(attackLogs.size, 1);
+});
+
+test('concurrent expiry creates one log and applies one receipt-guarded source increment', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    const expired = await Promise.all([expireFollowDefenseModes(), expireFollowDefenseModes()]);
+    assert.equal(expired.reduce((a, b) => a + b), 1);
+    assert.equal(attackLogs.size, 1);
+    assert.equal(sources.size, 1);
+    assert.equal([...sources.values()][0].count, 1);
+    assert.equal([...sources.values()][0].appliedLogIDs?.length, 1);
+});
+
+test('a different log winning the source upsert race still allows this log increment', async (context) => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    const original = sourceModel.updateOne;
+    let raced = false;
+    context.mock.method(sourceModel, 'updateOne', async (filter: SourceFilter, update: SourceUpdate, options?: { upsert?: boolean }) => {
+        if (!raced && options?.upsert) {
+            raced = true;
+            const otherID = new Types.ObjectId();
+            await original({ ...filter, appliedLogIDs: { $ne: otherID } }, {
+                ...update, $addToSet: { appliedLogIDs: otherID }
+            }, options);
+            throw Object.assign(new Error('source created concurrently'), { code: 11000 });
+        }
+        return original(filter, update, options);
+    });
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal([...sources.values()][0].count, 2);
+    assert.equal([...sources.values()][0].appliedLogIDs?.length, 2);
+});
+
+test('legacy log identity uses channel and mode start, not mutable metadata or retry time', async () => {
+    const legacy = expiredLogState({ version: undefined });
+    resetFailures = 1;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    const originalID = [...attackLogs.keys()][0];
+    values.set(keys.state, JSON.stringify({ ...legacy, lastUpdatedAt: NOW + 1000, expiresAt: NOW }));
+    now += 2000;
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.deepEqual([...attackLogs.keys()], [originalID]);
+    expiredLogState({ version: undefined, modeStartedAt: legacy.modeStartedAt + 1 });
+    expiredLogState({ version: undefined, channelID: 'other-channel' });
+    assert.equal(await expireFollowDefenseModes(), 2);
+    assert.equal(attackLogs.size, 3);
+});
+
+test('versioned log identities separate channels and state versions, including repeated manual writes', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    assert.equal(await expireFollowDefenseModes(), 1);
+    expiredLogState({ triggeredBy: 'manual', version: 'next-version' });
+    expiredLogState({ triggeredBy: 'manual', channelID: 'other-channel' });
+    raid('other-channel');
+    assert.equal(await expireFollowDefenseModes(), 2);
+    assert.equal(attackLogs.size, 3);
+    assert.equal(sources.size, 2);
+    assert.equal(sources.get(JSON.stringify(['channel', 'raider']))?.count, 2);
+    assert.equal(sources.get(JSON.stringify(['other-channel', 'raider']))?.count, 1);
+});
+
+test('a saved non-hate classification does not become a hate raid on retry', async () => {
+    expiredLogState({ triggeredBy: 'manual' });
+    resetFailures = 1;
+    assert.equal(await expireFollowDefenseModes(), 0);
+    raid();
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(attackLogs.size, 1);
+    assert.equal([...attackLogs.values()][0].isHateRaid, false);
+    assert.equal(sources.size, 0);
+});
+
+test('a duplicate create race uses the saved winner classification, not the losing raid snapshot', async (context) => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    const original = attackLogModel.create;
+    context.mock.method(attackLogModel, 'create', async (data: Parameters<typeof original>[0]) => {
+        await original({ ...data, raidInfo: { ...data.raidInfo!, raiderChannelID: 'winning-raider' } });
+        throw Object.assign(new Error('duplicate log'), { code: 11000 });
+    });
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(attackLogs.size, 1);
+    assert.equal(sources.size, 1);
+    assert.equal([...sources.values()][0].raiderChannelID, 'winning-raider');
+    assert.equal([...sources.values()][0].count, 1);
+});
+
+test('duplicate-key errors without a confirmed log or source receipt never complete expiry', async (context) => {
+    expiredLogState({ triggeredBy: 'manual' });
+    raid();
+    const create = context.mock.method(attackLogModel, 'create', async () => {
+        throw Object.assign(new Error('unconfirmed duplicate'), { code: 11000 });
+    });
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(values.has(keys.state), true);
+    assert.equal(attackLogs.size, 0);
+    create.mock.restore();
+    const update = context.mock.method(sourceModel, 'updateOne', async (_filter: SourceFilter, _update: SourceUpdate, options?: { upsert?: boolean }) => {
+        if (options?.upsert) throw Object.assign(new Error('unconfirmed duplicate'), { code: 11000 });
+        return { matchedCount: 0 };
+    });
+    assert.equal(await expireFollowDefenseModes(), 0);
+    assert.equal(values.has(keys.state), true);
+    assert.equal(attackLogs.size, 1);
+    assert.equal(sources.size, 0);
+    update.mock.restore();
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal([...sources.values()][0].count, 1);
 });

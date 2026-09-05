@@ -70,7 +70,8 @@ const followAttackLogSchema = new Schema<IFollowAttackLog>({
     trackedFollows: { type: [trackedFollowSchema], default: [] },
     isHateRaid: { type: Boolean, default: false, index: true }
 }, {
-    timestamps: true
+    timestamps: true,
+    writeConcern: { w: 1, j: true }
 });
 
 followAttackLogSchema.index({ targetChannelID: 1, createdAt: -1 });

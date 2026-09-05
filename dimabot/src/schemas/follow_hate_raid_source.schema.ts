@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 
 export interface IFollowHateRaidSource {
     targetChannelID: string;
@@ -8,6 +8,7 @@ export interface IFollowHateRaidSource {
     raiderChannelLogin: string;
     raiderChannelName: string;
     count: number;
+    appliedLogIDs?: Types.ObjectId[];
     firstSeenAt: Date;
     lastSeenAt: Date;
     createdAt: Date;
@@ -22,6 +23,8 @@ const followHateRaidSourceSchema = new Schema<IFollowHateRaidSource>({
     raiderChannelLogin: { type: String, default: '' },
     raiderChannelName: { type: String, default: '' },
     count: { type: Number, default: 1 },
+    // Keep receipts with the counter; pruning them would allow old log retries to increment again.
+    appliedLogIDs: { type: [Schema.Types.ObjectId], default: undefined, select: false },
     firstSeenAt: { type: Date, required: true },
     lastSeenAt: { type: Date, required: true }
 }, {

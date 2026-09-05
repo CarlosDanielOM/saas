@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Types } from 'mongoose';
 import { sendTwitchChatMessage } from '../functions/chats/send_message.chat.js';
 import { ban } from '../functions/moderation/ban.moderation.js';
@@ -369,56 +370,74 @@ async function buildTrackedFollowsForLog(channelID: string): Promise<IFollowAtta
 }
 
 async function persistAttackLog(state: FollowDefenseState): Promise<void> {
-    const trackedFollows = await buildTrackedFollowsForLog(state.channelID);
-    if (trackedFollows.length === 0) return;
+    // Expiry can retry after either Mongo write or a failed Redis reset. Deduplicate each durable effect.
+    const identity = JSON.stringify(['follow-defense-state', state.channelID,
+        state.version ? ['version', state.version] : ['legacy', state.modeStartedAt]]);
+    const logID = new Types.ObjectId(createHash('sha256').update(identity).digest('hex').slice(0, 24));
+    let log = await FollowAttackLogSchema.findById(logID).lean();
+    if (!log) {
+        const trackedFollows = await buildTrackedFollowsForLog(state.channelID);
+        if (trackedFollows.length === 0) return;
 
-    const raidMarker = await getRaidMarker(state.channelID);
-    const durationSeconds = Math.max(1, Math.round((Date.now() - state.burstStartedAt) / 1000));
-    const velocity = Number((trackedFollows.length / durationSeconds).toFixed(2));
-    const isHateRaid = state.triggeredBy === 'manual' && Boolean(raidMarker);
-
-    await FollowAttackLogSchema.create({
-        _id: new Types.ObjectId(),
-        targetChannelID: state.channelID,
-        targetChannelLogin: state.channelLogin,
-        targetChannelName: state.channelName,
-        modeTriggered: state.mode === 'normal' ? 'silent' : state.mode,
-        triggeredBy: state.triggeredBy,
-        totalFollows: trackedFollows.length,
-        velocity,
-        durationSeconds,
-        isRaid: Boolean(raidMarker),
-        raidInfo: raidMarker ? {
-            raiderChannelID: raidMarker.raiderChannelID,
-            raiderChannelLogin: raidMarker.raiderChannelLogin,
-            raiderChannelName: raidMarker.raiderChannelName,
-            raidViewers: raidMarker.raidViewers
-        } : undefined,
-        trackedFollows,
-        isHateRaid
-    });
-
-    if (isHateRaid && raidMarker) {
-        const now = new Date();
-        await FollowHateRaidSourceSchema.findOneAndUpdate({
-            targetChannelID: state.channelID,
-            raiderChannelID: raidMarker.raiderChannelID
-        }, {
-            $set: {
+        const raidMarker = await getRaidMarker(state.channelID);
+        const durationSeconds = Math.max(1, Math.round((Date.now() - state.burstStartedAt) / 1000));
+        const velocity = Number((trackedFollows.length / durationSeconds).toFixed(2));
+        try {
+            log = (await FollowAttackLogSchema.create({
+                _id: logID,
+                targetChannelID: state.channelID,
                 targetChannelLogin: state.channelLogin,
                 targetChannelName: state.channelName,
-                raiderChannelLogin: raidMarker.raiderChannelLogin,
-                raiderChannelName: raidMarker.raiderChannelName,
-                lastSeenAt: now
+                modeTriggered: state.mode === 'normal' ? 'silent' : state.mode,
+                triggeredBy: state.triggeredBy,
+                totalFollows: trackedFollows.length,
+                velocity,
+                durationSeconds,
+                isRaid: Boolean(raidMarker),
+                raidInfo: raidMarker ? {
+                    raiderChannelID: raidMarker.raiderChannelID,
+                    raiderChannelLogin: raidMarker.raiderChannelLogin,
+                    raiderChannelName: raidMarker.raiderChannelName,
+                    raidViewers: raidMarker.raidViewers
+                } : undefined,
+                trackedFollows,
+                isHateRaid: state.triggeredBy === 'manual' && Boolean(raidMarker)
+            })).toObject();
+        } catch (error) {
+            if ((error as { code?: number }).code !== 11000) throw error;
+            log = await FollowAttackLogSchema.findById(logID).lean();
+            if (!log) throw error;
+        }
+    }
+
+    // The saved log freezes classification and source identity, even if the raid marker or tracked payloads expired.
+    if (log.isHateRaid && log.raidInfo) {
+        const source = { targetChannelID: log.targetChannelID, raiderChannelID: log.raidInfo.raiderChannelID };
+        const filter = { ...source, appliedLogIDs: { $ne: logID } };
+        const update = {
+            $set: {
+                targetChannelLogin: log.targetChannelLogin,
+                targetChannelName: log.targetChannelName,
+                raiderChannelLogin: log.raidInfo.raiderChannelLogin,
+                raiderChannelName: log.raidInfo.raiderChannelName
             },
             $inc: { count: 1 },
-            $setOnInsert: {
-                firstSeenAt: now
+            $addToSet: { appliedLogIDs: logID },
+            $min: { firstSeenAt: log.createdAt },
+            $max: { lastSeenAt: log.createdAt }
+        };
+        try {
+            await FollowHateRaidSourceSchema.updateOne(filter, update, {
+                upsert: true, setDefaultsOnInsert: false, writeConcern: { w: 1, j: true }
+            });
+        } catch (error) {
+            if ((error as { code?: number }).code !== 11000) throw error;
+            // The unique channel/source pair may already exist, with this receipt or another racing log's receipt.
+            const result = await FollowHateRaidSourceSchema.updateOne(filter, update, { writeConcern: { w: 1, j: true } });
+            if (result.matchedCount === 0 && !await FollowHateRaidSourceSchema.exists({ ...source, appliedLogIDs: logID })) {
+                throw error;
             }
-        }, {
-            upsert: true,
-            setDefaultsOnInsert: true
-        });
+        }
     }
 }
 
@@ -581,6 +600,7 @@ export async function expireFollowDefenseModes(): Promise<number> {
 
         try {
             const settings = await getSettings(channelID, state.channelName || state.channelLogin);
+            // Chat is external and remains at-least-once if a later durable write/reset fails.
             await sendSilentSummaryIfNeeded(state, settings);
             await persistAttackLog(state);
             if ((await projectFollowDefenseState(channelID, { type: 'reset', token })).changed) expired += 1;
