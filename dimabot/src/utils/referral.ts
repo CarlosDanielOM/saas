@@ -210,7 +210,7 @@ export async function processSubscriptionReward(
     };
 }
 
-function getBotSubscriptionRewardAmount(planType: PlanType, cadence: SubscriptionCadence): number {
+export function getBotSubscriptionRewardAmount(planType: PlanType, cadence: SubscriptionCadence): number {
     if (planType === 'FREE') {
         return 0;
     }

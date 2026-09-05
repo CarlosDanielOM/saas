@@ -103,3 +103,23 @@ test('unsupported integrations and customer providers remain unresolved without 
     assert.equal(findOne.query.mock.callCount(), 0);
     assert.equal(findById.query.mock.callCount(), 0);
 });
+
+test('legacy Polar Twitch metadata resolves with a paired platform ID and customer-link guard', async (t) => {
+    const filters: unknown[] = [];
+    t.mock.method(UsersSchema, 'findOne', ((filter: unknown) => {
+        filters.push(filter);
+        return { select: () => ({ lean: async () => filters.length === 1 ? null : { _id: ownerId } }) };
+    }) as never);
+    assert.equal(await resolveDomainEventOwner(customer, undefined, 'old-channel'), ownerId.toString());
+    assert.deepEqual(filters[1], {
+        accounts: { $elemMatch: { type: 'twitch', id: 'old-channel' } },
+        $or: [{ polar_sh_customer_id: null }, { polar_sh_customer_id: '' }, { polar_sh_customer_id: customer.id }]
+    });
+});
+
+test('a conflicting explicit owner cannot fall through to legacy Twitch metadata', async (t) => {
+    const { query } = mockQuery(t, 'findOne', null);
+    mockQuery(t, 'findById', { _id: ownerId, polar_sh_customer_id: 'another-customer' });
+    assert.equal(await resolveDomainEventOwner(customer, ownerId.toString(), 'another-channel'), undefined);
+    assert.equal(query.mock.callCount(), 1);
+});

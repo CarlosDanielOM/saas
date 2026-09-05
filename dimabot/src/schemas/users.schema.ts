@@ -27,6 +27,13 @@ export interface IUsers {
     accounts: IAccounts[];
     language?: 'en' | 'es' | null;
     polar_sh_customer_id: string;
+    polar_plan_event_at?: Date;
+    polar_plan_event_key?: string;
+    polar_credit_snapshot?: {
+        occurredAt: Date;
+        eventKey: string;
+        meters: Array<{ meter_id: string; consumed_units?: number; credited_units?: number; balance?: number }>;
+    };
     plan_tier: 'free' | 'premium' | 'pro';
     plan_tier_until: Date | null;
     last_app_activity_at: Date | null;
@@ -36,6 +43,7 @@ export interface IUsers {
     referrerId?: Types.ObjectId;
     referralCodeUsed?: string;
     token_balance?: number;
+    applied_credit_transaction_ids?: Types.ObjectId[];
     reminder_sent_at?: Date | null;
 }
 
@@ -65,6 +73,16 @@ const usersSchema = new Schema<IUsers>({
     accounts: [accountsSchema],
     language: { type: String, enum: ['en', 'es'], default: null },
     polar_sh_customer_id: { type: String, default: null },
+    polar_plan_event_at: { type: Date },
+    polar_plan_event_key: { type: String },
+    polar_credit_snapshot: {
+        type: new Schema({
+            occurredAt: { type: Date, required: true },
+            eventKey: { type: String, required: true },
+            meters: { type: [Schema.Types.Mixed], required: true }
+        }, { _id: false }),
+        select: false
+    },
     plan_tier: { type: String, default: 'free', enum: ['free', 'premium', 'pro'] },
     plan_tier_until: { type: Date, default: null },
     last_app_activity_at: { type: Date, default: null },
@@ -72,6 +90,7 @@ const usersSchema = new Schema<IUsers>({
     referrerId: { type: Schema.Types.ObjectId, ref: 'users', default: null },
     referralCodeUsed: { type: String, default: null },
     token_balance: { type: Number, default: 0 },
+    applied_credit_transaction_ids: { type: [Schema.Types.ObjectId], default: undefined, select: false },
     reminder_sent_at: { type: Date, default: null },
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }})
 

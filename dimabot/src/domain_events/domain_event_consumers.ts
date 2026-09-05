@@ -42,5 +42,20 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
         schemaVersions: [1],
         eventFilter: { source: twitchSources, 'metadata.durableChatHandled': true, type: 'stream.started' },
         handler: async (event) => (await import('./chat_announcement_events.js')).applyAccountHealthNotificationDomainEvent(event)
+    },
+    {
+        consumer: 'polar-plan-v1', topics: ['domain'], schemaVersions: [1],
+        eventFilter: { source: 'polar-webhook', type: { $in: ['billing.order.paid', 'billing.subscription.updated'] } },
+        handler: async (event) => (await import('./polar_billing_events.js')).applyPolarPlanDomainEvent(event)
+    },
+    {
+        consumer: 'polar-credits-v1', topics: ['domain'], schemaVersions: [1],
+        eventFilter: { source: 'polar-webhook', type: 'billing.customer.state.changed' },
+        handler: async (event) => (await import('./polar_billing_events.js')).applyPolarCreditsDomainEvent(event)
+    },
+    {
+        consumer: 'polar-rewards-v1', topics: ['domain'], schemaVersions: [1],
+        eventFilter: { source: 'polar-webhook', type: 'billing.order.paid' },
+        handler: async (event) => (await import('./polar_billing_events.js')).applyPolarRewardDomainEvent(event)
     }
 ];

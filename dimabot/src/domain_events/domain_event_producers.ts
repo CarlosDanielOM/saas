@@ -1,9 +1,11 @@
 import type { DomainEventOwnerResolver, DomainEventProducer, JournalDomainEventInput, JournalDomainEventResult } from './domain_event.types.js';
 import { twitchEventsubProducer } from './twitch_eventsub_events.js';
+import { polarWebhookProducer } from './polar_events.js';
 import { journalDomainEvent } from '../utils/domain_events.js';
 
 export const DOMAIN_EVENT_PRODUCERS = {
-    twitch: twitchEventsubProducer
+    twitch: twitchEventsubProducer,
+    polar: polarWebhookProducer
 } as const;
 
 export async function ingestDomainEvent<Input>(

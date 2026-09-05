@@ -17,6 +17,7 @@ export interface ICreditTransactionMetadata {
     planId?: string;
     description?: string;
     externalReference?: string;
+    rewardTargetType?: 'bot' | 'referrer';
 }
 
 export interface ICreditTransaction {
@@ -24,6 +25,8 @@ export interface ICreditTransaction {
     user: Types.ObjectId;
     type: TransactionType;
     amount: number;
+    idempotencyKey?: string;
+    appliedAt?: Date;
     balanceAfter?: number;
     metadata: ICreditTransactionMetadata;
     createdAt: Date;
@@ -52,6 +55,8 @@ const creditTransactionSchema = new Schema<ICreditTransaction>(
             type: Number,
             default: null,
         },
+        idempotencyKey: { type: String },
+        appliedAt: { type: Date },
         metadata: {
             referralCodeUsed: { type: String, default: null },
             referredUserId: { type: Schema.Types.ObjectId, ref: 'Channel', default: null },
@@ -59,12 +64,17 @@ const creditTransactionSchema = new Schema<ICreditTransaction>(
             planId: { type: String, default: null },
             description: { type: String, default: '' },
             externalReference: { type: String, default: null },
+            rewardTargetType: { type: String, enum: ['bot', 'referrer'] },
         },
     },
     { timestamps: true },
 );
 
 creditTransactionSchema.index({ user: 1, createdAt: -1 });
+creditTransactionSchema.index(
+    { idempotencyKey: 1 },
+    { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } },
+);
 creditTransactionSchema.index({ 'metadata.subscriptionId': 1 }, { sparse: true });
 
 export const CreditTransactionSchema = model<ICreditTransaction>('CreditTransaction', creditTransactionSchema);
