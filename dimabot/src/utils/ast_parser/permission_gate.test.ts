@@ -1,9 +1,20 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 
 import { parse } from './parser.js';
 import { createExecutionContext, evaluate, registerFunction, buildPermissionDeniedMessage } from './evaluator.js';
-import { registerChannelFunctions } from './functions/channel.functions.js';
+
+// Exercise the real function metadata/gate without initializing provider clients.
+const forbiddenEffect = mock.fn(() => assert.fail('Permission-denied evaluation reached a provider effect'));
+mock.module('../../functions/channels/index.js', { namedExports: { setChannelInformation: forbiddenEffect } });
+mock.module('../../functions/chats/index.js', { namedExports: { sendTwitchChatMessage: forbiddenEffect } });
+mock.module('../../functions/users/index.js', { namedExports: { getTwitchUserByLogin: forbiddenEffect } });
+mock.module('../../functions/search/index.js', { namedExports: { searchCategories: forbiddenEffect } });
+mock.module('../../functions/predictions/index.js', { namedExports: { createPrediction: forbiddenEffect } });
+mock.module('../../functions/polls/index.js', { namedExports: { createPoll: forbiddenEffect } });
+mock.module('../../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: forbiddenEffect } });
+mock.module('../ai/openrouter/command.ai.js', { namedExports: { executeAiCommand: forbiddenEffect } });
+const { registerChannelFunctions } = await import('./functions/channel.functions.js');
 
 // Verifies the central minUserLevel gate: gated functions must be denied
 // before their handler runs when ctx.userLevel is below the metadata level,
@@ -43,6 +54,7 @@ test('denies real set.title for a regular chatter (userLevel 1) before the handl
     assert.match(value, /^Error: permission denied/i);
     assert.match(value, /set\.title/);
     assert.match(value, /userlevel 7/);
+    assert.equal(forbiddenEffect.mock.callCount(), 0);
 });
 
 test('denies level-7 gated function for a regular chatter', async () => {
