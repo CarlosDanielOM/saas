@@ -112,6 +112,9 @@ async function ensureDelivery(consumer: string, event: IDomainEvent): Promise<ID
                 lockedUntil: null,
                 leaseToken: null,
                 lastError: '',
+                lastErrorCode: '',
+                lastPrerequisiteKind: '',
+                lastAttemptDurationMs: null,
                 lastDeadLetterError: '',
                 firstAttemptAt: null,
                 completedAt: null,
@@ -209,6 +212,9 @@ async function processDelivery(
                     status: 'dead', deadLetteredAt: now, completedAt: now, lockedUntil: null,
                     leaseToken: null, nextAttemptAt: null,
                     lastError: 'Attempt limit exhausted after interrupted execution',
+                    lastErrorCode: 'interrupted',
+                    lastPrerequisiteKind: '',
+                    lastAttemptDurationMs: null,
                     lastDeadLetterError: 'Attempt limit exhausted after interrupted execution'
                 }
             });
@@ -221,6 +227,8 @@ async function processDelivery(
             // The durable retry owns this work, including after a lost deferral response.
             return delivery.status === 'retry' ? 'retry-scheduled' : 'deferred';
         }
+        const attemptStartedAt = performance.now();
+        const attemptDurationMs = () => Math.max(0, Math.round(performance.now() - attemptStartedAt));
 
         let lost: Error | undefined;
         let renewal: Promise<void> | undefined;
@@ -269,7 +277,7 @@ async function processDelivery(
                 clearInterval(heartbeat);
                 await renewal;
                 assertLease();
-                return await finishPolicyDelivery(claimed, executionDecision, true);
+                return await finishPolicyDelivery(claimed, executionDecision, true, attemptDurationMs());
             }
             const envelope = toEnvelope(event);
             if (['twitch-eventsub', 'twitch-eventsub-test', 'polar-webhook'].includes(event.source)) {
@@ -292,6 +300,9 @@ async function processDelivery(
                     leaseToken: null,
                     nextAttemptAt: null,
                     lastError: '',
+                    lastErrorCode: '',
+                    lastPrerequisiteKind: '',
+                    lastAttemptDurationMs: attemptDurationMs(),
                     lastDeadLetterError: ''
                 }
             });
@@ -306,6 +317,12 @@ async function processDelivery(
             assertLease();
             const prerequisiteMissing = error instanceof DomainEventPrerequisiteMissingError;
             const contractInvalid = error instanceof DomainEventContractError;
+            const errorCode = prerequisiteMissing ? 'prerequisite_missing' : contractInvalid ? 'contract_invalid' : 'handler_failed';
+            const prerequisiteKind = prerequisiteMissing
+                ? error.prerequisite.startsWith('owner:') ? 'owner'
+                    : error.prerequisite.startsWith('subject:') ? 'subject' : 'other'
+                : '';
+            const durationMs = attemptDurationMs();
             const now = Date.now();
             const prerequisiteDeadline = prerequisiteMissing ? Math.min(
                 new Date(event.journaledAt).getTime() + PREREQUISITE_HORIZON_MS,
@@ -333,6 +350,9 @@ async function processDelivery(
                     lockedUntil: null,
                     leaseToken: null,
                     lastError: errorMessage.slice(0, 8_000),
+                    lastErrorCode: errorCode,
+                    lastPrerequisiteKind: prerequisiteKind,
+                    lastAttemptDurationMs: durationMs,
                     lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
                     completedAt: exhausted ? new Date() : null,
                     deadLetteredAt: exhausted ? new Date() : null
@@ -352,7 +372,10 @@ async function processDelivery(
                 attempts: claimed.attempts,
                 maxAttempts,
                 exhausted,
-                error: error instanceof Error ? error.message : String(error)
+                errorCode,
+                prerequisiteKind,
+                durationMs,
+                leaseExpiresAt: new Date(lockedUntil).toISOString()
             };
             if (exhausted) {
                 await logError(logPayload, { channelId: event.channelID, destination: 'console' });
@@ -371,7 +394,8 @@ async function processDelivery(
 async function finishPolicyDelivery(
     delivery: IDomainEventDelivery,
     decision: Exclude<DomainEventPolicyDecision, { status: 'eligible' }>,
-    claimed = false
+    claimed = false,
+    durationMs: number | null = null
 ): Promise<DeliveryOutcome> {
     const now = new Date();
     const result = await DomainEventDeliverySchema.updateOne({
@@ -391,6 +415,9 @@ async function finishPolicyDelivery(
             completedAt: now,
             skipReason: decision.status === 'skipped' ? decision.reason : '',
             lastError: decision.status === 'dead' ? decision.reason : '',
+            lastErrorCode: decision.status === 'dead' ? 'policy_rejected' : '',
+            lastPrerequisiteKind: '',
+            lastAttemptDurationMs: durationMs,
             lastDeadLetterError: decision.status === 'dead' ? decision.reason : delivery.lastDeadLetterError,
             deadLetteredAt: decision.status === 'dead' ? now : null,
             lockedUntil: null, leaseToken: null, nextAttemptAt: null
@@ -495,6 +522,9 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
                     lockedUntil: null,
                     leaseToken: null,
                     lastError: 'Journal event expired or was removed before delivery',
+                    lastErrorCode: 'journal_missing',
+                    lastPrerequisiteKind: '',
+                    lastAttemptDurationMs: null,
                     lastDeadLetterError: 'Journal event expired or was removed before delivery'
                 }
             });
@@ -585,6 +615,9 @@ export async function replayDeadDomainEvent(consumer: string, eventKey: string):
             lockedUntil: null,
             leaseToken: null,
             lastError: '',
+            lastErrorCode: '',
+            lastPrerequisiteKind: '',
+            lastAttemptDurationMs: null,
             lastDeadLetterError: '',
             deadLetteredAt: null,
             completedAt: null,

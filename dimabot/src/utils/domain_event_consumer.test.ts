@@ -334,9 +334,47 @@ test('invalid retained known-source payload is permanently dead before effects w
     assert.equal(result.succeeded, 0);
     assert.equal(h.delivery.status, 'dead');
     assert.equal(h.delivery.attempts, 2);
+    assert.equal(h.delivery.lastErrorCode, 'contract_invalid');
     assert.match(h.delivery.lastDeadLetterError, /Domain event contract:/);
     assert.equal(h.delivery.completedAt.getTime(), NOW);
     assert.equal(h.delivery.nextAttemptAt, null);
+});
+
+test('attempt timing uses a monotonic clock and error codes clear only on fenced success', async t => {
+    const h = policyHarness(t);
+    const warnings = t.mock.method(console, 'warn', () => undefined);
+    let monotonic = 100;
+    t.mock.method(performance, 'now', () => monotonic);
+    const first = await h.drain({ handler: async () => {
+        monotonic += 75;
+        t.mock.timers.setTime(NOW - 5000);
+        throw new Error('Sensitive provider detail '.repeat(1000));
+    } });
+    assert.equal(first.succeeded, 0);
+    assert.equal(h.delivery.lastErrorCode, 'handler_failed');
+    assert.equal(h.delivery.lastAttemptDurationMs, 75);
+    assert.equal(h.delivery.lastError.length, 8000);
+    const logged = JSON.stringify(warnings.mock.calls.map(call => call.arguments));
+    assert.doesNotMatch(logged, /Sensitive provider detail|payload|leaseToken|lastError/);
+    assert.match(logged, /handler_failed/);
+    t.mock.timers.tick(10_000);
+    const second = await h.drain({ handler: async () => { monotonic += 25; } });
+    assert.equal(second.succeeded, 1);
+    assert.equal(h.delivery.lastErrorCode, '');
+    assert.equal(h.delivery.lastError, '');
+    assert.equal(h.delivery.lastAttemptDurationMs, 25);
+    assert.ok(h.writes.every(w => w.filter.status === 'processing' && w.filter.leaseToken && w.filter.lockedUntil.$gt));
+});
+
+test('lost completion ownership does not publish successful timing or clear the previous failure', async t => {
+    const h = policyHarness(t);
+    h.setDelivery({ lastErrorCode: 'handler_failed', lastAttemptDurationMs: 42 });
+    h.loseTerminalRace();
+    const result = await h.drain();
+    assert.equal(result.succeeded, 0);
+    assert.equal(result.deferred, 2, 'ready and checkpoint scans both lose the fenced completion');
+    assert.equal(h.delivery.lastErrorCode, 'handler_failed');
+    assert.equal(h.delivery.lastAttemptDurationMs, 42);
 });
 
 test('a contract helper error thrown by the handler is also permanent and refunds the attempt', async t => {
@@ -415,6 +453,9 @@ for (const scenario of ['missing-delivery', 'expired-delivery', 'missing-journal
             assert.deepEqual(filter.$expr, { $lt: ['$$NOW', expiry] });
             assert.equal(update.$set.status, 'retry');
             assert.equal(update.$set.attempts, 0);
+            assert.equal(update.$set.lastErrorCode, '');
+            assert.equal(update.$set.lastPrerequisiteKind, '');
+            assert.equal(update.$set.lastAttemptDurationMs, null);
             assert.equal(update.$set.expiresAt, undefined, 'Replay must never extend retention');
             assert.equal(update.$set.occurredAt, undefined);
             assert.equal(update.$set.journaledAt, undefined);
@@ -470,5 +511,10 @@ test('skipped status is schema-valid and legacy delivery rows require no new fie
         });
         assert.equal(delivery.validateSync(), undefined);
         assert.equal(delivery.skipReason, '');
+        assert.equal(delivery.lastErrorCode, '');
+        assert.equal(delivery.lastPrerequisiteKind, '');
+        assert.equal(delivery.lastAttemptDurationMs, null);
+        delivery.lastAttemptDurationMs = -1;
+        assert.ok(delivery.validateSync()?.errors.lastAttemptDurationMs);
     }
 });

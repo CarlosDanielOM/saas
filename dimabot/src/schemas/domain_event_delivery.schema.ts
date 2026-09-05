@@ -1,6 +1,7 @@
 import { Schema, model, Types } from 'mongoose';
 
 export type DomainEventDeliveryStatus = 'pending' | 'processing' | 'retry' | 'succeeded' | 'skipped' | 'dead';
+export type DomainEventDeliveryErrorCode = '' | 'prerequisite_missing' | 'contract_invalid' | 'handler_failed' | 'interrupted' | 'journal_missing' | 'policy_rejected';
 
 export interface IDomainEventDelivery {
     _id: Types.ObjectId;
@@ -14,6 +15,9 @@ export interface IDomainEventDelivery {
     lockedUntil: Date | null;
     leaseToken: string | null;
     lastError: string;
+    lastErrorCode?: DomainEventDeliveryErrorCode;
+    lastPrerequisiteKind?: '' | 'owner' | 'subject' | 'other';
+    lastAttemptDurationMs?: number | null;
     lastDeadLetterError: string;
     firstAttemptAt: Date | null;
     completedAt: Date | null;
@@ -43,6 +47,9 @@ const domainEventDeliverySchema = new Schema<IDomainEventDelivery>({
     lockedUntil: { type: Date, default: null },
     leaseToken: { type: String, default: null },
     lastError: { type: String, default: '' },
+    lastErrorCode: { type: String, enum: ['', 'prerequisite_missing', 'contract_invalid', 'handler_failed', 'interrupted', 'journal_missing', 'policy_rejected'], default: '' },
+    lastPrerequisiteKind: { type: String, enum: ['', 'owner', 'subject', 'other'], default: '' },
+    lastAttemptDurationMs: { type: Number, min: 0, default: null },
     lastDeadLetterError: { type: String, default: '' },
     firstAttemptAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },

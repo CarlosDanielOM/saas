@@ -117,6 +117,8 @@ test('an interrupted final attempt is atomically dead-lettered without invoking 
     assert.deepEqual(h.updates[0].filter.attempts, { $gte: 3 });
     assert.ok(h.updates[0].filter.$and[0].$or[1].lockedUntil.$lte instanceof Date);
     assert.equal(h.updates[0].update.$set.status, 'dead');
+    assert.equal(h.updates[0].update.$set.lastErrorCode, 'interrupted');
+    assert.equal(h.updates[0].update.$set.lastAttemptDurationMs, null, 'do not invent a crashed attempt duration');
     assert.equal(h.updates[0].update.$inc, undefined, 'retirement does not create another attempt');
     assert.deepEqual(h.lifecycle, ['beforeClaim', 'finished']);
 });

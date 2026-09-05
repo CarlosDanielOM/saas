@@ -21,6 +21,12 @@ export interface DomainEventChild {
     send?(message: { type: 'wake' }, callback: (error: Error | null) => void): boolean;
 }
 
+export interface DomainEventExecutionReport {
+    eventKey?: string;
+    leaseExpiresAt?: number;
+    durationMs?: number;
+}
+
 /** A hint arriving during work or just before wait() survives until the next poll. */
 export class DomainEventPollSignal {
     private pending = false;
@@ -90,8 +96,8 @@ export class DomainEventExecutionSupervisor {
         private readonly spawn: (consumer: string) => DomainEventChild,
         private readonly once = false,
         private readonly now = Date.now,
-        private readonly report: (consumer: string, reason: string) => void = (consumer, reason) => {
-            console.warn(JSON.stringify({ worker: 'domain_events', consumer, message: reason }));
+        private readonly report: (consumer: string, reason: string, details?: DomainEventExecutionReport) => void = (consumer, reason, details) => {
+            console.warn(JSON.stringify({ worker: 'domain_events', consumer, message: reason, ...details }));
         }
     ) {
         if (new Set(consumers).size !== consumers.length) throw new Error('Duplicate domain event consumer IDs');
@@ -197,9 +203,8 @@ export class DomainEventExecutionSupervisor {
                 }
                 this.tick();
             });
-            child.on('error', (error: Error) => {
+            child.on('error', (_error: Error) => {
                 if (slot.child !== child) return;
-                this.report(consumer, `Child process error: ${error.message}`);
                 // A failed spawn has no PID and emits close rather than exit.
                 this.kill(consumer, slot, 'Child process failed');
             });
@@ -213,8 +218,8 @@ export class DomainEventExecutionSupervisor {
             };
             child.on('exit', exited);
             child.on('close', exited);
-        } catch (error) {
-            this.report(consumer, `Unable to fork consumer: ${String(error)}`);
+        } catch {
+            this.report(consumer, 'Unable to fork consumer');
             slot.deadline = this.now() + this.config.restartDelayMs;
             slot.done = this.once;
             this.failed = true;
@@ -223,7 +228,12 @@ export class DomainEventExecutionSupervisor {
 
     private kill(consumer: string, slot: ConsumerProcess, reason: string): void {
         slot.killing = true;
-        this.report(consumer, reason);
+        this.report(consumer, reason, {
+            eventKey: slot.lease?.eventKey,
+            leaseExpiresAt: slot.lease?.lockedUntil,
+            durationMs: slot.executionDeadline === undefined ? undefined
+                : Math.max(0, this.now() - (slot.executionDeadline - this.config.executionTimeoutMs))
+        });
         slot.child?.kill('SIGKILL');
     }
 

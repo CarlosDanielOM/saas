@@ -1,118 +1,156 @@
 # Domain Event Pipeline
 
-Transport-specific producers publish to independently delivered backend consumers. MongoDB owns the journal, dispatch intent, deliveries, checkpoints, retries, and dead letters. Dragonfly Streams only wake the worker; polling must work without those hints.
+Operational reference for backend module consumers, not browser WebSocket clients. MongoDB owns the journal, dispatch intent, deliveries, checkpoints, retries, and dead letters. Dragonfly PUB/SUB is the preferred low-latency wakeup path, **not Streams and not the durable event queue**. Delivery and external effects remain at-least-once, never a general exact-once guarantee.
 
-This foundation defines envelope, producer, and consumer contracts. It does not yet implement configurable goals, the extensible timer, PayPal, Kick, TikTok, a public subscription API, or a common cross-platform contribution payload. Twitch v1 payloads retain their shipped EventSub shape.
+The pipeline does not implement configurable goals, the extensible timer, PayPal, Kick, TikTok, a public subscription API, or a common cross-platform contribution payload. SaaS billing is not viewer donations. Navigation remains in [AGENTS.md](./AGENTS.md).
 
-## Ownership
+## 1. Producer Acceptance
 
-- `ownerUserId` is the internal `users._id`, not a login or provider channel ID. It may be unresolved at ingestion.
-- `users.accounts` contains streaming-platform identities. Match platform and remote ID in one `$elemMatch`; separate dotted predicates can match different array elements.
-- The separate `accounts.schema.ts` model is intended for add-ons such as PayPal or Spotify. It currently has no active integration lookup path. Do not invent an ownership link through its legacy `channelID` field.
-- Existing enum values, including Spotify in the embedded account enum, remain for persisted-data compatibility; they do not establish an implemented integration.
-- `subject` contains `{ provider, kind, id }`. Kinds distinguish streaming accounts, integration accounts, provider customers, and other provider resources.
-- `channelID` remains required for channel-topic events. Account-level billing does not fabricate one.
-- Polar resolves by `users.polar_sh_customer_id`, then a verified external customer ID referencing an internal user. The shipped `twitch_user_id` metadata fallback remains for legacy customers, guarded against a different Polar customer link. An explicit conflicting/deleted owner does not fall through to that fallback.
-- Resolution does not create users, move accounts, or persist new integration links. Supported billing consumers retry unresolved owners and eventually dead-letter them for operator repair/replay.
+Sources: [contracts](src/domain_events/domain_event_contracts.ts), [producer registry/ingestion](src/domain_events/domain_event_producers.ts), [journal](src/utils/domain_events.ts).
 
-Contracts: `src/domain_events/domain_event.types.ts`. Current lookups: `src/domain_events/domain_event_identity.ts`.
+- Authenticate at the transport boundary using original signed webhook bytes. Normalize, validate, resolve ownership through Mongo, then journal; acknowledge only after successful ingestion. Invalid normalized input is rejected before owner lookup or journal writes. The journal boundary validates again.
+- Validation checks envelope identity, source/type/topic/schema agreement, provider fields and timestamps. A bounded JSON walk limits combined payload/metadata to 256 KiB and nesting to 32 levels; it rejects cycles, unsafe properties, accessors, non-JSON values, nonfinite numbers and unsafe integers. This is not a promise that transport body limits are identical.
+- [Twitch v1](src/domain_events/twitch_eventsub_events.ts) preserves shipped nested `payload.subscription` and `payload.event`, including provider fields; it does not flatten them. [Polar](src/domain_events/polar_events.ts) preserves the normalized billing contract: `customerId`, applicable order/subscription/product IDs, `paid`, `status`, `cadence`, `periodEnd`, and normalized meter fields. SDK camelCase/`Date` conversion happens in the adapter.
+- New producers must supply their own provider `subject`. Retained validation narrowly accepts old persisted Twitch v1 rows with no subject/owner or durable-effect markers and the complete legacy journal/metadata shape; payload validation still applies. This excludes raids and is not an ingestion bypass for new no-subject events.
+- `sourceEventId` identifies a provider delivery, not just a resource. `eventKey` combines source, receipt ID and semantic type. Different resource updates need distinct receipts; business effects may additionally deduplicate by order ID.
+- Journal inserts request `{ w: 1, j: true }` and include `dispatchPending: true`. Duplicate receipts return the existing event rather than duplicating it. Channel/domain retention defaults to 90 days, activity to 3 days, telemetry to 7 days; deliveries inherit journal expiry.
 
-## Adding A Producer
+### Ownership
 
-1. Implement `DomainEventProducer<Input>` with a provider name, pure `normalize(input)`, and optional `resolveOwner(event)`.
-2. Authenticate at the transport boundary before ingestion. Verify webhooks using the original signed bytes. Socket/polling adapters use the same ingestion function after their own authentication.
-3. Return a validated `JournalDomainEventInput` with stable source identity, a real subject, semantic type, schema version, occurrence time, and minimal payload. Returning `null` explicitly excludes an event.
-4. Register in `DOMAIN_EVENT_PRODUCERS` in `src/domain_events/domain_event_producers.ts`.
-5. Call `ingestDomainEvent(adapter, input)`. Acknowledge only after ingestion succeeds; do not execute the same business effects inline as well.
-6. Test normalization, authentication, duplicate receipts, and journal failures with synthetic inputs, including real installed-SDK transformations where applicable.
+Source: [identity resolver](src/domain_events/domain_event_identity.ts) and [envelope types](src/domain_events/domain_event.types.ts).
 
-`sourceEventId` identifies a provider delivery, not merely its resource. Different resource updates need distinct receipt IDs. Business effects can additionally deduplicate by an order ID across multiple deliveries.
+- `ownerUserId` is internal `users._id`, not a login/provider channel ID; unresolved ownership can be retained. `subject` is `{ provider, kind, id }`, distinguishing streaming/integration accounts, customers and resources. Channel topics require `channelID`; account billing does not fabricate one.
+- Streaming identities use `users.accounts` with platform and remote ID in one `$elemMatch`. Separate dotted predicates can match different array elements. The separate `accounts.schema.ts` has no active integration lookup; do not infer ownership from its legacy `channelID`. Persisted enum values do not establish integrations.
+- Polar resolves `users.polar_sh_customer_id`, then a provider-verified external internal-user ID. The shipped legacy `twitch_user_id` fallback is guarded against a different customer link. A valid explicit external owner that conflicts or was deleted does not fall through to that fallback.
+- A journaled explicit owner remains pinned: if deleted, billing retries that missing owner rather than transferring to another mapping. Resolution never creates users, moves accounts or persists integration links. Unresolved owners require repair, not a guessed map fallback.
 
-The engine does not interpret tokens, checkout metadata, billing rules, or chat protocols. Owner lookup belongs to the adapter. SaaS billing is distinct from viewer contributions: a Polar plan purchase is not a streamer donation.
+### Extension Rules
 
-## Adding A Consumer
+1. Implement `DomainEventProducer<Input>` with pure `normalize`, provider name and optional `resolveOwner`; `null` explicitly excludes an event. Register it and call `ingestDomainEvent` after transport authentication, without duplicating owned effects inline.
+2. Register a stable consumer ID, topics, schema versions, Mongo filter, `adminReplay`, optional `maxEventAgeMs`, and lazy handler in the [consumer registry](src/domain_events/domain_event_consumers.ts). Mongo evaluates filters; always scope provider-specific handlers by source. Propagate required-effect failures instead of logging and returning success.
+3. Define history eligibility first. A consumer with no checkpoint scans matching retained history; changing an existing filter does not rewind it. Use a new version and explicit history boundary for controlled rebuilds, without replaying unrelated chat/reward/timer effects.
 
-Register a stable ID, topics, supported schema versions, Mongo event filter, and handler in `src/domain_events/domain_event_consumers.ts`. Lazy handler imports keep registry inspection and dry-runs service-free.
+## 2. Wakeups And Dispatch
 
-```ts
-// Illustrative registration; goals are not implemented yet.
-{
-    consumer: 'goals-v1',
-    topics: ['channel'],
-    schemaVersions: [1],
-    eventFilter: {
-        source: 'twitch-eventsub',
-        type: { $in: ['channel.bits.received', 'channel.follow.received'] }
-    },
-    handler: applyGoalEvent
-}
-```
+Sources: [wakeup client](src/utils/domain_event_wakeups.ts), [dispatch/drain engine](src/utils/domain_event_consumer.ts), [worker](src/workers/domain_events.worker.ts).
 
-Mongo evaluates filters, not a partial JavaScript emulation. Explicit source scope prevents Twitch handlers from acting on similarly named events from other providers. Handler failures must propagate; logging and returning falsely completes a delivery.
+- After Mongo acceptance, a scheduled, asynchronous publisher coalesces hints into one pending bit on `domain-events:wakeup:v1`. Connection creation and publication are outside the producer acknowledgement path; event payloads are not queued in Redis.
+- Dedicated hint connections have 500 ms connection/command deadlines, disabled offline queues and no client auto-reconnect. Failure/timeout destroys the connection, flushing pending commands rather than merely racing a promise. Failed hints are dropped; subscriber retries are independent of Mongo.
+- Set `DOMAIN_EVENTS_WAKEUPS_ENABLED=false` for polling-only operation. Parent Mongo dispatch polling and each child's Mongo delivery/checkpoint polling remain independent of hints and of each other. Disabling hints must not prevent processing; business handlers that need cache can still retry during a cache outage.
+- Dispatch scans `dispatchPending` independently of checkpoints, idempotently creates all matching deliveries, then clears the marker with journaled acknowledgement. Partial fanout leaves it set for recovery.
+- A lower ObjectId inserted after checkpoint advancement remains discoverable through dispatch intent/deliveries. ObjectId order is not provider occurrence order; projections need explicit late-event rules. Checkpoint scans also cover older retained rows.
 
-The worker runs bounded drains sequentially and catches per-consumer infrastructure failures. This is error isolation, not independent CPU/latency isolation.
+## 3. Isolated Execution
 
-Define history policy before adding/changing a consumer. A new consumer without a checkpoint scans matching retained history; changing an existing filter does not rewind it. Use a new consumer/version and explicit eligibility boundary for controlled rebuilds. Rebuilding progress must not resend unrelated announcements or repeat timer/reward increments.
+Sources: [execution supervisor](src/utils/domain_event_execution.ts), [worker configuration](src/workers/domain_events.worker.ts), [lease handling](src/utils/domain_event_consumer.ts).
 
-## Recovery
+The domain worker remains under the cron host, but runs **one persistent child process per consumer**, currently eight. A stalled/CPU-bound consumer does not share the event loop of another consumer or the dispatcher. This costs separate Node heaps, imports, Mongo pools and handler-dependent cache connections, not eight free logical tasks.
 
-1. Each new journal insert includes `dispatchPending: true` and requests journaled acknowledgement.
-2. The dispatcher scans the marker independently of checkpoints and creates all matching registered deliveries idempotently.
-3. It clears the marker only after those deliveries exist. Partial failure leaves the marker available for another pass.
-4. Consumers independently claim pending deliveries, due retries, and expired processing leases. Lease tokens protect completion/failure writes.
-5. Checkpoint scans remain for retained-history backfill and older journal rows.
-
-A lower ObjectId whose insert finishes after a checkpoint advances is still discoverable through its dispatch marker/delivery. ObjectId order is not provider occurrence order; projections must define their own late-event rules.
-
-Delivery remains at-least-once. Database effects must be idempotent. Twitch chat can duplicate if a message is accepted but its response or completion acknowledgement is lost.
-
-New Twitch production events carry `metadata.durableChatHandled: true`; only marked events enter durable chat/account-health consumers. Unmarked historical announcements are not replayed. Authenticated test events retain immediate behavior. Follow numbering uses a 48-hour Dragonfly receipt, not permanent deduplication or protection after cache loss.
-
-## Polar
-
-`POST /polar/webhook` verifies raw bytes with the Polar SDK, then journals rather than calling the old inline handler. Receipt identity is the signed `webhook-id` header. CamelCase SDK fields and `Date` instances are normalized once into billing payloads.
-
-| Provider Event | Domain Event | Consumers |
+| Setting | Default | Meaning |
 | --- | --- | --- |
-| `order.paid` | `billing.order.paid` | Plan, paid-order reward |
-| `subscription.updated` | `billing.subscription.updated` | Plan only |
+| `DOMAIN_EVENTS_POLL_INTERVAL_MS` | 1,000 ms | Parent and independent child fallback polling |
+| `DOMAIN_EVENTS_BATCH_SIZE` | 100 | Bounded scans/drains, maximum 500 |
+| `DOMAIN_EVENTS_MAX_ATTEMPTS` | 5 | Ordinary failed/interrupted attempt budget |
+| `DOMAIN_EVENTS_EXECUTION_TIMEOUT_MS` | 120,000 ms | Parent's absolute claimed-handler deadline, not extended by renewal |
+| `DOMAIN_EVENTS_LEASE_MS` | 60,000 ms | Mongo claim lease, renewed about every third of its duration |
+| Derived lease safety | 10,000 ms | Parent kills before known lease expiry; `max(500, floor(leaseMs / 6))` |
+| `DOMAIN_EVENTS_OPERATION_TIMEOUT_MS` | 60,000 ms | Child startup/non-handler progress watchdog |
+| `DOMAIN_EVENTS_SHUTDOWN_GRACE_MS` | 5,000 ms | Graceful child shutdown before hard kill |
+| `DOMAIN_EVENTS_RESTART_DELAY_MS` | 1,000 ms | Restart delay after observed exit |
+
+Lease-token and unexpired-lease predicates fence completion/failure writes. Renewal error, expiry or lost ownership hard-terminates the production child immediately; the parent also uses `SIGKILL` on watchdog expiry and waits for exit before replacing a slot. A promise timeout alone would leave effects running. None of this retracts an external request already accepted by Twitch or another service; response/completion loss can still duplicate external effects.
+
+## 4. Recovery And Receipts
+
+Sources: [retry engine](src/utils/domain_event_consumer.ts), [session projection](src/utils/stream_session_event_projection.ts), [offline analytics](src/utils/stream_analytics.ts), [cron queue](src/utils/cron_jobs_queue.ts).
+
+- Ready work includes pending deliveries, due retries and expired processing leases. Ordinary errors use 5 s, 30 s, 5 min and 30 min retry delays before the default fifth-attempt dead letter; interrupted final attempts are explicitly retired.
+- `DomainEventPrerequisiteMissingError` retries every 30 s without spending the ordinary attempt budget. Its horizon is **24 hours after `journaledAt`, capped by `expiresAt`**, not 24 hours after the first attempt. Missing event-time stream sessions and unresolved/deleted Polar owners use this path. Still missing at the horizon becomes explicitly `dead`; replay does not reset that horizon. Ephemeral age policy can end eligibility earlier.
+- Contract failures become `dead`; missing/removed journal rows are classified `journal_missing`. Do not turn missing prerequisites into successful no-ops or remap a pinned owner to another account.
+- Authoritative bits/subs/follows use Mongo session metrics with `applied_domain_event_keys` in the same atomic update. Receipt lookup also checks outside corrected session time bounds. These session keys are no longer truncated at 10,000; retry must not re-increment metrics after an old receipt falls out of a rolling window.
+- Offline replay first locates the session by event receipt, even if lifecycle corrections moved its bounds. Closing the session is not proof of downstream completion. Mongo per-step receipts `offline_summary_enqueued_at` and `offline_clips_completed_at` let retries resume missing summary/automatic-clip steps; these record step acceptance/handling, not completed downstream generation.
+- Cron dedupe marker, automatic acceptance key and list push run in one Redis Lua operation, with marker rollback on push error. Automatic `stream_offline` jobs retain `cron:jobs:accepted:<job>:<channel>:<session>` permanently, separately from expiring/deletable ordinary dedupe keys. This covers enqueue response loss before the Mongo step receipt, even after a worker clears ordinary dedupe.
+- **Queue durability limit:** Mongo step receipts and permanent Redis acceptance keys do not preserve/reconstruct the Redis queue itself after cache loss. A completed acceptance step can suppress re-enqueue of a now-lost queued job. This is not end-to-end durable downstream job execution.
+
+### Polar Effects
+
+Sources: [signed webhook](src/server/routes/webhooks/polarsh.webhook.ts), [normalizer](src/domain_events/polar_events.ts), [billing consumers](src/domain_events/polar_billing_events.ts).
+
+`POST /polar/webhook` verifies raw bytes with the installed Polar SDK, uses signed `webhook-id` as receipt identity, and journals instead of invoking old inline billing.
+
+| Provider Event | Domain Event | Automatic Effects |
+| --- | --- | --- |
+| `order.paid` | `billing.order.paid` | Known plan projection and supported paid-plan reward |
+| `subscription.updated` | `billing.subscription.updated` | Known plan projection only, no reward |
 | `customer.state_changed` | `billing.customer.state.changed` | Credit snapshot/cache |
-| Other SDK-validated types | `provider.polar.<type>` | Retained, no automatic billing effects |
+| Other SDK-validated types | `provider.polar.<type>` | JSON-safe `providerData` retained, no automatic billing effects |
 
-Unmapped SDK-validated types retain JSON-safe provider data for future subscribers. They are not failed deliveries merely because nobody subscribes. Types the installed SDK cannot validate are still rejected at ingestion. Refund/reversal policy and additional subscription-lifecycle mappings are separate work, not automatically enabled by retaining those events.
+Unmapped events are not failures merely because no consumer subscribes. Unsupported SDK types remain rejected. Refund/reversal policy and additional lifecycle mappings are outside this change. Existing entitlement/cancellation rules, credit calculations, legacy-meter fallback, reward amounts and active-referrer-or-bot selection remain unchanged.
 
-- `polar-plan-v1` updates known plan products on the internal user without requiring Twitch. Provider time and event-key tie breaking guard the Mongo snapshot. Twitch account caches are invalidated rather than overwritten with stale event snapshots. Existing cancellation/entitlement policy is not redesigned here.
-- `polar-credits-v1` persists the latest normalized meter snapshot. One Lua operation projects credits, exhaustion flags, and an ordering version to each linked Twitch account. Credit-cache expiry does not erase the version. Existing credit calculations and legacy-meter fallback remain.
-- `polar-rewards-v1` rewards confirmed paid orders of supported paid plans only. Subscription status changes do not issue rewards. Amounts and active-referrer-or-bot recipient selection remain unchanged.
+Plan and credit Mongo snapshots use provider time/event-key ordering. Plan caches are invalidated rather than overwritten with stale snapshots. Credits project snapshot, exhaustion flags and ordering version atomically per Twitch account; credit-cache expiry does not erase the version. Billing ownership does not require a Twitch account.
 
-### Standalone Reward Safety
+[Paid-order rewards](src/utils/paid_order_reward.ts) need no multi-document transactions: unique `polar:paid-order:<orderId>` reservation freezes amount/recipient, an atomic user update increments `token_balance` with `applied_credit_transaction_ids`, then history is marked applied. All three writes request journaled acknowledgement. A reservation alone is not evidence of credit; response-loss recovery checks the user receipt. Unrecoverable historical `balanceAfter` stays null. Legacy reward rows prevent another reward but do not automatically repair old partial-write ambiguities.
 
-`src/utils/paid_order_reward.ts` uses no multi-document transactions:
+### Storage Limits
 
-1. A unique `CreditTransaction` reservation, `polar:paid-order:<orderId>`, freezes amount and recipient.
-2. One atomic user update increments `token_balance` and adds the transaction ID to `applied_credit_transaction_ids`.
-3. The history row is marked applied. A retry after response loss checks the user receipt and finishes history without incrementing again.
+Session event keys and user credit receipts grow without a rolling cap; reward records outlive journal TTL. Monitor Mongo's **16 MiB BSON document limit**, especially high-volume sessions and the bot/referrer beneficiary. Permanent automatic acceptance keys and credit-ordering keys also grow Redis/Dragonfly memory. Do not prune permanent receipts, delete/recreate idempotency records, or clear checkpoints to force recovery. Any future compaction needs dedupe-preserving design and in-flight-worker handling; ordinary TTL cleanup is not such a design.
 
-All three writes request journaled acknowledgement. A reserved history row alone is not proof that credit was applied. If recovery cannot reconstruct the original post-credit balance, `balanceAfter` stays null rather than reporting a made-up historical balance.
+## 5. Defense And Replay Policy
 
-Receipt IDs are hidden from default user projections and retained permanently. Do not prune receipts or delete/recreate idempotency records during normal operation. This trades storage growth for standalone safety: monitor high-volume beneficiary document sizes before Mongo's document-size limit is approached. Future compaction must preserve deduplication and account for in-flight workers.
+Sources: [consumer registry](src/domain_events/domain_event_consumers.ts), [delivery policy](src/domain_events/domain_event_delivery_policy.ts), [defense adapter](src/domain_events/follow_defense_events.ts), [defense execution](src/utils/follow_defense.ts), [raid marker](src/utils/follow_defense_queue.ts).
 
-Legacy paid-order reward rows prevent another credit for an already handled old order. Their historical partial-write ambiguities are not automatically repaired. Channel/domain journal retention defaults to 90 days; reward records are not TTL-expired with the journal. This operational pipeline is not a replacement for provider accounting records.
+| Consumer | Maximum Event Age | Admin Dead-Letter Replay |
+| --- | --- | --- |
+| `follow-defense-v1` | 5 min, plus stricter handler freshness | No |
+| `chat-announcements-v1` | 5 min | No |
+| `account-health-notifications-v1` | 5 min | No |
+| `stream-analytics-v1` | No age cutoff | Retained eligible events |
+| `stream-operations-v1` | No age cutoff; newer-lifecycle guard | Retained eligible events |
+| `polar-plan-v1`, `polar-credits-v1`, `polar-rewards-v1` | No age cutoff | Retained eligible events |
 
-## Rollout And Verification
+- Age policy uses the earlier of occurrence and journal time, so future provider clocks cannot prolong ephemeral effects. It is rechecked before execution. Over-age deliveries are retained as `skipped` with `skipReason`, not counted as succeeded; unsupported schemas are rejected. Policy outcomes do not spend retry budget.
+- Defense is opt-in per event through `metadata.durableDefenseHandled: true`, emitted by the production Twitch transport for follows/raids only. Only `twitch-eventsub` marked v1 events enter this consumer. It calls durable defense directly, not the old lossy dequeue-before-processing queue; required errors propagate for delivery retry.
+- Follows cannot initiate moderation once 60 seconds old; freshness is rechecked around delayed effects and tracked-wave bans. Raid markers expire 5 minutes after occurrence; atomic ordering prevents retries extending expiry or replacing a newer raid. Old retained events must not become actionable after cache loss.
+- Production ownership markers suppress the matching legacy follow enqueue/raid marker only. [Raid shoutouts](src/handlers/raid.handler.ts) remain immediate. Redemption execution, arbitrary AST/chat/ad/ban actions and the manual-attack queue are unchanged and outside this durable migration; it is not a universal action bus.
+- `metadata.durableChatHandled: true` gates durable chat/account-health. Unmarked historical announcements are not replayed; authenticated test events retain immediate behavior. [Follow display numbering](src/domain_events/chat_announcement_events.ts) still uses a **48-hour Redis receipt** and is best-effort after cache loss, unlike authoritative Mongo follow metrics. Chat/notification effects can duplicate after external acceptance response loss.
+- Super-admin [listing/replay routes](src/server/routes/admin_site.route.ts) are `GET /admin-site/domain-events` and `POST /admin-site/domain-events/:eventKey/replay` with body `{ "consumer": "..." }`. Replay requires a registered replay-enabled consumer, a dead delivery and retained/unexpired journal matching Mongo source/type/topic/history filters, schema and payload validation. Denial returns 409; scheduling returns 202. Repair prerequisites first; neither skipped outcomes nor ephemeral consumers get admin replay.
 
-This workstation is development-only. No Docker, databases, production webhooks, or live payment tests may run here.
+## Health Endpoint
 
-- Deploy the matching cron registry before enabling a new producer on the production host. Avoid overlapping dispatcher registries while changing subscriptions: dispatch prepares deliveries for its current registry, not hypothetical future consumers.
-- Confirm journal/dispatch indexes and the unique paid-order reservation index on the production host. No local database migration or index creation has been run.
-- Verify customer mappings, recovery after cache failure, and one reward across duplicate paid-order deliveries on the production host using an appropriate test setup.
-- Existing super-admin listing/replay endpoints live under `/admin-site/domain-events`. Repair missing ownership before replay. Do not delete checkpoints or receipt markers to force recovery.
-- Local mocks cover query predicates, update shapes, response-loss recovery, and signed SDK transport. They do not establish live Mongo/Dragonfly atomicity, index performance, or production payment behavior.
+Source of truth: [health aggregation](src/utils/domain_event_health.ts), exposed by the authenticated super-admin [route](src/server/routes/admin_site.route.ts).
 
-Local commands, from `dimabot/`:
+`GET /admin-site/domain-events/health` optionally accepts `?consumer=stream-analytics-v1`. Consumer must be one string matching `[a-zA-Z0-9_-]{1,100}`; invalid input returns 400. Success is `{ error: false, message, status: 200, data }`, with `Cache-Control: no-store`; query failure returns generic 503, not zero/healthy metrics.
+
+| `data` Field | Actual Shape/Meaning |
+| --- | --- |
+| `asOf`, `consumer`, `scope`, `semantics` | ISO sampling time, filter or null, scope and interpretation strings |
+| `limits` | `documentsPerBucket: 10000`, `maxTimeMSPerQuery: 1000`, `approachingExpiryWindowMs: 3600000` |
+| `deliveries` | Separate `pending`, `processing`, `retry`, `succeeded`, `skipped`, `dead` buckets |
+| Each delivery bucket | `count`, `capped`, `oldestAgeMs`, `oldestReadyAgeMs`, `dueRetries`, `staleProcessing`, `approachingExpiry`, `expired`, `prerequisiteMissing`, `ownerUnresolved`, `subjectUnresolved`, `maxLastAttemptDurationMs` |
+| `dispatchPending` | Global `count`, `capped`, `oldestAgeMs`, `oldestReadyAgeMs` (null), `approachingExpiry`, `expired`; not consumer-filtered |
+
+Each status query and the dispatch query is independently capped at 10,000 documents and 1 second, without disk spill. This is **not** a 1-second endpoint-wide deadline or a full collection census. Reads are independent, not a snapshot. At the cap, counts and maximum ages/durations are lower bounds over an unordered sample; large succeeded history cannot crowd retries out of their separate bucket.
+
+Delivery ages use `createdAt`; ready age means age of currently ready work, not time overdue. Dispatch age uses `journaledAt`. Expiry counts apply to active delivery buckets and global pending dispatch; approaching expiry means the next hour. Owner/subject signals reflect the last classified prerequisite failure, not absent journal identity, and do not infer legacy unclassified failures. Only `succeeded` is success; retain and inspect `skipped`, retries and dead letters separately.
+
+## Verification And Rollout
+
+This workstation is development-only: **no Docker, databases, production webhooks, deploys or live payment checks here**. The service-free allowlisted [runner](src/scripts/test_domain_pipeline.script.mjs) covers the current 350-test pipeline suite using Node module mocks; standalone Lua checks are optional and skip if Lua is unavailable. From the repository root:
 
 ```bash
-npm run build
-npx tsx --test 'src/**/*.test.ts'
-npx tsx src/workers/domain_events.worker.ts --dry-run
+node dimabot/src/scripts/test_domain_pipeline.script.mjs
+node dimabot/src/scripts/test_domain_pipeline.script.mjs --test-reporter=dot
 ```
+
+Do not replace the allowlist with a repository-wide test glob. Mocked queries, response loss, SDK transport and child-process tests do not establish live Mongo/Dragonfly atomicity, query performance, resource sizing or payment behavior. Production checks below must run on the production host in an appropriate controlled test setup; they have not been performed here.
+
+### Production Checklist
+
+1. Deploy a matching producer/cron registry before enabling new event types. Avoid overlapping divergent dispatcher registries. Verify the current eight consumer children plus dispatcher, crash restart and shutdown behavior; measure aggregate RSS/CPU, Mongo pool/socket limits and cache connections under backlog, not just idle cost.
+2. Verify [journal indexes](src/schemas/domain_event.schema.ts), [delivery uniqueness/ready-work/health/TTL indexes](src/schemas/domain_event_delivery.schema.ts), checkpoint indexes and unique paid-order reservation index. Check actual query plans and health query timeout behavior; definitions in source are not proof indexes exist on the host.
+3. Disable wakeups with `DOMAIN_EVENTS_WAKEUPS_ENABLED=false`, then simulate unavailable/hung hint connections. Confirm Mongo acceptance, dispatch and independent child polling still process work, bounded hint destruction, and cache-dependent handler retries without blocking other consumers.
+4. Exercise duplicate acceptance, crash/response loss after journal insert, partial fanout, checkpoint races, expired leases, blocked/CPU-bound children, renewal loss and shutdown. Confirm no replacement before exit, no local continuation after lease loss, and explicit final-attempt dead letters; external duplicate risk remains.
+5. Test missing stream sessions and Polar mappings appearing during prerequisite retry, plus unresolved/deleted pinned owners reaching the capped horizon without fallback transfer. Verify permitted retained replay and rejection of malformed, expired, filtered-out or ephemeral replay.
+6. Inject response loss after offline session mutation, each queue acceptance and each Mongo step receipt, including worker removal of ordinary dedupe keys. Verify recovery without repeated automatic acceptance or authoritative increments. Separately test/document queue-loss recovery limitations; never claim Mongo receipts restore a lost Redis list.
+7. Verify duplicate paid orders yield one receipted balance increment, snapshot ordering/cache recovery, follow numbering's cache-loss limitation, 60-second follow/5-minute raid stale safety, and immediate raid shoutouts. Inspect separate skipped/dead health signals and near-expiry backlog.
+8. Monitor retained backlog and TTL headroom, unbounded session/beneficiary BSON size below 16 MiB, and permanent Redis key memory growth. Do not prune permanent receipts as routine maintenance. This pipeline is not a replacement for provider accounting records.

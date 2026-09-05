@@ -21,6 +21,7 @@ import {
 } from '../../schemas/domain_event_delivery.schema.js';
 import { DomainEventSchema } from '../../schemas/domain_event.schema.js';
 import { replayDeadDomainEvent } from '../../utils/domain_event_consumer.js';
+import { getDomainEventHealth } from '../../utils/domain_event_health.js';
 
 interface AuthRequest extends Request {
     user?: {
@@ -845,6 +846,22 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
             message: 'Internal server error',
             status: 500
         });
+    }
+});
+
+router.get('/domain-events/health', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    if (!ensureSuperAdmin(req, res)) return;
+    res.setHeader('Cache-Control', 'no-store');
+    const consumer = req.query.consumer;
+    if (consumer !== undefined && (typeof consumer !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(consumer))) {
+        return res.status(400).json({ error: true, message: 'Invalid consumer', status: 400 });
+    }
+    try {
+        const data = await getDomainEventHealth(consumer);
+        return res.status(200).json({ error: false, message: 'Domain event health retrieved', status: 200, data });
+    } catch {
+        // Do not expose/log driver errors: they can contain connection credentials.
+        return res.status(503).json({ error: true, message: 'Domain event health unavailable', status: 503 });
     }
 });
 

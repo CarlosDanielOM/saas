@@ -86,6 +86,8 @@ test('missing prerequisite does not spend failure budget or block delayed stream
     assert.equal(h.checkpoint, h.started._id);
     const delivery = h.deliveries.get('metric');
     assert.equal(delivery.status, 'retry');
+    assert.equal(delivery.lastErrorCode, 'prerequisite_missing');
+    assert.equal(delivery.lastPrerequisiteKind, 'other');
     assert.equal(delivery.attempts, 0);
     assert.equal(delivery.completedAt, null);
     assert.equal(delivery.nextAttemptAt.getTime(), NOW + 30_000);
@@ -94,6 +96,8 @@ test('missing prerequisite does not spend failure budget or block delayed stream
     assert.equal((await h.drain(handler, 1)).succeeded, 1);
     assert.equal(applied, 1);
     assert.equal(delivery.status, 'succeeded');
+    assert.equal(delivery.lastErrorCode, '');
+    assert.equal(delivery.lastPrerequisiteKind, '');
 });
 
 test('repeated prerequisites preserve ordinary retry budget, including the last attempt', async t => {
@@ -129,6 +133,7 @@ for (const [name, age, retention] of [
         assert.equal(result.dead, 1);
         const d = h.deliveries.get('metric');
         assert.equal(d.status, 'dead');
+        assert.equal(d.lastErrorCode, 'prerequisite_missing');
         assert.equal(d.attempts, 0);
         assert.equal(d.nextAttemptAt, null);
         assert.match(d.lastDeadLetterError, /Prerequisite horizon exceeded.*stream-session/);
@@ -145,6 +150,40 @@ test('retry delay is capped at expiry and the horizon cannot slide with each def
     assert.equal(h.deliveries.get('metric').nextAttemptAt.getTime(), NOW + 10_000);
     t.mock.timers.tick(10_000);
     assert.equal((await h.drain(handler)).dead, 1);
+});
+
+test('owner repair beyond the ordinary 36-minute budget succeeds within the fixed 24-hour horizon', async t => {
+    const h = setup(t, 23 * 60 * 60_000);
+    let repaired = false;
+    const handler = async (e: any) => {
+        if (e.eventKey === 'metric' && !repaired) throw new DomainEventPrerequisiteMissingError('owner:polar mapping');
+    };
+    await h.drain(handler, 1);
+    const delivery = h.deliveries.get('metric');
+    assert.equal(delivery.lastErrorCode, 'prerequisite_missing');
+    assert.equal(delivery.lastPrerequisiteKind, 'owner');
+    assert.equal(delivery.attempts, 0);
+    t.mock.timers.tick(37 * 60_000);
+    assert.equal((await h.drain(handler, 1)).dead, 0);
+    assert.equal(delivery.status, 'retry');
+    repaired = true;
+    t.mock.timers.tick(30_000);
+    assert.equal((await h.drain(handler, 1)).succeeded, 1);
+    assert.equal(delivery.lastPrerequisiteKind, '');
+    assert.equal(h.event.ownerUserId, undefined);
+});
+
+test('owner prerequisite stops at the original 24-hour horizon, not 24 hours from each retry', async t => {
+    const h = setup(t, DAY - 1);
+    const handler = async (e: any) => {
+        if (e.eventKey === 'metric') throw new DomainEventPrerequisiteMissingError('owner:polar mapping');
+    };
+    await h.drain(handler, 1);
+    t.mock.timers.tick(1);
+    const result = await h.drain(handler, 1);
+    assert.equal(result.dead, 1);
+    assert.equal(result.succeeded, 0);
+    assert.equal(h.deliveries.get('metric').lastPrerequisiteKind, 'owner');
 });
 
 test('lost deferral response leaves a durable retry that subsequent scans can pass', async t => {

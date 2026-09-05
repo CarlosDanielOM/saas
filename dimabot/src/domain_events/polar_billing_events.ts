@@ -1,4 +1,4 @@
-import type { DomainEventEnvelope } from './domain_event.types.js';
+import { DomainEventPrerequisiteMissingError, type DomainEventEnvelope } from './domain_event.types.js';
 import type { PolarBillingPayload } from './polar_events.js';
 import { polarWebhookProducer } from './polar_events.js';
 import UsersSchema, { type IUsers } from '../schemas/users.schema.js';
@@ -31,9 +31,9 @@ interface PolarBillingDependencies {
 const dependencies: PolarBillingDependencies = {
     async getOwner(event) {
         const ownerUserId = event.ownerUserId || await polarWebhookProducer.resolveOwner?.(event);
-        if (!ownerUserId) throw new Error(`Unresolved Polar customer ${event.subject?.id || 'unknown'}`);
+        if (!ownerUserId) throw new DomainEventPrerequisiteMissingError('owner:polar customer mapping unresolved');
         const user = await UsersSchema.findById(ownerUserId).lean();
-        if (!user) throw new Error(`Polar owner ${ownerUserId} no longer exists`);
+        if (!user) throw new DomainEventPrerequisiteMissingError('owner:Polar owner no longer exists');
         return user;
     },
     getCache: getDragonflyClient,
@@ -66,7 +66,7 @@ export async function applyPolarPlanDomainEvent(
         polar_plan_event_key: event.eventKey
     } }, { new: true }).lean();
     if (!updated && !await UsersSchema.exists({ _id: owner._id })) {
-        throw new Error('Polar owner disappeared before plan update');
+        throw new DomainEventPrerequisiteMissingError('owner:Polar owner disappeared before plan update');
     }
     // Invalidate rather than write an event-time snapshot over a newer cached plan.
     const twitchAccounts = owner.accounts.filter((account) => account.type === 'twitch');
@@ -95,7 +95,8 @@ export async function applyPolarCreditsDomainEvent(
         ]
     }, { $set: { polar_credit_snapshot: snapshot } }, { new: true }).select('+polar_credit_snapshot').lean()
         || await UsersSchema.findById(owner._id).select('+polar_credit_snapshot').lean();
-    if (!updated?.polar_credit_snapshot) throw new Error('Polar owner credit snapshot could not be persisted');
+    if (!updated) throw new DomainEventPrerequisiteMissingError('owner:Polar owner credit snapshot could not be persisted');
+    if (!updated.polar_credit_snapshot) throw new Error('Polar owner credit snapshot could not be persisted');
     const current = updated.polar_credit_snapshot;
     const creditsMeter = current.meters.find((meter) => meter.meter_id === AI_CREDITS_METER_ID);
     const legacyMeter = current.meters.find((meter) => meter.meter_id === LEGACY_USAGE_METER_ID);

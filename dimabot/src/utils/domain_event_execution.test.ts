@@ -71,6 +71,25 @@ test('missing or hung renewal kills the process before lease expiry', () => {
     assert.deepEqual(h.child('consumer').signals, ['SIGKILL']);
 });
 
+test('watchdog logs event correlation, renewed lease expiry and elapsed execution, but never lease tokens', () => {
+    let now = 0;
+    const child = new FakeChild();
+    const reports: unknown[][] = [];
+    const supervisor = new DomainEventExecutionSupervisor(['consumer'], config, () => child,
+        false, () => now, (...args) => { reports.push(args); });
+    supervisor.tick();
+    child.message({ type: 'claimed', lease: { eventKey: 'event', leaseToken: 'secret-token', lockedUntil: 500 } });
+    now = 200;
+    child.message({ type: 'renewed', lease: { eventKey: 'event', leaseToken: 'secret-token', lockedUntil: 700 } });
+    now = 600;
+    supervisor.tick();
+    assert.deepEqual(reports, [['consumer', 'Execution, lease, or shutdown watchdog expired', {
+        eventKey: 'event', leaseExpiresAt: 700, durationMs: 600
+    }]]);
+    assert.equal(JSON.stringify(reports).includes('secret-token'), false);
+    assert.deepEqual(child.signals, ['SIGKILL']);
+});
+
 test('a late renewal cannot revive an expired lease between watchdog ticks', () => {
     let now = 0;
     const child = new FakeChild();

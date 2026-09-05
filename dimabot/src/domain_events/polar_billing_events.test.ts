@@ -4,7 +4,8 @@ import { Types } from 'mongoose';
 import UsersSchema, { type IUsers } from '../schemas/users.schema.js';
 import { AI_CREDITS_CACHE_TTL_SECONDS, AI_CREDITS_METER_ID } from '../utils/billing.js';
 import { PRODUCT_IDS } from '../utils/referral.js';
-import type { DomainEventEnvelope } from './domain_event.types.js';
+import { DomainEventPrerequisiteMissingError, type DomainEventEnvelope } from './domain_event.types.js';
+import { polarWebhookProducer } from './polar_events.js';
 import type { PolarBillingPayload } from './polar_events.js';
 import {
     applyPolarPlanDomainEvent,
@@ -370,11 +371,25 @@ for (const [name, handler, type] of [
         const f = fixture(t);
         f.state.latest = null;
         const { getOwner: _getOwner, ...deps } = f.deps;
-        await assert.rejects(handler(event(type), deps), /no longer exists/);
+        await assert.rejects(handler(event(type), deps), error => error instanceof DomainEventPrerequisiteMissingError
+            && error.prerequisite === 'owner:Polar owner no longer exists');
         assert.deepEqual(f.findById.mock.calls[0].arguments, [ownerId.toString()]);
         assert.equal(f.update.mock.callCount(), 0);
         assert.equal(f.getCache.mock.callCount(), 0);
         assert.equal(f.applyReward.mock.callCount(), 0);
+    });
+
+    test(`${name} unresolved owner mapping is a repairable prerequisite, without mutating persisted ownership`, async t => {
+        const f = fixture(t);
+        const input = event(type);
+        delete input.ownerUserId;
+        assert.ok(polarWebhookProducer.resolveOwner);
+        t.mock.method(polarWebhookProducer as Required<typeof polarWebhookProducer>, 'resolveOwner', async () => undefined);
+        const { getOwner: _getOwner, ...deps } = f.deps;
+        await assert.rejects(handler(input, deps), error => error instanceof DomainEventPrerequisiteMissingError
+            && error.prerequisite.startsWith('owner:'));
+        assert.equal(input.ownerUserId, undefined);
+        f.assertNoEffects();
     });
 
     test(`${name} source filter excludes Twitch even when its event type matches billing`, async t => {
