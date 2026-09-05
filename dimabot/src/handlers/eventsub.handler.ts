@@ -27,6 +27,7 @@ import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 
 interface EventsubHandlerOptions {
     durableChatHandled?: boolean;
+    durableDefenseHandled?: boolean;
 }
 
 export const eventsubHandler = async (
@@ -162,7 +163,7 @@ export const eventsubHandler = async (
             messageHandler(STREAMER.id, eventData as IChatMessage);
             break;
         case 'channel.raid':
-            await raidHandler(eventData as IRaidEventData, eventsubData);
+            await raidHandler(eventData as IRaidEventData, eventsubData, options);
             break;
         case CANONICAL_BITS_EVENT_TYPE:
         case 'channel.bit.use':
@@ -173,7 +174,7 @@ export const eventsubHandler = async (
             await redemptionHandler(eventData as IRedemptionEvent, chatEnabled);
             break;
         case 'channel.follow':
-            await followHandler(eventData as IFollowEvent, eventsubData, immediateChatEnabled);
+            await followHandler(eventData as IFollowEvent, eventsubData, immediateChatEnabled, options);
             break;
         case 'stream.online':
             if (!options.durableChatHandled) {

@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import type { AddressInfo } from 'node:net';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import { Types } from 'mongoose';
 import type { JournalDomainEventInput } from '../domain_events/domain_event.types.js';
 
 const SECRET = 'eventsub-test-secret';
+mock.module('../utils/databases/dragonfly.database.js', { namedExports: {
+    getDragonflyClient: async () => ({ set: async () => 'OK' })
+} });
 
 function signedHeaders(body: string, options?: {
     messageId?: string;
@@ -189,4 +192,74 @@ test('production webhook persists durable chat ownership before suppressing imme
         assert.equal((await send()).status, 503);
         assert.equal(handled.length, 1);
     });
+});
+
+for (const type of ['channel.follow', 'channel.raid']) {
+    test(`${type} defense suppression follows journal acceptance; duplicates/failures never invoke inline effects`, async (context) => {
+        process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+        process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+        const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+        let inserted = true;
+        let fail = false;
+        let accepted = false;
+        const handled: unknown[] = [];
+        const server = createTwitchEventsubApp({
+            resolveOwner: async () => undefined,
+            async journalEvent(input) {
+                assert.equal(input.metadata?.durableDefenseHandled, true);
+                assert.equal(input.source, 'twitch-eventsub');
+                assert.equal(handled.length, accepted ? 1 : 0);
+                if (fail) throw new Error('journal unavailable');
+                accepted = true;
+                return { inserted, event: {
+                    ...input, _id: new Types.ObjectId(), eventKey: 'stable-event', schemaVersion: 1,
+                    occurredAt: new Date(input.occurredAt!), journaledAt: new Date(),
+                    metadata: input.metadata!, expiresAt: new Date(Date.now() + 3600_000)
+                } };
+            },
+            async handleEvent(_subscription, _event, options) {
+                assert.equal(accepted, true);
+                handled.push(options);
+            }
+        }).listen(0);
+        await new Promise<void>((resolve) => server.once('listening', resolve));
+        context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
+        const endpoint = `http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`;
+        const body = JSON.stringify({ subscription: { type, version: '1' }, event: {
+            broadcaster_user_id: type === 'channel.follow' ? 'channel' : undefined,
+            to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', user_id: 'follower',
+            followed_at: new Date().toISOString(), viewers: 5
+        } });
+        const send = () => fetch(endpoint, { method: 'POST', headers: signedHeaders(body), body });
+        fail = true;
+        assert.equal((await send()).status, 503);
+        assert.deepEqual(handled, []);
+        fail = false;
+        assert.equal((await send()).status, 204);
+        assert.deepEqual(handled, [{ durableChatHandled: true, durableDefenseHandled: true }]);
+        inserted = false;
+        assert.equal((await send()).status, 204);
+        assert.equal(handled.length, 1);
+    });
+}
+
+test('unjournaled redemption/chat/ad/ban notifications keep immediate unflagged dispatch', async (context) => {
+    process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+    process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const handled: unknown[] = [];
+    const server = createTwitchEventsubApp({
+        async journalEvent() { assert.fail('Out-of-scope notifications must not be journaled'); },
+        async handleEvent(subscription, _event, options) { handled.push({ type: subscription.type, options }); }
+    }).listen(0);
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    context.after(() => new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())));
+    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ad_break.begin', 'channel.ban']) {
+        const body = JSON.stringify({ subscription: { type }, event: { broadcaster_user_id: 'channel' } });
+        assert.equal((await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`, {
+            method: 'POST', headers: signedHeaders(body, { messageId: type }), body
+        })).status, 204);
+        assert.deepEqual(handled.at(-1), { type, options: { durableChatHandled: false } });
+    }
+    assert.equal(handled.length, 4);
 });

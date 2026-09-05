@@ -25,7 +25,8 @@ const modID = '698614112';
 
 export async function raidHandler(
     eventData: RaidEventData,
-    eventsubData: IEventsub
+    eventsubData: IEventsub,
+    options: { durableDefenseHandled?: boolean } = {}
 ): Promise<RaidHandlerResponse> {
     try {
         if (eventsubData.minViewers > eventData.viewers) {
@@ -51,7 +52,7 @@ export async function raidHandler(
             from_broadcaster_user_name
         } = eventData;
 
-        void setFollowDefenseRaidMarker({
+        if (!options.durableDefenseHandled) void setFollowDefenseRaidMarker({
             channelID: to_broadcaster_user_id,
             channelLogin: to_broadcaster_user_login,
             channelName: to_broadcaster_user_name,

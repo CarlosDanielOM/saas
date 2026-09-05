@@ -8,6 +8,17 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
+        consumer: 'follow-defense-v1',
+        topics: ['channel'],
+        schemaVersions: [1],
+        eventFilter: {
+            source: 'twitch-eventsub',
+            'metadata.durableDefenseHandled': true,
+            type: { $in: ['channel.follow.received', 'channel.raid.received'] }
+        },
+        handler: async (event) => (await import('./follow_defense_events.js')).applyFollowDefenseDomainEvent(event)
+    },
+    {
         consumer: 'stream-analytics-v1',
         topics: ['channel'],
         schemaVersions: [1],

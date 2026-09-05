@@ -13,12 +13,13 @@ interface FollowHandlerResponse {
 export async function followHandler(
     eventData: IFollowEvent,
     eventsubData: IEventsub,
-    chatEnabled: boolean
+    chatEnabled: boolean,
+    options: { durableDefenseHandled?: boolean } = {}
 ): Promise<FollowHandlerResponse> {
     try {
         const { broadcaster_user_id, user_name, user_login } = eventData;
 
-        void enqueueFollowDefenseFollow(eventData);
+        if (!options.durableDefenseHandled) void enqueueFollowDefenseFollow(eventData);
 
         if (!chatEnabled) {
             return {

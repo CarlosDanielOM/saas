@@ -137,3 +137,42 @@ test('records stale retry audit metadata', () => {
     assert.equal(event.metadata?.messageRetry, 2);
     assert.equal(event.metadata?.staleRetry, true);
 });
+
+test('raid normalization uses the destination and original delivery time', () => {
+    const event = normalizeTwitchEventsubDomainEvent({
+        messageId: 'raid-receipt', messageTimestamp: '2026-09-05T12:00:00Z', durableDefenseHandled: true,
+        subscription: { type: 'channel.raid', version: '1' },
+        event: { to_broadcaster_user_id: 'target', from_broadcaster_user_id: 'raider', viewers: 12 }
+    });
+    assert.ok(event);
+    assert.equal(event.type, 'channel.raid.received');
+    assert.equal(event.channelID, 'target');
+    assert.deepEqual(event.subject, { provider: 'twitch', kind: 'streaming-account', id: 'target' });
+    assert.equal(event.sourceEventId, 'raid-receipt');
+    assert.equal(event.occurredAt, '2026-09-05T12:00:00Z');
+    assert.equal(event.metadata?.durableDefenseHandled, true);
+});
+
+test('defense ownership is opt-in, production-only and follow/raid-only', () => {
+    for (const source of ['twitch-eventsub', 'twitch-eventsub-test'] as const) {
+        for (const type of ['channel.follow', 'channel.raid', 'stream.online', 'channel.bits.use']) {
+            for (const marked of [false, true]) {
+                const event = normalizeTwitchEventsubDomainEvent({
+                    messageId: 'receipt', source, durableDefenseHandled: marked,
+                    subscription: { type }, event: { broadcaster_user_id: 'channel' }
+                });
+                assert.equal(event?.metadata?.durableDefenseHandled,
+                    marked && source === 'twitch-eventsub' && ['channel.follow', 'channel.raid'].includes(type) ? true : undefined);
+            }
+        }
+    }
+});
+
+test('redemption AST, chat, ad and ban notifications remain unjournaled', () => {
+    for (const type of ['channel.channel_points_custom_reward_redemption.add', 'channel.chat.message', 'channel.ad_break.begin', 'channel.ban']) {
+        assert.equal(normalizeTwitchEventsubDomainEvent({
+            messageId: 'receipt', durableDefenseHandled: true,
+            subscription: { type }, event: { broadcaster_user_id: 'channel' }
+        }), null);
+    }
+});

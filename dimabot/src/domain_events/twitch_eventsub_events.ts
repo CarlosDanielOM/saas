@@ -17,6 +17,7 @@ export interface NormalizeTwitchEventsubInput {
     event: Record<string, unknown>;
     source?: 'twitch-eventsub' | 'twitch-eventsub-test';
     durableChatHandled?: boolean;
+    durableDefenseHandled?: boolean;
 }
 
 const DURABLE_EVENT_TYPES: Record<string, string> = {
@@ -24,6 +25,7 @@ const DURABLE_EVENT_TYPES: Record<string, string> = {
     'channel.cheer': 'channel.bits.received',
     'channel.bit.use': 'channel.bits.received',
     'channel.follow': 'channel.follow.received',
+    'channel.raid': 'channel.raid.received',
     'channel.subscribe': 'channel.subscription.received',
     'channel.subscription.message': 'channel.subscription.received',
     'channel.subscription.gift': 'channel.subscription.gifted',
@@ -87,6 +89,9 @@ export function normalizeTwitchEventsubDomainEvent(
         },
         metadata: {
             ...(input.durableChatHandled ? { durableChatHandled: true } : {}),
+            ...(input.durableDefenseHandled && (input.source || 'twitch-eventsub') === 'twitch-eventsub'
+                && (originalEventType === 'channel.follow' || originalEventType === 'channel.raid')
+                ? { durableDefenseHandled: true } : {}),
             originalEventType,
             subscriptionID: firstString(input.subscription.id),
             subscriptionVersion: firstString(input.subscription.version),

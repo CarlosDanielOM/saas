@@ -172,7 +172,8 @@ export function createTwitchEventsubApp({
                     staleRetry: timestampDecision.staleRetry,
                     subscription: notification.subscription,
                     event: notification.event,
-                    durableChatHandled: true
+                    durableChatHandled: true,
+                    durableDefenseHandled: true
                 };
                 let durableEvent;
                 try {
@@ -223,7 +224,11 @@ export function createTwitchEventsubApp({
                 void handleEvent(
                     notification.subscription as ITwitchSubscriptionData,
                     notification.event as ITwitchEventData,
-                    { durableChatHandled: Boolean(durableEvent) }
+                    {
+                        durableChatHandled: Boolean(durableEvent),
+                        ...(durableEvent?.metadata?.durableDefenseHandled === true
+                            ? { durableDefenseHandled: true } : {})
+                    }
                 )
                     .then(() => {
                         endEventsubHandlerMetric(tracker, false);

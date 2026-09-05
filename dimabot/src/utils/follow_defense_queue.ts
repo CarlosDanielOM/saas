@@ -16,6 +16,7 @@ export interface FollowDefenseFollowPayload {
     followerName: string;
     followedAt: string;
     receivedAt: number;
+    moderationExpiresAt?: number;
 }
 
 export interface FollowDefenseManualAttackPayload {
@@ -42,6 +43,7 @@ export interface FollowDefenseState {
     triggeredBy: FollowDefenseTriggerSource;
     lastTransitionReason: string;
     lastUpdatedAt: number;
+    triggerEventID?: string;
 }
 
 export interface FollowDefenseRaidMarker {
@@ -54,9 +56,12 @@ export interface FollowDefenseRaidMarker {
     raidViewers: number;
     createdAt: number;
     expiresAt: number;
+    eventID?: string;
 }
 
 export const FOLLOW_DEFENSE_QUEUE_KEY = 'twitch:follow-defense:queue';
+// Delayed delivery is not evidence of a current attack. Never moderate backlog.
+export const FOLLOW_DEFENSE_MAX_EVENT_AGE_MS = 60_000;
 const QUEUE_DATA_PREFIX = 'twitch:follow-defense:queue:data:';
 const QUEUE_EVENT_TTL_SECONDS = 24 * 60 * 60;
 
@@ -68,6 +73,7 @@ export function followDefenseKeys(channelID: string) {
         tracked: `twitch:${channelID}:follow-defense:tracked`,
         followDataPrefix: `twitch:${channelID}:follow-defense:follow:`,
         banDataPrefix: `twitch:${channelID}:follow-defense:ban:`,
+        completedPrefix: `twitch:${channelID}:follow-defense:completed:`,
         raid: `twitch:${channelID}:follow-defense:raid`,
         activeChannels: 'twitch:follow-defense:active-channels'
     };
@@ -173,6 +179,31 @@ export async function setFollowDefenseRaidMarker(marker: Omit<FollowDefenseRaidM
             stack: error instanceof Error ? error.stack : undefined
         }, { channelId: marker.channelID, destination: 'both' });
     }
+}
+
+export async function applyDurableFollowDefenseRaidMarker(marker: FollowDefenseRaidMarker): Promise<void> {
+    if (!Number.isFinite(marker.createdAt) || !Number.isFinite(marker.expiresAt) || !marker.eventID) {
+        throw new Error('Invalid durable raid marker identity or occurrence time');
+    }
+    if (marker.expiresAt <= Date.now()) return;
+    const cache = await getDragonflyClient('applyDurableFollowDefenseRaidMarker');
+    // Compare and write atomically; retries neither extend expiry nor replace a newer raid.
+    await cache.eval(`
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+if tonumber(ARGV[3]) <= now then return 0 end
+local raw = redis.call('GET', KEYS[1])
+if raw then
+    local previous = cjson.decode(raw)
+    if previous.createdAt > tonumber(ARGV[2]) then return 0 end
+    if previous.createdAt == tonumber(ARGV[2]) and (previous.eventID or '') >= ARGV[4] then return 0 end
+end
+redis.call('SET', KEYS[1], ARGV[1], 'PXAT', ARGV[3])
+return 1
+`, {
+        keys: [followDefenseKeys(marker.channelID).raid],
+        arguments: [JSON.stringify(marker), String(marker.createdAt), String(marker.expiresAt), marker.eventID]
+    });
 }
 
 export async function triggerFollowDefenseAttackMode(channelID: string, channelLogin = '', channelName = ''): Promise<void> {
