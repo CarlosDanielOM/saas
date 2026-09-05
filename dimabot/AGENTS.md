@@ -106,6 +106,10 @@ See the expanded Cron Workers section in root `saas/AGENTS.md`. When adding a wo
 2. Export `{ name, schedule, run }`
 3. Register in `cron.index.ts`
 
+## Event Pipeline
+
+Producer/consumer contracts, account ownership, recovery, Polar behavior, and extension/rollout guidance live in [`DOMAIN_EVENTS.md`](./DOMAIN_EVENTS.md). Read it before adding an event provider or consumer; backend module consumers are distinct from browser WebSocket clients.
+
 ## API Contracts
 
 All contracts are defined in the `.route.ts` files. Read the source for the latest shapes. The common envelope is `{ error, message, status, data }`.
