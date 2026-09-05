@@ -192,6 +192,49 @@ test('raid requires destination, raider and safe integer viewers; stream online 
     assert.throws(() => validateDomainEventContract(stream), DomainEventContractError);
 });
 
+test('raid conditions accept an empty unused direction without changing the provider payload', () => {
+    for (const condition of [
+        { to_broadcaster_user_id: 'channel' },
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: '' },
+        { from_broadcaster_user_id: 'raider' },
+        { from_broadcaster_user_id: 'raider', to_broadcaster_user_id: '' }
+    ]) {
+        const input = twitch('channel.raid', { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', viewers: 5 });
+        (input.payload.subscription as Record<string, unknown>).condition = condition;
+        const before = structuredClone(input);
+        validateDomainEventContract(input, 'ingest');
+        assert.equal(getTwitchEventsubPayload(input), input.payload);
+        assert.equal(input.channelID, 'channel');
+        assert.deepEqual(input, before);
+    }
+});
+
+test('raid empty-filter handling still rejects mismatched, malformed and unscoped conditions', () => {
+    for (const condition of [
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'other' },
+        { to_broadcaster_user_id: 'other', from_broadcaster_user_id: 'raider' },
+        { to_broadcaster_user_id: 'other', from_broadcaster_user_id: '' },
+        { to_broadcaster_user_id: '', from_broadcaster_user_id: 'other' },
+        { to_broadcaster_user_id: '', from_broadcaster_user_id: '' },
+        { from_broadcaster_user_id: '' },
+        { to_broadcaster_user_id: '' },
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: null },
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: ' ' },
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 0 },
+        { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: false },
+        { to_broadcaster_user_id: 'channel', broadcaster_user_id: '' }
+    ]) {
+        const input = twitch('channel.raid', { to_broadcaster_user_id: 'channel', from_broadcaster_user_id: 'raider', viewers: 5 });
+        (input.payload.subscription as Record<string, unknown>).condition = condition;
+        for (const mode of ['ingest', 'retained'] as const) {
+            assert.throws(() => validateDomainEventContract(input, mode), DomainEventContractError);
+        }
+    }
+    const follow = twitch();
+    (follow.payload.subscription as Record<string, unknown>).condition = { broadcaster_user_id: '' };
+    assert.throws(() => validateDomainEventContract(follow, 'ingest'), DomainEventContractError);
+});
+
 test('Twitch counts are never coerced, rounded or stored with lost integer precision', () => {
     for (const [type, field, base] of [
         ['channel.bits.use', 'bits', { broadcaster_user_id: 'channel' }],

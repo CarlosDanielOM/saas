@@ -199,6 +199,12 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
         if (subscription.condition !== undefined) {
             record(subscription.condition, 'subscription.condition');
             for (const field of ['broadcaster_user_id', 'to_broadcaster_user_id', 'from_broadcaster_user_id']) {
+                // An unused raid direction may be empty, but the opposite filter must match.
+                if (original === 'channel.raid' && field !== 'broadcaster_user_id' && subscription.condition[field] === '') {
+                    const opposite = field === 'from_broadcaster_user_id' ? 'to_broadcaster_user_id' : 'from_broadcaster_user_id';
+                    if (typeof subscription.condition[opposite] === 'string' && subscription.condition[opposite] !== ''
+                        && subscription.condition[opposite] === event[opposite]) continue;
+                }
                 if (subscription.condition[field] !== undefined) requireContract(subscription.condition[field]
                     === (field === 'from_broadcaster_user_id' ? event.from_broadcaster_user_id : input.channelID), `subscription.condition.${field} mismatch`);
             }
