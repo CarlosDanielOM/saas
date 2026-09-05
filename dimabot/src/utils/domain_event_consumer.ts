@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { DomainEventPrerequisiteMissingError } from '../domain_events/domain_event.types.js';
 import { Types, type FilterQuery } from 'mongoose';
 import type {
     DomainEventEnvelope,
@@ -51,9 +52,11 @@ export interface DomainEventDrainResult {
     deferred: number;
 }
 
-type DeliveryOutcome = 'succeeded' | 'retry' | 'dead' | 'deferred' | 'already-complete';
+type DeliveryOutcome = 'succeeded' | 'retry' | 'dead' | 'deferred' | 'retry-scheduled' | 'already-complete';
 
 const RETRY_DELAYS_MS = [5_000, 30_000, 5 * 60_000, 30 * 60_000] as const;
+const PREREQUISITE_HORIZON_MS = 24 * 60 * 60_000;
+const PREREQUISITE_RETRY_MS = 30_000;
 
 function normalizeRequired(value: unknown, field: string): string {
     const normalized = String(value || '').trim();
@@ -202,7 +205,8 @@ async function processDelivery(
         let lockedUntil = Date.now() + leaseMs;
         const claimed = await claimDelivery(delivery, leaseMs, maxAttempts);
         if (!claimed) {
-            return 'deferred';
+            // The durable retry owns this work, including after a lost deferral response.
+            return delivery.status === 'retry' ? 'retry-scheduled' : 'deferred';
         }
 
         let lost: Error | undefined;
@@ -274,9 +278,21 @@ async function processDelivery(
             clearInterval(heartbeat);
             await renewal;
             assertLease();
-            const errorMessage = error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
-            const exhausted = claimed.attempts >= maxAttempts;
-            const retryDelay = RETRY_DELAYS_MS[Math.min(claimed.attempts - 1, RETRY_DELAYS_MS.length - 1)];
+            const prerequisiteMissing = error instanceof DomainEventPrerequisiteMissingError;
+            const now = Date.now();
+            const prerequisiteDeadline = prerequisiteMissing ? Math.min(
+                new Date(event.journaledAt).getTime() + PREREQUISITE_HORIZON_MS,
+                new Date(event.expiresAt).getTime()
+            ) : 0;
+            const exhausted = prerequisiteMissing
+                ? !Number.isFinite(prerequisiteDeadline) || now >= prerequisiteDeadline
+                : claimed.attempts >= maxAttempts;
+            const errorMessage = prerequisiteMissing && exhausted
+                ? `Prerequisite horizon exceeded: ${error.prerequisite}`
+                : error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
+            const nextAttemptAt = prerequisiteMissing
+                ? Math.min(now + PREREQUISITE_RETRY_MS, prerequisiteDeadline)
+                : now + RETRY_DELAYS_MS[Math.min(claimed.attempts - 1, RETRY_DELAYS_MS.length - 1)];
 
             const failure = await DomainEventDeliverySchema.updateOne({
                 _id: claimed._id,
@@ -286,14 +302,15 @@ async function processDelivery(
             }, {
                 $set: {
                     status: exhausted ? 'dead' : 'retry',
-                    nextAttemptAt: exhausted ? null : new Date(Date.now() + retryDelay),
+                    nextAttemptAt: exhausted ? null : new Date(nextAttemptAt),
                     lockedUntil: null,
                     leaseToken: null,
                     lastError: errorMessage.slice(0, 8_000),
                     lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
                     deadLetteredAt: exhausted ? new Date() : null
-                }
-            });
+                },
+                ...(prerequisiteMissing ? { $inc: { attempts: -1 } } : {})
+            }, { writeConcern: { w: 1, j: true } });
             if (failure.modifiedCount === 0) {
                 loseLease(new Error('Domain event failure update lost ownership'));
                 return 'deferred';
@@ -314,7 +331,7 @@ async function processDelivery(
                 return 'dead';
             }
             await logWarn(logPayload, { channelId: event.channelID, destination: 'console' });
-            return 'retry';
+            return prerequisiteMissing ? 'retry-scheduled' : 'retry';
         } finally {
             clearInterval(heartbeat);
         }
@@ -337,7 +354,7 @@ function applyOutcome(result: DomainEventDrainResult, outcome: DeliveryOutcome):
     if (outcome === 'succeeded' || outcome === 'already-complete') result.succeeded += 1;
     if (outcome === 'retry') result.retried += 1;
     if (outcome === 'dead') result.dead += 1;
-    if (outcome === 'deferred') result.deferred += 1;
+    if (outcome === 'deferred' || outcome === 'retry-scheduled') result.deferred += 1;
 }
 
 export async function dispatchDomainEvents(

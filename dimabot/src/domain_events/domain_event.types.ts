@@ -51,6 +51,16 @@ export interface JournalDomainEventResult {
 export type DomainEventHandler = (event: DomainEventEnvelope) => Promise<void>;
 export type DomainEventOwnerResolver = (event: JournalDomainEventInput) => Promise<string | undefined>;
 
+// Consumers report prerequisites; only the delivery engine owns retry timing/budgets.
+export class DomainEventPrerequisiteMissingError extends Error {
+    readonly outcome = 'prerequisite-missing';
+
+    constructor(readonly prerequisite: string) {
+        super(`Missing prerequisite: ${prerequisite}`);
+        this.name = 'DomainEventPrerequisiteMissingError';
+    }
+}
+
 // Transport verification stays in the adapter's webhook/socket/polling boundary.
 export interface DomainEventProducer<Input> {
     provider: string;

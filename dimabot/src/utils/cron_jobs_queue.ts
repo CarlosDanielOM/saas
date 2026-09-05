@@ -7,6 +7,25 @@ export const CRON_JOBS_DEDUPE_PREFIX = 'cron:jobs:dedupe';
 
 const DEFAULT_DEDUPE_SECONDS = Math.max(60, Number(process.env.CRON_JOBS_DEDUPE_SECONDS || 900));
 
+const ENQUEUE_DEDUPLICATED_JOB = `
+if KEYS[3] and redis.call('EXISTS', KEYS[3]) == 1 then return 0 end
+if not redis.call('SET', KEYS[1], '1', 'NX', 'EX', ARGV[1]) then return 0 end
+if KEYS[3] then
+    local accepted = redis.pcall('SET', KEYS[3], '1')
+    if type(accepted) == 'table' and accepted.err then
+        redis.call('DEL', KEYS[1])
+        return redis.error_reply(accepted.err)
+    end
+end
+local pushed = redis.pcall('LPUSH', KEYS[2], ARGV[2])
+if type(pushed) == 'table' and pushed.err then
+    redis.call('DEL', KEYS[1])
+    if KEYS[3] then redis.call('DEL', KEYS[3]) end
+    return redis.error_reply(pushed.err)
+end
+return 1
+`;
+
 export interface CronQueueJob {
     id: string;
     job: string;
@@ -115,22 +134,27 @@ export async function enqueueCronJob(input: EnqueueCronJobInput): Promise<Enqueu
 
     if (dedupeToken) {
         const dedupeKey = getCronJobDedupeKey(dedupeToken);
-        const dedupeResult = await client.set(dedupeKey, '1', {
-            NX: true,
-            EX: dedupeSeconds
+        job.dedupeKey = dedupeKey;
+        // Automatic session jobs are one-shot. Keep acceptance separate from the TTL
+        // marker that workers delete, covering response loss before the Mongo step receipt.
+        const acceptanceKey = input.data?.source === 'stream_offline' && normalizeValue(input.data.sessionID)
+            ? `cron:jobs:accepted:${normalizedJob}:${job.channelID || ''}:${normalizeValue(input.data.sessionID)}` : undefined;
+        // One server-side operation: a marker must never acknowledge an unpushed job.
+        const dedupeResult = await client.eval(ENQUEUE_DEDUPLICATED_JOB, {
+            keys: acceptanceKey ? [dedupeKey, queueKey, acceptanceKey] : [dedupeKey, queueKey],
+            arguments: [String(dedupeSeconds), serializeCronQueueJob(job)]
         });
-        if (dedupeResult !== 'OK') {
-            job.dedupeKey = dedupeKey;
+        if (Number(dedupeResult) === 0) {
             return {
                 enqueued: false,
                 message: 'Cron job already queued recently',
                 job
             };
         }
-        job.dedupeKey = dedupeKey;
+    } else {
+        await client.lPush(queueKey, serializeCronQueueJob(job));
     }
 
-    await client.lPush(queueKey, serializeCronQueueJob(job));
     return {
         enqueued: true,
         message: 'Cron job queued',

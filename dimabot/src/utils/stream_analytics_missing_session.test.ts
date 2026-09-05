@@ -3,7 +3,7 @@ import test from 'node:test';
 import { StreamSessionSchema } from '../schemas/stream_session.schema.js';
 import { incrementSessionMetricAtEventTime } from './stream_session_event_projection.js';
 
-test('missing stream sessions are benign for event-time metrics', async (context) => {
+test('missing stream sessions remain benign for non-journaled event-time metrics', async (context) => {
     const originalFindOneAndUpdate = StreamSessionSchema.findOneAndUpdate;
 
     (StreamSessionSchema as any).findOneAndUpdate = () => ({
@@ -18,7 +18,6 @@ test('missing stream sessions are benign for event-time metrics', async (context
     const applied = await incrementSessionMetricAtEventTime({
         channelID: 'channel-1',
         occurredAt: new Date(),
-        eventKey: 'follow-offline',
         field: 'follows',
         quantity: 1
     });

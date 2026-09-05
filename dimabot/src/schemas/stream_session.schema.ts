@@ -22,6 +22,8 @@ export interface IStreamSession {
     messages: number;
     commands: number;
     applied_domain_event_keys: string[];
+    offline_summary_enqueued_at: Date | null;
+    offline_clips_completed_at: Date | null;
     last_seen_live_at: Date | null;
     consecutive_offline_checks: number;
     created_at: Date;
@@ -47,6 +49,8 @@ const streamSessionSchema = new Schema<IStreamSession>({
     messages: { type: Number, default: 0 },
     commands: { type: Number, default: 0 },
     applied_domain_event_keys: { type: [String], default: [], select: false },
+    offline_summary_enqueued_at: { type: Date, default: null },
+    offline_clips_completed_at: { type: Date, default: null },
     last_seen_live_at: { type: Date, default: null },
     consecutive_offline_checks: { type: Number, default: 0 }
 }, {

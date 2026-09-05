@@ -11,6 +11,7 @@ import { ClipRecommendationConfigSchema } from '../schemas/clip_recommendation_c
 import UsersSchema from '../schemas/users.schema.js';
 import { enqueueClipRecommendationJob } from './ai/clip_recommendations/clip_recommendations_queue.js';
 import { incrementSessionMetricAtEventTime } from './stream_session_event_projection.js';
+import { DomainEventPrerequisiteMissingError } from '../domain_events/domain_event.types.js';
 
 const DEFAULT_DASHBOARD_DAYS = 30;
 const OFFLINE_CHECK_THRESHOLD = 2;
@@ -174,9 +175,10 @@ async function enqueuePostStreamSummaryJob(input: {
     streamID?: string;
     reason: string;
     requestedBy: string;
+    propagateErrors?: boolean;
 }): Promise<void> {
     try {
-        await enqueueStreamMemorySummaryJob({
+        const result = await enqueueStreamMemorySummaryJob({
             channelID: input.channelID,
             sessionID: input.sessionID,
             streamID: input.streamID,
@@ -185,7 +187,9 @@ async function enqueuePostStreamSummaryJob(input: {
             requestedBy: input.requestedBy,
             notBeforeUnix: Math.floor(Date.now() / 1000) + 120
         });
+        if (!result.enqueued && !result.dedupeKey) throw new Error(result.message);
     } catch (error) {
+        if (input.propagateErrors) throw error;
         logAnalyticsError('enqueuePostStreamSummaryJob', {
             channelID: input.channelID,
             sessionID: input.sessionID,
@@ -205,6 +209,7 @@ async function enqueueAutomaticClipRecommendationJob(input: {
     sessionID: string;
     streamID?: string;
     durationMinutes?: number;
+    propagateErrors?: boolean;
 }): Promise<void> {
     try {
         const [config, user] = await Promise.all([
@@ -227,6 +232,7 @@ async function enqueueAutomaticClipRecommendationJob(input: {
             vodDurationMinutes: input.durationMinutes || 60,
             notBeforeUnix: Math.floor(Date.now() / 1000) + 300
         });
+        if (!result.enqueued && !result.dedupeKey) throw new Error(result.message);
 
         await logInfo({
             function: 'enqueueAutomaticClipRecommendationJob',
@@ -237,6 +243,7 @@ async function enqueueAutomaticClipRecommendationJob(input: {
             enqueued: result.enqueued
         }, { channelId: input.channelID, destination: 'both' });
     } catch (error) {
+        if (input.propagateErrors) throw error;
         logAnalyticsError('enqueueAutomaticClipRecommendationJob', {
             channelID: input.channelID,
             sessionID: input.sessionID,
@@ -639,7 +646,12 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
     console.log('recordStreamOfflineEvent: Starting', { channelID, endedAt: endedAt.toISOString() });
 
     try {
-        const activeSession = await executeOfflineWithRetry(
+        // A mutation receipt is not completion of the downstream jobs. Locate it before
+        // the time-window query so a later lifecycle correction cannot hide replay work.
+        const appliedSession = input.eventKey ? await StreamSessionSchema.findOne({
+            channelID, applied_domain_event_keys: input.eventKey
+        }).lean() : null;
+        const activeSession = appliedSession || await executeOfflineWithRetry(
             () => StreamSessionSchema.findOne({
                 channelID,
                 started_at: { $lte: endedAt },
@@ -649,10 +661,12 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
                 ]
             }).sort({ started_at: -1 }).lean(),
             'findActiveSession',
-            channelID
+            channelID,
+            input.eventKey ? 0 : MAX_SESSION_CREATE_RETRIES
         );
 
         if (!activeSession) {
+            if (input.eventKey) throw new DomainEventPrerequisiteMissingError(`stream-session:${channelID}:${endedAt.toISOString()}`);
             return;
         }
 
@@ -673,19 +687,25 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
         if (input.eventKey) {
             offlineUpdate.$addToSet = { applied_domain_event_keys: input.eventKey };
         }
-        const offlineResult = await executeOfflineWithRetry(
-            () => StreamSessionSchema.updateOne(
-                {
-                    _id: activeSession._id,
-                    ...(input.eventKey ? { applied_domain_event_keys: { $ne: input.eventKey } } : {})
-                },
-                offlineUpdate
-            ),
-            'markSessionOffline',
-            channelID
-        );
-        if (input.eventKey && offlineResult.modifiedCount === 0) {
-            return;
+        if (!appliedSession) {
+            const offlineResult = await executeOfflineWithRetry(
+                () => StreamSessionSchema.updateOne(
+                    {
+                        _id: activeSession._id,
+                        ...(input.eventKey ? { applied_domain_event_keys: { $ne: input.eventKey } } : {})
+                    },
+                    offlineUpdate,
+                    { writeConcern: { w: 1, j: true } }
+                ),
+                'markSessionOffline',
+                channelID,
+                input.eventKey ? 0 : MAX_SESSION_CREATE_RETRIES
+            );
+            if (input.eventKey && offlineResult.modifiedCount === 0 && !await StreamSessionSchema.exists({
+                _id: activeSession._id, applied_domain_event_keys: input.eventKey
+            })) {
+                throw new DomainEventPrerequisiteMissingError(`stream-session:${channelID}:${endedAt.toISOString()}`);
+            }
         }
 
         console.log('recordStreamOfflineEvent: Session marked offline, enqueuing summary job', {
@@ -694,24 +714,38 @@ export async function recordStreamOfflineEvent(input: RecordStreamOfflineInput):
             streamID: String(activeSession.stream_id)
         });
 
-        await enqueuePostStreamSummaryJob({
-            channelID,
-            sessionID: String(activeSession._id),
-            streamID: String(activeSession.stream_id || ''),
-            reason: 'stream_offline',
-            requestedBy: 'recordStreamOfflineEvent'
-        });
-
-        await enqueueAutomaticClipRecommendationJob({
-            channelID,
-            channel: String(activeSession.channel || ''),
-            sessionID: String(activeSession._id),
-            streamID: String(activeSession.stream_id || ''),
-            durationMinutes: getDurationMinutes(activeSession.started_at, endedAt)
-        });
+        for (const step of ['offline_summary_enqueued_at', 'offline_clips_completed_at'] as const) {
+            if (input.eventKey && activeSession[step]) continue;
+            if (step === 'offline_summary_enqueued_at') {
+                await enqueuePostStreamSummaryJob({
+                    channelID,
+                    sessionID: String(activeSession._id),
+                    streamID: String(activeSession.stream_id || ''),
+                    reason: 'stream_offline',
+                    requestedBy: 'recordStreamOfflineEvent',
+                    propagateErrors: Boolean(input.eventKey)
+                });
+            } else {
+                await enqueueAutomaticClipRecommendationJob({
+                    channelID,
+                    channel: String(activeSession.channel || ''),
+                    sessionID: String(activeSession._id),
+                    streamID: String(activeSession.stream_id || ''),
+                    durationMinutes: getDurationMinutes(activeSession.started_at, endedAt),
+                    propagateErrors: Boolean(input.eventKey)
+                });
+            }
+            if (input.eventKey) {
+                const receipt = await StreamSessionSchema.updateOne({
+                    _id: activeSession._id, applied_domain_event_keys: input.eventKey
+                }, { $set: { [step]: new Date() } }, { writeConcern: { w: 1, j: true } });
+                if (receipt.matchedCount === 0) throw new Error(`Offline job receipt lost its session: ${step}`);
+            }
+        }
 
         console.log('recordStreamOfflineEvent: Post-stream jobs enqueued successfully', { channelID });
     } catch (error) {
+        if (error instanceof DomainEventPrerequisiteMissingError) throw error;
         console.error('recordStreamOfflineEvent: All retries exhausted', {
             channelID,
             error: error instanceof Error ? error.message : String(error),
@@ -742,6 +776,7 @@ export async function recordStreamBitsEvent(input: { channelID: string; bits: nu
             quantity: bits
         });
     } catch (error) {
+        if (error instanceof DomainEventPrerequisiteMissingError) throw error;
         logAnalyticsError('recordStreamBitsEvent', {
             channelID,
             bits,
@@ -782,6 +817,7 @@ export async function recordStreamSubEvent(input: { channelID: string; quantity?
             }, { channelId: channelID, destination: 'console' });
         }
     } catch (error) {
+        if (error instanceof DomainEventPrerequisiteMissingError) throw error;
         logAnalyticsError('recordStreamSubEvent', {
             channelID,
             tier: input.tier || '',
@@ -809,6 +845,7 @@ export async function recordStreamFollowEvent(input: { channelID: string; occurr
             quantity: 1
         });
     } catch (error) {
+        if (error instanceof DomainEventPrerequisiteMissingError) throw error;
         logAnalyticsError('recordStreamFollowEvent', {
             channelID,
             error: error instanceof Error ? error.message : String(error),
