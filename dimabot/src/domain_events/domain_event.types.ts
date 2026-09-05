@@ -46,7 +46,6 @@ export interface JournalDomainEventInput {
 export interface JournalDomainEventResult {
     event: DomainEventEnvelope;
     inserted: boolean;
-    wakeupPublished: boolean;
 }
 
 export type DomainEventHandler = (event: DomainEventEnvelope) => Promise<void>;

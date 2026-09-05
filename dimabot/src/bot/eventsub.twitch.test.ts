@@ -141,7 +141,6 @@ test('production webhook persists durable chat ownership before suppressing imme
             if (journalFails) throw new Error('Simulated journal failure');
             return {
                 inserted,
-                wakeupPublished: false,
                 event: {
                     ...input,
                     _id: new Types.ObjectId(),

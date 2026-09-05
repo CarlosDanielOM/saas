@@ -1,166 +1,191 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
-import type { RedisClientType } from 'redis';
 import { DOMAIN_EVENT_CONSUMERS } from '../domain_events/domain_event_consumers.js';
+import {
+    DomainEventExecutionSupervisor, forkDomainEventConsumer,
+    type DomainEventChildMessage
+} from '../utils/domain_event_execution.js';
 
-const isDev = process.env.NODE_ENV !== 'production';
-if (isDev) {
+if (process.env.NODE_ENV !== 'production') {
     dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 }
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const POLL_INTERVAL_MS = Math.max(250, Number(process.env.DOMAIN_EVENTS_POLL_INTERVAL_MS || 1000));
-const BATCH_SIZE = Math.max(1, Math.min(500, Number(process.env.DOMAIN_EVENTS_BATCH_SIZE || 100)));
-const MAX_ATTEMPTS = Math.max(1, Number(process.env.DOMAIN_EVENTS_MAX_ATTEMPTS || 5));
+function setting(name: string, fallback: number, min: number, max = 2_147_483_647): number {
+    const value = Number(process.env[name] ?? fallback);
+    if (!Number.isSafeInteger(value) || value < min || value > max) throw new Error(`Invalid ${name}`);
+    return value;
+}
+
+const POLL_INTERVAL_MS = setting('DOMAIN_EVENTS_POLL_INTERVAL_MS', 1000, 250);
+const BATCH_SIZE = setting('DOMAIN_EVENTS_BATCH_SIZE', 100, 1, 500);
+const MAX_ATTEMPTS = setting('DOMAIN_EVENTS_MAX_ATTEMPTS', 5, 1);
+const LEASE_MS = setting('DOMAIN_EVENTS_LEASE_MS', 60_000, 5000);
+const CONFIG = {
+    executionTimeoutMs: setting('DOMAIN_EVENTS_EXECUTION_TIMEOUT_MS', 120_000, 1000),
+    operationTimeoutMs: setting('DOMAIN_EVENTS_OPERATION_TIMEOUT_MS', 60_000, POLL_INTERVAL_MS + 1000),
+    leaseSafetyMs: Math.max(500, Math.floor(LEASE_MS / 6)),
+    shutdownGraceMs: setting('DOMAIN_EVENTS_SHUTDOWN_GRACE_MS', 5000, 100),
+    restartDelayMs: setting('DOMAIN_EVENTS_RESTART_DELAY_MS', 1000, 100)
+};
 const RUN_ONCE = process.argv.includes('--once');
 const DRY_RUN = process.argv.includes('--dry-run');
+const consumerArgs = process.argv.slice(2).filter((arg) => arg.startsWith('--consumer'));
+const consumerID = consumerArgs[0]?.slice('--consumer='.length);
+const definition = DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === consumerID);
+if (consumerArgs.length && (consumerArgs.length !== 1 || !consumerArgs[0].startsWith('--consumer=') || !definition)) {
+    throw new Error('Invalid internal --consumer ID');
+}
+if (definition && !DRY_RUN && !process.send) throw new Error('--consumer requires a supervised IPC child');
 
 let shutdownRequested = false;
+let supervisor: DomainEventExecutionSupervisor | undefined;
+let shutdownTask: Promise<void> | undefined;
+let wakeSleep: (() => void) | undefined;
 
-function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(): Promise<void> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(done, POLL_INTERVAL_MS);
+        function done(): void {
+            clearTimeout(timer);
+            wakeSleep = undefined;
+            resolve();
+        }
+        wakeSleep = done;
+    });
+}
+
+function send(message: DomainEventChildMessage): Promise<void> {
+    if (!process.connected || !process.send) process.exit(1);
+    return new Promise((resolve) => {
+        process.send!(message, (error: Error | null) => {
+            if (error) process.exit(1);
+            resolve();
+        });
+    });
+}
+
+async function shutdown(code: number): Promise<void> {
+    if (shutdownTask) return shutdownTask;
+    shutdownRequested = true;
+    wakeSleep?.();
+    shutdownTask = (async () => {
+        // Keep the watchdog running until every child exit is observed, even if
+        // the dispatch/connect await that received the signal never settles.
+        await supervisor?.stop();
+        const forceExit = setTimeout(() => process.exit(code), CONFIG.shutdownGraceMs);
+        forceExit.unref();
+        try {
+            const { default: mongoose } = await import('mongoose');
+            await mongoose.disconnect();
+        } finally {
+            process.exit(code);
+        }
+    })();
+    return shutdownTask;
 }
 
 async function bootstrap(): Promise<void> {
     if (DRY_RUN) {
         console.log(JSON.stringify({
-            worker: 'domain_events',
-            message: 'Dry run mode - resolved configuration',
+            worker: 'domain_events', message: 'Dry run mode - resolved configuration',
             config: {
-                pollIntervalMs: POLL_INTERVAL_MS,
-                batchSize: BATCH_SIZE,
-                maxAttempts: MAX_ATTEMPTS,
-                consumers: DOMAIN_EVENT_CONSUMERS.map(({ consumer, topics, schemaVersions }) => ({ consumer, topics, schemaVersions })),
-                runOnce: RUN_ONCE
+                pollIntervalMs: POLL_INTERVAL_MS, batchSize: BATCH_SIZE, maxAttempts: MAX_ATTEMPTS,
+                leaseMs: LEASE_MS, ...CONFIG, isolation: 'persistent-child-per-consumer',
+                maxChildren: DOMAIN_EVENT_CONSUMERS.length, wakeups: 'mongo-polling-only',
+                consumer: consumerID ?? null, runOnce: RUN_ONCE,
+                consumers: DOMAIN_EVENT_CONSUMERS.map(({ consumer, topics, schemaVersions }) => ({ consumer, topics, schemaVersions }))
             }
         }, null, 2));
         return;
     }
 
-    const [
-        { getMongoDBConnection },
-        { getDragonflyClient },
-        { dispatchDomainEvents, drainDomainEvents },
-        { DOMAIN_EVENTS_WAKEUP_STREAM },
-        { info: logInfo, warn: logWarn }
-    ] = await Promise.all([
+    const requestShutdown = (): void => {
+        shutdownRequested = true;
+        wakeSleep?.();
+        if (!definition) void shutdown(0);
+        // A child finishes its current delivery; the parent's grace watchdog
+        // kills it if that delivery (or the event loop) cannot finish in time.
+    };
+    process.once('SIGINT', requestShutdown);
+    process.once('SIGTERM', requestShutdown);
+    if (definition) process.once('disconnect', () => process.exit(1));
+    process.once('exit', () => supervisor?.killAll());
+
+    const [{ getMongoDBConnection }, { dispatchDomainEvents, drainDomainEvents }] = await Promise.all([
         import('../utils/databases/mongodb.database.js'),
-        import('../utils/databases/dragonfly.database.js'),
-        import('../utils/domain_event_consumer.js'),
-        import('../utils/domain_events.js'),
-        import('../utils/logger.js')
+        import('../utils/domain_event_consumer.js')
     ]);
 
-    await getMongoDBConnection('DomainEventsWorker');
+    if (shutdownRequested) return shutdown(0);
+    if (!definition && !RUN_ONCE) startSupervisor();
+    await getMongoDBConnection(`DomainEventsWorker:${consumerID ?? 'dispatcher'}`);
+    if (shutdownRequested) return shutdown(0);
 
-    let wakeupClient: RedisClientType | null = null;
-    const connectWakeupClient = async (): Promise<RedisClientType | null> => {
-        try {
-            const baseClient = await getDragonflyClient('DomainEventsWorker');
-            const duplicate = baseClient.duplicate();
-            duplicate.on('error', () => undefined);
-            await duplicate.connect();
-            return duplicate;
-        } catch (error) {
-            await logWarn({
-                worker: 'domain_events',
-                message: 'Dragonfly wake-up stream unavailable; Mongo polling remains active',
-                error: error instanceof Error ? error.message : String(error)
-            }, { destination: 'console' });
-            return null;
-        }
-    };
-
-    const shutdown = (signal: string): void => {
-        if (shutdownRequested) return;
-        shutdownRequested = true;
-        wakeupClient?.destroy();
-        wakeupClient = null;
-        void logInfo({
-            worker: 'domain_events',
-            message: 'Shutdown requested',
-            signal
-        }, { destination: 'console' });
-    };
-    process.once('SIGINT', () => shutdown('SIGINT'));
-    process.once('SIGTERM', () => shutdown('SIGTERM'));
-
-    wakeupClient = await connectWakeupClient();
-    await logInfo({
-        worker: 'domain_events',
-        message: 'Domain event consumer initialized',
-        pollIntervalMs: POLL_INTERVAL_MS,
-        batchSize: BATCH_SIZE,
-        maxAttempts: MAX_ATTEMPTS
-    }, { destination: 'console' });
-
-    while (!shutdownRequested) {
-        let hasBacklog = false;
-        try {
-            hasBacklog = await dispatchDomainEvents(DOMAIN_EVENT_CONSUMERS, BATCH_SIZE) >= BATCH_SIZE;
-        } catch (error) {
-            await logWarn({
-                worker: 'domain_events',
-                message: 'Journal dispatch failed; pending receipts will be retried',
-                error: error instanceof Error ? error.message : String(error)
-            }, { destination: 'console' });
-        }
-        for (const definition of DOMAIN_EVENT_CONSUMERS) {
-            if (shutdownRequested) break;
+    if (definition) {
+        do {
+            send({ type: 'draining' });
             try {
                 const result = await drainDomainEvents({
-                    ...definition,
-                    batchSize: BATCH_SIZE,
-                    maxAttempts: MAX_ATTEMPTS
+                    ...definition, batchSize: BATCH_SIZE, maxAttempts: MAX_ATTEMPTS, leaseMs: LEASE_MS,
+                    runtime: {
+                        shouldStop: () => shutdownRequested,
+                        beforeClaim: () => send({ type: 'beforeClaim' }),
+                        claimed: (lease) => send({ type: 'claimed', lease }),
+                        renewed: (lease) => send({ type: 'renewed', lease }),
+                        finished: () => send({ type: 'finished' }),
+                        leaseLost: (error) => {
+                            // No awaited logging/cleanup: the handler must not resume effects.
+                            console.error(`Domain event lease lost (${consumerID}): ${error.message}`);
+                            process.exit(1);
+                        }
+                    }
                 });
-                hasBacklog ||= result.scanned >= BATCH_SIZE || result.ready >= BATCH_SIZE;
+                if (shutdownRequested) break;
+                if (result.ready >= BATCH_SIZE || result.scanned >= BATCH_SIZE) continue;
+                if (RUN_ONCE) {
+                    await send({ type: 'drained' });
+                    break;
+                }
             } catch (error) {
-                await logWarn({
-                    worker: 'domain_events',
-                    consumer: definition.consumer,
-                    message: 'Consumer drain failed; other consumers remain active',
-                    error: error instanceof Error ? error.message : String(error)
-                }, { destination: 'console' });
+                console.warn(`Domain event consumer ${consumerID} failed: ${String(error)}`);
+                if (RUN_ONCE) throw error;
             }
-        }
-
-        if (RUN_ONCE) break;
-        if (hasBacklog) continue;
-
-        if (!wakeupClient?.isReady) {
-            await sleep(POLL_INTERVAL_MS);
-            wakeupClient = await connectWakeupClient();
-            continue;
-        }
-
-        try {
-            await wakeupClient.xRead({
-                key: DOMAIN_EVENTS_WAKEUP_STREAM,
-                id: '$'
-            }, {
-                BLOCK: POLL_INTERVAL_MS,
-                COUNT: 1
-            });
-        } catch (error) {
-            wakeupClient.destroy();
-            wakeupClient = null;
-            await logWarn({
-                worker: 'domain_events',
-                message: 'Dragonfly wake-up read failed; falling back to Mongo polling',
-                error: error instanceof Error ? error.message : String(error)
-            }, { destination: 'console' });
-            await sleep(POLL_INTERVAL_MS);
-        }
+            send({ type: 'polling' });
+            await sleep();
+        } while (!shutdownRequested);
+    } else {
+        do {
+            let dispatched = 0;
+            try {
+                dispatched = await dispatchDomainEvents(DOMAIN_EVENT_CONSUMERS, BATCH_SIZE);
+            } catch (error) {
+                console.warn(`Domain event dispatch failed: ${String(error)}`);
+                if (RUN_ONCE) throw error;
+            }
+            if (shutdownRequested) break;
+            if (RUN_ONCE) {
+                // Children start only after the once batch is durably dispatched.
+                startSupervisor();
+                if (!await supervisor!.waitForDrain()) throw new Error('One or more consumer drains failed');
+                break;
+            }
+            if (dispatched < BATCH_SIZE) await sleep();
+        } while (!shutdownRequested);
     }
-    wakeupClient?.destroy();
+    await shutdown(0);
+}
+
+function startSupervisor(): void {
+    supervisor = new DomainEventExecutionSupervisor(
+        DOMAIN_EVENT_CONSUMERS.map(({ consumer }) => consumer), CONFIG,
+        (consumer) => forkDomainEventConsumer(new URL(import.meta.url), consumer, RUN_ONCE), RUN_ONCE
+    );
+    setInterval(() => supervisor!.tick(), 100).unref();
+    supervisor.tick();
 }
 
 bootstrap().catch((error) => {
-    console.error(JSON.stringify({
-        worker: 'domain_events',
-        message: 'Domain event worker failed',
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-    }, null, 2));
-    process.exit(1);
+    console.error(JSON.stringify({ worker: 'domain_events', message: 'Domain event worker failed', error: String(error) }));
+    void shutdown(1);
 });

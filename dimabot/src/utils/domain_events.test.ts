@@ -72,3 +72,24 @@ test('dispatch recovery marker is persisted in the original journal insert', asy
         payload: { paid: true }
     }), (error) => error === stopBeforeWakeup);
 });
+
+test('journal acceptance and duplicate receipts require only Mongo, never a cache wakeup', async (context) => {
+    const input = {
+        source: 'test', sourceEventId: 'receipt', topic: 'channel' as const,
+        type: 'test.accepted', channelID: 'channel', payload: {}
+    };
+    let stored: Record<string, unknown>;
+    context.mock.method(DomainEventSchema, 'init', (async () => DomainEventSchema) as never);
+    context.mock.method(DomainEventSchema.collection, 'insertOne', (async (document: Record<string, unknown>) => {
+        if (stored) throw Object.assign(new Error('Duplicate receipt'), { code: 11000 });
+        stored = document;
+        return { acknowledged: true };
+    }) as never);
+    context.mock.method(DomainEventSchema, 'findOne', (async () => new DomainEventSchema(stored)) as never);
+    const first = await journalDomainEvent(input);
+    const duplicate = await journalDomainEvent(input);
+    assert.equal(first.inserted, true);
+    assert.equal(duplicate.inserted, false);
+    assert.equal(first.event.eventKey, duplicate.event.eventKey);
+    assert.deepEqual(Object.keys(first).sort(), ['event', 'inserted']);
+});

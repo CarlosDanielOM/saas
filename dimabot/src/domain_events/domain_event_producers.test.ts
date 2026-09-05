@@ -21,7 +21,7 @@ test('Twitch producer adds internal ownership without changing provider channel 
         },
         journal: async (event) => {
             journaled = event;
-            return { event: new DomainEventSchema(event), inserted: true, wakeupPublished: false };
+            return { event: new DomainEventSchema(event), inserted: true };
         }
     });
     assert.equal(result?.inserted, true);
@@ -51,7 +51,7 @@ test('a provider can journal an unresolved customer without fabricating a Twitch
             event.occurredAt = new Date();
             event.expiresAt = new Date();
             await event.validate();
-            return { event, inserted: true, wakeupPublished: false };
+            return { event, inserted: true };
         }
     });
     assert.equal(result?.inserted, true);
@@ -88,7 +88,7 @@ test('a producer can preserve ownership already resolved at its trusted transpor
     }, undefined, {
         journal: async (input) => {
             assert.equal(input.ownerUserId, ownerUserId);
-            return { event: new DomainEventSchema(input), inserted: true, wakeupPublished: false };
+            return { event: new DomainEventSchema(input), inserted: true };
         }
     });
 });

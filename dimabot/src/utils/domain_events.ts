@@ -6,10 +6,6 @@ import type {
     JournalDomainEventResult
 } from '../domain_events/domain_event.types.js';
 import { DomainEventSchema, type IDomainEvent } from '../schemas/domain_event.schema.js';
-import { getDragonflyClient } from './databases/dragonfly.database.js';
-import { warn as logWarn } from './logger.js';
-
-export const DOMAIN_EVENTS_WAKEUP_STREAM = 'domain-events:wakeup:v1';
 
 const DEFAULT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
     channel: 90 * 24 * 60 * 60,
@@ -17,11 +13,6 @@ const DEFAULT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
     telemetry: 7 * 24 * 60 * 60,
     domain: 90 * 24 * 60 * 60
 };
-
-const WAKEUP_STREAM_MAX_LENGTH = Math.max(
-    1000,
-    Number(process.env.DOMAIN_EVENTS_WAKEUP_STREAM_MAX_LENGTH || 10_000)
-);
 
 function normalizeRequired(value: unknown, field: string): string {
     const normalized = String(value || '').trim();
@@ -71,31 +62,6 @@ function toEnvelope(event: IDomainEvent): DomainEventEnvelope {
         metadata: event.metadata,
         expiresAt: event.expiresAt
     };
-}
-
-async function publishWakeup(event: DomainEventEnvelope): Promise<boolean> {
-    try {
-        const client = await getDragonflyClient('DomainEventsWakeupPublisher');
-        await client.xAdd(DOMAIN_EVENTS_WAKEUP_STREAM, '*', {
-            eventKey: event.eventKey,
-            topic: event.topic,
-            journaledAt: event.journaledAt.toISOString()
-        }, {
-            TRIM: {
-                strategy: 'MAXLEN',
-                strategyModifier: '~',
-                threshold: WAKEUP_STREAM_MAX_LENGTH
-            }
-        });
-        return true;
-    } catch (error) {
-        await logWarn({
-            function: 'publishDomainEventWakeup',
-            eventKey: event.eventKey,
-            error: error instanceof Error ? error.message : String(error)
-        }, { channelId: event.channelID, destination: 'both' });
-        return false;
-    }
 }
 
 export async function journalDomainEvent(input: JournalDomainEventInput): Promise<JournalDomainEventResult> {
@@ -176,10 +142,8 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
     }
 
     const event = toEnvelope(eventDocument);
-    const wakeupPublished = await publishWakeup(event);
     return {
         event,
-        inserted,
-        wakeupPublished
+        inserted
     };
 }

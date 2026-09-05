@@ -13,6 +13,22 @@ import {
 import { DomainEventSchema, type IDomainEvent } from '../schemas/domain_event.schema.js';
 import { error as logError, info as logInfo, warn as logWarn } from './logger.js';
 
+export interface DomainEventExecutionLease {
+    eventKey: string;
+    leaseToken: string;
+    lockedUntil: number;
+}
+
+export interface DomainEventConsumerRuntime {
+    shouldStop?(): boolean;
+    beforeClaim?(eventKey: string): void;
+    claimed?(lease: DomainEventExecutionLease): void;
+    renewed?(lease: DomainEventExecutionLease): void;
+    // The isolated worker terminates synchronously here, not just the awaiting promise.
+    leaseLost?(error: Error): void;
+    finished?(): void;
+}
+
 export interface DomainEventConsumerOptions {
     consumer: string;
     topics: DomainEventTopic[];
@@ -23,6 +39,7 @@ export interface DomainEventConsumerOptions {
     batchSize?: number;
     maxAttempts?: number;
     leaseMs?: number;
+    runtime?: DomainEventConsumerRuntime;
 }
 
 export interface DomainEventDrainResult {
@@ -108,7 +125,8 @@ async function ensureDelivery(consumer: string, event: IDomainEvent): Promise<ID
 
 async function claimDelivery(
     delivery: IDomainEventDelivery,
-    leaseMs: number
+    leaseMs: number,
+    maxAttempts: number
 ): Promise<IDomainEventDelivery | null> {
     const now = new Date();
     const leaseToken = randomUUID();
@@ -125,6 +143,7 @@ async function claimDelivery(
     return DomainEventDeliverySchema.findOneAndUpdate({
         _id: delivery._id,
         status: { $in: ['pending', 'processing', 'retry'] },
+        attempts: { $lt: maxAttempts },
         $and: [
             { $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }] },
             { $or: [{ nextAttemptAt: null }, { nextAttemptAt: { $lte: now } }] }
@@ -146,89 +165,161 @@ async function processDelivery(
     event: IDomainEvent,
     handler: DomainEventHandler,
     maxAttempts: number,
-    leaseMs: number
+    leaseMs: number,
+    runtime?: DomainEventConsumerRuntime
 ): Promise<DeliveryOutcome> {
-    const delivery = await ensureDelivery(consumer, event);
-    if (delivery.status === 'succeeded' || delivery.status === 'dead') {
-        return 'already-complete';
-    }
-
-    const claimed = await claimDelivery(delivery, leaseMs);
-    if (!claimed) {
-        return 'deferred';
-    }
-
-    const heartbeat = setInterval(() => {
-        void DomainEventDeliverySchema.updateOne({
-            _id: claimed._id,
-            status: 'processing',
-            leaseToken: claimed.leaseToken
-        }, {
-            $set: { lockedUntil: new Date(Date.now() + leaseMs) }
-        }).catch(() => undefined);
-    }, Math.max(1_000, Math.floor(leaseMs / 3)));
-    heartbeat.unref?.();
-
+    if (runtime?.shouldStop?.()) return 'deferred';
+    runtime?.beforeClaim?.(event.eventKey);
     try {
-        await handler(toEnvelope(event));
-        clearInterval(heartbeat);
-        const completion = await DomainEventDeliverySchema.updateOne({
-            _id: claimed._id,
-            status: 'processing',
-            leaseToken: claimed.leaseToken
-        }, {
-            $set: {
-                status: 'succeeded',
-                completedAt: new Date(),
-                lockedUntil: null,
-                leaseToken: null,
-                nextAttemptAt: null,
-                lastError: '',
-                lastDeadLetterError: ''
-            }
-        });
-        return completion.modifiedCount > 0 ? 'succeeded' : 'deferred';
-    } catch (error) {
-        clearInterval(heartbeat);
-        const errorMessage = error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
-        const exhausted = claimed.attempts >= maxAttempts;
-        const retryDelay = RETRY_DELAYS_MS[Math.min(claimed.attempts - 1, RETRY_DELAYS_MS.length - 1)];
+        const delivery = await ensureDelivery(consumer, event);
+        if (delivery.status === 'succeeded' || delivery.status === 'dead') {
+            return 'already-complete';
+        }
 
-        const failure = await DomainEventDeliverySchema.updateOne({
-            _id: claimed._id,
-            status: 'processing',
-            leaseToken: claimed.leaseToken
-        }, {
-            $set: {
-                status: exhausted ? 'dead' : 'retry',
-                nextAttemptAt: exhausted ? null : new Date(Date.now() + retryDelay),
-                lockedUntil: null,
-                leaseToken: null,
-                lastError: errorMessage.slice(0, 8_000),
-                lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
-                deadLetteredAt: exhausted ? new Date() : null
-            }
-        });
-        if (failure.modifiedCount === 0) {
+        // A crashed attempt cannot record its failure. Retire an expired final attempt
+        // without claiming again, and fence the claim itself against stale snapshots.
+        if (delivery.attempts >= maxAttempts) {
+            const now = new Date();
+            const exhausted = await DomainEventDeliverySchema.updateOne({
+                _id: delivery._id,
+                status: { $in: ['pending', 'processing', 'retry'] },
+                attempts: { $gte: maxAttempts },
+                $and: [
+                    { $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }] },
+                    { $or: [{ nextAttemptAt: null }, { nextAttemptAt: { $lte: now } }] }
+                ]
+            }, {
+                $set: {
+                    status: 'dead', deadLetteredAt: now, lockedUntil: null,
+                    leaseToken: null, nextAttemptAt: null,
+                    lastError: 'Attempt limit exhausted after interrupted execution',
+                    lastDeadLetterError: 'Attempt limit exhausted after interrupted execution'
+                }
+            });
+            return exhausted.modifiedCount > 0 ? 'dead' : 'deferred';
+        }
+
+        let lockedUntil = Date.now() + leaseMs;
+        const claimed = await claimDelivery(delivery, leaseMs, maxAttempts);
+        if (!claimed) {
             return 'deferred';
         }
 
-        const logPayload = {
-            worker: consumer,
-            function: 'processDomainEventDelivery',
-            eventKey: event.eventKey,
-            eventType: event.type,
-            attempts: claimed.attempts,
-            maxAttempts,
-            exhausted,
-            error: error instanceof Error ? error.message : String(error)
+        let lost: Error | undefined;
+        let renewal: Promise<void> | undefined;
+        const loseLease = (error: unknown): void => {
+            if (lost) return;
+            lost = error instanceof Error ? error : new Error(String(error));
+            runtime?.leaseLost?.(lost);
         };
-        if (exhausted) {
-            await logError(logPayload, { channelId: event.channelID, destination: 'both' });
-            return 'dead';
+        const assertLease = (): void => {
+            if (Date.now() >= lockedUntil) loseLease(new Error('Domain event execution lease expired'));
+            if (lost) throw lost;
+        };
+        const lease = (): DomainEventExecutionLease => ({
+            eventKey: event.eventKey, leaseToken: claimed.leaseToken!, lockedUntil
+        });
+        const heartbeat = setInterval(() => {
+            if (renewal || lost) return;
+            renewal = (async () => {
+                assertLease();
+                const renewalStartedAt = Date.now();
+                const result = await DomainEventDeliverySchema.updateOne({
+                    _id: claimed._id,
+                    status: 'processing',
+                    leaseToken: claimed.leaseToken,
+                    lockedUntil: { $gt: new Date(renewalStartedAt) }
+                }, {
+                    $set: { lockedUntil: new Date(renewalStartedAt + leaseMs) }
+                });
+                assertLease();
+                if (result.modifiedCount === 0) throw new Error('Domain event execution lease renewal lost ownership');
+                lockedUntil = renewalStartedAt + leaseMs;
+                runtime?.renewed?.(lease());
+            })().catch(loseLease).finally(() => { renewal = undefined; });
+        }, Math.max(1_000, Math.floor(leaseMs / 3)));
+        heartbeat.unref?.();
+
+        try {
+            assertLease();
+            runtime?.claimed?.(lease());
+            assertLease();
+            if (runtime?.shouldStop?.()) return 'deferred';
+            await handler(toEnvelope(event));
+            clearInterval(heartbeat);
+            await renewal;
+            assertLease();
+            const completion = await DomainEventDeliverySchema.updateOne({
+                _id: claimed._id,
+                status: 'processing',
+                leaseToken: claimed.leaseToken,
+                lockedUntil: { $gt: new Date() }
+            }, {
+                $set: {
+                    status: 'succeeded',
+                    completedAt: new Date(),
+                    lockedUntil: null,
+                    leaseToken: null,
+                    nextAttemptAt: null,
+                    lastError: '',
+                    lastDeadLetterError: ''
+                }
+            });
+            if (completion.modifiedCount === 0) {
+                loseLease(new Error('Domain event completion lost ownership'));
+                return 'deferred';
+            }
+            return 'succeeded';
+        } catch (error) {
+            clearInterval(heartbeat);
+            await renewal;
+            assertLease();
+            const errorMessage = error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
+            const exhausted = claimed.attempts >= maxAttempts;
+            const retryDelay = RETRY_DELAYS_MS[Math.min(claimed.attempts - 1, RETRY_DELAYS_MS.length - 1)];
+
+            const failure = await DomainEventDeliverySchema.updateOne({
+                _id: claimed._id,
+                status: 'processing',
+                leaseToken: claimed.leaseToken,
+                lockedUntil: { $gt: new Date() }
+            }, {
+                $set: {
+                    status: exhausted ? 'dead' : 'retry',
+                    nextAttemptAt: exhausted ? null : new Date(Date.now() + retryDelay),
+                    lockedUntil: null,
+                    leaseToken: null,
+                    lastError: errorMessage.slice(0, 8_000),
+                    lastDeadLetterError: exhausted ? errorMessage.slice(0, 8_000) : claimed.lastDeadLetterError,
+                    deadLetteredAt: exhausted ? new Date() : null
+                }
+            });
+            if (failure.modifiedCount === 0) {
+                loseLease(new Error('Domain event failure update lost ownership'));
+                return 'deferred';
+            }
+
+            const logPayload = {
+                worker: consumer,
+                function: 'processDomainEventDelivery',
+                eventKey: event.eventKey,
+                eventType: event.type,
+                attempts: claimed.attempts,
+                maxAttempts,
+                exhausted,
+                error: error instanceof Error ? error.message : String(error)
+            };
+            if (exhausted) {
+                await logError(logPayload, { channelId: event.channelID, destination: 'console' });
+                return 'dead';
+            }
+            await logWarn(logPayload, { channelId: event.channelID, destination: 'console' });
+            return 'retry';
+        } finally {
+            clearInterval(heartbeat);
         }
-        await logWarn(logPayload, { channelId: event.channelID, destination: 'both' });
-        return 'retry';
+    } finally {
+        runtime?.finished?.();
     }
 }
 
@@ -309,6 +400,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
     result.ready = readyDeliveries.length;
 
     for (const delivery of readyDeliveries) {
+        if (options.runtime?.shouldStop?.()) break;
         const event = await DomainEventSchema.findById(delivery.eventID);
         if (!event) {
             await DomainEventDeliverySchema.updateOne({
@@ -326,10 +418,11 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
             result.dead += 1;
             continue;
         }
-        applyOutcome(result, await processDelivery(consumer, event, handler, maxAttempts, leaseMs));
+        applyOutcome(result, await processDelivery(consumer, event, handler, maxAttempts, leaseMs, options.runtime));
     }
 
     for (const topic of options.topics) {
+        if (options.runtime?.shouldStop?.()) break;
         const checkpoint = await DomainEventCheckpointSchema.findOne({ consumer, topic }).lean();
         const lastEventID = checkpoint?.lastEventID || new Types.ObjectId('000000000000000000000000');
         const events = await DomainEventSchema.find({
@@ -339,8 +432,9 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
         }).sort({ _id: 1 }).limit(batchSize);
 
         for (const event of events) {
+            if (options.runtime?.shouldStop?.()) break;
             result.scanned += 1;
-            const outcome = await processDelivery(consumer, event, handler, maxAttempts, leaseMs);
+            const outcome = await processDelivery(consumer, event, handler, maxAttempts, leaseMs, options.runtime);
             applyOutcome(result, outcome);
 
             if (outcome === 'deferred') {
