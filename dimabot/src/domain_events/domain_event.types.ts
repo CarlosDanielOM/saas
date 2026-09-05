@@ -2,6 +2,12 @@ import type { Types } from 'mongoose';
 
 export type DomainEventTopic = 'channel' | 'activity' | 'telemetry' | 'domain';
 
+export interface DomainEventSubject {
+    provider: string;
+    kind: 'streaming-account' | 'integration-account' | 'customer';
+    id: string;
+}
+
 export interface DomainEventEnvelope {
     _id: Types.ObjectId;
     eventKey: string;
@@ -10,7 +16,9 @@ export interface DomainEventEnvelope {
     type: string;
     topic: DomainEventTopic;
     schemaVersion: number;
-    channelID: string;
+    ownerUserId?: string;
+    subject?: DomainEventSubject;
+    channelID?: string;
     streamID?: string;
     occurredAt: Date;
     journaledAt: Date;
@@ -25,7 +33,9 @@ export interface JournalDomainEventInput {
     type: string;
     topic: DomainEventTopic;
     schemaVersion?: number;
-    channelID: string;
+    ownerUserId?: string;
+    subject?: DomainEventSubject;
+    channelID?: string;
     streamID?: string;
     occurredAt?: Date | string;
     payload: Record<string, unknown>;
@@ -40,3 +50,11 @@ export interface JournalDomainEventResult {
 }
 
 export type DomainEventHandler = (event: DomainEventEnvelope) => Promise<void>;
+export type DomainEventOwnerResolver = (event: JournalDomainEventInput) => Promise<string | undefined>;
+
+// Transport verification stays in the adapter's webhook/socket/polling boundary.
+export interface DomainEventProducer<Input> {
+    provider: string;
+    normalize(input: Input): JournalDomainEventInput | null;
+    resolveOwner?: DomainEventOwnerResolver;
+}

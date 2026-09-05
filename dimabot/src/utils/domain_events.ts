@@ -61,6 +61,8 @@ function toEnvelope(event: IDomainEvent): DomainEventEnvelope {
         type: event.type,
         topic: event.topic,
         schemaVersion: event.schemaVersion,
+        ownerUserId: event.ownerUserId,
+        subject: event.subject,
         channelID: event.channelID,
         streamID: event.streamID,
         occurredAt: event.occurredAt,
@@ -100,7 +102,24 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
     const source = normalizeRequired(input.source, 'source');
     const sourceEventId = normalizeRequired(input.sourceEventId, 'sourceEventId');
     const type = normalizeRequired(input.type, 'type');
-    const channelID = normalizeRequired(input.channelID, 'channelID');
+    const channelID = input.topic === 'channel'
+        ? normalizeRequired(input.channelID, 'channelID')
+        : String(input.channelID || '').trim() || undefined;
+    const ownerUserId = String(input.ownerUserId || '').trim() || undefined;
+    if (ownerUserId && !/^[a-f\d]{24}$/i.test(ownerUserId)) {
+        throw new Error('Domain event ownerUserId must be an internal user ObjectId');
+    }
+    const subject = input.subject ? {
+        provider: normalizeRequired(input.subject.provider, 'subject.provider'),
+        kind: input.subject.kind,
+        id: normalizeRequired(input.subject.id, 'subject.id')
+    } : undefined;
+    if (subject && !['streaming-account', 'integration-account', 'customer'].includes(subject.kind)) {
+        throw new Error('Domain event subject.kind is invalid');
+    }
+    if (input.topic !== 'channel' && !subject && !ownerUserId) {
+        throw new Error('Domain event requires a subject or owner identity');
+    }
     const eventKey = buildDomainEventKey(source, sourceEventId, type);
     const occurredAt = normalizeDate(input.occurredAt);
     const journaledAt = new Date();
@@ -127,6 +146,8 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
             type,
             topic: input.topic,
             schemaVersion: Math.max(1, Math.floor(requestedSchemaVersion)),
+            ownerUserId,
+            subject,
             channelID,
             streamID: String(input.streamID || '').trim() || undefined,
             occurredAt,

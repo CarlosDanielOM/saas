@@ -98,6 +98,7 @@ export async function applyStreamOperationsDomainEvent(
 
     const rawEvent = payloadEvent(event);
     const channelID = event.channelID;
+    if (!channelID) throw new Error('Stream operations require a channel identity');
     const operations = injectedOperations || await getDependencies();
     if (await operations.hasNewerLifecycleEvent(event)) return;
 

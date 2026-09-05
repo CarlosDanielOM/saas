@@ -19,6 +19,7 @@ export interface DomainEventConsumerOptions {
     handler: DomainEventHandler;
     // Restricts new journal scans; existing deliveries keep their retry ownership.
     eventFilter?: FilterQuery<IDomainEvent>;
+    schemaVersions?: readonly number[];
     batchSize?: number;
     maxAttempts?: number;
     leaseMs?: number;
@@ -53,6 +54,8 @@ function toEnvelope(event: IDomainEvent): DomainEventEnvelope {
         type: event.type,
         topic: event.topic,
         schemaVersion: event.schemaVersion,
+        ownerUserId: event.ownerUserId,
+        subject: event.subject,
         channelID: event.channelID,
         streamID: event.streamID,
         occurredAt: event.occurredAt,
@@ -249,6 +252,12 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
     const batchSize = Math.max(1, Math.min(500, Number(options.batchSize || 100)));
     const maxAttempts = Math.max(1, Number(options.maxAttempts || 5));
     const leaseMs = Math.max(5_000, Number(options.leaseMs || 60_000));
+    const handler: DomainEventHandler = async (event) => {
+        if (options.schemaVersions && !options.schemaVersions.includes(event.schemaVersion)) {
+            throw new Error(`Unsupported schema version ${event.schemaVersion} for ${consumer}`);
+        }
+        await options.handler(event);
+    };
     const result: DomainEventDrainResult = {
         scanned: 0,
         succeeded: 0,
@@ -278,7 +287,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
             result.dead += 1;
             continue;
         }
-        applyOutcome(result, await processDelivery(consumer, event, options.handler, maxAttempts, leaseMs));
+        applyOutcome(result, await processDelivery(consumer, event, handler, maxAttempts, leaseMs));
     }
 
     for (const topic of options.topics) {
@@ -292,7 +301,7 @@ export async function drainDomainEvents(options: DomainEventConsumerOptions): Pr
 
         for (const event of events) {
             result.scanned += 1;
-            const outcome = await processDelivery(consumer, event, options.handler, maxAttempts, leaseMs);
+            const outcome = await processDelivery(consumer, event, handler, maxAttempts, leaseMs);
             applyOutcome(result, outcome);
 
             if (outcome === 'deferred') {

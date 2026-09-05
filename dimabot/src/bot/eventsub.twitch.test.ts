@@ -134,6 +134,7 @@ test('production webhook persists durable chat ownership before suppressing imme
     let journalFails = false;
     let inserted = true;
     const server = createTwitchEventsubApp({
+        async resolveOwner() { return '000000000000000000000001'; },
         async journalEvent(input) {
             journaled.push(input);
             assert.equal(input.metadata?.durableChatHandled, true);

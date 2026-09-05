@@ -191,6 +191,7 @@ export async function applyChatAnnouncementDomainEvent(
     if (event.source === 'twitch-eventsub-test'
         || event.metadata.durableChatHandled !== true
         || !SUPPORTED_EVENT_TYPES.has(event.type)) return;
+    if (!event.channelID) throw new Error('Chat announcements require a channel identity');
 
     const dependencies = injectedDependencies || await getDependencies();
     if ((event.type === 'stream.started' || event.type === 'stream.ended')
@@ -247,6 +248,7 @@ export async function applyAccountHealthNotificationDomainEvent(
     if (event.source === 'twitch-eventsub-test'
         || event.metadata.durableChatHandled !== true
         || event.type !== 'stream.started') return;
+    if (!event.channelID) throw new Error('Account-health notifications require a channel identity');
 
     const dependencies = injectedDependencies || await getDependencies();
     if (await dependencies.hasNewerLifecycleEvent(event)) return;

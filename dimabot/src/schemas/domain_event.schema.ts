@@ -19,7 +19,16 @@ const domainEventSchema = new Schema<IDomainEvent>({
         index: true
     },
     schemaVersion: { type: Number, required: true, default: 1, immutable: true },
-    channelID: { type: String, required: true, immutable: true, index: true },
+    ownerUserId: { type: String, immutable: true, index: true },
+    subject: {
+        type: new Schema({
+            provider: { type: String, required: true },
+            kind: { type: String, enum: ['streaming-account', 'integration-account', 'customer'], required: true },
+            id: { type: String, required: true }
+        }, { _id: false }),
+        immutable: true
+    },
+    channelID: { type: String, required: function (this: IDomainEvent): boolean { return this.topic === 'channel'; }, immutable: true, index: true },
     streamID: { type: String, immutable: true },
     occurredAt: { type: Date, required: true, immutable: true },
     journaledAt: { type: Date, required: true, immutable: true, default: Date.now },

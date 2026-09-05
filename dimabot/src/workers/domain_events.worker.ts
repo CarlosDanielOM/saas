@@ -1,6 +1,7 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
 import type { RedisClientType } from 'redis';
+import { DOMAIN_EVENT_CONSUMERS } from '../domain_events/domain_event_consumers.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 if (isDev) {
@@ -29,6 +30,7 @@ async function bootstrap(): Promise<void> {
                 pollIntervalMs: POLL_INTERVAL_MS,
                 batchSize: BATCH_SIZE,
                 maxAttempts: MAX_ATTEMPTS,
+                consumers: DOMAIN_EVENT_CONSUMERS.map(({ consumer, topics, schemaVersions }) => ({ consumer, topics, schemaVersions })),
                 runOnce: RUN_ONCE
             }
         }, null, 2));
@@ -39,18 +41,12 @@ async function bootstrap(): Promise<void> {
         { getMongoDBConnection },
         { getDragonflyClient },
         { drainDomainEvents },
-        { applyStreamAnalyticsDomainEvent },
-        { applyStreamOperationsDomainEvent },
-        { applyChatAnnouncementDomainEvent, applyAccountHealthNotificationDomainEvent },
         { DOMAIN_EVENTS_WAKEUP_STREAM },
         { info: logInfo, warn: logWarn }
     ] = await Promise.all([
         import('../utils/databases/mongodb.database.js'),
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/domain_event_consumer.js'),
-        import('../domain_events/stream_analytics_events.js'),
-        import('../domain_events/stream_operations_events.js'),
-        import('../domain_events/chat_announcement_events.js'),
         import('../utils/domain_events.js'),
         import('../utils/logger.js')
     ]);
@@ -99,54 +95,28 @@ async function bootstrap(): Promise<void> {
     }, { destination: 'console' });
 
     while (!shutdownRequested) {
-        const analyticsResult = await drainDomainEvents({
-            consumer: 'stream-analytics-v1',
-            topics: ['channel'],
-            handler: applyStreamAnalyticsDomainEvent,
-            batchSize: BATCH_SIZE,
-            maxAttempts: MAX_ATTEMPTS
-        });
-        const operationsResult = await drainDomainEvents({
-            consumer: 'stream-operations-v1',
-            topics: ['channel'],
-            eventFilter: { type: { $in: ['stream.started', 'stream.ended'] } },
-            handler: applyStreamOperationsDomainEvent,
-            batchSize: BATCH_SIZE,
-            maxAttempts: MAX_ATTEMPTS
-        });
-        const chatResult = await drainDomainEvents({
-            consumer: 'chat-announcements-v1',
-            topics: ['channel'],
-            eventFilter: {
-                'metadata.durableChatHandled': true,
-                type: { $in: [
-                    'channel.bits.received',
-                    'channel.follow.received',
-                    'channel.subscription.received',
-                    'channel.subscription.gifted',
-                    'channel.subscription.ended',
-                    'stream.started',
-                    'stream.ended'
-                ] }
-            },
-            handler: applyChatAnnouncementDomainEvent,
-            batchSize: BATCH_SIZE,
-            maxAttempts: MAX_ATTEMPTS
-        });
-        const accountHealthResult = await drainDomainEvents({
-            consumer: 'account-health-notifications-v1',
-            topics: ['channel'],
-            eventFilter: { 'metadata.durableChatHandled': true, type: 'stream.started' },
-            handler: applyAccountHealthNotificationDomainEvent,
-            batchSize: BATCH_SIZE,
-            maxAttempts: MAX_ATTEMPTS
-        });
+        let hasBacklog = false;
+        for (const definition of DOMAIN_EVENT_CONSUMERS) {
+            if (shutdownRequested) break;
+            try {
+                const result = await drainDomainEvents({
+                    ...definition,
+                    batchSize: BATCH_SIZE,
+                    maxAttempts: MAX_ATTEMPTS
+                });
+                hasBacklog ||= result.scanned >= BATCH_SIZE;
+            } catch (error) {
+                await logWarn({
+                    worker: 'domain_events',
+                    consumer: definition.consumer,
+                    message: 'Consumer drain failed; other consumers remain active',
+                    error: error instanceof Error ? error.message : String(error)
+                }, { destination: 'console' });
+            }
+        }
 
         if (RUN_ONCE) break;
-        if (analyticsResult.scanned >= BATCH_SIZE
-            || operationsResult.scanned >= BATCH_SIZE
-            || chatResult.scanned >= BATCH_SIZE
-            || accountHealthResult.scanned >= BATCH_SIZE) continue;
+        if (hasBacklog) continue;
 
         if (!wakeupClient?.isReady) {
             await sleep(POLL_INTERVAL_MS);

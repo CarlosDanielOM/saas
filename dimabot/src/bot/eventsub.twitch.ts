@@ -8,6 +8,8 @@ import {
     normalizeTwitchEventsubDomainEvent
 } from '../domain_events/twitch_eventsub_events.js';
 import { journalDomainEvent } from '../utils/domain_events.js';
+import { DOMAIN_EVENT_PRODUCERS, ingestDomainEvent } from '../domain_events/domain_event_producers.js';
+import type { DomainEventOwnerResolver } from '../domain_events/domain_event.types.js';
 
 const EVENTSUB_MESSAGE_DEDUPE_TTL_SECONDS = Math.max(300, Number(process.env.TWITCH_EVENTSUB_MESSAGE_TTL_SECONDS || 600));
 const EVENTSUB_MESSAGE_MAX_AGE_MS = Math.max(60_000, Number(process.env.TWITCH_EVENTSUB_MESSAGE_MAX_AGE_MS || 10 * 60 * 1000));
@@ -41,12 +43,14 @@ export function acceptEventsubMessageTimestamp(
 
 export function createTwitchEventsubApp({
     journalEvent = journalDomainEvent,
+    resolveOwner = DOMAIN_EVENT_PRODUCERS.twitch.resolveOwner,
     handleEvent = async (...args) => {
         const { eventsubHandler } = await import('../handlers/eventsub.handler.js');
         return eventsubHandler(...args);
     }
 }: {
     journalEvent?: typeof journalDomainEvent;
+    resolveOwner?: DomainEventOwnerResolver;
     handleEvent?: typeof import('../handlers/eventsub.handler.js').eventsubHandler;
 } = {}) {
     if (!getSecret()) {
@@ -161,16 +165,18 @@ export function createTwitchEventsubApp({
                 }
                 observeEventsubNotification(eventType, payloadBytes);
 
+                const producerInput = {
+                    messageId,
+                    messageTimestamp,
+                    messageRetry: Number.parseInt(messageRetry, 10) || 0,
+                    staleRetry: timestampDecision.staleRetry,
+                    subscription: notification.subscription,
+                    event: notification.event,
+                    durableChatHandled: true
+                };
                 let durableEvent;
                 try {
-                    durableEvent = normalizeTwitchEventsubDomainEvent({
-                        messageId,
-                        messageTimestamp,
-                        messageRetry: Number.parseInt(messageRetry, 10) || 0,
-                        staleRetry: timestampDecision.staleRetry,
-                        subscription: notification.subscription,
-                        event: notification.event
-                    });
+                    durableEvent = normalizeTwitchEventsubDomainEvent(producerInput);
                 } catch (normalizationError) {
                     console.error('Invalid durable EventSub notification:', {
                         eventType,
@@ -184,9 +190,11 @@ export function createTwitchEventsubApp({
 
                 if (durableEvent) {
                     try {
-                        // Persist chat ownership with the event, independent of worker startup order.
-                        durableEvent.metadata = { ...durableEvent.metadata, durableChatHandled: true };
-                        const journalResult = await journalEvent(durableEvent);
+                        const journalResult = await ingestDomainEvent(DOMAIN_EVENT_PRODUCERS.twitch, producerInput, {
+                            journal: journalEvent,
+                            resolveOwner
+                        });
+                        if (!journalResult) throw new Error('Durable Twitch producer returned no event');
                         if (!journalResult.inserted) {
                             res.sendStatus(204);
                             return;

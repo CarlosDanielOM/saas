@@ -65,6 +65,7 @@ export async function applyStreamAnalyticsDomainEvent(event: DomainEventEnvelope
     if (event.source === 'twitch-eventsub-test') {
         return;
     }
+    if (!event.channelID) throw new Error('Stream analytics requires a channel identity');
     const rawEvent = payloadRecord(event, 'event') as SubscriptionEventData;
     const originalEventType = String(event.metadata.originalEventType || '');
 

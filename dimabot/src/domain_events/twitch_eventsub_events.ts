@@ -1,4 +1,5 @@
-import type { JournalDomainEventInput } from './domain_event.types.js';
+import type { DomainEventProducer, JournalDomainEventInput } from './domain_event.types.js';
+import { resolveDomainEventOwner } from './domain_event_identity.js';
 
 interface TwitchEventsubSubscriptionLike {
     id?: string;
@@ -15,6 +16,7 @@ export interface NormalizeTwitchEventsubInput {
     subscription: TwitchEventsubSubscriptionLike;
     event: Record<string, unknown>;
     source?: 'twitch-eventsub' | 'twitch-eventsub-test';
+    durableChatHandled?: boolean;
 }
 
 const DURABLE_EVENT_TYPES: Record<string, string> = {
@@ -75,6 +77,7 @@ export function normalizeTwitchEventsubDomainEvent(
         type: normalizedType,
         topic: 'channel',
         schemaVersion: 1,
+        subject: { provider: 'twitch', kind: 'streaming-account', id: channelID },
         channelID,
         streamID,
         occurredAt: resolveOccurredAt(originalEventType, input.event, input.messageTimestamp),
@@ -83,6 +86,7 @@ export function normalizeTwitchEventsubDomainEvent(
             event: input.event
         },
         metadata: {
+            ...(input.durableChatHandled ? { durableChatHandled: true } : {}),
             originalEventType,
             subscriptionID: firstString(input.subscription.id),
             subscriptionVersion: firstString(input.subscription.version),
@@ -96,3 +100,9 @@ export function normalizeTwitchEventsubDomainEvent(
 export function isDurableTwitchEventsubType(eventType: string): boolean {
     return Boolean(DURABLE_EVENT_TYPES[String(eventType || '').trim()]);
 }
+
+export const twitchEventsubProducer: DomainEventProducer<NormalizeTwitchEventsubInput> = {
+    provider: 'twitch',
+    normalize: normalizeTwitchEventsubDomainEvent,
+    resolveOwner: (event) => event.subject ? resolveDomainEventOwner(event.subject) : Promise.resolve(undefined)
+};
