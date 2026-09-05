@@ -1,5 +1,6 @@
 import path from 'path';
 import dotenv from 'dotenv';
+import { CLIP_CLAIM_SCRIPTS } from '../utils/ai/clip_recommendations/clip_recommendation_claims.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 if (isDev) {
@@ -15,6 +16,8 @@ const JOB_MAX_ATTEMPTS = Math.max(1, Number(process.env.CLIP_RECOMMENDATIONS_JOB
 const HEARTBEAT_FAILURE_LIMIT = Math.max(2, Math.floor(Number(process.env.CLIP_RECOMMENDATIONS_HEARTBEAT_FAILURE_LIMIT) || 3));
 const REQUEUE_DELAY_MS = Math.max(800, Number(process.env.CLIP_RECOMMENDATIONS_REQUEUE_DELAY_MS || 5000));
 const JOB_MAX_AGE_SECONDS = Math.max(300, Number(process.env.CLIP_RECOMMENDATIONS_JOB_MAX_AGE_SECONDS) || 24 * 60 * 60);
+const RECONCILIATION_INTERVAL_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATIONS_RECONCILIATION_INTERVAL_MS) || 15 * 60 * 1000);
+const RECONCILIATION_BATCH_SIZE = Math.max(1, Math.floor(Number(process.env.CLIP_RECOMMENDATIONS_RECONCILIATION_BATCH_SIZE) || 25));
 const DRY_RUN = process.argv.includes('--dry-run');
 const RUN_ONCE = process.argv.includes('--once');
 
@@ -42,17 +45,6 @@ end
 return 0
 `;
 
-const ACKNOWLEDGE_CLAIM_SCRIPT = `
-return redis.call('LREM', KEYS[1], 1, ARGV[1])
-`;
-
-const REQUEUE_CLAIM_SCRIPT = `
-if redis.call('LREM', KEYS[1], 1, ARGV[1]) > 0 then
-    return redis.call('LPUSH', KEYS[2], ARGV[2])
-end
-return 0
-`;
-
 async function main(): Promise<void> {
     const {
         CLIP_RECOMMENDATION_ANALYSIS_JOB,
@@ -69,7 +61,9 @@ async function main(): Promise<void> {
             deadLetterKey: CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY,
             lockKey: LOCK_KEY,
             job: CLIP_RECOMMENDATION_ANALYSIS_JOB,
-            maxJobAgeSeconds: JOB_MAX_AGE_SECONDS
+            maxJobAgeSeconds: JOB_MAX_AGE_SECONDS,
+            reconciliationIntervalMs: RECONCILIATION_INTERVAL_MS,
+            reconciliationBatchSize: RECONCILIATION_BATCH_SIZE
         }, null, 2));
         return;
     }
@@ -77,9 +71,21 @@ async function main(): Promise<void> {
     const { getDragonflyClient } = await import('../utils/databases/dragonfly.database.js');
     const { getMongoDBConnection } = await import('../utils/databases/mongodb.database.js');
     const { error: logError, info: logInfo, warn: logWarn } = await import('../utils/logger.js');
-    const { clearCronJobDedupeByKey, parseCronQueueJob, serializeCronQueueJob } = await import('../utils/cron_jobs_queue.js');
+    const { parseCronQueueJob, serializeCronQueueJob } = await import('../utils/cron_jobs_queue.js');
     const { fetchLatestVodForChannel, runVodClipRecommendationWorkflow } = await import('../utils/ai/clip_recommendations/vod_clip_recommendation_runner.js');
-    const { getClipJobFailureDisposition, shouldStopAfterHeartbeatFailure } = await import('../utils/ai/clip_recommendations/vod_clip_recommender_policy.js');
+    const { getClipJobFailureDisposition, getClipWorkflowFailureDisposition, shouldStopAfterHeartbeatFailure } = await import('../utils/ai/clip_recommendations/vod_clip_recommender_policy.js');
+    const { reconcileClipRecommendations } = await import('../utils/ai/clip_recommendations/clip_recommendation_reconciliation.js');
+
+    function requireOwnership(result: unknown): void {
+        if (result !== -1) return;
+        lockLost = true;
+        shutdownRequested = true;
+        throw new Error('Clip worker no longer owns the queue lease');
+    }
+
+    async function assertActive(): Promise<void> {
+        if (lockLost || !await refreshWorkerLock(lockOwnerId)) requireOwnership(-1);
+    }
 
     async function acquireWorkerLock(lockOwnerId: string): Promise<boolean> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
@@ -101,46 +107,76 @@ async function main(): Promise<void> {
         await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [LOCK_KEY], arguments: [lockOwnerId] });
     }
 
-    async function requeueJob(job: NonNullable<ReturnType<typeof parseCronQueueJob>>): Promise<void> {
+    async function acknowledgeClaim(rawPayload: string, dedupeKey?: string): Promise<void> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
-        await cache.lPush(CLIP_RECOMMENDATIONS_QUEUE_KEY, serializeCronQueueJob(job));
-    }
-
-    async function acknowledgeClaim(rawPayload: string): Promise<void> {
-        const cache = await getDragonflyClient('ClipRecommendationsWorker');
-        await cache.eval(ACKNOWLEDGE_CLAIM_SCRIPT, {
-            keys: [CLIP_RECOMMENDATIONS_PROCESSING_KEY],
-            arguments: [rawPayload]
+        const result = await cache.eval(CLIP_CLAIM_SCRIPTS.acknowledge, {
+            keys: dedupeKey
+                ? [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, dedupeKey]
+                : [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY],
+            arguments: [lockOwnerId, rawPayload]
         });
+        requireOwnership(result);
     }
 
     async function requeueClaim(rawPayload: string, replacementPayload = rawPayload): Promise<void> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
-        await cache.eval(REQUEUE_CLAIM_SCRIPT, {
-            keys: [CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
-            arguments: [rawPayload, replacementPayload]
+        const result = await cache.eval(CLIP_CLAIM_SCRIPTS.requeue, {
+            keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
+            arguments: [lockOwnerId, rawPayload, replacementPayload]
         });
+        requireOwnership(result);
+    }
+
+    async function deadLetterClaim(rawPayload: string, deadLetterPayload: string, dedupeKey?: string): Promise<void> {
+        const cache = await getDragonflyClient('ClipRecommendationsWorker');
+        const result = await cache.eval(CLIP_CLAIM_SCRIPTS.deadLetter, {
+            keys: dedupeKey
+                ? [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, dedupeKey]
+                : [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY],
+            arguments: [lockOwnerId, rawPayload, deadLetterPayload]
+        });
+        requireOwnership(result);
     }
 
     async function recoverInterruptedClaims(): Promise<number> {
         const cache = await getDragonflyClient('ClipRecommendationsWorker');
         let recovered = 0;
-        while (await cache.sendCommand(['RPOPLPUSH', CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY])) {
+        while (true) {
+            const result = await cache.eval(CLIP_CLAIM_SCRIPTS.recover, {
+                keys: [LOCK_KEY, CLIP_RECOMMENDATIONS_PROCESSING_KEY, CLIP_RECOMMENDATIONS_QUEUE_KEY],
+                arguments: [lockOwnerId]
+            });
+            requireOwnership(result);
+            if (!result) break;
             recovered += 1;
         }
         return recovered;
     }
 
-    async function processJob(job: NonNullable<ReturnType<typeof parseCronQueueJob>>): Promise<void> {
+    let reconciliationRunning = false;
+    async function reconcileRecoverableRecommendations(): Promise<number> {
+        if (reconciliationRunning || shutdownRequested) return 0;
+        reconciliationRunning = true;
+        try {
+            await assertActive();
+            return await reconcileClipRecommendations({
+                batchSize: RECONCILIATION_BATCH_SIZE,
+                intervalMs: RECONCILIATION_INTERVAL_MS,
+                shouldContinue: () => !shutdownRequested
+            });
+        } finally {
+            reconciliationRunning = false;
+        }
+    }
+
+    async function processJob(rawPayload: string, job: NonNullable<ReturnType<typeof parseCronQueueJob>>): Promise<void> {
         const channelID = normalizeValue(job.channelID || job.accountID || job.data?.channelID);
         const nowUnix = Math.floor(Date.now() / 1000);
         const notBeforeUnix = Number(job.data?.notBeforeUnix || 0);
         const requestedAtUnix = Math.floor(Date.parse(job.requestedAt) / 1000);
 
         if (!Number.isFinite(requestedAtUnix) || nowUnix - requestedAtUnix > JOB_MAX_AGE_SECONDS) {
-            const cache = await getDragonflyClient('ClipRecommendationsWorker');
-            await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, serializeCronQueueJob(job));
-            await clearCronJobDedupeByKey(job.dedupeKey);
+            await deadLetterClaim(rawPayload, serializeCronQueueJob(job), job.dedupeKey);
             await logWarn({
                 worker: 'clip_recommendations',
                 message: 'Stale clip recommendation job moved to dead letter without processing',
@@ -151,15 +187,13 @@ async function main(): Promise<void> {
         }
 
         if (!channelID) {
-            const cache = await getDragonflyClient('ClipRecommendationsWorker');
-            await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, serializeCronQueueJob(job));
-            await clearCronJobDedupeByKey(job.dedupeKey);
+            await deadLetterClaim(rawPayload, serializeCronQueueJob(job), job.dedupeKey);
             await logWarn({ worker: 'clip_recommendations', message: 'Job without channel ID moved to dead letter', jobID: job.id }, { destination: 'console' });
             return;
         }
 
         if (notBeforeUnix > nowUnix) {
-            await requeueJob(job);
+            await requeueClaim(rawPayload);
             await sleep(REQUEUE_DELAY_MS);
             return;
         }
@@ -172,14 +206,12 @@ async function main(): Promise<void> {
             if (!vod) {
                 const disposition = getClipJobFailureDisposition(job, JOB_MAX_ATTEMPTS);
                 if (disposition.action === 'requeue') {
-                    await requeueJob(disposition.job);
+                    await requeueClaim(rawPayload, serializeCronQueueJob(disposition.job));
                     await logWarn({ worker: 'clip_recommendations', message: 'No recent Twitch VOD found; requeued job', attempt: disposition.attempt }, { channelId: channelID, destination: 'console' });
                     return;
                 }
 
-                const cache = await getDragonflyClient('ClipRecommendationsWorker');
-                await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, serializeCronQueueJob(job));
-                await clearCronJobDedupeByKey(job.dedupeKey);
+                await deadLetterClaim(rawPayload, serializeCronQueueJob(job), job.dedupeKey);
                 await logWarn({ worker: 'clip_recommendations', message: 'No recent Twitch VOD found; moved job to dead letter', attempt: disposition.attempt }, { channelId: channelID, destination: 'console' });
                 return;
             }
@@ -195,21 +227,24 @@ async function main(): Promise<void> {
             streamID: normalizeValue(job.data?.streamID),
             vodID,
             vodUrl,
-            source: normalizeValue(job.data?.source) === 'stream_offline' ? 'stream_offline' : 'manual',
+            source: normalizeValue(job.data?.originalSource || job.data?.source) === 'stream_offline' ? 'stream_offline' : 'manual',
             requestedBy: normalizeValue(job.requestedBy),
-            queueJobID: job.id,
+            queueJobID: normalizeValue(job.data?.recommendationQueueJobID) || job.id,
+            recoveryOnly: Boolean(normalizeValue(job.data?.recommendationQueueJobID)),
+            cleanupOnly: job.data?.recoveryMode === 'cleanup',
+            assertActive,
             vodDurationMinutes
         });
 
         if (!result.error) {
-            await clearCronJobDedupeByKey(job.dedupeKey);
+            await acknowledgeClaim(rawPayload, job.dedupeKey);
             await logInfo({ worker: 'clip_recommendations', message: 'Processed VOD clip recommendation job', job, result }, { channelId: channelID, destination: 'console' });
             return;
         }
 
-        const disposition = getClipJobFailureDisposition(job, JOB_MAX_ATTEMPTS);
-        if (result.retryable !== false && disposition.action === 'requeue') {
-            await requeueJob(disposition.job);
+        const disposition = getClipWorkflowFailureDisposition(job, JOB_MAX_ATTEMPTS, result.retryable);
+        if (disposition.action === 'requeue') {
+            await requeueClaim(rawPayload, serializeCronQueueJob(disposition.job));
             await logWarn({
                 worker: 'clip_recommendations',
                 message: 'Failed workflow requeued for recovery',
@@ -219,9 +254,7 @@ async function main(): Promise<void> {
             return;
         }
 
-        const cache = await getDragonflyClient('ClipRecommendationsWorker');
-        await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, serializeCronQueueJob(job));
-        await clearCronJobDedupeByKey(job.dedupeKey);
+        await deadLetterClaim(rawPayload, serializeCronQueueJob(job), job.dedupeKey);
         await logWarn({
             worker: 'clip_recommendations',
             message: 'Non-retryable workflow or exhausted retries moved to dead letter',
@@ -252,19 +285,17 @@ async function main(): Promise<void> {
 
             const payload = parseCronQueueJob(rawPayload);
             if (!payload || payload.job !== CLIP_RECOMMENDATION_ANALYSIS_JOB) {
-                await cache.rPush(
-                    CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY,
-                    payload ? serializeCronQueueJob(payload) : rawPayload
+                await deadLetterClaim(
+                    rawPayload,
+                    payload ? serializeCronQueueJob(payload) : rawPayload,
+                    payload?.dedupeKey
                 );
-                if (payload) await clearCronJobDedupeByKey(payload.dedupeKey);
-                await acknowledgeClaim(rawPayload);
                 if (RUN_ONCE) break;
                 continue;
             }
 
             try {
-                await processJob(payload);
-                await acknowledgeClaim(rawPayload);
+                await processJob(rawPayload, payload);
                 if (RUN_ONCE) break;
             } catch (error) {
                 const disposition = getClipJobFailureDisposition(payload, JOB_MAX_ATTEMPTS);
@@ -278,9 +309,7 @@ async function main(): Promise<void> {
                         stack: error instanceof Error ? error.stack : undefined
                     }, { destination: 'console' });
                 } else {
-                    await cache.rPush(CLIP_RECOMMENDATIONS_DEAD_LETTER_KEY, serializeCronQueueJob(payload));
-                    await acknowledgeClaim(rawPayload);
-                    await clearCronJobDedupeByKey(payload.dedupeKey);
+                    await deadLetterClaim(rawPayload, serializeCronQueueJob(payload), payload.dedupeKey);
                     await logError({
                         worker: 'clip_recommendations',
                         message: 'Queue job crashed after exhausting retries and was moved to dead letter',
@@ -340,19 +369,41 @@ async function main(): Promise<void> {
     process.once('SIGINT', () => { void shutdown('SIGINT'); });
     process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
 
+    let reconciliationTimer: NodeJS.Timeout | null = null;
     try {
         const recoveredClaims = await recoverInterruptedClaims();
+        const reconciledRecommendations = await reconcileRecoverableRecommendations();
         await logInfo({
             worker: 'clip_recommendations',
             message: 'Worker initialized',
             queueKey: CLIP_RECOMMENDATIONS_QUEUE_KEY,
-            recoveredClaims
+            recoveredClaims,
+            reconciledRecommendations
         }, { destination: 'console' });
+        reconciliationTimer = setInterval(() => {
+            void reconcileRecoverableRecommendations().then(async (enqueued) => {
+                if (enqueued > 0) {
+                    await logInfo({
+                        worker: 'clip_recommendations',
+                        message: 'Queued clip recommendation recovery jobs',
+                        enqueued
+                    }, { destination: 'console' });
+                }
+            }).catch(async (error) => {
+                await logError({
+                    worker: 'clip_recommendations',
+                    message: 'Clip recommendation reconciliation failed',
+                    error: error instanceof Error ? error.message : String(error)
+                }, { destination: 'console' });
+            });
+        }, RECONCILIATION_INTERVAL_MS);
+        reconciliationTimer.unref?.();
         await startQueueConsumerLoop();
         if (lockLost) {
             await logWarn({ worker: 'clip_recommendations', message: 'Worker lock lost. Exiting after current work.' }, { destination: 'console' });
         }
     } finally {
+        if (reconciliationTimer) clearInterval(reconciliationTimer);
         clearInterval(heartbeat);
         await releaseWorkerLock(lockOwnerId);
     }

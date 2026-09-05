@@ -9,12 +9,10 @@ import { ClipRecommendationSchema, type IClipRecommendation } from '../../../sch
 import { ClipRecommendationConfigSchema } from '../../../schemas/clip_recommendation_config.schema.js';
 import { getAiCredits } from '../../billing.js';
 import { ingestPolarSHEvent } from '../../polarsh.js';
-import { getTwitchAppHeader } from '../../header.js';
 import { getTwitchHelixUrl } from '../../links.js';
-import { BUCKET, getS3PublicObjectUrl, s3Client } from '../../s3.js';
 import { error as logError, info as logInfo, warn as logWarn } from '../../logger.js';
-import { sendEmail, DASHBOARD_URL } from '../../email/email.service.js';
-import { VodClipAnalysisFinishedEmail, getVodClipAnalysisFinishedSubject } from '../../email/templates/vod-clip-analysis-finished.js';
+import { sendClipCompletionNotification } from './clip_recommendation_notifications.js';
+import { deleteClipRecommendationPreviews } from './clip_recommendation_previews.js';
 import {
     analyzeVodAudioForClipMoments,
     type AudioCandidate,
@@ -32,6 +30,8 @@ const AUDIO_BITRATE = '12k';
 const AUDIO_SEGMENT_MINUTES = 60;
 const DOWNLOAD_TIMEOUT_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_DOWNLOAD_TIMEOUT_MS || 3 * 60 * 60 * 1000));
 const COMMAND_TIMEOUT_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_FFMPEG_TIMEOUT_MS || 30 * 60 * 1000));
+const BILLING_RETRY_DELAY_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_BILLING_RETRY_DELAY_MS) || 6 * 60 * 60 * 1000);
+const NOTIFICATION_RETRY_DELAY_MS = Math.max(60_000, Number(process.env.CLIP_RECOMMENDATION_NOTIFICATION_RETRY_DELAY_MS) || 60 * 60 * 1000);
 
 export interface TwitchVodInfo {
     id: string;
@@ -73,6 +73,9 @@ export interface RunVodClipRecommendationInput {
     queueJobID?: string;
     vodDurationMinutes?: number;
     modelID?: string;
+    recoveryOnly?: boolean;
+    cleanupOnly?: boolean;
+    assertActive?: () => Promise<void>;
 }
 
 export interface RunVodClipRecommendationResult {
@@ -83,7 +86,7 @@ export interface RunVodClipRecommendationResult {
     approvedCount?: number;
     candidateCount?: number;
     retryable?: boolean;
-    phase?: 'analysis' | 'billing';
+    phase?: 'analysis' | 'billing' | 'notification';
 }
 
 function normalizeValue(value: unknown): string {
@@ -165,6 +168,7 @@ async function cutVideoSegment(videoPath: string, outputPath: string, startSecon
 }
 
 async function uploadPreviewClip(channelID: string, recommendationID: string, candidateID: string, filePath: string): Promise<{ key: string; url: string }> {
+    const { BUCKET, getS3PublicObjectUrl, s3Client } = await import('../../s3.js');
     const key = `clip-recommendations/${channelID}/${recommendationID}/${candidateID}.mp4`;
     const body = await fs.readFile(filePath);
     await s3Client.send(new PutObjectCommand({
@@ -179,7 +183,7 @@ async function uploadPreviewClip(channelID: string, recommendationID: string, ca
 }
 
 async function findUserByChannelID(channelID: string): Promise<IUsers | null> {
-    return UsersSchema.findOne({ 'accounts.id': channelID, 'accounts.type': 'twitch' }).lean().exec();
+    return UsersSchema.findOne({ accounts: { $elemMatch: { id: channelID, type: 'twitch' } } }).lean().exec();
 }
 
 async function ensureCreditsAvailable(user: IUsers, channelID: string, credits: number): Promise<void> {
@@ -221,6 +225,9 @@ async function chargeCompletedRecommendation(
     channelID: string,
     verifyBalance = true
 ): Promise<string | null> {
+    const attemptedAt = new Date();
+    recommendation.billingAttemptCount = Math.max(0, Number(recommendation.billingAttemptCount) || 0) + 1;
+    recommendation.billingLastAttemptAt = attemptedAt;
     try {
         await chargeCredits(
             user,
@@ -233,12 +240,14 @@ async function chargeCompletedRecommendation(
         recommendation.billingStatus = 'charged';
         recommendation.chargeError = '';
         recommendation.chargedAt = new Date();
+        recommendation.billingNextRetryAt = null;
         await recommendation.save();
         return null;
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         recommendation.billingStatus = 'failed';
         recommendation.chargeError = message.slice(0, 2000);
+        recommendation.billingNextRetryAt = new Date(attemptedAt.getTime() + BILLING_RETRY_DELAY_MS);
         await recommendation.save();
         return message;
     }
@@ -291,29 +300,6 @@ async function verifyVideoBatchResilient(input: VerifyVideoBatchInput): Promise<
     }
 }
 
-async function notifyFinished(input: {
-    user: IUsers;
-    channelID: string;
-    channel: string;
-    approvedCount: number;
-    recommendationID: string;
-}): Promise<void> {
-    const account = input.user.accounts.find((item) => item.type === 'twitch' && item.id === input.channelID);
-    const email = account?.email || input.user.email;
-    if (!email) return;
-    const dashboardUrl = `${DASHBOARD_URL}/${encodeURIComponent(input.channel || input.channelID)}/modules/clip-recommendations`;
-    await sendEmail({
-        to: email,
-        subject: getVodClipAnalysisFinishedSubject(input.user.language || 'en'),
-        emailComponent: VodClipAnalysisFinishedEmail({
-            streamerName: input.channel || account?.name || input.user.name || 'streamer',
-            approvedCount: input.approvedCount,
-            dashboardUrl,
-            language: input.user.language || 'en'
-        })
-    });
-}
-
 async function updateLastAnalyzedAt(channelID: string): Promise<void> {
     try {
         await ClipRecommendationConfigSchema.updateOne(
@@ -332,6 +318,7 @@ async function updateLastAnalyzedAt(channelID: string): Promise<void> {
 }
 
 async function fetchTwitchVideos(params: URLSearchParams): Promise<TwitchVideoApiItem[]> {
+    const { getTwitchAppHeader } = await import('../../header.js');
     const header = await getTwitchAppHeader();
     const response = await fetch(getTwitchHelixUrl('videos', params.toString()), {
         headers: {
@@ -403,7 +390,17 @@ export async function fetchRecentVodsForChannel(channelID: string, days = 7): Pr
     });
 }
 
-export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommendationInput): Promise<RunVodClipRecommendationResult> {
+export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommendationInput, {
+    charge = chargeCompletedRecommendation,
+    notify = sendClipCompletionNotification,
+    deletePreviews = deleteClipRecommendationPreviews,
+    reportError = logError
+}: {
+    charge?: typeof chargeCompletedRecommendation;
+    notify?: typeof sendClipCompletionNotification;
+    deletePreviews?: typeof deleteClipRecommendationPreviews;
+    reportError?: typeof logError;
+} = {}): Promise<RunVodClipRecommendationResult> {
     const channelID = normalizeValue(input.channelID);
     const vodUrl = normalizeValue(input.vodUrl);
     const modelID = normalizeValue(input.modelID) || CLIP_RECOMMENDATION_MODEL_ID;
@@ -412,18 +409,42 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
     const workDir = path.join(os.tmpdir(), `clip-recommendations-${recommendationID}`);
     let recommendationObjectID = '';
     let recommendation: HydratedDocument<IClipRecommendation> | null = null;
+    let analysisPersisted = false;
+    let workDirCreated = false;
 
     if (!channelID || !vodUrl) {
         return { error: true, status: 'failed', message: 'channelID and vodUrl are required' };
     }
 
     try {
-        await fs.mkdir(workDir, { recursive: true });
+        await input.assertActive?.();
         if (queueJobID) {
-            recommendation = await ClipRecommendationSchema.findOne({ queueJobID }).exec();
+            recommendation = await ClipRecommendationSchema.findOne({ queueJobID }).select('+notificationPayload').exec();
+            if (recommendation && recommendation.channelID !== channelID) {
+                return { error: true, status: 'failed', message: 'Recommendation belongs to another channel', retryable: false };
+            }
+            if (input.recoveryOnly && !recommendation) {
+                return { error: true, status: 'failed', message: 'Recovery recommendation no longer exists', retryable: false };
+            }
             if (recommendation) {
+                analysisPersisted = Boolean(recommendation.analysisCompletedAt);
                 const recoveryAction = decideClipRecommendationRecovery(recommendation);
                 recommendationObjectID = String(recommendation._id);
+                if (input.cleanupOnly) {
+                    if (recommendation.status !== 'failed' || analysisPersisted || recommendation.billingStatus === 'charged') {
+                        return { error: false, status: 'completed', message: 'Preview cleanup is no longer required' };
+                    }
+                    await input.assertActive?.();
+                    await deletePreviews(recommendation);
+                    recommendation.previewCleanupPending = false;
+                    recommendation.previewCleanupError = '';
+                    recommendation.previewCleanupNextRetryAt = null;
+                    await recommendation.save();
+                    return { error: false, status: 'failed', message: 'Failed analysis previews cleaned', recommendationID: recommendationObjectID };
+                }
+                if (input.recoveryOnly && !analysisPersisted) {
+                    return { error: true, status: 'failed', message: 'Recovery cannot restart an incomplete analysis', retryable: false };
+                }
                 if (recoveryAction === 'return-completed') {
                     return {
                         error: false,
@@ -446,10 +467,25 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                         phase: 'billing'
                     };
                 }
+                if (recoveryAction === 'retry-notification') {
+                    const user = await findUserByChannelID(channelID);
+                    if (!user) throw new Error('User not found for channel');
+                    await input.assertActive?.();
+                    await notify(recommendation, user, channelID, normalizeValue(input.channel));
+                    return {
+                        error: false,
+                        status: 'completed',
+                        message: 'Clip recommendation completion notification reconciled',
+                        recommendationID: recommendationObjectID,
+                        candidateCount: recommendation.candidateCount,
+                        approvedCount: recommendation.approvedCount
+                    };
+                }
                 if (recoveryAction === 'retry-billing') {
                     const user = await findUserByChannelID(channelID);
                     if (!user) throw new Error('User not found for channel');
-                    const chargeError = await chargeCompletedRecommendation(recommendation, user, channelID, false);
+                    await input.assertActive?.();
+                    const chargeError = await charge(recommendation, user, channelID, false);
                     if (chargeError) {
                         return {
                             error: true,
@@ -463,20 +499,8 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                         };
                     }
                     await updateLastAnalyzedAt(channelID);
-                    await notifyFinished({
-                        user,
-                        channelID,
-                        channel: normalizeValue(input.channel),
-                        approvedCount: recommendation.approvedCount,
-                        recommendationID: recommendationObjectID
-                    }).catch(async (error) => {
-                        await logWarn({
-                            worker: 'clip_recommendations',
-                            message: 'Failed to send recovered clip recommendation completion email',
-                            channelID,
-                            error: error instanceof Error ? error.message : String(error)
-                        }, { channelId: channelID, destination: 'console' });
-                    });
+                    await input.assertActive?.();
+                    await notify(recommendation, user, channelID, normalizeValue(input.channel));
                     return {
                         error: false,
                         status: 'completed',
@@ -487,22 +511,41 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                     };
                 }
 
+                await input.assertActive?.();
+                await deletePreviews(recommendation);
                 recommendation.status = 'pending';
                 recommendation.errorMessage = '';
                 recommendation.billingStatus = 'pending';
                 recommendation.chargeError = '';
                 recommendation.chargedAt = null;
                 recommendation.analysisCompletedAt = null;
+                recommendation.billingAttemptCount = 0;
+                recommendation.billingLastAttemptAt = null;
+                recommendation.billingNextRetryAt = null;
                 recommendation.completedAt = null;
                 recommendation.startedAt = null;
                 recommendation.candidates = [] as any;
                 recommendation.candidateCount = 0;
                 recommendation.approvedCount = 0;
+                recommendation.notificationStatus = 'pending';
+                recommendation.notificationError = '';
+                recommendation.notificationLastAttemptAt = null;
+                recommendation.notificationNextRetryAt = null;
+                recommendation.notifiedAt = null;
+                recommendation.notificationPayload = undefined;
+                recommendation.previewCleanupPending = false;
+                recommendation.previewCleanupError = '';
+                recommendation.previewCleanupNextRetryAt = null;
             }
+        }
+
+        if (input.recoveryOnly) {
+            return { error: true, status: 'failed', message: 'Recovery requires a completed keyed recommendation', retryable: false };
         }
 
         const durationMinutes = Math.max(1, Math.ceil(Number(input.vodDurationMinutes || 0)));
         const costCredits = calculateClipRecommendationCredits(durationMinutes);
+        await input.assertActive?.();
         if (!recommendation) {
             recommendation = await ClipRecommendationSchema.create({
                 channelID,
@@ -519,6 +562,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 vodDurationMinutes: durationMinutes,
                 costCredits,
                 billingStatus: 'pending',
+                notificationStatus: 'pending',
                 candidates: []
             });
             recommendationObjectID = String(recommendation._id);
@@ -544,11 +588,14 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         const outputLanguage = normalizeClipRecommendationLanguage(user.language);
 
         await ensureCreditsAvailable(user, channelID, costCredits);
+        await input.assertActive?.();
         recommendation.status = 'processing';
         recommendation.startedAt = new Date();
         await recommendation.save();
 
         const vodPath = path.join(workDir, 'vod.mp4');
+        await fs.mkdir(workDir, { recursive: true });
+        workDirCreated = true;
         await downloadVod(vodUrl, vodPath);
 
         // Extract audio in 1-hour segments at 12 kbps to stay under OpenRouter's 8 MB upload limit.
@@ -560,6 +607,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         const perSegmentCandidates: AudioCandidate[][] = [];
 
         for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+            await input.assertActive?.();
             const segmentStartSeconds = segmentIndex * segmentSeconds;
             const segmentDurationSeconds = Math.min(segmentSeconds, totalSeconds - segmentStartSeconds);
             if (segmentDurationSeconds <= 0) break;
@@ -590,6 +638,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             const partialDocs = flatSoFar.map(buildCandidateDocument);
             recommendation.candidates = partialDocs as any;
             recommendation.candidateCount = partialDocs.length;
+            await input.assertActive?.();
             await recommendation.save();
         }
 
@@ -597,6 +646,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         const candidateDocs = audioCandidates.map(buildCandidateDocument);
         recommendation.candidates = candidateDocs as any;
         recommendation.candidateCount = candidateDocs.length;
+        await input.assertActive?.();
         await recommendation.save();
 
         // Fail loudly if audio analysis produced zero candidates so provider or
@@ -623,7 +673,9 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 message,
                 recommendationID: recommendationObjectID,
                 candidateCount: 0,
-                approvedCount: 0
+                approvedCount: 0,
+                retryable: false,
+                phase: 'analysis'
             };
         }
 
@@ -635,6 +687,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         let approvedCount = 0;
 
         for (let batchStart = 0; batchStart < audioCandidates.length; batchStart += videoBatchSize) {
+            await input.assertActive?.();
             const batch = audioCandidates.slice(batchStart, Math.min(audioCandidates.length, batchStart + videoBatchSize));
 
             const videoInputs = await Promise.all(batch.map(async (candidate, localIdx) => {
@@ -664,6 +717,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
                 candidateDoc.status = verification.approved ? 'approved' : 'rejected';
 
                 if (verification.approved) {
+                    await input.assertActive?.();
                     const segmentPath = videoInputs[localIdx].videoPath;
                     const candidateID = String(candidateDoc._id || randomUUID());
                     const upload = await uploadPreviewClip(channelID, recommendationObjectID, candidateID, segmentPath);
@@ -674,6 +728,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             }
 
             recommendation.approvedCount = approvedCount;
+            await input.assertActive?.();
             await recommendation.save();
         }
 
@@ -681,11 +736,14 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         recommendation.analysisCompletedAt = new Date();
         recommendation.completedAt = recommendation.analysisCompletedAt;
         recommendation.approvedCount = approvedCount;
+        await input.assertActive?.();
         await recommendation.save();
+        analysisPersisted = true;
 
-        const chargeError = await chargeCompletedRecommendation(recommendation, user, channelID);
+        await input.assertActive?.();
+        const chargeError = await charge(recommendation, user, channelID);
         if (chargeError) {
-            await logError({
+            await reportError({
                 worker: 'clip_recommendations',
                 message: 'VOD clip recommendation analysis completed but billing failed',
                 channelID,
@@ -706,20 +764,8 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
 
         await updateLastAnalyzedAt(channelID);
 
-        await notifyFinished({
-            user,
-            channelID,
-            channel: normalizeValue(input.channel),
-            approvedCount,
-            recommendationID: recommendationObjectID
-        }).catch(async (error) => {
-            await logWarn({
-                worker: 'clip_recommendations',
-                message: 'Failed to send clip recommendation completion email',
-                channelID,
-                error: error instanceof Error ? error.message : String(error)
-            }, { channelId: channelID, destination: 'console' });
-        });
+        await input.assertActive?.();
+        await notify(recommendation, user, channelID, normalizeValue(input.channel));
 
         await logInfo({
             worker: 'clip_recommendations',
@@ -741,22 +787,58 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        const analysisCompleted = Boolean(recommendation?.analysisCompletedAt);
-        if (recommendationObjectID && analysisCompleted) {
+        // A lost lease must not rewrite or delete another worker's current work.
+        await input.assertActive?.();
+        const analysisCompleted = analysisPersisted;
+        const billingCompleted = recommendation?.billingStatus === 'charged';
+        if (recommendationObjectID && analysisCompleted && billingCompleted) {
+            await ClipRecommendationSchema.findOneAndUpdate({
+                _id: recommendationObjectID,
+                notificationStatus: { $nin: ['sent', 'not_required'] }
+            }, {
+                $set: {
+                    notificationStatus: 'failed',
+                    notificationError: message.slice(0, 2000),
+                    notificationNextRetryAt: new Date(Date.now() + NOTIFICATION_RETRY_DELAY_MS)
+                }
+            }).exec().catch(() => null);
+        } else if (recommendationObjectID && analysisCompleted) {
             await ClipRecommendationSchema.findByIdAndUpdate(recommendationObjectID, {
                 $set: {
                     billingStatus: 'failed',
-                    chargeError: message.slice(0, 2000)
+                    chargeError: message.slice(0, 2000),
+                    billingNextRetryAt: new Date(Date.now() + BILLING_RETRY_DELAY_MS)
                 }
             }).exec().catch(() => null);
         } else if (recommendationObjectID) {
-            await ClipRecommendationSchema.findByIdAndUpdate(recommendationObjectID, {
+            // A final save may have committed despite response loss. Never mark
+            // that completed analysis failed or remove its previews.
+            const failed = await ClipRecommendationSchema.findOneAndUpdate({
+                _id: recommendationObjectID, analysisCompletedAt: null, billingStatus: { $ne: 'charged' }
+            }, {
                 $set: {
                     status: 'failed',
                     errorMessage: message,
-                    completedAt: new Date()
+                    completedAt: new Date(),
+                    previewCleanupPending: true,
+                    previewCleanupNextRetryAt: new Date(Date.now() + NOTIFICATION_RETRY_DELAY_MS)
                 }
-            }).exec();
+            }, { new: true }).exec();
+            if (failed) {
+                try {
+                    await input.assertActive?.();
+                    await deletePreviews(failed);
+                    failed.previewCleanupPending = false;
+                    failed.previewCleanupError = '';
+                    failed.previewCleanupNextRetryAt = null;
+                    await input.assertActive?.();
+                    await failed.save();
+                } catch (cleanupError) {
+                    await input.assertActive?.();
+                    failed.previewCleanupError = (cleanupError instanceof Error ? cleanupError.message : String(cleanupError)).slice(0, 2000);
+                    await failed.save();
+                }
+            }
         } else {
             await ClipRecommendationSchema.create({
                 channelID,
@@ -776,7 +858,7 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             }).catch(() => null);
         }
 
-        await logError({
+        await reportError({
             worker: 'clip_recommendations',
             message: 'VOD clip recommendation workflow failed',
             channelID,
@@ -788,16 +870,16 @@ export async function runVodClipRecommendationWorkflow(input: RunVodClipRecommen
             return {
                 error: true,
                 status: 'completed',
-                message: `Clip analysis completed but billing recovery failed: ${message}`,
+                message: `Clip analysis completed but ${billingCompleted ? 'notification' : 'billing'} recovery failed: ${message}`,
                 recommendationID: recommendationObjectID,
                 candidateCount: recommendation?.candidateCount,
                 approvedCount: recommendation?.approvedCount,
                 retryable: true,
-                phase: 'billing'
+                phase: billingCompleted ? 'notification' : 'billing'
             };
         }
         return { error: true, status: 'failed', message, retryable: true, phase: 'analysis' };
     } finally {
-        await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
+        if (workDirCreated) await fs.rm(workDir, { recursive: true, force: true }).catch(() => undefined);
     }
 }

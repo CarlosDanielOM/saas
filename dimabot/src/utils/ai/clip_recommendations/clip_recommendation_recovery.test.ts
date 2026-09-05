@@ -27,12 +27,28 @@ test('charged and legacy completed records are not executed again', () => {
     assert.equal(decideClipRecommendationRecovery({
         status: 'completed',
         billingStatus: 'charged',
-        analysisCompletedAt: new Date()
+        analysisCompletedAt: new Date(),
+        notificationStatus: 'sent'
     }), 'return-completed');
     assert.equal(decideClipRecommendationRecovery({
         status: 'completed',
         analysisCompletedAt: null
     }), 'return-completed');
+});
+
+test('charged analysis retries only an outstanding completion notification', () => {
+    assert.equal(decideClipRecommendationRecovery({
+        status: 'completed',
+        billingStatus: 'charged',
+        analysisCompletedAt: new Date(),
+        notificationStatus: 'failed'
+    }), 'retry-notification');
+    assert.equal(decideClipRecommendationRecovery({
+        status: 'completed',
+        billingStatus: 'charged',
+        analysisCompletedAt: new Date(),
+        notificationStatus: 'pending'
+    }), 'retry-notification');
 });
 
 test('a charged record without completed analysis is refused', () => {

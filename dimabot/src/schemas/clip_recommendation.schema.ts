@@ -1,8 +1,10 @@
 import { Schema, model, Types } from 'mongoose';
+import type { RenderedEmailPayload } from '../utils/email/email.service.js';
 
 export type ClipRecommendationStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type ClipRecommendationSource = 'stream_offline' | 'manual';
 export type ClipRecommendationBillingStatus = 'pending' | 'charged' | 'failed';
+export type ClipRecommendationNotificationStatus = 'not_required' | 'pending' | 'sent' | 'failed';
 export type ClipRecommendationCandidateStatus = 'pending' | 'approved' | 'rejected' | 'confirmed' | 'denied';
 
 export interface IClipRecommendationCandidate {
@@ -39,6 +41,18 @@ export interface IClipRecommendation {
     chargeError: string;
     chargedAt: Date | null;
     analysisCompletedAt: Date | null;
+    billingAttemptCount: number;
+    billingLastAttemptAt: Date | null;
+    billingNextRetryAt: Date | null;
+    notificationStatus: ClipRecommendationNotificationStatus;
+    notificationPayload?: RenderedEmailPayload;
+    notificationError: string;
+    notificationLastAttemptAt: Date | null;
+    notificationNextRetryAt: Date | null;
+    notifiedAt: Date | null;
+    previewCleanupPending: boolean;
+    previewCleanupError: string;
+    previewCleanupNextRetryAt: Date | null;
     candidateCount: number;
     approvedCount: number;
     errorMessage: string;
@@ -86,6 +100,28 @@ const clipRecommendationSchema = new Schema<IClipRecommendation>({
     chargeError: { type: String, default: '' },
     chargedAt: { type: Date, default: null },
     analysisCompletedAt: { type: Date, default: null },
+    billingAttemptCount: { type: Number, default: 0 },
+    billingLastAttemptAt: { type: Date, default: null },
+    billingNextRetryAt: { type: Date, default: null, index: true },
+    notificationStatus: { type: String, enum: ['not_required', 'pending', 'sent', 'failed'], default: 'not_required', index: true },
+    notificationPayload: {
+        type: new Schema<RenderedEmailPayload>({
+            from: { type: String, required: true },
+            to: { type: [String], required: true },
+            subject: { type: String, required: true },
+            html: { type: String, required: true },
+            text: { type: String, required: true }
+        }, { _id: false }),
+        default: undefined,
+        select: false
+    },
+    notificationError: { type: String, default: '' },
+    notificationLastAttemptAt: { type: Date, default: null },
+    notificationNextRetryAt: { type: Date, default: null, index: true },
+    notifiedAt: { type: Date, default: null },
+    previewCleanupPending: { type: Boolean, default: false, index: true },
+    previewCleanupError: { type: String, default: '' },
+    previewCleanupNextRetryAt: { type: Date, default: null },
     candidateCount: { type: Number, default: 0 },
     approvedCount: { type: Number, default: 0 },
     errorMessage: { type: String, default: '' },

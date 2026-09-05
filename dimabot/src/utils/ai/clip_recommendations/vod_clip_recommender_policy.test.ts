@@ -37,3 +37,10 @@ test('a transient heartbeat failure is tolerated until the configured limit', ()
     assert.equal(shouldStopAfterHeartbeatFailure(2, 3), false);
     assert.equal(shouldStopAfterHeartbeatFailure(3, 3), true);
 });
+
+test('explicit non-retryable workflow failures are dead-lettered immediately', async () => {
+    const { getClipWorkflowFailureDisposition } = await import('./vod_clip_recommender_policy.js');
+    const disposition = getClipWorkflowFailureDisposition(job, 3, false);
+    assert.equal(disposition.action, 'dead-letter');
+    assert.equal(disposition.attempt, 1);
+});

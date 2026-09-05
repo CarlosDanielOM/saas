@@ -31,6 +31,17 @@ export function getClipJobFailureDisposition(job: CronQueueJob, maxAttempts: num
     };
 }
 
+export function getClipWorkflowFailureDisposition(
+    job: CronQueueJob,
+    maxAttempts: number,
+    retryable: boolean | undefined
+): ClipJobFailureDisposition {
+    if (retryable === false) {
+        return { action: 'dead-letter', attempt: getClipJobAttempt(job), job };
+    }
+    return getClipJobFailureDisposition(job, maxAttempts);
+}
+
 export function shouldStopAfterHeartbeatFailure(consecutiveFailures: number, failureLimit: number): boolean {
     const limit = Number.isFinite(failureLimit) ? Math.max(2, Math.floor(failureLimit)) : 2;
     return Math.max(0, Math.floor(consecutiveFailures)) >= limit;

@@ -29,6 +29,57 @@ interface SendEmailOptions {
   subject: string;
   emailComponent: ReactElement;
   from?: string;
+  idempotencyKey?: string;
+}
+
+export interface RenderedEmailPayload {
+  from: string;
+  to: string[];
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export async function renderEmail({
+  to,
+  subject,
+  emailComponent,
+  from,
+}: Omit<SendEmailOptions, "idempotencyKey">): Promise<RenderedEmailPayload> {
+  const [html, text] = await Promise.all([
+    render(emailComponent, { pretty: true }),
+    render(emailComponent, { plainText: true }),
+  ]);
+  return { from: from || EMAIL_FROM, to: [to], subject, html, text };
+}
+
+export async function sendRenderedEmail(
+  { from, to, subject, html, text }: RenderedEmailPayload,
+  idempotencyKey?: string,
+): Promise<{ error: boolean; message: string; data?: any }> {
+  if (!resend) {
+    console.error("[EmailService] Resend not configured - missing RESEND_API_KEY");
+    return { error: true, message: "Email service not configured" };
+  }
+  if (!to.length || to.some((recipient) => !recipient)) {
+    console.error("[EmailService] No recipient email provided");
+    return { error: true, message: "No recipient email provided" };
+  }
+
+  const result = await resend.emails.send(
+    { from, to, subject, html, text },
+    idempotencyKey ? { idempotencyKey } : undefined,
+  );
+  if (result.error) {
+    console.error("[EmailService] Failed to send email:", result.error);
+    return {
+      error: true,
+      message: result.error.message || "Failed to send email",
+    };
+  }
+
+  console.log(`[EmailService] Email sent successfully to ${to.join(", ")}: ${subject}`);
+  return { error: false, message: "Email sent successfully", data: result.data };
 }
 
 /**
@@ -39,6 +90,7 @@ export async function sendEmail({
   subject,
   emailComponent,
   from,
+  idempotencyKey,
 }: SendEmailOptions): Promise<{ error: boolean; message: string; data?: any }> {
   if (!resend) {
     console.error(
@@ -53,34 +105,8 @@ export async function sendEmail({
   }
 
   try {
-    // Render React Email component to HTML (render returns a Promise)
-    const [html, text] = await Promise.all([
-      render(emailComponent, { pretty: true }),
-      render(emailComponent, { plainText: true }),
-    ]);
-
-    const result = await resend.emails.send({
-      from: from || EMAIL_FROM,
-      to: [to],
-      subject,
-      html,
-      text,
-    });
-
-    if (result.error) {
-      console.error("[EmailService] Failed to send email:", result.error);
-      return {
-        error: true,
-        message: result.error.message || "Failed to send email",
-      };
-    }
-
-    console.log(`[EmailService] Email sent successfully to ${to}: ${subject}`);
-    return {
-      error: false,
-      message: "Email sent successfully",
-      data: result.data,
-    };
+    const payload = await renderEmail({ to, subject, emailComponent, from });
+    return await sendRenderedEmail(payload, idempotencyKey);
   } catch (error) {
     console.error("[EmailService] Error sending email:", {
       to,

@@ -54,6 +54,7 @@ bun.lock
 
 # Testing
 __screenshots__/
+.playwright-mcp/
 .nyc_output/
 
 # IDEs and editors
