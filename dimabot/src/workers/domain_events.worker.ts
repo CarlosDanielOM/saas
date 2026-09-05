@@ -2,9 +2,10 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import { DOMAIN_EVENT_CONSUMERS } from '../domain_events/domain_event_consumers.js';
 import {
-    DomainEventExecutionSupervisor, forkDomainEventConsumer,
+    DomainEventExecutionSupervisor, DomainEventPollSignal, forkDomainEventConsumer,
     type DomainEventChildMessage
 } from '../utils/domain_event_execution.js';
+import { DomainEventWakeups, domainEventWakeups, domainEventWakeupsEnabled } from '../utils/domain_event_wakeups.js';
 
 if (process.env.NODE_ENV !== 'production') {
     dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -41,19 +42,12 @@ if (definition && !DRY_RUN && !process.send) throw new Error('--consumer require
 let shutdownRequested = false;
 let supervisor: DomainEventExecutionSupervisor | undefined;
 let shutdownTask: Promise<void> | undefined;
-let wakeSleep: (() => void) | undefined;
-
-function sleep(): Promise<void> {
-    return new Promise((resolve) => {
-        const timer = setTimeout(done, POLL_INTERVAL_MS);
-        function done(): void {
-            clearTimeout(timer);
-            wakeSleep = undefined;
-            resolve();
-        }
-        wakeSleep = done;
-    });
-}
+const pollSignal = new DomainEventPollSignal();
+let wakeups: DomainEventWakeups | undefined;
+let watchdog: NodeJS.Timeout | undefined;
+const receiveWake = (message: unknown): void => {
+    if (message && typeof message === 'object' && 'type' in message && message.type === 'wake') pollSignal.wake();
+};
 
 function send(message: DomainEventChildMessage): Promise<void> {
     if (!process.connected || !process.send) process.exit(1);
@@ -68,11 +62,15 @@ function send(message: DomainEventChildMessage): Promise<void> {
 async function shutdown(code: number): Promise<void> {
     if (shutdownTask) return shutdownTask;
     shutdownRequested = true;
-    wakeSleep?.();
+    pollSignal.stop();
+    wakeups?.stop();
+    domainEventWakeups.stop();
+    process.off('message', receiveWake);
     shutdownTask = (async () => {
         // Keep the watchdog running until every child exit is observed, even if
         // the dispatch/connect await that received the signal never settles.
         await supervisor?.stop();
+        clearInterval(watchdog);
         const forceExit = setTimeout(() => process.exit(code), CONFIG.shutdownGraceMs);
         forceExit.unref();
         try {
@@ -92,7 +90,8 @@ async function bootstrap(): Promise<void> {
             config: {
                 pollIntervalMs: POLL_INTERVAL_MS, batchSize: BATCH_SIZE, maxAttempts: MAX_ATTEMPTS,
                 leaseMs: LEASE_MS, ...CONFIG, isolation: 'persistent-child-per-consumer',
-                maxChildren: DOMAIN_EVENT_CONSUMERS.length, wakeups: 'mongo-polling-only',
+                maxChildren: DOMAIN_EVENT_CONSUMERS.length,
+                wakeups: domainEventWakeupsEnabled() ? 'redis-hints-with-mongo-polling-fallback' : 'mongo-polling-only',
                 consumer: consumerID ?? null, runOnce: RUN_ONCE,
                 consumers: DOMAIN_EVENT_CONSUMERS.map(({ consumer, topics, schemaVersions }) => ({ consumer, topics, schemaVersions }))
             }
@@ -102,7 +101,7 @@ async function bootstrap(): Promise<void> {
 
     const requestShutdown = (): void => {
         shutdownRequested = true;
-        wakeSleep?.();
+        pollSignal.stop();
         if (!definition) void shutdown(0);
         // A child finishes its current delivery; the parent's grace watchdog
         // kills it if that delivery (or the event loop) cannot finish in time.
@@ -111,6 +110,14 @@ async function bootstrap(): Promise<void> {
     process.once('SIGTERM', requestShutdown);
     if (definition) process.once('disconnect', () => process.exit(1));
     process.once('exit', () => supervisor?.killAll());
+
+    if (!RUN_ONCE && domainEventWakeupsEnabled()) {
+        if (definition) process.on('message', receiveWake);
+        else {
+            wakeups = new DomainEventWakeups({ onWake: () => pollSignal.wake() });
+            wakeups.start();
+        }
+    }
 
     const [{ getMongoDBConnection }, { dispatchDomainEvents, drainDomainEvents }] = await Promise.all([
         import('../utils/databases/mongodb.database.js'),
@@ -152,13 +159,14 @@ async function bootstrap(): Promise<void> {
                 if (RUN_ONCE) throw error;
             }
             send({ type: 'polling' });
-            await sleep();
+            await pollSignal.wait(POLL_INTERVAL_MS);
         } while (!shutdownRequested);
     } else {
         do {
             let dispatched = 0;
             try {
                 dispatched = await dispatchDomainEvents(DOMAIN_EVENT_CONSUMERS, BATCH_SIZE);
+                if (dispatched > 0 && domainEventWakeupsEnabled()) supervisor?.wake();
             } catch (error) {
                 console.warn(`Domain event dispatch failed: ${String(error)}`);
                 if (RUN_ONCE) throw error;
@@ -170,7 +178,7 @@ async function bootstrap(): Promise<void> {
                 if (!await supervisor!.waitForDrain()) throw new Error('One or more consumer drains failed');
                 break;
             }
-            if (dispatched < BATCH_SIZE) await sleep();
+            if (dispatched < BATCH_SIZE) await pollSignal.wait(POLL_INTERVAL_MS);
         } while (!shutdownRequested);
     }
     await shutdown(0);
@@ -181,7 +189,8 @@ function startSupervisor(): void {
         DOMAIN_EVENT_CONSUMERS.map(({ consumer }) => consumer), CONFIG,
         (consumer) => forkDomainEventConsumer(new URL(import.meta.url), consumer, RUN_ONCE), RUN_ONCE
     );
-    setInterval(() => supervisor!.tick(), 100).unref();
+    watchdog = setInterval(() => supervisor!.tick(), 100);
+    watchdog.unref();
     supervisor.tick();
 }
 

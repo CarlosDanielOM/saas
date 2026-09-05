@@ -3,7 +3,7 @@ import { EventEmitter, once } from 'node:events';
 import { fork } from 'node:child_process';
 import test from 'node:test';
 import {
-    DomainEventExecutionSupervisor, forkDomainEventConsumer,
+    DomainEventExecutionSupervisor, DomainEventPollSignal, forkDomainEventConsumer,
     type DomainEventChild, type DomainEventChildMessage
 } from './domain_event_execution.js';
 
@@ -158,11 +158,14 @@ test('real TS child with a blocked event loop is killed while its sibling drains
     assert.equal(children[1].exitCode, 0);
 });
 
-test('worker dry-run is service-free and validates internal consumer IDs', { timeout: 10_000 }, async () => {
-    for (const consumer of ['polar-plan-v1', 'not-registered']) {
+test('worker dry-run is service-free and validates internal consumer IDs and wakeup modes', { timeout: 10_000 }, async () => {
+    for (const [consumer, enabled] of [['polar-plan-v1', 'true'], ['polar-plan-v1', 'false'], ['not-registered', 'true']]) {
         const child = fork(new URL('../workers/domain_events.worker.ts', import.meta.url), [
             '--dry-run', '--once', `--consumer=${consumer}`
-        ], { execArgv: process.execArgv, stdio: ['ignore', 'pipe', 'pipe', 'ipc'] });
+        ], {
+            execArgv: process.execArgv, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+            env: { ...process.env, DOMAIN_EVENTS_WAKEUPS_ENABLED: enabled }
+        });
         let output = '';
         child.stdout!.on('data', (chunk) => { output += chunk; });
         const [code] = await once(child, 'exit');
@@ -172,7 +175,8 @@ test('worker dry-run is service-free and validates internal consumer IDs', { tim
             assert.equal(code, 0);
             const parsed = JSON.parse(output);
             assert.equal(parsed.config.consumer, consumer);
-            assert.equal(parsed.config.wakeups, 'mongo-polling-only');
+            assert.equal(parsed.config.wakeups, enabled === 'false'
+                ? 'mongo-polling-only' : 'redis-hints-with-mongo-polling-fallback');
             assert.equal(parsed.config.maxChildren, parsed.config.consumers.length);
             assert.equal(parsed.config.runOnce, true);
         }
@@ -190,3 +194,90 @@ for (const mode of ['lease-error', 'lease-zero']) {
         assert.deepEqual(messages, [], 'obsolete handler never resumed its side effect');
     });
 }
+
+test('poll latch preserves pre-sleep hints, coalesces bursts, and falls back at each interval', async (context) => {
+    context.mock.timers.enable({ apis: ['setTimeout'] });
+    const signal = new DomainEventPollSignal();
+    context.after(() => signal.stop());
+    for (let i = 0; i < 10_000; i++) signal.wake();
+    await signal.wait(1000);
+    for (let i = 0; i < 2; i++) {
+        let polled = false;
+        const waiting = signal.wait(1000).then(() => { polled = true; });
+        context.mock.timers.tick(999);
+        await Promise.resolve();
+        assert.equal(polled, false, 'no retained hint queue');
+        context.mock.timers.tick(1);
+        await waiting;
+    }
+    const waiting = signal.wait(1000);
+    signal.wake();
+    await waiting;
+    const stopping = signal.wait(1000);
+    signal.stop();
+    await stopping;
+    await signal.wait(1000);
+});
+
+test('supervisor IPC wakes a child polling latch without any child Redis client', async () => {
+    const signal = new DomainEventPollSignal();
+    const child = Object.assign(new FakeChild(), {
+        send(message: { type: 'wake' }, callback: (error: Error | null) => void) {
+            assert.deepEqual(message, { type: 'wake' });
+            signal.wake();
+            callback(null);
+            return true;
+        }
+    });
+    const supervisor = new DomainEventExecutionSupervisor(['consumer'], config, () => child);
+    supervisor.tick();
+    const polling = signal.wait(1000);
+    supervisor.wake();
+    await polling;
+    supervisor.wake();
+    await signal.wait(1000);
+    signal.stop();
+    supervisor.killAll();
+});
+
+test('IPC burst publication is capped while callbacks stall and send failures are optional', () => {
+    const callbacks: ((error: Error | null) => void)[] = [];
+    const child = Object.assign(new FakeChild(), {
+        send(_message: { type: 'wake' }, callback: (error: Error | null) => void) {
+            callbacks.push(callback);
+            return false;
+        }
+    });
+    const supervisor = new DomainEventExecutionSupervisor(['consumer'], config, () => child);
+    supervisor.tick();
+    for (let i = 0; i < 10_000; i++) supervisor.wake();
+    assert.equal(callbacks.length, 1);
+    callbacks[0](null);
+    assert.equal(callbacks.length, 2, 'one coalesced follow-up');
+    callbacks[1](new Error('IPC disconnected'));
+    assert.doesNotThrow(() => supervisor.wake());
+    supervisor.killAll();
+    callbacks[2](null);
+    supervisor.wake();
+    assert.equal(callbacks.length, 3, 'stopping cannot send more hints');
+    assert.deepEqual(child.signals, ['SIGKILL']);
+    const optional = harness(['no-send']);
+    assert.doesNotThrow(() => optional.supervisor.wake());
+    optional.supervisor.killAll();
+});
+
+test('a synchronous IPC send failure does not fail the consumer or extend its watchdog', () => {
+    const child = Object.assign(new FakeChild(), {
+        send(): boolean { throw new Error('IPC disconnected'); }
+    });
+    let now = 0;
+    const supervisor = new DomainEventExecutionSupervisor(['consumer'], config, () => child,
+        false, () => now, () => undefined);
+    supervisor.tick();
+    now = 4999;
+    assert.doesNotThrow(() => supervisor.wake());
+    assert.deepEqual(child.signals, []);
+    now = 5000;
+    supervisor.tick();
+    assert.deepEqual(child.signals, ['SIGKILL'], 'hints never renew the execution watchdog');
+});

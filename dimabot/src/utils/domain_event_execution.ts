@@ -18,6 +18,39 @@ export interface DomainEventChild {
     on(event: 'error', listener: (error: Error) => void): unknown;
     on(event: 'exit' | 'close', listener: (code: number | null, signal: NodeJS.Signals | null) => void): unknown;
     kill(signal: NodeJS.Signals): boolean;
+    send?(message: { type: 'wake' }, callback: (error: Error | null) => void): boolean;
+}
+
+/** A hint arriving during work or just before wait() survives until the next poll. */
+export class DomainEventPollSignal {
+    private pending = false;
+    private stopped = false;
+    private finish?: () => void;
+
+    wake(): void {
+        if (this.finish) this.finish();
+        else this.pending = true;
+    }
+
+    wait(intervalMs: number): Promise<void> {
+        if (this.stopped || this.pending) {
+            this.pending = false;
+            return Promise.resolve();
+        }
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => this.finish?.(), intervalMs);
+            this.finish = () => {
+                clearTimeout(timer);
+                this.finish = undefined;
+                resolve();
+            };
+        });
+    }
+
+    stop(): void {
+        this.stopped = true;
+        this.finish?.();
+    }
 }
 
 export function forkDomainEventConsumer(entry: URL, consumer: string, once: boolean): ChildProcess {
@@ -36,6 +69,8 @@ interface ConsumerProcess {
     killing: boolean;
     drained: boolean;
     done: boolean;
+    wakeInFlight?: boolean;
+    wakePending?: boolean;
 }
 
 /** One slot per registry entry. A killed slot is never reusable before exit. */
@@ -84,7 +119,33 @@ export class DomainEventExecutionSupervisor {
         this.checkDone();
     }
 
+    wake(): void {
+        if (this.stopping) return;
+        for (const slot of this.slots.values()) {
+            if (!slot.child?.send || slot.killing || slot.drained) continue;
+            slot.wakePending = true;
+            this.wakeChild(slot);
+        }
+    }
+
+    private wakeChild(slot: ConsumerProcess): void {
+        const child = slot.child;
+        if (!child?.send || slot.wakeInFlight || !slot.wakePending || slot.killing || slot.drained || this.stopping) return;
+        slot.wakeInFlight = true;
+        slot.wakePending = false;
+        try {
+            child.send({ type: 'wake' }, (error) => {
+                if (slot.child !== child) return;
+                slot.wakeInFlight = false;
+                if (!error) this.wakeChild(slot);
+            });
+        } catch {
+            slot.wakeInFlight = false;
+        }
+    }
+
     private start(consumer: string, slot: ConsumerProcess): void {
+        slot.wakeInFlight = slot.wakePending = false;
         slot.killing = false;
         slot.drained = false;
         slot.lease = undefined;

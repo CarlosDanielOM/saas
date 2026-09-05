@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildDomainEventKey, journalDomainEvent } from './domain_events.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
+import { DomainEventWakeups, domainEventWakeups } from './domain_event_wakeups.js';
 
 test('domain event keys encode delimiter-bearing components without collisions', () => {
     assert.notEqual(
@@ -57,6 +58,7 @@ test('owner identity cannot be a provider channel ID', async () => {
 });
 
 test('dispatch recovery marker is persisted in the original journal insert', async (context) => {
+    context.mock.method(domainEventWakeups, 'publish', () => assert.fail('No hint before Mongo acceptance'));
     const stopBeforeWakeup = new Error('Stop after inspecting the insert');
     context.mock.method(DomainEventSchema, 'init', (async () => DomainEventSchema) as never);
     context.mock.method(DomainEventSchema.collection, 'insertOne', (async (document: Record<string, unknown>, options: unknown) => {
@@ -74,6 +76,7 @@ test('dispatch recovery marker is persisted in the original journal insert', asy
 });
 
 test('journal acceptance and duplicate receipts require only Mongo, never a cache wakeup', async (context) => {
+    const publish = context.mock.method(domainEventWakeups, 'publish', () => undefined);
     const input = {
         source: 'test', sourceEventId: 'receipt', topic: 'channel' as const,
         type: 'test.accepted', channelID: 'channel', payload: {}
@@ -92,4 +95,47 @@ test('journal acceptance and duplicate receipts require only Mongo, never a cach
     assert.equal(duplicate.inserted, false);
     assert.equal(first.event.eventKey, duplicate.event.eventKey);
     assert.deepEqual(Object.keys(first).sort(), ['event', 'inserted']);
+    assert.equal(publish.mock.callCount(), 2, 'duplicates can also prompt recovery');
 });
+
+for (const stuck of ['connect', 'publish'] as const) {
+    test(`Mongo acceptance returns while cache ${stuck} never resolves`, { timeout: 2000 }, async (context) => {
+        context.mock.timers.enable({ apis: ['setTimeout'] });
+        const previous = process.env.DOMAIN_EVENTS_WAKEUPS_ENABLED;
+        process.env.DOMAIN_EVENTS_WAKEUPS_ENABLED = 'true';
+        context.after(() => {
+            if (previous === undefined) delete process.env.DOMAIN_EVENTS_WAKEUPS_ENABLED;
+            else process.env.DOMAIN_EVENTS_WAKEUPS_ENABLED = previous;
+        });
+        let connects = 0;
+        let publications = 0;
+        let destroys = 0;
+        const wakeups = new DomainEventWakeups({
+            timeoutMs: 50,
+            createClient: () => ({
+                connect: () => { connects++; return stuck === 'connect' ? new Promise(() => {}) : Promise.resolve(); },
+                publish: () => { publications++; return new Promise(() => {}); },
+                subscribe: async () => undefined,
+                on: () => undefined,
+                destroy: () => { destroys++; }
+            })
+        });
+        context.after(() => wakeups.stop());
+        context.mock.method(domainEventWakeups, 'publish', () => wakeups.publish());
+        context.mock.method(DomainEventSchema, 'init', (async () => DomainEventSchema) as never);
+        context.mock.method(DomainEventSchema.collection, 'insertOne', (async () => ({ acknowledged: true })) as never);
+        const input = {
+            source: 'test', sourceEventId: 'cache-stuck', topic: 'channel' as const,
+            type: 'test.accepted', channelID: 'channel', payload: {}
+        };
+        assert.equal((await journalDomainEvent(input)).inserted, true);
+        assert.equal(connects, 0, 'cold cache initialization is scheduled after ACK');
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        assert.equal(connects, 1);
+        assert.equal(publications, stuck === 'publish' ? 1 : 0);
+        assert.equal((await journalDomainEvent({ ...input, sourceEventId: 'second' })).inserted, true);
+        assert.equal(destroys, 0, 'Mongo acceptance did not wait even for the cache timeout');
+        context.mock.timers.tick(50);
+        assert.equal(destroys, 1, 'the background lifecycle is still bounded');
+    });
+}

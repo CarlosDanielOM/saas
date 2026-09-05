@@ -6,6 +6,7 @@ import type {
     JournalDomainEventResult
 } from '../domain_events/domain_event.types.js';
 import { DomainEventSchema, type IDomainEvent } from '../schemas/domain_event.schema.js';
+import { domainEventWakeups } from './domain_event_wakeups.js';
 
 const DEFAULT_RETENTION_SECONDS: Record<DomainEventTopic, number> = {
     channel: 90 * 24 * 60 * 60,
@@ -142,6 +143,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
     }
 
     const event = toEnvelope(eventDocument);
+    domainEventWakeups.publish();
     return {
         event,
         inserted
