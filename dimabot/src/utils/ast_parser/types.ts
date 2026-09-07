@@ -165,6 +165,7 @@ export interface ExecutionContext {
     userDisplayName: string;
     userPlan: 'free' | 'premium' | 'pro';
     userLevel: number;
+    enforceFunctionPermissions: boolean;
     argument?: string;
     count: number;
     eventData?: Record<string, unknown>;

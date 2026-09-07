@@ -6,6 +6,7 @@ import type { IEventsub } from '../schemas/eventsub.schema.js';
 import { createExecutionContext, renderAstWithSourceReference } from '../utils/ast_parser/index.js';
 import { registerAllFunctions } from '../utils/ast_parser/functions/index.js';
 import type { ExecutionContext } from '../utils/ast_parser/types.js';
+import { resolveAuthoredAstUserLevel } from './special_parser.userlevel.js';
 
 export interface ISpecialParserContext {
     channelID: string;
@@ -45,34 +46,9 @@ interface IExtractedNumericInfo {
     viewers?: number;
 }
 
-interface IBadgeLike {
-    set_id?: string;
-    id?: string;
-}
-
 interface IPlaceholderResolution {
     text: string;
     error?: string;
-}
-
-const MODERATOR_BADGE_IDS = new Set([
-    'moderator',
-    'lead_mod',
-    'lead_moderator',
-    'mod'
-]);
-
-function inferUserLevelFromBadges(eventData: Record<string, unknown>): number {
-    const badges = Array.isArray(eventData.badges) ? (eventData.badges as IBadgeLike[]) : [];
-
-    for (const badge of badges) {
-        const badgeSetId = String(badge?.set_id || badge?.id || '').toLowerCase();
-        if (MODERATOR_BADGE_IDS.has(badgeSetId)) {
-            return 7;
-        }
-    }
-
-    return 1;
 }
 
 function extractUserInfo(eventData: Record<string, unknown>): IExtractedUserInfo {
@@ -375,8 +351,7 @@ export async function parseSpecialCommands(
         }
     }
 
-    const inferredUserLevel = inferUserLevelFromBadges(eventData);
-    const effectiveUserLevel = Math.max(context.userLevel ?? 1, inferredUserLevel);
+    const effectiveUserLevel = resolveAuthoredAstUserLevel(eventData, context.userLevel);
 
     const resolvedScopeType = context.scopeType || 'command';
     const resolvedScopeName = normalizeScopeName(
@@ -395,6 +370,7 @@ export async function parseSpecialCommands(
         userDisplayName: extracted.userName || '',
         userPlan: context.userPlan || (streamer?.plan_tier as 'free' | 'premium' | 'pro' | undefined) || 'free',
         userLevel: effectiveUserLevel,
+        enforceFunctionPermissions: false,
         argument: context.argument,
         count: context.count || 0,
         eventData,

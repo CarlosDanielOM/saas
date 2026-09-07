@@ -857,16 +857,13 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                 return { value: `[Unknown function: ${funcNode.name}]`, context: currentContext };
             }
 
-            // Central permission gate: enforce the registered minUserLevel
-            // metadata at execution time, in every path (AI AST_PARSER tool,
-            // streamer-authored commands, timers, redemptions). Metadata alone
-            // is documentation - without this check any chatter could trigger
-            // gated actions (set.title, add.vip, ...) through paths whose
-            // handlers never inspect ctx.userLevel.
+            // LLM AST_PARSER only. Streamer-authored templates (commands,
+            // events, timers, redemptions) set enforceFunctionPermissions
+            // false so command userLevel / event ownership is the gate.
             const metadata = functionMetadataRegistry.get(funcNode.name);
             const requiredLevel = metadata?.minUserLevel ?? 1;
             const actualLevel = currentContext.userLevel ?? 1;
-            if (actualLevel < requiredLevel) {
+            if (currentContext.enforceFunctionPermissions !== false && actualLevel < requiredLevel) {
                 return {
                     value: buildPermissionDeniedMessage(funcNode.name, requiredLevel, actualLevel),
                     context: currentContext
@@ -1319,6 +1316,7 @@ export function createExecutionContext(overrides: Partial<ExecutionContext> = {}
         userDisplayName: '',
         userPlan: 'free',
         userLevel: 1,
+        enforceFunctionPermissions: true,
         count: 0,
         countModified: false,
         streamer: null,

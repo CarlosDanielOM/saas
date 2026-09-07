@@ -5,6 +5,7 @@ import { getFollowDefenseStatus, triggerFollowDefenseAttackMode } from '../../..
 const REQUIRED_MOD_LEVEL = 7;
 
 function canUseDefenseMode(ctx: ExecutionContext): boolean {
+    if (ctx.enforceFunctionPermissions === false) return true;
     return ctx.userLevel >= REQUIRED_MOD_LEVEL;
 }
 

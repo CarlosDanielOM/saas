@@ -221,6 +221,7 @@ function checkUserLevel(commandName: string, ctx: ExecutionContext): boolean {
 // Returns an explicit denial message (never '') so the AI harness surfaces
 // the refusal to the model instead of reporting a silent success.
 function denyIfBelowLevel(commandName: string, ctx: ExecutionContext): string | null {
+    if (ctx.enforceFunctionPermissions === false) return null;
     if (checkUserLevel(commandName, ctx)) return null;
     return buildPermissionDeniedMessage(
         commandName,

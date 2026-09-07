@@ -16,9 +16,10 @@ mock.module('../../classes/twitch_streamers.class.js', { defaultExport: { getTwi
 mock.module('../ai/openrouter/command.ai.js', { namedExports: { executeAiCommand: forbiddenEffect } });
 const { registerChannelFunctions } = await import('./functions/channel.functions.js');
 
-// Verifies the central minUserLevel gate: gated functions must be denied
+// Verifies the LLM minUserLevel gate: gated functions must be denied
 // before their handler runs when ctx.userLevel is below the metadata level,
 // and the denial must be an explicit message (never a silent '').
+// Authored templates (commands/events) skip this gate.
 //
 // NOTE: registerAllFunctions() is intentionally not used here because
 // registerModerationFunctions() starts a setInterval worker (restore-mod
