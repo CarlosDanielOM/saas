@@ -13,7 +13,7 @@
     />
 
     <!-- External Modular Stylesheet (cache bust: v=36) -->
-    <link rel="stylesheet" href="panel.css?v=38" />
+    <link rel="stylesheet" href="panel.css?v=40" />
   </head>
   <body>
     <!-- Toast Notification -->
@@ -176,7 +176,7 @@
       <div id="screen-config" class="app-screen">
         <div class="screen-header">
           <h2 class="screen-title">Config Preferences</h2>
-          <p class="screen-desc">Adjust sound properties and latency limits.</p>
+          <p class="screen-desc">Local preview volume for this panel only.</p>
         </div>
 
         <div class="settings-group">
@@ -207,28 +207,6 @@
           />
         </div>
 
-        <div class="settings-group">
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Auto-trigger on Overlay</div>
-              <div class="settings-desc">Instantly play on buy.</div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Low Latency Mode</div>
-              <div class="settings-desc">Improves response time.</div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -256,6 +234,7 @@
 
       <!-- Interactive Mock Player -->
       <div id="player-widget" class="player-widget">
+        <div class="preview-visual" hidden></div>
         <button class="play-trigger-btn" onclick="togglePlayPreview()">
           <svg id="player-play-icon" viewBox="0 0 24 24">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -335,6 +314,6 @@
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
 
     <!-- External Modular Scripts -->
-    <script src="panel.js?v=39"></script>
+    <script src="panel.js?v=40"></script>
   </body>
 </html>

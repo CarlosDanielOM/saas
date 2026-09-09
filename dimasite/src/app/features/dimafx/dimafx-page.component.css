@@ -479,7 +479,8 @@
   min-width: 0;
 }
 
-.lf-item-card__head .lf-chip--bits {
+.lf-item-card__head .lf-chip--bits,
+.lf-item-card__head .lf-chip--ok {
   flex-shrink: 0;
   padding: 0.15rem 0.45rem;
   font-size: 0.68rem;

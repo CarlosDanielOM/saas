@@ -16,7 +16,7 @@
     />
 
     <!-- External Modular Stylesheet -->
-    <link rel="stylesheet" href="mobile.css?v=38" />
+    <link rel="stylesheet" href="mobile.css?v=40" />
   </head>
   <body>
     <!-- Toast Notification -->
@@ -169,7 +169,7 @@
         <div class="screen-header">
           <h2 class="screen-title">Preferences</h2>
           <p class="screen-desc">
-            Adjust media parameters and system notifications.
+            Local preview volume for this panel only.
           </p>
         </div>
 
@@ -203,32 +203,6 @@
           />
         </div>
 
-        <div class="settings-group">
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Auto-trigger on Overlay</div>
-              <div class="settings-desc">
-                Immediately play sounds on checkout.
-              </div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" checked />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Low Latency Mode</div>
-              <div class="settings-desc">
-                Prioritizes audio execution speed.
-              </div>
-            </div>
-            <label class="switch">
-              <input type="checkbox" />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -257,6 +231,7 @@
 
       <!-- Mobile Audio widget -->
       <div id="mobile-player" class="mobile-player-box">
+        <div class="preview-visual" hidden></div>
         <button class="btn-play-sheet" onclick="togglePlayPreview()">
           <svg id="play-icon-svg" viewBox="0 0 24 24">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -337,6 +312,6 @@
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
 
     <!-- External Modular Scripts -->
-    <script src="mobile.js?v=39"></script>
+    <script src="mobile.js?v=40"></script>
   </body>
 </html>

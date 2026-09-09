@@ -295,6 +295,7 @@ function openDrawer(item) {
   selectedItem = item;
   selectedAction = inventory?.config?.quickPurchaseAction === "save" && identityShared ? "save" : "use_now";
   resetPlayer();
+  syncDrawerPreview();
   (getEl("drawer-title", "sheet-title") || {}).textContent = item.name;
   (getEl("drawer-subtitle", "sheet-category") || {}).textContent = item.categoryLabel;
   (getEl("drawer-desc", "sheet-desc") || {}).textContent = item.description;
@@ -393,35 +394,104 @@ function endAction() {
   setActionInFlight(false);
 }
 
-function togglePlayPreview() {
-  if (!selectedItem?.mediaUrl) return;
-  if (isPlaying) return resetPlayer();
-  previewPlayer = new Audio(selectedItem.mediaUrl);
-  previewPlayer.volume = getPreviewVolume();
-  
-  previewPlayer.addEventListener("loadedmetadata", updatePlayerTime);
-  previewPlayer.addEventListener("timeupdate", updatePlayerTime);
-  
-  previewPlayer.play().catch(() => showToast("Preview blocked", "Tap again or check browser audio permissions.", "error"));
-  isPlaying = true;
-  getEl("player-widget", "mobile-player")?.classList.add("playing");
+function getPreviewKind(item) {
+  const category = String(item?.category || "").toLowerCase();
+  const mediaType = String(item?.mediaType || "").toLowerCase();
+  if (category === "video" || mediaType.startsWith("video")) return "video";
+  if (category === "gif" || mediaType === "gif" || mediaType.startsWith("image")) return "gif";
+  return "audio";
+}
+
+function getPreviewWidget() {
+  return getEl("player-widget", "mobile-player");
+}
+
+function syncDrawerPreview() {
+  const widget = getPreviewWidget();
+  if (!widget || !selectedItem) return;
+  const kind = getPreviewKind(selectedItem);
+  widget.dataset.previewKind = kind;
+  const visual = widget.querySelector(".preview-visual");
+  if (!visual) return;
+  visual.innerHTML = "";
+  visual.hidden = kind === "audio";
+  if (kind === "video" && selectedItem.mediaUrl) {
+    const video = document.createElement("video");
+    video.className = "preview-video";
+    video.src = selectedItem.mediaUrl;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.setAttribute("playsinline", "");
+    visual.appendChild(video);
+  } else if (kind === "gif") {
+    const src = selectedItem.mediaUrl || selectedItem.image;
+    if (src) {
+      const img = document.createElement("img");
+      img.className = "preview-gif";
+      img.src = src;
+      img.alt = selectedItem.name || "";
+      visual.appendChild(img);
+    }
+  }
+  updatePlayerTime();
+}
+
+function startPreviewTicker() {
+  clearInterval(playInterval);
   playInterval = setInterval(() => {
     document.querySelectorAll(".wave-bar,.w-bar").forEach((bar) => {
       bar.style.height = Math.floor(Math.random() * 80 + 20) + "%";
     });
     updatePlayerTime();
   }, 140);
+}
+
+function togglePlayPreview() {
+  if (!selectedItem) return;
+  const kind = getPreviewKind(selectedItem);
+  if (kind === "gif") {
+    const img = getPreviewWidget()?.querySelector(".preview-gif");
+    if (!img?.src) return;
+    const src = img.src;
+    img.removeAttribute("src");
+    img.src = src;
+    return;
+  }
+  if (isPlaying) return resetPlayer();
+  if (kind === "video") {
+    const video = getPreviewWidget()?.querySelector(".preview-video");
+    if (!video?.src) return;
+    previewPlayer = video;
+  } else {
+    if (!selectedItem.mediaUrl) return;
+    previewPlayer = new Audio(selectedItem.mediaUrl);
+  }
+  previewPlayer.volume = getPreviewVolume();
+  previewPlayer.onloadedmetadata = updatePlayerTime;
+  previewPlayer.ontimeupdate = updatePlayerTime;
   previewPlayer.onended = resetPlayer;
+  previewPlayer.play().catch(() => showToast("Preview blocked", "Tap again or check browser audio permissions.", "error"));
+  isPlaying = true;
+  getPreviewWidget()?.classList.add("playing");
+  if (kind === "audio") startPreviewTicker();
+  else playInterval = setInterval(updatePlayerTime, 250);
 }
 
 function resetPlayer() {
   if (previewPlayer) {
     previewPlayer.pause();
-    previewPlayer = null;
+    try {
+      previewPlayer.currentTime = 0;
+    } catch {
+      // GIF/replaced media nodes can throw here.
+    }
+    if (!(previewPlayer instanceof HTMLVideoElement)) {
+      previewPlayer = null;
+    }
   }
   clearInterval(playInterval);
   isPlaying = false;
-  getEl("player-widget", "mobile-player")?.classList.remove("playing");
+  getPreviewWidget()?.classList.remove("playing");
   document.querySelectorAll(".wave-bar,.w-bar").forEach((bar) => (bar.style.height = "20%"));
   updatePlayerTime();
 }

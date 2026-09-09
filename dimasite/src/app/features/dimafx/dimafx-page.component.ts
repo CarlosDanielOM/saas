@@ -400,6 +400,13 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   setThumbnailUrl(value: string): void { this.thumbnailUrl.set(value); }
   setDurationMs(value: number): void { this.durationMs.set(value); }
   setBitsPrice(value: number): void { this.bitsPrice.set(value); }
+
+  formatBitsPrice(price: number): string {
+    if (Number(price) === 0) {
+      return this.t('modules.dimafx.bitsPriceFree');
+    }
+    return this.t('modules.dimafx.bitsPriceBits', { price });
+  }
   setVolume(value: number): void { this.volume.set(value); }
   setSortOrder(value: number): void { this.sortOrder.set(value); }
 

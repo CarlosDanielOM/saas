@@ -143,6 +143,8 @@
       "descriptionPlaceholder": "Cuéntale a los espectadores qué hace esto",
       "categoryLabel": "Categoría",
       "bitsPriceLabel": "Precio en Bits",
+      "bitsPriceFree": "Gratis",
+      "bitsPriceBits": "{{price}} Bits",
       "thumbnailLabel": "URL de miniatura",
       "optionalUrl": "URL de imagen opcional",
       "duration": "Duración (segundos)",

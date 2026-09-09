@@ -82,7 +82,11 @@
                 <div class="lf-item-card__body">
                   <div class="lf-item-card__head">
                     <h3 class="lf-item-card__title" [title]="item.name">{{ item.name }}</h3>
-                    <span class="lf-chip lf-chip--bits">{{ item.bitsPrice }}</span>
+                    <span
+                      class="lf-chip"
+                      [class.lf-chip--bits]="item.bitsPrice > 0"
+                      [class.lf-chip--ok]="item.bitsPrice === 0"
+                    >{{ formatBitsPrice(item.bitsPrice) }}</span>
                   </div>
                   <div class="lf-item-card__meta">
                     <span
@@ -204,7 +208,7 @@
               <span>{{ t('modules.dimafx.bitsPriceLabel') }}</span>
               <select [value]="bitsPrice()" (change)="setBitsPrice(+$any($event.target).value)">
                 @for (price of allowedBitPrices(); track price) {
-                  <option [value]="price">{{ price }} Bits</option>
+                  <option [value]="price">{{ formatBitsPrice(price) }}</option>
                 }
               </select>
             </label>

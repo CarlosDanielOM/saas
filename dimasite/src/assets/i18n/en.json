@@ -143,6 +143,8 @@
       "descriptionPlaceholder": "Tell viewers what this does",
       "categoryLabel": "Category",
       "bitsPriceLabel": "Bits Price",
+      "bitsPriceFree": "Free",
+      "bitsPriceBits": "{{price}} Bits",
       "thumbnailLabel": "Thumbnail URL",
       "optionalUrl": "Optional image URL",
       "duration": "Duration (seconds)",
