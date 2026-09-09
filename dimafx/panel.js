@@ -9,7 +9,6 @@ let selectedItem = null;
 let selectedAction = "use_now";
 let pendingBitsPurchase = null;
 let actionInFlight = false;
-let bitsLockTimeout = null;
 let isPlaying = false;
 let previewPlayer = null;
 let playInterval = null;
@@ -382,10 +381,6 @@ function onPreviewVolumeInput(slider) {
 function setActionInFlight(next) {
   actionInFlight = next;
   document.body.classList.toggle("dimafx-busy", next);
-  if (!next && bitsLockTimeout) {
-    clearTimeout(bitsLockTimeout);
-    bitsLockTimeout = null;
-  }
 }
 
 function beginAction() {
@@ -396,15 +391,6 @@ function beginAction() {
 
 function endAction() {
   setActionInFlight(false);
-}
-
-function beginBitsAction() {
-  if (!beginAction()) return false;
-  bitsLockTimeout = setTimeout(() => {
-    pendingBitsPurchase = null;
-    endAction();
-  }, 120000);
-  return true;
 }
 
 function togglePlayPreview() {
@@ -464,7 +450,7 @@ function buyWithBits(item, action) {
     showToast("Bits unavailable", "Bits purchases are only available inside Twitch.", "info");
     return;
   }
-  if (!beginBitsAction()) return;
+  if (!beginAction()) return;
   pendingBitsPurchase = { item, action };
   try {
     Twitch.ext.bits.useBits(item.sku);
@@ -503,10 +489,6 @@ async function triggerFreeItem(item, action = "use_now") {
 }
 
 async function completeBitsPurchase(item, action, transaction) {
-  if (bitsLockTimeout) {
-    clearTimeout(bitsLockTimeout);
-    bitsLockTimeout = null;
-  }
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
