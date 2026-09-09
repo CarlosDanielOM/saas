@@ -25,7 +25,7 @@ const PLAN_UPLOAD_LIMIT_MB: Record<PlanTier, number> = {
 };
 
 const PLAN_STORAGE_QUOTA_BYTES: Record<PlanTier, number> = {
-    free: 50 * 1024 * 1024,        // 50 MB - teaser allocation
+    free: 0,                        // Public-only; public media is quota-free
     premium: 250 * 1024 * 1024,    // 250 MB
     pro: 1024 * 1024 * 1024        // 1 GB
 };
@@ -55,6 +55,10 @@ export function getPlanUploadLimitBytes(planTier: PlanTier): number {
 
 export function getPlanStorageQuotaBytes(planTier: PlanTier): number {
     return PLAN_STORAGE_QUOTA_BYTES[planTier];
+}
+
+export function getMediaQuotaChargeBytes(scope: MediaAssetScope, bytes: number): number {
+    return scope === 'private' ? Math.max(0, bytes) : 0;
 }
 
 export function isValidMediaDisplayName(name: string): boolean {
@@ -131,6 +135,7 @@ export async function getChannelQuotaUsageBytes(channelID: string): Promise<numb
         {
             $match: {
                 channelID,
+                assetScope: 'private',
                 isActive: true,
                 deletedAt: null
             }

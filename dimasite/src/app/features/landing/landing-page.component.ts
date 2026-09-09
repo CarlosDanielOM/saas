@@ -173,7 +173,7 @@ export class LandingPageComponent implements OnInit {
       note: 'Credits are non-rollover.'
     },
     { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' },
-    { label: 'Max file storage', free: '50MB', premium: '250MB', pro: '1GB' },
+    { label: 'Private storage', free: 'None', premium: '250MB', pro: '1GB' },
     {
       label: 'Bandwidth',
       free: '10GB',

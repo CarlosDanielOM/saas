@@ -78,7 +78,7 @@ interface DeleteState {
 const DEFAULT_LIBRARY_META: MediaLibraryMeta = {
   planTier: 'free',
   quotaBytesUsed: 0,
-  quotaBytesLimit: 50 * 1024 * 1024
+  quotaBytesLimit: 0
 };
 
 const SUPPORTED_TRIGGER_MEDIA_TYPES = new Set<MediaType>(['video', 'audio']);

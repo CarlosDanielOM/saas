@@ -22,16 +22,10 @@
       </div>
       <div class="lf-quota">
         <div class="lf-quota__head">
-          <span>{{ t('triggers.stats.storageQuota') }}</span>
+          <span>{{ t('triggers.marketplace.publicAccessTitle') }}</span>
         </div>
-        <strong>
-          {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-          <span class="lf-muted">{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
-        </strong>
-        <div class="lf-bar" aria-hidden="true">
-          <div class="lf-bar__fill" [style.width.%]="quotaPercent()"></div>
-        </div>
-        <p class="lf-note">{{ t('triggers.marketplace.remainingQuota', { size: formatBytes(remainingQuotaBytes()) }) }}</p>
+        <strong>{{ t('triggers.marketplace.quotaFree') }}</strong>
+        <p class="lf-note">{{ t('triggers.marketplace.publicAccessHint') }}</p>
       </div>
     </div>
 

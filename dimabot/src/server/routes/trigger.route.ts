@@ -25,6 +25,7 @@ import {
     getDefaultMediaScope,
     getFileExtension,
     getInitialMarketplaceStatus,
+    getMediaQuotaChargeBytes,
     getPlanStorageQuotaBytes,
     getPlanUploadLimitBytes,
     hasTriggerPermission,
@@ -536,9 +537,11 @@ router.post('/library/:channelID/upload', authMiddleware as any, async (req: Mul
                 });
             }
 
+            const scope = getDefaultMediaScope(planTier, req.body.scope);
+            const quotaBytesCharged = getMediaQuotaChargeBytes(scope, req.file.size);
             const quotaBytesUsed = await getChannelQuotaUsageBytes(channelIdStr);
             const quotaBytesLimit = getPlanStorageQuotaBytes(planTier);
-            if (quotaBytesUsed + req.file.size > quotaBytesLimit) {
+            if (quotaBytesUsed + quotaBytesCharged > quotaBytesLimit) {
                 return res.status(400).json({
                     error: true,
                     message: 'Storage quota exceeded',
@@ -551,7 +554,6 @@ router.post('/library/:channelID/upload', authMiddleware as any, async (req: Mul
                 });
             }
 
-            const scope = getDefaultMediaScope(planTier, req.body.scope);
             const extension = getFileExtension(req.file.originalname || req.file.filename, req.file.mimetype);
             const storedFileName = buildStoredMediaFileName(displayName, extension);
             const s3Key = buildMediaS3Key(scope, mediaType, channelIdStr, storedFileName);
@@ -597,14 +599,14 @@ router.post('/library/:channelID/upload', authMiddleware as any, async (req: Mul
                 assetID: asset._id,
                 relationType: 'owner_upload',
                 localAlias: null,
-                quotaBytesCharged: req.file.size,
+                quotaBytesCharged,
                 assetScope: scope,
                 mediaType,
                 isActive: true,
                 deletedAt: null
             });
 
-            const updatedQuotaBytesUsed = quotaBytesUsed + req.file.size;
+            const updatedQuotaBytesUsed = quotaBytesUsed + quotaBytesCharged;
 
             return res.status(201).json({
                 error: false,
@@ -701,18 +703,6 @@ router.post('/library/:channelID/add-public/:assetID', authMiddleware as any, as
         const planTier = normalizePlanTier(streamer.plan_tier);
         const quotaBytesUsed = await getChannelQuotaUsageBytes(channelIdStr);
         const quotaBytesLimit = getPlanStorageQuotaBytes(planTier);
-        if (quotaBytesUsed + asset.bytes > quotaBytesLimit) {
-            return res.status(400).json({
-                error: true,
-                message: 'Storage quota exceeded',
-                status: 400,
-                data: {
-                    quotaBytesUsed,
-                    quotaBytesLimit,
-                    attemptedBytes: asset.bytes
-                }
-            });
-        }
 
         const libraryItem = await UserMediaLibraryItemSchema.create({
             channelID: channelIdStr,
@@ -721,7 +711,7 @@ router.post('/library/:channelID/add-public/:assetID', authMiddleware as any, as
             assetID: asset._id,
             relationType: 'public_library_add',
             localAlias: null,
-            quotaBytesCharged: asset.bytes,
+            quotaBytesCharged: 0,
             assetScope: 'public',
             mediaType: asset.mediaType,
             isActive: true,
@@ -737,7 +727,7 @@ router.post('/library/:channelID/add-public/:assetID', authMiddleware as any, as
             data: mapLibraryItemResponse(libraryItem.toObject(), asset.toObject()),
             meta: {
                 planTier,
-                quotaBytesUsed: quotaBytesUsed + asset.bytes,
+                quotaBytesUsed,
                 quotaBytesLimit
             }
         });

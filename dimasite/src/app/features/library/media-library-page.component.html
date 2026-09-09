@@ -35,17 +35,23 @@
           <span class="lf-spotlight__count">{{ t('modules.library.heroBadge') }}</span>
         </div>
 
-        <p class="lf-quota-label">{{ t('modules.library.quota.label') }}</p>
-        <p class="lf-quota-value">
-          {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-          /
-          {{ formatBytes(libraryMeta().quotaBytesLimit) }}
-        </p>
+        @if (planTier() === 'free') {
+          <p class="lf-quota-label">{{ t('modules.library.quota.freeLabel') }}</p>
+          <p class="lf-quota-value">{{ t('modules.library.quota.freeValue') }}</p>
+          <p class="lf-note">{{ t('modules.library.quota.freeHint') }}</p>
+        } @else {
+          <p class="lf-quota-label">{{ t('modules.library.quota.label') }}</p>
+          <p class="lf-quota-value">
+            {{ formatBytes(libraryMeta().quotaBytesUsed) }}
+            /
+            {{ formatBytes(libraryMeta().quotaBytesLimit) }}
+          </p>
 
-        <div class="lf-bar" role="progressbar" [attr.aria-valuenow]="quotaPercent()" aria-valuemin="0" aria-valuemax="100">
-          <span class="lf-bar__fill" [style.width.%]="quotaPercent()"></span>
-        </div>
-        <p class="lf-note">{{ t('modules.library.quota.hint') }} · {{ quotaPercent() }}%</p>
+          <div class="lf-bar" role="progressbar" [attr.aria-valuenow]="quotaPercent()" aria-valuemin="0" aria-valuemax="100">
+            <span class="lf-bar__fill" [style.width.%]="quotaPercent()"></span>
+          </div>
+          <p class="lf-note">{{ t('modules.library.quota.hint') }} · {{ quotaPercent() }}%</p>
+        }
 
         <div class="lf-stats-strip lf-stats-strip--2">
           <div class="lf-stats-strip__item">
@@ -102,10 +108,8 @@
                 {{ (item.localAlias || item.asset?.displayName) | displayName }}
               </h3>
               <p class="lf-media__meta">
-                {{ formatBytes(item.quotaBytesCharged) }}
-                ·
                 @if (item.assetScope === 'private') {
-                  {{ t('modules.library.card.chargesQuota') }}
+                  {{ formatBytes(item.quotaBytesCharged) }} · {{ t('modules.library.card.chargesQuota') }}
                 } @else {
                   {{ t('modules.library.card.freeQuota') }}
                 }

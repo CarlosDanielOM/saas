@@ -40,18 +40,27 @@
             <span class="lf-stats-strip__meta">{{ t('triggers.stats.readyAssets') }}</span>
           </div>
           <div class="lf-stats-strip__item lf-stats-strip__item--quota">
-            <div class="lf-quota-head">
-              <span class="lf-stats-strip__label">{{ t('triggers.stats.storageQuota') }}</span>
-              <span class="lf-chip lf-chip--gold">{{ planTierLabel() }}</span>
-            </div>
-            <span class="lf-stats-strip__value lf-stats-strip__value--sm">
-              {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-              <span class="lf-muted">{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
-            </span>
-            <div class="lf-bar" aria-hidden="true">
-              <div class="lf-bar__fill" [style.width.%]="quotaPercent()"></div>
-            </div>
-            <span class="lf-stats-strip__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</span>
+            @if (planTier() === 'free') {
+              <div class="lf-quota-head">
+                <span class="lf-stats-strip__label">{{ t('triggers.stats.publicUploads') }}</span>
+                <span class="lf-chip lf-chip--accent">{{ planTierLabel() }}</span>
+              </div>
+              <span class="lf-stats-strip__value lf-stats-strip__value--sm">{{ t('triggers.stats.fairUse') }}</span>
+              <span class="lf-stats-strip__meta">{{ t('triggers.stats.publicUploadHint', { size: uploadLimitLabel() }) }}</span>
+            } @else {
+              <div class="lf-quota-head">
+                <span class="lf-stats-strip__label">{{ t('triggers.stats.privateStorage') }}</span>
+                <span class="lf-chip lf-chip--gold">{{ planTierLabel() }}</span>
+              </div>
+              <span class="lf-stats-strip__value lf-stats-strip__value--sm">
+                {{ formatBytes(libraryMeta().quotaBytesUsed) }}
+                <span class="lf-muted">{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
+              </span>
+              <div class="lf-bar" aria-hidden="true">
+                <div class="lf-bar__fill" [style.width.%]="quotaPercent()"></div>
+              </div>
+              <span class="lf-stats-strip__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</span>
+            }
           </div>
         </div>
       </article>
@@ -229,7 +238,7 @@
                       </span>
                     </div>
                     <p class="lf-media-row__meta">
-                      {{ item.asset?.ownerChannelName }} · {{ formatBytes(item.quotaBytesCharged) }}
+                      {{ item.asset?.ownerChannelName }} · {{ formatBytes(item.asset?.bytes || 0) }}
                     </p>
                     <p class="lf-media-row__meta">
                       {{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }}
@@ -328,7 +337,7 @@
                   <span class="lf-picker__icon">{{ mediaGlyph(item.asset?.mediaType || 'video') }}</span>
                   <span class="lf-picker__text">
                     <strong>{{ (item.localAlias || item.asset?.displayName) | displayName }}</strong>
-                    <span>{{ formatBytes(item.quotaBytesCharged) }} · {{ t('triggers.scope.' + item.assetScope) }}</span>
+                    <span>{{ formatBytes(item.asset?.bytes || 0) }} · {{ t('triggers.scope.' + item.assetScope) }}</span>
                   </span>
                 </button>
               } @empty {
@@ -581,7 +590,6 @@
 @if (isPublicLibraryModalOpen() && channelID()) {
   <app-public-library-modal
     [channelId]="channelID()!"
-    [libraryMeta]="libraryMeta()"
     [ownedAssetIds]="libraryAssetIds()"
     (close)="closePublicLibraryModal()"
     (assetAdded)="handlePublicLibraryAssetAdded($event)"

@@ -14,7 +14,6 @@ import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
 import {
   MediaAsset,
-  MediaLibraryMeta,
   MediaLibraryMutationResult,
   MediaType
 } from '../triggers.model';
@@ -42,7 +41,6 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   private activeRequestId = 0;
 
   readonly channelId = input.required<string>();
-  readonly libraryMeta = input.required<MediaLibraryMeta>();
   readonly ownedAssetIds = input.required<string[]>();
 
   readonly close = output<void>();
@@ -61,15 +59,6 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   readonly filterOptions: MediaFilter[] = ['all', 'video', 'audio', 'image', 'gif'];
   readonly ownedAssetIdSet = computed(() => new Set(this.ownedAssetIds()));
-  readonly quotaPercent = computed(() => {
-    const meta = this.libraryMeta();
-    if (!meta.quotaBytesLimit) {
-      return 0;
-    }
-
-    return Math.max(0, Math.min(100, Math.round((meta.quotaBytesUsed / meta.quotaBytesLimit) * 100)));
-  });
-  readonly remainingQuotaBytes = computed(() => Math.max(0, this.libraryMeta().quotaBytesLimit - this.libraryMeta().quotaBytesUsed));
 
   ngOnInit(): void {
     this.loadAssets();

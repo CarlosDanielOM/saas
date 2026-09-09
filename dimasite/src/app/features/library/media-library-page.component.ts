@@ -60,7 +60,7 @@ export class MediaLibraryPageComponent {
   readonly libraryMeta = signal<MediaLibraryMeta>({
     planTier: 'free',
     quotaBytesUsed: 0,
-    quotaBytesLimit: 50 * 1024 * 1024
+    quotaBytesLimit: 0
   });
 
   readonly isUploadModalOpen = signal(false);

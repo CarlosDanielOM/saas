@@ -48,15 +48,18 @@
       "description": "Construye momentos con triggers usando tu biblioteca privada, assets publicos y recompensas del canal sin salir de los limites de tu plan."
     },
     "library": {
-      "description": "Sube y gestiona tus archivos multimedia privados. Los usuarios Free tienen 100 MB, Premium 500 MB, Pro 1 GB. Los assets públicos son gratuitos y se comparten entre funciones.",
+      "description": "Sube y gestiona contenido multimedia público compartido. Los canales Free solo usan contenido público; Premium incluye 250 MB privados y Pro incluye 1 GB.",
       "backToModules": "Volver a módulos",
       "heroBadge": "Almacenamiento",
       "eyebrow": "Biblioteca Multimedia",
       "title": "Tu Biblioteca Multimedia",
-      "subtitle": "Sube archivos privados para triggers, alerts y extensiones. Los assets públicos son gratuitos y compartidos en la plataforma.",
+      "subtitle": "Sube contenido público para triggers y extensiones. Los planes de pago también pueden mantener contenido privado.",
       "quota": {
         "label": "Almacenamiento Privado Usado",
-        "hint": "Solo los assets privados cuentan contra tu cuota del plan. Los assets públicos son gratuitos."
+        "hint": "Solo los assets privados cuentan contra tu cuota del plan. Los assets públicos son gratuitos.",
+        "freeLabel": "Subidas de contenido público",
+        "freeValue": "Uso razonable",
+        "freeHint": "Las subidas Free son públicas y nunca usan almacenamiento privado."
       },
       "scope": {
         "private": "Privado",
@@ -64,7 +67,7 @@
       },
       "card": {
         "chargesQuota": "Cuenta contra tu cuota",
-        "freeQuota": "Gratis (no usa cuota)"
+        "freeQuota": "Público · No usa cuota"
       },
       "actions": {
         "upload": "Subir Media",
@@ -74,7 +77,7 @@
         "kicker": "Añadir media",
         "title": "Subir a la Biblioteca",
         "limitTitle": "Subidas según tu plan",
-        "limitMessage": "El límite por archivo es {{size}}. Los archivos públicos no tienen límite de cantidad pero comparten este tope de tamaño.",
+        "limitMessage": "El límite por archivo es {{size}}. Las subidas públicas no usan cuota bajo uso razonable.",
         "privateInfo": "Los archivos privados cuentan contra tu cuota de almacenamiento de {{quota}}. Puedes eliminarlos cuando quieras.",
         "publicInfo": "Los archivos públicos no cuentan contra tu cuota, pero el cambio es irreversible. Solo CDOM Labs puede eliminarlos o deshabilitarlos — contacta a soporte si es necesario.",
         "nameLabel": "Nombre del media",
@@ -2152,7 +2155,7 @@
     "myLibrary": "Mi Biblioteca",
     "publicLibrary": "Biblioteca Publica",
     "browsePublicLibrary": "Explorar Biblioteca Publica",
-    "libraryDescription": "Todo lo que ya consume cuota de tu canal vive aqui. Usa estos assets al crear triggers.",
+    "libraryDescription": "El media asignado a tu canal vive aqui. Usa estos assets al crear triggers.",
     "libraryTabs": "Pestanas de media para triggers",
     "libraryEmptyTitle": "Tu biblioteca esta vacia",
     "libraryEmptyMessage": "Sube un archivo o agrega algo de la biblioteca publica para empezar a construir triggers.",
@@ -2174,8 +2177,12 @@
       "activeTriggers": "Triggers activos",
       "liveAutomation": "Listos para momentos activados por recompensas",
       "libraryItems": "Items en biblioteca",
-      "readyAssets": "Assets que consumen cuota del canal",
+      "readyAssets": "Listos para triggers y DimaFX",
       "storageQuota": "Cuota de almacenamiento",
+      "privateStorage": "Almacenamiento privado",
+      "publicUploads": "Subidas públicas",
+      "fairUse": "Uso razonable",
+      "publicUploadHint": "Públicas y sin cuota · {{size}} por subida",
       "of": "de",
       "perUploadLimit": "Limite por subida: {{size}}"
     },
@@ -2243,9 +2250,9 @@
     "upload": {
       "kicker": "Media del canal",
       "limitTitle": "Subidas segun tu plan",
-      "limitMessage": "Las subidas respetan tu cuota del plan y el limite por archivo de {{size}}.",
+      "limitMessage": "Las subidas públicas no usan cuota bajo uso razonable. Límite por archivo: {{size}}.",
       "freePlanTitle": "Las subidas del plan gratis son publicas",
-      "freePlanMessage": "Los canales gratis publican sus subidas en la biblioteca compartida automaticamente. Aun asi cuentan contra tu cuota cuando las tienes en tu biblioteca.",
+      "freePlanMessage": "Los canales gratis publican sus subidas en la biblioteca compartida automáticamente. No usan cuota de almacenamiento privado.",
       "nameLabel": "Nombre del media",
       "namePlaceholder": "Solo letras, numeros y guiones bajos",
       "pickFile": "Elige un archivo de media",
@@ -2262,9 +2269,12 @@
     "marketplace": {
       "kicker": "Tienda",
       "storeBadge": "Catalogo compartido de creadores",
-      "title": "Explora media publico compartido",
-      "description": "Explora media publico ya subido por la comunidad y agrega lo que quieras a la cuota de tu propia biblioteca.",
+      "title": "Explora contenido público compartido",
+      "description": "Explora contenido público subido por la comunidad y agrégalo a tu canal sin costo de almacenamiento.",
       "remainingQuota": "Espacio restante: {{size}}",
+      "publicAccessTitle": "Contenido público compartido",
+      "quotaFree": "Sin cuota",
+      "publicAccessHint": "Agrega cualquier asset público sin usar almacenamiento privado.",
       "publicTag": "Marketplace",
       "creatorLabel": "Creador",
       "typeLabel": "Tipo",
@@ -2273,7 +2283,7 @@
       "adding": "Agregando...",
       "added": "Agregado",
       "addTitle": "Asset agregado",
-      "addMessage": "El asset publico ahora vive dentro de la cuota de tu biblioteca.",
+      "addMessage": "El asset público está en tu biblioteca sin usar cuota de almacenamiento.",
       "emptyTitle": "No se encontraron assets publicos",
       "emptyMessage": "Prueba otra busqueda o vuelve despues cuando entren mas subidas.",
       "errorTitle": "Error del marketplace",

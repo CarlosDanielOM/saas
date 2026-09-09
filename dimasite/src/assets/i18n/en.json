@@ -48,15 +48,18 @@
       "description": "Build trigger moments with your private library, public assets, and channel point rewards while staying inside your plan limits."
     },
     "library": {
-      "description": "Upload and manage your private media assets. Free users get 100 MB, Premium 500 MB, Pro 1 GB. Public assets are free and shared across features.",
+      "description": "Upload and manage shared public media. Free channels are public-only; Premium includes 250 MB of private storage and Pro includes 1 GB.",
       "backToModules": "Back to modules",
       "heroBadge": "Media Storage",
       "eyebrow": "Media Library",
       "title": "Your Media Library",
-      "subtitle": "Upload private files for triggers, alerts, and extensions. Public assets are free and shared across the platform.",
+      "subtitle": "Upload public media for triggers and extensions. Paid plans can also keep media private.",
       "quota": {
         "label": "Private Storage Used",
-        "hint": "Only private assets count against your plan quota. Public assets are free."
+        "hint": "Only private assets count against your plan quota. Public assets are quota-free.",
+        "freeLabel": "Public media uploads",
+        "freeValue": "Fair use",
+        "freeHint": "Free uploads are public and never use private storage."
       },
       "scope": {
         "private": "Private",
@@ -64,7 +67,7 @@
       },
       "card": {
         "chargesQuota": "Counts toward your quota",
-        "freeQuota": "Free (does not use quota)"
+        "freeQuota": "Public · No quota used"
       },
       "actions": {
         "upload": "Upload Media",
@@ -74,7 +77,7 @@
         "kicker": "Add media",
         "title": "Upload to Library",
         "limitTitle": "Plan-aware uploads",
-        "limitMessage": "Per-file upload limit is {{size}}. Public files are unlimited in count but share this file-size cap.",
+        "limitMessage": "Per-file upload limit is {{size}}. Public uploads are quota-free under fair use.",
         "privateInfo": "Private files count against your {{quota}} storage quota. You can delete them anytime.",
         "publicInfo": "Public files do not count against your quota, but the change is irreversible. Only CDOM Labs can delete or disable them — contact support if needed.",
         "nameLabel": "Media name",
@@ -2152,7 +2155,7 @@
     "myLibrary": "My Library",
     "publicLibrary": "Public Library",
     "browsePublicLibrary": "Browse Public Library",
-    "libraryDescription": "Everything currently assigned to your channel quota lives here. Use these assets when creating triggers.",
+    "libraryDescription": "Media assigned to your channel lives here. Use these assets when creating triggers.",
     "libraryTabs": "Trigger media tabs",
     "libraryEmptyTitle": "Your library is empty",
     "libraryEmptyMessage": "Upload a media file or add something from the public library to start building triggers.",
@@ -2174,8 +2177,12 @@
       "activeTriggers": "Active triggers",
       "liveAutomation": "Ready for reward-driven moments",
       "libraryItems": "Library items",
-      "readyAssets": "Assets charging your channel quota",
+      "readyAssets": "Ready across triggers and DimaFX",
       "storageQuota": "Storage quota",
+      "privateStorage": "Private storage",
+      "publicUploads": "Public uploads",
+      "fairUse": "Fair use",
+      "publicUploadHint": "Public and quota-free · {{size}} per upload",
       "of": "of",
       "perUploadLimit": "Per-upload limit: {{size}}"
     },
@@ -2243,9 +2250,9 @@
     "upload": {
       "kicker": "Channel media",
       "limitTitle": "Plan-aware uploads",
-      "limitMessage": "Uploads follow your plan quota and per-upload file limit of {{size}}.",
+      "limitMessage": "Public uploads are quota-free under fair use. Per-upload file limit: {{size}}.",
       "freePlanTitle": "Free plan uploads are public",
-      "freePlanMessage": "Free channels publish uploads to the shared library automatically. They still count against your quota when added to your library.",
+      "freePlanMessage": "Free channels publish uploads to the shared library automatically. They do not use private storage quota.",
       "nameLabel": "Media name",
       "namePlaceholder": "Only letters, numbers, and underscores",
       "pickFile": "Choose a media file",
@@ -2263,8 +2270,11 @@
       "kicker": "Storefront",
       "storeBadge": "Shared creator catalog",
       "title": "Browse shared public media",
-      "description": "Browse public media already uploaded by the community and add what you want to your own library quota.",
+      "description": "Browse public media uploaded by the community and add it to your channel at no storage cost.",
       "remainingQuota": "Remaining space: {{size}}",
+      "publicAccessTitle": "Shared public media",
+      "quotaFree": "Quota-free",
+      "publicAccessHint": "Add any public asset without using private storage.",
       "publicTag": "Marketplace",
       "creatorLabel": "Creator",
       "typeLabel": "Type",
@@ -2273,7 +2283,7 @@
       "adding": "Adding...",
       "added": "Added",
       "addTitle": "Asset added",
-      "addMessage": "The public asset now lives in your library quota.",
+      "addMessage": "The public asset is now in your library without using storage quota.",
       "emptyTitle": "No public assets found",
       "emptyMessage": "Try a different search or check back after more uploads land.",
       "errorTitle": "Marketplace error",
