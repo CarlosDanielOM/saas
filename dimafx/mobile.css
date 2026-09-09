@@ -928,6 +928,15 @@ input:checked + .slider:before {
   transform: none !important;
 }
 
+body.dimafx-busy .price-btn,
+body.dimafx-busy .drawer-buy-btn,
+body.dimafx-busy .btn-use-item,
+body.dimafx-busy .sheet-btn-buy {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: wait;
+}
+
 .sheet-btn-buy svg {
   width: 12px;
   height: 12px;

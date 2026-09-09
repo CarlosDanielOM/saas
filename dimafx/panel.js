@@ -8,6 +8,8 @@ let searchQuery = "";
 let selectedItem = null;
 let selectedAction = "use_now";
 let pendingBitsPurchase = null;
+let actionInFlight = false;
+let bitsLockTimeout = null;
 let isPlaying = false;
 let previewPlayer = null;
 let playInterval = null;
@@ -115,8 +117,15 @@ if (window.Twitch) {
   if (Twitch.ext.bits?.onTransactionComplete) {
     Twitch.ext.bits.onTransactionComplete((transaction) => {
       if (!pendingBitsPurchase) return;
-      completeBitsPurchase(pendingBitsPurchase.item, pendingBitsPurchase.action, transaction);
+      const pending = pendingBitsPurchase;
       pendingBitsPurchase = null;
+      completeBitsPurchase(pending.item, pending.action, transaction);
+    });
+  }
+  if (Twitch.ext.bits?.onTransactionCancelled) {
+    Twitch.ext.bits.onTransactionCancelled(() => {
+      pendingBitsPurchase = null;
+      endAction();
     });
   }
 } else {
@@ -357,11 +366,52 @@ function updatePlayerTime() {
   }
 }
 
+function getPreviewVolume() {
+  const slider = getEl("preview-volume") || document.querySelector(".volume-slider");
+  const raw = Number(slider?.value);
+  if (!Number.isFinite(raw)) return 0.6;
+  return Math.min(1, Math.max(0, raw / 100));
+}
+
+function onPreviewVolumeInput(slider) {
+  const label = getEl("val-volume");
+  if (label) label.textContent = `${slider.value}%`;
+  if (previewPlayer) previewPlayer.volume = getPreviewVolume();
+}
+
+function setActionInFlight(next) {
+  actionInFlight = next;
+  document.body.classList.toggle("dimafx-busy", next);
+  if (!next && bitsLockTimeout) {
+    clearTimeout(bitsLockTimeout);
+    bitsLockTimeout = null;
+  }
+}
+
+function beginAction() {
+  if (actionInFlight) return false;
+  setActionInFlight(true);
+  return true;
+}
+
+function endAction() {
+  setActionInFlight(false);
+}
+
+function beginBitsAction() {
+  if (!beginAction()) return false;
+  bitsLockTimeout = setTimeout(() => {
+    pendingBitsPurchase = null;
+    endAction();
+  }, 120000);
+  return true;
+}
+
 function togglePlayPreview() {
   if (!selectedItem?.mediaUrl) return;
   if (isPlaying) return resetPlayer();
   previewPlayer = new Audio(selectedItem.mediaUrl);
-  previewPlayer.volume = 0.6;
+  previewPlayer.volume = getPreviewVolume();
   
   previewPlayer.addEventListener("loadedmetadata", updatePlayerTime);
   previewPlayer.addEventListener("timeupdate", updatePlayerTime);
@@ -414,13 +464,21 @@ function buyWithBits(item, action) {
     showToast("Bits unavailable", "Bits purchases are only available inside Twitch.", "info");
     return;
   }
+  if (!beginBitsAction()) return;
   pendingBitsPurchase = { item, action };
-  Twitch.ext.bits.useBits(item.sku);
+  try {
+    Twitch.ext.bits.useBits(item.sku);
+  } catch (error) {
+    pendingBitsPurchase = null;
+    endAction();
+    showToast("Bits unavailable", error.message || "Unable to start a Bits purchase.", "error");
+  }
 }
 
 async function triggerFreeItem(item, action = "use_now") {
   // Free items are fulfilled server-side without ever touching the Twitch Bits API,
   // because Twitch rejects 0-cost SKUs in Twitch.ext.bits.useBits.
+  if (!beginAction()) return;
   const safeAction = action === "save" ? "save" : "use_now";
   const transactionID = `free_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
@@ -439,10 +497,16 @@ async function triggerFreeItem(item, action = "use_now") {
   } catch (error) {
     showToast("Free item issue", error.message || "Unable to trigger free item.", "error");
     await refreshMe().catch(() => undefined);
+  } finally {
+    endAction();
   }
 }
 
 async function completeBitsPurchase(item, action, transaction) {
+  if (bitsLockTimeout) {
+    clearTimeout(bitsLockTimeout);
+    bitsLockTimeout = null;
+  }
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
@@ -455,10 +519,13 @@ async function completeBitsPurchase(item, action, transaction) {
   } catch (error) {
     showToast("Purchase issue", error.message || "Unable to complete DimaFX purchase.", "error");
     await refreshMe().catch(() => undefined);
+  } finally {
+    endAction();
   }
 }
 
 async function buyWithCredits(item, action) {
+  if (!beginAction()) return;
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/use-credit`, {
       method: "POST",
@@ -471,12 +538,15 @@ async function buyWithCredits(item, action) {
   } catch (error) {
     showToast("Credit purchase failed", error.message || "Unable to use credits.", "error");
     await refreshMe().catch(() => undefined);
+  } finally {
+    endAction();
   }
 }
 
 async function redeemSaved(itemId) {
   const item = products.find((candidate) => String(candidate.id) === String(itemId));
   if (!item) return;
+  if (!beginAction()) return;
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/redeem`, { method: "POST", body: "{}" });
     if (data?.inventory) inventory = data.inventory;
@@ -484,6 +554,8 @@ async function redeemSaved(itemId) {
     showToast("Triggered", `${item.name} was queued on stream.`, "success");
   } catch (error) {
     showToast("Redeem failed", error.message || "Unable to redeem saved item.", "error");
+  } finally {
+    endAction();
   }
 }
 

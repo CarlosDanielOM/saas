@@ -11,6 +11,12 @@ const DEFAULT_SKU_MAP: Record<number, string> = {
 };
 
 export type DimafxPurchaseAction = "use_now" | "save";
+export type DimafxQuickPurchasePriority = "credits_first" | "bits_first";
+
+export interface DimafxViewerConfig {
+  quickPurchasePriority: DimafxQuickPurchasePriority;
+  quickPurchaseAction: DimafxPurchaseAction;
+}
 
 export function getDimafxSkuMap(): Record<number, string> {
   const rawMap = process.env.DIMAFX_SKU_MAP;
@@ -81,4 +87,48 @@ export function normalizeDimafxPurchaseAction(
   value: unknown,
 ): DimafxPurchaseAction {
   return value === "save" ? "save" : "use_now";
+}
+
+export function normalizeDimafxViewerConfig(
+  incoming: {
+    quickPurchasePriority?: unknown;
+    quickPurchaseAction?: unknown;
+  },
+  current: DimafxViewerConfig,
+): DimafxViewerConfig {
+  return {
+    quickPurchasePriority:
+      incoming.quickPurchasePriority === "bits_first"
+        ? "bits_first"
+        : incoming.quickPurchasePriority === "credits_first"
+          ? "credits_first"
+          : current.quickPurchasePriority,
+    quickPurchaseAction:
+      incoming.quickPurchaseAction === "save"
+        ? "save"
+        : incoming.quickPurchaseAction === "use_now"
+          ? "use_now"
+          : current.quickPurchaseAction,
+  };
+}
+
+export function selectRedeemCandidate<
+  T extends {
+    channelExtensionItemID: unknown;
+    quantity: number;
+    acquiredAt: Date | string;
+  },
+>(items: T[], itemID: string): T | null {
+  const candidates = items
+    .filter(
+      (item) =>
+        String(item.channelExtensionItemID) === itemID &&
+        Number(item.quantity || 0) > 0,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime(),
+    );
+
+  return candidates[0] || null;
 }

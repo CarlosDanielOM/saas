@@ -18,6 +18,8 @@ import {
     getDimafxSkuForBitsPrice,
     hasDimafxPermission,
     normalizeDimafxPurchaseAction,
+    normalizeDimafxViewerConfig,
+    selectRedeemCandidate,
     type DimafxPurchaseAction
 } from '../services/dimafx.service.js';
 
@@ -285,30 +287,116 @@ async function getOrCreateInventory(channelID: string, userID: string, displayNa
     return inventory as IUserExtensionInventory;
 }
 
+function inventoryIdentityFilter(channelID: string, userID: string): { platform: 'twitch'; userID: string; channelID: string } {
+    return { platform: 'twitch', userID, channelID };
+}
+
+function matchingInventoryRowFilter(itemID: string, price: number, source: InventoryItemSource, acquiredAt?: Date) {
+    return {
+        channelExtensionItemID: new Types.ObjectId(itemID),
+        purchasePriceBits: price,
+        source,
+        ...(acquiredAt ? { acquiredAt } : {})
+    };
+}
+
 async function addInventoryItem(channelID: string, userID: string, itemID: string, price: number, source: InventoryItemSource): Promise<IUserExtensionInventory> {
-    const inventory = await UserExtensionInventorySchema.findOne({ platform: 'twitch', userID, channelID });
-    if (!inventory) {
+    const identity = inventoryIdentityFilter(channelID, userID);
+    const existingRow = matchingInventoryRowFilter(itemID, price, source);
+
+    const incremented = await UserExtensionInventorySchema.findOneAndUpdate(
+        { ...identity, items: { $elemMatch: existingRow } },
+        { $inc: { 'items.$.quantity': 1 } },
+        { new: true }
+    ).lean();
+    if (incremented) {
+        return incremented as IUserExtensionInventory;
+    }
+
+    const pushed = await UserExtensionInventorySchema.findOneAndUpdate(
+        { ...identity, items: { $not: { $elemMatch: existingRow } } },
+        {
+            $push: {
+                items: {
+                    channelExtensionItemID: new Types.ObjectId(itemID),
+                    quantity: 1,
+                    purchasePriceBits: price,
+                    acquiredAt: new Date(),
+                    source
+                }
+            }
+        },
+        { new: true }
+    ).lean();
+    if (pushed) {
+        return pushed as IUserExtensionInventory;
+    }
+
+    const retried = await UserExtensionInventorySchema.findOneAndUpdate(
+        { ...identity, items: { $elemMatch: existingRow } },
+        { $inc: { 'items.$.quantity': 1 } },
+        { new: true }
+    ).lean();
+    if (!retried) {
         throw new Error('Inventory not found');
     }
 
-    const existingItem = inventory.items.find((item) =>
-        String(item.channelExtensionItemID) === itemID && item.purchasePriceBits === price && item.source === source
-    );
+    return retried as IUserExtensionInventory;
+}
 
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        inventory.items.push({
-            channelExtensionItemID: new Types.ObjectId(itemID),
-            quantity: 1,
-            purchasePriceBits: price,
-            acquiredAt: new Date(),
-            source
-        });
+async function debitCredits(channelID: string, userID: string, price: number): Promise<IUserExtensionInventory | null> {
+    const updated = await UserExtensionInventorySchema.findOneAndUpdate(
+        { ...inventoryIdentityFilter(channelID, userID), balance: { $gte: price } },
+        { $inc: { balance: -price } },
+        { new: true }
+    ).lean();
+    return (updated as IUserExtensionInventory | null) || null;
+}
+
+async function decrementSavedItem(
+    channelID: string,
+    userID: string,
+    itemID: string,
+    savedItem: { purchasePriceBits: number; source: InventoryItemSource; acquiredAt: Date }
+): Promise<IUserExtensionInventory | null> {
+    const updated = await UserExtensionInventorySchema.findOneAndUpdate(
+        {
+            ...inventoryIdentityFilter(channelID, userID),
+            items: {
+                $elemMatch: {
+                    ...matchingInventoryRowFilter(itemID, savedItem.purchasePriceBits, savedItem.source, savedItem.acquiredAt),
+                    quantity: { $gt: 0 }
+                }
+            }
+        },
+        { $inc: { 'items.$.quantity': -1 } },
+        { new: true }
+    ).lean();
+    return (updated as IUserExtensionInventory | null) || null;
+}
+
+async function restoreSavedItem(
+    channelID: string,
+    userID: string,
+    itemID: string,
+    savedItem: { purchasePriceBits: number; source: InventoryItemSource; acquiredAt: Date }
+): Promise<void> {
+    const restored = await UserExtensionInventorySchema.findOneAndUpdate(
+        {
+            ...inventoryIdentityFilter(channelID, userID),
+            items: {
+                $elemMatch: matchingInventoryRowFilter(itemID, savedItem.purchasePriceBits, savedItem.source, savedItem.acquiredAt)
+            }
+        },
+        { $inc: { 'items.$.quantity': 1 } },
+        { new: true }
+    ).lean();
+
+    if (restored) {
+        return;
     }
 
-    await inventory.save();
-    return inventory.toObject() as IUserExtensionInventory;
+    await addInventoryItem(channelID, userID, itemID, savedItem.purchasePriceBits, savedItem.source);
 }
 
 async function emitChannelExtensionItem(channelID: string, item: IChannelExtensionItem, asset: IMediaAsset): Promise<Record<string, unknown>> {
@@ -433,10 +521,10 @@ router.patch('/internal/channels/:channelID/viewers/:userID/config', internalSer
         const channelID = getParamValue(req.params.channelID);
         const userID = getParamValue(req.params.userID);
         const inventory = await getOrCreateInventory(channelID, userID);
-        const nextConfig = {
-            quickPurchasePriority: req.body?.quickPurchasePriority === 'bits_first' ? 'bits_first' : inventory.config.quickPurchasePriority,
-            quickPurchaseAction: req.body?.quickPurchaseAction === 'save' ? 'save' : req.body?.quickPurchaseAction === 'use_now' ? 'use_now' : inventory.config.quickPurchaseAction
-        };
+        const nextConfig = normalizeDimafxViewerConfig(req.body || {}, {
+            quickPurchasePriority: inventory.config?.quickPurchasePriority || DEFAULT_EXTENSION_INVENTORY_CONFIG.quickPurchasePriority,
+            quickPurchaseAction: inventory.config?.quickPurchaseAction || DEFAULT_EXTENSION_INVENTORY_CONFIG.quickPurchaseAction
+        });
         const updated = await UserExtensionInventorySchema.findOneAndUpdate(
             { platform: 'twitch', userID, channelID },
             { $set: { config: nextConfig } },
@@ -547,33 +635,50 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
             return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
         }
 
-        const inventoryDoc = await UserExtensionInventorySchema.findOne({ platform: 'twitch', userID: body.userID, channelID });
-        if (!inventoryDoc) {
-            return res.status(404).json({ error: true, message: 'Inventory not found', status: 404 });
-        }
-
-        if (inventoryDoc.balance < itemData.item.bitsPrice) {
+        const price = itemData.item.bitsPrice;
+        const debited = await debitCredits(channelID, body.userID, price);
+        if (!debited) {
+            const exists = await UserExtensionInventorySchema.exists(inventoryIdentityFilter(channelID, body.userID));
+            if (!exists) {
+                return res.status(404).json({ error: true, message: 'Inventory not found', status: 404 });
+            }
             return res.status(402).json({ error: true, message: 'Not enough DimaFX credits', status: 402 });
         }
 
-        inventoryDoc.balance -= itemData.item.bitsPrice;
-        await inventoryDoc.save();
-        await ExtensionWalletTransactionSchema.create({
-            platform: 'twitch', userID: body.userID, channelID, type: 'credit_purchase', amountBits: itemData.item.bitsPrice, balanceDelta: -itemData.item.bitsPrice,
-            channelExtensionItemID: itemData.item._id, metadata: { action }
-        });
-
-        if (action === 'save') {
-            const inventory = await addInventoryItem(channelID, body.userID, itemID, itemData.item.bitsPrice, 'credit_purchase');
-            return res.status(200).json({ error: false, message: 'Item saved to inventory', status: 200, data: { inventory: mapInventory(inventory) } });
-        }
+        let creditsRefunded = false;
+        const refundDebit = async (reason: string): Promise<void> => {
+            if (creditsRefunded || price <= 0) return;
+            await creditViewerForFailedUse(channelID, body.userID!, itemID, price, reason);
+            creditsRefunded = true;
+        };
 
         try {
-            const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
-            return res.status(200).json({ error: false, message: 'DimaFX item triggered', status: 200, data: emitResult });
-        } catch (emitError) {
-            await creditViewerForFailedUse(channelID, body.userID, itemID, itemData.item.bitsPrice, emitError instanceof Error ? emitError.message : String(emitError));
-            return res.status(409).json({ error: true, message: 'No trigger overlay clients connected. Your credits were returned.', status: 409 });
+            await ExtensionWalletTransactionSchema.create({
+                platform: 'twitch', userID: body.userID, channelID, type: 'credit_purchase', amountBits: price, balanceDelta: -price,
+                channelExtensionItemID: itemData.item._id, metadata: { action }
+            });
+
+            if (action === 'save') {
+                const inventory = await addInventoryItem(channelID, body.userID, itemID, price, 'credit_purchase');
+                return res.status(200).json({ error: false, message: 'Item saved to inventory', status: 200, data: { inventory: mapInventory(inventory) } });
+            }
+
+            try {
+                const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
+                return res.status(200).json({ error: false, message: 'DimaFX item triggered', status: 200, data: emitResult });
+            } catch (emitError) {
+                await refundDebit(emitError instanceof Error ? emitError.message : String(emitError));
+                return res.status(409).json({ error: true, message: 'No trigger overlay clients connected. Your credits were returned.', status: 409 });
+            }
+        } catch (error) {
+            await refundDebit(error instanceof Error ? error.message : String(error));
+            console.error('Error using DimaFX credits:', {
+                channelID: req.params.channelID,
+                itemID: req.params.itemID,
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
         }
     } catch (error) {
         console.error('Error using DimaFX credits:', {
@@ -601,38 +706,68 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
             return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
         }
 
-        const inventoryDoc = await UserExtensionInventorySchema.findOne({ platform: 'twitch', userID: body.userID, channelID });
-        // Match the dedup key used by addInventoryItem (itemID, regardless of price/source).
-        // Sort most-recently-acquired first (LIFO) so users see fresh saves get used first.
-        const candidates = (inventoryDoc?.items || [])
-            .filter((item) => String(item.channelExtensionItemID) === itemID && item.quantity > 0)
-            .sort((a, b) => b.acquiredAt.getTime() - a.acquiredAt.getTime());
-
-        const savedItem = candidates[0];
+        const inventoryDoc = await UserExtensionInventorySchema.findOne(inventoryIdentityFilter(channelID, body.userID)).lean();
+        const savedItem = selectRedeemCandidate(inventoryDoc?.items || [], itemID);
         if (!inventoryDoc || !savedItem) {
             return res.status(400).json({ error: true, message: 'No saved copies available for this item', status: 400 });
         }
 
-        if (candidates.length > 1) {
+        const matchingRows = (inventoryDoc.items || []).filter((item) => String(item.channelExtensionItemID) === itemID && item.quantity > 0);
+        if (matchingRows.length > 1) {
             console.warn('[DIMAFX REDEEM] multiple inventory rows matched, only newest decremented', {
                 channelID,
                 userID: body.userID,
                 itemID,
-                rowCount: candidates.length,
+                rowCount: matchingRows.length,
                 timestamp: new Date().toISOString()
             });
         }
 
-        savedItem.quantity -= 1;
-        await inventoryDoc.save();
+        const decremented = await decrementSavedItem(channelID, body.userID, itemID, savedItem);
+        if (!decremented) {
+            return res.status(400).json({ error: true, message: 'No saved copies available for this item', status: 400 });
+        }
 
-        const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
-        await ExtensionWalletTransactionSchema.create({
-            platform: 'twitch', userID: body.userID, channelID, type: 'redeem_saved', amountBits: savedItem.purchasePriceBits, balanceDelta: 0,
-            channelExtensionItemID: itemData.item._id, metadata: {}
-        });
+        try {
+            const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
+            try {
+                await ExtensionWalletTransactionSchema.create({
+                    platform: 'twitch', userID: body.userID, channelID, type: 'redeem_saved', amountBits: savedItem.purchasePriceBits, balanceDelta: 0,
+                    channelExtensionItemID: itemData.item._id, metadata: {}
+                });
+            } catch (ledgerError) {
+                console.error('DimaFX redeem overlay succeeded but ledger write failed:', {
+                    channelID,
+                    userID: body.userID,
+                    itemID,
+                    error: ledgerError instanceof Error ? ledgerError.message : String(ledgerError),
+                    timestamp: new Date().toISOString()
+                });
+            }
 
-        return res.status(200).json({ error: false, message: 'Saved DimaFX item redeemed', status: 200, data: { ...emitResult, inventory: mapInventory(inventoryDoc.toObject() as IUserExtensionInventory) } });
+            return res.status(200).json({ error: false, message: 'Saved DimaFX item redeemed', status: 200, data: { ...emitResult, inventory: mapInventory(decremented) } });
+        } catch (emitError) {
+            try {
+                await restoreSavedItem(channelID, body.userID, itemID, savedItem);
+            } catch (restoreError) {
+                console.error('Failed to restore DimaFX inventory after overlay emit failure:', {
+                    channelID,
+                    userID: body.userID,
+                    itemID,
+                    restoreError: restoreError instanceof Error ? restoreError.message : String(restoreError),
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            const noClients = emitError instanceof Error && emitError.name === 'NO_TRIGGER_CLIENTS';
+            return res.status(noClients ? 409 : 500).json({
+                error: true,
+                message: noClients
+                    ? 'No trigger overlay clients connected. Your saved copy was not used.'
+                    : 'Unable to trigger overlay. Your saved copy was not used.',
+                status: noClients ? 409 : 500
+            });
+        }
     } catch (error) {
         console.error('Error redeeming DimaFX item:', {
             channelID: req.params.channelID,

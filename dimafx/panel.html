@@ -13,7 +13,7 @@
     />
 
     <!-- External Modular Stylesheet (cache bust: v=36) -->
-    <link rel="stylesheet" href="panel.css?v=37" />
+    <link rel="stylesheet" href="panel.css?v=38" />
   </head>
   <body>
     <!-- Toast Notification -->
@@ -183,7 +183,7 @@
           <div class="settings-row">
             <div>
               <div class="settings-label">Sound Volume</div>
-              <div class="settings-desc">Adjust local volume level.</div>
+              <div class="settings-desc">Preview volume only. Stream overlay uses the item volume.</div>
             </div>
             <div
               style="
@@ -197,15 +197,13 @@
             </div>
           </div>
           <input
+            id="preview-volume"
             type="range"
             class="volume-slider"
             min="0"
             max="100"
             value="80"
-            oninput="
-              document.getElementById('val-volume').textContent =
-                this.value + '%'
-            "
+            oninput="onPreviewVolumeInput(this)"
           />
         </div>
 
@@ -337,6 +335,6 @@
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
 
     <!-- External Modular Scripts -->
-    <script src="panel.js?v=36"></script>
+    <script src="panel.js?v=38"></script>
   </body>
 </html>

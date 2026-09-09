@@ -16,7 +16,7 @@
     />
 
     <!-- External Modular Stylesheet -->
-    <link rel="stylesheet" href="mobile.css?v=37" />
+    <link rel="stylesheet" href="mobile.css?v=38" />
   </head>
   <body>
     <!-- Toast Notification -->
@@ -178,7 +178,7 @@
             <div>
               <div class="settings-label">Sound FX Volume</div>
               <div class="settings-desc">
-                Global volume level for alert sound effects.
+                Preview volume only. Stream overlay uses the item volume.
               </div>
             </div>
             <div
@@ -193,15 +193,13 @@
             </div>
           </div>
           <input
+            id="preview-volume"
             type="range"
             class="volume-slider"
             min="0"
             max="100"
             value="80"
-            oninput="
-              document.getElementById('val-volume').textContent =
-                this.value + '%'
-            "
+            oninput="onPreviewVolumeInput(this)"
           />
         </div>
 
@@ -339,6 +337,6 @@
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
 
     <!-- External Modular Scripts -->
-    <script src="mobile.js?v=36"></script>
+    <script src="mobile.js?v=38"></script>
   </body>
 </html>
