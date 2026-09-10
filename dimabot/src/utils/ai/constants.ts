@@ -25,7 +25,7 @@ export function selectChatModel(
 export const BACKGROUND_MODELS = {
   free: "meta/muse-spark-1.2-contributor",
   premium: "deepseek/deepseek-v4.1-flash",
-  pro: "deepseek/deepseek-v4-pro",
+  pro: "deepseek/deepseek-v4.1-flash",
 } as const;
 
 export function getBackgroundSummaryModel(planTier: string | undefined): string {
@@ -34,7 +34,7 @@ export function getBackgroundSummaryModel(planTier: string | undefined): string 
   return BACKGROUND_MODELS.free;
 }
 
-// Fallback model for pro users if v4-pro fails
+// Fallback model for background summary requests.
 export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4.1-flash";
 
 /**

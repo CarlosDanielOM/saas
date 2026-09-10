@@ -183,7 +183,7 @@ before(() => {
     // eslint-disable-next-line no-console
     console.log(`[SIMULATION] Streamer: ${mockStreamer.name} (plan: ${mockStreamer.plan_tier})`);
     // eslint-disable-next-line no-console
-    console.log(`[SIMULATION] Primary model: deepseek/deepseek-v4-pro`);
+    console.log(`[SIMULATION] Primary model: deepseek/deepseek-v4.1-flash`);
     // eslint-disable-next-line no-console
     console.log(`[SIMULATION] Fallback model: deepseek/deepseek-v4.1-flash`);
     // eslint-disable-next-line no-console
@@ -201,8 +201,8 @@ describe('Stream summary simulation for Twitch ID 533238623 (REAL OpenRouter)', 
         rawModelOutputs = [];
     });
 
-    it('Run: deepseek-v4-pro produces a stream summary + memory actions for cdom201', async () => {
-        divider('SCENARIO: Real call to deepseek/deepseek-v4-pro');
+    it('Run: deepseek-v4.1-flash produces a stream summary + memory actions for cdom201', async () => {
+        divider('SCENARIO: Real call to deepseek/deepseek-v4.1-flash');
 
         const ctx = buildContext(MOCK_TWITCH_ID);
         const result = await generateStreamSummaryDecision(ctx, 'stream_offline');

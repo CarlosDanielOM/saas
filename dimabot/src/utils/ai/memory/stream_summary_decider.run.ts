@@ -121,7 +121,7 @@ const realFetch = globalThis.fetch;
 log(`Building context for Twitch ID ${MOCK_TWITCH_ID}...`);
 const ctx = buildContext(MOCK_TWITCH_ID);
 log(`Context built. Calling generateStreamSummaryDecision...`);
-log(`This will hit OpenRouter with model: deepseek/deepseek-v4-pro`);
+log(`This will hit OpenRouter with model: deepseek/deepseek-v4.1-flash`);
 log(`Estimated cost: ~$0.01-0.05 depending on reasoning tokens.`);
 
 try {
