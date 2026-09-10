@@ -1,6 +1,7 @@
 import { PRODUCT_IDS } from './referral.js';
 import type { IUsers } from '../schemas/users.schema.js';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
+import { createHash } from 'node:crypto';
 
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
 type BillingScenario = 'new' | 'upgrade' | 'change' | 'returning_winback' | 'reactivate' | 'active_no_change';
@@ -81,7 +82,9 @@ export const AI_CREDIT_LIMITS = {
 } as const;
 
 export const AI_CREDITS_CACHE_TTL_SECONDS = 5 * 60;
-export const AI_CREDITS_CACHE_SCHEMA_VERSION = 2;
+export const AI_CREDITS_CACHE_SCHEMA_VERSION = 3;
+
+export type AiCreditStatus = 'unavailable' | 'available' | 'exhausted';
 
 export interface AiCreditsData {
   version: number;
@@ -91,6 +94,7 @@ export interface AiCreditsData {
   meterId: string;
   updatedAt: string;
   available: boolean;
+  status: AiCreditStatus;
 }
 
 export interface PolarAiCreditsMeterLike {
@@ -155,8 +159,132 @@ export function buildAiCreditsDataFromMeter(
         balance: remaining,
         meterId: AI_CREDITS_METER_ID,
         updatedAt,
-        available: true
+        available: true,
+        status: remaining <= 0 ? 'exhausted' : 'available'
     };
+}
+
+export function applyAiCreditUsageToSnapshot(
+    snapshot: AiCreditsData,
+    credits: number,
+    updatedAt = new Date().toISOString()
+): AiCreditsData {
+    const consumed = Math.max(0, Math.ceil(toFiniteNumber(credits, 0)));
+    if (!snapshot.available || consumed === 0) return { ...snapshot };
+
+    const balance = Math.max(0, snapshot.balance - consumed);
+    return {
+        ...snapshot,
+        version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+        used: snapshot.used + consumed,
+        balance,
+        updatedAt,
+        status: balance <= 0 ? 'exhausted' : 'available'
+    };
+}
+
+const APPLY_AI_CREDIT_USAGE_SCRIPT = `
+if ARGV[5] == '1' then
+    local marked = redis.call('SET', KEYS[4], '1', 'NX', 'EX', ARGV[4])
+    if not marked then return 2 end
+end
+local raw = redis.call('GET', KEYS[1])
+if not raw then return 0 end
+local ok, data = pcall(cjson.decode, raw)
+if not ok or tonumber(data.version) ~= tonumber(ARGV[3]) or data.available == false then return 0 end
+local consumed = math.max(0, math.ceil(tonumber(ARGV[1]) or 0))
+if consumed == 0 then return 0 end
+data.used = math.max(0, (tonumber(data.used) or 0) + consumed)
+data.balance = math.max(0, (tonumber(data.balance) or 0) - consumed)
+data.updatedAt = ARGV[2]
+data.status = data.balance <= 0 and 'exhausted' or 'available'
+redis.call('SET', KEYS[1], cjson.encode(data), 'EX', ARGV[4])
+if data.balance <= 0 then
+    redis.call('SET', KEYS[2], 'true')
+    redis.call('SET', KEYS[3], 'true')
+end
+return data.balance <= 0 and 1 or 0
+`;
+
+export async function recordAiCreditUsage(
+    channelID: string,
+    credits: number,
+    externalId?: string,
+    cacheOverride?: Awaited<ReturnType<typeof getDragonflyClient>>
+): Promise<void> {
+    if (!channelID || !Number.isFinite(credits) || credits <= 0) return;
+
+    try {
+        const cache = cacheOverride || await getDragonflyClient('recordAiCreditUsage');
+        const markerSuffix = externalId
+            ? createHash('sha256').update(externalId).digest('hex')
+            : 'untracked';
+        await cache.eval(APPLY_AI_CREDIT_USAGE_SCRIPT, {
+            keys: [
+                `twitch:${channelID}:ai:credits`,
+                `twitch:${channelID}:ai:exhaust`,
+                `${channelID}:ai:exhaust`,
+                `twitch:${channelID}:ai:usage-local:${markerSuffix}`
+            ],
+            arguments: [
+                String(credits),
+                new Date().toISOString(),
+                String(AI_CREDITS_CACHE_SCHEMA_VERSION),
+                String(31 * 24 * 60 * 60),
+                externalId ? '1' : '0'
+            ]
+        });
+    } catch (err) {
+        // Polar remains the source of truth and its webhook will reconcile this
+        // best-effort local projection if Dragonfly is temporarily unavailable.
+        console.error('recordAiCreditUsage: local credit projection failed', {
+            channelID,
+            error: err instanceof Error ? err.message : String(err)
+        });
+    }
+}
+
+async function syncAiCreditExhaustionStatus(
+    cache: Awaited<ReturnType<typeof getDragonflyClient>>,
+    channelID: string,
+    exhausted: boolean
+): Promise<void> {
+    const keys = [`twitch:${channelID}:ai:exhaust`, `${channelID}:ai:exhaust`];
+    if (exhausted) {
+        await Promise.all(keys.map((key) => cache.set(key, 'true')));
+    } else {
+        await Promise.all(keys.map((key) => cache.del(key)));
+    }
+}
+
+export async function isAiCreditsExhausted(
+    channelID: string,
+    cacheOverride?: Awaited<ReturnType<typeof getDragonflyClient>>
+): Promise<boolean> {
+    if (!channelID) return false;
+    const cache = cacheOverride || await getDragonflyClient('isAiCreditsExhausted');
+    const [canonical, legacy] = await Promise.all([
+        cache.exists(`twitch:${channelID}:ai:exhaust`),
+        cache.exists(`${channelID}:ai:exhaust`)
+    ]);
+    if (canonical === 1 || legacy === 1) {
+        if (canonical !== 1 || legacy !== 1) {
+            await syncAiCreditExhaustionStatus(cache, channelID, true);
+        }
+        return true;
+    }
+
+    const cached = await cache.get(`twitch:${channelID}:ai:credits`);
+    if (!cached) return false;
+    try {
+        const parsed = JSON.parse(cached) as Partial<AiCreditsData>;
+        const exhausted = parsed.status === 'exhausted'
+            || (parsed.available === true && typeof parsed.balance === 'number' && parsed.balance <= 0);
+        if (exhausted) await syncAiCreditExhaustionStatus(cache, channelID, true);
+        return exhausted;
+    } catch {
+        return false;
+    }
 }
 
 const PLAN_PRODUCT_MAP: Record<Exclude<PlanTier, 'free'>, string> = {
@@ -756,7 +884,8 @@ export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<
             balance: limit,
             meterId: AI_CREDITS_METER_ID,
             updatedAt: new Date().toISOString(),
-            available: false
+            available: false,
+            status: 'unavailable'
         };
     }
 
@@ -768,15 +897,20 @@ export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<
         try {
             const parsed = JSON.parse(cached) as Partial<AiCreditsData>;
             if (parsed.version === AI_CREDITS_CACHE_SCHEMA_VERSION && typeof parsed.used === 'number' && typeof parsed.limit === 'number') {
-                return {
+                const payload: AiCreditsData = {
                     version: AI_CREDITS_CACHE_SCHEMA_VERSION,
                     used: parsed.used,
                     limit: parsed.limit,
                     balance: typeof parsed.balance === 'number' ? parsed.balance : Math.max(0, parsed.limit - parsed.used),
                     meterId: parsed.meterId || AI_CREDITS_METER_ID,
                     updatedAt: parsed.updatedAt || new Date().toISOString(),
-                    available: true
+                    available: true,
+                    status: parsed.status === 'exhausted' || (parsed.balance ?? parsed.limit - parsed.used) <= 0
+                        ? 'exhausted'
+                        : 'available'
                 };
+                await syncAiCreditExhaustionStatus(cacheClient, channelID, payload.status === 'exhausted');
+                return payload;
             }
         } catch {
             // ignore bad cache
@@ -792,12 +926,7 @@ export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<
 
         await cacheClient.set(cacheKey, JSON.stringify(payload), { EX: AI_CREDITS_CACHE_TTL_SECONDS });
 
-        const exhaustKeys = [`twitch:${channelID}:ai:exhaust`, `${channelID}:ai:exhaust`];
-        if (payload.balance <= 0) {
-            await Promise.all(exhaustKeys.map((key) => cacheClient.set(key, 'true', { EX: AI_CREDITS_CACHE_TTL_SECONDS })));
-        } else {
-            await Promise.all(exhaustKeys.map((key) => cacheClient.del(key)));
-        }
+        await syncAiCreditExhaustionStatus(cacheClient, channelID, payload.status === 'exhausted');
 
         return payload;
     } catch (err) {
@@ -807,14 +936,25 @@ export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<
         });
 
         const limit = getAiCreditLimitForPlan(user.plan_tier);
+        let exhausted = false;
+        try {
+            const [canonical, legacy] = await Promise.all([
+                cacheClient.exists(`twitch:${channelID}:ai:exhaust`),
+                cacheClient.exists(`${channelID}:ai:exhaust`)
+            ]);
+            exhausted = canonical === 1 || legacy === 1;
+        } catch {
+            // Preserve the pre-existing plan-limit fallback if Dragonfly is also unavailable.
+        }
         return {
             version: AI_CREDITS_CACHE_SCHEMA_VERSION,
-            used: 0,
+            used: exhausted ? limit : 0,
             limit,
-            balance: limit,
+            balance: exhausted ? 0 : limit,
             meterId: AI_CREDITS_METER_ID,
             updatedAt: new Date().toISOString(),
-            available: true
+            available: true,
+            status: exhausted ? 'exhausted' : 'available'
         };
     }
 }

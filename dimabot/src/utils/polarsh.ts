@@ -2,6 +2,7 @@ import { Polar } from "@polar-sh/sdk";
 import { randomUUID } from "node:crypto";
 import { getDragonflyClient } from "./databases/dragonfly.database.js";
 import { error, info } from "./logger.js";
+import { recordAiCreditUsage } from "./billing.js";
 
 const INGEST_LOCK_PREFIX = "locks:polar-ingest:";
 const INGEST_LOCK_TTL_MS = 8000;
@@ -272,6 +273,8 @@ export async function ingestPolarSHEvent(
         };
       }
 
+      await recordAiCreditUsage(channelID || "", eventData.metadata.credits, externalId, cacheClient);
+
       return { error: false };
     }
 
@@ -284,6 +287,7 @@ export async function ingestPolarSHEvent(
     if (!lockValue) {
       try {
         await queueEvent(cacheClient, cacheKey, eventData);
+        await recordAiCreditUsage(channelID!, eventData.metadata.credits, externalId, cacheClient);
       } catch (queueErr) {
         await error(
           {
@@ -302,6 +306,7 @@ export async function ingestPolarSHEvent(
       // Durably queue the event BEFORE any network call — a failed or
       // interrupted ingest must never lose it.
       await queueEvent(cacheClient, cacheKey, eventData);
+      await recordAiCreditUsage(channelID!, eventData.metadata.credits, externalId, cacheClient);
 
       if (mode === "cache") {
         return { error: false };

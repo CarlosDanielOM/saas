@@ -15,9 +15,10 @@ import {
 } from "../../../schemas/channel_ai_personality.schema.js";
 import { formatBadges, type IBadge } from "../../badges.js";
 import { getDragonflyClient } from "../../databases/dragonfly.database.js";
+import { isAiCreditsExhausted } from "../../billing.js";
 import { ingestPolarSHEvent } from "../../polarsh.js";
 import { constructChatSystemMessages } from "../prompts.ai.js";
-import { MODELS, TOKEN_LIMITS } from "../constants.js";
+import { MODELS, TOKEN_LIMITS, selectChatModel } from "../constants.js";
 import { createFetchWithRetry } from "../fetch.utils.js";
 import {
   executeTool,
@@ -251,16 +252,6 @@ export function extractOpenRouterError(data: unknown): ExtractedError {
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
-
-function selectModel(streamer: IStreamerData | null | undefined): string {
-  if (streamer?.plan_tier === "pro") {
-    return MODELS.pro;
-  }
-  if (streamer?.plan_tier === "premium") {
-    return MODELS.premium;
-  }
-  return MODELS.free;
-}
 
 function getTokenLimit(model: string): number {
   return (
@@ -759,7 +750,7 @@ export async function chat(
   const cacheClient = await getDragonflyClient("Messages");
 
   // Check if user has exhausted AI credits
-  const isExhausted = await cacheClient.exists(`${channelID}:ai:exhaust`);
+  const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
 
   // Get streamer and personality data
   const streamerData = await TwitchStreamers.getTwitchAccountById(channelID);
@@ -777,7 +768,7 @@ export async function chat(
   }
 
   // Select model based on streamer tier
-  const selectedModel = isExhausted ? MODELS.free : selectModel(streamer);
+  const selectedModel = selectChatModel(streamer, isExhausted);
   const maxTokens = getTokenLimit(selectedModel);
 
   // Generate tracing IDs for this conversation

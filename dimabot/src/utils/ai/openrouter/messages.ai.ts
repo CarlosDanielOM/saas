@@ -2,9 +2,10 @@ import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { ChannelAIPersonalitySchema, type IChannelAIPersonality } from '../../../schemas/channel_ai_personality.schema.js';
 import { formatBadges, type IBadge } from '../../badges.js';
 import { getDragonflyClient } from '../../databases/dragonfly.database.js';
+import { isAiCreditsExhausted } from '../../billing.js';
 import { ingestPolarSHEvent } from '../../polarsh.js';
 import { constructChatSystemMessages } from '../prompts.ai.js';
-import { MODELS, TOKEN_LIMITS } from '../constants.js';
+import { MODELS, TOKEN_LIMITS, selectChatModel } from '../constants.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
 import { extractOpenRouterError, type ExtractedError } from './ai.js';
 import { error, debug } from '../../logger.js';
@@ -79,16 +80,6 @@ export { MODELS, TOKEN_LIMITS };
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
-
-function selectModel(streamer: IStreamerData | null | undefined): string {
-    if (streamer?.plan_tier === 'pro') {
-        return MODELS.pro;
-    }
-    if (streamer?.plan_tier === 'premium') {
-        return MODELS.premium;
-    }
-    return MODELS.free;
-}
 
 function getTokenLimit(model: string): number {
     return TOKEN_LIMITS[model as keyof typeof TOKEN_LIMITS] || TOKEN_LIMITS.default;
@@ -251,10 +242,10 @@ export async function AiResponse(
     }
 
     // Check if user has exhausted AI credits
-    const isExhausted = await cacheClient.exists(`${channelID}:ai:exhaust`);
+    const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
 
     // Select model based on streamer tier
-    const selectedModel = isExhausted ? MODELS.free : (model || selectModel(streamer));
+    const selectedModel = isExhausted ? selectChatModel(streamer, true) : (model || selectChatModel(streamer));
     const maxTokens = getTokenLimit(selectedModel);
 
     // Build user context from EventSub message structure

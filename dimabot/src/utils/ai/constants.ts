@@ -11,6 +11,16 @@ export const MODELS = {
   pro: "deepseek/deepseek-v4-flash-0731",
 } as const;
 
+export function selectChatModel(
+  streamer: { plan_tier?: string } | null | undefined,
+  isExhausted = false,
+): string {
+  if (isExhausted) return MODELS.exhausted;
+  if (streamer?.plan_tier === "pro") return MODELS.pro;
+  if (streamer?.plan_tier === "premium") return MODELS.premium;
+  return MODELS.free;
+}
+
 // Background LLM models for stream summaries and maintenance
 export const BACKGROUND_MODELS = {
   free: "meta/muse-spark-1.2-contributor",

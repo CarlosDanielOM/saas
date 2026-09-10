@@ -7,6 +7,7 @@
 
 import { getDragonflyClient } from '../../databases/dragonfly.database.js';
 import { ingestPolarSHEvent } from '../../polarsh.js';
+import { isAiCreditsExhausted } from '../../billing.js';
 import { executeAiCode, type SandboxEnv } from '../sandbox/execute_sandbox.ai.js';
 import { CODING_MODELS } from '../constants.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
@@ -437,8 +438,7 @@ export async function execute(
     const { channelID, streamer, username = 'User' } = context;
 
     const cacheClient = await getDragonflyClient('CodeExecution');
-    const isExhaustedResult = await cacheClient.exists(`${channelID}:ai:exhaust`);
-    const isExhausted = isExhaustedResult === 1;
+    const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
     const codingModel = selectCodingModel(streamer, isExhausted);
 
     let plan: string | null = null;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { Types } from 'mongoose';
 import UsersSchema, { type IUsers } from '../schemas/users.schema.js';
-import { AI_CREDITS_CACHE_TTL_SECONDS, AI_CREDITS_METER_ID } from '../utils/billing.js';
+import { AI_CREDITS_CACHE_SCHEMA_VERSION, AI_CREDITS_CACHE_TTL_SECONDS, AI_CREDITS_METER_ID } from '../utils/billing.js';
 import { PRODUCT_IDS } from '../utils/referral.js';
 import { DomainEventPrerequisiteMissingError, type DomainEventEnvelope } from './domain_event.types.js';
 import { polarWebhookProducer } from './polar_events.js';
@@ -179,13 +179,15 @@ test('credits send state, both exhaustion flags, and version to one eval per own
         ]);
         assert.deepEqual(options.arguments, [
             `${occurredAt.getTime()}:polar-webhook:delivery-1`,
-            JSON.stringify({ version: 2, used: 30, limit: 25000, balance: 24970,
-                meterId: AI_CREDITS_METER_ID, updatedAt: occurredAt.toISOString(), available: true }),
+            JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 30, limit: 25000, balance: 24970,
+                meterId: AI_CREDITS_METER_ID, updatedAt: occurredAt.toISOString(), available: true, status: 'available' }),
             '0', String(AI_CREDITS_CACHE_TTL_SECONDS),
         ]);
         // Inspect the submitted script contract only; fakeRedis never executes Lua.
         assert.match(script, /previous > ARGV\[1\].*return 0/);
         for (const key of [1, 2, 3, 4]) assert.ok(script.includes(`redis.call('SET', KEYS[${key}]`));
+        assert.doesNotMatch(script, /SET', KEYS\[2\].*'EX'/);
+        assert.doesNotMatch(script, /SET', KEYS\[3\].*'EX'/);
         assert.match(script, /redis.call\('DEL', KEYS\[2\], KEYS\[3\]\)/);
     }
     assert.equal(f.fakeRedis.del.mock.callCount(), 0);
@@ -215,8 +217,8 @@ for (const newer of ['timestamp', 'same-time event key']) {
         ]);
         assert.equal(options.arguments[0], `${currentAt.getTime()}:polar-webhook:delivery-9`);
         assert.deepEqual(JSON.parse(options.arguments[1]), {
-            version: 2, used: 500000, limit: 500000, balance: 0,
-            meterId: AI_CREDITS_METER_ID, updatedAt: currentAt.toISOString(), available: true,
+            version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 500000, limit: 500000, balance: 0,
+            meterId: AI_CREDITS_METER_ID, updatedAt: currentAt.toISOString(), available: true, status: 'exhausted',
         });
         assert.equal(options.arguments[2], '1');
     });

@@ -811,7 +811,8 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
             balance: before.balance + credits,
             meterId: AI_CREDITS_METER_ID,
             updatedAt: new Date().toISOString(),
-            available: true
+            available: true,
+            status: 'available' as const
         };
 
         await cache.set(`twitch:${channelIdStr}:ai:credits`, JSON.stringify(after), { EX: AI_CREDITS_CACHE_TTL_SECONDS });
