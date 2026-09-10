@@ -5,10 +5,10 @@
  */
 
 export const MODELS = {
-  free: "deepseek/deepseek-v4-flash-0731",
+  free: "deepseek/deepseek-v4.1-flash",
   exhausted: "sao10k/l3-lunaris-8b:nitro",
-  premium: "deepseek/deepseek-v4-flash-0731",
-  pro: "deepseek/deepseek-v4-flash-0731",
+  premium: "deepseek/deepseek-v4.1-flash",
+  pro: "deepseek/deepseek-v4.1-flash",
 } as const;
 
 export function selectChatModel(
@@ -24,7 +24,7 @@ export function selectChatModel(
 // Background LLM models for stream summaries and maintenance
 export const BACKGROUND_MODELS = {
   free: "meta/muse-spark-1.2-contributor",
-  premium: "deepseek/deepseek-v4-flash-0731",
+  premium: "deepseek/deepseek-v4.1-flash",
   pro: "deepseek/deepseek-v4-pro",
 } as const;
 
@@ -35,7 +35,7 @@ export function getBackgroundSummaryModel(planTier: string | undefined): string 
 }
 
 // Fallback model for pro users if v4-pro fails
-export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4-flash-0731";
+export const BACKGROUND_MODEL_FALLBACK = "deepseek/deepseek-v4.1-flash";
 
 /**
  * Per-model upstream provider restrictions for OpenRouter.
