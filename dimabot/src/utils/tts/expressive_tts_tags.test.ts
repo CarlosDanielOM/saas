@@ -6,7 +6,31 @@ import { DEFAULT_TTS_SETTINGS, normalizeChannelTtsSettings } from '../../schemas
 import {
   EXPRESSIVE_TTS_TAGS,
   filterExpressiveTtsTags,
+  reinforceFishTtsTags,
 } from './expressive_tts_tags.util.js';
+
+test('Fish silently doubles each single allowed cue, including cues after the spoken username', () => {
+  assert.equal(
+    reinforceFishTtsTags('Viewer dice: [whisper] Secret. [happy] We won! [whisper] Another secret.'),
+    'Viewer dice: [whisper] [whisper] Secret. [happy] [happy] We won! [whisper] [whisper] Another secret.',
+  );
+});
+
+test('manual doubles and retries do not multiply the cues again', () => {
+  const text = '[whisper] [whisper] Secret. [angry][angry] Stop.';
+  assert.equal(reinforceFishTtsTags(text), text);
+  const expanded = reinforceFishTtsTags('[singing] Hello!');
+  assert.equal(reinforceFishTtsTags(expanded), expanded);
+});
+
+test('reinforcement respects filtered settings and does not duplicate unknown markers', () => {
+  const text = filterExpressiveTtsTags('[anger] Stop. [whisper] Secret.', {
+    provider: 'fish',
+    enabledTags: { ...DEFAULT_TTS_SETTINGS.filters.expressiveTags, whisper: false },
+  });
+  assert.equal(reinforceFishTtsTags(text), '[angry] [angry] Stop. Secret.');
+  assert.equal(reinforceFishTtsTags('[link] [unknown]'), '[link] [unknown]');
+});
 
 test('the Fish expressive catalog exposes 30 independently configurable cues', () => {
   assert.equal(EXPRESSIVE_TTS_TAGS.length, 30);

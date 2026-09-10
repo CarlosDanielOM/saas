@@ -26,6 +26,16 @@ const ALIASES: Record<string, string> = {
 };
 const LEGACY_WRAPPERS = /<\/?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>/gi;
 
+/** Expand already-filtered cues only at the Fish boundary, after message length limits. */
+export function reinforceFishTtsTags(text: string): string {
+  return text.replace(/\[([a-z-]+)\](?:\s*\[\1\])*/g, (match, tag: string) => {
+    if (!EXPRESSIVE_TTS_TAGS.includes(tag as ExpressiveTtsTag) || match !== `[${tag}]`) {
+      return match;
+    }
+    return `[${tag}] [${tag}]`;
+  });
+}
+
 export function filterExpressiveTtsTags(
   rawText: string,
   options: { provider: 'piper' | 'fish'; enabledTags?: ExpressiveTtsTagSettings } = { provider: 'piper' },

@@ -4,6 +4,7 @@ import path from 'path';
 import { FishAudioClient, type Backends } from 'fish-audio';
 
 import { error as logError, warn as logWarn } from '../../../utils/logger.js';
+import { reinforceFishTtsTags } from '../../../utils/tts/expressive_tts_tags.util.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
 import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
 
@@ -44,7 +45,7 @@ async function convertWithBackend(
 ) {
     return await fishAudio.textToSpeech.convert(
         {
-            text,
+            text: reinforceFishTtsTags(text),
             reference_id: referenceId,
             format: 'mp3'
         },
