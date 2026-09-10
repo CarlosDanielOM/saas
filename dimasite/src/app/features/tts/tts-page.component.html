@@ -265,16 +265,23 @@
           </div>
         </div>
         <p class="lf-note">{{ t('modules.tts.expressive.toggleHint') }}</p>
-        <div class="lf-tag-pills" role="group" aria-labelledby="expressive-tags-title">
-          @for (tag of expressiveTags; track tag) {
-            <button type="button" class="lf-tag-pill"
-              [class.lf-tag-pill--on]="tts.filters.expressiveTags[tag]"
-              [class.lf-tag-pill--off]="!tts.filters.expressiveTags[tag]"
-              [attr.aria-pressed]="tts.filters.expressiveTags[tag]"
-              [disabled]="ttsReadOnly() || ttsSaving()"
-              (click)="toggleExpressiveTag(tag)">
-              [{{ tag }}]
-            </button>
+        <div class="lf-tag-groups">
+          @for (group of expressiveTagGroups; track group.key) {
+            <section class="lf-tag-group" [attr.aria-labelledby]="'tts-tags-' + group.key">
+              <h3 class="lf-h3" [id]="'tts-tags-' + group.key">{{ t('modules.tts.expressive.categories.' + group.key) }}</h3>
+              <div class="lf-tag-pills" role="group" [attr.aria-labelledby]="'tts-tags-' + group.key">
+                @for (tag of group.tags; track tag) {
+                  <button type="button" class="lf-tag-pill"
+                    [class.lf-tag-pill--on]="tts.filters.expressiveTags[tag]"
+                    [class.lf-tag-pill--off]="!tts.filters.expressiveTags[tag]"
+                    [attr.aria-pressed]="tts.filters.expressiveTags[tag]"
+                    [disabled]="ttsReadOnly() || ttsSaving()"
+                    (click)="toggleExpressiveTag(tag)">
+                    [{{ tag }}]
+                  </button>
+                }
+              </div>
+            </section>
           }
         </div>
         <div class="lf-help lf-help--subtle">

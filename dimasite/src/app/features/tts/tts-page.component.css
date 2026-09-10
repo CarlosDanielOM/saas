@@ -633,6 +633,17 @@
   margin-top: 1rem;
 }
 
+.lf-tag-groups {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.lf-tag-group + .lf-tag-group {
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
 .lf-tag-pill {
   min-height: 44px;
   padding: 0.35rem 0.7rem;

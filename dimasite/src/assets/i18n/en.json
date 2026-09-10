@@ -248,6 +248,10 @@
         "enabled": "Enabled",
         "disabled": "Disabled",
         "categories": {
+          "emotions": "Emotions",
+          "delivery": "Voice & delivery",
+          "sounds": "Vocal sounds",
+          "effects": "Pauses & effects",
           "pauses": "Pauses",
           "laughterCry": "Laughter & crying",
           "mouthSounds": "Mouth sounds",

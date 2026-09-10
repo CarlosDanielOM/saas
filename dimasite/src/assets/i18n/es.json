@@ -248,6 +248,10 @@
         "enabled": "Activo",
         "disabled": "Desactivado",
         "categories": {
+          "emotions": "Emociones",
+          "delivery": "Voz y expresión",
+          "sounds": "Sonidos vocales",
+          "effects": "Pausas y efectos",
           "pauses": "Pausas",
           "laughterCry": "Risa y llanto",
           "mouthSounds": "Sonidos de boca",

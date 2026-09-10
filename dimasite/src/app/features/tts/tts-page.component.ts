@@ -5,6 +5,7 @@ import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, 
 
 import {
   EXPRESSIVE_TTS_TAGS,
+  EXPRESSIVE_TTS_TAG_GROUPS,
   type ExpressiveTtsTag,
   type TtsProvider,
   type TtsRole,
@@ -71,6 +72,7 @@ export class TtsPageComponent {
 
   readonly urlCopied = signal(false);
   readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
+  readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags }));
   readonly expressiveTagsEnabledCount = computed(() =>
     this.expressiveTags.filter(tag => this.ttsSettings()?.filters.expressiveTags[tag]).length
   );

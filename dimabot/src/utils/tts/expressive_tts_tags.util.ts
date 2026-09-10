@@ -1,10 +1,30 @@
-export const EXPRESSIVE_TTS_TAGS = [
-  'happy', 'sad', 'angry', 'excited', 'calm', 'nervous', 'confident',
-  'surprised', 'scared', 'worried', 'disappointed', 'curious', 'sarcastic',
-  'whisper', 'shouting', 'soft', 'singing', 'slow', 'fast', 'emphasis',
-  'laugh', 'chuckle', 'giggle', 'cry', 'sigh', 'gasp', 'inhale', 'exhale',
-  'pause', 'long-pause',
-] as const;
+export const EXPRESSIVE_TTS_TAG_GROUPS = {
+  emotions: [
+    'happy', 'sad', 'angry', 'excited', 'calm', 'nervous',
+    'confident', 'surprised', 'scared', 'worried', 'disappointed', 'curious',
+    'sarcastic', 'satisfied', 'delighted', 'upset', 'frustrated', 'depressed',
+    'empathetic', 'embarrassed', 'disgusted', 'moved', 'proud', 'relaxed',
+    'grateful', 'disdainful', 'unhappy', 'anxious', 'hysterical', 'indifferent',
+    'uncertain', 'doubtful', 'confused', 'regretful', 'guilty', 'ashamed',
+    'jealous', 'envious', 'hopeful', 'optimistic', 'pessimistic', 'nostalgic',
+    'lonely', 'bored', 'contemptuous', 'sympathetic', 'compassionate', 'determined',
+    'resigned',
+  ],
+  delivery: [
+    'whisper', 'shouting', 'soft', 'singing', 'slow', 'fast',
+    'emphasis', 'screaming',
+  ],
+  sounds: [
+    'laugh', 'chuckle', 'giggle', 'cry', 'sigh', 'gasp',
+    'inhale', 'exhale', 'sobbing', 'groaning', 'panting', 'yawning',
+    'snoring', 'clear throat',
+  ],
+  effects: [
+    'pause', 'long-pause', 'audience laughing', 'background laughter',
+  ],
+} as const;
+
+export const EXPRESSIVE_TTS_TAGS = Object.values(EXPRESSIVE_TTS_TAG_GROUPS).flat();
 
 export type ExpressiveTtsTag = typeof EXPRESSIVE_TTS_TAGS[number];
 export type ExpressiveTtsTagSettings = Record<ExpressiveTtsTag, boolean>;
@@ -23,12 +43,15 @@ export function normalizeExpressiveTtsTags(input?: unknown): ExpressiveTtsTagSet
 const ALIASES: Record<string, string> = {
   anger: 'angry', whispering: 'whisper', laughing: 'laugh', crying: 'cry',
   sighing: 'sigh', loud: 'shouting',
+  chuckling: 'chuckle', gasping: 'gasp', 'soft tone': 'soft',
+  'crying loudly': 'cry', 'in a hurry tone': 'fast',
+  break: 'pause', 'long-break': 'long-pause', 'crowd laughing': 'audience laughing',
 };
 const LEGACY_WRAPPERS = /<\/?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>/gi;
 
 /** Expand already-filtered cues only at the Fish boundary, after message length limits. */
 export function reinforceFishTtsTags(text: string): string {
-  return text.replace(/\[([a-z-]+)\](?:\s*\[\1\])*/g, (match, tag: string) => {
+  return text.replace(/\[([a-z -]+)\](?:\s*\[\1\])*/g, (match, tag: string) => {
     if (!EXPRESSIVE_TTS_TAGS.includes(tag as ExpressiveTtsTag) || match !== `[${tag}]`) {
       return match;
     }
