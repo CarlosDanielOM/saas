@@ -4,6 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import {
+  EXPRESSIVE_TTS_TAGS,
+  type ExpressiveTtsTag,
   type TtsProvider,
   type TtsRole,
   type TtsSettings
@@ -68,6 +70,10 @@ export class TtsPageComponent {
   private readonly toastService = inject(ToastService);
 
   readonly urlCopied = signal(false);
+  readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
+  readonly expressiveTagsEnabledCount = computed(() =>
+    this.expressiveTags.filter(tag => this.ttsSettings()?.filters.expressiveTags[tag]).length
+  );
   readonly ttsSettings = signal<TtsSettings | null>(null);
   readonly initialTtsSettings = signal<TtsSettings | null>(null);
   readonly ttsRole = signal<TtsRole>('none');
@@ -271,6 +277,20 @@ export class TtsPageComponent {
     }));
   }
 
+  toggleExpressiveTag(tag: ExpressiveTtsTag): void {
+    this.patchTtsSettings(settings => ({
+      ...settings,
+      filters: {
+        ...settings.filters,
+        expressiveTags: { ...settings.filters.expressiveTags, [tag]: !settings.filters.expressiveTags[tag] }
+      }
+    }));
+  }
+
+  private normalizeExpressiveTags(input?: Partial<Record<ExpressiveTtsTag, boolean>>): Record<ExpressiveTtsTag, boolean> {
+    return Object.fromEntries(this.expressiveTags.map(tag => [tag, input?.[tag] !== false])) as Record<ExpressiveTtsTag, boolean>;
+  }
+
   updateTtsMaxLength(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) {
@@ -417,7 +437,8 @@ export class TtsPageComponent {
         skipEmotes: settings.filters.skipEmotes ?? defaults.filters.skipEmotes,
         stripLinks: settings.filters.stripLinks ?? defaults.filters.stripLinks,
         normalizeWhitespace: settings.filters.normalizeWhitespace ?? defaults.filters.normalizeWhitespace,
-        maxLength: Number.isFinite(settings.filters.maxLength) ? Math.max(30, Math.min(500, settings.filters.maxLength)) : 280
+        maxLength: Number.isFinite(settings.filters.maxLength) ? Math.max(30, Math.min(500, settings.filters.maxLength)) : 280,
+        expressiveTags: this.normalizeExpressiveTags(settings.filters.expressiveTags)
       },
       queue: {
         maxItems: Number.isFinite(settings.queue.maxItems) ? Math.max(1, Math.min(20, settings.queue.maxItems)) : 5
@@ -441,7 +462,8 @@ export class TtsPageComponent {
         skipEmotes: true,
         stripLinks: true,
         normalizeWhitespace: true,
-        maxLength: 280
+        maxLength: 280,
+        expressiveTags: this.normalizeExpressiveTags()
       },
       queue: {
         maxItems: 5
@@ -453,7 +475,7 @@ export class TtsPageComponent {
     return {
       ...settings,
       voices: { ...settings.voices },
-      filters: { ...settings.filters },
+      filters: { ...settings.filters, expressiveTags: { ...settings.filters.expressiveTags } },
       queue: { ...settings.queue }
     };
   }

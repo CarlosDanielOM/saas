@@ -872,7 +872,10 @@ export async function createCustomerPortalSession(request: CreatePortalSessionRe
     };
 }
 
-export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<AiCreditsData> {
+export async function getAiCredits(
+    user: Pick<IUsers, 'polar_sh_customer_id' | 'plan_tier'>,
+    twitchUserId: string
+): Promise<AiCreditsData> {
     const channelID = twitchUserId;
 
     if (!user.polar_sh_customer_id) {
@@ -953,8 +956,8 @@ export async function getAiCredits(user: IUsers, twitchUserId: string): Promise<
             balance: exhausted ? 0 : limit,
             meterId: AI_CREDITS_METER_ID,
             updatedAt: new Date().toISOString(),
-            available: true,
-            status: exhausted ? 'exhausted' : 'available'
+            available: exhausted,
+            status: exhausted ? 'exhausted' : 'unavailable'
         };
     }
 }

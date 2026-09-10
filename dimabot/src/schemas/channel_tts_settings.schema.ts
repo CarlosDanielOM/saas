@@ -1,4 +1,5 @@
 import { Schema, model, type HydratedDocument, type Model, Types } from 'mongoose';
+import { EXPRESSIVE_TTS_TAGS, normalizeExpressiveTtsTags, type ExpressiveTtsTagSettings } from '../utils/tts/expressive_tts_tags.util.js';
 
 export type TtsLanguage = 'en' | 'es';
 export type TtsMode = 'speak' | 'ai' | 'clone';
@@ -20,6 +21,7 @@ export interface ChannelTtsSettingsData {
         stripLinks: boolean;
         normalizeWhitespace: boolean;
         maxLength: number;
+        expressiveTags: ExpressiveTtsTagSettings;
     };
     queue: {
         maxItems: number;
@@ -47,7 +49,8 @@ export const DEFAULT_TTS_SETTINGS: Omit<ChannelTtsSettingsData, 'channelID' | 'c
         skipEmotes: true,
         stripLinks: true,
         normalizeWhitespace: true,
-        maxLength: 280
+        maxLength: 280,
+        expressiveTags: normalizeExpressiveTtsTags()
     },
     queue: {
         maxItems: 5
@@ -92,7 +95,7 @@ export function createDefaultChannelTtsSettings(channelID: string, channel: stri
         provider: DEFAULT_TTS_SETTINGS.provider,
         defaultLanguage: DEFAULT_TTS_SETTINGS.defaultLanguage,
         voices: { ...DEFAULT_TTS_SETTINGS.voices },
-        filters: { ...DEFAULT_TTS_SETTINGS.filters },
+        filters: { ...DEFAULT_TTS_SETTINGS.filters, expressiveTags: normalizeExpressiveTtsTags() },
         queue: { ...DEFAULT_TTS_SETTINGS.queue }
     };
 }
@@ -122,7 +125,8 @@ export function normalizeChannelTtsSettings(
             skipEmotes: input?.filters?.skipEmotes ?? defaults.filters.skipEmotes,
             stripLinks: input?.filters?.stripLinks ?? defaults.filters.stripLinks,
             normalizeWhitespace: input?.filters?.normalizeWhitespace ?? defaults.filters.normalizeWhitespace,
-            maxLength: sanitizeMaxLength(input?.filters?.maxLength, defaults.filters.maxLength)
+            maxLength: sanitizeMaxLength(input?.filters?.maxLength, defaults.filters.maxLength),
+            expressiveTags: normalizeExpressiveTtsTags(input?.filters?.expressiveTags)
         },
         queue: {
             maxItems: sanitizeMaxItems(input?.queue?.maxItems, defaults.queue.maxItems)
@@ -145,7 +149,8 @@ const channelTtsSettingsSchema = new Schema<IChannelTtsSettings>({
         skipEmotes: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.skipEmotes },
         stripLinks: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.stripLinks },
         normalizeWhitespace: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.normalizeWhitespace },
-        maxLength: { type: Number, default: DEFAULT_TTS_SETTINGS.filters.maxLength }
+        maxLength: { type: Number, default: DEFAULT_TTS_SETTINGS.filters.maxLength },
+        expressiveTags: Object.fromEntries(EXPRESSIVE_TTS_TAGS.map(tag => [tag, { type: Boolean, default: true }]))
     },
     queue: {
         maxItems: { type: Number, default: DEFAULT_TTS_SETTINGS.queue.maxItems }

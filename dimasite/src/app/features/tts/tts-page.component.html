@@ -252,6 +252,37 @@
         </article>
       </section>
 
+      <section class="lf-tile" aria-labelledby="expressive-tags-title">
+        <div class="lf-section-head">
+          <div>
+            <p class="lf-kicker">{{ t('modules.tts.expressive.kicker') }}</p>
+            <h2 class="lf-h2" id="expressive-tags-title">{{ t('modules.tts.expressive.title') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('modules.tts.expressive.subtitle') }}</p>
+          </div>
+          <div class="lf-pill-summary" aria-live="polite">
+            <strong>{{ expressiveTagsEnabledCount() }}/{{ expressiveTags.length }}</strong>
+            <span>{{ t('modules.tts.expressive.summary') }}</span>
+          </div>
+        </div>
+        <p class="lf-note">{{ t('modules.tts.expressive.toggleHint') }}</p>
+        <div class="lf-tag-pills" role="group" aria-labelledby="expressive-tags-title">
+          @for (tag of expressiveTags; track tag) {
+            <button type="button" class="lf-tag-pill"
+              [class.lf-tag-pill--on]="tts.filters.expressiveTags[tag]"
+              [class.lf-tag-pill--off]="!tts.filters.expressiveTags[tag]"
+              [attr.aria-pressed]="tts.filters.expressiveTags[tag]"
+              [disabled]="ttsReadOnly() || ttsSaving()"
+              (click)="toggleExpressiveTag(tag)">
+              [{{ tag }}]
+            </button>
+          }
+        </div>
+        <div class="lf-help lf-help--subtle">
+          <strong>{{ t('modules.tts.expressive.providerTitle') }}</strong>
+          <p>{{ t('modules.tts.expressive.providerCopy') }}</p>
+        </div>
+      </section>
+
       <p class="lf-footer-note">
         {{ t(ttsReadOnly() ? 'modules.tts.footer.readOnly' : 'modules.tts.footer.owner') }}
       </p>

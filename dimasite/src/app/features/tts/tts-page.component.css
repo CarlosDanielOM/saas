@@ -629,11 +629,12 @@
 .lf-tag-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .lf-tag-pill {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0.35rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -644,17 +645,27 @@
   font-weight: 650;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+  touch-action: manipulation;
 }
 
 .lf-tag-pill--on {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--accent-soft);
+  border-color: var(--kicker);
+  color: var(--kicker);
 }
 
 .lf-tag-pill--off {
-  opacity: 0.55;
   text-decoration: line-through;
+}
+
+.lf-tag-pill:focus-visible {
+  outline: 2px solid var(--kicker);
+  outline-offset: 3px;
+}
+
+.lf-tag-pill:hover:not(:disabled) {
+  border-color: var(--kicker);
 }
 
 .lf-tag-pill:disabled {
@@ -736,6 +747,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .lf-tag-pill,
   .lf-switch__track,
   .lf-switch__track::after {
     transition: none;

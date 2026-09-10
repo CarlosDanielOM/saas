@@ -336,7 +336,10 @@ router.post('/:channelID', async (req: Request, res: Response) => {
         const language = body.language === 'en' ? 'en' : settings.defaultLanguage;
         const provider = resolveRequestedProvider(settings, mode, body.provider);
 
-        const filteredText = filterExpressiveTtsTags(String(body.text || ''));
+        const filteredText = filterExpressiveTtsTags(String(body.text || ''), {
+            provider,
+            enabledTags: settings.filters.expressiveTags
+        });
 
         const normalizedText = normalizeTtsMessage(filteredText, {
             skipEmotes: false,

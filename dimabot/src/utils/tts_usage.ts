@@ -8,7 +8,7 @@ import { error } from "./logger.js";
  * One credit is approximate to 0.001 cent of USD so 0.00001 USD per AI token
  */
 const TTS_CREDITS_PER_CHARACTER: Record<string, number> = {
-  piper: 100, // Local, Cheaper cost for users
+  piper: 0, // Local free voice, including fallback after credit exhaustion
   fish: 1.5, // 1.5 credits per character
 };
 
@@ -132,7 +132,7 @@ export async function trackTtsUsage(
 
   // Send to Polar.sh for billing
   if (streamer?.polar_sh_customer_id && usage.polarshCost > 0) {
-    ingestPolarSHEvent({
+    await ingestPolarSHEvent({
       customerId: streamer.polar_sh_customer_id,
       channelID,
       cost: usage.costUsd,

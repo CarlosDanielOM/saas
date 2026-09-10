@@ -21,6 +21,12 @@ import type {
 } from "../server/services/tts/tts_provider.interface.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { trackTtsUsage } from "../utils/tts_usage.js";
+import {
+  getAiCredits,
+  isAiCreditsExhausted,
+  type AiCreditStatus,
+} from "../utils/billing.js";
+import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util.js";
 
 export interface TtsRequestPayload {
   channelID: string;
@@ -48,6 +54,7 @@ export interface TtsRequestPayload {
 export interface TtsQueueItem extends TtsRequestPayload {
   speechID: string;
   timestamp: number;
+  piperFallbackVoice?: string;
 }
 
 export interface QueueTtsResponse {
@@ -132,6 +139,7 @@ class TtsQueueHandler {
       ...payload,
       speechID,
       timestamp: Date.now(),
+      piperFallbackVoice: settings.voices[payload.language],
     };
 
     await this.cache!.set(
@@ -210,6 +218,42 @@ class TtsQueueHandler {
     this.processingChannels.add(channelID);
     await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID);
 
+    let streamer: Awaited<ReturnType<typeof TwitchStreamers.getTwitchAccountById>> = null;
+    try {
+      streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+    } catch (error) {
+      console.error("Failed to load TTS billing account; using free voice", { channelID, error });
+    }
+    if (queueItem.provider === "fish") {
+      let creditStatus: AiCreditStatus = "unavailable";
+      try {
+        const exhausted = await isAiCreditsExhausted(channelID, this.cache!);
+        if (exhausted) {
+          creditStatus = "exhausted";
+        } else if (streamer) {
+          creditStatus = (await getAiCredits(streamer, channelID)).status;
+        }
+      } catch (creditError) {
+        console.error("Failed to check AI credits before TTS synthesis; using Piper", {
+          channelID,
+          speechID,
+          error:
+            creditError instanceof Error
+              ? creditError.message
+              : String(creditError),
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      queueItem = resolveTtsForCreditStatus(queueItem, creditStatus);
+    }
+
+    if (!queueItem.text.trim()) {
+      await this.cleanupSpeech(channelID, speechID);
+      void this.processNext(channelID);
+      return;
+    }
+
     const ttsService = this.services[queueItem.provider] || piperTtsService;
     const synthesisResult = await ttsService.synthesize({
       channelID,
@@ -243,7 +287,6 @@ class TtsQueueHandler {
 
     // Track TTS usage for billing
     try {
-      const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
       await trackTtsUsage({
         channelID,
         streamer: {
