@@ -47,10 +47,10 @@ Docs share the **Live First (OC3c)** design language with `dimasite/`.
 
 ## Production Verification & Deployment
 
-- This checkout is on production. Follow the root workflow: preview and validate content/UI changes, then deploy unless the user limits scope.
-- Preview from the repository root with `npm run dev --prefix dimadocs -- --host 127.0.0.1 --port 4322`, using an unused port. Check changed pages, links, both languages where affected, and mobile/desktop layouts.
-- Use an isolated checkout/output outside the live mount for preliminary production-build checks. Preserve the previous served bundle before running `npm run build --prefix dimadocs`: `dimadocs/dist/` is mounted directly into the production `dimadocs` container, so output writes/cleanup affect live requests.
-- Verify the deployed pages/assets, restore the previous complete bundle on failure, and stop the preview. No nginx restart is needed for content changes.
+- Use `scripts/saas-ops` target `docs` and [`../ops/README.md`](../ops/README.md). `scripts/dima-update` is the human operator's tool; agents must not invoke or modify it.
+- Preview with `scripts/saas-ops preview docs --port 4322` from the repository root. Check changed pages, links, affected languages, and mobile/desktop layouts; Ctrl-C stops and removes the isolated preview.
+- Run `scripts/saas-ops build docs`, then use the exact generated run ID with `verify docs-<run-id> --check <behavior-script>`, `deploy docs-<run-id>`, and `cleanup docs-<run-id>` through the same helper. Build output stays outside the live mount until verified publication to `dimadocs/dist/`.
+- The helper preserves a rollback bundle and verifies served entrypoints. Check changed live pages/links too; use `rollback docs-<run-id>` for a regression. No nginx restart is needed for content changes.
 - `dimadocs/docker-compose.yml` owns the service. Validate nginx config changes in isolation before applying, then run `nginx -t` and reload only the affected production nginx process.
 
 ---

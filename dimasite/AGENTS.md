@@ -161,27 +161,31 @@ Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `-
 
 ## Production Build & Deployment
 
-This checkout is on the production host. Follow the root production workflow: validate the UI in a development preview, then build and verify production as part of the requested implementation unless the user limits scope. The serving container reads build output directly via a bind-mount.
+This checkout is on the production host. Use `scripts/saas-ops` target `site` for preview, isolated build, verification, and publication as part of a requested implementation unless the user limits scope. See [`../ops/README.md`](../ops/README.md). `scripts/dima-update` is the human operator's manual tool; agents must not invoke or modify it.
 
 ### Preview and validate first
 
 From the repository root, use an unused loopback port, for example:
 
 ```bash
-npm run start --prefix dimasite -- --host 127.0.0.1 --port 4201 --configuration development
+scripts/saas-ops preview site --port 4201
 ```
 
-Inspect the development environment and any API/proxy targets before exercising interactions; development mode does not guarantee isolated data. Verify changed flows and mobile/desktop layouts. For production-only build checks, use an isolated checkout or alternate output directory outside the live mount. Preserve the existing production bundle before the final build, and restore it if build or live verification fails. Stop the preview process when done.
+The helper starts `ng serve` in a temporary source copy on loopback. Inspect the development environment and API/proxy targets before exercising interactions; development mode does not guarantee isolated data. Verify changed flows and mobile/desktop layouts. Ctrl-C stops the preview and removes its copy.
 
 ### Build command
 
 From `saas/` root:
 
 ```bash
-npm run build --prefix dimasite
+scripts/saas-ops build site
+# Use the exact generated run ID and a check covering the changed feature:
+scripts/saas-ops verify site-<run-id> --check <behavior-script>
+scripts/saas-ops deploy site-<run-id>
+scripts/saas-ops cleanup site-<run-id>
 ```
 
-This invokes `ng build` in production mode (no flags needed). Output is written to:
+The helper runs `npm ci` and the production build in an unserved snapshot. Verification serves that exact bundle on loopback; a successful deploy backs up the live bundle, publishes assets before HTML, and verifies the served entrypoints. Deployment writes to:
 
 ```
 dimasite/dist/dimasite/browser/
@@ -216,7 +220,7 @@ host:        /root/saas/dimasite/dist/dimasite/browser
 container:   /usr/share/nginx/html
 ```
 
-Nginx reads files on every request, so output changes are visible during the build as well as after completion. A build can clear existing output before finishing. **No container restart or service reload is needed for bundle changes.**
+Nginx reads files on every request. A direct in-place Angular build could clear live output before finishing, so agents use the helper's separate build/publication steps. It preserves the mounted directory and replaces files individually with HTML last; publication is not a whole-site atomic switch. **No container restart or service reload is needed for bundle changes.**
 
 ### Required nginx routing rule (hybrid rendering)
 
@@ -266,7 +270,7 @@ The new entry chunk will have a different content hash than the previous build (
 - Deploy to the actual mounted output path above; confirm mounts before assuming another checkout or web directory is served.
 - **Do not** restart the `dimabot-site` container after a frontend change — nginx picks up file changes per-request.
 - **Do not** commit `dimasite/dist/` — it is gitignored at both root (`/root/saas/.gitignore`) and per-project (`dimasite/.gitignore`).
-- The production build writes directly to the served mount; no additional content copy is needed for a successful build. Backup/restore operations for rollback are allowed and must preserve a complete bundle.
+- Use the helper's publication/rollback commands for bundles. Do not rename the mounted output directory or publish a development build. The helper retains old assets for open browser tabs and removes obsolete HTML entrypoints.
 
 ### Why no flags?
 

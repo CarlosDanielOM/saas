@@ -8,6 +8,14 @@
 
 **A request to implement a change authorizes the complete delivery workflow: edit, validate in isolation, clean up temporary resources, deploy the affected services, and verify production.** Proceed without asking again for routine builds or targeted deployment after validation passes. Respect narrower requests such as review-only, plan-only, or do-not-deploy. Destructive data changes or infrastructure changes outside the requested scope require separate authorization.
 
+### Use the executable agent workflow
+
+**For supported code/assets releases, agents must use `scripts/saas-ops` rather than assembling Docker or publication commands manually.** Read [`ops/README.md`](ops/README.md) for the exact workflow and limits. Start with `scripts/saas-ops list` and `scripts/saas-ops plan <target>`, then `build <target>`, `verify <run-id> --check <behavior-script>`, `deploy <run-id>`, and `cleanup <run-id>`. The generated run ID fixes the target throughout verification, deployment, rollback, and cleanup. No arguments prints help; there is no bulk target or automatic Git pull.
+
+**`scripts/dima-update` is the human operator's manual tool. Agents must not invoke or modify it.** It is intentionally separate from the agent workflow.
+
+The helper snapshots current project files, tests a candidate, promotes the exact tested image/bundle, checks ownership before cleanup, and preserves rollback artifacts. Checks must exercise the changed feature; the supplied smoke checks are only a baseline. Use `preview site|admin|docs` for isolated frontend development previews. Configuration/migration changes and the directly served `dimafx` client require their separately reviewed workflows; do not work around a helper refusal with a broad Docker command.
+
 ### Backend and container services
 
 1. Identify affected services from the implementation and its consumers, then inspect their Dockerfiles, commands, mounts, and dependencies.
@@ -15,26 +23,26 @@
 3. Do not blindly reuse production Compose configuration for testing: it contains fixed container names, production networks, credentials, and volumes. A different Compose project name alone does not isolate those resources. Test containers must not consume live queues, run duplicate bots/workers, mutate production databases, send real messages, or trigger billing/webhooks. Inspect initialization side effects before starting them.
 4. Check startup/readiness and exercise the changed behavior, including relevant failure cases. A successful image build or a container that stays running is not sufficient functional verification. For example, a TTS custom-ID change should exercise synthesis with supported custom IDs and invalid/missing IDs using disposable fixtures. If runtime verification is blocked, report the specific gap; do not label a build-only check as a passed runtime test or deploy an unverified change.
 5. Stop and remove task-owned test containers, networks, and disposable volumes after testing, including after failures. Remove temporary images when no longer needed. Never use broad Docker prune commands or remove unrelated resources.
-6. After checks pass, preserve the previous production image/configuration for rollback and rebuild/recreate only affected production services. Verify that the deployed source matches the tested candidate; revalidate if relevant inputs changed. Check readiness, recent logs, and a scoped production smoke test. If deployment introduces a regression, restore the previous working version and report the failure.
+6. After checks pass, use `scripts/saas-ops deploy <run-id>` to preserve the previous production image/configuration and recreate only the selected service with the exact tested image. Do not rebuild a different image during deployment. Check readiness, recent logs, and a scoped production smoke test. If deployment introduces a regression, use the run's rollback command and report the failure.
 
 ### Frontend and static content
 
 - Use a development preview before deployment: Angular `ng serve` with the project's development configuration, or Astro's development server. Bind previews to loopback on an unused port. Inspect mobile and desktop layouts and exercise changed interactions. A preview may still call production APIs: inspect its environment/proxy configuration and use mocks or test accounts/data for mutating flows.
-- Validate the production build in an isolated checkout or an output directory outside the live mounts when needed to catch production-only failures. Preserve the current served bundle before the final build: an in-place build can clear its output before finishing, and a failed build must not leave production missing files.
-- Once validation passes, run the owning project's production build to update the served bundle, verify the live page/assets, and stop the preview. Restore the previous bundle if the build or production verification fails.
+- Use `scripts/saas-ops build site|admin|docs` to create the production bundle outside the live mount, then verify that candidate with a behavior check.
+- Once validation passes, use `deploy <run-id>` to back up and publish the tested bundle, verify the live page/assets, and stop the preview. The helper replaces individual files with HTML last, preserves the mount directory, and restores the previous bundle on failure. This is not a whole-site atomic switch.
 - `dimafx` client files are served directly from the checkout. Prepare and preview those edits in an isolated copy/worktree outside the served directory, then apply the validated files as the deployment step.
 
 ### Live deployment map
 
 | Project | Production update mechanism |
 |---------|-----------------------------|
-| `dimasite` | `npm run build --prefix dimasite` writes `dimasite/dist/dimasite/browser/`, served by `dimabot-site` |
-| `admin` | `npm run build --prefix admin` writes `admin/dist/admin/browser/`, served by `dima-admin` |
-| `dimadocs` | `npm run build --prefix dimadocs` writes `dimadocs/dist/`, served by `dimadocs` |
+| `dimasite` | Helper target `site` publishes to `dimasite/dist/dimasite/browser/`, served by `dimabot-site` |
+| `admin` | Helper target `admin` publishes to `admin/dist/admin/browser/`, served by `dima-admin` |
+| `dimadocs` | Helper target `docs` publishes to `dimadocs/dist/`, served by `dimadocs` |
 | `dimafx` client | `dimafx/` is mounted directly into `dimafx`; client file edits are immediately live |
-| `dimabot` | Targeted image rebuild/container recreation using `dimabot/docker-compose.yaml` |
-| `dimafx` server | Targeted `dimafx-server` rebuild/recreation using `dimafx/docker-compose.yml` |
-| `dimadb` | Image rebuild/container recreation using `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
+| `dimabot` | Helper targets `api`, `bot`, `cron`, `piper`, `embeddings` use `dimabot/docker-compose.yaml` |
+| `dimafx` server | Helper target `dimafx-server` uses `dimafx/docker-compose.yml` |
+| `dimadb` | Helper target `dimadb` uses `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
 
 The static sites have their own Compose files in their project directories. Nginx Proxy Manager fronts them; it does not own their Compose lifecycle. Content updates do not require nginx restarts. Nginx configuration changes require validation and a targeted reload.
 
@@ -142,13 +150,16 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 
 ### Frontend Deploy (no container rebuild needed)
 
-After validating a requested change to `dimasite/src/**` with the production workflow above, deploy by rebuilding from the repo root:
+After validating a requested change to `dimasite/src/**`, use the agent helper from the repository root:
 
 ```bash
-npm run build --prefix dimasite
+scripts/saas-ops build site
+# Use the exact run ID printed by build and a check for the changed behavior:
+scripts/saas-ops verify site-<run-id> --check <behavior-script>
+scripts/saas-ops deploy site-<run-id>
 ```
 
-The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. Build output changes are visible during the build, not just after completion; preserve the previous bundle for recovery. No container restart is needed. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
+The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. A direct `npm run build --prefix dimasite` would write into that live mount; agents use the helper's isolated build and verified publication instead. No container restart is needed. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
 
 **Hybrid rendering**: the build prerenders `/` (output `browser/index.html`) and emits `browser/index.csr.html` as the CSR fallback for all app routes. Render modes live in `dimasite/src/app/app.routes.server.ts`. The nginx fallback on the prod host must target `index.csr.html` (see `dimasite/AGENTS.md` → "Required nginx routing rule").
 

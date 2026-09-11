@@ -37,10 +37,10 @@ Follow the hybrid styling policy defined in root `AGENTS.md`. Component-scoped `
 
 ## Production Verification & Deployment
 
-- This checkout is on production. Follow the root workflow: preview, validate, then deploy the requested change without an additional approval unless the user limits scope.
-- Preview with `npm run start --prefix admin -- --host 127.0.0.1 --port 4202 --configuration development` from the repository root, choosing an unused port. Inspect API/environment targets before interacting; test moderation and other mutations with mocks or designated test data. Check mobile/desktop layouts and the changed flows.
-- Preserve the previous bundle, then run `npm run build --prefix admin`. This writes directly to `admin/dist/admin/browser/`, mounted into `dima-admin`; build output changes are immediately visible to production. For preliminary production-build validation, use a separate checkout/output outside that mount.
-- Verify the served page/assets and restore the previous complete bundle if the build or live verification fails. Stop the preview process. Bundle updates require no nginx restart.
+- Use `scripts/saas-ops` target `admin` and [`../ops/README.md`](../ops/README.md). `scripts/dima-update` is the human operator's tool; agents must not invoke or modify it.
+- Preview with `scripts/saas-ops preview admin --port 4202` from the repository root. Inspect API/environment targets before interacting; test moderation and other mutations with mocks or designated test data. Check mobile/desktop layouts and changed flows, then Ctrl-C to stop the isolated preview.
+- Run `scripts/saas-ops build admin`, then `verify admin-<run-id> --check <behavior-script>`, `deploy admin-<run-id>`, and `cleanup admin-<run-id>` through the same helper. Use the exact generated run ID. Builds occur outside the live directory; publication backs up and updates `admin/dist/admin/browser/` without restarting nginx.
+- The helper verifies served entrypoints and restores the prior bundle on failure. Add relevant production smoke checks; use `rollback admin-<run-id>` for a regression discovered afterward.
 - `admin/docker-compose.yaml` owns `dima-admin`. Nginx config changes require isolated validation, then a production `nginx -t` and targeted reload.
 
 ---

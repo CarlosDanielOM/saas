@@ -23,9 +23,9 @@
 
 - This checkout is on production. A requested implementation includes isolated validation, cleanup, and targeted deployment unless the user limits scope.
 - For UI changes, preview Angular on an unused loopback port using the development configuration. Exercise UI flows against a disposable API and test data, not production database connections.
-- Build a uniquely tagged candidate using `dimadb/dockerfile`, then run a disposable container with a separate `/data` volume and isolated Redis/Mongo fixtures where needed. Do not mount `dimadb/data/` or inherit production connection URLs for testing.
+- Use `scripts/saas-ops` target `dimadb` and [`../ops/README.md`](../ops/README.md): plan, build, verify the generated run with a behavior check, deploy, then cleanup. Test storage is disposable; never mount `dimadb/data/` or inherit production connection URLs. The baseline check is `ops/checks/dimadb.mjs`; add cases for the changed feature.
 - Verify startup, the changed UI/API flows, and relevant authentication checks. Remove only task-owned test containers/networks/volumes after testing; retain production data untouched.
-- Preserve the previous production image, then run `docker compose up -d --build --no-deps dimadb` from `dimadb/`. Check readiness, logs, and the served app; restore the previous image if the release fails. The UI deploys with the container, not with a host Angular build.
+- The helper preserves rollback and promotes the exact tested image. Check readiness, logs, and the served app; use `scripts/saas-ops rollback <run-id>` for a regression. The UI deploys with the container, not with a host Angular build. `scripts/dima-update` belongs to the human operator; agents must not invoke or modify it.
 - Production listens only on Docker networks. Temporary previews may bind an unused `127.0.0.1` port; remove them after verification. Never use `down -v` or broad prune commands to clean up this service.
 
 ## Angular

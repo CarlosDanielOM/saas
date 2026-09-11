@@ -29,69 +29,34 @@
 - Heavy or scheduled work belongs in `src/workers/` (see root AGENTS.md for worker criteria).
 - **Moderation actions are always executed by the bot account** (`TWITCH_BOT_ACCOUNT_ID` in `src/utils/header.ts`), whether triggered by the streamer, a mod, a `!`command, or the AI via AST. Helix moderation endpoints require `moderator_id` to match the token owner — always pair the bot token with `moderator_id=TWITCH_BOT_ACCOUNT_ID` via `getTwitchModeratorHeader()`. Never pass a chatter/streamer ID as `moderator_id`.
 
-## Isolated Verification on the Production Host
+## Verification & Production Deployment
 
-Follow the root production workflow. A requested implementation includes isolated validation and targeted production deployment after checks pass, unless the user limits the scope.
+Use the root production workflow and [`../ops/README.md`](../ops/README.md). Agents use `scripts/saas-ops`; `scripts/dima-update` is the human operator's tool and must not be invoked or modified by agents.
 
-- From the appropriate checkout, `npm run build --prefix dimabot` compiles TypeScript. The package has no `dev` script; inspect `package.json` for actual commands.
-- Build the affected Dockerfile with a unique candidate tag, then start a disposable container with an isolated configuration and the appropriate runtime command. Check readiness and the changed behavior before touching production containers.
-- `server:dev`, `bot:dev`, and `cron:dev` start real application processes. Do not start them with production credentials/dependencies for verification; bot and cron processes can duplicate live actions. The existing development Compose file is not proof of isolation.
-- For TTS/embedding changes, test the relevant service image and its API using temporary model/voice data as needed. Do not attach writable production cache volumes to test containers. Limit test resources so production retains capacity.
-- Inspect test scripts before execution. The default `npm test` is a placeholder that fails; use relevant existing suites and behavior checks rather than treating that placeholder as coverage.
-- Remove task-owned test resources after verification. Preserve the previous production image before rebuilding the affected service.
-
-## Production Deployment (Container Rebuilds)
-
-`dimabot/docker-compose.yaml` defines five services: `api-server`, `chat-bot`, `dima-cron`, `piper-tts`, and `lfm2.5-embeddings`. The first three share a Dockerfile that compiles `src/` inside each image. `piper-tts` and `lfm2.5-embeddings` use separate Dockerfiles. Deploy only after isolated validation passes.
-
-**Always run compose commands from `dimabot/`** (the directory that owns `docker-compose.yaml`):
+From the repository root:
 
 ```bash
-cd dimabot
+scripts/saas-ops plan piper
+scripts/saas-ops build piper
+# Use the exact run ID printed above; extend the check for the changed behavior.
+scripts/saas-ops verify piper-<run-id> --seed-models --check ops/checks/piper.py
+scripts/saas-ops deploy piper-<run-id>
+scripts/saas-ops cleanup piper-<run-id>
 ```
 
-### Rebuild only the services that changed
+Target mapping: `api` → `api-server`, `bot` → `chat-bot`, `cron` → `dima-cron`, `piper` → `piper-tts`, `embeddings` → `lfm2.5-embeddings`. Select affected services by actual imports and runtime consumers. Shared code may require separate verified runs for multiple targets. The helper does not provide a bulk deployment command.
 
-Select services by their actual imports and runtime consumers, not directory names alone. Server-only code usually affects `api-server`, bot-only code `chat-bot`, and worker-only code `dima-cron`; shared utilities/schemas may affect all three. A TTS change may require `piper-tts` plus callers if its contract changes. Use targeted rebuilds and `--no-deps` when dependencies are unchanged.
-
-```bash
-# Single service
-docker compose up -d --build --no-deps api-server
-
-# Two services
-docker compose up -d --build --no-deps api-server chat-bot
-
-# All three code-bearing services (most common for cross-cutting fixes)
-docker compose up -d --build --no-deps api-server chat-bot dima-cron
-```
-
-This is significantly faster than rebuilding the full stack and avoids restarting `piper-tts` / `lfm2.5-embeddings` unnecessarily (which restarts the embedding model load and the piper voice cache).
-
-### Dockerfile and Compose changes
-
-Changes to a Dockerfile or Compose file do not automatically require rebuilding the entire stack. Rebuild/recreate the services affected by that change and any required dependent changes. For a validated TTS-only change, use `docker compose up -d --build --no-deps piper-tts`. Preserve production volumes; never run `down -v` as part of deployment.
-
-### After the rebuild
-
-1. Check the affected containers' image IDs, status, readiness/health, and recent logs. Image tags may stay the same after rebuilding; compare IDs with the new images. Leave unrelated services running.
-2. For API changes, verify startup and the relevant endpoint. For TTS changes, verify readiness and a scoped synthesis request using the supported contract. For workers/bots, confirm the expected single production instance and healthy startup without injecting real user actions.
-3. Existing endpoints such as `https://api.domdimabot.com/config/site/analytics` may be used for read-only smoke checks, but do not prove a different changed feature works. Do not infer failure just from zero counts.
-4. Restore the previous image/configuration if the release introduces a regression, then report the failed check. Never run overlapping production bot/cron instances as a rollout strategy.
+- Builds run from source snapshots outside the live checkout. The API/bot/cron images compile `src/` inside their Dockerfile; TTS and embeddings have separate Dockerfiles.
+- Verification runs the actual candidate command in a disposable container with test data/settings. Use `--test-env`, `--fixtures`, and the allowlisted `--dependency mongo|redis` as needed. API/bot/cron initialization may need provider mocks or additional task-specific test setup; do not point tests at production services to make them pass.
+- `server:dev`, `bot:dev`, and `cron:dev` start real application processes. Running them with production credentials can duplicate live actions. The existing development Compose file is not proof of isolation.
+- The package has no `dev` script, and its default `npm test` is a failing placeholder. Inspect source and use the relevant existing suites and behavior checks.
+- The Piper baseline check verifies voice listing, default/explicit synthesis, WAV output, and empty-input rejection. Add cases for a custom-ID or other feature change. `--seed-models` copies production voice files read-only into disposable storage; it does not mount production volumes into tests.
+- After tests pass, deployment promotes the exact tested image with dependencies untouched and preserves rollback. Use `scripts/saas-ops rollback <run-id>` if task-specific production checks reveal a regression. Check the relevant service's readiness, logs, and behavior; a general API health endpoint does not verify a TTS change.
+- Compose/Dockerfile changes do not justify a blanket stack rebuild. Dockerfile changes use the relevant target. The helper refuses Compose/environment drift; review configuration changes separately rather than bypassing the check.
 
 ### Frontend bundle (dimasite)
 
-The `dimabot-site` nginx container belongs to `dimasite/docker-compose.yaml`, with Nginx Proxy Manager in front of it. Its content is bind-mounted directly from `dimasite/dist/dimasite/browser/` (Angular build output) into the container at `/usr/share/nginx/html` (read-only).
-
-**The production build is the deploy step.** After preview/behavior checks pass and the previous bundle is preserved, rebuild:
-
-```bash
-# From saas/ root
-npm run build --prefix dimasite
-```
-
-No container restart is needed — nginx reads files on each request and the bind-mount reflects host changes immediately, including partial build output. Verify the live result and restore the previous bundle if the build or deployment check fails.
-
-See `dimasite/AGENTS.md` → "Production Build & Deployment" for full details.
+The `dimabot-site` container belongs to `dimasite/docker-compose.yaml`. Use helper target `site` for preview, isolated production build, verification, and publication. Its output is mounted directly from `dimasite/dist/dimasite/browser/`; agents must not run an in-place production build as a validation command. See `dimasite/AGENTS.md` and `ops/README.md`.
 
 ## Worker Guidelines
 
