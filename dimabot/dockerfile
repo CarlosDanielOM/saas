@@ -56,4 +56,5 @@ RUN npm run build
 # 7.5 Copy public HTML files to dist
 # ---------------------------------------------------------------------
 # Copy static HTML files for overlays to build output
-COPY --chown=node:node ./src/server/routes/public/ ./dist/server/routes/public/
+# The configured API runtime is root; it creates generated speech beneath public.
+COPY ./src/server/routes/public/ ./dist/server/routes/public/

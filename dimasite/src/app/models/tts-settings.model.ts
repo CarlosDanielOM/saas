@@ -61,3 +61,26 @@ export interface TtsSettingsResponseData {
 }
 
 export type TtsSettingsResponse = ApiEnvelope<TtsSettingsResponseData>;
+
+export interface FishVoice {
+  id: string;
+  name: string;
+  languages: string[];
+  gender: 'female' | 'male' | null;
+  licensed: boolean | null;
+}
+export interface FishVoiceResults { items: FishVoice[]; page: number; hasMore: boolean; }
+export interface FishVoiceFilters {
+  name: string;
+  gender: string;
+  language: string;
+  license: string;
+  page: number;
+}
+export interface FishPreview {
+  voiceId: string;
+  text: string;
+  credits: number;
+  mimeType: string;
+  audio: string;
+}

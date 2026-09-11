@@ -2,7 +2,8 @@ import { HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError } from 'rxjs';
 
-import { TtsSettings, TtsSettingsResponse } from '../models/tts-settings.model';
+import { FishVoiceResults, FishVoiceFilters, TtsSettings, TtsSettingsResponse } from '../models/tts-settings.model';
+import { ApiEnvelope } from '../models/admin.model';
 import { LinksService } from './links.service';
 import { HttpClient } from '@angular/common/http';
 
@@ -49,6 +50,22 @@ export class TtsSettingsApiService {
         }),
         catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load TTS settings')))
       );
+  }
+
+  searchVoices(channelID: string, filters: FishVoiceFilters) {
+    return this.http.get<ApiEnvelope<FishVoiceResults>>(`${this.linksService.getApiUrl()}/speech/voices/${channelID}`, {
+      params: { ...filters }
+    }).pipe(map(response => {
+      if (response.error || !response.data) throw new Error('catalog_unavailable');
+      return response.data;
+    }));
+  }
+
+  createPreviewSession(channelID: string) {
+    return this.http.post<ApiEnvelope<{ ticket: string }>>(`${this.linksService.getApiUrl()}/speech/preview-session/${channelID}`, {}).pipe(map(response => {
+      if (response.error || !response.data) throw new Error('preview_unavailable');
+      return response.data;
+    }));
   }
 
   updateSettings(channelID: string, settings: TtsSettings) {

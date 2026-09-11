@@ -1,0 +1,64 @@
+<section class="voice-browser" [attr.aria-label]="t('title')">
+  <div class="voice-heading"><h2>{{ t('title') }}</h2><span class="credit-chip">{{ t('cap') }}</span></div>
+  <p class="voice-copy">{{ t('description') }}</p>
+  <form [formGroup]="filters" (ngSubmit)="search()" class="voice-filters">
+    <label class="voice-search"><span>{{ t('name') }}</span>
+      <input type="search" formControlName="name" maxlength="100" [placeholder]="t('placeholder')" />
+    </label>
+    <label><span>{{ t('gender') }}</span><select formControlName="gender">
+      <option value="all">{{ t('all') }}</option><option value="female">{{ t('female') }}</option><option value="male">{{ t('male') }}</option>
+    </select></label>
+    <label><span>{{ t('language') }}</span><select formControlName="language">
+      <option value="all">{{ t('all') }}</option><option value="en">{{ t('english') }}</option><option value="es">{{ t('spanish') }}</option>
+    </select></label>
+    <label><span>{{ t('license') }}</span><select formControlName="license">
+      <option value="all">{{ t('all') }}</option><option value="licensed">{{ t('licensed') }}</option><option value="unlicensed">{{ t('unlicensed') }}</option>
+    </select></label>
+  </form>
+  <details class="license-help"><summary>{{ t('licenseHelp') }}</summary><p>{{ t('licensedHint') }} {{ t('unlicensedHint') }}</p></details>
+  <p class="voice-copy">{{ t('previewHint') }}</p>
+  @if (previewError()) { <p role="alert" class="voice-error">{{ t('errors.' + previewError()) }}</p> }
+  @if (preview(); as sample) {
+    <div class="voice-player" aria-live="polite">
+      <strong>{{ previewName() }} · {{ t('spent', { credits: sample.credits }) }}</strong>
+      <p>{{ sample.text }}</p>
+      <audio #player controls [src]="audioUrl()" [attr.aria-label]="t('audioLabel', { name: previewName() })"></audio>
+      @if (playbackBlocked()) { <p>{{ t('pressPlay') }}</p> }
+    </div>
+  }
+  <div aria-live="polite" role="status">
+    @if (previewing()) { <p>{{ t('preparing', { name: previewName() }) }}</p> }
+    @if (loading()) { <p>{{ t('loading') }}</p> }
+  </div>
+  @if (searchError()) {
+    <p role="alert" class="voice-error">{{ t('searchError') }}</p><button type="button" (click)="search()">{{ t('retry') }}</button>
+  } @else if (!loading() && voices().length === 0) {
+    <p class="voice-empty">{{ t('empty') }}</p>
+  }
+  <div class="voice-results" [attr.aria-busy]="loading()">
+    @for (voice of voices(); track voice.id) {
+      <article class="voice-card" [class.is-selected]="selectedId() === voice.id">
+        <div class="voice-heading"><h3>{{ voice.name }}</h3>
+          <span class="license-badge" tabindex="0" [attr.title]="t(voice.licensed === true ? 'licensedHint' : voice.licensed === false ? 'unlicensedHint' : 'unknownHint')">
+            {{ t(voice.licensed === true ? 'licensed' : voice.licensed === false ? 'unlicensed' : 'unknown') }}
+          </span>
+        </div>
+        <p class="voice-meta">{{ voice.gender ? t(voice.gender) : t('unknownGender') }} · {{ voice.languages.join(', ').toUpperCase() }}</p>
+        <code>{{ voice.id }}</code>
+        <div class="voice-actions">
+          <button type="button" [disabled]="readOnly() || !!previewing() || loading()" (click)="testVoice(voice)" [attr.aria-label]="t('testNamed', { name: voice.name })">{{ t('test') }}</button>
+          <button type="button" class="primary" [disabled]="readOnly() || loading() || selectedId() === voice.id" (click)="selectVoice.emit(voice)">
+            {{ selectedId() === voice.id ? t('selected') : t('useDefault') }}
+          </button>
+        </div>
+      </article>
+    }
+  </div>
+  @if (page() > 1 || hasMore()) {
+    <nav class="voice-pagination" [attr.aria-label]="t('pages')">
+      <button type="button" [disabled]="loading() || page() <= 1" (click)="search(page() - 1)">{{ t('previous') }}</button>
+      <span>{{ t('page', { page: page() }) }}</span>
+      <button type="button" [disabled]="loading() || !hasMore()" (click)="search(page() + 1)">{{ t('next') }}</button>
+    </nav>
+  }
+</section>

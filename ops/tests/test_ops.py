@@ -295,13 +295,21 @@ class OpsTests(unittest.TestCase):
         project = self.root / "dimadb"
         project.mkdir()
         (project / "source.js").write_text("current uncommitted source")
+        (project / "static").mkdir()
+        (project / "static/index.html").write_text("test asset")
         (project / ".env").write_text("SECRET=do-not-copy")
         (project / "data").mkdir()
         (project / "data/prod.json").write_text("private")
         (project / "dist").mkdir()
         (project / "dist/index.html").write_text("live")
-        self.ops.snapshot(mod.TARGETS["dimadb"], self.path / "source")
-        self.assertEqual([f.name for f in mod.files_under(self.path / "source")], ["source.js"])
+        previous_umask = os.umask(0o077)
+        try:
+            self.ops.snapshot(mod.TARGETS["dimadb"], self.path / "source")
+        finally:
+            os.umask(previous_umask)
+        self.assertEqual((self.path / "source").stat().st_mode & 0o777, 0o755)
+        self.assertEqual((self.path / "source/static").stat().st_mode & 0o777, 0o755)
+        self.assertEqual(sorted(f.name for f in mod.files_under(self.path / "source")), ["index.html", "source.js"])
         self.assertEqual((project / "source.js").read_text(), "current uncommitted source")
         self.assertEqual((project / "dist/index.html").read_text(), "live")
 

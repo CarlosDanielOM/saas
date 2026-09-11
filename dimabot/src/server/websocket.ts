@@ -5,6 +5,7 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { clipQueueHandler } from "../handlers/clip_queue.handler.js";
 import { ttsQueueHandler } from "../handlers/tts_queue.handler.js";
+import { registerFishPreview } from './services/tts/fish_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
 import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
 
@@ -37,6 +38,8 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         io = new SocketIOServer(server, {
             connectionStateRecovery: {}
         });
+
+        registerFishPreview(io);
 
         //? Clip Namespace with heartbeat mechanism
         io.of(/^\/clip\/\w+$/).on('connection', async (socket) => {

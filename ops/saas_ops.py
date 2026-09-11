@@ -242,6 +242,10 @@ class Ops:
             dest = destination / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(file, dest)
+        # State ancestors stay 0700. Build input directories need normal traversal
+        # permissions after Docker COPY changes their owner inside the image.
+        for directory in [destination, *(p for p in destination.rglob("*") if p.is_dir())]:
+            directory.chmod(0o755)
         require(any(destination.iterdir()), "Empty build context")
 
     def build(self, name):

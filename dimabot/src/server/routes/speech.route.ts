@@ -17,7 +17,9 @@ import {
     type TtsLanguage,
     type TtsMode
 } from '../../schemas/channel_tts_settings.schema.js';
-import { DEFAULT_FISH_TTS_REFERENCE_ID, FISH_VOICES } from '../services/tts/fish_tts.service.js';
+import { FISH_VOICES } from '../services/tts/fish_tts.service.js';
+import { resolveFishVoice, getFishVoice, searchFishVoices, parseVoiceSearch, VoiceRequestError } from '../services/tts/fish_voice_catalog.service.js';
+import { createPreviewTicket } from '../services/tts/fish_preview.service.js';
 import type { RuntimeTtsProvider } from '../services/tts/tts_provider.interface.js';
 import { getDirname } from '../../utils/pollyfills.js';
 import { filterExpressiveTtsTags, normalizeTtsMessage } from '../../utils/tts/normalize_tts_message.util.js';
@@ -70,31 +72,8 @@ function resolveRequestedProvider(
 }
 
 function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string): string | null {
-    if (mode === 'speak' && provider === 'fish') {
-        const voiceName = settings.voices.cloneDefault;
-        if (voiceName && voiceName in FISH_VOICES) {
-            return FISH_VOICES[voiceName];
-        }
-        return DEFAULT_FISH_TTS_REFERENCE_ID;
-    }
-
-    if (mode === 'clone') {
-        if (provider === 'fish') {
-            if (cloneName) {
-                // If it's a known alias, use the mapped reference ID
-                if (cloneName in FISH_VOICES) {
-                    return FISH_VOICES[cloneName];
-                }
-                // Otherwise pass it directly — Fish will use it as a raw reference ID
-                return cloneName;
-            }
-            const defaultName = settings.voices.cloneDefault;
-            if (defaultName && defaultName in FISH_VOICES) {
-                return FISH_VOICES[defaultName];
-            }
-            return DEFAULT_FISH_TTS_REFERENCE_ID;
-        }
-        return null;
+    if (provider === 'fish') {
+        return resolveFishVoice(mode === 'clone' && cloneName ? cloneName : settings.voices.cloneDefault);
     }
 
     return language === 'en' ? settings.voices.en : settings.voices.es;
@@ -217,6 +196,13 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
         }
 
         const nextSettings = normalizeChannelTtsSettings(req.body as Partial<ChannelTtsSettingsData>, channelID, streamer.name);
+        const previous = await getChannelTtsSettings(channelID, streamer.name);
+        const selected = nextSettings.voices.cloneDefault!;
+        if (selected !== previous.voices.cloneDefault) {
+            const voiceId = resolveFishVoice(selected);
+            if (!voiceId) return res.status(400).json({ error: true, status: 400, code: 'invalid_voice', message: 'Invalid Fish voice' });
+            if (!Object.hasOwn(FISH_VOICES, selected)) await getFishVoice(voiceId);
+        }
         const savedSettings = await upsertChannelTtsSettings(channelID, nextSettings, streamer.name);
 
         return res.status(200).json({
@@ -229,6 +215,7 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             }
         });
     } catch (error) {
+        if (error instanceof VoiceRequestError) return res.status(error.status).json({ error: true, status: error.status, code: error.code, message: error.message });
         console.error('Error in PUT /speech/settings/:channelID:', {
             channelID: req.params.channelID,
             requesterID: req.user?.id,
@@ -243,6 +230,35 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             message: 'Internal server error',
             status: 500
         });
+    }
+});
+
+// These routes share settings authorization; preview tickets are owner-only and single-use.
+router.get('/voices/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!req.user || await getSettingsAccess(req.user.id, channelID) === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Access denied' });
+        }
+        const data = await searchFishVoices(parseVoiceSearch(req.query));
+        return res.json({ error: false, status: 200, data });
+    } catch (error) {
+        const status = error instanceof VoiceRequestError ? error.status : 503;
+        return res.status(status).json({ error: true, status, code: error instanceof VoiceRequestError ? error.code : 'catalog_unavailable', message: 'Unable to search voices' });
+    }
+});
+router.post('/preview-session/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!/^\d+$/.test(channelID) || !req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
+            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can preview voices' });
+        }
+        const ticket = await createPreviewTicket(channelID);
+        return res.json({ error: false, status: 200, data: { ticket } });
+    } catch {
+        return res.status(503).json({ error: true, status: 503, message: 'Preview connection unavailable' });
     }
 });
 

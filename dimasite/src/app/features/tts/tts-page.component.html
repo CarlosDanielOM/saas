@@ -252,6 +252,14 @@
         </article>
       </section>
 
+      @if (showCloneSettings() && channelID(); as id) {
+        <article class="lf-tile">
+          <app-fish-voice-browser [channelID]="id" [selectedId]="tts.voices.cloneDefault || ''"
+            [readOnly]="ttsReadOnly() || ttsSaving()" [defaultLanguage]="tts.defaultLanguage"
+            (selectVoice)="updateTtsCloneDefault($event.id)" />
+        </article>
+      }
+
       <section class="lf-tile" aria-labelledby="expressive-tags-title">
         <div class="lf-section-head">
           <div>
