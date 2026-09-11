@@ -161,7 +161,17 @@ Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `-
 
 ## Production Build & Deployment
 
-After **any** change to `dimasite/src/**`, you must rebuild the production bundle. There is **no separate deploy step** — the serving container reads the build output directly via a bind-mount.
+This checkout is on the production host. Follow the root production workflow: validate the UI in a development preview, then build and verify production as part of the requested implementation unless the user limits scope. The serving container reads build output directly via a bind-mount.
+
+### Preview and validate first
+
+From the repository root, use an unused loopback port, for example:
+
+```bash
+npm run start --prefix dimasite -- --host 127.0.0.1 --port 4201 --configuration development
+```
+
+Inspect the development environment and any API/proxy targets before exercising interactions; development mode does not guarantee isolated data. Verify changed flows and mobile/desktop layouts. For production-only build checks, use an isolated checkout or alternate output directory outside the live mount. Preserve the existing production bundle before the final build, and restore it if build or live verification fails. Stop the preview process when done.
 
 ### Build command
 
@@ -199,14 +209,14 @@ The app uses Angular hybrid rendering (`outputMode: "static"`, no Node SSR serve
 
 ### How the bundle reaches production
 
-The `dimabot-site` nginx container (managed by `nginx-proxy-manager`, **not** part of `dimabot/docker-compose.yaml`) has a **read-only bind-mount**:
+The `dimabot-site` nginx container (owned by `dimasite/docker-compose.yaml`, with Nginx Proxy Manager in front) has a **read-only bind-mount**:
 
 ```
-host:        /home/cdom/saas/dimasite/dist/dimasite/browser
+host:        /root/saas/dimasite/dist/dimasite/browser
 container:   /usr/share/nginx/html
 ```
 
-Nginx reads files on every request, so the new bundle is live the moment `ng build` finishes — **no container restart, no `cp`, no service reload**.
+Nginx reads files on every request, so output changes are visible during the build as well as after completion. A build can clear existing output before finishing. **No container restart or service reload is needed for bundle changes.**
 
 ### Required nginx routing rule (hybrid rendering)
 
@@ -228,18 +238,19 @@ location / {
 `dimasite/nginx.conf` is bind-mounted into the `dimabot-site` container
 (`nginx:alpine`, stock image — there is no custom image to rebuild) as
 `/etc/nginx/conf.d/default.conf`. Unlike the content bind-mount, **config
-changes are not picked up per-request** — after changing `nginx.conf`,
-reload nginx on the prod host:
+changes are not picked up per-request**. Validate the candidate configuration in an isolated nginx container before applying it. After applying a validated config change, check and reload the production nginx process:
 
 ```bash
-git pull && docker exec dimabot-site nginx -s reload   # or: docker restart dimabot-site
+docker exec dimabot-site nginx -t
+# Only after the configuration check succeeds:
+docker exec dimabot-site nginx -s reload
 ```
 
 ### Verify the deploy
 
 ```bash
 # Confirm bundle timestamp updated on host
-stat -c '%y' /home/cdom/saas/dimasite/dist/dimasite/browser/index.html
+stat -c '%y' /root/saas/dimasite/dist/dimasite/browser/index.html
 
 # Confirm the served bundle has new chunk hashes
 curl -s https://domdimabot.com/ | grep -oE 'main-[A-Z0-9]+\.js'
@@ -252,14 +263,14 @@ The new entry chunk will have a different content hash than the previous build (
 
 ### Important do-nots
 
-- **Do not** copy files to `/home/cdom/var/www/dima-site/` — that path is unused. The container reads from `dimasite/dist/dimasite/browser/` directly. (The `dimabot/AGENTS.md` had a stale copy step; treat it as deprecated.)
+- Deploy to the actual mounted output path above; confirm mounts before assuming another checkout or web directory is served.
 - **Do not** restart the `dimabot-site` container after a frontend change — nginx picks up file changes per-request.
-- **Do not** commit `dimasite/dist/` — it is gitignored at both root (`/home/cdom/saas/.gitignore`) and per-project (`dimasite/.gitignore`).
-- **Do not** add `cp`/`rsync` steps in deploy scripts — the bind-mount is the deploy.
+- **Do not** commit `dimasite/dist/` — it is gitignored at both root (`/root/saas/.gitignore`) and per-project (`dimasite/.gitignore`).
+- The production build writes directly to the served mount; no additional content copy is needed for a successful build. Backup/restore operations for rollback are allowed and must preserve a complete bundle.
 
 ### Why no flags?
 
-`ng build` with no arguments runs the default production configuration (`production: true` in `angular.json`), which enables optimization, hashing, and minification. The dev-only configuration (`--configuration development`) should only be used for `ng serve` during local development.
+`ng build` with no arguments uses `defaultConfiguration: "production"` in `angular.json`, enabling production optimization and hashing. Use `--configuration development` for isolated previews; never publish development output into the live mount.
 
 ---
 

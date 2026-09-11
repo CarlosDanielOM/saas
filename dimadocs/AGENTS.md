@@ -45,6 +45,14 @@ Docs share the **Live First (OC3c)** design language with `dimasite/`.
 - Dark/light via Starlight `data-theme`; both themes must stay readable (4.5:1 body text).
 - Reference: `.opencode/skills/live-first/SKILL.md` and dimasite landing/dashboard.
 
+## Production Verification & Deployment
+
+- This checkout is on production. Follow the root workflow: preview and validate content/UI changes, then deploy unless the user limits scope.
+- Preview from the repository root with `npm run dev --prefix dimadocs -- --host 127.0.0.1 --port 4322`, using an unused port. Check changed pages, links, both languages where affected, and mobile/desktop layouts.
+- Use an isolated checkout/output outside the live mount for preliminary production-build checks. Preserve the previous served bundle before running `npm run build --prefix dimadocs`: `dimadocs/dist/` is mounted directly into the production `dimadocs` container, so output writes/cleanup affect live requests.
+- Verify the deployed pages/assets, restore the previous complete bundle on failure, and stop the preview. No nginx restart is needed for content changes.
+- `dimadocs/docker-compose.yml` owns the service. Validate nginx config changes in isolation before applying, then run `nginx -t` and reload only the affected production nginx process.
+
 ---
 
 **This file is intentionally lightweight.** Add MDX authoring guidelines or content-structure notes here as the documentation grows. Root rules always take precedence.

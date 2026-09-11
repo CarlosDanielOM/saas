@@ -139,14 +139,14 @@ Delivery ages use `createdAt`; ready age means age of currently ready work, not 
 
 ## Verification And Rollout
 
-This workstation is development-only: **no Docker, databases, production webhooks, deploys or live payment checks here**. The service-free allowlisted [runner](src/scripts/test_domain_pipeline.script.mjs) covers the pipeline suite using Node module mocks; standalone Lua checks are optional and skip if Lua is unavailable. From the repository root:
+This checkout is on the **production server**, with Docker and live databases available. Follow the root [production workflow](../AGENTS.md#production-host--delivery-workflow): validate changes with isolated test containers/dependencies, clean up, then deploy the affected services and verify production. Do not run fault injection, duplicate consumers, or payment/webhook test traffic against live services. The service-free allowlisted [runner](src/scripts/test_domain_pipeline.script.mjs) covers the pipeline suite using Node module mocks; standalone Lua checks are optional and skip if Lua is unavailable. From the repository root:
 
 ```bash
 node dimabot/src/scripts/test_domain_pipeline.script.mjs
 node dimabot/src/scripts/test_domain_pipeline.script.mjs --test-reporter=dot
 ```
 
-Do not replace the allowlist with a repository-wide test glob. Mocked queries, response loss, SDK transport and child-process tests do not establish live Mongo/Dragonfly atomicity, query performance, resource sizing or payment behavior. Production checks below must run on the production host in an appropriate controlled test setup; they have not been performed here.
+Do not replace the allowlist with a repository-wide test glob. Mocked queries, response loss, SDK transport and child-process tests do not establish live Mongo/Dragonfly atomicity, query performance, resource sizing or payment behavior. Run failure scenarios below against isolated dependencies and synthetic data; use payment-provider test mode. After deployment, use scoped, non-destructive production health checks. Record which checks were actually performed; this checklist is not evidence that they passed.
 
 ### Production Checklist
 

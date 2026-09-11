@@ -2,9 +2,47 @@
 
 **This is the root navigation document for the entire monorepo.** All agents must read this file first.
 
+## Production Host & Delivery Workflow
+
+**This checkout, `/root/saas`, is on the actual production server.** Docker and live services are available here. Do not assume this is a development-only machine or that Docker is unavailable. Confirm current container mounts and Compose ownership before acting; the paths below describe this host.
+
+**A request to implement a change authorizes the complete delivery workflow: edit, validate in isolation, clean up temporary resources, deploy the affected services, and verify production.** Proceed without asking again for routine builds or targeted deployment after validation passes. Respect narrower requests such as review-only, plan-only, or do-not-deploy. Destructive data changes or infrastructure changes outside the requested scope require separate authorization.
+
+### Backend and container services
+
+1. Identify affected services from the implementation and its consumers, then inspect their Dockerfiles, commands, mounts, and dependencies.
+2. Build a candidate image with a unique temporary tag and run a disposable container using the intended runtime command. Use a separate test configuration, private test network, disposable data, and mocks or test dependencies as needed. Bind any preview ports to `127.0.0.1` on unused ports. Limit CPU/memory appropriately for the host's available capacity.
+3. Do not blindly reuse production Compose configuration for testing: it contains fixed container names, production networks, credentials, and volumes. A different Compose project name alone does not isolate those resources. Test containers must not consume live queues, run duplicate bots/workers, mutate production databases, send real messages, or trigger billing/webhooks. Inspect initialization side effects before starting them.
+4. Check startup/readiness and exercise the changed behavior, including relevant failure cases. A successful image build or a container that stays running is not sufficient functional verification. For example, a TTS custom-ID change should exercise synthesis with supported custom IDs and invalid/missing IDs using disposable fixtures. If runtime verification is blocked, report the specific gap; do not label a build-only check as a passed runtime test or deploy an unverified change.
+5. Stop and remove task-owned test containers, networks, and disposable volumes after testing, including after failures. Remove temporary images when no longer needed. Never use broad Docker prune commands or remove unrelated resources.
+6. After checks pass, preserve the previous production image/configuration for rollback and rebuild/recreate only affected production services. Verify that the deployed source matches the tested candidate; revalidate if relevant inputs changed. Check readiness, recent logs, and a scoped production smoke test. If deployment introduces a regression, restore the previous working version and report the failure.
+
+### Frontend and static content
+
+- Use a development preview before deployment: Angular `ng serve` with the project's development configuration, or Astro's development server. Bind previews to loopback on an unused port. Inspect mobile and desktop layouts and exercise changed interactions. A preview may still call production APIs: inspect its environment/proxy configuration and use mocks or test accounts/data for mutating flows.
+- Validate the production build in an isolated checkout or an output directory outside the live mounts when needed to catch production-only failures. Preserve the current served bundle before the final build: an in-place build can clear its output before finishing, and a failed build must not leave production missing files.
+- Once validation passes, run the owning project's production build to update the served bundle, verify the live page/assets, and stop the preview. Restore the previous bundle if the build or production verification fails.
+- `dimafx` client files are served directly from the checkout. Prepare and preview those edits in an isolated copy/worktree outside the served directory, then apply the validated files as the deployment step.
+
+### Live deployment map
+
+| Project | Production update mechanism |
+|---------|-----------------------------|
+| `dimasite` | `npm run build --prefix dimasite` writes `dimasite/dist/dimasite/browser/`, served by `dimabot-site` |
+| `admin` | `npm run build --prefix admin` writes `admin/dist/admin/browser/`, served by `dima-admin` |
+| `dimadocs` | `npm run build --prefix dimadocs` writes `dimadocs/dist/`, served by `dimadocs` |
+| `dimafx` client | `dimafx/` is mounted directly into `dimafx`; client file edits are immediately live |
+| `dimabot` | Targeted image rebuild/container recreation using `dimabot/docker-compose.yaml` |
+| `dimafx` server | Targeted `dimafx-server` rebuild/recreation using `dimafx/docker-compose.yml` |
+| `dimadb` | Image rebuild/container recreation using `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
+
+The static sites have their own Compose files in their project directories. Nginx Proxy Manager fronts them; it does not own their Compose lifecycle. Content updates do not require nginx restarts. Nginx configuration changes require validation and a targeted reload.
+
+Changes limited to repository guidance (such as `AGENTS.md` or architecture Markdown) require documentation checks, not application builds, test containers, or deployment. Published documentation-site content still follows the `dimadocs` preview/build/deploy workflow. In the final report, state what was verified, what was deployed, and any unresolved limitations.
+
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing five related projects. There are no nested `.git` folders. All agents work from the `saas/` root.
+This workspace is a **single git repository** (`saas/`) containing six related projects. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
 - Each subproject manages its own `package.json` and `package-lock.json`.
 - Root `.gitignore` explicitly allows per-project lockfiles.
@@ -104,13 +142,13 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 
 ### Frontend Deploy (no container rebuild needed)
 
-After **any** change to `dimasite/src/**`, rebuild from the repo root:
+After validating a requested change to `dimasite/src/**` with the production workflow above, deploy by rebuilding from the repo root:
 
 ```bash
 npm run build --prefix dimasite
 ```
 
-The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. nginx reads files per-request, so the new bundle is live the moment the build finishes — no `cp`, no container restart. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
+The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/` directly to `/usr/share/nginx/html`. Build output changes are visible during the build, not just after completion; preserve the previous bundle for recovery. No container restart is needed. Full details in `dimasite/AGENTS.md` → "Production Build & Deployment".
 
 **Hybrid rendering**: the build prerenders `/` (output `browser/index.html`) and emits `browser/index.csr.html` as the CSR fallback for all app routes. Render modes live in `dimasite/src/app/app.routes.server.ts`. The nginx fallback on the prod host must target `index.csr.html` (see `dimasite/AGENTS.md` → "Required nginx routing rule").
 
@@ -214,10 +252,10 @@ Agent: Claude 4 via claude-code
 ### Rules
 
 - **Verification required before commit**: An agent **must not** create a commit unless the changes have been verified to compile and run without errors introduced by *their own work*.
-  - Run the appropriate build/type-check command for the project (e.g., `npm run build`, `tsc --noEmit`, `ng build --configuration=production`).
+  - Follow the production workflow above: use isolated builds/runtime checks before deployment. For changes limited to repository guidance, review the diff, validate referenced paths/commands, and run `git diff --check`; application builds and runtime checks are unnecessary. Published documentation-site content still requires its preview/build/deploy checks.
   - If the project has tests, at minimum ensure the changed code paths do not introduce new failures.
 - **Multi-agent concurrent work**: When two or more agents are editing the codebase simultaneously and one agent's incomplete changes cause build errors for another:
-  - The committing agent should first attempt to verify their changes in isolation (e.g., by temporarily stashing the other agent's uncommitted files).
+  - The committing agent should first attempt to verify their changes in a separate worktree/copy. Never stash, reset, overwrite, or commit another contributor's unrelated changes. Do not deploy their incomplete work as part of your task.
   - If verification is impossible due to the other agent's work, the commit message **must** explicitly note the known issue and attribute it to the other agent (e.g., "Build currently fails due to parallel work by Grok 4.3 on X feature – will be resolved once that PR lands").
   - Never commit broken code and blame "the other agent" without clear documentation.
 - Always commit when the change is complete and verified (or the multi-agent exception is documented).

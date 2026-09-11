@@ -4,7 +4,7 @@
 
 ## Project Purpose
 
-`dimadb/` is an internal database console. Angular CSR UI + Node API live in **one container**. NPM should proxy to `dimadb:80` on `web-proxy`. Do not publish host ports.
+`dimadb/` is an internal database console. Angular CSR UI + Node API live in **one container**. NPM should proxy to `dimadb:80` on `web-proxy`. Do not publish production host ports; isolated temporary previews may use loopback as described below.
 
 ## Key Entry Points
 
@@ -17,7 +17,16 @@
 - Container listens on port 80 inside Docker networks only.
 - Persist users/connections on `./data` (`DATA_DIR=/data`).
 - API is same-origin. Mutating/authenticated routes require `X-Dimadb: 1`.
-- Frontend rebuild inside the image: `docker compose up -d --build`.
+- Frontend is built inside the image; deploy only after the isolated verification below.
+
+## Production Verification & Deployment
+
+- This checkout is on production. A requested implementation includes isolated validation, cleanup, and targeted deployment unless the user limits scope.
+- For UI changes, preview Angular on an unused loopback port using the development configuration. Exercise UI flows against a disposable API and test data, not production database connections.
+- Build a uniquely tagged candidate using `dimadb/dockerfile`, then run a disposable container with a separate `/data` volume and isolated Redis/Mongo fixtures where needed. Do not mount `dimadb/data/` or inherit production connection URLs for testing.
+- Verify startup, the changed UI/API flows, and relevant authentication checks. Remove only task-owned test containers/networks/volumes after testing; retain production data untouched.
+- Preserve the previous production image, then run `docker compose up -d --build --no-deps dimadb` from `dimadb/`. Check readiness, logs, and the served app; restore the previous image if the release fails. The UI deploys with the container, not with a host Angular build.
+- Production listens only on Docker networks. Temporary previews may bind an unused `127.0.0.1` port; remove them after verification. Never use `down -v` or broad prune commands to clean up this service.
 
 ## Angular
 
