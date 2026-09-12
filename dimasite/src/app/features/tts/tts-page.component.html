@@ -168,18 +168,20 @@
           <h2 class="lf-h2">{{ t('modules.tts.cards.voiceTitle') }}</h2>
 
           @if (showCloneSettings()) {
-            <div class="lf-form-grid lf-form-grid--single">
-              <label class="lf-field">
+            <div class="lf-voice-picker">
+              <label class="lf-field" for="fish-default-voice">
                 <span>{{ t('modules.tts.fields.cloneVoiceLabel') }}</span>
-                <select
-                  [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsCloneDefault($any($event.target).value)"
-                >
+              </label>
+              <div class="lf-voice-picker__controls">
+                <select id="fish-default-voice" [disabled]="ttsReadOnly() || ttsSaving()"
+                  (change)="updateTtsCloneDefault($any($event.target).value)">
                   @for (voice of cloneDefaultVoiceOptions(); track voice.value) {
                     <option [value]="voice.value" [selected]="voice.value === (tts.voices.cloneDefault || 'gojo')">{{ voice.label }}</option>
                   }
                 </select>
-              </label>
+                <button type="button" class="lf-btn" aria-haspopup="dialog" [disabled]="ttsSaving()"
+                  (click)="voiceBrowserOpen.set(true)">{{ t('modules.tts.browser.findVoice') }}</button>
+              </div>
             </div>
           } @else {
             <div class="lf-form-grid">
@@ -252,12 +254,10 @@
         </article>
       </section>
 
-      @if (showCloneSettings() && channelID(); as id) {
-        <article class="lf-tile">
-          <app-fish-voice-browser [channelID]="id" [selectedId]="tts.voices.cloneDefault || ''"
-            [readOnly]="ttsReadOnly() || ttsSaving()" [defaultLanguage]="tts.defaultLanguage"
-            (selectVoice)="updateTtsCloneDefault($event.id)" />
-        </article>
+      @if (voiceBrowserOpen() && showCloneSettings() && channelID(); as id) {
+        <app-fish-voice-browser [channelID]="id" [selectedId]="tts.voices.cloneDefault || ''"
+          [readOnly]="ttsReadOnly() || ttsSaving()" [defaultLanguage]="tts.defaultLanguage"
+          (selectVoice)="chooseFishVoice($event)" (dismiss)="voiceBrowserOpen.set(false)" />
       }
 
       <section class="lf-tile" aria-labelledby="expressive-tags-title">

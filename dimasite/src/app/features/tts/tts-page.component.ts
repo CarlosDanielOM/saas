@@ -7,6 +7,7 @@ import {
   EXPRESSIVE_TTS_TAGS,
   EXPRESSIVE_TTS_TAG_GROUPS,
   type ExpressiveTtsTag,
+  type FishVoice,
   type TtsProvider,
   type TtsRole,
   type TtsSettings
@@ -72,6 +73,8 @@ export class TtsPageComponent {
   private readonly toastService = inject(ToastService);
 
   readonly urlCopied = signal(false);
+  readonly voiceBrowserOpen = signal(false);
+  private readonly discoveredVoiceNames = signal<Record<string, string>>({});
   readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
   readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags }));
   readonly expressiveTagsEnabledCount = computed(() =>
@@ -170,14 +173,14 @@ export class TtsPageComponent {
   readonly showCloneSettings = computed(() => this.ttsSettings()?.provider === 'fish');
   readonly cloneDefaultVoiceOptions = computed(() => {
     const current = this.ttsSettings()?.voices.cloneDefault;
-    return mergeCurrentOption(FISH_VOICE_OPTIONS, current, this.t('modules.tts.fields.savedValueOption', { value: current ?? '' }));
+    return mergeCurrentOption(FISH_VOICE_OPTIONS, current, this.discoveredVoiceNames()[current ?? ''] || this.t('modules.tts.fields.savedValueOption', { value: current ?? '' }));
   });
   readonly currentCloneDefaultVoiceLabel = computed(() => {
     const settings = this.ttsSettings();
     const voiceName = settings?.voices.cloneDefault;
     if (!voiceName) return 'Gojo';
     const found = FISH_VOICE_OPTIONS.find((v) => v.value === voiceName);
-    return found?.label ?? voiceName;
+    return found?.label ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
   });
   readonly currentDefaultProviderLabel = computed(() => this.getProviderLabel(this.ttsSettings()?.provider ?? 'piper'));
 
@@ -206,6 +209,7 @@ export class TtsPageComponent {
         return;
       }
 
+      this.voiceBrowserOpen.set(false);
       this.lastLoadedChannelID = resolution.channelID;
       void this.loadTtsSettings(resolution.channelID);
     });
@@ -247,6 +251,7 @@ export class TtsPageComponent {
   }
 
   updateTtsProvider(provider: TtsProvider): void {
+    this.voiceBrowserOpen.set(false);
     this.patchTtsSettings((settings) => ({ ...settings, provider }));
   }
 
@@ -258,6 +263,13 @@ export class TtsPageComponent {
         [language]: voiceValue
       }
     }));
+  }
+
+  chooseFishVoice(voice: FishVoice): void {
+    if (this.ttsReadOnly() || this.ttsSaving()) return;
+    this.discoveredVoiceNames.update(names => ({ ...names, [voice.id]: voice.name }));
+    this.updateTtsCloneDefault(voice.id);
+    this.voiceBrowserOpen.set(false);
   }
 
   updateTtsCloneDefault(voiceValue: string): void {

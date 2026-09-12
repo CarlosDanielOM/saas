@@ -311,7 +311,7 @@
         "locked": "Bloqueado"
       },
       "browser": {
-        "title": "Encuentra tu voz de Fish",
+        "title": "Encuentra una voz",
         "cap": "Hasta 150 créditos por prueba",
         "description": "Explora voces además de las cuatro preseleccionadas. Elige una voz y guarda los ajustes para usarla por defecto.",
         "name": "Buscar por nombre",
@@ -356,7 +356,18 @@
           "synthesis_failed": "Fish no pudo generar esta prueba de voz. Prueba otra voz.",
           "preview_unavailable": "No se pudo completar la prueba de voz. Inténtalo de nuevo.",
           "preview_timeout": "La prueba está tardando demasiado. Aún podría completarse y usar créditos. Espera antes de reintentar."
-        }
+        },
+        "findVoice": "Buscar voz",
+        "close": "Cerrar buscador de voces",
+        "filters": "Filtros",
+        "results": "Resultados de voces",
+        "about": "Sobre las pruebas y licencias",
+        "compactHint": "Hasta 150 créditos por prueba · Repetir es gratis",
+        "saveHint": "Elige una voz y guarda los ajustes.",
+        "choose": "Usar voz",
+        "chooseNamed": "Usar {{name}} por defecto",
+        "selectedShort": "Elegida",
+        "phrase": "Frase de prueba"
       }
     },
     "referrals": {

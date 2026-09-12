@@ -32,7 +32,8 @@ let settings = { channelID: '999991', channel: 'test', enabled: true, provider: 
 const voices = [
   { id: 'a'.repeat(32), name: 'Alice', gender: 'female', languages: ['en'], licensed: true },
   { id: 'b'.repeat(32), name: 'Bea', gender: 'female', languages: ['es'], licensed: false },
-  { id: 'c'.repeat(32), name: 'Carlos', gender: 'male', languages: ['es'], licensed: false }
+  { id: 'c'.repeat(32), name: 'Carlos', gender: 'male', languages: ['es'], licensed: false },
+  ...Array.from({ length: 17 }, (_, i) => ({ id: String(i).padStart(32, '0'), name: `Voice ${i + 4}`, gender: 'male', languages: ['en'], licensed: true }))
 ];
 let previews = 0;
 let previewFail = false;
@@ -93,20 +94,63 @@ await context.route('**/*', async route => {
 try {
   await page.goto(base + '/test/modules/tts');
   const browserUI = page.locator('app-fish-voice-browser');
-  await browserUI.getByRole('heading', { name: 'Alice', exact: true }).waitFor();
-  for (const [width, theme] of [[360, 'dark'], [1280, 'dark'], [360, 'light'], [1280, 'light']]) {
+  const dialog = browserUI.getByRole('dialog');
+  const openBrowser = async () => {
+    await page.getByRole('button', { name: 'Find voice', exact: true }).click();
+    await browserUI.getByRole('heading', { name: 'Alice', exact: true }).waitFor();
+  };
+  await page.getByRole('button', { name: 'Find voice', exact: true }).waitFor();
+  assert.equal(await browserUI.count(), 0, 'catalog stays out of the settings page');
+  assert.equal(searchQueries.length, 0, 'catalog is fetched only when opened');
+  await openBrowser();
+  for (const [width, theme] of [[320, 'dark'], [390, 'dark'], [1280, 'dark'], [320, 'light'], [1280, 'light']]) {
     await page.evaluate(theme => { document.documentElement.classList.toggle('dark', theme === 'dark'); document.documentElement.setAttribute('data-theme', theme); }, theme);
-    await page.setViewportSize({ width, height: 900 });
-    await browserUI.scrollIntoViewIfNeeded();
+    await page.setViewportSize({ width, height: width < 640 ? 640 : 900 });
+    const bounds = await dialog.boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= page.viewportSize().height + 1, 'modal fits viewport');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'horizontal overflow');
-    await browserUI.screenshot({ path: `/tmp/saas-fish-${width}-${theme}.png` });
+    await dialog.screenshot({ path: `/tmp/saas-fish-${width}-${theme}.png` });
     const axe = await new AxeBuilder({ page }).include('app-fish-voice-browser').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n=>n.target) })), [], 'voice browser accessibility');
   }
+  const body = browserUI.locator('.voice-body');
+  const scrollY = await page.evaluate(() => window.scrollY);
+  await body.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  assert.ok(await body.evaluate(el => el.scrollTop > 0), 'results scroll internally');
+  assert.equal(await page.evaluate(() => window.scrollY), scrollY, 'background does not scroll');
+  assert.equal(await browserUI.getByRole('button', { name: 'Close voice browser' }).isVisible(), true);
+  await browserUI.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.waitForTimeout(400);
+  assert.equal(await browserUI.locator('.voice-pagination span').textContent(), '2');
+  await browserUI.getByRole('button', { name: 'Previous', exact: true }).click();
+  await page.waitForTimeout(400);
+  await browserUI.getByRole('button', { name: 'Close voice browser' }).focus();
+  for (let i = 0; i < 80; i++) {
+    await page.keyboard.press(i < 40 ? 'Tab' : 'Shift+Tab');
+    assert.equal(await page.evaluate(() => !!document.activeElement?.closest('dialog')), true, 'focus remains in modal');
+  }
+  await page.keyboard.press('Escape');
+  await browserUI.waitFor({ state: 'detached' });
+  assert.equal(await browserUI.count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Find voice', exact: true }).evaluate(el => document.activeElement === el), true, 'focus returns to opener');
+  assert.notEqual(await page.evaluate(() => document.body.style.overflow), 'hidden');
+  await openBrowser();
+  await page.mouse.click(5, 5);
+  await browserUI.waitFor({ state: 'detached' });
+  assert.equal(await browserUI.count(), 0, 'backdrop closes modal');
+  await page.setViewportSize({ width: 320, height: 640 });
+  const picker = page.locator('.lf-voice-picker__controls');
+  await picker.scrollIntoViewIfNeeded();
+  await picker.screenshot({ path: '/tmp/saas-fish-picker-mobile.png' });
+  const selectBounds = await picker.locator('select').boundingBox();
+  const buttonBounds = await picker.locator('button').boundingBox();
+  assert.ok(Math.abs(selectBounds.y - buttonBounds.y) < 2 && buttonBounds.x + buttonBounds.width <= 320, 'find button is beside dropdown on mobile');
+  await openBrowser();
   await browserUI.getByLabel('Search by name').fill('Alice');
   await page.waitForTimeout(450);
   assert.equal(await browserUI.locator('.voice-card').count(), 1);
   await browserUI.getByLabel('Search by name').fill('');
+  await browserUI.getByRole('button', { name: 'Filters', exact: true }).click();
   await browserUI.getByLabel('Voice gender').selectOption('female');
   await browserUI.getByLabel('Language').selectOption('es');
   await browserUI.getByLabel('Licensing').selectOption('unlicensed');
@@ -114,14 +158,19 @@ try {
   assert.equal(await browserUI.locator('.voice-card').count(), 1);
   await browserUI.getByRole('heading', { name: 'Bea', exact: true }).waitFor();
   assert.ok(searchQueries.at(-1).includes('license=unlicensed'));
-  await browserUI.getByRole('button', { name: 'Use as default', exact: true }).click();
+  await browserUI.getByRole('button', { name: 'Use Bea as default', exact: true }).click();
+  await browserUI.waitFor({ state: 'detached' });
+  assert.equal(await browserUI.count(), 0, 'choosing returns to settings');
+  assert.equal(await page.locator('#fish-default-voice option:checked').textContent(), 'Bea');
   await page.getByRole('button', { name: 'Save TTS settings', exact: true }).click();
   await page.waitForTimeout(200);
   assert.equal(settings.voices.cloneDefault, 'b'.repeat(32));
+  await openBrowser();
   await browserUI.getByRole('button', { name: 'Test voice Bea', exact: true }).click();
   await browserUI.locator('audio').waitFor();
   assert.equal(previews, 1); assert.equal(lastPreviewBody.voiceId, 'b'.repeat(32)); assert.equal(lastPreviewBody.language, 'es');
   await browserUI.getByText('17 credits used', { exact: false }).waitFor();
+  await dialog.screenshot({ path: '/tmp/saas-fish-mobile-preview.png' });
   await browserUI.locator('audio').evaluate(el => el.play());
   assert.equal(previews, 1, 'replay must not request synthesis');
   previewFail = true;
@@ -133,12 +182,31 @@ try {
   await browserUI.getByLabel('Search by name').fill('No match');
   await browserUI.getByText('No voices match', { exact: false }).waitFor();
   await page.reload();
-  await browserUI.getByRole('heading', { name: 'Bea', exact: true }).waitFor();
+  await openBrowser();
   assert.equal(await browserUI.locator('.voice-card.is-selected h3').textContent(), 'Bea');
+  previewFail = false;
+  await browserUI.getByRole('button', { name: 'Test voice Bea', exact: true }).click();
+  await browserUI.locator('audio').waitFor();
+  await browserUI.locator('audio').evaluate(el => { window.fishTestAudio = el; window.fishTestAudio.loop = true; return el.play(); });
+  await browserUI.getByRole('button', { name: 'Close voice browser' }).click();
+  await browserUI.waitFor({ state: 'detached' });
+  assert.equal(await page.evaluate(() => window.fishTestAudio.paused), true, 'closing stops playback');
+  await openBrowser();
+  assert.equal(await browserUI.locator('audio').count(), 0, 'reopening has no stale preview');
   role = 'admin'; await page.reload();
-  await browserUI.getByRole('heading', { name: 'Alice', exact: true }).waitFor();
+  await openBrowser();
   assert.equal(await browserUI.getByRole('button', { name: 'Test voice Alice', exact: true }).isDisabled(), true);
-  assert.equal(await browserUI.getByRole('button', { name: 'Use as default', exact: true }).first().isDisabled(), true);
+  assert.equal(await browserUI.getByRole('button', { name: 'Use Alice as default', exact: true }).first().isDisabled(), true);
+  app.language = 'es';
+  await page.evaluate(() => localStorage.setItem('userLanguage', 'es'));
+  await page.reload();
+  await page.getByRole('button', { name: 'Buscar voz', exact: true }).click();
+  await browserUI.getByRole('heading', { name: 'Alice', exact: true }).waitFor();
+  await browserUI.getByRole('button', { name: 'Filtros', exact: true }).click();
+  await dialog.screenshot({ path: '/tmp/saas-fish-mobile-spanish.png' });
+  assert.equal(await dialog.evaluate(el => el.scrollWidth > el.clientWidth), false, 'Spanish modal fits mobile');
+  const spanishAxe = await new AxeBuilder({ page }).include('app-fish-voice-browser').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
+  assert.deepEqual(spanishAxe.violations.map(v => v.id), [], 'Spanish modal accessibility');
   assert.deepEqual(errors, [], 'uncaught browser errors');
-  console.log('Fish browser passed: mobile/desktop, accessibility, filters, saved selection, websocket preview, replay, billing/error states, read-only access.');
+  console.log('Fish browser passed: mobile/desktop modal, focus/scroll/close behavior, accessibility, filters, saved selection, websocket preview, replay, billing/error states, read-only access.');
 } catch (error) { console.log('Browser failure:', error); console.log({ url: page.url(), body: (await page.locator('body').innerText().catch(()=>'' )).slice(0,2500), errors }); throw error; } finally { await browser.close(); }

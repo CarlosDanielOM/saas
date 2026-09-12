@@ -1,64 +1,87 @@
-<section class="voice-browser" [attr.aria-label]="t('title')">
-  <div class="voice-heading"><h2>{{ t('title') }}</h2><span class="credit-chip">{{ t('cap') }}</span></div>
-  <p class="voice-copy">{{ t('description') }}</p>
-  <form [formGroup]="filters" (ngSubmit)="search()" class="voice-filters">
-    <label class="voice-search"><span>{{ t('name') }}</span>
-      <input type="search" formControlName="name" maxlength="100" [placeholder]="t('placeholder')" />
-    </label>
-    <label><span>{{ t('gender') }}</span><select formControlName="gender">
-      <option value="all">{{ t('all') }}</option><option value="female">{{ t('female') }}</option><option value="male">{{ t('male') }}</option>
-    </select></label>
-    <label><span>{{ t('language') }}</span><select formControlName="language">
-      <option value="all">{{ t('all') }}</option><option value="en">{{ t('english') }}</option><option value="es">{{ t('spanish') }}</option>
-    </select></label>
-    <label><span>{{ t('license') }}</span><select formControlName="license">
-      <option value="all">{{ t('all') }}</option><option value="licensed">{{ t('licensed') }}</option><option value="unlicensed">{{ t('unlicensed') }}</option>
-    </select></label>
-  </form>
-  <details class="license-help"><summary>{{ t('licenseHelp') }}</summary><p>{{ t('licensedHint') }} {{ t('unlicensedHint') }}</p></details>
-  <p class="voice-copy">{{ t('previewHint') }}</p>
-  @if (previewError()) { <p role="alert" class="voice-error">{{ t('errors.' + previewError()) }}</p> }
-  @if (preview(); as sample) {
-    <div class="voice-player" aria-live="polite">
-      <strong>{{ previewName() }} · {{ t('spent', { credits: sample.credits }) }}</strong>
-      <p>{{ sample.text }}</p>
-      <audio #player controls [src]="audioUrl()" [attr.aria-label]="t('audioLabel', { name: previewName() })"></audio>
-      @if (playbackBlocked()) { <p>{{ t('pressPlay') }}</p> }
-    </div>
-  }
-  <div aria-live="polite" role="status">
-    @if (previewing()) { <p>{{ t('preparing', { name: previewName() }) }}</p> }
-    @if (loading()) { <p>{{ t('loading') }}</p> }
+<dialog #dialog class="voice-dialog" aria-labelledby="fish-browser-title"
+  (cancel)="$event.preventDefault(); dismiss.emit()" (click)="onBackdropClick($event)">
+  <header class="voice-header">
+    <div><p class="voice-kicker">Fish Audio</p><h2 id="fish-browser-title" tabindex="-1" autofocus>{{ t('title') }}</h2></div>
+    <button type="button" class="voice-close" (click)="dismiss.emit()" [attr.aria-label]="t('close')">×</button>
+  </header>
+  <div class="voice-toolbar">
+    <form [formGroup]="filters" (ngSubmit)="search()">
+      <div class="voice-search-row">
+        <label class="voice-search"><span class="sr-only">{{ t('name') }}</span>
+          <input type="search" formControlName="name" maxlength="100" [placeholder]="t('placeholder')" />
+        </label>
+        <button type="button" class="filter-toggle" [class.is-active]="filtersOpen() || activeFilters()"
+          [attr.aria-expanded]="filtersOpen()" aria-controls="fish-voice-filters" (click)="filtersOpen.set(!filtersOpen())">
+          {{ t('filters') }} @if (activeFilters()) { <span class="filter-count">{{ activeFilters() }}</span> }
+        </button>
+      </div>
+      <div id="fish-voice-filters" class="voice-filters" [hidden]="!filtersOpen()">
+        <label><span>{{ t('gender') }}</span><select formControlName="gender">
+          <option value="all">{{ t('all') }}</option><option value="female">{{ t('female') }}</option><option value="male">{{ t('male') }}</option>
+        </select></label>
+        <label><span>{{ t('language') }}</span><select formControlName="language">
+          <option value="all">{{ t('all') }}</option><option value="en">{{ t('english') }}</option><option value="es">{{ t('spanish') }}</option>
+        </select></label>
+        <label><span>{{ t('license') }}</span><select formControlName="license">
+          <option value="all">{{ t('all') }}</option><option value="licensed">{{ t('licensed') }}</option><option value="unlicensed">{{ t('unlicensed') }}</option>
+        </select></label>
+      </div>
+    </form>
+    <p class="voice-budget">{{ t('compactHint') }}</p>
   </div>
-  @if (searchError()) {
-    <p role="alert" class="voice-error">{{ t('searchError') }}</p><button type="button" (click)="search()">{{ t('retry') }}</button>
-  } @else if (!loading() && voices().length === 0) {
-    <p class="voice-empty">{{ t('empty') }}</p>
-  }
-  <div class="voice-results" [attr.aria-busy]="loading()">
-    @for (voice of voices(); track voice.id) {
-      <article class="voice-card" [class.is-selected]="selectedId() === voice.id">
-        <div class="voice-heading"><h3>{{ voice.name }}</h3>
-          <span class="license-badge" tabindex="0" [attr.title]="t(voice.licensed === true ? 'licensedHint' : voice.licensed === false ? 'unlicensedHint' : 'unknownHint')">
-            {{ t(voice.licensed === true ? 'licensed' : voice.licensed === false ? 'unlicensed' : 'unknown') }}
-          </span>
-        </div>
-        <p class="voice-meta">{{ voice.gender ? t(voice.gender) : t('unknownGender') }} · {{ voice.languages.join(', ').toUpperCase() }}</p>
-        <code>{{ voice.id }}</code>
-        <div class="voice-actions">
-          <button type="button" [disabled]="readOnly() || !!previewing() || loading()" (click)="testVoice(voice)" [attr.aria-label]="t('testNamed', { name: voice.name })">{{ t('test') }}</button>
-          <button type="button" class="primary" [disabled]="readOnly() || loading() || selectedId() === voice.id" (click)="selectVoice.emit(voice)">
-            {{ selectedId() === voice.id ? t('selected') : t('useDefault') }}
-          </button>
-        </div>
-      </article>
+  <div #resultsBody class="voice-body" tabindex="0" [attr.aria-label]="t('results')">
+    <details class="license-help"><summary>{{ t('about') }}</summary>
+      <p>{{ t('previewHint') }}</p><p>{{ t('licensedHint') }}</p><p>{{ t('unlicensedHint') }}</p>
+    </details>
+    <div aria-live="polite" role="status">@if (loading()) { <p class="voice-state">{{ t('loading') }}</p> }</div>
+    @if (searchError()) {
+      <p role="alert" class="voice-error">{{ t('searchError') }}</p><button type="button" (click)="search()">{{ t('retry') }}</button>
+    } @else if (!loading() && voices().length === 0) {
+      <p class="voice-empty">{{ t('empty') }}</p>
     }
+    <div class="voice-results" [attr.aria-busy]="loading()">
+      @for (voice of voices(); track voice.id) {
+        <article class="voice-card" [class.is-selected]="selectedId() === voice.id">
+          <div class="voice-info">
+            <h3 [title]="voice.name + ' · ' + voice.id">{{ voice.name }}</h3>
+            <p class="voice-meta">{{ voice.gender ? t(voice.gender) : t('unknownGender') }} · {{ voice.languages.join(', ').toUpperCase() }}</p>
+            <span class="license-badge" tabindex="0" [attr.title]="t(voice.licensed === true ? 'licensedHint' : voice.licensed === false ? 'unlicensedHint' : 'unknownHint')">
+              {{ t(voice.licensed === true ? 'licensed' : voice.licensed === false ? 'unlicensed' : 'unknown') }}
+            </span>
+          </div>
+          <button type="button" class="voice-test" [class.is-active]="previewing() === voice.id"
+            [disabled]="readOnly() || !!previewing() || loading()" (click)="testVoice(voice)"
+            [attr.aria-label]="t('testNamed', { name: voice.name })" [attr.title]="t('testNamed', { name: voice.name })">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 5 11 7-11 7V5Z" fill="currentColor" /></svg>
+          </button>
+          <button type="button" class="primary" [disabled]="readOnly() || loading() || selectedId() === voice.id"
+            (click)="selectVoice.emit(voice)" [attr.aria-label]="t('chooseNamed', { name: voice.name })">
+            {{ selectedId() === voice.id ? t('selectedShort') : t('choose') }}
+          </button>
+        </article>
+      }
+    </div>
   </div>
-  @if (page() > 1 || hasMore()) {
-    <nav class="voice-pagination" [attr.aria-label]="t('pages')">
-      <button type="button" [disabled]="loading() || page() <= 1" (click)="search(page() - 1)">{{ t('previous') }}</button>
-      <span>{{ t('page', { page: page() }) }}</span>
-      <button type="button" [disabled]="loading() || !hasMore()" (click)="search(page() + 1)">{{ t('next') }}</button>
-    </nav>
-  }
-</section>
+  <footer class="voice-footer">
+    <div aria-live="polite" role="status">@if (previewing()) { <p class="voice-state">{{ t('preparing', { name: previewName() }) }}</p> }</div>
+    @if (previewError()) { <p role="alert" class="voice-error">{{ t('errors.' + previewError()) }}</p> }
+    @if (preview(); as sample) {
+      <div class="voice-player" aria-live="polite">
+        <div class="voice-player-heading"><strong>{{ previewName() }}</strong><span>{{ t('spent', { credits: sample.credits }) }}</span></div>
+        <audio #player controls [src]="audioUrl()" [attr.aria-label]="t('audioLabel', { name: previewName() })"></audio>
+        <details><summary>{{ t('phrase') }}</summary><p>{{ sample.text }}</p></details>
+        @if (playbackBlocked()) { <p>{{ t('pressPlay') }}</p> }
+      </div>
+    }
+    <div class="voice-footer-row">
+      <p class="voice-save-hint">{{ t('saveHint') }}</p>
+      @if (page() > 1 || hasMore()) {
+        <nav class="voice-pagination" [attr.aria-label]="t('pages')">
+          <button type="button" [disabled]="loading() || page() <= 1" (click)="search(page() - 1)" [attr.aria-label]="t('previous')">‹</button>
+          <span>{{ page() }}</span>
+          <button type="button" [disabled]="loading() || !hasMore()" (click)="search(page() + 1)" [attr.aria-label]="t('next')">›</button>
+        </nav>
+      }
+    </div>
+  </footer>
+</dialog>

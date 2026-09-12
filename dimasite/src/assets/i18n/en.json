@@ -311,7 +311,7 @@
         "locked": "Locked"
       },
       "browser": {
-        "title": "Find your Fish voice",
+        "title": "Find a voice",
         "cap": "Up to 150 credits per test",
         "description": "Explore voices beyond the four presets. Select a voice, then save your settings to make it the default.",
         "name": "Search by name",
@@ -356,7 +356,18 @@
           "synthesis_failed": "Fish could not generate this voice preview. Try another voice.",
           "preview_unavailable": "The voice preview could not be completed. Please try again.",
           "preview_timeout": "The preview is taking too long. It may still complete and use credits. Wait before trying again."
-        }
+        },
+        "findVoice": "Find voice",
+        "close": "Close voice browser",
+        "filters": "Filters",
+        "results": "Voice results",
+        "about": "About previews & licensing",
+        "compactHint": "Up to 150 credits per test · Replay is free",
+        "saveHint": "Choose a voice, then save your settings.",
+        "choose": "Use voice",
+        "chooseNamed": "Use {{name}} as default",
+        "selectedShort": "Selected",
+        "phrase": "Preview phrase"
       }
     },
     "referrals": {

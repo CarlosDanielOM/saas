@@ -39,7 +39,7 @@ scripts/saas-ops verify site-<run> --check ops/checks/fish-web.mjs
 
 The script defaults to port 4207 for development and uses `SAAS_PREVIEW_URL` when run
 by the helper against the exact production bundle. It covers mobile/desktop layouts,
-WCAG checks for the new browser, filters, saving/reloading, preview playback, free
+modal positioning, internal scrolling, keyboard focus and dismissal, WCAG checks, filters, saving/reloading, preview playback, free
 replay, failure states and read-only access. Screenshots are written under `/tmp`.
 The helper sanitizes inherited environment; the default tooling location is
 `/tmp/saas-fish-browser-tools`. The check also detects locally extracted Chromium libraries and fonts in

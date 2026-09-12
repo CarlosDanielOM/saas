@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, viewChild, effect, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, viewChild, afterNextRender, effect, inject, input, output, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, firstValueFrom, startWith } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
@@ -20,6 +20,12 @@ export class FishVoiceBrowserComponent {
   readonly readOnly = input(false);
   readonly defaultLanguage = input<'en' | 'es'>('es');
   readonly selectVoice = output<FishVoice>();
+  readonly dismiss = output<void>();
+  readonly filtersOpen = signal(false);
+  readonly activeFilters = signal(0);
+  private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
+  private readonly resultsBody = viewChild<ElementRef<HTMLDivElement>>('resultsBody');
+  private releaseDialog?: () => void;
   private readonly api = inject(TtsSettingsApiService);
   private readonly language = inject(LanguageService);
   private readonly links = inject(LinksService);
@@ -47,17 +53,44 @@ export class FishVoiceBrowserComponent {
   private socket?: Socket;
 
   constructor() {
+    afterNextRender(() => {
+      const dialog = this.dialog()?.nativeElement;
+      if (!dialog) return;
+      const previousFocus = document.activeElement;
+      const bodyOverflow = document.body.style.overflow;
+      const rootOverflow = document.documentElement.style.overflow;
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      dialog.showModal();
+      this.releaseDialog = () => {
+        dialog.close();
+        document.body.style.overflow = bodyOverflow;
+        document.documentElement.style.overflow = rootOverflow;
+        if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+      };
+    });
     effect(onCleanup => {
       const channel = this.channelID();
       const subscription = this.filters.valueChanges.pipe(startWith(this.filters.getRawValue()), debounceTime(300))
-        .subscribe(() => void this.search(1, channel));
+        .subscribe(() => {
+          const filters = this.filters.getRawValue();
+          this.activeFilters.set([filters.gender, filters.language, filters.license].filter(value => value !== 'all').length);
+          void this.search(1, channel);
+        });
       onCleanup(() => { subscription.unsubscribe(); this.requestVersion++; this.clearPreview(); });
     });
-    this.destroyRef.onDestroy(() => { this.requestVersion++; this.clearPreview(); });
+    this.destroyRef.onDestroy(() => { this.requestVersion++; this.clearPreview(); this.releaseDialog?.(); });
+  }
+  onBackdropClick(event: MouseEvent) {
+    const dialog = this.dialog()?.nativeElement;
+    if (!dialog || event.target !== dialog) return;
+    const bounds = dialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) this.dismiss.emit();
   }
   t(key: string, params?: Record<string, string | number>) { return this.language.translate(`modules.tts.browser.${key}`, params); }
   async search(page = 1, channel = this.channelID()) {
     const version = ++this.requestVersion;
+    this.resultsBody()?.nativeElement.scrollTo({ top: 0, behavior: 'instant' });
     this.loading.set(true);
     this.searchError.set(false);
     try {
