@@ -150,7 +150,8 @@
   margin-left: auto;
 }
 
-.lf-nav__links button {
+.lf-nav__links button,
+.lf-nav__links a {
   border: 0;
   background: transparent;
   color: var(--muted);
@@ -161,9 +162,13 @@
   min-height: 44px;
   border-radius: 999px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
-.lf-nav__links button:hover {
+.lf-nav__links button:hover,
+.lf-nav__links a:hover {
   color: var(--fg);
   background: var(--accent-soft);
 }
@@ -754,6 +759,7 @@
 .lf-footer {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: center;
   gap: 0.75rem;
   max-width: 74rem;
@@ -761,6 +767,22 @@
   padding: 1.5rem 1rem 2rem;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.lf-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem 0.85rem;
+}
+
+.lf-footer__links a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+
+.lf-footer__links a:hover {
+  color: var(--fg);
 }
 
 /* Tablet+ */

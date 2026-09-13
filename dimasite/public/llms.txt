@@ -1,0 +1,11 @@
+# DomDimaBot
+
+DomDimaBot is a Twitch chatbot for live-channel moderation, custom commands, automation, analytics, and text-to-speech.
+
+## Documentation
+
+- [Docs](https://docs.domdimabot.com/)
+- [Getting started](https://docs.domdimabot.com/getting-started/)
+- [Commands](https://docs.domdimabot.com/commands/)
+- [Advanced commands (AST)](https://docs.domdimabot.com/commands/advanced/)
+- [Text-to-speech (TTS)](https://docs.domdimabot.com/tts/)

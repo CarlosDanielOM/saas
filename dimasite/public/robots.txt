@@ -14,3 +14,4 @@ Disallow: /500
 Disallow: /503
 
 Sitemap: https://domdimabot.com/sitemap.xml
+Sitemap: https://docs.domdimabot.com/sitemap-index.xml

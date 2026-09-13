@@ -8,6 +8,7 @@
       <button type="button" (click)="scrollTo('features')">{{ t('landing.nav.features') }}</button>
       <button type="button" (click)="scrollTo('pricing')">{{ t('landing.nav.pricing') }}</button>
       <button type="button" (click)="scrollTo('live')">{{ t('landing.nav.live') }}</button>
+      <a href="https://docs.domdimabot.com/">{{ t('landing.nav.docs') }}</a>
     </nav>
 
     <div class="lf-nav__actions">
@@ -318,5 +319,12 @@
 
   <footer class="lf-footer">
     <span>{{ t('landing.footer.copyright') }}</span>
+    <nav class="lf-footer__links" [attr.aria-label]="t('landing.footer.documentation')">
+      <a href="https://docs.domdimabot.com/">{{ t('landing.footer.docs') }}</a>
+      <a href="https://docs.domdimabot.com/getting-started/">{{ t('landing.footer.gettingStarted') }}</a>
+      <a href="https://docs.domdimabot.com/commands/">{{ t('landing.footer.commands') }}</a>
+      <a href="https://docs.domdimabot.com/commands/advanced/">{{ t('landing.footer.advancedCommands') }}</a>
+      <a href="https://docs.domdimabot.com/tts/">{{ t('landing.footer.tts') }}</a>
+    </nav>
   </footer>
 </div>

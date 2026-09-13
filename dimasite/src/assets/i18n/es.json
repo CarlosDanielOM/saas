@@ -1815,7 +1815,8 @@
       "features": "Caracteristicas",
       "pricing": "Precios",
       "contact": "Contacto",
-      "live": "En vivo"
+      "live": "En vivo",
+      "docs": "Docs"
     },
     "hero": {
       "title": "Prueba primero.",
@@ -1916,7 +1917,13 @@
     "footer": {
       "copyright": "© DomDimaBot · Live First",
       "terms": "Terminos de servicio",
-      "privacy": "Privacidad"
+      "privacy": "Privacidad",
+      "documentation": "Documentación",
+      "docs": "Docs",
+      "gettingStarted": "Primeros pasos",
+      "commands": "Comandos",
+      "advancedCommands": "Comandos avanzados",
+      "tts": "TTS"
     },
     "theme": {
       "dark": "Oscuro",

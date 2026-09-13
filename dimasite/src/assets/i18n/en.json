@@ -1815,7 +1815,8 @@
       "features": "Features",
       "pricing": "Pricing",
       "contact": "Contact",
-      "live": "Live"
+      "live": "Live",
+      "docs": "Docs"
     },
     "hero": {
       "title": "Proof first.",
@@ -1916,7 +1917,13 @@
     "footer": {
       "copyright": "© DomDimaBot · Live First",
       "terms": "Terms of Service",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "documentation": "Documentation",
+      "docs": "Docs",
+      "gettingStarted": "Getting started",
+      "commands": "Commands",
+      "advancedCommands": "Advanced commands",
+      "tts": "TTS"
     },
     "theme": {
       "dark": "Dark",
