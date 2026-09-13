@@ -242,12 +242,12 @@ This section matches the current built-in command list from the bot config. Many
 - name cannot contain spaces
 - name cannot contain special characters
 - name max `20` characters
-- response max `300` characters
+- response max `450` characters
 
 **Examples:**
 ```text
 !cc discord Follow me on my Discord Server: discord.cdom201.com
-!cc -cd=5 -ul=everyone discord Join my discord server at [link]
+!cc -cd=10 -ul=everyone discord Join my discord server at [link]
 ```
 
 #### `!ec`
@@ -258,15 +258,13 @@ This section matches the current built-in command list from the bot config. Many
 
 - `-cd=`
 - `-ul=`
-- `-enabled=`
-- `-desc=`
 
 **Limits:**
 
 - name cannot contain spaces
 - name cannot contain special characters
 - name max `20` characters
-- response max `300` characters
+- response max `450` characters
 
 **Examples:**
 ```text
@@ -431,15 +429,14 @@ The command name is created **without** the `!`.
 
 With options:
 ```
-!cc -cd=300 -ul=sub discord Sub-only Discord link! discord.gg/subonly
+!cc -cd=300 -ul=tier1 discord Sub-only Discord link! discord.gg/subonly
 🤖 DomDimaBot: Command !discord created with custom settings!
 ```
 
 | Option | Description |
 |--------|-------------|
-| `-cd=` | Cooldown in seconds |
-| `-ul=` | User level: `everyone`, `sub`, `mod`, `broadcaster` |
-| `-desc=` | Custom description for help text |
+| `-cd=` | Cooldown in seconds: use an integer greater than `5` when creating with `!cc`. Values of `5` or below become `15`; `!ec` accepts `5`. |
+| `-ul=` | User level: `everyone`, `tier1`, `tier2`, `tier3`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster` |
 
 **Editing:** `!ec <name> <new response>`  
 **Deleting:** `!dc <name>`

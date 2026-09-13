@@ -7,6 +7,11 @@ const sidebar = [
     translations: { es: 'Empieza aquí' },
     items: [
       {
+        label: 'Use with AI assistants',
+        translations: { es: 'Usar con asistentes de IA' },
+        slug: 'ai-assistants',
+      },
+      {
         label: 'Getting Started',
         translations: { es: 'Primeros pasos' },
         slug: 'getting-started',
@@ -101,6 +106,9 @@ const sidebar = [
 
 export default defineConfig({
   site: 'https://docs.domdimabot.com',
+  // The installed Starlight MDX integration reads this legacy flag directly.
+  // Keep tables enabled in HTML as well as in the plain-text exports.
+  markdown: { gfm: true },
   integrations: [
     starlight({
       title: 'DomDimaBot Docs',
@@ -118,6 +126,10 @@ export default defineConfig({
         },
       },
       customCss: ['./src/styles/custom.css'],
+      components: {
+        Head: './src/components/DocsHead.astro',
+        Footer: './src/components/DocsFooter.astro',
+      },
       head: [
         {
           tag: 'link',

@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
@@ -12,6 +13,11 @@
   "dependencies": {
     "@astrojs/starlight": "^0.38.3",
     "astro": "^6.1.0",
-    "sharp": "^0.33.5"
+    "remark-gfm": "^4.0.1",
+    "remark-mdx": "^3.1.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "sharp": "^0.33.5",
+    "unified": "^11.0.5"
   }
 }

@@ -1,0 +1,9 @@
+---
+import Head from '@astrojs/starlight/components/Head.astro';
+import { textPath } from '../lib/markdown.mjs';
+const { entry } = Astro.locals.starlightRoute;
+const spanish = entry.id === 'es' || entry.id.startsWith('es/');
+---
+<Head />
+<link rel="describedby" href={new URL(spanish ? '/es/llms.txt' : '/llms.txt', Astro.site)} type="text/plain" />
+<link rel="alternate" href={new URL(textPath(entry.id), Astro.site)} type="text/plain" title="Markdown" />

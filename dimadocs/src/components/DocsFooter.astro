@@ -1,0 +1,16 @@
+---
+import Footer from '@astrojs/starlight/components/Footer.astro';
+import { textPath } from '../lib/markdown.mjs';
+const { entry } = Astro.locals.starlightRoute;
+const spanish = entry.id === 'es' || entry.id.startsWith('es/');
+---
+<nav class="machine-links" aria-label={spanish ? 'Documentación para IA' : 'Documentation for AI'}>
+  <a href={textPath(entry.id)}>{spanish ? 'Leer Markdown' : 'Read Markdown'}</a>
+  <a href={spanish ? '/es/llms.txt' : '/llms.txt'}>llms.txt</a>
+  <a href={spanish ? '/es/ai-assistants/' : '/ai-assistants/'}>{spanish ? 'Usar con asistentes de IA' : 'Use with AI assistants'}</a>
+</nav>
+<Footer />
+<style>
+  .machine-links { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: var(--sl-text-sm); }
+  a { display: inline-flex; align-items: center; min-height: 44px; color: var(--sl-color-text-accent); }
+</style>

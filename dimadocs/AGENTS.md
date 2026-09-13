@@ -34,6 +34,15 @@
 - Maintain both English and Spanish versions for all new pages.
 - Update screenshots or examples when UI/UX changes.
 
+## Machine-readable documentation
+
+- `src/pages/[...document].txt.ts` generates `/llms.txt`, `/es/llms.txt`, per-language `llms-full.txt`, and an `index.txt` Markdown version under every published page. Text files use the existing nginx `text/plain` MIME mapping.
+- These exports use the content collection, exclude drafts, preserve code examples/tables, and rewrite internal documentation links to absolute text URLs. Do not maintain separate copied reference documents.
+- `src/lib/markdown.mjs` converts MDX components to Markdown. Add an explicit adapter when introducing a new component or dynamic expression; unsupported content fails generation instead of silently disappearing.
+- `DocsHead.astro` and `DocsFooter.astro` expose the index and each page's text alternative. Keep the AI assistant guide in both languages.
+- Run `npm test --prefix dimadocs` for export fidelity, then use `ops/checks/docs_llms.py` with the delivery helper to verify the candidate's indexes, pages, links, code, discovery metadata, and sitemap.
+- See `CRAWLER_ACCESS.md` for the observed Cloudflare automated-client block and the pending docs-only configuration rule. Passing content checks does not establish access for all AI providers.
+
 ## Styling — Live First (docs)
 
 Docs share the **Live First (OC3c)** design language with `dimasite/`.

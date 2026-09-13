@@ -1,0 +1,75 @@
+---
+title: Create commands with an AI assistant
+description: Give a browsing AI assistant the official DomDimaBot references, then build a command with the correct syntax, permissions, and test steps.
+---
+
+You can give these docs to any assistant that can open public web pages, including GPT, Grok, Gemini, and Kimi. Start with the [documentation index](/llms.txt). Each page also has a **Read Markdown** link at the bottom for a plain-text version with the same examples and tables.
+
+## A prompt you can use
+
+```text
+Help me create a custom command for DomDimaBot.
+Read https://docs.domdimabot.com/llms.txt and follow the relevant links first.
+I want: [describe the command and an example chat message].
+My plan: [Free, Premium, or Pro].
+Who can use it: [everyone, subscribers, moderators, or broadcaster].
+Create it through: [Twitch chat or the dashboard].
+Explain the response body, setup, expected output, and how to test it.
+Cite the pages you used. Ask about missing requirements, and do not invent
+functions or use another bot's syntax. If you cannot read a page, tell me.
+```
+
+If your assistant cannot browse, open the relevant **Read Markdown** links and paste their content into the conversation. [All English docs](/llms-full.txt) and [all Spanish docs](/es/llms-full.txt) are also available as larger files. Individual pages are usually easier to use for a focused request.
+
+## References to read before writing a command
+
+| Question | Reference |
+|----------|-----------|
+| How do I create, edit, or restrict a command? | [Commands overview](/commands/overview/) |
+| How do arguments, variables, strings, and conditions work? | [AST syntax and data](/commands/advanced/syntax/) |
+| Does a function exist, and which arguments does it take? | [AST functions reference](/commands/advanced/functions/) |
+| What are the execution rules, errors, and limits? | [AST execution](/commands/advanced/execution/) |
+| Is there a documented pattern for this task? | [AST recipes](/commands/advanced/recipes/) |
+
+Read the specific feature guide too when using [TTS](/tts/), [triggers](/triggers/), or [rewards](/rewards/). Do not assume a function accepts the same arguments as a similarly named chat command.
+
+## Give an answer that can be used
+
+1. Confirm the command's purpose, inputs, caller permissions, and streamer plan. For stateful commands, establish whether data belongs to the channel or each viewer and how long it must persist.
+2. Choose a plain text response when that is enough. For dynamic behavior, use DomDimaBot's documented AST syntax: `$(...)` calls functions, `%(...)` accesses user-created variables, and `&p1` accesses the first argument. Placeholders such as `{user}` are not equivalent.
+3. Provide the **command name**, **response body**, **cooldown**, and **user level** separately. For chat setup, also provide the full `!cc` instruction. The name passed to `!cc` does not include `!`; viewers invoke the saved command with `!`.
+4. Check each function's signature, storage lifetime, plan requirement, and execution limits in the linked references. Initialize state before relying on its value. Restrict commands that perform moderation or change channel settings to the intended authorized callers.
+5. Explain a normal input and expected output. For arguments or stored state, also describe missing-input and first-run behavior. Label expected results as expected; do not claim that a generated command was executed without actually testing it.
+
+## Worked example: a welcome command
+
+Goal: let viewers run `!hello` to receive a welcome message using their own name.
+
+| Setting | Value |
+|---------|-------|
+| Name | `hello` |
+| Response body | `Hello $(user)! Welcome to the stream.` |
+| Cooldown | `10` seconds |
+| User level | `everyone` |
+
+As a broadcaster or another authorized command manager, create it in Twitch chat with:
+
+```text
+!cc -cd=10 -ul=everyone hello Hello $(user)! Welcome to the stream.
+```
+
+Or enter the settings above in the dashboard's **Commands** editor. Save only the response body in the response field, not the whole `!cc` instruction.
+
+When a viewer named `Alex` sends `!hello`, the expected reply is:
+
+```text
+Hello Alex! Welcome to the stream.
+```
+
+This uses the documented [`$(user)` function](/commands/advanced/functions/). It needs no arguments or stored variables. Test it in your channel after creation; check that the command is enabled and wait for its cooldown before retrying. To change an existing command, use `!ec` as described in the [overview](/commands/overview/).
+
+## What these files do
+
+The index and plain-text pages are generated from the same documentation source on every site build, in English and Spanish. They include source URLs that an assistant can cite, and links it can follow without running JavaScript or signing in.
+
+Publishing readable docs does not guarantee that an AI provider indexes them or that every generated answer is correct. Give the assistant the index URL directly, ask it to cite the references it actually read, and test the resulting command before relying on it.

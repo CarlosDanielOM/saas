@@ -242,7 +242,7 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 - el nombre no puede tener espacios
 - el nombre no puede tener caracteres especiales
 - el nombre tiene máximo `20` caracteres
-- la respuesta tiene máximo `300` caracteres
+- la respuesta tiene máximo `450` caracteres
 
 **Ejemplos:**
 ```text
@@ -258,15 +258,13 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 
 - `-cd=`
 - `-ul=`
-- `-enabled=`
-- `-desc=`
 
 **Límites:**
 
 - el nombre no puede tener espacios
 - el nombre no puede tener caracteres especiales
 - el nombre tiene máximo `20` caracteres
-- la respuesta tiene máximo `300` caracteres
+- la respuesta tiene máximo `450` caracteres
 
 **Ejemplos:**
 ```text
@@ -431,15 +429,14 @@ El nombre del comando se crea **sin** el `!`.
 
 Con opciones:
 ```
-!cc -cd=300 -ul=sub discord ¡Discord solo para subs! discord.gg/subonly
+!cc -cd=300 -ul=tier1 discord ¡Discord solo para subs! discord.gg/subonly
 🤖 DomDimaBot: ¡Comando !discord creado con configuración personalizada!
 ```
 
 | Opción | Descripción |
 |--------|-------------|
-| `-cd=` | Enfriamiento en segundos |
-| `-ul=` | Nivel de usuario: `everyone`, `sub`, `mod`, `broadcaster` |
-| `-desc=` | Descripción personalizada para texto de ayuda |
+| `-cd=` | Enfriamiento en segundos: usa un entero mayor que `5` al crear con `!cc`. Los valores de `5` o menos se convierten en `15`; `!ec` sí acepta `5`. |
+| `-ul=` | Nivel de usuario: `everyone`, `tier1`, `tier2`, `tier3`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster` |
 
 **Editar:** `!ec <nombre> <nueva respuesta>`  
 **Eliminar:** `!dc <nombre>`

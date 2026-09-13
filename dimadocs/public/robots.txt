@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://docs.domdimabot.com/sitemap-index.xml
+
+# Readable documentation index: https://docs.domdimabot.com/llms.txt
