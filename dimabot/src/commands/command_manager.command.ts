@@ -1,6 +1,7 @@
 import Commands from "../classes/command.class.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
+import { getMinimumCommandCooldown } from "../utils/command_cooldown.js";
 
 interface CommandManagerResponse {
   error: boolean;
@@ -58,7 +59,7 @@ interface CmdOptions {
   message: string | undefined;
 }
 
-let cmdOptions: CmdOptions = {
+const defaultCmdOptions: CmdOptions = {
   name: undefined,
   cmd: undefined,
   type: undefined,
@@ -129,18 +130,20 @@ export async function createCommand(
       };
     }
 
+    const cmdOptions: CmdOptions = { ...defaultCmdOptions };
+    const minCooldown = getMinimumCommandCooldown(streamers.plan_tier);
     cmdOptions.channel = streamers.name ?? "";
     cmdOptions.channelID = channelID ?? "";
 
     const { options, text } = getCmdOptions(argument);
 
-    options.forEach((option) => {
+    for (const option of options) {
       switch (option.name) {
         case "cd":
-          if (Number(option.value) > 5) {
+          if (Number.isFinite(Number(option.value)) && Number(option.value) >= minCooldown) {
             cmdOptions.cooldown = Number(option.value);
           } else {
-            cmdOptions.cooldown = 15;
+            return { error: true, status: 400, message: `Command cooldown must be at least ${minCooldown} seconds` };
           }
           break;
         case "ul":
@@ -171,7 +174,7 @@ export async function createCommand(
         default:
           break;
       }
-    });
+    }
 
     const opts = text.split(" ");
     const commandName = opts.shift();
@@ -339,6 +342,9 @@ export async function editCommand(
       };
     }
 
+    const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+    if (!streamer) return { error: true, message: "Streamer not found" };
+    const minCooldown = getMinimumCommandCooldown(streamer.plan_tier);
     const command = oldCommand.command;
 
     if (userLevel < command.userLevel) {
@@ -351,13 +357,13 @@ export async function editCommand(
       };
     }
 
-    options.forEach((option) => {
+    for (const option of options) {
       switch (option.name) {
         case "cd":
-          if (Number(option.value) >= 5) {
+          if (Number.isFinite(Number(option.value)) && Number(option.value) >= minCooldown) {
             command.cooldown = Number(option.value);
           } else {
-            command.cooldown = 15;
+            return { error: true, status: 400, message: `Command cooldown must be at least ${minCooldown} seconds` };
           }
           break;
         case "ul":
@@ -388,7 +394,7 @@ export async function editCommand(
         default:
           break;
       }
-    });
+    }
 
     const func = opts.join(" ");
 

@@ -72,6 +72,8 @@ export class CommandModalComponent {
     timerMinutes: [15 as number | null]
   });
 
+  readonly minCooldown = computed(() => this.planTier() === 'pro' ? 1 : this.planTier() === 'premium' ? 3 : 5);
+
   readonly isReserved = computed(() => Boolean(this.command()?.reserved));
 
   readonly intervalHint = computed(() => {
@@ -93,6 +95,11 @@ export class CommandModalComponent {
   });
 
   constructor() {
+    effect(() => {
+      const cooldown = this.commandForm.controls.cooldown;
+      cooldown.setValidators([Validators.required, Validators.min(this.minCooldown()), Validators.max(60)]);
+      cooldown.updateValueAndValidity({ emitEvent: false });
+    });
     effect(() => {
       if (!this.isOpen()) {
         this.isSaving.set(false);

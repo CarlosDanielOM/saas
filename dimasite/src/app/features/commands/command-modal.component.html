@@ -54,9 +54,10 @@
           <label class="lf-field">
             <span>{{ t('commands.placeholder.cooldown') }}</span>
             <div class="lf-input-suffix">
-              <input type="number" min="5" max="60" formControlName="cooldown" />
+              <input type="number" [min]="minCooldown()" max="60" formControlName="cooldown" />
               <span>s</span>
             </div>
+            <span class="lf-note">{{ t('commands.modal.cooldownHint', { seconds: minCooldown() }) }}</span>
           </label>
 
           <label class="lf-field">

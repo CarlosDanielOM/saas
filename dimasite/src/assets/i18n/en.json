@@ -1593,6 +1593,7 @@
       "streamer": "Streamer"
     },
     "modal": {
+      "cooldownHint": "Minimum for your plan: {{seconds}}s.",
       "createTitle": "Create Command",
       "editTitle": "Edit Command",
       "createButton": "Create",
