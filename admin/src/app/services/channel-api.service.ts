@@ -152,16 +152,21 @@ export class ChannelApiService {
 
   /**
    * Get basic channel/user info from the users list endpoint
-   * We use the admin-site/users endpoint filtered by channelID
+   * We use the admin-site/users search endpoint filtered by channelID.
    */
   getChannel(channelID: string): Observable<ChannelUser | null> {
-    const url = `${this.linksService.getApiUrl()}/admin-site/users?page=1&limit=100`;
+    const queryParams = new URLSearchParams({
+      page: '1',
+      limit: '100',
+      search: channelID
+    });
+    const url = `${this.linksService.getApiUrl()}/admin-site/users?${queryParams.toString()}`;
+
     return this.http.get<{ data: { rows: ChannelUser[] } }>(url).pipe(
       map(response => {
         const user = response.data.rows.find(r => r.channelID === channelID);
         return user || null;
-      }),
-      catchError(() => of(null))
+      })
     );
   }
 
