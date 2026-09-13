@@ -1,43 +1,54 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
-
-interface NavItem {
-  label: string;
-  route: string;
-  icon: string;
-}
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-navbar',
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive]
+  imports: [RouterLink, IconComponent],
 })
 export class NavbarComponent {
   private readonly router = inject(Router);
   private readonly sessionAuth = inject(SessionAuthService);
-
   readonly user = computed(() => this.sessionAuth.getSessionSnapshot()?.twitchUser);
-  readonly isMenuOpen = signal(false);
+  readonly accountOpen = signal(false);
+  private readonly currentPath = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects.split('?')[0]),
+    ),
+    { initialValue: this.router.url.split('?')[0] },
+  );
+  isActive(route: string): boolean {
+    const path = this.currentPath();
+    return (
+      path === route ||
+      (route === '/users' && path.startsWith('/channels/')) ||
+      (route === '/dashboard' && ['/analytics', '/settings'].includes(path))
+    );
+  }
 
-  readonly navItems: NavItem[] = [
-    { label: 'Dashboard', route: '/dashboard', icon: 'home' },
+  readonly navItems = [
+    { label: 'Overview', route: '/dashboard', icon: 'overview' },
     { label: 'Users', route: '/users', icon: 'users' },
-    { label: 'Analytics', route: '/analytics', icon: 'chart' },
-    { label: 'Settings', route: '/settings', icon: 'settings' },
+    { label: 'Files', route: '/read-tool', icon: 'files' },
+    { label: 'Email', route: '/email-test', icon: 'mail' },
   ];
-
-  toggleMenu(): void {
-    this.isMenuOpen.update(open => !open);
+  @HostListener('document:keydown.escape') closeAccount(): void {
+    this.accountOpen.set(false);
   }
-
-  closeMenu(): void {
-    this.isMenuOpen.set(false);
-  }
-
   logout(): void {
     this.sessionAuth.clearSession();
     void this.router.navigate(['/login']);

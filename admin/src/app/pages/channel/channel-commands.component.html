@@ -1,13 +1,19 @@
-<div class="channel-page">
+<div class="page channel-page">
   <!-- Header with back link -->
   <section class="channel-page__header">
     <a [routerLink]="['/channels', channelID()]" class="back-link">
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+        />
       </svg>
       Back to Channel
     </a>
-    <h1 class="channel-page__title">Commands</h1>
+    <h1 class="channel-page__title">Channel commands</h1>
+    <p class="muted">Review commands, cooldowns and access levels.</p>
   </section>
 
   @if (isLoading()) {
@@ -24,14 +30,24 @@
           </tr>
         </thead>
         <tbody>
-          @for (item of [1,2,3,4,5]; track item) {
+          @for (item of [1, 2, 3, 4, 5]; track item) {
             <tr>
-              <td><app-skeleton variant="bar" height="1rem" width="60px" /></td>
-              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
-              <td><app-skeleton variant="bar" height="1rem" width="80px" /></td>
-              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
-              <td><app-skeleton variant="bar" height="1rem" width="50px" /></td>
-              <td><app-skeleton variant="bar" height="1rem" width="40px" /></td>
+              <td data-label="Name"><app-skeleton variant="bar" height="1rem" width="60px" /></td>
+              <td data-label="Command">
+                <app-skeleton variant="bar" height="1rem" width="40px" />
+              </td>
+              <td data-label="Function">
+                <app-skeleton variant="bar" height="1rem" width="80px" />
+              </td>
+              <td data-label="Cooldown">
+                <app-skeleton variant="bar" height="1rem" width="40px" />
+              </td>
+              <td data-label="User level">
+                <app-skeleton variant="bar" height="1rem" width="50px" />
+              </td>
+              <td data-label="Enabled">
+                <app-skeleton variant="bar" height="1rem" width="40px" />
+              </td>
             </tr>
           }
         </tbody>
@@ -40,7 +56,9 @@
   } @else if (error()) {
     <div class="channel-page__error">
       <p>{{ error() }}</p>
-      <button type="button" class="btn btn--secondary" (click)="loadCommands(currentPage())">Retry</button>
+      <button type="button" class="btn btn--secondary" (click)="loadCommands(currentPage())">
+        Retry
+      </button>
     </div>
   } @else if (commands().length === 0) {
     <div class="channel-page__empty">
@@ -62,12 +80,12 @@
         <tbody>
           @for (cmd of commands(); track cmd.id) {
             <tr>
-              <td class="data-table__name">{{ cmd.name }}</td>
-              <td class="data-table__cmd">{{ cmd.cmd }}</td>
-              <td class="data-table__func">{{ cmd.func }}</td>
-              <td>{{ cmd.cooldown }}s</td>
-              <td>{{ cmd.userLevelName || '-' }}</td>
-              <td>
+              <td data-label="Name" class="data-table__name">{{ cmd.name }}</td>
+              <td data-label="Command" class="data-table__cmd">{{ cmd.cmd }}</td>
+              <td data-label="Function" class="data-table__func">{{ cmd.func }}</td>
+              <td data-label="Cooldown">{{ cmd.cooldown }}s</td>
+              <td data-label="User level">{{ cmd.userLevelName || '-' }}</td>
+              <td data-label="Enabled">
                 @if (cmd.enabled) {
                   <span class="status-badge status-badge--active">Yes</span>
                 } @else {

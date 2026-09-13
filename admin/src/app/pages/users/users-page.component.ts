@@ -4,12 +4,17 @@ import {
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
+import { IconComponent } from '../../shared/icon/icon.component';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { AdminApiService, type AdminUserRow, type AdminUsersSummary } from '../../services/admin-api.service';
+import {
+  AdminApiService,
+  type AdminUserRow,
+  type AdminUsersSummary,
+} from '../../services/admin-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
 import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
@@ -17,8 +22,9 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.
 @Component({
   selector: 'app-users-page',
   templateUrl: './users-page.component.html',
+  styleUrl: './users-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, SkeletonComponent, RouterLink, ConfirmModalComponent]
+  imports: [IconComponent, FormsModule, SkeletonComponent, RouterLink, ConfirmModalComponent],
 })
 export class UsersPageComponent implements OnInit {
   private readonly adminApi = inject(AdminApiService);
@@ -35,8 +41,9 @@ export class UsersPageComponent implements OnInit {
   readonly totalUsers = signal(0);
 
   // Search state
-  readonly searchInput = signal('');          // What user is typing
-  readonly activeSearchQuery = signal('');    // What user pressed enter on
+  private searchRequestId = 0;
+  readonly searchInput = signal(''); // What user is typing
+  readonly activeSearchQuery = signal(''); // What user pressed enter on
   readonly searchMode = signal<'cache' | 'api'>('cache');
   readonly searchResults = signal<AdminUserRow[]>([]);
 
@@ -61,10 +68,8 @@ export class UsersPageComponent implements OnInit {
   // Depends on cacheVersion to recalculate when cache is updated
   readonly displayedUsers = computed(() => {
     this.cacheVersion(); // Dependency for reactivity
-    // When searching, show search results; otherwise show all cached users
-    const users = this.searchInput()
-      ? this.searchResults()
-      : this.getAllCachedUsers();
+    // Search cached pages immediately; pagination shows only the selected page.
+    const users = this.searchInput() ? this.searchResults() : this.getCurrentPageUsers();
 
     return this.sortUsers(users);
   });
@@ -104,17 +109,19 @@ export class UsersPageComponent implements OnInit {
         this.totalUsers.set(response.data.pagination.total);
         this.currentPage.set(page);
         this.isLoading.set(false);
-        this.cacheVersion.update(v => v + 1); // Trigger displayedUsers recalculation
+        this.cacheVersion.update((v) => v + 1); // Trigger displayedUsers recalculation
       },
       error: (err) => {
         this.error.set('Failed to load users');
         this.isLoading.set(false);
         console.error('Error loading users:', err);
-      }
+      },
     });
   }
 
   onSearchInput(value: string): void {
+    this.searchRequestId++;
+    this.isSearching.set(false);
     this.searchInput.set(value);
 
     // If there's input, filter from cache immediately
@@ -133,42 +140,26 @@ export class UsersPageComponent implements OnInit {
     this.activeSearchQuery.set(query);
     this.isSearching.set(true);
 
-    // If not in cache, make API call
-    const allCachedUsers = this.getAllCachedUsers();
-    const found = allCachedUsers.find(u =>
-      u.channel.toLowerCase().includes(query.toLowerCase()) ||
-      u.email?.toLowerCase().includes(query.toLowerCase()) ||
-      u.channelID.toLowerCase().includes(query.toLowerCase())
-    );
-
-    if (found) {
-      // Found in cache - no need for API
-      this.searchResults.set([found]);
-      this.searchMode.set('cache');
-      this.isSearching.set(false);
-    } else {
-      // Not in cache - API call
-      this.adminApi.getUsers({ page: 1, limit: 100, search: query }).subscribe({
-        next: (response) => {
-          if (response.data.rows.length > 0) {
-            // Cache this page
-            this.pagesCache.set(1, response.data.rows);
-            this.loadedPages.add(1);
-          }
-          this.searchResults.set(response.data.rows);
-          this.searchMode.set('api');
-          this.isSearching.set(false);
-        },
-        error: () => {
-          this.searchResults.set([]);
-          this.searchMode.set('api');
-          this.isSearching.set(false);
-        }
-      });
-    }
+    const requestId = ++this.searchRequestId;
+    // Explicit search covers the directory without replacing cached page data.
+    this.adminApi.getUsers({ page: 1, limit: 100, search: query }).subscribe({
+      next: (response) => {
+        if (requestId !== this.searchRequestId) return;
+        this.searchResults.set(response.data.rows);
+        this.searchMode.set('api');
+        this.isSearching.set(false);
+      },
+      error: () => {
+        if (requestId !== this.searchRequestId) return;
+        this.isSearching.set(false);
+        this.toast.error('Search failed. Please try again.');
+      },
+    });
   }
 
   onClearSearch(): void {
+    this.searchRequestId++;
+    this.isSearching.set(false);
     this.searchInput.set('');
     this.activeSearchQuery.set('');
     this.searchResults.set([]);
@@ -177,7 +168,7 @@ export class UsersPageComponent implements OnInit {
 
   onSort(column: string): void {
     if (this.sortBy() === column) {
-      this.sortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
+      this.sortOrder.update((order) => (order === 'asc' ? 'desc' : 'asc'));
     } else {
       this.sortBy.set(column);
       this.sortOrder.set('asc');
@@ -190,6 +181,8 @@ export class UsersPageComponent implements OnInit {
   }
 
   onRefresh(): void {
+    this.searchRequestId++;
+    this.isSearching.set(false);
     // Clear cache
     this.pagesCache.clear();
     this.loadedPages.clear();
@@ -239,7 +232,7 @@ export class UsersPageComponent implements OnInit {
         this.isSendingReminder.set(false);
         const message = err?.error?.message || 'Failed to send reminder';
         this.toast.error(message);
-      }
+      },
     });
   }
 
@@ -275,7 +268,7 @@ export class UsersPageComponent implements OnInit {
 
   private getAllCachedUsers(): AdminUserRow[] {
     const all: AdminUserRow[] = [];
-    this.pagesCache.forEach(users => all.push(...users));
+    this.pagesCache.forEach((users) => all.push(...users));
     return all;
   }
 
@@ -283,10 +276,11 @@ export class UsersPageComponent implements OnInit {
     const allUsers = this.getAllCachedUsers();
     const lowerQuery = query.toLowerCase();
 
-    const filtered = allUsers.filter(u =>
-      u.channel.toLowerCase().includes(lowerQuery) ||
-      u.email?.toLowerCase().includes(lowerQuery) ||
-      u.channelID.toLowerCase().includes(lowerQuery)
+    const filtered = allUsers.filter(
+      (u) =>
+        u.channel.toLowerCase().includes(lowerQuery) ||
+        u.email?.toLowerCase().includes(lowerQuery) ||
+        u.channelID.toLowerCase().includes(lowerQuery),
     );
 
     this.searchResults.set(filtered);
@@ -331,8 +325,8 @@ export class UsersPageComponent implements OnInit {
           bVal = b.commandsCount;
           break;
         case 'has_permissions':
-          aVal = (a.has_permissions && a.up_to_date_permissions) ? 1 : 0;
-          bVal = (b.has_permissions && b.up_to_date_permissions) ? 1 : 0;
+          aVal = a.has_permissions && a.up_to_date_permissions ? 1 : 0;
+          bVal = b.has_permissions && b.up_to_date_permissions ? 1 : 0;
           break;
         case 'created_at':
           aVal = a.created_at ? new Date(a.created_at).getTime() : 0;

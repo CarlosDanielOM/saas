@@ -4,7 +4,7 @@ import {
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -14,8 +14,9 @@ import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 @Component({
   selector: 'app-channel-commands',
   templateUrl: './channel-commands.component.html',
+  styleUrl: './channel-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent]
+  imports: [RouterLink, SkeletonComponent],
 })
 export class ChannelCommandsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -33,7 +34,7 @@ export class ChannelCommandsComponent implements OnInit {
   readonly paginationInfo = computed(() => ({
     current: this.currentPage(),
     total: this.totalPages(),
-    totalItems: this.totalItems()
+    totalItems: this.totalItems(),
   }));
 
   ngOnInit(): void {
@@ -63,7 +64,7 @@ export class ChannelCommandsComponent implements OnInit {
         this.error.set('Failed to load commands');
         this.isLoading.set(false);
         console.error('Error loading commands:', err);
-      }
+      },
     });
   }
 

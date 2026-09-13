@@ -4,21 +4,30 @@ import {
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin, catchError, of } from 'rxjs';
 
-import { ChannelApiService, type ChannelEventsub, type MergedEventsub, type StandardEventsub } from '../../services/channel-api.service';
+import {
+  ChannelApiService,
+  type ChannelEventsub,
+  type MergedEventsub,
+  type StandardEventsub,
+} from '../../services/channel-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
-import { TestEventModalComponent, type TestEventPayload } from '../../shared/test-event-modal/test-event-modal.component';
+import {
+  TestEventModalComponent,
+  type TestEventPayload,
+} from '../../shared/test-event-modal/test-event-modal.component';
 
 @Component({
   selector: 'app-channel-eventsubs',
   templateUrl: './channel-eventsubs.component.html',
+  styleUrl: './channel-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent, TestEventModalComponent]
+  imports: [RouterLink, SkeletonComponent, TestEventModalComponent],
 })
 export class ChannelEventsubsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -64,14 +73,19 @@ export class ChannelEventsubsComponent implements OnInit {
         catchError(() => {
           this.toast.error('Failed to load standard eventsub types');
           return of({ data: { standardTypes: [] as StandardEventsub[] } });
-        })
+        }),
       ),
       channel: this.channelApi.getChannelEventsubs(channelID, 1, 100).pipe(
         catchError(() => {
           this.toast.error('Failed to load channel eventsubs');
-          return of({ data: { rows: [] as ChannelEventsub[], pagination: { page: 1, limit: 100, total: 0, totalPages: 1 } } });
-        })
-      )
+          return of({
+            data: {
+              rows: [] as ChannelEventsub[],
+              pagination: { page: 1, limit: 100, total: 0, totalPages: 1 },
+            },
+          });
+        }),
+      ),
     }).subscribe({
       next: ({ standard, channel }) => {
         // Check if the response structure is what we expect
@@ -85,9 +99,6 @@ export class ChannelEventsubsComponent implements OnInit {
 
         const standardTypes = standard.data.standardTypes;
         const dbEventsubs = channel.data.rows;
-
-        // Show detailed info about what we received
-        this.toast.info(`Standard types received: ${standardTypes.length}, DB eventsubs: ${dbEventsubs.length}`);
 
         // If no standard types at all, that's a problem - we should always have 20
         if (standardTypes.length === 0) {
@@ -122,7 +133,7 @@ export class ChannelEventsubsComponent implements OnInit {
               created_at: dbEs.created_at,
               isMissing: false,
               condition: std.condition,
-              config: std.config
+              config: std.config,
             });
           } else {
             // Missing from DB
@@ -134,7 +145,7 @@ export class ChannelEventsubsComponent implements OnInit {
               created_at: '',
               isMissing: true,
               condition: std.condition,
-              config: std.config
+              config: std.config,
             });
           }
         }
@@ -147,11 +158,6 @@ export class ChannelEventsubsComponent implements OnInit {
           return;
         }
 
-        // Log what we found
-        const missingCount = merged.filter(m => m.isMissing).length;
-        const foundCount = merged.filter(m => !m.isMissing).length;
-        this.toast.info(`Loaded ${foundCount} eventsubs, ${missingCount} missing`);
-
         this.eventsubs.set(merged);
         this.currentPage.set(1);
         this.totalPages.set(1);
@@ -162,7 +168,7 @@ export class ChannelEventsubsComponent implements OnInit {
         this.error.set('Failed to load eventsubs');
         this.toast.error('Failed to load eventsubs');
         this.isLoading.set(false);
-      }
+      },
     });
   }
 
@@ -212,7 +218,7 @@ export class ChannelEventsubsComponent implements OnInit {
         type: eventsub.type,
         version: eventsub.version,
         condition: eventsub.condition || {},
-        config: eventsub.config
+        config: eventsub.config,
       };
 
       loadingSet.add(loadingKey);
@@ -233,7 +239,7 @@ export class ChannelEventsubsComponent implements OnInit {
           loadingSet.delete(loadingKey);
           this.loadingIds.set(loadingSet);
           this.toast.error('Could not create eventsub');
-        }
+        },
       });
     } else if (eventsub.id) {
       // Toggle enabled/disabled for existing eventsub
@@ -242,23 +248,25 @@ export class ChannelEventsubsComponent implements OnInit {
       loadingSet.add(loadingKey);
       this.loadingIds.set(loadingSet);
 
-      this.channelApi.patchChannelEventsub(channelID, eventsub.id, { enabled: newEnabled }).subscribe({
-        next: (response) => {
-          loadingSet.delete(loadingKey);
-          this.loadingIds.set(loadingSet);
-          if (response.error) {
-            this.toast.error(response.message);
-          } else {
-            this.toast.success(`${eventsub.type} ${newEnabled ? 'enabled' : 'disabled'}`);
-            this.loadEventsubs();
-          }
-        },
-        error: () => {
-          loadingSet.delete(loadingKey);
-          this.loadingIds.set(loadingSet);
-          this.toast.error('Could not update eventsub');
-        }
-      });
+      this.channelApi
+        .patchChannelEventsub(channelID, eventsub.id, { enabled: newEnabled })
+        .subscribe({
+          next: (response) => {
+            loadingSet.delete(loadingKey);
+            this.loadingIds.set(loadingSet);
+            if (response.error) {
+              this.toast.error(response.message);
+            } else {
+              this.toast.success(`${eventsub.type} ${newEnabled ? 'enabled' : 'disabled'}`);
+              this.loadEventsubs();
+            }
+          },
+          error: () => {
+            loadingSet.delete(loadingKey);
+            this.loadingIds.set(loadingSet);
+            this.toast.error('Could not update eventsub');
+          },
+        });
     }
   }
 
@@ -300,7 +308,7 @@ export class ChannelEventsubsComponent implements OnInit {
       },
       error: (err) => {
         this.toast.error('Failed to send test event: ' + (err.message || 'Unknown error'));
-      }
+      },
     });
   }
 
@@ -321,16 +329,16 @@ export class ChannelEventsubsComponent implements OnInit {
       condition: this.buildCondition(eventType, channelID),
       transport: {
         method: 'webhook',
-        callback: 'https://subscriptions.domdimabot.com/eventsub'
+        callback: 'https://subscriptions.domdimabot.com/eventsub',
       },
-      created_at: now
+      created_at: now,
     };
 
     const eventData = this.buildEventData(eventType, channelID, now, randomUserId, randomViewers);
 
     return {
       subscription: baseSubscription,
-      event: eventData
+      event: eventData,
     };
   }
 
@@ -357,7 +365,7 @@ export class ChannelEventsubsComponent implements OnInit {
       'channel.bits.use': '1',
       'automod.message.hold': '1',
       'channel.channel_points_custom_reward_redemption.add': '1',
-      'channel.ban': '1'
+      'channel.ban': '1',
     };
     return versions[type] || '1';
   }
@@ -381,11 +389,17 @@ export class ChannelEventsubsComponent implements OnInit {
     }
   }
 
-  private buildEventData(type: string, channelID: string, now: string, randomUserId: string, randomViewers: number): Record<string, unknown> {
+  private buildEventData(
+    type: string,
+    channelID: string,
+    now: string,
+    randomUserId: string,
+    randomViewers: number,
+  ): Record<string, unknown> {
     const baseEvent: Record<string, unknown> = {
       broadcaster_user_id: channelID,
       broadcaster_user_login: 'teststreamer',
-      broadcaster_user_name: 'TestStreamer'
+      broadcaster_user_name: 'TestStreamer',
     };
 
     switch (type) {
@@ -398,12 +412,12 @@ export class ChannelEventsubsComponent implements OnInit {
           message_id: `test_msg_${Date.now()}`,
           message: {
             text: 'This is a test message!',
-            fragments: [{ text: 'This is a test message!', type: 'text' }]
+            fragments: [{ text: 'This is a test message!', type: 'text' }],
           },
           message_type: 'text',
           badges: [],
           cheer: { bits: 0 },
-          color: '#FF0000'
+          color: '#FF0000',
         };
 
       case 'channel.follow':
@@ -412,7 +426,7 @@ export class ChannelEventsubsComponent implements OnInit {
           user_id: randomUserId,
           user_name: 'TestFollower',
           user_login: 'testfollower',
-          followed_at: now
+          followed_at: now,
         };
 
       case 'stream.online':
@@ -420,7 +434,7 @@ export class ChannelEventsubsComponent implements OnInit {
           ...baseEvent,
           started_at: now,
           type: 'live',
-          id: `stream_online_${Date.now()}`
+          id: `stream_online_${Date.now()}`,
         };
 
       case 'stream.offline':
@@ -435,7 +449,7 @@ export class ChannelEventsubsComponent implements OnInit {
           from_broadcaster_user_id: String(Math.floor(Math.random() * 900000000) + 100000000),
           from_broadcaster_user_login: 'raidstreamer',
           from_broadcaster_user_name: 'RaidStreamer',
-          viewers: randomViewers
+          viewers: randomViewers,
         };
 
       case 'channel.channel_points_custom_reward_redemption.add':
@@ -450,11 +464,11 @@ export class ChannelEventsubsComponent implements OnInit {
             title: 'Test Reward',
             prompt: 'This is a test reward',
             cost: 100,
-            should_redemptions_skip_request_queue: false
+            should_redemptions_skip_request_queue: false,
           },
           user_input: 'test input',
           status: 'unfulfilled',
-          redeemed_at: now
+          redeemed_at: now,
         };
 
       case 'channel.ad_break.begin':
@@ -465,7 +479,7 @@ export class ChannelEventsubsComponent implements OnInit {
           requester_user_login: 'testuser',
           duration_seconds: 60,
           started_at: now,
-          is_automatic: false
+          is_automatic: false,
         };
 
       case 'channel.ban':
@@ -479,7 +493,7 @@ export class ChannelEventsubsComponent implements OnInit {
           moderator_user_login: 'testmodbot',
           reason: 'Test ban reason',
           ends_at: null,
-          is_permanent: true
+          is_permanent: true,
         };
 
       case 'channel.subscribe':
@@ -492,7 +506,7 @@ export class ChannelEventsubsComponent implements OnInit {
           sub_tier: '1000',
           subscription_tier: '1000',
           is_gift: false,
-          subscribed_at: now
+          subscribed_at: now,
         };
 
       case 'channel.subscription.gift':
@@ -505,7 +519,7 @@ export class ChannelEventsubsComponent implements OnInit {
           sub_tier: '1000',
           subscription_tier: '1000',
           is_gift: true,
-          total: 5
+          total: 5,
         };
 
       case 'channel.subscription.message':
@@ -518,7 +532,7 @@ export class ChannelEventsubsComponent implements OnInit {
           sub_tier: '1000',
           subscription_tier: '1000',
           is_gift: false,
-          subscribed_at: now
+          subscribed_at: now,
         };
 
       case 'channel.subscription.end':
@@ -532,7 +546,7 @@ export class ChannelEventsubsComponent implements OnInit {
           subscription_tier: '1000',
           is_gift: false,
           subscribed_at: now,
-          ended_at: now
+          ended_at: now,
         };
 
       case 'channel.bits.use':
@@ -543,7 +557,7 @@ export class ChannelEventsubsComponent implements OnInit {
           user_name: 'TestUser',
           bits: 100,
           type: 'cheer',
-          is_anonymous: false
+          is_anonymous: false,
         };
 
       default:

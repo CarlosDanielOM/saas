@@ -1,9 +1,14 @@
-<div class="channel-page">
+<div class="page channel-page">
   <!-- Header with back link -->
   <section class="channel-page__header">
     <a routerLink="/users" class="back-link">
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+        />
       </svg>
       Back to Users
     </a>
@@ -18,7 +23,7 @@
   @if (isLoading()) {
     <!-- Loading skeletons -->
     <section class="channel-page__info-cards">
-      @for (item of [1,2,3,4]; track item) {
+      @for (item of [1, 2, 3, 4]; track item) {
         <div class="info-card info-card--skeleton">
           <app-skeleton variant="bar" height="1rem" width="60%" />
           <app-skeleton variant="bar" height="1.5rem" width="80%" />
@@ -28,7 +33,7 @@
     </section>
 
     <section class="channel-page__stats">
-      @for (item of [1,2,3,4,5,6,7]; track item) {
+      @for (item of [1, 2, 3, 4, 5, 6, 7]; track item) {
         <div class="stat-clickable stat-clickable--skeleton">
           <app-skeleton variant="bar" height="1rem" width="50%" />
           <app-skeleton variant="bar" height="1.5rem" width="30%" />
@@ -38,7 +43,9 @@
   } @else if (error()) {
     <div class="channel-page__error">
       <p>{{ error() }}</p>
-      <button type="button" class="btn btn--secondary" (click)="loadChannelOverview()">Retry</button>
+      <button type="button" class="btn btn--secondary" (click)="loadChannelOverview()">
+        Retry
+      </button>
     </div>
   } @else if (overview(); as o) {
     <!-- Info Cards -->
@@ -60,7 +67,7 @@
       <div class="channel-page__stats-grid">
         @for (stat of statItems(); track stat.label) {
           @if (stat.link) {
-            <a [href]="stat.link" class="stat-clickable">
+            <a [routerLink]="stat.link" class="stat-clickable">
               <span class="stat-clickable__label">{{ stat.label }}</span>
               <span class="stat-clickable__value">{{ formatNumber(stat.value) }}</span>
             </a>
@@ -103,18 +110,27 @@
           @if (aiCredits() && aiCreditsAvailable()) {
             <span class="detail-item__value credit-usage__summary">
               <span class="credit-usage__label">{{ aiCreditsLabel() }}</span>
-              <span class="credit-usage__balance" [class.credit-usage__balance--exhausted]="aiCreditsExhausted()">
+              <span
+                class="credit-usage__balance"
+                [class.credit-usage__balance--exhausted]="aiCreditsExhausted()"
+              >
                 ({{ formatCredits(aiCreditsBalance()) }} left)
               </span>
               <span class="credit-usage__percent">{{ aiCreditsPercent() }}%</span>
             </span>
-            <div class="credit-usage__progress" role="progressbar"
-                 aria-label="AI credit usage"
-                 [attr.aria-valuemin]="0" [attr.aria-valuemax]="100"
-                 [attr.aria-valuenow]="aiCreditsPercent()">
-              <span [class]="aiCreditsFillClass()"
-                    [class.credit-usage__fill--exhausted]="aiCreditsExhausted()"
-                    [style.width.%]="aiCreditsPercent()"></span>
+            <div
+              class="credit-usage__progress"
+              role="progressbar"
+              aria-label="AI credit usage"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuemax]="100"
+              [attr.aria-valuenow]="aiCreditsPercent()"
+            >
+              <span
+                [class]="aiCreditsFillClass()"
+                [class.credit-usage__fill--exhausted]="aiCreditsExhausted()"
+                [style.width.%]="aiCreditsPercent()"
+              ></span>
             </div>
             @if (aiCreditsExhausted()) {
               <span class="credit-usage__hint credit-usage__hint--warning">
@@ -125,7 +141,9 @@
             <span class="detail-item__value credit-usage__summary credit-usage__summary--muted">
               Not available
               @if (aiCredits() && !aiCreditsAvailable()) {
-                <span class="credit-usage__hint">No Polar customer linked — credits not provisioned yet.</span>
+                <span class="credit-usage__hint"
+                  >No Polar customer linked — credits not provisioned yet.</span
+                >
               }
             </span>
           }
@@ -144,11 +162,17 @@
           [class.btn--warning]="isUserActive()"
           (click)="openSendReminder()"
           [disabled]="isSendingReminder()"
-          [title]="isUserActive() ? 'User is already active — override and send reminder' : 'Send real activation reminder email'"
+          [title]="
+            isUserActive()
+              ? 'User is already active — override and send reminder'
+              : 'Send real activation reminder email'
+          "
         >
           Send Reminder Email
         </button>
-        <span class="actions-hint">Sends a real production activation reminder (uses the standardized pendingActionsQueue flow).</span>
+        <span class="actions-hint"
+          >Send an activation email to help this streamer finish setup.</span
+        >
       </div>
 
       <div class="actions-row actions-row--stacked">
@@ -156,7 +180,7 @@
           <div class="credit-grant-panel__head">
             <div>
               <h3>Grant AI Credits</h3>
-              <p>Ingests a negative <code>ai_usage</code> event in Polar and updates local cache.</p>
+              <p>Add credits to this account. Select an amount or enter a custom grant below.</p>
             </div>
           </div>
 
@@ -217,7 +241,11 @@
     [open]="showReminderModal()"
     [title]="'Send Activation Reminder'"
     [message]="'Send a real production activation reminder email to this streamer?'"
-    [warning]="isUserActive() ? 'This user is already active. The email will still be sent (override).' : null"
+    [warning]="
+      isUserActive()
+        ? 'This user is already active. The email will still be sent (override).'
+        : null
+    "
     [confirmLabel]="'Send Reminder'"
     [cancelLabel]="'Cancel'"
     [isDanger]="false"

@@ -1,10 +1,13 @@
-<div class="read-tool">
-  <section class="read-tool__header">
-    <h1 class="read-tool__title">Read Tool</h1>
-    <p class="read-tool__subtitle">Read files from the server filesystem</p>
+<div class="page read-tool">
+  <section class="page-header">
+    <div>
+      <span class="eyebrow">Workspace tools / Files</span>
+      <h1>File reader</h1>
+      <p class="read-tool__subtitle">Inspect server files without leaving your workspace.</p>
+    </div>
   </section>
 
-  <section class="read-tool__input-section">
+  <section class="read-tool__input-section panel">
     <div class="input-group">
       <label for="file-path" class="input-label">File Path</label>
       <div class="input-row">
@@ -17,11 +20,7 @@
           (ngModelChange)="filePath.set($event)"
           (keydown.enter)="readFile()"
         />
-        <button
-          class="button button--primary"
-          (click)="readFile()"
-          [disabled]="isLoading()"
-        >
+        <button class="button button--primary" (click)="readFile()" [disabled]="isLoading()">
           @if (isLoading()) {
             Reading...
           } @else {
@@ -32,11 +31,33 @@
     </div>
   </section>
 
+  @if (fileContent() === null && !error() && !isLoading()) {
+    <section class="panel read-empty">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <path
+          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5"
+        />
+      </svg>
+      <h2>A closer look, one file at a time.</h2>
+      <p>Enter the full file path above to view its contents.</p>
+    </section>
+  }
   @if (error()) {
     <section class="read-tool__error">
-      <div class="error-card">
+      <div class="error-card" role="alert">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <span>{{ error() }}</span>
       </div>
@@ -44,7 +65,7 @@
   }
 
   @if (fileContent() !== null) {
-    <section class="read-tool__output">
+    <section class="read-tool__output panel">
       <div class="output-header">
         <span class="output-label">File Content</span>
         <span class="output-size">{{ fileContent()?.length || 0 | number }} characters</span>

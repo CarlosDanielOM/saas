@@ -6,8 +6,9 @@ import { SessionAuthService } from '../../services/session-auth.service';
 @Component({
   selector: 'app-access-denied-page',
   templateUrl: './access-denied-page.component.html',
+  styleUrl: '../auth-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: []
+  imports: [],
 })
 export class AccessDeniedPageComponent {
   private readonly router = inject(Router);

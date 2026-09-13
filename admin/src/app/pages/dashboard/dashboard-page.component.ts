@@ -5,8 +5,10 @@ import {
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { IconComponent } from '../../shared/icon/icon.component';
 import { environment } from '../../../environments/environment';
 
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -24,8 +26,9 @@ interface SiteAnalyticsSnapshot {
 @Component({
   selector: 'app-dashboard-page',
   templateUrl: './dashboard-page.component.html',
+  styleUrl: './dashboard-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SkeletonComponent]
+  imports: [SkeletonComponent, RouterLink, IconComponent],
 })
 export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly sessionAuth = inject(SessionAuthService);
@@ -40,10 +43,66 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     authorizedAccounts: 0,
     totalMessages: 0,
     totalCommands: 0,
-    totalLiveViewers: 0
+    totalLiveViewers: 0,
   });
-  readonly analyticsConnectionStatus = signal<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
+  readonly analyticsConnectionStatus = signal<'connected' | 'reconnecting' | 'disconnected'>(
+    'disconnected',
+  );
   readonly isInitialLoading = signal(true);
+  readonly hasSnapshot = signal(false);
+  readonly snapshotError = signal(false);
+  readonly quickLinks = [
+    {
+      route: '/users',
+      icon: 'users',
+      label: 'Manage users',
+      description: 'Accounts, permissions & channel controls',
+      action: 'Open directory',
+    },
+    {
+      route: '/email-test',
+      icon: 'mail',
+      label: 'Test an email',
+      description: 'Check templates, languages & delivery',
+      action: 'Open email tools',
+    },
+    {
+      route: '/read-tool',
+      icon: 'files',
+      label: 'Inspect a file',
+      description: 'Read server files from your workspace',
+      action: 'Open file reader',
+    },
+  ];
+  readonly metrics = computed(() => [
+    {
+      label: 'Registered users',
+      value: this.analytics().registeredUsers,
+      icon: 'users',
+      note: 'Across the platform',
+    },
+    {
+      label: 'Authorized accounts',
+      value: this.analytics().authorizedAccounts,
+      icon: 'shield',
+      note: 'Connected to Dima',
+    },
+    {
+      label: 'Messages processed',
+      value: this.analytics().totalMessages,
+      icon: 'message',
+      note: 'Platform total',
+    },
+    {
+      label: 'Commands executed',
+      value: this.analytics().totalCommands,
+      icon: 'command',
+      note: 'Platform total',
+    },
+  ]);
+  refreshAnalytics(): void {
+    void this.fetchAnalyticsSnapshot();
+  }
 
   private eventSource: EventSource | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -72,9 +131,14 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     };
 
     this.eventSource.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as Partial<SiteAnalyticsSnapshot>;
-      this.applyAnalyticsSnapshot(payload);
-      this.analyticsConnectionStatus.set('connected');
+      try {
+        const payload = JSON.parse(event.data) as Partial<SiteAnalyticsSnapshot>;
+        if (!payload || typeof payload !== 'object') return;
+        this.applyAnalyticsSnapshot(payload);
+        this.analyticsConnectionStatus.set('connected');
+      } catch {
+        /* Keep the last valid snapshot if a stream event is malformed. */
+      }
     };
 
     this.eventSource.onerror = () => {
@@ -82,7 +146,7 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
       this.eventSource = null;
       this.reconnectAttempts += 1;
       this.analyticsConnectionStatus.set(
-        this.reconnectAttempts > 3 ? 'disconnected' : 'reconnecting'
+        this.reconnectAttempts > 3 ? 'disconnected' : 'reconnecting',
       );
       this.fetchAnalyticsSnapshot();
       this.scheduleReconnect();
@@ -103,12 +167,14 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
     try {
       const response = await fetch(`${environment.DIMA_API}/config/site/analytics`);
       if (!response.ok) {
+        this.snapshotError.set(true);
         this.isInitialLoading.set(false);
         return;
       }
 
       const envelope = (await response.json()) as { data?: Partial<SiteAnalyticsSnapshot> };
       if (!envelope.data) {
+        this.snapshotError.set(true);
         this.isInitialLoading.set(false);
         return;
       }
@@ -116,19 +182,23 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
       this.applyAnalyticsSnapshot(envelope.data);
       this.isInitialLoading.set(false);
     } catch {
+      this.snapshotError.set(true);
       this.isInitialLoading.set(false);
     }
   }
 
   private applyAnalyticsSnapshot(payload: Partial<SiteAnalyticsSnapshot>): void {
-    this.analytics.update(current => ({
+    this.hasSnapshot.set(true);
+    this.snapshotError.set(false);
+    this.isInitialLoading.set(false);
+    this.analytics.update((current) => ({
       ...current,
       registeredUsers: this.safeNumber(payload.registeredUsers ?? current.registeredUsers),
       liveUsers: this.safeNumber(payload.liveUsers ?? current.liveUsers),
       authorizedAccounts: this.safeNumber(payload.authorizedAccounts ?? current.authorizedAccounts),
       totalMessages: this.safeNumber(payload.totalMessages ?? current.totalMessages),
       totalCommands: this.safeNumber(payload.totalCommands ?? current.totalCommands),
-      totalLiveViewers: this.safeNumber(payload.totalLiveViewers ?? current.totalLiveViewers)
+      totalLiveViewers: this.safeNumber(payload.totalLiveViewers ?? current.totalLiveViewers),
     }));
   }
 

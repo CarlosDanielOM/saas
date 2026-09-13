@@ -4,7 +4,7 @@ import {
   OnInit,
   computed,
   inject,
-  signal
+  signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, catchError, of } from 'rxjs';
@@ -13,7 +13,7 @@ import {
   ChannelApiService,
   type AiCreditsData,
   type ChannelOverview,
-  type ChannelUser
+  type ChannelUser,
 } from '../../services/channel-api.service';
 import { AdminApiService } from '../../services/admin-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
@@ -23,8 +23,9 @@ import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.
 @Component({
   selector: 'app-channel-detail',
   templateUrl: './channel-detail.component.html',
+  styleUrl: './channel-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent]
+  imports: [RouterLink, SkeletonComponent, ConfirmModalComponent],
 })
 export class ChannelDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -62,27 +63,27 @@ export class ChannelDetailComponent implements OnInit {
         label: 'Plan',
         value: user.plan_tier.toUpperCase(),
         icon: 'plan',
-        class: this.getPlanClass(user.plan_tier)
+        class: this.getPlanClass(user.plan_tier),
       },
       {
         label: 'Status',
         value: user.isLive ? 'LIVE' : 'OFFLINE',
         subvalue: user.isLive ? `${this.formatNumber(user.liveViewers)} viewers` : undefined,
         icon: user.isLive ? 'live' : 'offline',
-        class: user.isLive ? 'info-card--live' : 'info-card--offline'
+        class: user.isLive ? 'info-card--live' : 'info-card--offline',
       },
       {
         label: 'Active',
         value: user.actived ? 'YES' : 'NO',
         icon: user.actived ? 'check' : 'x',
-        class: user.actived ? 'info-card--success' : 'info-card--error'
+        class: user.actived ? 'info-card--success' : 'info-card--error',
       },
       {
         label: 'Permissions',
         value: user.up_to_date_permissions ? 'OK' : 'UPDATE',
         icon: user.up_to_date_permissions ? 'shield' : 'alert',
-        class: user.up_to_date_permissions ? 'info-card--success' : 'info-card--warning'
-      }
+        class: user.up_to_date_permissions ? 'info-card--success' : 'info-card--warning',
+      },
     ];
   });
 
@@ -91,8 +92,16 @@ export class ChannelDetailComponent implements OnInit {
     if (!overview) return [];
 
     return [
-      { label: 'Commands', value: overview.commandsCount, link: `/channels/${this.channelID()}/commands` },
-      { label: 'Eventsubs', value: overview.eventsubsCount, link: `/channels/${this.channelID()}/eventsubs` },
+      {
+        label: 'Commands',
+        value: overview.commandsCount,
+        link: `/channels/${this.channelID()}/commands`,
+      },
+      {
+        label: 'Eventsubs',
+        value: overview.eventsubsCount,
+        link: `/channels/${this.channelID()}/eventsubs`,
+      },
       { label: 'Rewards', value: overview.rewardsCount, link: null },
       { label: 'Triggers', value: overview.triggersCount, link: null },
       { label: 'Timers', value: overview.timersCount, link: null },
@@ -117,8 +126,9 @@ export class ChannelDetailComponent implements OnInit {
     if (!data) return false;
     return data.available && data.balance <= 0;
   });
-  readonly aiCreditsLabel = computed(() =>
-    `${this.formatCredits(this.aiCreditsUsed())} / ${this.formatCredits(this.aiCreditsLimit())}`
+  readonly aiCreditsLabel = computed(
+    () =>
+      `${this.formatCredits(this.aiCreditsUsed())} / ${this.formatCredits(this.aiCreditsLimit())}`,
   );
   /**
    * Visual treatment for the credit usage bar, mirrored from the public dashboard:
@@ -135,7 +145,8 @@ export class ChannelDetailComponent implements OnInit {
   });
   readonly aiCreditsItemClass = computed(() => {
     const tier = this.overview()?.user?.plan_tier ?? 'free';
-    if (this.aiCreditsExhausted()) return 'detail-item detail-item--credits detail-item--credits-exhausted';
+    if (this.aiCreditsExhausted())
+      return 'detail-item detail-item--credits detail-item--credits-exhausted';
     if (tier === 'pro') return 'detail-item detail-item--credits detail-item--credits-pro';
     if (tier === 'premium') return 'detail-item detail-item--credits detail-item--credits-premium';
     return 'detail-item detail-item--credits';
@@ -176,7 +187,7 @@ export class ChannelDetailComponent implements OnInit {
         this.toast.error('Failed to load channel - check console');
         this.isLoading.set(false);
         console.error('Error loading channel:', err);
-      }
+      },
     });
   }
 
@@ -188,51 +199,55 @@ export class ChannelDetailComponent implements OnInit {
         catchError((err) => {
           console.error('Commands API failed:', err);
           this.toast.warning('Failed to load commands count');
-          return of({ data: { rows: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } } });
-        })
+          return of({
+            data: { rows: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } },
+          });
+        }),
       ),
       eventsubs: this.channelApi.getChannelEventsubs(channelID, 1, 1).pipe(
         catchError((err) => {
           console.error('Eventsubs API failed:', err);
           this.toast.warning('Failed to load eventsubs count');
-          return of({ data: { rows: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } } });
-        })
+          return of({
+            data: { rows: [], pagination: { page: 1, limit: 1, total: 0, totalPages: 1 } },
+          });
+        }),
       ),
       rewards: this.channelApi.getChannelRewards(channelID).pipe(
         catchError((err) => {
           console.error('Rewards API failed:', err);
           return of({ data: { rewards: [] } });
-        })
+        }),
       ),
       triggers: this.channelApi.getChannelTriggers(channelID).pipe(
         catchError((err) => {
           console.error('Triggers API failed:', err);
           return of({ data: { triggers: [] } });
-        })
+        }),
       ),
       timers: this.channelApi.getChannelTimers(channelID).pipe(
         catchError((err) => {
           console.error('Timers API failed:', err);
           return of({ data: { timers: [] } });
-        })
+        }),
       ),
       files: this.channelApi.getChannelFiles(channelID).pipe(
         catchError((err) => {
           console.error('Files API failed:', err);
           return of({ data: { files: [] } });
-        })
+        }),
       ),
       memories: this.channelApi.getChannelMemories(channelID).pipe(
         catchError((err) => {
           console.error('Memories API failed:', err);
           return of({ data: { memories: [] } });
-        })
+        }),
       ),
       aiCredits: this.channelApi.getChannelAiCredits(channelID).pipe(
         catchError((err) => {
           console.warn('AI credits API failed:', err);
           return of(null);
-        })
+        }),
       ),
     }).subscribe({
       next: (results) => {
@@ -250,14 +265,13 @@ export class ChannelDetailComponent implements OnInit {
         this.aiCredits.set(results.aiCredits);
         this.overview.set(overview);
         this.isLoading.set(false);
-        this.toast.success(`Loaded channel: ${user.channel}`);
       },
       error: (err) => {
         this.error.set('Failed to load some channel data');
         this.toast.error('Failed to load some channel data');
         this.isLoading.set(false);
         console.error('Error loading additional channel data:', err);
-      }
+      },
     });
   }
 
@@ -314,7 +328,7 @@ export class ChannelDetailComponent implements OnInit {
       error: (err) => {
         this.isGrantingCredits.set(false);
         this.toast.error(err?.error?.message || 'Failed to grant AI credits');
-      }
+      },
     });
   }
 
@@ -325,9 +339,12 @@ export class ChannelDetailComponent implements OnInit {
 
   getPlanClass(plan: string): string {
     switch (plan) {
-      case 'pro': return 'info-card--pro';
-      case 'premium': return 'info-card--premium';
-      default: return 'info-card--free';
+      case 'pro':
+        return 'info-card--pro';
+      case 'premium':
+        return 'info-card--premium';
+      default:
+        return 'info-card--free';
     }
   }
 
@@ -360,7 +377,7 @@ export class ChannelDetailComponent implements OnInit {
         this.isSendingReminder.set(false);
         const message = err?.error?.message || 'Failed to send reminder';
         this.toast.error(message);
-      }
+      },
     });
   }
 

@@ -1,1 +1,11 @@
-/* Styles moved to styles.css */
+.layout-content {
+  min-width: 0;
+  min-height: calc(100dvh - 68px);
+  padding-bottom: calc(78px + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .layout-content {
+    margin-left: 232px;
+    padding-bottom: 0;
+  }
+}

@@ -1,147 +1,107 @@
-<div class="dashboard">
-  <!-- Welcome Section -->
-  <section class="dashboard__welcome">
-    <h1 class="dashboard__title">
-      Welcome back, {{ user()?.display_name || 'Admin' }}
-    </h1>
-    <p class="dashboard__subtitle">Here's an overview of your platform</p>
+<div class="page dashboard">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">The big picture</span>
+      <h1>Platform overview<span class="title-dot">.</span></h1>
+      <p>Welcome back, {{ user()?.display_name || 'Admin' }}. Here's where things stand.</p>
+    </div>
+    <span
+      class="connection"
+      [class.connection--live]="analyticsConnectionStatus() === 'connected'"
+      role="status"
+      ><span></span
+      >{{
+        analyticsConnectionStatus() === 'connected'
+          ? 'Live updates'
+          : analyticsConnectionStatus() === 'reconnecting'
+            ? 'Connecting…'
+            : 'Updates offline'
+      }}</span
+    >
+  </header>
+
+  @if (snapshotError()) {
+    <div class="notice dashboard-notice" role="alert">
+      <span>{{
+        hasSnapshot()
+          ? 'Showing the last available figures. We could not refresh the data.'
+          : 'Platform data is unavailable right now.'
+      }}</span
+      ><button class="btn btn--secondary" (click)="refreshAnalytics()">Retry</button>
+    </div>
+  }
+  <section class="live-panel" aria-labelledby="live-heading">
+    <div class="live-panel__intro">
+      <span class="live-kicker"><app-icon name="pulse" /> RIGHT NOW</span>
+      <h2 id="live-heading">
+        A pulse on your<br class="desktop-break" />
+        community.
+      </h2>
+      <p>Streamers and viewers, at a glance.</p>
+      <a routerLink="/users" class="live-link">Explore users <app-icon name="arrow" /></a>
+    </div>
+    <div class="live-figures">
+      <div class="live-figure">
+        <span class="live-figure__label"><span class="live-dot"></span> Live streamers</span>
+        @if (isInitialLoading()) {
+          <app-skeleton width="90px" height="50px" />
+        } @else {
+          <strong>{{ hasSnapshot() ? formatNumber(analytics().liveUsers) : '—' }}</strong>
+        }
+        <span class="live-figure__foot">Broadcasting on Twitch</span>
+      </div>
+      <div class="live-figure">
+        <span class="live-figure__label"><app-icon name="viewers" /> Live viewers</span>
+        @if (isInitialLoading()) {
+          <app-skeleton width="90px" height="50px" />
+        } @else {
+          <strong>{{ hasSnapshot() ? formatNumber(analytics().totalLiveViewers) : '—' }}</strong>
+        }
+        <span class="live-figure__foot">Watching across channels</span>
+      </div>
+    </div>
   </section>
 
-  <!-- Stats Grid (Mobile-first) -->
-  <section class="dashboard__stats">
-    @if (isInitialLoading()) {
-      @for (item of [1,2,3,4]; track item) {
-        <div class="stat-card--skeleton">
-          <app-skeleton variant="bar" width="2.5rem" height="2.5rem" />
-          <div class="skeleton-content">
-            <app-skeleton variant="text" height="1.25rem" />
-            <app-skeleton variant="text" height="0.75rem" />
-          </div>
+  <section class="metrics" aria-label="Platform totals">
+    @for (metric of metrics(); track metric.label) {
+      <article class="metric panel">
+        <div class="metric__head">
+          <span>{{ metric.label }}</span
+          ><app-icon [name]="metric.icon" />
         </div>
-      }
-    } @else {
-      <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--users">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().registeredUsers) }}</span>
-          <span class="stat-card__label">Total Users</span>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--live">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().liveUsers) }}</span>
-          <span class="stat-card__label">Live Users</span>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--active">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().authorizedAccounts) }}</span>
-          <span class="stat-card__label">Active Users</span>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-card__icon stat-card__icon--viewers">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().totalLiveViewers) }}</span>
-          <span class="stat-card__label">Total Viewers</span>
-        </div>
-      </div>
+        @if (isInitialLoading()) {
+          <app-skeleton width="70%" height="38px" />
+        } @else {
+          <strong>{{ hasSnapshot() ? formatNumber(metric.value) : '—' }}</strong>
+        }
+        <span class="metric__note">{{ metric.note }}</span>
+      </article>
     }
   </section>
 
-  <!-- Platform Activity -->
-  <section class="dashboard__section">
-    <h2 class="dashboard__section-title">Platform Activity</h2>
-    <div class="dashboard__activity">
-      <div class="stat-card stat-card--wide">
-        <div class="stat-card__icon stat-card__icon--messages">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().totalMessages) }}</span>
-          <span class="stat-card__label">Messages Processed</span>
-        </div>
+  <section class="workspace" aria-labelledby="workspace-heading">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">Get things done</span>
+        <h2 id="workspace-heading">Your workspace</h2>
       </div>
-
-      <div class="stat-card stat-card--wide">
-        <div class="stat-card__icon stat-card__icon--commands">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-        </div>
-        <div class="stat-card__content">
-          <span class="stat-card__value">{{ formatNumber(analytics().totalCommands) }}</span>
-          <span class="stat-card__label">Commands</span>
-        </div>
-      </div>
+      <span class="section-caption">A shortcut to the everyday.</span>
+    </div>
+    <div class="quick-links">
+      @for (link of quickLinks; track link.route) {
+        <a [routerLink]="link.route" class="quick-link panel"
+          ><span class="quick-link__icon"><app-icon [name]="link.icon" /></span>
+          <div>
+            <h3>{{ link.label }}</h3>
+            <p>{{ link.description }}</p>
+            <span class="quick-link__action">{{ link.action }} <app-icon name="arrow" /></span>
+          </div>
+          <app-icon class="quick-link__arrow" name="chevron"
+        /></a>
+      }
     </div>
   </section>
-
-  <!-- Quick Actions -->
-  <section class="dashboard__section">
-    <h2 class="dashboard__section-title">Quick Actions</h2>
-    <div class="dashboard__actions">
-      <a href="/users" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-        </svg>
-        Manage Users
-      </a>
-      <a href="/channels" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/>
-        </svg>
-        View Channels
-      </a>
-      <a href="/analytics" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
-        View Analytics
-      </a>
-      <a href="/settings" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        Settings
-      </a>
-      <a href="/read-tool" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        Read Tool
-      </a>
-      <a href="/email-test" class="action-card">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-        </svg>
-        Email Test
-      </a>
-    </div>
-  </section>
+  <footer class="dashboard-foot">
+    <span>DIMA / ADMINISTRATION</span><span>Made for the people behind the streams.</span>
+  </footer>
 </div>

@@ -1,10 +1,13 @@
-<div class="email-test">
-  <section class="email-test__header">
-    <h1 class="email-test__title">Email Test</h1>
-    <p class="email-test__subtitle">Send test emails to verify your templates</p>
+<div class="page email-test">
+  <section class="page-header">
+    <div>
+      <span class="eyebrow">Workspace tools / Email</span>
+      <h1>Email studio</h1>
+      <p class="email-test__subtitle">Check how your emails look and land.</p>
+    </div>
   </section>
 
-  <div class="email-test__card">
+  <div class="email-test__card panel">
     <section class="email-test__form">
       <div class="form-group">
         <span class="form-label">Email Type</span>
@@ -19,8 +22,18 @@
               (ngModelChange)="emailType.set($event)"
             />
             <label for="type-welcome">
-              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+              <svg
+                class="email-type-option__icon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                />
               </svg>
               <span class="email-type-option__label">Welcome</span>
             </label>
@@ -36,8 +49,18 @@
               (ngModelChange)="emailType.set($event)"
             />
             <label for="type-reminder">
-              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              <svg
+                class="email-type-option__icon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
               </svg>
               <span class="email-type-option__label">Reminder</span>
             </label>
@@ -53,8 +76,18 @@
               (ngModelChange)="emailType.set($event)"
             />
             <label for="type-summary">
-              <svg class="email-type-option__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              <svg
+                class="email-type-option__icon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <span class="email-type-option__label">Summary</span>
             </label>
@@ -116,35 +149,63 @@
         />
       </div>
 
-      <button
-        class="button button--primary"
-        (click)="sendTestEmail()"
-        [disabled]="isLoading()"
-      >
+      <button class="button button--primary" (click)="sendTestEmail()" [disabled]="isLoading()">
         @if (isLoading()) {
           <svg class="button__icon animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
           </svg>
           Sending...
         } @else {
           <svg class="button__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+            />
           </svg>
           Send Test Email
         }
       </button>
+      <p class="email-note">A real email will be sent to the recipient above.</p>
     </section>
 
     @if (result(); as res) {
-      <div class="email-test__result" [class.result--success]="res.success" [class.result--error]="!res.success">
+      <div
+        role="status"
+        class="email-test__result"
+        [class.result--success]="res.success"
+        [class.result--error]="!res.success"
+      >
         @if (res.success) {
           <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         } @else {
           <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         }
         <span>{{ res.message }}</span>
@@ -155,17 +216,23 @@
     @if (activationLink(); as link) {
       <div class="email-test__activation-link">
         <div class="activation-link__header">
-          <span class="activation-link__label">Activation Link (pendingActionsQueue)</span>
-          <button type="button" class="activation-link__clear" (click)="clearActivationLink()" title="Clear link">
+          <span class="activation-link__label">Activation link</span>
+          <button
+            type="button"
+            class="activation-link__clear"
+            (click)="clearActivationLink()"
+            aria-label="Clear activation link"
+          >
             ×
           </button>
         </div>
         <p class="activation-link__hint">
-          This link goes through <code>/email/auth</code> and will trigger the standardized action queue
-          (toast / redirect) on the public site once the user logs in.
+          Open this link to continue account activation on the public site.
         </p>
         <div class="activation-link__row">
-          <a [href]="link" target="_blank" rel="noopener" class="activation-link__url">{{ link }}</a>
+          <a [href]="link" target="_blank" rel="noopener" class="activation-link__url">{{
+            link
+          }}</a>
           <button
             type="button"
             class="button button--secondary activation-link__copy"

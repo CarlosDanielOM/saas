@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -10,8 +17,9 @@ type LoginStage = 'idle' | 'validating' | 'syncing' | 'redirecting' | 'error';
 @Component({
   selector: 'app-login-page',
   templateUrl: './login-page.component.html',
+  styleUrl: '../auth-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: []
+  imports: [],
 })
 export class LoginPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
@@ -80,11 +88,7 @@ export class LoginPageComponent implements OnInit {
       }
 
       // Store the session
-      this.sessionAuth.completeSession(
-        decoded.token,
-        decoded.twitchUser,
-        decoded.appUser
-      );
+      this.sessionAuth.completeSession(decoded.token, decoded.twitchUser, decoded.appUser);
 
       this.stage.set('redirecting');
 
@@ -92,7 +96,7 @@ export class LoginPageComponent implements OnInit {
       await this.router.navigate([], {
         queryParams: { token: null },
         queryParamsHandling: 'merge',
-        replaceUrl: true
+        replaceUrl: true,
       });
 
       await this.router.navigate(['/dashboard']);
