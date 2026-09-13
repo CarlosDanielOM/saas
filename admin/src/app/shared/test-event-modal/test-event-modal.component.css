@@ -159,7 +159,7 @@
   flex-direction: column;
 }
 .modal::backdrop {
-  background: #080d08bf;
+  background: var(--backdrop);
   backdrop-filter: blur(4px);
 }
 /* Keep all editor controls inside the visual viewport. */
@@ -179,5 +179,5 @@
 }
 .payload-editor:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px #d3f89233;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }

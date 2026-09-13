@@ -33,7 +33,7 @@
   padding: 18px 4px;
   min-height: 48px;
   background: var(--canvas);
-  border: 1px solid #465046;
+  border: 1px solid var(--control-border);
   border-radius: 12px;
   cursor: pointer;
 }

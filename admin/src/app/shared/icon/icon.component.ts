@@ -32,6 +32,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 export class IconComponent {
   readonly name = input('arrow');
   readonly paths: Record<string, string> = {
+    check: 'M5 12l4 4L19 6',
+    settings: 'M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6',
+    palette:
+      'M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 0-4h-1a1 1 0 0 1 0-2h4a5 5 0 0 0 5-5c0-4-4-7-9-7M7 10h.01M10 7h.01M15 7h.01',
     overview: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
     users:
       'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',

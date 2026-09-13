@@ -42,13 +42,13 @@
           ×
         </button>
       }
-      <button type="submit" class="btn btn--primary" [disabled]="isSearching()">
-        {{ isSearching() ? 'Searching…' : 'Search' }}
+      <button type="submit" class="btn btn--primary" [disabled]="isLoading()">
+        {{ isLoading() ? 'Searching…' : 'Search' }}
       </button>
     </form>
     <div class="sort-tools">
       <label for="user-sort">Sort by</label
-      ><select id="user-sort" [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)">
+      ><select id="user-sort" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
         <option value="created_at">Joined date</option>
         <option value="channel">Name</option>
         <option value="plan_tier">Plan</option>
@@ -57,33 +57,31 @@
         <option value="liveViewers">Viewers</option>
         <option value="commandsCount">Commands</option>
         <option value="has_permissions">Permissions</option>
-        <option value="email">Email</option></select
-      ><button
-        class="sort-direction"
-        (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
-        [attr.aria-label]="
-          sortOrder() === 'asc'
-            ? 'Ascending order; switch to descending'
-            : 'Descending order; switch to ascending'
-        "
-      >
-        {{ sortOrder() === 'asc' ? '↑' : '↓' }}
-      </button>
+      </select>
+      <label class="sr-only" for="user-sort-order">Sort order</label>
+      <select id="user-sort-order" [ngModel]="sortOrder()" (ngModelChange)="onSortOrder($event)">
+        <option value="desc">{{ orderOptions().desc }}</option>
+        <option value="asc">{{ orderOptions().asc }}</option>
+      </select>
     </div>
   </section>
   <div class="directory-caption" role="status">
-    <span>{{ displayedUsers().length }} {{ searchInput() ? 'matches' : 'users on this page' }}</span
-    ><span>{{
-      searchInput()
-        ? searchMode() === 'cache'
-          ? 'Local matches · Search for all results'
-          : 'Directory search · up to 100 results'
-        : 'Select a user to open their channel'
+    <span>{{
+      isLoading()
+        ? 'Updating directory…'
+        : displayedUsers().length +
+          ' of ' +
+          totalUsers() +
+          (searchInput().trim() ? ' matches' : ' users')
     }}</span>
+    <span
+      >Sorted across all {{ searchInput().trim() ? 'matching users' : 'users' }} · 100 per
+      page</span
+    >
   </div>
   @if (error()) {
     <div class="notice" role="alert">
-      {{ error() }} <button class="btn" (click)="onRefresh()">Retry</button>
+      {{ error() }} <button class="btn" (click)="onRetry()">Retry</button>
     </div>
   }
   @if (isLoading()) {
@@ -206,7 +204,7 @@
         </article>
       }
     </section>
-    @if (!searchInput()) {
+    @if (totalPages() > 1) {
       <div class="pagination">
         <button
           class="pagination__btn"

@@ -41,9 +41,9 @@
   margin-bottom: 20px;
 }
 .live-panel {
-  border: 1px solid #425035;
+  border: 1px solid var(--hero-border);
   border-radius: var(--radius);
-  background: #222a1f;
+  background: var(--hero-bg);
   padding: 22px 20px;
   margin-bottom: 16px;
   overflow: hidden;
@@ -71,7 +71,7 @@
   display: none;
 }
 .live-panel p {
-  color: #afbaa7;
+  color: var(--muted);
   font-size: 0.85rem;
   margin-bottom: 14px;
 }
@@ -91,7 +91,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 12px;
-  border-top: 1px solid #414b37;
+  border-top: 1px solid var(--hero-border);
   padding-top: 22px;
 }
 .live-figure {
@@ -100,7 +100,7 @@
   min-width: 0;
 }
 .live-figure + .live-figure {
-  border-left: 1px solid #414b37;
+  border-left: 1px solid var(--hero-border);
   padding-left: 18px;
 }
 .live-figure__label {
@@ -108,7 +108,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.75rem;
-  color: #c1cbb9;
+  color: var(--text-soft);
 }
 .live-figure__label app-icon {
   width: 15px;
@@ -130,7 +130,7 @@
   font-variant-numeric: tabular-nums;
 }
 .live-figure__foot {
-  color: #afbaa7;
+  color: var(--muted);
   font-size: 0.66rem;
 }
 .metrics {
@@ -165,7 +165,7 @@
   font-variant-numeric: tabular-nums;
 }
 .metric__note {
-  color: #97a298;
+  color: var(--muted);
   font-size: 0.66rem;
 }
 .workspace {
@@ -204,8 +204,8 @@
     background 0.15s;
 }
 .quick-link:hover {
-  border-color: #6b7e56;
-  background: #20251e;
+  border-color: var(--accent-border);
+  background: var(--surface-hover);
 }
 .quick-link__icon {
   width: 40px;
@@ -234,7 +234,7 @@
 .quick-link__arrow {
   margin-left: auto;
   width: 16px;
-  color: #879480;
+  color: var(--muted);
 }
 .dashboard-foot {
   display: flex;
@@ -244,7 +244,7 @@
   margin-top: 36px;
   padding-top: 20px;
   border-top: 1px solid var(--border);
-  color: #89948a;
+  color: var(--muted);
   font-size: 0.65rem;
 }
 .dashboard-foot span:first-child {
@@ -273,7 +273,7 @@
   }
   .live-figure {
     padding-left: 24px;
-    border-left: 1px solid #414b37;
+    border-left: 1px solid var(--hero-border);
   }
   .live-figure + .live-figure {
     padding-left: 24px;
@@ -314,7 +314,7 @@
     align-items: center;
     gap: 8px;
     margin-top: 28px;
-    color: #d2ddc7;
+    color: var(--text-soft);
     font-size: 0.75rem;
   }
   .quick-link__action app-icon {

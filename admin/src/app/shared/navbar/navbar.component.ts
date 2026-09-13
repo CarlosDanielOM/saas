@@ -36,7 +36,7 @@ export class NavbarComponent {
     return (
       path === route ||
       (route === '/users' && path.startsWith('/channels/')) ||
-      (route === '/dashboard' && ['/analytics', '/settings'].includes(path))
+      (route === '/dashboard' && path === '/analytics')
     );
   }
 

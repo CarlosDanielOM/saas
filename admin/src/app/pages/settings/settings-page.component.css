@@ -1,0 +1,209 @@
+.appearance {
+  max-width: 1000px;
+  padding: 24px 18px;
+}
+.appearance-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+.appearance-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.appearance-heading h2 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+}
+.appearance-heading p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.theme-options {
+  display: grid;
+  gap: 14px;
+}
+.theme-option {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+.theme-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.theme-choice {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--control-border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--canvas);
+  height: 100%;
+}
+.theme-option input:checked + .theme-choice {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.theme-option input:focus-visible + .theme-choice {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
+.theme-option:hover .theme-choice {
+  background: var(--surface-hover);
+}
+.theme-preview {
+  display: flex;
+  height: 106px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--preview-accent) 20%, var(--preview-canvas));
+  background: var(--preview-canvas);
+}
+.preview-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 42px;
+  padding: 16px 8px;
+  border-right: 1px solid color-mix(in srgb, var(--preview-accent) 20%, var(--preview-canvas));
+}
+.preview-nav i {
+  height: 5px;
+  background: color-mix(in srgb, var(--preview-accent) 30%, var(--preview-canvas));
+  border-radius: 2px;
+}
+.preview-nav i:first-child {
+  background: var(--preview-accent);
+}
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px;
+  flex: 1;
+}
+.preview-title {
+  width: 45%;
+  height: 5px;
+  background: var(--preview-accent);
+  border-radius: 2px;
+}
+.preview-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  height: 34px;
+  background: color-mix(in srgb, var(--preview-accent) 15%, var(--preview-canvas));
+  border-radius: 4px;
+}
+.preview-hero i {
+  width: 20%;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--preview-accent);
+}
+.preview-metrics {
+  display: flex;
+  gap: 5px;
+}
+.preview-metrics i {
+  flex: 1;
+  height: 14px;
+  background: color-mix(in srgb, var(--preview-accent) 20%, var(--preview-canvas));
+  border-radius: 3px;
+}
+.theme-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+}
+.theme-label strong {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.theme-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--control-border);
+}
+.theme-check app-icon {
+  display: none;
+  width: 14px;
+  height: 14px;
+}
+input:checked + .theme-choice .theme-check {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+input:checked + .theme-choice .theme-check app-icon {
+  display: inline-flex;
+}
+.theme-description {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin-top: 6px;
+}
+.theme-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+  margin: 24px 0 0;
+}
+.theme-status app-icon {
+  width: 16px;
+  height: 16px;
+}
+.theme-status > span {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+@media (min-width: 480px) {
+  .theme-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .appearance {
+    padding: 32px;
+  }
+  .theme-status > span {
+    flex-basis: auto;
+    margin-left: auto;
+  }
+  .theme-preview {
+    height: 130px;
+  }
+  .preview-content {
+    gap: 14px;
+    padding: 18px;
+  }
+}

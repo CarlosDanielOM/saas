@@ -117,7 +117,7 @@
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
-  color: #909c91;
+  color: var(--muted);
   font-size: 0.66rem;
   padding-top: 32px;
 }
@@ -162,7 +162,7 @@
   }
   .auth-intro__foot {
     display: block;
-    color: #909c91;
+    color: var(--muted);
     font-size: 0.6rem;
     letter-spacing: 0.15em;
     margin-top: 36px;
@@ -194,18 +194,18 @@
     position: absolute;
     top: 16px;
     left: 0;
-    border: 1px solid #394631;
+    border: 1px solid var(--accent-soft);
     border-radius: 50%;
     width: 150px;
     height: 150px;
   }
   .auth-art span:nth-child(2) {
     left: 65px;
-    border-color: #657d48;
+    border-color: var(--accent-border);
   }
   .auth-art span:nth-child(3) {
     left: 130px;
-    border-color: #aecf7c;
+    border-color: var(--accent);
   }
   .auth-art i {
     position: absolute;

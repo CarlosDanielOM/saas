@@ -60,6 +60,37 @@ const rows = [
 const page2 = [{ ...rows[0], channel: "secondpage", channelID: "9010" }];
 let failAnalytics = false;
 let failUsers = false;
+let rankFixtureMode = false;
+let holdDescending = false;
+let releaseDescending;
+const rankedRows = Array.from({ length: 201 }, (_, i) => ({
+  ...rows[0],
+  channelID: String(20000 + i),
+  channel:
+    i === 200 ? "ranked-top-streamer" : `ranked-${String(i).padStart(3, "0")}`,
+  liveViewers: i === 200 ? 999999 : i + 1,
+  commandsCount: 201 - i,
+  created_at: new Date(Date.UTC(2026, 8, 13) - i * 86400000).toISOString(),
+}));
+function sortRows(source, params) {
+  const field = params.get("sortBy") || "channel";
+  const direction = params.get("sortOrder") === "desc" ? -1 : 1;
+  return [...source].sort((a, b) => {
+    let av = a[field],
+      bv = b[field];
+    if (field === "created_at") {
+      av = Date.parse(av);
+      bv = Date.parse(bv);
+    }
+    if (field === "has_permissions") {
+      av = a.has_permissions && a.up_to_date_permissions;
+      bv = b.has_permissions && b.up_to_date_permissions;
+    }
+    return av === bv
+      ? a.channel.localeCompare(b.channel)
+      : (av < bv ? -1 : 1) * direction;
+  });
+}
 const json = (route, data, status = 200) =>
   route.fulfill({
     status,
@@ -90,6 +121,39 @@ await context.route("**/*", async (route) => {
   if (p === "/admin-site/users") {
     if (failUsers) return json(route, { error: true }, 503);
     const search = url.searchParams.get("search");
+    if (rankFixtureMode) {
+      assert.equal(url.searchParams.get("limit"), "100");
+      const filtered = rankedRows.filter(
+        (row) => !search || row.channel.includes(search),
+      );
+      const sorted = sortRows(filtered, url.searchParams);
+      const pageNumber = Math.min(
+        Number(url.searchParams.get("page") || 1),
+        Math.max(1, Math.ceil(sorted.length / 100)),
+      );
+      if (holdDescending && url.searchParams.get("sortOrder") === "desc") {
+        await new Promise((resolve) => {
+          releaseDescending = resolve;
+        });
+      }
+      return json(route, {
+        data: {
+          rows: sorted.slice((pageNumber - 1) * 100, pageNumber * 100),
+          pagination: {
+            page: pageNumber,
+            limit: 100,
+            total: sorted.length,
+            totalPages: Math.max(1, Math.ceil(sorted.length / 100)),
+          },
+          summary: {
+            totalChannels: sorted.length,
+            activeBots: sorted.length,
+            liveChannels: sorted.length,
+            liveViewers: 1000000,
+          },
+        },
+      }).catch(() => {});
+    }
     const filtered = search
       ? rows.filter((r) =>
           `${r.channel} ${r.email} ${r.channelID}`.includes(search),
@@ -99,7 +163,7 @@ await context.route("**/*", async (route) => {
         : rows;
     return json(route, {
       data: {
-        rows: filtered,
+        rows: sortRows(filtered, url.searchParams),
         pagination: {
           page: Number(url.searchParams.get("page") || 1),
           limit: 100,
@@ -237,7 +301,7 @@ await context.addInitScript(
 const page = await context.newPage();
 page.on("pageerror", (err) => failures.push(err.message));
 const visible = async (selector) => {
-  await page.locator(selector).first().waitFor({ state: "visible" });
+  await page.locator(selector === ".user-card" ? ".user-identity" : selector).first().waitFor({ state: "visible" });
 };
 async function settled() {
   await page.evaluate(async () => {
@@ -339,27 +403,24 @@ try {
   assert.equal(await page.locator(".user-card").count(), 3);
   await page.getByRole("searchbox").fill("example.test");
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page
-    .getByText("Directory search · up to 100 results", { exact: true })
-    .waitFor();
+  await visible(".user-identity");
   assert.equal(
     await page.locator(".user-card").count(),
     3,
     "Search keeps all matches",
   );
   await page.getByRole("button", { name: "Clear search" }).click();
+  await visible(".user-identity");
   assert.equal(
     await page.locator(".user-card").count(),
     3,
-    "Search does not replace cached pages",
+    "Clearing search reloads the full directory",
   );
   await page.getByRole("searchbox").fill("no-match");
   await page.getByRole("heading", { name: "No users found" }).waitFor();
   await page.getByRole("button", { name: "Clear search" }).first().click();
   await page.getByLabel("Sort by", { exact: true }).selectOption("channel");
-  await page
-    .getByRole("button", { name: "Descending order; switch to ascending" })
-    .click();
+  await page.getByLabel("Sort order", { exact: true }).selectOption("asc");
   await page.waitForFunction(
     () =>
       document.querySelector(".user-identity strong")?.textContent ===
@@ -458,6 +519,7 @@ try {
       "channels/9001/eventsubs",
       "read-tool",
       "email-test",
+      "settings",
     ]) {
       await page.goto(`${base}/${route}`);
       await visible("main h1");
@@ -496,6 +558,137 @@ try {
   await page.getByRole("button", { name: "Retry", exact: true }).click();
   await visible(".user-card");
 
+  await page.getByRole("button", { name: "Account menu", exact: true }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page.getByRole("heading", { name: "Settings", exact: true }).waitFor();
+  await page.locator("#account-menu").waitFor({ state: "hidden" });
+  const accents = {
+    green: "#d3f892",
+    purple: "#cfb2ff",
+    blue: "#9fc8ff",
+    cyan: "#89e4ed",
+  };
+  for (const [theme, accent] of Object.entries(accents).sort(([a], [b]) => (a === 'green' ? 1 : b === 'green' ? -1 : 0))) {
+    const label = theme[0].toUpperCase() + theme.slice(1);
+    await page.locator(".theme-option").filter({ has: page.getByRole("radio", { name: `${label} theme`, exact: true }) }).click();
+    await page.waitForFunction(
+      (theme) => document.documentElement.dataset.adminTheme === theme,
+      theme,
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--accent")
+          .trim(),
+      ),
+      accent,
+    );
+    assert.equal(
+      await page.evaluate(() => localStorage.getItem("dima-admin.theme.v1")),
+      theme,
+    );
+    await page.reload();
+    await page
+      .getByRole("heading", { name: "Settings", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("radio", { name: `${label} theme`, exact: true })
+        .isChecked(),
+      true,
+      "Preference survives reload",
+    );
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: width === 320 ? 844 : 1000 });
+      await noOverflow(`Settings ${theme} ${width}`);
+      await screenshot(`settings-${theme}-${width}`);
+      await page.goto(`${base}/dashboard`);
+      await visible(".metric strong");
+      await noOverflow(`Dashboard ${theme} ${width}`);
+      await screenshot(`dashboard-${theme}-${width}`);
+      assert.equal(
+        await page.evaluate(() => document.documentElement.dataset.adminTheme),
+        theme,
+      );
+      await page.goto(`${base}/settings`);
+      await page
+        .getByRole("heading", { name: "Settings", exact: true })
+        .waitFor();
+    }
+  }
+  // A previously unseen streamer on page three must become the first result.
+  rankFixtureMode = true;
+  await page.goto(`${base}/users`);
+  await visible(".user-identity");
+  assert.equal(await page.locator(".user-identity").count(), 100);
+  assert.equal(
+    await page.getByText("ranked-top-streamer", { exact: true }).count(),
+    0,
+  );
+  await page.getByLabel("Sort by", { exact: true }).selectOption("liveViewers");
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".user-identity strong")?.textContent ===
+      "ranked-top-streamer",
+  );
+  assert.equal(
+    await page.getByLabel("Sort order", { exact: true }).inputValue(),
+    "desc",
+  );
+  assert.equal(await page.locator(".user-identity").count(), 100);
+  let lastParams = new URLSearchParams(
+    requests.filter((r) => r.path === "/admin-site/users").at(-1).query,
+  );
+  assert.equal(lastParams.get("page"), "1");
+  assert.equal(lastParams.get("sortBy"), "liveViewers");
+  assert.equal(lastParams.get("sortOrder"), "desc");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByText("Page 2 of 3", { exact: false }).waitFor();
+  await page.getByLabel("Sort order", { exact: true }).selectOption("asc");
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".user-identity strong")?.textContent ===
+      "ranked-000",
+  );
+  await page.getByText("Page 1 of 3", { exact: false }).waitFor();
+  await page.getByRole("searchbox").fill("ranked-");
+  await visible(".user-identity");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByText("Page 2 of 3", { exact: false }).waitFor();
+  lastParams = new URLSearchParams(
+    requests.filter((r) => r.path === "/admin-site/users").at(-1).query,
+  );
+  assert.equal(lastParams.get("search"), "ranked-");
+  assert.equal(lastParams.get("sortBy"), "liveViewers");
+  assert.equal(lastParams.get("sortOrder"), "asc");
+  failUsers = true;
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByRole("button", { name: "Retry", exact: true }).waitFor();
+  failUsers = false;
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await visible(".user-identity");
+  assert.equal(await page.getByRole("searchbox").inputValue(), "ranked-");
+  await page.getByText("Page 2 of 3", { exact: false }).waitFor();
+  // Hold an older response while the operator changes the ordering again.
+  holdDescending = true;
+  await page.getByLabel("Sort order", { exact: true }).selectOption("desc");
+  while (!releaseDescending)
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  await page.getByLabel("Sort order", { exact: true }).selectOption("asc");
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".user-identity strong")?.textContent ===
+      "ranked-000",
+  );
+  holdDescending = false;
+  releaseDescending();
+  await page.waitForTimeout(100);
+  assert.equal(
+    await page.locator(".user-identity strong").first().textContent(),
+    "ranked-000",
+    "Outdated responses cannot overwrite newer sorting",
+  );
+  rankFixtureMode = false;
   await page.getByRole("button", { name: "Account menu", exact: true }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("heading", { name: "Welcome back." }).waitFor();
@@ -549,7 +742,7 @@ try {
     "No browser errors or unexpected external calls",
   );
   console.log(
-    `PASS: admin layouts at 320/390/480/768/1440px; directory search, sorting, pagination, channel navigation, modals, file/email mocks, errors and sign-out. Screenshots: ${artifacts}`,
+    `PASS: admin layouts at 320/390/480/768/1440px; four persistent themes, profile settings, global sorting with 201 users, race cancellation, search/pagination, channel navigation, modals, file/email mocks, errors and sign-out. Screenshots: ${artifacts}`,
   );
 } catch (error) {
   console.error({

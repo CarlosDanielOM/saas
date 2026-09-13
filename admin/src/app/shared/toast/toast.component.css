@@ -16,7 +16,7 @@
   padding: 12px 14px;
   border-radius: 12px;
   background: var(--surface-raised);
-  border: 1px solid #53614c;
+  border: 1px solid var(--control-border);
   color: var(--text);
   box-shadow: 0 10px 35px #0006;
   pointer-events: auto;

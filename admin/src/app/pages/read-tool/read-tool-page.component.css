@@ -47,7 +47,7 @@
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #d4dfcb;
+  color: var(--text-soft);
   font:
     0.85rem/1.7 ui-monospace,
     monospace;

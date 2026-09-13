@@ -1,0 +1,58 @@
+<div class="page settings-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">Make yourself at home</span>
+      <h1>Settings</h1>
+      <p>Your workspace, in your colors.</p>
+    </div>
+  </header>
+  <section class="appearance panel" aria-labelledby="appearance-title">
+    <div class="appearance-heading">
+      <span class="appearance-icon"><app-icon name="palette" /></span>
+      <div>
+        <h2 id="appearance-title">Appearance</h2>
+        <p>Pick a palette. The whole workspace changes with it.</p>
+      </div>
+    </div>
+    <fieldset>
+      <legend class="sr-only">Workspace theme</legend>
+      <div class="theme-options">
+        @for (option of theme.themes; track option.id) {
+          <label
+            class="theme-option"
+            [style.--preview-accent]="option.accent"
+            [style.--preview-canvas]="option.canvas"
+          >
+            <input
+              type="radio"
+              name="admin-theme"
+              [value]="option.id"
+              [checked]="theme.selected() === option.id"
+              (change)="theme.select(option.id)"
+              [attr.aria-label]="option.name + ' theme'"
+            />
+            <span class="theme-choice">
+              <span class="theme-preview" aria-hidden="true"
+                ><span class="preview-nav"><i></i><i></i><i></i></span
+                ><span class="preview-content"
+                  ><span class="preview-title"></span
+                  ><span class="preview-hero"><i></i><i></i></span
+                  ><span class="preview-metrics"><i></i><i></i><i></i></span></span
+              ></span>
+              <span class="theme-label"
+                ><strong>{{ option.name }}</strong
+                ><span class="theme-check"><app-icon name="check" /></span
+              ></span>
+              <span class="theme-description">{{ option.description }}</span>
+            </span>
+          </label>
+        }
+      </div>
+    </fieldset>
+    <p class="theme-status" role="status">
+      <app-icon name="check" />{{ selectedName() }} theme selected<span
+        >Saved automatically on this browser.</span
+      >
+    </p>
+  </section>
+</div>

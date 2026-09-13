@@ -30,6 +30,9 @@
     <div id="account-menu" class="account-menu">
       <strong>{{ user()?.display_name }}</strong
       ><span>Administrator</span>
+      <a class="btn" routerLink="/settings" (click)="closeAccount()"
+        ><app-icon name="settings" />Settings</a
+      >
       <button class="btn" (click)="logout()"><app-icon name="logout" /> Sign out</button>
     </div>
   }

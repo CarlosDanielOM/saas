@@ -88,9 +88,9 @@
   flex-direction: column;
   gap: 12px;
   padding: 18px;
-  border: 1px solid #4a5a3c;
+  border: 1px solid var(--accent-border);
   border-radius: 12px;
-  background: #20281d;
+  background: var(--accent-soft);
   position: relative;
 }
 a.stat-clickable::after {
@@ -162,7 +162,7 @@ a.stat-clickable:hover {
 }
 .credit-usage__progress {
   height: 7px;
-  background: #30372c;
+  background: var(--surface-raised);
   border-radius: 8px;
   overflow: hidden;
 }
