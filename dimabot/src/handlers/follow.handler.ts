@@ -39,14 +39,6 @@ export async function followHandler(
         const newCount = parseInt(followCount) + 1;
         await cache.set(cacheKey, newCount);
 
-        const suppressFollowAlert = await shouldSuppressFollowAlerts(broadcaster_user_id);
-        if (suppressFollowAlert) {
-            return {
-                error: false,
-                message: 'Follow alert suppressed by defense mode'
-            };
-        }
-
         let messageToSend = eventsubData.message || '';
 
         if (eventsubData.todayFollows) {
@@ -58,6 +50,11 @@ export async function followHandler(
                 error: false,
                 message: 'No message to send'
             };
+        }
+
+        const eventID = JSON.stringify(['legacy-follow', broadcaster_user_id, eventData.user_id, eventData.followed_at]);
+        if (await shouldSuppressFollowAlerts(broadcaster_user_id, eventID)) {
+            return { error: false, message: 'Follow alert suppressed by defense mode' };
         }
 
         const context: SendMessageContext = {

@@ -22,7 +22,7 @@ globalThis.fetch = async (input, options = {}) => {
             if (user === 'slow-first') await new Promise(resolve => setTimeout(resolve, 4000));
             return json({ data: [{ user_id: user }] }, 200, { 'Ratelimit-Remaining': '800', 'Ratelimit-Reset': String(Math.ceil(Date.now() / 1000) + 60) });
         }
-        if (url.pathname === '/helix/chat/messages') { log({ chat: true }); return json({ data: [{ is_sent: true, message_id: 'test' }] }); }
+        if (url.pathname === '/helix/chat/messages') { const body = JSON.parse(options.body); log({ chat: true, channel: body.broadcaster_id, message: body.message, at: Date.now() }); return json({ data: [{ is_sent: true, message_id: 'test' }] }); }
         return json({ data: [], total: 0, pagination: {} });
     }
     throw new Error(`External request blocked in follow defense test: ${url.origin}${url.pathname}`);

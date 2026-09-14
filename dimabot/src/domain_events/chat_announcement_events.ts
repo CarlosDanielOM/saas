@@ -37,7 +37,7 @@ export interface ChatAnnouncementDependencies {
     getEventsubConfig(channelID: string, originalEventType: string): Promise<ChatEventsubConfig | null>;
     shouldSkipLegacyBits(event: DomainEventEnvelope, originalEventType: string): Promise<boolean>;
     incrementFollowCount(channelID: string, eventKey: string): Promise<number>;
-    shouldSuppressFollowAlerts(channelID: string): Promise<boolean>;
+    shouldSuppressFollowAlerts(channelID: string, eventID?: string): Promise<boolean>;
     sendMessage(channelID: string, message: string, context?: ChatMessageContext): Promise<SendResult>;
     hasCommands(channelID: string): Promise<boolean>;
     getLanguage(channelID: string): Promise<'en' | 'es'>;
@@ -220,8 +220,8 @@ export async function applyChatAnnouncementDomainEvent(
         };
     } else if (event.type === 'channel.follow.received') {
         const count = await dependencies.incrementFollowCount(event.channelID, event.eventKey);
-        if (await dependencies.shouldSuppressFollowAlerts(event.channelID)) return;
         if (config.todayFollows) message = `${config.message} (Follow #${count})`;
+        if (message.trim() && await dependencies.shouldSuppressFollowAlerts(event.channelID, event.eventKey)) return;
         variables = {
             user: String(rawEvent.user_name || ''),
             userLogin: String(rawEvent.user_login || ''),

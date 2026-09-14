@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { Types } from 'mongoose';
-import { sendTwitchChatMessage } from '../functions/chats/send_message.chat.js';
 import { enqueueFollowDefenseBan, enqueueFollowDefenseBans, enqueueFollowDefenseAnnouncement, followDefenseCancelledThrough, getDurableFollowDefenseBanResult, refreshFollowDefenseLogActions } from './follow_defense_actions.js';
 import { FollowAttackLogSchema, type IFollowAttackTrackedFollow } from '../schemas/follow_attack_log.schema.js';
 import { FollowDefenseSettingsSchema, type FollowDefenseLanguage, type IFollowDefenseSettings } from '../schemas/follow_defense_settings.schema.js';
@@ -68,12 +67,10 @@ const DEFAULT_SETTINGS: FollowDefenseRuntimeSettings = {
 
 const MESSAGES: Record<FollowDefenseLanguage, Record<string, string>> = {
     en: {
-        silentSummary: '⚠️ Follow spike detected: {count} follows in {seconds}s. Protection active.',
         protection: '⚠️ Follow flood detected! Follow protection enabled. Use !defmode to activate attack mode.',
         attack: '🚨 Attack mode activated! Banning all followers from this wave.'
     },
     es: {
-        silentSummary: '⚠️ Pico de follows detectado: {count} follows en {seconds}s. Protección activa.',
         protection: '⚠️ ¡Avalancha de follows detectada! Protección de follows activada. Usa !defmode para activar el modo ataque.',
         attack: '🚨 ¡Modo ataque activado! Baneando todos los follows de esta ola.'
     }
@@ -178,12 +175,6 @@ async function addRecentWindowToTracked(channelID: string, windowStart: number, 
 async function getTrackedEventIDs(channelID: string): Promise<string[]> {
     const cache = await getDragonflyClient('followDefense.getTrackedEventIDs');
     return cache.zRangeByScore(followDefenseKeys(channelID).tracked, 0, Date.now());
-}
-
-function formatMessage(template: string, params: Record<string, string | number>): string {
-    return Object.entries(params).reduce((message, [key, value]) => {
-        return message.replaceAll(`{${key}}`, String(value));
-    }, template);
 }
 
 async function sendDefenseMessage(channelID: string, settings: FollowDefenseRuntimeSettings, messageKey: 'attack' | 'protection', state: FollowDefenseState): Promise<void> {
@@ -374,17 +365,6 @@ async function persistAttackLog(state: FollowDefenseState): Promise<void> {
     }
 }
 
-async function sendSilentSummaryIfNeeded(state: FollowDefenseState, settings: FollowDefenseRuntimeSettings): Promise<void> {
-    if (state.mode !== 'silent') return;
-    const count = await zCount(followDefenseKeys(state.channelID).tracked, 0, Date.now());
-    if (count <= 0) return;
-    const message = formatMessage(MESSAGES[settings.language].silentSummary, {
-        count,
-        seconds: Math.max(1, Math.round((Date.now() - state.burstStartedAt) / 1000))
-    });
-    await sendTwitchChatMessage(state.channelID, message, null, { channelID: state.channelID });
-}
-
 async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<void> {
     const settings = await getSettings(follow.channelID, follow.channelName || follow.channelLogin);
     if (!settings.enabled) return;
@@ -553,9 +533,6 @@ export async function expireFollowDefenseModes(): Promise<number> {
         if (!state || state.expiresAt > now) continue;
 
         try {
-            const settings = await getSettings(channelID, state.channelName || state.channelLogin);
-            // Chat is external and remains at-least-once if a later durable write/reset fails.
-            await sendSilentSummaryIfNeeded(state, settings);
             await persistAttackLog(state);
             if ((await projectFollowDefenseState(channelID, { type: 'reset', token })).changed) expired += 1;
         } catch (error) {

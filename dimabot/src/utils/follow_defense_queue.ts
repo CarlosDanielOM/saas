@@ -77,6 +77,10 @@ export function followDefenseKeys(channelID: string) {
         followDataPrefix: `twitch:${channelID}:follow-defense:follow:`,
         banDataPrefix: `twitch:${channelID}:follow-defense:ban:`,
         completedPrefix: `twitch:${channelID}:follow-defense:completed:`,
+        summary: `twitch:${channelID}:follow-defense:summary`,
+        summaryLock: `twitch:${channelID}:follow-defense:summary-lock`,
+        suppressionReceiptPrefix: `twitch:${channelID}:follow-defense:suppressed:`,
+        summaries: 'twitch:follow-defense:summaries',
         raid: `twitch:${channelID}:follow-defense:raid`,
         activeChannels: 'twitch:follow-defense:active-channels'
     };
@@ -235,7 +239,13 @@ export async function enqueueFollowDefenseFollow(eventData: IFollowEvent): Promi
     }
 }
 
-export async function shouldSuppressFollowAlerts(channelID: string): Promise<boolean> {
+export async function shouldSuppressFollowAlerts(channelID: string, eventID?: string): Promise<boolean> {
+    // Announcement callers supply a stable identity. Storage failures must retry
+    // the durable event instead of losing its count or leaking a chat message.
+    if (eventID) {
+        const { suppressFollowAnnouncement } = await import('./follow_defense_summary.js');
+        return suppressFollowAnnouncement(channelID, eventID);
+    }
     try {
         if (await isDisabledInCachedSettings(channelID)) {
             return false;

@@ -400,7 +400,8 @@ router.post('/:channelID/reset', authMiddleware as any, async (req: FollowDefens
         const cache = await getDragonflyClient('followDefenseRoute.reset');
         const keys = followDefenseKeys(channelID);
         await cancelFollowDefenseActions(channelID);
-        await cache.del([keys.state, keys.tracked, keys.recent]);
+        await cache.del([keys.state, keys.tracked, keys.recent, keys.summary, keys.summaryLock]);
+        await cache.zRem(keys.summaries, channelID);
         await cache.zRem(keys.activeChannels, channelID);
 
         return res.status(200).json({

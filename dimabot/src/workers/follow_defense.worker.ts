@@ -45,11 +45,13 @@ async function bootstrap(): Promise<void> {
         { getDragonflyClient },
         { getMongoDBConnection },
         { processFollowDefenseQueue, expireFollowDefenseModes },
+        { sendPendingFollowDefenseSummaries },
         { error: logError, info: logInfo, warn: logWarn }
     ] = await Promise.all([
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/databases/mongodb.database.js'),
         import('../utils/follow_defense.js'),
+        import('../utils/follow_defense_summary.js'),
         import('../utils/logger.js')
     ]);
 
@@ -88,6 +90,8 @@ async function bootstrap(): Promise<void> {
             throw new Error('Worker lock lost; another follow defense worker appears active');
         }
 
+        // A large tracked-wave audit must not delay the cooldown acknowledgement.
+        await sendPendingFollowDefenseSummaries();
         const processed = await processFollowDefenseQueue();
         const expired = await expireFollowDefenseModes();
         if (processed > 0 || expired > 0) {

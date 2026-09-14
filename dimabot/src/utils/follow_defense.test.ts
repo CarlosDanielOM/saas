@@ -285,13 +285,13 @@ test('expiry racing a manual command cannot delete the new state, tracked follow
     const expired = { ...JSON.parse(values.get(keys.state)!), expiresAt: NOW - 1 };
     values.set(keys.state, JSON.stringify(expired));
     await cache.zAdd(keys.activeChannels, { value: 'channel', score: NOW - 1 });
-    const original = cache.get;
-    context.mock.method(cache, 'get', async (key: string) => {
-        if (key === keys.settings) {
+    const original = cache.zRangeByScore;
+    context.mock.method(cache, 'zRangeByScore', async (key: string, min: number, max: number) => {
+        if (key === keys.tracked) {
             await triggerFollowDefenseAttackMode('channel');
             await cache.zAdd(keys.tracked, { value: 'new-follow', score: NOW });
         }
-        return original(key);
+        return original(key, min, max);
     });
     assert.equal(await expireFollowDefenseModes(), 0);
     const current = JSON.parse(values.get(keys.state)!);
@@ -379,11 +379,10 @@ test('expiry errors retain state and index for the next tick instead of strandin
     const expired = { ...JSON.parse(values.get(keys.state)!), expiresAt: NOW - 1 };
     values.set(keys.state, JSON.stringify(expired));
     await cache.zAdd(keys.activeChannels, { value: 'channel', score: NOW - 1 });
-    failure = keys.settings;
+    resetFailures = 1;
     assert.equal(await expireFollowDefenseModes(), 0);
     assert.equal(values.get(keys.state), JSON.stringify(expired));
     assert.equal(sorted.get(keys.activeChannels)?.get('channel'), NOW - 1);
-    failure = '';
     assert.equal(await expireFollowDefenseModes(), 1);
     assert.equal(values.has(keys.state), false);
     assert.equal(sorted.get(keys.activeChannels)?.has('channel'), false);

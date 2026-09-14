@@ -313,3 +313,19 @@ test('superseded stream starts do not send delayed account-health warnings', asy
 
     assert.deepEqual(calls, []);
 });
+
+
+test('suppression receives the stable event identity only for an enabled nonempty follow announcement', async () => {
+    const dependencies = createDependencies([]);
+    const event = createEvent('channel.follow.received', 'channel.follow');
+    const decisions: string[] = [];
+    dependencies.shouldSuppressFollowAlerts = async (_channel, eventID) => { decisions.push(eventID!); return true; };
+    dependencies.sendMessage = async () => assert.fail('suppressed follow must not send');
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    assert.deepEqual(decisions, [event.eventKey]);
+    dependencies.getEventsubConfig = async () => ({ enabled: true, message: ' ', type: 'channel.follow', cheerTiers: [] });
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    dependencies.getEventsubConfig = async () => ({ enabled: false, message: 'Follow!', type: 'channel.follow', cheerTiers: [] });
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    assert.equal(decisions.length, 1, 'empty/disabled alerts are not counted as defense suppression');
+});

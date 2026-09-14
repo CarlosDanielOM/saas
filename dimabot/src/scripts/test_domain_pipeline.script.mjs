@@ -29,6 +29,7 @@ const SAFE_SUITES = [
     'src/server/routes/admin_site.domain_events.test.ts',
     'src/utils/follow_defense.test.ts',
     'src/utils/follow_defense_actions.test.ts',
+    'src/utils/follow_defense_summary.test.ts',
     'src/functions/moderation/ban.moderation.test.ts',
     'src/utils/follow_defense_queue.test.ts',
     'src/utils/cron_jobs_queue_atomic.test.ts',
