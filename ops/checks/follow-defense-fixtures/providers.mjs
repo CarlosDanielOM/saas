@@ -20,7 +20,7 @@ globalThis.fetch = async (input, options = {}) => {
             const user = body.data.user_id;
             log({ user, channel: url.searchParams.get('broadcaster_id'), moderator: url.searchParams.get('moderator_id'), at: Date.now() });
             if (user === 'slow-first') await new Promise(resolve => setTimeout(resolve, 4000));
-            return json({ data: [{ user_id: user }] }, 200, { 'Ratelimit-Remaining': '500' });
+            return json({ data: [{ user_id: user }] }, 200, { 'Ratelimit-Remaining': '800', 'Ratelimit-Reset': String(Math.ceil(Date.now() / 1000) + 60) });
         }
         if (url.pathname === '/helix/chat/messages') { log({ chat: true }); return json({ data: [{ is_sent: true, message_id: 'test' }] }); }
         return json({ data: [], total: 0, pagination: {} });

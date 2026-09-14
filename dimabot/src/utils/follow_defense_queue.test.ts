@@ -165,6 +165,32 @@ test('reset compares exact legacy bytes and version before deleting state, track
     assert.equal(sorted.get(keys.activeChannels)?.has('channel'), false);
 });
 
+test('refresh extends only the live observed wave and preserves its version and trigger', async () => {
+    const initial = await projectFollowDefenseState('channel', { type: 'transition', state: state('silent') });
+    now += 1000;
+    const refreshed = await projectFollowDefenseState('channel', { type: 'refresh',
+        state: { ...initial.state!, expiresAt: NOW + 120000 }, moderationExpiresAt: NOW + 59000 });
+    assert.equal(refreshed.changed, true);
+    assert.equal(refreshed.state?.version, initial.state?.version);
+    assert.equal(refreshed.state?.triggerEventID, initial.state?.triggerEventID);
+    assert.equal(sorted.get(keys.activeChannels)?.get('channel'), NOW + 120000);
+    await triggerFollowDefenseAttackMode('channel');
+    assert.equal((await projectFollowDefenseState('channel', { type: 'refresh',
+        state: { ...initial.state!, expiresAt: NOW + 180000 } })).changed, false, 'cannot overwrite a manual winner');
+    values.delete(keys.state);
+    assert.equal((await projectFollowDefenseState('channel', { type: 'refresh',
+        state: { ...initial.state!, expiresAt: NOW + 180000 } })).state, null, 'cannot recreate reset state');
+});
+
+test('stale follow evidence cannot prolong suppression and expired waves cannot refresh', async () => {
+    const initial = await projectFollowDefenseState('channel', { type: 'transition', state: state() });
+    assert.equal((await projectFollowDefenseState('channel', { type: 'refresh',
+        state: { ...initial.state!, expiresAt: NOW + 180000 }, moderationExpiresAt: NOW })).changed, false);
+    now += 60000;
+    assert.equal((await projectFollowDefenseState('channel', { type: 'refresh',
+        state: { ...initial.state!, expiresAt: NOW + 180000 } })).changed, false);
+});
+
 test('repair and stale reset project the current winner, and remove only dangling index entries', async () => {
     sorted.set(keys.activeChannels, new Map([['channel', NOW - 1], ['other', NOW + 1]]));
     assert.equal((await projectFollowDefenseState('channel')).state, null);

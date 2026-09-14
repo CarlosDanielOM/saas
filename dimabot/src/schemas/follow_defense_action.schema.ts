@@ -39,6 +39,8 @@ const controlSchema = new Schema({
     pendingUntil: { type: Date, default: () => new Date(0) },
     nextAllowedAt: { type: Date, default: () => new Date(0) },
     lastServedAt: { type: Date, default: () => new Date(0) },
+    ratePerSecond: { type: Number, default: 5 },
+    successStreak: { type: Number, default: 0 },
     lockedUntil: { type: Date, default: () => new Date(0) },
     leaseToken: { type: String, default: '' }
 }, { versionKey: false, writeConcern: { w: 1, j: true } });

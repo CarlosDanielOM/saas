@@ -5,12 +5,15 @@ import { FollowAttackLogSchema } from '../schemas/follow_attack_log.schema.js';
 import type { FollowDefenseFollowPayload } from './follow_defense_queue.js';
 import type { BanResponse } from '../functions/moderation/ban.moderation.js';
 
-export const DEFENSE_ACTION_HORIZON_MS = 15 * 60_000;
+export const DEFENSE_ACTION_HORIZON_MS = 60 * 60_000;
 export const DEFENSE_ACTION_LEASE_MS = 60_000;
 const EXECUTOR = '@executor';
-const GLOBAL_INTERVAL_MS = 500;
-const CHANNEL_INTERVAL_MS = 1000;
+const DEFAULT_RATE = 5;
+const MAX_RATE = 10;
+const BUDGET_RESERVE = 20;
 const EPOCH = new Date(0);
+let nextPollMs = 250;
+export const followDefenseActionPollDelay = () => nextPollMs;
 
 export function defenseActionID(channelID: string, eventID: string, kind = 'ban'): string {
     return createHash('sha256').update(JSON.stringify([channelID, eventID, kind])).digest('hex');
@@ -67,7 +70,7 @@ export async function enqueueFollowDefenseBans(follows: FollowDefenseFollowPaylo
     await Actions.bulkWrite(fresh.map(follow => ({ updateOne: {
         filter: { _id: defenseActionID(channelID, follow.eventID) }, upsert: true,
         update: { $setOnInsert: {
-            channelID, eventID: follow.eventID, followerID: follow.followerID, kind: 'ban', mode: 'attack', reason,
+            channelID, eventID: follow.eventID, followerID: follow.followerID, kind: 'ban', mode: reason.includes('attack') ? 'attack' : 'protection', reason,
             followedAt: new Date(follow.followedAt), authorizedAt: new Date(authorizedAt ?? new Date(follow.followedAt).getTime()),
             status: 'pending', nextAttemptAt: new Date(now), lockedUntil: EPOCH, leaseToken: '', attempts: 0, failures: 0,
             expiresAt, purgeAt: new Date(now + 7 * 86400_000)
@@ -111,17 +114,46 @@ export async function refreshFollowDefenseLogActions(channelID: string, eventIDs
 }
 
 export function defenseActionOutcome(result: BanResponse, failures: number, now: number) {
-    const succeeded = !result.error || (result.status === 400 && /^The user specified in the user_id field is already banned\.?$/i.test(result.message));
+    const succeeded = !result.error || (result.status === 400 && /^(The user specified in the user_id field is already banned|user is already banned)\.?$/i.test(result.message));
     const limited = result.status === 429;
     const failureCount = failures + (result.error && !limited && !succeeded ? 1 : 0);
     const terminal = !succeeded && ([400, 404, 422].includes(result.status || 0) || failureCount >= 8);
     const reset = Math.max(result.rateLimitResetAt || 0, now + (result.retryAfterMs || 0));
-    const globalPause = limited ? Math.max(now + 30_000, reset + 1000)
+    const endpointLimited = limited && result.rateLimitRemaining !== undefined && result.rateLimitRemaining > BUDGET_RESERVE;
+    const limitPause = Math.max(now + 30_000, reset + 1000);
+    const globalPause = limited && !endpointLimited ? limitPause
         : result.status === 401 ? now + 60_000
-        : result.rateLimitRemaining !== undefined && result.rateLimitRemaining <= 10 ? Math.max(now + 1000, reset + 1000) : 0;
-    const retryAt = Math.max(globalPause, now + (result.status === 403 ? 60_000 : Math.min(60_000, 1000 * 2 ** Math.min(failureCount, 6))));
+        : result.rateLimitRemaining !== undefined && result.rateLimitRemaining <= BUDGET_RESERVE ? Math.max(now + 1000, reset + 1000) : 0;
+    const retryAt = Math.max(globalPause, endpointLimited ? limitPause : 0,
+        now + (result.status === 403 ? 60_000 : Math.min(60_000, 1000 * 2 ** Math.min(failureCount, 6))));
     return { status: succeeded ? 'succeeded' as const : terminal ? 'failed' as const : 'pending' as const,
-        failures: failureCount, globalPause, retryAt, channelPause: result.status === 403 ? retryAt : 0 };
+        failures: failureCount, globalPause, retryAt, channelPause: result.status === 403 || endpointLimited ? retryAt : 0 };
+}
+
+interface PacingState { ratePerSecond?: number; successStreak?: number }
+function currentRate(state: PacingState): number {
+    return Math.max(1, Math.min(MAX_RATE, Number(state.ratePerSecond) || DEFAULT_RATE));
+}
+
+export function adaptiveDefensePacing(state: PacingState, result: BanResponse, now: number, scope: 'global' | 'channel') {
+    let ratePerSecond = currentRate(state);
+    let successStreak = state.successStreak || 0;
+    const headersAvailable = result.rateLimitRemaining !== undefined && result.rateLimitResetAt !== undefined && result.rateLimitResetAt > now;
+    const globalThrottle = result.status === 429 && (result.rateLimitRemaining === undefined || result.rateLimitRemaining <= BUDGET_RESERVE);
+    if (result.status === 429 && (scope === 'channel' || globalThrottle)) {
+        ratePerSecond = Math.max(1, ratePerSecond / 2);
+        successStreak = 0;
+    } else if (!result.error && headersAvailable && result.rateLimitRemaining! > BUDGET_RESERVE) {
+        successStreak++;
+        if (successStreak >= 20) { ratePerSecond = Math.min(MAX_RATE, ratePerSecond + 1); successStreak = 0; }
+    } else {
+        successStreak = 0;
+        if (!headersAvailable) ratePerSecond = Math.min(DEFAULT_RATE, ratePerSecond);
+    }
+    // Spread the remaining shared-token budget over the reset horizon, preserving capacity for other bot features.
+    const budgetInterval = scope === 'global' && headersAvailable
+        ? Math.ceil((result.rateLimitResetAt! - now) / Math.max(1, result.rateLimitRemaining! - BUDGET_RESERVE)) : 0;
+    return { ratePerSecond, successStreak, intervalMs: Math.max(Math.ceil(1000 / ratePerSecond), budgetInterval) };
 }
 
 async function executeAction(action: FollowDefenseAction): Promise<BanResponse> {
@@ -148,13 +180,14 @@ export async function reconcileFollowDefenseActionLogs(): Promise<void> {
 }
 
 export async function processFollowDefenseAction(execute = executeAction): Promise<boolean> {
+    nextPollMs = 250;
     const now = new Date();
     await retainControl(EXECUTOR, EPOCH);
     const leaseToken = randomUUID();
     const executor = await Controls.findOneAndUpdate({ _id: EXECUTOR, lockedUntil: { $lte: now }, nextAllowedAt: { $lte: now } }, {
         $set: { leaseToken, lockedUntil: new Date(now.getTime() + DEFENSE_ACTION_LEASE_MS) }
     }, { new: true }).lean();
-    if (!executor) return false;
+    if (!executor) { nextPollMs = 50; return false; }
     const fence = () => ({ _id: EXECUTOR, leaseToken, lockedUntil: { $gt: new Date() } });
     try {
         await Actions.updateMany({ status: { $in: ['pending', 'processing'] }, expiresAt: { $lte: now }, lockedUntil: { $lte: now } }, {
@@ -168,7 +201,7 @@ export async function processFollowDefenseAction(execute = executeAction): Promi
                 $set: { status: 'processing', leaseToken, lockedUntil: executor.lockedUntil }, $inc: { attempts: 1 }
             }, { new: true, sort: { createdAt: 1, _id: 1 } }).lean();
             await Controls.updateOne({ _id: channel._id }, { $set: { lastServedAt: new Date() },
-                $max: { nextAllowedAt: new Date(Date.now() + (action ? CHANNEL_INTERVAL_MS : 5000)) } });
+                $max: { nextAllowedAt: new Date(Date.now() + (action ? Math.ceil(1000 / currentRate(channel)) : 5000)) } });
             if (!action) continue;
             const actionFence = () => ({ _id: action._id, leaseToken, status: 'processing', lockedUntil: { $gt: new Date() } });
             const settings = await FollowDefenseSettingsSchema.findOne({ channelID: action.channelID }).lean();
@@ -179,17 +212,24 @@ export async function processFollowDefenseAction(execute = executeAction): Promi
                 return true;
             }
             // Persist the pacing reservation before external effects; crashes cannot reset the limiter.
-            const reserved = await Controls.updateOne(fence(), { $max: { nextAllowedAt: new Date(Date.now() + GLOBAL_INTERVAL_MS) } });
+            const requestStartedAt = Date.now();
+            const reserved = await Controls.updateOne(fence(), { $max: { nextAllowedAt: new Date(requestStartedAt + Math.ceil(1000 / currentRate(executor))) } });
             if (!reserved.matchedCount) throw new Error('Follow defense executor lease lost');
             let result: BanResponse;
             try { result = await execute(action); }
             catch (error) { result = { error: true, message: error instanceof Error ? error.message : String(error) }; }
             const outcome = defenseActionOutcome(result, action.failures, Date.now());
-            if (outcome.globalPause) {
-                const paused = await Controls.updateOne(fence(), { $max: { nextAllowedAt: new Date(outcome.globalPause) } });
-                if (!paused.matchedCount) throw new Error('Follow defense executor lease lost after request');
-            }
-            if (outcome.channelPause) await Controls.updateOne({ _id: channel._id }, { $max: { nextAllowedAt: new Date(outcome.channelPause) } });
+            const globalPacing = adaptiveDefensePacing(executor, result, Date.now(), 'global');
+            const channelPacing = adaptiveDefensePacing(channel, result, Date.now(), 'channel');
+            const paused = await Controls.updateOne(fence(), {
+                $set: { ratePerSecond: globalPacing.ratePerSecond, successStreak: globalPacing.successStreak },
+                $max: { nextAllowedAt: new Date(Math.max(outcome.globalPause, requestStartedAt + globalPacing.intervalMs)) }
+            });
+            if (!paused.matchedCount) throw new Error('Follow defense executor lease lost after request');
+            await Controls.updateOne({ _id: channel._id }, {
+                $set: { ratePerSecond: channelPacing.ratePerSecond, successStreak: channelPacing.successStreak },
+                $max: { nextAllowedAt: new Date(Math.max(outcome.channelPause, requestStartedAt + channelPacing.intervalMs)) }
+            });
             const saved = await Actions.updateOne(actionFence(), { $set: {
                 status: outcome.status, failures: outcome.failures, nextAttemptAt: new Date(outcome.retryAt),
                 lockedUntil: EPOCH, leaseToken: '', lastStatus: result.status || 0, lastMessage: result.message.slice(0, 1000),

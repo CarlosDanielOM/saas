@@ -600,7 +600,7 @@ test('detection records bans and announcements without waiting for Twitch or AI'
     await processDurableFollowDefenseFollow(follow('first'));
     await processDurableFollowDefenseFollow(follow('second'));
     for (let i = 0; i < 20; i++) await processDurableFollowDefenseFollow(follow(`queued-${i}`));
-    assert.equal(queuedBans.length, 21);
+    assert.equal(queuedBans.length, 22);
     assert.equal(messages.length, 1);
 });
 
@@ -627,4 +627,48 @@ test('legacy manual ingress remains queued until durable wave acceptance succeed
     assert.equal(sorted.get('twitch:follow-defense:queue')?.size, 0);
     assert.equal(JSON.parse(values.get(keys.state)!).version, version);
     assert.equal(announcements.size, 1);
+});
+
+test('sustained follows accumulate across windows, escalate, and keep the same wave alive', async () => {
+    values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, silentWindowYSeconds: 5,
+        protectionThresholdB: 7, attackThreshold: 10, silentDurationSeconds: 3 }));
+    let waveStart = 0;
+    for (let i = 1; i <= 12; i++) {
+        now = NOW + i * 1000;
+        await processDurableFollowDefenseFollow({ ...follow(`sustained-${i}`), followedAt: new Date(now).toISOString() });
+        if (i < 2) continue;
+        const current = JSON.parse(values.get(keys.state)!);
+        if (i === 2) waveStart = current.burstStartedAt;
+        assert.equal(current.burstStartedAt, waveStart);
+        assert.equal(current.mode, i < 7 ? 'silent' : i < 10 ? 'protection' : 'attack');
+        assert.equal(current.expiresAt, now + 3000);
+    }
+    assert.equal(new Set(queuedBans).size, 12, 'protection includes the fresh followers already tracked in silence');
+    assert.equal(messages.length, 2, 'one warning per escalation, none per refresh');
+    now += 4000;
+    assert.equal(await expireFollowDefenseModes(), 1);
+    assert.equal(values.has(keys.state), false, 'quiet wave expires normally');
+});
+
+test('ordinary spaced follows and duplicate deliveries cannot accumulate a false wave', async () => {
+    values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, protectionThresholdB: 3, attackThreshold: 4 }));
+    for (let i = 0; i < 8; i++) {
+        now = NOW + i * 6000;
+        const payload = { ...follow(`ordinary-${i}`), followedAt: new Date(now).toISOString() };
+        await processDurableFollowDefenseFollow(payload);
+        await processDurableFollowDefenseFollow(payload);
+    }
+    assert.equal(values.has(keys.state), false);
+    assert.equal(queuedBans.length, 0);
+});
+
+test('a recognized raid may escalate tracking without queuing automatic bans', async () => {
+    values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, protectionThresholdB: 6, attackThreshold: 10 }));
+    values.set(keys.raid, JSON.stringify({ createdAt: NOW, expiresAt: NOW + 300000 }));
+    for (let i = 0; i < 12; i++) {
+        now = NOW + i * 1000;
+        await processDurableFollowDefenseFollow({ ...follow(`raid-follow-${i}`), followedAt: new Date(now).toISOString() });
+    }
+    assert.equal(JSON.parse(values.get(keys.state)!).mode, 'protection');
+    assert.equal(queuedBans.length, 0);
 });

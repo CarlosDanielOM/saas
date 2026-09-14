@@ -267,7 +267,7 @@ async function banFollow(channelID: string, eventID: string, reason: string, req
     await enqueueFollowDefenseBan(follow, reason);
 }
 
-async function banTrackedFollows(channelID: string, required = false, authorizedAt?: number): Promise<void> {
+async function banTrackedFollows(channelID: string, required = false, authorizedAt?: number, reason = 'DimaBot follow defense attack mode'): Promise<void> {
     const cache = await getDragonflyClient('followDefense.banTrackedFollows');
     const eventIDs = await getTrackedEventIDs(channelID);
     for (let offset = 0; offset < eventIDs.length; offset += 200) {
@@ -275,7 +275,7 @@ async function banTrackedFollows(channelID: string, required = false, authorized
         const payloads = await cache.mGet(ids.map(id => `${followDefenseKeys(channelID).followDataPrefix}${id}`));
         const follows = payloads.map(raw => parseJson<FollowDefenseFollowPayload>(raw));
         if (required && follows.some(follow => !follow)) throw new Error('Missing required follow defense payload in wave');
-        await enqueueFollowDefenseBans(follows.filter((follow): follow is FollowDefenseFollowPayload => Boolean(follow)), 'DimaBot follow defense attack mode', authorizedAt);
+        await enqueueFollowDefenseBans(follows.filter((follow): follow is FollowDefenseFollowPayload => Boolean(follow)), reason, authorizedAt);
     }
 }
 
@@ -380,7 +380,7 @@ async function sendSilentSummaryIfNeeded(state: FollowDefenseState, settings: Fo
     if (count <= 0) return;
     const message = formatMessage(MESSAGES[settings.language].silentSummary, {
         count,
-        seconds: settings.silentDurationSeconds
+        seconds: Math.max(1, Math.round((Date.now() - state.burstStartedAt) / 1000))
     });
     await sendTwitchChatMessage(state.channelID, message, null, { channelID: state.channelID });
 }
@@ -413,6 +413,17 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
         await addTrackedFollow(follow.channelID, follow.eventID, score);
     }
 
+    const recentCount = await zCount(keys.recent, windowStart, now);
+    const freshForDetection = score >= windowStart && (!durable || follow.moderationExpiresAt! > Date.now());
+    const sustainedFlood = freshForDetection && recentCount >= settings.silentThresholdX;
+    const waveCount = activeState && sustainedFlood
+        ? await zCount(keys.tracked, activeState.burstStartedAt - windowMs, now) : recentCount;
+    if (activeState && sustainedFlood) {
+        await projectFollowDefenseState(follow.channelID, { type: 'refresh',
+            state: { ...activeState, expiresAt: score + settings.silentDurationSeconds * 1000 },
+            moderationExpiresAt: follow.moderationExpiresAt });
+    }
+
     if (activeState?.mode === 'attack') {
         if (activeState.triggerEventID === follow.eventID) await sendDefenseMessage(follow.channelID, settings, 'attack', activeState);
         if (durable && activeState.triggerEventID === follow.eventID) {
@@ -423,21 +434,26 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
         return;
     }
 
-    if (activeState?.mode === 'protection' && !raidMarker) {
-        if (activeState.triggerEventID === follow.eventID) await sendDefenseMessage(follow.channelID, settings, 'protection', activeState);
-        await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
+    const shouldAttack = freshForDetection && settings.attackModeEnabled && Math.max(recentCount, waveCount) >= settings.attackThreshold;
+    const shouldProtect = freshForDetection && settings.protectionModeEnabled && Math.max(recentCount, waveCount) >= settings.protectionThresholdB;
+    const shouldSilent = freshForDetection && settings.silentModeEnabled && recentCount >= settings.silentThresholdX;
+
+    // A protection wave must still evaluate the higher attack threshold.
+    if (activeState?.mode === 'protection' && !raidMarker && !shouldAttack) {
+        if (activeState.triggerEventID === follow.eventID) {
+            await sendDefenseMessage(follow.channelID, settings, 'protection', activeState);
+            await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
+        } else {
+            await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
+        }
         return;
     }
 
-    const recentCount = await zCount(keys.recent, windowStart, now);
-    if (durable && (score < windowStart || follow.moderationExpiresAt! <= Date.now())) return;
-    const shouldAttack = settings.attackModeEnabled && recentCount >= settings.attackThreshold;
-    const shouldProtect = settings.protectionModeEnabled && recentCount >= settings.protectionThresholdB;
-    const shouldSilent = settings.silentModeEnabled && recentCount >= settings.silentThresholdX;
+    if (!freshForDetection) return;
 
     if (shouldAttack && !raidMarker) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        const attackState = await transitionMode(follow, settings, 'attack', 'threshold', 'attack_threshold');
+        const attackState = await transitionMode(follow, settings, 'attack', 'threshold', recentCount >= settings.attackThreshold ? 'attack_threshold' : 'sustained_attack_threshold');
         if (!attackState) return;
         await sendDefenseMessage(follow.channelID, settings, 'attack', attackState);
         await banTrackedFollows(follow.channelID, durable);
@@ -446,11 +462,11 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
 
     if (shouldProtect) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        const protectionState = await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : 'protection_threshold');
+        const protectionState = await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : recentCount >= settings.protectionThresholdB ? 'protection_threshold' : 'sustained_protection_threshold');
         if (!protectionState) return;
         if (!raidMarker) {
             await sendDefenseMessage(follow.channelID, settings, 'protection', protectionState);
-            await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
+            await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
         }
         return;
     }

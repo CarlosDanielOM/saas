@@ -4,7 +4,7 @@ import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import * as queue from '/app/dist/utils/follow_defense_actions.js';
 import { processDurableFollowDefenseFollow } from '/app/dist/utils/follow_defense.js';
-import { projectFollowDefenseState } from '/app/dist/utils/follow_defense_queue.js';
+import { projectFollowDefenseState, followDefenseKeys, shouldSuppressFollowAlerts } from '/app/dist/utils/follow_defense_queue.js';
 import { FollowDefenseActionSchema as Actions, FollowDefenseControlSchema as Controls } from '/app/dist/schemas/follow_defense_action.schema.js';
 import { FollowDefenseSettingsSchema as Settings } from '/app/dist/schemas/follow_defense_settings.schema.js';
 import { DomainEventDeliverySchema } from '/app/dist/schemas/domain_event_delivery.schema.js';
@@ -39,7 +39,7 @@ if (process.env.SAAS_TARGET === 'bot') {
     const { ban, banRateLimitHeaders } = await import('/app/dist/functions/moderation/ban.moderation.js');
     const result = await ban(channel, 'bot-transport-test', '698614112');
     assert.equal(result.error, false);
-    assert.equal(result.rateLimitRemaining, 500);
+    assert.equal(result.rateLimitRemaining, 800);
     assert.ok(calls().some(call => call.user === 'bot-transport-test' && call.moderator === '698614112'));
     assert.equal(banRateLimitHeaders(new Headers({ 'Retry-After': '60' })).retryAfterMs, 60000);
     console.log('PASS BOT: actual webhook startup, unsigned rejection, unchanged ban call signature, bot identity, rate-limit metadata');
@@ -104,18 +104,66 @@ await queue.enqueueFollowDefenseBan(follow('pace-a2'), 'DimaBot follow defense p
 await queue.enqueueFollowDefenseBan(follow('pace-b1', other), 'DimaBot follow defense protection mode');
 await until(() => calls().filter(call => call.user?.startsWith('pace-')).length === 3, 'fair paced worker drain', 75000);
 const paced = calls().filter(call => call.user?.startsWith('pace-'));
-for (let i = 1; i < paced.length; i++) assert.ok(paced[i].at - paced[i - 1].at >= 490, 'global pacing');
+for (let i = 1; i < paced.length; i++) assert.ok(paced[i].at - paced[i - 1].at >= 190, 'initial global pacing');
 const sameChannel = paced.filter(call => call.channel === channel);
-assert.ok(sameChannel[1].at - sameChannel[0].at >= 990, 'per-channel pacing');
+assert.ok(sameChannel[1].at - sameChannel[0].at >= 190, 'initial per-channel pacing');
 assert.ok(paced.findIndex(call => call.channel === other) < 2, 'second channel served before first drains');
 assert.ok(paced.every(call => call.moderator === '698614112'));
 await until(async () => await Actions.countDocuments({ eventID: /^pace-/, status: 'succeeded' }) === 3, 'outcomes persisted');
+
+// Real worker ramps from 5 toward 10 r/s using provider headers, with persisted controls.
+await queue.enqueueFollowDefenseBans(Array.from({ length: 120 }, (_, i) => follow(`ramp-${i}`)), 'DimaBot follow defense protection mode');
+await until(() => calls().filter(call => call.user?.startsWith('ramp-')).length === 120, 'adaptive worker drain', 45000);
+await until(async () => await Actions.countDocuments({ eventID: /^ramp-/, status: 'succeeded' }) === 120, 'adaptive outcomes persisted');
+const ramped = calls().filter(call => call.user?.startsWith('ramp-'));
+for (let i = 1; i < ramped.length; i++) assert.ok(ramped[i].at - ramped[i - 1].at >= 95, 'never exceed 10 requests per second');
+assert.ok(ramped.at(-1).at - ramped.at(-11).at < 2000, 'healthy sustained throughput exceeds 5 requests per second');
+assert.equal((await Controls.findById(channel).lean()).ratePerSecond, 10);
+assert.equal((await Controls.findById('@executor').lean()).ratePerSecond, 10);
+console.log('PASS adaptive background execution: 120 jobs, target ramp 5 to 10, measured final rate', 10000 / (ramped.at(-1).at - ramped.at(-11).at));
 
 // Pause only this disposable worker while probing Mongo leases/failures deterministically.
 const restartedPID = calls().findLast(call => call.ready).ready;
 process.kill(restartedPID, 'SIGSTOP');
 try {
     await Actions.deleteMany({}); await Controls.deleteMany({});
+    // Exercise actual detector/Redis/Mongo for complete five-minute floods; only this test process's clock advances.
+    const realNow = Date.now;
+    try {
+        for (const total of [1876, 2280, 11400]) {
+            const keys = followDefenseKeys(channel);
+            await redis.del([keys.state, keys.recent, keys.tracked, keys.raid, keys.settings]);
+            await Actions.deleteMany({}); await Controls.deleteMany({});
+            const start = realNow();
+            let virtualNow = start;
+            Date.now = () => virtualNow;
+            let waveStart;
+            for (let i = 1; i <= total; i++) {
+                virtualNow = start + Math.floor((i - 1) * 300000 / total);
+                const payload = { ...follow(`flood-${total}-${i}`), followedAt: new Date(virtualNow).toISOString(), receivedAt: virtualNow };
+                await processDurableFollowDefenseFollow(payload);
+                if (i >= 10 && (i <= 101 || i === 499 || i === 500 || i % 100 === 0 || i === total)) {
+                    const state = JSON.parse(await redis.get(keys.state));
+                    assert.equal(state.mode, i < 100 ? 'silent' : i < 500 ? 'protection' : 'attack', `${total} follows: escalation at follow ${i}`);
+                    waveStart ??= state.burstStartedAt;
+                    assert.equal(state.burstStartedAt, waveStart, 'continuous flood retains wave identity');
+                    assert.equal(state.expiresAt, virtualNow + 60000, 'continuous flood renews silence/protection');
+                    assert.equal(await shouldSuppressFollowAlerts(channel), true, 'follow alerts stay suppressed throughout flood');
+                }
+            }
+            assert.equal(await Actions.countDocuments({ kind: 'ban' }), total, 'all fresh wave followers accepted, including those before protection');
+            assert.equal(await Actions.countDocuments({ kind: 'announcement' }), 2, 'only one announcement per escalation');
+            const earliest = await Actions.findOne({ kind: 'ban' }).sort({ expiresAt: 1 }).lean();
+            assert.ok(earliest.expiresAt.getTime() >= start + 3590000, 'wave has an hour to drain');
+            console.log(`PASS sustained flood: ${total} follows / 5 minutes, silence 10, protection 100, attack 500, continuous suppression, ${total} durable ban jobs`);
+            Date.now = realNow;
+        }
+    } finally {
+        Date.now = realNow;
+        const keys = followDefenseKeys(channel);
+        await redis.del([keys.state, keys.recent, keys.tracked, keys.raid, keys.settings]);
+        await Actions.deleteMany({}); await Controls.deleteMany({});
+    }
     await queue.enqueueFollowDefenseBans(Array.from({ length: 500 }, (_, i) => follow(`wave-${i}`)), 'DimaBot follow defense attack mode');
     const initialDeadline = (await Actions.findById(queue.defenseActionID(channel, 'wave-0')).lean()).expiresAt.getTime();
     await queue.enqueueFollowDefenseBans(Array.from({ length: 500 }, (_, i) => follow(`wave-${i}`)), 'DimaBot follow defense attack mode');
@@ -123,6 +171,24 @@ try {
     assert.equal((await Actions.findById(queue.defenseActionID(channel, 'wave-0')).lean()).expiresAt.getTime(), initialDeadline, 'duplicate admission never extends the execution deadline');
     await queue.cancelFollowDefenseActions(channel);
     assert.equal(await Actions.countDocuments({ status: 'cancelled' }), 500);
+    await Actions.deleteMany({}); await Controls.deleteMany({});
+    // An endpoint-specific throttle pauses/halves this channel but leaves shared capacity for another.
+    await queue.enqueueFollowDefenseBan(follow('endpoint-limit'), 'DimaBot follow defense protection mode');
+    await queue.enqueueFollowDefenseBan(follow('endpoint-other', other), 'DimaBot follow defense protection mode');
+    await queue.processFollowDefenseAction(async action => {
+        assert.equal(action.channelID, channel);
+        return { error: true, status: 429, message: 'endpoint limited', rateLimitRemaining: 700, rateLimitResetAt: Date.now() + 60000 };
+    });
+    assert.equal((await Controls.findById(channel).lean()).ratePerSecond, 2.5);
+    assert.equal((await Controls.findById('@executor').lean()).ratePerSecond, 5);
+    assert.ok((await Controls.findById(channel).lean()).nextAllowedAt.getTime() >= Date.now() + 59000);
+    await sleep(250);
+    let otherExecuted = false;
+    await queue.processFollowDefenseAction(async action => {
+        assert.equal(action.channelID, other); otherExecuted = true;
+        return { error: false, message: 'ok' };
+    });
+    assert.equal(otherExecuted, true, 'endpoint pause does not block another channel');
     await Actions.deleteMany({}); await Controls.deleteMany({});
     const rate = follow('rate-test');
     await queue.enqueueFollowDefenseBan(rate, 'DimaBot follow defense protection mode');
@@ -153,5 +219,5 @@ try {
     await queue.processFollowDefenseAction(async () => assert.fail('Disabled defense never executes'));
     assert.equal((await Actions.findOne().lean()).status, 'cancelled');
 } finally { process.kill(restartedPID, 'SIGCONT'); }
-console.log('PASS CRON: real journal/consumer during slow Twitch, worker restart, persisted outcomes, bot identity, global/channel pacing, fairness, 500-job bulk dedupe, cancellation, 429, lease recovery/exclusion, already-banned, delayed execution, expiry, disable');
+console.log('PASS CRON: five-minute floods (1876, 2280, 11400), continuous suppression, 5-to-10 adaptive throughput, scoped throttling, real journal/consumer during slow Twitch, worker restart, persisted outcomes, bot identity, global/channel pacing, fairness, 500-job bulk dedupe, cancellation, 429, lease recovery/exclusion, already-banned, delayed execution, expiry, disable');
 process.exit(0);

@@ -90,6 +90,7 @@ type StateMutation =
     | { type: 'repair' }
     | { type: 'reset'; token: string }
     | { type: 'transition'; state: FollowDefenseState; moderationExpiresAt?: number }
+    | { type: 'refresh'; state: FollowDefenseState; moderationExpiresAt?: number }
     | { type: 'manual'; state: FollowDefenseState; preserveExpiry?: boolean };
 
 export async function projectFollowDefenseState(channelID: string, mutation: StateMutation = { type: 'repair' }): Promise<{
@@ -134,6 +135,18 @@ if incoming.expiresAt <= now or (tonumber(ARGV[4]) > 0 and tonumber(ARGV[4]) <= 
     return unchanged()
 end
 local active = current and current.expiresAt > now
+if ARGV[2] == 'refresh' then
+    -- Extend only the observed live wave. Never recreate a reset/expired mode or replace a manual winner.
+    if not active or (current.version or '') ~= (incoming.version or '') or
+       current.mode ~= incoming.mode or current.modeStartedAt ~= incoming.modeStartedAt then return unchanged() end
+    if incoming.expiresAt <= current.expiresAt then return unchanged() end
+    current.expiresAt = incoming.expiresAt
+    current.lastUpdatedAt = now
+    local refreshed = cjson.encode(current)
+    redis.call('SET', KEYS[1], refreshed)
+    project(current)
+    return {1, refreshed}
+end
 if ARGV[2] == 'transition' then
     local rank = {normal = 0, silent = 1, protection = 2, attack = 3}
     if active and rank[current.mode] >= rank[incoming.mode] then return unchanged() end
@@ -154,8 +167,8 @@ return {1, nextRaw}
 `, {
         keys: [keys.state, keys.activeChannels, keys.tracked],
         arguments: [channelID, mutation.type,
-            'state' in mutation ? JSON.stringify({ ...mutation.state, version: randomUUID() }) : mutation.type === 'reset' ? mutation.token : '',
-            String(mutation.type === 'transition' ? mutation.moderationExpiresAt || 0 : 0),
+            'state' in mutation ? JSON.stringify(mutation.type === 'refresh' ? mutation.state : { ...mutation.state, version: randomUUID() }) : mutation.type === 'reset' ? mutation.token : '',
+            String(mutation.type === 'transition' || mutation.type === 'refresh' ? mutation.moderationExpiresAt || 0 : 0),
             mutation.type === 'manual' && mutation.preserveExpiry ? '1' : '0']
     }) as [number, string];
     return { changed: result[0] === 1, state: result[1] ? JSON.parse(result[1]) as FollowDefenseState : null, token: result[1] };
