@@ -10,17 +10,38 @@ interface TwitchBanData {
     reason?: string;
 }
 
-interface BanResponse {
+export interface BanResponse {
     error: boolean;
     message: string;
     status?: number;
     type?: string;
     data?: TwitchBanData;
+    rateLimitRemaining?: number;
+    rateLimitResetAt?: number;
+    retryAfterMs?: number;
 }
 
-export async function ban(channelID: string, userID: string, moderatorID: string, duration: number | null = null, reason: string | null = null): Promise<BanResponse> {
+export function banRateLimitHeaders(headers: Headers, now = Date.now()): Pick<BanResponse, 'rateLimitRemaining' | 'rateLimitResetAt' | 'retryAfterMs'> {
+    const number = (name: string) => {
+        const raw = headers.get(name);
+        const value = raw === null || !raw.trim() ? NaN : Number(raw);
+        return Number.isFinite(value) && value >= 0 ? value : undefined;
+    };
+    const reset = number('Ratelimit-Reset');
+    const retry = headers.get('Retry-After');
+    const seconds = number('Retry-After');
+    const retryDate = retry ? Date.parse(retry) : NaN;
+    return {
+        rateLimitRemaining: number('Ratelimit-Remaining'),
+        rateLimitResetAt: reset === undefined ? undefined : reset * 1000,
+        retryAfterMs: seconds !== undefined ? seconds * 1000 : Number.isFinite(retryDate) ? Math.max(0, retryDate - now) : undefined
+    };
+}
+
+export async function ban(channelID: string, userID: string, moderatorID: string, duration: number | null = null, reason: string | null = null, signal?: AbortSignal): Promise<BanResponse> {
     try {
         const botHeaderResult = await getTwitchBotHeader();
+        signal?.throwIfAborted();
 
         if (botHeaderResult.error || !botHeaderResult.header) {
             return {
@@ -54,25 +75,30 @@ export async function ban(channelID: string, userID: string, moderatorID: string
 
         const response = await fetch(getTwitchHelixUrl('moderation/bans', params.toString()), {
             method: 'POST',
+            signal,
             headers: botHeader as unknown as Record<string, string>,
             body: JSON.stringify(bodyData)
         });
 
-        const data = await response.json();
+        const limits = banRateLimitHeaders(response.headers);
+        const data = await response.json().catch(() => ({}));
 
-        if (data.error) {
+        if (!response.ok || data.error) {
             return {
                 error: true,
-                message: data.message,
-                status: data.status,
-                type: data.error
+                message: data.message || response.statusText || 'Twitch ban request failed',
+                status: response.status,
+                type: data.error,
+                ...limits
             };
         }
 
         return {
             error: false,
             message: 'Success',
-            data: data.data[0]
+            status: response.status,
+            data: data.data?.[0],
+            ...limits
         };
     } catch (error) {
         console.error(`Error in ban:`, {

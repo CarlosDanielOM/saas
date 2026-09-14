@@ -10,7 +10,7 @@ const NOW = Date.parse('2026-09-05T12:00:00Z');
 let now = NOW;
 let values: Map<string, string>;
 let sorted: Map<string, Map<string, number>>;
-let bans: string[];
+let queuedBans: string[];
 let messages: string[];
 let cacheCalls = 0;
 let failure = '';
@@ -79,6 +79,7 @@ const cache = {
         if (slowRead === key) now += 60_000;
         return values.get(key) ?? null;
     },
+    async mGet(keys: string[]) { return Promise.all(keys.map(key => cache.get(key))); },
     async set(key: string, value: string) {
         if (failure === `write:${key}`) { failure = ''; throw new Error('cache write failed'); }
         values.set(key, value);
@@ -105,11 +106,28 @@ const cache = {
 mock.module('./databases/dragonfly.database.js', { namedExports: {
     getDragonflyClient: async () => { cacheCalls++; if (failure === 'connect') throw new Error('cache unavailable'); return cache; }
 } });
+const queued = new Set<string>();
+const announcements = new Set<string>();
+let cancelledThrough = 0;
+async function enqueueBan(follow: FollowDefenseFollowPayload) {
+    if (new Date(follow.followedAt).getTime() + 60000 <= now || queued.has(follow.eventID)) return;
+    queuedBans.push(follow.followerID);
+    const result = await banResult(follow.followerID);
+    if (result.error) throw new Error('ban queue write failed');
+    queued.add(follow.eventID);
+}
+mock.module('./follow_defense_actions.js', { namedExports: {
+    enqueueFollowDefenseBan: enqueueBan,
+    enqueueFollowDefenseBans: async (follows: FollowDefenseFollowPayload[]) => { for (const follow of follows) await enqueueBan(follow); },
+    enqueueFollowDefenseAnnouncement: async (_channel: string, event: string, _mode: string, message: string) => {
+        if (!announcements.has(event)) { announcements.add(event); messages.push(message); }
+    },
+    followDefenseCancelledThrough: async () => cancelledThrough,
+    refreshFollowDefenseLogActions: async () => undefined,
+    getDurableFollowDefenseBanResult: async () => null
+} });
 mock.module('../functions/moderation/ban.moderation.js', { namedExports: {
-    ban: async (channel: string, user: string, moderator: string) => {
-        assert.equal(channel, 'channel'); assert.equal(moderator, '698614112');
-        bans.push(user); return banResult(user);
-    }
+    ban: async () => assert.fail('Detection must never call Twitch moderation')
 } });
 mock.module('../functions/chats/send_message.chat.js', { namedExports: { sendTwitchChatMessage: async (_channel: string, message: string) => { messages.push(message); return { error: false }; } } });
 mock.module('../schemas/follow_defense_settings.schema.js', { namedExports: {
@@ -142,7 +160,8 @@ function state(mode: FollowDefenseState['mode']): void {
 }
 
 beforeEach((context) => {
-    now = NOW; values = new Map(); sorted = new Map(); bans = []; messages = []; cacheCalls = 0; failure = ''; slowRead = '';
+    queued.clear(); announcements.clear(); cancelledThrough = 0;
+    now = NOW; values = new Map(); sorted = new Map(); queuedBans = []; messages = []; cacheCalls = 0; failure = ''; slowRead = '';
     attackLogs = new Map(); loseLogResponse = false; resetFailures = 0;
     sources = new Map(); failSourceWrite = false; loseSourceResponse = false;
     assert.ok('mock' in context);
@@ -168,7 +187,7 @@ test('direct processing uses occurrence scores and stable IDs on partial failure
     now += 500;
     await processDurableFollowDefenseFollow(payload);
     assert.deepEqual([...values], snapshot);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
 });
 
 test('stale backlog and future follows do not touch cache, state or moderation', async () => {
@@ -176,13 +195,13 @@ test('stale backlog and future follows do not touch cache, state or moderation',
     for (const age of [60_000, 3600_000, -1]) await processDurableFollowDefenseFollow(follow('stale', age));
     assert.equal(cacheCalls, 0);
     assert.equal(sorted.size, 0);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
 });
 
 test('delayed occurrences are not counted as a new burst at retry wallclock', async () => {
     for (let i = 0; i < 10; i++) await processDurableFollowDefenseFollow(follow(`delayed-${i}`, 30_000));
     assert.equal(values.has(keys.state), false);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
 });
 
 test('delayed pre-wave follows cannot inherit the current attack or protection mode', async () => {
@@ -190,7 +209,7 @@ test('delayed pre-wave follows cannot inherit the current attack or protection m
         state(mode);
         await processDurableFollowDefenseFollow(follow(`before-${mode}`, 30_000));
     }
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
     assert.equal(sorted.has(keys.tracked), false);
 });
 
@@ -203,36 +222,10 @@ test('cache and settings errors propagate without a completion receipt', async (
     assert.equal(values.has(`${keys.completedPrefix}stable-event`), false);
 });
 
-test('external ban errors propagate, retry with the same identity, and dedupe successful effects', async () => {
-    state('protection');
-    const payload = follow();
-    for (const status of [403, 429, 500, 400]) {
-        banResult = async () => ({ error: true, status, message: 'dependency unavailable' });
-        await assert.rejects(processDurableFollowDefenseFollow(payload), /Follow defense ban failed/);
-        assert.equal(values.has(`${keys.completedPrefix}${payload.eventID}`), false);
-    }
-    banResult = async () => ({ error: false, message: 'Success' });
-    await processDurableFollowDefenseFollow(payload);
-    await processDurableFollowDefenseFollow(payload);
-    assert.deepEqual(bans, Array(5).fill(payload.followerID));
-    assert.equal(sorted.get(keys.recent)!.size, 1);
-});
-
-test('lost ban receipt recovers only the precise already-banned response as success', async () => {
-    state('protection');
-    failure = `write:${keys.banDataPrefix}stable-event`;
-    await assert.rejects(processDurableFollowDefenseFollow(follow()), /cache write failed/);
-    banResult = async () => ({ error: true, status: 400, message: 'The user specified in the user_id field is already banned.' });
-    await processDurableFollowDefenseFollow(follow());
-    await processDurableFollowDefenseFollow(follow());
-    assert.equal(bans.length, 2);
-    assert.equal(JSON.parse(values.get(`${keys.banDataPrefix}stable-event`)!).banned, true);
-});
-
-test('partial attack wave retries unfinished bans even after the mode transition was saved', async () => {
+test('partial wave enqueue retries unfinished decisions after the mode transition was saved', async () => {
     await processDurableFollowDefenseFollow(follow('first', 2000));
     banResult = async (user) => ({ error: user === 'second', status: 503, message: 'try again' });
-    await assert.rejects(processDurableFollowDefenseFollow(follow('second')), /ban failed/);
+    await assert.rejects(processDurableFollowDefenseFollow(follow('second')), /ban queue write failed/);
     const attackState = JSON.parse(values.get(keys.state)!);
     assert.equal(attackState.mode, 'attack');
     assert.equal(attackState.triggerEventID, 'second');
@@ -241,50 +234,16 @@ test('partial attack wave retries unfinished bans even after the mode transition
     now += 500;
     banResult = async () => ({ error: false, message: 'Success' });
     await processDurableFollowDefenseFollow(follow('second'));
-    assert.deepEqual(bans, ['first', 'second', 'second']);
+    assert.deepEqual(queuedBans, ['first', 'second', 'second']);
     assert.deepEqual(JSON.parse(values.get(keys.state)!), attackState);
 });
 
-test('attack retries and long-running waves never ban stale tracked followers', async () => {
-    await processDurableFollowDefenseFollow(follow('first', 2000));
-    const stale = follow('old-tracked', 3600_000);
-    values.set(`${keys.followDataPrefix}${stale.eventID}`, JSON.stringify(stale));
-    await cache.zAdd(keys.tracked, { score: NOW - 3600_000, value: stale.eventID });
-    banResult = async () => { now += 60_000; return { error: false, message: 'Success' }; };
-    await processDurableFollowDefenseFollow(follow('second'));
-    assert.deepEqual(bans, ['first']);
-    await processDurableFollowDefenseFollow(follow('second'));
-    assert.deepEqual(bans, ['first']);
-});
-
-test('lost completion receipt does not repeat a successful ban', async () => {
-    state('attack');
-    failure = `write:${keys.completedPrefix}stable-event`;
-    await assert.rejects(processDurableFollowDefenseFollow(follow()), /cache write failed/);
-    await processDurableFollowDefenseFollow(follow());
-    assert.deepEqual(bans, ['stable-event']);
-});
-
-test('freshness is rechecked after slow ban-receipt reads', async () => {
-    state('attack');
-    slowRead = `${keys.banDataPrefix}stable-event`;
-    await processDurableFollowDefenseFollow(follow());
-    assert.deepEqual(bans, []);
-});
-
-test('an unrelated already-banned error is not treated as successful moderation', async () => {
-    state('attack');
-    banResult = async () => ({ error: true, status: 400, message: 'Cannot check whether user is already banned' });
-    await assert.rejects(processDurableFollowDefenseFollow(follow()), /ban failed/);
-    assert.equal(values.has(`${keys.completedPrefix}stable-event`), false);
-});
-
-test('a live raid marker prevents automatic attack bans for a fresh burst', async () => {
+test('a live raid marker prevents automatic attack queuedBans for a fresh burst', async () => {
     values.set(keys.raid, JSON.stringify({ createdAt: NOW - 1000, expiresAt: NOW + 299_000 }));
     await processDurableFollowDefenseFollow(follow('first', 2000));
     await processDurableFollowDefenseFollow(follow('second'));
     assert.equal(values.has(keys.state), false);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
     assert.equal(sorted.get(keys.tracked)!.size, 2);
 });
 
@@ -294,10 +253,10 @@ test('payload loss during a required ban is retried rather than silently complet
         key === `${keys.followDataPrefix}stable-event` ? null : values.get(key) ?? null);
     await assert.rejects(processDurableFollowDefenseFollow(follow()), /Missing required follow defense payload/);
     assert.equal(values.has(`${keys.completedPrefix}stable-event`), false);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
     read.mock.restore();
     await processDurableFollowDefenseFollow(follow());
-    assert.deepEqual(bans, ['stable-event']);
+    assert.deepEqual(queuedBans, ['stable-event']);
 });
 
 test('manual attack interleaved after threshold read cannot be downgraded or announce a losing transition', async (context) => {
@@ -310,7 +269,7 @@ test('manual attack interleaved after threshold read cannot be downgraded or ann
     await processDurableFollowDefenseFollow(follow());
     assert.equal(JSON.parse(values.get(keys.state)!).triggeredBy, 'manual');
     assert.deepEqual(messages, []);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
     assert.equal(sorted.get(keys.activeChannels)?.get('channel'), JSON.parse(values.get(keys.state)!).expiresAt);
 });
 
@@ -348,13 +307,13 @@ test('concurrent threshold contenders announce and start the attack wave only on
         processDurableFollowDefenseFollow(follow('second'))
     ]);
     assert.equal(messages.length, 1);
-    assert.deepEqual(bans.slice().sort(), ['first', 'second']);
+    assert.deepEqual(queuedBans.slice().sort(), ['first', 'second']);
 });
 
 test('trigger-event repair cannot rewrite a manual command committed after the retry snapshot', async (context) => {
     await processDurableFollowDefenseFollow(follow('first', 2000));
     banResult = async () => ({ error: true, status: 503, message: 'try again' });
-    await assert.rejects(processDurableFollowDefenseFollow(follow('second')), /ban failed/);
+    await assert.rejects(processDurableFollowDefenseFollow(follow('second')), /ban queue write failed/);
     sorted.delete(keys.activeChannels);
     const original = cache.eval;
     let injected = false;
@@ -380,7 +339,7 @@ test('required projection failure leaves no receipt and no partial state write',
     await assert.rejects(processDurableFollowDefenseFollow(follow()), /WRONGTYPE/);
     assert.equal(values.has(`${keys.completedPrefix}stable-event`), false);
     assert.equal(values.has(keys.state), false);
-    assert.deepEqual(bans, []);
+    assert.deepEqual(queuedBans, []);
 });
 
 test('queued manual completion applies configured duration through the atomic projection', async () => {
@@ -633,4 +592,39 @@ test('duplicate-key errors without a confirmed log or source receipt never compl
     update.mock.restore();
     assert.equal(await expireFollowDefenseModes(), 1);
     assert.equal([...sources.values()][0].count, 1);
+});
+
+
+test('detection records bans and announcements without waiting for Twitch or AI', async () => {
+    values.set(keys.settings, JSON.stringify({ enabled: true, protectionThresholdB: 2, attackThreshold: 500 }));
+    await processDurableFollowDefenseFollow(follow('first'));
+    await processDurableFollowDefenseFollow(follow('second'));
+    for (let i = 0; i < 20; i++) await processDurableFollowDefenseFollow(follow(`queued-${i}`));
+    assert.equal(queuedBans.length, 21);
+    assert.equal(messages.length, 1);
+});
+
+test('Reset fences previously queued manual attacks', async () => {
+    await triggerFollowDefenseAttackMode('channel');
+    cancelledThrough = now;
+    values.delete(keys.state);
+    await processFollowDefenseQueue();
+    assert.equal(values.has(keys.state), false);
+    assert.equal(messages.length, 0);
+});
+
+test('legacy manual ingress remains queued until durable wave acceptance succeeds', async () => {
+    state('silent');
+    await processDurableFollowDefenseFollow(follow('queued-manual'));
+    await triggerFollowDefenseAttackMode('channel');
+    banResult = async () => ({ error: true, message: 'Mongo unavailable' });
+    assert.equal(await processFollowDefenseQueue(), 0);
+    assert.equal(sorted.get('twitch:follow-defense:queue')?.size, 1);
+    const version = JSON.parse(values.get(keys.state)!).version;
+    now += 5000;
+    banResult = async () => ({ error: false, message: 'Accepted' });
+    assert.equal(await processFollowDefenseQueue(), 1);
+    assert.equal(sorted.get('twitch:follow-defense:queue')?.size, 0);
+    assert.equal(JSON.parse(values.get(keys.state)!).version, version);
+    assert.equal(announcements.size, 1);
 });

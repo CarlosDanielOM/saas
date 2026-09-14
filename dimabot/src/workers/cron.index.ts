@@ -35,6 +35,11 @@ interface ManagedWorker {
 
 const WORKERS: WorkerDefinition[] = [
     {
+        name: 'follow-defense-actions',
+        sourceEntry: 'src/workers/follow_defense_actions.worker.ts',
+        distEntry: 'dist/workers/follow_defense_actions.worker.js'
+    },
+    {
         name: 'follow-defense',
         sourceEntry: 'src/workers/follow_defense.worker.ts',
         distEntry: 'dist/workers/follow_defense.worker.js'

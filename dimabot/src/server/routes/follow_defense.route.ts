@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import { FollowAttackLogSchema } from '../../schemas/follow_attack_log.schema.js';
 import { FollowDefenseSettingsSchema, type FollowDefenseLanguage, type IFollowDefenseSettings } from '../../schemas/follow_defense_settings.schema.js';
+import { cancelFollowDefenseActions, getFollowDefenseActionCounts } from '../../utils/follow_defense_actions.js';
 import { FollowHateRaidSourceSchema } from '../../schemas/follow_hate_raid_source.schema.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import {
@@ -236,6 +237,7 @@ async function buildStatus(channelID: string, channelName: string): Promise<Reco
     return {
         ...activeState,
         trackedCount: await getTrackedCount(channelID),
+        moderationQueue: await getFollowDefenseActionCounts(channelID),
         raid: await getRaidMarker(channelID)
     };
 }
@@ -299,6 +301,9 @@ router.patch('/:channelID/settings', authMiddleware as any, async (req: FollowDe
         });
 
         const settings = toSettingsResponse(updated.toObject() as IFollowDefenseSettings);
+        if (patch.enabled === false || patch.attackModeEnabled === false || patch.protectionModeEnabled === false) {
+            await cancelFollowDefenseActions(channelID);
+        }
         await cacheSettings(settings);
 
         return res.status(200).json({
@@ -394,6 +399,7 @@ router.post('/:channelID/reset', authMiddleware as any, async (req: FollowDefens
 
         const cache = await getDragonflyClient('followDefenseRoute.reset');
         const keys = followDefenseKeys(channelID);
+        await cancelFollowDefenseActions(channelID);
         await cache.del([keys.state, keys.tracked, keys.recent]);
         await cache.zRem(keys.activeChannels, channelID);
 

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Types } from 'mongoose';
 import { sendTwitchChatMessage } from '../functions/chats/send_message.chat.js';
-import { ban } from '../functions/moderation/ban.moderation.js';
+import { enqueueFollowDefenseBan, enqueueFollowDefenseBans, enqueueFollowDefenseAnnouncement, followDefenseCancelledThrough, getDurableFollowDefenseBanResult, refreshFollowDefenseLogActions } from './follow_defense_actions.js';
 import { FollowAttackLogSchema, type IFollowAttackTrackedFollow } from '../schemas/follow_attack_log.schema.js';
 import { FollowDefenseSettingsSchema, type FollowDefenseLanguage, type IFollowDefenseSettings } from '../schemas/follow_defense_settings.schema.js';
 import { FollowHateRaidSourceSchema } from '../schemas/follow_hate_raid_source.schema.js';
@@ -21,14 +21,10 @@ import {
     type FollowDefenseTriggerSource
 } from './follow_defense_queue.js';
 import { error as logError, info as logInfo, warn as logWarn } from './logger.js';
-import TwitchStreamers from '../classes/twitch_streamers.class.js';
-import { chat as aiChat } from './ai/openrouter/ai.js';
 
-const BOT_ID = '698614112';
 const QUEUE_BATCH_SIZE = Math.max(25, Number(process.env.FOLLOW_DEFENSE_QUEUE_BATCH_SIZE || 250));
 const FOLLOW_DATA_TTL_SECONDS = Math.max(3600, Number(process.env.FOLLOW_DEFENSE_FOLLOW_DATA_TTL_SECONDS || 24 * 60 * 60));
 const RECENT_RETENTION_SECONDS = Math.max(60, Number(process.env.FOLLOW_DEFENSE_RECENT_RETENTION_SECONDS || 300));
-const BAN_DELAY_MS = Math.max(0, Number(process.env.FOLLOW_DEFENSE_BAN_DELAY_MS || 200));
 
 interface FollowDefenseRuntimeSettings {
     channelID: string;
@@ -82,10 +78,6 @@ const MESSAGES: Record<FollowDefenseLanguage, Record<string, string>> = {
         attack: '🚨 ¡Modo ataque activado! Baneando todos los follows de esta ola.'
     }
 };
-
-function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function parseJson<T>(value: string | null): T | null {
     if (!value) return null;
@@ -194,51 +186,9 @@ function formatMessage(template: string, params: Record<string, string | number>
     }, template);
 }
 
-const DEFENSE_EVENT_DESCRIPTIONS: Record<FollowDefenseLanguage, Record<string, string>> = {
-    en: {
-        protection: 'A follow flood was detected in the channel. Follow protection mode is now enabled and suspicious followers will be banned. Moderators can activate attack mode with the !defmode command.',
-        attack: 'Attack mode is now activated. The bot is banning all followers from this follow-bot wave.'
-    },
-    es: {
-        protection: 'Se detectó una avalancha de follows en el canal. La protección de follows está activada y los follows sospechosos serán baneados. Los moderadores pueden activar el modo ataque con el comando !defmode.',
-        attack: 'El modo ataque está activado. El bot está baneando todos los follows de esta ola de follow-bots.'
-    }
-};
-
-async function sendDefenseMessage(channelID: string, settings: FollowDefenseRuntimeSettings, messageKey: keyof typeof MESSAGES.en): Promise<void> {
-    const fallbackMessage = MESSAGES[settings.language][messageKey];
-    if (!fallbackMessage) return;
-
-    // Try an in-personality announcement first; fall back to the static
-    // message if the AI is unavailable, disabled, or errors out.
-    try {
-        const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
-        const eventDescription = DEFENSE_EVENT_DESCRIPTIONS[settings.language]?.[messageKey] || fallbackMessage;
-        if (streamer) {
-            const aiResult = await aiChat({
-                channelID,
-                message: `[SYSTEM EVENT - not a chat message, do not tag anyone] ${eventDescription} Announce this to chat in one short message using your personality. Keep the warning clear.`,
-                streamer: streamer as any,
-                history: [],
-                disableTools: true,
-                tags: { badges: [], username: 'system', userLevel: 1 }
-            });
-            const aiMessage = !aiResult.error ? String(aiResult.message || '').trim() : '';
-            if (aiMessage) {
-                await sendTwitchChatMessage(channelID, aiMessage.slice(0, 450), null, { channelID });
-                return;
-            }
-        }
-    } catch (aiAnnounceError) {
-        await logWarn({
-            function: 'followDefense.sendDefenseMessage.ai',
-            channelID,
-            messageKey,
-            error: aiAnnounceError instanceof Error ? aiAnnounceError.message : String(aiAnnounceError)
-        }, { channelId: channelID, destination: 'cache' });
-    }
-
-    await sendTwitchChatMessage(channelID, fallbackMessage, null, { channelID });
+async function sendDefenseMessage(channelID: string, settings: FollowDefenseRuntimeSettings, messageKey: 'attack' | 'protection', state: FollowDefenseState): Promise<void> {
+    const eventID = state.triggerEventID || state.manualEventID || state.version || String(state.modeStartedAt);
+    await enqueueFollowDefenseAnnouncement(channelID, eventID, messageKey, MESSAGES[settings.language][messageKey], state.modeStartedAt);
 }
 
 async function transitionMode(
@@ -269,7 +219,7 @@ async function transitionMode(
     };
 
     const projected = await projectFollowDefenseState(follow.channelID, { type: 'transition', state, moderationExpiresAt: follow.moderationExpiresAt });
-    if (!projected.changed) return null;
+    if (!projected.changed) return projected.state?.triggerEventID === follow.eventID ? projected.state : null;
     await logInfo({
         worker: 'follow_defense',
         message: 'Follow defense mode transition',
@@ -282,6 +232,8 @@ async function transitionMode(
 }
 
 async function setManualAttackState(payload: FollowDefenseManualAttackPayload, settings: FollowDefenseRuntimeSettings): Promise<FollowDefenseState | null> {
+    const existing = await getState(payload.channelID);
+    if (existing?.manualEventID === payload.eventID && existing.expiresAt === payload.triggeredAt + settings.silentDurationSeconds * 1000) return existing;
     const state: FollowDefenseState = {
         mode: 'attack',
         channelID: payload.channelID,
@@ -299,12 +251,9 @@ async function setManualAttackState(payload: FollowDefenseManualAttackPayload, s
     return projected.changed ? projected.state : null;
 }
 
-async function cacheBanResult(channelID: string, eventID: string, result: BanCacheResult): Promise<void> {
-    const cache = await getDragonflyClient('followDefense.cacheBanResult');
-    await cache.set(`${followDefenseKeys(channelID).banDataPrefix}${eventID}`, JSON.stringify(result), { EX: FOLLOW_DATA_TTL_SECONDS });
-}
-
 async function getCachedBanResult(channelID: string, eventID: string): Promise<BanCacheResult | null> {
+    const durable = await getDurableFollowDefenseBanResult(channelID, eventID);
+    if (durable) return durable;
     const cache = await getDragonflyClient('followDefense.getCachedBanResult');
     return parseJson<BanCacheResult>(await cache.get(`${followDefenseKeys(channelID).banDataPrefix}${eventID}`));
 }
@@ -315,36 +264,18 @@ async function banFollow(channelID: string, eventID: string, reason: string, req
         if (required) throw new Error(`Missing required follow defense payload: ${eventID}`);
         return;
     }
-
-    const alreadyBanned = await getCachedBanResult(channelID, eventID);
-    if (alreadyBanned?.banned) return;
-
-    if (required || follow.moderationExpiresAt !== undefined) {
-        const occurredAt = new Date(follow.followedAt).getTime();
-        const expiresAt = follow.moderationExpiresAt ?? occurredAt + FOLLOW_DEFENSE_MAX_EVENT_AGE_MS;
-        if (!Number.isFinite(occurredAt) || occurredAt > Date.now() || expiresAt <= Date.now()) return;
-    }
-
-    const result = await ban(channelID, follow.followerID, BOT_ID, null, reason);
-    // A lost successful response can retry as "already banned". Other errors are not completion.
-    const banned = !result.error || (required && result.status === 400
-        && /^The user specified in the user_id field is already banned\.?$/i.test(result.message));
-    await cacheBanResult(channelID, eventID, {
-        banned,
-        status: result.status,
-        message: result.message
-    });
-    if (required && !banned) throw new Error(`Follow defense ban failed (${result.status || 'unknown'}): ${result.message}`);
-
-    if (BAN_DELAY_MS > 0) {
-        await sleep(BAN_DELAY_MS);
-    }
+    await enqueueFollowDefenseBan(follow, reason);
 }
 
-async function banTrackedFollows(channelID: string, required = false): Promise<void> {
+async function banTrackedFollows(channelID: string, required = false, authorizedAt?: number): Promise<void> {
+    const cache = await getDragonflyClient('followDefense.banTrackedFollows');
     const eventIDs = await getTrackedEventIDs(channelID);
-    for (const eventID of eventIDs) {
-        await banFollow(channelID, eventID, 'DimaBot follow defense attack mode', required);
+    for (let offset = 0; offset < eventIDs.length; offset += 200) {
+        const ids = eventIDs.slice(offset, offset + 200);
+        const payloads = await cache.mGet(ids.map(id => `${followDefenseKeys(channelID).followDataPrefix}${id}`));
+        const follows = payloads.map(raw => parseJson<FollowDefenseFollowPayload>(raw));
+        if (required && follows.some(follow => !follow)) throw new Error('Missing required follow defense payload in wave');
+        await enqueueFollowDefenseBans(follows.filter((follow): follow is FollowDefenseFollowPayload => Boolean(follow)), 'DimaBot follow defense attack mode', authorizedAt);
     }
 }
 
@@ -410,6 +341,8 @@ async function persistAttackLog(state: FollowDefenseState): Promise<void> {
         }
     }
 
+    // Reconcile after creation: an action may finish between snapshotting and saving the log.
+    await refreshFollowDefenseLogActions(state.channelID, log.trackedFollows.map(follow => follow.eventID));
     // The saved log freezes classification and source identity, even if the raid marker or tracked payloads expired.
     if (log.isHateRaid && log.raidInfo) {
         const source = { targetChannelID: log.targetChannelID, raiderChannelID: log.raidInfo.raiderChannelID };
@@ -481,6 +414,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
     }
 
     if (activeState?.mode === 'attack') {
+        if (activeState.triggerEventID === follow.eventID) await sendDefenseMessage(follow.channelID, settings, 'attack', activeState);
         if (durable && activeState.triggerEventID === follow.eventID) {
             await banTrackedFollows(follow.channelID, true);
         } else {
@@ -490,6 +424,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
     }
 
     if (activeState?.mode === 'protection' && !raidMarker) {
+        if (activeState.triggerEventID === follow.eventID) await sendDefenseMessage(follow.channelID, settings, 'protection', activeState);
         await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
         return;
     }
@@ -502,17 +437,19 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
 
     if (shouldAttack && !raidMarker) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        if (!await transitionMode(follow, settings, 'attack', 'threshold', 'attack_threshold')) return;
-        await sendDefenseMessage(follow.channelID, settings, 'attack');
+        const attackState = await transitionMode(follow, settings, 'attack', 'threshold', 'attack_threshold');
+        if (!attackState) return;
+        await sendDefenseMessage(follow.channelID, settings, 'attack', attackState);
         await banTrackedFollows(follow.channelID, durable);
         return;
     }
 
     if (shouldProtect) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        if (!await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : 'protection_threshold')) return;
+        const protectionState = await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : 'protection_threshold');
+        if (!protectionState) return;
         if (!raidMarker) {
-            await sendDefenseMessage(follow.channelID, settings, 'protection');
+            await sendDefenseMessage(follow.channelID, settings, 'protection', protectionState);
             await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
         }
         return;
@@ -538,13 +475,14 @@ export async function processDurableFollowDefenseFollow(follow: FollowDefenseFol
 }
 
 async function handleManualAttack(event: Extract<FollowDefenseQueueEvent, { type: 'manual_attack' }>): Promise<void> {
+    if (event.payload.triggeredAt <= await followDefenseCancelledThrough(event.payload.channelID)) return;
     const settings = await getSettings(event.payload.channelID, event.payload.channelName || event.payload.channelLogin);
     if (!settings.enabled || !settings.attackModeEnabled) return;
 
     const state = await setManualAttackState(event.payload, settings);
     if (!state) return;
-    await sendDefenseMessage(event.payload.channelID, settings, 'attack');
-    await banTrackedFollows(event.payload.channelID);
+    await sendDefenseMessage(event.payload.channelID, settings, 'attack', state);
+    await banTrackedFollows(event.payload.channelID, false, event.payload.triggeredAt);
     await persistAttackLog(state);
 }
 
@@ -555,16 +493,12 @@ export async function processFollowDefenseQueue(): Promise<number> {
     let processed = 0;
 
     for (const eventID of eventIDs) {
-        const removed = await cache.zRem(FOLLOW_DEFENSE_QUEUE_KEY, eventID);
-        if (removed === 0) continue;
-
         const dataKey = followDefenseQueueDataKey(eventID);
         const raw = await cache.get(dataKey);
-        if (!raw) continue;
+        if (!raw) { await cache.zRem(FOLLOW_DEFENSE_QUEUE_KEY, eventID); continue; }
 
         const event = parseJson<FollowDefenseQueueEvent>(raw);
-        await cache.del(dataKey);
-        if (!event) continue;
+        if (!event) { await cache.zRem(FOLLOW_DEFENSE_QUEUE_KEY, eventID); await cache.del(dataKey); continue; }
 
         try {
             if (event.type === 'follow') {
@@ -572,8 +506,12 @@ export async function processFollowDefenseQueue(): Promise<number> {
             } else if (event.type === 'manual_attack') {
                 await handleManualAttack(event);
             }
+            // Acknowledge only after the durable moderation decisions were accepted.
+            await cache.zRem(FOLLOW_DEFENSE_QUEUE_KEY, eventID);
+            await cache.del(dataKey);
             processed += 1;
         } catch (error) {
+            await cache.zAdd(FOLLOW_DEFENSE_QUEUE_KEY, { score: Date.now() + 5000, value: eventID });
             await logError({
                 function: 'processFollowDefenseQueue.event',
                 eventID,
