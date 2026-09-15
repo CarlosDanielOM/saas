@@ -22,15 +22,24 @@ export async function sendTrigger(
         const streamerToken = await TwitchStreamers.getAccountTokenById(channelID, 'twitch');
 
         if (!streamerToken) {
+            // A wiped/never-granted token set (has_permissions=false) means the
+            // streamer must reauthorize; anything else is a transient refresh
+            // failure that can succeed on a later attempt.
+            const account = await TwitchStreamers.getTwitchAccountById(channelID);
+            const permissionsRevoked = !account || account.has_permissions !== 'true';
+
             await logError({
                 function: 'sendTrigger',
                 channelID,
-                error: 'Failed to get streamer token'
+                error: 'Failed to get streamer token',
+                hasPermissions: account?.has_permissions ?? null
             }, { channelId: channelID, destination: 'both' });
 
             return {
                 error: true,
-                message: 'Failed to authenticate'
+                message: permissionsRevoked
+                    ? "I don't have the permissions to perform this action. Please reauthenticate in the dashboard."
+                    : 'Failed to renew permissions. Please try again later.'
             };
         }
 
