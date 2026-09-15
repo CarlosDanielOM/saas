@@ -198,6 +198,7 @@
 }
 
 .lf-tile {
+  min-width: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -513,11 +514,25 @@
   margin-bottom: 0.65rem;
 }
 
+.lf-cmd__top .lf-code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-cmd__top .lf-chip {
+  flex-shrink: 0;
+}
+
 .lf-cmd__name {
   margin: 0;
   font-size: 1.05rem;
   letter-spacing: -0.02em;
   font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lf-cmd__desc {
@@ -525,6 +540,7 @@
   color: var(--muted);
   line-height: 1.5;
   font-size: 0.9rem;
+  overflow-wrap: break-word;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
