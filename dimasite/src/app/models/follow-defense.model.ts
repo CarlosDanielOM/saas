@@ -8,6 +8,7 @@ export interface FollowDefenseSettings {
   silentModeEnabled: boolean;
   protectionModeEnabled: boolean;
   attackModeEnabled: boolean;
+  resetAttackOnNewRaid: boolean;
   silentThresholdX: number;
   silentWindowYSeconds: number;
   protectionThresholdB: number;
@@ -101,6 +102,7 @@ export interface FollowDefenseHateRaidSourcesResponse extends ApiEnvelope<{
 
 export interface FollowDefenseActivateResponse extends ApiEnvelope<{
   success: boolean;
+  historicalOnly?: boolean;
   mode: FollowDefenseMode;
 }> {}
 
@@ -108,3 +110,29 @@ export interface FollowDefenseResetResponse extends ApiEnvelope<{
   success: boolean;
   mode: FollowDefenseMode;
 }> {}
+
+export interface RaidSession {
+  id: string;
+  raiderLogin: string;
+  raiderName: string;
+  viewers: number;
+  startedAt: string;
+  expiresAt: string;
+  retentionHours: number;
+  totalFollows: number;
+  collecting: boolean;
+  banning: boolean;
+  canIncludeFuture: boolean;
+  outcomes: Partial<Record<RaidBanStatus, number>>;
+}
+export type RaidBanStatus = 'unrequested' | 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'expired';
+export interface RaidFollower {
+  id: string;
+  userID: string;
+  login: string;
+  name: string;
+  followedAt: string;
+  banStatus: RaidBanStatus;
+}
+export interface RaidSessionsPage { sessions: RaidSession[]; total: number; page: number; limit: number; canBan: boolean }
+export interface RaidFollowersPage { followers: RaidFollower[]; total: number; page: number; limit: number }

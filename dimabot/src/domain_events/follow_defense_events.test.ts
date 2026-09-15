@@ -23,7 +23,6 @@ function event(type = 'channel.follow.received'): DomainEventEnvelope {
 function dependencies(effects: unknown[] = []): FollowDefenseEventDependencies {
     return {
         async getStreamer() { return { chat_enabled: 'false' }; },
-        async getEventsubConfig() { return null; },
         async processFollow(payload) { effects.push(payload); },
         async setRaidMarker(payload) { effects.push(payload); }
     };
@@ -63,25 +62,22 @@ test('historical, test, foreign-source, unsupported type/topic/version never loa
     }
 });
 
-test('preserves streamer, enabled config and minimum raid viewer gates, independent of chat', async () => {
+test('requires an enrolled streamer but detection remains independent of chat announcements', async () => {
     for (const type of ['channel.follow.received', 'channel.raid.received']) {
         const effects: unknown[] = [];
         const deps = dependencies(effects);
         deps.getStreamer = async () => null;
         await applyFollowDefenseDomainEvent(event(type), deps);
-        deps.getStreamer = async () => ({ chat_enabled: 'false' });
-        deps.getEventsubConfig = async () => ({ enabled: false });
-        await applyFollowDefenseDomainEvent(event(type), deps);
         assert.deepEqual(effects, []);
-        deps.getEventsubConfig = async () => ({ enabled: true, minViewers: 21 });
+        deps.getStreamer = async () => ({ chat_enabled: 'false' });
         await applyFollowDefenseDomainEvent(event(type), deps);
-        assert.equal(effects.length, type === 'channel.follow.received' ? 1 : 0);
+        assert.equal(effects.length, 1);
     }
 });
 
 test('all required dependency failures propagate to the isolated delivery', async () => {
     for (const type of ['channel.follow.received', 'channel.raid.received']) {
-        for (const key of ['getStreamer', 'getEventsubConfig', type === 'channel.follow.received' ? 'processFollow' : 'setRaidMarker'] as const) {
+        for (const key of ['getStreamer', type === 'channel.follow.received' ? 'processFollow' : 'setRaidMarker'] as const) {
             const deps = dependencies();
             deps[key] = async () => { throw new Error(`failed:${key}`); };
             await assert.rejects(applyFollowDefenseDomainEvent(event(type), deps), new RegExp(`failed:${key}`));

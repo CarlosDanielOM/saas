@@ -121,7 +121,7 @@ Sources: [consumer registry](src/domain_events/domain_event_consumers.ts), [deli
 
 ## Follow defense moderation execution
 
-Detection in `follow-defense-v1` updates Redis windows/modes and records actions through [follow_defense_actions.ts](src/utils/follow_defense_actions.ts). It never waits for Twitch bans, AI generation, or warning delivery. The short-window thresholds also apply to the cumulative count of an active sustained flood: with defaults, silence starts at 10 follows in 5 seconds, protection at 100 follows in the wave, and attack at 500. A continuing rate of at least 10 per 5 seconds refreshes the same wave until 60 seconds after the last high-rate evidence; protection still evaluates attack escalation. Fresh tracked followers are queued when protection begins. Raid gates remain in effect. Atomic refresh preserves the state identity and cannot revive reset or expired modes. Follow-alert suppression remains active for the renewed mode; the separate announcement consumer can still race initial detection. Warning messages use deterministic static text queued outside detection. Cooldown acknowledgements run separately in the maintenance worker, across silent/protection/attack modes.
+Detection in `follow-defense-v1` updates Redis windows/modes and records actions through [follow_defense_actions.ts](src/utils/follow_defense_actions.ts). It never waits for Twitch bans, AI generation, or warning delivery. The short-window thresholds also apply to the cumulative count of an active sustained flood: with defaults, silence starts at 10 follows in 5 seconds, protection at 100 follows in the wave, and attack at 500. A continuing rate of at least 10 per 5 seconds refreshes the same wave until 60 seconds after the last high-rate evidence; protection still evaluates attack escalation. Fresh tracked followers are queued when protection begins. Recognized raid sessions cap automatic escalation at protection; chat announcement settings do not gate defense detection. Atomic refresh preserves the state identity and cannot revive reset or expired modes. Follow-alert suppression remains active for the renewed mode; the separate announcement consumer can still race initial detection. Warning messages use deterministic static text queued outside detection. Cooldown acknowledgements run separately in the maintenance worker, across silent/protection/attack modes.
 
 Mongo `follow_defense_actions` stores one idempotent action per channel/event/kind, including follower ID, reason, authorization time, attempts, outcomes, and a fixed one-hour execution deadline. Ban waves use bounded 200-payload batches and bulk upserts. Admission requires a follow younger than 60 seconds; retry cannot extend an existing action deadline. Records expire after seven days; expired decisions never restart from retained journal history. This does not preserve the Redis tracked-wave index after cache loss.
 
@@ -135,7 +135,7 @@ Follow announcements with an enabled, nonempty message pass their stable event i
 
 The maintenance worker sends one aggregate after cooldown, such as “10 additional follows were received while announcements were paused. Thanks for following!” (English/Spanish, exact readable counts). Renewed modes defer delivery; mode upgrades and automatic tracked-list cleanup preserve the pending count. A per-channel Redis lease excludes concurrent senders; successful delivery subtracts only its snapshot so new arrivals are retained. Failed sends back off 30 seconds and acknowledgements more than five minutes overdue are discarded. Current chat, follow-announcement, and defense settings are checked before sending. Reset cancels the pending acknowledgement. Summary delivery is independent of the moderation queue, so thousands of bans do not delay it. This does not impose ordering between initial detection and chat consumers: the number of initial individual announcements can vary, and the summary reports the actual suppressed count.
 
-`GET /follow-defense/:channelID/status` adds `moderationQueue`, counts of retained ban actions by status (`pending`, `processing`, `succeeded`, `failed`, `cancelled`, `expired`). The existing attack logs are reconciled with final ban outcomes; the frontend has no new queue controls yet.
+`GET /follow-defense/:channelID/status` adds `moderationQueue`, counts of retained ban actions by status (`pending`, `processing`, `succeeded`, `failed`, `cancelled`, `expired`). The existing attack logs are reconciled with final ban outcomes; raid session controls additionally show confirmed outcomes and explicit manual ban requests.
 
 Validation: `ops/checks/follow-defense.mjs` with `ops/checks/follow-defense-fixtures` exercises isolated API/cron candidates using disposable Mongo/Redis and mocked Twitch. It covers real journal delivery during slow moderation, queue persistence/dedupe, full five-minute floods of 1876/2280/11400 follows, continuing suppression and escalation, worker restart, adaptive 5-to-10 pacing/fairness, scoped rate-limit pauses, claim recovery, cancellation, settings, and deadlines. `ops/checks/follow-defense-summary.mjs` additionally verifies real journal/chat delivery, 10 individual announcements plus 10 suppressed events, mode escalation and cooldown, one aggregate, 4900 suppressed events, legacy retry identity, and Reset cancellation. The public event test endpoint still uses legacy ingress and is not a dry-run moderation sandbox.
 
@@ -178,3 +178,41 @@ Do not replace the allowlist with a repository-wide test glob. Mocked queries, r
 6. Inject response loss after offline session mutation, each queue acceptance and each Mongo step receipt, including worker removal of ordinary dedupe keys. Verify recovery without repeated automatic acceptance or authoritative increments. Separately test/document queue-loss recovery limitations; never claim Mongo receipts restore a lost Redis list.
 7. Verify duplicate paid orders yield one receipted balance increment, snapshot ordering/cache recovery, follow numbering's cache-loss limitation, 60-second follow/5-minute raid stale safety, and immediate raid shoutouts. Inspect separate skipped/dead health signals and near-expiry backlog.
 8. Monitor retained backlog and TTL headroom, unbounded session/beneficiary BSON size below 16 MiB, and permanent Redis key memory growth. Do not prune permanent receipts as routine maintenance. This pipeline is not a replacement for provider accounting records.
+
+
+### Retained raid sessions and manual moderation
+
+Each real raid starts a separate Mongo `raid_session`, keyed by its journal identity. Follows belong
+to the latest raid preceding their occurrence time, up to five quiet minutes, a subsequent raid,
+or the session retention deadline. Late raid delivery repairs attribution and backfills journaled
+follows in bounded batches. Idempotent follow receipts prevent replay from inflating totals.
+The channel owner's plan at raid creation gives 24/48/72 hours of dashboard visibility for
+Free/Premium/Pro. Logical expiry is enforced by the API; physical cleanup allows an additional hour
+for moderation accepted just before expiry. These sessions are temporal groupings; Twitch does not
+prove that an individual follower arrived from a particular raider.
+
+The `raid-sessions` cron child admits manual bans in batches of 200. Requests use a client identity
+for retries, include an actor, and expire after one hour. Banning an ended session or a session whose
+mode is already normal targets only followers recorded at confirmation. When the same session is
+still recording with an active defense mode, confirmation activates attack and includes arrivals
+only while that request's attack mode remains active. Previously accepted bans can finish after the
+mode ends. Reset and disabled settings fence pending work before the Twitch call.
+
+`resetAttackOnNewRaid` defaults to true: a new raid closes the previous session and changes attack
+to protection. Its follows cannot enter the previous request. Explicitly disabling the setting
+keeps an active attack mode and creates a separate authorized request for the new session. Raid
+projection receipts prevent duplicate delivery from reopening a mode after cleanup. Automatic
+queued bans recheck raid membership immediately before execution; already-issued requests cannot
+be retracted when a raid is delivered late.
+
+The dashboard lists sessions and paginated follower names, provides individual and whole-session
+confirmation dialogs, and displays queued/confirmed/failed results. Mutation endpoints require
+`moderation:manage` (or owner/global-owner access). Chat summaries remain friendly for silent and
+protection waves; attack summaries distinguish suppressed announcements from confirmed bans and
+pending moderation, rather than claiming every queued ban succeeded.
+
+Verification: `ops/checks/raid-sessions.mjs` with `ops/checks/raid-fixtures` covers isolated API, bot,
+and cron runtimes, A=3000/B=2000 follows, active versus historical authorization, both new-raid
+settings, late attribution repair, journal backfill, retention, and real worker execution against
+mock Twitch. `ops/checks/raid-site.mjs` uses Playwright and axe-core with intercepted API data to
+verify confirmation scopes, retries, pagination, settings, and mobile/desktop layouts.

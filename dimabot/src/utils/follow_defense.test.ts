@@ -6,6 +6,7 @@ import type { IFollowHateRaidSource } from '../schemas/follow_hate_raid_source.s
 import type { FollowDefenseFollowPayload, FollowDefenseState } from './follow_defense_queue.js';
 import { runFollowDefenseStateLua } from './follow_defense_state.test-helper.js';
 
+mock.module('./raid_sessions.js', { namedExports: { recordRaidFollow: async () => null, findRaidSession: async () => null } });
 const NOW = Date.parse('2026-09-05T12:00:00Z');
 let now = NOW;
 let values: Map<string, string>;

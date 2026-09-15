@@ -6,6 +6,10 @@ const actionSchema = new Schema({
     eventID: { type: String, required: true },
     kind: { type: String, enum: ['ban', 'announcement'], required: true },
     followerID: { type: String, default: '' },
+    authorization: { type: String, enum: ['automatic', 'manual'], default: 'automatic' },
+    raidSessionID: { type: String, default: '' },
+    raidFollowerID: { type: String, default: '' },
+    raidRequestID: { type: String, default: '' },
     reason: { type: String, default: '' },
     message: { type: String, default: '' },
     mode: { type: String, enum: ['protection', 'attack'], required: true },
@@ -27,6 +31,7 @@ const actionSchema = new Schema({
 actionSchema.index({ channelID: 1, status: 1, nextAttemptAt: 1, createdAt: 1 });
 actionSchema.index({ status: 1, expiresAt: 1 });
 actionSchema.index({ auditPending: 1 });
+actionSchema.index({ raidSessionID: 1, followerID: 1, status: 1 });
 actionSchema.index({ purgeAt: 1 }, { expireAfterSeconds: 0 });
 export type FollowDefenseAction = InferSchemaType<typeof actionSchema>;
 export const FollowDefenseActionSchema = model('follow_defense_action', actionSchema);

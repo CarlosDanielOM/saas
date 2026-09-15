@@ -92,3 +92,13 @@ python3 ops/tests/docker_smoke.py
 ```
 
 The unit suite simulates deployment and failures without touching production. The opt-in Docker test builds a small fixture on the locally available dimadb image, checks passing/failing runtime verification and cleanup, and confirms existing container identities are unchanged. It never deploys a production service.
+
+### Isolating unrelated working changes
+
+`build TARGET --source-dir /path/to/worktree` and `preview TARGET --source-dir /path/to/worktree`
+accept an isolated worktree of this same Git repository. Prepare only the intended feature there;
+the snapshot includes its current tracked and untracked project files. Invoke the helper from the
+production checkout. Production Compose ownership, configuration, release baselines, run receipts,
+and publication destinations still belong to that checkout. A different repository or a project
+subdirectory is rejected. This lets a verified feature ship without including another contributor's
+unfinished changes or altering their files.

@@ -31,6 +31,7 @@ interface FollowDefenseSettingsResponse {
     silentModeEnabled: boolean;
     protectionModeEnabled: boolean;
     attackModeEnabled: boolean;
+    resetAttackOnNewRaid: boolean;
     silentThresholdX: number;
     silentWindowYSeconds: number;
     protectionThresholdB: number;
@@ -48,6 +49,7 @@ const DEFAULT_SETTINGS = {
     silentModeEnabled: true,
     protectionModeEnabled: true,
     attackModeEnabled: true,
+    resetAttackOnNewRaid: true,
     silentThresholdX: 10,
     silentWindowYSeconds: 5,
     protectionThresholdB: 100,
@@ -62,7 +64,7 @@ const BOOLEAN_FIELDS = new Set([
     'enabled',
     'silentModeEnabled',
     'protectionModeEnabled',
-    'attackModeEnabled'
+    'attackModeEnabled', 'resetAttackOnNewRaid'
 ]);
 
 const NUMBER_FIELDS = new Set([
@@ -138,6 +140,7 @@ function toSettingsResponse(settings: IFollowDefenseSettings | FollowDefenseSett
         silentModeEnabled: settings.silentModeEnabled ?? DEFAULT_SETTINGS.silentModeEnabled,
         protectionModeEnabled: settings.protectionModeEnabled ?? DEFAULT_SETTINGS.protectionModeEnabled,
         attackModeEnabled: settings.attackModeEnabled ?? DEFAULT_SETTINGS.attackModeEnabled,
+        resetAttackOnNewRaid: settings.resetAttackOnNewRaid ?? true,
         silentThresholdX: settings.silentThresholdX || DEFAULT_SETTINGS.silentThresholdX,
         silentWindowYSeconds: settings.silentWindowYSeconds || DEFAULT_SETTINGS.silentWindowYSeconds,
         protectionThresholdB: settings.protectionThresholdB || DEFAULT_SETTINGS.protectionThresholdB,
@@ -278,6 +281,9 @@ router.patch('/:channelID/settings', authMiddleware as any, async (req: FollowDe
 
         await getOrCreateSettings(channelID, access.channelName);
         const patch = buildSettingsPatch(req.body as Record<string, unknown>);
+        if (patch.resetAttackOnNewRaid !== undefined && !(await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed) {
+            return res.status(403).json({ error: true, message: 'Moderation permission required' });
+        }
 
         if (Object.keys(patch).length === 0) {
             return res.status(400).json({
@@ -357,6 +363,7 @@ router.post('/:channelID/attack', authMiddleware as any, async (req: FollowDefen
         const channelID = getParam(req.params.channelID);
         const access = await validateAccess(req, res, channelID);
         if (!access) return;
+        if (!(await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed) return res.status(403).json({ error: true, message: 'Moderation permission required' });
 
         const settings = await getOrCreateSettings(channelID, access.channelName);
         if (!settings.enabled || !settings.attackModeEnabled) {
@@ -369,13 +376,15 @@ router.post('/:channelID/attack', authMiddleware as any, async (req: FollowDefen
 
         await triggerFollowDefenseAttackMode(channelID, access.channelName.toLowerCase(), access.channelName);
 
+        const current = await getFollowDefenseStatus(channelID);
+        const mode = current && current.expiresAt > Date.now() ? current.mode : 'normal';
         return res.status(202).json({
             error: false,
-            message: 'Attack mode activation queued',
+            message: mode === 'attack' ? 'Attack mode activation queued' : 'Recorded raid followers queued for moderation',
             status: 202,
             data: {
                 success: true,
-                mode: 'attack'
+                mode, historicalOnly: mode !== 'attack'
             }
         });
     } catch (error) {
@@ -524,6 +533,75 @@ router.get('/:channelID/hate-raids', authMiddleware as any, async (req: FollowDe
         });
 
         return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+
+router.get('/:channelID/raid-sessions', authMiddleware as any, async (req: FollowDefenseRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID);
+        if (!await validateAccess(req, res, channelID)) return;
+        const { RaidSessionSchema: Sessions, RaidFollowerSchema: Followers, RaidModerationRequestSchema: Requests } = await import('../../schemas/raid_session.schema.js');
+        const { FollowDefenseActionSchema: Actions } = await import('../../schemas/follow_defense_action.schema.js');
+        const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
+        const filter = { channelID, expiresAt: { $gt: new Date() } };
+        const [sessions, total, permission] = await Promise.all([
+            Sessions.find(filter).sort({ startedAt: -1, _id: -1 }).skip((page - 1) * 20).limit(20).lean(),
+            Sessions.countDocuments(filter), getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')
+        ]);
+        const ids = sessions.map(s => s._id);
+        const [counts, outcomes, requests, state] = await Promise.all([
+            Followers.aggregate<{ _id: string; count: number }>([{ $match: { channelID, sessionID: { $in: ids } } }, { $group: { _id: '$sessionID', count: { $sum: 1 } } }]),
+            Actions.aggregate([{ $match: { channelID, raidSessionID: { $in: ids }, kind: 'ban' } }, { $sort: { createdAt: -1 } },
+                { $group: { _id: { session: '$raidSessionID', user: '$followerID' }, status: { $first: '$status' } } },
+                { $group: { _id: { session: '$_id.session', status: '$status' }, count: { $sum: 1 } } }]),
+            Requests.find({ channelID, sessionID: { $in: ids }, status: { $in: ['pending', 'active'] }, expiresAt: { $gt: new Date() } }).select('sessionID').lean(), getFollowDefenseStatus(channelID)
+        ]);
+        return res.json({ error: false, data: { sessions: sessions.map(s => ({ ...s, id: s._id,
+            totalFollows: counts.find(c => c._id === s._id)?.count || 0,
+            collecting: !s.endedAt && s.captureUntil.getTime() > Date.now(),
+            banning: requests.some(r => r.sessionID === s._id),
+            canIncludeFuture: !s.endedAt && s.captureUntil.getTime() > Date.now() && state?.mode !== 'normal' && (state?.expiresAt || 0) > Date.now() && state?.raidSessionID === s._id,
+            outcomes: Object.fromEntries(outcomes.filter(o => o._id.session === s._id).map(o => [o._id.status, o.count]))
+        })), total, page, limit: 20, canBan: permission.allowed } });
+    } catch (error) { return res.status(500).json({ error: true, message: 'Unable to load raid sessions' }); }
+});
+
+router.get('/:channelID/raid-sessions/:sessionID/followers', authMiddleware as any, async (req: FollowDefenseRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID), sessionID = getParam(req.params.sessionID);
+        if (!await validateAccess(req, res, channelID)) return;
+        const { RaidSessionSchema: Sessions, RaidFollowerSchema: Followers } = await import('../../schemas/raid_session.schema.js');
+        const { FollowDefenseActionSchema: Actions } = await import('../../schemas/follow_defense_action.schema.js');
+        if (!await Sessions.exists({ _id: sessionID, channelID, expiresAt: { $gt: new Date() } })) return res.status(404).json({ error: true, message: 'Raid session expired or not found' });
+        const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
+        const filter = { channelID, sessionID };
+        const [followers, total] = await Promise.all([
+            Followers.find(filter).sort({ followedAt: 1, _id: 1 }).skip((page - 1) * 50).limit(50).lean(), Followers.countDocuments(filter)
+        ]);
+        const outcomes = await Actions.find({ channelID, raidSessionID: sessionID, followerID: { $in: followers.map(f => f.userID) }, kind: 'ban' })
+            .sort({ createdAt: -1 }).select('followerID status lastMessage').lean();
+        return res.json({ error: false, data: { followers: followers.map(f => ({ id: f._id, userID: f.userID, login: f.login, name: f.name, followedAt: f.followedAt,
+            banStatus: outcomes.find(o => o.followerID === f.userID)?.status || 'unrequested' })), total, page, limit: 50 } });
+    } catch { return res.status(500).json({ error: true, message: 'Unable to load raid followers' }); }
+});
+
+router.post('/:channelID/raid-sessions/:sessionID/bans', authMiddleware as any, async (req: FollowDefenseRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID), sessionID = getParam(req.params.sessionID);
+        if (!await validateAccess(req, res, channelID)) return;
+        if (!(await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed) return res.status(403).json({ error: true, message: 'Moderation permission required' });
+        const { confirmed, requestID, userID = '', includeFuture = false } = req.body || {};
+        if (confirmed !== true || typeof requestID !== 'string' || !/^[a-f0-9-]{36}$/i.test(requestID)
+            || typeof userID !== 'string' || (userID && !/^\d{1,25}$/.test(userID)) || typeof includeFuture !== 'boolean') {
+            return res.status(400).json({ error: true, message: 'Confirmation and valid request identity are required' });
+        }
+        const { requestRaidBans } = await import('../../utils/raid_sessions.js');
+        const request = await requestRaidBans(channelID, sessionID, req.user!.id, requestID, userID, includeFuture);
+        return res.status(202).json({ error: false, message: 'Raid moderation queued', data: { requestID: request._id, status: request.status } });
+    } catch (error) {
+        const status = Number((error as { status?: number }).status) || 500;
+        return res.status(status).json({ error: true, message: status < 500 ? (error as Error).message : 'Unable to queue raid moderation' });
     }
 });
 

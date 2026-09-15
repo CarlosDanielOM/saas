@@ -7,6 +7,7 @@ import {
   inject,
   signal
 } from '@angular/core';
+import { RaidSessionsComponent } from './raid-sessions.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -48,7 +49,7 @@ interface PaginationState {
 
 @Component({
   selector: 'app-follow-defense-page',
-  imports: [RouterLink],
+  imports: [RouterLink, RaidSessionsComponent],
   templateUrl: './follow-defense-page.component.html',
   styleUrl: './follow-defense-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -132,6 +133,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     const s = this.status();
     const settings = this.settings();
     if (!settings?.enabled) return 'disabled';
+    if (s?.mode === 'attack' && s.expiresAt > Date.now()) return 'attack';
     if (s?.raid?.expiresAt && s.raid.expiresAt > Date.now()) return 'raid';
     return s?.mode ?? 'normal';
   });
@@ -313,7 +315,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       'enabled',
       'silentModeEnabled',
       'protectionModeEnabled',
-      'attackModeEnabled',
+      'attackModeEnabled', 'resetAttackOnNewRaid',
       'silentThresholdX',
       'silentWindowYSeconds',
       'protectionThresholdB',
@@ -364,6 +366,10 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   updateProtectionModeEnabled(enabled: boolean): void {
     this.settings.update((s) => (s ? { ...s, protectionModeEnabled: enabled } : s));
+  }
+
+  updateResetAttackOnNewRaid(enabled: boolean): void {
+    this.settings.update(s => s ? { ...s, resetAttackOnNewRaid: enabled } : s);
   }
 
   updateAttackModeEnabled(enabled: boolean): void {
@@ -435,8 +441,8 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
         throw new Error(response.message || this.t('followDefense.errors.activateFailed'));
       }
       this.toastService.success(
-        this.t('followDefense.toasts.attackActivatedTitle'),
-        this.t('followDefense.toasts.attackActivatedMessage')
+        this.t(response.data?.historicalOnly ? 'raidSessions.queuedTitle' : 'followDefense.toasts.attackActivatedTitle'),
+        this.t(response.data?.historicalOnly ? 'raidSessions.recordedScope' : 'followDefense.toasts.attackActivatedMessage')
       );
       this.closeAttackDialog();
       await this.loadStatus(channelID);

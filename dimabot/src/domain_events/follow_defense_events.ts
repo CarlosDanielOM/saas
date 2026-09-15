@@ -3,24 +3,23 @@ import type { FollowDefenseFollowPayload, FollowDefenseRaidMarker } from '../uti
 
 export interface FollowDefenseEventDependencies {
     getStreamer(channelID: string): Promise<unknown>;
-    getEventsubConfig(channelID: string, type: string): Promise<{ enabled: boolean; minViewers?: number } | null>;
     processFollow(follow: FollowDefenseFollowPayload): Promise<void>;
     setRaidMarker(marker: FollowDefenseRaidMarker): Promise<void>;
 }
 
 async function getDependencies(): Promise<FollowDefenseEventDependencies> {
-    const [{ default: UsersSchema }, { default: EventsubSchema }, defense, queue] = await Promise.all([
+    const [{ default: UsersSchema }, defense] = await Promise.all([
         import('../schemas/users.schema.js'),
-        import('../schemas/eventsub.schema.js'),
-        import('../utils/follow_defense.js'),
-        import('../utils/follow_defense_queue.js')
+        import('../utils/follow_defense.js')
     ]);
     return {
         // The legacy streamer cache helper turns dependency errors into null.
         getStreamer: async (channelID) => UsersSchema.exists({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }),
-        getEventsubConfig: (channelID, type) => EventsubSchema.findOne({ channelID, type }).lean(),
         processFollow: defense.processDurableFollowDefenseFollow,
-        setRaidMarker: queue.applyDurableFollowDefenseRaidMarker
+        setRaidMarker: async marker => {
+            const { applyRaidSessionMarker } = await import('../utils/raid_sessions.js');
+            await applyRaidSessionMarker(marker);
+        }
     };
 }
 
@@ -41,8 +40,6 @@ export async function applyFollowDefenseDomainEvent(
     if (!subjectID) throw new Error('Follow defense requires a follower or raider identity');
     const dependencies = injectedDependencies || await getDependencies();
     if (!await dependencies.getStreamer(event.channelID)) return;
-    const config = await dependencies.getEventsubConfig(event.channelID, isFollow ? 'channel.follow' : 'channel.raid');
-    if (config?.enabled === false) return;
 
     if (isFollow) {
         await dependencies.processFollow({
@@ -58,7 +55,6 @@ export async function applyFollowDefenseDomainEvent(
         });
     } else {
         const viewers = Number(raw?.viewers || 0);
-        if ((config?.minViewers || 0) > viewers) return;
         await dependencies.setRaidMarker({
             eventID: event.eventKey,
             channelID: event.channelID,

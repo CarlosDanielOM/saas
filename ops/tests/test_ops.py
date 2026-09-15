@@ -290,6 +290,28 @@ class OpsTests(unittest.TestCase):
             self.ops.publish(source, live)
         self.assertFalse((unrelated / "index.html").exists())
 
+    def test_worktree_snapshot_uses_isolated_source_and_preserves_owner(self):
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        project = self.root / "dimadb"
+        project.mkdir()
+        (project / "source.js").write_text("committed")
+        subprocess.run(["git", "-C", str(self.root), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture"], check=True)
+        worktree = Path(self.temp.name) / "isolated"
+        subprocess.run(["git", "-C", str(self.root), "worktree", "add", "--detach", "-q", str(worktree)], check=True)
+        (project / "source.js").write_text("unrelated unfinished change")
+        (worktree / "dimadb/source.js").write_text("verified feature")
+        self.ops.snapshot(mod.TARGETS["dimadb"], self.path / "source", worktree)
+        self.assertEqual((self.path / "source/source.js").read_text(), "verified feature")
+        self.assertEqual((project / "source.js").read_text(), "unrelated unfinished change")
+        self.assertEqual(self.ops.root, self.root)
+        with self.assertRaises(mod.OpsError):
+            self.ops.source_root(worktree / "dimadb")
+        unrelated = Path(self.temp.name) / "other"
+        subprocess.run(["git", "init", "-q", str(unrelated)], check=True)
+        with self.assertRaises(mod.OpsError):
+            self.ops.source_root(unrelated)
+
     def test_source_snapshot_excludes_secrets_outputs_and_preserves_edits(self):
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
         project = self.root / "dimadb"

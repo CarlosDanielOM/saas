@@ -23,7 +23,9 @@ const botModeHandler: FunctionHandler = async (args, ctx) => {
             String(ctx.streamer?.name || ''),
             String(ctx.streamer?.name || '')
         );
-        return 'Attack mode queued.';
+        const current = await getFollowDefenseStatus(ctx.broadcasterId);
+        return current?.mode === 'attack' && current.expiresAt > Date.now()
+            ? 'Attack mode queued.' : 'Recorded raid followers queued for moderation.';
     }
 
     if (action === 'status') {

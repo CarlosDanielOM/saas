@@ -20,6 +20,8 @@ import {
     type FollowDefenseTriggerSource
 } from './follow_defense_queue.js';
 import { error as logError, info as logInfo, warn as logWarn } from './logger.js';
+import { recordRaidFollow, findRaidSession } from './raid_sessions.js';
+import type { RaidSession } from '../schemas/raid_session.schema.js';
 
 const QUEUE_BATCH_SIZE = Math.max(25, Number(process.env.FOLLOW_DEFENSE_QUEUE_BATCH_SIZE || 250));
 const FOLLOW_DATA_TTL_SECONDS = Math.max(3600, Number(process.env.FOLLOW_DEFENSE_FOLLOW_DATA_TTL_SECONDS || 24 * 60 * 60));
@@ -187,7 +189,8 @@ async function transitionMode(
     settings: FollowDefenseRuntimeSettings,
     mode: Exclude<FollowDefenseMode, 'normal'>,
     triggeredBy: FollowDefenseTriggerSource,
-    reason: string
+    reason: string,
+    session?: RaidSession | null
 ): Promise<FollowDefenseState | null> {
     const now = Date.now();
     if (follow.moderationExpiresAt !== undefined && follow.moderationExpiresAt <= now) return null;
@@ -197,6 +200,7 @@ async function transitionMode(
     if (expiresAt <= now) return null;
     const state: FollowDefenseState = {
         mode,
+        ...(session ? { raidSessionID: session._id, raidStartedAt: session.startedAt.getTime() } : {}),
         channelID: follow.channelID,
         channelLogin: follow.channelLogin,
         channelName: follow.channelName,
@@ -365,7 +369,7 @@ async function persistAttackLog(state: FollowDefenseState): Promise<void> {
     }
 }
 
-async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<void> {
+async function handleFollowEvent(follow: FollowDefenseFollowPayload, recordedSession?: RaidSession | null): Promise<void> {
     const settings = await getSettings(follow.channelID, follow.channelName || follow.channelLogin);
     if (!settings.enabled) return;
 
@@ -383,9 +387,14 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
     await cache.zAdd(keys.recent, { score, value: follow.eventID });
     await zRemRangeByScore(keys.recent, '-inf', now - (RECENT_RETENTION_SECONDS * 1000));
 
-    const raidMarker = await getRaidMarker(follow.channelID);
+    const session = recordedSession === undefined ? await recordRaidFollow(follow) : recordedSession;
+    const raidMarker = session || await getRaidMarker(follow.channelID);
     const state = await getState(follow.channelID);
     const activeState = state && state.expiresAt > Date.now() ? state : null;
+    const raidProtected = Boolean(raidMarker || activeState?.raidSessionID);
+    // Every raid is protected independently, including while a previous raid or
+    // non-raid wave was attacking. Manual session requests own any actual bans.
+    if (session && (await findRaidSession(follow.channelID, now))?._id !== session._id) return;
     // A delayed follow from before this wave must not inherit its moderation mode.
     if (durable && activeState && score < activeState.burstStartedAt - windowMs) return;
 
@@ -404,7 +413,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
             moderationExpiresAt: follow.moderationExpiresAt });
     }
 
-    if (activeState?.mode === 'attack') {
+    if (activeState?.mode === 'attack' && !session && !activeState.raidSessionID) {
         if (activeState.triggerEventID === follow.eventID) await sendDefenseMessage(follow.channelID, settings, 'attack', activeState);
         if (durable && activeState.triggerEventID === follow.eventID) {
             await banTrackedFollows(follow.channelID, true);
@@ -414,12 +423,12 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
         return;
     }
 
-    const shouldAttack = freshForDetection && settings.attackModeEnabled && Math.max(recentCount, waveCount) >= settings.attackThreshold;
+    const shouldAttack = !raidProtected && freshForDetection && settings.attackModeEnabled && Math.max(recentCount, waveCount) >= settings.attackThreshold;
     const shouldProtect = freshForDetection && settings.protectionModeEnabled && Math.max(recentCount, waveCount) >= settings.protectionThresholdB;
     const shouldSilent = freshForDetection && settings.silentModeEnabled && recentCount >= settings.silentThresholdX;
 
     // A protection wave must still evaluate the higher attack threshold.
-    if (activeState?.mode === 'protection' && !raidMarker && !shouldAttack) {
+    if (activeState?.mode === 'protection' && !raidProtected && !shouldAttack) {
         if (activeState.triggerEventID === follow.eventID) {
             await sendDefenseMessage(follow.channelID, settings, 'protection', activeState);
             await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
@@ -431,7 +440,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
 
     if (!freshForDetection) return;
 
-    if (shouldAttack && !raidMarker) {
+    if (shouldAttack && !raidProtected) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
         const attackState = await transitionMode(follow, settings, 'attack', 'threshold', recentCount >= settings.attackThreshold ? 'attack_threshold' : 'sustained_attack_threshold');
         if (!attackState) return;
@@ -442,9 +451,9 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
 
     if (shouldProtect) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        const protectionState = await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : recentCount >= settings.protectionThresholdB ? 'protection_threshold' : 'sustained_protection_threshold');
+        const protectionState = await transitionMode(follow, settings, 'protection', 'threshold', raidMarker ? 'raid_protection_tracking' : recentCount >= settings.protectionThresholdB ? 'protection_threshold' : 'sustained_protection_threshold', session);
         if (!protectionState) return;
-        if (!raidMarker) {
+        if (!raidProtected) {
             await sendDefenseMessage(follow.channelID, settings, 'protection', protectionState);
             await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
         }
@@ -453,7 +462,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload): Promise<vo
 
     if (shouldSilent) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        await transitionMode(follow, settings, 'silent', 'threshold', 'silent_threshold');
+        await transitionMode(follow, settings, 'silent', 'threshold', 'silent_threshold', session);
     }
 }
 
@@ -461,11 +470,13 @@ export async function processDurableFollowDefenseFollow(follow: FollowDefenseFol
     const occurredAt = new Date(follow.followedAt).getTime();
     if (!follow.eventID || !Number.isFinite(occurredAt)) throw new Error('Invalid durable follow identity or occurrence time');
     const moderationExpiresAt = occurredAt + FOLLOW_DEFENSE_MAX_EVENT_AGE_MS;
-    if (occurredAt > Date.now() || moderationExpiresAt <= Date.now()) return;
+    if (occurredAt > Date.now()) return;
+    const session = await recordRaidFollow(follow);
+    if (moderationExpiresAt <= Date.now()) return;
     const cache = await getDragonflyClient('processDurableFollowDefenseFollow');
     const receiptKey = `${followDefenseKeys(follow.channelID).completedPrefix}${follow.eventID}`;
     if (await cache.get(receiptKey)) return;
-    await handleFollowEvent({ ...follow, moderationExpiresAt });
+    await handleFollowEvent({ ...follow, moderationExpiresAt }, session);
     // The receipt outlives the moderation horizon; cache loss cannot make old events actionable.
     await cache.set(receiptKey, '1', { EX: FOLLOW_DATA_TTL_SECONDS });
 }

@@ -3,6 +3,7 @@ import test, { beforeEach, mock } from 'node:test';
 import type { FollowDefenseRaidMarker, FollowDefenseState } from './follow_defense_queue.js';
 import { runFollowDefenseStateLua } from './follow_defense_state.test-helper.js';
 
+mock.module('./raid_sessions.js', { namedExports: { recordRaidFollow: async () => null, findRaidSession: async () => null } });
 const NOW = Date.parse('2026-09-05T12:00:00Z');
 let stored: FollowDefenseRaidMarker | undefined;
 let calls: Array<{ script: string; keys: string[]; arguments: string[] }>;
@@ -20,7 +21,7 @@ mock.module('./databases/dragonfly.database.js', { namedExports: {
             async eval(script: string, options: { keys: string[]; arguments: string[] }) {
                 if (failEval) throw new Error('marker write failed');
                 calls.push({ script, ...options });
-                if (options.keys.length === 3) return runFollowDefenseStateLua(script, options, values, sorted, now);
+                if (options.keys.length === 5) return runFollowDefenseStateLua(script, options, values, sorted, now);
                 const incoming = JSON.parse(options.arguments[0]) as FollowDefenseRaidMarker;
                 if (stored && (stored.createdAt > incoming.createdAt
                     || (stored.createdAt === incoming.createdAt && (stored.eventID || '') >= incoming.eventID!))) return 0;
@@ -242,4 +243,29 @@ test('wrong key types fail before any projection mutation and required errors pr
     await assert.rejects(triggerFollowDefenseAttackMode('channel'), /marker write failed/);
     failEval = false; fail = true;
     await assert.rejects(projectFollowDefenseState('channel'), /cache unavailable/);
+});
+
+test('a new raid isolates the wave and cannot be replayed after mode cleanup', async () => {
+    const base = { mode: 'attack' as const, channelID: 'channel', channelLogin: '', channelName: '', modeStartedAt: NOW - 1000,
+        burstStartedAt: NOW - 1000, expiresAt: NOW + 60000, triggeredBy: 'manual' as const, lastTransitionReason: '', lastUpdatedAt: NOW,
+        raidSessionID: 'A', raidStartedAt: NOW - 1000, raidRequestID: 'request-A' };
+    await projectFollowDefenseState('channel', { type: 'manual', state: base });
+    const incoming = { ...base, mode: 'protection' as const, raidSessionID: 'B', raidStartedAt: NOW, raidRequestID: undefined };
+    const result = await projectFollowDefenseState('channel', { type: 'raid', state: incoming });
+    assert.equal(result.state?.mode, 'protection');
+    assert.equal(result.state?.raidSessionID, 'B');
+    assert.equal(result.state?.raidRequestID, undefined);
+    values.delete(keys.state);
+    assert.equal((await projectFollowDefenseState('channel', { type: 'raid', state: incoming })).changed, false);
+    assert.equal(values.get(keys.state), undefined);
+});
+
+test('session attack requires the observed active session and cannot resurrect normal mode', async () => {
+    const state = { mode: 'attack' as const, channelID: 'channel', channelLogin: '', channelName: '', modeStartedAt: NOW,
+        burstStartedAt: NOW, expiresAt: NOW + 60000, triggeredBy: 'manual' as const, lastTransitionReason: '', lastUpdatedAt: NOW,
+        raidSessionID: 'A', raidStartedAt: NOW, raidRequestID: 'request-A' };
+    assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state })).changed, false);
+    await projectFollowDefenseState('channel', { type: 'raid', state: { ...state, mode: 'protection', raidSessionID: 'B' } });
+    assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state })).changed, false);
+    assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state: { ...state, raidSessionID: 'B' } })).state?.mode, 'attack');
 });

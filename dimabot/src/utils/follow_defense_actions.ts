@@ -4,6 +4,8 @@ import { FollowDefenseSettingsSchema } from '../schemas/follow_defense_settings.
 import { FollowAttackLogSchema } from '../schemas/follow_attack_log.schema.js';
 import type { FollowDefenseFollowPayload } from './follow_defense_queue.js';
 import type { BanResponse } from '../functions/moderation/ban.moderation.js';
+import { RaidFollowerSchema, RaidModerationRequestSchema } from '../schemas/raid_session.schema.js';
+import { findRaidSession } from './raid_sessions.js';
 
 export const DEFENSE_ACTION_HORIZON_MS = 60 * 60_000;
 export const DEFENSE_ACTION_LEASE_MS = 60_000;
@@ -28,14 +30,14 @@ async function retainControl(channelID: string, expiresAt: Date): Promise<void> 
     }
 }
 
-async function enqueue(data: Pick<FollowDefenseAction, '_id' | 'channelID' | 'eventID' | 'kind' | 'mode' | 'authorizedAt'> & Partial<FollowDefenseAction>): Promise<void> {
+async function enqueue(data: Pick<FollowDefenseAction, '_id' | 'channelID' | 'eventID' | 'kind' | 'mode' | 'authorizedAt'> & Partial<FollowDefenseAction>, delayMs = 0): Promise<void> {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + DEFENSE_ACTION_HORIZON_MS);
+    const expiresAt = data.expiresAt || new Date(now.getTime() + DEFENSE_ACTION_HORIZON_MS);
     // Index first: interruption cannot leave an accepted action undiscoverable by the worker.
     await retainControl(data.channelID, expiresAt);
     try {
         await Actions.updateOne({ _id: data._id }, { $setOnInsert: {
-            ...data, nextAttemptAt: now, expiresAt, purgeAt: new Date(now.getTime() + 7 * 86400_000)
+            ...data, nextAttemptAt: new Date(now.getTime() + delayMs), expiresAt, purgeAt: new Date(now.getTime() + 7 * 86400_000)
         } }, { upsert: true });
     } catch (error) {
         if ((error as { code?: number }).code !== 11000) throw error;
@@ -51,8 +53,8 @@ export async function enqueueFollowDefenseBan(follow: FollowDefenseFollowPayload
     await enqueue({
         _id: defenseActionID(follow.channelID, follow.eventID), channelID: follow.channelID,
         eventID: follow.eventID, kind: 'ban', followerID: follow.followerID, reason,
-        mode: reason.includes('attack') ? 'attack' : 'protection', followedAt: new Date(occurredAt), authorizedAt: new Date(authorizedAt)
-    });
+        mode: reason.includes('attack') ? 'attack' : 'protection', authorization: 'automatic', followedAt: new Date(occurredAt), authorizedAt: new Date(authorizedAt)
+    }, follow.moderationExpiresAt ? 2000 : 0);
 }
 
 export async function enqueueFollowDefenseBans(follows: FollowDefenseFollowPayload[], reason: string, authorizedAt?: number): Promise<void> {
@@ -71,8 +73,8 @@ export async function enqueueFollowDefenseBans(follows: FollowDefenseFollowPaylo
         filter: { _id: defenseActionID(channelID, follow.eventID) }, upsert: true,
         update: { $setOnInsert: {
             channelID, eventID: follow.eventID, followerID: follow.followerID, kind: 'ban', mode: reason.includes('attack') ? 'attack' : 'protection', reason,
-            followedAt: new Date(follow.followedAt), authorizedAt: new Date(authorizedAt ?? new Date(follow.followedAt).getTime()),
-            status: 'pending', nextAttemptAt: new Date(now), lockedUntil: EPOCH, leaseToken: '', attempts: 0, failures: 0,
+            followedAt: new Date(follow.followedAt), authorizedAt: new Date(authorizedAt ?? new Date(follow.followedAt).getTime()), authorization: authorizedAt ? 'manual' : 'automatic',
+            status: 'pending', nextAttemptAt: new Date(now + (!authorizedAt && follow.moderationExpiresAt ? 2000 : 0)), lockedUntil: EPOCH, leaseToken: '', attempts: 0, failures: 0,
             expiresAt, purgeAt: new Date(now + 7 * 86400_000)
         } }
     } })), { ordered: false });
@@ -81,6 +83,13 @@ export async function enqueueFollowDefenseBans(follows: FollowDefenseFollowPaylo
 export async function enqueueFollowDefenseAnnouncement(channelID: string, eventID: string, mode: 'attack' | 'protection', message: string, authorizedAt: number): Promise<void> {
     await enqueue({ _id: defenseActionID(channelID, eventID, 'announcement'), channelID, eventID,
         kind: 'announcement', mode, message, authorizedAt: new Date(authorizedAt) });
+}
+
+export async function enqueueRaidSessionBan(follower: { _id: string; channelID: string; sessionID: string; eventID: string; userID: string; followedAt: Date }, request: { _id: string; requestedAt: Date; expiresAt: Date }) {
+    await enqueue({ _id: defenseActionID(follower.channelID, `${request._id}:${follower.userID}`), channelID: follower.channelID,
+        eventID: follower.eventID, kind: 'ban', mode: 'attack', authorization: 'manual', followerID: follower.userID,
+        raidSessionID: follower.sessionID, raidFollowerID: follower._id, raidRequestID: request._id,
+        reason: 'DimaBot confirmed raid session moderation', followedAt: follower.followedAt, authorizedAt: request.requestedAt, expiresAt: request.expiresAt });
 }
 
 export async function followDefenseCancelledThrough(channelID: string): Promise<number> {
@@ -205,8 +214,16 @@ export async function processFollowDefenseAction(execute = executeAction): Promi
             if (!action) continue;
             const actionFence = () => ({ _id: action._id, leaseToken, status: 'processing', lockedUntil: { $gt: new Date() } });
             const settings = await FollowDefenseSettingsSchema.findOne({ channelID: action.channelID }).lean();
-            const cancelled = action.authorizedAt.getTime() <= await followDefenseCancelledThrough(action.channelID)
+            let cancelled = action.authorizedAt.getTime() <= await followDefenseCancelledThrough(action.channelID)
                 || settings?.enabled === false || (action.mode === 'attack' ? settings?.attackModeEnabled === false : settings?.protectionModeEnabled === false);
+            if (!cancelled && action.kind === 'ban') {
+                if (action.raidSessionID) {
+                    cancelled = !await RaidFollowerSchema.exists({ channelID: action.channelID, sessionID: action.raidSessionID, userID: action.followerID })
+                        || !await RaidModerationRequestSchema.exists({ _id: action.raidRequestID, status: { $ne: 'cancelled' }, requestedAt: action.authorizedAt });
+                } else if (action.authorization !== 'manual' && action.followedAt) {
+                    cancelled = Boolean(await findRaidSession(action.channelID, action.followedAt.getTime()));
+                }
+            }
             if (cancelled || action.expiresAt.getTime() <= Date.now()) {
                 await Actions.updateOne(actionFence(), { $set: { status: cancelled ? 'cancelled' : 'expired', completedAt: new Date(), lastMessage: 'Cancelled or expired before execution' } });
                 return true;

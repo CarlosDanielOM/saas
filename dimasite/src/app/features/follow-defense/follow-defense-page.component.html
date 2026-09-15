@@ -57,6 +57,10 @@
       </article>
     </section>
 
+    @if (channelID(); as channel) {
+      <app-raid-sessions [channelID]="channel" (moderated)="refreshStatus()" />
+    }
+
     @if (errorMessage()) {
       <div class="lf-banner lf-banner--error" role="alert">
         <div>
@@ -178,6 +182,11 @@
               </label>
             </div>
             <p class="lf-copy lf-copy--tight">{{ t('followDefense.attackModeDescription') }}</p>
+            <label class="lf-field lf-raid-setting">
+              <span>{{ t('raidSessions.resetOnRaid') }}</span>
+              <input type="checkbox" [checked]="cfg.resetAttackOnNewRaid !== false" (change)="updateResetAttackOnNewRaid($any($event.target).checked)" [disabled]="!cfg.enabled" />
+            </label>
+            <p class="lf-copy">{{ t('raidSessions.resetOnRaidHint') }}</p>
             <div class="lf-form-grid">
               <label class="lf-field">
                 <span>{{ t('followDefense.attackThreshold') }}</span>

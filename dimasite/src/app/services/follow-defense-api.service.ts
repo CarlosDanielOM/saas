@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { LinksService } from './links.service';
 import type {
-  ApiEnvelope,
+  ApiEnvelope, RaidSessionsPage, RaidFollowersPage,
   FollowDefenseSettings,
   FollowDefenseSettingsResponse,
   FollowDefenseStatusResponse,
@@ -93,4 +93,18 @@ export class FollowDefenseApiService {
       { params }
     );
   }
+  getRaidSessions(channelID: string, page = 1): Observable<ApiEnvelope<RaidSessionsPage>> {
+    return this.http.get<ApiEnvelope<RaidSessionsPage>>(`${this.getApiUrl()}/follow-defense/${encodeURIComponent(channelID)}/raid-sessions`, { params: { page } });
+  }
+
+  getRaidFollowers(channelID: string, sessionID: string, page = 1): Observable<ApiEnvelope<RaidFollowersPage>> {
+    return this.http.get<ApiEnvelope<RaidFollowersPage>>(`${this.getApiUrl()}/follow-defense/${encodeURIComponent(channelID)}/raid-sessions/${encodeURIComponent(sessionID)}/followers`, { params: { page } });
+  }
+
+  banRaidFollowers(channelID: string, sessionID: string, requestID: string, userID = '', includeFuture = false) {
+    return this.http.post<ApiEnvelope<{ requestID: string; status: string }>>(`${this.getApiUrl()}/follow-defense/${encodeURIComponent(channelID)}/raid-sessions/${encodeURIComponent(sessionID)}/bans`, {
+      confirmed: true, requestID, userID, includeFuture
+    });
+  }
+
 }

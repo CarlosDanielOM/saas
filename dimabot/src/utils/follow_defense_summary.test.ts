@@ -60,7 +60,7 @@ test('suppression survives escalation and cleanup and waits for renewed cooldown
     values.delete(keys.state); // maintenance expiry/reset of the mode itself
     now = NOW + 180000;
     assert.equal(await sendPendingFollowDefenseSummaries(dependencies), 1);
-    assert.match(sent[0], /^5 additional follows/);
+    assert.match(sent[0], /^Attack: 5 follow announcements blocked; 0 accounts banned so far/);
 });
 
 test('follow receipts and atomic counter failures cannot silently lose the acknowledgement', async () => {
@@ -118,4 +118,11 @@ test('summary wording uses exact readable counts and English/Spanish singular an
     assert.match(followSummaryMessage(4900, 'en'), /^4,900 additional follows/);
     assert.match(followSummaryMessage(1, 'es'), /1 follow adicional/);
     assert.match(followSummaryMessage(10, 'es'), /10 follows adicionales/);
+});
+
+
+test('attack summary distinguishes confirmed bans from work still queued', () => {
+    assert.equal(followSummaryMessage(4900, 'en', { banned: 125, pending: 4775 }),
+        'Attack: 4,900 follow announcements blocked; 125 accounts banned so far. 4,775 bans queued.');
+    assert.match(followSummaryMessage(20, 'es', { banned: 4, pending: 16 }), /4 cuentas baneadas hasta ahora. 16 bans en cola/);
 });

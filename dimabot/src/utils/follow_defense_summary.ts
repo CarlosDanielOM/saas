@@ -25,6 +25,9 @@ if indexType ~= 'none' and indexType ~= 'zset' then return redis.error_reply('WR
 local previous = redis.call('GET', KEYS[4])
 local summary = previous and cjson.decode(previous) or {id = ARGV[2], count = 0, notBefore = 0}
 summary.count = summary.count + 1
+summary.startedAt = math.min(summary.startedAt or state.burstStartedAt or now, state.burstStartedAt or now)
+summary.lastAt = now
+summary.attack = summary.attack or state.mode == 'attack'
 summary.notBefore = math.max(summary.notBefore, state.expiresAt)
 redis.call('SET', KEYS[4], cjson.encode(summary), 'EX', ARGV[3])
 redis.call('ZADD', KEYS[5], summary.notBefore, ARGV[1])
@@ -40,9 +43,20 @@ return {1, ''}
 export interface FollowSummaryDependencies {
     preferences(channelID: string): Promise<{ enabled: boolean; language: 'en' | 'es' }>;
     send(channelID: string, message: string): Promise<{ error: boolean }>;
+    outcomes?(channelID: string, startedAt: number, endedAt: number): Promise<{ banned: number; pending: number }>;
 }
 
 const defaults: FollowSummaryDependencies = {
+    async outcomes(channelID, startedAt, endedAt) {
+        const { FollowDefenseActionSchema: Actions } = await import('../schemas/follow_defense_action.schema.js');
+        const rows = await Actions.aggregate([
+            { $match: { channelID, kind: 'ban', followedAt: { $gte: new Date(startedAt - 5000), $lte: new Date(endedAt) } } },
+            { $sort: { createdAt: -1 } }, { $group: { _id: '$followerID', status: { $first: '$status' } } },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+        return { banned: rows.find(row => row._id === 'succeeded')?.count || 0,
+            pending: rows.filter(row => ['pending', 'processing'].includes(row._id)).reduce((sum, row) => sum + row.count, 0) };
+    },
     async preferences(channelID) {
         const [{ default: Streamers }, { default: Eventsub }, { FollowDefenseSettingsSchema }] = await Promise.all([
             import('../classes/twitch_streamers.class.js'), import('../schemas/eventsub.schema.js'),
@@ -62,7 +76,13 @@ const defaults: FollowSummaryDependencies = {
     }
 };
 
-export function followSummaryMessage(count: number, language: 'en' | 'es'): string {
+export function followSummaryMessage(count: number, language: 'en' | 'es', attack?: { banned: number; pending: number }): string {
+    if (attack) {
+        const format = (n: number) => new Intl.NumberFormat(language).format(n);
+        return language === 'es'
+            ? `Ataque: ${format(count)} anuncios de follow bloqueados; ${format(attack.banned)} cuentas baneadas hasta ahora. ${attack.pending ? `${format(attack.pending)} bans en cola.` : ''}`
+            : `Attack: ${format(count)} follow announcements blocked; ${format(attack.banned)} accounts banned so far. ${attack.pending ? `${format(attack.pending)} bans queued.` : ''}`;
+    }
     const formatted = new Intl.NumberFormat(language).format(count);
     if (language === 'es') return count === 1
         ? 'Recibimos 1 follow adicional mientras los anuncios estaban en pausa. ¡Gracias por seguir el canal!'
@@ -91,7 +111,10 @@ if redis.call('GET', KEYS[4]) then return {0, ''} end
 local summary = cjson.decode(raw)
 local current = redis.call('GET', KEYS[2])
 local state = current and cjson.decode(current)
-if state and state.mode ~= 'normal' then summary.notBefore = math.max(summary.notBefore, state.expiresAt) end
+if state and state.mode ~= 'normal' then
+    summary.notBefore = math.max(summary.notBefore, state.expiresAt)
+    summary.attack = summary.attack or state.mode == 'attack'
+end
 if summary.notBefore > now then
     redis.call('SET', KEYS[1], cjson.encode(summary), 'EX', ARGV[3])
     redis.call('ZADD', KEYS[3], summary.notBefore, ARGV[1])
@@ -102,13 +125,14 @@ redis.call('SET', KEYS[1], cjson.encode(summary), 'EX', ARGV[3])
 return {1, cjson.encode(summary)}
 `, { keys: [keys.summary, keys.state, keys.summaries, keys.summaryLock], arguments: [channelID, token, String(RETENTION_SECONDS)] }) as [number, string];
         if (!claimed[0]) continue;
-        const summary = JSON.parse(claimed[1]) as { id: string; count: number; notBefore: number };
+        const summary = JSON.parse(claimed[1]) as { id: string; count: number; notBefore: number; attack?: boolean; startedAt?: number; lastAt?: number };
         let completed = !preferences.enabled;
         try {
             // An old acknowledgement should not unexpectedly appear hours later.
             if (Date.now() > summary.notBefore + 5 * 60_000) completed = true;
             if (!completed) {
-                const result = await dependencies.send(channelID, followSummaryMessage(summary.count, preferences.language));
+                const outcomes = summary.attack ? await dependencies.outcomes?.(channelID, summary.startedAt || summary.notBefore - 60000, summary.lastAt || summary.notBefore) || { banned: 0, pending: 0 } : undefined;
+                const result = await dependencies.send(channelID, followSummaryMessage(summary.count, preferences.language, outcomes));
                 completed = !result.error;
                 if (completed) sent++;
             }

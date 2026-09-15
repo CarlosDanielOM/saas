@@ -668,3 +668,7 @@
     transition: none;
   }
 }
+
+.lf-raid-setting { display:flex; align-items:center; gap:1rem; min-height:44px; }
+.lf-raid-setting span { flex:1; }
+.lf-raid-setting input[type="checkbox"] { width:22px; height:22px; padding:0; flex-shrink:0; accent-color:var(--accent); }

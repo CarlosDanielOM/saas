@@ -47,6 +47,9 @@ export interface FollowDefenseState {
     triggerEventID?: string;
     version?: string;
     manualEventID?: string;
+    raidSessionID?: string;
+    raidStartedAt?: number;
+    raidRequestID?: string;
 }
 
 export interface FollowDefenseRaidMarker {
@@ -82,6 +85,7 @@ export function followDefenseKeys(channelID: string) {
         suppressionReceiptPrefix: `twitch:${channelID}:follow-defense:suppressed:`,
         summaries: 'twitch:follow-defense:summaries',
         raid: `twitch:${channelID}:follow-defense:raid`,
+        raidProjection: `twitch:${channelID}:follow-defense:raid-projection`,
         activeChannels: 'twitch:follow-defense:active-channels'
     };
 }
@@ -95,7 +99,8 @@ type StateMutation =
     | { type: 'reset'; token: string }
     | { type: 'transition'; state: FollowDefenseState; moderationExpiresAt?: number }
     | { type: 'refresh'; state: FollowDefenseState; moderationExpiresAt?: number }
-    | { type: 'manual'; state: FollowDefenseState; preserveExpiry?: boolean };
+    | { type: 'manual'; state: FollowDefenseState; preserveExpiry?: boolean }
+    | { type: 'raid' | 'session_attack'; state: FollowDefenseState };
 
 export async function projectFollowDefenseState(channelID: string, mutation: StateMutation = { type: 'repair' }): Promise<{
     changed: boolean; state: FollowDefenseState | null; token: string;
@@ -151,7 +156,14 @@ if ARGV[2] == 'refresh' then
     project(current)
     return {1, refreshed}
 end
-if ARGV[2] == 'transition' then
+if ARGV[2] == 'session_attack' and (not active or current.mode == 'normal' or current.raidSessionID ~= incoming.raidSessionID) then return unchanged() end
+if ARGV[2] == 'raid' then
+    local lastRaid = tonumber(redis.call('GET', KEYS[4]) or '0')
+    if lastRaid >= (incoming.raidStartedAt or 0) then return unchanged() end
+    redis.call('SET', KEYS[4], tostring(incoming.raidStartedAt), 'EX', 259200)
+    if current and (current.raidStartedAt or 0) >= (incoming.raidStartedAt or 0) then return unchanged() end
+    redis.call('DEL', KEYS[3])
+elseif ARGV[2] == 'transition' then
     local rank = {normal = 0, silent = 1, protection = 2, attack = 3}
     if active and rank[current.mode] >= rank[incoming.mode] then return unchanged() end
 else
@@ -163,13 +175,26 @@ else
     if incoming.channelName == '' and current then incoming.channelName = current.channelName end
     if ARGV[5] == '1' and active then incoming.expiresAt = current.expiresAt end
 end
-if active then incoming.burstStartedAt = current.burstStartedAt end
+if active and ARGV[2] ~= 'raid' then
+    incoming.burstStartedAt = current.burstStartedAt
+    incoming.raidSessionID = incoming.raidSessionID or current.raidSessionID
+    incoming.raidStartedAt = incoming.raidStartedAt or current.raidStartedAt
+    incoming.raidRequestID = incoming.raidRequestID or current.raidRequestID
+end
+if incoming.mode == 'attack' then
+    local rawSummary = redis.call('GET', KEYS[5])
+    if rawSummary then
+        local summary = cjson.decode(rawSummary)
+        summary.attack = true
+        redis.call('SET', KEYS[5], cjson.encode(summary), 'EX', 172800)
+    end
+end
 local nextRaw = cjson.encode(incoming)
 redis.call('SET', KEYS[1], nextRaw)
 project(incoming)
 return {1, nextRaw}
 `, {
-        keys: [keys.state, keys.activeChannels, keys.tracked],
+        keys: [keys.state, keys.activeChannels, keys.tracked, keys.raidProjection, keys.summary],
         arguments: [channelID, mutation.type,
             'state' in mutation ? JSON.stringify(mutation.type === 'refresh' ? mutation.state : { ...mutation.state, version: randomUUID() }) : mutation.type === 'reset' ? mutation.token : '',
             String(mutation.type === 'transition' || mutation.type === 'refresh' ? mutation.moderationExpiresAt || 0 : 0),
@@ -264,13 +289,14 @@ export async function shouldSuppressFollowAlerts(channelID: string, eventID?: st
 export async function setFollowDefenseRaidMarker(marker: Omit<FollowDefenseRaidMarker, 'createdAt' | 'expiresAt'>, ttlSeconds = 300): Promise<void> {
     try {
         const now = Date.now();
-        const cache = await getDragonflyClient('setFollowDefenseRaidMarker');
+        const { applyRaidSessionMarker } = await import('./raid_sessions.js');
         const payload: FollowDefenseRaidMarker = {
             ...marker,
+            eventID: marker.eventID || randomUUID(),
             createdAt: now,
             expiresAt: now + (ttlSeconds * 1000)
         };
-        await cache.set(followDefenseKeys(marker.channelID).raid, JSON.stringify(payload), { EX: ttlSeconds });
+        await applyRaidSessionMarker(payload);
     } catch (error) {
         await logError({
             function: 'setFollowDefenseRaidMarker',
@@ -308,6 +334,12 @@ return 1
 }
 
 export async function triggerFollowDefenseAttackMode(channelID: string, channelLogin = '', channelName = ''): Promise<void> {
+    const { findRaidSession, requestRaidBans } = await import('./raid_sessions.js');
+    const session = await findRaidSession(channelID, Date.now());
+    if (session && session.expiresAt.getTime() > Date.now()) {
+        await requestRaidBans(channelID, session._id, 'authorized-command', randomUUID(), '', true);
+        return;
+    }
     const eventID = createEventID(channelID, 'manual-attack');
     const now = Date.now();
     const state: FollowDefenseState = {

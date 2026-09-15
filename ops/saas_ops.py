@@ -224,14 +224,25 @@ class Ops:
         require(labels.get(OWNER + ".repo") == self.repo_id and labels.get(OWNER + ".run") == run_id,
                 "Refusing to remove a resource without matching repository/run ownership labels")
 
-    def snapshot(self, target, destination):
-        source = self.root / target.project / target.context
-        relative = source.relative_to(self.root)
+    def source_root(self, source_dir=None):
+        if source_dir is None:
+            return self.root
+        source = Path(source_dir).resolve()
+        common = lambda root: Path(run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=root, capture=True).strip()).resolve()
+        require(common(source) == common(self.root), "Source must be a worktree of this repository")
+        top = run(["git", "rev-parse", "--show-toplevel"], cwd=source, capture=True).strip()
+        require(Path(top).resolve() == source, "Source must be a worktree root")
+        return source
+
+    def snapshot(self, target, destination, source_dir=None):
+        source_root = self.source_root(source_dir)
+        source = source_root / target.project / target.context
+        relative = source.relative_to(source_root)
         listed = run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", relative],
-                     cwd=self.root, capture=True).split("\0")
+                     cwd=source_root, capture=True).split("\0")
         destination.mkdir()
         for name in sorted(set(filter(None, listed))):
-            file = self.root / name
+            file = source_root / name
             rel = file.relative_to(source)
             if any(part in EXCLUDED or part.startswith(".env") for part in rel.parts):
                 continue
@@ -248,7 +259,7 @@ class Ops:
             directory.chmod(0o755)
         require(any(destination.iterdir()), "Empty build context")
 
-    def build(self, name):
+    def build(self, name, source_dir=None):
         target = TARGETS[name]
         live, config, config_hash, full_hash = self.baseline(target)
         run_id = name + "-" + uuid.uuid4().hex[:12]
@@ -262,7 +273,7 @@ class Ops:
         print(f"Run: {run_id}", flush=True)
         try:
             atomic_json(path / "compose.json", config)  # private: resolved config contains credentials
-            self.snapshot(target, path / "source")
+            self.snapshot(target, path / "source", source_dir)
             receipt["source_digest"] = tree_hash(path / "source")
             if target.output:
                 # Install/build only inside an unserved snapshot, never inside the live output.
@@ -646,7 +657,7 @@ class Ops:
         self.save(path, receipt)
         print(f"Cleaned temporary resources for {run_id}; receipts and rollback artifacts retained")
 
-    def preview(self, name, port):
+    def preview(self, name, port, source_dir=None):
         target = TARGETS[name]
         require(bool(target.output), "preview supports site, admin, and docs")
         require(1024 <= port <= 65535, "Preview port must be between 1024 and 65535")
@@ -654,7 +665,7 @@ class Ops:
         # Copy source so even a project script cannot accidentally use the live output directory.
         with tempfile.TemporaryDirectory(prefix="preview-", dir=self.state) as temp:
             source = Path(temp) / "source"
-            self.snapshot(target, source)
+            self.snapshot(target, source, source_dir)
             run(["npm", "ci"], cwd=source)
             command = ["npm", "run", "dev" if name == "docs" else "start", "--", "--host", "127.0.0.1", "--port", str(port)]
             if name != "docs":
@@ -681,9 +692,12 @@ def main(argv=None):
     for command in ("plan", "build"):
         sub = commands.add_parser(command)
         sub.add_argument("target", choices=TARGETS)
+        if command == "build":
+            sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
     sub = commands.add_parser("preview")
     sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
     sub.add_argument("--port", type=int, default=4201)
+    sub.add_argument("--source-dir", type=Path)
     sub = commands.add_parser("verify")
     sub.add_argument("run")
     sub.add_argument("--check", required=True, help="behavior script; runs inside candidate container, or against candidate web URL")
@@ -713,14 +727,14 @@ def main(argv=None):
                           "rollback": "rollback RUN", "bulk_operations": False}, indent=2))
         return 0
     if args.command == "preview":
-        ops.preview(args.target, args.port)
+        ops.preview(args.target, args.port, args.source_dir)
         return 0
     with ops.lock():
         if args.command == "status":
             _, receipt, _ = ops.load(args.run)
             print(json.dumps(receipt, indent=2))
         elif args.command == "build":
-            ops.build(args.target)
+            ops.build(args.target, args.source_dir)
         elif args.command == "verify":
             ops.verify(args.run, args.check, args.fixtures, args.seed_models, args.test_env, args.dependency)
         else:

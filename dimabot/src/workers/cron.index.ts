@@ -34,6 +34,7 @@ interface ManagedWorker {
 }
 
 const WORKERS: WorkerDefinition[] = [
+    { name: 'raid-sessions', sourceEntry: 'src/workers/raid_sessions.worker.ts', distEntry: 'dist/workers/raid_sessions.worker.js' },
     {
         name: 'follow-defense-actions',
         sourceEntry: 'src/workers/follow_defense_actions.worker.ts',

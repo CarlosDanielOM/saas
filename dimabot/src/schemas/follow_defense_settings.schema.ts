@@ -9,6 +9,7 @@ export interface IFollowDefenseSettings {
     silentModeEnabled: boolean;
     protectionModeEnabled: boolean;
     attackModeEnabled: boolean;
+    resetAttackOnNewRaid: boolean;
     silentThresholdX: number;
     silentWindowYSeconds: number;
     protectionThresholdB: number;
@@ -28,6 +29,7 @@ const followDefenseSettingsSchema = new Schema<IFollowDefenseSettings>({
     silentModeEnabled: { type: Boolean, default: true },
     protectionModeEnabled: { type: Boolean, default: true },
     attackModeEnabled: { type: Boolean, default: true },
+    resetAttackOnNewRaid: { type: Boolean, default: true },
     silentThresholdX: { type: Number, default: 10, min: 1 },
     silentWindowYSeconds: { type: Number, default: 5, min: 1 },
     protectionThresholdB: { type: Number, default: 100, min: 1 },
