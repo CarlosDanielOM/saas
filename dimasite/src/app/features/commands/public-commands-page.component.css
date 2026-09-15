@@ -83,8 +83,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem 0.85rem;
-  padding: 0.75rem 1rem;
+  gap: 0.5rem 0.6rem;
+  padding: 0.65rem 0.85rem;
   background: var(--nav-bg);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
@@ -122,7 +122,7 @@
 .lf-nav__actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-left: auto;
 }
 
@@ -133,13 +133,13 @@
   justify-content: center;
   gap: 0.4rem;
   min-height: 44px;
-  padding: 0.7rem 1.15rem;
+  padding: 0.6rem 0.95rem;
   border: 1px solid var(--btn-border);
   border-radius: 999px;
   background: var(--btn);
   color: var(--fg);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 650;
   cursor: pointer;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
@@ -202,7 +202,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 1.15rem;
+  padding: 1rem;
   transition: transform 180ms ease, border-color 180ms ease;
 }
 
@@ -212,7 +212,7 @@
 }
 
 .lf-tile--intro {
-  padding: 1.4rem;
+  padding: 1.2rem;
 }
 
 .lf-tile--intro:hover,
@@ -233,7 +233,7 @@
 
 .lf-title {
   margin: 0;
-  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  font-size: clamp(1.6rem, 6vw, 2.6rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 750;
@@ -271,10 +271,21 @@
 }
 
 /* Metrics */
+.lf-bento--hero {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.lf-tile--intro {
+  grid-column: 1 / -1;
+}
+
 .lf-metric {
   display: grid;
   align-content: center;
   gap: 0.1rem;
+  padding: 0.85rem 0.8rem;
+  border-radius: 1rem;
 }
 
 .lf-metric--accent {
@@ -287,13 +298,13 @@
 .lf-label {
   margin: 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 650;
 }
 
 .lf-value {
-  margin: 0.35rem 0 0;
-  font-size: clamp(1.5rem, 4vw, 1.95rem);
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.35rem, 5.5vw, 1.95rem);
   font-weight: 750;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -341,13 +352,15 @@
   flex-wrap: wrap;
   gap: 0.55rem;
   align-items: center;
+  width: 100%;
 }
 
 .lf-search {
   position: relative;
   display: inline-flex;
   align-items: center;
-  flex: 1 1 100%;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .lf-search lucide-icon {
@@ -359,6 +372,7 @@
 
 .lf-search input {
   width: 100%;
+  min-width: 0;
   border: 1px solid var(--line);
   background: var(--tile);
   color: var(--fg);
@@ -386,13 +400,13 @@
   align-items: center;
   justify-content: center;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 42px;
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
   cursor: pointer;
-  padding: 0.55rem 0.75rem;
+  padding: 0.5rem 0.7rem;
 }
 
 .lf-view__btn--active {
@@ -417,8 +431,8 @@
     minmax(5rem, 0.7fr)
     4rem;
   gap: 0.55rem;
-  min-width: 50rem;
-  padding: 0.9rem 1rem;
+  min-width: 48rem;
+  padding: 0.85rem 0.8rem;
   border-bottom: 1px solid var(--line);
   align-items: center;
   font-size: 0.86rem;
@@ -453,6 +467,12 @@
   gap: 0.25rem;
   min-width: 0;
   justify-items: start;
+}
+
+/* The function column already labels reserved commands; skip the duplicate
+   chip on small screens to keep rows compact. */
+.lf-matrix__primary .lf-chip {
+  display: none;
 }
 
 .lf-matrix__primary strong {
@@ -561,7 +581,7 @@
 .lf-pager {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.75rem;
   align-items: center;
   margin-top: 1rem;
@@ -615,6 +635,10 @@
     display: inline;
   }
 
+  .lf-section__tools {
+    width: auto;
+  }
+
   .lf-search {
     flex: 0 1 auto;
   }
@@ -624,21 +648,34 @@
   }
 
   .lf-bento--hero {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
   }
 
-  .lf-tile--intro {
-    grid-column: 1 / -1;
+  .lf-metric {
+    padding: 1.05rem 1rem;
+    border-radius: var(--radius);
+  }
+
+  .lf-label {
+    font-size: 0.8rem;
   }
 
   .lf-bento--cmds {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lf-pager {
+    justify-content: space-between;
   }
 }
 
 @media (min-width: 960px) {
   .lf-main {
     padding-inline: 1.25rem;
+  }
+
+  .lf-matrix__primary .lf-chip {
+    display: inline-flex;
   }
 
   .lf-bento--cmds {
