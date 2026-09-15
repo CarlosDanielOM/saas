@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { LucideAngularModule, List, Moon, Sun, LayoutGrid } from 'lucide-angular';
+import { LucideAngularModule, List, Moon, Search, Sun, LayoutGrid } from 'lucide-angular';
 import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap } from 'rxjs';
 
 import { Command, USER_LEVELS } from '../../models/command.model';
@@ -18,6 +18,7 @@ type ViewMode = 'table' | 'card';
   selector: 'app-public-commands-page',
   imports: [RouterLink, LucideAngularModule, BrandLogoComponent],
   templateUrl: './public-commands-page.component.html',
+  styleUrl: './public-commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PublicCommandsPageComponent {
@@ -32,11 +33,13 @@ export class PublicCommandsPageComponent {
   readonly gridIcon = LayoutGrid;
   readonly moonIcon = Moon;
   readonly sunIcon = Sun;
+  readonly searchIcon = Search;
 
   readonly viewMode = signal<ViewMode>('table');
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal(10);
   readonly itemsPerPageOptions = [5, 10, 15, 20];
+  readonly searchInput = signal('');
   readonly commands = signal<Command[]>([]);
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
@@ -91,11 +94,24 @@ export class PublicCommandsPageComponent {
   readonly totalCommands = computed(() => this.commands().length);
   readonly enabledCommands = computed(() => this.commands().filter((command) => command.enabled !== false).length);
   readonly disabledCommands = computed(() => this.totalCommands() - this.enabledCommands());
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.commands().length / this.itemsPerPage())));
+  readonly filteredCommands = computed(() => {
+    const query = this.searchInput().trim().toLowerCase();
+    const list = this.commands();
+    if (!query) {
+      return list;
+    }
+    return list.filter((command) =>
+      [command.name, command.cmd, command.message, command.description ?? '', command.userLevelName]
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    );
+  });
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filteredCommands().length / this.itemsPerPage())));
   readonly paginatedCommands = computed(() => {
     const start = (this.currentPage() - 1) * this.itemsPerPage();
     const end = start + this.itemsPerPage();
-    return this.commands().slice(start, end);
+    return this.filteredCommands().slice(start, end);
   });
   readonly pages = computed(() => {
     const total = this.totalPages();
@@ -183,6 +199,11 @@ export class PublicCommandsPageComponent {
 
   setViewMode(mode: ViewMode): void {
     this.viewMode.set(mode);
+  }
+
+  onSearchInput(value: string): void {
+    this.searchInput.set(value);
+    this.currentPage.set(1);
   }
 
   changePage(page: number): void {

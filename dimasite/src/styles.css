@@ -95,52 +95,6 @@ body {
   border-bottom: 1px solid color-mix(in srgb, var(--ring) 30%, transparent);
 }
 
-.public-commands-shell {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 10% 12%, rgba(124, 58, 237, 0.16), transparent 30%),
-    radial-gradient(circle at 88% 14%, rgba(56, 189, 248, 0.16), transparent 34%),
-    linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-}
-
-.public-commands-navbar {
-  backdrop-filter: blur(12px);
-  background: color-mix(in srgb, var(--surface) 76%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--ring) 20%, transparent);
-}
-
-.public-commands-navbar__inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  min-height: 4.5rem;
-  padding: 0 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.public-commands-navbar__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: inherit;
-  text-decoration: none;
-}
-
-.public-commands-navbar__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.public-commands-main {
-  padding: 2rem 0 3rem;
-}
-
 .brand-dot {
   width: 0.8rem;
   height: 0.8rem;
@@ -9000,19 +8954,6 @@ html[data-plan-tier='pro'] .dashboard-shell {
     font-size: clamp(1.5rem, 6vw, 1.9rem);
   }
 
-  .public-commands-navbar__inner {
-    padding: 0.75rem 1rem;
-    min-height: auto;
-  }
-
-  .public-commands-navbar__actions {
-    gap: 0.5rem;
-  }
-
-  .public-commands-main {
-    padding-top: 1.25rem;
-  }
-
   .commands-header__eyebrow {
     font-size: 0.72rem;
   }
@@ -9230,15 +9171,6 @@ html[data-plan-tier='pro'] .dashboard-shell {
 }
 
 @media (max-width: 480px) {
-  .public-commands-navbar__inner {
-    padding: 0.75rem 1rem;
-    min-height: auto;
-  }
-
-  .public-commands-navbar__actions {
-    gap: 0.5rem;
-  }
-
   .commands-table-container {
     border-radius: 0.75rem;
   }

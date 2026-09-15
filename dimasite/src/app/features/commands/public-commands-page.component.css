@@ -1,0 +1,664 @@
+/* Live First public commands page — DNA from OC3c / prod-commands mock */
+:host {
+  display: block;
+  --bg: #f4f5f8;
+  --tile: #ffffff;
+  --fg: #14151a;
+  --muted: #667085;
+  --line: rgba(15, 17, 21, 0.08);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.12);
+  --live: #ef4444;
+  --live-soft: rgba(239, 68, 68, 0.12);
+  --ok: #15803d;
+  --ok-soft: rgba(22, 163, 74, 0.12);
+  --btn: #eef0f5;
+  --btn-border: rgba(15, 17, 21, 0.1);
+  --kicker: #6d28d9;
+  --title-accent: #6d28d9;
+  --nav-bg: rgba(244, 245, 248, 0.88);
+  --glow-a: rgba(124, 58, 237, 0.12);
+  --glow-b: rgba(239, 68, 68, 0.08);
+  --radius: 1.35rem;
+  --shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
+  --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host-context(html.dark) {
+  --bg: #0f1115;
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #9aa3b5;
+  --line: rgba(255, 255, 255, 0.07);
+  --accent: #8b5cf6;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --live: #ef4444;
+  --live-soft: rgba(239, 68, 68, 0.14);
+  --ok: #86efac;
+  --ok-soft: rgba(34, 197, 94, 0.14);
+  --btn: #1d2230;
+  --btn-border: rgba(255, 255, 255, 0.07);
+  --kicker: #c4b5fd;
+  --title-accent: #c4b5fd;
+  --nav-bg: rgba(15, 17, 21, 0.86);
+  --glow-a: rgba(139, 92, 246, 0.18);
+  --glow-b: rgba(239, 68, 68, 0.1);
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+}
+
+.lf {
+  min-height: 100dvh;
+  background:
+    radial-gradient(800px 360px at 85% -8%, var(--glow-a), transparent 55%),
+    radial-gradient(620px 300px at 8% 0%, var(--glow-b), transparent 50%),
+    var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  overflow-x: clip;
+}
+
+.lf *,
+.lf *::before,
+.lf *::after {
+  box-sizing: border-box;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Nav */
+.lf-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 0.85rem;
+  padding: 0.75rem 1rem;
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.lf-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.lf-brand__live {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--live);
+  box-shadow: 0 0 0 4px var(--live-soft);
+  animation: lf-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.lf-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* Buttons */
+.lf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.7rem 1.15rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.lf-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.lf-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lf-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.lf-btn--primary:hover:not(:disabled) {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+
+.lf-btn--ghost {
+  background: transparent;
+}
+
+.lf-btn--tool {
+  min-width: 44px;
+  padding: 0.55rem 0.85rem;
+}
+
+.lf-btn--compact {
+  min-height: 38px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.lf-btn__label {
+  display: none;
+}
+
+/* Layout */
+.lf-main {
+  max-width: 74rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.lf-bento {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.lf-tile {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.15rem;
+  transition: transform 180ms ease, border-color 180ms ease;
+}
+
+.lf-tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+.lf-tile--intro {
+  padding: 1.4rem;
+}
+
+.lf-tile--intro:hover,
+.lf-matrix:hover,
+.lf-empty:hover {
+  transform: none;
+}
+
+/* Typography */
+.lf-kicker {
+  margin: 0 0 0.75rem;
+  color: var(--kicker);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lf-title {
+  margin: 0;
+  font-size: clamp(1.75rem, 5vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 750;
+}
+
+.lf-title span {
+  color: var(--title-accent);
+}
+
+.lf-h2 {
+  margin: 0;
+  font-size: clamp(1.3rem, 3.2vw, 1.75rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  font-weight: 750;
+}
+
+.lf-copy {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 38rem;
+}
+
+.lf-copy--tight {
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.lf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+/* Metrics */
+.lf-metric {
+  display: grid;
+  align-content: center;
+  gap: 0.1rem;
+}
+
+.lf-metric--accent {
+  background:
+    linear-gradient(160deg, rgba(139, 92, 246, 0.2), transparent 60%),
+    var(--tile);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+.lf-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.lf-value {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.5rem, 4vw, 1.95rem);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chips */
+.lf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--kicker);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.lf-chip--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.lf-chip--muted {
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--muted);
+}
+
+/* Section */
+.lf-section {
+  margin-top: 1.5rem;
+}
+
+.lf-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.lf-section__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.lf-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 100%;
+}
+
+.lf-search lucide-icon {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.lf-search input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--tile);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.7rem 1rem 0.7rem 2.5rem;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.lf-search input:focus {
+  outline: 2px solid rgba(139, 92, 246, 0.45);
+  outline-offset: 1px;
+}
+
+.lf-view {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--tile);
+}
+
+.lf-view__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  padding: 0.55rem 0.75rem;
+}
+
+.lf-view__btn--active {
+  color: var(--fg);
+  background: var(--accent-soft);
+}
+
+/* Matrix list */
+.lf-matrix {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.lf-matrix__row {
+  display: grid;
+  grid-template-columns:
+    minmax(7.5rem, 1fr)
+    minmax(5.5rem, 0.8fr)
+    minmax(9rem, 1.5fr)
+    minmax(7rem, 1.1fr)
+    5.25rem
+    minmax(5rem, 0.7fr)
+    4rem;
+  gap: 0.55rem;
+  min-width: 50rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+.lf-matrix__row:last-child {
+  border-bottom: 0;
+}
+
+.lf-matrix__row--head {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+}
+
+.lf-matrix__row--head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-matrix__row--off {
+  opacity: 0.62;
+}
+
+.lf-matrix__primary {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  justify-items: start;
+}
+
+.lf-matrix__primary strong {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-clip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.lf-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84em;
+  padding: 0.18rem 0.45rem;
+  border-radius: 0.55rem;
+  background: var(--accent-soft);
+  color: var(--kicker);
+}
+
+/* Command cards */
+.lf-bento--cmds {
+  grid-template-columns: 1fr;
+}
+
+.lf-cmd__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.lf-cmd__name {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  font-weight: 750;
+}
+
+.lf-cmd__desc {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.9rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lf-cmd__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.lf-cmd--off {
+  opacity: 0.72;
+}
+
+/* Empty / pager */
+.lf-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1.25rem;
+  display: grid;
+  gap: 0.85rem;
+  justify-items: center;
+}
+
+.lf-empty--warn {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.lf-empty p {
+  margin: 0;
+}
+
+.lf-spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 3px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  animation: lf-spin 0.8s linear infinite;
+}
+
+@keyframes lf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.lf-pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.lf-pager__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lf-pager__size select {
+  border: 1px solid var(--line);
+  background: var(--tile);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  font: inherit;
+}
+
+.lf-pager__pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.lf-page {
+  min-width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.lf-page--active {
+  background: var(--accent-soft);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* Breakpoints — mobile first */
+@media (min-width: 640px) {
+  .lf-btn__label {
+    display: inline;
+  }
+
+  .lf-search {
+    flex: 0 1 auto;
+  }
+
+  .lf-search input {
+    min-width: min(100%, 16rem);
+  }
+
+  .lf-bento--hero {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lf-tile--intro {
+    grid-column: 1 / -1;
+  }
+
+  .lf-bento--cmds {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .lf-main {
+    padding-inline: 1.25rem;
+  }
+
+  .lf-bento--cmds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-brand__live,
+  .lf-spinner {
+    animation: none;
+  }
+
+  .lf-btn,
+  .lf-tile {
+    transition: none;
+  }
+
+  .lf-btn:hover,
+  .lf-tile:hover {
+    transform: none;
+  }
+}

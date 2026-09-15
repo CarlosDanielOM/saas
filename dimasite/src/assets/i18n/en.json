@@ -893,9 +893,9 @@
   "analytics": {
     "follows": {
       "title": "Follow Ledger",
-    "subtitle": "Search people currently following you, filter mutuals, sort by follow date, and see how long each follow has lasted. Beta — current followers only (not historical unfollows).",
-    "backToAnalytics": "Back to analytics",
-    "activeOnly": "Current followers",
+      "subtitle": "Search people currently following you, filter mutuals, sort by follow date, and see how long each follow has lasted. Beta — current followers only (not historical unfollows).",
+      "backToAnalytics": "Back to analytics",
+      "activeOnly": "Current followers",
       "filters": "Filters",
       "sort": "Sort",
       "searchLabel": "Search followers",
@@ -924,9 +924,9 @@
       "refreshing": "Refreshing...",
       "ownerView": "Owner view",
       "adminView": "Admin view",
-    "lockedTitle": "Follow Ledger needs Premium or Pro",
-    "lockedDescription": "Unlock search, mutual filters, follow age, and pagination over your current follower list. Free plans can still use the rest of the bot.",
-    "lockedCta": "Upgrade to unlock",
+      "lockedTitle": "Follow Ledger needs Premium or Pro",
+      "lockedDescription": "Unlock search, mutual filters, follow age, and pagination over your current follower list. Free plans can still use the rest of the bot.",
+      "lockedCta": "Upgrade to unlock",
       "durationYears": "{{count}} year(s)",
       "durationMonths": "{{count}} month(s)",
       "durationDays": "{{count}} day(s)",
@@ -1513,14 +1513,18 @@
       "title": "{{streamer}} commands",
       "subtitle": "Browse every command configured for this channel, including status, cooldowns, and required user levels.",
       "languageToggle": "Toggle language",
-      "total": "{{count}} total",
-      "enabled": "{{count}} enabled",
-      "disabled": "{{count}} disabled",
-      "emptyTitle": "No commands yet",
       "empty": "This channel has no commands available right now.",
       "errors": {
         "streamerNotFound": "We could not find that streamer.",
         "loadFailed": "We could not load commands for this channel right now."
+      },
+      "searchPlaceholder": "Search commands...",
+      "noMatch": "No commands match your search.",
+      "listTitle": "Command directory",
+      "metrics": {
+        "total": "Total",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
       }
     },
     "addCommand": "Add Command",

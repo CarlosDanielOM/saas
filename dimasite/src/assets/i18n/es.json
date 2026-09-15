@@ -1513,14 +1513,18 @@
       "title": "Comandos de {{streamer}}",
       "subtitle": "Explora todos los comandos configurados para este canal, incluyendo estado, enfriamiento y nivel de usuario requerido.",
       "languageToggle": "Cambiar idioma",
-      "total": "{{count}} totales",
-      "enabled": "{{count}} habilitados",
-      "disabled": "{{count}} deshabilitados",
-      "emptyTitle": "Aun no hay comandos",
       "empty": "Este canal no tiene comandos disponibles en este momento.",
       "errors": {
         "streamerNotFound": "No pudimos encontrar a ese streamer.",
         "loadFailed": "No pudimos cargar los comandos de este canal en este momento."
+      },
+      "searchPlaceholder": "Buscar comandos...",
+      "noMatch": "Ningun comando coincide con tu busqueda.",
+      "listTitle": "Directorio de comandos",
+      "metrics": {
+        "total": "Totales",
+        "enabled": "Habilitados",
+        "disabled": "Deshabilitados"
       }
     },
     "addCommand": "Agregar Comando",
