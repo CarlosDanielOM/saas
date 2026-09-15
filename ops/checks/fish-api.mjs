@@ -104,6 +104,7 @@ assert.equal(result.error, false, JSON.stringify(result)); assert.ok(result.data
 assert.equal(result.data.credits, Math.ceil(result.data.text.length * 1.5)); assert.ok(Buffer.from(result.data.audio, 'base64').length > 100);
 assert.equal(result.data.text.includes('user text'), false);
 assert.equal(synthCount(), count + 1);
+assert.equal(calls().filter(c => c.synthesis).at(-1).model, 's2.1-pro', 'primary backend must be the official s2.1-pro');
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), String(result.data.credits));
 assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance, 10000 - result.data.credits);
 assert.equal(await redis.exists(`twitch:${channel}:tts:processing`), 0);
@@ -111,7 +112,9 @@ assert.equal(await redis.exists(`twitch:${channel}:tts:queue`), 0);
 assert.equal((await socket.send({ voiceId: 'b'.repeat(32), language: 'en' })).code, 'preview_busy');
 await cooldown(); fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ fail: true }));
 const spent = await redis.hGet(`${channel}:tts:usage`, 'fish_credits');
+const failCount = synthCount();
 assert.equal((await socket.send({ voiceId: 'b'.repeat(32), language: 'en' })).code, 'synthesis_failed');
+assert.deepEqual(calls().filter(c => c.synthesis).slice(failCount).map(c => c.model), ['s2.1-pro', 's2.1-pro-free'], 'failure must try s2.1-pro then fall back to s2.1-pro-free');
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), spent);
 await cooldown();
 assert.equal((await socket.send({ voiceId: '0'.repeat(32), language: 'en' })).code, 'voice_unavailable');
@@ -122,7 +125,9 @@ while (!await redis.exists(`twitch:${channel}:tts:connected`)) await new Promise
 const finishSpeech = async expected => {
   const event = await overlay.wait(`42/speech/${channel},`);
   const [, payload] = JSON.parse(event.slice(`42/speech/${channel},`.length));
-  assert.equal(calls().filter(c => c.synthesis).at(-1).synthesis.reference_id, expected);
+  const lastSynthesis = calls().filter(c => c.synthesis).at(-1);
+  assert.equal(lastSynthesis.synthesis.reference_id, expected);
+  assert.equal(lastSynthesis.model, 's2.1-pro', 'queued speech must use the official s2.1-pro backend');
   overlay.ws.send(`42/speech/${channel},${JSON.stringify(['speech-ended', { speechID: payload.speechID }])}`);
   const deadline = Date.now() + 5000;
   while (await redis.exists(`twitch:${channel}:tts:processing`)) {

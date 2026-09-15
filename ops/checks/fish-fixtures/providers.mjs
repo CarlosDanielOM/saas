@@ -37,7 +37,9 @@ globalThis.fetch = async (input, options = {}) => {
     }
     if (url.pathname === '/v1/tts') {
       const payload = decode(options.body);
-      fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload }) + '\n');
+      const headers = options.headers || {};
+      const model = typeof headers.get === 'function' ? headers.get('model') : (headers.model ?? headers.Model);
+      fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload, model }) + '\n');
       if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
       if (state.fail) return json({ message: 'Unavailable voice' }, 422);
       return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });

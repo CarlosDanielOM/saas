@@ -19,8 +19,8 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
-const PRIMARY_FISH_TTS_BACKEND = 's2.1-pro-free';
-const FALLBACK_FISH_TTS_BACKEND = 's2.1-pro';
+const PRIMARY_FISH_TTS_BACKEND = 's2.1-pro';
+const FALLBACK_FISH_TTS_BACKEND = 's2.1-pro-free';
 
 function getFishApiKey(): string | null {
     const key = process.env.FISH_AUDIO_API_KEY;
