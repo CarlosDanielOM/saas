@@ -769,21 +769,21 @@
     "silentModeDescription": "Si ocurre una pequena rafaga de follows, DimaBot pausa las alertas de follows y rastrea la ola silenciosamente.",
     "silentModeThresholdHint": "Numero de follows para activar el modo silencioso.",
     "protectionMode": "Modo Proteccion",
-    "protectionModeDescription": "Si la ola crece mas, DimaBot advierte al chat y banea los nuevos follows. Durante raids, DimaBot rastrea silenciosamente en su lugar.",
+    "protectionModeDescription": "Si la ola crece, DimaBot silencia los avisos y registra seguidores sin banearlos. Activa el ataque manualmente si hace falta.",
     "protectionThreshold": "Umbral de proteccion",
     "protectionThresholdHint": "Tamano de ola para activar el modo proteccion.",
     "attackMode": "Modo Ataque",
     "attackModeDescription": "Si se alcanza este umbral, o si un moderador usa tu comando de defensa, DimaBot banea todos los follows rastreados de la ola.",
     "attackThreshold": "Umbral de ataque",
-    "attackThresholdHint": "Tamano de ola para activar el modo ataque automatico.",
+    "attackThresholdHint": "Déjalo vacío para usar un umbral dinámico de los últimos 30 días. Introduce un número para usar tu propio umbral.",
     "manualCommand": "Comando manual",
     "followsThreshold": "Umbral de follows",
     "detectionWindow": "Ventana de deteccion (segundos)",
     "trackingDuration": "Duracion del rastreo (segundos)",
     "seconds": "segundos",
     "baseline": {
-      "title": "Sensibilidad de Linea Base",
-      "description": "Linea base definida por el streamer para contexto y recomendaciones futuras.",
+      "title": "Sensibilidad dinámica",
+      "description": "Se calcula cada hora con los últimos 30 días completos, excluyendo días con ataques registrados. Usa el doble del mayor promedio diario o por stream finalizado, con un mínimo de 500 follows por ola sostenida. Silencio y protección son independientes; las raids requieren ataque manual.",
       "placeholder": "ej. 100"
     },
     "expectedFollowsPerHour": "Follows esperados por hora",
@@ -843,6 +843,13 @@
       "attackActivatedMessage": "DimaBot esta baneando a los seguidores rastreados de la ola.",
       "resetSuccessTitle": "Modo reiniciado",
       "resetSuccessMessage": "El modo de Follow Defense ha sido reiniciado a normal."
+    },
+    "dynamic": {
+      "placeholder": "Automático (30 días)",
+      "manual": "Umbral de ataque personalizado: {{count}} follows. Vacía el umbral para usar sensibilidad dinámica.",
+      "ready": "Umbral de ataque dinámico: {{count}} follows en una ola sostenida. El ataque manual sigue disponible durante la protección.",
+      "learning": "La sensibilidad dinámica está aprendiendo o esperando datos recientes. El ataque automático se pausa hasta tener 7 días de actividad y 3 streams finalizados. Silencio, protección y ataque manual siguen disponibles.",
+      "averages": "Promedios de 30 días: {{daily}} follows/día · {{stream}} follows/stream finalizado · {{days}} días con actividad."
     }
   },
   "analyticsHub": {

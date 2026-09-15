@@ -769,21 +769,21 @@
     "silentModeDescription": "If a small burst of follows happens, DimaBot pauses follow alerts and tracks the wave silently.",
     "silentModeThresholdHint": "Number of follows to trigger silent mode.",
     "protectionMode": "Protection Mode",
-    "protectionModeDescription": "If the wave grows larger, DimaBot warns chat and bans new follows. During raids, DimaBot tracks silently instead.",
+    "protectionModeDescription": "If the wave grows larger, DimaBot suppresses follow alerts and tracks followers without banning them. Activate attack manually if needed.",
     "protectionThreshold": "Protection threshold",
     "protectionThresholdHint": "Wave size to trigger protection mode.",
     "attackMode": "Attack Mode",
     "attackModeDescription": "If this threshold is reached, or if a moderator uses your defense command, DimaBot bans all tracked follows from the wave.",
     "attackThreshold": "Attack threshold",
-    "attackThresholdHint": "Wave size to trigger automatic attack mode.",
+    "attackThresholdHint": "Leave empty for a dynamic threshold from your last 30 days. Enter a number to use your own threshold.",
     "manualCommand": "Manual command",
     "followsThreshold": "Follows threshold",
     "detectionWindow": "Detection window (seconds)",
     "trackingDuration": "Tracking duration (seconds)",
     "seconds": "seconds",
     "baseline": {
-      "title": "Baseline Sensitivity",
-      "description": "Optional streamer-defined baseline for context and future recommendations.",
+      "title": "Dynamic sensitivity",
+      "description": "Calculated hourly from the last 30 complete days, excluding days with recorded attacks. Uses twice the larger daily or completed-stream average, with a minimum of 500 follows per sustained wave. Silence and protection remain independent; raids require manual attack.",
       "placeholder": "e.g. 100"
     },
     "expectedFollowsPerHour": "Expected follows per hour",
@@ -843,6 +843,13 @@
       "attackActivatedMessage": "DimaBot is now banning tracked followers from the wave.",
       "resetSuccessTitle": "Mode reset",
       "resetSuccessMessage": "Follow Defense mode has been reset to normal."
+    },
+    "dynamic": {
+      "placeholder": "Automatic (30 days)",
+      "manual": "Custom attack threshold: {{count}} follows. Clear the attack threshold to use dynamic sensitivity.",
+      "ready": "Dynamic attack threshold: {{count}} follows in a sustained wave. Manual attack remains available during protection.",
+      "learning": "Dynamic sensitivity is learning or awaiting fresh data. Automatic attack is paused until there are 7 days of follow activity and 3 completed streams. Silence, protection, and manual attack remain available.",
+      "averages": "30-day averages: {{daily}} follows/day · {{stream}} follows/completed stream · {{days}} days with activity."
     }
   },
   "analyticsHub": {

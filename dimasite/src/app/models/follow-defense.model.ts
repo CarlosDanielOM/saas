@@ -12,7 +12,7 @@ export interface FollowDefenseSettings {
   silentThresholdX: number;
   silentWindowYSeconds: number;
   protectionThresholdB: number;
-  attackThreshold: number;
+  attackThreshold: number | null;
   silentDurationSeconds: number;
   baselineFollowsPerHour: number | null;
   language: FollowDefenseLanguage;
@@ -31,6 +31,7 @@ export interface FollowDefenseStatus {
   lastTransitionReason: string;
   lastUpdatedAt: number;
   trackedCount?: number;
+  dynamicBaseline?: { calculatedAt: number; averageDaily: number; averageStream: number; sampleDays: number; streamCount: number; attackThreshold: number | null } | null;
   raid?: FollowDefenseRaidMarker | null;
 }
 

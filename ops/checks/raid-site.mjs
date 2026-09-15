@@ -11,7 +11,7 @@ const app={name:'Fixture',email:'fixture@example.invalid',language:'en',plan_tie
 await page.addInitScript(({twitch,app})=>localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,token:'fixture',createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3600000).toISOString(),twitchUser:twitch,appUser:app,permissions:{}})),{twitch,app});
 const settings={channelID:twitch.id,channel:'fixture',enabled:true,silentModeEnabled:true,protectionModeEnabled:true,attackModeEnabled:true,resetAttackOnNewRaid:true,silentThresholdX:10,silentWindowYSeconds:5,protectionThresholdB:100,attackThreshold:500,silentDurationSeconds:60,baselineFollowsPerHour:null,language:'en',settingsVersion:1};
 const sessions=[{id:'b'.repeat(64),raiderLogin:'raiderb',raiderName:'Raider B',viewers:7000,startedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+72*3600000).toISOString(),retentionHours:72,totalFollows:2000,collecting:true,banning:false,canIncludeFuture:true,outcomes:{}},{id:'a'.repeat(64),raiderLogin:'raidera',raiderName:'Raider A',viewers:8000,startedAt:new Date(Date.now()-60000).toISOString(),expiresAt:new Date(Date.now()+72*3600000-60000).toISOString(),retentionHours:72,totalFollows:3000,collecting:false,banning:false,canIncludeFuture:false,outcomes:{succeeded:120,pending:2880}}];
-const submitted=[];let failBan=false;let followerRequests=[];let settingsSaved;
+const submitted=[];let failBan=false;let followerRequests=[];let settingsSaved;let mode='attack';let hasBaseline=true;
 await page.route('**/*',async route=>{
  const u=new URL(route.request().url());
  if(u.origin===new URL(url).origin && !u.pathname.startsWith('/api/')) return route.continue();
@@ -21,7 +21,7 @@ await page.route('**/*',async route=>{
   if(path==='/auth/session') data={twitch,app};
   else if(path.includes('/access')) data={allowed:true};
   else if(path.endsWith('/settings')) { if(route.request().method()==='PATCH') {settingsSaved=route.request().postDataJSON();Object.assign(settings,settingsSaved);} data=settings; }
-  else if(path.endsWith('/status')) data={mode:'attack',channelID:twitch.id,modeStartedAt:Date.now(),expiresAt:Date.now()+60000,triggeredBy:'manual',trackedCount:2000,raid:{expiresAt:Date.now()+300000,raidViewers:7000,raiderChannelName:'Raider B'}};
+  else if(path.endsWith('/status')) data={mode,dynamicBaseline:hasBaseline?{calculatedAt:Date.now(),averageDaily:20000,averageStream:20000,sampleDays:30,streamCount:30,attackThreshold:40000}:null,channelID:twitch.id,modeStartedAt:Date.now(),expiresAt:Date.now()+60000,triggeredBy:'manual',trackedCount:2000,raid:{expiresAt:Date.now()+300000,raidViewers:7000,raiderChannelName:'Raider B'}};
   else if(path.endsWith('/raid-sessions')) data={sessions,total:2,page:1,limit:20,canBan:true,planTier:app.plan_tier,canBanSession:app.plan_tier!=='free',canBanIndividual:app.plan_tier==='pro'};
   else if(path.endsWith('/followers')) {const n=Number(u.searchParams.get('page')||1);followerRequests.push(n);data={followers:Array.from({length:50},(_,i)=>({id:`f${n}-${i}`,userID:String(n*100+i),login:`viewer${n*100+i}`,name:`Viewer ${n*100+i}`,followedAt:new Date().toISOString(),banStatus:'unrequested'})),total:2000,page:n,limit:50};}
   else if(path.endsWith('/bans')) {submitted.push(route.request().postDataJSON()); if(failBan) {failBan=false;return route.fulfill({status:503,json:{error:true}});} data={status:'pending',requestID:'accepted'};}
@@ -66,13 +66,26 @@ try {
  const toggle=page.getByRole('checkbox',{name:'Switch attack mode to protection on a new raid',exact:true});assert.equal(await toggle.isChecked(),true);await toggle.uncheck();
  const save=page.locator('.lf-save-bar button');await save.click();await page.waitForTimeout(300);assert.equal(settingsSaved.resetAttackOnNewRaid,false);
  await cards.first().getByRole('button',{name:'Hide followers',exact:true}).click();
+ const threshold=page.getByPlaceholder('Automatic (30 days)',{exact:true});
+ await threshold.fill('');await threshold.blur();await save.click();await page.waitForTimeout(300);
+ assert.equal(settingsSaved.attackThreshold,null);
+ await page.getByText('Dynamic attack threshold: 40000 follows in a sustained wave. Manual attack remains available during protection.',{exact:true}).waitFor();
+ await threshold.fill('12500');await threshold.blur();await save.click();await page.waitForTimeout(300);assert.equal(settingsSaved.attackThreshold,12500);
+ await page.getByText('Custom attack threshold: 12500 follows. Clear the attack threshold to use dynamic sensitivity.',{exact:true}).waitFor();
+ await threshold.fill('');await threshold.blur();await save.click();await page.waitForTimeout(300);
+ mode='protection';await page.reload();await section.getByText('Raider B',{exact:true}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Activate Attack Mode',exact:true}).isEnabled(),true);
+ hasBaseline=false;await page.reload();await page.getByText(/Dynamic sensitivity is learning or awaiting fresh data/).waitFor();
+ hasBaseline=true;await page.reload();await section.getByText('Raider B',{exact:true}).waitFor();
+
  for(const width of [320,390,1440]) {
   await page.setViewportSize({width,height:900});await section.scrollIntoViewIfNeeded();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`overflow at ${width}`);
   await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});
   for(const dark of [false,true]) {await page.evaluate(dark=>document.documentElement.classList.toggle('dark',dark),dark);
-   const axe=await page.evaluate(async()=>await window.axe.run(document.querySelector('app-raid-sessions')));assert.deepEqual(axe.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[]);}
+   const axe=await page.evaluate(async()=>await window.axe.run([document.querySelector('app-raid-sessions'),document.querySelector('#follow-defense-sensitivity')]));assert.deepEqual(axe.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[]);}
   await page.screenshot({path:`/tmp/raid-sessions-${width}.png`,fullPage:true});
+  await page.locator('#follow-defense-sensitivity').screenshot({path:`/tmp/dynamic-sensitivity-${width}.png`});
  }
  for(const tier of ['free','premium','pro']) {
   app.plan_tier=tier;await page.reload();await section.getByText('Raider B',{exact:true}).waitFor();
@@ -90,5 +103,5 @@ try {
  assert.deepEqual((await page.evaluate(async()=>await window.axe.run(document.querySelector('dialog[open]')))).violations.map(v=>v.id),[]);
  await page.screenshot({path:'/tmp/raid-confirmation-es.png'});
  assert.deepEqual(errors,[]);
- console.log('PASS SITE: Free/Premium/Pro controls and 72-hour history, A/B counts, follower pagination, individual/session confirmation scopes, Escape/focus, retry identity, default/new-raid setting save, 320/390/1440 layouts, no runtime errors');
-} catch(error) {console.error('URL',page.url(),'errors',errors);console.error(await page.locator('app-raid-sessions').evaluate(el=>({selection:window.ng?.getComponent(el).selection(),dialog:el.querySelector('dialog')?.outerHTML})));  console.error((await page.locator('body').innerText()).slice(0,3500)); throw error;} finally {await browser.close();}
+ console.log('PASS SITE: dynamic/custom threshold save and manual controls, Free/Premium/Pro controls and 72-hour history, A/B counts, follower pagination, individual/session confirmation scopes, Escape/focus, retry identity, default/new-raid setting save, 320/390/1440 layouts, no runtime errors');
+} catch(error) {console.error('URL',page.url(),'errors',errors);console.error(await page.locator('app-raid-sessions').evaluate(el=>({selection:window.ng?.getComponent(el).selection(),dialog:el.querySelector('dialog')?.outerHTML})));  console.error((await page.locator('body').innerText()).slice(0,6000)); console.error(await page.locator('app-follow-defense-page').evaluate(el=>({settings:window.ng?.getComponent(el)?.settings(),status:window.ng?.getComponent(el)?.status(),html:el.innerHTML.slice(el.innerHTML.indexOf('DYNAMIC'),el.innerHTML.indexOf('DYNAMIC')+3000)}))); throw error;} finally {await browser.close();}

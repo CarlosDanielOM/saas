@@ -28,6 +28,7 @@ const SAFE_SUITES = [
     'src/server/routes/webhooks/polarsh.webhook.test.ts',
     'src/server/routes/admin_site.domain_events.test.ts',
     'src/utils/follow_defense.test.ts',
+    'src/utils/follow_defense_baseline.test.ts',
     'src/utils/follow_defense_actions.test.ts',
     'src/utils/follow_defense_summary.test.ts',
     'src/functions/moderation/ban.moderation.test.ts',

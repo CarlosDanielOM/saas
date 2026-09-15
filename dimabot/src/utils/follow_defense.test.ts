@@ -6,6 +6,8 @@ import type { IFollowHateRaidSource } from '../schemas/follow_hate_raid_source.s
 import type { FollowDefenseFollowPayload, FollowDefenseState } from './follow_defense_queue.js';
 import { runFollowDefenseStateLua } from './follow_defense_state.test-helper.js';
 
+let dynamicThreshold: number | null = 40000;
+mock.module('./follow_defense_baseline.js', { namedExports: { getDefenseBaseline: async () => ({ attackThreshold: dynamicThreshold }) } });
 mock.module('./raid_sessions.js', { namedExports: { recordRaidFollow: async () => null, findRaidSession: async () => null } });
 const NOW = Date.parse('2026-09-05T12:00:00Z');
 let now = NOW;
@@ -595,12 +597,12 @@ test('duplicate-key errors without a confirmed log or source receipt never compl
 });
 
 
-test('detection records bans and announcements without waiting for Twitch or AI', async () => {
+test('protection tracks and warns without banning followers', async () => {
     values.set(keys.settings, JSON.stringify({ enabled: true, protectionThresholdB: 2, attackThreshold: 500 }));
     await processDurableFollowDefenseFollow(follow('first'));
     await processDurableFollowDefenseFollow(follow('second'));
     for (let i = 0; i < 20; i++) await processDurableFollowDefenseFollow(follow(`queued-${i}`));
-    assert.equal(queuedBans.length, 22);
+    assert.equal(queuedBans.length, 0);
     assert.equal(messages.length, 1);
 });
 
@@ -643,7 +645,7 @@ test('sustained follows accumulate across windows, escalate, and keep the same w
         assert.equal(current.mode, i < 7 ? 'silent' : i < 10 ? 'protection' : 'attack');
         assert.equal(current.expiresAt, now + 3000);
     }
-    assert.equal(new Set(queuedBans).size, 12, 'protection includes the fresh followers already tracked in silence');
+    assert.equal(new Set(queuedBans).size, 12, 'attack includes fresh followers tracked during silence and protection');
     assert.equal(messages.length, 2, 'one warning per escalation, none per refresh');
     now += 4000;
     assert.equal(await expireFollowDefenseModes(), 1);
@@ -671,4 +673,43 @@ test('a recognized raid may escalate tracking without queuing automatic bans', a
     }
     assert.equal(JSON.parse(values.get(keys.state)!).mode, 'protection');
     assert.equal(queuedBans.length, 0);
+});
+
+
+test('dynamic baseline prevents normal high-volume follows from attacking, custom threshold overrides it', async () => {
+    values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, protectionThresholdB: 3, attackThreshold: null }));
+    for (let i=0;i<12;i++) await processDurableFollowDefenseFollow(follow(`dynamic-${i}`));
+    assert.equal(JSON.parse(values.get(keys.state)!).mode, 'protection');
+    assert.equal(queuedBans.length, 0);
+    values.set(keys.settings, JSON.stringify({ enabled: true, attackThreshold: 10 }));
+    await processDurableFollowDefenseFollow(follow('custom'));
+    assert.equal(JSON.parse(values.get(keys.state)!).mode, 'attack');
+    assert.ok(queuedBans.length > 0);
+});
+
+test('missing dynamic history keeps protection and manual attack available', async () => {
+    dynamicThreshold = null;
+    try {
+        values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, protectionThresholdB: 3, attackThreshold: null }));
+        for (let i=0;i<12;i++) await processDurableFollowDefenseFollow(follow(`learning-${i}`));
+        assert.equal(JSON.parse(values.get(keys.state)!).mode, 'protection');
+        assert.equal(queuedBans.length, 0);
+        await triggerFollowDefenseAttackMode('channel');
+        await processFollowDefenseQueue();
+        assert.equal(JSON.parse(values.get(keys.state)!).mode, 'attack');
+        assert.ok(queuedBans.length > 0);
+    } finally { dynamicThreshold = 40000; }
+});
+
+test('dynamic automatic attack still escalates when its calculated threshold is exceeded', async () => {
+    dynamicThreshold = 10;
+    try {
+        values.set(keys.settings, JSON.stringify({ enabled: true, silentThresholdX: 2, protectionThresholdB: 3, attackThreshold: null }));
+        for (let i=0;i<12;i++) {
+            now = NOW + i * 1000;
+            await processDurableFollowDefenseFollow({ ...follow(`dynamic-attack-${i}`), followedAt: new Date(now).toISOString() });
+        }
+        assert.equal(JSON.parse(values.get(keys.state)!).mode, 'attack');
+        assert.ok(queuedBans.length > 0);
+    } finally { dynamicThreshold = 40000; }
 });

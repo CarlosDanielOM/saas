@@ -13,7 +13,7 @@ export interface IFollowDefenseSettings {
     silentThresholdX: number;
     silentWindowYSeconds: number;
     protectionThresholdB: number;
-    attackThreshold: number;
+    attackThreshold: number | null;
     silentDurationSeconds: number;
     baselineFollowsPerHour: number | null;
     language: FollowDefenseLanguage;
@@ -33,7 +33,7 @@ const followDefenseSettingsSchema = new Schema<IFollowDefenseSettings>({
     silentThresholdX: { type: Number, default: 10, min: 1 },
     silentWindowYSeconds: { type: Number, default: 5, min: 1 },
     protectionThresholdB: { type: Number, default: 100, min: 1 },
-    attackThreshold: { type: Number, default: 500, min: 1 },
+    attackThreshold: { type: Number, default: null, min: 1 },
     silentDurationSeconds: { type: Number, default: 60, min: 1 },
     baselineFollowsPerHour: { type: Number, default: null },
     language: { type: String, enum: ['en', 'es'], default: 'en' },

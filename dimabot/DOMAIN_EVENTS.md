@@ -121,7 +121,7 @@ Sources: [consumer registry](src/domain_events/domain_event_consumers.ts), [deli
 
 ## Follow defense moderation execution
 
-Detection in `follow-defense-v1` updates Redis windows/modes and records actions through [follow_defense_actions.ts](src/utils/follow_defense_actions.ts). It never waits for Twitch bans, AI generation, or warning delivery. The short-window thresholds also apply to the cumulative count of an active sustained flood: with defaults, silence starts at 10 follows in 5 seconds, protection at 100 follows in the wave, and attack at 500. A continuing rate of at least 10 per 5 seconds refreshes the same wave until 60 seconds after the last high-rate evidence; protection still evaluates attack escalation. Fresh tracked followers are queued when protection begins. Recognized raid sessions cap automatic escalation at protection; chat announcement settings do not gate defense detection. Atomic refresh preserves the state identity and cannot revive reset or expired modes. Follow-alert suppression remains active for the renewed mode; the separate announcement consumer can still race initial detection. Warning messages use deterministic static text queued outside detection. Cooldown acknowledgements run separately in the maintenance worker, across silent/protection/attack modes.
+Detection in `follow-defense-v1` updates Redis windows/modes and records actions through [follow_defense_actions.ts](src/utils/follow_defense_actions.ts). It never waits for Twitch bans, AI generation, or warning delivery. The short-window thresholds also apply to the cumulative count of an active sustained flood: silence starts at 10 follows in 5 seconds and protection at 100 follows in the wave by default; attack uses the configured or dynamic threshold. A continuing rate of at least 10 per 5 seconds refreshes the same wave until 60 seconds after the last high-rate evidence; protection still evaluates attack escalation. Protection tracks and suppresses alerts without banning. Automatic attack uses the saved numeric threshold or a dynamic threshold when the setting is null. Recognized raid sessions cap automatic escalation at protection; chat announcement settings do not gate defense detection. Atomic refresh preserves the state identity and cannot revive reset or expired modes. Follow-alert suppression remains active for the renewed mode; the separate announcement consumer can still race initial detection. Warning messages use deterministic static text queued outside detection. Cooldown acknowledgements run separately in the maintenance worker, across silent/protection/attack modes.
 
 Mongo `follow_defense_actions` stores one idempotent action per channel/event/kind, including follower ID, reason, authorization time, attempts, outcomes, and a fixed one-hour execution deadline. Ban waves use bounded 200-payload batches and bulk upserts. Admission requires a follow younger than 60 seconds; retry cannot extend an existing action deadline. Records expire after seven days; expired decisions never restart from retained journal history. This does not preserve the Redis tracked-wave index after cache loss.
 
@@ -231,3 +231,29 @@ already use the 73-hour physical deadline. This additive procedure needs no inde
 change and never deletes data. Expired sessions are excluded to avoid advertising a partially
 purged history; deleted records cannot be recovered. Verification exercises extension and repeat
 execution against disposable Mongo before the worker is deployed.
+
+
+### Dynamic follow-defense sensitivity
+
+`attackThreshold: null` (or an empty PATCH field) selects dynamic detection. New settings default to
+null; existing numeric settings, including 500, are preserved because legacy data does not identify
+whether a number was explicitly chosen. Invalid, zero, negative, fractional, or nonnumeric values
+are rejected. A streamer can clear the field to opt in and see the effective threshold on the page.
+
+A dedicated supervised `follow-defense-baseline` worker queries the last 30 complete UTC days from
+the follow ledger and completed stream sessions. It excludes days with recorded attack logs and
+ignores today's follows/live streams. The threshold is the ceiling of twice the larger of average
+daily follows (the larger ledger or stream total divided by eligible calendar days) and average
+follows per completed stream, with a minimum of 500. At least seven activity days and three completed
+streams are required. These are volume safeguards, not proof that a follower is malicious.
+
+The detector reads only the Redis baseline; it never runs historical aggregates per event. Refreshes
+run hourly, one channel at a time, with query deadlines and retry scheduling. Missing data, cache
+loss, or a baseline older than 48 hours pauses dynamic automatic attack instead of falling back to
+500. Silence, tracking/protection, and manual attack still work. A fresh manual command includes older followers captured in that same active wave; automatic decisions retain their 60-second event-freshness gate. Existing raid protection and
+per-session manual authorization continue to apply. Prior automatic protection ban jobs are
+cancelled before execution. Twitch pacing still targets 5–10 requests/second and respects retry headers. The minimum interval now starts at request completion so slow token/header lookup cannot compress actual HTTP arrivals.
+
+`ops/checks/dynamic-defense.mjs` validates real aggregation with isolated Mongo/Redis, a 20k/day
+baseline and 10,000 non-raid follows, manual/custom activation, null/number API contracts, cache
+staleness, worker startup, and legacy protection-job cancellation. Provider calls are mocked.

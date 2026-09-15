@@ -1,3 +1,4 @@
+import { getDefenseBaseline } from './follow_defense_baseline.js';
 import { createHash } from 'node:crypto';
 import { Types } from 'mongoose';
 import { enqueueFollowDefenseBan, enqueueFollowDefenseBans, enqueueFollowDefenseAnnouncement, followDefenseCancelledThrough, getDurableFollowDefenseBanResult, refreshFollowDefenseLogActions } from './follow_defense_actions.js';
@@ -37,7 +38,7 @@ interface FollowDefenseRuntimeSettings {
     silentThresholdX: number;
     silentWindowYSeconds: number;
     protectionThresholdB: number;
-    attackThreshold: number;
+    attackThreshold: number | null;
     silentDurationSeconds: number;
     baselineFollowsPerHour: number | null;
     language: FollowDefenseLanguage;
@@ -60,7 +61,7 @@ const DEFAULT_SETTINGS: FollowDefenseRuntimeSettings = {
     silentThresholdX: 10,
     silentWindowYSeconds: 5,
     protectionThresholdB: 100,
-    attackThreshold: 500,
+    attackThreshold: null,
     silentDurationSeconds: 60,
     baselineFollowsPerHour: null,
     language: 'en',
@@ -104,7 +105,7 @@ function normalizeSettings(channelID: string, channel: string, settings?: Partia
         silentThresholdX: toPositiveInteger(settings?.silentThresholdX, DEFAULT_SETTINGS.silentThresholdX),
         silentWindowYSeconds: toPositiveInteger(settings?.silentWindowYSeconds, DEFAULT_SETTINGS.silentWindowYSeconds),
         protectionThresholdB: toPositiveInteger(settings?.protectionThresholdB, DEFAULT_SETTINGS.protectionThresholdB),
-        attackThreshold: toPositiveInteger(settings?.attackThreshold, DEFAULT_SETTINGS.attackThreshold),
+        attackThreshold: settings?.attackThreshold == null ? null : toPositiveInteger(settings.attackThreshold, 500),
         silentDurationSeconds: toPositiveInteger(settings?.silentDurationSeconds, DEFAULT_SETTINGS.silentDurationSeconds),
         baselineFollowsPerHour: settings?.baselineFollowsPerHour ?? null,
         language: settings?.language === 'es' ? 'es' : 'en',
@@ -262,7 +263,7 @@ async function banFollow(channelID: string, eventID: string, reason: string, req
     await enqueueFollowDefenseBan(follow, reason);
 }
 
-async function banTrackedFollows(channelID: string, required = false, authorizedAt?: number, reason = 'DimaBot follow defense attack mode'): Promise<void> {
+async function banTrackedFollows(channelID: string, required = false, authorizedAt?: number, reason = 'DimaBot follow defense attack mode', waveStartedAt?: number): Promise<void> {
     const cache = await getDragonflyClient('followDefense.banTrackedFollows');
     const eventIDs = await getTrackedEventIDs(channelID);
     for (let offset = 0; offset < eventIDs.length; offset += 200) {
@@ -270,7 +271,7 @@ async function banTrackedFollows(channelID: string, required = false, authorized
         const payloads = await cache.mGet(ids.map(id => `${followDefenseKeys(channelID).followDataPrefix}${id}`));
         const follows = payloads.map(raw => parseJson<FollowDefenseFollowPayload>(raw));
         if (required && follows.some(follow => !follow)) throw new Error('Missing required follow defense payload in wave');
-        await enqueueFollowDefenseBans(follows.filter((follow): follow is FollowDefenseFollowPayload => Boolean(follow)), reason, authorizedAt);
+        await enqueueFollowDefenseBans(follows.filter((follow): follow is FollowDefenseFollowPayload => Boolean(follow) && (waveStartedAt === undefined || new Date(follow!.followedAt).getTime() >= waveStartedAt)), reason, authorizedAt);
     }
 }
 
@@ -423,7 +424,8 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload, recordedSes
         return;
     }
 
-    const shouldAttack = !raidProtected && freshForDetection && settings.attackModeEnabled && Math.max(recentCount, waveCount) >= settings.attackThreshold;
+    const attackThreshold = settings.attackThreshold ?? (!raidProtected && settings.attackModeEnabled ? (await getDefenseBaseline(follow.channelID))?.attackThreshold : null) ?? Infinity;
+    const shouldAttack = !raidProtected && freshForDetection && settings.attackModeEnabled && Math.max(recentCount, waveCount) >= attackThreshold;
     const shouldProtect = freshForDetection && settings.protectionModeEnabled && Math.max(recentCount, waveCount) >= settings.protectionThresholdB;
     const shouldSilent = freshForDetection && settings.silentModeEnabled && recentCount >= settings.silentThresholdX;
 
@@ -431,9 +433,6 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload, recordedSes
     if (activeState?.mode === 'protection' && !raidProtected && !shouldAttack) {
         if (activeState.triggerEventID === follow.eventID) {
             await sendDefenseMessage(follow.channelID, settings, 'protection', activeState);
-            await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
-        } else {
-            await banFollow(follow.channelID, follow.eventID, 'DimaBot follow defense protection mode', durable);
         }
         return;
     }
@@ -442,7 +441,7 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload, recordedSes
 
     if (shouldAttack && !raidProtected) {
         await addRecentWindowToTracked(follow.channelID, windowStart, now);
-        const attackState = await transitionMode(follow, settings, 'attack', 'threshold', recentCount >= settings.attackThreshold ? 'attack_threshold' : 'sustained_attack_threshold');
+        const attackState = await transitionMode(follow, settings, 'attack', 'threshold', recentCount >= attackThreshold ? 'attack_threshold' : 'sustained_attack_threshold');
         if (!attackState) return;
         await sendDefenseMessage(follow.channelID, settings, 'attack', attackState);
         await banTrackedFollows(follow.channelID, durable);
@@ -455,7 +454,6 @@ async function handleFollowEvent(follow: FollowDefenseFollowPayload, recordedSes
         if (!protectionState) return;
         if (!raidProtected) {
             await sendDefenseMessage(follow.channelID, settings, 'protection', protectionState);
-            await banTrackedFollows(follow.channelID, durable, undefined, 'DimaBot follow defense protection mode');
         }
         return;
     }
@@ -489,7 +487,7 @@ async function handleManualAttack(event: Extract<FollowDefenseQueueEvent, { type
     const state = await setManualAttackState(event.payload, settings);
     if (!state) return;
     await sendDefenseMessage(event.payload.channelID, settings, 'attack', state);
-    await banTrackedFollows(event.payload.channelID, false, event.payload.triggeredAt);
+    await banTrackedFollows(event.payload.channelID, false, event.payload.triggeredAt, undefined, state.burstStartedAt - settings.silentWindowYSeconds * 1000);
     await persistAttackLog(state);
 }
 

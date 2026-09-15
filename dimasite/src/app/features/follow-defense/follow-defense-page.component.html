@@ -190,7 +190,7 @@
             <div class="lf-form-grid">
               <label class="lf-field">
                 <span>{{ t('followDefense.attackThreshold') }}</span>
-                <input type="number" min="1" [value]="cfg.attackThreshold" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.attackModeEnabled" />
+                <input type="number" min="1" [value]="cfg.attackThreshold ?? ''" [placeholder]="t('followDefense.dynamic.placeholder')" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.attackModeEnabled" />
                 <small>{{ t('followDefense.attackThresholdHint') }}</small>
               </label>
               <div class="lf-field">
@@ -202,14 +202,15 @@
         </div>
       </section>
 
-      <section class="lf-tile">
+      <section class="lf-tile" id="follow-defense-sensitivity">
         <p class="lf-kicker">{{ t('followDefense.baseline.title') }}</p>
         <h2 class="lf-h2">{{ t('followDefense.baseline.title') }}</h2>
         <p class="lf-copy lf-copy--tight">{{ t('followDefense.baseline.description') }}</p>
-        <label class="lf-field lf-field--narrow">
-          <span>{{ t('followDefense.expectedFollowsPerHour') }}</span>
-          <input type="number" min="0" [value]="cfg.baselineFollowsPerHour ?? ''" (change)="updateBaselineFollowsPerHour($any($event.target).value)" [disabled]="!cfg.enabled" [placeholder]="t('followDefense.baseline.placeholder')" />
-        </label>
+        <p>{{ sensitivitySummary() }}</p>
+        @if (status()?.dynamicBaseline; as baseline) {
+          <p>{{ t('followDefense.dynamic.averages', { daily: baseline.averageDaily.toFixed(0), stream: baseline.averageStream.toFixed(0), days: baseline.sampleDays }) }}</p>
+        }
+
       </section>
 
       <section class="lf-tile lf-tile--actions">

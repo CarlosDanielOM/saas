@@ -1,3 +1,4 @@
+import { getDefenseBaseline } from '../../utils/follow_defense_baseline.js';
 import express, { type Request, type Response } from 'express';
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
@@ -35,7 +36,7 @@ interface FollowDefenseSettingsResponse {
     silentThresholdX: number;
     silentWindowYSeconds: number;
     protectionThresholdB: number;
-    attackThreshold: number;
+    attackThreshold: number | null;
     silentDurationSeconds: number;
     baselineFollowsPerHour: number | null;
     language: FollowDefenseLanguage;
@@ -53,7 +54,7 @@ const DEFAULT_SETTINGS = {
     silentThresholdX: 10,
     silentWindowYSeconds: 5,
     protectionThresholdB: 100,
-    attackThreshold: 500,
+    attackThreshold: null as number | null,
     silentDurationSeconds: 60,
     baselineFollowsPerHour: null as number | null,
     language: 'en' as FollowDefenseLanguage,
@@ -144,7 +145,7 @@ function toSettingsResponse(settings: IFollowDefenseSettings | FollowDefenseSett
         silentThresholdX: settings.silentThresholdX || DEFAULT_SETTINGS.silentThresholdX,
         silentWindowYSeconds: settings.silentWindowYSeconds || DEFAULT_SETTINGS.silentWindowYSeconds,
         protectionThresholdB: settings.protectionThresholdB || DEFAULT_SETTINGS.protectionThresholdB,
-        attackThreshold: settings.attackThreshold || DEFAULT_SETTINGS.attackThreshold,
+        attackThreshold: settings.attackThreshold ?? null,
         silentDurationSeconds: settings.silentDurationSeconds || DEFAULT_SETTINGS.silentDurationSeconds,
         baselineFollowsPerHour: settings.baselineFollowsPerHour ?? null,
         language: settings.language === 'es' ? 'es' : 'en',
@@ -189,8 +190,8 @@ function buildSettingsPatch(body: Record<string, unknown>): Partial<IFollowDefen
         }
 
         if (NUMBER_FIELDS.has(key)) {
-            if (key === 'baselineFollowsPerHour' && (value === null || value === '')) {
-                patch.baselineFollowsPerHour = null;
+            if ((key === 'baselineFollowsPerHour' || key === 'attackThreshold') && (value === null || (typeof value === 'string' && value.trim() === ''))) {
+                patch[key] = null;
                 continue;
             }
 
@@ -240,6 +241,7 @@ async function buildStatus(channelID: string, channelName: string): Promise<Reco
     return {
         ...activeState,
         trackedCount: await getTrackedCount(channelID),
+        dynamicBaseline: await getDefenseBaseline(channelID),
         moderationQueue: await getFollowDefenseActionCounts(channelID),
         raid: await getRaidMarker(channelID)
     };
@@ -280,6 +282,13 @@ router.patch('/:channelID/settings', authMiddleware as any, async (req: FollowDe
         if (!access) return;
 
         await getOrCreateSettings(channelID, access.channelName);
+        if (Object.hasOwn(req.body, 'attackThreshold')) {
+            const value = req.body.attackThreshold;
+            if (value !== null && value !== '' && !(typeof value === 'string' && value.trim() === '')
+                && ((typeof value !== 'number' && typeof value !== 'string') || !Number.isSafeInteger(Number(value)) || Number(value) < 1)) {
+                return res.status(400).json({ error: true, message: 'Attack threshold must be a positive integer or empty for dynamic sensitivity', status: 400 });
+            }
+        }
         const patch = buildSettingsPatch(req.body as Record<string, unknown>);
         if (patch.resetAttackOnNewRaid !== undefined && !(await getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')).allowed) {
             return res.status(403).json({ error: true, message: 'Moderation permission required' });

@@ -152,6 +152,13 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   });
 
   readonly isAttackMode = computed(() => this.currentStatusMode() === 'attack');
+  readonly sensitivitySummary = computed(() => {
+    const custom = this.settings()?.attackThreshold;
+    if (custom != null) return this.t('followDefense.dynamic.manual', { count: custom });
+    const dynamic = this.status()?.dynamicBaseline?.attackThreshold;
+    return dynamic != null ? this.t('followDefense.dynamic.ready', { count: dynamic }) : this.t('followDefense.dynamic.learning');
+  });
+
   readonly canActivateAttack = computed(() => {
     const settings = this.settings();
     return Boolean(
@@ -392,8 +399,12 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   updateAttackThreshold(value: string): void {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed) || parsed < 0) return;
+    if (!value.trim()) {
+      this.settings.update(s => s ? { ...s, attackThreshold: null } : s);
+      return;
+    }
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed < 1) return;
     this.settings.update((s) => (s ? { ...s, attackThreshold: parsed } : s));
   }
 

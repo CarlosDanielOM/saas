@@ -60,9 +60,12 @@ export async function enqueueFollowDefenseBan(follow: FollowDefenseFollowPayload
 export async function enqueueFollowDefenseBans(follows: FollowDefenseFollowPayload[], reason: string, authorizedAt?: number): Promise<void> {
     if (!follows.length) return;
     const now = Date.now();
+    const manual = authorizedAt !== undefined;
+    if (manual && (!Number.isFinite(authorizedAt) || authorizedAt > now || authorizedAt + 60_000 <= now)) return;
     const fresh = follows.filter(follow => {
         const time = new Date(follow.followedAt).getTime();
-        return Number.isFinite(time) && time <= now && time + 60_000 > now;
+        // A fresh explicit command may include older followers captured in its active wave.
+        return Number.isFinite(time) && time <= now && (manual ? time <= authorizedAt : time + 60_000 > now);
     });
     if (!fresh.length) return;
     const channelID = fresh[0].channelID;
@@ -214,7 +217,8 @@ export async function processFollowDefenseAction(execute = executeAction): Promi
             if (!action) continue;
             const actionFence = () => ({ _id: action._id, leaseToken, status: 'processing', lockedUntil: { $gt: new Date() } });
             const settings = await FollowDefenseSettingsSchema.findOne({ channelID: action.channelID }).lean();
-            let cancelled = action.authorizedAt.getTime() <= await followDefenseCancelledThrough(action.channelID)
+            let cancelled = (action.kind === 'ban' && action.mode === 'protection' && action.authorization !== 'manual')
+                || action.authorizedAt.getTime() <= await followDefenseCancelledThrough(action.channelID)
                 || settings?.enabled === false || (action.mode === 'attack' ? settings?.attackModeEnabled === false : settings?.protectionModeEnabled === false);
             if (!cancelled && action.kind === 'ban') {
                 if (action.raidSessionID) {
@@ -235,17 +239,20 @@ export async function processFollowDefenseAction(execute = executeAction): Promi
             let result: BanResponse;
             try { result = await execute(action); }
             catch (error) { result = { error: true, message: error instanceof Error ? error.message : String(error) }; }
-            const outcome = defenseActionOutcome(result, action.failures, Date.now());
+            // Token/header lookup happens inside execute. Pace after completion so a slow
+            // preflight cannot consume the interval before the HTTP request is even sent.
+            const requestCompletedAt = Date.now();
+            const outcome = defenseActionOutcome(result, action.failures, requestCompletedAt);
             const globalPacing = adaptiveDefensePacing(executor, result, Date.now(), 'global');
             const channelPacing = adaptiveDefensePacing(channel, result, Date.now(), 'channel');
             const paused = await Controls.updateOne(fence(), {
                 $set: { ratePerSecond: globalPacing.ratePerSecond, successStreak: globalPacing.successStreak },
-                $max: { nextAllowedAt: new Date(Math.max(outcome.globalPause, requestStartedAt + globalPacing.intervalMs)) }
+                $max: { nextAllowedAt: new Date(Math.max(outcome.globalPause, requestCompletedAt + globalPacing.intervalMs)) }
             });
             if (!paused.matchedCount) throw new Error('Follow defense executor lease lost after request');
             await Controls.updateOne({ _id: channel._id }, {
                 $set: { ratePerSecond: channelPacing.ratePerSecond, successStreak: channelPacing.successStreak },
-                $max: { nextAllowedAt: new Date(Math.max(outcome.channelPause, requestStartedAt + channelPacing.intervalMs)) }
+                $max: { nextAllowedAt: new Date(Math.max(outcome.channelPause, requestCompletedAt + channelPacing.intervalMs)) }
             });
             const saved = await Actions.updateOne(actionFence(), { $set: {
                 status: outcome.status, failures: outcome.failures, nextAttemptAt: new Date(outcome.retryAt),
