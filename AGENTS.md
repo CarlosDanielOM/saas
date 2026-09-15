@@ -8,6 +8,16 @@
 
 **A request to implement a change authorizes the complete delivery workflow: edit, validate in isolation, clean up temporary resources, deploy the affected services, and verify production.** Proceed without asking again for routine builds or targeted deployment after validation passes. Respect narrower requests such as review-only, plan-only, or do-not-deploy. Destructive data changes or infrastructure changes outside the requested scope require separate authorization.
 
+### Read-only production diagnostics
+
+Agents may freely use **read-only** inspection commands against live services when investigating issues — no deployment workflow or extra authorization is required. This includes:
+
+- `docker ps`, `docker logs <container>` (e.g. `dima-bot`, `dima-server`, `dima-cron`), `docker inspect`, `docker exec <container> printenv`
+- Read-only queries inside data containers, e.g. `docker exec dragonfly redis-cli get/hgetall/scan` and `docker exec mongodb mongosh <uri> --eval '<read-only query>'` (reuse the service's own connection URI from its container env; never write, update, or delete)
+- Application debug logs stored in Dragonfly under `logger:<platform>:<channelId>:<level>:<logId>` (7-day TTL), which capture `cache`-destination entries that never reach container stdout
+
+Never mutate live data, restart containers, or alter configuration under the guise of diagnostics.
+
 ### Use the executable agent workflow
 
 **For supported code/assets releases, agents must use `scripts/saas-ops` rather than assembling Docker or publication commands manually.** Read [`ops/README.md`](ops/README.md) for the exact workflow and limits. Start with `scripts/saas-ops list` and `scripts/saas-ops plan <target>`, then `build <target>`, `verify <run-id> --check <behavior-script>`, `deploy <run-id>`, and `cleanup <run-id>`. The generated run ID fixes the target throughout verification, deployment, rollback, and cleanup. No arguments prints help; there is no bulk target or automatic Git pull.
