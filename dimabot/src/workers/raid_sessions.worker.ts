@@ -4,14 +4,14 @@ let stopping = false;
 process.once('SIGTERM', () => { stopping = true; });
 process.once('SIGINT', () => { stopping = true; });
 async function main() {
-    const [{ getMongoDBConnection }, { processRaidModerationRequests, backfillRaidSession }] = await Promise.all([
+    const [{ getMongoDBConnection }, { processRaidModerationRequests, backfillRaidSession, extendRaidHistoryRetention }] = await Promise.all([
         import('../utils/databases/mongodb.database.js'), import('../utils/raid_sessions.js')
     ]);
     await getMongoDBConnection('raid-sessions');
     console.log('Raid session worker ready');
     do {
         const watchdog = setTimeout(() => process.exit(1), 40000);
-        try { await backfillRaidSession(); await processRaidModerationRequests(); }
+        try { await extendRaidHistoryRetention(); await backfillRaidSession(); await processRaidModerationRequests(); }
         catch (error) { console.error('Raid session tick failed:', error instanceof Error ? error.message : String(error)); }
         finally { clearTimeout(watchdog); }
         if (process.argv.includes('--once')) break;

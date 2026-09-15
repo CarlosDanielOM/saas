@@ -2630,7 +2630,7 @@
   },
   "raidSessions": {
     "title": "Raid sessions",
-    "retention": "History: Free 24 hours · Premium 48 hours · Pro 72 hours.",
+    "retention": "All plans include 72 hours of raid history.",
     "attribution": "Follows are grouped by arrival time. Each new raid starts a separate session; recording ends after five quiet minutes.",
     "refresh": "Refresh",
     "loading": "Loading raid sessions…",
@@ -2669,7 +2669,7 @@
     "queuedTitle": "Ban request accepted",
     "queued": "Bans will process gradually within Twitch’s limits. Follow their progress in the session list.",
     "loadError": "Could not load raid data. Try refreshing.",
-    "banError": "Could not confirm the request. Check your moderation access and that Follow Defense and attack mode are enabled, then retry. Expired sessions cannot be banned.",
+    "banError": "Could not confirm the request. Whole-session history bans require Premium; individual history bans require Pro. Check your moderation access and that Follow Defense and attack mode are enabled, then retry.",
     "resetOnRaid": "Switch attack mode to protection on a new raid",
     "resetOnRaidHint": "On by default. Turn this off to keep an active attack mode across new raids and ban their followers too. You can always activate attack mode manually for the new session.",
     "status": {
@@ -2680,6 +2680,11 @@
       "failed": "Failed",
       "cancelled": "Cancelled",
       "expired": "Expired"
+    },
+    "plan": {
+      "free": "Free: view sessions and followers. You can still activate attack mode while live protection is active.",
+      "premium": "Premium: ban whole sessions from history. Individual bans from history are available with Pro.",
+      "pro": "Pro: ban whole sessions or individual followers from history."
     }
   }
 }

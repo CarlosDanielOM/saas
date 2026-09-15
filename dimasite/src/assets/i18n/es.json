@@ -2630,7 +2630,7 @@
   },
   "raidSessions": {
     "title": "Sesiones de raid",
-    "retention": "Historial: Gratis 24 horas · Premium 48 horas · Pro 72 horas.",
+    "retention": "Todos los planes incluyen 72 horas de historial de raids.",
     "attribution": "Los follows se agrupan por su hora de llegada. Cada raid inicia una sesión independiente; el registro termina tras cinco minutos sin follows.",
     "refresh": "Actualizar",
     "loading": "Cargando sesiones de raid…",
@@ -2669,7 +2669,7 @@
     "queuedTitle": "Solicitud de ban aceptada",
     "queued": "Los bans se procesarán gradualmente respetando los límites de Twitch. Consulta el progreso en la lista de sesiones.",
     "loadError": "No se pudieron cargar los datos. Prueba a actualizar.",
-    "banError": "No se pudo confirmar la solicitud. Revisa tus permisos de moderación y que Follow Defense y el modo ataque estén habilitados, e inténtalo de nuevo. No se pueden banear sesiones caducadas.",
+    "banError": "No se pudo confirmar la solicitud. Los bans de sesiones desde el historial requieren Premium; los individuales requieren Pro. Revisa tus permisos de moderación y que Follow Defense y el modo ataque estén habilitados, e inténtalo de nuevo.",
     "resetOnRaid": "Cambiar de modo ataque a protección con una nueva raid",
     "resetOnRaidHint": "Activado por defecto. Desactívalo para mantener el modo ataque activo en nuevas raids y banear también a sus seguidores. Siempre puedes activar manualmente el modo ataque en la nueva sesión.",
     "status": {
@@ -2680,6 +2680,11 @@
       "failed": "Fallido",
       "cancelled": "Cancelado",
       "expired": "Caducado"
+    },
+    "plan": {
+      "free": "Gratis: consulta sesiones y seguidores. Puedes activar el modo ataque mientras la protección en vivo esté activa.",
+      "premium": "Premium: banea sesiones completas desde el historial. Los bans individuales desde el historial están disponibles con Pro.",
+      "pro": "Pro: banea sesiones completas o seguidores individuales desde el historial."
     }
   }
 }

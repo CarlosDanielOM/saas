@@ -7,7 +7,7 @@ import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database
 import { RaidSessionSchema as Sessions, RaidFollowerSchema as Followers, RaidModerationRequestSchema as Requests } from '/app/dist/schemas/raid_session.schema.js';
 import { FollowDefenseSettingsSchema as Settings } from '/app/dist/schemas/follow_defense_settings.schema.js';
 import { FollowDefenseActionSchema as Actions, FollowDefenseControlSchema as Controls } from '/app/dist/schemas/follow_defense_action.schema.js';
-import { applyRaidSessionMarker, recordRaidSession, recordRaidFollow, findRaidSession, requestRaidBans, processRaidModerationRequests, backfillRaidSession, raidRetentionHours } from '/app/dist/utils/raid_sessions.js';
+import { applyRaidSessionMarker, recordRaidSession, recordRaidFollow, findRaidSession, requestRaidBans, processRaidModerationRequests, backfillRaidSession, raidRetentionHours, extendRaidHistoryRetention } from '/app/dist/utils/raid_sessions.js';
 import { projectFollowDefenseState, getFollowDefenseStatus, followDefenseKeys, triggerFollowDefenseAttackMode } from '/app/dist/utils/follow_defense_queue.js';
 import { processDurableFollowDefenseFollow } from '/app/dist/utils/follow_defense.js';
 import { enqueueFollowDefenseBan, processFollowDefenseAction } from '/app/dist/utils/follow_defense_actions.js';
@@ -23,6 +23,7 @@ await Settings.create({ channelID: channel });
 await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'fixture', chat_enabled: 'false' });
 await redis.hSet('accounts:twitch:698614112:data', { id: '698614112', access_token: 'dummy-token', expires_at: String(Math.floor(Date.now()/1000)+36000) });
 await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: 'fixture' }], plan_tier: 'free' });
+const setTier = tier => mongo.connection.db.collection('users').updateOne({'accounts.id':channel},{$set:{plan_tier:tier}});
 const marker = (id, at = Date.now(), viewers = 8000) => ({ eventID: id, channelID: channel, channelLogin: 'fixture', channelName: 'Fixture', raiderChannelID: id, raiderChannelLogin: id, raiderChannelName: id, raidViewers: viewers, createdAt: at, expiresAt: at + 300000 });
 const follow = (id, at = Date.now()) => ({ eventID: `event-${id}`, channelID: channel, channelLogin: 'fixture', channelName: 'Fixture', followerID: String(id), followerLogin: `viewer${id}`, followerName: `Viewer${id}`, followedAt: new Date(at).toISOString(), receivedAt: Date.now() });
 async function resetData() { await Promise.all([Sessions.deleteMany({}), Followers.deleteMany({}), Requests.deleteMany({}), Actions.deleteMany({}), Controls.deleteMany({})]); await redis.del([keys.state, keys.raid, keys.raidProjection, keys.recent, keys.tracked, keys.settings]); }
@@ -50,6 +51,26 @@ if (process.env.SAAS_TARGET === 'api') {
     assert.equal((await api('settings',{resetAttackOnNewRaid:false},'raid-reader','PATCH')).status,403);
     const other = await Sessions.create({_id:'other-session',channelID:'700000001',eventID:'other',raiderID:'raider',startedAt:new Date(),captureUntil:new Date(Date.now()+300000),expiresAt:new Date(Date.now()+86400000),purgeAt:new Date(Date.now()+90000000),backfillUntil:new Date(),retentionHours:24});
     assert.equal((await api(`raid-sessions/${other._id}/bans`,{confirmed:true,requestID:randomUUID()})).status,404);
+    assert.equal(data.planTier,'free'); assert.equal(data.canBanSession,false); assert.equal(data.canBanIndividual,false);
+    await redis.hSet('token:raid-pro-mod',{id:'600000002',login:'promod'});
+    await mongo.connection.db.collection('users').insertOne({accounts:[{type:'twitch',id:'600000002'}],plan_tier:'pro'});
+    await AdminSchema.create({channelID:channel,adminID:'600000002',permissions:['dashboard:view','moderation:manage']});
+    assert.equal((await api(`raid-sessions/${session._id}/bans`,{confirmed:true,requestID:randomUUID()},'raid-pro-mod')).status,403);
+
+    assert.equal((await api(`raid-sessions/${session._id}/bans`,{confirmed:true,requestID:randomUUID(),origin:'live',includeFuture:true})).status,403);
+    assert.equal((await api('attack',{})).status,202);
+    assert.equal((await getFollowDefenseStatus(channel)).mode,'attack');
+    assert.equal((await Requests.findOne().lean()).origin,'live');
+    await redis.del(keys.state);
+    assert.equal((await api('attack',{})).status,409);
+    await Requests.deleteMany({});
+    await setTier('premium');
+    const premium=(await (await api('raid-sessions')).json()).data;
+    assert.equal(premium.canBanSession,true); assert.equal(premium.canBanIndividual,false);
+    assert.equal((await api(`raid-sessions/${session._id}/bans`,{confirmed:true,requestID:randomUUID(),userID:'1001'})).status,403);
+    assert.equal((await api(`raid-sessions/${session._id}/bans`,{confirmed:true,requestID:randomUUID()})).status,202);
+    await Requests.deleteMany({}); await setTier('pro');
+    assert.equal((await (await api('raid-sessions')).json()).data.canBanIndividual,true);
     const requestID = randomUUID(); const body={confirmed:true,requestID,userID:'1001'};
     assert.equal((await api(`raid-sessions/${session._id}/bans`,body)).status,202);
     assert.equal((await api(`raid-sessions/${session._id}/bans`,body)).status,202);
@@ -61,7 +82,7 @@ if (process.env.SAAS_TARGET === 'api') {
     await Sessions.updateOne({_id:session._id},{$set:{expiresAt:new Date(Date.now()-1)}});
     assert.equal((await (await api('raid-sessions')).json()).data.total,0);
     assert.equal((await api(`raid-sessions/${session._id}/bans`,{...body,requestID:randomUUID()})).status,404);
-    console.log('PASS API: owner authorization, pagination, confirmation, idempotency, follower membership, logical retention, new-raid setting persistence/validation'); process.exit(0);
+    console.log('PASS API: Free/Premium/Pro entitlements, live Free activation, no client-origin or moderator-plan bypass, owner authorization, pagination, confirmation, idempotency, follower membership, logical retention, new-raid setting persistence/validation'); process.exit(0);
 }
 
 if (process.env.SAAS_TARGET === 'bot') {
@@ -103,7 +124,7 @@ await resetData();
 // Active A includes new A follows, but B defaults to protection and cannot inherit A's request.
 await applyRaidSessionMarker(marker('activeA',Date.now()-3000)); const activeA=await findRaidSession(channel,Date.now());
 await recordRaidFollow(follow(1)); await sleep(5);
-const reqA=await requestRaidBans(channel,activeA._id,channel,randomUUID(),'',true); assert.equal(reqA.includeFuture,true);
+const reqA=await requestRaidBans(channel,activeA._id,channel,randomUUID(),'',true,'live'); assert.equal(reqA.includeFuture,true);
 await recordRaidFollow(follow(2));
 await sleep(5); await applyRaidSessionMarker(marker('activeB',Date.now())); const activeB=await findRaidSession(channel,Date.now());
 assert.equal((await getFollowDefenseStatus(channel)).mode,'protection');
@@ -111,12 +132,15 @@ await recordRaidFollow(follow(3));
 await processRaidModerationRequests();
 assert.deepEqual((await Actions.find({raidRequestID:reqA._id}).lean()).map(a=>a.followerID).sort(),['1','2']);
 assert.equal(await Actions.countDocuments({followerID:'3'}),0);
-const reqB=await requestRaidBans(channel,activeB._id,channel,randomUUID(),'',true);
+const reqB=await requestRaidBans(channel,activeB._id,channel,randomUUID(),'',true,'live');
 await recordRaidFollow(follow(4)); await processRaidModerationRequests();
 assert.equal((await getFollowDefenseStatus(channel)).mode,'attack');
 assert.equal(await Actions.countDocuments({raidRequestID:reqB._id}),2);
 // Once normal, the same still-recording session is historical-only.
 await redis.del(keys.state); await sleep(5);
+await assert.rejects(()=>requestRaidBans(channel,activeB._id,channel,randomUUID(),'',true,'live'),error=>error.status===409);
+await assert.rejects(()=>requestRaidBans(channel,activeB._id,channel,randomUUID()),error=>error.status===403);
+await setTier('premium');
 const historical=await requestRaidBans(channel,activeB._id,channel,randomUUID(),'',true); assert.equal(historical.includeFuture,false);
 await sleep(5); await recordRaidFollow(follow(5));
 await processRaidModerationRequests(); await processRaidModerationRequests();
@@ -175,13 +199,38 @@ assert.equal((await Actions.findOne({raidRequestID:priorReq._id}).lean()).status
 console.log('PASS: durable journal backfill, late B attribution repair, queued A ban cancellation');
 await resetData();
 
-for(const [tier,hours] of [['free',24],['premium',48],['pro',72]]) {
+for(const [tier,hours] of [['free',72],['premium',72],['pro',72]]) {
  await mongo.connection.db.collection('users').updateOne({'accounts.id':channel},{$set:{plan_tier:tier}});
  const session=await recordRaidSession(marker(tier,Date.now())); assert.equal(session.retentionHours,hours);assert.equal(session.expiresAt.getTime()-session.startedAt.getTime(),hours*3600000);
  await Sessions.deleteMany({});
 }
-assert.equal(raidRetentionHours('unknown'),24);
-console.log('PASS: 24/48/72-hour owner-plan retention');
+assert.equal(raidRetentionHours('unknown'),72);
+const widening=await recordRaidSession(marker('widen',Date.now()-10000));
+await recordRaidFollow(follow(78,Date.now()-9000));
+const originalCapture=widening.captureUntil.getTime();
+await Sessions.updateOne({_id:widening._id},{$set:{retentionHours:24,expiresAt:new Date(Date.now()+3600000),purgeAt:new Date(Date.now()+7200000)}});
+await Followers.updateMany({sessionID:widening._id},{$set:{purgeAt:new Date(Date.now()+7200000)}});
+await extendRaidHistoryRetention(); await extendRaidHistoryRetention();
+const widened=await Sessions.findById(widening._id).lean();
+assert.equal(widened.retentionHours,72);
+assert.equal(widened.expiresAt.getTime()-widened.startedAt.getTime(),72*3600000);
+assert.equal((await Followers.findOne({sessionID:widening._id}).lean()).purgeAt.getTime(),widened.purgeAt.getTime());
+assert.ok(widened.captureUntil.getTime()>=originalCapture);
+await resetData();
+// Crash recovery admits only requests whose live state was actually published.
+await setTier('free');
+await applyRaidSessionMarker(marker('recover',Date.now()-1000)); const recovery=await findRaidSession(channel,Date.now());
+await recordRaidFollow(follow(79));
+const recovering=await requestRaidBans(channel,recovery._id,channel,randomUUID(),'',true,'live');
+await Requests.updateOne({_id:recovering._id},{$set:{status:'authorizing',requestedAt:new Date(Date.now()-11000)}});
+await processRaidModerationRequests();
+assert.notEqual((await Requests.findById(recovering._id).lean()).status,'authorizing');
+assert.notEqual((await Requests.findById(recovering._id).lean()).status,'cancelled');
+await redis.del(keys.state);
+await Requests.updateOne({_id:recovering._id},{$set:{status:'authorizing'}});
+await processRaidModerationRequests(); assert.equal((await Requests.findById(recovering._id).lean()).status,'cancelled');
+await resetData(); await setTier('pro');
+console.log('PASS: all tiers 72-hour retention, restart-safe extension, live authorization crash recovery');
 
 // Exercise the actual global consumer with chat announcements disabled/minimum-filtered.
 const { default: Eventsub } = await import('/app/dist/schemas/eventsub.schema.js');

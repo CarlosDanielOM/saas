@@ -186,8 +186,7 @@ Each real raid starts a separate Mongo `raid_session`, keyed by its journal iden
 to the latest raid preceding their occurrence time, up to five quiet minutes, a subsequent raid,
 or the session retention deadline. Late raid delivery repairs attribution and backfills journaled
 follows in bounded batches. Idempotent follow receipts prevent replay from inflating totals.
-The channel owner's plan at raid creation gives 24/48/72 hours of dashboard visibility for
-Free/Premium/Pro. Logical expiry is enforced by the API; physical cleanup allows an additional hour
+Every plan receives 72 hours of dashboard visibility. Logical expiry is enforced by the API; physical cleanup allows an additional hour
 for moderation accepted just before expiry. These sessions are temporal groupings; Twitch does not
 prove that an individual follower arrived from a particular raider.
 
@@ -207,7 +206,13 @@ be retracted when a raid is delivered late.
 
 The dashboard lists sessions and paginated follower names, provides individual and whole-session
 confirmation dialogs, and displays queued/confirmed/failed results. Mutation endpoints require
-`moderation:manage` (or owner/global-owner access). Chat summaries remain friendly for silent and
+`moderation:manage` (or owner/global-owner access), plus the channel owner's plan entitlement.
+Free can view sessions and names, Premium can ban whole sessions from history, and Pro additionally
+can ban individuals. Moderator/admin subscriptions cannot override the channel's plan. All plans
+can activate attack through live controls while the same raid's protection is active. A Free live
+request fails closed if protection ends before activation; it cannot fall back to historical bans.
+Live requests are admitted only after their attack state is published, with restart recovery for
+an interrupted activation. Previously accepted requests may finish after a plan downgrade. Chat summaries remain friendly for silent and
 protection waves; attack summaries distinguish suppressed announcements from confirmed bans and
 pending moderation, rather than claiming every queued ban succeeded.
 
@@ -216,3 +221,13 @@ and cron runtimes, A=3000/B=2000 follows, active versus historical authorization
 settings, late attribution repair, journal backfill, retention, and real worker execution against
 mock Twitch. `ops/checks/raid-site.mjs` uses Playwright and axe-core with intercepted API data to
 verify confirmation scopes, retries, pagination, settings, and mobile/desktop layouts.
+
+#### Retention extension rollout
+
+The `raid-sessions` worker extends one still-visible legacy session per tick to 72 hours from its
+original raid timestamp. It first widens that session's follower TTLs, then its visibility and
+physical expiry, using monotonic updates; retries cannot shorten retention. New follower inserts
+already use the 73-hour physical deadline. This additive procedure needs no index or infrastructure
+change and never deletes data. Expired sessions are excluded to avoid advertising a partially
+purged history; deleted records cannot be recovered. Verification exercises extension and repeat
+execution against disposable Mongo before the worker is deployed.

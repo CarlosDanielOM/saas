@@ -6,6 +6,7 @@
   @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
   @if (loading() && !sessions()) { <p role="status">{{ t('loading') }}</p> }
   @if (sessions(); as data) {
+    <p>{{ t('plan.' + data.planTier) }}</p>
     @if (!data.sessions.length) { <p class="empty">{{ t('empty') }}</p> }
     @for (session of data.sessions; track session.id) {
       <article class="session">
@@ -27,7 +28,7 @@
         @if (session.outcomes.failed || session.outcomes.expired) { <p class="error">{{ t('incomplete') }} {{ (session.outcomes.failed || 0) + (session.outcomes.expired || 0) }}</p> }
         <div class="actions">
           <button type="button" (click)="toggle(session)" [attr.aria-expanded]="expanded() === session.id" [attr.aria-controls]="'followers-' + session.id">{{ t(expanded() === session.id ? 'hideNames' : 'showNames') }}</button>
-          @if (data.canBan) { <button type="button" class="danger" [disabled]="submitting() || session.banning || (!session.totalFollows && !session.canIncludeFuture)" (click)="ask(session)">{{ t('banSession') }}</button> }
+          @if (data.canBanSession) { <button type="button" class="danger" [disabled]="submitting() || session.banning || (!session.totalFollows && !session.canIncludeFuture)" (click)="ask(session)">{{ t('banSession') }}</button> }
         </div>
         @if (expanded() === session.id) {
           <div class="followers" [id]="'followers-' + session.id" [attr.aria-busy]="followersLoading()">
@@ -40,7 +41,7 @@
                   <li>
                     <div><strong>{{ follower.name || follower.login }}</strong><small>{{ follower.login }} · {{ follower.followedAt | date:'shortTime' }}</small></div>
                     <span>{{ t('status.' + follower.banStatus) }}</span>
-                    @if (data.canBan) { <button type="button" [disabled]="session.banning || submitting() || follower.banStatus === 'succeeded' || follower.banStatus === 'pending' || follower.banStatus === 'processing'" (click)="ask(session, follower)" [attr.aria-label]="t('banName', { name: follower.name || follower.login })">{{ t('ban') }}</button> }
+                    @if (data.canBanIndividual) { <button type="button" [disabled]="session.banning || submitting() || follower.banStatus === 'succeeded' || follower.banStatus === 'pending' || follower.banStatus === 'processing'" (click)="ask(session, follower)" [attr.aria-label]="t('banName', { name: follower.name || follower.login })">{{ t('ban') }}</button> }
                   </li>
                 }
               </ul>

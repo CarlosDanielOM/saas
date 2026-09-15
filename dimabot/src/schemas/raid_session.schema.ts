@@ -30,9 +30,10 @@ export const RaidFollowerSchema = model('raid_follower', follower);
 const request = new Schema({
     _id: { type: String, required: true }, channelID: { type: String, required: true }, sessionID: { type: String, required: true },
     actorID: { type: String, required: true }, userID: { type: String, default: '' },
+    origin: { type: String, enum: ['history', 'live'], default: 'history' },
     includeFuture: { type: Boolean, default: false }, requestedAt: { type: Date, required: true },
     expiresAt: { type: Date, required: true }, purgeAt: { type: Date, required: true },
-    status: { type: String, enum: ['pending', 'active', 'completed', 'cancelled', 'expired'], default: 'pending' },
+    status: { type: String, enum: ['authorizing', 'pending', 'active', 'completed', 'cancelled', 'expired'], default: 'pending' },
     lockedUntil: { type: Date, default: () => new Date(0) }, leaseToken: { type: String, default: '' },
     nextAttemptAt: { type: Date, default: () => new Date(0) }
 }, { versionKey: false, writeConcern: { w: 1, j: true } });

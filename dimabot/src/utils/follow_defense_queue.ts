@@ -337,7 +337,7 @@ export async function triggerFollowDefenseAttackMode(channelID: string, channelL
     const { findRaidSession, requestRaidBans } = await import('./raid_sessions.js');
     const session = await findRaidSession(channelID, Date.now());
     if (session && session.expiresAt.getTime() > Date.now()) {
-        await requestRaidBans(channelID, session._id, 'authorized-command', randomUUID(), '', true);
+        await requestRaidBans(channelID, session._id, 'authorized-command', randomUUID(), '', true, 'live');
         return;
     }
     const eventID = createEventID(channelID, 'manual-attack');

@@ -134,5 +134,5 @@ export interface RaidFollower {
   followedAt: string;
   banStatus: RaidBanStatus;
 }
-export interface RaidSessionsPage { sessions: RaidSession[]; total: number; page: number; limit: number; canBan: boolean }
+export interface RaidSessionsPage { sessions: RaidSession[]; total: number; page: number; limit: number; canBan: boolean; planTier: 'free' | 'premium' | 'pro'; canBanSession: boolean; canBanIndividual: boolean }
 export interface RaidFollowersPage { followers: RaidFollower[]; total: number; page: number; limit: number }

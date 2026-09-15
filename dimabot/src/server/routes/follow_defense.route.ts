@@ -396,7 +396,8 @@ router.post('/:channelID/attack', authMiddleware as any, async (req: FollowDefen
             timestamp: new Date().toISOString()
         });
 
-        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+        const status = Number((error as { status?: number }).status) || 500;
+        return res.status(status).json({ error: true, message: status < 500 ? (error as Error).message : 'Internal server error', status });
     }
 });
 
@@ -545,9 +546,10 @@ router.get('/:channelID/raid-sessions', authMiddleware as any, async (req: Follo
         const { FollowDefenseActionSchema: Actions } = await import('../../schemas/follow_defense_action.schema.js');
         const page = Math.max(1, Math.min(10000, Math.floor(Number(req.query.page)) || 1));
         const filter = { channelID, expiresAt: { $gt: new Date() } };
-        const [sessions, total, permission] = await Promise.all([
+        const { getRaidHistoryAccess } = await import('../../utils/raid_sessions.js');
+        const [sessions, total, permission, access] = await Promise.all([
             Sessions.find(filter).sort({ startedAt: -1, _id: -1 }).skip((page - 1) * 20).limit(20).lean(),
-            Sessions.countDocuments(filter), getChannelAccessContext(req.user!.id, channelID, 'moderation:manage')
+            Sessions.countDocuments(filter), getChannelAccessContext(req.user!.id, channelID, 'moderation:manage'), getRaidHistoryAccess(channelID)
         ]);
         const ids = sessions.map(s => s._id);
         const [counts, outcomes, requests, state] = await Promise.all([
@@ -563,7 +565,8 @@ router.get('/:channelID/raid-sessions', authMiddleware as any, async (req: Follo
             banning: requests.some(r => r.sessionID === s._id),
             canIncludeFuture: !s.endedAt && s.captureUntil.getTime() > Date.now() && state?.mode !== 'normal' && (state?.expiresAt || 0) > Date.now() && state?.raidSessionID === s._id,
             outcomes: Object.fromEntries(outcomes.filter(o => o._id.session === s._id).map(o => [o._id.status, o.count]))
-        })), total, page, limit: 20, canBan: permission.allowed } });
+        })), total, page, limit: 20, canBan: permission.allowed, planTier: access.planTier,
+            canBanSession: permission.allowed && access.canBanSession, canBanIndividual: permission.allowed && access.canBanIndividual } });
     } catch (error) { return res.status(500).json({ error: true, message: 'Unable to load raid sessions' }); }
 });
 
