@@ -56,7 +56,7 @@
 
 .lf-modal {
   width: 100%;
-  max-height: min(92dvh, 54rem);
+  max-height: min(96dvh, 54rem);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -129,28 +129,44 @@
 
 .lf-modal__hero {
   display: grid;
-  gap: 0.75rem;
-  padding: 0 1.1rem 0.85rem;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: start;
+  gap: 0.5rem;
+  padding: 0 1.1rem 0.6rem;
   flex-shrink: 0;
 }
 
+.lf-modal__hero .lf-note {
+  display: none;
+}
+
+.lf-modal__hero .lf-h3 {
+  margin-top: 0.3rem;
+  font-size: 0.92rem;
+}
+
+.lf-modal__hero .lf-chip {
+  padding: 0.22rem 0.55rem;
+  font-size: 0.66rem;
+}
+
 .lf-quota {
-  padding: 0.75rem 0.85rem;
+  padding: 0.5rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--fg) 2%, transparent);
   display: grid;
-  gap: 0.3rem;
+  gap: 0.15rem;
 }
 
 .lf-quota__head {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 650;
 }
 
 .lf-quota strong {
-  font-size: 0.95rem;
+  font-size: 0.8rem;
 }
 
 .lf-bar {
@@ -168,8 +184,9 @@
 
 .lf-modal__toolbar {
   display: grid;
-  gap: 0.55rem;
-  padding: 0 1.1rem 0.75rem;
+  gap: 0.4rem;
+  padding: 0 1.1rem 0.55rem;
+  min-width: 0;
   flex-shrink: 0;
 }
 
@@ -179,7 +196,7 @@
   background: var(--input-bg);
   color: var(--fg);
   border-radius: 0.9rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.55rem 0.7rem;
   font: inherit;
   font-weight: 500;
   outline: none;
@@ -192,29 +209,39 @@
 
 .lf-modal__toolbar-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .lf-filter-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: 1 1 0;
+  min-width: 0;
   gap: 0.3rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lf-filter-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .lf-filter-tab {
   min-height: 32px;
-  padding: 0.3rem 0.65rem;
+  padding: 0.28rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--btn);
   color: var(--fg);
   font: inherit;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 650;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .lf-filter-tab--active {
@@ -227,6 +254,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .lf-view-toggle {
@@ -315,9 +343,9 @@
 }
 
 .lf-btn--xs {
-  min-height: 30px;
-  padding: 0.25rem 0.55rem;
-  font-size: 0.72rem;
+  min-height: 27px;
+  padding: 0.18rem 0.4rem;
+  font-size: 0.68rem;
 }
 
 .lf-btn--block {
@@ -351,8 +379,8 @@
 
 .lf-asset-grid {
   display: grid;
-  gap: 0.55rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .lf-asset-card {
@@ -368,7 +396,7 @@
 
 .lf-asset-card__preview {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   background: color-mix(in srgb, var(--fg) 3%, transparent);
 }
 
@@ -406,13 +434,13 @@
 
 .lf-asset-card__info {
   display: grid;
-  gap: 0.3rem;
-  padding: 0.55rem 0.6rem 0.65rem;
+  gap: 0.18rem;
+  padding: 0.4rem 0.45rem 0.5rem;
   min-width: 0;
 }
 
 .lf-asset-card__info strong {
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -420,8 +448,11 @@
 
 .lf-asset-card__meta {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lf-asset-list {
@@ -576,15 +607,96 @@
 
   .lf-modal {
     border-radius: var(--radius);
+    max-height: min(92dvh, 54rem);
   }
 
   .lf-modal__hero {
     grid-template-columns: 1.3fr 1fr;
     align-items: start;
+    gap: 0.75rem;
+    padding: 0 1.1rem 0.85rem;
+  }
+
+  .lf-modal__hero .lf-note {
+    display: block;
+  }
+
+  .lf-modal__hero .lf-h3 {
+    margin: 0.45rem 0 0;
+    font-size: 1rem;
+  }
+
+  .lf-modal__hero .lf-chip {
+    padding: 0.28rem 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .lf-quota {
+    padding: 0.75rem 0.85rem;
+    gap: 0.3rem;
+  }
+
+  .lf-quota__head {
+    font-size: 0.75rem;
+  }
+
+  .lf-quota strong {
+    font-size: 0.95rem;
+  }
+
+  .lf-modal__toolbar {
+    gap: 0.55rem;
+    padding: 0 1.1rem 0.75rem;
+  }
+
+  .lf-search {
+    padding: 0.7rem 0.85rem;
+  }
+
+  .lf-modal__toolbar-row {
+    flex-wrap: wrap;
+  }
+
+  .lf-filter-tabs {
+    flex-wrap: wrap;
+    flex: 0 1 auto;
+    overflow: visible;
+  }
+
+  .lf-filter-tab {
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .lf-btn--xs {
+    min-height: 30px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
   }
 
   .lf-asset-grid {
+    gap: 0.55rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lf-asset-card__preview {
+    aspect-ratio: 1;
+  }
+
+  .lf-asset-card__info {
+    gap: 0.3rem;
+    padding: 0.55rem 0.6rem 0.65rem;
+  }
+
+  .lf-asset-card__info strong {
+    font-size: 0.82rem;
+  }
+
+  .lf-asset-card__meta {
+    font-size: 0.7rem;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 }
 
