@@ -30,6 +30,7 @@ const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['redemptions', null],
   ['tts', null],
   ['follow-defense', null],
+  ['moderation', null],
   ['stream-summaries', null],
   ['clip-recommendations', null],
   ['library', null],

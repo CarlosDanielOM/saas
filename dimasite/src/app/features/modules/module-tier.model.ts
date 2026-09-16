@@ -13,6 +13,7 @@ export type ModuleId =
   | 'analytics'
   | 'analytics.follows'
   | 'follow-defense'
+  | 'moderation'
   | 'stream-summaries'
   | 'clip-recommendations'
   | 'library';
@@ -112,6 +113,13 @@ export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequi
     id: 'follow-defense',
     minTier: 'free',
     displayName: 'Follow Defense',
+    defaultStatus: 'beta',
+    category: 'automation'
+  },
+  moderation: {
+    id: 'moderation',
+    minTier: 'free',
+    displayName: 'Chat Moderation',
     defaultStatus: 'beta',
     category: 'automation'
   },

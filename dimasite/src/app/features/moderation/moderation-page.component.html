@@ -1,0 +1,463 @@
+<div class="lf" [attr.data-plan]="planTier()">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('moderation.title')">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="modulePath()">← {{ t('moderation.backToModules') }}</a>
+        <p class="lf-kicker">{{ t('moderation.badge') }}</p>
+        <h1 class="lf-title">
+          {{ t('moderation.title') }}
+          <span>{{ streamer() || '—' }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('moderation.subtitle') }}</p>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn" (click)="retryLoad()" [disabled]="settingsLoading()">
+            {{ t('common.retry') }}
+          </button>
+        </div>
+      </article>
+
+      <article
+        class="lf-tile lf-tile--spotlight"
+        [class.lf-tile--dim]="settings() && !settings()!.enabled"
+        [attr.aria-label]="t('moderation.status.currentStatus')"
+      >
+        <div class="lf-spotlight__head">
+          @if (settings()?.enabled) {
+            <span class="lf-chip lf-chip--ok">{{ t('moderation.status.enabledChip') }}</span>
+          } @else {
+            <span class="lf-chip lf-chip--muted">{{ t('moderation.status.disabledChip') }}</span>
+          }
+          <span class="lf-spotlight__count">{{ t('moderation.status.currentStatus') }}</span>
+        </div>
+        <div class="lf-stats-strip">
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('moderation.status.rulesCount') }}</span>
+            <strong class="lf-stats-strip__value">{{ activeRuleCount() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('moderation.status.totalRules') }}</span>
+            <strong class="lf-stats-strip__value">{{ totalRuleCount() }}</strong>
+          </div>
+          <div class="lf-stats-strip__item">
+            <span class="lf-stats-strip__label">{{ t('moderation.status.window') }}</span>
+            <strong class="lf-stats-strip__value lf-stats-strip__value--text">
+              {{ settings() ? formatDuration(settings()!.offenseWindowSeconds) : '—' }}
+            </strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="lf-banner lf-banner--error" role="alert">
+        <div>
+          <p class="lf-banner__title">{{ errorMessage() }}</p>
+        </div>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
+          {{ t('common.retry') }}
+        </button>
+      </div>
+    }
+
+    @if (settingsLoading() && !settings()) {
+      <div class="lf-tile lf-empty">{{ t('moderation.states.loading') }}</div>
+    } @else if (settings(); as cfg) {
+      @if (!canManage()) {
+        <p class="lf-note lf-note--warn">{{ t('moderation.permission.readOnly') }}</p>
+      }
+
+      <section class="lf-tile" [class.lf-tile--dim]="!cfg.enabled">
+        <div class="lf-row-head">
+          <div>
+            <p class="lf-kicker">{{ t('moderation.enabled') }}</p>
+            <h2 class="lf-h2">{{ t('moderation.enabled') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('moderation.enabledDescription') }}</p>
+            @if (!cfg.enabled) {
+              <p class="lf-note lf-note--warn">{{ t('moderation.enabledDisabledNote') }}</p>
+            }
+          </div>
+          <label class="lf-switch">
+            <input
+              type="checkbox"
+              [checked]="cfg.enabled"
+              (change)="updateEnabled($any($event.target).checked)"
+              [disabled]="!canManage()"
+              [attr.aria-label]="t('moderation.enabled')"
+            />
+            <span class="lf-switch__track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <label class="lf-field lf-field--narrow">
+          <span>{{ t('moderation.offenseWindow') }}</span>
+          <input
+            type="number"
+            min="60"
+            max="86400"
+            [value]="cfg.offenseWindowSeconds"
+            (change)="updateOffenseWindow($any($event.target).value)"
+            [disabled]="!canManage()"
+          />
+          <small>{{ t('moderation.status.windowHint') }}</small>
+        </label>
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('moderation.rules.title')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('moderation.rules.title') }}</p>
+            <h2 class="lf-h2">{{ t('moderation.rules.title') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('moderation.rules.subtitle') }}</p>
+          </div>
+        </div>
+
+        @if (canManage() && canAddRule()) {
+          <div class="lf-add-row">
+            @for (type of ruleTypes; track type) {
+              <button type="button" class="lf-btn lf-btn--compact" (click)="addRule(type)">
+                + {{ t('moderation.rules.addRule', { type: ruleTypeLabel(type) }) }}
+              </button>
+            }
+          </div>
+        } @else if (canManage()) {
+          <p class="lf-note">{{ t('moderation.rules.maxReached', { max: maxRules }) }}</p>
+        }
+
+        @if (cfg.rules.length === 0) {
+          <div class="lf-tile lf-empty">{{ t('moderation.rules.empty') }}</div>
+        } @else {
+          <div class="lf-rule-grid">
+            @for (rule of cfg.rules; track rule.id) {
+              <article class="lf-tile lf-rule" [class.lf-rule--off]="!rule.enabled || !cfg.enabled">
+                <div class="lf-rule__head">
+                  <div class="lf-rule__identity">
+                    <span class="lf-chip lf-chip--accent">{{ ruleTypeLabel(rule.type) }}</span>
+                    <p class="lf-copy lf-copy--tight lf-rule__desc">
+                      {{ ruleTypeDescription(rule.type) }}
+                    </p>
+                  </div>
+                  <div class="lf-rule__controls">
+                    <label class="lf-switch">
+                      <input
+                        type="checkbox"
+                        [checked]="rule.enabled"
+                        (change)="updateRuleEnabled(rule.id, $any($event.target).checked)"
+                        [disabled]="!canManage()"
+                        [attr.aria-label]="t('moderation.rules.enabled')"
+                      />
+                      <span class="lf-switch__track" aria-hidden="true"></span>
+                    </label>
+                    @if (canManage()) {
+                      <button
+                        type="button"
+                        class="lf-btn lf-btn--compact lf-btn--danger"
+                        (click)="removeRule(rule.id)"
+                      >
+                        {{ t('moderation.rules.remove') }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="lf-ladder">
+                  @for (row of ladderRows(rule); track row.key) {
+                    <div class="lf-ladder__row">
+                      <span class="lf-ladder__label">
+                        {{ t(row.labelKey) }}
+                        @if (row.key === 'thirdOffense') {
+                          <small>{{ t('moderation.rules.thirdOffenseHint') }}</small>
+                        }
+                      </span>
+                      <select
+                        class="lf-select"
+                        (change)="updateStepAction(rule.id, row.key, $any($event.target).value)"
+                        [disabled]="!canManage()"
+                        [attr.aria-label]="t(row.labelKey) + ' ' + t('moderation.rules.action')"
+                      >
+                        @for (action of actionOptions; track action) {
+                          <option [value]="action" [selected]="action === row.step.action">
+                            {{ actionLabel(action) }}
+                          </option>
+                        }
+                      </select>
+                      @if (row.step.action === 'timeout') {
+                        <label class="lf-ladder__timeout">
+                          <span>{{ t('moderation.rules.timeoutSeconds') }}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            [value]="row.step.timeoutSeconds"
+                            (change)="updateStepTimeout(rule.id, row.key, $any($event.target).value)"
+                            [disabled]="!canManage()"
+                          />
+                        </label>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="lf-form-grid">
+                  <label class="lf-field">
+                    <span>{{ t('moderation.rules.exemptLevel') }}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      [value]="rule.exemptUserLevel"
+                      (change)="updateExemptLevel(rule.id, $any($event.target).value)"
+                      [disabled]="!canManage()"
+                    />
+                    <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
+                  </label>
+                  <label class="lf-field lf-field--wide">
+                    <span>{{ t('moderation.rules.reason') }}</span>
+                    <input
+                      type="text"
+                      maxlength="500"
+                      [value]="rule.reason"
+                      [placeholder]="t('moderation.rules.reasonPlaceholder')"
+                      (input)="updateRuleReason(rule.id, $any($event.target).value)"
+                      [disabled]="!canManage()"
+                    />
+                  </label>
+                </div>
+
+                @switch (rule.type) {
+                  @case ('caps') {
+                    <div class="lf-form-grid">
+                      <label class="lf-field">
+                        <span>{{ t('moderation.fields.capsMode') }}</span>
+                        <select
+                          class="lf-select"
+                          [value]="rule.capsThresholdMode"
+                          (change)="updateCapsMode(rule.id, $any($event.target).value)"
+                          [disabled]="!canManage()"
+                        >
+                          <option value="count">{{ t('moderation.fields.capsModeCount') }}</option>
+                          <option value="percentage">
+                            {{ t('moderation.fields.capsModePercentage') }}
+                          </option>
+                        </select>
+                      </label>
+                      @if (rule.capsThresholdMode === 'count') {
+                        <label class="lf-field">
+                          <span>{{ t('moderation.fields.minCapsCount') }}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="500"
+                            [value]="rule.minCapsCount"
+                            (change)="updateNumberField(rule.id, 'minCapsCount', $any($event.target).value, 1, 500)"
+                            [disabled]="!canManage()"
+                          />
+                        </label>
+                      } @else {
+                        <label class="lf-field">
+                          <span>{{ t('moderation.fields.maxCapsPercentage') }}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            [value]="rule.maxCapsPercentage"
+                            (change)="updateNumberField(rule.id, 'maxCapsPercentage', $any($event.target).value, 1, 100)"
+                            [disabled]="!canManage()"
+                          />
+                        </label>
+                      }
+                      <label class="lf-field">
+                        <span>{{ t('moderation.fields.minMessageLength') }}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="500"
+                          [value]="rule.minMessageLength"
+                          (change)="updateNumberField(rule.id, 'minMessageLength', $any($event.target).value, 1, 500)"
+                          [disabled]="!canManage()"
+                        />
+                      </label>
+                    </div>
+                  }
+                  @case ('emote_spam') {
+                    <div class="lf-form-grid">
+                      <label class="lf-field">
+                        <span>{{ t('moderation.fields.maxEmoteCount') }}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          [value]="rule.maxEmoteCount"
+                          (change)="updateNumberField(rule.id, 'maxEmoteCount', $any($event.target).value, 1, 100)"
+                          [disabled]="!canManage()"
+                        />
+                      </label>
+                    </div>
+                  }
+                  @case ('links') {
+                    <div class="lf-field lf-field--wide">
+                      <span>{{ t('moderation.fields.allowlistDomains') }}</span>
+                      @if (rule.allowlistDomains.length > 0) {
+                        <div class="lf-taglist">
+                          @for (domain of rule.allowlistDomains; track domain; let i = $index) {
+                            <span class="lf-tag">
+                              {{ domain }}
+                              @if (canManage()) {
+                                <button
+                                  type="button"
+                                  class="lf-tag__remove"
+                                  (click)="removeListItem(rule.id, 'allowlistDomains', i)"
+                                  [attr.aria-label]="t('common.delete') + ' ' + domain"
+                                >
+                                  ×
+                                </button>
+                              }
+                            </span>
+                          }
+                        </div>
+                      }
+                      <input
+                        #domainInput
+                        type="text"
+                        [placeholder]="t('moderation.fields.domainPlaceholder')"
+                        (keydown.enter)="addListItem(rule.id, 'allowlistDomains', domainInput)"
+                        [disabled]="!canManage()"
+                      />
+                      <small>{{ t('moderation.fields.allowlistHint') }}</small>
+                    </div>
+                  }
+                  @case ('blacklist') {
+                    <div class="lf-field lf-field--wide">
+                      <span>{{ t('moderation.fields.terms') }}</span>
+                      @if (rule.terms.length > 0) {
+                        <div class="lf-taglist">
+                          @for (term of rule.terms; track term; let i = $index) {
+                            <span class="lf-tag">
+                              {{ term }}
+                              @if (canManage()) {
+                                <button
+                                  type="button"
+                                  class="lf-tag__remove"
+                                  (click)="removeListItem(rule.id, 'terms', i)"
+                                  [attr.aria-label]="t('common.delete') + ' ' + term"
+                                >
+                                  ×
+                                </button>
+                              }
+                            </span>
+                          }
+                        </div>
+                      }
+                      <input
+                        #termInput
+                        type="text"
+                        [placeholder]="t('moderation.fields.termPlaceholder')"
+                        (keydown.enter)="addListItem(rule.id, 'terms', termInput)"
+                        [disabled]="!canManage()"
+                      />
+                      <small>{{ t('moderation.fields.termsHint') }}</small>
+                    </div>
+                  }
+                }
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('moderation.logs.title')">
+        <div class="lf-section__head">
+          <div>
+            <p class="lf-kicker">{{ t('moderation.logs.title') }}</p>
+            <h2 class="lf-h2">{{ t('moderation.logs.title') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('moderation.logs.subtitle') }}</p>
+          </div>
+        </div>
+        <div class="lf-tile lf-tile--flush">
+          @if (logsLoading() && logs().length === 0) {
+            <div class="lf-empty">{{ t('common.loading') }}</div>
+          } @else if (logs().length === 0) {
+            <div class="lf-empty">{{ t('moderation.logs.empty') }}</div>
+          } @else {
+            <div class="lf-table-wrap">
+              <table class="lf-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('moderation.logs.table.dateTime') }}</th>
+                    <th>{{ t('moderation.logs.table.user') }}</th>
+                    <th>{{ t('moderation.logs.table.rule') }}</th>
+                    <th>{{ t('moderation.logs.table.action') }}</th>
+                    <th>{{ t('moderation.logs.table.offense') }}</th>
+                    <th>{{ t('moderation.logs.table.success') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (log of logs(); track log._id ?? (log.createdAt + log.userID)) {
+                    <tr>
+                      <td>{{ formatTimestamp(log.createdAt) }}</td>
+                      <td>{{ log.username || log.userID }}</td>
+                      <td>{{ ruleTypeLabel(log.ruleType) }}</td>
+                      <td><span [class]="actionChipClass(log.action)">{{ actionLabel(log.action) }}</span></td>
+                      <td>#{{ log.offenseNumber }}</td>
+                      <td>
+                        @if (log.success) {
+                          <span class="lf-chip lf-chip--ok">{{ t('moderation.logs.success') }}</span>
+                        } @else {
+                          <span class="lf-chip lf-chip--danger">{{ t('moderation.logs.failed') }}</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (logsPagination().total > logsPagination().limit) {
+              <div class="lf-pager">
+                <button
+                  type="button"
+                  class="lf-btn lf-btn--compact"
+                  [disabled]="logsPagination().page <= 1"
+                  (click)="goToLogsPage(logsPagination().page - 1)"
+                >
+                  {{ t('common.previous') }}
+                </button>
+                @for (page of getLogsPageNumbers(); track page) {
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--compact"
+                    [class.lf-btn--active]="page === logsPagination().page"
+                    (click)="goToLogsPage(page)"
+                  >
+                    {{ page }}
+                  </button>
+                }
+                <button
+                  type="button"
+                  class="lf-btn lf-btn--compact"
+                  [disabled]="logsPagination().page >= totalLogsPages()"
+                  (click)="goToLogsPage(logsPagination().page + 1)"
+                >
+                  {{ t('common.next') }}
+                </button>
+              </div>
+            }
+          }
+        </div>
+      </section>
+
+      @if (canManage()) {
+        <div class="lf-save-bar">
+          <button
+            type="button"
+            class="lf-btn lf-btn--primary"
+            (click)="saveSettings()"
+            [disabled]="savingSettings() || !settingsDirty()"
+          >
+            @if (savingSettings()) {
+              {{ t('moderation.save.saving') }}
+            } @else {
+              {{ t('moderation.save.save') }}
+            }
+          </button>
+        </div>
+      }
+    }
+  </main>
+</div>

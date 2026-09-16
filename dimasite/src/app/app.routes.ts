@@ -864,6 +864,18 @@ export const routes: Routes = [
             title: 'Follow Defense | DomDimaBot'
           },
           {
+            path: 'moderation',
+            loadComponent: () =>
+              import('./features/moderation/moderation-page.component').then(
+                (m) => m.ModerationPageComponent
+              ),
+            canActivate: [permissionGuard],
+            data: {
+              permission: 'dashboard:view'
+            },
+            title: 'Chat Moderation | DomDimaBot'
+          },
+          {
             path: 'stream-summaries',
             loadComponent: () =>
               import('./features/stream-summaries/stream-summaries-page.component').then(

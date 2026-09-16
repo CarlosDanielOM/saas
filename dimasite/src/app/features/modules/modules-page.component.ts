@@ -141,6 +141,13 @@ export class ModulesPageComponent {
         userPlanTier
       ),
       this.buildModule(
+        'moderation',
+        'Chat Moderation',
+        'modules.moderation.description',
+        streamerName,
+        userPlanTier
+      ),
+      this.buildModule(
         'stream-summaries',
         'Stream Summaries',
         'modules.streamSummaries.description',

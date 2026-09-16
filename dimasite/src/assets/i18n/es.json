@@ -656,6 +656,9 @@
     "followDefense": {
       "description": "Protege tu canal de inundaciones de follows y hate raids con modos de defensa automatizados."
     },
+    "moderation": {
+      "description": "Filtros de chat estilo Nightbot para mayúsculas, enlaces, spam de emotes y palabras bloqueadas, con escaleras de acción por infracción."
+    },
     "streamSummaries": {
       "description": "Accede a las métricas de tus transmisiones pasadas, lee resúmenes de IA y revisa actualizaciones de memoria propuestas por IA."
     },
@@ -850,6 +853,113 @@
       "ready": "Umbral de ataque dinámico: {{count}} follows en una ola sostenida. El ataque manual sigue disponible durante la protección.",
       "learning": "La sensibilidad dinámica está aprendiendo o esperando datos recientes. El ataque automático se pausa hasta tener 7 días de actividad y 3 streams finalizados. Silencio, protección y ataque manual siguen disponibles.",
       "averages": "Promedios de 30 días: {{daily}} follows/día · {{stream}} follows/stream finalizado · {{days}} días con actividad."
+    }
+  },
+  "moderation": {
+    "badge": "Automod",
+    "title": "Moderación del Chat",
+    "subtitle": "Filtra spam, mayúsculas, enlaces y palabras bloqueadas. Cada regla escala al usuario por aviso, borrado, timeout y ban.",
+    "backToModules": "Volver a módulos",
+    "enabled": "Activar Moderación",
+    "enabledDescription": "Aplica tus reglas a cada mensaje del chat antes de los comandos y las respuestas de IA. La moderación es gratis para todos los canales.",
+    "enabledDisabledNote": "La moderación está desactivada. No se filtra ningún mensaje ni se toman acciones.",
+    "offenseWindow": "Ventana de infracciones (segundos)",
+    "status": {
+      "currentStatus": "Estado Actual",
+      "enabledChip": "Activa",
+      "disabledChip": "Desactivada",
+      "rulesCount": "Reglas activas",
+      "totalRules": "Reglas totales",
+      "window": "Ventana de infracciones",
+      "windowHint": "Las infracciones más antiguas que esta ventana se olvidan y la escalera se reinicia."
+    },
+    "rules": {
+      "title": "Reglas de Moderación",
+      "subtitle": "Cada regla escala al usuario por tres niveles de infracción. El tercer nivel se repite en cada infracción posterior.",
+      "empty": "Aún no hay reglas. Añade una regla para empezar a filtrar el chat.",
+      "addRule": "Añadir regla de {{type}}",
+      "remove": "Eliminar regla",
+      "enabled": "Regla activa",
+      "exemptLevel": "Nivel de usuario exento",
+      "exemptLevelHint": "Los usuarios con este nivel o superior (1-10) omiten la regla. 7 = moderadores.",
+      "reason": "Motivo de aviso / timeout",
+      "reasonPlaceholder": "Mensaje que se muestra al usuario",
+      "firstOffense": "1ª infracción",
+      "secondOffense": "2ª infracción",
+      "thirdOffense": "3ª infracción",
+      "thirdOffenseHint": "Se repite en cada infracción posterior.",
+      "timeoutSeconds": "Segundos de timeout",
+      "action": "Acción",
+      "maxReached": "Has alcanzado el máximo de {{max}} reglas."
+    },
+    "types": {
+      "caps": "Mayúsculas",
+      "links": "Enlaces",
+      "emote_spam": "Spam de emotes",
+      "blacklist": "Palabras bloqueadas"
+    },
+    "typeDescriptions": {
+      "caps": "Bloquea mensajes con exceso de mayúsculas.",
+      "links": "Bloquea enlaces publicados salvo que el dominio esté permitido.",
+      "emote_spam": "Bloquea mensajes con demasiados emotes.",
+      "blacklist": "Bloquea mensajes que contienen términos bloqueados como palabra completa."
+    },
+    "fields": {
+      "capsMode": "Modo de mayúsculas",
+      "capsModeCount": "Cantidad de mayúsculas",
+      "capsModePercentage": "Porcentaje de mayúsculas",
+      "minCapsCount": "Mínimo de mayúsculas",
+      "maxCapsPercentage": "Porcentaje de mayúsculas",
+      "minMessageLength": "Longitud mínima del mensaje",
+      "allowlistDomains": "Dominios permitidos",
+      "allowlistHint": "Los enlaces a estos dominios nunca se bloquean. Escribe un dominio y pulsa Enter.",
+      "domainPlaceholder": "ejemplo.com",
+      "maxEmoteCount": "Máximo de emotes",
+      "terms": "Palabras bloqueadas",
+      "termsHint": "Como palabra completa y sin distinguir acentos. Escribe una palabra o frase y pulsa Enter.",
+      "termPlaceholder": "frase bloqueada"
+    },
+    "actions": {
+      "off": "Desactivado (solo contar)",
+      "warn": "Aviso",
+      "delete": "Borrar",
+      "timeout": "Timeout",
+      "ban": "Ban"
+    },
+    "logs": {
+      "title": "Acciones Recientes",
+      "subtitle": "Acciones de moderación de los últimos 30 días.",
+      "empty": "Aún no se han registrado acciones de moderación.",
+      "success": "Aplicada",
+      "failed": "Fallida",
+      "table": {
+        "dateTime": "Fecha/Hora",
+        "user": "Usuario",
+        "rule": "Regla",
+        "action": "Acción",
+        "offense": "Infracción",
+        "success": "Resultado"
+      }
+    },
+    "save": {
+      "save": "Guardar Ajustes",
+      "saving": "Guardando..."
+    },
+    "states": {
+      "loading": "Cargando ajustes de moderación..."
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los ajustes de moderación.",
+      "saveFailed": "No se pudieron guardar los ajustes de moderación.",
+      "channelNotResolved": "No se pudo resolver el canal."
+    },
+    "permission": {
+      "readOnly": "Puedes ver la moderación, pero necesitas permiso de moderación para cambiarla."
+    },
+    "toasts": {
+      "savedTitle": "Moderación guardada",
+      "savedMessage": "Tus reglas de moderación ya están activas.",
+      "errorTitle": "Error"
     }
   },
   "analyticsHub": {

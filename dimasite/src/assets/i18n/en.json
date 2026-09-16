@@ -656,6 +656,9 @@
     "followDefense": {
       "description": "Protect your channel from follow floods and hate raids with automated defense modes."
     },
+    "moderation": {
+      "description": "Nightbot-style chat filters for caps, links, emote spam, and blocked words with per-offense action ladders."
+    },
     "streamSummaries": {
       "description": "Access past stream session metrics, read AI-generated summaries, and review AI proposed memory updates."
     },
@@ -850,6 +853,113 @@
       "ready": "Dynamic attack threshold: {{count}} follows in a sustained wave. Manual attack remains available during protection.",
       "learning": "Dynamic sensitivity is learning or awaiting fresh data. Automatic attack is paused until there are 7 days of follow activity and 3 completed streams. Silence, protection, and manual attack remain available.",
       "averages": "30-day averages: {{daily}} follows/day · {{stream}} follows/completed stream · {{days}} days with activity."
+    }
+  },
+  "moderation": {
+    "badge": "Automod",
+    "title": "Chat Moderation",
+    "subtitle": "Filter spam, caps, links, and blocked words. Each rule escalates a chatter through warn, delete, timeout, and ban.",
+    "backToModules": "Back to modules",
+    "enabled": "Enable Moderation",
+    "enabledDescription": "Run your rules on every chat message before commands and AI replies. Moderation is free for every channel.",
+    "enabledDisabledNote": "Moderation is off. No messages are filtered and no actions are taken.",
+    "offenseWindow": "Offense window (seconds)",
+    "status": {
+      "currentStatus": "Current Status",
+      "enabledChip": "Active",
+      "disabledChip": "Disabled",
+      "rulesCount": "Active rules",
+      "totalRules": "Total rules",
+      "window": "Offense window",
+      "windowHint": "Offenses older than this window are forgotten and the ladder restarts."
+    },
+    "rules": {
+      "title": "Moderation Rules",
+      "subtitle": "Each rule escalates a chatter through three offense rungs. The third rung repeats for every later offense.",
+      "empty": "No rules yet. Add a rule to start filtering chat.",
+      "addRule": "Add {{type}} rule",
+      "remove": "Remove rule",
+      "enabled": "Rule enabled",
+      "exemptLevel": "Exempt user level",
+      "exemptLevelHint": "Chatters at or above this level (1-10) skip the rule. 7 = moderators.",
+      "reason": "Warn / timeout reason",
+      "reasonPlaceholder": "Message shown to the chatter",
+      "firstOffense": "1st offense",
+      "secondOffense": "2nd offense",
+      "thirdOffense": "3rd offense",
+      "thirdOffenseHint": "Repeats for every later offense.",
+      "timeoutSeconds": "Timeout seconds",
+      "action": "Action",
+      "maxReached": "You have reached the maximum of {{max}} rules."
+    },
+    "types": {
+      "caps": "Caps",
+      "links": "Links",
+      "emote_spam": "Emote spam",
+      "blacklist": "Blocked words"
+    },
+    "typeDescriptions": {
+      "caps": "Blocks messages that are mostly capital letters.",
+      "links": "Blocks posted links unless the domain is allowlisted.",
+      "emote_spam": "Blocks messages that contain too many emotes.",
+      "blacklist": "Blocks messages containing whole-word blocked terms."
+    },
+    "fields": {
+      "capsMode": "Caps mode",
+      "capsModeCount": "Caps count",
+      "capsModePercentage": "Caps percentage",
+      "minCapsCount": "Minimum caps",
+      "maxCapsPercentage": "Caps percentage",
+      "minMessageLength": "Minimum message length",
+      "allowlistDomains": "Allowed domains",
+      "allowlistHint": "Links to these domains are never blocked. Type a domain and press Enter.",
+      "domainPlaceholder": "example.com",
+      "maxEmoteCount": "Maximum emotes",
+      "terms": "Blocked words",
+      "termsHint": "Whole-word and accent-insensitive. Type a word or phrase and press Enter.",
+      "termPlaceholder": "blocked phrase"
+    },
+    "actions": {
+      "off": "Off (count only)",
+      "warn": "Warn",
+      "delete": "Delete",
+      "timeout": "Timeout",
+      "ban": "Ban"
+    },
+    "logs": {
+      "title": "Recent Actions",
+      "subtitle": "Moderation actions from the last 30 days.",
+      "empty": "No moderation actions recorded yet.",
+      "success": "Applied",
+      "failed": "Failed",
+      "table": {
+        "dateTime": "Date/Time",
+        "user": "User",
+        "rule": "Rule",
+        "action": "Action",
+        "offense": "Offense",
+        "success": "Result"
+      }
+    },
+    "save": {
+      "save": "Save Settings",
+      "saving": "Saving..."
+    },
+    "states": {
+      "loading": "Loading moderation settings..."
+    },
+    "errors": {
+      "loadFailed": "Failed to load moderation settings.",
+      "saveFailed": "Failed to save moderation settings.",
+      "channelNotResolved": "Channel could not be resolved."
+    },
+    "permission": {
+      "readOnly": "You can view moderation settings but need moderation permission to change them."
+    },
+    "toasts": {
+      "savedTitle": "Moderation saved",
+      "savedMessage": "Your moderation rules are now live.",
+      "errorTitle": "Error"
     }
   },
   "analyticsHub": {
