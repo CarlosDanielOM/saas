@@ -2315,6 +2315,8 @@
       "costChangeLabel": "Cost Change",
       "returnToOriginalCostLabel": "Automatically return to original cost",
       "createButton": "Create Reward",
+      "editTitle": "Edit Reward",
+      "saveButton": "Save Reward",
       "selectColor": "Select color {{color}}"
     }
   },

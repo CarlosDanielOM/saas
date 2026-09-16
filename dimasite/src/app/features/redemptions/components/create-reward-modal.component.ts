@@ -15,7 +15,9 @@ import { SessionAuthService } from '../../../services/session-auth.service';
 import {
   PlanTier,
   PRESET_COLORS,
+  Redemption,
   RedemptionCreateRequest,
+  RedemptionUpdateRequest,
 } from '../redemptions.model';
 
 @Component({
@@ -36,7 +38,11 @@ import {
             <div>
               <p class="lf-kicker">{{ t('redemptions.customTag') }}</p>
               <h2 id="create-reward-title" class="lf-modal__title">
-                {{ t('redemptions.createRewardModal.title') }}
+                {{
+                  isEditMode()
+                    ? t('redemptions.createRewardModal.editTitle')
+                    : t('redemptions.createRewardModal.title')
+                }}
               </h2>
             </div>
             <button
@@ -50,7 +56,8 @@ import {
           </div>
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="lf-form">
-            <div class="lf-form-grid">
+            <div class="lf-form__scroll">
+              <div class="lf-form-grid">
               <label class="lf-field lf-field--full">
                 <span>{{ t('redemptions.createRewardModal.titleLabel') }} *</span>
                 <input
@@ -189,6 +196,7 @@ import {
                 }
               </div>
             }
+            </div>
 
             <div class="lf-modal__actions">
               <button type="button" class="lf-btn" (click)="close()">
@@ -198,7 +206,11 @@ import {
                 @if (isSubmitting()) {
                   <span class="lf-spinner"></span>
                 }
-                {{ t('redemptions.createRewardModal.createButton') }}
+                {{
+                  isEditMode()
+                    ? t('redemptions.createRewardModal.saveButton')
+                    : t('redemptions.createRewardModal.createButton')
+                }}
               </button>
             </div>
           </form>
@@ -214,12 +226,16 @@ export class CreateRewardModalComponent {
   private readonly sessionAuth = inject(SessionAuthService);
 
   readonly isOpen = input.required<boolean>();
+  readonly redemption = input<Redemption | null>(null);
   readonly isOpenChange = output<boolean>();
   readonly rewardCreated = output<RedemptionCreateRequest>();
+  readonly rewardUpdated = output<{ id: string; data: RedemptionUpdateRequest }>();
 
   readonly presetColors = PRESET_COLORS;
   readonly isSubmitting = signal(false);
   readonly showColorPicker = signal(false);
+
+  readonly isEditMode = computed(() => this.redemption() !== null);
 
   readonly userPlan = computed<PlanTier>(() => {
     const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'free';
@@ -245,7 +261,14 @@ export class CreateRewardModalComponent {
   });
 
   private readonly isOpenEffect = effect(() => {
-    if (this.isOpen()) {
+    if (!this.isOpen()) {
+      return;
+    }
+
+    const redemption = this.redemption();
+    if (redemption) {
+      this.populateForm(redemption);
+    } else {
       this.resetForm();
     }
   });
@@ -282,9 +305,36 @@ export class CreateRewardModalComponent {
   onSubmit(): void {
     if (this.form.invalid || this.isSubmitting()) return;
 
+    const formValue = this.form.getRawValue();
+
+    if (this.isEditMode()) {
+      const target = this.redemption();
+      if (!target) return;
+
+      const data: RedemptionUpdateRequest = {
+        title: formValue.title.trim(),
+        cost: formValue.cost,
+        prompt: formValue.prompt.trim(),
+        message: formValue.message.trim(),
+        cooldown: formValue.cooldown,
+        duration: formValue.duration,
+        userInput: formValue.userInput,
+        skipQueue: formValue.skipQueue,
+        background_color: formValue.background_color,
+        ...(this.canEditPremiumFields() && {
+          originalCost: formValue.originalCost,
+          costChange: formValue.costChange,
+          returnToOriginalCost: formValue.returnToOriginalCost,
+        }),
+      };
+
+      this.rewardUpdated.emit({ id: target.rewardID || target.id, data });
+      this.close();
+      return;
+    }
+
     this.isSubmitting.set(true);
 
-    const formValue = this.form.getRawValue();
     const rewardData: RedemptionCreateRequest = {
       title: formValue.title.trim(),
       cost: formValue.cost,
@@ -307,6 +357,25 @@ export class CreateRewardModalComponent {
     this.rewardCreated.emit(rewardData);
     this.isSubmitting.set(false);
     this.close();
+  }
+
+  private populateForm(redemption: Redemption): void {
+    this.form.reset({
+      title: redemption.title,
+      cost: redemption.cost,
+      prompt: redemption.prompt ?? '',
+      message: redemption.message ?? '',
+      cooldown: redemption.cooldown ?? 0,
+      duration: redemption.duration ?? 0,
+      userInput: redemption.userInput ?? false,
+      skipQueue: redemption.skipQueue ?? false,
+      background_color: redemption.background_color || '#6366f1',
+      originalCost: redemption.originalCost ?? 0,
+      costChange: redemption.costChange ?? 0,
+      returnToOriginalCost: redemption.returnToOriginalCost ?? false,
+    });
+    this.showColorPicker.set(false);
+    this.isSubmitting.set(false);
   }
 
   private resetForm(): void {

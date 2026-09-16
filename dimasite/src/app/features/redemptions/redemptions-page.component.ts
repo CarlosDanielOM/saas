@@ -8,8 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom, map } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
@@ -19,40 +18,32 @@ import { ConfirmationModalComponent } from '../../shared/confirmation-modal/conf
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import {
-  BulkEditState,
-  ColorPickerState,
-  EditingState,
-  PRESET_COLORS,
-  PendingAction,
   PlanTier,
   Redemption,
   RedemptionCreateRequest,
+  RedemptionUpdateRequest,
   TwitchRedemption,
 } from './redemptions.model';
 import { RedemptionsService } from './redemptions.service';
 
 @Component({
   selector: 'app-redemptions-page',
-  imports: [FormsModule, RouterLink, CreateRewardModalComponent, ConfirmationModalComponent],
+  imports: [RouterLink, CreateRewardModalComponent, ConfirmationModalComponent],
   styleUrl: './redemptions-page.component.css',
   templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'onDocumentEscape()',
   },
 })
 export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly redemptionsService = inject(RedemptionsService);
   private readonly toastService = inject(ToastService);
 
   private cooldownTimer: number | null = null;
-
-  readonly presetColors = PRESET_COLORS;
 
   readonly streamer = toSignal(
     this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))),
@@ -69,16 +60,9 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly twitchRefreshCooldown = signal(0);
 
   readonly isCreateModalOpen = signal(false);
+  readonly redemptionToEdit = signal<Redemption | null>(null);
   readonly showDeleteModal = signal(false);
   readonly redemptionToDelete = signal<Redemption | null>(null);
-
-  readonly editingState = signal<EditingState | null>(null);
-  readonly bulkEditState = signal<BulkEditState | null>(null);
-  readonly colorPickerState = signal<ColorPickerState | null>(null);
-  readonly pendingActions = signal<Record<string, PendingAction>>({});
-
-  private readonly numericFields = new Set(['cost', 'cooldown', 'originalCost', 'costChange']);
-  private readonly requiredNumericFields = new Set(['cost', 'cooldown']);
 
   readonly userPlan = computed<PlanTier>(() => {
     const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'free';
@@ -86,7 +70,6 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   });
 
   readonly canEditPremiumFields = computed(() => this.userPlan() !== 'none');
-  readonly showPremiumFields = computed(() => true);
 
   readonly uniqueTwitchRedemptions = computed(() => {
     const customTitles = new Set(
@@ -227,7 +210,25 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   openCreateModal(): void {
+    this.redemptionToEdit.set(null);
     this.isCreateModalOpen.set(true);
+  }
+
+  openEditModal(redemption: Redemption): void {
+    this.redemptionToEdit.set(redemption);
+    this.isCreateModalOpen.set(true);
+  }
+
+  closeRewardModal(): void {
+    this.isCreateModalOpen.set(false);
+    this.redemptionToEdit.set(null);
+  }
+
+  onRewardModalOpenChange(isOpen: boolean): void {
+    this.isCreateModalOpen.set(isOpen);
+    if (!isOpen) {
+      this.redemptionToEdit.set(null);
+    }
   }
 
   onRewardCreated(data: RedemptionCreateRequest): void {
@@ -243,215 +244,25 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  startFieldEdit(redemption: Redemption, field: string): void {
-    if (this.isFieldPremium(field) && !this.canEditPremiumFields()) {
-      this.toastService.warning(this.t('common.premiumFeature'), this.t('common.premiumSubscriptionRequired'));
-      return;
-    }
-
-    const redemptionId = this.getRedemptionId(redemption);
-    const value = ((redemption as unknown) as Record<string, unknown>)[field];
-    const normalizedValue = this.normalizeFieldValue(field, value);
-    this.editingState.set({
-      redemptionId,
-      field,
-      value: normalizedValue,
-      originalValue: normalizedValue,
-    });
-  }
-
-  isEditingField(redemptionId: string, field: string): boolean {
-    const state = this.editingState();
-    return state?.redemptionId === redemptionId && state?.field === field;
-  }
-
-  getEditingValue(redemptionId: string): unknown {
-    const state = this.editingState();
-    return state?.redemptionId === redemptionId ? state.value : '';
-  }
-
-  updateEditingValue(redemptionId: string, event: Event): void {
-    const input = event.target as HTMLInputElement | HTMLTextAreaElement;
-    this.editingState.update((state) => {
-      if (state?.redemptionId === redemptionId) {
-        return { ...state, value: this.normalizeFieldValue(state.field, input.value) };
-      }
-      return state;
-    });
-  }
-
-  saveFieldEdit(redemption: Redemption, field: string): void {
-    const state = this.editingState();
-    const redemptionId = this.getRedemptionId(redemption);
-    if (!state || state.redemptionId !== redemptionId || state.field !== field) return;
-
-    const nextValue = this.normalizeFieldValue(field, state.value);
-    const originalValue = this.normalizeFieldValue(field, state.originalValue);
-
-    if (this.requiredNumericFields.has(field) && typeof nextValue !== 'number') {
-      this.editingState.set(null);
-      return;
-    }
-
-    if (!this.hasFieldChanged(field, nextValue, originalValue)) {
-      this.editingState.set(null);
-      return;
-    }
-
-    this.editingState.set(null);
-
+  onRewardUpdated(event: { id: string; data: RedemptionUpdateRequest }): void {
     const channelId = this.channelID();
     if (!channelId) return;
 
-    const updateData: Record<string, unknown> = { [field]: nextValue };
-
-    this.redemptionsService.updateRedemption(channelId, redemption.rewardID || redemption.id, updateData).subscribe({
+    this.redemptionsService.updateRedemption(channelId, event.id, event.data).subscribe({
       next: () => {
         this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: nextValue } : r)),
+          reds.map((redemption) =>
+            this.getRedemptionId(redemption) === event.id ||
+            redemption.rewardID === event.id ||
+            redemption.id === event.id
+              ? { ...redemption, ...event.data }
+              : redemption,
+          ),
         );
         this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
       },
       error: () => {},
     });
-  }
-
-  cancelFieldEdit(_redemption: Redemption): void {
-    this.editingState.set(null);
-  }
-
-  enterBulkEditMode(redemption: Redemption): void {
-    this.bulkEditState.set({
-      redemptionId: this.getRedemptionId(redemption),
-      originalValues: { ...redemption },
-    });
-  }
-
-  isInBulkEditMode(redemption: Redemption): boolean {
-    return this.bulkEditState()?.redemptionId === this.getRedemptionId(redemption);
-  }
-
-  updateRedemptionField(redemption: Redemption, field: string, value: unknown): void {
-    const redemptionId = this.getRedemptionId(redemption);
-    const normalizedValue = this.normalizeFieldValue(field, value);
-    this.customRedemptions.update((reds) =>
-      reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, [field]: normalizedValue } : r)),
-    );
-  }
-
-  saveBulkEdit(redemption: Redemption, options?: { showSuccessOnNoChanges?: boolean }): void {
-    const channelId = this.channelID();
-    if (!channelId) return;
-    const redemptionId = this.getRedemptionId(redemption);
-
-    const originalValues = this.bulkEditState()?.originalValues;
-    if (!originalValues) {
-      this.bulkEditState.set(null);
-      return;
-    }
-
-    const updateData = this.buildBulkUpdateData(redemption, originalValues);
-    if (Object.keys(updateData).length === 0) {
-      this.bulkEditState.set(null);
-      if (options?.showSuccessOnNoChanges ?? true) {
-        this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
-      }
-      return;
-    }
-
-    this.bulkEditState.set(null);
-
-    this.redemptionsService.updateRedemption(channelId, redemption.rewardID || redemption.id, updateData).subscribe({
-      next: () => {
-        this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
-      },
-      error: () => {
-        this.customRedemptions.update((reds) =>
-          reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...originalValues } : r)),
-        );
-      },
-    });
-  }
-
-  cancelBulkEdit(redemption: Redemption): void {
-    const original = this.bulkEditState()?.originalValues;
-    const redemptionId = this.getRedemptionId(redemption);
-    if (original) {
-      this.customRedemptions.update((reds) =>
-        reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, ...original } : r)),
-      );
-    }
-    this.bulkEditState.set(null);
-  }
-
-  openColorPicker(redemption: Redemption): void {
-    this.colorPickerState.set({
-      redemptionId: this.getRedemptionId(redemption),
-      isOpen: true,
-      value: redemption.background_color || '#6366f1',
-    });
-  }
-
-  closeColorPicker(_redemption: Redemption): void {
-    this.colorPickerState.set(null);
-  }
-
-  isColorPickerOpen(redemptionId: string): boolean {
-    return this.colorPickerState()?.redemptionId === redemptionId && this.colorPickerState()?.isOpen === true;
-  }
-
-  getColorPickerValue(redemptionId: string): string {
-    return (this.colorPickerState()?.redemptionId === redemptionId ? this.colorPickerState()?.value : '') || '#6366f1';
-  }
-
-  updateColorPickerValue(redemptionId: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.colorPickerState.update((state) => {
-      if (state?.redemptionId === redemptionId) {
-        return { ...state, value };
-      }
-      return state;
-    });
-  }
-
-  selectPresetColor(redemption: Redemption, color: string): void {
-    this.colorPickerState.update((state) => {
-      if (state?.redemptionId === this.getRedemptionId(redemption)) {
-        return { ...state, value: color };
-      }
-      return state;
-    });
-    this.saveColorPicker(redemption);
-  }
-
-  saveColorPicker(redemption: Redemption): void {
-    const channelId = this.channelID();
-    if (!channelId) return;
-    const redemptionId = this.getRedemptionId(redemption);
-
-    const color = this.colorPickerState()?.value;
-    if (!color || !this.redemptionsService.validateColor(color)) {
-      this.toastService.error(this.t('redemptions.invalidColorTitle'), this.t('redemptions.invalidColorMessage'));
-      return;
-    }
-
-    this.redemptionsService
-      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'background_color', color)
-      .subscribe({
-        next: () => {
-          this.colorPickerState.set(null);
-          this.customRedemptions.update((reds) =>
-            reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, background_color: color } : r)),
-          );
-          this.toastService.success(
-            this.t('redemptions.colorUpdateSuccessTitle'),
-            this.t('redemptions.colorUpdateSuccessMessage'),
-          );
-        },
-        error: () => {
-          this.colorPickerState.set(null);
-        },
-      });
   }
 
   toggleEnabled(redemption: Redemption): void {
@@ -512,55 +323,9 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleReturnToOriginal(redemption: Redemption): void {
-    const channelId = this.channelID();
-    if (!channelId) return;
-    const redemptionId = this.getRedemptionId(redemption);
-
-    const newValue = !redemption.returnToOriginalCost;
-
-    this.redemptionsService
-      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'returnToOriginalCost', newValue)
-      .subscribe({
-        next: () => {
-          this.customRedemptions.update((reds) =>
-            reds.map((r) =>
-              this.getRedemptionId(r) === redemptionId ? { ...r, returnToOriginalCost: newValue } : r,
-            ),
-          );
-        },
-        error: () => {},
-      });
-  }
-
-  onDocumentClick(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    this.handleInlineEditClickAway(target);
-    this.handleBulkEditClickAway(target);
-    this.handleColorPickerClickAway(target);
-  }
-
   onDocumentEscape(): void {
-    const bulkState = this.bulkEditState();
-    if (bulkState) {
-      const redemption = this.findRedemptionById(bulkState.redemptionId);
-      if (redemption) {
-        this.cancelBulkEdit(redemption);
-      } else {
-        this.bulkEditState.set(null);
-      }
-    }
-
-    if (this.editingState()) {
-      this.editingState.set(null);
-    }
-
-    if (this.colorPickerState()) {
-      this.colorPickerState.set(null);
+    if (this.isCreateModalOpen()) {
+      this.closeRewardModal();
     }
   }
 
@@ -573,145 +338,5 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     const rgbaPattern = /^rgba\((\s*\d+\s*,){3}\s*(0|0?\.\d+|1)\s*\)$/;
 
     return hexPattern.test(color) || rgbPattern.test(color) || rgbaPattern.test(color) ? color : '#6366f1';
-  }
-
-  isFieldPremium(field: string): boolean {
-    return ['originalCost', 'costChange', 'returnToOriginalCost'].includes(field);
-  }
-
-  hasPremiumData(redemption: Redemption): boolean {
-    return (
-      redemption.originalCost !== undefined ||
-      redemption.costChange !== undefined ||
-      redemption.returnToOriginalCost !== undefined
-    );
-  }
-
-  formatCostChange(value: number | undefined): string {
-    if (value === undefined) return '—';
-    return value >= 0 ? `+${value}` : `${value}`;
-  }
-
-  goBack(): void {
-    const streamer = this.streamer();
-    if (streamer) {
-      void this.router.navigate([streamer, 'modules']);
-    }
-  }
-
-  private normalizeFieldValue(field: string, value: unknown): unknown {
-    if (field === 'returnToOriginalCost') {
-      return Boolean(value);
-    }
-
-    if (this.numericFields.has(field)) {
-      if (value === '' || value === null || value === undefined) {
-        return undefined;
-      }
-
-      const parsed = typeof value === 'number' ? value : Number(value);
-      return Number.isFinite(parsed) ? parsed : undefined;
-    }
-
-    return value;
-  }
-
-  private hasFieldChanged(field: string, currentValue: unknown, originalValue: unknown): boolean {
-    return this.normalizeFieldValue(field, currentValue) !== this.normalizeFieldValue(field, originalValue);
-  }
-
-  private getBulkEditableFields(): string[] {
-    const fields = ['title', 'prompt', 'message', 'cost', 'cooldown'];
-
-    if (this.canEditPremiumFields()) {
-      fields.push('originalCost', 'costChange', 'returnToOriginalCost');
-    }
-
-    return fields;
-  }
-
-  private buildBulkUpdateData(redemption: Redemption, originalValues: Partial<Redemption>): Partial<Redemption> {
-    const updateData: Partial<Redemption> = {};
-
-    for (const field of this.getBulkEditableFields()) {
-      const currentValue = this.normalizeFieldValue(
-        field,
-        ((redemption as unknown) as Record<string, unknown>)[field],
-      );
-      const originalValue = this.normalizeFieldValue(
-        field,
-        ((originalValues as unknown) as Record<string, unknown>)[field],
-      );
-
-      if (!this.hasFieldChanged(field, currentValue, originalValue)) {
-        continue;
-      }
-
-      (updateData as Record<string, unknown>)[field] = currentValue;
-    }
-
-    return updateData;
-  }
-
-  private findRedemptionById(redemptionId: string): Redemption | undefined {
-    return this.customRedemptions().find((redemption) => this.getRedemptionId(redemption) === redemptionId);
-  }
-
-  private handleInlineEditClickAway(target: HTMLElement): void {
-    const state = this.editingState();
-    if (!state) {
-      return;
-    }
-
-    if (target.closest('.field-input') || target.closest('.field-textarea') || target.closest('.lf-input') || target.closest('.lf-textarea')) {
-      return;
-    }
-
-    const redemption = this.findRedemptionById(state.redemptionId);
-    if (!redemption) {
-      this.editingState.set(null);
-      return;
-    }
-
-    this.saveFieldEdit(redemption, state.field);
-  }
-
-  private handleBulkEditClickAway(target: HTMLElement): void {
-    const state = this.bulkEditState();
-    if (!state) {
-      return;
-    }
-
-    const activeCardId = target.closest('[data-redemption-card]')?.getAttribute('data-redemption-card');
-    if (activeCardId === state.redemptionId) {
-      return;
-    }
-
-    const redemption = this.findRedemptionById(state.redemptionId);
-    if (!redemption) {
-      this.bulkEditState.set(null);
-      return;
-    }
-
-    const hasChanges = Object.keys(this.buildBulkUpdateData(redemption, state.originalValues)).length > 0;
-    if (!hasChanges) {
-      this.cancelBulkEdit(redemption);
-      return;
-    }
-
-    this.saveBulkEdit(redemption, { showSuccessOnNoChanges: false });
-  }
-
-  private handleColorPickerClickAway(target: HTMLElement): void {
-    const state = this.colorPickerState();
-    if (!state) {
-      return;
-    }
-
-    if (target.closest('.lf-color-picker') || target.closest('.lf-reward-color')) {
-      return;
-    }
-
-    this.colorPickerState.set(null);
   }
 }

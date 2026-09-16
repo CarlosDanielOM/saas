@@ -53,12 +53,14 @@
 .lf-modal {
   width: 100%;
   max-height: min(92dvh, 52rem);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--tile);
   border: 1px solid var(--line);
   border-radius: 1.25rem 1.25rem 0 0;
   box-shadow: var(--shadow);
-  padding: 1.1rem 1.1rem 1.25rem;
+  padding: 1.1rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 .lf-modal--wide {
@@ -71,6 +73,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 
 .lf-kicker {
@@ -103,14 +106,25 @@
 }
 
 .lf-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.lf-form__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   display: grid;
   gap: 0.9rem;
+  padding-right: 0.15rem;
 }
 
 .lf-form-grid {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lf-field {
@@ -241,24 +255,64 @@
 
 .lf-check {
   display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--fg) 1.5%, transparent);
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--fg);
   cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.lf-check input {
-  margin-top: 0.15rem;
-  width: 1.05rem;
-  height: 1.05rem;
-  accent-color: var(--accent);
+.lf-check:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.lf-check input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 1.4rem;
+  height: 1.4rem;
+  min-width: 1.4rem;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--fg) 22%, transparent);
+  border-radius: 0.45rem;
+  background-color: var(--input-bg);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.9rem;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.lf-check input:disabled {
+.lf-check input[type='checkbox']:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+.lf-check input[type='checkbox']:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lf-check input[type='checkbox']:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.lf-check:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .lf-premium {
@@ -293,7 +347,10 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.55rem;
-  padding-top: 0.35rem;
+  flex-shrink: 0;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
 }
 
 .lf-btn {
@@ -348,10 +405,6 @@
   .lf-modal {
     border-radius: var(--radius);
     max-height: min(88dvh, 48rem);
-  }
-
-  .lf-form-grid {
-    grid-template-columns: 1fr 1fr;
   }
 }
 
