@@ -317,7 +317,9 @@
                         #domainInput
                         type="text"
                         [placeholder]="t('moderation.fields.domainPlaceholder')"
-                        (keydown.enter)="addListItem(rule.id, 'allowlistDomains', domainInput)"
+                        (input)="onListInput($any($event.target).value)"
+                        (keydown.enter)="addListItems(rule.id, 'allowlistDomains', domainInput)"
+                        (blur)="addListItems(rule.id, 'allowlistDomains', domainInput)"
                         [disabled]="!canManage()"
                       />
                       <small>{{ t('moderation.fields.allowlistHint') }}</small>
@@ -349,7 +351,9 @@
                         #termInput
                         type="text"
                         [placeholder]="t('moderation.fields.termPlaceholder')"
-                        (keydown.enter)="addListItem(rule.id, 'terms', termInput)"
+                        (input)="onListInput($any($event.target).value)"
+                        (keydown.enter)="addListItems(rule.id, 'terms', termInput)"
+                        (blur)="addListItems(rule.id, 'terms', termInput)"
                         [disabled]="!canManage()"
                       />
                       <small>{{ t('moderation.fields.termsHint') }}</small>

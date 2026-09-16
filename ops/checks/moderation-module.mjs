@@ -55,7 +55,12 @@ for (const marker of [
   'moderation:manage',
   'moderation.rules.title',
   'moderation.toasts.savedTitle',
-  'lf-rule'
+  'lf-rule',
+  // Comma-separated list entry: split on commas + blur/Enter commit path.
+  'addListItems',
+  'onListInput',
+  'pendingListInput',
+  'split(",")'
 ]) {
   assertIncludes(moderationChunk, marker, 'moderation chunk');
 }

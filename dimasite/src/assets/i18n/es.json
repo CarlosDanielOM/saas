@@ -912,11 +912,11 @@
       "maxCapsPercentage": "Porcentaje de mayúsculas",
       "minMessageLength": "Longitud mínima del mensaje",
       "allowlistDomains": "Dominios permitidos",
-      "allowlistHint": "Los enlaces a estos dominios nunca se bloquean. Escribe un dominio y pulsa Enter.",
+      "allowlistHint": "Los enlaces a estos dominios nunca se bloquean. Separa varios dominios con comas o pulsa Enter.",
       "domainPlaceholder": "ejemplo.com",
       "maxEmoteCount": "Máximo de emotes",
       "terms": "Palabras bloqueadas",
-      "termsHint": "Como palabra completa y sin distinguir acentos. Escribe una palabra o frase y pulsa Enter.",
+      "termsHint": "Como palabra completa y sin distinguir acentos. Separa varias palabras con comas o pulsa Enter.",
       "termPlaceholder": "frase bloqueada"
     },
     "actions": {

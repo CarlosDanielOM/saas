@@ -90,6 +90,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly savingSettings = signal(false);
   readonly canManage = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly pendingListInput = signal(false);
 
   readonly logsPagination = signal<PaginationState>({ page: 1, limit: 10, total: 0 });
 
@@ -139,7 +140,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     const current = this.settings();
     const initial = this.initialSettings();
     if (!current || !initial) return false;
-    return JSON.stringify(current) !== JSON.stringify(initial);
+    return JSON.stringify(current) !== JSON.stringify(initial) || this.pendingListInput();
   });
 
   readonly activeRuleCount = computed(
@@ -445,9 +446,21 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  addListItem(ruleID: string, field: ListField, input: HTMLInputElement): void {
-    const value = input.value.trim();
-    if (!value) return;
+  onListInput(value: string): void {
+    this.pendingListInput.set(value.trim().length > 0);
+  }
+
+  addListItems(ruleID: string, field: ListField, input: HTMLInputElement): void {
+    const raw = input.value;
+    input.value = '';
+    this.pendingListInput.set(false);
+
+    const candidates = raw
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (candidates.length === 0) return;
 
     this.settings.update((s) => {
       if (!s) return s;
@@ -455,14 +468,23 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
         ...s,
         rules: s.rules.map((rule) => {
           if (rule.id !== ruleID) return rule;
-          const list = rule[field];
-          if (list.some((item) => item.toLowerCase() === value.toLowerCase())) return rule;
-          return { ...rule, [field]: [...list, value] } as ModerationRule;
+
+          const existing = rule[field];
+          const seen = new Set(existing.map((item) => item.toLowerCase()));
+          const additions: string[] = [];
+
+          for (const candidate of candidates) {
+            const key = candidate.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            additions.push(candidate);
+          }
+
+          if (additions.length === 0) return rule;
+          return { ...rule, [field]: [...existing, ...additions] } as ModerationRule;
         })
       };
     });
-
-    input.value = '';
   }
 
   removeListItem(ruleID: string, field: ListField, index: number): void {
