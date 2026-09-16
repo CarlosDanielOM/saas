@@ -1,6 +1,7 @@
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import ChatHistory from "../classes/chat_history.js";
 import { commandHandler } from "./commands.handler.js";
+import { runChatModeration } from "./moderation.handler.js";
 import { promo } from "../functions/promo/chat.promo.js";
 import { chat as aiChat, getChannelPersonality } from "../utils/ai/openrouter/ai.js";
 import { handleShoutoutCommand } from "../commands/shoutout.command.js";
@@ -218,6 +219,14 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         if(!command) {
+            // Moderation gate: filter/regex rules (caps, links, emote spam,
+            // blacklist) run before any AI or command logic. If the gate
+            // takes action, the message dies here.
+            const moderationResult = await runChatModeration(channelID, messageEventData, userLevel);
+            if (moderationResult.actionTaken) {
+                return;
+            }
+
             if(messageEventData.message.text.startsWith('@domdimabot') || messageEventData.message.text.startsWith('@DomDimaBot') || messageEventData.message.text.includes('@domdimabot') || messageEventData.message.text.includes('@DomDimaBot')) {
                 const aiPersonality = await getChannelPersonality(channelID);
                 if (aiPersonality?.enabled === false) {

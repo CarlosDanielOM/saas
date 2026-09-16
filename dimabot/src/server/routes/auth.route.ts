@@ -22,6 +22,7 @@ import { timingSafeEqual } from "node:crypto";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { ensureReservedCommands } from "../services/command_defaults.service.js";
+import { seedDefaultModerationSettings } from '../../utils/moderation/defaults.js';
 import { cleanupChannelMediaOwnership } from '../../utils/media_cleanup.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { decrypt } from "../../utils/crypto.js";
@@ -627,6 +628,13 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
                 await subscribeAllEventSubs(channelID);
 
                 await createReservedCommands(channelID, streamer.name);
+
+                // First-time activation only: seed enabled moderation defaults
+                // for new streamers. Existing channels keep whatever they have
+                // (no moderation unless they configured it themselves).
+                if (!twitchAccount.actived) {
+                    await seedDefaultModerationSettings(channelID, streamer.name);
+                }
             }
 
             if (twitchUser?.login && twitchAccount.name !== twitchUser.login) {

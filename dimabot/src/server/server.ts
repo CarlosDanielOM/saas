@@ -28,6 +28,7 @@ import { adminSiteRoute } from "./routes/admin_site.route.js";
 import { analyticsRoute } from "./routes/analytics.route.js";
 import { timerRoute } from "./routes/timer.route.js";
 import { followDefenseRoute } from "./routes/follow_defense.route.js";
+import { moderationRoute } from "./routes/moderation.route.js";
 import { streamSummaryRoute } from "./routes/stream-summary.route.js";
 import { clipRecommendationsRoute } from "./routes/clip-recommendations.route.js";
 import { dimafxRoute } from "./routes/dimafx.route.js";
@@ -119,6 +120,9 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup follow defense routes
         app.use('/follow-defense', followDefenseRoute);
+
+        // Setup moderation pipeline routes
+        app.use('/moderation', moderationRoute);
 
         // Setup stream summaries routes
         app.use('/stream-summaries', streamSummaryRoute);

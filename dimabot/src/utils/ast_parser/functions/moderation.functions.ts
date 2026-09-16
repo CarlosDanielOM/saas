@@ -8,6 +8,7 @@ import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { VipSchema } from '../../../schemas/vip.schema.js';
 import { TemporaryModeratorSchema } from '../../../schemas/temporary_moderator.schema.js';
 import { getDragonflyClient } from '../../../utils/databases/dragonfly.database.js';
+import { grantPermit, parsePermitArgs, PERMIT_USAGE } from '../../../utils/moderation/permit.js';
 import { shouldRemoveModerator } from './moderation.helpers.js';
 
 const BOT_ID = '698614112';
@@ -208,7 +209,8 @@ const USER_LEVEL_REQUIREMENTS: Record<string, number> = {
     'mod': 8,
     'unmod': 8,
     'clear.chat': 7,
-    'emoteonly': 7
+    'emoteonly': 7,
+    'permit': 7
 };
 
 function checkUserLevel(commandName: string, ctx: ExecutionContext): boolean {
@@ -587,6 +589,41 @@ const emoteonlyHandler: FunctionHandler = async (args, ctx) => {
     return '';
 };
 
+const permitHandler: FunctionHandler = async (args, ctx) => {
+    const denied = denyIfBelowLevel('permit', ctx);
+    if (denied) return denied;
+
+    // When called as $(permit) inside a command, fall back to the command's
+    // raw argument so "!permit someguy 120" works with a plain $(permit).
+    const rawArgs = args.length > 0
+        ? args.map(arg => String(arg))
+        : String(ctx.argument || '').trim().split(/\s+/).filter(Boolean);
+
+    const parsed = parsePermitArgs(rawArgs);
+    if ('error' in parsed) {
+        return parsed.error;
+    }
+
+    try {
+        await grantPermit(ctx.broadcasterId, parsed.seconds, parsed.login);
+    } catch (error) {
+        console.error('Error granting moderation permit:', {
+            channelID: ctx.broadcasterId,
+            login: parsed.login,
+            seconds: parsed.seconds,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+        });
+        return 'Failed to grant permit';
+    }
+
+    if (parsed.login) {
+        return `@${parsed.login} has been permitted to bypass moderation filters for ${parsed.seconds} seconds`;
+    }
+
+    return `Everyone has been permitted to bypass moderation filters for ${parsed.seconds} seconds`;
+};
+
 export function registerModerationFunctions(): void {
     startRestoreModeratorWorker();
 
@@ -649,6 +686,14 @@ export function registerModerationFunctions(): void {
         minUserLevel: 8,
         destructive: true,
         keywords: ['remove mod', 'demod', 'quitar mod', 'revocar moderador']
+    });
+    registerFunction('permit', permitHandler, {
+        description: 'Grants a temporary bypass of the channel moderation filters (caps, links, emote spam, blacklist). With a username only that user is permitted; with only a number everyone is permitted for that many seconds; with no arguments everyone is permitted for 60 seconds.',
+        syntax: 'permit [username] [seconds]',
+        category: 'moderation',
+        examples: ['permit', 'permit gooduser', 'permit 120', 'permit gooduser 120'],
+        minUserLevel: 7,
+        keywords: ['permit', 'allow link', 'bypass filter', 'permitir', 'permitir enlace', 'excepcion']
     });
     registerFunction('clear.chat', clearChatHandler, {
         description: 'Clears the entire chat history.',

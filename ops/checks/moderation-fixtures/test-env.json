@@ -1,0 +1,16 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_moderation_test",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "QDRANT_HOST": "qdrant.test",
+  "QDRANT_PORT": "6333",
+  "QDRANT_API_KEY": "dummy",
+  "POLARSH_OAT": "dummy",
+  "OTEL_SDK_DISABLED": "true",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "INTERNAL_API_URL": "http://127.0.0.1:3000",
+  "TWITCH_EVENTSUB_SECRET": "moderation-test-secret",
+  "CLIENT_ID": "moderation-test-client",
+  "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false"
+}
