@@ -2417,6 +2417,7 @@
       "missingAssetMessage": "This trigger no longer has a playable library asset attached."
     },
     "form": {
+      "sectionDetails": "Details",
       "nameLabel": "Trigger name",
       "namePlaceholder": "HydrateHero or StreamBoom",
       "promptLabel": "Prompt or note",

@@ -146,6 +146,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly triggerFormMode = signal<TriggerFormMode>('create');
   readonly editingTriggerId = signal<string | null>(null);
   readonly triggerForm = signal<TriggerFormState>(this.createDefaultTriggerForm());
+  readonly isRewardPanelOpen = signal(false);
 
   readonly isUploadModalOpen = signal(false);
   readonly isDraggingUpload = signal(false);
@@ -413,6 +414,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       libraryItemID: firstLibraryItem?._id || '',
       reward: this.createDefaultRewardForm('')
     });
+    this.isRewardPanelOpen.set(false);
     this.isTriggerModalOpen.set(true);
   }
 
@@ -440,6 +442,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
           }
         : this.createDefaultRewardForm(trigger.name)
     });
+    this.isRewardPanelOpen.set(Boolean(trigger.reward));
     this.isTriggerModalOpen.set(true);
   }
 
@@ -452,6 +455,11 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     this.editingTriggerId.set(null);
     this.triggerFormMode.set('create');
     this.triggerForm.set(this.createDefaultTriggerForm());
+    this.isRewardPanelOpen.set(false);
+  }
+
+  toggleRewardPanel(): void {
+    this.isRewardPanelOpen.update((isOpen) => !isOpen);
   }
 
   updateTriggerForm(field: keyof TriggerFormState, value: string): void {

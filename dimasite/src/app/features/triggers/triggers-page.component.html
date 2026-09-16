@@ -274,8 +274,8 @@
 <!-- Create / Edit trigger modal -->
 @if (isTriggerModalOpen()) {
   <div class="lf-modal-overlay" (click)="closeTriggerModal()">
-    <div class="lf-modal lf-modal--wide" (click)="$event.stopPropagation()">
-      <div class="lf-modal__head">
+    <section class="lf-modal lf-modal--wide lf-modal--form" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
         <div>
           <p class="lf-kicker">
             {{ triggerFormMode() === 'create' ? t('triggers.modalCreateEyebrow') : t('triggers.modalEditEyebrow') }}
@@ -285,83 +285,122 @@
           </h2>
         </div>
         <button type="button" class="lf-modal__close" (click)="closeTriggerModal()" [attr.aria-label]="t('common.close')">×</button>
-      </div>
+      </header>
 
-      <div class="lf-modal__body">
-        <div class="lf-form-grid">
-          <label class="lf-field">
-            <span>{{ t('triggers.form.nameLabel') }}</span>
-            <input
-              type="text"
-              [value]="triggerForm().name"
-              (input)="updateTriggerForm('name', $any($event.target).value)"
-              [placeholder]="t('triggers.form.namePlaceholder')"
-              pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
-              maxlength="60"
-              autocapitalize="off"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </label>
-
-          <label class="lf-field">
-            <span>{{ t('triggers.volume') }}</span>
-            <div class="lf-volume">
+      <div class="lf-modal__body lf-modal__body--form">
+        <section class="lf-form-section">
+          <h3 class="lf-form-section__title">{{ t('triggers.form.sectionDetails') }}</h3>
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span>{{ t('triggers.form.nameLabel') }}</span>
               <input
-                type="range"
-                min="0"
-                max="100"
-                [value]="triggerForm().volume"
-                [attr.aria-label]="t('triggers.volume')"
-                (input)="updateTriggerForm('volume', $any($event.target).value)"
+                type="text"
+                [value]="triggerForm().name"
+                (input)="updateTriggerForm('name', $any($event.target).value)"
+                [placeholder]="t('triggers.form.namePlaceholder')"
+                pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
+                maxlength="60"
+                autocapitalize="off"
+                autocomplete="off"
+                spellcheck="false"
               />
-              <span class="lf-volume__value">{{ triggerForm().volume }}%</span>
-            </div>
-          </label>
-        </div>
+            </label>
 
-        @if (triggerFormMode() === 'create') {
-          <div class="lf-picker">
-            <div class="lf-picker__head">
-              <h3 class="lf-h3">{{ t('triggers.form.mediaLabel') }}</h3>
-              <p class="lf-note">{{ t('triggers.form.mediaHint') }}</p>
-            </div>
-            <div class="lf-picker__list">
+            <label class="lf-field">
+              <span>{{ t('triggers.volume') }}</span>
+              <div class="lf-volume">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  [value]="triggerForm().volume"
+                  [attr.aria-label]="t('triggers.volume')"
+                  (input)="updateTriggerForm('volume', $any($event.target).value)"
+                />
+                <span class="lf-volume__value">{{ triggerForm().volume }}%</span>
+              </div>
+            </label>
+          </div>
+        </section>
+
+        <section class="lf-form-section">
+          <div class="lf-form-section__head">
+            <h3 class="lf-form-section__title">{{ t('triggers.form.mediaLabel') }}</h3>
+            <p class="lf-note">{{ t('triggers.form.mediaHint') }}</p>
+          </div>
+
+          @if (triggerFormMode() === 'create') {
+            <div class="lf-media-picker" role="group" [attr.aria-label]="t('triggers.form.mediaLabel')">
               @for (item of triggerCapableLibraryItems(); track item._id) {
                 <button
                   type="button"
-                  class="lf-picker__item"
-                  [class.lf-picker__item--selected]="triggerForm().libraryItemID === item._id"
+                  class="lf-media-picker__item"
+                  [class.lf-media-picker__item--selected]="triggerForm().libraryItemID === item._id"
+                  [attr.aria-pressed]="triggerForm().libraryItemID === item._id"
                   (click)="updateTriggerForm('libraryItemID', item._id)"
                 >
-                  <span class="lf-picker__icon">{{ mediaGlyph(item.asset?.mediaType || 'video') }}</span>
-                  <span class="lf-picker__text">
-                    <strong>{{ (item.localAlias || item.asset?.displayName) | displayName }}</strong>
-                    <span>{{ formatBytes(item.asset?.bytes || 0) }} · {{ t('triggers.scope.' + item.assetScope) }}</span>
+                  <span class="lf-media-picker__thumb">
+                    @if (item.asset?.mediaType === 'video') {
+                      <video [src]="item.asset?.playbackUrl" muted preload="metadata" playsinline></video>
+                    } @else {
+                      <span class="lf-media-picker__audio">{{ mediaGlyph(item.asset?.mediaType || 'audio') }}</span>
+                    }
+                    <span class="lf-media-picker__type">{{ t('triggers.filters.' + (item.asset?.mediaType || 'audio')) }}</span>
                   </span>
+                  <span class="lf-media-picker__info">
+                    <strong [title]="(item.localAlias || item.asset?.displayName) | displayName">
+                      {{ (item.localAlias || item.asset?.displayName) | displayName }}
+                    </strong>
+                    <span class="lf-media-picker__meta">{{ t('triggers.scope.' + item.assetScope) }} · {{ formatBytes(item.asset?.bytes || 0) }}</span>
+                  </span>
+                  <span class="lf-media-picker__check" aria-hidden="true">✓</span>
                 </button>
               } @empty {
-                <div class="lf-empty lf-empty--compact">
+                <div class="lf-empty lf-empty--compact lf-media-picker__empty">
                   <h3 class="lf-h3">{{ t('triggers.form.noMediaTitle') }}</h3>
                   <p>{{ t('triggers.form.noMediaMessage') }}</p>
                 </div>
               }
             </div>
-          </div>
-        } @else if (selectedTriggerFormItem()) {
-          <div class="lf-locked-media">
-            <span class="lf-picker__icon">{{ mediaGlyph(selectedTriggerFormItem()!.asset?.mediaType || 'video') }}</span>
-            <div>
-              <strong>{{ (selectedTriggerFormItem()!.localAlias || selectedTriggerFormItem()!.asset?.displayName) | displayName }}</strong>
-              <p class="lf-note">{{ t('triggers.form.mediaLockedMessage') }}</p>
+          } @else if (selectedTriggerFormItem(); as lockedItem) {
+            <div class="lf-locked-media">
+              <span class="lf-locked-media__thumb">
+                @if (lockedItem.asset?.mediaType === 'video') {
+                  <video [src]="lockedItem.asset?.playbackUrl" muted preload="metadata" playsinline></video>
+                } @else {
+                  <span class="lf-media-picker__audio">{{ mediaGlyph(lockedItem.asset?.mediaType || 'audio') }}</span>
+                }
+              </span>
+              <div class="lf-locked-media__body">
+                <strong>{{ (lockedItem.localAlias || lockedItem.asset?.displayName) | displayName }}</strong>
+                <p class="lf-note">{{ t('triggers.form.mediaLockedMessage') }}</p>
+              </div>
             </div>
-          </div>
-        }
+          }
+        </section>
 
-        <div class="lf-reward">
-          <div class="lf-reward__head">
-            <div>
-              <h3 class="lf-h3">{{ t('triggers.rewardBuilderTitle') }}</h3>
+        <section class="lf-form-section lf-form-section--reward">
+          <button
+            type="button"
+            class="lf-form-section__toggle"
+            [attr.aria-expanded]="isRewardPanelOpen()"
+            (click)="toggleRewardPanel()"
+          >
+            <span class="lf-form-section__toggle-text">
+              <span class="lf-form-section__title">{{ t('triggers.rewardBuilderTitle') }}</span>
+              <span class="lf-chip lf-chip--compact" [class.lf-chip--accent]="triggerForm().reward.enabled">
+                {{ triggerForm().reward.enabled ? t('triggers.rewardLinked') : t('triggers.rewardless') }}
+              </span>
+            </span>
+            <span
+              class="lf-form-section__chevron"
+              [class.lf-form-section__chevron--open]="isRewardPanelOpen()"
+              aria-hidden="true"
+            >▾</span>
+          </button>
+
+          @if (isRewardPanelOpen()) {
+            <div class="lf-reward">
               <p class="lf-note">
                 @if (hasLinkedRewardInEditor()) {
                   {{ t('triggers.rewardBuilderLinkedHint') }}
@@ -369,83 +408,84 @@
                   {{ t('triggers.rewardBuilderHint') }}
                 }
               </p>
-            </div>
-            @if (!hasLinkedRewardInEditor()) {
-              <div class="lf-segment">
-                <button
-                  type="button"
-                  class="lf-segment__btn"
-                  [class.lf-segment__btn--active]="!triggerForm().reward.enabled"
-                  (click)="toggleRewardSection(false)"
-                >
-                  {{ t('triggers.rewardless') }}
-                </button>
-                <button
-                  type="button"
-                  class="lf-segment__btn"
-                  [class.lf-segment__btn--active]="triggerForm().reward.enabled"
-                  (click)="toggleRewardSection(true)"
-                >
-                  {{ t('triggers.rewardLinked') }}
-                </button>
-              </div>
-            }
-          </div>
 
-          @if (triggerForm().reward.enabled) {
-            <div class="lf-form-grid lf-form-grid--reward">
-              <label class="lf-field">
-                <span>{{ t('triggers.rewardFields.title') }}</span>
-                <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)" />
-              </label>
-              <label class="lf-field">
-                <span>{{ t('common.cost') }}</span>
-                <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))" />
-              </label>
-              <label class="lf-field">
-                <span>{{ t('common.cooldown') }}</span>
-                <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))" />
-              </label>
-              <label class="lf-field">
-                <span>{{ t('triggers.rewardFields.duration') }}</span>
-                <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))" />
-              </label>
-              <label class="lf-field">
-                <span>{{ t('triggers.rewardFields.costChange') }}</span>
-                <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))" />
-              </label>
-              <label class="lf-field">
-                <span>{{ t('triggers.rewardFields.background') }}</span>
-                <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb" />
-              </label>
-              <label class="lf-field lf-field--full">
-                <span>{{ t('triggers.rewardFields.prompt') }}</span>
-                <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
-              </label>
-              <label class="lf-field lf-field--full">
-                <span>{{ t('triggers.rewardFields.message') }}</span>
-                <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
-              </label>
-            </div>
-            <div class="lf-check-row">
-              <label class="lf-check">
-                <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)" />
-                <span>{{ t('triggers.rewardFields.userInput') }}</span>
-              </label>
-              <label class="lf-check">
-                <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)" />
-                <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
-              </label>
-              <label class="lf-check">
-                <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)" />
-                <span>{{ t('triggers.rewardFields.resetCost') }}</span>
-              </label>
+              @if (!hasLinkedRewardInEditor()) {
+                <div class="lf-segment">
+                  <button
+                    type="button"
+                    class="lf-segment__btn"
+                    [class.lf-segment__btn--active]="!triggerForm().reward.enabled"
+                    (click)="toggleRewardSection(false)"
+                  >
+                    {{ t('triggers.rewardless') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="lf-segment__btn"
+                    [class.lf-segment__btn--active]="triggerForm().reward.enabled"
+                    (click)="toggleRewardSection(true)"
+                  >
+                    {{ t('triggers.rewardLinked') }}
+                  </button>
+                </div>
+              }
+
+              @if (triggerForm().reward.enabled) {
+                <div class="lf-form-grid lf-form-grid--reward">
+                  <label class="lf-field">
+                    <span>{{ t('triggers.rewardFields.title') }}</span>
+                    <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)" />
+                  </label>
+                  <label class="lf-field">
+                    <span>{{ t('common.cost') }}</span>
+                    <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))" />
+                  </label>
+                  <label class="lf-field">
+                    <span>{{ t('common.cooldown') }}</span>
+                    <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))" />
+                  </label>
+                  <label class="lf-field">
+                    <span>{{ t('triggers.rewardFields.duration') }}</span>
+                    <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))" />
+                  </label>
+                  <label class="lf-field">
+                    <span>{{ t('triggers.rewardFields.costChange') }}</span>
+                    <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))" />
+                  </label>
+                  <label class="lf-field">
+                    <span>{{ t('triggers.rewardFields.background') }}</span>
+                    <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb" />
+                  </label>
+                  <label class="lf-field lf-field--full">
+                    <span>{{ t('triggers.rewardFields.prompt') }}</span>
+                    <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
+                  </label>
+                  <label class="lf-field lf-field--full">
+                    <span>{{ t('triggers.rewardFields.message') }}</span>
+                    <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
+                  </label>
+                </div>
+                <div class="lf-check-row">
+                  <label class="lf-check">
+                    <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)" />
+                    <span>{{ t('triggers.rewardFields.userInput') }}</span>
+                  </label>
+                  <label class="lf-check">
+                    <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)" />
+                    <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
+                  </label>
+                  <label class="lf-check">
+                    <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)" />
+                    <span>{{ t('triggers.rewardFields.resetCost') }}</span>
+                  </label>
+                </div>
+              }
             </div>
           }
-        </div>
+        </section>
       </div>
 
-      <div class="lf-modal__footer">
+      <footer class="lf-modal__footer lf-modal__footer--form">
         <button type="button" class="lf-btn" (click)="closeTriggerModal()">{{ t('common.cancel') }}</button>
         <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSubmittingTrigger()" (click)="submitTriggerForm()">
           @if (isSubmittingTrigger()) {
@@ -454,8 +494,8 @@
             {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('common.save') }}
           }
         </button>
-      </div>
-    </div>
+      </footer>
+    </section>
   </div>
 }
 

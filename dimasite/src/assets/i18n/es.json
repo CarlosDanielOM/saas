@@ -2417,6 +2417,7 @@
       "missingAssetMessage": "Este trigger ya no tiene un asset reproducible conectado en la biblioteca."
     },
     "form": {
+      "sectionDetails": "Detalles",
       "nameLabel": "Nombre del trigger",
       "namePlaceholder": "HydrateHero o StreamBoom",
       "promptLabel": "Prompt o nota",
