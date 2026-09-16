@@ -49,6 +49,45 @@ interface PricingRow {
   note?: string;
 }
 
+interface FeatureGuide {
+  chip: string;
+  titleKey: string;
+  descriptionKey: string;
+  ctaKey: string;
+  path: string;
+}
+
+const FEATURE_GUIDES: readonly FeatureGuide[] = [
+  {
+    chip: 'AI',
+    titleKey: 'landing.features.aiModerationTitle',
+    descriptionKey: 'landing.features.aiModerationDescription',
+    ctaKey: 'landing.features.aiModerationCta',
+    path: '/follow-defense/'
+  },
+  {
+    chip: 'AUTO',
+    titleKey: 'landing.features.automationTitle',
+    descriptionKey: 'landing.features.automationDescription',
+    ctaKey: 'landing.features.automationCta',
+    path: '/commands/'
+  },
+  {
+    chip: 'DATA',
+    titleKey: 'landing.features.analyticsTitle',
+    descriptionKey: 'landing.features.analyticsDescription',
+    ctaKey: 'landing.features.analyticsCta',
+    path: '/dashboard/'
+  },
+  {
+    chip: 'VOICE',
+    titleKey: 'landing.features.ttsTitle',
+    descriptionKey: 'landing.features.ttsDescription',
+    ctaKey: 'landing.features.ttsCta',
+    path: '/tts/'
+  }
+];
+
 @Component({
   selector: 'app-landing-page',
   imports: [LucideAngularModule, CountUpDirective, BrandLogoComponent],
@@ -95,6 +134,14 @@ export class LandingPageComponent implements OnInit {
 
   readonly featuredChannel = computed(() => this.liveChannels()[0] ?? null);
   readonly otherChannels = computed(() => this.liveChannels().slice(1, 5));
+
+  readonly featureGuides = computed(() => {
+    const prefix = this.languageService.currentLanguage() === 'es' ? '/es' : '';
+    return FEATURE_GUIDES.map((feature) => ({
+      ...feature,
+      href: `https://docs.domdimabot.com${prefix}${feature.path}`
+    }));
+  });
 
   readonly pricingTiers: PricingTier[] = [
     {

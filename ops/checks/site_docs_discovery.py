@@ -14,6 +14,13 @@ DOC_LINKS = {
     "https://docs.domdimabot.com/tts/": "TTS",
 }
 
+FEATURE_LINKS = {
+    "https://docs.domdimabot.com/follow-defense/": "Follow Defense guide →",
+    "https://docs.domdimabot.com/commands/": "Commands guide →",
+    "https://docs.domdimabot.com/dashboard/": "Dashboard guide →",
+    "https://docs.domdimabot.com/tts/": "TTS guide →",
+}
+
 
 class Anchors(HTMLParser):
     def __init__(self):
@@ -50,6 +57,18 @@ anchors.feed(landing_html)
 
 for href, label in DOC_LINKS.items():
     assert (href, label) in anchors.links, f"Missing static link: {label} -> {href}"
+
+feature_texts = {}
+for href, text in anchors.links:
+    feature_texts.setdefault(href, []).append(text)
+
+for href, label in FEATURE_LINKS.items():
+    assert any(label in text for text in feature_texts.get(href, [])), (
+        f"Missing feature docs link: {label} -> {href}"
+    )
+
+assert "Twitch chatbot." in landing_html, "Expected prerendered H1 to name the product type"
+assert "Proof first." not in landing_html, "Old brand-only H1 leaked into prerendered HTML"
 
 assert anchors.links.count(("https://docs.domdimabot.com/", "Docs")) >= 2, (
     "Expected quiet header and footer links to docs home"

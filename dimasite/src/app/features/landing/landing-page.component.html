@@ -172,38 +172,14 @@
         <h2 class="lf-h2">{{ t('landing.features.subtitle') }}</h2>
       </div>
       <div class="lf-bento lf-bento--features">
-        <article class="lf-tile lf-feature">
-          <span class="lf-chip">AI</span>
-          <h3>{{ t('landing.features.aiModerationTitle') }}</h3>
-          <p>{{ t('landing.features.aiModerationDescription') }}</p>
-          <button type="button" class="lf-text-link" (click)="scrollTo('pricing')">
-            {{ t('landing.features.comparePlansCta') }}
-          </button>
-        </article>
-        <article class="lf-tile lf-feature">
-          <span class="lf-chip">AUTO</span>
-          <h3>{{ t('landing.features.automationTitle') }}</h3>
-          <p>{{ t('landing.features.automationDescription') }}</p>
-          <button type="button" class="lf-text-link" (click)="scrollTo('pricing')">
-            {{ t('landing.features.comparePlansCta') }}
-          </button>
-        </article>
-        <article class="lf-tile lf-feature">
-          <span class="lf-chip">DATA</span>
-          <h3>{{ t('landing.features.analyticsTitle') }}</h3>
-          <p>{{ t('landing.features.analyticsDescription') }}</p>
-          <button type="button" class="lf-text-link" (click)="scrollTo('pricing')">
-            {{ t('landing.features.comparePlansCta') }}
-          </button>
-        </article>
-        <article class="lf-tile lf-feature">
-          <span class="lf-chip">VOICE</span>
-          <h3>{{ t('landing.features.ttsTitle') }}</h3>
-          <p>{{ t('landing.features.ttsDescription') }}</p>
-          <button type="button" class="lf-text-link" (click)="scrollTo('pricing')">
-            {{ t('landing.features.comparePlansCta') }}
-          </button>
-        </article>
+        @for (feature of featureGuides(); track feature.path) {
+          <a class="lf-tile lf-feature" [href]="feature.href">
+            <span class="lf-chip">{{ feature.chip }}</span>
+            <h3>{{ t(feature.titleKey) }}</h3>
+            <p>{{ t(feature.descriptionKey) }}</p>
+            <span class="lf-text-link">{{ t(feature.ctaKey) }}</span>
+          </a>
+        }
       </div>
     </section>
 

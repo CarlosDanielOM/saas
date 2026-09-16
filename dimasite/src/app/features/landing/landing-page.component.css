@@ -317,7 +317,10 @@
 
 .lf-title {
   margin: 0;
-  font-size: clamp(1.9rem, 5.2vw, 3rem);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  font-size: clamp(1.75rem, 4.6vw, 2.55rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 750;
@@ -330,6 +333,7 @@
 
 .lf-copy {
   margin: 0.9rem 0 0;
+  min-width: 0;
   color: var(--muted);
   line-height: 1.6;
   max-width: 36rem;
@@ -374,6 +378,11 @@
 
 .lf-chip {
   display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 0 auto;
+  align-self: flex-start;
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
   background: var(--accent-soft);
@@ -381,6 +390,11 @@
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.lf-spotlight__head .lf-chip {
+  align-self: center;
 }
 
 .lf-chip--live {
@@ -548,6 +562,18 @@
   font-weight: 750;
 }
 
+a.lf-feature {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.lf-feature:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .lf-feature h3 {
   margin: 0.75rem 0 0;
   font-size: 1.1rem;
@@ -569,13 +595,13 @@
   font: inherit;
   font-size: 0.9rem;
   font-weight: 700;
-  cursor: pointer;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
 }
 
-.lf-text-link:hover {
+a.lf-feature:hover .lf-text-link,
+a.lf-feature:focus-visible .lf-text-link {
   text-decoration: underline;
 }
 
@@ -854,6 +880,7 @@
   .lf-tile--intro {
     grid-column: 1 / 2;
     grid-row: 1 / 4;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;

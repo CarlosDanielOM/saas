@@ -1831,13 +1831,13 @@
       "docs": "Docs"
     },
     "hero": {
-      "title": "Prueba primero.",
+      "title": "DomDimaBot",
       "description": "DomDimaBot ya está en el aire: moderación con IA, automatización, analíticas y TTS impulsando canales en vivo ahora mismo.",
       "loginWith": "Iniciar sesion con Twitch",
       "learnMore": "Aprender mas",
       "join": "Unirse a Discord",
       "kicker": "Live First",
-      "titleAccent": "Producto después."
+      "titleAccent": "Bot de Twitch."
     },
     "analytics": {
       "title": "Analiticas",
@@ -1864,7 +1864,11 @@
       "analyticsDescription": "Mide actividad de usuarios, uso de comandos y tendencias de engagement con mayor retencion.",
       "ttsTitle": "TTS y funciones de voz",
       "ttsDescription": "Todos los proveedores TTS en todos los planes. El uso se descuenta de tus creditos de IA.",
-      "comparePlansCta": "Comparar planes →"
+      "comparePlansCta": "Comparar planes →",
+      "aiModerationCta": "Guía de Defensa de follows →",
+      "automationCta": "Guía de comandos →",
+      "analyticsCta": "Guía del panel →",
+      "ttsCta": "Guía de TTS →"
     },
     "pricing": {
       "title": "Precios",
