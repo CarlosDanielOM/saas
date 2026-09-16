@@ -24,6 +24,7 @@ interface WorkerDefinition {
     name: string;
     sourceEntry: string;
     distEntry: string;
+    enabledEnv?: string;
 }
 
 interface ManagedWorker {
@@ -64,7 +65,8 @@ const WORKERS: WorkerDefinition[] = [
     {
         name: 'eventsub-reconciliation',
         sourceEntry: 'src/workers/eventsub_reconciliation.worker.ts',
-        distEntry: 'dist/workers/eventsub_reconciliation.worker.js'
+        distEntry: 'dist/workers/eventsub_reconciliation.worker.js',
+        enabledEnv: 'EVENTSUB_RECONCILIATION_ENABLED'
     },
     {
         name: 'stream-memory',
@@ -186,14 +188,27 @@ function spawnWorker(managed: ManagedWorker): void {
     });
 }
 
+function isWorkerEnabled(worker: WorkerDefinition): boolean {
+    return !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false';
+}
+
 function startAllWorkers(): ManagedWorker[] {
     const managedWorkers: ManagedWorker[] = WORKERS.map((definition) => ({
         definition,
         process: null,
         restartCount: 0,
-        exitCode: null
+        exitCode: isWorkerEnabled(definition) ? null : 0
     }));
     for (const managed of managedWorkers) {
+        if (!isWorkerEnabled(managed.definition)) {
+            void logInfo({
+                worker: 'cron_supervisor',
+                message: 'Cron worker disabled; not starting',
+                name: managed.definition.name,
+                enabledEnv: managed.definition.enabledEnv
+            }, { destination: 'console' });
+            continue;
+        }
         spawnWorker(managed);
     }
     return managedWorkers;
@@ -248,7 +263,8 @@ async function bootstrap(): Promise<void> {
         message: 'Starting cron supervisor',
         runtime,
         restartDelayMs: RESTART_DELAY_MS,
-        workers: WORKERS.map((worker) => worker.name),
+        workers: WORKERS.filter(isWorkerEnabled).map((worker) => worker.name),
+        disabledWorkers: WORKERS.filter((worker) => !isWorkerEnabled(worker)).map((worker) => worker.name),
         mode: supervisorOnce ? 'once' : 'normal',
         dryRun: supervisorDryRun
     }, { destination: 'console' });

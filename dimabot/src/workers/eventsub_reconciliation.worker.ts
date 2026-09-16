@@ -15,6 +15,7 @@ const MISSING_GRACE_MS = Math.max(60_000, Number(process.env.EVENTSUB_RECONCILIA
 const UNHEALTHY_CIRCUIT_BREAKER_RATIO = Math.min(1, Math.max(0, Number(process.env.EVENTSUB_RECONCILIATION_UNHEALTHY_RATIO || 0.25)));
 const UNHEALTHY_CIRCUIT_BREAKER_MIN_COUNT = Math.max(1, Number(process.env.EVENTSUB_RECONCILIATION_UNHEALTHY_MIN_COUNT || 5));
 const RUN_ON_START = process.env.EVENTSUB_RECONCILIATION_RUN_ON_START !== 'false';
+const ENABLED = process.env.EVENTSUB_RECONCILIATION_ENABLED !== 'false';
 const RUN_ONCE = process.argv.includes('--once');
 const DRY_RUN = process.argv.includes('--dry-run');
 
@@ -37,6 +38,15 @@ return 0
 `;
 
 async function bootstrap(): Promise<void> {
+    if (!ENABLED) {
+        console.log(JSON.stringify({
+            worker: 'eventsub_reconciliation',
+            message: 'EventSub reconciliation worker disabled; EVENTSUB_RECONCILIATION_ENABLED=false',
+            enabled: false
+        }, null, 2));
+        return;
+    }
+
     if (DRY_RUN) {
         console.log(JSON.stringify({
             worker: 'eventsub_reconciliation',
