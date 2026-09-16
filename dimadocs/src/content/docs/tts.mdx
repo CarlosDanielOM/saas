@@ -23,7 +23,7 @@ Piper is a local neural voice engine running on the DomDimaBot server. It is ava
 
 **Characteristics:**
 - Fast synthesis (local, no API calls)
-- No expressive/emotion tags
+- No expressive/emotion tags — any tags are stripped before speaking, but the remaining text is still read
 - No premium AI features
 - Available to all users regardless of plan tier
 
@@ -40,6 +40,44 @@ Fish Audio provides cloned character voices. It is available on all plan tiers a
 - Cloned character voices
 - Available through `$(tts.fish ...)` and `$(tts.clone ...)`
 - Also usable as the channel default engine
+
+---
+
+## Expressive Tags (Fish Audio)
+
+Fish Audio voices understand expressive speech tags. Add one or more tags in square brackets inside a message to make the voice perform that emotion, delivery, sound, or effect:
+
+```
+!s [happy] Great stream today!
+!s [whisper] [pause] Can you keep a secret?
+$(tts.fish gojo [excited] Let's go!)
+```
+
+Tags apply to **Fish Audio only**. Piper removes them before speaking but still reads the remaining text. Owners can enable or disable any tag in the dashboard under **Modules → Text to Speech → Expressive voice controls**; disabled and unrecognized tags are stripped before synthesis.
+
+75 tags are available, grouped as follows.
+
+### Emotions
+
+`[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
+
+### Voice & Delivery
+
+`[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
+
+### Vocal Sounds
+
+`[laugh]` `[chuckle]` `[giggle]` `[cry]` `[sigh]` `[gasp]` `[inhale]` `[exhale]` `[sobbing]` `[groaning]` `[panting]` `[yawning]` `[snoring]` `[clear throat]`
+
+### Pauses & Effects
+
+`[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
+
+Some common variants are accepted as aliases of the tag that controls them — for example `[anger]` follows `[angry]`, `[whispering]` follows `[whisper]`, `[laughing]` follows `[laugh]`, and `[crowd laughing]` follows `[audience laughing]`.
+
+<Aside type="note">
+Fish Audio performs your tags while AI credits are available. If credits run out or cannot be checked, TTS falls back to free Piper, which removes the tags but keeps the spoken text.
+</Aside>
 
 ---
 

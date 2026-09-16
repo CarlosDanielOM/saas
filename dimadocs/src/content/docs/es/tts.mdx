@@ -23,7 +23,7 @@ Piper es un motor de voz neural local que se ejecuta en el servidor de DomDimaBo
 
 **Caracteristicas:**
 - Sintesis rapida (local, sin llamadas a API)
-- Sin etiquetas expresivas/de emocion
+- Sin etiquetas expresivas/de emocion — las etiquetas se eliminan antes de hablar, pero el texto restante si se lee
 - Sin funciones premium de IA
 - Disponible para todos los usuarios sin importar su plan
 
@@ -40,6 +40,44 @@ Fish Audio ofrece voces clonadas de personajes. Esta disponible en todos los pla
 - Voces clonadas de personajes
 - Disponible con `$(tts.fish ...)` y `$(tts.clone ...)`
 - Tambien se puede usar como motor predeterminado del canal
+
+---
+
+## Etiquetas Expresivas (Fish Audio)
+
+Las voces de Fish Audio entienden etiquetas expresivas de habla. Agrega una o mas etiquetas entre corchetes dentro de un mensaje para que la voz realice esa emocion, entrega, sonido o efecto:
+
+```
+!s [happy] Excelente stream hoy!
+!s [whisper] [pause] Puedes guardar un secreto?
+$(tts.fish gojo [excited] Vamos!)
+```
+
+Las etiquetas aplican solo a **Fish Audio**. Piper las elimina antes de hablar, pero sigue leyendo el texto restante. El propietario puede habilitar o deshabilitar cualquier etiqueta en el panel bajo **Modulos → Texto a Voz → Controles de voz expresiva**; las etiquetas deshabilitadas o no reconocidas se eliminan antes de la sintesis.
+
+Hay 75 etiquetas disponibles, agrupadas asi.
+
+### Emociones
+
+`[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
+
+### Voz y Entrega
+
+`[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
+
+### Sonidos Vocales
+
+`[laugh]` `[chuckle]` `[giggle]` `[cry]` `[sigh]` `[gasp]` `[inhale]` `[exhale]` `[sobbing]` `[groaning]` `[panting]` `[yawning]` `[snoring]` `[clear throat]`
+
+### Pausas y Efectos
+
+`[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
+
+Algunas variantes comunes se aceptan como alias de la etiqueta que las controla — por ejemplo `[anger]` sigue a `[angry]`, `[whispering]` sigue a `[whisper]`, `[laughing]` sigue a `[laugh]`, y `[crowd laughing]` sigue a `[audience laughing]`.
+
+<Aside type="note">
+Fish Audio interpreta tus etiquetas mientras haya creditos IA disponibles. Si los creditos se agotan o no se pueden verificar, el TTS vuelve a Piper (gratis), que elimina las etiquetas pero mantiene el texto hablado.
+</Aside>
 
 ---
 
