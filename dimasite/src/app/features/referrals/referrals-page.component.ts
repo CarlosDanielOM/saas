@@ -8,6 +8,7 @@ import { LanguageService } from '../../services/language.service';
 import { ReferralsApiService } from '../../services/referrals-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
+import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -18,7 +19,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-referrals-page',
-  imports: [RouterLink],
+  imports: [RouterLink, ConfirmationModalComponent],
   templateUrl: './referrals-page.component.html',
   styleUrl: './referrals-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -111,6 +112,12 @@ export class ReferralsPageComponent implements OnDestroy {
   readonly isCreateModalOpen = signal(false);
   readonly copiedCodeID = signal<string | null>(null);
   readonly pendingDeleteIDs = signal<string[]>([]);
+  readonly pendingDelete = signal<ReferralCodeRecord | null>(null);
+  readonly showDeleteModal = computed(() => this.pendingDelete() !== null);
+  readonly deleteModalMessage = computed(() => {
+    const record = this.pendingDelete();
+    return record ? this.t('referrals.deleteModal.message', { code: record.code.toUpperCase() }) : '';
+  });
   readonly hasCodes = computed(() => (this.stats()?.codes.length ?? 0) > 0);
   readonly isAtLimit = computed(() => (this.stats()?.codesRemaining ?? 0) <= 0);
   readonly canSubmit = computed(() => {
@@ -284,18 +291,25 @@ export class ReferralsPageComponent implements OnDestroy {
     }
   }
 
-  async deleteCode(record: ReferralCodeRecord): Promise<void> {
-    const channelID = this.channelID();
-
-    if (!channelID || !this.isOwnerView() || this.isDeleting(record._id)) {
+  requestDelete(record: ReferralCodeRecord): void {
+    if (!this.isOwnerView() || this.isDeleting(record._id)) {
       return;
     }
 
-    const confirmed = window.confirm(
-      this.t('referrals.actions.deleteConfirm', { code: record.code.toUpperCase() })
-    );
+    this.pendingDelete.set(record);
+  }
 
-    if (!confirmed) {
+  cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  async confirmDeleteCode(): Promise<void> {
+    const record = this.pendingDelete();
+    const channelID = this.channelID();
+
+    this.pendingDelete.set(null);
+
+    if (!record || !channelID || !this.isOwnerView() || this.isDeleting(record._id)) {
       return;
     }
 

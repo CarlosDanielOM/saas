@@ -72,6 +72,8 @@
   margin: 0 auto;
   padding: 1rem 1rem 2rem;
   min-width: 0;
+  display: grid;
+  gap: 0.85rem;
 }
 
 .lf-bento {
@@ -81,7 +83,6 @@
 }
 
 .lf-section {
-  margin-top: 1rem;
   min-width: 0;
 }
 
@@ -95,9 +96,8 @@
   padding: 1.15rem;
 }
 
-.lf-tile--intro,
-.lf-tile--spotlight {
-  padding: 1.4rem;
+.lf-tile--intro {
+  padding: 1.25rem;
 }
 
 .lf-tile--gold {
@@ -118,7 +118,7 @@
 }
 
 .lf-kicker {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.6rem;
   color: var(--kicker);
   font-size: 0.75rem;
   font-weight: 750;
@@ -128,52 +128,101 @@
 
 .lf-title {
   margin: 0;
-  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  font-size: clamp(1.55rem, 4.5vw, 2.4rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 750;
 }
 
-.lf-title span {
-  display: block;
-  color: var(--title-accent);
-}
-
 .lf-h2 {
   margin: 0;
-  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
   letter-spacing: -0.03em;
   font-weight: 750;
 }
 
 .lf-copy {
-  margin: 0.9rem 0 0;
+  margin: 0.75rem 0 0;
   color: var(--muted);
-  line-height: 1.6;
-  max-width: 36rem;
+  line-height: 1.55;
+  max-width: 40rem;
 }
 
-.lf-copy--tight {
-  margin-top: 0.45rem;
-  font-size: 0.92rem;
+.lf-count {
+  color: var(--muted);
+  font-weight: 650;
+  font-size: 0.9em;
 }
 
 .lf-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.lf-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+/* Hero summary metrics */
+.lf-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
   margin-top: 1.15rem;
 }
 
-.lf-feed {
-  margin: 1rem 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 600;
+.lf-metric {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+  min-width: 0;
 }
 
-.lf-feed--on {
-  color: var(--ok);
+.lf-metric__value {
+  font-size: 1.35rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.lf-metric__label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+}
+
+.lf-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lf-chip--gold {
+  background: var(--gold-soft);
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  color: var(--gold);
+}
+
+.lf-chip--soft {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
 }
 
 .lf-btn {
@@ -215,84 +264,12 @@
   background: var(--danger-soft);
 }
 
-.lf-btn--block {
-  width: 100%;
-  margin-top: 0.85rem;
-}
-
-.lf-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.28rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.lf-chip--gold {
-  background: var(--gold-soft);
-  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
-  color: var(--gold);
-}
-
-.lf-chip--soft {
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
-}
-
-.lf-spotlight__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.lf-spotlight__count {
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 650;
-}
-
-.lf-stats-strip {
-  display: grid;
-  gap: 0.65rem;
-}
-
-.lf-stats-strip__item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--fg) 2.5%, transparent);
-}
-
-.lf-stats-strip__label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-
-.lf-stats-strip__value {
-  font-size: 1.25rem;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-
 .lf-banner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 0.85rem;
   padding: 0.9rem 1rem;
   border-radius: 1rem;
   border: 1px solid var(--line);
@@ -323,43 +300,69 @@
   opacity: 0.95;
 }
 
-.lf-section__head {
-  display: grid;
-  gap: 0.85rem;
+.lf-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.85rem;
 }
 
-.lf-section__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.lf-bento--cards {
+/* Referral cards */
+.lf-card-grid {
+  display: grid;
+  gap: 0.85rem;
   grid-template-columns: 1fr;
 }
 
 .lf-card {
   display: flex;
   flex-direction: column;
+  gap: 0.7rem;
   border-left: 3px solid hsl(var(--card-hue) 55% 52%);
   min-height: 100%;
 }
 
 .lf-card__top {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .lf-card__label {
   margin: 0;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.lf-card__badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 2%, transparent);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.66rem;
   font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lf-card__badge strong {
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
 }
 
 .lf-card__code {
@@ -368,8 +371,7 @@
   justify-content: space-between;
   gap: 0.65rem;
   width: 100%;
-  margin-top: 0.35rem;
-  padding: 0.85rem 1rem;
+  padding: 0.8rem 0.95rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in srgb, hsl(var(--card-hue) 55% 50%) 10%, var(--input-bg));
@@ -380,18 +382,22 @@
 }
 
 .lf-card__code span:first-child {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lf-card__copy-hint {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 .lf-card__code--copied {
@@ -399,32 +405,18 @@
   background: var(--ok-soft);
 }
 
-.lf-card__meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-  margin-top: 0.85rem;
+.lf-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
 }
 
-.lf-card__meta > div {
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--fg) 2%, transparent);
-}
-
-.lf-meta-label {
-  display: block;
+.lf-card__created {
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 650;
-  margin-bottom: 0.25rem;
-}
-
-.lf-card__meta strong {
-  font-size: 0.95rem;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .lf-empty {
@@ -433,7 +425,6 @@
   gap: 0.55rem;
   justify-items: center;
   padding: 2rem 1.15rem;
-  margin-top: 0.85rem;
   color: var(--muted);
   font-weight: 600;
 }
@@ -453,7 +444,7 @@
   font-weight: 500;
 }
 
-/* Modal */
+/* Create modal */
 .lf-modal-overlay {
   position: fixed;
   inset: 0;
@@ -467,13 +458,13 @@
 
 .lf-modal {
   width: 100%;
-  max-height: min(90dvh, 36rem);
+  max-height: min(92dvh, 36rem);
   overflow: auto;
   background: var(--tile);
   border: 1px solid var(--line);
   border-radius: 1.25rem 1.25rem 0 0;
   box-shadow: 0 18px 48px rgba(15, 15, 20, 0.18);
-  padding: 1.1rem 1.1rem 1.25rem;
+  padding: 1.1rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 .lf-modal__head {
@@ -500,13 +491,7 @@
   font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
-}
-
-.lf-modal__copy {
-  margin: 0.65rem 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
+  flex-shrink: 0;
 }
 
 .lf-modal__meta {
@@ -528,6 +513,7 @@
   font-size: 0.88rem;
   font-weight: 650;
   color: var(--muted);
+  min-width: 0;
 }
 
 .lf-field input {
@@ -545,6 +531,38 @@
 .lf-field input:focus {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lf-link-preview {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px dashed color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 0.9rem;
+  background: var(--accent-soft);
+}
+
+.lf-link-preview__label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lf-link-preview code {
+  font-family: var(--font);
+  font-size: 0.88rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.lf-link-preview__domain {
+  color: var(--muted);
+}
+
+.lf-link-preview__code {
+  color: var(--accent);
 }
 
 .lf-note {
@@ -566,7 +584,11 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
-  justify-content: flex-end;
+}
+
+.lf-form__actions .lf-btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
 }
 
 @media (min-width: 640px) {
@@ -574,25 +596,11 @@
     padding: 1.25rem 1.25rem 2.5rem;
   }
 
-  .lf-stats-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .lf-metrics {
+    max-width: 30rem;
   }
 
-  .lf-stats-strip__item {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .lf-section__head {
-    grid-template-columns: 1fr auto;
-    align-items: end;
-  }
-
-  .lf-section__tools {
-    justify-content: flex-end;
-  }
-
-  .lf-bento--cards {
+  .lf-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -605,14 +613,18 @@
     width: min(100%, 28rem);
     border-radius: var(--radius);
   }
+
+  .lf-form__actions {
+    justify-content: flex-end;
+  }
+
+  .lf-form__actions .lf-btn {
+    flex: 0 0 auto;
+  }
 }
 
 @media (min-width: 960px) {
-  .lf-bento--hero {
-    grid-template-columns: 1.35fr 1fr;
-  }
-
-  .lf-bento--cards {
+  .lf-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

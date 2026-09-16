@@ -1248,6 +1248,7 @@
       "labelLabel": "Nombre de la tarjeta",
       "labelPlaceholder": "Nombre opcional de campana",
       "codeHint": "Usa 1-16 letras, numeros o guiones bajos.",
+      "linkPreview": "Enlace para compartir",
       "slotsRemaining": "{{count}} espacios restantes de {{limit}}",
       "limitReached": "Ya llegaste al limite de codigos de referido para este plan.",
       "submit": "Crear codigo de referido",
@@ -1273,8 +1274,12 @@
       "copyLink": "Copiar enlace de referido para {{code}}",
       "deleting": "Eliminando...",
       "deleteConfirm": "Eliminar el codigo de referido {{code}}?",
-      "copy": "Copiar",
-      "copied": "Copiado"
+      "copy": "Copiar enlace",
+      "copied": "Enlace copiado"
+    },
+    "deleteModal": {
+      "title": "Eliminar codigo de referido",
+      "message": "Eliminar {{code}}? Esto no se puede deshacer."
     },
     "toasts": {
       "copiedTitle": "Enlace de referido copiado",

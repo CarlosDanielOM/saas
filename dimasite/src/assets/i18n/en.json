@@ -1248,6 +1248,7 @@
       "labelLabel": "Card label",
       "labelPlaceholder": "Optional campaign name",
       "codeHint": "Use 1-16 letters, numbers, or underscores.",
+      "linkPreview": "Shareable link",
       "slotsRemaining": "{{count}} slots remaining out of {{limit}}",
       "limitReached": "You are currently at your referral code limit for this plan.",
       "submit": "Create referral code",
@@ -1273,8 +1274,12 @@
       "copyLink": "Copy referral link for {{code}}",
       "deleting": "Deleting...",
       "deleteConfirm": "Delete referral code {{code}}?",
-      "copy": "Copy",
-      "copied": "Copied"
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "deleteModal": {
+      "title": "Delete referral code",
+      "message": "Remove {{code}}? This cannot be undone."
     },
     "toasts": {
       "copiedTitle": "Referral link copied",
