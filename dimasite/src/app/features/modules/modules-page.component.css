@@ -506,3 +506,7 @@
     transform: none;
   }
 }
+
+.lf-mod--actionable {
+  cursor: pointer;
+}

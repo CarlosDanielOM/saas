@@ -97,6 +97,8 @@
                 [class.lf-mod--premium]="module.minTier === 'premium'"
                 [class.lf-mod--pro]="module.minTier === 'pro'"
                 [class.lf-mod--featured]="module.featured"
+                [class.lf-mod--actionable]="isActionable(module)"
+                (click)="onModuleCardClick(module)"
               >
                 <div class="lf-mod__top">
                   <span
@@ -133,19 +135,11 @@
 
                 <div class="lf-mod__footer">
                   @if (isOpenable(module)) {
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--primary lf-btn--compact"
-                      (click)="openModule(module)"
-                    >
+                    <button type="button" class="lf-btn lf-btn--primary lf-btn--compact">
                       {{ accessText(module) }}
                     </button>
                   } @else if (isUpgradeable(module)) {
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--gold lf-btn--compact"
-                      (click)="onUpgradeClick(module)"
-                    >
+                    <button type="button" class="lf-btn lf-btn--gold lf-btn--compact">
                       {{ accessText(module) }}
                     </button>
                   } @else {

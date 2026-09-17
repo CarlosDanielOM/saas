@@ -350,6 +350,21 @@ export class ModulesPageComponent {
     void this.router.navigateByUrl(module.path);
   }
 
+  onModuleCardClick(module: ModuleDisplay): void {
+    if (this.isOpenable(module)) {
+      this.openModule(module);
+      return;
+    }
+
+    if (this.isUpgradeable(module)) {
+      this.onUpgradeClick(module);
+    }
+  }
+
+  isActionable(module: ModuleDisplay): boolean {
+    return this.isOpenable(module) || this.isUpgradeable(module);
+  }
+
   onUpgradeClick(module: ModuleDisplay): void {
     void this.upgradeService.promptUpgradeForModule({
       moduleId: module.id,
