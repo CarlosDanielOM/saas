@@ -5,8 +5,18 @@ import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
 import { CommandsSchema } from "../../schemas/commands.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
+import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissions/index.js";
 
 const router = express.Router();
+
+/** Computes the non-localized permission mode for API responses. */
+function permissionModeFor(command: { permissionExpression?: unknown }): 'level' | 'tags' | 'invalid' {
+    return inspectExpression(command.permissionExpression).mode;
+}
+
+function isValidUserLevel(value: unknown): value is number {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10;
+}
 
 router.get('/', async (req: Request, res: Response) => {
         try {
@@ -16,12 +26,17 @@ router.get('/', async (req: Request, res: Response) => {
 
             const commands = await CommandsSchema.find().skip(skip).limit(limit).lean();
 
+            const commandsWithMode = commands.map((command) => ({
+                ...command,
+                permissionMode: permissionModeFor(command)
+            }));
+
             res.send({
                 error: false,
                 message: 'Commands fetched',
-                commands: commands,
+                commands: commandsWithMode,
                 status: 200,
-                total: commands.length
+                total: commandsWithMode.length
             });
         } catch (error) {
             console.error('Error in GET /:', {
@@ -81,12 +96,17 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             }
 
             commands = commands.map((command) => {
+                const mapped = {
+                    ...command,
+                    permissionMode: permissionModeFor(command)
+                };
+
                 if (!command.reserved) {
-                    return command;
+                    return mapped;
                 }
 
                 return {
-                    ...command,
+                    ...mapped,
                     description: getLocalizedReservedCommandDescription(command, language, command.description || '')
                 };
             });
@@ -138,6 +158,35 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 });
             }
 
+            // Permission mode validation: missing/null creates level mode; a
+            // non-null expression must validate (tag mode cannot be empty —
+            // universal access is {role:'everyone'}).
+            const permissionState = inspectExpression(body.permissionExpression);
+            if (permissionState.mode === 'invalid') {
+                return res.status(400).send({
+                    error: true,
+                    message: `Invalid permission expression: ${permissionState.error}`,
+                    status: 400
+                });
+            }
+
+            // Validate the numeric level and derive its canonical name.
+            const userLevel = body.userLevel === undefined ? 1 : Number(body.userLevel);
+            if (!isValidUserLevel(userLevel)) {
+                return res.status(400).send({
+                    error: true,
+                    message: 'userLevel must be an integer between 1 and 10',
+                    status: 400
+                });
+            }
+            if (body.userLevelName !== undefined && body.userLevelName !== LEGACY_USER_LEVEL_NAMES[userLevel]) {
+                return res.status(400).send({
+                    error: true,
+                    message: `userLevelName must be the canonical name for level ${userLevel} (${LEGACY_USER_LEVEL_NAMES[userLevel]})`,
+                    status: 400
+                });
+            }
+
             const existingCommand = await CommandsSchema.findOne({
                 channelID: channelIdStr,
                 cmd: body.cmd
@@ -163,8 +212,9 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 description: body.description ?? '',
                 cooldown: body.cooldown ?? 10,
                 enabled: body.enabled ?? true,
-                userLevelName: body.userLevelName ?? 'everyone',
-                userLevel: body.userLevel ?? 1,
+                userLevelName: body.userLevelName ?? LEGACY_USER_LEVEL_NAMES[userLevel],
+                userLevel: userLevel,
+                permissionExpression: permissionState.mode === 'tags' ? permissionState.expression : null,
                 channelID: channelIdStr,
                 channel: body.channel,
             });
@@ -246,6 +296,57 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 delete updatePayload.description;
             }
 
+            // Permission mode updates: missing leaves the mode unchanged;
+            // explicit null switches to level mode (requires a valid
+            // level/name pair); a valid tree switches to tag mode.
+            if ('permissionExpression' in body) {
+                const permissionState = inspectExpression(body.permissionExpression);
+                if (permissionState.mode === 'invalid') {
+                    return res.status(400).send({
+                        error: true,
+                        message: `Invalid permission expression: ${permissionState.error}`,
+                        status: 400
+                    });
+                }
+
+                updatePayload.permissionExpression = permissionState.mode === 'tags'
+                    ? permissionState.expression
+                    : null;
+
+                if (permissionState.mode === 'level') {
+                    const level = Number(body.userLevel);
+                    const name = typeof body.userLevelName === 'string' ? body.userLevelName : '';
+                    if (!isValidUserLevel(level) || name !== LEGACY_USER_LEVEL_NAMES[level]) {
+                        return res.status(400).send({
+                            error: true,
+                            message: 'Switching to level mode requires a valid userLevel (1-10) and its canonical userLevelName',
+                            status: 400
+                        });
+                    }
+                    updatePayload.userLevel = level;
+                    updatePayload.userLevelName = name;
+                }
+            } else if ('userLevel' in body) {
+                const level = Number(body.userLevel);
+                if (!isValidUserLevel(level)) {
+                    return res.status(400).send({
+                        error: true,
+                        message: 'userLevel must be an integer between 1 and 10',
+                        status: 400
+                    });
+                }
+                if ('userLevelName' in body && body.userLevelName !== undefined && body.userLevelName !== LEGACY_USER_LEVEL_NAMES[level]) {
+                    return res.status(400).send({
+                        error: true,
+                        message: `userLevelName must be the canonical name for level ${level} (${LEGACY_USER_LEVEL_NAMES[level]})`,
+                        status: 400
+                    });
+                }
+                if (updatePayload.userLevelName === undefined) {
+                    updatePayload.userLevelName = LEGACY_USER_LEVEL_NAMES[level];
+                }
+            }
+
             const updatedCommand = await CommandsSchema.findOneAndUpdate(
                 { channelID: channelIdStr, _id: commandIdStr },
                 updatePayload,
@@ -260,14 +361,19 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 });
             }
 
+            // Invalidate both the previous and current command-name cache
+            // keys — even when equal — so a rename can never leave the old
+            // name executable through a stale one-hour cache entry.
+            await cacheClient.del(`${channelIdStr}:commands:${command.cmd}`);
             await cacheClient.del(`${channelIdStr}:commands:${updatedCommand.cmd}`);
 
-            const commandResponse = updatedCommand.toObject();
+            const commandResponse: Record<string, unknown> = { ...updatedCommand.toObject() };
+            commandResponse.permissionMode = permissionModeFor(updatedCommand);
             if (commandResponse.reserved) {
                 commandResponse.description = getLocalizedReservedCommandDescription(
-                    commandResponse,
+                    commandResponse as never,
                     language,
-                    commandResponse.description || ''
+                    String(commandResponse.description || '')
                 );
             }
 

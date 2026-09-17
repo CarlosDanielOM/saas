@@ -3,6 +3,7 @@ import { addModerator } from '../functions/channels/add_moderator.channel.js';
 import { ban } from '../functions/moderation/index.js';
 import { getTwitchUserByLogin } from '../functions/users/index.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { isEditorLoginCached } from '../utils/permissions/roles.js';
 import { error, info } from '../utils/logger.js';
 
 interface RuletarusaResponse {
@@ -16,9 +17,9 @@ export async function ruletarusaCommand(channelID: string, user: string, isMod: 
     try {
         const cacheClient = await getDragonflyClient('ruletarusaCommand');
 
-        const isEditor = await cacheClient.sIsMember(`${channelID}:channel:editors`, user.toLowerCase());
+        const isEditor = await isEditorLoginCached(cacheClient, channelID, user.toLowerCase());
 
-        if (isEditor === 1) {
+        if (isEditor) {
             return {
                 error: false,
                 message: `Como editor no puedes jugar a la ruleta rusa.`,

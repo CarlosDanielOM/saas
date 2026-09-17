@@ -8,15 +8,24 @@ interface TitleResponse {
     type?: string;
 }
 
+/**
+ * Level-mode commands keep the legacy numeric gate (`userLevel >=
+ * commandLevel`). Tag-mode commands treat the stored numeric level as inert:
+ * writing the title requires caller level >= 7 (mod/editor/admin/broadcaster),
+ * while reading stays available to anyone who can run the command.
+ */
 export async function titleCommand(
     channelID: string,
     title: string | null,
     userLevel: number = 1,
     commandLevel: number = 7,
+    tagMode: boolean = false,
     premium: string = 'false'
 ): Promise<TitleResponse> {
     try {
-        if (!title || userLevel < commandLevel) {
+        const canWrite = tagMode ? userLevel >= 7 : userLevel >= commandLevel;
+
+        if (!title || !canWrite) {
             const data = await getChannelInformation(channelID);
 
             if (data.error || !data.data) {

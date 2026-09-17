@@ -1,3 +1,5 @@
+import type { PermissionExpression } from './permission.model';
+
 export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';
 export type ModerationAction = 'off' | 'warn' | 'delete' | 'timeout' | 'ban';
 export type CapsThresholdMode = 'count' | 'percentage';
@@ -17,6 +19,8 @@ export interface ModerationRule {
   thirdOffense: ModerationOffenseStep;
   reason: string;
   exemptUserLevel: number;
+  /** Tag-mode exemption tree. Null/absent = legacy numeric exemption. */
+  exemptExpression?: PermissionExpression | null;
   capsThresholdMode: CapsThresholdMode;
   minCapsCount: number;
   maxCapsPercentage: number;
@@ -121,6 +125,7 @@ export function buildNewModerationRule(type: ModerationRuleType): ModerationRule
     thirdOffense: { action: 'timeout', timeoutSeconds: 60 },
     reason: reasonByType[type],
     exemptUserLevel: MODERATION_DEFAULTS.exemptUserLevel,
+    exemptExpression: null,
     capsThresholdMode: 'count',
     minCapsCount: MODERATION_DEFAULTS.minCapsCount,
     maxCapsPercentage: MODERATION_DEFAULTS.maxCapsPercentage,

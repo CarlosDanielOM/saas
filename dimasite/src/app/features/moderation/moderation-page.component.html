@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('moderation.title')">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()">← {{ t('moderation.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('moderation.backToModules') }}</a>
         <p class="lf-kicker">{{ t('moderation.badge') }}</p>
         <h1 class="lf-title">
           {{ t('moderation.title') }}
@@ -195,19 +195,18 @@
                   }
                 </div>
 
+                <div class="lf-field lf-field--wide">
+                  <span>{{ t('moderation.rules.exemptLevel') }}</span>
+                  <app-permission-expression-editor
+                    [value]="ruleExemptionValue(rule)"
+                    [storedInvalid]="ruleExemptionInvalid(rule)"
+                    [disabled]="!canManage()"
+                    (valueChange)="updateRuleExemption(rule.id, $event)"
+                  />
+                  <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
+                </div>
+
                 <div class="lf-form-grid">
-                  <label class="lf-field">
-                    <span>{{ t('moderation.rules.exemptLevel') }}</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      [value]="rule.exemptUserLevel"
-                      (change)="updateExemptLevel(rule.id, $any($event.target).value)"
-                      [disabled]="!canManage()"
-                    />
-                    <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
-                  </label>
                   <label class="lf-field lf-field--wide">
                     <span>{{ t('moderation.rules.reason') }}</span>
                     <input
@@ -306,7 +305,7 @@
                                   (click)="removeListItem(rule.id, 'allowlistDomains', i)"
                                   [attr.aria-label]="t('common.delete') + ' ' + domain"
                                 >
-                                  ×
+                                  <app-lf-icon name="close"></app-lf-icon>
                                 </button>
                               }
                             </span>
@@ -340,7 +339,7 @@
                                   (click)="removeListItem(rule.id, 'terms', i)"
                                   [attr.aria-label]="t('common.delete') + ' ' + term"
                                 >
-                                  ×
+                                  <app-lf-icon name="close"></app-lf-icon>
                                 </button>
                               }
                             </span>

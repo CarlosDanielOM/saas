@@ -23,6 +23,10 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 - **Moderator** — requiere acceso de moderador
 - **Editor** — comandos de gestión de nivel más alto
 
+<Aside type="note" title="Dos modos de permisos">
+Cada comando usa exactamente un modo de permisos: el **modo nivel** numérico clásico o el avanzado **modo etiquetas** (expresiones booleanas de roles configuradas en el panel). Los modos son excluyentes: un comando verifica un nivel numérico o una expresión de etiquetas, nunca ambos. Consulta la página [Permisos por expresiones](/es/commands/permissions/) para el modo etiquetas.
+</Aside>
+
 ### 🎮 Stream, Chat y Moderación
 
 | Comando | Permiso | Estado por Defecto | Qué hace |
@@ -235,7 +239,7 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 **Opciones soportadas:**
 
 - `-cd=<valor>` para cooldown
-- `-ul=<valor>` para user level
+- `-ul=<valor>` para user level (solo comandos en modo nivel — se rechaza si el comando usa permisos por etiquetas)
 
 **Límites:**
 
@@ -310,7 +314,7 @@ Esta sección coincide con la lista actual de comandos incluidos en la configura
 #### `!commands`
 
 **Uso:** `!commands`  
-**Nota:** solo muestra los comandos disponibles para el nivel de permisos de ese usuario
+**Nota:** solo muestra los comandos disponibles para el nivel de permisos de ese usuario, incluidas las reglas de permisos por etiquetas
 
 #### `!clearchat`
 
@@ -403,7 +407,12 @@ Si quieres lógica dinámica avanzada, variables, funciones, encadenamiento o es
 Los comandos personalizados los creas tú y pueden enviar texto, usar funciones AST, guardar datos, activar media y llamar otros comandos.
 
 <Aside type="tip">
-Consulta la página del [Dashboard](/es/dashboard) para una guía visual sobre cómo crear y gestionar comandos personalizados a través de la interfaz web.
+Consulta la página del [Dashboard](/es/dashboard) para una guía visual sobre cómo crear y gestionar comandos personalizados a través de la interfaz web, incluido el editor de permisos con **Nivel (clásico)** o **Etiquetas (avanzado)** como modos excluyentes.
+
+<Aside type="tip" title="Los permisos por etiquetas viven en el panel">
+Las expresiones de permisos (`sub o vip`, `todos excepto mod`, …) se construyen en el editor del panel; no hay sintaxis de chat para ellas en esta fase. Los comandos en modo etiquetas no se pueden editar con `!ec -ul=`: cambia el modo en el panel. Gestionar (editar o borrar) un comando restringido por etiquetas requiere permisos de moderador.
+</Aside>
+
 </Aside>
 
 ### Cómo Crear Comandos Personalizados

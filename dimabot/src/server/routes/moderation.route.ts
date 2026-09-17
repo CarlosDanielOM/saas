@@ -20,6 +20,8 @@ import {
 } from '../../schemas/channel_moderation_settings.schema.js';
 import { ModerationActionLogSchema } from '../../schemas/moderation_action_log.schema.js';
 import { invalidateModerationSettingsCache } from '../../handlers/moderation.handler.js';
+import { existingChannelModerationView } from '../../utils/moderation/seed_plan.js';
+import { inspectExpression, type PermissionExpression } from '../../utils/permissions/index.js';
 import { error as logError } from '../../utils/logger.js';
 
 interface ModerationRequest extends Request {
@@ -126,6 +128,17 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         .map(normalizeDomain)
         .filter((domain): domain is string => domain !== null);
 
+    // Exemption mode: null/absent keeps the numeric exemptUserLevel gate;
+    // a valid expression is persisted for tag mode; invalid input is
+    // rejected outright instead of being silently dropped.
+    const exemptExpressionState = inspectExpression(input.exemptExpression);
+    if (exemptExpressionState.mode === 'invalid') {
+        return { error: `Rule ${index + 1}: invalid permission expression (${exemptExpressionState.error})` };
+    }
+    const exemptExpression: PermissionExpression | null = exemptExpressionState.mode === 'tags'
+        ? exemptExpressionState.expression
+        : null;
+
     const rule: IModerationRule = {
         id: typeof input.id === 'string' && input.id.trim() ? input.id.trim().slice(0, 64) : crypto.randomUUID(),
         type: type as IModerationRule['type'],
@@ -135,6 +148,7 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         thirdOffense: parseOffenseStep(input.thirdOffense, MODERATION_OFFENSE_DEFAULTS.third),
         reason: reason || MODERATION_RULE_DEFAULTS.reason,
         exemptUserLevel: clampInt(input.exemptUserLevel, 1, 10, MODERATION_RULE_DEFAULTS.exemptUserLevel),
+        exemptExpression,
         capsThresholdMode: CAPS_MODES.has(String(input.capsThresholdMode)) ? String(input.capsThresholdMode) as IModerationRule['capsThresholdMode'] : MODERATION_RULE_DEFAULTS.capsThresholdMode,
         minCapsCount: clampInt(input.minCapsCount, 1, 500, MODERATION_RULE_DEFAULTS.minCapsCount),
         maxCapsPercentage: clampInt(input.maxCapsPercentage, 1, 100, MODERATION_RULE_DEFAULTS.maxCapsPercentage),
@@ -147,23 +161,15 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
     return { rule };
 }
 
-async function getOrCreateSettings(channelID: string, channelName: string): Promise<IChannelModerationSettings> {
-    const settings = await ChannelModerationSettingsSchema.findOneAndUpdate({
-        channelID
-    }, {
-        $setOnInsert: {
-            channelID,
-            channel: channelName,
-            ...MODERATION_SETTINGS_DEFAULTS,
-            rules: []
-        }
-    }, {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true
-    });
+async function getSettings(channelID: string, channelName: string): Promise<IChannelModerationSettings> {
+    const settings = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+    if (settings) {
+        return settings as IChannelModerationSettings;
+    }
 
-    return settings.toObject() as IChannelModerationSettings;
+    // Never insert on GET. A disabled empty stub would permanently win
+    // against first-activation seed ($setOnInsert / create).
+    return existingChannelModerationView(channelID, channelName) as IChannelModerationSettings;
 }
 
 router.get('/:channelID/settings', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
@@ -172,7 +178,7 @@ router.get('/:channelID/settings', authMiddleware as any, async (req: Moderation
         const access = await validateAccess(req, res, channelID, 'dashboard:view');
         if (!access) return;
 
-        const settings = await getOrCreateSettings(channelID, access.channelName);
+        const settings = await getSettings(channelID, access.channelName);
 
         return res.status(200).json({
             error: false,

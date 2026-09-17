@@ -1,0 +1,98 @@
+---
+title: Permisos por expresiones
+description: Reglas de permisos avanzadas por etiquetas de rol para comandos y exenciones de moderación.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Los comandos y las exenciones de las reglas de moderación de chat admiten un modo de permisos avanzado construido con **etiquetas de rol** en lugar de un único nivel numérico. Esta página explica cómo funciona el modo etiquetas, en qué se diferencia del sistema clásico de niveles y cómo configurarlo en el panel.
+
+## Dos modos excluyentes
+
+Cada comando (y cada exención de regla de moderación) usa exactamente **un** modo de permisos:
+
+| Modo | Se guarda como | Comportamiento |
+|------|----------------|----------------|
+| **Nivel (clásico)** | Un nivel numérico de `1` (todos) a `10` (broadcaster) | Pasan los usuarios en ese nivel o superior. Editores (8), administradores (9) y el broadcaster (10) pasan automáticamente cualquier verificación de nivel. |
+| **Etiquetas (avanzado)** | Una expresión booleana sobre etiquetas de rol | Pasan exactamente los roles que coinciden con la expresión. El nivel numérico guardado se ignora mientras el modo etiquetas esté activo. |
+
+Los modos nunca se mezclan. Cambiar entre ellos es una operación explícita del panel: guardar en **Nivel** envía el nivel numérico seleccionado y limpia la expresión; guardar en **Etiquetas** envía el árbol de expresión. No hay retroceso automático entre ellos.
+
+<Aside type="caution" title="Las configuraciones inválidas fallan cerradas">
+Si una expresión guardada está rota (por ejemplo, editada directamente por la API), el bot **deniega** el comando y las reglas de moderación **no otorgan exención** hasta que la repares o la guardes de nuevo. La lista de comandos muestra una etiqueta de error de configuración para que puedas encontrarla. Una política inválida nunca retrocede silenciosamente al nivel guardado.
+</Aside>
+
+## Etiquetas de rol
+
+El vocabulario de etiquetas es plano:
+
+| Etiqueta | Quién la tiene |
+|----------|----------------|
+| `everyone` | Todos los viewers — debe seleccionarse **explícitamente** para el acceso de todos en modo etiquetas |
+| `sub` | Suscriptores |
+| `vip` | VIPs |
+| `founder` | Founders (también cuentan como `sub`) |
+| `mod` | Moderadores |
+| `editor` | Editores del canal |
+| `admin` | Administradores del canal |
+| `broadcaster` | El streamer |
+
+Dos comportamientos especiales:
+
+- **Los founders son suscriptores.** La etiqueta `founder` implica `sub`.
+- **El broadcaster siempre coincide.** Dentro de una expresión válida el broadcaster pasa toda regla — `not(everyone)` no puede dejar al streamer fuera de su propio canal.
+
+## Construir expresiones
+
+Las expresiones son árboles booleanos construidos con el editor del panel. Cada nodo es uno de:
+
+- un **rol** — verdadero para los usuarios que tienen esa etiqueta;
+- un **nivel** — verdadero para los usuarios en ese nivel numérico clásico o superior (úsalo para conservar el comportamiento anterior);
+- **no** — niega una regla hija;
+- **todos de** (AND) — deben pasar todas las reglas hijas;
+- **cualquiera de** (OR) — debe pasar al menos una regla hija.
+
+Los árboles están acotados: como máximo **4 niveles de anidamiento** y **25 nodos**.
+
+### Ejemplos comunes
+
+| Objetivo | Expresión |
+|----------|-----------|
+| Todos (explícito) | `everyone` |
+| Solo suscriptores | `sub` |
+| Suscriptores y VIPs | `cualquiera de: sub, vip` |
+| Todos excepto moderadores | `todos de: everyone, no mod` |
+| Solo moderadores | `cualquiera de: no everyone, mod` |
+| Conservar el nivel 7 anterior | `nivel 7` |
+
+## Etiquetas estrictas frente a niveles jerárquicos
+
+El sistema clásico de niveles es **jerárquico**: una regla de nivel 7 también la pasan editores, administradores y el broadcaster. Las etiquetas son **estrictas**: una regla `{role: mod}` la pasan **solo** los moderadores — editores y administradores no tienen la etiqueta `mod`.
+
+Convertir un comando de nivel "mod" a la etiqueta `mod` por lo tanto **quita** el acceso de editores, administradores y broadcaster (la anulación del broadcaster sigue aplicando). Para conservar el comportamiento anterior, usa un nodo `nivel 7`. El editor del panel avisa de esta diferencia.
+
+Un moderador que también está suscrito tiene tanto `mod` como `sub` — los roles se acumulan, no colapsan al más alto.
+
+## Gestionar comandos restringidos por etiquetas
+
+- Crear o editar expresiones de etiquetas es una operación del **panel**. Los comandos de chat (`!cc`, `!ec`) funcionan siempre en modo nivel; `!ec -ul=` se rechaza para un comando en modo etiquetas.
+- Editar o borrar un comando que usa permisos por etiquetas requiere **permisos de moderador** (nivel 7 o superior), independientemente del nivel numérico guardado.
+- `!commands` solo lista los comandos que puede ejecutar el usuario, incluidas las reglas de etiquetas.
+- Las escrituras de `!title` y `!game` sobre un comando en modo etiquetas requieren permisos de moderador; leer el título o el juego actual sigue disponible para quien pueda ejecutar el comando.
+
+## Exenciones de moderación
+
+Cada regla de moderación de chat tiene un ajuste de exención con los mismos dos modos excluyentes:
+
+- **Nivel (clásico)** — los viewers en el nivel numérico o superior quedan exentos de la regla.
+- **Etiquetas (avanzado)** — quedan exentos exactamente los roles que coinciden con la expresión (por ejemplo, eximir a `sub` y `vip` de la regla de enlaces).
+
+Mientras Etiquetas está activo, el nivel de exención numérico guardado se ignora — no se muestra como alternativa ni se usa. Una expresión guardada inválida no otorga ninguna exención, así que la regla se aplica a todos hasta repararla.
+
+## Asistentes de IA y automatización
+
+- Cuando la IA ejecuta una acción para un viewer, la acción conserva la autoridad de **ese viewer**. Las expresiones de etiquetas se evalúan para el usuario real que la pidió.
+- Los cuerpos de comandos creados por el streamer (incluidas las referencias a comandos anidados, temporizadores y eventos) se ejecutan con la autoridad del streamer una vez que el comando exterior pasó su regla de permisos.
+- Los permisos por etiquetas se configuran en el panel — no hay sintaxis `!cc` para ellos en esta fase.

@@ -9,14 +9,23 @@ interface GameResponse {
     type?: string;
 }
 
+/**
+ * Level-mode commands keep the legacy numeric gate (`userLevel >=
+ * commandLevel`). Tag-mode commands treat the stored numeric level as inert:
+ * writing the game requires caller level >= 7, while reading stays available
+ * to anyone who can run the command.
+ */
 export async function gameCommand(
     channelID: string,
     argument: string | null = null,
     userLevel: number = 1,
-    commandLevel: number = 7
+    commandLevel: number = 7,
+    tagMode: boolean = false
 ): Promise<GameResponse> {
     try {
-        if (!argument || userLevel < commandLevel) {
+        const canWrite = tagMode ? userLevel >= 7 : userLevel >= commandLevel;
+
+        if (!argument || !canWrite) {
             const game = await getChannelInformation(channelID);
 
             if (game.error || !game.data) {

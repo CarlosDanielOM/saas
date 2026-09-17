@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { Schema, model } from 'mongoose';
+import type { PermissionExpression } from '../utils/permissions/expression.js';
 
 export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';
 export type ModerationAction = 'off' | 'warn' | 'delete' | 'timeout' | 'ban';
@@ -19,6 +20,13 @@ export interface IModerationRule {
     thirdOffense: IModerationOffenseStep;
     reason: string;
     exemptUserLevel: number;
+    /**
+     * Tag-mode exemption expression. `null`/absent keeps the numeric
+     * exemptUserLevel gate; a valid expression exempts matching tags; a
+     * present invalid value grants no exemption (fail closed). Mixed value —
+     * reads must pass through inspectExpression.
+     */
+    exemptExpression?: PermissionExpression | null;
     capsThresholdMode: CapsThresholdMode;
     minCapsCount: number;
     maxCapsPercentage: number;
@@ -72,8 +80,9 @@ export const MAX_ALLOWLIST_DOMAINS = 50;
  * The default rule set seeded for NEW streamers on first activation:
  * caps, links and emote spam enabled with the standard warn → delete →
  * timeout(60s) ladder; blacklist present but disabled with no terms.
- * Existing channels are never seeded — their lazily created settings stay
- * disabled with no rules so nothing about their chat changes.
+ * Existing channels are never seeded — GET returns disabled empty settings
+ * in memory and does not insert a document, so nothing about their chat
+ * changes until they save.
  */
 export function buildDefaultModerationRules(): IModerationRule[] {
     const base = {
@@ -114,6 +123,7 @@ const moderationRuleSchema = new Schema<IModerationRule>({
     thirdOffense: { type: offenseStepSchema, default: () => ({ ...MODERATION_OFFENSE_DEFAULTS.third }) },
     reason: { type: String, default: MODERATION_RULE_DEFAULTS.reason, maxlength: 500 },
     exemptUserLevel: { type: Number, default: MODERATION_RULE_DEFAULTS.exemptUserLevel, min: 1, max: 10 },
+    exemptExpression: { type: Schema.Types.Mixed, default: null },
     capsThresholdMode: { type: String, enum: ['count', 'percentage'], default: MODERATION_RULE_DEFAULTS.capsThresholdMode },
     minCapsCount: { type: Number, default: MODERATION_RULE_DEFAULTS.minCapsCount, min: 1, max: 500 },
     maxCapsPercentage: { type: Number, default: MODERATION_RULE_DEFAULTS.maxCapsPercentage, min: 1, max: 100 },

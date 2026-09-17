@@ -115,6 +115,14 @@ export async function execute(
         // Cast streamer to IStreamerData for AST parser compatibility
         const streamerData = streamer as IStreamerData | null;
 
+        // Explicit LLM authorization: AST actions (including nested command
+        // references) retain the REAL requesting chatter's authority. The
+        // serialized identity is threaded through tags.identity by the
+        // message handler; never fabricated from the model's claims.
+        const authorizationIdentity = (context.tags?.identity && typeof context.tags.identity === 'object')
+            ? context.tags.identity as { level: number; tags: string[] }
+            : { level: actualLevel, tags: [] };
+
         // Build ExecutionContext for AST parser
         const execContext = {
             broadcasterId: channelID,
@@ -123,7 +131,11 @@ export async function execute(
             userDisplayName: context.username || 'AI',
             userPlan: (streamerData?.plan_tier as 'free' | 'premium' | 'pro') || 'free',
             userLevel: effectiveLevel,
-            streamer: streamerData
+            streamer: streamerData,
+            authorization: {
+                origin: 'llm' as const,
+                identity: authorizationIdentity
+            }
         };
 
         // Wrap command in $(...) if not already wrapped

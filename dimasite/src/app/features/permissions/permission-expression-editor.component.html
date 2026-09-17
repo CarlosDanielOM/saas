@@ -1,0 +1,218 @@
+<div class="perm-editor" [class.perm-editor--disabled]="isDisabled()">
+  @if (storedInvalid()) {
+    <p class="perm-warning" role="alert">
+      {{ t('permissions.editor.invalidStored') }}
+    </p>
+  }
+
+  <div class="perm-mode" role="group" [attr.aria-label]="t('permissions.mode.label')">
+    <button
+      type="button"
+      class="perm-mode__btn"
+      [class.perm-mode__btn--active]="mode() === 'level'"
+      [attr.aria-pressed]="mode() === 'level'"
+      [disabled]="isDisabled()"
+      (click)="setMode('level')"
+    >
+      {{ t('permissions.mode.level') }}
+    </button>
+    <button
+      type="button"
+      class="perm-mode__btn"
+      [class.perm-mode__btn--active]="mode() === 'tags'"
+      [attr.aria-pressed]="mode() === 'tags'"
+      [disabled]="isDisabled()"
+      (click)="setMode('tags')"
+    >
+      {{ t('permissions.mode.tags') }}
+    </button>
+  </div>
+
+  @if (mode() === 'level') {
+    <label class="perm-field">
+      <span class="perm-field__label">{{ t('commands.placeholder.userLevel') }}</span>
+      <select class="perm-select" [disabled]="isDisabled()" (change)="onLevelChange($event)">
+        @for (option of levelOptions; track option) {
+          <option [value]="option" [selected]="option === level()">
+            {{ option }} — {{ t(levelName(option)) }}
+          </option>
+        }
+      </select>
+      <small class="perm-hint">{{ t('permissions.mode.levelHint') }}</small>
+    </label>
+  } @else {
+    <div class="perm-tree" [attr.aria-label]="t('permissions.tree.label')">
+      @if (!root()) {
+        <div class="perm-add">
+          <span class="perm-add__label">{{ t('permissions.tree.startLabel') }}</span>
+          <div class="perm-add__row">
+            <button type="button" class="perm-chip-btn" [disabled]="isDisabled()" (click)="setRoot({ kind: 'role', role: 'everyone' })">
+              {{ t('permissions.tree.addRole') }}
+            </button>
+            <button type="button" class="perm-chip-btn" [disabled]="isDisabled()" (click)="setRoot({ kind: 'level', level: 7 })">
+              {{ t('permissions.tree.addLevel') }}
+            </button>
+            <button type="button" class="perm-chip-btn" [disabled]="isDisabled()" (click)="setRoot({ kind: 'not', child: null })">
+              {{ t('permissions.tree.addNot') }}
+            </button>
+            <button type="button" class="perm-chip-btn" [disabled]="isDisabled()" (click)="setRoot({ kind: 'group', operator: 'and', children: [] })">
+              {{ t('permissions.tree.addAnd') }}
+            </button>
+            <button type="button" class="perm-chip-btn" [disabled]="isDisabled()" (click)="setRoot({ kind: 'group', operator: 'or', children: [] })">
+              {{ t('permissions.tree.addOr') }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="perm-root">
+          <ng-container
+            [ngTemplateOutlet]="nodeTemplate"
+            [ngTemplateOutletContext]="{ $implicit: root(), depth: 1 }"
+          />
+          <button
+            type="button"
+            class="perm-node__remove"
+            [disabled]="isDisabled()"
+            [attr.aria-label]="t('permissions.tree.removeNode')"
+            (click)="setRoot(null)"
+          >
+            ×
+          </button>
+        </div>
+
+        <p class="perm-budget">
+          {{ t('permissions.tree.budget', { nodes: treeNodes(), maxNodes: maxNodes, depth: treeDepth(), maxDepth: maxDepth }) }}
+        </p>
+
+        @if (validationResult().errorKey; as errorKey) {
+          <p class="perm-error" role="alert">{{ t(errorKey) }}</p>
+        }
+      }
+    </div>
+  }
+
+  <div class="perm-preview">
+    <span class="perm-preview__label">{{ t('permissions.preview.label') }}</span>
+    <span class="perm-preview__value">{{ previewText() }}</span>
+  </div>
+</div>
+
+<ng-template let-node let-depth="depth" #nodeTemplate>
+  <div class="perm-node" [attr.data-kind]="node.kind">
+    @switch (node.kind) {
+      @case ('role') {
+        <label class="perm-node__field">
+          <span class="visually-hidden">{{ t('permissions.tree.roleLabel') }}</span>
+          <select class="perm-select" [disabled]="isDisabled()" (change)="onNodeRoleChange(node, $event)">
+            @for (role of roleTags; track role) {
+              <option [value]="role" [selected]="role === node.role">{{ t('permissions.roles.' + role) }}</option>
+            }
+          </select>
+        </label>
+      }
+      @case ('level') {
+        <label class="perm-node__field">
+          <span class="visually-hidden">{{ t('permissions.tree.levelLabel') }}</span>
+          <select class="perm-select" [disabled]="isDisabled()" (change)="onNodeLevelChange(node, $event)">
+            @for (option of levelOptions; track option) {
+              <option [value]="option" [selected]="option === node.level">
+                {{ option }} — {{ t(levelName(option)) }}
+              </option>
+            }
+          </select>
+        </label>
+      }
+      @case ('not') {
+        <div class="perm-node__box">
+          <div class="perm-node__row">
+            <span class="perm-node__op">{{ t('permissions.operators.not') }}</span>
+          </div>
+          @if (node.child) {
+            <div class="perm-node__child-row">
+              <div class="perm-node__children">
+                <ng-container
+                  [ngTemplateOutlet]="nodeTemplate"
+                  [ngTemplateOutletContext]="{ $implicit: node.child, depth: depth + 1 }"
+                />
+              </div>
+              <button
+                type="button"
+                class="perm-node__remove"
+                [disabled]="isDisabled()"
+                [attr.aria-label]="t('permissions.tree.removeNode')"
+                (click)="setNotChild(node, null)"
+              >
+                ×
+              </button>
+            </div>
+          } @else {
+            <div class="perm-add perm-add--inline">
+              <div class="perm-add__row">
+                <button type="button" class="perm-chip-btn" [disabled]="!canAddChild(depth)" (click)="setNotChild(node, { kind: 'role', role: 'everyone' })">
+                  {{ t('permissions.tree.addRole') }}
+                </button>
+                <button type="button" class="perm-chip-btn" [disabled]="!canAddChild(depth)" (click)="setNotChild(node, { kind: 'level', level: 7 })">
+                  {{ t('permissions.tree.addLevel') }}
+                </button>
+                <button type="button" class="perm-chip-btn" [disabled]="!canAddChild(depth)" (click)="setNotChild(node, { kind: 'group', operator: 'or', children: [] })">
+                  {{ t('permissions.tree.addOr') }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+      @case ('group') {
+        <div class="perm-node__box">
+          <div class="perm-node__row">
+            <label class="perm-node__field perm-node__field--op">
+              <span class="visually-hidden">{{ t('permissions.tree.operatorLabel') }}</span>
+              <select class="perm-select perm-select--op" [disabled]="isDisabled()" (change)="onGroupOperatorChange(node, $event)">
+                <option value="and" [selected]="node.operator === 'and'">{{ t('permissions.operators.and') }}</option>
+                <option value="or" [selected]="node.operator === 'or'">{{ t('permissions.operators.or') }}</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="perm-node__children">
+            @for (child of node.children; track child; let i = $index) {
+              <div class="perm-node__child-row">
+                <div class="perm-node__child">
+                  <ng-container
+                    [ngTemplateOutlet]="nodeTemplate"
+                    [ngTemplateOutletContext]="{ $implicit: child, depth: depth + 1 }"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="perm-node__remove"
+                  [disabled]="isDisabled()"
+                  [attr.aria-label]="t('permissions.tree.removeChild')"
+                  (click)="removeChild(node, i)"
+                >
+                  ×
+                </button>
+              </div>
+            }
+          </div>
+
+          @if (canAddChild(depth)) {
+            <div class="perm-add perm-add--inline">
+              <div class="perm-add__row">
+                <button type="button" class="perm-chip-btn" (click)="addChild(node, { kind: 'role', role: 'everyone' })">
+                  {{ t('permissions.tree.addRole') }}
+                </button>
+                <button type="button" class="perm-chip-btn" (click)="addChild(node, { kind: 'level', level: 7 })">
+                  {{ t('permissions.tree.addLevel') }}
+                </button>
+                <button type="button" class="perm-chip-btn" (click)="addChild(node, { kind: 'not', child: null })">
+                  {{ t('permissions.tree.addNot') }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</ng-template>

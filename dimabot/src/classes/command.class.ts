@@ -12,16 +12,22 @@ import { error } from '../utils/logger.js';
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
 class Commands {
-    private cachePromise: ReturnType<typeof getDragonflyClient>;
+    private cachePromise: Promise<DragonflyClient> | null = null;
     private readonly CACHE_TTL: number = 3600;
 
-    constructor() {
-        this.cachePromise = getDragonflyClient('Commands');
+    /**
+     * Lazy Dragonfly client: creating the connection only when a cache
+     * operation actually runs keeps importing this module side-effect free
+     * (important for tests and the AST evaluator's deferred import).
+     */
+    private get cache(): Promise<DragonflyClient> {
+        this.cachePromise ??= getDragonflyClient('Commands');
+        return this.cachePromise;
     }
 
     private async invalidateCache(channelID: string, cmd: string): Promise<void> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${cmd}`;
             await cache.del(cacheKey);
         } catch (err) {
@@ -53,7 +59,7 @@ class Commands {
                 };
             }
 
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${command.cmd}`;
             await cache.set(cacheKey, JSON.stringify(saved), { EX: this.CACHE_TTL });
 
@@ -112,7 +118,7 @@ class Commands {
 
     async getCommandFromDB(channelID: string, commandCMD: string): Promise<ICommandGetResponse> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${commandCMD}`;
 
             const cached = await cache.get(cacheKey);
@@ -158,7 +164,7 @@ class Commands {
 
     async getReservedCommandFromDB(channelID: string, commandCMD: string): Promise<ICommandGetResponse> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${commandCMD}`;
 
             const cached = await cache.get(cacheKey);
@@ -204,7 +210,7 @@ class Commands {
 
     async checkIfCommandExists(channelID: string, commandCMD: string): Promise<ICommandExistsResponse> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${commandCMD}`;
 
             const cached = await cache.get(cacheKey);
@@ -250,7 +256,7 @@ class Commands {
 
     async checkIfReservedCommandExists(channelID: string, commandCMD: string): Promise<ICommandExistsResponse> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const cacheKey = `${channelID}:commands:${commandCMD}`;
 
             const cached = await cache.get(cacheKey);

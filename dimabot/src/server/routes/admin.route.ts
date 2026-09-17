@@ -5,6 +5,7 @@ import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { hasGlobalChannelOwnerAccess, isCreatorTarget, isCreatorUser } from "../../middleware/admin.middleware.js";
 import { AdminSchema } from "../../schemas/admin.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
+import { addAdminToRoleCache, removeAdminFromRoleCache } from "../../utils/permissions/roles.js";
 
 interface AdminRequest extends Request {
     user?: {
@@ -364,7 +365,7 @@ router.get('/:channelID/:adminID', authMiddleware as any, async (req: AdminReque
             }
 
             const cacheClient = await getDragonflyClient();
-            const adminData = await cacheClient.hGetAll(`${channelIdStr}:admins:${adminIdStr}`);
+            const adminData = await cacheClient.hGetAll(`twitch:${channelIdStr}:admins:${adminIdStr}`);
 
             if (!adminData || Object.keys(adminData).length === 0) {
                 const adminFromDB = await AdminSchema.findOne({
@@ -511,15 +512,13 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
             await adminData.save();
 
             const cacheClient = await getDragonflyClient();
-            const adminId = twitchAccount.id;
-            await cacheClient.sAdd(`${channelIdStr}:admins:ids`, adminId);
-            await cacheClient.sAdd(`${channelIdStr}:admins`, twitchAccount.name);
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'adminID', adminId);
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'adminName', twitchAccount.name);
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'channelID', channelIdStr);
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'channelName', channelName);
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'permissions', JSON.stringify(['*']));
-            await cacheClient.hSet(`${channelIdStr}:admins:${adminId}`, 'actived', 'true');
+            await addAdminToRoleCache(cacheClient, channelIdStr, {
+                adminID: twitchAccount.id,
+                adminName: twitchAccount.name,
+                channelName,
+                permissions: ['*'],
+                actived: true
+            });
 
             res.status(201).json({
                 error: false,
@@ -589,9 +588,7 @@ router.delete('/:channelID/:adminID', authMiddleware as any, async (req: AdminRe
             }
 
             await AdminSchema.findOneAndDelete({ channelID: channelIdStr, adminID: adminIdStr });
-            await cacheClient.del(`${channelIdStr}:admins:${adminIdStr}`);
-            await cacheClient.sRem(`${channelIdStr}:admins`, adminData.adminName);
-            await cacheClient.sRem(`${channelIdStr}:admins:ids`, adminIdStr);
+            await removeAdminFromRoleCache(cacheClient, channelIdStr, adminIdStr, adminData.adminName);
 
             res.status(200).json({
                 error: false,

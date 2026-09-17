@@ -33,7 +33,8 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         import('../utils/cache.js'),
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/speech.js'),
-        import('../utils/timer_cache.js')
+        import('../utils/timer_cache.js'),
+        import('../utils/permissions/roles.js')
     ]).then(([
         { default: ChatHistory },
         { getChannelEditors },
@@ -43,7 +44,8 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         { clearChannelCache, loadChannelAdminsIntoCache, resetSumimetro },
         { getDragonflyClient },
         { clearSpeechFiles },
-        { loadChannelTimersIntoCache, unloadChannelTimersFromCache }
+        { loadChannelTimersIntoCache, unloadChannelTimersFromCache },
+        { clearChannelRoleCache }
     ]) => ({
         loadChannelTimersIntoCache,
         unloadChannelTimersFromCache,
@@ -57,11 +59,7 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         clearHistory: (channelID) => ChatHistory.clearHistory(channelID),
         async clearLifecycleCache(channelID) {
             const cache = await getDragonflyClient('streamOperationsCleanup');
-            await cache.del(`twitch:${channelID}:editors`);
-            const adminKeys = await cache.keys(`twitch:${channelID}:admins*`);
-            for (const key of adminKeys) {
-                await cache.del(key);
-            }
+            await clearChannelRoleCache(cache, channelID);
         },
         async hasNewerLifecycleEvent(event) {
             const newerEvent = await DomainEventSchema.exists({

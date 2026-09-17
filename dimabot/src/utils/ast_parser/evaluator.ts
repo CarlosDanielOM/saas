@@ -1,4 +1,10 @@
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
+import {
+    createBroadcasterIdentity,
+    createUserIdentity,
+    parseUserIdentity,
+    type UserIdentity
+} from '../permissions/roles.js';
 import { parse } from './parser.js';
 import type {
     ArrayLiteralNode,
@@ -27,6 +33,35 @@ import type {
 } from './types.js';
 
 type InternalComparisonOperator = '==' | '=' | '!=' | '<>' | '>' | '<' | '>=' | '<=' | '~=';
+
+/**
+ * Resolves the explicit authorization context for a nested command reference
+ * (TAG_PERMISSION_SYSTEM.md §2.4):
+ *
+ * - Streamer-authored AST (enforceFunctionPermissions === false) references
+ *   run trusted with the broadcaster identity — the outer command/event gate
+ *   already passed.
+ * - LLM-generated AST references retain the requesting chatter's authority.
+ *   The identity is rehydrated from context.authorization; when absent it
+ *   degrades to the (level-clamped) context user level with no extra tags —
+ *   never fabricated from synthetic badges.
+ */
+export function resolveCommandRefAuthorization(
+    context: ExecutionContext
+): { origin: 'llm' | 'authored'; identity: UserIdentity } {
+    if (context.enforceFunctionPermissions === false) {
+        return { origin: 'authored', identity: createBroadcasterIdentity() };
+    }
+
+    const fallbackLevel = typeof context.userLevel === 'number' && Number.isFinite(context.userLevel)
+        ? Math.max(1, Math.min(10, Math.trunc(context.userLevel)))
+        : 1;
+    const identity = context.authorization?.identity
+        ? parseUserIdentity(context.authorization.identity, fallbackLevel)
+        : createUserIdentity(fallbackLevel);
+
+    return { origin: 'llm', identity };
+}
 
 function toNumberSafe(value: unknown): number {
     if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
@@ -649,8 +684,8 @@ export function getFunctionHandler(name: string): FunctionHandler | undefined {
 export function buildPermissionDeniedMessage(name: string, requiredLevel: number, actualLevel: number): string {
     const levelNames: Record<number, string> = {
         7: 'moderator',
-        8: 'broadcaster/editor',
-        9: 'broadcaster',
+        8: 'editor',
+        9: 'admin',
         10: 'broadcaster'
     };
     const requiredName = levelNames[requiredLevel] || `level ${requiredLevel}`;
@@ -1239,6 +1274,14 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
             try {
                 const { commandHandler } = await import('../../handlers/commands.handler.js');
+
+                // Explicit AST authorization context: an LLM command
+                // reference evaluates the referenced command's policy against
+                // the REAL requesting chatter; a streamer-authored reference
+                // runs trusted, since the outer command/event gate already
+                // passed. Authorization never comes from the synthetic event
+                // badges below.
+                const authorization = resolveCommandRefAuthorization(context);
                 const fakeEventData = {
                     chatter_user_id: context.userId || context.broadcasterId,
                     chatter_user_login: context.userLogin || context.broadcasterId,
@@ -1250,7 +1293,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                     context.broadcasterId,
                     fakeEventData,
                     commandName.toLowerCase(),
-                    argsString || undefined
+                    argsString || undefined,
+                    authorization
                 );
 
                 if (result.error || !result.message) {

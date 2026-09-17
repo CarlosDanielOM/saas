@@ -156,6 +156,23 @@ export interface IStreamerData {
     [key: string]: unknown;
 }
 
+/**
+ * Explicit AST authorization context (TAG_PERMISSION_SYSTEM.md §2.4).
+ * Serialized identity shape: the level/tags of the user the AST acts on
+ * behalf of. LLM AST must carry the REAL requesting chatter; streamer-authored
+ * AST carries the trusted broadcaster identity. Authorization is never
+ * inferred from synthetic event badge data.
+ */
+export interface AstAuthorizationIdentity {
+    level: number;
+    tags: string[];
+}
+
+export interface AstAuthorization {
+    origin: 'chat' | 'llm' | 'authored';
+    identity?: AstAuthorizationIdentity;
+}
+
 export interface ExecutionContext {
     variables: Map<string, unknown>;
     arrays: Map<string, string[]>;
@@ -166,6 +183,7 @@ export interface ExecutionContext {
     userPlan: 'free' | 'premium' | 'pro';
     userLevel: number;
     enforceFunctionPermissions: boolean;
+    authorization?: AstAuthorization;
     argument?: string;
     count: number;
     eventData?: Record<string, unknown>;

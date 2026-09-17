@@ -127,6 +127,15 @@ export interface IChatMessageTags {
   chatter_user_name?: string;
   chatter_user_login?: string;
   username?: string;
+  /**
+   * Serialized resolved identity of the requesting chatter (level + role
+   * tags), threaded by the message handler so LLM AST tools retain the real
+   * chatter's authority (TAG_PERMISSION_SYSTEM.md §2.4).
+   */
+  identity?: {
+    level: number;
+    tags: string[];
+  };
   [key: string]: any;
 }
 

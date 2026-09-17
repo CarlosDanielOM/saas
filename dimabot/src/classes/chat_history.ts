@@ -5,16 +5,22 @@ import { recordRedisOpsEstimate } from "../utils/observability/bot_runtime_metri
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
 class ChatHistory {
-    private cacheClient: ReturnType<typeof getDragonflyClient>;
+    private cacheClient: Promise<DragonflyClient> | null = null;
     private maxHistorySize: number = 100; // Maximum history size for premium plus channels
 
-    constructor() {
-        this.cacheClient = getDragonflyClient('ChatHistory');
+    /**
+     * Lazy Dragonfly client: creating the connection only when a cache
+     * operation runs keeps importing this module side-effect free (tests and
+     * the AST evaluator's deferred imports must not hold reconnect loops).
+     */
+    private get cache(): Promise<DragonflyClient> {
+        this.cacheClient ??= getDragonflyClient('ChatHistory');
+        return this.cacheClient;
     }
 
     async addMessage(channelID: string, username: string, message: string, formattedBadges?: string[], platform: 'twitch' | 'kick' = 'twitch') {
         try {
-            const cache = await this.cacheClient;
+            const cache = await this.cache;
 
             if(!channelID || !username || !message) {
                 warn({ error: 'Invalid message data', channelID, username, message }, { channelId: channelID, destination: 'both' });
@@ -40,7 +46,7 @@ class ChatHistory {
 
     async getRecentMessages(channelID: string, limit: number = 7, platform: 'twitch' | 'kick' = 'twitch') {
         try {
-            const cache = await this.cacheClient;
+            const cache = await this.cache;
 
             if(!channelID) {
                 warn({ error: 'Invalid channelID for getRecentMessages' }, { channelId: channelID, destination: 'both' });
@@ -61,7 +67,7 @@ class ChatHistory {
     
     async clearHistory(channelID: string, platform: 'twitch' | 'kick' = 'twitch') {
         try {
-            const cache = await this.cacheClient;
+            const cache = await this.cache;
 
             if(!channelID) {
                 warn({ error: 'Invalid channelID for clearHistory' }, { channelId: channelID, destination: 'both' });

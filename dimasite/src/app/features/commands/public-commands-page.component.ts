@@ -4,7 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, List, Moon, Search, Sun, LayoutGrid } from 'lucide-angular';
 import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap } from 'rxjs';
 
-import { Command, USER_LEVELS } from '../../models/command.model';
+import { Command, USER_LEVELS, USER_LEVEL_NAMES } from '../../models/command.model';
+import { describeExpression, inspectExpression, type PermissionExpression } from '../../models/permission.model';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
@@ -163,8 +164,35 @@ export class PublicCommandsPageComponent {
   }
 
   getUserLevelLabel(command: Command): string {
+    // Locally translated permission description: a valid tag expression is
+    // described with the active locale; invalid stored data shows a neutral
+    // configuration-error label; level mode falls back to the level label.
+    const state = inspectExpression(command.permissionExpression);
+
+    if (state.mode === 'tags') {
+      return describeExpression(state.expression, {
+        roleLabel: (role) => this.t(`permissions.roles.${role}`),
+        operatorLabel: () => '',
+        levelLabel: (level) => this.t(USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone'),
+        formatSummary: (pattern, params) => this.t(pattern, params)
+      });
+    }
+
+    if (state.mode === 'invalid' || command.permissionMode === 'invalid') {
+      return this.t('permissions.invalidLabel');
+    }
+
     const normalizedLevel = command.userLevelName || USER_LEVELS[command.userLevel] || 'everyone';
     return this.t(`commands.userLevels.${normalizedLevel}`);
+  }
+
+  describePermissionExpression(expression: PermissionExpression): string {
+    return describeExpression(expression, {
+      roleLabel: (role) => this.t(`permissions.roles.${role}`),
+      operatorLabel: () => '',
+      levelLabel: (level) => this.t(USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone'),
+      formatSummary: (pattern, params) => this.t(pattern, params)
+    });
   }
 
   languageLabel(): string {

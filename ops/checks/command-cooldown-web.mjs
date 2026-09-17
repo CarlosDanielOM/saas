@@ -62,8 +62,8 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.equal(await body.evaluate(el => el.scrollWidth > el.clientWidth), false);
       const cooldownBox = await cooldown.boundingBox();
-      const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
-      assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'cooldown and user level share a row');
+      const editorBox = await modal.locator('app-permission-expression-editor').boundingBox();
+      assert.ok(editorBox && editorBox.y > cooldownBox.y, 'permission editor sits below the cooldown field');
       const submit = modal.locator('button[type="submit"]');
       const before = await submit.boundingBox();
       assert.ok(before.y >= 0 && before.y + before.height <= page.viewportSize().height, 'actions visible without scrolling');
@@ -85,7 +85,8 @@ try {
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
     assert.equal(writes.length, 0, 'existing 60s upper bound retained');
     await cooldown.fill(String(min));
-    const level = modal.locator('[formControlName="userLevel"]');
+    const editor = modal.locator('app-permission-expression-editor');
+    const level = editor.locator('select').first();
     await level.selectOption('7');
     assert.equal(await level.inputValue(), '7');
     const axe = await new AxeBuilder({ page }).include('app-command-modal label:has(input[formControlName="cooldown"])').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
@@ -95,17 +96,43 @@ try {
     assert.equal(writes.at(-1).cooldown, min, 'create sends the exact tier minimum');
     assert.equal(writes.at(-1).userLevel, 7, 'create sends the selected user level');
     assert.equal(writes.at(-1).userLevelName, 'mod', 'create sends the matching level name');
+    assert.equal(writes.at(-1).permissionExpression, null, 'level mode sends the explicit null expression');
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
     await cooldown.waitFor();
     assert.equal(await cooldown.inputValue(), String(min));
     assert.equal(await level.inputValue(), '7', 'edit rehydrates the selected level');
+
+    // Tag mode: exclusive toggle, explicit role node, live preview, payload tree.
+    await editor.getByRole('button', { name: /tags/i }).click();
+    await editor.getByRole('button', { name: /^Role$/ }).click();
+    const roleSelect = editor.locator('.perm-node[data-kind="role"] select').first();
+    await roleSelect.selectOption('sub');
+    await page.locator('.perm-preview__value').filter({ hasText: /subscribers/i }).first().waitFor();
+    await modal.locator('button[type="submit"]').click();
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes.at(-1).permissionExpression, { role: 'sub' }, 'tag mode sends the validated tree');
+    assert.equal(writes.at(-1).userLevel, 7, 'numeric pair still stored while tag mode is active');
+
+    // Empty tag mode cannot be saved (no valid node).
+    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await editor.locator('.perm-root .perm-node__remove').first().waitFor();
+    await editor.locator('.perm-root .perm-node__remove').first().click();
+    const writesBeforeEmpty = writes.length;
+    await modal.locator('button[type="submit"]').click();
+    await page.getByRole('alert').filter({ hasText: /at least one/i }).waitFor();
+    assert.equal(writes.length, writesBeforeEmpty, 'invalid empty tag mode is not saved');
+    await modal.getByRole('button', { name: /cancel/i }).click();
+    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await cooldown.waitFor();
     await cooldown.fill(String(min - 1));
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
-    assert.equal(writes.length, 1, 'edit blocks below minimum');
+    const writesBeforeValidEdit = writes.length;
     await cooldown.fill(String(min));
     await modal.locator('button[type="submit"]').click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
-    assert.equal(writes.length, 2); assert.equal(writes.at(-1).cooldown, min);
+    assert.equal(writes.length, writesBeforeValidEdit + 1, 'valid edit saves exactly once');
+    assert.equal(writes.at(-1).cooldown, min);
+    assert.deepEqual(writes.at(-1).permissionExpression, { role: 'sub' }, 'edit preserves the tag expression');
     assert.deepEqual(errors, []);
     await context.close();
     console.log(`PASS: ${tier} create/edit minimum ${min}s, invalid bounds, mobile/desktop and accessibility`);

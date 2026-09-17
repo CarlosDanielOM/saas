@@ -53,7 +53,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             });
         }
 
-        let existsAdmin = await cacheClient.sIsMember(`${channelID}:admins`, userCacheLogin);
+        let existsAdmin = await cacheClient.sIsMember(`twitch:${channelID}:admins`, userCacheLogin);
 
         if (existsAdmin === 0) {
             console.error({
@@ -72,7 +72,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             });
         }
 
-        let exists = await cacheClient.exists(`${channelID}:admins:${userCacheID}`);
+        let exists = await cacheClient.exists(`twitch:${channelID}:admins:${userCacheID}`);
 
         if (exists === 0) {
             console.error({

@@ -34,6 +34,8 @@
     },
     "featured": "Featured Module",
     "allModules": "All Modules",
+    "core": "Core tools",
+    "more": "More modules",
     "moduleCount": "modules",
     "clips": {
       "description": "Select a clip viewer design and adjust settings for your stream overlays."
@@ -1718,12 +1720,12 @@
       "tier1": "Tier 1",
       "tier2": "Tier 2",
       "tier3": "Tier 3",
-      "founders": "Founders",
       "vip": "VIP",
       "mod": "Mod",
       "editor": "Editor",
       "admin": "Admin",
-      "streamer": "Streamer"
+      "founder": "Founder",
+      "broadcaster": "Broadcaster"
     },
     "modal": {
       "cooldownHint": "Minimum for your plan: {{seconds}}s.",
@@ -1754,6 +1756,71 @@
       "reserved": "Reserved commands",
       "timer": "Timer-linked commands"
     }
+  },
+  "permissions": {
+    "mode": {
+      "label": "Permission mode",
+      "level": "Level (legacy)",
+      "levelHint": "Numeric user level, exactly like before. Editors, admins and the broadcaster all count as the level they meet or exceed.",
+      "tags": "Tags (advanced)"
+    },
+    "roles": {
+      "everyone": "Everyone",
+      "sub": "Subscribers",
+      "vip": "VIPs",
+      "founder": "Founders",
+      "mod": "Moderators",
+      "editor": "Editors",
+      "admin": "Admins",
+      "broadcaster": "Broadcaster"
+    },
+    "operators": {
+      "not": "Not",
+      "and": "All of",
+      "or": "Any of"
+    },
+    "editor": {
+      "needsNode": "Add at least one permission rule to save tag mode.",
+      "invalidStored": "The saved permission configuration is invalid and currently denied. Rebuild the rules and save to repair it."
+    },
+    "tree": {
+      "label": "Permission rules",
+      "startLabel": "Start with a rule:",
+      "addRole": "Role",
+      "addLevel": "Level",
+      "addNot": "Not",
+      "addAnd": "All of",
+      "addOr": "Any of",
+      "roleLabel": "Role",
+      "levelLabel": "Level",
+      "operatorLabel": "Operator",
+      "removeNode": "Remove rule",
+      "removeChild": "Remove rule",
+      "budget": "{{nodes}} of {{maxNodes}} rules used, depth {{depth}} of {{maxDepth}}."
+    },
+    "preview": {
+      "label": "Who can use this"
+    },
+    "summary": {
+      "notRole": "everyone except {{role}}",
+      "notLevel": "below {{level}}",
+      "notGroup": "not ({{group}})",
+      "and": "all of: {{list}}",
+      "or": "any of: {{list}}",
+      "separator": " + "
+    },
+    "errors": {
+      "notAnObject": "Each rule must be a single condition.",
+      "emptyNode": "Empty rules are not allowed.",
+      "mixedOperators": "Each rule can only use one operator.",
+      "unknownFields": "The rule contains unknown fields.",
+      "unknownRole": "Unknown role.",
+      "badLevel": "The level must be a whole number between 1 and 10.",
+      "emptyGroup": "Groups need at least one rule.",
+      "tooDeep": "The rules are nested too deeply.",
+      "tooManyNodes": "Too many rules."
+    },
+    "invalidLabel": "Configuration error (denied)"
   },
   "common": {
     "refresh": "Refresh",

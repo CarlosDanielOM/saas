@@ -6,6 +6,7 @@ import { addModerator } from '../functions/channels/add_moderator.channel.js';
 import { sendTwitchChatMessage } from '../functions/chats/index.js';
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { isEditorLoginCached } from '../utils/permissions/roles.js';
 import { error, info } from '../utils/logger.js';
 
 interface DuelResponse {
@@ -62,17 +63,17 @@ export async function duelCommand(channelID: string, user: string, userMod: bool
         }
 
         const cacheClient = await getDragonflyClient('duelCommand');
-        const editor = await cacheClient.sIsMember(`${channelID}:channel:editors`, user.toLowerCase());
+        const editor = await isEditorLoginCached(cacheClient, channelID, user.toLowerCase());
 
-        if (editor === 1) {
+        if (editor) {
             return {
                 error: true,
                 message: 'As an Editor, you cannot duel.'
             };
         }
 
-        const editorOpponent = await cacheClient.sIsMember(`${channelID}:channel:editors`, argument.toLowerCase());
-        if (editorOpponent === 1) {
+        const editorOpponent = await isEditorLoginCached(cacheClient, channelID, argument.toLowerCase());
+        if (editorOpponent) {
             return {
                 error: true,
                 message: 'You cannot duel an Editor.'

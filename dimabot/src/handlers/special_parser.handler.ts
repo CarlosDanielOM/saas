@@ -371,6 +371,16 @@ export async function parseSpecialCommands(
         userPlan: context.userPlan || (streamer?.plan_tier as 'free' | 'premium' | 'pro' | undefined) || 'free',
         userLevel: effectiveUserLevel,
         enforceFunctionPermissions: false,
+        // Streamer-authored AST executes with an explicit authorization
+        // identity — broadcaster-level programs, never inferred from
+        // synthetic badges (TAG_PERMISSION_SYSTEM.md §2.4).
+        authorization: {
+            origin: 'authored',
+            identity: {
+                level: effectiveUserLevel,
+                tags: effectiveUserLevel >= 10 ? ['broadcaster'] : []
+            }
+        },
         argument: context.argument,
         count: context.count || 0,
         eventData,

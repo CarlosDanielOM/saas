@@ -69,6 +69,11 @@ const sidebar = [
         slug: 'commands/overview',
       },
       {
+        label: 'Permission Expressions',
+        translations: { es: 'Permisos por expresiones' },
+        slug: 'commands/permissions',
+      },
+      {
         label: 'Advanced (AST)',
         translations: { es: 'Avanzado (AST)' },
         collapsed: true,

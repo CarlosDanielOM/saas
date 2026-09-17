@@ -152,7 +152,7 @@
                 </span>
                 <span class="lf-clip">{{ command.description || t('common.notAvailable') }}</span>
                 <span>{{ command.cooldown }}s</span>
-                <span>{{ command.userLevel }} - {{ getUserLevelLabel(command) }}</span>
+                <span class="lf-clip">{{ getUserLevelLabel(command) }}</span>
                 <span>
                   <span class="lf-chip" [class.lf-chip--ok]="command.enabled !== false" [class.lf-chip--muted]="command.enabled === false">
                     {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
@@ -187,7 +187,7 @@
               </p>
               <div class="lf-cmd__meta">
                 <span>{{ command.cooldown }}s</span>
-                <span>{{ command.userLevel }} - {{ getUserLevelLabel(command) }}</span>
+                <span class="lf-clip">{{ getUserLevelLabel(command) }}</span>
               </div>
             </article>
           }

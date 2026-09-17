@@ -20,6 +20,13 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import type { IChatMessage } from "../interfaces/twitch/eventsub.interface.js";
 import { sendTwitchChatMessage } from "../functions/chats/send_message.chat.js";
 import Commands from "../classes/command.class.js";
+import {
+    commandAllowed,
+    inspectExpression,
+    resolveUserIdentity,
+    serializeUserIdentity,
+    type UserIdentity
+} from "../utils/permissions/index.js";
 import { sumimetroCommand } from "../commands/sumimetro.command.js";
 import { indexCommands } from "../commands/index.commands.js";
 import { sendAnnouncement } from "../functions/chats/announcement.chat.js";
@@ -50,7 +57,10 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             return;
         }
 
-        const userLevel = await giveUserLevel(channelID, messageEventData);
+        // Full identity resolution: legacy numeric level + complete role-tag
+        // set (editor/admin from the canonical twitch: cache keys).
+        const identity: UserIdentity = await resolveUserIdentity(channelID, messageEventData);
+        const userLevel = identity.level;
 
         const formattedBadges = await formatBadges({ badges: messageEventData.badges });
 
@@ -222,7 +232,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             // Moderation gate: filter/regex rules (caps, links, emote spam,
             // blacklist) run before any AI or command logic. If the gate
             // takes action, the message dies here.
-            const moderationResult = await runChatModeration(channelID, messageEventData, userLevel);
+            const moderationResult = await runChatModeration(channelID, messageEventData, identity);
             if (moderationResult.actionTaken) {
                 return;
             }
@@ -284,7 +294,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                         badges: messageEventData.badges,
                         username: messageEventData.chatter_user_name,
                         chatter_user_id: messageEventData.chatter_user_id,
-                        userLevel
+                        userLevel,
+                        identity: serializeUserIdentity(identity)
                     }
                 });
                 
@@ -338,6 +349,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         let commandCD = '0';
         let commandEnabled = 'false';
         let commandLevel = '0';
+        let commandTagMode = false;
 
         let commandDBData = await Commands.getCommandFromDB(channelID, command);
         recordRedisOpsEstimate(1);
@@ -346,6 +358,9 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             commandCD = String(commandDBData.command.cooldown ?? 0);
             commandEnabled = String(commandDBData.command.enabled ?? false);
             commandLevel = String(commandDBData.command.userLevel ?? 0);
+            // Tag mode is exclusive with level mode; a present invalid
+            // expression is treated as tag mode here (numeric stays inert).
+            commandTagMode = inspectExpression(commandDBData.command.permissionExpression).mode !== 'level';
         }
 
         // Silently skip disabled commands
@@ -353,7 +368,20 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             return;
         }
 
-        if(userLevel < parseInt(commandLevel, 10)) {
+        const permissionState = inspectExpression(commandDBData.command?.permissionExpression);
+        if (permissionState.mode === 'invalid') {
+            // Configuration error: surface it (channel + command name +
+            // validation error, never the untrusted tree) and fail closed.
+            void logError({
+                function: 'messageHandler.commandPermission',
+                message: 'Stored permission expression is invalid; command denied until repaired',
+                channelID,
+                command,
+                error: permissionState.error
+            }, { channelId: channelID, destination: 'both' }).catch(() => undefined);
+        }
+
+        if(!commandAllowed(commandDBData.command, identity)) {
             return;
         }
         
@@ -499,7 +527,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             case 'commands':
-                const commandListResult = await indexCommands.commandList(channelID, userLevel);
+                const commandListResult = await indexCommands.commandList(channelID, identity);
                 if (commandListResult.error) {
                     res = { error: true, message: commandListResult.message || 'Error al listar comandos' };
                 } else {
@@ -515,7 +543,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             case 'title':
-                const titleResult = await indexCommands.title(channelID, streamerArgument, userLevel, parseInt(commandLevel, 10));
+                const titleResult = await indexCommands.title(channelID, streamerArgument, userLevel, parseInt(commandLevel, 10), commandTagMode);
                 if (titleResult.error) {
                     res = { error: true, message: titleResult.message || 'Error al obtener titulo' };
                 } else {
@@ -523,7 +551,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             case 'game':
-                const gameResult = await indexCommands.game(channelID, streamerArgument, userLevel, parseInt(commandLevel, 10));
+                const gameResult = await indexCommands.game(channelID, streamerArgument, userLevel, parseInt(commandLevel, 10), commandTagMode);
                 if (gameResult.error) {
                     res = { error: true, message: gameResult.message || 'Error al obtener juego' };
                 } else {
@@ -714,7 +742,12 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             default:
-                const cmdResult = await commandHandler(channelID, messageEventData, command, argument);
+                // Direct chat: the command policy governs the chatter, so the
+                // real resolved identity is the authorization identity.
+                const cmdResult = await commandHandler(channelID, messageEventData, command, argument, {
+                    origin: 'chat',
+                    identity
+                });
                 if (!cmdResult.error && cmdResult.message) {
                     res = { error: false, message: cmdResult.message };
                 }
@@ -775,41 +808,11 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
     }
 }
 
-async function giveUserLevel(channelID: string, messageEventData: IChatMessage) {
-    let userLevel = 1;
-    let cache = await getDragonflyClient('UserLevel');
-
-    if(messageEventData.badges.some(badge => badge.set_id === 'subscriber')) {
-        userLevel = 2;
-    }
-
-    if(messageEventData.badges.some(badge => badge.set_id === 'vip')) {
-        userLevel = 5;
-    }
-
-    if(messageEventData.badges.some(badge => badge.set_id === 'founder')) {
-        userLevel = 6;
-    }
-
-    if(messageEventData.badges.some(badge => MODERATOR_BADGE_IDS.has(badge.set_id))) {
-        userLevel = 7;
-    }
-
-    const isEditor = await cache.sIsMember(`${channelID}:channel:editors`, messageEventData.chatter_user_login!);
-    recordRedisOpsEstimate(1);
-    if(isEditor) {
-        userLevel = 8;
-    }
-
-    const isAdmin = await cache.sIsMember(`twitch:${channelID}:admins`, messageEventData.chatter_user_login!);
-    recordRedisOpsEstimate(1);
-    if(isAdmin) {
-        userLevel = 9;
-    }
-
-    if(messageEventData.chatter_user_id === channelID) {
-        userLevel = 10;
-    }
-
-    return userLevel;
+/**
+ * Legacy wrapper kept for numeric call sites: delegates to the full identity
+ * resolver and returns only the numeric level.
+ */
+async function giveUserLevel(channelID: string, messageEventData: IChatMessage): Promise<number> {
+    const identity = await resolveUserIdentity(channelID, messageEventData);
+    return identity.level;
 }

@@ -2,10 +2,12 @@ import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { error } from './logger.js';
 import { AdminSchema } from '../schemas/admin.schema.js';
 import type { IAdmin } from '../schemas/admin.schema.js';
+import { populateAdminCache } from './permissions/roles.js';
 
 /**
- * Loads active channel admins from MongoDB into Redis cache.
- * Called when a stream goes online to ensure admin data is available for user level checks.
+ * Loads active channel admins from MongoDB into the canonical Dragonfly
+ * role-cache keys. Called when a stream goes online to ensure admin data is
+ * available for user level checks.
  */
 export async function loadChannelAdminsIntoCache(channelID: string): Promise<void> {
     try {
@@ -14,30 +16,15 @@ export async function loadChannelAdminsIntoCache(channelID: string): Promise<voi
         // Fetch active admins from MongoDB
         const admins = await AdminSchema.find({ channelID, actived: true }).lean<IAdmin[]>();
 
-        // Clear existing admin cache keys (pattern: twitch:${channelID}:admins*)
-        const existingKeys = await cache.keys(`twitch:${channelID}:admins*`);
-        for (const key of existingKeys) {
-            await cache.del(key);
-        }
-
-        // Populate cache with admin data
-        for (const admin of admins) {
-            // Set: twitch:${channelID}:admins -> username
-            await cache.sAdd(`twitch:${channelID}:admins`, admin.adminName);
-
-            // Set: twitch:${channelID}:admins:ids -> adminID
-            await cache.sAdd(`twitch:${channelID}:admins:ids`, admin.adminID);
-
-            // Hash: twitch:${channelID}:admins:${adminID}
-            await cache.hSet(`twitch:${channelID}:admins:${admin.adminID}`, {
-                adminID: admin.adminID,
-                adminName: admin.adminName,
-                channelID: admin.channelID,
-                channelName: admin.channelName,
-                permissions: JSON.stringify(admin.permissions),
-                actived: String(admin.actived)
-            });
-        }
+        // Rebuild the canonical twitch: admin sets + detail hashes and remove
+        // any stale canonical or legacy non-twitch: admin keys.
+        await populateAdminCache(cache, channelID, admins.map((admin) => ({
+            adminID: admin.adminID,
+            adminName: admin.adminName,
+            channelName: admin.channelName,
+            permissions: admin.permissions,
+            actived: admin.actived
+        })));
 
         console.log(`Loaded ${admins.length} admins into cache for channel ${channelID}`);
     } catch (err) {

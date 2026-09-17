@@ -32,5 +32,49 @@ for (const [tier, min] of [['free', 5], ['premium', 3], ['pro', 1], ['unknown', 
   assert.equal((await editCommand(channel, `-cd=${min - 1} default`, 10)).error, true);
   assert.equal((await CommandsSchema.findOne({ channelID: channel, cmd: 'default' })).cooldown, min);
 }
-console.log('PASS: bot readiness, all tier boundaries, invalid values, persistence, create defaults and edit');
+// --- Tag permission mode: chat-side management rules (TAG_PERMISSION_SYSTEM.md §4.3) ---
+{
+  const channel = 'cooldown-perms';
+  await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: 'free' });
+
+  // `-ul=` keeps creating level-mode commands.
+  const levelMode = await createCommand(channel, '-ul=mod levelhello moderators only');
+  assert.equal(levelMode.error, false, JSON.stringify(levelMode));
+  assert.equal(levelMode.command.userLevel, 7);
+  assert.equal(levelMode.command.userLevelName, 'mod');
+  assert.equal(levelMode.command.permissionExpression, null, 'chat creation is level mode only this phase');
+
+  // Seed a tag-mode command directly (dashboard/API owns expressions).
+  await CommandsSchema.create({
+    channelID: channel, channel, name: 'taghello', cmd: 'taghello', func: 'taghello',
+    message: 'sub only hello', userLevel: 1, userLevelName: 'everyone',
+    permissionExpression: { role: 'sub' }, enabled: true
+  });
+
+  // A sub-level caller cannot manage a tag-restricted command...
+  const lowEdit = await editCommand(channel, 'taghello updated body', 2);
+  assert.equal(lowEdit.error, true);
+  assert.match(lowEdit.message, /moderator permissions to manage a tag-restricted command/i);
+
+  // ...and `-ul=` against a tag-mode command rejects the entire edit.
+  const ulEdit = await editCommand(channel, '-ul=mod taghello sub only hello v2', 10);
+  assert.equal(ulEdit.error, true);
+  assert.match(ulEdit.message, /dashboard permission editor/i);
+  assert.equal((await CommandsSchema.findOne({ channelID: channel, cmd: 'taghello' })).permissionExpression.role, 'sub', 'rejected edit applies no changes');
+
+  // Content edits remain allowed for callers at level >= 7.
+  const okEdit = await editCommand(channel, 'taghello sub only hello v2', 7);
+  assert.equal(okEdit.error, false, JSON.stringify(okEdit));
+  assert.equal((await CommandsSchema.findOne({ channelID: channel, cmd: 'taghello' })).message, 'sub only hello v2');
+
+  // Deleting a tag-restricted command also requires level >= 7.
+  const { deleteCommand } = await import('/app/dist/commands/command_manager.command.js');
+  const lowDelete = await deleteCommand(channel, 'taghello', 2);
+  assert.equal(lowDelete.error, true);
+  assert.match(lowDelete.message, /moderator permissions to manage a tag-restricted command/i);
+  const okDelete = await deleteCommand(channel, 'taghello', 7);
+  assert.equal(okDelete.error, false, JSON.stringify(okDelete));
+}
+
+console.log('PASS: bot readiness, all tier boundaries, invalid values, persistence, create defaults and edit, tag-mode management rules');
 process.exit(0);

@@ -1,0 +1,121 @@
+{
+  "description": "Shared permission-expression fixtures consumed by backend and frontend checks (TAG_PERMISSION_SYSTEM.md). Keep server and client validation/evaluation in lockstep with this file.",
+  "identities": {
+    "viewer": { "level": 1, "tags": ["everyone"] },
+    "sub": { "level": 2, "tags": ["everyone", "sub"] },
+    "founder": { "level": 6, "tags": ["everyone", "founder", "sub"] },
+    "vip": { "level": 5, "tags": ["everyone", "vip"] },
+    "mod": { "level": 7, "tags": ["everyone", "mod"] },
+    "mod_sub": { "level": 7, "tags": ["everyone", "mod", "sub"] },
+    "editor": { "level": 8, "tags": ["everyone", "editor"] },
+    "admin": { "level": 9, "tags": ["everyone", "admin"] },
+    "broadcaster": { "level": 10, "tags": ["everyone", "broadcaster"] }
+  },
+  "valid": [
+    { "name": "everyone", "expression": { "role": "everyone" } },
+    { "name": "sub-only", "expression": { "role": "sub" } },
+    { "name": "vip-only", "expression": { "role": "vip" } },
+    { "name": "mod-only", "expression": { "role": "mod" } },
+    { "name": "legacy-level-7", "expression": { "level": 7 } },
+    { "name": "legacy-level-10", "expression": { "level": 10 } },
+    { "name": "sub-or-vip", "expression": { "or": [{ "role": "sub" }, { "role": "vip" }] } },
+    { "name": "not-everyone-or-mod", "expression": { "or": [{ "not": { "role": "everyone" } }, { "role": "mod" }] } },
+    { "name": "sub-and-vip", "expression": { "and": [{ "role": "sub" }, { "role": "vip" }] } },
+    { "name": "everyone-except-mod", "expression": { "and": [{ "role": "everyone" }, { "not": { "role": "mod" } }] } },
+    {
+      "name": "nested-sub-or-vip-and-not-mod",
+      "expression": { "or": [{ "role": "sub" }, { "and": [{ "role": "vip" }, { "not": { "role": "mod" } }] }] }
+    },
+    {
+      "name": "max-depth-chain",
+      "expression": { "and": [{ "or": [{ "not": { "role": "sub" } }] }] }
+    },
+    {
+      "name": "max-nodes-tree",
+      "expression": {
+        "or": [
+          { "and": [{ "role": "sub" }, { "role": "vip" }, { "role": "founder" }, { "role": "mod" }] },
+          { "and": [{ "role": "editor" }, { "role": "admin" }, { "level": 7 }, { "level": 8 }] },
+          { "and": [{ "or": [{ "role": "sub" }, { "role": "vip" }] }, { "not": { "role": "mod" } }] },
+          { "and": [{ "level": 2 }, { "level": 5 }, { "level": 6 }, { "role": "everyone" }] }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    { "name": "empty-object", "expression": {}, "error": "no recognized operator" },
+    { "name": "empty-and", "expression": { "and": [] }, "error": "at least one child" },
+    { "name": "empty-or", "expression": { "or": [] }, "error": "at least one child" },
+    { "name": "unknown-role", "expression": { "role": "supermod" }, "error": "unknown role tag" },
+    { "name": "bad-level-zero", "expression": { "level": 0 }, "error": "integer between 1 and 10" },
+    { "name": "bad-level-eleven", "expression": { "level": 11 }, "error": "integer between 1 and 10" },
+    { "name": "bad-level-float", "expression": { "level": 2.5 }, "error": "integer between 1 and 10" },
+    { "name": "mixed-keys", "expression": { "role": "mod", "level": 7 }, "error": "exactly one operator" },
+    { "name": "unknown-field", "expression": { "role": "mod", "extra": true }, "error": "unknown fields" },
+    { "name": "array-root", "expression": [{ "role": "mod" }], "error": "must be an object" },
+    { "name": "null-child", "expression": { "not": null }, "error": "must be an object" },
+    { "name": "string-root", "expression": "mod", "error": "must be an object" },
+    {
+      "name": "over-depth",
+      "expression": { "and": [{ "or": [{ "and": [{ "not": { "role": "sub" } }] }] }] },
+      "error": "maximum depth"
+    },
+    {
+      "name": "over-nodes",
+      "expression": {
+        "or": [
+          { "and": [{ "role": "sub" }, { "role": "vip" }, { "role": "founder" }, { "role": "mod" }] },
+          { "and": [{ "role": "editor" }, { "role": "admin" }, { "level": 7 }, { "level": 8 }] },
+          { "and": [{ "or": [{ "role": "sub" }, { "role": "vip" }] }, { "not": { "role": "mod" } }] },
+          { "and": [{ "level": 2 }, { "level": 5 }, { "level": 6 }, { "role": "everyone" }] },
+          { "or": [{ "role": "vip" }, { "role": "founder" }, { "level": 9 }, { "level": 10 }] }
+        ]
+      },
+      "error": "maximum of 25 nodes"
+    }
+  ],
+  "evaluations": [
+    { "expression": { "role": "everyone" }, "identity": "viewer", "expected": true },
+    { "expression": { "role": "everyone" }, "identity": "mod", "expected": true },
+    { "expression": { "not": { "role": "everyone" } }, "identity": "viewer", "expected": false },
+    { "expression": { "not": { "role": "everyone" } }, "identity": "mod", "expected": false },
+    { "expression": { "not": { "role": "everyone" } }, "identity": "broadcaster", "expected": true },
+    { "expression": { "role": "sub" }, "identity": "viewer", "expected": false },
+    { "expression": { "role": "sub" }, "identity": "sub", "expected": true },
+    { "expression": { "role": "sub" }, "identity": "founder", "expected": true },
+    { "expression": { "role": "sub" }, "identity": "mod", "expected": false },
+    { "expression": { "role": "sub" }, "identity": "mod_sub", "expected": true },
+    { "expression": { "role": "sub" }, "identity": "broadcaster", "expected": true },
+    { "expression": { "role": "mod" }, "identity": "mod", "expected": true },
+    { "expression": { "role": "mod" }, "identity": "editor", "expected": false },
+    { "expression": { "role": "mod" }, "identity": "admin", "expected": false },
+    { "expression": { "role": "mod" }, "identity": "broadcaster", "expected": true },
+    { "expression": { "level": 7 }, "identity": "mod", "expected": true },
+    { "expression": { "level": 7 }, "identity": "editor", "expected": true },
+    { "expression": { "level": 7 }, "identity": "admin", "expected": true },
+    { "expression": { "level": 7 }, "identity": "broadcaster", "expected": true },
+    { "expression": { "level": 7 }, "identity": "vip", "expected": false },
+    { "expression": { "or": [{ "not": { "role": "everyone" } }, { "role": "mod" }] }, "identity": "viewer", "expected": false },
+    { "expression": { "or": [{ "not": { "role": "everyone" } }, { "role": "mod" }] }, "identity": "sub", "expected": false },
+    { "expression": { "or": [{ "not": { "role": "everyone" } }, { "role": "mod" }] }, "identity": "mod", "expected": true },
+    { "expression": { "or": [{ "not": { "role": "everyone" } }, { "role": "mod" }] }, "identity": "broadcaster", "expected": true },
+    { "expression": { "and": [{ "role": "everyone" }, { "not": { "role": "mod" } }] }, "identity": "viewer", "expected": true },
+    { "expression": { "and": [{ "role": "everyone" }, { "not": { "role": "mod" } }] }, "identity": "mod", "expected": false },
+    { "expression": { "and": [{ "role": "everyone" }, { "not": { "role": "mod" } }] }, "identity": "broadcaster", "expected": true },
+    { "expression": { "or": [{ "role": "sub" }, { "role": "vip" }] }, "identity": "viewer", "expected": false },
+    { "expression": { "or": [{ "role": "sub" }, { "role": "vip" }] }, "identity": "vip", "expected": true },
+    { "expression": { "or": [{ "role": "sub" }, { "role": "vip" }] }, "identity": "sub", "expected": true },
+    { "expression": { "and": [{ "role": "sub" }, { "role": "vip" }] }, "identity": "sub", "expected": false },
+    { "expression": { "and": [{ "role": "sub" }, { "role": "vip" }] }, "identity": "vip", "expected": false },
+    {
+      "expression": { "or": [{ "role": "sub" }, { "and": [{ "role": "vip" }, { "not": { "role": "mod" } }] }] },
+      "identity": "vip",
+      "expected": true
+    },
+    {
+      "expression": { "or": [{ "role": "sub" }, { "and": [{ "role": "vip" }, { "not": { "role": "mod" } }] }] },
+      "identity": "mod",
+      "expected": false
+    }
+  ]
+}

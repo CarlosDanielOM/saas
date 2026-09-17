@@ -3,6 +3,7 @@ import { removeChannelModerator } from '../functions/channels/remove_moderator.c
 import { ban } from '../functions/moderation/index.js';
 import { getTwitchUserByLogin } from '../functions/users/index.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { isEditorLoginCached } from '../utils/permissions/roles.js';
 import { error, debug } from '../utils/logger.js';
 
 interface VanishResponse {
@@ -17,9 +18,9 @@ export async function vanishCommand(channelID: string, tags: any, modID: string 
     try {
         const cacheClient = await getDragonflyClient('vanishCommand');
 
-        const isEditor = await cacheClient.sIsMember(`${channelID}:channel:editors`, tags.username.toLowerCase());
+        const isEditor = await isEditorLoginCached(cacheClient, channelID, tags.username.toLowerCase());
 
-        if (isEditor === 1) {
+        if (isEditor) {
             return {
                 error: false,
                 message: `As an editor you can't vanish from the chat.`,

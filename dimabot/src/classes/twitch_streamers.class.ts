@@ -50,15 +50,21 @@ function getTokenCaller(): string {
 }
 
 class TwitchStreamers {
-    private cachePromise: ReturnType<typeof getDragonflyClient>;
+    private cachePromise: Promise<DragonflyClient> | null = null;
 
-    constructor() {
-        this.cachePromise = getDragonflyClient('TwitchStreamers');
+    /**
+     * Lazy Dragonfly client: the connection is only created when a cache
+     * operation runs, keeping module import side-effect free (tests and
+     * deferred imports must not hold open reconnect loops).
+     */
+    private get cache(): Promise<DragonflyClient> {
+        this.cachePromise ??= getDragonflyClient('TwitchStreamers');
+        return this.cachePromise;
     }
 
     async getTwitchAccountsFromCache(): Promise<IUsersCache[] | null> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
 
             const cachedAccounts = await cache.get('twitch:accounts');
             if(cachedAccounts) {
@@ -81,7 +87,7 @@ class TwitchStreamers {
 
     async getTwitchAccountsFromDB() {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             
             const result = await UsersSchema.find<IUsers>({ 'accounts.type': 'twitch' }).select('accounts plan_tier polar_sh_customer_id').lean();
 
@@ -127,7 +133,7 @@ class TwitchStreamers {
 
     async getTwitchAccountById(id: string): Promise<IUsersCache | null> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
 
             let account = await cache.hGetAll(`accounts:twitch:${id}:data`) as unknown as IUsersCache | null;
             if (!account || !account.id) {
@@ -145,7 +151,7 @@ class TwitchStreamers {
 
     async getTwitchStreamers(): Promise<string[]> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             return await cache.sMembers(`streamers:by:id`);
         } catch (err) {
             await error({ function: 'TwitchStreamers.getTwitchStreamers', error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
@@ -155,7 +161,7 @@ class TwitchStreamers {
 
     async updateTwitchAccountsInCache(): Promise<void | null> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             await this.getTwitchAccountsFromDB();
             info({ message: 'Accounts updated in cache' }, { destination: 'console' });
         } catch (err) {
@@ -252,7 +258,7 @@ class TwitchStreamers {
     async getAccountTokenById(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
         const caller = getTokenCaller();
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const dataKey = `accounts:${account_type}:${id}:data`;
 
             let token = await cache.hGet(dataKey, 'access_token');
@@ -347,7 +353,7 @@ class TwitchStreamers {
 
     async getAccountRefreshTokenById(id: string, account_type: 'twitch' | 'kick'): Promise<string | null> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             let refresh_token = await cache.hGet(`accounts:${account_type}:${id}:data`, 'refresh_token');
             if (!refresh_token && account_type === 'twitch') {
                 const hydrated = await this.hydrateTwitchAccountById(id);
@@ -363,7 +369,7 @@ class TwitchStreamers {
 
     private async hydrateTwitchAccountById(id: string): Promise<IUsersCache | null> {
         try {
-            const cache = await this.cachePromise;
+            const cache = await this.cache;
             const user = await UsersSchema.findOne({
                 'accounts.id': id,
                 'accounts.type': 'twitch'

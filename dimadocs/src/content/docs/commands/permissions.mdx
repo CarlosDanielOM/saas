@@ -1,0 +1,98 @@
+---
+title: Permission Expressions
+description: Advanced role-tag permission rules for commands and moderation exemptions.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Commands and chat-moderation exemptions support an advanced permission mode built from **role tags** instead of a single numeric level. This page explains how tag mode works, how it differs from the classic level system, and how to configure it in the dashboard.
+
+## Two exclusive modes
+
+Every command (and every moderation rule exemption) uses exactly **one** permission mode:
+
+| Mode | Stored as | Behavior |
+|------|-----------|----------|
+| **Level (legacy)** | A numeric level from `1` (everyone) to `10` (broadcaster) | Users at or above the level pass. Editors (8), admins (9) and the broadcaster (10) automatically pass any level check. |
+| **Tags (advanced)** | A boolean expression over role tags | Exactly the roles matched by the expression pass. The stored numeric level is ignored while tag mode is active. |
+
+The modes never mix. Switching between them is an explicit dashboard operation: saving in **Level** mode sends the selected numeric level and clears the expression; saving in **Tags** mode sends the expression tree. There is no automatic fallback between them.
+
+<Aside type="caution" title="Invalid configurations fail closed">
+If a stored expression is broken (for example, edited directly through the API), the bot **denies** the command and moderation rules grant **no exemption** until you repair or re-save it. The command list shows a configuration error label so you can find it. Invalid policies never silently fall back to the stored level.
+</Aside>
+
+## Role tags
+
+The tag vocabulary is flat:
+
+| Tag | Who holds it |
+|-----|--------------|
+| `everyone` | Every viewer — must be selected **explicitly** for tag-mode access by everyone |
+| `sub` | Subscribers |
+| `vip` | VIPs |
+| `founder` | Founders (also count as `sub`) |
+| `mod` | Moderators |
+| `editor` | Channel editors |
+| `admin` | Channel admins |
+| `broadcaster` | The streamer |
+
+Two special behaviors:
+
+- **Founders are subscribers.** The `founder` tag implies `sub`.
+- **The broadcaster always matches.** Within a valid expression the broadcaster passes every rule — `not(everyone)` cannot lock the streamer out of their own channel.
+
+## Building expressions
+
+Expressions are boolean trees built with the dashboard editor. Each node is one of:
+
+- a **role** — true for users holding that tag;
+- a **level** — true for users at or above that legacy numeric level (use it to keep old behavior);
+- **not** — negates a child rule;
+- **all of** (AND) — every child rule must pass;
+- **any of** (OR) — at least one child rule must pass.
+
+Trees are bounded: at most **4 levels of nesting** and **25 nodes**.
+
+### Common examples
+
+| Goal | Expression |
+|------|-----------|
+| Everyone (explicit) | `everyone` |
+| Subscribers only | `sub` |
+| Subscribers and VIPs | `any of: sub, vip` |
+| Everyone except moderators | `all of: everyone, not mod` |
+| Only moderators | `any of: not everyone, mod` |
+| Keep old level-7 behavior | `level 7` |
+
+## Strict tags vs hierarchical levels
+
+The classic level system is **hierarchical**: a level-7 rule also passes editors, admins and the broadcaster. Tags are **strict**: a `{role: mod}` rule passes moderators **only** — editors and admins do not hold the `mod` tag.
+
+Converting a "mod" level command to the `mod` tag therefore **removes** editor, admin and broadcaster access (the broadcaster override still applies). To preserve the old behavior, use a `level 7` node instead. The dashboard editor warns about this difference.
+
+A mod who is also subscribed holds both `mod` and `sub` — roles accumulate, they do not collapse to the highest one.
+
+## Managing tag-restricted commands
+
+- Creating or editing tag expressions is a **dashboard** operation. Chat commands (`!cc`, `!ec`) always work in level mode; `!ec -ul=` is rejected for a tag-mode command.
+- Editing or deleting a command that uses tag permissions requires **moderator permissions** (level 7 or higher), regardless of the stored numeric level.
+- `!commands` only lists commands the calling user can run, including tag rules.
+- `!title` and `!game` writes on a tag-mode command require moderator permissions; reading the current title/game stays available to whoever can run the command.
+
+## Moderation exemptions
+
+Each chat-moderation rule has an exemption setting with the same two exclusive modes:
+
+- **Level (legacy)** — viewers at or above the numeric level are exempt from the rule.
+- **Tags (advanced)** — exactly the roles matched by the expression are exempt (for example, exempt `sub` and `vip` from the links rule).
+
+While Tags is active, the stored numeric exemption level is ignored — it is neither shown as a fallback nor used. An invalid stored expression grants no exemption at all, so the rule applies to everyone until it is repaired.
+
+## AI assistants and automation
+
+- When the AI runs an action for a viewer, the action keeps **that viewer's** authority. Tag expressions are evaluated for the real requesting user.
+- Streamer-authored command bodies (including nested command references, timers and events) run with the streamer's authority once the outer command passed its permission rule.
+- Tag permissions are configured in the dashboard — there is no `!cc` syntax for them in this phase.

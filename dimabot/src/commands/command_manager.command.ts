@@ -2,6 +2,7 @@ import Commands from "../classes/command.class.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { getMinimumCommandCooldown } from "../utils/command_cooldown.js";
+import { inspectExpression } from "../utils/permissions/index.js";
 
 interface CommandManagerResponse {
   error: boolean;
@@ -45,6 +46,39 @@ const firstCmdOptionsRegex = new RegExp(/([a-z]+\=[a-zA-Z0-9]+)(?:\W)?(.*)?$/);
 const cmdOptionValueRegex = new RegExp(/([a-z]+)\=([a-zA-Z0-9]+)?$/);
 
 const maxFuncLength = 450;
+
+/**
+ * Management gate for tag-restricted commands (TAG_PERMISSION_SYSTEM.md
+ * §4.3): a non-null stored expression — including an invalid one, so it can
+ * be repaired or deleted — requires caller level >= 7. Level-mode commands
+ * keep the legacy `userLevel < command.userLevel` behavior.
+ */
+function checkCommandManagementPermission(
+  command: { permissionExpression?: unknown; userLevel?: number },
+  userLevel: number,
+  action: 'delete' | 'edit',
+): { allowed: boolean; message: string } {
+  const state = inspectExpression(command.permissionExpression);
+
+  if (state.mode !== 'level') {
+    if (userLevel < 7) {
+      return {
+        allowed: false,
+        message: 'You need moderator permissions to manage a tag-restricted command',
+      };
+    }
+    return { allowed: true, message: '' };
+  }
+
+  if (userLevel < (command.userLevel ?? 0)) {
+    return {
+      allowed: false,
+      message: `You do not have enough permissions to ${action} this command`,
+    };
+  }
+
+  return { allowed: true, message: '' };
+}
 
 interface CmdOptions {
   name: string | undefined;
@@ -210,8 +244,12 @@ export async function createCommand(
       };
     }
 
-    const cacheKey = `twitch:${channelID}:commands:${command.command?.cmd ?? "undefined"}`;
+    const cacheKey = `${channelID}:commands:${command.command?.cmd ?? "undefined"}`;
     await cacheClient.del(cacheKey);
+
+    // The class caches commands under the legacy (non-twitch:) namespace;
+    // clear the stale legacy-prefixed variant as well.
+    await cacheClient.del(`twitch:${channelID}:commands:${command.command?.cmd ?? "undefined"}`);
 
     return {
       error: false,
@@ -244,7 +282,7 @@ export async function deleteCommand(
   try {
     const exists = await Commands.getCommandFromDB(channelID, commandCMD);
     const cacheClient = await getDragonflyClient("deleteCommand");
-    const cacheKey = `twitch:${channelID}:commands:${commandCMD ?? "undefined"}`;
+    const cacheKey = `${channelID}:commands:${commandCMD ?? "undefined"}`;
 
     if (exists.error || !exists.command) {
       return {
@@ -263,10 +301,11 @@ export async function deleteCommand(
       };
     }
 
-    if (userLevel < command.userLevel) {
+    const managementPermission = checkCommandManagementPermission(command, userLevel, 'delete');
+    if (!managementPermission.allowed) {
       return {
         error: true,
-        message: "You do not have enough permissions to delete this command",
+        message: managementPermission.message,
         where: "userLevel",
         channelID,
         status: 403,
@@ -284,6 +323,7 @@ export async function deleteCommand(
 
     const deleted = await Commands.deleteCommand(channelID, commandCMD);
     await cacheClient.del(cacheKey);
+    await cacheClient.del(`twitch:${channelID}:commands:${commandCMD ?? "undefined"}`);
 
     if (deleted.error) {
       return {
@@ -347,13 +387,31 @@ export async function editCommand(
     const minCooldown = getMinimumCommandCooldown(streamer.plan_tier);
     const command = oldCommand.command;
 
-    if (userLevel < command.userLevel) {
+    const commandIsTagMode = inspectExpression(command.permissionExpression).mode !== "level";
+
+    const managementPermission = checkCommandManagementPermission(command, userLevel, 'edit');
+    if (!managementPermission.allowed) {
       return {
         error: true,
-        message: "You do not have enough permissions to edit this command",
+        message: managementPermission.message,
         where: "userLevel",
         channelID,
         status: 403,
+      };
+    }
+
+    // `-ul=` is a level-mode operation: reject the entire edit for a
+    // tag-restricted command before applying any changes. Switching modes is
+    // a dashboard operation that sends `permissionExpression: null` together
+    // with the selected level.
+    if (commandIsTagMode && options.some((option) => option.name === "ul")) {
+      return {
+        error: true,
+        message:
+          "This command uses tag-based permissions. Use the dashboard permission editor to change its access rules.",
+        where: "permissionMode",
+        channelID,
+        status: 400,
       };
     }
 

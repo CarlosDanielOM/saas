@@ -3,6 +3,7 @@ import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js'
 import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { error as logError } from '../../utils/logger.js';
+import { refreshEditorCache } from '../../utils/permissions/roles.js';
 import { normalizeEditors, type Editor } from './editor_list.js';
 
 interface GetEditorsResponse {
@@ -13,7 +14,7 @@ interface GetEditorsResponse {
 
 export async function getChannelEditors(channelID: string, cache: boolean = false): Promise<GetEditorsResponse> {
     let editorList: Editor[] = [];
-    
+
     try {
         const cacheClient = await getDragonflyClient('getChannelEditors');
         await TwitchStreamers.getTwitchAccountById(channelID);
@@ -49,20 +50,14 @@ export async function getChannelEditors(channelID: string, cache: boolean = fals
                 message: data.message
             };
          }
-        
-         editorList = normalizeEditors(data.data);
-         let reset = cache ? false : true;
 
-         for (const editor of editorList) {
-            if (cache) {
-                if (!reset) {
-                    await cacheClient.del(`twitch:${channelID}:editors`);
-                    reset = true;
-                }
-                await cacheClient.sAdd(`twitch:${channelID}:editors`, editor.user_login);
-                await cacheClient.expire(`twitch:${channelID}:editors`, 60 * 60 * 24);
-            }
-        }
+         editorList = normalizeEditors(data.data);
+
+         if (cache) {
+             // Atomically refresh both canonical editor sets (logins + IDs)
+             // and their TTLs, removing any legacy editor key.
+             await refreshEditorCache(cacheClient, channelID, editorList);
+         }
 
         return {
             error: false,

@@ -1,4 +1,5 @@
 import { Schema, model, Types } from 'mongoose';
+import type { PermissionExpression } from '../utils/permissions/expression.js';
 
 export interface ICommands {
     _id?: Types.ObjectId;
@@ -16,6 +17,13 @@ export interface ICommands {
     count: number;
     userLevelName: string;
     userLevel: number;
+    /**
+     * Tag-mode permission expression. `null`/absent selects legacy numeric
+     * (level) mode; a valid expression selects tag mode; a present invalid
+     * value is a configuration error that fails closed. Stored as Mixed, so
+     * every read must pass through inspectExpression.
+     */
+    permissionExpression?: PermissionExpression | null;
     permissions: Record<string, boolean>;
     enabled: boolean;
     paused: boolean;
@@ -50,6 +58,7 @@ const commandsSchema = new Schema({
     count: { type: Number, default: 0 },
     userLevelName: { type: String, default: 'everyone' },
     userLevel: { type: Number, default: 0 },
+    permissionExpression: { type: Schema.Types.Mixed, default: null },
     permissions: { type: Object, default: {} },
     enabled: { type: Boolean, default: true },
     paused: { type: Boolean, default: false },
