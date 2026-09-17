@@ -87,11 +87,6 @@ export class CommandsPageComponent {
 
   // Search state
   readonly searchInput = signal('');
-  readonly activeSearchQuery = signal('');
-  readonly searchResults = signal<CommandListItem[]>([]);
-  readonly searchMode = signal<'cache' | 'api'>('cache');
-  readonly isSearching = signal(false);
-  readonly searchHint = signal<string | null>(null);
 
   // Sort state
   readonly sortBy = signal('name');
@@ -180,15 +175,35 @@ export class CommandsPageComponent {
   );
 
   readonly filteredCommands = computed(() => {
-    const input = this.searchInput();
-    const commands = input ? this.searchResults() : this.commands();
-    return this.sortCommands(commands);
+    const query = this.searchInput().trim().toLowerCase();
+    const commands = this.commands();
+
+    const matched = query
+      ? commands.filter(
+          (command) =>
+            (command.name ?? '').toLowerCase().includes(query) ||
+            (command.cmd ?? '').toLowerCase().includes(query)
+        )
+      : commands;
+
+    return this.sortCommands(matched);
+  });
+
+  readonly searchHint = computed(() => {
+    if (!this.searchInput().trim()) {
+      return null;
+    }
+
+    return this.filteredCommands().length === 0
+      ? this.t('commands.search.noResultsInCache')
+      : null;
   });
 
   readonly paginatedCommands = computed(() => {
-    const start = (this.currentPage() - 1) * this.itemsPerPage();
-    const end = start + this.itemsPerPage();
-    return this.filteredCommands().slice(start, end);
+    const perPage = this.itemsPerPage();
+    const safePage = Math.min(Math.max(1, this.currentPage()), this.totalPages());
+    const start = (safePage - 1) * perPage;
+    return this.filteredCommands().slice(start, start + perPage);
   });
 
   readonly pages = computed(() => {
@@ -321,58 +336,11 @@ export class CommandsPageComponent {
 
   onSearchInput(value: string): void {
     this.searchInput.set(value);
-
-    if (value.trim()) {
-      this.filterFromCache(value);
-    } else {
-      this.searchResults.set([]);
-      this.searchMode.set('cache');
-      this.searchHint.set(null);
-    }
+    this.currentPage.set(1);
   }
 
   onSearchSubmit(): void {
-    const query = this.searchInput().trim();
-    if (!query) return;
-
-    this.activeSearchQuery.set(query);
-
-    const found = this.commands().find((cmd) =>
-      cmd.name.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.cmd.toLowerCase().includes(query.toLowerCase())
-    );
-
-    if (found) {
-      this.searchResults.set([found]);
-      this.searchMode.set('cache');
-      this.searchHint.set(null);
-    } else {
-      // Not in cache - could make API call but commands API doesn't support search
-      this.searchResults.set([]);
-      this.searchMode.set('api');
-      this.searchHint.set(this.t('commands.search.notFoundHint'));
-    }
-  }
-
-  onClearSearch(): void {
-    this.searchInput.set('');
-    this.activeSearchQuery.set('');
-    this.searchResults.set([]);
-    this.searchMode.set('cache');
-    this.searchHint.set(null);
-  }
-
-  private filterFromCache(query: string): void {
-    const lowerQuery = query.toLowerCase();
-
-    const filtered = this.commands().filter((cmd) =>
-      cmd.name.toLowerCase().includes(lowerQuery) ||
-      cmd.cmd.toLowerCase().includes(lowerQuery)
-    );
-
-    this.searchResults.set(filtered);
-    this.searchMode.set('cache');
-    this.searchHint.set(filtered.length === 0 ? this.t('commands.search.noResultsInCache') : null);
+    this.currentPage.set(1);
   }
 
   // ========== Sort ==========
