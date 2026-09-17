@@ -170,7 +170,10 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 });
             }
 
-            // Validate the numeric level and derive its canonical name.
+            // Validate the numeric level. The display name is stored as
+            // provided so existing dashboard clients (which still use the
+            // legacy labels) keep working; the numeric level is the source
+            // of truth for authorization either way.
             const userLevel = body.userLevel === undefined ? 1 : Number(body.userLevel);
             if (!isValidUserLevel(userLevel)) {
                 return res.status(400).send({
@@ -179,13 +182,9 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                     status: 400
                 });
             }
-            if (body.userLevelName !== undefined && body.userLevelName !== LEGACY_USER_LEVEL_NAMES[userLevel]) {
-                return res.status(400).send({
-                    error: true,
-                    message: `userLevelName must be the canonical name for level ${userLevel} (${LEGACY_USER_LEVEL_NAMES[userLevel]})`,
-                    status: 400
-                });
-            }
+            const userLevelName = typeof body.userLevelName === 'string' && body.userLevelName
+                ? body.userLevelName
+                : LEGACY_USER_LEVEL_NAMES[userLevel];
 
             const existingCommand = await CommandsSchema.findOne({
                 channelID: channelIdStr,
@@ -212,7 +211,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 description: body.description ?? '',
                 cooldown: body.cooldown ?? 10,
                 enabled: body.enabled ?? true,
-                userLevelName: body.userLevelName ?? LEGACY_USER_LEVEL_NAMES[userLevel],
+                userLevelName: userLevelName,
                 userLevel: userLevel,
                 permissionExpression: permissionState.mode === 'tags' ? permissionState.expression : null,
                 channelID: channelIdStr,
@@ -315,16 +314,19 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
 
                 if (permissionState.mode === 'level') {
                     const level = Number(body.userLevel);
-                    const name = typeof body.userLevelName === 'string' ? body.userLevelName : '';
-                    if (!isValidUserLevel(level) || name !== LEGACY_USER_LEVEL_NAMES[level]) {
+                    if (!isValidUserLevel(level)) {
                         return res.status(400).send({
                             error: true,
-                            message: 'Switching to level mode requires a valid userLevel (1-10) and its canonical userLevelName',
+                            message: 'Switching to level mode requires a valid userLevel (1-10)',
                             status: 400
                         });
                     }
                     updatePayload.userLevel = level;
-                    updatePayload.userLevelName = name;
+                    // Keep the caller-provided display name (legacy dashboard
+                    // labels included); only fall back when it is missing.
+                    updatePayload.userLevelName = typeof body.userLevelName === 'string' && body.userLevelName
+                        ? body.userLevelName
+                        : LEGACY_USER_LEVEL_NAMES[level];
                 }
             } else if ('userLevel' in body) {
                 const level = Number(body.userLevel);
@@ -332,13 +334,6 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                     return res.status(400).send({
                         error: true,
                         message: 'userLevel must be an integer between 1 and 10',
-                        status: 400
-                    });
-                }
-                if ('userLevelName' in body && body.userLevelName !== undefined && body.userLevelName !== LEGACY_USER_LEVEL_NAMES[level]) {
-                    return res.status(400).send({
-                        error: true,
-                        message: `userLevelName must be the canonical name for level ${level} (${LEGACY_USER_LEVEL_NAMES[level]})`,
                         status: 400
                     });
                 }

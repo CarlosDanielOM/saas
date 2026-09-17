@@ -98,8 +98,22 @@ const greetID = (await CommandsSchema.findOne({ channelID: channel, cmd: 'greet'
     assert.equal(switched.userLevel, 5);
     assert.equal(switched.userLevelName, 'vip');
 
-    const badPair = await api('PUT', `/commands/${channel}/${greetID}`, { permissionExpression: null, userLevel: 5, userLevelName: 'mod' });
-    assert.equal(badPair.status, 400, 'non-canonical level/name pair rejected');
+    // The still-live dashboard uses the legacy level labels (5=founders,
+    // 6=vip, 10=streamer); those edits must keep working unchanged.
+    const legacyCreate = await (await api('POST', `/commands/${channel}`, {
+        ...baseCommand, cmd: 'legacycmd', name: 'legacycmd', func: 'legacycmd',
+        userLevel: 6, userLevelName: 'vip', permissionExpression: null
+    })).json();
+    assert.equal(legacyCreate.error, false, 'create accepts the legacy dashboard level name');
+    assert.equal(legacyCreate.command.userLevel, 6);
+    assert.equal(legacyCreate.command.userLevelName, 'vip');
+
+    const legacyEdit = await api('PUT', `/commands/${channel}/${greetID}`, { userLevel: 6, userLevelName: 'vip' });
+    assert.equal(legacyEdit.status, 200, 'edit accepts the legacy dashboard level name');
+    assert.equal((await legacyEdit.json()).command.userLevelName, 'vip');
+
+    const outOfRange = await api('PUT', `/commands/${channel}/${greetID}`, { userLevel: 11, userLevelName: 'everyone' });
+    assert.equal(outOfRange.status, 400, 'out-of-range level rejected');
 }
 
 // --- Renaming an already-cached command invalidates both cache keys ---
