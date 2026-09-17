@@ -25,6 +25,7 @@
       </div>
 
       <form class="lf-form" [formGroup]="commandForm" (ngSubmit)="onSubmit()">
+        <div class="lf-form__body">
         <div class="lf-form-grid">
           <label class="lf-field">
             <span>{{ t('commands.placeholder.name') }}</span>
@@ -50,7 +51,7 @@
           <input type="text" formControlName="description" maxlength="200" />
         </label>
 
-        <div class="lf-form-grid">
+        <div class="lf-form-grid lf-form-grid--compact">
           <label class="lf-field">
             <span>{{ t('commands.placeholder.cooldown') }}</span>
             <div class="lf-input-suffix">
@@ -143,6 +144,8 @@
         @if (formError()) {
           <p class="lf-form-error" role="alert">{{ formError() }}</p>
         }
+
+        </div>
 
         <div class="lf-form__actions">
           <button type="button" class="lf-btn" (click)="onCancel()">

@@ -55,9 +55,27 @@ try {
     await modal.locator('[formControlName="message"]').fill('Hello');
     assert.equal(await cooldown.getAttribute('min'), String(min));
     await modal.getByText(`Minimum for your plan: ${min}s.`, { exact: true }).waitFor();
-    for (const width of [320, 1280]) {
-      await page.setViewportSize({ width, height: 900 });
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: width < 640 ? 667 : 900 });
+      const body = modal.locator('.lf-form__body');
+      await body.evaluate(el => { el.scrollTop = 0; });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      assert.equal(await body.evaluate(el => el.scrollWidth > el.clientWidth), false);
+      const cooldownBox = await cooldown.boundingBox();
+      const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
+      assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'cooldown and user level share a row');
+      const submit = modal.locator('button[type="submit"]');
+      const before = await submit.boundingBox();
+      assert.ok(before.y >= 0 && before.y + before.height <= page.viewportSize().height, 'actions visible without scrolling');
+      await body.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      const after = await submit.boundingBox();
+      assert.equal(before.y, after.y, 'actions stay in place while fields scroll');
+      await modal.locator('[formControlName="timerEnabled"]').check();
+      await modal.locator('.lf-timer-block .lf-field').waitFor();
+      const expanded = await submit.boundingBox();
+      assert.ok(expanded.y + expanded.height <= page.viewportSize().height, 'expanded timer keeps actions visible');
+      await modal.locator('[formControlName="timerEnabled"]').uncheck();
+      await body.evaluate(el => { el.scrollTop = 0; });
       await modal.getByRole('dialog').screenshot({ path: `/tmp/saas-cooldown-${tier}-${width}.png` });
     }
     await cooldown.fill(String(min - 1));
@@ -67,14 +85,20 @@ try {
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
     assert.equal(writes.length, 0, 'existing 60s upper bound retained');
     await cooldown.fill(String(min));
+    const level = modal.locator('[formControlName="userLevel"]');
+    await level.selectOption('7');
+    assert.equal(await level.inputValue(), '7');
     const axe = await new AxeBuilder({ page }).include('app-command-modal label:has(input[formControlName="cooldown"])').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []);
     await modal.locator('button[type="submit"]').click();
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     assert.equal(writes.at(-1).cooldown, min, 'create sends the exact tier minimum');
+    assert.equal(writes.at(-1).userLevel, 7, 'create sends the selected user level');
+    assert.equal(writes.at(-1).userLevelName, 'mod', 'create sends the matching level name');
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
     await cooldown.waitFor();
     assert.equal(await cooldown.inputValue(), String(min));
+    assert.equal(await level.inputValue(), '7', 'edit rehydrates the selected level');
     await cooldown.fill(String(min - 1));
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
     assert.equal(writes.length, 1, 'edit blocks below minimum');
