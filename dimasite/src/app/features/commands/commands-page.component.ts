@@ -23,7 +23,6 @@ import { ConfirmationModalComponent } from '../../shared/confirmation-modal/conf
 import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
 
 type ViewMode = 'table' | 'card';
-type EditMode = { type: 'cell'; commandId: string; field: string } | null;
 type PendingOperation = 'create' | 'update' | 'enable' | 'disable' | 'delete';
 type CommandFeedbackState = 'success' | 'error';
 
@@ -39,7 +38,6 @@ interface CommandListItem extends Command {
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'onDocumentEscape()'
   }
 })
@@ -100,7 +98,7 @@ export class CommandsPageComponent {
   readonly sortOrder = signal<'asc' | 'desc'>('asc');
 
   // View state
-  readonly viewMode = signal<ViewMode>('table');
+  readonly viewMode = signal<ViewMode>(this.resolveInitialViewMode());
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal(10);
   readonly itemsPerPageOptions = [5, 10, 15, 20] as const;
@@ -108,10 +106,6 @@ export class CommandsPageComponent {
   readonly timerNames = signal<Set<string>>(new Set());
   /** Timer interval (minutes) keyed by timer name. */
   readonly timerMinutesByName = signal<Map<string, number>>(new Map());
-
-  // Edit state (cell edit only - modal handles full edit)
-  readonly editMode = signal<EditMode>(null);
-  readonly editingValues = signal<Record<string, unknown>>({});
 
   // Modal state
   readonly showCommandModal = signal(false);
@@ -139,6 +133,17 @@ export class CommandsPageComponent {
       return tier;
     }
     return 'free';
+  });
+
+  readonly planLabel = computed(() => {
+    const tier = this.planTier();
+    if (tier === 'premium') {
+      return this.t('navbar.planPremium');
+    }
+    if (tier === 'pro') {
+      return this.t('navbar.planPro');
+    }
+    return this.t('navbar.planFree');
   });
 
   /** Prefill interval when editing a timer-linked command. */
@@ -589,111 +594,6 @@ export class CommandsPageComponent {
       pendingOperation: 'create',
       optimistic: true
     };
-  }
-
-  // ========== Cell Edit (Quick Edit) ==========
-
-  isEditingCell(commandId: string, field: string): boolean {
-    const mode = this.editMode();
-    return mode?.type === 'cell' && mode.commandId === commandId && mode.field === field;
-  }
-
-  startCellEdit(commandId: string, field: string, value: unknown): void {
-    if (!this.checkRateLimit()) return;
-    if (this.isPending(commandId)) return;
-
-    const command = this.commands().find((c) => c.id === commandId || c._id === commandId);
-    if (command && !this.canEditField(commandId, field)) {
-      return;
-    }
-
-    this.editMode.set({ type: 'cell', commandId, field });
-    this.editingValues.update((values) => ({
-      ...values,
-      [`${commandId}_${field}`]: value
-    }));
-  }
-
-  getEditingValue(commandId: string, field: string): unknown {
-    return this.editingValues()[`${commandId}_${field}`];
-  }
-
-  updateEditingValue(commandId: string, field: string, value: unknown): void {
-    this.editingValues.update((values) => ({
-      ...values,
-      [`${commandId}_${field}`]: value
-    }));
-  }
-
-  cancelEdit(): void {
-    this.editMode.set(null);
-    this.editingValues.set({});
-  }
-
-  saveCellEdit(): void {
-    const mode = this.editMode();
-    if (mode?.type !== 'cell') return;
-
-    const { commandId, field } = mode;
-    const newValue = this.editingValues()[`${commandId}_${field}`];
-    const command = this.commands().find((c) => c.id === commandId || c._id === commandId);
-
-    if (!command || newValue === undefined) {
-      this.cancelEdit();
-      return;
-    }
-
-    if (!this.checkRateLimit()) {
-      this.cancelEdit();
-      return;
-    }
-
-    // Check if value changed
-    const oldValue = command[field as keyof Command];
-    if (oldValue === newValue) {
-      this.cancelEdit();
-      return;
-    }
-
-    this.recordRequest();
-
-    const channelID = this.channelID();
-    if (!channelID) return;
-
-    const updates = { [field]: newValue } as UpdateCommandRequest;
-    if (field === 'userLevel') {
-      updates['userLevelName'] = USER_LEVELS[newValue as number];
-    }
-
-    this.commandSnapshots.set(commandId, { ...command });
-    this.updateCommandItem(commandId, (currentCommand) => ({
-      ...currentCommand,
-      ...updates,
-      pendingOperation: 'update'
-    }));
-    this.cancelEdit();
-
-    this.commandsApi.updateCommand(channelID, commandId, updates).subscribe((updated) => {
-      if (updated) {
-        this.replaceCommandItem(commandId, updated);
-        this.clearCommandSnapshot(commandId);
-        this.setCommandFeedbackState(this.getCommandId(updated), 'success');
-        this.toastService.success(this.t('commands.toast.savedTitle'), this.t('commands.toast.savedMessage'));
-        return;
-      }
-
-      this.restoreCommandSnapshot(commandId);
-      this.setCommandFeedbackState(commandId, 'error');
-      this.toastService.error(this.t('commands.toast.saveErrorTitle'), this.t('commands.toast.saveErrorMessage'));
-    });
-  }
-
-  canEditField(commandId: string, field: string): boolean {
-    const command = this.commands().find((c) => c.id === commandId || c._id === commandId);
-    if (command?.reserved && (field === 'message' || field === 'description')) {
-      return false;
-    }
-    return true;
   }
 
   // ========== Enable/Disable ==========
@@ -1154,44 +1054,17 @@ export class CommandsPageComponent {
 
   // ========== Event Handlers ==========
 
-  onDocumentClick(event: Event): void {
-    const mode = this.editMode();
-    if (mode?.type !== 'cell') return;
-
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-
-    if (
-      target.closest('.commands-table__cell--editable') ||
-      target.closest('.commands-input') ||
-      target.closest('.commands-select')
-    ) {
-      return;
-    }
-
-    this.saveCellEdit();
-  }
-
   onDocumentEscape(): void {
-    if (this.editMode()) {
-      this.cancelEdit();
-    }
-
     if (this.showCommandModal()) {
       this.closeModal();
     }
   }
 
-  onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const mode = this.editMode();
-      if (mode?.type === 'cell') {
-        this.saveCellEdit();
-      }
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      this.cancelEdit();
+  private resolveInitialViewMode(): ViewMode {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return 'card';
     }
+
+    return window.matchMedia('(min-width: 960px)').matches ? 'table' : 'card';
   }
 }

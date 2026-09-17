@@ -1623,6 +1623,13 @@
     "title": "Comandos",
     "subtitle": "La gestion de comandos usa permisos del servidor y se expandira aqui.",
     "heading": "Comandos",
+    "metrics": {
+      "total": "Total",
+      "enabled": "Habilitados",
+      "disabled": "Deshabilitados",
+      "reserved": "Reservados",
+      "timer": "Timer"
+    },
     "public": {
       "eyebrow": "Comandos del canal en solo lectura",
       "title": "Comandos de {{streamer}}",

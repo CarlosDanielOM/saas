@@ -3,127 +3,93 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('commands.heading')">
       <article class="lf-tile lf-tile--intro">
         <p class="lf-kicker">{{ t('commands.heading') }}</p>
-        <h1 class="lf-title">
-          {{ t('commands.heading') }}
-          <span>{{ planTier() }}</span>
-        </h1>
+        <h1 class="lf-title">{{ t('commands.heading') }}</h1>
+
+        <div class="lf-hero__chips">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
+          <span class="lf-chip lf-chip--soft">{{ streamerLabel() }}</span>
+        </div>
+
         <p class="lf-copy">{{ t('commands.subtitle') }}</p>
 
         <div class="lf-actions">
           <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
             {{ t('commands.addCommand') }}
           </button>
-          <button
-            type="button"
-            class="lf-btn"
-            (click)="hardRefreshCommands()"
-            [disabled]="loading()"
-          >
+          <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="loading()">
             {{ t('commands.refresh') }}
           </button>
         </div>
 
-        <p class="lf-feed lf-feed--on">
-          {{ streamerLabel() }}
-          @if (channelID()) {
-            · {{ channelID() }}
-          }
-        </p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
-            {{ planTier() }}
-          </span>
-          <span class="lf-spotlight__count">{{ t('commands.legend.title') }}</span>
+        <div class="lf-metrics">
+          <div class="lf-metric">
+            <span class="lf-metric__value">{{ totalCommands() }}</span>
+            <span class="lf-metric__label">{{ t('commands.metrics.total') }}</span>
+          </div>
+          <div class="lf-metric">
+            <span class="lf-metric__value">{{ enabledCommands() }}</span>
+            <span class="lf-metric__label">{{ t('commands.metrics.enabled') }}</span>
+          </div>
+          <div class="lf-metric">
+            <span class="lf-metric__value">{{ disabledCommands() }}</span>
+            <span class="lf-metric__label">{{ t('commands.metrics.disabled') }}</span>
+          </div>
         </div>
 
-        <div class="lf-legend" [attr.aria-label]="t('commands.legend.title')">
-          <span class="lf-legend__item">
-            <i class="lf-legend__swatch lf-legend__swatch--normal" aria-hidden="true"></i>
-            {{ t('commands.legend.normal') }}
-          </span>
-          <span class="lf-legend__item">
+        <div class="lf-type-chips">
+          <span class="lf-type-chip">
             <i class="lf-legend__swatch lf-legend__swatch--reserved" aria-hidden="true"></i>
-            {{ t('commands.legend.reserved') }}
+            <strong>{{ reservedCommands() }}</strong>
+            {{ t('commands.metrics.reserved') }}
           </span>
-          <span class="lf-legend__item">
+          <span class="lf-type-chip">
             <i class="lf-legend__swatch lf-legend__swatch--timer" aria-hidden="true"></i>
-            {{ t('commands.legend.timer') }}
+            <strong>{{ timerLinkedCommands() }}</strong>
+            {{ t('commands.metrics.timer') }}
           </span>
-        </div>
-
-        <div class="lf-stats-strip" [attr.aria-label]="t('commands.heading')">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('commands.heading') }}</span>
-            <strong class="lf-stats-strip__value">{{ totalCommands() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('common.statusOn') }}</span>
-            <strong class="lf-stats-strip__value">{{ enabledCommands() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('common.statusOff') }}</span>
-            <strong class="lf-stats-strip__value">{{ disabledCommands() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('commands.placeholder.reservedCommand') }}</span>
-            <strong class="lf-stats-strip__value">{{ reservedCommands() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('commands.legend.timer') }}</span>
-            <strong class="lf-stats-strip__value">{{ timerLinkedCommands() }}</strong>
-          </div>
         </div>
       </article>
     </section>
 
     <section class="lf-section" [attr.aria-label]="t('commands.heading')">
-      <div class="lf-section__head">
-        <div>
-          <p class="lf-kicker">{{ t('commands.heading') }}</p>
-          <h2 class="lf-h2">{{ t('commands.heading') }}</h2>
-          @if (searchHint()) {
-            <p class="lf-copy lf-copy--tight">{{ searchHint() }}</p>
-          }
-        </div>
-        <div class="lf-section__tools">
-          <label class="lf-search">
-            <span class="visually-hidden">{{ t('commands.search.placeholder') }}</span>
-            <input
-              type="search"
-              [placeholder]="t('commands.search.placeholder')"
-              [value]="searchInput()"
-              (input)="onSearchInput($any($event.target).value)"
-              (keyup.enter)="onSearchSubmit()"
-            />
-          </label>
-          <div class="lf-view">
-            <button
-              type="button"
-              class="lf-view__btn"
-              [class.lf-view__btn--active]="viewMode() === 'table'"
-              (click)="setViewMode('table')"
-              [attr.aria-label]="t('commands.viewTable')"
-            >
-              {{ t('commands.viewTable') }}
-            </button>
-            <button
-              type="button"
-              class="lf-view__btn"
-              [class.lf-view__btn--active]="viewMode() === 'card'"
-              (click)="setViewMode('card')"
-              [attr.aria-label]="t('commands.viewCard')"
-            >
-              {{ t('commands.viewCard') }}
-            </button>
-          </div>
-          <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
-            {{ t('commands.addCommand') }}
+      <div class="lf-toolbar">
+        <label class="lf-search">
+          <span class="visually-hidden">{{ t('commands.search.placeholder') }}</span>
+          <input
+            type="search"
+            [placeholder]="t('commands.search.placeholder')"
+            [value]="searchInput()"
+            (input)="onSearchInput($any($event.target).value)"
+            (keyup.enter)="onSearchSubmit()"
+          />
+        </label>
+        <div class="lf-view">
+          <button
+            type="button"
+            class="lf-view__btn"
+            [class.lf-view__btn--active]="viewMode() === 'table'"
+            [attr.aria-label]="t('commands.viewTable')"
+            [title]="t('commands.viewTable')"
+            (click)="setViewMode('table')"
+          >
+            <lucide-icon [name]="listIcon"></lucide-icon>
+          </button>
+          <button
+            type="button"
+            class="lf-view__btn"
+            [class.lf-view__btn--active]="viewMode() === 'card'"
+            [attr.aria-label]="t('commands.viewCard')"
+            [title]="t('commands.viewCard')"
+            (click)="setViewMode('card')"
+          >
+            <lucide-icon [name]="gridIcon"></lucide-icon>
           </button>
         </div>
       </div>
+
+      @if (searchHint()) {
+        <p class="lf-copy lf-copy--tight">{{ searchHint() }}</p>
+      }
 
       @if (showInitialLoading()) {
         <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
@@ -189,42 +155,11 @@
                     "
                     aria-hidden="true"
                   ></i>
-                  @if (isEditingCell(commandTrackId(command), 'name')) {
-                    <input
-                      type="text"
-                      class="lf-inline-edit lf-inline-edit--row"
-                      [value]="getEditingValue(commandTrackId(command), 'name')"
-                      (input)="updateEditingValue(commandTrackId(command), 'name', $any($event.target).value)"
-                      (keydown.enter)="saveCellEdit()"
-                      (keydown.escape)="cancelEdit()"
-                      (click)="$event.stopPropagation()"
-                    />
-                  } @else {
-                    <span
-                      class="lf-matrix__name"
-                      [attr.title]="command.name"
-                      (dblclick)="startCellEdit(commandTrackId(command), 'name', command.name)"
-                    >{{ command.name }}</span>
-                  }
+                  <span class="lf-matrix__name" [attr.title]="command.name">{{ command.name }}</span>
                 </span>
 
                 <span>
-                  @if (isEditingCell(commandTrackId(command), 'cmd')) {
-                    <input
-                      type="text"
-                      class="lf-inline-edit"
-                      [value]="getEditingValue(commandTrackId(command), 'cmd')"
-                      (input)="updateEditingValue(commandTrackId(command), 'cmd', $any($event.target).value)"
-                      (keydown.enter)="saveCellEdit()"
-                      (keydown.escape)="cancelEdit()"
-                      (click)="$event.stopPropagation()"
-                    />
-                  } @else {
-                    <code
-                      class="lf-code"
-                      (dblclick)="startCellEdit(commandTrackId(command), 'cmd', command.cmd)"
-                    >!{{ command.cmd }}</code>
-                  }
+                  <code class="lf-code">!{{ command.cmd }}</code>
                 </span>
 
                 <span class="lf-clip">
@@ -235,45 +170,9 @@
                   }
                 </span>
 
-                <span>
-                  @if (isEditingCell(commandTrackId(command), 'cooldown')) {
-                    <input
-                      type="number"
-                      class="lf-inline-edit"
-                      min="5"
-                      max="60"
-                      [value]="getEditingValue(commandTrackId(command), 'cooldown')"
-                      (input)="updateEditingValue(commandTrackId(command), 'cooldown', +$any($event.target).value || 10)"
-                      (keydown.enter)="saveCellEdit()"
-                      (keydown.escape)="cancelEdit()"
-                      (click)="$event.stopPropagation()"
-                    />
-                  } @else {
-                    <span (dblclick)="startCellEdit(commandTrackId(command), 'cooldown', command.cooldown)">
-                      {{ command.cooldown }}s
-                    </span>
-                  }
-                </span>
+                <span>{{ command.cooldown }}s</span>
 
-                <span>
-                  @if (isEditingCell(commandTrackId(command), 'userLevel')) {
-                    <select
-                      class="lf-inline-edit"
-                      [value]="getEditingValue(commandTrackId(command), 'userLevel')"
-                      (change)="updateEditingValue(commandTrackId(command), 'userLevel', +$any($event.target).value); saveCellEdit()"
-                      (keydown.escape)="cancelEdit()"
-                      (click)="$event.stopPropagation()"
-                    >
-                      @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
-                        <option [value]="level">{{ level }} - {{ t(getUserLevelName(level)) }}</option>
-                      }
-                    </select>
-                  } @else {
-                    <span (dblclick)="startCellEdit(commandTrackId(command), 'userLevel', command.userLevel)">
-                      {{ command.userLevel }} - {{ t(command.userLevelName) }}
-                    </span>
-                  }
-                </span>
+                <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
 
                 <span class="lf-status-cell">
                   <span
@@ -369,7 +268,7 @@
         @if (paginatedCommands().length === 0) {
           <div class="lf-tile lf-empty">{{ t('commands.placeholder.noCommandsFound') }}</div>
         } @else {
-          <div class="lf-bento lf-bento--cmds">
+          <div class="lf-cmd-grid">
             @for (command of paginatedCommands(); track commandTrackId(command)) {
               <article
                 class="lf-tile lf-cmd"
@@ -390,6 +289,7 @@
                     {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
                   </span>
                 </div>
+
                 <h3 class="lf-cmd__name">
                   {{ command.name }}
                   @if (command.reserved) {
@@ -398,6 +298,7 @@
                     <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
                   }
                 </h3>
+
                 <p class="lf-cmd__desc">
                   @if (command.reserved) {
                     {{ t('commands.placeholder.reservedCommand') }}
@@ -405,29 +306,37 @@
                     {{ command.message || command.description || '—' }}
                   }
                 </p>
+
                 <div class="lf-cmd__meta">
-                  <span>{{ command.cooldown }}s</span>
-                  <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                  <span class="lf-meta-pill">
+                    <span class="lf-meta-pill__label">{{ t('commands.placeholder.cooldown') }}</span>
+                    <span class="lf-meta-pill__value">{{ command.cooldown }}s</span>
+                  </span>
+                  <span class="lf-meta-pill">
+                    <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
+                    <span class="lf-meta-pill__value">{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                  </span>
                 </div>
-                <div class="lf-actions-cell">
+
+                <div class="lf-cmd__actions">
                   @if (isPending(commandTrackId(command))) {
                     <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
                   } @else {
-                    <button type="button" class="lf-text-link" (click)="openEditModal(command)">
+                    <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(command)">
                       {{ t('common.edit') }}
                     </button>
                     @if (command.enabled === false) {
-                      <button type="button" class="lf-text-link" (click)="enableCommand(commandTrackId(command))">
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="enableCommand(commandTrackId(command))">
                         {{ t('common.enable') }}
                       </button>
                     } @else {
-                      <button type="button" class="lf-text-link" (click)="disableCommand(commandTrackId(command))">
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="disableCommand(commandTrackId(command))">
                         {{ t('common.disable') }}
                       </button>
                     }
                     <button
                       type="button"
-                      class="lf-text-link"
+                      class="lf-btn lf-btn--compact lf-btn--danger"
                       [disabled]="command.reserved"
                       (click)="command.reserved ? null : promptDeleteCommand(command)"
                     >

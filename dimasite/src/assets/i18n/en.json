@@ -1623,6 +1623,13 @@
     "title": "Commands",
     "subtitle": "Command management is protected by server-side permissions and will be expanded here.",
     "heading": "Commands",
+    "metrics": {
+      "total": "Total",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "reserved": "Reserved",
+      "timer": "Timer"
+    },
     "public": {
       "eyebrow": "Read-only channel commands",
       "title": "{{streamer}} commands",
