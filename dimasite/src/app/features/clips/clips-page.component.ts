@@ -16,10 +16,11 @@ import { getRouteParam } from '../../shared/utils/route-param.util';
 import { ClipTestModalComponent } from './components/clip-test-modal.component';
 import { ClipConfig, ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
 import { ClipsService } from './clips.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-clips-page',
-  imports: [RouterLink, SafeUrlPipe, ClipTestModalComponent],
+  imports: [RouterLink, SafeUrlPipe, ClipTestModalComponent, LfIconComponent],
   styleUrl: './clips-page.component.css',
   templateUrl: './clips-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

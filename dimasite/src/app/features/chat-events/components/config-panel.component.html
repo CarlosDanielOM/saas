@@ -8,7 +8,7 @@
           <label [for]="'control-' + control.id" class="lf-config__label">
             <span>{{ getControlLabel(control.label) }}</span>
             @if (control.id === 'cheerTiers') {
-              <span class="lf-config__premium">★</span>
+              <span class="lf-config__premium"><app-lf-icon name="star"></app-lf-icon></span>
             }
           </label>
 

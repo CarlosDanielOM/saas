@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('streamSummaries.title')">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="modulePath()">
-          ← {{ t('streamSummaries.backToModules') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('streamSummaries.backToModules') }}
         </a>
         <p class="lf-kicker">{{ t('streamSummaries.heroBadge') }}</p>
         <h1 class="lf-title">
@@ -117,7 +117,7 @@
         <section class="lf-tile lf-detail" [attr.aria-label]="t('streamSummaries.details.title')">
           @if (selectedSummary(); as active) {
             <button type="button" class="lf-detail__back" (click)="closeDetailMobile()">
-              ← {{ t('streamSummaries.details.backToSessions') }}
+              <app-lf-icon name="back"></app-lf-icon> {{ t('streamSummaries.details.backToSessions') }}
             </button>
 
             <header class="lf-detail__head">

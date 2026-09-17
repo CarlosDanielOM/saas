@@ -9,7 +9,7 @@
           (click)="removeTier(tier.id)"
           [attr.aria-label]="t('chatEvents.tierRemoveAria', { name: tier.name })"
         >
-          ×
+          <app-lf-icon name="close"></app-lf-icon>
         </button>
 
         <div class="lf-tier__grid">
@@ -79,7 +79,7 @@
     [class.lf-tier-info--limit]="info.level === 'limit-reached'"
   >
     @if (info.level === 'upsell-premium' || info.level === 'upsell-pro') {
-      <span class="lf-tier-info__badge">★{{ info.level === 'upsell-pro' ? '+' : '' }}</span>
+      <span class="lf-tier-info__badge"><app-lf-icon name="star"></app-lf-icon>{{ info.level === 'upsell-pro' ? '+' : '' }}</span>
     }
     <span>{{ info.message }}</span>
   </div>

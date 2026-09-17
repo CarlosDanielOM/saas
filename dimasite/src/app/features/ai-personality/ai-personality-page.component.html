@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.aiPersonality.title')">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()">← {{ t('modules.aiPersonality.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.aiPersonality.backToModules') }}</a>
         <p class="lf-kicker">{{ t('modules.aiPersonality.eyebrow') }}</p>
         <h1 class="lf-title">
           {{ t('modules.aiPersonality.title') }}
@@ -165,7 +165,7 @@
                   tabindex="0"
                   (click)="$event.stopPropagation(); removeProfile(profile.profileID)"
                   (keydown.enter)="$event.stopPropagation(); removeProfile(profile.profileID)"
-                >×</span>
+                ><app-lf-icon name="close"></app-lf-icon></span>
               }
             </button>
           }
@@ -241,7 +241,7 @@
             @for (catchphrase of activeProfile.voiceProfile.catchphrases; track $index) {
               <div class="lf-stack-row">
                 <input [value]="catchphrase" [disabled]="saving()" (input)="updateCatchphrase($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('common.delete')">×</button>
+                <button type="button" class="lf-icon-btn" [disabled]="saving()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </div>
             } @empty {
               <p class="lf-note">{{ t('modules.aiPersonality.voice.noCatchphrases') }}</p>
@@ -267,7 +267,7 @@
             @for (rule of settings.rules; track $index) {
               <div class="lf-stack-row">
                 <input [value]="rule" [disabled]="saving()" (input)="updateRule($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving() || settings.rules.length <= 1" (click)="removeRule($index)" [attr.aria-label]="t('common.delete')">×</button>
+                <button type="button" class="lf-icon-btn" [disabled]="saving() || settings.rules.length <= 1" (click)="removeRule($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </div>
             }
           </div>
@@ -304,7 +304,7 @@
                     <textarea rows="3" [value]="knownUser.description" [disabled]="saving()" (input)="updateKnownUserField($index, 'description', $any($event.target).value)"></textarea>
                   </label>
                 </div>
-                <button type="button" class="lf-icon-btn lf-icon-btn--corner" [disabled]="saving()" (click)="removeKnownUser($index)" [attr.aria-label]="t('common.delete')">×</button>
+                <button type="button" class="lf-icon-btn lf-icon-btn--corner" [disabled]="saving()" (click)="removeKnownUser($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </article>
             } @empty {
               <p class="lf-note">{{ t('modules.aiPersonality.knownUsers.empty') }}</p>

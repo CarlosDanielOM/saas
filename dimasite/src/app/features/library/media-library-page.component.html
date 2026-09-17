@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.library.title')">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          ← {{ t('modules.library.backToModules') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('modules.library.backToModules') }}
         </a>
         <p class="lf-kicker">{{ t('modules.library.eyebrow') }}</p>
         <h1 class="lf-title">
@@ -160,7 +160,7 @@
             [attr.aria-label]="t('common.close')"
             (click)="closeUploadModal()"
           >
-            ×
+            <app-lf-icon name="close"></app-lf-icon>
           </button>
         </div>
 

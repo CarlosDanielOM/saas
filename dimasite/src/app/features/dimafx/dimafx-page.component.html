@@ -2,13 +2,13 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">← {{ t('modules.dimafx.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.dimafx.backToModules') }}</a>
         <p class="lf-kicker">{{ t('modules.dimafx.heroBadge') }}</p>
         <h1 class="lf-title">{{ t('modules.dimafx.title') }} <span>DimaFX</span></h1>
         <p class="lf-copy">{{ t('modules.dimafx.subtitle') }}</p>
         <div class="lf-actions">
           <button type="button" class="lf-btn" [disabled]="loading()" (click)="load()">
-            <span [class.lf-spin]="loading()">↻</span>
+            <span [class.lf-spin]="loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
             {{ t('common.refresh') }}
           </button>
           <button type="button" class="lf-btn lf-btn--primary" (click)="resetForm()">
@@ -68,7 +68,7 @@
                     <video [src]="item.mediaUrl" muted preload="metadata" class="lf-item-card__media"></video>
                   } @else if (item.mediaType === 'audio') {
                     <div class="lf-item-card__audio">
-                      <span class="lf-item-card__audio-icon">♪</span>
+                      <span class="lf-item-card__audio-icon"><app-lf-icon name="audio"></app-lf-icon></span>
                     </div>
                   } @else {
                     <img
@@ -150,11 +150,11 @@
               <div class="lf-asset-box">
                 <div class="lf-asset-box__icon">
                   @if (getSelectedAssetMediaType() === 'audio') {
-                    ♪
+                    <app-lf-icon name="audio"></app-lf-icon>
                   } @else if (getSelectedAssetMediaType() === 'image') {
-                    ▣
+                    <app-lf-icon name="image"></app-lf-icon>
                   } @else {
-                    ▶
+                    <app-lf-icon name="video"></app-lf-icon>
                   }
                 </div>
                 <div class="lf-asset-box__details">
@@ -276,7 +276,7 @@
           <p class="lf-note">{{ t('modules.dimafx.modal.subtitle') }}</p>
         </div>
         <button type="button" class="lf-modal__close" (click)="closeMediaModal()" [attr.aria-label]="t('common.close')">
-          ×
+          <app-lf-icon name="close"></app-lf-icon>
         </button>
       </div>
 
@@ -311,7 +311,7 @@
               (click)="modalViewMode.set('grid')"
               title="Grid"
             >
-              ▦
+              <app-lf-icon name="grid"></app-lf-icon>
             </button>
             <button
               type="button"
@@ -320,7 +320,7 @@
               (click)="modalViewMode.set('list')"
               title="List"
             >
-              ☰
+              <app-lf-icon name="list"></app-lf-icon>
             </button>
           </div>
         </div>
@@ -352,7 +352,7 @@
                       <div class="lf-wave">
                         <span></span><span></span><span></span><span></span>
                       </div>
-                      <span>♪</span>
+                      <span><app-lf-icon name="audio"></app-lf-icon></span>
                     </div>
                   }
 
@@ -363,7 +363,7 @@
                       (click)="openPreviewModal($event, asset)"
                       title="Preview"
                     >
-                      ◎
+                      <app-lf-icon name="preview"></app-lf-icon>
                     </button>
                   }
                 </div>
@@ -390,11 +390,11 @@
               >
                 <span class="lf-asset-row__icon">
                   @if (asset.mediaType === 'audio') {
-                    ♪
+                    <app-lf-icon name="audio"></app-lf-icon>
                   } @else if (asset.mediaType === 'image') {
-                    ▣
+                    <app-lf-icon name="image"></app-lf-icon>
                   } @else {
-                    ▶
+                    <app-lf-icon name="video"></app-lf-icon>
                   }
                 </span>
                 <span class="lf-asset-row__details">
@@ -433,7 +433,7 @@
 @if (activePreviewAsset(); as previewAsset) {
   <div class="lf-preview-overlay" (click)="closePreviewModal()">
     <div class="lf-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()">×</button>
+      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()"><app-lf-icon name="close"></app-lf-icon></button>
       <h3 class="lf-h3">{{ previewAsset.label }}</h3>
       <p class="lf-note">{{ previewAsset.mediaType }} · {{ previewAsset.source }}</p>
 

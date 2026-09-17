@@ -24,10 +24,11 @@ import {
 } from './chat-events.model';
 import { ChatEventsService } from './chat-events.service';
 import { EventCardComponent } from './components/event-card.component';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-chat-events-page',
-  imports: [RouterLink, EventCardComponent],
+  imports: [RouterLink, EventCardComponent, LfIconComponent],
   styleUrl: './chat-events-page.component.css',
   templateUrl: './chat-events-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

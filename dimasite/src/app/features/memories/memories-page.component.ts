@@ -21,6 +21,7 @@ import { MemoriesApiService } from '../../services/memories-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 type MemoryFilterStatus = 'all' | Exclude<MemoryStatus, 'archived'> | 'archived';
 
@@ -38,7 +39,7 @@ interface PendingAction {
 
 @Component({
   selector: 'app-memories-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   templateUrl: './memories-page.component.html',
   styleUrl: './memories-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

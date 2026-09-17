@@ -4,10 +4,11 @@ import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
 import { CheerTier, PlanTier, TierInfoMessage, TierLimits } from '../chat-events.model';
 import { ChatEventsService } from '../chat-events.service';
+import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-tier-editor',
-  imports: [],
+  imports: [LfIconComponent],
   styleUrl: './tier-editor.component.css',
   templateUrl: './tier-editor.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

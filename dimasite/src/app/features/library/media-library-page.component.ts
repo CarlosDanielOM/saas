@@ -25,6 +25,7 @@ import {
   PlanTier
 } from '../triggers/triggers.model';
 import { TriggersService } from '../triggers/triggers.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -43,7 +44,7 @@ const SAFE_NAME_MAX_LENGTH = 60;
 
 @Component({
   selector: 'app-media-library-page',
-  imports: [RouterLink, ConfirmationModalComponent, DisplayNamePipe],
+  imports: [RouterLink, ConfirmationModalComponent, DisplayNamePipe, LfIconComponent],
   templateUrl: './media-library-page.component.html',
   styleUrl: './media-library-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

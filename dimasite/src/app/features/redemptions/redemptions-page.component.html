@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">← {{ t('redemptions.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('redemptions.backToModules') }}</a>
         <p class="lf-kicker">{{ t('redemptions.heroBadge') }}</p>
         <h1 class="lf-title">{{ t('redemptions.title') }} <span>{{ t('redemptions.customTag') }}</span></h1>
         <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
@@ -16,7 +16,7 @@
             [disabled]="isLoading() || refreshCooldown() > 0"
             (click)="refreshAll()"
           >
-            <span [class.lf-spin]="isLoading()">↻</span>
+            <lucide-icon class="lf-icon" [class.lf-spin]="isLoading()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
             @if (refreshCooldown() > 0) {
               {{ t('redemptions.cooldown', { seconds: refreshCooldown() }) }}
             } @else {
@@ -142,7 +142,7 @@
             [disabled]="twitchRefreshCooldown() > 0"
             (click)="refreshTwitch()"
           >
-            <span [class.lf-spin]="isLoadingTwitch()">↻</span>
+            <lucide-icon class="lf-icon" [class.lf-spin]="isLoadingTwitch()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
             @if (twitchRefreshCooldown() > 0) {
               {{ t('redemptions.cooldown', { seconds: twitchRefreshCooldown() }) }}
             } @else {
@@ -177,7 +177,10 @@
                   </div>
 
                   <div class="lf-reward-badges">
-                    <span class="lf-chip lf-chip--muted">🔒 {{ t('redemptions.readOnly') }}</span>
+                    <span class="lf-chip lf-chip--muted">
+                      <lucide-icon class="lf-icon" [name]="lockIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('redemptions.readOnly') }}
+                    </span>
                   </div>
 
                   <p class="lf-reward-prompt">{{ redemption.prompt || t('redemptions.noPrompt') }}</p>

@@ -16,6 +16,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -25,7 +26,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-follow-ledger-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   styleUrl: './follow-ledger-page.component.css',
   templateUrl: './follow-ledger-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

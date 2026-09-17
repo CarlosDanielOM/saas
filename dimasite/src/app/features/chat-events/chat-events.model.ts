@@ -1,3 +1,5 @@
+import type { LfIconName } from '../../shared/lf-icon/lf-icon.component';
+
 export type ReleaseStage = 'stable' | 'beta' | 'alpha' | 'coming_soon' | 'maintenance' | 'unavailable' | 'deprecated';
 
 export type PlanTier = 'none' | 'premium' | 'premium_plus';
@@ -79,7 +81,7 @@ export type EventStatusTone = 'ok' | 'danger' | 'warn' | 'info' | 'muted' | 'alp
 
 export interface EventDisplayStatus {
   text: string;
-  glyph: string;
+  icon: LfIconName;
   tone: EventStatusTone;
 }
 

@@ -10,6 +10,7 @@ import { MediaAsset } from '../triggers/triggers.model';
 import { TriggersService } from '../triggers/triggers.service';
 import { ChannelExtensionItem, DimafxCategory } from './dimafx.model';
 import { DimafxService } from './dimafx.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface AssetOption {
   id: string;
@@ -21,7 +22,7 @@ interface AssetOption {
 
 @Component({
   selector: 'app-dimafx-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   templateUrl: './dimafx-page.component.html',
   styleUrl: './dimafx-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

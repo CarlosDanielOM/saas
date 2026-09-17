@@ -5,14 +5,14 @@
   [class.lf-card--pro]="event().pro"
 >
   <div class="lf-card__head">
-    <div class="lf-card__icon" aria-hidden="true">{{ eventGlyph(event().icon) }}</div>
+    <div class="lf-card__icon" aria-hidden="true"><lucide-icon class="lf-icon" [name]="eventIcon(event().icon)"></lucide-icon></div>
     <div class="lf-card__info">
       <h3 class="lf-card__name">
         {{ event().name }}
         @if (event().pro) {
-          <span class="lf-chip lf-chip--gold">★+</span>
+          <span class="lf-chip lf-chip--gold"><app-lf-icon name="star"></app-lf-icon>+</span>
         } @else if (event().premium) {
-          <span class="lf-chip lf-chip--gold">★</span>
+          <span class="lf-chip lf-chip--gold"><app-lf-icon name="star"></app-lf-icon></span>
         }
       </h3>
       <p class="lf-card__desc">{{ getEventDescription(event().description) }}</p>
@@ -21,7 +21,7 @@
 
   <div class="lf-card__bar">
     <div class="lf-status" [attr.data-tone]="displayStatus().tone">
-      <span class="lf-status__glyph">{{ displayStatus().glyph }}</span>
+      <span class="lf-status__glyph"><app-lf-icon [name]="displayStatus().icon"></app-lf-icon></span>
       <span class="lf-status__text">{{ displayStatus().text }}</span>
     </div>
 

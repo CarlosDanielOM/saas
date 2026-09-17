@@ -11,7 +11,9 @@
         <p class="lf-kicker">{{ t('triggers.marketplace.kicker') }}</p>
         <h2 id="public-library-title" class="lf-modal__title">{{ t('triggers.publicLibrary') }}</h2>
       </div>
-      <button type="button" class="lf-modal__close" (click)="requestClose()" [attr.aria-label]="t('common.close')">×</button>
+      <button type="button" class="lf-modal__close" (click)="requestClose()" [attr.aria-label]="t('common.close')">
+        <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
+      </button>
     </div>
 
     <div class="lf-modal__hero">
@@ -57,22 +59,24 @@
               class="lf-view-btn"
               [class.lf-view-btn--active]="modalViewMode() === 'grid'"
               (click)="modalViewMode.set('grid')"
+              [attr.aria-label]="t('commands.viewCard')"
               title="Grid"
             >
-              ▦
+              <lucide-icon class="lf-icon" [name]="gridIcon" aria-hidden="true"></lucide-icon>
             </button>
             <button
               type="button"
               class="lf-view-btn"
               [class.lf-view-btn--active]="modalViewMode() === 'list'"
               (click)="modalViewMode.set('list')"
+              [attr.aria-label]="t('commands.viewTable')"
               title="List"
             >
-              ☰
+              <lucide-icon class="lf-icon" [name]="listIcon" aria-hidden="true"></lucide-icon>
             </button>
           </div>
           <button type="button" class="lf-btn lf-btn--compact" (click)="refreshAssets()">
-            <span [class.lf-spin]="isLoading()">↻</span>
+            <lucide-icon class="lf-icon" [class.lf-spin]="isLoading()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
             {{ t('common.refresh') }}
           </button>
         </div>
@@ -98,11 +102,13 @@
                 } @else if (asset.mediaType === 'video') {
                   <video [src]="asset.playbackUrl" muted preload="metadata" class="lf-asset-card__media"></video>
                 } @else {
-                  <div class="lf-asset-card__audio">♪</div>
+                  <div class="lf-asset-card__audio">
+                    <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
+                  </div>
                 }
                 @if (asset.playbackUrl) {
                   <button type="button" class="lf-asset-card__preview-btn" (click)="openPreviewModal($event, asset)" title="Preview">
-                    ◎
+                    <lucide-icon class="lf-icon" [name]="previewIcon" aria-hidden="true"></lucide-icon>
                   </button>
                 }
               </div>
@@ -141,7 +147,7 @@
                 @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
                   <img [src]="asset.playbackUrl" alt="" />
                 } @else {
-                  <span>{{ mediaGlyph(asset.mediaType) }}</span>
+                  <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
                 }
               </button>
               <div class="lf-asset-row__body">
@@ -184,7 +190,9 @@
 @if (activePreviewAsset(); as previewAsset) {
   <div class="lf-preview-overlay" (click)="closePreviewModal()">
     <div class="lf-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()">×</button>
+      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
+        <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
+      </button>
       <h3 class="lf-h3">{{ previewAsset.displayName | displayName }}</h3>
       <p class="lf-note">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
       <div class="lf-preview-modal__content">

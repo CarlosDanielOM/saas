@@ -1,4 +1,30 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  Award,
+  Check,
+  Circle,
+  Clock,
+  Crown,
+  FlaskConical,
+  Gamepad2,
+  Heart,
+  Lock,
+  LucideAngularModule,
+  MessageCircle,
+  Play,
+  PlusCircle,
+  Settings2,
+  Star,
+  Terminal,
+  Trophy,
+  UserPlus,
+  Users,
+  VolumeX,
+  Wrench,
+  X,
+  Zap,
+  type LucideIconData
+} from 'lucide-angular';
 
 import { LanguageService } from '../../../services/language.service';
 import { ToastService } from '../../../services/toast.service';
@@ -12,10 +38,11 @@ import {
   UserAccess
 } from '../chat-events.model';
 import { ConfigPanelComponent } from './config-panel.component';
+import { LfIconComponent, type LfIconName } from '../../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-event-card',
-  imports: [ConfigPanelComponent],
+  imports: [ConfigPanelComponent, LfIconComponent, LucideAngularModule],
   styleUrl: './event-card.component.css',
   templateUrl: './event-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -34,29 +61,30 @@ export class EventCardComponent {
   readonly delete = output<void>();
   readonly upgrade = output<void>();
 
-  private readonly iconGlyphs: Record<string, string> = {
-    UserPlus: '＋',
-    Heart: '♥',
-    Zap: '⚡',
-    Users: '👥',
-    MessageCircle: '💬',
-    VolumeX: '🔇',
-    Gamepad2: '🎮',
-    Check: '✓',
-    X: '×',
-    Wrench: '🔧',
-    Crown: '★',
-    Clock: '⏱',
-    Terminal: '>_',
-    Award: '🏅',
-    Star: '☆',
-    Trophy: '🏆',
-    FlaskConical: '⚗',
-    Lock: '🔒',
-    PlusCircle: '＋',
-    Play: '▶',
-    Settings2: '⚙'
+  private readonly iconData: Record<string, LucideIconData> = {
+    UserPlus,
+    Heart,
+    Zap,
+    Users,
+    MessageCircle,
+    VolumeX,
+    Gamepad2,
+    Check,
+    X,
+    Wrench,
+    Crown,
+    Clock,
+    Terminal,
+    Award,
+    Star,
+    Trophy,
+    FlaskConical,
+    Lock,
+    PlusCircle,
+    Play,
+    Settings2
   };
+
 
   readonly canDisable = computed(() => {
     const event = this.event();
@@ -96,12 +124,12 @@ export class EventCardComponent {
       if (event.releaseStage === 'alpha' || event.releaseStage === 'beta') {
         return {
           text: `${message} (${this.getStageAccessText(event.releaseStage)})`,
-          glyph: '🔒',
+          icon: 'lock',
           tone: 'warn'
         };
       }
 
-      return { text: message, glyph: '🔒', tone: 'warn' };
+      return { text: message, icon: 'lock', tone: 'warn' };
     }
 
     if (event.releaseStage === 'alpha' || event.releaseStage === 'beta') {
@@ -111,7 +139,7 @@ export class EventCardComponent {
             event.releaseStage === 'alpha'
               ? this.t('chatEvents.status.tryTheAlpha')
               : this.t('chatEvents.status.tryTheBeta'),
-          glyph: '⚗',
+          icon: 'flask',
           tone: event.releaseStage === 'alpha' ? 'alpha' : 'beta'
         };
       }
@@ -122,14 +150,14 @@ export class EventCardComponent {
             event.releaseStage === 'alpha'
               ? this.t('chatEvents.status.alphaEnabled')
               : this.t('chatEvents.status.betaEnabled'),
-          glyph: '⚗',
+          icon: 'flask',
           tone: event.releaseStage === 'alpha' ? 'alpha' : 'beta'
         };
       }
 
       return {
         text: this.t('chatEvents.status.disabled'),
-        glyph: '×',
+        icon: 'close',
         tone: 'danger'
       };
     }
@@ -138,7 +166,7 @@ export class EventCardComponent {
       if (event.isSubscribed === false) {
         return {
           text: this.t('chatEvents.status.notCreated'),
-          glyph: '＋',
+          icon: 'plus',
           tone: 'muted'
         };
       }
@@ -146,21 +174,21 @@ export class EventCardComponent {
       if (event.enabled) {
         return {
           text: this.t('chatEvents.status.enabled'),
-          glyph: '✓',
+          icon: 'check',
           tone: 'ok'
         };
       }
 
       return {
         text: this.t('chatEvents.status.disabled'),
-        glyph: '×',
+        icon: 'close',
         tone: 'danger'
       };
     }
 
     return {
       text: this.getStageMessage(event.releaseStage),
-      glyph: this.getStageGlyph(event.releaseStage),
+      icon: this.getStageGlyph(event.releaseStage),
       tone: this.getStageTone(event.releaseStage)
     };
   });
@@ -177,8 +205,8 @@ export class EventCardComponent {
     return description[lang] ?? description.en ?? 'Invalid description';
   }
 
-  eventGlyph(iconName: string): string {
-    return this.iconGlyphs[iconName] || '•';
+  eventIcon(iconName: string): LucideIconData {
+    return this.iconData[iconName] ?? Circle;
   }
 
   toggleConfigure(): void {
@@ -212,19 +240,19 @@ export class EventCardComponent {
     return stage === 'alpha' ? this.t('chatEvents.stage.alphaAccess') : this.t('chatEvents.stage.betaAccess');
   }
 
-  private getStageGlyph(stage: ReleaseStage): string {
+  private getStageGlyph(stage: ReleaseStage): LfIconName {
     switch (stage) {
       case 'stable':
-        return '✓';
+        return 'check';
       case 'beta':
       case 'alpha':
-        return '⚗';
+        return 'flask';
       case 'coming_soon':
-        return '⏱';
+        return 'timer';
       case 'maintenance':
-        return '🔧';
+        return 'wrench';
       default:
-        return '🔒';
+        return 'lock';
     }
   }
 

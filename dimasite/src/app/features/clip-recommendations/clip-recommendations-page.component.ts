@@ -21,10 +21,11 @@ import {
   TwitchVodInfo
 } from './clip-recommendations.model';
 import { ClipRecommendationsService } from './clip-recommendations.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-clip-recommendations-page',
-  imports: [RouterLink, DatePipe, DecimalPipe],
+  imports: [RouterLink, DatePipe, DecimalPipe, LfIconComponent],
   templateUrl: './clip-recommendations-page.component.html',
   styleUrl: './clip-recommendations-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

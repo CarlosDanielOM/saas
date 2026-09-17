@@ -13,6 +13,7 @@ import {
 import { LanguageService } from '../../../services/language.service';
 import { ClipDesign, ClipTestRequest, ClipTestResponse } from '../clips.model';
 import { ClipsService } from '../clips.service';
+import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 
 type TestState = 'sending' | 'ended' | 'error';
 
@@ -20,6 +21,7 @@ type TestState = 'sending' | 'ended' | 'error';
   selector: 'app-clip-test-modal',
   templateUrl: './clip-test-modal.component.html',
   styleUrl: './clip-test-modal.component.css',
+  imports: [LfIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ClipTestModalComponent implements OnInit, OnDestroy {

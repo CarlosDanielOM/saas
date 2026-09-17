@@ -20,7 +20,6 @@
   --btn: #eef0f5;
   --btn-border: rgba(15, 17, 21, 0.1);
   --kicker: #6d28d9;
-  --title-accent: #6d28d9;
   --input-bg: #f8f9fc;
   --radius: 1.35rem;
   --shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
@@ -46,7 +45,6 @@
   --btn: #1d2230;
   --btn-border: rgba(255, 255, 255, 0.07);
   --kicker: #c4b5fd;
-  --title-accent: #c4b5fd;
   --input-bg: rgba(0, 0, 0, 0.22);
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
 }
@@ -84,6 +82,8 @@
   margin: 0 auto;
   padding: 1rem 1rem 2rem;
   min-width: 0;
+  display: grid;
+  gap: 0.85rem;
 }
 
 .lf-bento {
@@ -93,7 +93,6 @@
 }
 
 .lf-section {
-  margin-top: 1rem;
   min-width: 0;
 }
 
@@ -107,17 +106,12 @@
   padding: 1.15rem;
 }
 
-.lf-tile--intro,
-.lf-tile--spotlight {
-  padding: 1.4rem;
-}
-
-.lf-tile--gold {
-  border-color: color-mix(in srgb, var(--gold) 32%, transparent);
+.lf-tile--intro {
+  padding: 1.25rem;
 }
 
 .lf-kicker {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.6rem;
   color: var(--kicker);
   font-size: 0.75rem;
   font-weight: 750;
@@ -127,36 +121,31 @@
 
 .lf-title {
   margin: 0;
-  font-size: clamp(1.9rem, 5.2vw, 3rem);
+  font-size: clamp(1.55rem, 4.5vw, 2.4rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
   font-weight: 750;
 }
 
-.lf-title span {
-  display: block;
-  color: var(--title-accent);
-}
-
 .lf-h2 {
   margin: 0;
-  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
+  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
   letter-spacing: -0.03em;
   font-weight: 750;
 }
 
 .lf-copy {
-  margin: 0.9rem 0 0;
+  margin: 0.75rem 0 0;
   color: var(--muted);
-  line-height: 1.6;
-  max-width: 36rem;
+  line-height: 1.55;
+  max-width: 40rem;
 }
 
-.lf-feed {
-  margin: 1rem 0 0;
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 600;
+.lf-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
 }
 
 .lf-search {
@@ -171,8 +160,8 @@
 }
 
 .lf-search--hero {
-  margin-top: 1.25rem;
-  max-width: 28rem;
+  margin-top: 1.15rem;
+  max-width: 30rem;
 }
 
 .lf-search input {
@@ -196,13 +185,14 @@
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .lf-categories {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
-  margin-top: 1rem;
+  margin-top: 0.85rem;
 }
 
 .lf-cat {
@@ -224,54 +214,43 @@
   color: #fff;
 }
 
-.lf-spotlight__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.lf-spotlight__count {
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-weight: 650;
-}
-
-.lf-stats-strip {
+/* Hero metrics */
+.lf-metrics {
   display: grid;
-  gap: 0.65rem;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 1.15rem;
 }
 
-.lf-stats-strip__item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 0.85rem;
+.lf-metric {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.6rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+  min-width: 0;
 }
 
-.lf-stats-strip__label {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-
-.lf-stats-strip__value {
+.lf-metric__value {
   font-size: 1.35rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.lf-metric__label {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
 }
 
 .lf-section__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.85rem;
@@ -289,6 +268,11 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.lf-chip--soft {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
 }
 
 .lf-chip--status {
@@ -327,6 +311,7 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 22%, transparent);
 }
 
+/* Module grid + cards */
 .lf-bento--modules {
   grid-template-columns: 1fr;
 }
@@ -341,6 +326,10 @@
 .lf-mod:hover {
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   transform: translateY(-2px);
+}
+
+.lf-mod--featured {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
 }
 
 .lf-mod--locked {
@@ -367,6 +356,28 @@
   margin-bottom: 0.85rem;
 }
 
+.lf-mod__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.lf-mod__icon--gold {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+.lf-mod__icon lucide-icon,
+.lf-mod__icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .lf-mod__badges {
   display: flex;
   flex-wrap: wrap;
@@ -374,27 +385,9 @@
   gap: 0.35rem;
 }
 
-.lf-avatar {
-  width: 2.75rem;
-  height: 2.75rem;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 750;
-  font-size: 1.05rem;
-  flex-shrink: 0;
-}
-
-.lf-avatar--gold {
-  background: var(--gold-soft);
-  color: var(--gold);
-}
-
 .lf-mod__name {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
@@ -406,18 +399,9 @@
   line-height: 1.5;
   flex: 1;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.lf-mod__cat {
-  margin: 0.55rem 0 0;
-  color: var(--kicker);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .lf-mod__locked-note {
@@ -465,8 +449,10 @@
   color: #fff;
 }
 
-.lf-btn--block {
-  width: 100%;
+.lf-btn--compact {
+  min-height: 44px;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
 }
 
 .lf-empty {
@@ -496,13 +482,8 @@
     padding: 1.25rem 1.25rem 2.5rem;
   }
 
-  .lf-stats-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .lf-stats-strip__item {
-    flex-direction: column;
-    align-items: flex-start;
+  .lf-metrics {
+    max-width: 30rem;
   }
 
   .lf-bento--modules {
@@ -511,10 +492,6 @@
 }
 
 @media (min-width: 960px) {
-  .lf-bento--hero {
-    grid-template-columns: 1.35fr 1fr;
-  }
-
   .lf-bento--modules {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

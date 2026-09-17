@@ -2,7 +2,7 @@
   (cancel)="$event.preventDefault(); dismiss.emit()" (click)="onBackdropClick($event)">
   <header class="voice-header">
     <div><p class="voice-kicker">Fish Audio</p><h2 id="fish-browser-title" tabindex="-1" autofocus>{{ t('title') }}</h2></div>
-    <button type="button" class="voice-close" (click)="dismiss.emit()" [attr.aria-label]="t('close')">×</button>
+    <button type="button" class="voice-close" (click)="dismiss.emit()" [attr.aria-label]="t('close')"><app-lf-icon name="close"></app-lf-icon></button>
   </header>
   <div class="voice-toolbar">
     <form [formGroup]="filters" (ngSubmit)="search()">

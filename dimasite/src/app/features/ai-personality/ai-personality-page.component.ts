@@ -20,6 +20,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -29,7 +30,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-ai-personality-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   templateUrl: './ai-personality-page.component.html',
   styleUrl: './ai-personality-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

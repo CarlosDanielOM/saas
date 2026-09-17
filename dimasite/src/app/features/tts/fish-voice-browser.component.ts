@@ -6,10 +6,11 @@ import { FishPreview, FishVoice } from '../../models/tts-settings.model';
 import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-fish-voice-browser',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LfIconComponent],
   templateUrl: './fish-voice-browser.component.html',
   styleUrl: './fish-voice-browser.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

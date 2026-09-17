@@ -19,12 +19,24 @@ import {
 } from '../triggers.model';
 import { TriggersService } from '../triggers.service';
 import { DisplayNamePipe } from '../../../pipes/display-name.pipe';
+import {
+  Eye,
+  Image as ImageIcon,
+  LayoutGrid,
+  List,
+  LucideAngularModule,
+  Music,
+  Play,
+  RefreshCw,
+  X,
+  type LucideIconData
+} from 'lucide-angular';
 
 type MediaFilter = 'all' | MediaType;
 
 @Component({
   selector: 'app-public-library-modal',
-  imports: [DisplayNamePipe],
+  imports: [DisplayNamePipe, LucideAngularModule],
   styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -188,17 +200,21 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
     });
   }
 
-  mediaGlyph(type: MediaType | string): string {
-    switch (type) {
-      case 'audio':
-        return '♪';
-      case 'image':
-      case 'gif':
-        return '▣';
-      case 'video':
-      default:
-        return '▶';
-    }
+  readonly closeIcon = X;
+  readonly refreshIcon = RefreshCw;
+  readonly previewIcon = Eye;
+  readonly gridIcon = LayoutGrid;
+  readonly listIcon = List;
+
+  private readonly mediaIcons: Record<string, LucideIconData> = {
+    audio: Music,
+    image: ImageIcon,
+    gif: ImageIcon,
+    video: Play
+  };
+
+  mediaIcon(type: MediaType | string): LucideIconData {
+    return this.mediaIcons[type] ?? Play;
   }
 
   formatBytes(bytes: number): string {

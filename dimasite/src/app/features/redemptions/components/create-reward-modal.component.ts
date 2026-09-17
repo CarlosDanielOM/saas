@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { LucideAngularModule, Star, X } from 'lucide-angular';
 
 import { LanguageService } from '../../../services/language.service';
 import { SessionAuthService } from '../../../services/session-auth.service';
@@ -22,7 +23,7 @@ import {
 
 @Component({
   selector: 'app-create-reward-modal',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LucideAngularModule],
   styleUrl: './create-reward-modal.component.css',
   template: `
     @if (isOpen()) {
@@ -51,7 +52,7 @@ import {
               (click)="close()"
               [attr.aria-label]="t('common.close')"
             >
-              ×
+              <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
             </button>
           </div>
 
@@ -171,7 +172,10 @@ import {
             @if (showPremiumFields()) {
               <div class="lf-premium" [class.lf-premium--locked]="!canEditPremiumFields()">
                 <div class="lf-premium__head">
-                  <span>★ {{ t('common.premiumFeature') }}</span>
+                  <span>
+                    <lucide-icon class="lf-icon" [name]="starIcon" aria-hidden="true"></lucide-icon>
+                    {{ t('common.premiumFeature') }}
+                  </span>
                 </div>
                 <div class="lf-form-grid">
                   <label class="lf-field">
@@ -232,6 +236,8 @@ export class CreateRewardModalComponent {
   readonly rewardUpdated = output<{ id: string; data: RedemptionUpdateRequest }>();
 
   readonly presetColors = PRESET_COLORS;
+  readonly closeIcon = X;
+  readonly starIcon = Star;
   readonly isSubmitting = signal(false);
   readonly showColorPicker = signal(false);
 

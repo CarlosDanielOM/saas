@@ -22,7 +22,7 @@
         (click)="requestClose()"
         [attr.aria-label]="t('common.close')"
       >
-        ×
+        <app-lf-icon name="close"></app-lf-icon>
       </button>
     </div>
 
@@ -37,7 +37,7 @@
         }
         @case ('ended') {
           <div class="lf-status">
-            <div class="lf-status__ok" aria-hidden="true">✓</div>
+            <div class="lf-status__ok" aria-hidden="true"><app-lf-icon name="check"></app-lf-icon></div>
             <h3>{{ t('clips.test.endedTitle') }}</h3>
             <p>{{ t('clips.test.endedCopy') }}</p>
           </div>

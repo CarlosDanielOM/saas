@@ -9,12 +9,14 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Lock, LucideAngularModule, RefreshCw } from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import {
@@ -28,7 +30,7 @@ import { RedemptionsService } from './redemptions.service';
 
 @Component({
   selector: 'app-redemptions-page',
-  imports: [RouterLink, CreateRewardModalComponent, ConfirmationModalComponent],
+  imports: [RouterLink, CreateRewardModalComponent, ConfirmationModalComponent, LucideAngularModule, LfIconComponent],
   styleUrl: './redemptions-page.component.css',
   templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,6 +46,9 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
 
   private cooldownTimer: number | null = null;
+
+  readonly refreshIcon = RefreshCw;
+  readonly lockIcon = Lock;
 
   readonly streamer = toSignal(
     this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))),

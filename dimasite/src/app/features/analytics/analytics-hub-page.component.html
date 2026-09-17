@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulesLink()">← {{ t('analyticsHub.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="modulesLink()"><app-lf-icon name="back"></app-lf-icon> {{ t('analyticsHub.backToModules') }}</a>
         <div class="lf-chip-row">
           <span class="lf-chip lf-chip--live">
             <span class="lf-pulse" aria-hidden="true"></span>
@@ -46,7 +46,7 @@
     <section class="lf-bento">
       <article class="lf-tile lf-module" [class.lf-module--locked]="!hasPaidAccess()" [class.lf-module--gold]="hasPaidAccess()">
         <div class="lf-module__head">
-          <div class="lf-module__icon" aria-hidden="true">👥</div>
+          <div class="lf-module__icon" aria-hidden="true"><app-lf-icon name="users"></app-lf-icon></div>
           <div class="lf-module__badges">
             <span class="lf-chip lf-chip--gold">{{ t('analyticsHub.followLedger.tierLabel') }}</span>
             <span class="lf-chip lf-chip--ok">{{ t('analyticsHub.followLedger.activeOnly') }}</span>
@@ -60,11 +60,11 @@
         <div class="lf-module__footer">
           @if (hasPaidAccess()) {
             <a class="lf-btn lf-btn--primary" [routerLink]="followLedgerLink()">
-              {{ t('analyticsHub.followLedger.open') }} →
+              {{ t('analyticsHub.followLedger.open') }} <app-lf-icon name="forward"></app-lf-icon>
             </a>
           } @else {
             <button type="button" class="lf-btn lf-btn--gold" (click)="openLockedNotice()">
-              🔒 {{ t('analyticsHub.followLedger.lockedCta') }}
+              <app-lf-icon name="lock"></app-lf-icon> {{ t('analyticsHub.followLedger.lockedCta') }}
             </button>
           }
         </div>

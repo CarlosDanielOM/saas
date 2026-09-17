@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="['/', streamer(), 'modules', 'analytics']">
-          ← {{ t('analytics.follows.backToAnalytics') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('analytics.follows.backToAnalytics') }}
         </a>
         <p class="lf-kicker">{{ t('analytics.follows.activeOnly') }} · Beta</p>
         <h1 class="lf-title">{{ t('analytics.follows.title') }} <span>{{ channelName() || streamer() }}</span></h1>
@@ -40,7 +40,7 @@
 
     @if (!hasPaidAccess()) {
       <section class="lf-tile lf-locked">
-        <span class="lf-chip lf-chip--gold">🔒 Premium · Pro</span>
+        <span class="lf-chip lf-chip--gold"><app-lf-icon name="lock"></app-lf-icon> Premium · Pro</span>
         <h2 class="lf-h2">{{ t('analytics.follows.lockedTitle') }}</h2>
         <p class="lf-copy lf-copy--tight">{{ t('analytics.follows.lockedDescription') }}</p>
         <button type="button" class="lf-btn lf-btn--primary" (click)="showUpgradeNotice()">
@@ -55,7 +55,7 @@
             <p class="lf-note">{{ errorMessage() }}</p>
           </div>
           <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
-            ↻ {{ t('common.retry') }}
+            <app-lf-icon name="refresh"></app-lf-icon> {{ t('common.retry') }}
           </button>
         </section>
       }
@@ -76,7 +76,7 @@
               [attr.aria-label]="t('analytics.follows.clearSearchAriaLabel')"
               (click)="clearSearch()"
             >
-              ×
+              <app-lf-icon name="close"></app-lf-icon>
             </button>
           }
         </label>
@@ -151,7 +151,7 @@
                 [disabled]="loading() || refreshing()"
                 (click)="retryLoad()"
               >
-                <span [class.lf-spin]="refreshing() || loading()">↻</span>
+                <span [class.lf-spin]="refreshing() || loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
                 {{ t('common.refresh') }}
               </button>
             </div>

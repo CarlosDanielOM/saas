@@ -1,5 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import {
+  Bot,
+  Brain,
+  ChartColumn,
+  FileText,
+  FolderOpen,
+  Gift,
+  Hammer,
+  Lightbulb,
+  LucideAngularModule,
+  MessagesSquare,
+  Scissors,
+  ShieldAlert,
+  Sparkles,
+  Users,
+  Volume2,
+  X,
+  Zap,
+  type LucideIconData
+} from 'lucide-angular';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -29,10 +49,40 @@ interface ModuleDisplay {
   status: ModuleStatus;
   minTier: PlanTier;
   isLocked: boolean;
+  icon: LucideIconData;
+  priority: number;
+  featured: boolean;
 }
+
+interface ModuleGroup {
+  labelKey: string | null;
+  modules: ModuleDisplay[];
+}
+
+const FEATURED_PRIORITY_LIMIT = 40;
+
+const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
+  'chat-events': MessagesSquare,
+  moderation: Hammer,
+  clips: Scissors,
+  dimafx: Sparkles,
+  redemptions: Gift,
+  triggers: Zap,
+  tts: Volume2,
+  referrals: Users,
+  'ai-personality': Bot,
+  memories: Brain,
+  'follow-defense': ShieldAlert,
+  analytics: ChartColumn,
+  'analytics.follows': ChartColumn,
+  'stream-summaries': FileText,
+  library: FolderOpen,
+  'clip-recommendations': Lightbulb
+};
 
 @Component({
   selector: 'app-modules-page',
+  imports: [LucideAngularModule],
   templateUrl: './modules-page.component.html',
   styleUrl: './modules-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -61,6 +111,7 @@ export class ModulesPageComponent {
 
   readonly searchQuery = signal('');
   readonly selectedCategory = signal<Category>('all');
+  readonly closeIcon = X;
 
   readonly categories: ModuleCategoryOption[] = [
     { id: 'all', labelKey: 'modules.categories.all' },
@@ -168,7 +219,25 @@ export class ModulesPageComponent {
         streamerName,
         userPlanTier
       )
-    ];
+    ].sort((a, b) => a.priority - b.priority);
+  });
+
+  /** Grouped by importance on the default view; a flat list when searching or filtering. */
+  readonly moduleGroups = computed<ModuleGroup[]>(() => {
+    const filtered = this.filteredModules();
+    const grouped = this.selectedCategory() === 'all' && !this.searchQuery().trim();
+
+    if (!grouped) {
+      return [{ labelKey: null, modules: filtered }];
+    }
+
+    const featured = filtered.filter((module) => module.featured);
+    const rest = filtered.filter((module) => !module.featured);
+
+    return [
+      { labelKey: 'modules.core', modules: featured },
+      { labelKey: 'modules.more', modules: rest }
+    ].filter((group) => group.modules.length > 0);
   });
 
   readonly filteredModules = computed(() => {
@@ -206,11 +275,6 @@ export class ModulesPageComponent {
     return this.t('navbar.planFree');
   }
 
-  moduleInitial(name: string): string {
-    const trimmed = name.trim();
-    return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
-  }
-
   statusLabel(status: ModuleStatus): string {
     switch (status) {
       case 'stable':
@@ -228,10 +292,6 @@ export class ModulesPageComponent {
       default:
         return status;
     }
-  }
-
-  categoryLabel(category: Exclude<Category, 'all'>): string {
-    return this.t(`modules.categories.${category}`);
   }
 
   accessText(module: ModuleDisplay): string {
@@ -318,7 +378,10 @@ export class ModulesPageComponent {
       category: req.category,
       status: req.defaultStatus,
       minTier: req.minTier,
-      isLocked: !isModuleAccessible(req, userPlanTier)
+      isLocked: !isModuleAccessible(req, userPlanTier),
+      icon: MODULE_ICONS[id],
+      priority: req.priority,
+      featured: req.priority <= FEATURED_PRIORITY_LIMIT
     };
   }
 }

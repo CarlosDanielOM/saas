@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('clipRecommendations.title')">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          ← {{ t('clipRecommendations.backToModules') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('clipRecommendations.backToModules') }}
         </a>
         <p class="lf-kicker">{{ t('clipRecommendations.heroBadge') }}</p>
         <h1 class="lf-title">

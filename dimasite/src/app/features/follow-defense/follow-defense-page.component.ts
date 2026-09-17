@@ -34,6 +34,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -49,7 +50,7 @@ interface PaginationState {
 
 @Component({
   selector: 'app-follow-defense-page',
-  imports: [RouterLink, RaidSessionsComponent],
+  imports: [RouterLink, RaidSessionsComponent, LfIconComponent],
   templateUrl: './follow-defense-page.component.html',
   styleUrl: './follow-defense-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

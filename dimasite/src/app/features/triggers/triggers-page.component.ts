@@ -11,6 +11,19 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import {
+  ArrowLeft,
+  Check,
+  Eye,
+  Image as ImageIcon,
+  LucideAngularModule,
+  Music,
+  Play,
+  RefreshCw,
+  X,
+  Zap,
+  type LucideIconData
+} from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 
 import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
@@ -92,7 +105,8 @@ const SAFE_NAME_MAX_LENGTH = 60;
     SafeUrlPipe,
     DisplayNamePipe,
     ConfirmationModalComponent,
-    PublicLibraryModalComponent
+    PublicLibraryModalComponent,
+    LucideAngularModule
   ],
   styleUrl: './triggers-page.component.css',
   templateUrl: './triggers-page.component.html',
@@ -873,17 +887,22 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     return Boolean(item.asset && SUPPORTED_TRIGGER_MEDIA_TYPES.has(item.asset.mediaType));
   }
 
-  mediaGlyph(type: MediaType | string): string {
-    switch (type) {
-      case 'audio':
-        return '♪';
-      case 'image':
-      case 'gif':
-        return '▣';
-      case 'video':
-      default:
-        return '▶';
-    }
+  readonly backIcon = ArrowLeft;
+  readonly refreshIcon = RefreshCw;
+  readonly previewIcon = Eye;
+  readonly closeIcon = X;
+  readonly checkIcon = Check;
+  readonly zapIcon = Zap;
+
+  private readonly mediaIcons: Record<string, LucideIconData> = {
+    audio: Music,
+    image: ImageIcon,
+    gif: ImageIcon,
+    video: Play
+  };
+
+  mediaIcon(type: MediaType | string): LucideIconData {
+    return this.mediaIcons[type] ?? Play;
   }
 
   formatBytes(bytes: number): string {

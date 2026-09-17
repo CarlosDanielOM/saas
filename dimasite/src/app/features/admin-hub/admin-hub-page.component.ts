@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelOption {
   channelID: string;
@@ -12,7 +13,7 @@ interface ChannelOption {
 
 @Component({
   selector: 'app-admin-hub-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   styleUrl: './admin-hub-page.component.css',
   templateUrl: './admin-hub-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

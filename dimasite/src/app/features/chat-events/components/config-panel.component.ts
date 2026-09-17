@@ -11,10 +11,11 @@ import {
   PlanTier
 } from '../chat-events.model';
 import { TierEditorComponent } from './tier-editor.component';
+import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-config-panel',
-  imports: [FormsModule, TierEditorComponent],
+  imports: [FormsModule, TierEditorComponent, LfIconComponent],
   styleUrl: './config-panel.component.css',
   templateUrl: './config-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

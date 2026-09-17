@@ -5,10 +5,11 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-analytics-hub-page',
-  imports: [RouterLink],
+  imports: [RouterLink, LfIconComponent],
   styleUrl: './analytics-hub-page.component.css',
   templateUrl: './analytics-hub-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

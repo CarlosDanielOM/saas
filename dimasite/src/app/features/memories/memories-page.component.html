@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.memories.title')">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()">← {{ t('modules.memories.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.memories.backToModules') }}</a>
         <p class="lf-kicker">{{ t('modules.memories.eyebrow') }}</p>
         <h1 class="lf-title">
           {{ t('modules.memories.title') }}
@@ -80,7 +80,7 @@
             />
             @if (searchQuery()) {
               <button type="button" class="lf-search__clear" (click)="clearSearch()" [attr.aria-label]="t('common.close')">
-                ×
+                <app-lf-icon name="close"></app-lf-icon>
               </button>
             }
           </label>
@@ -201,7 +201,7 @@
               (click)="closeEditModal()"
               [attr.aria-label]="t('modules.memories.actions.cancel')"
             >
-              ×
+              <app-lf-icon name="close"></app-lf-icon>
             </button>
           </div>
 

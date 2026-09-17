@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('referrals.title')">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          ← {{ t('referrals.backToModules') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('referrals.backToModules') }}
         </a>
         <p class="lf-kicker">{{ t('referrals.eyebrow') }}</p>
         <h1 class="lf-title">{{ t('referrals.title') }}</h1>
@@ -181,7 +181,7 @@
                 [attr.aria-label]="t('common.close')"
                 (click)="closeCreateModal()"
               >
-                ×
+                <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
               </button>
             </div>
 

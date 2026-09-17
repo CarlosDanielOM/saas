@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnDestroy, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { LucideAngularModule, X } from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import { ReferralCodeRecord, ReferralStatsData } from '../../models/referrals.model';
@@ -9,6 +10,7 @@ import { ReferralsApiService } from '../../services/referrals-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -19,7 +21,7 @@ interface ChannelResolutionState {
 
 @Component({
   selector: 'app-referrals-page',
-  imports: [RouterLink, ConfirmationModalComponent],
+  imports: [RouterLink, ConfirmationModalComponent, LucideAngularModule, LfIconComponent],
   templateUrl: './referrals-page.component.html',
   styleUrl: './referrals-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -110,6 +112,7 @@ export class ReferralsPageComponent implements OnDestroy {
   readonly formError = signal<string | null>(null);
   readonly isSubmitting = signal(false);
   readonly isCreateModalOpen = signal(false);
+  readonly closeIcon = X;
   readonly copiedCodeID = signal<string | null>(null);
   readonly pendingDeleteIDs = signal<string[]>([]);
   readonly pendingDelete = signal<ReferralCodeRecord | null>(null);

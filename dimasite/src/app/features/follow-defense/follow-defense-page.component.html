@@ -2,7 +2,7 @@
   <main class="lf-main">
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('followDefense.title')">
       <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()">← {{ t('followDefense.backToModules') }}</a>
+        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('followDefense.backToModules') }}</a>
         <p class="lf-kicker">{{ t('followDefense.badge') }}</p>
         <h1 class="lf-title">
           {{ t('followDefense.title') }}
@@ -349,7 +349,7 @@
       <div class="lf-modal" role="dialog" aria-modal="true" aria-labelledby="attack-dialog-title" (click)="$event.stopPropagation()">
         <div class="lf-modal__head">
           <h2 id="attack-dialog-title" class="lf-modal__title">{{ t('followDefense.dialog.attackTitle') }}</h2>
-          <button type="button" class="lf-modal__close" (click)="closeAttackDialog()" [attr.aria-label]="t('common.close')">×</button>
+          <button type="button" class="lf-modal__close" (click)="closeAttackDialog()" [attr.aria-label]="t('common.close')"><app-lf-icon name="close"></app-lf-icon></button>
         </div>
         <p class="lf-modal__copy">{{ t('followDefense.dialog.attackBody') }}</p>
         @if (status()?.raid) {

@@ -9,6 +9,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { StreamSummaryApiService } from '../../services/stream-summary-api.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -155,7 +156,7 @@ const MOCK_SUMMARIES: StreamSummary[] = [
 
 @Component({
   selector: 'app-stream-summaries-page',
-  imports: [RouterLink, DecimalPipe],
+  imports: [RouterLink, DecimalPipe, LfIconComponent],
   templateUrl: './stream-summaries-page.component.html',
   styleUrl: './stream-summaries-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

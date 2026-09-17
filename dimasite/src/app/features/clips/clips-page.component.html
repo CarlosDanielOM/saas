@@ -3,7 +3,7 @@
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('clips.title')">
       <article class="lf-tile lf-tile--intro">
         <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          ← {{ t('clips.backToModules') }}
+          <app-lf-icon name="back"></app-lf-icon> {{ t('clips.backToModules') }}
         </a>
         <p class="lf-kicker">{{ t('clips.headerBadge') }}</p>
         <h1 class="lf-title">
