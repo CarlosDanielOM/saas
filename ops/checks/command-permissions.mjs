@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import { CommandsSchema } from '/app/dist/schemas/commands.schema.js';
-import { getCommandFromDB } from '/app/dist/classes/command.class.js';
+import Commands from '/app/dist/classes/command.class.js';
 
 const mongo = await getMongoDBConnection('command-permissions-check');
 const redis = await getDragonflyClient('command-permissions-check');
@@ -105,17 +105,17 @@ const greetID = (await CommandsSchema.findOne({ channelID: channel, cmd: 'greet'
 // --- Renaming an already-cached command invalidates both cache keys ---
 {
     // Prime the one-hour command cache under the old name first.
-    const primed = await getCommandFromDB(channel, 'greet');
+    const primed = await Commands.getCommandFromDB(channel, 'greet');
     assert.equal(primed.error, false, 'old name resolves before the rename');
     assert.equal(primed.command.cmd, 'greet');
 
     const rename = await api('PUT', `/commands/${channel}/${greetID}`, { cmd: 'greetrenamed' });
     assert.equal(rename.status, 200);
 
-    const oldLookup = await getCommandFromDB(channel, 'greet');
+    const oldLookup = await Commands.getCommandFromDB(channel, 'greet');
     assert.equal(oldLookup.error, true, 'old command name is not executable through a stale cache entry');
 
-    const newLookup = await getCommandFromDB(channel, 'greetrenamed');
+    const newLookup = await Commands.getCommandFromDB(channel, 'greetrenamed');
     assert.equal(newLookup.error, false, 'renamed command resolves immediately');
     assert.equal(newLookup.command.cmd, 'greetrenamed');
 }
