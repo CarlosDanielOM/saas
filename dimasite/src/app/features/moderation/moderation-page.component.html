@@ -195,18 +195,19 @@
                   }
                 </div>
 
-                <div class="lf-field lf-field--wide">
-                  <span>{{ t('moderation.rules.exemptLevel') }}</span>
-                  <app-permission-expression-editor
-                    [value]="ruleExemptionValue(rule)"
-                    [storedInvalid]="ruleExemptionInvalid(rule)"
-                    [disabled]="!canManage()"
-                    (valueChange)="updateRuleExemption(rule.id, $event)"
-                  />
-                  <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
-                </div>
-
                 <div class="lf-form-grid">
+                  <label class="lf-field">
+                    <span>{{ t('moderation.rules.exemptLevel') }}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      [value]="rule.exemptUserLevel"
+                      (change)="updateExemptLevel(rule.id, $any($event.target).value)"
+                      [disabled]="!canManage()"
+                    />
+                    <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
+                  </label>
                   <label class="lf-field lf-field--wide">
                     <span>{{ t('moderation.rules.reason') }}</span>
                     <input

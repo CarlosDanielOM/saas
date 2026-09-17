@@ -105,20 +105,20 @@
           <div class="lf-matrix__scroller">
             <div class="lf-matrix__row lf-matrix__row--head lf-matrix__row--cmds">
               <span class="sortable" (click)="onSort('name')">
-                {{ t('commands.placeholder.name') }} <app-lf-icon [name]="getSortIcon('name')"></app-lf-icon>
+                {{ t('commands.placeholder.name') }} {{ getSortIcon('name') }}
               </span>
               <span class="sortable" (click)="onSort('cmd')">
-                {{ t('commands.placeholder.command') }} <app-lf-icon [name]="getSortIcon('cmd')"></app-lf-icon>
+                {{ t('commands.placeholder.command') }} {{ getSortIcon('cmd') }}
               </span>
               <span>{{ t('commands.placeholder.function') }}</span>
               <span class="sortable" (click)="onSort('cooldown')">
-                {{ t('commands.placeholder.cooldown') }} <app-lf-icon [name]="getSortIcon('cooldown')"></app-lf-icon>
+                {{ t('commands.placeholder.cooldown') }} {{ getSortIcon('cooldown') }}
               </span>
               <span class="sortable" (click)="onSort('userLevel')">
-                {{ t('commands.placeholder.userLevel') }} <app-lf-icon [name]="getSortIcon('userLevel')"></app-lf-icon>
+                {{ t('commands.placeholder.userLevel') }} {{ getSortIcon('userLevel') }}
               </span>
               <span class="sortable" (click)="onSort('enabled')">
-                {{ t('commands.placeholder.status') }} <app-lf-icon [name]="getSortIcon('enabled')"></app-lf-icon>
+                {{ t('commands.placeholder.status') }} {{ getSortIcon('enabled') }}
               </span>
               <span>{{ t('commands.placeholder.actions') }}</span>
             </div>
@@ -172,7 +172,7 @@
 
                 <span>{{ command.cooldown }}s</span>
 
-                <span class="lf-clip">{{ permissionSummary(command) }}</span>
+                <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
 
                 <span class="lf-status-cell">
                   <span
@@ -314,7 +314,7 @@
                   </span>
                   <span class="lf-meta-pill">
                     <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
-                    <span class="lf-meta-pill__value lf-clip">{{ permissionSummary(command) }}</span>
+                    <span class="lf-meta-pill__value">{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
                   </span>
                 </div>
 

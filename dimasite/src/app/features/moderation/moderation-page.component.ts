@@ -37,14 +37,12 @@ import {
   MODERATION_RULE_TYPES,
   buildNewModerationRule
 } from '../../models/moderation.model';
-import { inspectExpression } from '../../models/permission.model';
-import { PermissionExpressionEditorComponent, type PermissionEditorValue } from '../permissions/permission-expression-editor.component';
-import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { ModerationApiService } from '../../services/moderation-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -68,7 +66,7 @@ type ListField = 'terms' | 'allowlistDomains';
 
 @Component({
   selector: 'app-moderation-page',
-  imports: [RouterLink, PermissionExpressionEditorComponent, LfIconComponent],
+  imports: [RouterLink, LfIconComponent],
   templateUrl: './moderation-page.component.html',
   styleUrl: './moderation-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -394,36 +392,6 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.patchRule(ruleID, { enabled });
   }
 
-  /**
-   * Exemption editor value for a rule: Level (legacy numeric) vs Tags
-   * (expression) is exclusive. The stored numeric level remains in the rule
-   * while Tags is active but is neither labeled nor used as a fallback.
-   */
-  ruleExemptionValue(rule: ModerationRule): PermissionEditorValue {
-    const state = inspectExpression(rule.exemptExpression);
-    const level = Math.min(10, Math.max(1, Number(rule.exemptUserLevel) || MODERATION_DEFAULTS.exemptUserLevel));
-
-    if (state.mode === 'tags') {
-      return { mode: 'tags', userLevel: level, permissionExpression: state.expression };
-    }
-    return { mode: 'level', userLevel: level, permissionExpression: null };
-  }
-
-  /** True when a rule holds an invalid stored exemption expression (repair). */
-  ruleExemptionInvalid(rule: ModerationRule): boolean {
-    return inspectExpression(rule.exemptExpression).mode === 'invalid';
-  }
-
-  updateRuleExemption(ruleID: string, value: PermissionEditorValue): void {
-    const level = Math.min(10, Math.max(1, Number(value.userLevel) || MODERATION_DEFAULTS.exemptUserLevel));
-    this.patchRule(ruleID, {
-      exemptUserLevel: level,
-      // Tags mode persists the validated tree (null while the tree is
-      // incomplete/invalid); level mode always sends the explicit null.
-      exemptExpression: value.mode === 'tags' ? (value.permissionExpression ?? null) : null
-    });
-  }
-
   updateRuleType(ruleID: string, type: string): void {
     if (!MODERATION_RULE_TYPES.includes(type as ModerationRuleType)) return;
     this.patchRule(ruleID, { type: type as ModerationRuleType });
@@ -431,6 +399,12 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   updateRuleReason(ruleID: string, reason: string): void {
     this.patchRule(ruleID, { reason });
+  }
+
+  updateExemptLevel(ruleID: string, value: string): void {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return;
+    this.patchRule(ruleID, { exemptUserLevel: Math.min(10, Math.max(1, parsed)) });
   }
 
   updateCapsMode(ruleID: string, mode: string): void {

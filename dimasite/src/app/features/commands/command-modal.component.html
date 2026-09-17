@@ -60,14 +60,15 @@
             </div>
             <span class="lf-note">{{ t('commands.modal.cooldownHint', { seconds: minCooldown() }) }}</span>
           </label>
-        </div>
 
-        <div class="lf-field">
-          <span>{{ t('commands.placeholder.userLevel') }}</span>
-          <app-permission-expression-editor
-            formControlName="permission"
-            [storedInvalid]="storedPermissionInvalid()"
-          />
+          <label class="lf-field">
+            <span>{{ t('commands.placeholder.userLevel') }}</span>
+            <select formControlName="userLevel">
+              @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
+                <option [value]="level">{{ level }} — {{ t(getUserLevelName(level)) }}</option>
+              }
+            </select>
+          </label>
         </div>
 
         <label class="lf-check">

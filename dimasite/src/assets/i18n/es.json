@@ -1720,12 +1720,12 @@
       "tier1": "Tier 1",
       "tier2": "Tier 2",
       "tier3": "Tier 3",
+      "founders": "Fundadores",
       "vip": "VIP",
       "mod": "Mod",
       "editor": "Editor",
       "admin": "Admin",
-      "founder": "Founder",
-      "broadcaster": "Streamer"
+      "streamer": "Streamer"
     },
     "modal": {
       "cooldownHint": "Mínimo de tu plan: {{seconds}}s.",
@@ -1756,71 +1756,6 @@
       "reserved": "Comandos reservados",
       "timer": "Comandos con timer"
     }
-  },
-  "permissions": {
-    "mode": {
-      "label": "Modo de permisos",
-      "level": "Nivel (clásico)",
-      "levelHint": "Nivel numérico de usuario, igual que antes. Editores, administradores y el broadcaster cuentan como el nivel que alcanzan o superan.",
-      "tags": "Etiquetas (avanzado)"
-    },
-    "roles": {
-      "everyone": "Todos",
-      "sub": "Suscriptores",
-      "vip": "VIPs",
-      "founder": "Founders",
-      "mod": "Moderadores",
-      "editor": "Editores",
-      "admin": "Administradores",
-      "broadcaster": "Broadcaster"
-    },
-    "operators": {
-      "not": "No",
-      "and": "Todos de",
-      "or": "Cualquiera de"
-    },
-    "editor": {
-      "needsNode": "Añade al menos una regla de permiso para guardar el modo de etiquetas.",
-      "invalidStored": "La configuración de permisos guardada no es válida y está denegada. Reconstruye las reglas y guarda para repararla."
-    },
-    "tree": {
-      "label": "Reglas de permiso",
-      "startLabel": "Empieza con una regla:",
-      "addRole": "Rol",
-      "addLevel": "Nivel",
-      "addNot": "No",
-      "addAnd": "Todos de",
-      "addOr": "Cualquiera de",
-      "roleLabel": "Rol",
-      "levelLabel": "Nivel",
-      "operatorLabel": "Operador",
-      "removeNode": "Quitar regla",
-      "removeChild": "Quitar regla",
-      "budget": "{{nodes}} de {{maxNodes}} reglas usadas, profundidad {{depth}} de {{maxDepth}}."
-    },
-    "preview": {
-      "label": "Quién puede usarlo"
-    },
-    "summary": {
-      "notRole": "todos excepto {{role}}",
-      "notLevel": "por debajo de {{level}}",
-      "notGroup": "no ({{group}})",
-      "and": "todos: {{list}}",
-      "or": "cualquiera de: {{list}}",
-      "separator": " + "
-    },
-    "errors": {
-      "notAnObject": "Cada regla debe ser una única condición.",
-      "emptyNode": "No se permiten reglas vacías.",
-      "mixedOperators": "Cada regla solo puede usar un operador.",
-      "unknownFields": "La regla contiene campos desconocidos.",
-      "unknownRole": "Rol desconocido.",
-      "badLevel": "El nivel debe ser un número entero entre 1 y 10.",
-      "emptyGroup": "Los grupos necesitan al menos una regla.",
-      "tooDeep": "Las reglas están anidadas demasiado profundo.",
-      "tooManyNodes": "Demasiadas reglas."
-    },
-    "invalidLabel": "Error de configuración (denegado)"
   },
   "common": {
     "refresh": "Actualizar",

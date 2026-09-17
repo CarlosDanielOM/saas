@@ -13,13 +13,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   Command,
   CreateCommandRequest,
-  USER_LEVELS
+  USER_LEVELS,
+  USER_LEVEL_NAMES
 } from '../../models/command.model';
-import { inspectExpression, type PermissionExpression } from '../../models/permission.model';
-import {
-  PermissionExpressionEditorComponent,
-  type PermissionEditorValue
-} from '../permissions/permission-expression-editor.component';
 import { LanguageService } from '../../services/language.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
@@ -39,7 +35,7 @@ const PRO_QUICK = [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180] as const;
 
 @Component({
   selector: 'app-command-modal',
-  imports: [ReactiveFormsModule, LfIconComponent, PermissionExpressionEditorComponent],
+  imports: [ReactiveFormsModule, LfIconComponent],
   templateUrl: './command-modal.component.html',
   styleUrl: './command-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -71,8 +67,7 @@ export class CommandModalComponent {
     message: ['', [Validators.required]],
     description: [''],
     cooldown: [10, [Validators.required, Validators.min(5), Validators.max(60)]],
-    /** Permission editor value: exclusive Level (legacy) vs Tags (advanced) mode. */
-    permission: [this.defaultPermissionValue()],
+    userLevel: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
     enabled: [true],
     timerEnabled: [false],
     timerMinutes: [15 as number | null]
@@ -81,9 +76,6 @@ export class CommandModalComponent {
   readonly minCooldown = computed(() => this.planTier() === 'pro' ? 1 : this.planTier() === 'premium' ? 3 : 5);
 
   readonly isReserved = computed(() => Boolean(this.command()?.reserved));
-
-  /** Invalid stored permission configuration surfaced for repair. */
-  readonly storedPermissionInvalid = computed(() => this.command()?.permissionMode === 'invalid');
 
   readonly intervalHint = computed(() => {
     const tier = this.planTier();
@@ -121,6 +113,10 @@ export class CommandModalComponent {
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  getUserLevelName(level: number): string {
+    return USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone';
   }
 
   onOverlayClick(event: Event): void {
@@ -167,18 +163,6 @@ export class CommandModalComponent {
       }
     }
 
-    const permission = (formValue.permission ?? this.defaultPermissionValue()) as PermissionEditorValue;
-
-    // Tag mode cannot be saved without at least one valid node.
-    if (permission.mode === 'tags' && !permission.permissionExpression) {
-      this.formError.set(this.t('permissions.editor.needsNode'));
-      return;
-    }
-
-    const userLevel = Number.isInteger(permission.userLevel) && permission.userLevel >= 1 && permission.userLevel <= 10
-      ? permission.userLevel
-      : 1;
-
     this.isSaving.set(true);
     this.formError.set(null);
 
@@ -193,11 +177,8 @@ export class CommandModalComponent {
       message: String(formValue.message || '').trim(),
       description: formValue.description ? String(formValue.description).trim() : null,
       cooldown: Number(formValue.cooldown) || 10,
-      userLevel,
-      userLevelName: USER_LEVELS[userLevel],
-      // Level mode sends null (with the numeric pair); tags mode sends the
-      // validated tree. Selecting Everyone in tag mode is {role:'everyone'}.
-      permissionExpression: permission.mode === 'tags' ? permission.permissionExpression : null,
+      userLevel: Number(formValue.userLevel) || 1,
+      userLevelName: USER_LEVELS[Number(formValue.userLevel) || 1],
       enabled: formValue.enabled !== false,
       channel: ''
     };
@@ -228,7 +209,7 @@ export class CommandModalComponent {
         message: cmd.message,
         description: cmd.description || '',
         cooldown: cmd.cooldown,
-        permission: this.permissionValueFor(cmd),
+        userLevel: cmd.userLevel,
         enabled: cmd.enabled,
         timerEnabled: hasTimer && !cmd.reserved,
         timerMinutes: hasTimer ? existingMinutes : this.defaultTimerMinutes()
@@ -252,32 +233,13 @@ export class CommandModalComponent {
         message: '',
         description: '',
         cooldown: 10,
-        permission: this.defaultPermissionValue(),
+        userLevel: 1,
         enabled: true,
         timerEnabled: false,
         timerMinutes: this.defaultTimerMinutes()
       });
       this.commandForm.enable({ emitEvent: false });
     }
-  }
-
-  private defaultPermissionValue(): PermissionEditorValue {
-    return { mode: 'level', userLevel: 1, permissionExpression: null };
-  }
-
-  private permissionValueFor(cmd: Command): PermissionEditorValue {
-    const state = inspectExpression(cmd.permissionExpression);
-    const storedLevel = Number.isInteger(cmd.userLevel) && cmd.userLevel >= 1 && cmd.userLevel <= 10
-      ? cmd.userLevel
-      : 1;
-
-    if (state.mode === 'tags') {
-      // Preselect the existing expression; the numeric pair stays stored but
-      // inert while tag mode is active.
-      return { mode: 'tags', userLevel: storedLevel, permissionExpression: state.expression };
-    }
-
-    return { mode: 'level', userLevel: storedLevel, permissionExpression: null };
   }
 
   private defaultTimerMinutes(): number {

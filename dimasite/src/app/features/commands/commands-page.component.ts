@@ -14,14 +14,12 @@ import { LucideAngularModule } from 'lucide-angular';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES } from '../../models/command.model';
-import { describeExpression, inspectExpression, type PermissionExpression } from '../../models/permission.model';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { TimersApiService } from '../../services/timers-api.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
-import { LfIconComponent, type LfIconName } from '../../shared/lf-icon/lf-icon.component';
 import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
 
 type ViewMode = 'table' | 'card';
@@ -35,7 +33,7 @@ interface CommandListItem extends Command {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, LucideAngularModule, ConfirmationModalComponent, CommandModalComponent, LfIconComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, ConfirmationModalComponent, CommandModalComponent],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -184,8 +182,7 @@ export class CommandsPageComponent {
       ? commands.filter(
           (command) =>
             (command.name ?? '').toLowerCase().includes(query) ||
-            (command.cmd ?? '').toLowerCase().includes(query) ||
-            this.permissionSummary(command).toLowerCase().includes(query)
+            (command.cmd ?? '').toLowerCase().includes(query)
         )
       : commands;
 
@@ -358,9 +355,9 @@ export class CommandsPageComponent {
     this.currentPage.set(1);
   }
 
-  getSortIcon(column: string): LfIconName {
-    if (this.sortBy() !== column) return 'sort';
-    return this.sortOrder() === 'asc' ? 'sort-asc' : 'sort-desc';
+  getSortIcon(column: string): string {
+    if (this.sortBy() !== column) return '↕';
+    return this.sortOrder() === 'asc' ? '↑' : '↓';
   }
 
   private sortCommands(commands: CommandListItem[]): CommandListItem[] {
@@ -494,9 +491,6 @@ export class CommandsPageComponent {
         cooldown: request.cooldown,
         userLevel: request.userLevel,
         userLevelName: USER_LEVELS[request.userLevel],
-        // Level mode sends the null expression with the numeric pair; tags
-        // mode sends the validated tree.
-        permissionExpression: request.permissionExpression ?? null,
         enabled: request.enabled
       };
 
@@ -565,8 +559,6 @@ export class CommandsPageComponent {
       reserved: false,
       userLevel: command.userLevel,
       userLevelName: command.userLevelName,
-      permissionExpression: command.permissionExpression ?? null,
-      permissionMode: command.permissionExpression ? 'tags' : 'level',
       pendingOperation: 'create',
       optimistic: true
     };
@@ -826,36 +818,6 @@ export class CommandsPageComponent {
 
   getUserLevelName(level: number): string {
     return USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone';
-  }
-
-  /**
-   * Localized permission display text. Derived entirely client-side from the
-   * expression tree (the API never returns prose): tag mode renders the
-   * localized description, invalid stored data shows a neutral configuration
-   * error, level mode falls back to the localized level label.
-   */
-  permissionSummary(command: Pick<Command, 'userLevel' | 'userLevelName' | 'permissionExpression' | 'permissionMode'>): string {
-    const state = inspectExpression(command.permissionExpression);
-
-    if (state.mode === 'tags') {
-      return this.describePermission(state.expression);
-    }
-
-    if (state.mode === 'invalid' || command.permissionMode === 'invalid') {
-      return this.t('permissions.invalidLabel');
-    }
-
-    const level = Number(command.userLevel) || 1;
-    return `${level} - ${this.t(USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone')}`;
-  }
-
-  private describePermission(expression: PermissionExpression): string {
-    return describeExpression(expression, {
-      roleLabel: (role) => this.t(`permissions.roles.${role}`),
-      operatorLabel: () => '',
-      levelLabel: (level) => this.t(USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone'),
-      formatSummary: (pattern, params) => this.t(pattern, params)
-    });
   }
 
   private initializeFromURL(): void {

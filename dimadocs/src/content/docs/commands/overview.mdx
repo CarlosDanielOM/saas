@@ -23,10 +23,6 @@ This section matches the current built-in command list from the bot config. Many
 - **Moderator** — moderator-level access required
 - **Editor** — higher-level management commands
 
-<Aside type="note" title="Two permission modes">
-Every command uses exactly one permission mode: the classic numeric **Level** mode, or the advanced **Tags** mode (boolean role expressions configured in the dashboard). The modes are exclusive — a command either checks a numeric level or a role-tag expression, never both. See the [Permission Expressions](/commands/permissions/) page for tag mode.
-</Aside>
-
 ### 🎮 Stream, Chat & Moderation
 
 | Command | Permission | Default State | What it does |
@@ -261,7 +257,7 @@ Every command uses exactly one permission mode: the classic numeric **Level** mo
 **Supported options:**
 
 - `-cd=`
-- `-ul=` (level-mode commands only — rejected when the command uses tag permissions)
+- `-ul=`
 
 **Limits:**
 
@@ -314,7 +310,7 @@ Every command uses exactly one permission mode: the classic numeric **Level** mo
 #### `!commands`
 
 **Usage:** `!commands`  
-**Note:** only shows commands available for that user's permission level, including tag-based permission rules
+**Note:** only shows commands available for that user's permission level
 
 #### `!clearchat`
 
@@ -440,7 +436,7 @@ With options:
 | Option | Description |
 |--------|-------------|
 | `-cd=` | Cooldown in seconds: use an integer greater than `5` when creating with `!cc`. Values of `5` or below become `15`; `!ec` accepts `5`. |
-| `-ul=` | User level: `everyone`, `tier1`, `tier2`, `tier3`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster`. This option always creates a **level-mode** command. Tag expressions are configured in the dashboard. |
+| `-ul=` | User level: `everyone`, `tier1`, `tier2`, `tier3`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster` |
 
 **Editing:** `!ec <name> <new response>`  
 **Deleting:** `!dc <name>`
@@ -451,14 +447,10 @@ With options:
 Navigate to the **Commands** section in your dashboard for a visual editor with:
 
 - Full command list with enable/disable toggles
-- Cooldown and permission settings, with an exclusive **Level (legacy)** vs **Tags (advanced)** permission editor
+- Cooldown and permission settings
 - Response editor for command text / AST templates
 - Command usage statistics
 - Timer management
-
-<Aside type="tip" title="Tag permissions live in the dashboard">
-Permission expressions (`sub or vip`, `everyone except mod`, …) are built in the dashboard editor; there is no chat syntax for them in this phase. Tag-mode commands cannot be edited with `!ec -ul=` — switch the mode in the dashboard instead. Managing (editing or deleting) a tag-restricted command requires moderator permissions.
-</Aside>
 
 </TabItem>
 </Tabs>
