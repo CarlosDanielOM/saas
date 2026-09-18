@@ -5,7 +5,7 @@ import { compileBlacklistPattern } from '../utils/moderation/rules/blacklist.rul
 import { recordOffense, resolveOffenseStep } from '../utils/moderation/offenses.js';
 import { hasActivePermit } from '../utils/moderation/permit.js';
 import { executeModerationAction } from '../functions/moderation/execute_action.moderation.js';
-import { inspectExpression, ruleExempt, type UserIdentity } from '../utils/permissions/index.js';
+import { inspectExpression, ruleExempt, shouldLogPermissionError, type UserIdentity } from '../utils/permissions/index.js';
 import { error as logError } from '../utils/logger.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
 import type { IChatMessage } from '../interfaces/twitch/eventsub.interface.js';
@@ -134,14 +134,17 @@ export async function runChatModeration(channelID: string, messageEventData: ICh
             // Exemption mode: numeric fallback, tag expression, or fail
             // closed on a present invalid stored expression.
             const exemptState = inspectExpression(rule.exemptExpression);
-            if (exemptState.mode === 'invalid') {
-                await logError({
+            if (
+                exemptState.mode === 'invalid'
+                && shouldLogPermissionError(`moderation:${channelID}:${settings.settingsVersion}:${rule.id}:${exemptState.error}`)
+            ) {
+                void logError({
                     function: 'runChatModeration.ruleExemption',
                     message: 'Stored exemption expression is invalid; rule grants no exemption until repaired',
                     channelID,
                     ruleID: rule.id,
                     error: exemptState.error
-                }, { channelId: channelID, destination: 'both' });
+                }, { channelId: channelID, destination: 'both' }).catch(() => undefined);
             }
 
             if (ruleExempt(rule, identity)) continue;

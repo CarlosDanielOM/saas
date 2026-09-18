@@ -25,6 +25,7 @@ import {
     inspectExpression,
     resolveUserIdentity,
     serializeUserIdentity,
+    shouldLogPermissionError,
     type UserIdentity
 } from "../utils/permissions/index.js";
 import { sumimetroCommand } from "../commands/sumimetro.command.js";
@@ -92,6 +93,13 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             user_id: messageEventData.chatter_user_id || 'unknown',
             timestamp: Math.floor(Date.now() / 1000)
         });
+
+        // Every chat message passes through moderation before command or timer
+        // dispatch. A taken action stops the rest of the message pipeline.
+        const moderationResult = await runChatModeration(channelID, messageEventData, identity);
+        if (moderationResult.actionTaken) {
+            return;
+        }
 
         let on_cooldown = false;
         if(!CHANNEL_INSTANCES.has(channelID)) {
@@ -229,14 +237,6 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         if(!command) {
-            // Moderation gate: filter/regex rules (caps, links, emote spam,
-            // blacklist) run before any AI or command logic. If the gate
-            // takes action, the message dies here.
-            const moderationResult = await runChatModeration(channelID, messageEventData, identity);
-            if (moderationResult.actionTaken) {
-                return;
-            }
-
             if(messageEventData.message.text.startsWith('@domdimabot') || messageEventData.message.text.startsWith('@DomDimaBot') || messageEventData.message.text.includes('@domdimabot') || messageEventData.message.text.includes('@DomDimaBot')) {
                 const aiPersonality = await getChannelPersonality(channelID);
                 if (aiPersonality?.enabled === false) {
@@ -369,7 +369,10 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         const permissionState = inspectExpression(commandDBData.command?.permissionExpression);
-        if (permissionState.mode === 'invalid') {
+        if (
+            permissionState.mode === 'invalid'
+            && shouldLogPermissionError(`command:${channelID}:${commandLower}:${permissionState.error}`)
+        ) {
             // Configuration error: surface it (channel + command name +
             // validation error, never the untrusted tree) and fail closed.
             void logError({

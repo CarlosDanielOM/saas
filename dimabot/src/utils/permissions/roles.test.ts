@@ -76,6 +76,38 @@ test('the broadcaster keeps numeric override at 10 plus the broadcaster tag', as
     assert.ok(identity.tags.has('everyone'));
 });
 
+test('a role-cache read failure falls back to badge roles without blocking the message', async () => {
+    const cache = new FakeRoleCache();
+    cache.sIsMember = async (key) => {
+        if (key.includes(':editors')) return 1;
+        throw new Error('admin role read failed');
+    };
+
+    const identity = await resolveUserIdentity(
+        'channel-1',
+        message([{ set_id: 'subscriber' }, { set_id: 'moderator' }]),
+        cache
+    );
+
+    assert.equal(identity.level, 7);
+    assert.deepEqual([...identity.tags].sort(), ['everyone', 'mod', 'sub']);
+});
+
+test('the broadcaster bypasses editor and admin cache reads', async () => {
+    const cache = new FakeRoleCache();
+    let cacheReads = 0;
+    cache.sIsMember = async () => {
+        cacheReads += 1;
+        throw new Error('cache should not be read');
+    };
+
+    const identity = await resolveUserIdentity('channel-1', message([], 'channel-1', 'streamer'), cache);
+
+    assert.equal(identity.level, 10);
+    assert.deepEqual([...identity.tags].sort(), ['broadcaster', 'everyone']);
+    assert.equal(cacheReads, 0);
+});
+
 test('deriveBadgeLevel keeps legacy max-level semantics across combinations', () => {
     assert.equal(deriveBadgeLevel([]), 1);
     assert.equal(deriveBadgeLevel([{ set_id: 'subscriber' }]), 2);

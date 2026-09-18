@@ -1,6 +1,7 @@
 import { getDragonflyClient } from '../databases/dragonfly.database.js';
 import { recordRedisOpsEstimate } from '../observability/bot_runtime_metrics.js';
 import type { IChatMessage } from '../../interfaces/twitch/eventsub.interface.js';
+import { shouldLogPermissionError } from './error_rate_limit.js';
 
 /**
  * Tag permission system — identity resolution (TAG_PERMISSION_SYSTEM.md §2.1).
@@ -334,31 +335,47 @@ export async function resolveUserIdentity(
     const badges = messageEventData?.badges ?? [];
     let level = deriveBadgeLevel(badges);
     const tags = deriveBadgeTags(badges);
-
-    const client = cache ?? await getDragonflyClient('resolveUserIdentity');
     const userID = String(messageEventData?.chatter_user_id ?? '');
     const userLogin = String(messageEventData?.chatter_user_login ?? '').toLowerCase();
 
-    const isEditor = await hasCachedRole(client, channelID, 'editors', userID, userLogin);
-    if (isEditor) {
-        if (level < 8) level = 8;
-        tags.add('editor');
-    }
-
-    const isAdmin = await hasCachedRole(client, channelID, 'admins', userID, userLogin);
-    if (isAdmin) {
-        if (level < 9) level = 9;
-        tags.add('admin');
-    }
-
-    if (messageEventData?.chatter_user_id && messageEventData.chatter_user_id === channelID) {
-        level = BROADCASTER_USER_LEVEL;
+    // The broadcaster is established by the EventSub channel ID and never
+    // needs Dragonfly. This also keeps streamer commands available during a
+    // role-cache outage.
+    if (userID && userID === channelID) {
         tags.add('broadcaster');
+        return createUserIdentity(BROADCASTER_USER_LEVEL, tags);
     }
 
-    tags.add('everyone');
+    try {
+        const client = cache ?? await getDragonflyClient('resolveUserIdentity');
+        const [isEditor, isAdmin] = await Promise.all([
+            hasCachedRole(client, channelID, 'editors', userID, userLogin),
+            hasCachedRole(client, channelID, 'admins', userID, userLogin)
+        ]);
 
-    return { level, tags };
+        if (isEditor) {
+            if (level < 8) level = 8;
+            tags.add('editor');
+        }
+
+        if (isAdmin) {
+            if (level < 9) level = 9;
+            tags.add('admin');
+        }
+    } catch (error) {
+        // Cache-only elevated roles fail closed. Badge-derived roles remain so
+        // ordinary chat and moderator commands continue processing.
+        if (shouldLogPermissionError(`role-cache:${channelID}`)) {
+            console.error('Role cache lookup failed; using Twitch badge permissions:', {
+                function: 'resolveUserIdentity',
+                channelID,
+                error: error instanceof Error ? error.message : String(error),
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    return createUserIdentity(level, tags);
 }
 
 async function hasCachedRole(

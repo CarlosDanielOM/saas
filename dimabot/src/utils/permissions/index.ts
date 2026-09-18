@@ -116,3 +116,4 @@ export {
     MAX_EXPRESSION_NODES,
     countExpressionNodes
 } from './expression.js';
+export { shouldLogPermissionError } from './error_rate_limit.js';
