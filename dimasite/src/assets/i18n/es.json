@@ -1394,6 +1394,7 @@
       "pro": "Pro",
       "title": "Función {{tier}}",
       "comingSoon": "Próximamente",
+      "locked": "Bloqueado",
       "requires": "Se requiere plan {{tier}}"
     },
     "charts": {

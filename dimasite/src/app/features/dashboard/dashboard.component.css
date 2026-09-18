@@ -427,10 +427,7 @@
 }
 
 .lf-upcoming {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-height: 6.4rem;
+  display: none;
 }
 
 .lf-upcoming__head {
@@ -441,52 +438,33 @@
   min-width: 0;
 }
 
-.lf-upcoming__icon {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.7rem;
-  background: var(--gold-soft);
-  color: var(--gold);
+.lf-upcoming__badge {
+  display: inline-flex;
   flex-shrink: 0;
+  color: var(--gold);
 }
 
-.lf-upcoming__icon lucide-icon,
-.lf-upcoming__icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
+.lf-upcoming__badge lucide-icon,
+.lf-upcoming__badge svg {
+  width: 1rem;
+  height: 1rem;
 }
 
-.lf-upcoming__title {
-  margin: 0.35rem 0 0;
-  font-size: 0.95rem;
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+.lf-upcoming__badge--soon {
+  color: var(--accent);
 }
 
-.lf-upcoming__note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.4;
+.lf-upcoming__value {
+  color: var(--fg);
 }
 
 .lf-upcoming--locked {
-  border-style: dashed;
-  border-color: color-mix(in srgb, var(--muted) 40%, var(--line));
-  background: color-mix(in srgb, var(--fg) 3%, var(--tile));
+  background: color-mix(in srgb, var(--fg) 2%, var(--tile));
 }
 
-.lf-upcoming--locked .lf-upcoming__icon {
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
+.lf-upcoming--locked .lf-upcoming__badge,
+.lf-upcoming--locked .lf-upcoming__value {
   color: var(--muted);
-}
-
-.lf-upcoming--locked .lf-upcoming__note {
-  color: var(--gold);
 }
 
 .lf-note {
@@ -1000,6 +978,11 @@
 
   .lf-ai {
     grid-column: auto;
+  }
+
+  .lf-upcoming {
+    display: flex;
+    flex-direction: column;
   }
 }
 

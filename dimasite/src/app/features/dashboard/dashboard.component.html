@@ -143,25 +143,29 @@
 
         @for (tile of upcomingTiles(); track tile.id) {
           <article
-            class="lf-tile lf-upcoming"
+            class="lf-tile lf-metric lf-upcoming"
             [class.lf-upcoming--locked]="!tile.unlocked"
             [attr.data-tier]="tile.requiredTier"
+            [attr.title]="
+              tile.unlocked
+                ? null
+                : t('dashboard.upcoming.requires', { tier: upcomingTierLabel(tile.requiredTier) })
+            "
           >
             <div class="lf-upcoming__head">
-              <span class="lf-upcoming__icon" aria-hidden="true">
+              <p class="lf-label">
+                {{ t('dashboard.upcoming.title', { tier: upcomingTierLabel(tile.requiredTier) }) }}
+              </p>
+              <span
+                class="lf-upcoming__badge"
+                [class.lf-upcoming__badge--soon]="tile.unlocked"
+                aria-hidden="true"
+              >
                 <lucide-icon [name]="tile.unlocked ? soonIcon : lockIcon"></lucide-icon>
               </span>
-              <span class="lf-chip lf-chip--gold">{{ upcomingTierLabel(tile.requiredTier) }}</span>
             </div>
-            <p class="lf-upcoming__title">
-              {{ t('dashboard.upcoming.title', { tier: upcomingTierLabel(tile.requiredTier) }) }}
-            </p>
-            <p class="lf-upcoming__note">
-              @if (tile.unlocked) {
-                {{ t('dashboard.upcoming.comingSoon') }}
-              } @else {
-                {{ t('dashboard.upcoming.requires', { tier: upcomingTierLabel(tile.requiredTier) }) }}
-              }
+            <p class="lf-value lf-value--sm lf-upcoming__value">
+              {{ tile.unlocked ? t('dashboard.upcoming.comingSoon') : t('dashboard.upcoming.locked') }}
             </p>
           </article>
         }
