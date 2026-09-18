@@ -16,7 +16,7 @@ for (const lang of ['en', 'es']) {
   assert.equal(res.status, 200, `${lang}.json must be served`);
   const dict = await res.json();
   const upcoming = dict.dashboard?.upcoming ?? {};
-  for (const key of ['premium', 'pro', 'title', 'comingSoon', 'locked', 'requires']) {
+  for (const key of ['premium', 'pro', 'title', 'comingSoon', 'locked', 'avgFollowsPerDay', 'avgSubsPerDay', 'requires']) {
     assert.ok(upcoming[key], `${lang}: dashboard.upcoming.${key} missing`);
   }
 }
@@ -33,7 +33,9 @@ const hasTiles = (body) =>
   body.includes('dashboard.upcoming.title') &&
   body.includes('dashboard.upcoming.requires') &&
   body.includes('dashboard.upcoming.comingSoon') &&
-  body.includes('dashboard.upcoming.locked');
+  body.includes('dashboard.upcoming.locked') &&
+  body.includes('dashboard.upcoming.avgFollowsPerDay') &&
+  body.includes('dashboard.upcoming.avgSubsPerDay');
 
 let found = hasTiles(mainJs);
 if (!found) {

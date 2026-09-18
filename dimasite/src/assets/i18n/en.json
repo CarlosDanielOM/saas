@@ -1395,6 +1395,8 @@
       "title": "{{tier}} feature",
       "comingSoon": "Coming soon",
       "locked": "Locked",
+      "avgFollowsPerDay": "Avg Follows / Day (30d)",
+      "avgSubsPerDay": "Avg Subs / Day (30d)",
       "requires": "{{tier}} plan required"
     },
     "charts": {

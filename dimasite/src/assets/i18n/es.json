@@ -1395,6 +1395,8 @@
       "title": "Función {{tier}}",
       "comingSoon": "Próximamente",
       "locked": "Bloqueado",
+      "avgFollowsPerDay": "Prom. Follows / Día (30d)",
+      "avgSubsPerDay": "Prom. Subs / Día (30d)",
       "requires": "Se requiere plan {{tier}}"
     },
     "charts": {

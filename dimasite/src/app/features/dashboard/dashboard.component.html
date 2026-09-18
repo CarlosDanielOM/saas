@@ -153,20 +153,18 @@
             "
           >
             <div class="lf-upcoming__head">
-              <p class="lf-label">
-                {{ t('dashboard.upcoming.title', { tier: upcomingTierLabel(tile.requiredTier) }) }}
-              </p>
-              <span
-                class="lf-upcoming__badge"
-                [class.lf-upcoming__badge--soon]="tile.unlocked"
-                aria-hidden="true"
-              >
-                <lucide-icon [name]="tile.unlocked ? soonIcon : lockIcon"></lucide-icon>
-              </span>
+              <p class="lf-label">{{ tile.label }}</p>
+              @if (!tile.unlocked) {
+                <span class="lf-upcoming__badge" aria-hidden="true">
+                  <lucide-icon [name]="lockIcon"></lucide-icon>
+                </span>
+              } @else if (!tile.metric) {
+                <span class="lf-upcoming__badge lf-upcoming__badge--soon" aria-hidden="true">
+                  <lucide-icon [name]="soonIcon"></lucide-icon>
+                </span>
+              }
             </div>
-            <p class="lf-value lf-value--sm lf-upcoming__value">
-              {{ tile.unlocked ? t('dashboard.upcoming.comingSoon') : t('dashboard.upcoming.locked') }}
-            </p>
+            <p class="lf-value lf-value--sm lf-upcoming__value">{{ tile.value }}</p>
           </article>
         }
       </section>

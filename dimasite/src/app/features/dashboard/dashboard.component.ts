@@ -52,10 +52,15 @@ type DashboardViewerRole = 'owner' | 'admin' | 'viewer';
 
 type UpcomingTier = 'premium' | 'pro';
 
+type UpcomingMetric = 'follows' | 'subs';
+
 interface UpcomingTile {
   id: string;
   requiredTier: UpcomingTier;
+  metric: UpcomingMetric | null;
   unlocked: boolean;
+  label: string;
+  value: string;
 }
 
 @Component({
@@ -94,6 +99,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     style: 'currency',
     currency: 'USD',
     notation: 'compact',
+    maximumFractionDigits: 1
+  });
+  private readonly averageFormatter = new Intl.NumberFormat(undefined, {
     maximumFractionDigits: 1
   });
   private readonly tableDateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -136,18 +144,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly lockIcon = Lock;
   readonly soonIcon = Clock;
   readonly upcomingTiles = computed<UpcomingTile[]>(() => {
+    this.languageService.currentLanguage();
     const currentRank = this.planRank(this.planTier());
-    const slots: { id: string; requiredTier: UpcomingTier }[] = [
-      { id: 'premium-1', requiredTier: 'premium' },
-      { id: 'premium-2', requiredTier: 'premium' },
-      { id: 'pro-1', requiredTier: 'pro' },
-      { id: 'pro-2', requiredTier: 'pro' }
+    const monthlyFollowsAverage = this.kpis().activeFollows / 30;
+    const monthlySubsAverage = this.kpis().activeSubs / 30;
+    const slots: { id: string; requiredTier: UpcomingTier; metric: UpcomingMetric | null }[] = [
+      { id: 'premium-follows', requiredTier: 'premium', metric: 'follows' },
+      { id: 'premium-subs', requiredTier: 'premium', metric: 'subs' },
+      { id: 'pro-1', requiredTier: 'pro', metric: null },
+      { id: 'pro-2', requiredTier: 'pro', metric: null }
     ];
 
-    return slots.map((slot) => ({
-      ...slot,
-      unlocked: currentRank >= this.planRank(slot.requiredTier)
-    }));
+    return slots.map((slot) => {
+      const unlocked = currentRank >= this.planRank(slot.requiredTier);
+      return {
+        ...slot,
+        unlocked,
+        label: this.upcomingTileLabel(slot.metric, slot.requiredTier),
+        value: this.upcomingTileValue(slot.metric, unlocked, {
+          follows: monthlyFollowsAverage,
+          subs: monthlySubsAverage
+        })
+      };
+    });
   });
   readonly channelName = computed(() => this.bootstrap()?.channel.name ?? '');
   readonly profileImageUrl = signal<string | null>(null);
@@ -387,6 +406,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   upcomingTierLabel(tier: UpcomingTier): string {
     return this.t(`dashboard.upcoming.${tier}`);
+  }
+
+  formatAverage(value: number): string {
+    return this.averageFormatter.format(Math.max(0, value));
+  }
+
+  private upcomingTileLabel(metric: UpcomingMetric | null, tier: UpcomingTier): string {
+    if (metric === 'follows') {
+      return this.t('dashboard.upcoming.avgFollowsPerDay');
+    }
+    if (metric === 'subs') {
+      return this.t('dashboard.upcoming.avgSubsPerDay');
+    }
+    return this.t('dashboard.upcoming.title', { tier: this.upcomingTierLabel(tier) });
+  }
+
+  private upcomingTileValue(
+    metric: UpcomingMetric | null,
+    unlocked: boolean,
+    averages: Record<UpcomingMetric, number>
+  ): string {
+    if (!unlocked) {
+      return this.t('dashboard.upcoming.locked');
+    }
+    if (metric) {
+      return this.formatAverage(averages[metric]);
+    }
+    return this.t('dashboard.upcoming.comingSoon');
   }
 
   private planRank(tier: string): number {
