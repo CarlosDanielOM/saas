@@ -6,8 +6,8 @@ import { populateAdminCache } from './permissions/roles.js';
 
 /**
  * Loads active channel admins from MongoDB into the canonical Dragonfly
- * role-cache keys. Called when a stream goes online to ensure admin data is
- * available for user level checks.
+ * role-cache keys. Called on stream online/offline transitions so admin data
+ * remains available and stale cache membership is reconciled.
  */
 export async function loadChannelAdminsIntoCache(channelID: string): Promise<void> {
     try {

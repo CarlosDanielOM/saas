@@ -53,7 +53,6 @@ function createOperations(calls: string[]): StreamOperationsDependencies {
         async clearChannelCache(channelID) { calls.push(`clear-channel:${channelID}`); },
         async clearSpeechFiles(channelID) { calls.push(`clear-speech:${channelID}`); },
         async clearHistory(channelID) { calls.push(`clear-history:${channelID}`); },
-        async clearLifecycleCache(channelID) { calls.push(`clear-lifecycle:${channelID}`); },
         async hasNewerLifecycleEvent() { return false; }
     };
 }
@@ -83,7 +82,53 @@ test('stream.ended treats channels without reward resets as a successful no-op',
         'clear-channel:channel-1',
         'clear-speech:channel-1',
         'clear-history:channel-1',
-        'clear-lifecycle:channel-1'
+        'load-editors:channel-1:true',
+        'load-admins:channel-1'
+    ]);
+});
+
+test('stream.ended rejects when offline role reconciliation fails so delivery retries', async () => {
+    const calls: string[] = [];
+    const operations = createOperations(calls);
+    operations.getChannelEditors = async (channelID, cache) => {
+        calls.push(`load-editors:${channelID}:${cache}`);
+        return {
+            error: true,
+            message: 'Twitch editor lookup unavailable',
+            type: 'provider_error'
+        };
+    };
+
+    await assert.rejects(
+        applyStreamOperationsDomainEvent(createEvent('stream.ended'), operations),
+        /Reconciling channel editors failed: Twitch editor lookup unavailable/
+    );
+    assert.deepEqual(calls, [
+        'unload-timers:channel-1',
+        'reset-rewards:channel-1',
+        'reset-sumimetro:channel-1',
+        'clear-channel:channel-1',
+        'clear-speech:channel-1',
+        'clear-history:channel-1',
+        'load-editors:channel-1:true'
+    ]);
+});
+
+test('stream.ended retries when the authoritative admin rebuild fails', async () => {
+    const calls: string[] = [];
+    const operations = createOperations(calls);
+    operations.loadChannelAdminsIntoCache = async (channelID) => {
+        calls.push(`load-admins:${channelID}`);
+        throw new Error('Mongo admin lookup unavailable');
+    };
+
+    await assert.rejects(
+        applyStreamOperationsDomainEvent(createEvent('stream.ended'), operations),
+        /Mongo admin lookup unavailable/
+    );
+    assert.deepEqual(calls.slice(-2), [
+        'load-editors:channel-1:true',
+        'load-admins:channel-1'
     ]);
 });
 
@@ -98,7 +143,7 @@ test('operational failures reject so the durable delivery can retry', async () =
 
     await assert.rejects(
         applyStreamOperationsDomainEvent(createEvent('stream.started'), operations),
-        /Loading channel editors failed: Failed to authenticate/
+        /Reconciling channel editors failed: Failed to authenticate/
     );
     assert.deepEqual(calls, ['load-timers:channel-1']);
 });

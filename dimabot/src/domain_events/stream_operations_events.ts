@@ -17,7 +17,6 @@ export interface StreamOperationsDependencies {
     clearChannelCache(channelID: string): Promise<void>;
     clearSpeechFiles(channelID: string): Promise<void>;
     clearHistory(channelID: string): Promise<void>;
-    clearLifecycleCache(channelID: string): Promise<void>;
     hasNewerLifecycleEvent(event: DomainEventEnvelope): Promise<boolean>;
 }
 
@@ -31,10 +30,8 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         import('../functions/redemptions/unvipexpired.redemption.js'),
         import('../schemas/domain_event.schema.js'),
         import('../utils/cache.js'),
-        import('../utils/databases/dragonfly.database.js'),
         import('../utils/speech.js'),
-        import('../utils/timer_cache.js'),
-        import('../utils/permissions/roles.js')
+        import('../utils/timer_cache.js')
     ]).then(([
         { default: ChatHistory },
         { getChannelEditors },
@@ -42,10 +39,8 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         { unVIPExpiredUser },
         { DomainEventSchema },
         { clearChannelCache, loadChannelAdminsIntoCache, resetSumimetro },
-        { getDragonflyClient },
         { clearSpeechFiles },
-        { loadChannelTimersIntoCache, unloadChannelTimersFromCache },
-        { clearChannelRoleCache }
+        { loadChannelTimersIntoCache, unloadChannelTimersFromCache }
     ]) => ({
         loadChannelTimersIntoCache,
         unloadChannelTimersFromCache,
@@ -57,10 +52,6 @@ async function getDependencies(): Promise<StreamOperationsDependencies> {
         clearChannelCache,
         clearSpeechFiles,
         clearHistory: (channelID) => ChatHistory.clearHistory(channelID),
-        async clearLifecycleCache(channelID) {
-            const cache = await getDragonflyClient('streamOperationsCleanup');
-            await clearChannelRoleCache(cache, channelID);
-        },
         async hasNewerLifecycleEvent(event) {
             const newerEvent = await DomainEventSchema.exists({
                 channelID: event.channelID,
@@ -87,6 +78,15 @@ function requireSuccessful(result: OperationResult | undefined, benignTypes: str
     throw new Error(`${operation} failed: ${result.message || result.type || 'unknown error'}`);
 }
 
+async function reconcileChannelRoles(operations: StreamOperationsDependencies, channelID: string): Promise<void> {
+    requireSuccessful(
+        await operations.getChannelEditors(channelID, true),
+        [],
+        'Reconciling channel editors'
+    );
+    await operations.loadChannelAdminsIntoCache(channelID);
+}
+
 export async function applyStreamOperationsDomainEvent(
     event: DomainEventEnvelope,
     injectedOperations?: StreamOperationsDependencies
@@ -102,8 +102,7 @@ export async function applyStreamOperationsDomainEvent(
 
     if (event.type === 'stream.started') {
         await operations.loadChannelTimersIntoCache(channelID);
-        requireSuccessful(await operations.getChannelEditors(channelID, true), [], 'Loading channel editors');
-        await operations.loadChannelAdminsIntoCache(channelID);
+        await reconcileChannelRoles(operations, channelID);
         requireSuccessful(await operations.unVIPExpiredUser({
             broadcaster_user_id: channelID,
             broadcaster_user_login: String(rawEvent.broadcaster_user_login || '')
@@ -119,6 +118,9 @@ export async function applyStreamOperationsDomainEvent(
         await operations.clearChannelCache(channelID);
         await operations.clearSpeechFiles(channelID);
         await operations.clearHistory(channelID);
-        await operations.clearLifecycleCache(channelID);
+        // Rebuild from the authoritative Twitch and Mongo sources instead of
+        // deleting role keys. Admins remain usable while the channel is
+        // offline, and stale grants/removals are repaired at both transitions.
+        await reconcileChannelRoles(operations, channelID);
     }
 }

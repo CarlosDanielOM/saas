@@ -1,7 +1,7 @@
 // Role-cache + stream-lifecycle behavior check for the cron target
 // (TAG_PERMISSION_SYSTEM.md §2.1 / §4.2.1): canonical twitch: editor/admin
-// keys, ID-first identity resolution, lifecycle cleanup, and the stream
-// operations domain-event wiring that runs inside the cron worker.
+// keys, ID-first identity resolution, explicit cleanup, and online/offline
+// reconciliation wiring that runs inside the cron worker.
 import assert from 'node:assert/strict';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import {
@@ -63,7 +63,7 @@ for (const key of [
     `twitch:${channel}:admins:admin-id`,
     `${channel}:admins`
 ]) {
-    assert.equal(await redis.exists(key), 0, `${key} cleared by lifecycle cleanup`);
+    assert.equal(await redis.exists(key), 0, `${key} cleared by explicit cleanup`);
 }
 
 // 5. Stream-started domain event wiring invokes the cache refresh path.
@@ -80,7 +80,6 @@ const operations = {
     async clearChannelCache() {},
     async clearSpeechFiles() {},
     async clearHistory() {},
-    async clearLifecycleCache(id) { calls.push(`lifecycle:${id}`); },
     async hasNewerLifecycleEvent() { return false; }
 };
 const event = {
@@ -106,5 +105,20 @@ assert.deepEqual(calls, [
     `vips:${channel}`
 ], 'stream.started refreshes timers, editors (with cache), admins and VIPs');
 
-console.log('PASS cron: canonical editor/admin role cache keys, ID-first resolution, lifecycle cleanup, stream.started wiring');
+calls.length = 0;
+await applyStreamOperationsDomainEvent({
+    ...event,
+    _id: 'check-event-2',
+    eventKey: 'event:stream.ended',
+    sourceEventId: 'source:stream.ended',
+    type: 'stream.ended',
+    payload: { event: { broadcaster_user_id: channel, broadcaster_user_login: 'streamer' } }
+}, operations);
+assert.deepEqual(calls, [
+    `unload-timers:${channel}`,
+    `editors:${channel}:true`,
+    `admins:${channel}`
+], 'stream.ended reconciles editors and admins after offline cleanup');
+
+console.log('PASS cron: canonical role keys, ID-first resolution, explicit cleanup, online/offline reconciliation');
 process.exit(0);

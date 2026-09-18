@@ -293,7 +293,7 @@ export async function removeAdminFromRoleCache(
     await client.sRem(adminsIdsKey(channelID), adminID);
 }
 
-/** Stream lifecycle cleanup: canonical + legacy editor/admin keys. */
+/** Explicit channel-removal cleanup for canonical + legacy editor/admin keys. */
 export async function clearChannelRoleCache(client: RoleCacheClient, channelID: string): Promise<void> {
     const adminKeys = await client.keys(`twitch:${channelID}:admins*`);
     const legacyAdminKeys = await client.keys(`${channelID}:admins*`);
