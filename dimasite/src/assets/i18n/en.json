@@ -1379,6 +1379,8 @@
       "averageModeLabel": "Averages",
       "averageModeDay": "Per day",
       "averageModeStream": "Per stream",
+      "averageModeDayShort": "Day",
+      "averageModeStreamShort": "Stream",
       "averages": {
         "hoursPerDay": "Avg Hours / Day",
         "hoursPerStream": "Avg Hours / Stream",

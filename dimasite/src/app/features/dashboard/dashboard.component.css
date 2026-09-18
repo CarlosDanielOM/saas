@@ -182,20 +182,9 @@
   margin-top: 0.8rem;
 }
 
-.lf-avg-toggle {
+.lf-metric--switchable {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.65rem;
-  margin-top: 0.9rem;
-}
-
-.lf-avg-toggle__label {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  flex-direction: column;
 }
 
 .lf-actions a.lf-btn {

@@ -31,6 +31,7 @@ import { ThemeService } from '../../services/theme.service';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { StreamHealthStatus } from './components/stream-health.component';
+import { AverageToggleComponent, type AverageMode } from './components/average-toggle.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
 import { ReferralPromoBannerComponent } from '../../shared/referral-promo-banner/referral-promo-banner.component';
 import { environment } from '../../../environments/environment';
@@ -54,14 +55,13 @@ type UpcomingTier = 'premium' | 'pro';
 
 type UpcomingMetric = 'follows' | 'subs';
 
-type AverageMode = 'day' | 'stream';
-
 type AverageMetric = 'hours' | 'bits' | 'donations' | 'follows' | 'subs';
 
 interface UpcomingTile {
   id: string;
   requiredTier: UpcomingTier;
   metric: UpcomingMetric | null;
+  mode: AverageMode;
   unlocked: boolean;
   label: string;
   value: string;
@@ -74,7 +74,8 @@ interface UpcomingTile {
     CountUpDirective,
     LoadingIndicatorComponent,
     ReferralPromoBannerComponent,
-    LucideAngularModule
+    LucideAngularModule,
+    AverageToggleComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -144,36 +145,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly errorMessage = signal<string | null>(null);
 
   readonly kpis = computed<DashboardKpis>(() => this.bootstrap()?.kpis ?? this.emptyKpis());
-  readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly lockIcon = Lock;
   readonly soonIcon = Clock;
 
-  private readonly AVERAGE_MODE_STORAGE_KEY = 'dimasite.dashboard.average_mode';
-  readonly averageMode = signal<AverageMode>(this.readAverageMode());
+  private readonly AVERAGE_MODES_STORAGE_KEY = 'dimasite.dashboard.average_modes';
+  readonly averageModes = signal<Record<AverageMetric, AverageMode>>(this.readAverageModes());
   readonly averages = computed<Record<AverageMetric, number>>(() => {
     const kpis = this.kpis();
-    const divisor = this.averageDivisor();
-    if (divisor <= 0) {
-      return { hours: 0, bits: 0, donations: 0, follows: 0, subs: 0 };
-    }
+    const hours = this.monthlyHoursTotal();
+    const divide = (total: number, metric: AverageMetric): number => {
+      const divisor = this.averageDivisor(metric);
+      return divisor > 0 ? total / divisor : 0;
+    };
+
     return {
-      hours: this.monthlyHoursTotal() / divisor,
-      bits: kpis.totalBits / divisor,
-      donations: kpis.totalDonations / divisor,
-      follows: kpis.activeFollows / divisor,
-      subs: kpis.activeSubs / divisor
+      hours: divide(hours, 'hours'),
+      bits: divide(kpis.totalBits, 'bits'),
+      donations: divide(kpis.totalDonations, 'donations'),
+      follows: divide(kpis.activeFollows, 'follows'),
+      subs: divide(kpis.activeSubs, 'subs')
     };
   });
   private readonly monthlyHoursTotal = computed(() =>
     (this.bootstrap()?.streamHistory ?? []).reduce((sum, point) => sum + (point.hours ?? 0), 0)
   );
-  private readonly averageDivisor = computed(() =>
-    this.averageMode() === 'stream' ? this.kpis().totalStreams : 30
-  );
 
   readonly upcomingTiles = computed<UpcomingTile[]>(() => {
     this.languageService.currentLanguage();
-    this.averageMode();
+    const modes = this.averageModes();
     const currentRank = this.planRank(this.planTier());
     const slots: { id: string; requiredTier: UpcomingTier; metric: UpcomingMetric | null }[] = [
       { id: 'premium-follows', requiredTier: 'premium', metric: 'follows' },
@@ -186,6 +186,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const unlocked = currentRank >= this.planRank(slot.requiredTier);
       return {
         ...slot,
+        mode: slot.metric ? modes[slot.metric] : 'day',
         unlocked,
         label: this.upcomingTileLabel(slot.metric, slot.requiredTier),
         value: this.upcomingTileValue(slot.metric, unlocked)
@@ -432,15 +433,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.t(`dashboard.upcoming.${tier}`);
   }
 
-  setAverageMode(mode: AverageMode): void {
-    this.averageMode.set(mode);
+  setAverageMode(metric: AverageMetric, mode: AverageMode): void {
+    this.averageModes.update((modes) => ({ ...modes, [metric]: mode }));
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(this.AVERAGE_MODE_STORAGE_KEY, mode);
+      localStorage.setItem(this.AVERAGE_MODES_STORAGE_KEY, JSON.stringify(this.averageModes()));
+    }
+  }
+
+  onUpcomingModeChange(tile: UpcomingTile, mode: AverageMode): void {
+    if (tile.metric) {
+      this.setAverageMode(tile.metric, mode);
     }
   }
 
   averageLabel(metric: AverageMetric): string {
-    const suffix = this.averageMode() === 'stream' ? 'PerStream' : 'PerDay';
+    const suffix = this.averageModes()[metric] === 'stream' ? 'PerStream' : 'PerDay';
     return this.t(`dashboard.kpis.averages.${metric}${suffix}`);
   }
 
@@ -459,11 +466,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.averageFormatter.format(Math.max(0, value));
   }
 
-  private readAverageMode(): AverageMode {
+  private averageDivisor(metric: AverageMetric): number {
+    return this.averageModes()[metric] === 'stream' ? this.kpis().totalStreams : 30;
+  }
+
+  private readAverageModes(): Record<AverageMetric, AverageMode> {
+    const modes: Record<AverageMetric, AverageMode> = {
+      hours: 'day',
+      bits: 'day',
+      donations: 'day',
+      follows: 'day',
+      subs: 'day'
+    };
+
     if (typeof localStorage === 'undefined') {
-      return 'day';
+      return modes;
     }
-    return localStorage.getItem('dimasite.dashboard.average_mode') === 'stream' ? 'stream' : 'day';
+
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem('dimasite.dashboard.average_modes') || '{}'
+      ) as Partial<Record<AverageMetric, AverageMode>>;
+      for (const metric of Object.keys(modes) as AverageMetric[]) {
+        if (stored[metric] === 'stream' || stored[metric] === 'day') {
+          modes[metric] = stored[metric] as AverageMode;
+        }
+      }
+    } catch {
+      // keep defaults
+    }
+
+    return modes;
   }
 
   private upcomingTileLabel(metric: UpcomingMetric | null, tier: UpcomingTier): string {

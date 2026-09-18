@@ -16,7 +16,13 @@ for (const lang of ['en', 'es']) {
   assert.equal(res.status, 200, `${lang}.json must be served`);
   const dict = await res.json();
   const kpis = dict.dashboard?.kpis ?? {};
-  for (const key of ['averageModeLabel', 'averageModeDay', 'averageModeStream']) {
+  for (const key of [
+    'averageModeLabel',
+    'averageModeDay',
+    'averageModeStream',
+    'averageModeDayShort',
+    'averageModeStreamShort'
+  ]) {
     assert.ok(kpis[key], `${lang}: dashboard.kpis.${key} missing`);
   }
   const averages = kpis.averages ?? {};
@@ -49,7 +55,8 @@ const mainJs = await (await fetch(`${base}/${mainMatch[1].replace(/^\//, '')}`))
 const hasTiles = (body) =>
   body.includes('lf-upcoming') &&
   body.includes('lf-upcoming--locked') &&
-  body.includes('lf-avg-toggle') &&
+  body.includes('lf-mini-range') &&
+  body.includes('app-average-toggle') &&
   body.includes('dashboard.kpis.averages.') &&
   body.includes('dashboard.upcoming.title') &&
   body.includes('dashboard.upcoming.requires') &&
