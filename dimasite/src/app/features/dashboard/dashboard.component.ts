@@ -54,6 +54,10 @@ type UpcomingTier = 'premium' | 'pro';
 
 type UpcomingMetric = 'follows' | 'subs';
 
+type AverageMode = 'day' | 'stream';
+
+type AverageMetric = 'hours' | 'bits' | 'donations' | 'follows' | 'subs';
+
 interface UpcomingTile {
   id: string;
   requiredTier: UpcomingTier;
@@ -143,11 +147,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
   readonly lockIcon = Lock;
   readonly soonIcon = Clock;
+
+  private readonly AVERAGE_MODE_STORAGE_KEY = 'dimasite.dashboard.average_mode';
+  readonly averageMode = signal<AverageMode>(this.readAverageMode());
+  readonly averages = computed<Record<AverageMetric, number>>(() => {
+    const kpis = this.kpis();
+    const divisor = this.averageDivisor();
+    if (divisor <= 0) {
+      return { hours: 0, bits: 0, donations: 0, follows: 0, subs: 0 };
+    }
+    return {
+      hours: this.monthlyHoursTotal() / divisor,
+      bits: kpis.totalBits / divisor,
+      donations: kpis.totalDonations / divisor,
+      follows: kpis.activeFollows / divisor,
+      subs: kpis.activeSubs / divisor
+    };
+  });
+  private readonly monthlyHoursTotal = computed(() =>
+    (this.bootstrap()?.streamHistory ?? []).reduce((sum, point) => sum + (point.hours ?? 0), 0)
+  );
+  private readonly averageDivisor = computed(() =>
+    this.averageMode() === 'stream' ? this.kpis().totalStreams : 30
+  );
+
   readonly upcomingTiles = computed<UpcomingTile[]>(() => {
     this.languageService.currentLanguage();
+    this.averageMode();
     const currentRank = this.planRank(this.planTier());
-    const monthlyFollowsAverage = this.kpis().activeFollows / 30;
-    const monthlySubsAverage = this.kpis().activeSubs / 30;
     const slots: { id: string; requiredTier: UpcomingTier; metric: UpcomingMetric | null }[] = [
       { id: 'premium-follows', requiredTier: 'premium', metric: 'follows' },
       { id: 'premium-subs', requiredTier: 'premium', metric: 'subs' },
@@ -161,10 +188,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         ...slot,
         unlocked,
         label: this.upcomingTileLabel(slot.metric, slot.requiredTier),
-        value: this.upcomingTileValue(slot.metric, unlocked, {
-          follows: monthlyFollowsAverage,
-          subs: monthlySubsAverage
-        })
+        value: this.upcomingTileValue(slot.metric, unlocked)
       };
     });
   });
@@ -408,30 +432,53 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.t(`dashboard.upcoming.${tier}`);
   }
 
+  setAverageMode(mode: AverageMode): void {
+    this.averageMode.set(mode);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(this.AVERAGE_MODE_STORAGE_KEY, mode);
+    }
+  }
+
+  averageLabel(metric: AverageMetric): string {
+    const suffix = this.averageMode() === 'stream' ? 'PerStream' : 'PerDay';
+    return this.t(`dashboard.kpis.averages.${metric}${suffix}`);
+  }
+
+  averageValue(metric: AverageMetric): string {
+    const value = this.averages()[metric];
+    if (metric === 'hours') {
+      return this.formatHours(value);
+    }
+    if (metric === 'donations') {
+      return this.formatCurrency(value);
+    }
+    return this.formatAverage(value);
+  }
+
   formatAverage(value: number): string {
     return this.averageFormatter.format(Math.max(0, value));
   }
 
-  private upcomingTileLabel(metric: UpcomingMetric | null, tier: UpcomingTier): string {
-    if (metric === 'follows') {
-      return this.t('dashboard.upcoming.avgFollowsPerDay');
+  private readAverageMode(): AverageMode {
+    if (typeof localStorage === 'undefined') {
+      return 'day';
     }
-    if (metric === 'subs') {
-      return this.t('dashboard.upcoming.avgSubsPerDay');
+    return localStorage.getItem('dimasite.dashboard.average_mode') === 'stream' ? 'stream' : 'day';
+  }
+
+  private upcomingTileLabel(metric: UpcomingMetric | null, tier: UpcomingTier): string {
+    if (metric) {
+      return this.averageLabel(metric);
     }
     return this.t('dashboard.upcoming.title', { tier: this.upcomingTierLabel(tier) });
   }
 
-  private upcomingTileValue(
-    metric: UpcomingMetric | null,
-    unlocked: boolean,
-    averages: Record<UpcomingMetric, number>
-  ): string {
+  private upcomingTileValue(metric: UpcomingMetric | null, unlocked: boolean): string {
     if (!unlocked) {
       return this.t('dashboard.upcoming.locked');
     }
     if (metric) {
-      return this.formatAverage(averages[metric]);
+      return this.averageValue(metric);
     }
     return this.t('dashboard.upcoming.comingSoon');
   }

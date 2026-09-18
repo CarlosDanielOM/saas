@@ -56,6 +56,30 @@
             </button>
           </div>
 
+          <div class="lf-avg-toggle">
+            <span class="lf-avg-toggle__label">{{ t('dashboard.kpis.averageModeLabel') }}</span>
+            <div class="lf-range" role="group" [attr.aria-label]="t('dashboard.kpis.averageModeLabel')">
+              <button
+                type="button"
+                class="lf-range__btn"
+                [class.lf-range__btn--active]="averageMode() === 'day'"
+                [attr.aria-pressed]="averageMode() === 'day'"
+                (click)="setAverageMode('day')"
+              >
+                {{ t('dashboard.kpis.averageModeDay') }}
+              </button>
+              <button
+                type="button"
+                class="lf-range__btn"
+                [class.lf-range__btn--active]="averageMode() === 'stream'"
+                [attr.aria-pressed]="averageMode() === 'stream'"
+                (click)="setAverageMode('stream')"
+              >
+                {{ t('dashboard.kpis.averageModeStream') }}
+              </button>
+            </div>
+          </div>
+
           <div class="lf-status-row lf-status-row--top">
             <span
               class="lf-chip"
@@ -125,20 +149,20 @@
         </article>
 
         <article class="lf-tile lf-metric">
-          <p class="lf-label">{{ t('dashboard.kpis.avgHoursPerStream') }}</p>
-          <p class="lf-value">{{ formatHours(kpis().averageHoursPerStream) }}</p>
+          <p class="lf-label">{{ averageLabel('hours') }}</p>
+          <p class="lf-value">{{ averageValue('hours') }}</p>
         </article>
         <article class="lf-tile lf-metric">
           <p class="lf-label">{{ t('dashboard.kpis.averageViewers30d') }}</p>
           <p class="lf-value" [countUp]="kpis().monthlyAverageViewers">0</p>
         </article>
         <article class="lf-tile lf-metric lf-metric--accent">
-          <p class="lf-label">{{ t('dashboard.kpis.bits30d') }}</p>
-          <p class="lf-value" [countUp]="kpis().totalBits">0</p>
+          <p class="lf-label">{{ averageLabel('bits') }}</p>
+          <p class="lf-value">{{ averageValue('bits') }}</p>
         </article>
         <article class="lf-tile lf-metric">
-          <p class="lf-label">{{ t('dashboard.kpis.donations30d') }}</p>
-          <p class="lf-value">{{ formatCurrency(kpis().totalDonations) }}</p>
+          <p class="lf-label">{{ averageLabel('donations') }}</p>
+          <p class="lf-value">{{ averageValue('donations') }}</p>
         </article>
 
         @for (tile of upcomingTiles(); track tile.id) {

@@ -1376,6 +1376,21 @@
     },
     "kpis": {
       "sectionLabel": "Metricas principales del panel",
+      "averageModeLabel": "Promedios",
+      "averageModeDay": "Por día",
+      "averageModeStream": "Por stream",
+      "averages": {
+        "hoursPerDay": "Prom. Horas / Día",
+        "hoursPerStream": "Prom. Horas / Stream",
+        "bitsPerDay": "Prom. Bits / Día",
+        "bitsPerStream": "Prom. Bits / Stream",
+        "donationsPerDay": "Prom. Donaciones / Día",
+        "donationsPerStream": "Prom. Donaciones / Stream",
+        "followsPerDay": "Prom. Follows / Día",
+        "followsPerStream": "Prom. Follows / Stream",
+        "subsPerDay": "Prom. Subs / Día",
+        "subsPerStream": "Prom. Subs / Stream"
+      },
       "avgHoursPerStream": "Horas Promedio / Stream",
       "averageViewers30d": "Promedio de Viewers (30d)",
       "bits30d": "Bits (30d)",
@@ -1395,8 +1410,6 @@
       "title": "Función {{tier}}",
       "comingSoon": "Próximamente",
       "locked": "Bloqueado",
-      "avgFollowsPerDay": "Prom. Follows / Día (30d)",
-      "avgSubsPerDay": "Prom. Subs / Día (30d)",
       "requires": "Se requiere plan {{tier}}"
     },
     "charts": {

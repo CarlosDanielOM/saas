@@ -1,4 +1,4 @@
-/** Behavior check: dashboard premium/pro "coming soon" tiles. */
+/** Behavior check: dashboard average toggle + premium/pro tiles. */
 import assert from 'node:assert/strict';
 
 const base = process.env.SAAS_PREVIEW_URL;
@@ -10,18 +10,37 @@ assert.equal(page.status, 200, 'dashboard route must resolve');
 const shell = await page.text();
 assert.match(shell, /<app-root/i, 'CSR shell must be served for /:streamer/dashboard');
 
-// 2. i18n bundles expose the upcoming-tile keys in both languages.
+// 2. i18n bundles expose the upcoming-tile and average-mode keys in both languages.
 for (const lang of ['en', 'es']) {
   const res = await fetch(`${base}/assets/i18n/${lang}.json`);
   assert.equal(res.status, 200, `${lang}.json must be served`);
   const dict = await res.json();
+  const kpis = dict.dashboard?.kpis ?? {};
+  for (const key of ['averageModeLabel', 'averageModeDay', 'averageModeStream']) {
+    assert.ok(kpis[key], `${lang}: dashboard.kpis.${key} missing`);
+  }
+  const averages = kpis.averages ?? {};
+  for (const key of [
+    'hoursPerDay',
+    'hoursPerStream',
+    'bitsPerDay',
+    'bitsPerStream',
+    'donationsPerDay',
+    'donationsPerStream',
+    'followsPerDay',
+    'followsPerStream',
+    'subsPerDay',
+    'subsPerStream'
+  ]) {
+    assert.ok(averages[key], `${lang}: dashboard.kpis.averages.${key} missing`);
+  }
   const upcoming = dict.dashboard?.upcoming ?? {};
-  for (const key of ['premium', 'pro', 'title', 'comingSoon', 'locked', 'avgFollowsPerDay', 'avgSubsPerDay', 'requires']) {
+  for (const key of ['premium', 'pro', 'title', 'comingSoon', 'locked', 'requires']) {
     assert.ok(upcoming[key], `${lang}: dashboard.upcoming.${key} missing`);
   }
 }
 
-// 3. The built dashboard chunk must ship the locked/coming-soon tile markup and logic.
+// 3. The built dashboard chunk must ship the tile markup, average toggle and logic.
 //    Prefer the main chunk, then scan the lazy chunks it references.
 const mainMatch = shell.match(/src="([^"]*main-[^"]+\.js)"/);
 assert.ok(mainMatch, 'main chunk must be referenced by the CSR shell');
@@ -30,12 +49,12 @@ const mainJs = await (await fetch(`${base}/${mainMatch[1].replace(/^\//, '')}`))
 const hasTiles = (body) =>
   body.includes('lf-upcoming') &&
   body.includes('lf-upcoming--locked') &&
+  body.includes('lf-avg-toggle') &&
+  body.includes('dashboard.kpis.averages.') &&
   body.includes('dashboard.upcoming.title') &&
   body.includes('dashboard.upcoming.requires') &&
   body.includes('dashboard.upcoming.comingSoon') &&
-  body.includes('dashboard.upcoming.locked') &&
-  body.includes('dashboard.upcoming.avgFollowsPerDay') &&
-  body.includes('dashboard.upcoming.avgSubsPerDay');
+  body.includes('dashboard.upcoming.locked');
 
 let found = hasTiles(mainJs);
 if (!found) {

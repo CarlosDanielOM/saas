@@ -1376,6 +1376,21 @@
     },
     "kpis": {
       "sectionLabel": "Top dashboard metrics",
+      "averageModeLabel": "Averages",
+      "averageModeDay": "Per day",
+      "averageModeStream": "Per stream",
+      "averages": {
+        "hoursPerDay": "Avg Hours / Day",
+        "hoursPerStream": "Avg Hours / Stream",
+        "bitsPerDay": "Avg Bits / Day",
+        "bitsPerStream": "Avg Bits / Stream",
+        "donationsPerDay": "Avg Donations / Day",
+        "donationsPerStream": "Avg Donations / Stream",
+        "followsPerDay": "Avg Follows / Day",
+        "followsPerStream": "Avg Follows / Stream",
+        "subsPerDay": "Avg Subs / Day",
+        "subsPerStream": "Avg Subs / Stream"
+      },
       "avgHoursPerStream": "Avg Hours / Stream",
       "averageViewers30d": "Average Viewers (30d)",
       "bits30d": "Bits (30d)",
@@ -1395,8 +1410,6 @@
       "title": "{{tier}} feature",
       "comingSoon": "Coming soon",
       "locked": "Locked",
-      "avgFollowsPerDay": "Avg Follows / Day (30d)",
-      "avgSubsPerDay": "Avg Subs / Day (30d)",
       "requires": "{{tier}} plan required"
     },
     "charts": {
