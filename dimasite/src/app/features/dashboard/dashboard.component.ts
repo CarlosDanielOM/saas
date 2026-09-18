@@ -12,6 +12,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as echarts from 'echarts';
 import { EChartsOption } from 'echarts';
+import { Clock, Lock, LucideAngularModule } from 'lucide-angular';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 import { distinctUntilChanged, map, of, shareReplay, Subscription, switchMap } from 'rxjs';
 
@@ -49,13 +50,22 @@ interface DailySeriesBucket {
 
 type DashboardViewerRole = 'owner' | 'admin' | 'viewer';
 
+type UpcomingTier = 'premium' | 'pro';
+
+interface UpcomingTile {
+  id: string;
+  requiredTier: UpcomingTier;
+  unlocked: boolean;
+}
+
 @Component({
   selector: 'app-dashboard',
   imports: [
     NgxEchartsDirective,
     CountUpDirective,
     LoadingIndicatorComponent,
-    ReferralPromoBannerComponent
+    ReferralPromoBannerComponent,
+    LucideAngularModule
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -123,6 +133,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly kpis = computed<DashboardKpis>(() => this.bootstrap()?.kpis ?? this.emptyKpis());
   readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly lockIcon = Lock;
+  readonly soonIcon = Clock;
+  readonly upcomingTiles = computed<UpcomingTile[]>(() => {
+    const currentRank = this.planRank(this.planTier());
+    const slots: { id: string; requiredTier: UpcomingTier }[] = [
+      { id: 'premium-1', requiredTier: 'premium' },
+      { id: 'premium-2', requiredTier: 'premium' },
+      { id: 'pro-1', requiredTier: 'pro' },
+      { id: 'pro-2', requiredTier: 'pro' }
+    ];
+
+    return slots.map((slot) => ({
+      ...slot,
+      unlocked: currentRank >= this.planRank(slot.requiredTier)
+    }));
+  });
   readonly channelName = computed(() => this.bootstrap()?.channel.name ?? '');
   readonly profileImageUrl = signal<string | null>(null);
   readonly displayName = computed(() => {
@@ -357,6 +383,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  upcomingTierLabel(tier: UpcomingTier): string {
+    return this.t(`dashboard.upcoming.${tier}`);
+  }
+
+  private planRank(tier: string): number {
+    if (tier === 'pro') {
+      return 2;
+    }
+    if (tier === 'premium') {
+      return 1;
+    }
+    return 0;
   }
 
   formatHistoryDate(value: string): string {

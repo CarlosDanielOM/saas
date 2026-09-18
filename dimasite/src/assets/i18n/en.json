@@ -1389,6 +1389,13 @@
       "aiCreditsExhaustedPro": "Buy more credits",
       "aiCreditsNotAvailable": "Not available for this account"
     },
+    "upcoming": {
+      "premium": "Premium",
+      "pro": "Pro",
+      "title": "{{tier}} feature",
+      "comingSoon": "Coming soon",
+      "requires": "{{tier}} plan required"
+    },
     "charts": {
       "sectionLabel": "Performance chart",
       "title": "Performance Trend",

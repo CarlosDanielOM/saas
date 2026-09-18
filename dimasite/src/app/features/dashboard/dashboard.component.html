@@ -140,6 +140,31 @@
           <p class="lf-label">{{ t('dashboard.kpis.donations30d') }}</p>
           <p class="lf-value">{{ formatCurrency(kpis().totalDonations) }}</p>
         </article>
+
+        @for (tile of upcomingTiles(); track tile.id) {
+          <article
+            class="lf-tile lf-upcoming"
+            [class.lf-upcoming--locked]="!tile.unlocked"
+            [attr.data-tier]="tile.requiredTier"
+          >
+            <div class="lf-upcoming__head">
+              <span class="lf-upcoming__icon" aria-hidden="true">
+                <lucide-icon [name]="tile.unlocked ? soonIcon : lockIcon"></lucide-icon>
+              </span>
+              <span class="lf-chip lf-chip--gold">{{ upcomingTierLabel(tile.requiredTier) }}</span>
+            </div>
+            <p class="lf-upcoming__title">
+              {{ t('dashboard.upcoming.title', { tier: upcomingTierLabel(tile.requiredTier) }) }}
+            </p>
+            <p class="lf-upcoming__note">
+              @if (tile.unlocked) {
+                {{ t('dashboard.upcoming.comingSoon') }}
+              } @else {
+                {{ t('dashboard.upcoming.requires', { tier: upcomingTierLabel(tile.requiredTier) }) }}
+              }
+            </p>
+          </article>
+        }
       </section>
 
       <section class="lf-bento lf-bento--ops" [attr.aria-label]="t('dashboard.activity.title')">

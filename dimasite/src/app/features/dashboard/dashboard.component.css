@@ -426,6 +426,69 @@
   border-color: rgba(139, 92, 246, 0.28);
 }
 
+.lf-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 6.4rem;
+}
+
+.lf-upcoming__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lf-upcoming__icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.7rem;
+  background: var(--gold-soft);
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.lf-upcoming__icon lucide-icon,
+.lf-upcoming__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.lf-upcoming__title {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.lf-upcoming__note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lf-upcoming--locked {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--muted) 40%, var(--line));
+  background: color-mix(in srgb, var(--fg) 3%, var(--tile));
+}
+
+.lf-upcoming--locked .lf-upcoming__icon {
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--muted);
+}
+
+.lf-upcoming--locked .lf-upcoming__note {
+  color: var(--gold);
+}
+
 .lf-note {
   margin: 0.7rem 0 0;
   color: var(--muted);
@@ -920,7 +983,7 @@
 
   .lf-tile--intro {
     grid-column: 1 / 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -928,7 +991,7 @@
 
   .lf-tile--spotlight {
     grid-column: 2 / 3;
-    grid-row: 1 / 4;
+    grid-row: 1 / 5;
   }
 
   .lf-bento--ops {
