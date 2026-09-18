@@ -66,6 +66,12 @@ export class CommandsPageComponent {
   ]).pipe(
     map(([currentParams, parentParams]) => currentParams.get('streamer') ?? parentParams.get('streamer') ?? '')
   );
+  readonly streamer = toSignal(this.routeStreamer$, {
+    initialValue:
+      this.route.snapshot.paramMap.get('streamer') ??
+      this.route.parent?.snapshot.paramMap.get('streamer') ??
+      ''
+  });
   private readonly streamerParam = toSignal(
     this.routeStreamer$.pipe(
       switchMap((streamer) => {
@@ -123,11 +129,7 @@ export class CommandsPageComponent {
 
   // Computed
   readonly planTier = computed((): PlanTier => {
-    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
-    if (tier === 'premium' || tier === 'pro') {
-      return tier;
-    }
-    return 'free';
+    return this.sessionAuth.getPlanTierForStreamer(this.streamer());
   });
 
   readonly planLabel = computed(() => {

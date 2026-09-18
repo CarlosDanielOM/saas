@@ -174,7 +174,9 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly testingTrigger = signal<TriggerRecord | null>(null);
   readonly pendingDelete = signal<DeleteState | null>(null);
 
-  readonly planTier = computed<PlanTier>(() => this.libraryMeta().planTier || this.sessionAuth.session()?.appUser.plan_tier || 'free');
+  readonly planTier = computed<PlanTier>(() =>
+    this.libraryMeta().planTier || this.sessionAuth.getPlanTierForStreamer(this.streamer())
+  );
   readonly obsOverlayUrl = computed(() => {
     const channelId = this.channelID();
     return channelId ? `${this.linksService.getApiUrl()}/overlays/triggers/${channelId}` : '';

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authenticatedGuard } from './guards/authenticated.guard';
+import { dashboardAccessGuard } from './guards/dashboard-access.guard';
 import { PublicCommandsPageComponent } from './features/commands/public-commands-page.component';
 import { ForbiddenPageComponent } from './features/forbidden/forbidden-page.component';
 import { NotFoundPageComponent } from './features/not-found/not-found-page.component';
@@ -677,7 +678,7 @@ export const routes: Routes = [
       import('./features/layout/authenticated-layout.component').then(
         (m) => m.AuthenticatedLayoutComponent
       ),
-    canActivate: [validStreamerGuard, authenticatedGuard],
+    canActivate: [validStreamerGuard, authenticatedGuard, dashboardAccessGuard],
     title: 'Dashboard | DomDimaBot',
     children: [
       {

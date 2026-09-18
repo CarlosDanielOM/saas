@@ -142,13 +142,14 @@ export class TtsPageComponent {
     const channelID = this.channelID();
     return channelID ? `https://api.domdimabot.com/speech/${channelID}` : '';
   });
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly isPremiumOrPro = computed(() => {
-    const planTier = this.session()?.appUser.plan_tier;
+    const planTier = this.planTier();
     return planTier === 'premium' || planTier === 'pro';
   });
 
   readonly isPro = computed(() => {
-    const planTier = this.session()?.appUser.plan_tier;
+    const planTier = this.planTier();
     return planTier === 'pro';
   });
 
@@ -344,7 +345,7 @@ export class TtsPageComponent {
   }
 
   getCurrentPlanLabel(): string {
-    const planTier = this.session()?.appUser.plan_tier;
+    const planTier = this.planTier();
     return planTier === 'pro'
       ? this.t('navbar.planPro')
       : planTier === 'premium'

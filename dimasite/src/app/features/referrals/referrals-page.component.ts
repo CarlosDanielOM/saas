@@ -100,7 +100,7 @@ export class ReferralsPageComponent implements OnDestroy {
     const fromStats = this.stats()?.planType;
     if (fromStats === 'PREMIUM') return 'premium' as const;
     if (fromStats === 'PRO') return 'pro' as const;
-    const tier = this.session()?.appUser.plan_tier ?? 'free';
+    const tier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
     if (tier === 'premium' || tier === 'pro') return tier;
     return 'free' as const;
   });

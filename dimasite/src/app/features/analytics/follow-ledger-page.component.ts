@@ -107,7 +107,7 @@ export class FollowLedgerPageComponent {
     } satisfies ChannelResolutionState
   });
   readonly channelID = computed(() => this.channelResolution().channelID);
-  readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly hasPaidAccess = computed(() => this.planTier() !== 'free');
   readonly showInitialLoading = computed(() => this.loading() && this.rows().length === 0);
   readonly showEmptyState = computed(() => !this.loading() && !this.errorMessage() && this.rows().length === 0);

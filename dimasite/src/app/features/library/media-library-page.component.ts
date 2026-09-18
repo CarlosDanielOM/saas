@@ -84,11 +84,7 @@ export class MediaLibraryPageComponent {
     if (metaTier === 'premium' || metaTier === 'pro' || metaTier === 'free') {
       return metaTier;
     }
-    const sessionTier = this.sessionAuth.session()?.appUser.plan_tier || 'free';
-    if (sessionTier === 'premium' || sessionTier === 'pro') {
-      return sessionTier;
-    }
-    return 'free';
+    return this.sessionAuth.getPlanTierForStreamer(this.streamer());
   });
 
   readonly planTierLabel = computed(() => {

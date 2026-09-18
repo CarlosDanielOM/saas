@@ -618,7 +618,7 @@ export class AiPersonalityPageComponent {
   }
 
   private getFallbackTier(): AiPersonalityTierInfo {
-    const planTier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
+    const planTier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
 
     if (planTier === 'pro') {
       return {

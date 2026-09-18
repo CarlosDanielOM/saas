@@ -25,7 +25,7 @@ export class AnalyticsHubPageComponent {
     const sessionStreamer = this.sessionAuth.session()?.twitchUser.login;
     return (routeStreamer || sessionStreamer || '').trim().toLowerCase();
   });
-  readonly planTier = computed(() => this.sessionAuth.session()?.appUser.plan_tier ?? 'free');
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly hasPaidAccess = computed(() => this.planTier() !== 'free');
   readonly modulesLink = computed(() => {
     const streamer = this.streamer();

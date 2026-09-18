@@ -7,6 +7,10 @@ import { environment } from '../../environments/environment';
 import { CheckoutIntentService } from './checkout-intent.service';
 import { LinksService } from './links.service';
 import { LanguageService, type SupportedLanguage } from './language.service';
+import {
+  resolveActiveChannelPlanTier,
+  type ActiveChannelPlanTier
+} from './active-channel-plan';
 
 interface ApiEnvelope<T> {
   error: boolean;
@@ -119,8 +123,51 @@ export class SessionAuthService {
 
   readonly session = signal<StoredSession | null>(this.readSession());
   readonly lastViewedStreamer = signal<string | null>(this.readLastViewedStreamer());
+  private readonly resolvedChannelPlanTiers = signal<Record<string, ActiveChannelPlanTier>>({});
   readonly token = computed(() => this.session()?.token ?? null);
   readonly isAuthenticated = computed(() => Boolean(this.session()?.token));
+
+  getPlanTierForStreamer(streamer: string | null | undefined): ActiveChannelPlanTier {
+    const current = this.session();
+    if (!current) {
+      return 'free';
+    }
+
+    return resolveActiveChannelPlanTier(
+      {
+        ownerChannelID: current.appUser.twitch_user_id,
+        ownerLogin: current.twitchUser.login,
+        ownerPlanTier: current.appUser.plan_tier,
+        administrating: current.appUser.administrating
+      },
+      streamer,
+      this.resolvedChannelPlanTiers()
+    );
+  }
+
+  setPlanTierForStreamer(
+    streamer: string | null | undefined,
+    channelID: string | null | undefined,
+    planTier: string | null | undefined
+  ): void {
+    const normalizedTier: ActiveChannelPlanTier =
+      planTier === 'premium' || planTier === 'pro' ? planTier : 'free';
+    const keys = [streamer, channelID]
+      .map((value) => (value ?? '').trim().toLowerCase())
+      .filter(Boolean);
+
+    if (keys.length === 0) {
+      return;
+    }
+
+    this.resolvedChannelPlanTiers.update((current) => {
+      const next = { ...current };
+      for (const key of keys) {
+        next[key] = normalizedTier;
+      }
+      return next;
+    });
+  }
 
   constructor() {
     if (this.isBrowser) {
@@ -351,6 +398,7 @@ export class SessionAuthService {
   clearSession(): void {
     this.session.set(null);
     this.lastViewedStreamer.set(null);
+    this.resolvedChannelPlanTiers.set({});
     localStorage.removeItem(this.storageKey);
     localStorage.removeItem(this.lastViewedStreamerKey);
   }

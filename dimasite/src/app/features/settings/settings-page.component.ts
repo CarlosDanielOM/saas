@@ -85,11 +85,7 @@ export class SettingsPageComponent {
   readonly isChannelResolving = computed(() => this.channelResolution().status === 'loading');
   readonly session = this.sessionAuth.session;
   readonly planTier = computed(() => {
-    const tier = this.session()?.appUser.plan_tier ?? 'free';
-    if (tier === 'premium' || tier === 'pro') {
-      return tier;
-    }
-    return 'free';
+    return this.sessionAuth.getPlanTierForStreamer(this.streamer());
   });
   readonly ownerChannelID = computed(() => this.session()?.appUser.twitch_user_id ?? '');
   readonly ownerLogin = computed(() => (this.session()?.twitchUser.login || '').trim().toLowerCase());

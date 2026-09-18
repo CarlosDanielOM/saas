@@ -91,7 +91,7 @@ export class AuthenticatedLayoutComponent {
     return ['/', ownerStreamer, 'dashboard'];
   });
   readonly userAvatar = computed(() => this.session()?.twitchUser.profile_image_url ?? '');
-  readonly planTier = computed(() => this.session()?.appUser.plan_tier ?? 'free');
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly planBadgeClass = computed(
     () => `auth-navbar__plan-badge auth-navbar__plan-badge--${this.planTier()}`
   );
@@ -162,7 +162,7 @@ export class AuthenticatedLayoutComponent {
 
     return this.updatePermissionsIcon;
   });
-  readonly showUpgradeOption = computed(() => this.planTier() !== 'pro');
+  readonly showUpgradeOption = computed(() => !this.isViewingManagedChannel() && this.planTier() !== 'pro');
   readonly upgradeMenuLabel = computed(() => {
     this.languageService.currentLanguage();
     return this.planTier() === 'free'

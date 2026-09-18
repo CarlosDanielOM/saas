@@ -206,9 +206,7 @@ export class StreamSummariesPageComponent {
   });
 
   readonly planTier = computed(() => {
-    const tier = this.sessionAuth.session()?.appUser.plan_tier ?? 'free';
-    if (tier === 'premium' || tier === 'pro') return tier;
-    return 'free';
+    return this.sessionAuth.getPlanTierForStreamer(this.streamer());
   });
 
   readonly summaries = signal<StreamSummary[]>([]);
