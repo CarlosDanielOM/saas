@@ -3,6 +3,14 @@ import { randomUUID } from "node:crypto";
 import { getDragonflyClient } from "./databases/dragonfly.database.js";
 import { error, info } from "./logger.js";
 import { recordAiCreditUsage } from "./billing.js";
+import {
+  createAiUsageContext,
+  enrichPolarUsageMetadata,
+  type AiUsageContext,
+  type AiUsageContextInput,
+  type PolarUsageMetadataShape,
+} from "./ai_usage_event.js";
+import { trackAiUsageRecorded } from "./posthog_events.js";
 
 const INGEST_LOCK_PREFIX = "locks:polar-ingest:";
 const INGEST_LOCK_TTL_MS = 8000;
@@ -54,6 +62,8 @@ interface IngestPolarSHEventOptions {
   /** For TTS/audio services - number of characters processed */
   characters?: number;
   mode?: "immediate" | "batch" | "cache";
+  /** Descriptive receipt metadata. It does not affect pricing or credits. */
+  usage?: AiUsageContextInput;
 }
 
 interface IngestPolarSHEventResponse {
@@ -69,28 +79,46 @@ interface GrantPolarAiCreditsOptions {
   adminLogin?: string;
 }
 
+interface AccountingMetadata extends Record<string, any> {
+  cost: number;
+  currency: string;
+  credits: number;
+  reason: string;
+  characters?: number;
+  _cost?: {
+    amount: number;
+    currency: string;
+  };
+  _llm?: {
+    vendor: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+}
+
 interface EventData {
   name: string;
   customerId: string;
-  externalId?: string;
-  metadata: {
-    cost: number;
-    currency: string;
-    credits: number;
-    reason: string;
-    characters?: number;
-    _cost?: {
-      amount: number;
-      currency: string;
-    };
-    _llm?: {
-      vendor: string;
-      model: string;
-      inputTokens: number;
-      outputTokens: number;
-      totalTokens: number;
-    };
-  };
+  externalId: string;
+  metadata: AccountingMetadata & PolarUsageMetadataShape;
+}
+
+function trackAcceptedUsage(eventData: EventData, context: AiUsageContext): void {
+  try {
+    trackAiUsageRecorded({
+      context,
+      credits: eventData.metadata.credits,
+      reason: eventData.metadata.reason,
+      polarCostAmount: eventData.metadata._cost?.amount,
+      inputTokens: eventData.metadata._llm?.inputTokens,
+      outputTokens: eventData.metadata._llm?.outputTokens,
+      totalTokens: eventData.metadata._llm?.totalTokens,
+    });
+  } catch {
+    // Analytics must never interrupt billing or durable queueing.
+  }
 }
 
 /**
@@ -172,6 +200,7 @@ export async function ingestPolarSHEvent(
     _cost,
     characters,
     mode = "batch",
+    usage,
   } = options;
 
   if (!customerId) {
@@ -189,16 +218,28 @@ export async function ingestPolarSHEvent(
     const cacheClient = await getDragonflyClient("PolarSH");
     const cacheKey = `twitch:${channelID}:ai:polarshevent`;
 
-    let eventData: EventData = {
+    const usageContext = createAiUsageContext(reason, {
+      ...usage,
+      entryId: externalId || usage?.entryId,
+      channelID: usage?.channelID || channelID,
+      model: usage?.model || llm?.model,
+      quantity: usage?.quantity ?? characters ?? llm?.usage?.total_tokens,
+      unit: usage?.unit ?? (characters !== undefined ? "characters" : llm ? "tokens" : undefined),
+    });
+    const resolvedExternalId = usageContext.entryId;
+
+    let accountingMetadata: AccountingMetadata = {
+      cost: cost,
+      currency: "usd",
+      credits: Math.ceil(cost * 1000),
+      reason: reason,
+    };
+
+    const eventData: EventData = {
       name: "ai_usage",
       customerId: customerId,
-      ...(externalId ? { externalId } : {}),
-      metadata: {
-        cost: cost,
-        currency: "usd",
-        credits: Math.ceil(cost * 1000),
-        reason: reason,
-      },
+      externalId: resolvedExternalId,
+      metadata: enrichPolarUsageMetadata(accountingMetadata, usageContext),
     };
 
     if (llm) {
@@ -225,7 +266,7 @@ export async function ingestPolarSHEvent(
         modelName = actualModel.split(":")[0];
       }
 
-      eventData.metadata = {
+      accountingMetadata = {
         _cost: {
           amount: amountValue,
           currency: "usd",
@@ -244,7 +285,7 @@ export async function ingestPolarSHEvent(
       };
     } else if (_cost !== undefined) {
       // For TTS/audio services that don't use LLM
-      eventData.metadata = {
+      accountingMetadata = {
         _cost: {
           amount: _cost,
           currency: "usd",
@@ -256,6 +297,8 @@ export async function ingestPolarSHEvent(
         characters: characters,
       };
     }
+
+    eventData.metadata = enrichPolarUsageMetadata(accountingMetadata, usageContext);
 
     if (mode === "immediate") {
       const polarshClientInstance = await getPolarShClient(
@@ -273,7 +316,8 @@ export async function ingestPolarSHEvent(
         };
       }
 
-      await recordAiCreditUsage(channelID || "", eventData.metadata.credits, externalId, cacheClient);
+      await recordAiCreditUsage(channelID || "", eventData.metadata.credits, resolvedExternalId, cacheClient);
+      trackAcceptedUsage(eventData, usageContext);
 
       return { error: false };
     }
@@ -287,7 +331,8 @@ export async function ingestPolarSHEvent(
     if (!lockValue) {
       try {
         await queueEvent(cacheClient, cacheKey, eventData);
-        await recordAiCreditUsage(channelID!, eventData.metadata.credits, externalId, cacheClient);
+        await recordAiCreditUsage(channelID!, eventData.metadata.credits, resolvedExternalId, cacheClient);
+        trackAcceptedUsage(eventData, usageContext);
       } catch (queueErr) {
         await error(
           {
@@ -306,7 +351,8 @@ export async function ingestPolarSHEvent(
       // Durably queue the event BEFORE any network call — a failed or
       // interrupted ingest must never lose it.
       await queueEvent(cacheClient, cacheKey, eventData);
-      await recordAiCreditUsage(channelID!, eventData.metadata.credits, externalId, cacheClient);
+      await recordAiCreditUsage(channelID!, eventData.metadata.credits, resolvedExternalId, cacheClient);
+      trackAcceptedUsage(eventData, usageContext);
 
       if (mode === "cache") {
         return { error: false };
@@ -395,20 +441,29 @@ export async function grantPolarAiCredits(
     const polarshClientInstance = await getPolarShClient(
       "grantPolarAiCredits",
     );
+    const usageContext = createAiUsageContext(options.reason, {
+      entryKind: "adjustment",
+      category: "credit_adjustment",
+      operation: "grant",
+      source: "admin_credit_grant",
+      provider: "polar",
+    });
+    const metadata: Record<string, any> = enrichPolarUsageMetadata({
+      credits: -credits,
+      cost: 0,
+      currency: "usd",
+      reason: options.reason,
+      source: "admin_credit_grant",
+      adminLogin: options.adminLogin || "unknown",
+    }, usageContext);
 
     const ingestResult = (await polarshClientInstance.events.ingest({
       events: [
         {
           name: "ai_usage",
           customerId: options.customerId,
-          metadata: {
-            credits: -credits,
-            cost: 0,
-            currency: "usd",
-            reason: options.reason,
-            source: "admin_credit_grant",
-            adminLogin: options.adminLogin || "unknown",
-          },
+          externalId: usageContext.entryId,
+          metadata,
         },
       ],
     })) as any;
@@ -419,6 +474,16 @@ export async function grantPolarAiCredits(
         message: "PolarSH grant credits ingest incomplete",
         details: ingestResult,
       };
+    }
+
+    try {
+      trackAiUsageRecorded({
+        context: usageContext,
+        credits: -credits,
+        reason: options.reason,
+      });
+    } catch {
+      // Analytics must never interrupt a successful credit grant.
     }
 
     return { error: false };

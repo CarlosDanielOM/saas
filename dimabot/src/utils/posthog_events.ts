@@ -1,4 +1,5 @@
 import { PostHog } from 'posthog-node';
+import { AI_USAGE_SCHEMA_VERSION, type AiUsageContext } from './ai_usage_event.js';
 
 // PostHog client initialized with the project API key
 // Host is the US PostHog instance
@@ -93,6 +94,85 @@ export function trackTts(params: {
             user_id: params.userID || params.channelID,
             username: params.username || params.channelName,
             error_message: params.errorMessage ?? null,
+        },
+    });
+}
+
+export function trackAiUsageRecorded(params: {
+    context: AiUsageContext;
+    credits: number;
+    reason: string;
+    polarCostAmount?: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+}): void {
+    const { context } = params;
+    posthog.capture({
+        distinctId: context.channelID || `billing:${context.requestId}`,
+        event: 'ai_usage_recorded',
+        properties: {
+            $insert_id: context.entryId,
+            schema_version: context.schemaVersion,
+            pricing_version: context.pricingVersion,
+            entry_id: context.entryId,
+            request_id: context.requestId,
+            parent_request_id: context.parentRequestId ?? null,
+            entry_kind: context.entryKind,
+            category: context.category,
+            operation: context.operation,
+            source: context.source,
+            provider: context.provider,
+            model: context.model ?? null,
+            channel_id: context.channelID ?? null,
+            credits: params.credits,
+            reason: params.reason,
+            polar_cost_amount: params.polarCostAmount ?? null,
+            quantity: context.quantity ?? null,
+            unit: context.unit ?? null,
+            resource_type: context.resourceType ?? null,
+            resource_id: context.resourceId ?? null,
+            input_tokens: params.inputTokens ?? null,
+            output_tokens: params.outputTokens ?? null,
+            total_tokens: params.totalTokens ?? null,
+        },
+    });
+}
+
+export function trackAiOperation(params: {
+    requestId: string;
+    channelID: string;
+    category: string;
+    operation: string;
+    source: string;
+    lifecycle: 'queued' | 'completed' | 'failed';
+    requestedProvider?: string;
+    actualProvider?: string;
+    fallbackReason?: string;
+    errorCode?: string;
+    resourceType?: string;
+    resourceId?: string;
+    latencyMs?: number;
+}): void {
+    posthog.capture({
+        distinctId: params.channelID,
+        event: 'ai_operation',
+        properties: {
+            $insert_id: `${params.requestId}:${params.operation}:${params.lifecycle}`,
+            schema_version: AI_USAGE_SCHEMA_VERSION,
+            request_id: params.requestId,
+            channel_id: params.channelID,
+            category: params.category,
+            operation: params.operation,
+            source: params.source,
+            lifecycle: params.lifecycle,
+            requested_provider: params.requestedProvider ?? null,
+            actual_provider: params.actualProvider ?? null,
+            fallback_reason: params.fallbackReason ?? null,
+            error_code: params.errorCode ?? null,
+            resource_type: params.resourceType ?? null,
+            resource_id: params.resourceId ?? null,
+            latency_ms: params.latencyMs ?? null,
         },
     });
 }

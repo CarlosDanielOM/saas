@@ -1,4 +1,5 @@
 import type { RedisClientType } from "redis";
+import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
 import path from "path";
 
@@ -27,6 +28,7 @@ import {
   type AiCreditStatus,
 } from "../utils/billing.js";
 import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util.js";
+import { trackAiOperation } from "../utils/posthog_events.js";
 
 export interface TtsRequestPayload {
   channelID: string;
@@ -55,6 +57,8 @@ export interface TtsQueueItem extends TtsRequestPayload {
   speechID: string;
   timestamp: number;
   piperFallbackVoice?: string;
+  usageRequestID?: string;
+  usageEntryID?: string;
 }
 
 export interface QueueTtsResponse {
@@ -135,11 +139,14 @@ class TtsQueueHandler {
     }
 
     const speechID = generateSpeechID();
+    const usageRequestID = randomUUID();
     const queueItem: TtsQueueItem = {
       ...payload,
       speechID,
       timestamp: Date.now(),
       piperFallbackVoice: settings.voices[payload.language],
+      usageRequestID,
+      usageEntryID: randomUUID(),
     };
 
     await this.cache!.set(
@@ -150,6 +157,22 @@ class TtsQueueHandler {
       score: queueItem.timestamp,
       value: speechID,
     });
+
+    try {
+      trackAiOperation({
+        requestId: usageRequestID,
+        channelID: payload.channelID,
+        category: "tts",
+        operation: "synthesize",
+        source: payload.source,
+        lifecycle: "queued",
+        requestedProvider: payload.provider,
+        resourceType: "speech",
+        resourceId: speechID,
+      });
+    } catch {
+      // Analytics must never interrupt queueing.
+    }
 
     if (!isProcessing) {
       await this.cache!.set(
@@ -215,6 +238,11 @@ class TtsQueueHandler {
       return;
     }
 
+    const usageRequestID = queueItem.usageRequestID ||= randomUUID();
+    const usageEntryID = queueItem.usageEntryID ||= randomUUID();
+    queueItem.timestamp ||= Date.now();
+    const requestedProvider = queueItem.provider;
+
     this.processingChannels.add(channelID);
     await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID);
 
@@ -224,8 +252,9 @@ class TtsQueueHandler {
     } catch (error) {
       console.error("Failed to load TTS billing account; using free voice", { channelID, error });
     }
+    let creditStatus: AiCreditStatus = "available";
     if (queueItem.provider === "fish") {
-      let creditStatus: AiCreditStatus = "unavailable";
+      creditStatus = "unavailable";
       try {
         const exhausted = await isAiCreditsExhausted(channelID, this.cache!);
         if (exhausted) {
@@ -249,6 +278,25 @@ class TtsQueueHandler {
     }
 
     if (!queueItem.text.trim()) {
+      try {
+        trackAiOperation({
+          requestId: usageRequestID,
+          channelID,
+          category: "tts",
+          operation: "synthesize",
+          source: queueItem.source,
+          lifecycle: "failed",
+          requestedProvider,
+          actualProvider: queueItem.provider,
+          fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
+          errorCode: "empty_text_after_fallback",
+          resourceType: "speech",
+          resourceId: speechID,
+          latencyMs: Date.now() - queueItem.timestamp,
+        });
+      } catch {
+        // Analytics must never interrupt queue processing.
+      }
       await this.cleanupSpeech(channelID, speechID);
       void this.processNext(channelID);
       return;
@@ -280,6 +328,26 @@ class TtsQueueHandler {
         timestamp: new Date().toISOString(),
       });
 
+      try {
+        trackAiOperation({
+          requestId: usageRequestID,
+          channelID,
+          category: "tts",
+          operation: "synthesize",
+          source: queueItem.source,
+          lifecycle: "failed",
+          requestedProvider,
+          actualProvider: queueItem.provider,
+          fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
+          errorCode: "synthesis_failed",
+          resourceType: "speech",
+          resourceId: speechID,
+          latencyMs: Date.now() - queueItem.timestamp,
+        });
+      } catch {
+        // Analytics must never interrupt queue processing.
+      }
+
       await this.cleanupSpeech(channelID, speechID);
       void this.processNext(channelID);
       return;
@@ -296,6 +364,13 @@ class TtsQueueHandler {
         provider: queueItem.provider,
         characters: queueItem.text.length,
         text: queueItem.text,
+        usage: {
+          entryId: usageEntryID,
+          requestId: usageRequestID,
+          source: queueItem.source,
+          resourceType: "speech",
+          resourceId: speechID,
+        },
       });
     } catch (trackingError) {
       console.error("Failed to track TTS usage:", {
@@ -307,6 +382,25 @@ class TtsQueueHandler {
             : String(trackingError),
         timestamp: new Date().toISOString(),
       });
+    }
+
+    try {
+      trackAiOperation({
+        requestId: usageRequestID,
+        channelID,
+        category: "tts",
+        operation: "synthesize",
+        source: queueItem.source,
+        lifecycle: "completed",
+        requestedProvider,
+        actualProvider: queueItem.provider,
+        fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
+        resourceType: "speech",
+        resourceId: speechID,
+        latencyMs: Date.now() - queueItem.timestamp,
+      });
+    } catch {
+      // Analytics must never interrupt queue processing.
     }
 
     this.currentFiles.set(

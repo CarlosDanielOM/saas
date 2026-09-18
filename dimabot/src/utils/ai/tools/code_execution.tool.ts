@@ -14,6 +14,7 @@ import { createFetchWithRetry } from '../fetch.utils.js';
 import { error, debug } from '../../logger.js';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'node:crypto';
 
 const fetchWithRetry = createFetchWithRetry({ timeout: 30000, retries: 3 });
 
@@ -122,7 +123,8 @@ async function generateCodePlan(
     channelID: string,
     userRequest: string,
     model: string,
-    streamer: IStreamerData
+    streamer: IStreamerData,
+    usageRequestId: string
 ): Promise<ICodePlanResult> {
     const apiDocs = loadApiDocumentation();
 
@@ -203,7 +205,13 @@ Provide a structured plan with clear steps.`;
                     model: model,
                     usage: aiUsage
                 },
-                mode: 'cache'
+                mode: 'cache',
+                usage: {
+                    requestId: usageRequestId,
+                    source: 'code_execution',
+                    provider: 'openrouter',
+                    resourceType: 'llm_generation'
+                }
             });
         }
 
@@ -225,7 +233,8 @@ async function generateCode(
     userRequest: string,
     model: string,
     plan: string | null = null,
-    streamer: IStreamerData | null = null
+    streamer: IStreamerData | null = null,
+    usageRequestId?: string
 ): Promise<ICodeGenerationResult> {
     const apiDocs = loadApiDocumentation();
 
@@ -339,7 +348,13 @@ ${plan}`;
                     model: model,
                     usage: aiUsage
                 },
-                mode: 'cache'
+                mode: 'cache',
+                usage: {
+                    requestId: usageRequestId,
+                    source: 'code_execution',
+                    provider: 'openrouter',
+                    resourceType: 'llm_generation'
+                }
             });
         }
 
@@ -436,6 +451,7 @@ export async function execute(
 ): Promise<CodeExecutionToolResult> {
     const { code, request } = args;
     const { channelID, streamer, username = 'User' } = context;
+    const usageRequestId = randomUUID();
 
     const cacheClient = await getDragonflyClient('CodeExecution');
     const isExhausted = await isAiCreditsExhausted(channelID, cacheClient);
@@ -451,7 +467,7 @@ export async function execute(
             debug({ message: '[Code Execution Tool] Pro tier detected - generating code plan', channelID }, { channelId: channelID, destination: 'console' });
             await sendExecutionStatusMessage(channelID, `@${username} Creando el plan`);
 
-            const planResult = await generateCodePlan(channelID, request, 'openai/gpt-oss-120b', streamer);
+            const planResult = await generateCodePlan(channelID, request, 'openai/gpt-oss-120b', streamer, usageRequestId);
 
             if (planResult.error) {
                 await error({ function: 'codeExecutionTool', error: 'Plan generation failed', err: planResult.error }, { channelId: channelID, destination: 'both' });
@@ -466,7 +482,7 @@ export async function execute(
             debug({ message: '[Code Execution Tool] Generating code', model: codingModel }, { channelId: channelID, destination: 'console' });
             await sendExecutionStatusMessage(channelID, `@${username} Generando el código`);
             
-            const codeResult = await generateCode(channelID, request, codingModel, plan, streamer);
+            const codeResult = await generateCode(channelID, request, codingModel, plan, streamer, usageRequestId);
             
             if (codeResult.error) {
                 return {

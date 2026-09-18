@@ -1,6 +1,7 @@
 import { getDragonflyClient } from "./databases/dragonfly.database.js";
 import { ingestPolarSHEvent } from "./polarsh.js";
 import { error } from "./logger.js";
+import type { AiUsageResourceType } from "./ai_usage_event.js";
 
 /**
  * TTS character to credit conversion rates
@@ -33,6 +34,13 @@ export interface TtsUsageTrackOptions {
   provider: "piper" | "fish";
   characters: number;
   text: string;
+  usage?: {
+    entryId?: string;
+    requestId?: string;
+    source?: string;
+    resourceType?: AiUsageResourceType;
+    resourceId?: string;
+  };
 }
 
 export interface TtsUsageResult {
@@ -78,7 +86,7 @@ export function calculateTtsUsage(
 export async function trackTtsUsage(
   options: TtsUsageTrackOptions,
 ): Promise<TtsUsageResult> {
-  const { channelID, streamer, provider, characters, text } = options;
+  const { channelID, streamer, provider, characters, usage: usageContext } = options;
 
   const usage = calculateTtsUsage(provider, characters);
 
@@ -140,6 +148,16 @@ export async function trackTtsUsage(
       characters,
       reason: `tts_${provider}`,
       mode: "immediate",
+      externalId: usageContext?.entryId,
+      usage: {
+        requestId: usageContext?.requestId,
+        source: usageContext?.source,
+        provider,
+        quantity: characters,
+        unit: "characters",
+        resourceType: usageContext?.resourceType,
+        resourceId: usageContext?.resourceId,
+      },
     });
   }
 

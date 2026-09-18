@@ -676,6 +676,8 @@ async function trackUsage(
   usageData: IUsageData | undefined,
   model: string,
   reason: string,
+  requestId: string,
+  parentRequestId: string,
 ): Promise<void> {
   if (!usageData || !channelID) return;
 
@@ -728,6 +730,13 @@ async function trackUsage(
         usage: usageData,
       },
       mode: "batch",
+      usage: {
+        requestId,
+        parentRequestId,
+        source: "chat",
+        provider: "openrouter",
+        resourceType: "llm_generation",
+      },
     });
   }
 }
@@ -1095,7 +1104,7 @@ export async function chat(
     // Track usage with appropriate reason based on whether AI called tools
     if (data.usage) {
       const reason = hasToolCalls ? "harness_tools" : "harness_end";
-      await trackUsage(channelID, streamer, data.usage, selectedModel, reason);
+      await trackUsage(channelID, streamer, data.usage, selectedModel, reason, traceId, sessionId);
     }
 
     // No tool calls - return the response
@@ -1282,6 +1291,8 @@ export async function chat(
       finalData.usage,
       selectedModel,
       "harness_end",
+      traceId,
+      sessionId,
     );
   }
 

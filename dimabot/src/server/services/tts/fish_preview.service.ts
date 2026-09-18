@@ -90,8 +90,10 @@ export function registerFishPreview(io: Server) {
                     throw new VoiceRequestError(402, 'insufficient_credits', 'Not enough available credits for this preview');
                 }
                 if (!socket.connected) return;
+                const speechID = `preview-${randomUUID()}`;
+                const usageRequestID = randomUUID();
                 const result = await fishTtsService.synthesize({
-                    channelID, speechID: `preview-${randomUUID()}`, provider: 'fish', mode: 'clone',
+                    channelID, speechID, provider: 'fish', mode: 'clone',
                     language: language as 'en' | 'es', text, voice: voiceId, outputPath: ''
                 });
                 outputPath = result.outputPath;
@@ -99,7 +101,20 @@ export function registerFishPreview(io: Server) {
                 const audio = await fs.readFile(outputPath);
                 if (!audio.length) throw new VoiceRequestError(502, 'synthesis_failed', 'Empty preview audio');
                 // Same billing path as normal TTS, once per successful generation. Replaying the audio is free.
-                await trackTtsUsage({ channelID, streamer, provider: 'fish', characters: text.length, text });
+                await trackTtsUsage({
+                    channelID,
+                    streamer,
+                    provider: 'fish',
+                    characters: text.length,
+                    text,
+                    usage: {
+                        entryId: randomUUID(),
+                        requestId: usageRequestID,
+                        source: 'voice_preview',
+                        resourceType: 'voice_preview',
+                        resourceId: speechID
+                    }
+                });
                 ack({ error: false, data: { voiceId, text, credits, mimeType: 'audio/mpeg', audio: audio.toString('base64') } });
             } catch (error) {
                 ack({ error: true, code: error instanceof VoiceRequestError ? error.code : 'preview_unavailable' });

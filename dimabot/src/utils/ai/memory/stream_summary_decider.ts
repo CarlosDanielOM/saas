@@ -587,7 +587,14 @@ export async function generateStreamSummaryDecision(
                             model: finalModelUsed,
                             usage: usageData as any
                         },
-                        mode: 'batch'
+                        mode: 'batch',
+                        usage: {
+                            requestId: context.session.id,
+                            source: mode,
+                            provider: 'openrouter',
+                            resourceType: 'llm_generation',
+                            resourceId: context.session.streamID || context.session.id
+                        }
                     });
                 } catch (err) {
                     // PolarSH tracking is best-effort, don't fail the summary

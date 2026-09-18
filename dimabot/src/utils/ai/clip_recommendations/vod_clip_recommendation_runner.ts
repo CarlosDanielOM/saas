@@ -212,7 +212,16 @@ async function chargeCredits(
         externalId,
         cost: credits / 1000,
         reason,
-        mode: 'immediate'
+        mode: 'immediate',
+        usage: {
+            requestId: externalId,
+            category: 'clip_recommendation',
+            operation: 'analyze_vod',
+            source: 'clip_recommendation',
+            provider: 'openrouter',
+            resourceType: 'vod_analysis',
+            resourceId: externalId
+        }
     });
     if (ingestResult.error) {
         throw new Error(ingestResult.message || 'Failed to charge AI credits');

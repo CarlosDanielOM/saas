@@ -9,6 +9,7 @@ import { MODELS, TOKEN_LIMITS, selectChatModel } from '../constants.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
 import { extractOpenRouterError, type ExtractedError } from './ai.js';
 import { error, debug } from '../../logger.js';
+import { randomUUID } from 'node:crypto';
 
 const OPENROUTER_TIMEOUT = 30000;
 const fetchWithRetry = createFetchWithRetry({ timeout: OPENROUTER_TIMEOUT, retries: 3 });
@@ -158,6 +159,7 @@ export async function AiResponse(
     options: IAPIOption[] = [],
     toolContext: IToolContext[] = []
 ): Promise<string | IAIResponse> {
+    const usageRequestId = randomUUID();
     const cacheClient = await getDragonflyClient('Messages');
 
     // Get streamer and personality data
@@ -390,7 +392,13 @@ export async function AiResponse(
                     model: selectedModel,
                     usage: usageData as any
                 },
-                mode: 'batch'
+                mode: 'batch',
+                usage: {
+                    requestId: usageRequestId,
+                    source: 'chat',
+                    provider: 'openrouter',
+                    resourceType: 'llm_generation'
+                }
             });
         }
 
