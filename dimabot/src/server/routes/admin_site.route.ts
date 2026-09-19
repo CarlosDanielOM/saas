@@ -787,6 +787,7 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
 
         const grantResult = await grantPolarAiCredits({
             customerId: user.polar_sh_customer_id,
+            channelID: channelIdStr,
             credits,
             reason,
             adminLogin: req.user?.login

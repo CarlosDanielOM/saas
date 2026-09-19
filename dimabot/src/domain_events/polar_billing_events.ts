@@ -6,6 +6,7 @@ import { PRODUCT_IDS } from '../utils/referral.js';
 import { applyPaidOrderReward } from '../utils/paid_order_reward.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { AI_CREDITS_METER_ID, AI_CREDITS_CACHE_TTL_SECONDS, buildAiCreditsDataFromMeter } from '../utils/billing.js';
+import { adjustAiUsageRetention } from '../utils/ai_usage_ledger.js';
 
 const LEGACY_USAGE_METER_ID = '01d90c16-87d0-4e31-880a-4045a8da90cd';
 const SYNC_CREDITS_SCRIPT = `
@@ -26,6 +27,7 @@ interface PolarBillingDependencies {
     getOwner(event: DomainEventEnvelope): Promise<IUsers>;
     getCache: typeof getDragonflyClient;
     applyReward: typeof applyPaidOrderReward;
+    adjustUsageRetention: typeof adjustAiUsageRetention;
 }
 
 const dependencies: PolarBillingDependencies = {
@@ -37,7 +39,8 @@ const dependencies: PolarBillingDependencies = {
         return user;
     },
     getCache: getDragonflyClient,
-    applyReward: applyPaidOrderReward
+    applyReward: applyPaidOrderReward,
+    adjustUsageRetention: adjustAiUsageRetention
 };
 
 export async function applyPolarPlanDomainEvent(
@@ -71,6 +74,9 @@ export async function applyPolarPlanDomainEvent(
     // Invalidate rather than write an event-time snapshot over a newer cached plan.
     const twitchAccounts = owner.accounts.filter((account) => account.type === 'twitch');
     if (twitchAccounts.length > 0) {
+        if (updated) {
+            await deps.adjustUsageRetention(twitchAccounts.map((account) => account.id), planTier);
+        }
         const cache = await deps.getCache('PolarPlanProjection');
         await cache.del(['twitch:accounts', ...twitchAccounts.map((account) => `accounts:twitch:${account.id}:data`)]);
     }

@@ -18,6 +18,7 @@ import {
   paginateAiUsageTransactions,
   resolveAiUsagePeriod,
 } from '../../utils/ai_usage_receipts.js';
+import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
 
 type TargetPlan = 'premium' | 'pro';
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
@@ -404,13 +405,15 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             freePeriodAnchor: planTier === 'free' ? target.user.created_at : undefined,
             from: getStringQueryParam(req.query.from) || undefined,
             to: getStringQueryParam(req.query.to) || undefined,
-            timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
+            timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
+            maxDays: getAiUsageRetentionDays(planTier)
         });
         const transactions = capabilities.dailySpend && target.user.polar_sh_customer_id
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
-                window: period.window
+                window: period.window,
+                planTier
             })
             : [];
         const summary = buildAiUsageSummary(transactions, period.window);
@@ -461,13 +464,15 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
             customerId: target.user.polar_sh_customer_id || undefined,
             from: getStringQueryParam(req.query.from) || undefined,
             to: getStringQueryParam(req.query.to) || undefined,
-            timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
+            timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
+            maxDays: getAiUsageRetentionDays(planTier)
         });
         const transactions = target.user.polar_sh_customer_id
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
-                window: period.window
+                window: period.window,
+                planTier
             })
             : [];
         const limitRaw = getStringQueryParam(req.query.limit);

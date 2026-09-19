@@ -1,19 +1,31 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { getPolarShClient } from './polarsh.js';
+import {
+  backfillAiUsageLedger,
+  hasAiUsageLedgerCoverage,
+  loadAiUsageLedgerTransactions,
+} from './ai_usage_ledger.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
 import type { AiCreditsData } from './billing.js';
 
 export const AI_USAGE_RECEIPT_SCHEMA_VERSION = 1 as const;
 export const AI_USAGE_ITEMIZATION_STARTED_AT = '2026-09-18T19:30:00.000Z';
-export const AI_USAGE_MAX_RANGE_DAYS = 31;
+export const AI_USAGE_MAX_RANGE_DAYS = 90;
 const AI_USAGE_DEFAULT_RANGE_DAYS = 30;
+const AI_USAGE_DEFAULT_MAX_RANGE_DAYS = 31;
 const AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS = 32;
 const AI_USAGE_PAGE_SIZE = 100;
 const AI_USAGE_MAX_POLAR_PAGES = 100;
 const AI_USAGE_CACHE_TTL_SECONDS = 120;
 const MILLISECONDS_PER_DAY = 86_400_000;
+const AI_USAGE_BACKFILL_LOCK_SECONDS = 10 * 60;
+const AI_USAGE_BACKFILL_WAIT_MS = 3 * 60_000;
+const RELEASE_BACKFILL_LOCK_SCRIPT = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end
+return 0
+`;
 
 const RECEIPT_CATEGORIES = new Set<string>([
   'tts',
@@ -245,10 +257,12 @@ export function resolveAiUsageWindow(input: {
   to?: string;
   timeZone?: string;
   now?: Date;
+  maxDays?: number;
 }): AiUsageWindow {
   const timeZone = assertTimeZone(input.timeZone || 'UTC');
   const now = input.now || new Date();
   const today = formatLocalDate(now, timeZone);
+  const maxDays = Math.max(1, Math.min(AI_USAGE_MAX_RANGE_DAYS, input.maxDays || AI_USAGE_DEFAULT_MAX_RANGE_DAYS));
 
   if (Boolean(input.from) !== Boolean(input.to)) {
     throw new AiUsageReceiptValidationError('from and to must be provided together');
@@ -265,8 +279,11 @@ export function resolveAiUsageWindow(input: {
   if (to > today) {
     throw new AiUsageReceiptValidationError('to cannot be in the future');
   }
+  if (from < shiftDateLabel(today, -(maxDays - 1))) {
+    throw new AiUsageReceiptLimitError(`Usage history for this plan is limited to ${maxDays} days`);
+  }
 
-  const days = buildDateLabels(from, to);
+  const days = buildDateLabels(from, to, maxDays);
   return {
     from,
     to,
@@ -395,6 +412,7 @@ export async function resolveAiUsagePeriod(input: {
   to?: string;
   timeZone?: string;
   now?: Date;
+  maxDays?: number;
   getCustomerState?: PolarCustomerStateGet;
 }): Promise<AiUsagePeriodResolution> {
   const timeZone = assertTimeZone(input.timeZone || 'UTC');
@@ -406,6 +424,7 @@ export async function resolveAiUsagePeriod(input: {
       to: input.to,
       timeZone,
       now,
+      maxDays: input.maxDays,
     });
     return { window, billingPeriod: billingPeriodFromWindow(window, 'custom') };
   }
@@ -732,6 +751,7 @@ export async function getCachedAiUsageTransactions(input: {
   channelID: string;
   customerId: string;
   window: AiUsageWindow;
+  planTier?: 'free' | 'premium' | 'pro';
   listEvents?: PolarUsageEventsList;
 }): Promise<AiUsageTransaction[]> {
   const customerHash = createHash('sha256').update(input.customerId).digest('hex').slice(0, 16);
@@ -740,11 +760,13 @@ export async function getCachedAiUsageTransactions(input: {
     .update(`${input.window.startTimestamp.toISOString()}|${input.window.endTimestampExclusive.toISOString()}`)
     .digest('hex')
     .slice(0, 12);
-  const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v1:${customerHash}:${timeZoneHash}:${boundaryHash}:${input.window.from}:${input.window.to}`;
   let cache: Awaited<ReturnType<typeof getDragonflyClient>> | null = null;
+  let generation = '0';
 
   try {
     cache = await getDragonflyClient('AiUsageReceipts');
+    generation = await cache.get(`twitch:${input.channelID}:ai:usage-receipts:generation`) || '0';
+    const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v2:${generation}:${customerHash}:${timeZoneHash}:${boundaryHash}:${input.window.from}:${input.window.to}`;
     const cached = await cache.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached) as unknown;
@@ -754,9 +776,67 @@ export async function getCachedAiUsageTransactions(input: {
     cache = null;
   }
 
-  const transactions = await fetchAiUsageTransactions(input.customerId, input.window, input.listEvents);
+  let transactions: AiUsageTransaction[];
+  try {
+    let covered = await hasAiUsageLedgerCoverage({
+      channelID: input.channelID,
+      customerId: input.customerId,
+      startsAt: input.window.startTimestamp,
+    });
+    if (!covered) {
+      const lockKey = `locks:ai-usage-backfill:${input.channelID}:${customerHash}`;
+      const lockOwner = randomUUID();
+      const acquired = cache
+        ? await cache.set(lockKey, lockOwner, { NX: true, EX: AI_USAGE_BACKFILL_LOCK_SECONDS })
+        : 'OK';
+      if (acquired === 'OK') {
+        try {
+          // Recheck after acquiring the lock because another request may have completed first.
+          covered = await hasAiUsageLedgerCoverage({
+            channelID: input.channelID,
+            customerId: input.customerId,
+            startsAt: input.window.startTimestamp,
+          });
+          if (!covered) {
+            const polarTransactions = await fetchAiUsageTransactions(input.customerId, input.window, input.listEvents);
+            await backfillAiUsageLedger({
+              channelID: input.channelID,
+              customerId: input.customerId,
+              planTier: input.planTier || 'free',
+              coverageStart: input.window.startTimestamp,
+              transactions: polarTransactions,
+            });
+          }
+        } finally {
+          if (cache) {
+            await cache.eval(RELEASE_BACKFILL_LOCK_SCRIPT, { keys: [lockKey], arguments: [lockOwner] });
+          }
+        }
+      } else {
+        const deadline = Date.now() + AI_USAGE_BACKFILL_WAIT_MS;
+        do {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          covered = await hasAiUsageLedgerCoverage({
+            channelID: input.channelID,
+            customerId: input.customerId,
+            startsAt: input.window.startTimestamp,
+          });
+        } while (!covered && Date.now() < deadline);
+        if (!covered) throw new Error('Timed out waiting for AI usage ledger backfill');
+      }
+    }
+    transactions = await loadAiUsageLedgerTransactions({
+      channelID: input.channelID,
+      customerId: input.customerId,
+      window: input.window,
+    });
+  } catch {
+    // Local storage is an optimization and receipt ledger. Polar remains the fallback source.
+    transactions = await fetchAiUsageTransactions(input.customerId, input.window, input.listEvents);
+  }
   if (cache) {
     try {
+      const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v2:${generation}:${customerHash}:${timeZoneHash}:${boundaryHash}:${input.window.from}:${input.window.to}`;
       await cache.set(cacheKey, JSON.stringify(transactions), { EX: AI_USAGE_CACHE_TTL_SECONDS });
     } catch {
       // Polar remains available when the short-lived read cache is unavailable.

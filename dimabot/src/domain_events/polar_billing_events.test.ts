@@ -68,15 +68,17 @@ function fixture(t: TestContext, twitchIds: string[] = []) {
     const getOwner = t.mock.fn(async (_event: DomainEventEnvelope) => state.owner);
     const getCache = t.mock.fn(async (_caller?: string) => fakeRedis);
     const applyReward = t.mock.fn(async (_input: Parameters<NonNullable<Dependencies['applyReward']>>[0]) => {});
+    const adjustUsageRetention = t.mock.fn(async (_channelIDs: string[], _planTier: string) => {});
     const deps: Dependencies = {
         getOwner, getCache: getCache as unknown as Dependencies['getCache'], applyReward,
+        adjustUsageRetention: adjustUsageRetention as Dependencies['adjustUsageRetention'],
     };
     function assertNoEffects() {
-        for (const mock of [getOwner, getCache, applyReward, update, findById, exists, fakeRedis.eval, fakeRedis.del]) {
+        for (const mock of [getOwner, getCache, applyReward, adjustUsageRetention, update, findById, exists, fakeRedis.eval, fakeRedis.del]) {
             assert.equal(mock.mock.callCount(), 0);
         }
     }
-    return { state, deps, getOwner, getCache, applyReward, fakeRedis, update, updateSelect, findById, findSelect, exists, assertNoEffects };
+    return { state, deps, getOwner, getCache, applyReward, adjustUsageRetention, fakeRedis, update, updateSelect, findById, findSelect, exists, assertNoEffects };
 }
 
 for (const type of ['billing.order.paid', 'billing.subscription.updated']) {
@@ -116,6 +118,7 @@ test('plan without a period end clears expiry and invalidates only owner Twitch 
         'twitch:accounts', 'accounts:twitch:twitch-owner-1:data', 'accounts:twitch:twitch-owner-2:data',
     ]]]);
     assert.equal(f.fakeRedis.eval.mock.callCount(), 0);
+    assert.deepEqual(f.adjustUsageRetention.mock.calls[0].arguments, [['twitch-owner-1', 'twitch-owner-2'], 'premium']);
 });
 
 test('stale plan update with an existing owner still invalidates cache for retry', async t => {
@@ -125,6 +128,7 @@ test('stale plan update with an existing owner still invalidates cache for retry
     assert.deepEqual(f.exists.mock.calls[0].arguments, [{ _id: ownerId }]);
     assert.equal(f.update.mock.callCount(), 1);
     assert.equal(f.fakeRedis.del.mock.callCount(), 1);
+    assert.equal(f.adjustUsageRetention.mock.callCount(), 0);
 });
 
 test('owner disappearing during plan update rejects before cache work', async t => {

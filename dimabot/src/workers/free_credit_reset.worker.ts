@@ -270,6 +270,7 @@ async function bootstrap(): Promise<void> {
                         }
                         const result = await grantPolarAiCredits({
                             customerId: user.polar_sh_customer_id,
+                            channelID: twitchAccount.id,
                             credits: decision.credits,
                             reason: 'free_monthly_credit_reset',
                             externalId: decision.externalId,

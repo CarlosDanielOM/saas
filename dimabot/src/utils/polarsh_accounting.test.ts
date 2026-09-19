@@ -24,6 +24,12 @@ mock.module('./logger.js', {
 mock.module('./posthog_events.js', {
   namedExports: { trackAiUsageRecorded: () => {} },
 });
+mock.module('./ai_usage_ledger.js', {
+  namedExports: {
+    buildQueuedAiUsageReceipt: () => null,
+    enqueueAiUsageReceipt: async () => {},
+  },
+});
 
 process.env.POLARSH_OAT = 'test';
 const { grantPolarAiCredits, ingestPolarSHEvent } = await import('./polarsh.js');

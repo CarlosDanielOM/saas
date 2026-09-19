@@ -75,6 +75,12 @@ const WORKERS: WorkerDefinition[] = [
         enabledEnv: 'FREE_CREDIT_RESET_ENABLED'
     },
     {
+        name: 'ai-usage-receipts',
+        sourceEntry: 'src/workers/ai_usage_receipts.worker.ts',
+        distEntry: 'dist/workers/ai_usage_receipts.worker.js',
+        enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED'
+    },
+    {
         name: 'stream-memory',
         sourceEntry: 'src/workers/stream_memory.worker.ts',
         distEntry: 'dist/workers/stream_memory.worker.js'

@@ -1,0 +1,117 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
+import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
+import AiUsageDailySchema from '/app/dist/schemas/ai_usage_daily.schema.js';
+import AiUsageLedgerStateSchema from '/app/dist/schemas/ai_usage_ledger_state.schema.js';
+import AiUsageReceiptSchema from '/app/dist/schemas/ai_usage_receipt.schema.js';
+import UsersSchema from '/app/dist/schemas/users.schema.js';
+
+const base = 'http://127.0.0.1:3000';
+const callsPath = '/tmp/saas-fixtures/provider-calls.jsonl';
+const workerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+
+function account(id) {
+  return [{ type: 'twitch', id, name: id, email: `${id}@example.invalid`, actived: true,
+    chat_enabled: true, has_permissions: true, up_to_date_permissions: true }];
+}
+
+function runWorker() {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [workerEntry, '--once'], {
+      cwd: process.cwd(), env: { ...process.env, AI_USAGE_RECEIPTS_ENABLED: 'true' },
+    });
+    let output = '';
+    const capture = chunk => { output += chunk.toString(); };
+    child.stdout.on('data', capture);
+    child.stderr.on('data', capture);
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 30_000);
+    child.on('error', reject);
+    child.on('close', (code, signal) => {
+      clearTimeout(timeout);
+      if (code !== 0) reject(new Error(`worker exited ${code}/${signal}\n${output}`));
+      else resolve(output);
+    });
+  });
+}
+
+await getMongoDBConnection('ai-usage-ledger-check');
+const redis = await getDragonflyClient('ai-usage-ledger-check');
+await Promise.all([
+  UsersSchema.deleteMany({}), AiUsageReceiptSchema.deleteMany({}),
+  AiUsageDailySchema.deleteMany({}), AiUsageLedgerStateSchema.deleteMany({}), redis.flushDb(),
+]);
+fs.writeFileSync(callsPath, '');
+
+const customer = '11111111-1111-4111-8111-111111111111';
+await UsersSchema.create({
+  name: 'ledger-pro', email: 'ledger-pro@example.invalid', plan_tier: 'pro', polar_sh_customer_id: customer,
+  accounts: account('ledger-pro'), created_at: new Date('2025-01-07T00:00:00.000Z'),
+});
+await redis.hSet('token:ledger-token', { id: 'ledger-pro', login: 'ledger-pro', display_name: 'Ledger Pro' });
+await redis.set('twitch:ledger-pro:ai:credits', JSON.stringify({
+  version: 3, used: 200, limit: 500000, balance: 499800,
+  meterId: '5103e79b-fd74-4ba8-a287-f95574f9addf', updatedAt: new Date().toISOString(),
+  available: true, status: 'available',
+}));
+
+async function summary() {
+  const response = await fetch(`${base}/billing/ai-usage/summary?from=2026-09-18&to=2026-09-19&timezone=UTC`, {
+    headers: { Authorization: 'Bearer ledger-token' },
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+  return body.data;
+}
+
+const first = await summary();
+assert.equal(first.analytics.totalSpentCredits, 200);
+assert.equal(await AiUsageReceiptSchema.countDocuments({ channelID: 'ledger-pro', customerId: customer }), 2);
+assert.equal(await AiUsageDailySchema.countDocuments({ channelID: 'ledger-pro', customerId: customer }), 2);
+assert.ok(await AiUsageLedgerStateSchema.exists({ channelID: 'ledger-pro', customerId: customer }));
+const stored = await AiUsageReceiptSchema.findOne({ entryId: 'ledger-tts' }).lean();
+assert.equal(
+  stored.expiresAt.toISOString(),
+  new Date(new Date('2026-09-19T01:00:00.000Z').getTime() + 90 * 86400000).toISOString(),
+);
+
+const cachedKeys = await redis.keys('twitch:ledger-pro:ai:usage-receipts:v2:*');
+if (cachedKeys.length) await redis.del(cachedKeys);
+const second = await summary();
+assert.equal(second.analytics.totalSpentCredits, 200);
+const listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+  .filter(call => call.type === 'polar-events-list');
+assert.equal(listCalls.length, 1, 'Mongo coverage should avoid a second Polar history download');
+
+const tiers = [['free', 30], ['premium', 60], ['pro', 90]];
+for (const [tier, days] of tiers) {
+  const channelID = `queue-${tier}`;
+  const customerId = `${days}`.padStart(8, '0') + '-1111-4111-8111-111111111111';
+  await UsersSchema.create({ name: channelID, email: `${channelID}@example.invalid`, plan_tier: tier,
+    polar_sh_customer_id: customerId, accounts: account(channelID) });
+  await redis.rPush('cron:ai-usage-receipts:queue', JSON.stringify({
+    channelID, customerId, id: `queued-${tier}`, requestId: `request-${tier}`,
+    occurredAt: '2026-09-19T12:00:00.000Z', entryKind: 'usage', category: 'tts',
+    operation: 'synthesize', provider: 'fish', model: null, quantity: 100,
+    unit: 'characters', credits: 150, resourceType: 'speech', resourceId: null, itemized: true,
+  }));
+}
+const workerOutput = await runWorker();
+assert.match(workerOutput, /AI usage receipt batch completed/);
+for (const [tier, days] of tiers) {
+  const receipt = await AiUsageReceiptSchema.findOne({ entryId: `queued-${tier}` }).lean();
+  assert.equal(receipt.retentionTier, tier);
+  assert.equal(
+    receipt.expiresAt.toISOString(),
+    new Date(new Date('2026-09-19T12:00:00.000Z').getTime() + Number(days) * 86400000).toISOString(),
+  );
+}
+assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 0);
+assert.equal(await redis.lLen('cron:ai-usage-receipts:processing'), 0);
+
+redis.destroy();
+console.log('Mongo receipt backfill, local reuse, queue worker, aggregates, and tier retention passed');
+process.exit(0);

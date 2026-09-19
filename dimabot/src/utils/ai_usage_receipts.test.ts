@@ -66,6 +66,23 @@ test('usage windows reject invalid timezones and ranges over 31 days', () => {
   );
 });
 
+test('plan-specific windows allow 60 Premium days and 90 Pro days', () => {
+  const premium = resolveAiUsageWindow({
+    from: '2026-07-22', to: '2026-09-19', timeZone: 'UTC',
+    now: new Date('2026-09-19T20:00:00Z'), maxDays: 60,
+  });
+  const pro = resolveAiUsageWindow({
+    from: '2026-06-22', to: '2026-09-19', timeZone: 'UTC',
+    now: new Date('2026-09-19T20:00:00Z'), maxDays: 90,
+  });
+  assert.equal(premium.days.length, 60);
+  assert.equal(pro.days.length, 90);
+  assert.throws(() => resolveAiUsageWindow({
+    from: '2026-07-21', to: '2026-09-19', timeZone: 'UTC',
+    now: new Date('2026-09-19T20:00:00Z'), maxDays: 60,
+  }), AiUsageReceiptLimitError);
+});
+
 test('default paid usage period follows the active Polar subscription boundaries', async () => {
   const period = await resolveAiUsagePeriod({
     customerId: 'customer-1',

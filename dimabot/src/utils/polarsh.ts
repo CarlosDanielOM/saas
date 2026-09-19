@@ -11,6 +11,7 @@ import {
   type PolarUsageMetadataShape,
 } from "./ai_usage_event.js";
 import { trackAiUsageRecorded } from "./posthog_events.js";
+import { buildQueuedAiUsageReceipt, enqueueAiUsageReceipt } from "./ai_usage_ledger.js";
 
 const INGEST_LOCK_PREFIX = "locks:polar-ingest:";
 const INGEST_LOCK_TTL_MS = 8000;
@@ -74,6 +75,7 @@ interface IngestPolarSHEventResponse {
 
 interface GrantPolarAiCreditsOptions {
   customerId: string;
+  channelID?: string;
   credits: number;
   reason: string;
   adminLogin?: string;
@@ -121,6 +123,31 @@ function trackAcceptedUsage(eventData: EventData, context: AiUsageContext): void
   } catch {
     // Analytics must never interrupt billing or durable queueing.
   }
+}
+
+async function projectAcceptedUsage(
+  cache: DragonflyClient,
+  eventData: EventData,
+  context: AiUsageContext,
+  channelID?: string,
+): Promise<void> {
+  await recordAiCreditUsage(channelID || "", eventData.metadata.credits, eventData.externalId, cache);
+  if (channelID) {
+    try {
+      await enqueueAiUsageReceipt(cache, buildQueuedAiUsageReceipt({
+        channelID,
+        customerId: eventData.customerId,
+        context,
+        credits: eventData.metadata.credits,
+      }));
+    } catch (err) {
+      await error({
+        function: "projectAcceptedUsage",
+        error: err instanceof Error ? err.message : String(err),
+      }, { channelId: channelID, destination: "both" });
+    }
+  }
+  trackAcceptedUsage(eventData, context);
 }
 
 /**
@@ -318,8 +345,7 @@ export async function ingestPolarSHEvent(
         };
       }
 
-      await recordAiCreditUsage(channelID || "", eventData.metadata.credits, resolvedExternalId, cacheClient);
-      trackAcceptedUsage(eventData, usageContext);
+      await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
 
       return { error: false };
     }
@@ -333,8 +359,7 @@ export async function ingestPolarSHEvent(
     if (!lockValue) {
       try {
         await queueEvent(cacheClient, cacheKey, eventData);
-        await recordAiCreditUsage(channelID!, eventData.metadata.credits, resolvedExternalId, cacheClient);
-        trackAcceptedUsage(eventData, usageContext);
+        await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
       } catch (queueErr) {
         await error(
           {
@@ -353,8 +378,7 @@ export async function ingestPolarSHEvent(
       // Durably queue the event BEFORE any network call — a failed or
       // interrupted ingest must never lose it.
       await queueEvent(cacheClient, cacheKey, eventData);
-      await recordAiCreditUsage(channelID!, eventData.metadata.credits, resolvedExternalId, cacheClient);
-      trackAcceptedUsage(eventData, usageContext);
+      await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);
 
       if (mode === "cache") {
         return { error: false };
@@ -489,6 +513,23 @@ export async function grantPolarAiCredits(
       });
     } catch {
       // Analytics must never interrupt a successful credit grant.
+    }
+
+    if (options.channelID) {
+      try {
+        const cache = await getDragonflyClient("grantPolarAiCredits");
+        await enqueueAiUsageReceipt(cache, buildQueuedAiUsageReceipt({
+          channelID: options.channelID,
+          customerId: options.customerId,
+          context: usageContext,
+          credits: -credits,
+        }));
+      } catch (queueError) {
+        await error({
+          function: "grantPolarAiCredits.receipt",
+          error: queueError instanceof Error ? queueError.message : String(queueError),
+        }, { channelId: options.channelID, destination: "both" });
+      }
     }
 
     return { error: false };
