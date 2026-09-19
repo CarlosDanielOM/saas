@@ -12,14 +12,15 @@ import UsersSchema from '/app/dist/schemas/users.schema.js';
 
 const base = 'http://127.0.0.1:3000';
 const callsPath = '/tmp/saas-fixtures/provider-calls.jsonl';
-const workerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+const receiptWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+const backfillWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_backfill.worker.js');
 
 function account(id) {
   return [{ type: 'twitch', id, name: id, email: `${id}@example.invalid`, actived: true,
     chat_enabled: true, has_permissions: true, up_to_date_permissions: true }];
 }
 
-function runWorker() {
+function runWorker(workerEntry) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [workerEntry, '--once'], {
       cwd: process.cwd(), env: { ...process.env, AI_USAGE_RECEIPTS_ENABLED: 'true' },
@@ -68,7 +69,18 @@ async function summary() {
 }
 
 const first = await summary();
-assert.equal(first.analytics.totalSpentCredits, 200);
+assert.equal(first.analytics.totalSpentCredits, 0);
+assert.equal(first.ledger.status, 'pending');
+assert.equal(await redis.lLen('cron:ai-usage-backfills:queue'), 1);
+let listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+  .filter(call => call.type === 'polar-events-list');
+assert.equal(listCalls.length, 0, 'API request must not download Polar history');
+
+const backfillOutput = await runWorker(backfillWorkerEntry);
+assert.match(backfillOutput, /AI usage ledger sync completed/);
+const afterBackfill = await summary();
+assert.equal(afterBackfill.analytics.totalSpentCredits, 200);
+assert.equal(afterBackfill.ledger.status, 'ready');
 assert.equal(await AiUsageReceiptSchema.countDocuments({ channelID: 'ledger-pro', customerId: customer }), 2);
 assert.equal(await AiUsageDailySchema.countDocuments({ channelID: 'ledger-pro', customerId: customer }), 2);
 assert.ok(await AiUsageLedgerStateSchema.exists({ channelID: 'ledger-pro', customerId: customer }));
@@ -82,7 +94,7 @@ const cachedKeys = await redis.keys('twitch:ledger-pro:ai:usage-receipts:v2:*');
 if (cachedKeys.length) await redis.del(cachedKeys);
 const second = await summary();
 assert.equal(second.analytics.totalSpentCredits, 200);
-const listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
+listCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse)
   .filter(call => call.type === 'polar-events-list');
 assert.equal(listCalls.length, 1, 'Mongo coverage should avoid a second Polar history download');
 
@@ -99,7 +111,7 @@ for (const [tier, days] of tiers) {
     unit: 'characters', credits: 150, resourceType: 'speech', resourceId: null, itemized: true,
   }));
 }
-const workerOutput = await runWorker();
+const workerOutput = await runWorker(receiptWorkerEntry);
 assert.match(workerOutput, /AI usage receipt batch completed/);
 for (const [tier, days] of tiers) {
   const receipt = await AiUsageReceiptSchema.findOne({ entryId: `queued-${tier}` }).lean();
@@ -113,5 +125,5 @@ assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 0);
 assert.equal(await redis.lLen('cron:ai-usage-receipts:processing'), 0);
 
 redis.destroy();
-console.log('Mongo receipt backfill, local reuse, queue worker, aggregates, and tier retention passed');
+console.log('Background Mongo backfill, immediate API reads, local reuse, queue worker, aggregates, and tier retention passed');
 process.exit(0);

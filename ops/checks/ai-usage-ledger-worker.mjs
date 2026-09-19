@@ -5,13 +5,15 @@ import path from 'node:path';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import AiUsageDailySchema from '/app/dist/schemas/ai_usage_daily.schema.js';
+import AiUsageLedgerStateSchema from '/app/dist/schemas/ai_usage_ledger_state.schema.js';
 import AiUsageReceiptSchema from '/app/dist/schemas/ai_usage_receipt.schema.js';
 import UsersSchema from '/app/dist/schemas/users.schema.js';
 import { ingestPolarSHEvent } from '/app/dist/utils/polarsh.js';
 
-const workerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+const receiptWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
+const backfillWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_backfill.worker.js');
 
-function runWorker() {
+function runWorker(workerEntry) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [workerEntry, '--once'], {
       cwd: process.cwd(), env: { ...process.env, AI_USAGE_RECEIPTS_ENABLED: 'true' },
@@ -38,7 +40,8 @@ function account(id) {
 await getMongoDBConnection('ai-usage-ledger-worker-check');
 const redis = await getDragonflyClient('ai-usage-ledger-worker-check');
 await Promise.all([
-  UsersSchema.deleteMany({}), AiUsageReceiptSchema.deleteMany({}), AiUsageDailySchema.deleteMany({}), redis.flushDb(),
+  UsersSchema.deleteMany({}), AiUsageReceiptSchema.deleteMany({}), AiUsageDailySchema.deleteMany({}),
+  AiUsageLedgerStateSchema.deleteMany({}), redis.flushDb(),
 ]);
 
 const occurredAt = new Date();
@@ -56,7 +59,7 @@ for (const [tier, days] of tiers) {
 }
 assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 3);
 
-const output = await runWorker();
+const output = await runWorker(receiptWorkerEntry);
 assert.match(output, /AI usage receipt batch completed/);
 for (const [tier, days] of tiers) {
   const receipt = await AiUsageReceiptSchema.findOne({ entryId: `producer-${tier}-event` }).lean();
@@ -74,6 +77,13 @@ assert.ok(uniqueIndex, 'receipt deduplication requires the compound unique event
 assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 0);
 assert.equal(await redis.lLen('cron:ai-usage-receipts:processing'), 0);
 
+const backfillOutput = await runWorker(backfillWorkerEntry);
+assert.match(backfillOutput, /AI usage ledger sync completed/);
+assert.equal(await AiUsageLedgerStateSchema.countDocuments({}), 3);
+assert.equal(await redis.lLen('cron:ai-usage-backfills:queue'), 0);
+assert.equal(await redis.lLen('cron:ai-usage-backfills:processing'), 0);
+assert.equal(await redis.lLen('cron:ai-usage-backfills:dead'), 0);
+
 redis.destroy();
-console.log('usage producer queue and Mongo worker retention passed');
+console.log('usage producer queue, background Polar backfill, and Mongo retention passed');
 process.exit(0);

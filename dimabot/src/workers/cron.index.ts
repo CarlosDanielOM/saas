@@ -81,6 +81,12 @@ const WORKERS: WorkerDefinition[] = [
         enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED'
     },
     {
+        name: 'ai-usage-backfill',
+        sourceEntry: 'src/workers/ai_usage_backfill.worker.ts',
+        distEntry: 'dist/workers/ai_usage_backfill.worker.js',
+        enabledEnv: 'AI_USAGE_BACKFILL_ENABLED'
+    },
+    {
         name: 'stream-memory',
         sourceEntry: 'src/workers/stream_memory.worker.ts',
         distEntry: 'dist/workers/stream_memory.worker.js'

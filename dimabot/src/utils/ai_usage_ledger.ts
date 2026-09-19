@@ -23,6 +23,21 @@ export interface QueuedAiUsageReceipt extends AiUsageTransaction {
     customerId: string;
 }
 
+export interface AiUsageLedgerStatus {
+    status: 'ready' | 'pending';
+    coverageStart: string | null;
+    lastSyncedAt: string | null;
+    requestedCoverageStart: string;
+}
+
+export interface AiUsagePacingHistory {
+    averageDailyCredits: number;
+    totalSpentCredits: number;
+    dayCount: number;
+    from: string;
+    to: string;
+}
+
 function validTier(value: unknown): AiUsageRetentionTier {
     return value === 'premium' || value === 'pro' ? value : 'free';
 }
@@ -198,6 +213,7 @@ export async function backfillAiUsageLedger(input: {
     customerId: string;
     planTier: unknown;
     coverageStart: Date;
+    rebuildStart?: Date;
     transactions: AiUsageTransaction[];
     now?: Date;
 }): Promise<void> {
@@ -220,7 +236,13 @@ export async function backfillAiUsageLedger(input: {
         })), { ordered: false });
     }
 
-    await rebuildUtcDailyAggregates(input.channelID, input.customerId, planTier, input.coverageStart, now);
+    await rebuildUtcDailyAggregates(
+        input.channelID,
+        input.customerId,
+        planTier,
+        input.rebuildStart || input.coverageStart,
+        now
+    );
     await AiUsageLedgerStateSchema.findOneAndUpdate(
         { channelID: input.channelID, customerId: input.customerId },
         {
@@ -300,6 +322,76 @@ export async function hasAiUsageLedgerCoverage(input: {
         customerId: input.customerId,
         coverageStart: { $lte: input.startsAt }
     }));
+}
+
+export async function getAiUsageLedgerStatus(input: {
+    channelID: string;
+    customerId: string;
+    startsAt: Date;
+}): Promise<AiUsageLedgerStatus> {
+    const state = await AiUsageLedgerStateSchema.findOne({
+        channelID: input.channelID,
+        customerId: input.customerId
+    }).select('coverageStart backfilledAt').lean().exec();
+    const ready = Boolean(state && state.coverageStart.getTime() <= input.startsAt.getTime());
+    return {
+        status: ready ? 'ready' : 'pending',
+        coverageStart: state?.coverageStart?.toISOString() || null,
+        lastSyncedAt: state?.backfilledAt?.toISOString() || null,
+        requestedCoverageStart: input.startsAt.toISOString()
+    };
+}
+
+export async function getAiUsageLedgerState(input: {
+    channelID: string;
+    customerId: string;
+}): Promise<{ coverageStart: Date; backfilledAt: Date } | null> {
+    const state = await AiUsageLedgerStateSchema.findOne(input)
+        .select('coverageStart backfilledAt').lean().exec();
+    return state ? { coverageStart: state.coverageStart, backfilledAt: state.backfilledAt } : null;
+}
+
+export async function loadAiUsagePacingHistory(input: {
+    channelID: string;
+    customerId: string;
+    planTier: unknown;
+    accountCreatedAt?: Date | null;
+    now?: Date;
+}): Promise<AiUsagePacingHistory | null> {
+    const now = input.now || new Date();
+    const retentionDays = getAiUsageRetentionDays(input.planTier);
+    const retentionStart = new Date(now);
+    retentionStart.setUTCHours(0, 0, 0, 0);
+    retentionStart.setUTCDate(retentionStart.getUTCDate() - (retentionDays - 1));
+    const accountCreatedAt = input.accountCreatedAt instanceof Date
+        && !Number.isNaN(input.accountCreatedAt.getTime()) ? input.accountCreatedAt : null;
+    const historyStart = accountCreatedAt && accountCreatedAt > retentionStart ? accountCreatedAt : retentionStart;
+    const state = await getAiUsageLedgerState({ channelID: input.channelID, customerId: input.customerId });
+    if (!state || state.coverageStart.getTime() > historyStart.getTime()) return null;
+
+    const from = historyStart.toISOString().slice(0, 10);
+    const to = now.toISOString().slice(0, 10);
+    const totals = await AiUsageDailySchema.aggregate<{ totalSpentCredits: number }>([
+        {
+            $match: {
+                channelID: input.channelID,
+                customerId: input.customerId,
+                date: { $gte: from, $lte: to },
+                expiresAt: { $gt: now }
+            }
+        },
+        { $group: { _id: null, totalSpentCredits: { $sum: '$spentCredits' } } }
+    ]).exec();
+    const totalSpentCredits = Math.max(0, Number(totals[0]?.totalSpentCredits || 0));
+    const elapsedDays = Math.max(1, (now.getTime() - historyStart.getTime()) / 86_400_000);
+    const dayCount = Math.min(retentionDays, elapsedDays);
+    return {
+        averageDailyCredits: totalSpentCredits / dayCount,
+        totalSpentCredits,
+        dayCount,
+        from,
+        to
+    };
 }
 
 export async function loadAiUsageLedgerTransactions(input: {

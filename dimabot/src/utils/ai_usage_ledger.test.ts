@@ -7,6 +7,7 @@ import {
     getAiUsageRetentionDays,
     parseQueuedAiUsageReceipt,
 } from './ai_usage_ledger.js';
+import { getAiUsageDesiredCoverageStart, parseAiUsageBackfillJob } from './ai_usage_backfill_queue.js';
 
 test('retention is 30 days for Free, 60 for Premium, and 90 for Pro', () => {
     assert.equal(getAiUsageRetentionDays('free'), 30);
@@ -47,4 +48,21 @@ test('queued receipt parsing rejects malformed payloads and normalizes adjustmen
     }));
     assert.equal(parsed?.entryKind, 'adjustment');
     assert.equal(parsed?.credits, -5000);
+});
+
+test('background backfill jobs keep tier retention boundaries and reject malformed payloads', () => {
+    const now = new Date('2026-09-19T12:00:00.000Z');
+    assert.equal(getAiUsageDesiredCoverageStart('free', now).toISOString(), '2026-08-21T00:00:00.000Z');
+    assert.equal(getAiUsageDesiredCoverageStart('premium', now).toISOString(), '2026-07-22T00:00:00.000Z');
+    assert.equal(getAiUsageDesiredCoverageStart('pro', now).toISOString(), '2026-06-22T00:00:00.000Z');
+    assert.equal(parseAiUsageBackfillJob('{'), null);
+    assert.equal(parseAiUsageBackfillJob(JSON.stringify({ id: 'missing-fields' })), null);
+    const parsed = parseAiUsageBackfillJob(JSON.stringify({
+        id: 'job-1', channelID: 'channel-1', customerId: 'customer-1', planTier: 'pro',
+        coverageStart: '2026-06-22T00:00:00.000Z', requestedAt: now.toISOString(),
+        reason: 'daily_sweep', attempts: 1, dedupeKey: 'dedupe-1'
+    }));
+    assert.equal(parsed?.planTier, 'pro');
+    assert.equal(parsed?.reason, 'daily_sweep');
+    assert.equal(parsed?.attempts, 1);
 });

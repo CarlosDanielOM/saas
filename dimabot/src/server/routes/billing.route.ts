@@ -18,7 +18,7 @@ import {
   paginateAiUsageTransactions,
   resolveAiUsagePeriod,
 } from '../../utils/ai_usage_receipts.js';
-import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
+import { getAiUsageRetentionDays, loadAiUsagePacingHistory } from '../../utils/ai_usage_ledger.js';
 
 type TargetPlan = 'premium' | 'pro';
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
@@ -408,18 +408,28 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
             maxDays: getAiUsageRetentionDays(planTier)
         });
-        const transactions = capabilities.dailySpend && target.user.polar_sh_customer_id
+        const usageRead = target.user.polar_sh_customer_id
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
                 window: period.window,
                 planTier
             })
-            : [];
+            : null;
+        const transactions = capabilities.dailySpend ? usageRead?.transactions || [] : [];
         const summary = buildAiUsageSummary(transactions, period.window);
+        const pacingHistory = target.user.polar_sh_customer_id
+            ? await loadAiUsagePacingHistory({
+                channelID: target.channelID,
+                customerId: target.user.polar_sh_customer_id,
+                planTier,
+                accountCreatedAt: target.user.created_at
+            })
+            : null;
         const pacing = buildAiUsagePacing({
             credits,
-            billingPeriod: period.billingPeriod
+            billingPeriod: period.billingPeriod,
+            history: pacingHistory
         });
 
         return res.status(200).json({
@@ -431,6 +441,7 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
                 capabilities,
                 credits,
                 billingPeriod: period.billingPeriod,
+                ledger: usageRead?.ledger || null,
                 pacing,
                 analytics: capabilities.dailySpend ? {
                     ...summary,
@@ -467,14 +478,15 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
             maxDays: getAiUsageRetentionDays(planTier)
         });
-        const transactions = target.user.polar_sh_customer_id
+        const usageRead = target.user.polar_sh_customer_id
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
                 window: period.window,
                 planTier
             })
-            : [];
+            : null;
+        const transactions = usageRead?.transactions || [];
         const limitRaw = getStringQueryParam(req.query.limit);
         const page = paginateAiUsageTransactions({
             transactions,
@@ -497,6 +509,7 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
                     dayCount: period.window.days.length
                 },
                 billingPeriod: period.billingPeriod,
+                ledger: usageRead?.ledger || null,
                 category: getStringQueryParam(req.query.category) || null,
                 items: page.items,
                 nextCursor: page.nextCursor

@@ -1,12 +1,14 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { getPolarShClient } from './polarsh.js';
 import {
-  backfillAiUsageLedger,
-  hasAiUsageLedgerCoverage,
+  getAiUsageLedgerStatus,
   loadAiUsageLedgerTransactions,
+  type AiUsageLedgerStatus,
+  type AiUsagePacingHistory,
 } from './ai_usage_ledger.js';
+import { enqueueAiUsageBackfill } from './ai_usage_backfill_queue.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
 import type { AiCreditsData } from './billing.js';
 
@@ -20,12 +22,7 @@ const AI_USAGE_PAGE_SIZE = 100;
 const AI_USAGE_MAX_POLAR_PAGES = 100;
 const AI_USAGE_CACHE_TTL_SECONDS = 120;
 const MILLISECONDS_PER_DAY = 86_400_000;
-const AI_USAGE_BACKFILL_LOCK_SECONDS = 10 * 60;
-const AI_USAGE_BACKFILL_WAIT_MS = 3 * 60_000;
-const RELEASE_BACKFILL_LOCK_SCRIPT = `
-if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end
-return 0
-`;
+const MINIMUM_PACING_HISTORY_DAYS = 7;
 
 const RECEIPT_CATEGORIES = new Set<string>([
   'tts',
@@ -69,8 +66,12 @@ export interface AiUsagePeriodResolution {
 export interface AiUsagePacing {
   status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted';
   forecastBasis: 'current_billing_period' | 'current_free_credit_period';
+  forecastRateBasis: 'current_cycle' | 'retention_history';
   quotaUsedPercent: number;
   averageDailyCredits: number;
+  currentCycleAverageDailyCredits: number;
+  historicalAverageDailyCredits: number | null;
+  forecastHistoryDays: number;
   projectedPeriodCredits: number;
   projectedQuotaUsedPercent: number;
   projectedOverageCredits: number;
@@ -119,6 +120,11 @@ export interface AiUsageSummary {
     transactionCount: number;
     percentage: number;
   }>;
+}
+
+export interface AiUsageLedgerRead {
+  transactions: AiUsageTransaction[];
+  ledger: AiUsageLedgerStatus;
 }
 
 interface PolarUsageEventLike {
@@ -474,6 +480,7 @@ function rounded(value: number, places = 2): number {
 export function buildAiUsagePacing(input: {
   credits: Pick<AiCreditsData, 'used' | 'limit' | 'balance' | 'available' | 'status'>;
   billingPeriod: AiUsageBillingPeriod;
+  history?: AiUsagePacingHistory | null;
   now?: Date;
 }): AiUsagePacing | null {
   if (!['subscription', 'free_monthly'].includes(input.billingPeriod.source) || !input.credits.available) return null;
@@ -493,11 +500,16 @@ export function buildAiUsagePacing(input: {
   const used = Math.max(0, input.credits.used);
   const limit = Math.max(0, input.credits.limit);
   const balance = Math.max(0, input.credits.balance);
-  const averageDailyCredits = used / elapsedDays;
-  const projectedPeriodCredits = averageDailyCredits * totalDays;
+  const currentCycleAverageDailyCredits = used / elapsedDays;
+  const usableHistory = input.history && input.history.dayCount >= MINIMUM_PACING_HISTORY_DAYS
+    ? input.history : null;
+  const forecastDailyCredits = usableHistory
+    ? Math.max(0, usableHistory.averageDailyCredits)
+    : currentCycleAverageDailyCredits;
+  const projectedPeriodCredits = used + forecastDailyCredits * remainingPeriodDays;
   const availableForForecast = Math.max(limit, input.credits.used + balance);
   const projectedOverageCredits = Math.max(0, Math.ceil(projectedPeriodCredits - availableForForecast));
-  const estimatedDays = balance <= 0 ? 0 : averageDailyCredits > 0 ? balance / averageDailyCredits : null;
+  const estimatedDays = balance <= 0 ? 0 : forecastDailyCredits > 0 ? balance / forecastDailyCredits : null;
   const expectedToExhaustWithinPeriod = estimatedDays !== null && estimatedDays < remainingPeriodDays;
   const showExhaustionEstimate = balance <= 0 || expectedToExhaustWithinPeriod;
   const estimatedExhaustionAt = showExhaustionEstimate && estimatedDays !== null
@@ -506,15 +518,19 @@ export function buildAiUsagePacing(input: {
 
   let status: AiUsagePacing['status'];
   if (input.credits.status === 'exhausted' || balance <= 0) status = 'exhausted';
-  else if (used <= 0 || averageDailyCredits <= 0) status = 'no_usage';
+  else if (forecastDailyCredits <= 0) status = 'no_usage';
   else if (expectedToExhaustWithinPeriod) status = 'over_pace';
   else status = 'within_pace';
 
   return {
     status,
     forecastBasis: isSubscription ? 'current_billing_period' : 'current_free_credit_period',
+    forecastRateBasis: usableHistory ? 'retention_history' : 'current_cycle',
     quotaUsedPercent: limit > 0 ? rounded((Math.max(0, input.credits.used) / limit) * 100) : 0,
-    averageDailyCredits: rounded(averageDailyCredits),
+    averageDailyCredits: rounded(forecastDailyCredits),
+    currentCycleAverageDailyCredits: rounded(currentCycleAverageDailyCredits),
+    historicalAverageDailyCredits: usableHistory ? rounded(usableHistory.averageDailyCredits) : null,
+    forecastHistoryDays: usableHistory ? rounded(usableHistory.dayCount, 1) : 0,
     projectedPeriodCredits: Math.round(projectedPeriodCredits),
     projectedQuotaUsedPercent: limit > 0 ? rounded((projectedPeriodCredits / limit) * 100) : 0,
     projectedOverageCredits,
@@ -752,8 +768,7 @@ export async function getCachedAiUsageTransactions(input: {
   customerId: string;
   window: AiUsageWindow;
   planTier?: 'free' | 'premium' | 'pro';
-  listEvents?: PolarUsageEventsList;
-}): Promise<AiUsageTransaction[]> {
+}): Promise<AiUsageLedgerRead> {
   const customerHash = createHash('sha256').update(input.customerId).digest('hex').slice(0, 16);
   const timeZoneHash = createHash('sha256').update(input.window.timeZone).digest('hex').slice(0, 12);
   const boundaryHash = createHash('sha256')
@@ -770,77 +785,52 @@ export async function getCachedAiUsageTransactions(input: {
     const cached = await cache.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached) as unknown;
-      if (Array.isArray(parsed)) return parsed as AiUsageTransaction[];
+      if (Array.isArray(parsed)) {
+        const ledger = await getAiUsageLedgerStatus({
+          channelID: input.channelID,
+          customerId: input.customerId,
+          startsAt: input.window.startTimestamp,
+        });
+        if (ledger.status === 'pending' && cache) {
+          await enqueueAiUsageBackfill(cache, {
+            channelID: input.channelID,
+            customerId: input.customerId,
+            planTier: input.planTier || 'free',
+            reason: 'api_request',
+          });
+        }
+        return { transactions: parsed as AiUsageTransaction[], ledger };
+      }
     }
   } catch {
     cache = null;
   }
 
-  let transactions: AiUsageTransaction[];
-  try {
-    let covered = await hasAiUsageLedgerCoverage({
+  const ledger = await getAiUsageLedgerStatus({
+    channelID: input.channelID,
+    customerId: input.customerId,
+    startsAt: input.window.startTimestamp,
+  });
+  if (ledger.status === 'pending' && cache) {
+    await enqueueAiUsageBackfill(cache, {
       channelID: input.channelID,
       customerId: input.customerId,
-      startsAt: input.window.startTimestamp,
+      planTier: input.planTier || 'free',
+      reason: 'api_request',
     });
-    if (!covered) {
-      const lockKey = `locks:ai-usage-backfill:${input.channelID}:${customerHash}`;
-      const lockOwner = randomUUID();
-      const acquired = cache
-        ? await cache.set(lockKey, lockOwner, { NX: true, EX: AI_USAGE_BACKFILL_LOCK_SECONDS })
-        : 'OK';
-      if (acquired === 'OK') {
-        try {
-          // Recheck after acquiring the lock because another request may have completed first.
-          covered = await hasAiUsageLedgerCoverage({
-            channelID: input.channelID,
-            customerId: input.customerId,
-            startsAt: input.window.startTimestamp,
-          });
-          if (!covered) {
-            const polarTransactions = await fetchAiUsageTransactions(input.customerId, input.window, input.listEvents);
-            await backfillAiUsageLedger({
-              channelID: input.channelID,
-              customerId: input.customerId,
-              planTier: input.planTier || 'free',
-              coverageStart: input.window.startTimestamp,
-              transactions: polarTransactions,
-            });
-          }
-        } finally {
-          if (cache) {
-            await cache.eval(RELEASE_BACKFILL_LOCK_SCRIPT, { keys: [lockKey], arguments: [lockOwner] });
-          }
-        }
-      } else {
-        const deadline = Date.now() + AI_USAGE_BACKFILL_WAIT_MS;
-        do {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          covered = await hasAiUsageLedgerCoverage({
-            channelID: input.channelID,
-            customerId: input.customerId,
-            startsAt: input.window.startTimestamp,
-          });
-        } while (!covered && Date.now() < deadline);
-        if (!covered) throw new Error('Timed out waiting for AI usage ledger backfill');
-      }
-    }
-    transactions = await loadAiUsageLedgerTransactions({
-      channelID: input.channelID,
-      customerId: input.customerId,
-      window: input.window,
-    });
-  } catch {
-    // Local storage is an optimization and receipt ledger. Polar remains the fallback source.
-    transactions = await fetchAiUsageTransactions(input.customerId, input.window, input.listEvents);
   }
+  const transactions = await loadAiUsageLedgerTransactions({
+    channelID: input.channelID,
+    customerId: input.customerId,
+    window: input.window,
+  });
   if (cache) {
     try {
       const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v2:${generation}:${customerHash}:${timeZoneHash}:${boundaryHash}:${input.window.from}:${input.window.to}`;
       await cache.set(cacheKey, JSON.stringify(transactions), { EX: AI_USAGE_CACHE_TTL_SECONDS });
     } catch {
-      // Polar remains available when the short-lived read cache is unavailable.
+      // Mongo results remain available when the short-lived read cache is unavailable.
     }
   }
-  return transactions;
+  return { transactions, ledger };
 }

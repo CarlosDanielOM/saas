@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
 
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
@@ -8,6 +10,24 @@ await getMongoDBConnection('ai-usage-receipts-check');
 const redis = await getDragonflyClient('ai-usage-receipts-check');
 const base = 'http://127.0.0.1:3000';
 const polarCustomer = '11111111-1111-4111-8111-111111111111';
+const backfillWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_backfill.worker.js');
+
+function runBackfillWorker() {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [backfillWorkerEntry, '--once'], { cwd: process.cwd(), env: process.env });
+    let output = '';
+    const capture = chunk => { output += chunk.toString(); };
+    child.stdout.on('data', capture);
+    child.stderr.on('data', capture);
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 30_000);
+    child.on('error', reject);
+    child.on('close', (code, signal) => {
+      clearTimeout(timeout);
+      if (code !== 0) reject(new Error(`backfill worker exited ${code}/${signal}\n${output}`));
+      else resolve(output);
+    });
+  });
+}
 
 async function seedUser(id, planTier, token) {
   await UsersSchema.create({
@@ -49,6 +69,8 @@ async function seedUser(id, planTier, token) {
 await seedUser('pro-channel', 'pro', 'pro-token');
 await seedUser('premium-channel', 'premium', 'premium-token');
 await seedUser('free-channel', 'free', 'free-token');
+const backfillOutput = await runBackfillWorker();
+assert.match(backfillOutput, /AI usage ledger sync completed/);
 
 async function get(path, token) {
   const response = await fetch(`${base}${path}`, {
@@ -84,6 +106,8 @@ assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.endsAt, '2026
 assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.endExclusive, true);
 assert.equal(subscriptionSummary.json.data.analytics.totalSpentCredits, 255);
 assert.equal(subscriptionSummary.json.data.analytics.pacing.status, 'within_pace');
+assert.equal(subscriptionSummary.json.data.analytics.pacing.forecastRateBasis, 'retention_history');
+assert.ok(subscriptionSummary.json.data.analytics.pacing.forecastHistoryDays >= 12);
 assert.equal(subscriptionSummary.json.data.analytics.pacing.expectedToExhaustWithinPeriod, false);
 assert.ok(subscriptionSummary.json.data.analytics.pacing.averageDailyCredits > 0);
 assert.equal(subscriptionSummary.json.data.analytics.pacing.estimatedDaysUntilExhaustion, null);

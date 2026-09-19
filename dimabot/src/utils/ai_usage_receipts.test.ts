@@ -155,8 +155,12 @@ test('pacing estimates exhaustion from unchanged credit totals', () => {
   assert.deepEqual(pacing, {
     status: 'over_pace',
     forecastBasis: 'current_billing_period',
+    forecastRateBasis: 'current_cycle',
     quotaUsedPercent: 50,
     averageDailyCredits: 35_714.29,
+    currentCycleAverageDailyCredits: 35_714.29,
+    historicalAverageDailyCredits: null,
+    forecastHistoryDays: 0,
     projectedPeriodCredits: 1_071_429,
     projectedQuotaUsedPercent: 214.29,
     projectedOverageCredits: 571_429,
@@ -166,6 +170,65 @@ test('pacing estimates exhaustion from unchanged credit totals', () => {
     estimatedDaysUntilExhaustion: 7,
     estimatedExhaustionAt: '2026-09-21T00:00:00.000Z',
   });
+});
+
+test('pacing uses retained history to smooth the remaining cycle forecast', () => {
+  const pacing = buildAiUsagePacing({
+    credits: {
+      used: 250_000, limit: 500_000, balance: 250_000, available: true, status: 'available',
+    },
+    billingPeriod: {
+      source: 'subscription',
+      startsAt: '2026-09-07T00:00:00.000Z', endsAt: '2026-10-07T00:00:00.000Z',
+      endExclusive: true, from: '2026-09-07', to: '2026-10-06', totalDayCount: 30, elapsedDayCount: 7,
+    },
+    history: {
+      averageDailyCredits: 5_000, totalSpentCredits: 450_000, dayCount: 90,
+      from: '2026-06-17', to: '2026-09-14',
+    },
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+
+  assert.equal(pacing?.forecastRateBasis, 'retention_history');
+  assert.equal(pacing?.averageDailyCredits, 5_000);
+  assert.equal(pacing?.currentCycleAverageDailyCredits, 35_714.29);
+  assert.equal(pacing?.historicalAverageDailyCredits, 5_000);
+  assert.equal(pacing?.forecastHistoryDays, 90);
+  assert.equal(pacing?.projectedPeriodCredits, 365_000);
+  assert.equal(pacing?.projectedOverageCredits, 0);
+  assert.equal(pacing?.expectedToExhaustWithinPeriod, false);
+});
+
+test('pacing waits for seven historical days before using the retained average', () => {
+  const pacing = buildAiUsagePacing({
+    credits: { used: 70, limit: 300, balance: 230, available: true, status: 'available' },
+    billingPeriod: {
+      source: 'free_monthly', startsAt: '2026-09-07T00:00:00.000Z', endsAt: '2026-10-07T00:00:00.000Z',
+      endExclusive: true, from: '2026-09-07', to: '2026-10-06', totalDayCount: 30, elapsedDayCount: 7,
+    },
+    history: { averageDailyCredits: 1, totalSpentCredits: 3, dayCount: 3, from: '2026-09-11', to: '2026-09-14' },
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+
+  assert.equal(pacing?.forecastRateBasis, 'current_cycle');
+  assert.equal(pacing?.averageDailyCredits, 10);
+  assert.equal(pacing?.historicalAverageDailyCredits, null);
+});
+
+test('retained history forecasts a newly reset cycle with zero current usage', () => {
+  const pacing = buildAiUsagePacing({
+    credits: { used: 0, limit: 100, balance: 100, available: true, status: 'available' },
+    billingPeriod: {
+      source: 'subscription', startsAt: '2026-09-14T00:00:00.000Z', endsAt: '2026-10-14T00:00:00.000Z',
+      endExclusive: true, from: '2026-09-14', to: '2026-10-13', totalDayCount: 30, elapsedDayCount: 1,
+    },
+    history: { averageDailyCredits: 10, totalSpentCredits: 900, dayCount: 90, from: '2026-06-17', to: '2026-09-14' },
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+
+  assert.equal(pacing?.forecastRateBasis, 'retention_history');
+  assert.equal(pacing?.status, 'over_pace');
+  assert.equal(pacing?.projectedPeriodCredits, 300);
 });
 
 test('free pacing follows the account creation monthly anniversary', async () => {
