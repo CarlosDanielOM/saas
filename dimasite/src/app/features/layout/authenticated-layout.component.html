@@ -69,7 +69,7 @@
           <span class="cta-particle"></span>
         </div>
         <button type="button" [class]="permissionCtaButtonClass()" (click)="openPermissionCta()">
-          <lucide-icon [name]="permissionCtaIcon()" class="auth-navbar__cta-icon"></lucide-icon>
+          <lucide-icon [name]="permissionCtaIcon()" [size]="14" class="auth-navbar__cta-icon"></lucide-icon>
           <span>{{ permissionCtaLabel() }}</span>
         </button>
       </div>
@@ -106,7 +106,8 @@
             role="menuitem"
             (click)="closeProfileMenu()"
           >
-            {{ t('navbar.profileSettings') }}
+            <lucide-icon [name]="profileIcon" [size]="18" class="auth-navbar__profile-icon"></lucide-icon>
+            <span>{{ t('navbar.profileSettings') }}</span>
           </a>
 
           <a
@@ -115,7 +116,7 @@
             role="menuitem"
             (click)="closeProfileMenu()"
           >
-            <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+            <lucide-icon [name]="creditsIcon" [size]="18" class="auth-navbar__credits-icon"></lucide-icon>
             <span>{{ t('navbar.buyCredits') }}</span>
           </a>
 
@@ -126,17 +127,18 @@
               role="menuitem"
               (click)="openUpgradeFromMenu()"
             >
-              <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+              <lucide-icon [name]="sparklesIcon" [size]="18" class="auth-navbar__upgrade-icon"></lucide-icon>
               <span>{{ upgradeMenuLabel() }}</span>
             </button>
           }
 
           <button type="button" class="auth-navbar__dropdown-item" role="menuitem" (click)="toggleThemeFromMenu()">
-            <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
+            <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" [size]="18" class="auth-navbar__theme-icon"></lucide-icon>
             <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
           </button>
           <button type="button" class="auth-navbar__dropdown-item" role="menuitem" (click)="toggleLanguageFromMenu()">
-            {{ languageLabel() }}
+            <lucide-icon [name]="languageIcon" [size]="18" class="auth-navbar__lang-icon"></lucide-icon>
+            <span>{{ languageLabel() }}</span>
           </button>
 
           <div class="auth-navbar__divider" aria-hidden="true"></div>
@@ -147,7 +149,8 @@
             role="menuitem"
             (click)="logout()"
           >
-            {{ t('navbar.logout') }}
+            <lucide-icon [name]="logoutIcon" [size]="18" class="auth-navbar__logout-icon"></lucide-icon>
+            <span>{{ t('navbar.logout') }}</span>
           </button>
         </div>
       }
@@ -203,14 +206,15 @@
 
           <section class="auth-navbar__mobile-section">
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'profile']" (click)="closeMobileMenu()">
-              {{ t('navbar.profileSettings') }}
+              <lucide-icon [name]="profileIcon" [size]="18" class="auth-navbar__profile-icon"></lucide-icon>
+              <span>{{ t('navbar.profileSettings') }}</span>
             </a>
             <a
               class="auth-navbar__mobile-link auth-navbar__mobile-link--upgrade"
               [routerLink]="['/', ownerStreamer(), 'credits']"
               (click)="closeMobileMenu()"
             >
-              <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+              <lucide-icon [name]="creditsIcon" [size]="18" class="auth-navbar__credits-icon"></lucide-icon>
               <span>{{ t('navbar.buyCredits') }}</span>
             </a>
             @if (showUpgradeOption()) {
@@ -219,19 +223,21 @@
                 class="auth-navbar__mobile-link auth-navbar__mobile-link--upgrade"
                 (click)="openUpgradeFromMenu()"
               >
-                <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+                <lucide-icon [name]="sparklesIcon" [size]="18" class="auth-navbar__upgrade-icon"></lucide-icon>
                 <span>{{ upgradeMenuLabel() }}</span>
               </button>
             }
             <button type="button" class="auth-navbar__mobile-link" (click)="toggleThemeFromMobileMenu()">
-              <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" class="auth-navbar__theme-icon"></lucide-icon>
+              <lucide-icon [name]="isDarkMode() ? sunIcon : moonIcon" [size]="18" class="auth-navbar__theme-icon"></lucide-icon>
               <span>{{ isDarkMode() ? t('navbar.light') : t('navbar.dark') }}</span>
             </button>
             <button type="button" class="auth-navbar__mobile-link" (click)="toggleLanguageFromMobileMenu()">
-              {{ languageLabel() }}
+              <lucide-icon [name]="languageIcon" [size]="18" class="auth-navbar__lang-icon"></lucide-icon>
+              <span>{{ languageLabel() }}</span>
             </button>
             <button type="button" class="auth-navbar__mobile-link auth-navbar__mobile-link--danger" (click)="logout()">
-              {{ t('navbar.logout') }}
+              <lucide-icon [name]="logoutIcon" [size]="18" class="auth-navbar__logout-icon"></lucide-icon>
+              <span>{{ t('navbar.logout') }}</span>
             </button>
           </section>
         </div>
