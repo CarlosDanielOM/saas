@@ -277,6 +277,9 @@
           } @else {
             <p class="lf-value lf-value--sm">{{ aiCreditsNotAvailableLabel() }}</p>
           }
+          <a class="lf-note lf-usage-link" [routerLink]="usageLink()">
+            {{ t('dashboard.kpis.aiCreditsViewUsage') }}
+          </a>
         </article>
       </section>
 

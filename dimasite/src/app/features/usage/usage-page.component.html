@@ -1,0 +1,369 @@
+<div class="lf" [attr.data-plan]="planTier()" aria-live="polite">
+  <main class="lf-main">
+    <section class="lf-bento lf-bento--hero">
+      <article class="lf-tile lf-tile--intro">
+        <a class="lf-back" [routerLink]="dashboardLink()">
+          <app-lf-icon name="back"></app-lf-icon>
+          {{ t('usage.backToDashboard') }}
+        </a>
+
+        <div class="lf-chip-row">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            {{ planTierLabel() }}
+          </span>
+          @if (creditsAvailable()) {
+            <span
+              class="lf-chip"
+              [class.lf-chip--live]="creditsExhausted()"
+              [class.lf-chip--ok]="!creditsExhausted()"
+            >
+              {{ creditsExhausted() ? t('usage.status.exhausted') : t('usage.status.active') }}
+            </span>
+          }
+        </div>
+
+        <p class="lf-kicker">{{ t('usage.kicker') }}</p>
+        <h1 class="lf-title">
+          {{ t('usage.title') }}
+          <span>{{ streamer() }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('usage.subtitle') }}</p>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight lf-balance" [class.lf-tile--gold]="planTier() !== 'free'">
+        <div class="lf-spotlight__head">
+          <p class="lf-kicker lf-kicker--inline">{{ t('usage.balance.kicker') }}</p>
+          <button
+            type="button"
+            class="lf-icon-btn"
+            (click)="retry()"
+            [attr.aria-label]="t('usage.balance.refresh')"
+          >
+            <app-lf-icon name="refresh"></app-lf-icon>
+          </button>
+        </div>
+
+        @if (loading()) {
+          <div class="lf-skeleton" aria-hidden="true">
+            <span class="lf-skeleton__line lf-skeleton__line--lg"></span>
+            <span class="lf-skeleton__line"></span>
+          </div>
+        } @else if (credits(); as credit) {
+          @if (credit.available) {
+            <p class="lf-value">
+              {{ formatCredits(credit.used) }}<span class="lf-value__sep">/</span>{{ formatCredits(credit.limit) }}
+            </p>
+            <div class="lf-bar" [class.lf-bar--live]="creditsExhausted()" aria-hidden="true">
+              <span [style.width.%]="creditPercent()"></span>
+            </div>
+
+            <div class="lf-balance__grid">
+              <div>
+                <p class="lf-label">{{ t('usage.balance.remaining') }}</p>
+                <p class="lf-metric__value">{{ formatCredits(credit.balance) }}</p>
+              </div>
+              <div>
+                <p class="lf-label">{{ t('usage.balance.used') }}</p>
+                <p class="lf-metric__value">{{ formatCredits(credit.used) }}</p>
+              </div>
+              <div>
+                <p class="lf-label">{{ t('usage.balance.limit') }}</p>
+                <p class="lf-metric__value">{{ formatCredits(credit.limit) }}</p>
+              </div>
+            </div>
+
+            <p class="lf-note">{{ t('usage.balance.percentUsed', { percent: creditPercent() }) }}</p>
+            @if (creditsExhausted()) {
+              <p class="lf-note lf-note--warn">{{ t('usage.balance.exhaustedNote') }}</p>
+            }
+          } @else {
+            <p class="lf-value lf-value--sm">{{ t('usage.balance.unavailable') }}</p>
+          }
+        } @else {
+          <p class="lf-value lf-value--sm">—</p>
+        }
+      </article>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="lf-error" role="alert">
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="lf-btn" (click)="retry()">{{ t('usage.errors.retry') }}</button>
+      </div>
+    } @else {
+      <section class="lf-bento lf-bento--split">
+        <article class="lf-tile">
+          <div class="lf-spotlight__head">
+            <div>
+              <p class="lf-kicker">{{ t('usage.pacing.kicker') }}</p>
+              <h2 class="lf-h3">{{ t('usage.pacing.title') }}</h2>
+            </div>
+            @if (pacing(); as pace) {
+              <span
+                class="lf-chip"
+                [class.lf-chip--ok]="pace.status === 'within_pace'"
+                [class.lf-chip--warn]="pace.status === 'over_pace'"
+                [class.lf-chip--live]="pace.status === 'exhausted'"
+                [class.lf-chip--muted]="pace.status === 'no_usage'"
+              >
+                {{ pacingStatusLabel(pace.status) }}
+              </span>
+            }
+          </div>
+
+          @if (loading()) {
+            <div class="lf-skeleton" aria-hidden="true">
+              <span class="lf-skeleton__line"></span>
+              <span class="lf-skeleton__line"></span>
+            </div>
+          } @else if (pacing(); as pace) {
+            <div class="lf-metric-grid">
+              <div class="lf-metric__cell">
+                <p class="lf-label">{{ t('usage.pacing.projected') }}</p>
+                <p class="lf-metric__value">{{ formatCredits(pace.projectedPeriodCredits) }}</p>
+              </div>
+              <div class="lf-metric__cell">
+                <p class="lf-label">{{ t('usage.pacing.averageDaily') }}</p>
+                <p class="lf-metric__value">{{ formatNumber(pace.averageDailyCredits, 1) }}</p>
+              </div>
+              <div class="lf-metric__cell">
+                <p class="lf-label">{{ t('usage.pacing.dailyBudget') }}</p>
+                <p class="lf-metric__value">{{ formatNumber(pace.dailyCreditsToLastPeriod, 1) }}</p>
+              </div>
+              <div class="lf-metric__cell">
+                <p class="lf-label">{{ t('usage.pacing.daysRemaining') }}</p>
+                <p class="lf-metric__value">
+                  @if (pace.estimatedDaysUntilExhaustion !== null) {
+                    {{ t('usage.pacing.daysValue', { days: formatNumber(pace.estimatedDaysUntilExhaustion, 1) }) }}
+                  } @else {
+                    {{ t('usage.pacing.noRunout') }}
+                  }
+                </p>
+              </div>
+            </div>
+
+            @if (pace.projectedOverageCredits > 0) {
+              <p class="lf-note lf-note--warn">
+                {{ t('usage.pacing.overage', { credits: formatCredits(pace.projectedOverageCredits) }) }}
+              </p>
+            }
+            <p class="lf-note">{{ t('usage.pacing.basis.' + pace.forecastBasis) }}</p>
+          } @else {
+            <p class="lf-copy lf-copy--tight">{{ t('usage.pacing.unavailable') }}</p>
+          }
+        </article>
+
+        <article class="lf-tile">
+          <p class="lf-kicker">{{ t('usage.period.kicker') }}</p>
+          @if (billingPeriod(); as period) {
+            <h2 class="lf-h3">{{ periodSourceLabel(period.source) }}</h2>
+            <p class="lf-note">
+              {{ t('usage.period.range', { from: formatDayLabel(period.from), to: formatDayLabel(period.to) }) }}
+            </p>
+            <div class="lf-bar lf-bar--violet" aria-hidden="true">
+              <span [style.width.%]="periodElapsedPercent()"></span>
+            </div>
+            <p class="lf-note">
+              {{ t('usage.period.elapsed', { elapsed: period.elapsedDayCount, total: period.totalDayCount }) }}
+            </p>
+          } @else {
+            <p class="lf-copy lf-copy--tight">—</p>
+          }
+        </article>
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('usage.analytics.title')">
+        <div class="lf-section__head">
+          <p class="lf-kicker">{{ t('usage.analytics.kicker') }}</p>
+          <h2 class="lf-h2">{{ t('usage.analytics.title') }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ t('usage.analytics.subtitle') }}</p>
+        </div>
+
+        @if (!hasAnalytics()) {
+          <article class="lf-tile lf-locked">
+            <div class="lf-locked__icon" aria-hidden="true">
+              <app-lf-icon name="lock"></app-lf-icon>
+            </div>
+            <div class="lf-locked__body">
+              <h3 class="lf-h3">{{ t('usage.analytics.lockedTitle') }}</h3>
+              <p class="lf-copy lf-copy--tight">{{ t('usage.analytics.lockedBody') }}</p>
+            </div>
+            <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
+              <app-lf-icon name="star"></app-lf-icon>
+              {{ t('usage.analytics.lockedCta', { tier: lockedTierLabel('premium') }) }}
+            </button>
+          </article>
+        } @else if (loading()) {
+          <div class="lf-tile lf-skeleton" aria-hidden="true">
+            <span class="lf-skeleton__line lf-skeleton__line--lg"></span>
+            <span class="lf-skeleton__line"></span>
+          </div>
+        } @else if (analytics(); as stats) {
+          <div class="lf-stats-strip lf-stats-strip--4">
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('usage.analytics.totalSpent') }}</span>
+              <span class="lf-stats-strip__value">{{ formatCredits(stats.totalSpentCredits) }}</span>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('usage.analytics.averageDaily') }}</span>
+              <span class="lf-stats-strip__value">{{ formatNumber(stats.averageDailySpentCredits, 1) }}</span>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('usage.analytics.transactions') }}</span>
+              <span class="lf-stats-strip__value">{{ formatNumber(stats.transactionCount) }}</span>
+            </div>
+            <div class="lf-stats-strip__item">
+              <span class="lf-stats-strip__label">{{ t('usage.analytics.netConsumed') }}</span>
+              <span class="lf-stats-strip__value">{{ formatCredits(stats.netConsumedCredits) }}</span>
+            </div>
+          </div>
+
+          <div class="lf-bento lf-bento--split">
+            <article class="lf-tile">
+              <h3 class="lf-h3">{{ t('usage.analytics.dailyTitle') }}</h3>
+              @if (dailySpendRows().length > 0) {
+                <ul class="lf-daily">
+                  @for (point of dailySpendRows(); track point.date) {
+                    <li class="lf-daily__row">
+                      <span class="lf-daily__date">{{ formatDayLabel(point.date) }}</span>
+                      <span class="lf-daily__track" aria-hidden="true">
+                        <span [style.width.%]="dailyBarWidth(point)"></span>
+                      </span>
+                      <span class="lf-daily__value">{{ formatCredits(point.credits) }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="lf-empty-inline">{{ t('usage.analytics.dailyEmpty') }}</p>
+              }
+            </article>
+
+            <article class="lf-tile">
+              <h3 class="lf-h3">{{ t('usage.analytics.categoriesTitle') }}</h3>
+              @if (categories().length > 0) {
+                <ul class="lf-cat">
+                  @for (category of categories(); track category.category) {
+                    <li class="lf-cat__row">
+                      <div class="lf-cat__head">
+                        <span>{{ categoryLabel(category.category) }}</span>
+                        <strong>{{ formatCredits(category.credits) }} · {{ formatPercent(category.percentage) }}</strong>
+                      </div>
+                      <span class="lf-cat__track" aria-hidden="true">
+                        <span [style.width.%]="categoryBarWidth(category)"></span>
+                      </span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="lf-empty-inline">{{ t('usage.analytics.categoriesEmpty') }}</p>
+              }
+            </article>
+          </div>
+
+          <p class="lf-footer-note">
+            {{ t('usage.analytics.itemizedSince', { date: formatFullDate(stats.itemizationStartedAt) }) }}
+          </p>
+        } @else {
+          <div class="lf-tile">
+            <p class="lf-empty-inline">{{ t('usage.analytics.empty') }}</p>
+          </div>
+        }
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('usage.transactions.title')">
+        <div class="lf-section__head">
+          <p class="lf-kicker">{{ t('usage.transactions.kicker') }}</p>
+          <h2 class="lf-h2">{{ t('usage.transactions.title') }}</h2>
+          <p class="lf-copy lf-copy--tight">{{ t('usage.transactions.subtitle') }}</p>
+        </div>
+
+        @if (!hasTransactions()) {
+          <article class="lf-tile lf-locked">
+            <div class="lf-locked__icon" aria-hidden="true">
+              <app-lf-icon name="lock"></app-lf-icon>
+            </div>
+            <div class="lf-locked__body">
+              <h3 class="lf-h3">{{ t('usage.transactions.lockedTitle') }}</h3>
+              <p class="lf-copy lf-copy--tight">{{ t('usage.transactions.lockedBody') }}</p>
+            </div>
+            <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
+              <app-lf-icon name="star"></app-lf-icon>
+              {{ t('usage.transactions.lockedCta', { tier: lockedTierLabel('pro') }) }}
+            </button>
+          </article>
+        } @else {
+          <div class="lf-filter" role="group" [attr.aria-label]="t('usage.transactions.filterLabel')">
+            <button
+              type="button"
+              class="lf-filter__btn"
+              [class.lf-filter__btn--active]="selectedCategory() === null"
+              (click)="setCategory(null)"
+            >
+              {{ t('usage.transactions.all') }}
+            </button>
+            @for (category of categoryFilters; track category) {
+              <button
+                type="button"
+                class="lf-filter__btn"
+                [class.lf-filter__btn--active]="selectedCategory() === category"
+                (click)="setCategory(category)"
+              >
+                {{ categoryLabel(category) }}
+              </button>
+            }
+          </div>
+
+          <div class="lf-tile lf-ledger">
+            @if (transactionsLoading() && transactions().length === 0) {
+              <div class="lf-skeleton" aria-hidden="true">
+                <span class="lf-skeleton__line"></span>
+                <span class="lf-skeleton__line"></span>
+                <span class="lf-skeleton__line"></span>
+              </div>
+            } @else if (transactionsError()) {
+              <p class="lf-empty-inline">{{ transactionsError() }}</p>
+            } @else if (transactionsEmpty()) {
+              <p class="lf-empty-inline">{{ t('usage.transactions.empty') }}</p>
+            } @else {
+              <ul class="lf-tx">
+                @for (transaction of transactions(); track transaction.id) {
+                  <li class="lf-tx__row" [class.lf-tx__row--credit]="isAdjustment(transaction)">
+                    <div class="lf-tx__main">
+                      <span class="lf-chip lf-chip--muted">{{ categoryLabel(transaction.category) }}</span>
+                      <span class="lf-tx__desc">
+                        {{ transaction.operation }}
+                        @if (transaction.model) {
+                          · {{ transaction.model }}
+                        }
+                      </span>
+                    </div>
+                    <div class="lf-tx__meta">
+                      <span class="lf-tx__time">{{ formatDateTime(transaction.occurredAt) }}</span>
+                      @if (transactionQuantity(transaction); as quantity) {
+                        <span class="lf-tx__qty">{{ quantity }}</span>
+                      }
+                      <span
+                        class="lf-tx__amount"
+                        [class.lf-tx__amount--credit]="isAdjustment(transaction)"
+                      >
+                        {{ transactionAmount(transaction) }}
+                      </span>
+                    </div>
+                  </li>
+                }
+              </ul>
+
+              @if (nextCursor()) {
+                <div class="lf-ledger__footer">
+                  <button type="button" class="lf-btn" [disabled]="loadingMore()" (click)="loadMore()">
+                    {{ loadingMore() ? t('usage.transactions.loadingMore') : t('usage.transactions.loadMore') }}
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        }
+      </section>
+    }
+  </main>
+</div>

@@ -705,6 +705,16 @@ export const routes: Routes = [
         title: 'Dashboard | DomDimaBot'
       },
       {
+        path: 'usage',
+        loadComponent: () =>
+          import('./features/usage/usage-page.component').then((m) => m.UsagePageComponent),
+        canActivate: [permissionGuard],
+        data: {
+          permission: 'dashboard:view'
+        },
+        title: 'AI Usage | DomDimaBot'
+      },
+      {
         path: 'commands',
         loadComponent: () =>
           import('./features/commands/commands-page.component').then((m) => m.CommandsPageComponent),

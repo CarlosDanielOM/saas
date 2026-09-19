@@ -1404,7 +1404,8 @@
       "aiCreditsExhaustedFree": "Mejora a Premium o Pro",
       "aiCreditsExhaustedPremium": "Mejora a Pro",
       "aiCreditsExhaustedPro": "Comprar más créditos",
-      "aiCreditsNotAvailable": "No disponible para esta cuenta"
+      "aiCreditsNotAvailable": "No disponible para esta cuenta",
+      "aiCreditsViewUsage": "Ver uso de créditos →"
     },
     "upcoming": {
       "premium": "Premium",
@@ -1518,6 +1519,117 @@
       "connected": "Conectado",
       "disconnected": "Desconectado",
       "lastChecked": "Última verificación"
+    }
+  },
+  "usage": {
+    "kicker": "Uso de IA",
+    "title": "Uso de créditos",
+    "subtitle": "Sigue cómo se consumen tus créditos de IA en chat, memoria, TTS y clips.",
+    "backToDashboard": "Volver al panel",
+    "status": {
+      "active": "Créditos activos",
+      "exhausted": "Sin créditos"
+    },
+    "plans": {
+      "free": "Gratis",
+      "premium": "Premium",
+      "pro": "Pro"
+    },
+    "balance": {
+      "kicker": "Saldo de créditos",
+      "refresh": "Actualizar uso de créditos",
+      "remaining": "Restantes",
+      "used": "Usados",
+      "limit": "Incluidos",
+      "percentUsed": "{{percent}}% de tus créditos incluidos usados en este periodo.",
+      "exhaustedNote": "No quedan créditos. Mejora tu plan o espera la próxima recarga para seguir usando las funciones de IA.",
+      "unavailable": "Los créditos de IA no están disponibles para esta cuenta."
+    },
+    "pacing": {
+      "kicker": "Pronóstico",
+      "title": "Ritmo de uso",
+      "unavailable": "El ritmo aparece cuando tu cuenta tiene un periodo de créditos activo.",
+      "projected": "Gasto proyectado del periodo",
+      "averageDaily": "Promedio / día",
+      "dailyBudget": "Presupuesto diario",
+      "daysRemaining": "Duran los créditos",
+      "daysValue": "~{{days}} días",
+      "noRunout": "Todo el periodo",
+      "overage": "Exceso proyectado de {{credits}} créditos si el uso continúa a este ritmo.",
+      "status": {
+        "no_usage": "Sin uso aún",
+        "within_pace": "Dentro del ritmo",
+        "over_pace": "Por encima del ritmo",
+        "exhausted": "Agotado"
+      },
+      "basis": {
+        "current_billing_period": "Pronóstico según tu periodo de facturación actual.",
+        "current_free_credit_period": "Pronóstico según tu periodo mensual de créditos gratuitos actual."
+      }
+    },
+    "period": {
+      "kicker": "Periodo de facturación",
+      "range": "{{from}} – {{to}}",
+      "elapsed": "Día {{elapsed}} de {{total}}",
+      "source": {
+        "subscription": "Periodo de suscripción",
+        "free_monthly": "Créditos gratis mensuales",
+        "rolling_30_day": "Últimos 30 días",
+        "custom": "Rango personalizado"
+      }
+    },
+    "analytics": {
+      "kicker": "Analíticas detalladas",
+      "title": "En qué se gastan tus créditos",
+      "subtitle": "Gasto diario, totales y desglose por función.",
+      "empty": "Aún no hay uso de IA registrado en este periodo.",
+      "totalSpent": "Total gastado",
+      "averageDaily": "Promedio / día",
+      "transactions": "Transacciones",
+      "netConsumed": "Consumo neto",
+      "dailyTitle": "Gasto diario",
+      "dailyEmpty": "Sin gasto diario en este periodo.",
+      "categoriesTitle": "Por función",
+      "categoriesEmpty": "Aún no hay gasto categorizado.",
+      "itemizedSince": "El detalle está disponible desde el {{date}}.",
+      "lockedTitle": "Desbloquea las analíticas detalladas",
+      "lockedBody": "El gasto diario y el desglose por función están disponibles en Premium y Pro.",
+      "lockedCta": "Mejorar a {{tier}}"
+    },
+    "transactions": {
+      "kicker": "Registro",
+      "title": "Transacciones de uso",
+      "subtitle": "Cada movimiento de créditos, del más reciente al más antiguo.",
+      "filterLabel": "Filtrar por función",
+      "all": "Todas",
+      "empty": "No hay transacciones en este periodo.",
+      "loadMore": "Cargar más",
+      "loadingMore": "Cargando…",
+      "errorTitle": "No se pudieron cargar las transacciones.",
+      "quantity": "{{quantity}} {{unit}}",
+      "lockedTitle": "Desbloquea el registro completo",
+      "lockedBody": "Las transacciones detalladas están disponibles en el plan Pro.",
+      "lockedCta": "Mejorar a {{tier}}"
+    },
+    "units": {
+      "characters": "caracteres",
+      "tokens": "tokens",
+      "minutes": "minutos"
+    },
+    "categories": {
+      "tts": "Texto a voz",
+      "ai_chat": "Chat de IA",
+      "ai_agent": "Agente de IA",
+      "memory": "Memoria",
+      "clip_recommendation": "Recomendaciones de clips",
+      "credit_adjustment": "Ajuste de créditos",
+      "other": "Otros",
+      "uncategorized": "Sin categoría"
+    },
+    "errors": {
+      "channelNotResolved": "No pudimos resolver este canal.",
+      "loadFailed": "No se puede cargar el uso de créditos ahora mismo.",
+      "retry": "Reintentar"
     }
   },
   "login": {

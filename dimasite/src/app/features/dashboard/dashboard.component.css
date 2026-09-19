@@ -1053,6 +1053,19 @@
   margin-top: 0.55rem;
 }
 
+.lf-usage-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.55rem;
+  color: var(--kicker);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.lf-usage-link:hover {
+  text-decoration: underline;
+}
+
 .lf-chip--ok {
   background: var(--ok-soft);
   color: var(--ok);

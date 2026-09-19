@@ -1404,7 +1404,8 @@
       "aiCreditsExhaustedFree": "Upgrade to Premium or Pro",
       "aiCreditsExhaustedPremium": "Upgrade to Pro",
       "aiCreditsExhaustedPro": "Buy more credits",
-      "aiCreditsNotAvailable": "Not available for this account"
+      "aiCreditsNotAvailable": "Not available for this account",
+      "aiCreditsViewUsage": "View credit usage →"
     },
     "upcoming": {
       "premium": "Premium",
@@ -1518,6 +1519,117 @@
       "connected": "Connected",
       "disconnected": "Disconnected",
       "lastChecked": "Last checked"
+    }
+  },
+  "usage": {
+    "kicker": "AI Usage",
+    "title": "Credit usage",
+    "subtitle": "Track how your AI credits are consumed across chat, memory, TTS, and clip features.",
+    "backToDashboard": "Back to dashboard",
+    "status": {
+      "active": "Credits active",
+      "exhausted": "Out of credits"
+    },
+    "plans": {
+      "free": "Free",
+      "premium": "Premium",
+      "pro": "Pro"
+    },
+    "balance": {
+      "kicker": "Credit balance",
+      "refresh": "Refresh credit usage",
+      "remaining": "Remaining",
+      "used": "Used",
+      "limit": "Included",
+      "percentUsed": "{{percent}}% of your included credits used this period.",
+      "exhaustedNote": "No credits remaining. Upgrade or wait for the next refill to keep using AI features.",
+      "unavailable": "AI credits are not available for this account."
+    },
+    "pacing": {
+      "kicker": "Forecast",
+      "title": "Usage pacing",
+      "unavailable": "Pacing appears once your account has an active credit period.",
+      "projected": "Projected period spend",
+      "averageDaily": "Average / day",
+      "dailyBudget": "Daily budget",
+      "daysRemaining": "Credits last",
+      "daysValue": "~{{days}} days",
+      "noRunout": "Through the period",
+      "overage": "Projected overage of {{credits}} credits if usage continues at this pace.",
+      "status": {
+        "no_usage": "No usage yet",
+        "within_pace": "Within pace",
+        "over_pace": "Over pace",
+        "exhausted": "Exhausted"
+      },
+      "basis": {
+        "current_billing_period": "Forecast from your current billing period.",
+        "current_free_credit_period": "Forecast from your current monthly free-credit period."
+      }
+    },
+    "period": {
+      "kicker": "Billing period",
+      "range": "{{from}} – {{to}}",
+      "elapsed": "Day {{elapsed}} of {{total}}",
+      "source": {
+        "subscription": "Subscription period",
+        "free_monthly": "Monthly free credits",
+        "rolling_30_day": "Rolling 30 days",
+        "custom": "Custom range"
+      }
+    },
+    "analytics": {
+      "kicker": "Itemized analytics",
+      "title": "Where your credits go",
+      "subtitle": "Daily spend, totals, and a breakdown by feature.",
+      "empty": "No AI usage recorded in this period yet.",
+      "totalSpent": "Total spent",
+      "averageDaily": "Average / day",
+      "transactions": "Transactions",
+      "netConsumed": "Net consumed",
+      "dailyTitle": "Daily spend",
+      "dailyEmpty": "No daily spend in this period.",
+      "categoriesTitle": "By feature",
+      "categoriesEmpty": "No categorized spend yet.",
+      "itemizedSince": "Itemized details are available from {{date}}.",
+      "lockedTitle": "Unlock itemized analytics",
+      "lockedBody": "Daily spend and per-feature breakdowns are available on Premium and Pro.",
+      "lockedCta": "Upgrade to {{tier}}"
+    },
+    "transactions": {
+      "kicker": "Ledger",
+      "title": "Usage transactions",
+      "subtitle": "Every credit movement, newest first.",
+      "filterLabel": "Filter by feature",
+      "all": "All",
+      "empty": "No transactions in this period.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…",
+      "errorTitle": "Unable to load transactions.",
+      "quantity": "{{quantity}} {{unit}}",
+      "lockedTitle": "Unlock the full ledger",
+      "lockedBody": "Itemized transactions are available on the Pro plan.",
+      "lockedCta": "Upgrade to {{tier}}"
+    },
+    "units": {
+      "characters": "characters",
+      "tokens": "tokens",
+      "minutes": "minutes"
+    },
+    "categories": {
+      "tts": "Text to speech",
+      "ai_chat": "AI chat",
+      "ai_agent": "AI agent",
+      "memory": "Memory",
+      "clip_recommendation": "Clip recommendations",
+      "credit_adjustment": "Credit adjustment",
+      "other": "Other",
+      "uncategorized": "Uncategorized"
+    },
+    "errors": {
+      "channelNotResolved": "We couldn't resolve this channel.",
+      "loadFailed": "Unable to load credit usage right now.",
+      "retry": "Try again"
     }
   },
   "login": {

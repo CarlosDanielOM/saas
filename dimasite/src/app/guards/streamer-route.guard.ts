@@ -13,6 +13,7 @@ interface ApiEnvelope<T> {
 
 const KNOWN_STREAMER_CHILDREN = new Set([
   'dashboard',
+  'usage',
   'commands',
   'modules',
   'settings',

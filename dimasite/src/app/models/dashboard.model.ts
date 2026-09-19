@@ -116,6 +116,7 @@ export interface AiCreditsData {
   meterId: string;
   updatedAt: string;
   available: boolean;
+  status?: 'unavailable' | 'available' | 'exhausted';
 }
 
 export type AiCreditsResponse = ApiEnvelope<AiCreditsData>;

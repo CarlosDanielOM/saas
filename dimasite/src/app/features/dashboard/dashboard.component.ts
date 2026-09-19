@@ -9,7 +9,7 @@ import {
   signal
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as echarts from 'echarts';
 import { EChartsOption } from 'echarts';
 import { Clock, Lock, LucideAngularModule } from 'lucide-angular';
@@ -75,7 +75,8 @@ interface UpcomingTile {
     LoadingIndicatorComponent,
     ReferralPromoBannerComponent,
     LucideAngularModule,
-    AverageToggleComponent
+    AverageToggleComponent,
+    RouterLink
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
@@ -427,6 +428,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  usageLink(): string[] {
+    return ['/', this.streamer(), 'usage'];
   }
 
   upcomingTierLabel(tier: UpcomingTier): string {
