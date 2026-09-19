@@ -54,6 +54,19 @@ export class CreditPacksPageComponent {
   readonly hasActivePaidSubscription = computed(
     () => this.catalog()?.hasActivePaidSubscription ?? false
   );
+  readonly rechargeExpiryLabel = computed(() => {
+    const days = this.catalog()?.rechargeExpiryDays;
+    if (days === null || days === undefined) {
+      return this.t('creditPacks.recharge.expires');
+    }
+    if (days <= 0) {
+      return this.t('creditPacks.recharge.expiresToday');
+    }
+    if (days === 1) {
+      return this.t('creditPacks.recharge.expiresInDay');
+    }
+    return this.t('creditPacks.recharge.expiresInDays', { days });
+  });
 
   constructor() {
     if (this.purchaseCompleted()) {

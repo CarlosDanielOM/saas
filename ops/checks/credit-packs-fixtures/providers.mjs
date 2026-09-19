@@ -40,10 +40,12 @@ globalThis.fetch = async (input, options = {}) => {
     }
     if (url.pathname.replace(/\/$/, '') === '/v1/subscriptions') {
       const paid = url.searchParams.get('customer_id') === '22222222-2222-4222-8222-222222222222';
+      const currentPeriodEnd = new Date(Date.now() + (6.5 * 24 * 60 * 60 * 1000)).toISOString();
       return json({ items: paid ? [{
         id: '33333333-3333-4333-8333-333333333333',
         status: 'active',
         product_id: '55c8d1d0-5cb8-405c-bcf2-d8dbb9ba0134',
+        current_period_end: currentPeriodEnd,
       }] : [] });
     }
     if (url.pathname.replace(/\/$/, '') === '/v1/checkouts' && method === 'POST') {

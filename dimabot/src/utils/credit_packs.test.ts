@@ -6,6 +6,7 @@ import {
     CreditPackConfigurationError,
     buildCreditPackOffers,
     getCreditPackDefinition,
+    getRechargeExpiry,
     type PolarCreditPackProductLike
 } from './credit_packs.js';
 
@@ -76,4 +77,29 @@ test('catalog validation fails closed when Polar rollover configuration drifts',
 test('only the six allowlisted Polar products resolve as credit packs', () => {
     assert.ok(getCreditPackDefinition(CREDIT_PACK_DEFINITIONS[0].id));
     assert.equal(getCreditPackDefinition('00000000-0000-4000-8000-000000000000'), null);
+});
+
+test('recharge expiry reports the remaining paid-plan cycle in whole days', () => {
+    const now = new Date('2026-09-19T12:00:00.000Z');
+    assert.deepEqual(
+        getRechargeExpiry({ current_period_end: '2026-09-26T12:00:00.000Z' }, now),
+        { expiresAt: '2026-09-26T12:00:00.000Z', daysRemaining: 7 }
+    );
+    assert.equal(
+        getRechargeExpiry({ current_period_end: '2026-09-20T11:59:59.000Z' }, now)?.daysRemaining,
+        1,
+        'a partial final day must not be presented as already expired'
+    );
+});
+
+test('recharge expiry uses the earlier subscription end and handles missing dates', () => {
+    const now = new Date('2026-09-19T12:00:00.000Z');
+    assert.deepEqual(
+        getRechargeExpiry({
+            current_period_end: '2026-09-29T12:00:00.000Z',
+            ends_at: '2026-09-22T12:00:00.000Z'
+        }, now),
+        { expiresAt: '2026-09-22T12:00:00.000Z', daysRemaining: 3 }
+    );
+    assert.equal(getRechargeExpiry({ current_period_end: 'not-a-date' }, now), null);
 });

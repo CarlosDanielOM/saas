@@ -16,6 +16,7 @@ for (const language of ['en', 'es']) {
   assert.ok(messages.creditPacks.credit.description);
   assert.ok(messages.creditPacks.recharge.description);
   assert.ok(messages.creditPacks.recharge.expires);
+  assert.ok(messages.creditPacks.recharge.expiresInDays);
   assert.ok(messages.navbar.buyCredits);
 }
 
@@ -25,6 +26,7 @@ const main = await (await fetch(`${base}/${mainMatch[1].replace(/^\//, '')}`)).t
 const hasBillingClient = body => body.includes('billing/credit-packs');
 const hasStoreUi = body =>
   body.includes('creditPacks.recharge.expires')
+  && body.includes('creditPacks.recharge.expiresInDays')
   && body.includes('lf-pack-card--recharge');
 const hasNavigation = body => body.includes('navbar.buyCredits');
 

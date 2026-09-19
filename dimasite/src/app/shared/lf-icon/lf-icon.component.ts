@@ -78,20 +78,31 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   sort: ChevronsUpDown
 };
 
-/** Shared inline Lucide icon: sizes to 1em so it inherits the surrounding font-size. */
+/** Shared inline Lucide icon with a stable, centered pixel box. */
 @Component({
   selector: 'app-lf-icon',
   imports: [LucideAngularModule],
-  template: `<lucide-icon class="lf-icon" [name]="icon()"></lucide-icon>`,
+  template: `<lucide-icon class="lf-icon" [name]="icon()" [size]="size()"></lucide-icon>`,
+  host: {
+    '[style.width.px]': 'size()',
+    '[style.height.px]': 'size()'
+  },
   styles: [
     `
       :host {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 1em;
-        height: 1em;
         flex-shrink: 0;
+        line-height: 0;
+        vertical-align: middle;
+      }
+
+      lucide-icon {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        line-height: 0;
       }
     `
   ],
@@ -99,5 +110,6 @@ const ICONS: Record<LfIconName, LucideIconData> = {
 })
 export class LfIconComponent {
   readonly name = input.required<LfIconName>();
+  readonly size = input(16);
   readonly icon = computed(() => ICONS[this.name()] ?? X);
 }

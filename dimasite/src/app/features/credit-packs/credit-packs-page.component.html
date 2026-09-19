@@ -27,14 +27,14 @@
         <h2 id="pack-difference-title" class="lf-h3">{{ t('creditPacks.comparison.title') }}</h2>
 
         <div class="lf-compare__row lf-compare__row--credit">
-          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="star" /></span>
+          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="star" [size]="20" /></span>
           <div>
             <strong>{{ t('creditPacks.credit.title') }}</strong>
             <p>{{ t('creditPacks.comparison.credit') }}</p>
           </div>
         </div>
         <div class="lf-compare__row lf-compare__row--recharge">
-          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="zap" /></span>
+          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="zap" [size]="20" /></span>
           <div>
             <strong>{{ t('creditPacks.recharge.title') }}</strong>
             <p>{{ t('creditPacks.comparison.recharge') }}</p>
@@ -171,7 +171,7 @@
               </p>
               <ul class="lf-feature-list lf-feature-list--recharge">
                 <li><app-lf-icon name="zap" /> {{ t('creditPacks.recharge.moreValue') }}</li>
-                <li><app-lf-icon name="timer" /> {{ t('creditPacks.recharge.expires') }}</li>
+                <li><app-lf-icon name="timer" /> {{ rechargeExpiryLabel() }}</li>
               </ul>
               <button
                 type="button"

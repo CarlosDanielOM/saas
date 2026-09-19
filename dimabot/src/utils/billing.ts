@@ -6,6 +6,7 @@ import {
     CreditPackConfigurationError,
     buildCreditPackOffers,
     getCreditPackDefinition,
+    getRechargeExpiry,
     type CreditPackOffer,
     type PolarCreditPackProductLike
 } from './credit_packs.js';
@@ -33,6 +34,7 @@ interface PolarSubscription {
     product_id?: string;
     ended_at?: string | null;
     canceled_at?: string | null;
+    current_period_end?: string | null;
     ends_at?: string | null;
 }
 
@@ -72,6 +74,8 @@ interface CheckoutDecision {
 export interface CreditPackCatalog {
     planTier: PlanTier;
     hasActivePaidSubscription: boolean;
+    rechargeExpiresAt: string | null;
+    rechargeExpiryDays: number | null;
     offers: CreditPackOffer[];
 }
 
@@ -739,14 +743,26 @@ export async function getBillingContext(
     };
 }
 
+function getPaidSubscriptionFromSubscriptions(
+    subscriptions: PolarSubscription[]
+): { planTier: Exclude<PlanTier, 'free'>; subscription: PolarSubscription } | null {
+    const proSubscription = subscriptions.find(
+        (subscription) => subscription.product_id === PRODUCT_IDS.PRO
+    );
+    if (proSubscription) {
+        return { planTier: 'pro', subscription: proSubscription };
+    }
+
+    const premiumSubscription = subscriptions.find(
+        (subscription) => subscription.product_id === PRODUCT_IDS.PREMIUM
+    );
+    return premiumSubscription
+        ? { planTier: 'premium', subscription: premiumSubscription }
+        : null;
+}
+
 function getPaidPlanFromSubscriptions(subscriptions: PolarSubscription[]): Exclude<PlanTier, 'free'> | null {
-    if (subscriptions.some((subscription) => subscription.product_id === PRODUCT_IDS.PRO)) {
-        return 'pro';
-    }
-    if (subscriptions.some((subscription) => subscription.product_id === PRODUCT_IDS.PREMIUM)) {
-        return 'premium';
-    }
-    return null;
+    return getPaidSubscriptionFromSubscriptions(subscriptions)?.planTier ?? null;
 }
 
 export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCatalog> {
@@ -762,7 +778,11 @@ export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCata
         productsRequest,
         subscriptionsRequest
     ]);
-    const paidPlan = getPaidPlanFromSubscriptions(activeSubscriptions);
+    const paidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions);
+    const paidPlan = paidSubscription?.planTier ?? null;
+    const rechargeExpiry = paidSubscription
+        ? getRechargeExpiry(paidSubscription.subscription)
+        : null;
     const offers = buildCreditPackOffers(
         productsResponse.items || [],
         AI_CREDITS_METER_ID,
@@ -772,6 +792,8 @@ export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCata
     return {
         planTier: paidPlan || 'free',
         hasActivePaidSubscription: paidPlan !== null,
+        rechargeExpiresAt: rechargeExpiry?.expiresAt ?? null,
+        rechargeExpiryDays: rechargeExpiry?.daysRemaining ?? null,
         offers
     };
 }

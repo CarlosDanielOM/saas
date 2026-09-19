@@ -86,10 +86,41 @@ export interface CreditPackOffer {
     eligibilityReason: 'paid_plan_required' | null;
 }
 
+export interface RechargeSubscriptionCycleLike {
+    current_period_end?: string | null;
+    ends_at?: string | null;
+}
+
+export interface RechargeExpiry {
+    expiresAt: string;
+    daysRemaining: number;
+}
+
 export class CreditPackConfigurationError extends Error {}
 
 export function getCreditPackDefinition(productId: string): CreditPackDefinition | null {
     return CREDIT_PACK_DEFINITIONS.find((pack) => pack.id === productId) ?? null;
+}
+
+export function getRechargeExpiry(
+    subscription: RechargeSubscriptionCycleLike,
+    now = new Date()
+): RechargeExpiry | null {
+    const expiryTimestamps = [subscription.current_period_end, subscription.ends_at]
+        .map((value) => value ? Date.parse(value) : Number.NaN)
+        .filter(Number.isFinite);
+
+    if (expiryTimestamps.length === 0) {
+        return null;
+    }
+
+    const expiresAtMs = Math.min(...expiryTimestamps);
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+    return {
+        expiresAt: new Date(expiresAtMs).toISOString(),
+        daysRemaining: Math.max(0, Math.ceil((expiresAtMs - now.getTime()) / millisecondsPerDay))
+    };
 }
 
 export function buildCreditPackOffers(

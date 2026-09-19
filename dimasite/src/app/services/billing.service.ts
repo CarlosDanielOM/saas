@@ -64,6 +64,8 @@ export interface CreditPackOffer {
 export interface CreditPackCatalogData {
   planTier: 'free' | 'premium' | 'pro';
   hasActivePaidSubscription: boolean;
+  rechargeExpiresAt: string | null;
+  rechargeExpiryDays: number | null;
   offers: CreditPackOffer[];
 }
 

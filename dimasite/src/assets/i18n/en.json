@@ -1693,7 +1693,10 @@
       "upgrade": "Upgrade to unlock recharges",
       "requiresPaid": "Paid plan required",
       "moreValue": "More credits per dollar",
-      "expires": "Expires at renewal or when the plan ends"
+      "expires": "Expires at renewal or when the plan ends",
+      "expiresInDays": "Credits expire in {{days}} days",
+      "expiresInDay": "Credits expire in 1 day",
+      "expiresToday": "Credits expire today"
     },
     "sizes": {
       "sample": "Sample pack",

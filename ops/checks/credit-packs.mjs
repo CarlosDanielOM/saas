@@ -43,6 +43,8 @@ const freeCatalog = await freeCatalogResponse.json();
 assert.equal(freeCatalogResponse.status, 200, JSON.stringify(freeCatalog));
 assert.equal(freeCatalog.data.offers.length, 6);
 assert.equal(freeCatalog.data.hasActivePaidSubscription, false);
+assert.equal(freeCatalog.data.rechargeExpiresAt, null);
+assert.equal(freeCatalog.data.rechargeExpiryDays, null);
 assert.ok(freeCatalog.data.offers.filter(offer => offer.kind === 'credits').every(offer => offer.eligible && offer.rollover));
 assert.ok(freeCatalog.data.offers.filter(offer => offer.kind === 'recharge').every(offer => !offer.eligible && !offer.rollover));
 
@@ -65,6 +67,8 @@ const paidCatalogResponse = await request('pack-paid-token', '/billing/credit-pa
 const paidCatalog = await paidCatalogResponse.json();
 assert.equal(paidCatalogResponse.status, 200, JSON.stringify(paidCatalog));
 assert.equal(paidCatalog.data.planTier, 'premium');
+assert.match(paidCatalog.data.rechargeExpiresAt, /^\d{4}-\d{2}-\d{2}T/);
+assert.equal(paidCatalog.data.rechargeExpiryDays, 7);
 assert.ok(paidCatalog.data.offers.filter(offer => offer.kind === 'recharge').every(offer => offer.eligible));
 
 const rechargeCheckout = await request('pack-paid-token', '/billing/credit-packs/checkout', 'POST', { productId: rechargeId });
@@ -82,5 +86,5 @@ assert.equal(checkouts[1].body.metadata.pack_type, 'recharge');
 assert.equal(checkouts[1].body.allow_discount_codes, false);
 
 redis.destroy();
-console.log('PASS credit pack catalog, rollover distinction, paid recharge gate, allowlist, and Polar checkout payload');
+console.log('PASS credit pack catalog, recharge expiry, rollover distinction, paid recharge gate, allowlist, and Polar checkout payload');
 process.exit(0);

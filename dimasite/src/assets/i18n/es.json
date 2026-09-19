@@ -1693,7 +1693,10 @@
       "upgrade": "Mejora tu plan para desbloquear recargas",
       "requiresPaid": "Requiere un plan de pago",
       "moreValue": "Más créditos por dólar",
-      "expires": "Caduca al renovar o cuando termina el plan"
+      "expires": "Caduca al renovar o cuando termina el plan",
+      "expiresInDays": "Los créditos caducan en {{days}} días",
+      "expiresInDay": "Los créditos caducan en 1 día",
+      "expiresToday": "Los créditos caducan hoy"
     },
     "sizes": {
       "sample": "Paquete de muestra",
