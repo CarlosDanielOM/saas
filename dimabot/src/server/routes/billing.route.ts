@@ -12,10 +12,11 @@ import {
 import {
   AiUsageReceiptLimitError,
   AiUsageReceiptValidationError,
+  buildAiUsagePacing,
   buildAiUsageSummary,
   getCachedAiUsageTransactions,
   paginateAiUsageTransactions,
-  resolveAiUsageWindow,
+  resolveAiUsagePeriod,
 } from '../../utils/ai_usage_receipts.js';
 
 type TargetPlan = 'premium' | 'pro';
@@ -411,7 +412,8 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             });
         }
 
-        const window = resolveAiUsageWindow({
+        const period = await resolveAiUsagePeriod({
+            customerId: target.user.polar_sh_customer_id || undefined,
             from: getStringQueryParam(req.query.from) || undefined,
             to: getStringQueryParam(req.query.to) || undefined,
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
@@ -420,9 +422,10 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
-                window
+                window: period.window
             })
             : [];
+        const summary = buildAiUsageSummary(transactions, period.window);
 
         return res.status(200).json({
             error: false,
@@ -432,7 +435,14 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
                 planTier,
                 capabilities,
                 credits,
-                analytics: buildAiUsageSummary(transactions, window)
+                analytics: {
+                    ...summary,
+                    billingPeriod: period.billingPeriod,
+                    pacing: buildAiUsagePacing({
+                        credits,
+                        billingPeriod: period.billingPeriod
+                    })
+                }
             }
         });
     } catch (caught) {
@@ -456,7 +466,8 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
             });
         }
 
-        const window = resolveAiUsageWindow({
+        const period = await resolveAiUsagePeriod({
+            customerId: target.user.polar_sh_customer_id || undefined,
             from: getStringQueryParam(req.query.from) || undefined,
             to: getStringQueryParam(req.query.to) || undefined,
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
@@ -465,7 +476,7 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
-                window
+                window: period.window
             })
             : [];
         const limitRaw = getStringQueryParam(req.query.limit);
@@ -484,11 +495,12 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
                 planTier,
                 capabilities: usageCapabilities(planTier),
                 period: {
-                    from: window.from,
-                    to: window.to,
-                    timeZone: window.timeZone,
-                    dayCount: window.days.length
+                    from: period.window.from,
+                    to: period.window.to,
+                    timeZone: period.window.timeZone,
+                    dayCount: period.window.days.length
                 },
+                billingPeriod: period.billingPeriod,
                 category: getStringQueryParam(req.query.category) || null,
                 items: page.items,
                 nextCursor: page.nextCursor

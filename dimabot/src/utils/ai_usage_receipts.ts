@@ -3,14 +3,17 @@ import { createHash } from 'node:crypto';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { getPolarShClient } from './polarsh.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
+import type { AiCreditsData } from './billing.js';
 
 export const AI_USAGE_RECEIPT_SCHEMA_VERSION = 1 as const;
 export const AI_USAGE_ITEMIZATION_STARTED_AT = '2026-09-18T19:30:00.000Z';
 export const AI_USAGE_MAX_RANGE_DAYS = 31;
 const AI_USAGE_DEFAULT_RANGE_DAYS = 30;
+const AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS = 32;
 const AI_USAGE_PAGE_SIZE = 100;
 const AI_USAGE_MAX_POLAR_PAGES = 100;
 const AI_USAGE_CACHE_TTL_SECONDS = 120;
+const MILLISECONDS_PER_DAY = 86_400_000;
 
 const RECEIPT_CATEGORIES = new Set<string>([
   'tts',
@@ -31,6 +34,37 @@ export interface AiUsageWindow {
   startTimestamp: Date;
   endTimestampExclusive: Date;
   days: string[];
+}
+
+export type AiUsagePeriodSource = 'subscription' | 'rolling_30_day' | 'custom';
+
+export interface AiUsageBillingPeriod {
+  source: AiUsagePeriodSource;
+  startsAt: string;
+  endsAt: string;
+  endExclusive: true;
+  from: string;
+  to: string;
+  totalDayCount: number;
+  elapsedDayCount: number;
+}
+
+export interface AiUsagePeriodResolution {
+  window: AiUsageWindow;
+  billingPeriod: AiUsageBillingPeriod;
+}
+
+export interface AiUsagePacing {
+  status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted';
+  quotaUsedPercent: number;
+  averageDailyCredits: number;
+  projectedPeriodCredits: number;
+  projectedQuotaUsedPercent: number;
+  remainingPeriodDays: number;
+  dailyCreditsToLastPeriod: number;
+  expectedToExhaustWithinPeriod: boolean;
+  estimatedDaysUntilExhaustion: number | null;
+  estimatedExhaustionAt: string | null;
 }
 
 export interface AiUsageTransaction {
@@ -89,6 +123,16 @@ interface PolarEventsPageLike {
   };
 }
 
+interface PolarSubscriptionPeriodLike {
+  status?: unknown;
+  currentPeriodStart?: unknown;
+  currentPeriodEnd?: unknown;
+}
+
+interface PolarCustomerStateLike {
+  activeSubscriptions?: PolarSubscriptionPeriodLike[];
+}
+
 export type PolarUsageEventsList = (request: {
   customerId: string;
   name: string;
@@ -99,6 +143,8 @@ export type PolarUsageEventsList = (request: {
   limit: number;
   sorting: ['-timestamp'];
 }) => Promise<PolarEventsPageLike>;
+
+export type PolarCustomerStateGet = (customerId: string) => Promise<PolarCustomerStateLike>;
 
 export class AiUsageReceiptValidationError extends Error {}
 export class AiUsageReceiptLimitError extends Error {}
@@ -179,13 +225,13 @@ function zonedStartOfDay(value: string, timeZone: string): Date {
   return new Date(guess);
 }
 
-function buildDateLabels(from: string, to: string): string[] {
+function buildDateLabels(from: string, to: string, maxDays = AI_USAGE_MAX_RANGE_DAYS): string[] {
   const dates: string[] = [];
   let current = from;
   while (current <= to) {
     dates.push(current);
-    if (dates.length > AI_USAGE_MAX_RANGE_DAYS) {
-      throw new AiUsageReceiptLimitError(`Date range cannot exceed ${AI_USAGE_MAX_RANGE_DAYS} days`);
+    if (dates.length > maxDays) {
+      throw new AiUsageReceiptLimitError(`Date range cannot exceed ${maxDays} days`);
     }
     current = shiftDateLabel(current, 1);
   }
@@ -226,6 +272,167 @@ export function resolveAiUsageWindow(input: {
     startTimestamp: zonedStartOfDay(from, timeZone),
     endTimestampExclusive: zonedStartOfDay(shiftDateLabel(to, 1), timeZone),
     days,
+  };
+}
+
+function billingPeriodFromWindow(window: AiUsageWindow, source: Exclude<AiUsagePeriodSource, 'subscription'>): AiUsageBillingPeriod {
+  return {
+    source,
+    startsAt: window.startTimestamp.toISOString(),
+    endsAt: window.endTimestampExclusive.toISOString(),
+    endExclusive: true,
+    from: window.from,
+    to: window.to,
+    totalDayCount: window.days.length,
+    elapsedDayCount: window.days.length,
+  };
+}
+
+function validDate(value: unknown): Date | null {
+  const date = value instanceof Date ? value : new Date(String(value || ''));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function findCurrentSubscriptionPeriod(
+  subscriptions: PolarSubscriptionPeriodLike[],
+  now: Date,
+): { start: Date; end: Date } | null {
+  const candidates = subscriptions
+    .map((subscription) => ({
+      status: subscription.status,
+      start: validDate(subscription.currentPeriodStart),
+      end: validDate(subscription.currentPeriodEnd),
+    }))
+    .filter((subscription): subscription is { status: unknown; start: Date; end: Date } => (
+      Boolean(subscription.start && subscription.end)
+      && (subscription.status === 'active' || subscription.status === 'trialing' || subscription.status === undefined)
+      && subscription.start!.getTime() <= now.getTime()
+      && now.getTime() < subscription.end!.getTime()
+      && subscription.start!.getTime() < subscription.end!.getTime()
+    ))
+    .sort((left, right) => right.start.getTime() - left.start.getTime());
+
+  return candidates[0] ? { start: candidates[0].start, end: candidates[0].end } : null;
+}
+
+export async function resolveAiUsagePeriod(input: {
+  customerId?: string;
+  from?: string;
+  to?: string;
+  timeZone?: string;
+  now?: Date;
+  getCustomerState?: PolarCustomerStateGet;
+}): Promise<AiUsagePeriodResolution> {
+  const timeZone = assertTimeZone(input.timeZone || 'UTC');
+  const now = input.now || new Date();
+
+  if (input.from || input.to) {
+    const window = resolveAiUsageWindow({
+      from: input.from,
+      to: input.to,
+      timeZone,
+      now,
+    });
+    return { window, billingPeriod: billingPeriodFromWindow(window, 'custom') };
+  }
+
+  if (input.customerId) {
+    const getState = input.getCustomerState || (async (customerId: string) => {
+      const client = await getPolarShClient('resolveAiUsagePeriod');
+      return await client.customers.getState({ id: customerId }) as PolarCustomerStateLike;
+    });
+    const state = await getState(input.customerId);
+    const subscription = findCurrentSubscriptionPeriod(state.activeSubscriptions || [], now);
+
+    if (subscription) {
+      const from = formatLocalDate(subscription.start, timeZone);
+      const periodTo = formatLocalDate(new Date(subscription.end.getTime() - 1), timeZone);
+      const elapsedTo = formatLocalDate(
+        new Date(Math.max(subscription.start.getTime(), Math.min(now.getTime(), subscription.end.getTime()) - 1)),
+        timeZone,
+      );
+      const days = buildDateLabels(from, elapsedTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
+      const totalDays = buildDateLabels(from, periodTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
+      const window: AiUsageWindow = {
+        from,
+        to: elapsedTo,
+        timeZone,
+        startTimestamp: subscription.start,
+        endTimestampExclusive: subscription.end,
+        days,
+      };
+      return {
+        window,
+        billingPeriod: {
+          source: 'subscription',
+          startsAt: subscription.start.toISOString(),
+          endsAt: subscription.end.toISOString(),
+          endExclusive: true,
+          from,
+          to: periodTo,
+          totalDayCount: totalDays.length,
+          elapsedDayCount: days.length,
+        },
+      };
+    }
+  }
+
+  const window = resolveAiUsageWindow({ timeZone, now });
+  return { window, billingPeriod: billingPeriodFromWindow(window, 'rolling_30_day') };
+}
+
+function rounded(value: number, places = 2): number {
+  const multiplier = 10 ** places;
+  return Math.round(value * multiplier) / multiplier;
+}
+
+export function buildAiUsagePacing(input: {
+  credits: Pick<AiCreditsData, 'used' | 'limit' | 'balance' | 'available' | 'status'>;
+  billingPeriod: AiUsageBillingPeriod;
+  now?: Date;
+}): AiUsagePacing | null {
+  if (input.billingPeriod.source !== 'subscription' || !input.credits.available) return null;
+
+  const now = input.now || new Date();
+  const start = new Date(input.billingPeriod.startsAt);
+  const end = new Date(input.billingPeriod.endsAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return null;
+
+  const totalDays = (end.getTime() - start.getTime()) / MILLISECONDS_PER_DAY;
+  const elapsedDays = Math.max(
+    1,
+    Math.min(totalDays, (Math.min(now.getTime(), end.getTime()) - start.getTime()) / MILLISECONDS_PER_DAY),
+  );
+  const remainingPeriodDays = Math.max(0, (end.getTime() - Math.max(now.getTime(), start.getTime())) / MILLISECONDS_PER_DAY);
+  const used = Math.max(0, input.credits.used);
+  const limit = Math.max(0, input.credits.limit);
+  const balance = Math.max(0, input.credits.balance);
+  const averageDailyCredits = used / elapsedDays;
+  const projectedPeriodCredits = averageDailyCredits * totalDays;
+  const estimatedDays = balance <= 0 ? 0 : averageDailyCredits > 0 ? balance / averageDailyCredits : null;
+  const expectedToExhaustWithinPeriod = estimatedDays !== null && estimatedDays < remainingPeriodDays;
+  const showExhaustionEstimate = balance <= 0 || expectedToExhaustWithinPeriod;
+  const estimatedExhaustionAt = showExhaustionEstimate && estimatedDays !== null
+    ? new Date(now.getTime() + estimatedDays * MILLISECONDS_PER_DAY).toISOString()
+    : null;
+
+  let status: AiUsagePacing['status'];
+  if (input.credits.status === 'exhausted' || balance <= 0) status = 'exhausted';
+  else if (used <= 0 || averageDailyCredits <= 0) status = 'no_usage';
+  else if (expectedToExhaustWithinPeriod) status = 'over_pace';
+  else status = 'within_pace';
+
+  return {
+    status,
+    quotaUsedPercent: limit > 0 ? rounded((used / limit) * 100) : 0,
+    averageDailyCredits: rounded(averageDailyCredits),
+    projectedPeriodCredits: Math.round(projectedPeriodCredits),
+    projectedQuotaUsedPercent: limit > 0 ? rounded((projectedPeriodCredits / limit) * 100) : 0,
+    remainingPeriodDays: rounded(remainingPeriodDays),
+    dailyCreditsToLastPeriod: remainingPeriodDays > 0 ? rounded(balance / remainingPeriodDays) : 0,
+    expectedToExhaustWithinPeriod,
+    estimatedDaysUntilExhaustion: showExhaustionEstimate && estimatedDays !== null ? rounded(estimatedDays, 1) : null,
+    estimatedExhaustionAt,
   };
 }
 
@@ -458,7 +665,11 @@ export async function getCachedAiUsageTransactions(input: {
 }): Promise<AiUsageTransaction[]> {
   const customerHash = createHash('sha256').update(input.customerId).digest('hex').slice(0, 16);
   const timeZoneHash = createHash('sha256').update(input.window.timeZone).digest('hex').slice(0, 12);
-  const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v1:${customerHash}:${timeZoneHash}:${input.window.from}:${input.window.to}`;
+  const boundaryHash = createHash('sha256')
+    .update(`${input.window.startTimestamp.toISOString()}|${input.window.endTimestampExclusive.toISOString()}`)
+    .digest('hex')
+    .slice(0, 12);
+  const cacheKey = `twitch:${input.channelID}:ai:usage-receipts:v1:${customerHash}:${timeZoneHash}:${boundaryHash}:${input.window.from}:${input.window.to}`;
   let cache: Awaited<ReturnType<typeof getDragonflyClient>> | null = null;
 
   try {

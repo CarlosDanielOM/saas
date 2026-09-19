@@ -147,6 +147,47 @@ globalThis.fetch = async (input, init) => {
       pagination: { total_count: polarEvents.length, max_page: 1 }
     }), { status: 200, headers: { 'content-type': 'application/json' } });
   }
+  if (url.hostname === 'api.polar.sh' && /^\/v1\/customers\/[^/]+\/state\/?$/.test(url.pathname)) {
+    return new Response(JSON.stringify({
+      id: '11111111-1111-4111-8111-111111111111',
+      created_at: '2026-09-07T00:00:00.000Z',
+      modified_at: null,
+      metadata: {},
+      external_id: null,
+      email: 'fixture@example.invalid',
+      email_verified: true,
+      type: 'individual',
+      name: 'Fixture User',
+      billing_address: null,
+      tax_id: null,
+      organization_id: 'candidate-organization',
+      deleted_at: null,
+      active_subscriptions: [{
+        id: 'fixture-subscription',
+        created_at: '2026-09-07T00:00:00.000Z',
+        modified_at: null,
+        metadata: {},
+        status: 'active',
+        amount: 1000,
+        currency: 'usd',
+        recurring_interval: 'month',
+        current_period_start: '2026-09-07T00:00:00.000Z',
+        current_period_end: '2026-10-07T00:00:00.000Z',
+        trial_start: null,
+        trial_end: null,
+        cancel_at_period_end: false,
+        canceled_at: null,
+        started_at: '2026-09-07T00:00:00.000Z',
+        ends_at: null,
+        product_id: 'fixture-product',
+        discount_id: null,
+        meters: []
+      }],
+      granted_benefits: [],
+      active_meters: [],
+      avatar_url: ''
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
   if (url.hostname === 'us.i.posthog.com') {
     return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
   }

@@ -74,6 +74,19 @@ assert.deepEqual(
   [['tts', 180], ['ai_chat', 50], ['uncategorized', 25]]
 );
 
+const subscriptionSummary = await get('/billing/ai-usage/summary?timezone=UTC', 'pro-token');
+assert.equal(subscriptionSummary.response.status, 200);
+assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.source, 'subscription');
+assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.startsAt, '2026-09-07T00:00:00.000Z');
+assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.endsAt, '2026-10-07T00:00:00.000Z');
+assert.equal(subscriptionSummary.json.data.analytics.billingPeriod.endExclusive, true);
+assert.equal(subscriptionSummary.json.data.analytics.totalSpentCredits, 255);
+assert.equal(subscriptionSummary.json.data.analytics.pacing.status, 'within_pace');
+assert.equal(subscriptionSummary.json.data.analytics.pacing.expectedToExhaustWithinPeriod, false);
+assert.ok(subscriptionSummary.json.data.analytics.pacing.averageDailyCredits > 0);
+assert.equal(subscriptionSummary.json.data.analytics.pacing.estimatedDaysUntilExhaustion, null);
+assert.equal(subscriptionSummary.json.data.analytics.pacing.estimatedExhaustionAt, null);
+
 const firstPage = await get(`/billing/ai-usage/transactions?${query}&category=tts&limit=1`, 'pro-token');
 assert.equal(firstPage.response.status, 200);
 assert.equal(firstPage.json.data.items.length, 1);

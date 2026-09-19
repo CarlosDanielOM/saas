@@ -4,10 +4,12 @@ import test from 'node:test';
 import {
   AiUsageReceiptLimitError,
   AiUsageReceiptValidationError,
+  buildAiUsagePacing,
   buildAiUsageSummary,
   fetchAiUsageTransactions,
   normalizePolarUsageEvent,
   paginateAiUsageTransactions,
+  resolveAiUsagePeriod,
   resolveAiUsageWindow,
   type AiUsageTransaction,
 } from './ai_usage_receipts.js';
@@ -62,6 +64,117 @@ test('usage windows reject invalid timezones and ranges over 31 days', () => {
     }),
     AiUsageReceiptLimitError,
   );
+});
+
+test('default paid usage period follows the active Polar subscription boundaries', async () => {
+  const period = await resolveAiUsagePeriod({
+    customerId: 'customer-1',
+    timeZone: 'UTC',
+    now: new Date('2026-09-15T12:00:00Z'),
+    getCustomerState: async () => ({
+      activeSubscriptions: [{
+        status: 'active',
+        currentPeriodStart: new Date('2026-09-07T10:00:00Z'),
+        currentPeriodEnd: new Date('2026-10-07T10:00:00Z'),
+      }],
+    }),
+  });
+
+  assert.equal(period.billingPeriod.source, 'subscription');
+  assert.equal(period.billingPeriod.startsAt, '2026-09-07T10:00:00.000Z');
+  assert.equal(period.billingPeriod.endsAt, '2026-10-07T10:00:00.000Z');
+  assert.equal(period.billingPeriod.from, '2026-09-07');
+  assert.equal(period.billingPeriod.to, '2026-10-07');
+  assert.equal(period.billingPeriod.totalDayCount, 31);
+  assert.equal(period.billingPeriod.elapsedDayCount, 9);
+  assert.equal(period.window.from, '2026-09-07');
+  assert.equal(period.window.to, '2026-09-15');
+  assert.equal(period.window.startTimestamp.toISOString(), '2026-09-07T10:00:00.000Z');
+  assert.equal(period.window.endTimestampExclusive.toISOString(), '2026-10-07T10:00:00.000Z');
+});
+
+test('monthly subscription periods allow partial start and renewal date buckets', async () => {
+  const period = await resolveAiUsagePeriod({
+    customerId: 'customer-1',
+    timeZone: 'UTC',
+    now: new Date('2026-09-19T01:00:00Z'),
+    getCustomerState: async () => ({
+      activeSubscriptions: [{
+        status: 'active',
+        currentPeriodStart: new Date('2026-08-20T07:06:23.993Z'),
+        currentPeriodEnd: new Date('2026-09-20T07:06:23.993Z'),
+      }],
+    }),
+  });
+
+  assert.equal(period.billingPeriod.totalDayCount, 32);
+  assert.equal(period.billingPeriod.elapsedDayCount, 31);
+  assert.equal(period.billingPeriod.from, '2026-08-20');
+  assert.equal(period.billingPeriod.to, '2026-09-20');
+});
+
+test('pacing estimates exhaustion from unchanged credit totals', () => {
+  const pacing = buildAiUsagePacing({
+    credits: {
+      used: 50,
+      limit: 100,
+      balance: 50,
+      available: true,
+      status: 'available',
+    },
+    billingPeriod: {
+      source: 'subscription',
+      startsAt: '2026-09-07T00:00:00.000Z',
+      endsAt: '2026-10-07T00:00:00.000Z',
+      endExclusive: true,
+      from: '2026-09-07',
+      to: '2026-10-06',
+      totalDayCount: 30,
+      elapsedDayCount: 7,
+    },
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+
+  assert.deepEqual(pacing, {
+    status: 'over_pace',
+    quotaUsedPercent: 50,
+    averageDailyCredits: 7.14,
+    projectedPeriodCredits: 214,
+    projectedQuotaUsedPercent: 214.29,
+    remainingPeriodDays: 23,
+    dailyCreditsToLastPeriod: 2.17,
+    expectedToExhaustWithinPeriod: true,
+    estimatedDaysUntilExhaustion: 7,
+    estimatedExhaustionAt: '2026-09-21T00:00:00.000Z',
+  });
+});
+
+test('pacing omits exhaustion estimates that fall after the credit reset', () => {
+  const pacing = buildAiUsagePacing({
+    credits: {
+      used: 10,
+      limit: 100,
+      balance: 90,
+      available: true,
+      status: 'available',
+    },
+    billingPeriod: {
+      source: 'subscription',
+      startsAt: '2026-09-01T00:00:00.000Z',
+      endsAt: '2026-10-01T00:00:00.000Z',
+      endExclusive: true,
+      from: '2026-09-01',
+      to: '2026-09-30',
+      totalDayCount: 30,
+      elapsedDayCount: 15,
+    },
+    now: new Date('2026-09-16T00:00:00.000Z'),
+  });
+
+  assert.equal(pacing?.status, 'within_pace');
+  assert.equal(pacing?.expectedToExhaustWithinPeriod, false);
+  assert.equal(pacing?.estimatedDaysUntilExhaustion, null);
+  assert.equal(pacing?.estimatedExhaustionAt, null);
 });
 
 test('Polar event normalization exposes only receipt-safe fields', () => {
