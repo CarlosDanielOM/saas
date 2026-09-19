@@ -9,6 +9,14 @@ import {
   getBillingContext,
   getAiCredits
 } from '../../utils/billing.js';
+import {
+  AiUsageReceiptLimitError,
+  AiUsageReceiptValidationError,
+  buildAiUsageSummary,
+  getCachedAiUsageTransactions,
+  paginateAiUsageTransactions,
+  resolveAiUsageWindow,
+} from '../../utils/ai_usage_receipts.js';
 
 type TargetPlan = 'premium' | 'pro';
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
@@ -54,6 +62,74 @@ function getStringQueryParam(value: unknown): string {
     }
 
     return typeof value === 'string' ? value.trim() : '';
+}
+
+async function getUsageTarget(req: Request, res: Response) {
+    const requester = await getAuthenticatedUser(req);
+    if (!requester) {
+        res.status(404).json({ error: true, message: 'User not found', status: 404 });
+        return null;
+    }
+
+    const authReq = req as Request & { user?: { id?: string } };
+    const requesterID = authReq.user?.id || '';
+    if (!requesterID) {
+        res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
+        return null;
+    }
+
+    const channelID = getStringQueryParam(req.query.channelID) || requesterID;
+    if (!(await hasDashboardCreditAccess(requesterID, channelID))) {
+        res.status(403).json({
+            error: true,
+            message: 'You do not have permission to view this channel usage',
+            status: 403
+        });
+        return null;
+    }
+
+    const user = requesterID === channelID
+        ? requester
+        : await UsersSchema.findOne({
+            'accounts.id': channelID,
+            'accounts.type': 'twitch'
+        });
+    if (!user) {
+        res.status(404).json({ error: true, message: 'Target user not found', status: 404 });
+        return null;
+    }
+
+    return { user, channelID };
+}
+
+function usageCapabilities(planTier: 'free' | 'premium' | 'pro') {
+    return {
+        balance: true,
+        dailySpend: planTier === 'premium' || planTier === 'pro',
+        categoryBreakdown: planTier === 'premium' || planTier === 'pro',
+        transactions: planTier === 'pro'
+    };
+}
+
+function usageRouteError(res: Response, route: string, caught: unknown) {
+    const errorMessage = caught instanceof Error ? caught.message : String(caught);
+    if (caught instanceof AiUsageReceiptValidationError) {
+        return res.status(400).json({ error: true, message: errorMessage, status: 400 });
+    }
+    if (caught instanceof AiUsageReceiptLimitError) {
+        return res.status(422).json({ error: true, message: errorMessage, status: 422 });
+    }
+
+    console.error(`Error in ${route}:`, {
+        error: errorMessage,
+        stack: caught instanceof Error ? caught.stack : undefined,
+        timestamp: new Date().toISOString()
+    });
+    return res.status(502).json({
+        error: true,
+        message: 'AI usage history is temporarily unavailable',
+        status: 502
+    });
 }
 
 router.get('/context', authMiddleware as any, async (req: Request, res: Response) => {
@@ -309,6 +385,117 @@ router.get('/ai-credits', authMiddleware as any, async (req: Request, res: Respo
             message: 'Internal server error',
             status: 500
         });
+    }
+});
+
+router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res: Response) => {
+    try {
+        const target = await getUsageTarget(req, res);
+        if (!target) return;
+
+        const planTier = target.user.plan_tier || 'free';
+        const credits = await getAiCredits(target.user, target.channelID);
+        const capabilities = usageCapabilities(planTier);
+
+        if (!capabilities.dailySpend) {
+            return res.status(200).json({
+                error: false,
+                message: 'AI usage summary fetched successfully',
+                status: 200,
+                data: {
+                    planTier,
+                    capabilities,
+                    credits,
+                    analytics: null
+                }
+            });
+        }
+
+        const window = resolveAiUsageWindow({
+            from: getStringQueryParam(req.query.from) || undefined,
+            to: getStringQueryParam(req.query.to) || undefined,
+            timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
+        });
+        const transactions = target.user.polar_sh_customer_id
+            ? await getCachedAiUsageTransactions({
+                channelID: target.channelID,
+                customerId: target.user.polar_sh_customer_id,
+                window
+            })
+            : [];
+
+        return res.status(200).json({
+            error: false,
+            message: 'AI usage summary fetched successfully',
+            status: 200,
+            data: {
+                planTier,
+                capabilities,
+                credits,
+                analytics: buildAiUsageSummary(transactions, window)
+            }
+        });
+    } catch (caught) {
+        return usageRouteError(res, 'GET /billing/ai-usage/summary', caught);
+    }
+});
+
+router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request, res: Response) => {
+    try {
+        const target = await getUsageTarget(req, res);
+        if (!target) return;
+
+        const planTier = target.user.plan_tier || 'free';
+        if (planTier !== 'pro') {
+            return res.status(403).json({
+                error: true,
+                message: 'Itemized AI usage requires the Pro plan',
+                status: 403,
+                type: 'plan_required',
+                data: { requiredPlan: 'pro' }
+            });
+        }
+
+        const window = resolveAiUsageWindow({
+            from: getStringQueryParam(req.query.from) || undefined,
+            to: getStringQueryParam(req.query.to) || undefined,
+            timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
+        });
+        const transactions = target.user.polar_sh_customer_id
+            ? await getCachedAiUsageTransactions({
+                channelID: target.channelID,
+                customerId: target.user.polar_sh_customer_id,
+                window
+            })
+            : [];
+        const limitRaw = getStringQueryParam(req.query.limit);
+        const page = paginateAiUsageTransactions({
+            transactions,
+            category: getStringQueryParam(req.query.category) || undefined,
+            cursor: getStringQueryParam(req.query.cursor) || undefined,
+            limit: limitRaw ? Number(limitRaw) : 25
+        });
+
+        return res.status(200).json({
+            error: false,
+            message: 'Itemized AI usage fetched successfully',
+            status: 200,
+            data: {
+                planTier,
+                capabilities: usageCapabilities(planTier),
+                period: {
+                    from: window.from,
+                    to: window.to,
+                    timeZone: window.timeZone,
+                    dayCount: window.days.length
+                },
+                category: getStringQueryParam(req.query.category) || null,
+                items: page.items,
+                nextCursor: page.nextCursor
+            }
+        });
+    } catch (caught) {
+        return usageRouteError(res, 'GET /billing/ai-usage/transactions', caught);
     }
 });
 
