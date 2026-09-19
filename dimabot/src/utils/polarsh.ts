@@ -77,6 +77,8 @@ interface GrantPolarAiCreditsOptions {
   credits: number;
   reason: string;
   adminLogin?: string;
+  externalId?: string;
+  source?: string;
 }
 
 interface AccountingMetadata extends Record<string, any> {
@@ -441,11 +443,14 @@ export async function grantPolarAiCredits(
     const polarshClientInstance = await getPolarShClient(
       "grantPolarAiCredits",
     );
+    const grantSource = String(options.source || "admin_credit_grant").trim().slice(0, 96) || "admin_credit_grant";
     const usageContext = createAiUsageContext(options.reason, {
+      entryId: options.externalId,
+      requestId: options.externalId,
       entryKind: "adjustment",
       category: "credit_adjustment",
       operation: "grant",
-      source: "admin_credit_grant",
+      source: grantSource,
       provider: "polar",
     });
     const metadata: Record<string, any> = enrichPolarUsageMetadata({
@@ -453,7 +458,7 @@ export async function grantPolarAiCredits(
       cost: 0,
       currency: "usd",
       reason: options.reason,
-      source: "admin_credit_grant",
+      source: grantSource,
       adminLogin: options.adminLogin || "unknown",
     }, usageContext);
 

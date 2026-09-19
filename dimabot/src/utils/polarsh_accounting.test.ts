@@ -26,7 +26,7 @@ mock.module('./posthog_events.js', {
 });
 
 process.env.POLARSH_OAT = 'test';
-const { ingestPolarSHEvent } = await import('./polarsh.js');
+const { grantPolarAiCredits, ingestPolarSHEvent } = await import('./polarsh.js');
 
 test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unchanged', async () => {
   ingestedEvents.length = 0;
@@ -73,6 +73,27 @@ test('receipt metadata leaves generic, LLM, and TTS Polar accounting values unch
       reason: 'tts_fish', characters: 100,
     },
   );
+});
+
+test('credit grants accept a stable external ID without changing credit math', async () => {
+  ingestedEvents.length = 0;
+
+  const result = await grantPolarAiCredits({
+    customerId: 'customer',
+    credits: 5_000,
+    reason: 'free_monthly_credit_reset',
+    externalId: 'free-credit-reset-user-2026-09-07',
+    source: 'free_credit_reset_worker',
+  });
+
+  assert.equal(result.error, false);
+  assert.equal(ingestedEvents.length, 1);
+  assert.equal(ingestedEvents[0].externalId, 'free-credit-reset-user-2026-09-07');
+  assert.equal(ingestedEvents[0].metadata.credits, -5_000);
+  assert.equal(ingestedEvents[0].metadata.cost, 0);
+  assert.equal(ingestedEvents[0].metadata.entry_kind, 'adjustment');
+  assert.equal(ingestedEvents[0].metadata.category, 'credit_adjustment');
+  assert.equal(ingestedEvents[0].metadata.usage_source, 'free_credit_reset_worker');
 });
 
 function pickAccounting(metadata: Record<string, unknown>): Record<string, unknown> {

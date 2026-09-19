@@ -45,6 +45,15 @@ export interface IUsers {
     token_balance?: number;
     applied_credit_transaction_ids?: Types.ObjectId[];
     reminder_sent_at?: Date | null;
+    free_credit_reset?: {
+        periodStart: Date;
+        periodEnd: Date;
+        status: 'initialized' | 'pending' | 'completed';
+        credits: number;
+        externalId: string;
+        updatedAt: Date;
+        completedAt?: Date | null;
+    };
 }
 
 const accountsSchema = new Schema<IAccounts>({
@@ -92,6 +101,18 @@ const usersSchema = new Schema<IUsers>({
     token_balance: { type: Number, default: 0 },
     applied_credit_transaction_ids: { type: [Schema.Types.ObjectId], default: undefined, select: false },
     reminder_sent_at: { type: Date, default: null },
+    free_credit_reset: {
+        type: new Schema({
+            periodStart: { type: Date, required: true },
+            periodEnd: { type: Date, required: true },
+            status: { type: String, enum: ['initialized', 'pending', 'completed'], required: true },
+            credits: { type: Number, required: true, min: 0 },
+            externalId: { type: String, required: true },
+            updatedAt: { type: Date, required: true },
+            completedAt: { type: Date, default: null }
+        }, { _id: false }),
+        default: undefined
+    },
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }})
 
 export type UserDocument = HydratedDocument<IUsers>;

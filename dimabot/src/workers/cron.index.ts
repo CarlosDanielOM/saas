@@ -69,6 +69,12 @@ const WORKERS: WorkerDefinition[] = [
         enabledEnv: 'EVENTSUB_RECONCILIATION_ENABLED'
     },
     {
+        name: 'free-credit-reset',
+        sourceEntry: 'src/workers/free_credit_reset.worker.ts',
+        distEntry: 'dist/workers/free_credit_reset.worker.js',
+        enabledEnv: 'FREE_CREDIT_RESET_ENABLED'
+    },
+    {
         name: 'stream-memory',
         sourceEntry: 'src/workers/stream_memory.worker.ts',
         distEntry: 'dist/workers/stream_memory.worker.js'

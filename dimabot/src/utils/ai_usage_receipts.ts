@@ -339,7 +339,7 @@ function addUtcCalendarMonths(anchor: Date, months: number): Date {
   return targetMonthStart;
 }
 
-function findCurrentFreeCreditPeriod(anchor: Date, now: Date): { start: Date; end: Date } | null {
+export function resolveFreeCreditPeriod(anchor: Date, now: Date): { start: Date; end: Date } | null {
   if (anchor.getTime() > now.getTime()) return null;
   let monthOffset = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12
     + now.getUTCMonth() - anchor.getUTCMonth();
@@ -412,7 +412,7 @@ export async function resolveAiUsagePeriod(input: {
 
   const freePeriodAnchor = validDate(input.freePeriodAnchor);
   if (freePeriodAnchor) {
-    const freePeriod = findCurrentFreeCreditPeriod(freePeriodAnchor, now);
+    const freePeriod = resolveFreeCreditPeriod(freePeriodAnchor, now);
     if (freePeriod) {
       return usagePeriodFromBoundaries({
         source: 'free_monthly',
