@@ -5,6 +5,7 @@ import { AdminSchema } from '../../schemas/admin.schema.js';
 import UsersSchema from '../../schemas/users.schema.js';
 import {
   CreditPackRequestError,
+  cacheCreditPackBillingContext,
   createBillingCheckout,
   createCreditPackCheckout,
   createCustomerPortalSession,
@@ -494,6 +495,17 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
             maxDays: getAiUsageRetentionDays(planTier)
         });
+        if (
+            target.user.polar_sh_customer_id
+            && (planTier === 'premium' || planTier === 'pro')
+            && period.billingPeriod.source === 'subscription'
+        ) {
+            await cacheCreditPackBillingContext({
+                customerId: target.user.polar_sh_customer_id,
+                planTier,
+                expiresAt: period.billingPeriod.endsAt
+            });
+        }
         const readInput = {
             channelID: target.channelID, customerId: target.user.polar_sh_customer_id,
             planTier, accountCreatedAt: target.user.created_at, window: period.window

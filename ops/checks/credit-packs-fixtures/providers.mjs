@@ -38,8 +38,56 @@ globalThis.fetch = async (input, options = {}) => {
     if (url.pathname.replace(/\/$/, '') === '/v1/products') {
       return json({ items: products, pagination: { total_count: products.length, max_page: 1 } });
     }
+    if (/^\/v1\/customers\/[^/]+\/state\/?$/.test(url.pathname)) {
+      const customerId = url.pathname.split('/')[3];
+      const paid = customerId === '22222222-2222-4222-8222-222222222222';
+      const currentPeriodStart = new Date(Date.now() - (23.5 * 24 * 60 * 60 * 1000)).toISOString();
+      const currentPeriodEnd = new Date(Date.now() + (6.5 * 24 * 60 * 60 * 1000)).toISOString();
+      return json({
+        id: customerId,
+        created_at: currentPeriodStart,
+        modified_at: null,
+        metadata: {},
+        external_id: null,
+        email: 'fixture@example.invalid',
+        email_verified: true,
+        type: 'individual',
+        name: 'Fixture User',
+        billing_address: null,
+        tax_id: null,
+        organization_id: 'fixture-organization',
+        deleted_at: null,
+        active_subscriptions: paid ? [{
+          id: '33333333-3333-4333-8333-333333333333',
+          created_at: currentPeriodStart,
+          modified_at: null,
+          metadata: {},
+          status: 'active',
+          amount: 1000,
+          currency: 'usd',
+          recurring_interval: 'month',
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
+          trial_start: null,
+          trial_end: null,
+          cancel_at_period_end: false,
+          canceled_at: null,
+          started_at: currentPeriodStart,
+          ends_at: null,
+          product_id: '55c8d1d0-5cb8-405c-bcf2-d8dbb9ba0134',
+          discount_id: null,
+          meters: []
+        }] : [],
+        granted_benefits: [],
+        active_meters: [],
+        avatar_url: ''
+      });
+    }
     if (url.pathname.replace(/\/$/, '') === '/v1/subscriptions') {
-      const paid = url.searchParams.get('customer_id') === '22222222-2222-4222-8222-222222222222';
+      const paid = new Set([
+        '22222222-2222-4222-8222-222222222222',
+        '77777777-7777-4777-8777-777777777777'
+      ]).has(url.searchParams.get('customer_id'));
       const currentPeriodEnd = new Date(Date.now() + (6.5 * 24 * 60 * 60 * 1000)).toISOString();
       return json({ items: paid ? [{
         id: '33333333-3333-4333-8333-333333333333',

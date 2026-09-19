@@ -119,6 +119,20 @@ export const AI_CREDIT_LIMITS = {
 
 export const AI_CREDITS_CACHE_TTL_SECONDS = 5 * 60;
 export const AI_CREDITS_CACHE_SCHEMA_VERSION = 3;
+const CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS = 2 * 60;
+const CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION = 1;
+
+export interface CreditPackBillingContextCacheInput {
+    customerId: string;
+    planTier: PlanTier;
+    expiresAt: string | null;
+}
+
+interface CreditPackBillingContextCacheValue {
+    version: typeof CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION;
+    planTier: PlanTier;
+    expiresAt: string | null;
+}
 
 export type AiCreditStatus = 'unavailable' | 'available' | 'exhausted';
 
@@ -335,6 +349,86 @@ const PLAN_RANK: Record<PlanTier, number> = {
 };
 
 const WINBACK_MONTHS = 6;
+
+function creditPackBillingContextCacheKey(customerId: string): string {
+    const customerHash = createHash('sha256').update(customerId).digest('hex').slice(0, 20);
+    return `billing:credit-packs:context:v${CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION}:${customerHash}`;
+}
+
+function validCachedBillingContext(
+    value: unknown,
+    nowMs = Date.now()
+): CreditPackBillingContextCacheValue | null {
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as Partial<CreditPackBillingContextCacheValue>;
+    if (
+        candidate.version !== CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION
+        || !candidate.planTier
+        || !['free', 'premium', 'pro'].includes(candidate.planTier)
+    ) {
+        return null;
+    }
+
+    if (candidate.planTier === 'free') {
+        return {
+            version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION,
+            planTier: 'free',
+            expiresAt: null
+        };
+    }
+
+    const expiresAtMs = Date.parse(String(candidate.expiresAt || ''));
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;
+
+    return {
+        version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION,
+        planTier: candidate.planTier,
+        expiresAt: new Date(expiresAtMs).toISOString()
+    };
+}
+
+export async function cacheCreditPackBillingContext(
+    input: CreditPackBillingContextCacheInput
+): Promise<boolean> {
+    const normalized = validCachedBillingContext({
+        planTier: input.planTier,
+        expiresAt: input.expiresAt,
+        version: CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION
+    });
+    if (!normalized) return false;
+
+    const remainingSeconds = normalized.expiresAt
+        ? Math.ceil((Date.parse(normalized.expiresAt) - Date.now()) / 1000)
+        : CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS;
+    const ttlSeconds = Math.max(
+        1,
+        Math.min(CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS, remainingSeconds)
+    );
+
+    try {
+        const cache = await getDragonflyClient('cacheCreditPackBillingContext');
+        await cache.set(
+            creditPackBillingContextCacheKey(input.customerId),
+            JSON.stringify(normalized),
+            { EX: ttlSeconds }
+        );
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function getCachedCreditPackBillingContext(
+    customerId: string
+): Promise<CreditPackBillingContextCacheValue | null> {
+    try {
+        const cache = await getDragonflyClient('getCachedCreditPackBillingContext');
+        const cached = await cache.get(creditPackBillingContextCacheKey(customerId));
+        return cached ? validCachedBillingContext(JSON.parse(cached)) : null;
+    } catch {
+        return null;
+    }
+}
 
 class PolarApiError extends Error {
     readonly status: number;
@@ -766,23 +860,38 @@ function getPaidPlanFromSubscriptions(subscriptions: PolarSubscription[]): Exclu
 }
 
 export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCatalog> {
-    const productsRequest = polarRequest<PolarListResponse<PolarCreditPackProductLike>>(
-        '/v1/products/?limit=100',
-        { method: 'GET' }
-    );
-    const subscriptionsRequest = user.polar_sh_customer_id
-        ? listSubscriptions(user.polar_sh_customer_id, true)
-        : Promise.resolve([]);
-
-    const [productsResponse, activeSubscriptions] = await Promise.all([
-        productsRequest,
-        subscriptionsRequest
+    const customerId = user.polar_sh_customer_id || null;
+    const [productsResponse, cachedBillingContext] = await Promise.all([
+        polarRequest<PolarListResponse<PolarCreditPackProductLike>>(
+            '/v1/products/?limit=100',
+            { method: 'GET' }
+        ),
+        customerId ? getCachedCreditPackBillingContext(customerId) : Promise.resolve(null)
     ]);
-    const paidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions);
-    const paidPlan = paidSubscription?.planTier ?? null;
-    const rechargeExpiry = paidSubscription
-        ? getRechargeExpiry(paidSubscription.subscription)
+
+    let paidPlan: Exclude<PlanTier, 'free'> | null = cachedBillingContext?.planTier === 'premium'
+        || cachedBillingContext?.planTier === 'pro'
+        ? cachedBillingContext.planTier
         : null;
+    let rechargeExpiry = cachedBillingContext?.expiresAt
+        ? getRechargeExpiry({ current_period_end: cachedBillingContext.expiresAt })
+        : null;
+
+    if (!cachedBillingContext && customerId) {
+        const activeSubscriptions = await listSubscriptions(customerId, true);
+        const paidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions);
+        paidPlan = paidSubscription?.planTier ?? null;
+        rechargeExpiry = paidSubscription
+            ? getRechargeExpiry(paidSubscription.subscription)
+            : null;
+
+        await cacheCreditPackBillingContext({
+            customerId,
+            planTier: paidPlan || 'free',
+            expiresAt: rechargeExpiry?.expiresAt || null
+        });
+    }
+
     const offers = buildCreditPackOffers(
         productsResponse.items || [],
         AI_CREDITS_METER_ID,
