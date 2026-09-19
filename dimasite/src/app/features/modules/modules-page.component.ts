@@ -59,7 +59,19 @@ interface ModuleGroup {
   modules: ModuleDisplay[];
 }
 
-const FEATURED_PRIORITY_LIMIT = 40;
+/**
+ * Modules surfaced in the "Core tools" group. Priority still drives the order
+ * within the group, but membership is explicit so adding a module here does not
+ * silently pull in unrelated modules below a priority threshold.
+ */
+const CORE_MODULE_IDS: readonly ModuleId[] = [
+  'chat-events',
+  'moderation',
+  'clips',
+  'dimafx',
+  'triggers',
+  'tts'
+];
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
   'chat-events': MessagesSquare,
@@ -392,7 +404,7 @@ export class ModulesPageComponent {
       isLocked: !isModuleAccessible(req, userPlanTier),
       icon: MODULE_ICONS[id],
       priority: req.priority,
-      featured: req.priority <= FEATURED_PRIORITY_LIMIT
+      featured: CORE_MODULE_IDS.includes(id)
     };
   }
 }
