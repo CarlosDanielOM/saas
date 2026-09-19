@@ -39,172 +39,175 @@
     </section>
 
     <section class="lf-section" [attr.aria-label]="t('clips.chooseDesign')">
-      <div class="lf-section__head">
+      <div class="lf-section__head lf-section__head--carousel">
         <div>
           <p class="lf-kicker">{{ t('clips.chooseDesign') }}</p>
           <h2 class="lf-h2">{{ t('clips.chooseDesign') }}</h2>
         </div>
-      </div>
 
-      <!-- Mobile: compact horizontal design switcher -->
-      <div class="lf-design-strip" role="listbox" [attr.aria-label]="t('clips.chooseDesign')">
-        @for (design of designs(); track design.id) {
+        <div class="lf-carousel-nav">
+          <span class="lf-carousel-count" aria-hidden="true">
+            {{ selectedIndex() + 1 }} / {{ designs().length }}
+          </span>
           <button
             type="button"
-            class="lf-design-pill"
-            role="option"
-            [attr.aria-selected]="selectedDesign()?.id === design.id"
-            [class.lf-design-pill--selected]="selectedDesign()?.id === design.id"
-            [class.lf-design-pill--locked]="isDesignLocked(design)"
-            [style.--design-accent]="design.accentColor"
-            (click)="selectDesign(design)"
+            class="lf-carousel-btn"
+            [disabled]="isFirstDesign()"
+            [attr.aria-label]="t('clips.carousel.prev')"
+            (click)="prev()"
           >
-            <span class="lf-design-pill__num">{{ design.designNumber }}</span>
-            <span class="lf-design-pill__body">
-              <span class="lf-design-pill__name">{{ design.name }}</span>
-              <span class="lf-design-pill__meta">
-                {{ statusLabel(design.status) }}
-                @if (design.premium || design.premiumPlus) {
-                  · Premium
-                }
-              </span>
-            </span>
+            ‹
           </button>
+          <button
+            type="button"
+            class="lf-carousel-btn"
+            [disabled]="isLastDesign()"
+            [attr.aria-label]="t('clips.carousel.next')"
+            (click)="next()"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div
+        class="lf-carousel"
+        #track
+        role="group"
+        tabindex="0"
+        [attr.aria-roledescription]="t('clips.carousel.role')"
+        [attr.aria-label]="t('clips.chooseDesign')"
+        (scroll)="onTrackScroll()"
+      >
+        @for (design of designs(); track design.id; let i = $index) {
+          <article
+            class="lf-slide"
+            [attr.data-active]="selectedIndex() === i"
+            [attr.aria-label]="design.name"
+            [attr.inert]="selectedIndex() === i ? null : ''"
+          >
+            <div class="lf-slide__grid">
+              <div class="lf-slide__info">
+                <div class="lf-slide__top">
+                  <span
+                    class="lf-slide__num"
+                    [style.--design-accent]="design.accentColor"
+                    aria-hidden="true"
+                  >
+                    {{ design.designNumber }}
+                  </span>
+                  <div class="lf-slide__badges">
+                    <span
+                      class="lf-chip lf-chip--status"
+                      [class.lf-chip--ok]="design.status === 'stable'"
+                      [class.lf-chip--beta]="design.status === 'beta'"
+                      [class.lf-chip--muted]="design.status === 'coming_soon' || design.status === 'alpha'"
+                    >
+                      {{ statusLabel(design.status) }}
+                    </span>
+                    @if (design.premium || design.premiumPlus) {
+                      <span class="lf-chip lf-chip--gold">Premium</span>
+                    }
+                    @if (isDesignLocked(design)) {
+                      <span class="lf-chip lf-chip--muted">{{ t('clips.locked') }}</span>
+                    }
+                  </div>
+                </div>
+
+                <h3 class="lf-slide__name">{{ design.name }}</h3>
+                <p class="lf-slide__desc">{{ design.description }}</p>
+
+                <div class="lf-slide__features">
+                  @for (feature of design.features; track feature) {
+                    <span class="lf-feature">{{ feature }}</span>
+                  }
+                </div>
+
+                <label class="lf-field">
+                  <span>{{ t('clips.timeoutLabel') }}</span>
+                  <div class="lf-range-row">
+                    <input
+                      type="range"
+                      class="lf-range"
+                      min="1"
+                      max="30"
+                      [value]="config().timeoutSeconds"
+                      (input)="updateTimeout($event)"
+                    />
+                    <strong class="lf-range-value">
+                      {{ config().timeoutSeconds }}
+                      <span>{{ t('clips.seconds') }}</span>
+                    </strong>
+                  </div>
+                </label>
+
+                <div class="lf-slide__actions">
+                  @if (isDesignLocked(design)) {
+                    <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
+                      {{ t('clips.upgradeToAccess') }}
+                    </button>
+                  } @else {
+                    <button type="button" class="lf-btn lf-btn--primary" (click)="copyUrl()">
+                      {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
+                    </button>
+                    <a
+                      class="lf-btn"
+                      [href]="previewUrl()"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {{ t('clips.openInNewTab') }}
+                    </a>
+                  }
+
+                  <button
+                    type="button"
+                    class="lf-btn"
+                    [disabled]="!canTest()"
+                    (click)="openTestModal()"
+                  >
+                    {{ t('clips.testDesign') }}
+                  </button>
+                </div>
+
+                @if (!canTest()) {
+                  <p class="lf-note">{{ t('clips.testWarning') }}</p>
+                }
+              </div>
+
+              <div class="lf-slide__preview">
+                <div class="lf-slide__preview-head">
+                  <p class="lf-kicker">{{ t('clips.mockPreview') }}</p>
+                  <span class="lf-chip">{{ t('clips.noLiveData') }}</span>
+                </div>
+
+                <app-clip-design-mock
+                  [variant]="design.variant"
+                  [accent]="design.accentColor"
+                  [streamer]="t('clips.mock.streamer')"
+                  [game]="t('clips.mock.game')"
+                  [title]="t('clips.mock.title')"
+                  [caption]="t('clips.mock.caption')"
+                />
+              </div>
+            </div>
+          </article>
         }
       </div>
 
-      <!-- Tablet/desktop: fuller design cards -->
-      <div class="lf-bento lf-bento--designs">
-        @for (design of designs(); track design.id) {
+      <div class="lf-carousel-dots" role="group" [attr.aria-label]="t('clips.chooseDesign')">
+        @for (design of designs(); track design.id; let i = $index) {
           <button
             type="button"
-            class="lf-tile lf-design"
-            [class.lf-design--selected]="selectedDesign()?.id === design.id"
-            [class.lf-design--locked]="isDesignLocked(design)"
-            [style.--design-accent]="design.accentColor"
-            (click)="selectDesign(design)"
-          >
-            <div class="lf-design__top">
-              <span class="lf-design__num" aria-hidden="true">{{ design.designNumber }}</span>
-              <div class="lf-design__badges">
-                <span
-                  class="lf-chip lf-chip--status"
-                  [class.lf-chip--ok]="design.status === 'stable'"
-                  [class.lf-chip--beta]="design.status === 'beta'"
-                  [class.lf-chip--muted]="design.status === 'coming_soon' || design.status === 'alpha'"
-                >
-                  {{ statusLabel(design.status) }}
-                </span>
-                @if (design.premium || design.premiumPlus) {
-                  <span class="lf-chip lf-chip--gold">Premium</span>
-                }
-              </div>
-            </div>
-
-            <h3 class="lf-design__name">{{ design.name }}</h3>
-            <p class="lf-design__desc">{{ design.description }}</p>
-
-            <div class="lf-design__features">
-              @for (feature of design.features.slice(0, 3); track feature) {
-                <span class="lf-feature">{{ feature }}</span>
-              }
-            </div>
-
-            @if (selectedDesign()?.id === design.id) {
-              <span class="lf-design__selected-mark">{{ t('clips.selected') }}</span>
-            }
-          </button>
+            class="lf-carousel-dot"
+            [class.lf-carousel-dot--active]="selectedIndex() === i"
+            [attr.aria-current]="selectedIndex() === i ? 'true' : null"
+            [attr.aria-label]="design.name"
+            (click)="goTo(i)"
+          ></button>
         }
       </div>
     </section>
-
-    @if (selectedDesign(); as design) {
-      <section class="lf-section lf-bento lf-bento--workspace" [attr.aria-label]="t('clips.configuration')">
-        <article class="lf-tile">
-          <p class="lf-kicker">{{ t('clips.configuration') }}</p>
-          <h2 class="lf-h2">{{ design.name }}</h2>
-          <p class="lf-copy lf-copy--tight">{{ design.description }}</p>
-
-          <label class="lf-field">
-            <span>{{ t('clips.timeoutLabel') }}</span>
-            <div class="lf-range-row">
-              <input
-                type="range"
-                class="lf-range"
-                min="1"
-                max="30"
-                [value]="config().timeoutSeconds"
-                (input)="updateTimeout($event)"
-              />
-              <strong class="lf-range-value">
-                {{ config().timeoutSeconds }}
-                <span>{{ t('clips.seconds') }}</span>
-              </strong>
-            </div>
-          </label>
-        </article>
-
-        <article class="lf-tile lf-preview">
-          <div class="lf-preview__head">
-            <p class="lf-kicker">{{ t('clips.preview') }}</p>
-            <span class="lf-chip lf-chip--live">{{ t('clips.livePreview') }}</span>
-          </div>
-
-          <div class="lf-preview__frame-wrap">
-            <iframe
-              class="lf-preview__frame"
-              [src]="previewUrl() | safeUrl"
-              title="Clip overlay preview"
-              allow="autoplay"
-            ></iframe>
-          </div>
-
-          <div class="lf-preview__actions">
-            @if (isDesignLocked(design)) {
-              <button
-                type="button"
-                class="lf-btn lf-btn--gold"
-                (click)="openUpgrade()"
-              >
-                {{ t('clips.upgradeToAccess') }}
-              </button>
-            } @else {
-              <button
-                type="button"
-                class="lf-btn lf-btn--primary"
-                (click)="copyUrl()"
-              >
-                {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
-              </button>
-            }
-
-            <button
-              type="button"
-              class="lf-btn"
-              [disabled]="!canTest()"
-              (click)="openTestModal()"
-            >
-              {{ t('clips.testDesign') }}
-            </button>
-
-            @if (!isDesignLocked(design)) {
-              <a class="lf-btn" [href]="previewUrl()" target="_blank" rel="noopener noreferrer">
-                {{ t('clips.openInNewTab') }}
-              </a>
-            }
-          </div>
-
-          @if (!canTest()) {
-            <p class="lf-note">{{ t('clips.testWarning') }}</p>
-          }
-        </article>
-      </section>
-    } @else {
-      <div class="lf-tile lf-empty" role="status">
-        <h3 class="lf-empty__title">{{ t('clips.selectDesignTitle') }}</h3>
-        <p class="lf-empty__copy">{{ t('clips.selectDesignDescription') }}</p>
-      </div>
-    }
   </main>
 
   @if (showTestModal() && selectedDesign()) {

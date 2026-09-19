@@ -1,0 +1,30 @@
+<div
+  class="mock"
+  #frame
+  [style.--clip-accent]="accent()"
+  role="img"
+  [attr.aria-label]="streamer() + ' · ' + title()"
+>
+  <div
+    class="mock__overlay is-in"
+    [attr.data-variant]="variant()"
+    [style.transform]="'scale(' + scale() + ')'"
+  >
+    <div class="skin">
+      <div class="skin__video">
+        <span class="skin__media" aria-hidden="true"></span>
+      </div>
+
+      <div class="skin__avatar" aria-hidden="true">
+        <span class="skin__initials">{{ initials() }}</span>
+      </div>
+
+      <div class="skin__meta">
+        <p class="skin__kicker">{{ game() }}</p>
+        <h3 class="skin__name">{{ streamer() }}</h3>
+        <p class="skin__copy">{{ caption() }}</p>
+        <p class="skin__title">{{ title() }}</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1163,6 +1163,20 @@
       "planMeta": "Nivel de acceso"
     },
     "selected": "Seleccionado",
+    "locked": "Bloqueado",
+    "mockPreview": "Vista Previa del Diseño",
+    "noLiveData": "Muestra",
+    "carousel": {
+      "prev": "Diseño anterior",
+      "next": "Diseño siguiente",
+      "role": "Carrusel"
+    },
+    "mock": {
+      "game": "Just Chatting",
+      "streamer": "Tu Canal",
+      "title": "Título de tu clip",
+      "caption": "La descripción de tu clip aparece aquí"
+    },
     "status": {
       "stable": "Estable",
       "beta": "Beta",

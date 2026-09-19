@@ -1,6 +1,16 @@
 export type ClipDesignStatus = 'stable' | 'beta' | 'alpha' | 'coming_soon';
 export type PlanTier = 'free' | 'premium' | 'pro';
 
+export type ClipDesignVariant =
+  | 'classic'
+  | 'third'
+  | 'tile'
+  | 'cinema'
+  | 'orbit'
+  | 'pill'
+  | 'hud'
+  | 'slash';
+
 export interface ClipDesign {
   id: string;
   name: string;
@@ -8,6 +18,7 @@ export interface ClipDesign {
   previewUrl: string;
   thumbnailUrl: string;
   designNumber: number;
+  variant: ClipDesignVariant;
   premium: boolean;
   premiumPlus: boolean;
   status: ClipDesignStatus;

@@ -1163,6 +1163,20 @@
       "planMeta": "Access level"
     },
     "selected": "Selected",
+    "locked": "Locked",
+    "mockPreview": "Design Preview",
+    "noLiveData": "Sample",
+    "carousel": {
+      "prev": "Previous design",
+      "next": "Next design",
+      "role": "Carousel"
+    },
+    "mock": {
+      "game": "Just Chatting",
+      "streamer": "Your Channel",
+      "title": "Your clip title",
+      "caption": "Your clip caption appears here"
+    },
     "status": {
       "stable": "Stable",
       "beta": "Beta",

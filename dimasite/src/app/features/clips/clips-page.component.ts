@@ -1,29 +1,36 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
   computed,
   inject,
-  signal
+  signal,
+  viewChild
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { ClipDesignMockComponent } from './components/clip-design-mock.component';
 import { ClipTestModalComponent } from './components/clip-test-modal.component';
-import { ClipConfig, ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
+import { ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
 import { ClipsService } from './clips.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 @Component({
   selector: 'app-clips-page',
-  imports: [RouterLink, SafeUrlPipe, ClipTestModalComponent, LfIconComponent],
+  imports: [RouterLink, ClipDesignMockComponent, ClipTestModalComponent, LfIconComponent],
   styleUrl: './clips-page.component.css',
   templateUrl: './clips-page.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(window:resize)': 'onViewportResize()'
+  }
 })
 export class ClipsPageComponent {
   private readonly languageService = inject(LanguageService);
@@ -32,13 +39,12 @@ export class ClipsPageComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly clipsService = inject(ClipsService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly trackRef = viewChild<ElementRef<HTMLElement>>('track');
 
-  readonly config = signal<ClipConfig>({
-    timeoutSeconds: 30,
-    selectedDesignId: null
-  });
+  readonly config = signal({ timeoutSeconds: 30 });
 
-  readonly selectedDesign = signal<ClipDesign | null>(null);
+  readonly activeIndex = signal(0);
   readonly urlCopied = signal(false);
   readonly showTestModal = signal(false);
 
@@ -65,6 +71,17 @@ export class ClipsPageComponent {
     () => this.designs().filter((design) => design.premium || design.premiumPlus).length
   );
 
+  readonly selectedIndex = computed(() =>
+    Math.min(this.activeIndex(), Math.max(this.designs().length - 1, 0))
+  );
+
+  readonly selectedDesign = computed<ClipDesign | null>(
+    () => this.designs()[this.selectedIndex()] ?? null
+  );
+
+  readonly isFirstDesign = computed(() => this.selectedIndex() === 0);
+  readonly isLastDesign = computed(() => this.selectedIndex() >= this.designs().length - 1);
+
   readonly previewUrl = computed(() => {
     const design = this.selectedDesign();
     if (!design) {
@@ -85,6 +102,13 @@ export class ClipsPageComponent {
     }
     return Boolean(this.userSettings().channelID);
   });
+
+  private resizeObserver: ResizeObserver | null = null;
+
+  constructor() {
+    afterNextRender(() => this.bindTrackResize());
+    this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
+  }
 
   t(key: string): string {
     return this.languageService.translate(key);
@@ -116,12 +140,51 @@ export class ClipsPageComponent {
     return this.clipsService.isDesignLocked(design, this.userSettings().planTier);
   }
 
-  selectDesign(design: ClipDesign): void {
-    this.selectedDesign.set(design);
-    this.config.update((cfg) => ({
-      ...cfg,
-      selectedDesignId: design.id
-    }));
+  goTo(index: number, behavior: ScrollBehavior = 'smooth'): void {
+    const lastIndex = Math.max(this.designs().length - 1, 0);
+    const clamped = Math.max(0, Math.min(index, lastIndex));
+    const track = this.trackRef()?.nativeElement;
+    this.activeIndex.set(clamped);
+
+    if (!track) {
+      return;
+    }
+
+    if (this.prefersReducedMotion()) {
+      behavior = 'auto';
+    }
+
+    track.scrollTo({ left: clamped * track.clientWidth, behavior });
+  }
+
+  prev(): void {
+    this.goTo(this.selectedIndex() - 1);
+  }
+
+  next(): void {
+    this.goTo(this.selectedIndex() + 1);
+  }
+
+  onTrackScroll(): void {
+    const track = this.trackRef()?.nativeElement;
+    if (!track) {
+      return;
+    }
+    const width = track.clientWidth || 1;
+    const index = Math.round(track.scrollLeft / width);
+    const lastIndex = Math.max(this.designs().length - 1, 0);
+    const clamped = Math.max(0, Math.min(index, lastIndex));
+    if (clamped !== this.activeIndex()) {
+      this.activeIndex.set(clamped);
+    }
+  }
+
+  onViewportResize(): void {
+    const track = this.trackRef()?.nativeElement;
+    if (!track) {
+      return;
+    }
+    track.scrollTo({ left: this.selectedIndex() * track.clientWidth, behavior: 'auto' });
   }
 
   openUpgrade(): void {
@@ -160,5 +223,22 @@ export class ClipsPageComponent {
     queueMicrotask(() => {
       this.showTestModal.set(true);
     });
+  }
+
+  private bindTrackResize(): void {
+    const track = this.trackRef()?.nativeElement;
+    if (!track || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.resizeObserver = new ResizeObserver(() => this.onViewportResize());
+    this.resizeObserver.observe(track);
+  }
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 }

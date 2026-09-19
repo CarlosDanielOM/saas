@@ -1,0 +1,668 @@
+/* Clip design mock — front-end-only preview, no live data.
+   Variant skins mirror the OBS overlay designs (see clip-overlay-playground). */
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.mock {
+  --clip-accent: #8b5cf6;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(
+      560px 240px at 18% 12%,
+      color-mix(in srgb, var(--clip-accent) 24%, transparent),
+      transparent 62%
+    ),
+    #0b0d12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif);
+}
+
+.mock__overlay {
+  width: 800px;
+  height: 225px;
+  position: relative;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.skin,
+.skin__video,
+.skin__avatar,
+.skin__meta {
+  background: transparent;
+}
+
+.skin__avatar {
+  container-type: size;
+}
+
+.skin__initials {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--clip-accent, #8b5cf6) 72%, #14151a);
+  color: #fff;
+  font-weight: 800;
+  font-size: 42cqmin;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.skin__media {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--clip-accent, #8b5cf6) 62%, #0d0f14),
+      #101219 48%,
+      color-mix(in srgb, var(--clip-accent, #8b5cf6) 30%, #0d0f14)
+    );
+  background-size: 220% 220%;
+  animation: mock-pan 7s ease-in-out infinite alternate;
+}
+
+.skin__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 60%
+  );
+  transform: translateX(-70%);
+  animation: mock-sheen 5.5s ease-in-out infinite;
+}
+
+@keyframes mock-pan {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes mock-sheen {
+  0%,
+  50% {
+    transform: translateX(-70%);
+  }
+  100% {
+    transform: translateX(160%);
+  }
+}
+
+.skin__kicker,
+.skin__name,
+.skin__copy,
+.skin__title {
+  margin: 0;
+}
+
+/* ——— Classic (prod Design 1) ——— */
+.mock__overlay[data-variant='classic'] .skin {
+  width: 800px;
+  height: 225px;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font, 'Plus Jakarta Sans', sans-serif);
+}
+
+.mock__overlay[data-variant='classic'] .skin__video {
+  width: 400px;
+  height: 100%;
+  position: absolute;
+  inset: 0 auto auto 0;
+  overflow: hidden;
+  border-radius: 15px 0 0 15px;
+}
+
+.mock__overlay[data-variant='classic'] .skin__avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  position: absolute;
+  top: 62px;
+  left: 350px;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.mock__overlay[data-variant='classic'] .skin__meta {
+  width: 400px;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 0 15px 15px 0;
+  padding: 5px 5px 5px 55px;
+  box-sizing: border-box;
+  background: rgba(12, 14, 20, 0.72);
+  backdrop-filter: blur(10px);
+  border: 3px solid var(--clip-accent, #8b5cf6);
+  color: #fff;
+  transform: translateX(400px);
+}
+
+.mock__overlay[data-variant='classic'] .skin__kicker,
+.mock__overlay[data-variant='classic'] .skin__title {
+  display: none;
+}
+
+.mock__overlay[data-variant='classic'] .skin__name,
+.mock__overlay[data-variant='classic'] .skin__copy {
+  color: #fff;
+  font-weight: 300;
+  margin-bottom: 10px;
+}
+
+.mock__overlay[data-variant='classic'] .skin__name {
+  font-size: 1.8em;
+  order: 1;
+}
+
+.mock__overlay[data-variant='classic'] .skin__copy {
+  font-size: 0.8em;
+  order: 2;
+}
+
+.mock__overlay[data-variant='classic'] .skin__kicker {
+  display: block;
+  color: #fff;
+  font-weight: 300;
+  font-size: 1em;
+  order: 3;
+  margin-bottom: 10px;
+}
+
+/* ——— Third ——— */
+.mock__overlay[data-variant='third'] .skin {
+  position: relative;
+  height: 100%;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='third'] .skin__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.85rem;
+}
+
+.mock__overlay[data-variant='third'] .skin__avatar {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 3;
+  border: 2px solid #fff;
+}
+
+.mock__overlay[data-variant='third'] .skin__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  min-height: 72px;
+  padding: 0.65rem 1rem 0.65rem 0.85rem;
+  background: linear-gradient(90deg, rgba(10, 10, 14, 0.92), rgba(10, 10, 14, 0.78));
+  border-top: 3px solid var(--clip-accent, #8b5cf6);
+  color: #fff;
+}
+
+.mock__overlay[data-variant='third'] .skin__kicker {
+  grid-column: 2;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+}
+
+.mock__overlay[data-variant='third'] .skin__name {
+  grid-column: 2;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.mock__overlay[data-variant='third'] .skin__copy {
+  grid-column: 2;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+}
+
+.mock__overlay[data-variant='third'] .skin__title {
+  display: none;
+}
+
+/* ——— Tile ——— */
+.mock__overlay[data-variant='tile'] .skin {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-areas: 'video meta';
+  gap: 0.7rem;
+  padding: 0.7rem;
+  height: 100%;
+  box-sizing: border-box;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='tile'] .skin__video {
+  grid-area: video;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.mock__overlay[data-variant='tile'] .skin__avatar {
+  display: none;
+}
+
+.mock__overlay[data-variant='tile'] .skin__meta {
+  grid-area: meta;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.85rem 0.95rem 0.85rem 1.05rem;
+  border-radius: 1rem;
+  background: rgba(15, 17, 21, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 4px 0 0 var(--clip-accent, #8b5cf6);
+  color: #f5f7fb;
+}
+
+.mock__overlay[data-variant='tile'] .skin__kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+}
+
+.mock__overlay[data-variant='tile'] .skin__name {
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.mock__overlay[data-variant='tile'] .skin__copy {
+  color: #c5cce0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.mock__overlay[data-variant='tile'] .skin__title {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+/* ——— Cinema ——— */
+.mock__overlay[data-variant='cinema'] .skin {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0.9rem;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='cinema'] .skin__video {
+  position: absolute;
+  inset: 0;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__avatar {
+  position: absolute;
+  left: 14px;
+  bottom: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.7rem;
+  padding: 2.4rem 1rem 0.85rem 68px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.78));
+  color: #fff;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__kicker {
+  width: 100%;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__name {
+  font-size: 1.05rem;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__copy {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.82rem;
+}
+
+.mock__overlay[data-variant='cinema'] .skin__title {
+  display: none;
+}
+
+/* ——— Orbit ——— */
+.mock__overlay[data-variant='orbit'] .skin {
+  display: grid;
+  grid-template-columns: auto 1.2fr 1fr;
+  grid-template-areas: 'avatar video meta';
+  align-items: center;
+  gap: 0.85rem;
+  height: 100%;
+  padding: 0.7rem 0.85rem;
+  box-sizing: border-box;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='orbit'] .skin__avatar {
+  grid-area: avatar;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  overflow: visible;
+  position: relative;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__avatar::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--clip-accent, #8b5cf6);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--clip-accent, #8b5cf6) 22%, transparent);
+}
+
+.mock__overlay[data-variant='orbit'] .skin__initials {
+  border-radius: 999px;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__video {
+  grid-area: video;
+  height: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__meta {
+  grid-area: meta;
+  color: #f5f7fb;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.mock__overlay[data-variant='orbit'] .skin__kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+  margin-bottom: 0.25rem;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__name {
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 0.35rem;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__copy {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.mock__overlay[data-variant='orbit'] .skin__title {
+  margin-top: 0.35rem;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+/* ——— Pill ——— */
+.mock__overlay[data-variant='pill'] .skin {
+  position: relative;
+  height: 100%;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='pill'] .skin__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.mock__overlay[data-variant='pill'] .skin__avatar {
+  display: none;
+}
+
+.mock__overlay[data-variant='pill'] .skin__meta {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.65rem;
+  max-width: 72%;
+  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(15, 17, 21, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f5f7fb;
+}
+
+.mock__overlay[data-variant='pill'] .skin__kicker {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+}
+
+.mock__overlay[data-variant='pill'] .skin__name {
+  font-size: 0.98rem;
+}
+
+.mock__overlay[data-variant='pill'] .skin__copy,
+.mock__overlay[data-variant='pill'] .skin__title {
+  display: none;
+}
+
+/* ——— HUD ——— */
+.mock__overlay[data-variant='hud'] .skin {
+  position: relative;
+  height: 100%;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='hud'] .skin__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.85rem;
+}
+
+.mock__overlay[data-variant='hud'] .skin__avatar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.mock__overlay[data-variant='hud'] .skin__meta {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+  pointer-events: none;
+}
+
+.mock__overlay[data-variant='hud'] .skin__kicker,
+.mock__overlay[data-variant='hud'] .skin__name,
+.mock__overlay[data-variant='hud'] .skin__title {
+  position: absolute;
+  margin: 0;
+}
+
+.mock__overlay[data-variant='hud'] .skin__kicker {
+  top: 12px;
+  left: 12px;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 17, 21, 0.78);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mock__overlay[data-variant='hud'] .skin__name {
+  left: 60px;
+  bottom: 16px;
+  font-size: 1rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+.mock__overlay[data-variant='hud'] .skin__title {
+  right: 12px;
+  bottom: 16px;
+  max-width: 42%;
+  text-align: right;
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.mock__overlay[data-variant='hud'] .skin__copy {
+  display: none;
+}
+
+/* ——— Slash ——— */
+.mock__overlay[data-variant='slash'] .skin {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+}
+
+.mock__overlay[data-variant='slash'] .skin__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  clip-path: polygon(0 0, 78% 0, 62% 100%, 0 100%);
+}
+
+.mock__overlay[data-variant='slash'] .skin__avatar {
+  position: absolute;
+  left: 64%;
+  bottom: 14px;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 5;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, 0) scale(1);
+}
+
+.mock__overlay[data-variant='slash'] .skin__meta {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 44%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  z-index: 3;
+  padding: 1rem 1.15rem 4.25rem 3.5rem;
+  box-sizing: border-box;
+  color: #fff;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
+  );
+}
+
+.mock__overlay[data-variant='slash'] .skin__kicker {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.mock__overlay[data-variant='slash'] .skin__name {
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin-bottom: 0.35rem;
+}
+
+.mock__overlay[data-variant='slash'] .skin__copy {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.mock__overlay[data-variant='slash'] .skin__title {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin__media,
+  .skin__media::after {
+    animation: none;
+  }
+}
