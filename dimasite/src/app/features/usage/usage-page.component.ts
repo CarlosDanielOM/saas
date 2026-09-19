@@ -21,6 +21,7 @@ import {
   AiUsageSummaryData,
   AiUsageTransaction
 } from '../../models/usage.model';
+import { BillingService, CreditPackCatalogData, CreditPackOffer } from '../../services/billing.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
@@ -61,6 +62,7 @@ export class UsagePageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly usageApi = inject(UsageApiService);
+  private readonly billingService = inject(BillingService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly numberFormatter = new Intl.NumberFormat();
   private readonly formatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -147,6 +149,18 @@ export class UsagePageComponent {
   readonly hasAnalytics = computed(() => this.capabilities().dailySpend || this.capabilities().categoryBreakdown);
   readonly hasTransactions = computed(() => this.capabilities().transactions);
 
+  readonly packCatalog = signal<CreditPackCatalogData | null>(null);
+  readonly recommendedPack = computed(() => {
+    const overage = this.pacing()?.projectedOverageCredits ?? 0;
+    const owner = this.sessionAuth.session()?.twitchUser.login.toLowerCase();
+    if (!Number.isFinite(overage) || overage <= 0 || owner !== this.streamer()) return null;
+    const catalog = this.packCatalog();
+    return catalog?.offers
+      .filter(pack => pack.eligible && pack.credits >= overage
+        && (pack.kind !== 'recharge' || catalog.hasActivePaidSubscription))
+      .sort((a, b) => a.priceAmount - b.priceAmount || a.credits - b.credits)[0] ?? null;
+  });
+
   readonly pacing = computed<AiUsagePacing | null>(() => this.summary()?.pacing ?? null);
   readonly billingPeriod = computed(() => this.summary()?.billingPeriod ?? null);
   readonly analytics = computed(() => this.summary()?.analytics ?? null);
@@ -169,6 +183,7 @@ export class UsagePageComponent {
   );
 
   constructor() {
+    void this.loadPackCatalog();
     effect(() => {
       const resolution = this.channelResolution();
 
@@ -348,6 +363,23 @@ export class UsagePageComponent {
 
   openUpgrade(): void {
     void this.upgradeService.promptUpgradeForAnyPlan('usage_page');
+  }
+
+  formatPackPrice(pack: CreditPackOffer): string {
+    return new Intl.NumberFormat(this.getLocale(), {
+      style: 'currency', currency: pack.priceCurrency.toUpperCase(),
+      minimumFractionDigits: 0, maximumFractionDigits: 2
+    }).format(pack.priceAmount / 100);
+  }
+
+  private async loadPackCatalog(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.billingService.getCreditPacks());
+      this.packCatalog.set(!response.error && response.data ? response.data : null);
+    } catch {
+      // Usage remains available when the optional store recommendation cannot load.
+      this.packCatalog.set(null);
+    }
   }
 
   private async loadSummary(channelID: string): Promise<void> {

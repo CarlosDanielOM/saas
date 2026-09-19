@@ -1544,6 +1544,12 @@
     }
   },
   "usage": {
+    "recommendation": {
+      "title": "Recommended for your projected usage",
+      "body": "Add {{credits}} credits for {{price}} to cover your projected shortfall.",
+      "rechargeCta": "View {{price}} recharge",
+      "creditCta": "View {{price}} credit pack"
+    },
     "kicker": "AI Usage",
     "title": "Credit usage",
     "subtitle": "Track how your AI credits are consumed across chat, memory, TTS, and clip features.",

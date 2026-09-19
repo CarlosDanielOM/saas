@@ -101,6 +101,9 @@
                 <span class="lf-pack-card__type">{{ t('creditPacks.credit.badge') }}</span>
                 <span class="lf-pack-card__price">{{ formatPrice(pack) }}</span>
               </div>
+              @if (pack.id === recommendedId && pack.eligible) {
+                <span class="lf-chip lf-chip--ok">{{ t('usage.recommendation.title') }}</span>
+              }
               <h3>{{ packName(pack) }}</h3>
               <p class="lf-pack-card__credits">
                 {{ formatCredits(pack.credits) }}
@@ -164,6 +167,9 @@
                 <span class="lf-pack-card__type">{{ t('creditPacks.recharge.badge') }}</span>
                 <span class="lf-pack-card__price">{{ formatPrice(pack) }}</span>
               </div>
+              @if (pack.id === recommendedId && pack.eligible) {
+                <span class="lf-chip lf-chip--ok">{{ t('usage.recommendation.title') }}</span>
+              }
               <h3>{{ packName(pack) }}</h3>
               <p class="lf-pack-card__credits">
                 {{ formatCredits(pack.credits) }}

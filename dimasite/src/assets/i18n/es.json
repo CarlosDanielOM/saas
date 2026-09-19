@@ -1544,6 +1544,12 @@
     }
   },
   "usage": {
+    "recommendation": {
+      "title": "Recomendado para tu uso previsto",
+      "body": "Añade {{credits}} créditos por {{price}} para cubrir el exceso previsto.",
+      "rechargeCta": "Ver recarga de {{price}}",
+      "creditCta": "Ver paquete de {{price}}"
+    },
     "kicker": "Uso de IA",
     "title": "Uso de créditos",
     "subtitle": "Sigue cómo se consumen tus créditos de IA en chat, memoria, TTS y clips.",

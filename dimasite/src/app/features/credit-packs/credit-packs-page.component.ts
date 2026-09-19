@@ -30,6 +30,8 @@ export class CreditPacksPageComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
 
+  readonly recommendedId = this.route.snapshot.queryParamMap.get('recommended');
+
   readonly catalog = signal<CreditPackCatalogData | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);

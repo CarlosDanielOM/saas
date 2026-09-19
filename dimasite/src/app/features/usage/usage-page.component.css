@@ -766,3 +766,14 @@
     animation: none;
   }
 }
+
+.lf-recommendation {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.lf-recommendation .lf-btn {
+  margin-top: .75rem;
+  white-space: normal;
+  text-align: center;
+}

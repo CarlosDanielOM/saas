@@ -152,6 +152,16 @@
               </p>
             }
             <p class="lf-note">{{ t('usage.pacing.basis.' + pace.forecastBasis) }}</p>
+            @if (recommendedPack(); as pack) {
+              <aside class="lf-recommendation" aria-labelledby="usage-pack-title">
+                <h3 id="usage-pack-title" class="lf-h3">{{ t('usage.recommendation.title') }}</h3>
+                <p class="lf-note">{{ t('usage.recommendation.body', { credits: formatCredits(pack.credits), price: formatPackPrice(pack) }) }}</p>
+                <p class="lf-note">{{ t(pack.kind === 'recharge' ? 'creditPacks.recharge.description' : 'creditPacks.credit.description') }}</p>
+                <a class="lf-btn lf-btn--primary" [routerLink]="creditStoreLink()" [queryParams]="{ recommended: pack.id }">
+                  {{ t(pack.kind === 'recharge' ? 'usage.recommendation.rechargeCta' : 'usage.recommendation.creditCta', { price: formatPackPrice(pack) }) }}
+                </a>
+              </aside>
+            }
           } @else {
             <p class="lf-copy lf-copy--tight">{{ t('usage.pacing.unavailable') }}</p>
           }
