@@ -660,6 +660,13 @@
   display: none;
 }
 
+@media (max-width: 639px) {
+  .mock {
+    aspect-ratio: 2.4 / 1;
+    min-height: 152px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skin__media,
   .skin__media::after {

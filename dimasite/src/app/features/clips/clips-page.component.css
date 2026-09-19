@@ -290,14 +290,16 @@
 
 /* Carousel track */
 .lf-carousel {
+  position: relative;
   display: flex;
-  gap: 0;
+  gap: 0.75rem;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  scroll-padding-inline: 0.15rem;
   border-radius: var(--radius);
 }
 
@@ -311,8 +313,7 @@
 }
 
 .lf-slide {
-  flex: 0 0 100%;
-  width: 100%;
+  flex: 0 0 85%;
   min-width: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -555,6 +556,10 @@
 @media (min-width: 960px) {
   .lf-bento--hero {
     grid-template-columns: 1.35fr 1fr;
+  }
+
+  .lf-slide {
+    flex-basis: 100%;
   }
 
   .lf-slide__grid {

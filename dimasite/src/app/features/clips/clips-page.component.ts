@@ -154,7 +154,7 @@ export class ClipsPageComponent {
       behavior = 'auto';
     }
 
-    track.scrollTo({ left: clamped * track.clientWidth, behavior });
+    track.scrollTo({ left: this.slideOffset(clamped), behavior });
   }
 
   prev(): void {
@@ -170,12 +170,20 @@ export class ClipsPageComponent {
     if (!track) {
       return;
     }
-    const width = track.clientWidth || 1;
-    const index = Math.round(track.scrollLeft / width);
-    const lastIndex = Math.max(this.designs().length - 1, 0);
-    const clamped = Math.max(0, Math.min(index, lastIndex));
-    if (clamped !== this.activeIndex()) {
-      this.activeIndex.set(clamped);
+    const slides = Array.from(track.children) as HTMLElement[];
+    let closest = 0;
+    let minDistance = Number.POSITIVE_INFINITY;
+
+    slides.forEach((slide, index) => {
+      const distance = Math.abs(slide.offsetLeft - track.scrollLeft);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = index;
+      }
+    });
+
+    if (closest !== this.activeIndex()) {
+      this.activeIndex.set(closest);
     }
   }
 
@@ -184,7 +192,7 @@ export class ClipsPageComponent {
     if (!track) {
       return;
     }
-    track.scrollTo({ left: this.selectedIndex() * track.clientWidth, behavior: 'auto' });
+    track.scrollTo({ left: this.slideOffset(this.selectedIndex()), behavior: 'auto' });
   }
 
   openUpgrade(): void {
@@ -232,6 +240,15 @@ export class ClipsPageComponent {
     }
     this.resizeObserver = new ResizeObserver(() => this.onViewportResize());
     this.resizeObserver.observe(track);
+  }
+
+  private slideOffset(index: number): number {
+    const track = this.trackRef()?.nativeElement;
+    if (!track) {
+      return 0;
+    }
+    const slide = track.children.item(index) as HTMLElement | null;
+    return slide ? slide.offsetLeft : index * track.clientWidth;
   }
 
   private prefersReducedMotion(): boolean {
