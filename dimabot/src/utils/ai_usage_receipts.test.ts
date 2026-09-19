@@ -116,9 +116,9 @@ test('monthly subscription periods allow partial start and renewal date buckets'
 test('pacing estimates exhaustion from unchanged credit totals', () => {
   const pacing = buildAiUsagePacing({
     credits: {
-      used: 50,
-      limit: 100,
-      balance: 50,
+      used: 250_000,
+      limit: 500_000,
+      balance: 250_000,
       available: true,
       status: 'available',
     },
@@ -137,16 +137,46 @@ test('pacing estimates exhaustion from unchanged credit totals', () => {
 
   assert.deepEqual(pacing, {
     status: 'over_pace',
+    forecastBasis: 'current_billing_period',
     quotaUsedPercent: 50,
-    averageDailyCredits: 7.14,
-    projectedPeriodCredits: 214,
+    averageDailyCredits: 35_714.29,
+    projectedPeriodCredits: 1_071_429,
     projectedQuotaUsedPercent: 214.29,
+    projectedOverageCredits: 571_429,
     remainingPeriodDays: 23,
-    dailyCreditsToLastPeriod: 2.17,
+    dailyCreditsToLastPeriod: 10_869.57,
     expectedToExhaustWithinPeriod: true,
     estimatedDaysUntilExhaustion: 7,
     estimatedExhaustionAt: '2026-09-21T00:00:00.000Z',
   });
+});
+
+test('free pacing follows the account creation monthly anniversary', async () => {
+  const period = await resolveAiUsagePeriod({
+    freePeriodAnchor: new Date('2026-09-07T00:00:00.000Z'),
+    timeZone: 'UTC',
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+  const pacing = buildAiUsagePacing({
+    credits: {
+      used: 12_500,
+      limit: 25_000,
+      balance: 12_500,
+      available: true,
+      status: 'available',
+    },
+    billingPeriod: period.billingPeriod,
+    now: new Date('2026-09-14T00:00:00.000Z'),
+  });
+
+  assert.equal(period.billingPeriod.source, 'free_monthly');
+  assert.equal(period.billingPeriod.startsAt, '2026-09-07T00:00:00.000Z');
+  assert.equal(period.billingPeriod.endsAt, '2026-10-07T00:00:00.000Z');
+  assert.equal(pacing?.forecastBasis, 'current_free_credit_period');
+  assert.equal(pacing?.status, 'over_pace');
+  assert.equal(pacing?.projectedPeriodCredits, 53_571);
+  assert.equal(pacing?.projectedOverageCredits, 28_572);
+  assert.equal(pacing?.estimatedDaysUntilExhaustion, 7);
 });
 
 test('pacing omits exhaustion estimates that fall after the credit reset', () => {

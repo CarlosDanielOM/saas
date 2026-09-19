@@ -36,7 +36,7 @@ export interface AiUsageWindow {
   days: string[];
 }
 
-export type AiUsagePeriodSource = 'subscription' | 'rolling_30_day' | 'custom';
+export type AiUsagePeriodSource = 'subscription' | 'free_monthly' | 'rolling_30_day' | 'custom';
 
 export interface AiUsageBillingPeriod {
   source: AiUsagePeriodSource;
@@ -56,10 +56,12 @@ export interface AiUsagePeriodResolution {
 
 export interface AiUsagePacing {
   status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted';
+  forecastBasis: 'current_billing_period' | 'current_free_credit_period';
   quotaUsedPercent: number;
   averageDailyCredits: number;
   projectedPeriodCredits: number;
   projectedQuotaUsedPercent: number;
+  projectedOverageCredits: number;
   remainingPeriodDays: number;
   dailyCreditsToLastPeriod: number;
   expectedToExhaustWithinPeriod: boolean;
@@ -275,7 +277,10 @@ export function resolveAiUsageWindow(input: {
   };
 }
 
-function billingPeriodFromWindow(window: AiUsageWindow, source: Exclude<AiUsagePeriodSource, 'subscription'>): AiUsageBillingPeriod {
+function billingPeriodFromWindow(
+  window: AiUsageWindow,
+  source: Exclude<AiUsagePeriodSource, 'subscription' | 'free_monthly'>,
+): AiUsageBillingPeriod {
   return {
     source,
     startsAt: window.startTimestamp.toISOString(),
@@ -315,8 +320,77 @@ function findCurrentSubscriptionPeriod(
   return candidates[0] ? { start: candidates[0].start, end: candidates[0].end } : null;
 }
 
+function addUtcCalendarMonths(anchor: Date, months: number): Date {
+  const targetMonthStart = new Date(Date.UTC(
+    anchor.getUTCFullYear(),
+    anchor.getUTCMonth() + months,
+    1,
+    anchor.getUTCHours(),
+    anchor.getUTCMinutes(),
+    anchor.getUTCSeconds(),
+    anchor.getUTCMilliseconds(),
+  ));
+  const lastDay = new Date(Date.UTC(
+    targetMonthStart.getUTCFullYear(),
+    targetMonthStart.getUTCMonth() + 1,
+    0,
+  )).getUTCDate();
+  targetMonthStart.setUTCDate(Math.min(anchor.getUTCDate(), lastDay));
+  return targetMonthStart;
+}
+
+function findCurrentFreeCreditPeriod(anchor: Date, now: Date): { start: Date; end: Date } | null {
+  if (anchor.getTime() > now.getTime()) return null;
+  let monthOffset = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12
+    + now.getUTCMonth() - anchor.getUTCMonth();
+  let start = addUtcCalendarMonths(anchor, monthOffset);
+  if (start.getTime() > now.getTime()) {
+    monthOffset -= 1;
+    start = addUtcCalendarMonths(anchor, monthOffset);
+  }
+  return { start, end: addUtcCalendarMonths(anchor, monthOffset + 1) };
+}
+
+function usagePeriodFromBoundaries(input: {
+  source: 'subscription' | 'free_monthly';
+  start: Date;
+  end: Date;
+  now: Date;
+  timeZone: string;
+}): AiUsagePeriodResolution {
+  const from = formatLocalDate(input.start, input.timeZone);
+  const periodTo = formatLocalDate(new Date(input.end.getTime() - 1), input.timeZone);
+  const elapsedTo = formatLocalDate(
+    new Date(Math.max(input.start.getTime(), Math.min(input.now.getTime(), input.end.getTime()) - 1)),
+    input.timeZone,
+  );
+  const days = buildDateLabels(from, elapsedTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
+  const totalDays = buildDateLabels(from, periodTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
+  return {
+    window: {
+      from,
+      to: elapsedTo,
+      timeZone: input.timeZone,
+      startTimestamp: input.start,
+      endTimestampExclusive: input.end,
+      days,
+    },
+    billingPeriod: {
+      source: input.source,
+      startsAt: input.start.toISOString(),
+      endsAt: input.end.toISOString(),
+      endExclusive: true,
+      from,
+      to: periodTo,
+      totalDayCount: totalDays.length,
+      elapsedDayCount: days.length,
+    },
+  };
+}
+
 export async function resolveAiUsagePeriod(input: {
   customerId?: string;
+  freePeriodAnchor?: Date;
   from?: string;
   to?: string;
   timeZone?: string;
@@ -336,6 +410,20 @@ export async function resolveAiUsagePeriod(input: {
     return { window, billingPeriod: billingPeriodFromWindow(window, 'custom') };
   }
 
+  const freePeriodAnchor = validDate(input.freePeriodAnchor);
+  if (freePeriodAnchor) {
+    const freePeriod = findCurrentFreeCreditPeriod(freePeriodAnchor, now);
+    if (freePeriod) {
+      return usagePeriodFromBoundaries({
+        source: 'free_monthly',
+        start: freePeriod.start,
+        end: freePeriod.end,
+        now,
+        timeZone,
+      });
+    }
+  }
+
   if (input.customerId) {
     const getState = input.getCustomerState || (async (customerId: string) => {
       const client = await getPolarShClient('resolveAiUsagePeriod');
@@ -345,35 +433,13 @@ export async function resolveAiUsagePeriod(input: {
     const subscription = findCurrentSubscriptionPeriod(state.activeSubscriptions || [], now);
 
     if (subscription) {
-      const from = formatLocalDate(subscription.start, timeZone);
-      const periodTo = formatLocalDate(new Date(subscription.end.getTime() - 1), timeZone);
-      const elapsedTo = formatLocalDate(
-        new Date(Math.max(subscription.start.getTime(), Math.min(now.getTime(), subscription.end.getTime()) - 1)),
+      return usagePeriodFromBoundaries({
+        source: 'subscription',
+        start: subscription.start,
+        end: subscription.end,
+        now,
         timeZone,
-      );
-      const days = buildDateLabels(from, elapsedTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
-      const totalDays = buildDateLabels(from, periodTo, AI_USAGE_MAX_SUBSCRIPTION_DATE_BUCKETS);
-      const window: AiUsageWindow = {
-        from,
-        to: elapsedTo,
-        timeZone,
-        startTimestamp: subscription.start,
-        endTimestampExclusive: subscription.end,
-        days,
-      };
-      return {
-        window,
-        billingPeriod: {
-          source: 'subscription',
-          startsAt: subscription.start.toISOString(),
-          endsAt: subscription.end.toISOString(),
-          endExclusive: true,
-          from,
-          to: periodTo,
-          totalDayCount: totalDays.length,
-          elapsedDayCount: days.length,
-        },
-      };
+      });
     }
   }
 
@@ -391,13 +457,14 @@ export function buildAiUsagePacing(input: {
   billingPeriod: AiUsageBillingPeriod;
   now?: Date;
 }): AiUsagePacing | null {
-  if (input.billingPeriod.source !== 'subscription' || !input.credits.available) return null;
+  if (!['subscription', 'free_monthly'].includes(input.billingPeriod.source) || !input.credits.available) return null;
 
   const now = input.now || new Date();
   const start = new Date(input.billingPeriod.startsAt);
   const end = new Date(input.billingPeriod.endsAt);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return null;
 
+  const isSubscription = input.billingPeriod.source === 'subscription';
   const totalDays = (end.getTime() - start.getTime()) / MILLISECONDS_PER_DAY;
   const elapsedDays = Math.max(
     1,
@@ -409,6 +476,8 @@ export function buildAiUsagePacing(input: {
   const balance = Math.max(0, input.credits.balance);
   const averageDailyCredits = used / elapsedDays;
   const projectedPeriodCredits = averageDailyCredits * totalDays;
+  const availableForForecast = Math.max(limit, input.credits.used + balance);
+  const projectedOverageCredits = Math.max(0, Math.ceil(projectedPeriodCredits - availableForForecast));
   const estimatedDays = balance <= 0 ? 0 : averageDailyCredits > 0 ? balance / averageDailyCredits : null;
   const expectedToExhaustWithinPeriod = estimatedDays !== null && estimatedDays < remainingPeriodDays;
   const showExhaustionEstimate = balance <= 0 || expectedToExhaustWithinPeriod;
@@ -424,10 +493,12 @@ export function buildAiUsagePacing(input: {
 
   return {
     status,
-    quotaUsedPercent: limit > 0 ? rounded((used / limit) * 100) : 0,
+    forecastBasis: isSubscription ? 'current_billing_period' : 'current_free_credit_period',
+    quotaUsedPercent: limit > 0 ? rounded((Math.max(0, input.credits.used) / limit) * 100) : 0,
     averageDailyCredits: rounded(averageDailyCredits),
     projectedPeriodCredits: Math.round(projectedPeriodCredits),
     projectedQuotaUsedPercent: limit > 0 ? rounded((projectedPeriodCredits / limit) * 100) : 0,
+    projectedOverageCredits,
     remainingPeriodDays: rounded(remainingPeriodDays),
     dailyCreditsToLastPeriod: remainingPeriodDays > 0 ? rounded(balance / remainingPeriodDays) : 0,
     expectedToExhaustWithinPeriod,

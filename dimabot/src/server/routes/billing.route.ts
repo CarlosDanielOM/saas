@@ -106,6 +106,7 @@ async function getUsageTarget(req: Request, res: Response) {
 function usageCapabilities(planTier: 'free' | 'premium' | 'pro') {
     return {
         balance: true,
+        pacing: true,
         dailySpend: planTier === 'premium' || planTier === 'pro',
         categoryBreakdown: planTier === 'premium' || planTier === 'pro',
         transactions: planTier === 'pro'
@@ -398,27 +399,14 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
         const credits = await getAiCredits(target.user, target.channelID);
         const capabilities = usageCapabilities(planTier);
 
-        if (!capabilities.dailySpend) {
-            return res.status(200).json({
-                error: false,
-                message: 'AI usage summary fetched successfully',
-                status: 200,
-                data: {
-                    planTier,
-                    capabilities,
-                    credits,
-                    analytics: null
-                }
-            });
-        }
-
         const period = await resolveAiUsagePeriod({
-            customerId: target.user.polar_sh_customer_id || undefined,
+            customerId: planTier === 'free' ? undefined : target.user.polar_sh_customer_id || undefined,
+            freePeriodAnchor: planTier === 'free' ? target.user.created_at : undefined,
             from: getStringQueryParam(req.query.from) || undefined,
             to: getStringQueryParam(req.query.to) || undefined,
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC'
         });
-        const transactions = target.user.polar_sh_customer_id
+        const transactions = capabilities.dailySpend && target.user.polar_sh_customer_id
             ? await getCachedAiUsageTransactions({
                 channelID: target.channelID,
                 customerId: target.user.polar_sh_customer_id,
@@ -426,6 +414,10 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             })
             : [];
         const summary = buildAiUsageSummary(transactions, period.window);
+        const pacing = buildAiUsagePacing({
+            credits,
+            billingPeriod: period.billingPeriod
+        });
 
         return res.status(200).json({
             error: false,
@@ -435,14 +427,13 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
                 planTier,
                 capabilities,
                 credits,
-                analytics: {
+                billingPeriod: period.billingPeriod,
+                pacing,
+                analytics: capabilities.dailySpend ? {
                     ...summary,
                     billingPeriod: period.billingPeriod,
-                    pacing: buildAiUsagePacing({
-                        credits,
-                        billingPeriod: period.billingPeriod
-                    })
-                }
+                    pacing
+                } : null
             }
         });
     } catch (caught) {

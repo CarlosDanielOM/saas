@@ -13,6 +13,8 @@ async function seedUser(id, planTier, token) {
   await UsersSchema.create({
     name: `${planTier}-fixture`,
     email: `${planTier}@example.invalid`,
+    created_at: new Date('2026-09-07T00:00:00.000Z'),
+    updated_at: new Date('2026-09-07T00:00:00.000Z'),
     plan_tier: planTier,
     polar_sh_customer_id: polarCustomer,
     accounts: [{
@@ -119,6 +121,17 @@ assert.equal(freeSummary.response.status, 200);
 assert.equal(freeSummary.json.data.capabilities.dailySpend, false);
 assert.equal(freeSummary.json.data.analytics, null);
 assert.equal(freeSummary.json.data.credits.used, 255);
+
+const freePacing = await get('/billing/ai-usage/summary?timezone=UTC', 'free-token');
+assert.equal(freePacing.response.status, 200);
+assert.equal(freePacing.json.data.capabilities.pacing, true);
+assert.equal(freePacing.json.data.billingPeriod.source, 'free_monthly');
+assert.equal(freePacing.json.data.billingPeriod.startsAt, '2026-09-07T00:00:00.000Z');
+assert.equal(freePacing.json.data.billingPeriod.endsAt, '2026-10-07T00:00:00.000Z');
+assert.equal(freePacing.json.data.pacing.forecastBasis, 'current_free_credit_period');
+assert.equal(freePacing.json.data.pacing.status, 'within_pace');
+assert.equal(freePacing.json.data.pacing.projectedOverageCredits, 0);
+assert.equal(freePacing.json.data.analytics, null);
 
 const invalidTimezone = await get('/billing/ai-usage/summary?timezone=Mars%2FOlympus', 'premium-token');
 assert.equal(invalidTimezone.response.status, 400);
