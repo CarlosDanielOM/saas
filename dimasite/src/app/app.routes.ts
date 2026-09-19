@@ -715,6 +715,18 @@ export const routes: Routes = [
         title: 'AI Usage | DomDimaBot'
       },
       {
+        path: 'credits',
+        loadComponent: () =>
+          import('./features/credit-packs/credit-packs-page.component').then(
+            (m) => m.CreditPacksPageComponent
+          ),
+        canActivate: [permissionGuard],
+        data: {
+          permission: 'dashboard:view'
+        },
+        title: 'Credit Store | DomDimaBot'
+      },
+      {
         path: 'commands',
         loadComponent: () =>
           import('./features/commands/commands-page.component').then((m) => m.CommandsPageComponent),

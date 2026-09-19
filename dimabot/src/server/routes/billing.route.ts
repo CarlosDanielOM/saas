@@ -4,9 +4,12 @@ import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.j
 import { AdminSchema } from '../../schemas/admin.schema.js';
 import UsersSchema from '../../schemas/users.schema.js';
 import {
+  CreditPackRequestError,
   createBillingCheckout,
+  createCreditPackCheckout,
   createCustomerPortalSession,
   getBillingContext,
+  getCreditPackCatalog,
   getAiCredits
 } from '../../utils/billing.js';
 import {
@@ -190,6 +193,88 @@ router.get('/context', authMiddleware as any, async (req: Request, res: Response
             error: true,
             message: 'Internal server error',
             status: 500
+        });
+    }
+});
+
+router.get('/credit-packs', authMiddleware as any, async (req: Request, res: Response) => {
+    try {
+        const user = await getAuthenticatedUser(req);
+        if (!user) {
+            return res.status(404).json({ error: true, message: 'User not found', status: 404 });
+        }
+
+        const catalog = await getCreditPackCatalog(user);
+        return res.status(200).json({
+            error: false,
+            message: 'Credit pack catalog fetched successfully',
+            status: 200,
+            data: catalog
+        });
+    } catch (error) {
+        console.error('Error in GET /billing/credit-packs:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+        return res.status(502).json({
+            error: true,
+            message: 'Credit packs are temporarily unavailable',
+            status: 502
+        });
+    }
+});
+
+router.post('/credit-packs/checkout', authMiddleware as any, async (req: Request, res: Response) => {
+    try {
+        const user = await getAuthenticatedUser(req);
+        if (!user) {
+            return res.status(404).json({ error: true, message: 'User not found', status: 404 });
+        }
+
+        const { productId, successUrl, returnUrl } = req.body as {
+            productId?: string;
+            successUrl?: string;
+            returnUrl?: string;
+        };
+        if (!productId || typeof productId !== 'string') {
+            return res.status(400).json({
+                error: true,
+                message: 'productId is required',
+                status: 400
+            });
+        }
+
+        const checkout = await createCreditPackCheckout({
+            user,
+            productId,
+            successUrl,
+            returnUrl
+        });
+        return res.status(201).json({
+            error: false,
+            message: 'Credit pack checkout created successfully',
+            status: 201,
+            data: checkout
+        });
+    } catch (error) {
+        if (error instanceof CreditPackRequestError) {
+            return res.status(error.statusCode).json({
+                error: true,
+                message: error.message,
+                status: error.statusCode
+            });
+        }
+
+        console.error('Error in POST /billing/credit-packs/checkout:', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+        return res.status(502).json({
+            error: true,
+            message: 'Unable to start credit pack checkout',
+            status: 502
         });
     }
 });

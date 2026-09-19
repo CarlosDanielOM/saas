@@ -45,6 +45,34 @@ export interface BillingCheckoutData {
   allowDiscountCodes: boolean;
 }
 
+export type CreditPackKind = 'credits' | 'recharge';
+export type CreditPackSize = 'sample' | 'small' | 'starter' | 'medium';
+
+export interface CreditPackOffer {
+  id: string;
+  name: string;
+  kind: CreditPackKind;
+  size: CreditPackSize;
+  credits: number;
+  rollover: boolean;
+  priceAmount: number;
+  priceCurrency: string;
+  eligible: boolean;
+  eligibilityReason: 'paid_plan_required' | null;
+}
+
+export interface CreditPackCatalogData {
+  planTier: 'free' | 'premium' | 'pro';
+  hasActivePaidSubscription: boolean;
+  offers: CreditPackOffer[];
+}
+
+export interface CreditPackCheckoutData {
+  checkoutId: string;
+  checkoutUrl: string;
+  offer: CreditPackOffer;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -65,6 +93,23 @@ export class BillingService {
   }): Observable<ApiEnvelope<BillingCheckoutData>> {
     return this.http.post<ApiEnvelope<BillingCheckoutData>>(
       `${this.linksService.getApiUrl()}/billing/checkout`,
+      request
+    );
+  }
+
+  getCreditPacks(): Observable<ApiEnvelope<CreditPackCatalogData>> {
+    return this.http.get<ApiEnvelope<CreditPackCatalogData>>(
+      `${this.linksService.getApiUrl()}/billing/credit-packs`
+    );
+  }
+
+  createCreditPackCheckout(request: {
+    productId: string;
+    successUrl?: string;
+    returnUrl?: string;
+  }): Observable<ApiEnvelope<CreditPackCheckoutData>> {
+    return this.http.post<ApiEnvelope<CreditPackCheckoutData>>(
+      `${this.linksService.getApiUrl()}/billing/credit-packs/checkout`,
       request
     );
   }

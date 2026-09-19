@@ -13,6 +13,7 @@
     "light": "Claro",
     "logout": "Cerrar sesion",
     "profileSettings": "Configuracion de Perfil",
+    "buyCredits": "Comprar créditos de IA",
     "planFree": "Gratis",
     "planPremium": "Premium",
     "planPro": "Pro",
@@ -1564,6 +1565,7 @@
       "limit": "Incluidos",
       "percentUsed": "{{percent}}% de tus créditos incluidos usados en este periodo.",
       "exhaustedNote": "No quedan créditos. Mejora tu plan o espera la próxima recarga para seguir usando las funciones de IA.",
+      "buyCredits": "Comprar más créditos",
       "unavailable": "Los créditos de IA no están disponibles para esta cuenta."
     },
     "pacing": {
@@ -1650,6 +1652,64 @@
     "errors": {
       "channelNotResolved": "No pudimos resolver este canal.",
       "loadFailed": "No se puede cargar el uso de créditos ahora mismo.",
+      "retry": "Reintentar"
+    }
+  },
+  "creditPacks": {
+    "kicker": "Tienda de créditos",
+    "titleLead": "Más espacio para crear.",
+    "titleAccent": "Elige cuánto duran.",
+    "subtitle": "Elige créditos permanentes que puedes conservar o una recarga más económica ligada al ciclo actual de tu plan de pago.",
+    "backToUsage": "Volver al uso de créditos",
+    "secureCheckout": "Pago seguro con Polar",
+    "plan": "Plan {{plan}}",
+    "creditsLabel": "créditos de IA",
+    "buy": "Continuar al pago",
+    "openingCheckout": "Abriendo el pago…",
+    "loading": "Cargando paquetes de créditos",
+    "checkoutNote": "Polar gestiona el proceso de pago de forma segura.",
+    "comparison": {
+      "kicker": "Dos formas de recargar",
+      "title": "¿Cuál es la diferencia?",
+      "credit": "Disponibles en todos los planes. Los créditos sin usar se acumulan y no caducan.",
+      "recharge": "Más créditos por dólar para Premium y Pro. Los créditos sin usar caducan cuando la suscripción se renueva o termina."
+    },
+    "credit": {
+      "kicker": "Consérvalos hasta usarlos",
+      "title": "Paquetes de créditos",
+      "description": "Un saldo flexible para todos los planes. Compra una vez, úsalo a tu ritmo y conserva lo que sobre.",
+      "available": "Disponibles para todos",
+      "badge": "Créditos permanentes",
+      "rollover": "Los créditos sin usar se acumulan",
+      "noExpiration": "Sin caducidad por ciclo de suscripción"
+    },
+    "recharge": {
+      "kicker": "Más valor dentro del ciclo de tu plan",
+      "title": "Paquetes de recarga",
+      "description": "Créditos más económicos reservados para miembros Premium y Pro activos. Polar hace caducar el saldo de recarga sin usar cuando la suscripción se renueva o termina.",
+      "badge": "Recarga del plan",
+      "unlocked": "Desbloqueado para tu plan",
+      "paidOnly": "Solo Premium o Pro",
+      "upgrade": "Mejora tu plan para desbloquear recargas",
+      "requiresPaid": "Requiere un plan de pago",
+      "moreValue": "Más créditos por dólar",
+      "expires": "Caduca al renovar o cuando termina el plan"
+    },
+    "sizes": {
+      "sample": "Paquete de muestra",
+      "small": "Paquete pequeño",
+      "starter": "Paquete inicial",
+      "medium": "Paquete mediano"
+    },
+    "success": {
+      "title": "Pago completado",
+      "body": "Polar está añadiendo los créditos a tu saldo. Pueden tardar un momento en aparecer en el uso."
+    },
+    "errors": {
+      "title": "La tienda de créditos necesita un momento",
+      "load": "No se pueden cargar los paquetes de créditos ahora mismo.",
+      "checkoutTitle": "No se pudo iniciar el pago",
+      "checkout": "No se pudo iniciar el pago. Inténtalo de nuevo.",
       "retry": "Reintentar"
     }
   },

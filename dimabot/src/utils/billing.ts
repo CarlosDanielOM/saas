@@ -2,6 +2,13 @@ import { PRODUCT_IDS } from './referral.js';
 import type { IUsers } from '../schemas/users.schema.js';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { createHash } from 'node:crypto';
+import {
+    CreditPackConfigurationError,
+    buildCreditPackOffers,
+    getCreditPackDefinition,
+    type CreditPackOffer,
+    type PolarCreditPackProductLike
+} from './credit_packs.js';
 
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
 type BillingScenario = 'new' | 'upgrade' | 'change' | 'returning_winback' | 'reactivate' | 'active_no_change';
@@ -60,6 +67,31 @@ interface CheckoutDecision {
     checkoutId: string;
     checkoutUrl: string;
     allowDiscountCodes: boolean;
+}
+
+export interface CreditPackCatalog {
+    planTier: PlanTier;
+    hasActivePaidSubscription: boolean;
+    offers: CreditPackOffer[];
+}
+
+interface CreditPackCheckoutRequest {
+    user: IUsers;
+    productId: string;
+    successUrl?: string;
+    returnUrl?: string;
+}
+
+export interface CreditPackCheckoutDecision {
+    checkoutId: string;
+    checkoutUrl: string;
+    offer: CreditPackOffer;
+}
+
+export class CreditPackRequestError extends Error {
+    constructor(message: string, readonly statusCode: 400 | 403) {
+        super(message);
+    }
 }
 
 interface CreatePortalSessionRequest {
@@ -704,6 +736,121 @@ export async function getBillingContext(
         activeProductId,
         targetProductId: targetPlan ? PLAN_PRODUCT_MAP[targetPlan] : undefined,
         isReferralEligible: hasReferralDiscountEligibility
+    };
+}
+
+function getPaidPlanFromSubscriptions(subscriptions: PolarSubscription[]): Exclude<PlanTier, 'free'> | null {
+    if (subscriptions.some((subscription) => subscription.product_id === PRODUCT_IDS.PRO)) {
+        return 'pro';
+    }
+    if (subscriptions.some((subscription) => subscription.product_id === PRODUCT_IDS.PREMIUM)) {
+        return 'premium';
+    }
+    return null;
+}
+
+export async function getCreditPackCatalog(user: IUsers): Promise<CreditPackCatalog> {
+    const productsRequest = polarRequest<PolarListResponse<PolarCreditPackProductLike>>(
+        '/v1/products/?limit=100',
+        { method: 'GET' }
+    );
+    const subscriptionsRequest = user.polar_sh_customer_id
+        ? listSubscriptions(user.polar_sh_customer_id, true)
+        : Promise.resolve([]);
+
+    const [productsResponse, activeSubscriptions] = await Promise.all([
+        productsRequest,
+        subscriptionsRequest
+    ]);
+    const paidPlan = getPaidPlanFromSubscriptions(activeSubscriptions);
+    const offers = buildCreditPackOffers(
+        productsResponse.items || [],
+        AI_CREDITS_METER_ID,
+        paidPlan !== null
+    );
+
+    return {
+        planTier: paidPlan || 'free',
+        hasActivePaidSubscription: paidPlan !== null,
+        offers
+    };
+}
+
+export async function createCreditPackCheckout(
+    request: CreditPackCheckoutRequest
+): Promise<CreditPackCheckoutDecision> {
+    const definition = getCreditPackDefinition(request.productId);
+    if (!definition) {
+        throw new CreditPackRequestError('Invalid credit pack product', 400);
+    }
+
+    const catalog = await getCreditPackCatalog(request.user);
+    const offer = catalog.offers.find((candidate) => candidate.id === request.productId);
+    if (!offer) {
+        throw new CreditPackConfigurationError(`Polar credit pack ${request.productId} is unavailable`);
+    }
+    if (!offer.eligible) {
+        throw new CreditPackRequestError(
+            'Recharge packs require an active Premium or Pro subscription',
+            403
+        );
+    }
+
+    const successUrl = sanitizeRedirectUrl(request.successUrl, 'BILLING_SUCCESS_URL');
+    const returnUrl = sanitizeRedirectUrl(request.returnUrl, 'BILLING_RETURN_URL');
+    const validCustomerId = isUuidV4(request.user.polar_sh_customer_id)
+        ? request.user.polar_sh_customer_id
+        : undefined;
+    const idempotencyKey = `credit-pack:${request.user._id.toString()}:${request.productId}:${Date.now()}`;
+    const metadata = compactMetadata({
+        source: 'dimabot_credit_store',
+        pack_type: definition.kind,
+        pack_size: definition.size,
+        credits: offer.credits,
+        rollover: offer.rollover,
+        user_id: request.user._id.toString()
+    });
+
+    const checkoutPayload: Record<string, unknown> = {
+        products: [request.productId],
+        customer_id: validCustomerId,
+        external_customer_id: request.user._id.toString(),
+        customer_email: request.user.email,
+        customer_name: request.user.name,
+        allow_discount_codes: false,
+        metadata
+    };
+    if (successUrl) checkoutPayload.success_url = successUrl;
+    if (returnUrl) checkoutPayload.return_url = returnUrl;
+
+    const createCheckout = async (payload: Record<string, unknown>) =>
+        polarRequest<{ id: string; url: string }>('/v1/checkouts/', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': idempotencyKey },
+            body: JSON.stringify(payload)
+        });
+
+    let checkout: { id: string; url: string };
+    try {
+        checkout = await createCheckout(checkoutPayload);
+    } catch (error) {
+        if (
+            error instanceof PolarApiError
+            && error.status === 422
+            && typeof checkoutPayload.customer_id === 'string'
+        ) {
+            const fallbackPayload = { ...checkoutPayload };
+            delete fallbackPayload.customer_id;
+            checkout = await createCheckout(fallbackPayload);
+        } else {
+            throw error;
+        }
+    }
+
+    return {
+        checkoutId: checkout.id,
+        checkoutUrl: checkout.url,
+        offer
     };
 }
 

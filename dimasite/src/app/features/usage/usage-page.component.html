@@ -76,6 +76,10 @@
             @if (creditsExhausted()) {
               <p class="lf-note lf-note--warn">{{ t('usage.balance.exhaustedNote') }}</p>
             }
+            <a class="lf-btn lf-btn--primary lf-balance__store" [routerLink]="creditStoreLink()">
+              <app-lf-icon name="plus"></app-lf-icon>
+              {{ t('usage.balance.buyCredits') }}
+            </a>
           } @else {
             <p class="lf-value lf-value--sm">{{ t('usage.balance.unavailable') }}</p>
           }

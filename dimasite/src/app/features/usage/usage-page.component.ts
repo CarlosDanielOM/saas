@@ -208,6 +208,10 @@ export class UsagePageComponent {
     return ['/', this.streamer(), 'dashboard'];
   }
 
+  creditStoreLink(): string[] {
+    return ['/', this.streamer(), 'credits'];
+  }
+
   planTierLabel(): string {
     const tier = this.planTier();
     if (tier === 'pro') {

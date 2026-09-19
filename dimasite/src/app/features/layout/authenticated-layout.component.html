@@ -109,6 +109,16 @@
             {{ t('navbar.profileSettings') }}
           </a>
 
+          <a
+            class="auth-navbar__dropdown-item auth-navbar__dropdown-item--upgrade"
+            [routerLink]="['/', ownerStreamer(), 'credits']"
+            role="menuitem"
+            (click)="closeProfileMenu()"
+          >
+            <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+            <span>{{ t('navbar.buyCredits') }}</span>
+          </a>
+
           @if (showUpgradeOption()) {
             <button
               type="button"
@@ -194,6 +204,14 @@
           <section class="auth-navbar__mobile-section">
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'profile']" (click)="closeMobileMenu()">
               {{ t('navbar.profileSettings') }}
+            </a>
+            <a
+              class="auth-navbar__mobile-link auth-navbar__mobile-link--upgrade"
+              [routerLink]="['/', ownerStreamer(), 'credits']"
+              (click)="closeMobileMenu()"
+            >
+              <lucide-icon [name]="sparklesIcon" class="auth-navbar__upgrade-icon"></lucide-icon>
+              <span>{{ t('navbar.buyCredits') }}</span>
             </a>
             @if (showUpgradeOption()) {
               <button

@@ -13,6 +13,7 @@
     "light": "Light",
     "logout": "Logout",
     "profileSettings": "Profile Settings",
+    "buyCredits": "Buy AI credits",
     "planFree": "Free",
     "planPremium": "Premium",
     "planPro": "Pro",
@@ -1564,6 +1565,7 @@
       "limit": "Included",
       "percentUsed": "{{percent}}% of your included credits used this period.",
       "exhaustedNote": "No credits remaining. Upgrade or wait for the next refill to keep using AI features.",
+      "buyCredits": "Buy more credits",
       "unavailable": "AI credits are not available for this account."
     },
     "pacing": {
@@ -1650,6 +1652,64 @@
     "errors": {
       "channelNotResolved": "We couldn't resolve this channel.",
       "loadFailed": "Unable to load credit usage right now.",
+      "retry": "Try again"
+    }
+  },
+  "creditPacks": {
+    "kicker": "Credit store",
+    "titleLead": "More room to create.",
+    "titleAccent": "Choose how long it lasts.",
+    "subtitle": "Pick permanent credits you can keep, or a lower-cost recharge tied to your current paid-plan cycle.",
+    "backToUsage": "Back to credit usage",
+    "secureCheckout": "Secure Polar checkout",
+    "plan": "{{plan}} plan",
+    "creditsLabel": "AI credits",
+    "buy": "Continue to checkout",
+    "openingCheckout": "Opening checkout…",
+    "loading": "Loading credit packs",
+    "checkoutNote": "Checkout and payment are securely handled by Polar.",
+    "comparison": {
+      "kicker": "Two ways to top up",
+      "title": "What is the difference?",
+      "credit": "Available on every plan. Unused credits roll over and do not expire.",
+      "recharge": "More credits per dollar for Premium and Pro. Unused credits expire when the subscription renews or ends."
+    },
+    "credit": {
+      "kicker": "Keep them until you use them",
+      "title": "Credit packs",
+      "description": "A flexible balance for every plan. Buy once, use it at your own pace, and keep anything left over.",
+      "available": "Available to everyone",
+      "badge": "Permanent credits",
+      "rollover": "Unused credits roll over",
+      "noExpiration": "No subscription-cycle expiration"
+    },
+    "recharge": {
+      "kicker": "More value within your plan cycle",
+      "title": "Recharge packs",
+      "description": "Lower-cost credits reserved for active Premium and Pro members. Polar expires any unused recharge balance when the subscription renews or ends.",
+      "badge": "Plan recharge",
+      "unlocked": "Unlocked for your plan",
+      "paidOnly": "Premium or Pro only",
+      "upgrade": "Upgrade to unlock recharges",
+      "requiresPaid": "Paid plan required",
+      "moreValue": "More credits per dollar",
+      "expires": "Expires at renewal or when the plan ends"
+    },
+    "sizes": {
+      "sample": "Sample pack",
+      "small": "Small pack",
+      "starter": "Starter pack",
+      "medium": "Medium pack"
+    },
+    "success": {
+      "title": "Payment complete",
+      "body": "Polar is adding the credits to your balance. They may take a moment to appear in usage."
+    },
+    "errors": {
+      "title": "The credit store needs a moment",
+      "load": "Unable to load credit packs right now.",
+      "checkoutTitle": "Checkout could not start",
+      "checkout": "Unable to start checkout. Please try again.",
       "retry": "Try again"
     }
   },
