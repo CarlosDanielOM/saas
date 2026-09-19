@@ -9,6 +9,7 @@ import {
   signal,
   viewChild
 } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { LanguageService } from '../../services/language.service';
@@ -17,14 +18,15 @@ import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { ClipDesignMockComponent } from './components/clip-design-mock.component';
-import { ClipTestModalComponent } from './components/clip-test-modal.component';
 import { ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
 import { ClipsService } from './clips.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
+type ClipTestState = 'idle' | 'connecting' | 'sending' | 'playing' | 'error';
+
 @Component({
   selector: 'app-clips-page',
-  imports: [RouterLink, ClipDesignMockComponent, ClipTestModalComponent, LfIconComponent],
+  imports: [RouterLink, ClipDesignMockComponent, LfIconComponent],
   styleUrl: './clips-page.component.css',
   templateUrl: './clips-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +41,7 @@ export class ClipsPageComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly clipsService = inject(ClipsService);
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
   private readonly trackRef = viewChild<ElementRef<HTMLElement>>('track');
 
@@ -46,7 +49,10 @@ export class ClipsPageComponent {
 
   readonly activeIndex = signal(0);
   readonly urlCopied = signal(false);
-  readonly showTestModal = signal(false);
+  readonly testingDesignId = signal<string | null>(null);
+  readonly liveFrameUrl = signal<SafeResourceUrl | null>(null);
+  readonly testState = signal<ClipTestState>('idle');
+  readonly testError = signal('');
 
   readonly userSettings = computed<UserClipSettings>(() => {
     const session = this.sessionAuth.session();
@@ -95,19 +101,28 @@ export class ClipsPageComponent {
     );
   });
 
-  readonly canTest = computed(() => {
-    const design = this.selectedDesign();
-    if (!design) {
-      return false;
-    }
-    return Boolean(this.userSettings().channelID);
-  });
+  readonly canTest = computed(
+    () => Boolean(this.selectedDesign()) && Boolean(this.userSettings().channelID)
+  );
 
   private resizeObserver: ResizeObserver | null = null;
+  private testSendHandle: number | null = null;
+  private testAttempts = 0;
 
   constructor() {
     afterNextRender(() => this.bindTrackResize());
-    this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
+    this.destroyRef.onDestroy(() => {
+      this.resizeObserver?.disconnect();
+      this.clearTestSendHandle();
+    });
+  }
+
+  livePreviewUrl(design: ClipDesign): SafeResourceUrl | null {
+    return this.testingDesignId() === design.id ? this.liveFrameUrl() : null;
+  }
+
+  isLivePreview(design: ClipDesign): boolean {
+    return this.testingDesignId() === design.id;
   }
 
   t(key: string): string {
@@ -144,6 +159,9 @@ export class ClipsPageComponent {
     const lastIndex = Math.max(this.designs().length - 1, 0);
     const clamped = Math.max(0, Math.min(index, lastIndex));
     const track = this.trackRef()?.nativeElement;
+    if (clamped !== this.selectedIndex()) {
+      this.stopLivePreview();
+    }
     this.activeIndex.set(clamped);
 
     if (!track) {
@@ -183,6 +201,7 @@ export class ClipsPageComponent {
     });
 
     if (closest !== this.activeIndex()) {
+      this.stopLivePreview();
       this.activeIndex.set(closest);
     }
   }
@@ -223,14 +242,116 @@ export class ClipsPageComponent {
     }
   }
 
-  openTestModal(): void {
+  startTest(design: ClipDesign): void {
     if (!this.canTest()) {
       return;
     }
-    this.showTestModal.set(false);
-    queueMicrotask(() => {
-      this.showTestModal.set(true);
-    });
+
+    const switching = this.testingDesignId() !== design.id;
+    this.testingDesignId.set(design.id);
+    this.testError.set('');
+    this.testAttempts = 0;
+    this.clearTestSendHandle();
+
+    if (switching) {
+      this.testState.set('connecting');
+      this.liveFrameUrl.set(
+        this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl(design))
+      );
+      return;
+    }
+
+    this.sendTest(design);
+  }
+
+  retryTest(): void {
+    const design = this.testingDesign();
+    if (design) {
+      this.testAttempts = 0;
+      this.sendTest(design);
+    }
+  }
+
+  onLiveFrameLoad(): void {
+    if (this.testState() !== 'connecting') {
+      return;
+    }
+    this.scheduleTestSend(700);
+  }
+
+  stopLivePreview(): void {
+    this.clearTestSendHandle();
+    if (this.testingDesignId() === null) {
+      return;
+    }
+    this.testingDesignId.set(null);
+    this.liveFrameUrl.set(null);
+    this.testState.set('idle');
+    this.testError.set('');
+  }
+
+  private testingDesign(): ClipDesign | null {
+    return this.designs().find((design) => design.id === this.testingDesignId()) ?? null;
+  }
+
+  private rawPreviewUrl(design: ClipDesign): string {
+    return this.clipsService.getClipUrl(
+      this.userSettings().channelID,
+      design.id,
+      this.config().timeoutSeconds
+    );
+  }
+
+  private sendTest(design: ClipDesign): void {
+    if (!this.canTest() || this.testingDesignId() !== design.id) {
+      return;
+    }
+
+    this.testState.set('sending');
+
+    this.clipsService
+      .testClip({
+        channelID: this.userSettings().channelID,
+        streamer: this.userSettings().login,
+        timeout: this.config().timeoutSeconds
+      })
+      .subscribe((response) => {
+        if (this.testingDesignId() !== design.id) {
+          return;
+        }
+
+        if (!response.error) {
+          this.testState.set('playing');
+          return;
+        }
+
+        if (response.status === 409 && this.testAttempts < 4) {
+          this.testAttempts += 1;
+          this.scheduleTestSend(600);
+          return;
+        }
+
+        this.testState.set('error');
+        this.testError.set(response.message || this.t('clips.test.errorFallback'));
+      });
+  }
+
+  private scheduleTestSend(delay: number): void {
+    this.clearTestSendHandle();
+    this.testSendHandle = window.setTimeout(() => {
+      this.testSendHandle = null;
+      const design = this.testingDesign();
+      if (design) {
+        this.sendTest(design);
+      }
+    }, delay);
+  }
+
+  private clearTestSendHandle(): void {
+    if (this.testSendHandle !== null) {
+      window.clearTimeout(this.testSendHandle);
+      this.testSendHandle = null;
+    }
   }
 
   private bindTrackResize(): void {

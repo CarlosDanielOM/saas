@@ -1166,6 +1166,7 @@
     "locked": "Locked",
     "mockPreview": "Design Preview",
     "noLiveData": "Sample",
+    "liveBadge": "Live",
     "carousel": {
       "prev": "Previous design",
       "next": "Next design",
@@ -1185,15 +1186,21 @@
     },
     "test": {
       "title": "Clip test",
+      "connectingTitle": "Connecting overlay…",
+      "connectingCopy": "Opening your overlay so the clip can play here.",
       "sendingTitle": "Sending test…",
-      "sendingCopy": "Triggering clip playback on your overlay.",
+      "sendingCopy": "Triggering clip playback on the live preview.",
+      "playingTitle": "Playing test clip",
+      "playingCopy": "This is how a real clip looks in this design.",
       "endedTitle": "Test sent",
       "endedCopy": "If the overlay is open, the clip should play now.",
       "errorTitle": "Test could not start",
       "errorFallback": "Something went wrong while testing the clip.",
       "sendFailed": "Failed to send the test request.",
       "timeout": "No response came back from the test request. Please try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "testAgain": "Test again",
+      "stop": "Stop preview"
     },
     "statusStable": "Stable",
     "statusBeta": "Beta",

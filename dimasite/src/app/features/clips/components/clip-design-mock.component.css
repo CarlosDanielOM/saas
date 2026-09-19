@@ -662,8 +662,8 @@
 
 @media (max-width: 639px) {
   .mock {
-    aspect-ratio: 2.4 / 1;
-    min-height: 152px;
+    aspect-ratio: 800 / 225;
+    min-height: 0;
   }
 }
 

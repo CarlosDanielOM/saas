@@ -1166,6 +1166,7 @@
     "locked": "Bloqueado",
     "mockPreview": "Vista Previa del Diseño",
     "noLiveData": "Muestra",
+    "liveBadge": "En vivo",
     "carousel": {
       "prev": "Diseño anterior",
       "next": "Diseño siguiente",
@@ -1185,15 +1186,21 @@
     },
     "test": {
       "title": "Prueba de clip",
+      "connectingTitle": "Conectando overlay…",
+      "connectingCopy": "Abriendo tu overlay para que el clip se reproduzca aquí.",
       "sendingTitle": "Enviando prueba…",
-      "sendingCopy": "Activando la reproducción en tu overlay.",
+      "sendingCopy": "Activando la reproducción en la vista previa en vivo.",
+      "playingTitle": "Reproduciendo clip de prueba",
+      "playingCopy": "Así se ve un clip real en este diseño.",
       "endedTitle": "Prueba enviada",
       "endedCopy": "Si el overlay está abierto, el clip debería reproducirse ahora.",
       "errorTitle": "No se pudo iniciar la prueba",
       "errorFallback": "Algo salió mal al probar el clip.",
       "sendFailed": "No se pudo enviar la solicitud de prueba.",
       "timeout": "No hubo respuesta de la prueba. Inténtalo de nuevo.",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "testAgain": "Probar de nuevo",
+      "stop": "Detener vista previa"
     },
     "statusStable": "Estable",
     "statusBeta": "Beta",

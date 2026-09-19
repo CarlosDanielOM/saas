@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
 import { LinksService } from '../../services/links.service';
 import type { 
@@ -27,8 +27,7 @@ export class ClipsService {
   testClip(request: ClipTestRequest): Observable<ClipTestResponse> {
     const url = `${this.linksService.getApiUrl()}/clip/test`;
     return this.http.post<ClipTestResponse>(url, request).pipe(
-      catchError((error) => {
-        console.error('Error testing clip:', error);
+      catchError((error: HttpErrorResponse) => {
         return of({
           error: true,
           message: error.error?.message || 'Failed to test clip',

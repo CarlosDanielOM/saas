@@ -163,10 +163,16 @@
                   <button
                     type="button"
                     class="lf-btn"
-                    [disabled]="!canTest()"
-                    (click)="openTestModal()"
+                    [disabled]="
+                      !canTest() || testState() === 'connecting' || testState() === 'sending'
+                    "
+                    (click)="startTest(design)"
                   >
-                    {{ t('clips.testDesign') }}
+                    {{
+                      isLivePreview(design) && testState() === 'playing'
+                        ? t('clips.test.testAgain')
+                        : t('clips.testDesign')
+                    }}
                   </button>
                 </div>
 
@@ -177,18 +183,87 @@
 
               <div class="lf-slide__preview">
                 <div class="lf-slide__preview-head">
-                  <p class="lf-kicker">{{ t('clips.mockPreview') }}</p>
-                  <span class="lf-chip">{{ t('clips.noLiveData') }}</span>
+                  <p class="lf-kicker">
+                    {{ isLivePreview(design) ? t('clips.preview') : t('clips.mockPreview') }}
+                  </p>
+                  @if (isLivePreview(design)) {
+                    <span class="lf-chip lf-chip--live">{{ t('clips.liveBadge') }}</span>
+                  } @else {
+                    <span class="lf-chip">{{ t('clips.noLiveData') }}</span>
+                  }
                 </div>
 
-                <app-clip-design-mock
-                  [variant]="design.variant"
-                  [accent]="design.accentColor"
-                  [streamer]="t('clips.mock.streamer')"
-                  [game]="t('clips.mock.game')"
-                  [title]="t('clips.mock.title')"
-                  [caption]="t('clips.mock.caption')"
-                />
+                @if (isLivePreview(design)) {
+                  <div class="lf-live-stage">
+                    <iframe
+                      class="lf-live-stage__frame"
+                      [src]="livePreviewUrl(design)"
+                      [title]="design.name"
+                      allow="autoplay"
+                      (load)="onLiveFrameLoad()"
+                    ></iframe>
+
+                    @switch (testState()) {
+                      @case ('connecting') {
+                        <div class="lf-live-status">
+                          <span class="lf-spinner" aria-hidden="true"></span>
+                          <p class="lf-live-status__title">{{ t('clips.test.connectingTitle') }}</p>
+                          <p class="lf-live-status__copy">{{ t('clips.test.connectingCopy') }}</p>
+                        </div>
+                      }
+                      @case ('sending') {
+                        <div class="lf-live-status">
+                          <span class="lf-spinner" aria-hidden="true"></span>
+                          <p class="lf-live-status__title">{{ t('clips.test.sendingTitle') }}</p>
+                          <p class="lf-live-status__copy">{{ t('clips.test.sendingCopy') }}</p>
+                        </div>
+                      }
+                      @case ('playing') {
+                        <span class="lf-live-badge">{{ t('clips.test.playingTitle') }}</span>
+                      }
+                      @case ('error') {
+                        <div class="lf-live-status lf-live-status--error">
+                          <p class="lf-live-status__title">{{ t('clips.test.errorTitle') }}</p>
+                          <p class="lf-live-status__copy">{{ testError() }}</p>
+                          <div class="lf-live-status__actions">
+                            <button
+                              type="button"
+                              class="lf-btn lf-btn--sm"
+                              (click)="stopLivePreview()"
+                            >
+                              {{ t('clips.test.stop') }}
+                            </button>
+                            <button
+                              type="button"
+                              class="lf-btn lf-btn--primary lf-btn--sm"
+                              (click)="retryTest()"
+                            >
+                              {{ t('clips.test.retry') }}
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    }
+
+                    <button
+                      type="button"
+                      class="lf-live-stop"
+                      (click)="stopLivePreview()"
+                      [attr.aria-label]="t('clips.test.stop')"
+                    >
+                      <app-lf-icon name="close"></app-lf-icon>
+                    </button>
+                  </div>
+                } @else {
+                  <app-clip-design-mock
+                    [variant]="design.variant"
+                    [accent]="design.accentColor"
+                    [streamer]="t('clips.mock.streamer')"
+                    [game]="t('clips.mock.game')"
+                    [title]="t('clips.mock.title')"
+                    [caption]="t('clips.mock.caption')"
+                  />
+                }
               </div>
             </div>
           </article>
@@ -209,14 +284,4 @@
       </div>
     </section>
   </main>
-
-  @if (showTestModal() && selectedDesign()) {
-    <app-clip-test-modal
-      [channelID]="userSettings().channelID"
-      [streamer]="userSettings().login"
-      [design]="selectedDesign()!"
-      [timeout]="config().timeoutSeconds"
-      (closed)="showTestModal.set(false)"
-    />
-  }
 </div>
