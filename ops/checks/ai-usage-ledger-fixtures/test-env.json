@@ -14,5 +14,6 @@
   "CLIENT_ID": "ai-usage-ledger-test-client",
   "AI_USAGE_RECEIPTS_ENABLED": "false",
   "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false",
-  "EVENTSUB_RECONCILIATION_ENABLED": "false"
+  "EVENTSUB_RECONCILIATION_ENABLED": "false",
+  "AI_USAGE_BACKFILL_ENABLED": "false"
 }

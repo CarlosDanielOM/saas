@@ -154,6 +154,8 @@ test('pacing estimates exhaustion from unchanged credit totals', () => {
 
   assert.deepEqual(pacing, {
     status: 'over_pace',
+    confidence: 'low', confidenceReasons: ['limited_activity'],
+    recentAverageDailyCredits: null, recentHistoryDays: 0,
     forecastBasis: 'current_billing_period',
     forecastRateBasis: 'current_cycle',
     quotaUsedPercent: 50,
@@ -320,6 +322,7 @@ test('Polar event normalization exposes only receipt-safe fields', () => {
     entryKind: 'usage',
     category: 'tts',
     operation: 'synthesize',
+    source: null, adjustmentType: null,
     provider: 'fish',
     model: 'fish-v1',
     quantity: 100,
@@ -410,4 +413,25 @@ test('transaction pagination uses an opaque stable cursor and category filters',
   const second = paginateAiUsageTransactions({ transactions, category: 'tts', limit: 1, cursor: first.nextCursor! });
   assert.deepEqual(second.items.map((item) => item.id), ['2']);
   assert.equal(second.nextCursor, null);
+});
+
+test('confidence reflects coverage, active days and variability without changing the quota', () => {
+  const input = {
+    credits: { used: 1000, limit: 10000, balance: 9000, available: true, status: 'available' as const },
+    billingPeriod: { source: 'subscription' as const, startsAt: '2026-09-07T00:00:00Z', endsAt: '2026-10-07T00:00:00Z',
+      endExclusive: true as const, from: '2026-09-07', to: '2026-10-06', totalDayCount: 30, elapsedDayCount: 8 },
+    history: { averageDailyCredits: 100, totalSpentCredits: 3000, dayCount: 30, from: '2026-08-15', to: '2026-09-13',
+      activeDayCount: 25, coefficientOfVariation: 0.2, recentAverageDailyCredits: 120, recentDayCount: 7 },
+    now: new Date('2026-09-15T00:00:00Z')
+  };
+  const steady = buildAiUsagePacing(input)!;
+  assert.equal(steady.confidence, 'high');
+  assert.equal(steady.recentAverageDailyCredits, 120);
+  assert.equal(steady.recentHistoryDays, 7);
+  assert.equal(steady.quotaUsedPercent, 10);
+  assert.equal(buildAiUsagePacing({ ...input, historyComplete: false })?.confidence, 'low');
+  const spiky = buildAiUsagePacing({ ...input, history: { ...input.history, coefficientOfVariation: 3 } })!;
+  assert.equal(spiky.confidence, 'medium');
+  assert.ok(spiky.confidenceReasons.includes('variable_usage'));
+  assert.equal(buildAiUsagePacing({ ...input, history: { ...input.history, activeDayCount: 1 } })?.confidence, 'low');
 });

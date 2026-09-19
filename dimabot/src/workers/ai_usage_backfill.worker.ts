@@ -1,5 +1,6 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
+import { USAGE_QUEUES, claimUsageJob, completeUsageJob, failUsageJob } from '../utils/ai_usage_queue_health.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 if (isDev) dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -15,11 +16,6 @@ const QUEUE_WAIT_SECONDS = Math.max(1, Number(process.env.AI_USAGE_BACKFILL_QUEU
 const SWEEP_LOCK_SECONDS = Math.max(300, Number(process.env.AI_USAGE_BACKFILL_SWEEP_LOCK_SECONDS || 86_400));
 const SWEEP_LOCK_KEY = 'worker:ai-usage-backfill:daily-sweep';
 
-const CLAIM_SCRIPT = `
-local item = redis.call('LPOP', KEYS[1])
-if item then redis.call('RPUSH', KEYS[2], item) end
-return item
-`;
 const RECLAIM_SCRIPT = `
 local moved = 0
 while true do
@@ -81,6 +77,21 @@ async function bootstrap(): Promise<void> {
     process.once('SIGINT', stop);
     process.once('SIGTERM', stop);
 
+    const consumerKey = 'worker:ai-usage-backfill:consumer';
+    const consumerOwner = `${process.pid}-${Date.now()}`;
+    while (await cache.set(consumerKey, consumerOwner, { NX: true, EX: 120 }) !== 'OK') {
+        if (RUN_ONCE || stopping) { cache.destroy(); await mongoose.disconnect(); return; }
+        await sleep(1000);
+    }
+    const heartbeat = setInterval(() => {
+        void cache.eval("if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], 120) end return 0",
+            { keys: [consumerKey], arguments: [consumerOwner] }).then(value => { if (Number(value) !== 1) process.exit(1); }).catch(() => process.exit(1));
+    }, 30_000);
+    heartbeat.unref();
+    const releaseConsumer = async () => {
+        clearInterval(heartbeat);
+        await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [consumerKey], arguments: [consumerOwner] });
+    };
     await cache.eval(RECLAIM_SCRIPT, {
         keys: [queue.AI_USAGE_BACKFILL_PROCESSING_KEY, queue.AI_USAGE_BACKFILL_QUEUE_KEY], arguments: []
     });
@@ -120,10 +131,7 @@ async function bootstrap(): Promise<void> {
     }
 
     async function claimJob(): Promise<string | null> {
-        const result = await cache.eval(CLAIM_SCRIPT, {
-            keys: [queue.AI_USAGE_BACKFILL_QUEUE_KEY, queue.AI_USAGE_BACKFILL_PROCESSING_KEY], arguments: []
-        });
-        return typeof result === 'string' && result ? result : null;
+        return claimUsageJob(cache, USAGE_QUEUES[1]);
     }
 
     async function processOne(): Promise<boolean> {
@@ -131,38 +139,30 @@ async function bootstrap(): Promise<void> {
         if (!raw) return false;
         const job = queue.parseAiUsageBackfillJob(raw);
         if (!job) {
-            await cache.rPush(queue.AI_USAGE_BACKFILL_DEAD_KEY, raw);
-            await cache.lRem(queue.AI_USAGE_BACKFILL_PROCESSING_KEY, 1, raw);
+            await failUsageJob(cache, USAGE_QUEUES[1], raw, true);
             await logWarn({ worker: 'ai_usage_backfill', message: 'Invalid backfill job moved to dead-letter queue' }, { destination: 'console' });
             return true;
         }
         try {
+            const user = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: job.channelID } } }).select('plan_tier polar_sh_customer_id').lean().exec();
+            if (!user || user.polar_sh_customer_id !== job.customerId) {
+                await completeUsageJob(cache, USAGE_QUEUES[1], raw);
+                await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [job.dedupeKey], arguments: [job.id] });
+                return true;
+            }
+            job.planTier = user.plan_tier || 'free';
             const result = await syncAiUsageBackfillJob(job, cache);
-            await cache.lRem(queue.AI_USAGE_BACKFILL_PROCESSING_KEY, 1, raw);
-            await cache.del(job.dedupeKey);
+            await completeUsageJob(cache, USAGE_QUEUES[1], raw);
+            await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [job.dedupeKey], arguments: [job.id] });
             await logInfo({
                 worker: 'ai_usage_backfill', message: 'AI usage ledger sync completed',
                 jobID: job.id, reason: job.reason, ...result
             }, { channelId: job.channelID, destination: 'console' });
         } catch (caught) {
-            await cache.lRem(queue.AI_USAGE_BACKFILL_PROCESSING_KEY, 1, raw);
-            const retry = { ...job, attempts: job.attempts + 1 };
-            if (retry.attempts >= MAX_ATTEMPTS) {
-                await cache.rPush(queue.AI_USAGE_BACKFILL_DEAD_KEY, JSON.stringify(retry));
-                await cache.del(job.dedupeKey);
-                await logError({
-                    worker: 'ai_usage_backfill', message: 'AI usage backfill exhausted retries',
-                    jobID: job.id, channelID: job.channelID,
-                    error: caught instanceof Error ? caught.message : String(caught)
-                }, { channelId: job.channelID, destination: 'both' });
-            } else {
-                await cache.rPush(queue.AI_USAGE_BACKFILL_QUEUE_KEY, JSON.stringify(retry));
-                await logWarn({
-                    worker: 'ai_usage_backfill', message: 'AI usage backfill requeued after failure',
-                    jobID: job.id, channelID: job.channelID, attempts: retry.attempts,
-                    error: caught instanceof Error ? caught.message : String(caught)
-                }, { channelId: job.channelID, destination: 'console' });
-            }
+            const outcome = await failUsageJob(cache, USAGE_QUEUES[1], raw, false, MAX_ATTEMPTS);
+            if (outcome === 2) await cache.eval(RELEASE_LOCK_SCRIPT, { keys: [job.dedupeKey], arguments: [job.id] });
+            await logError({ worker: 'ai_usage_backfill', message: outcome === 2 ? 'AI usage backfill exhausted retries' : 'AI usage backfill requeued after failure',
+                channelID: job.channelID, error: caught instanceof Error ? caught.message : String(caught) }, { destination: 'both' });
         }
         await sleep(REQUEST_DELAY_MS);
         return true;
@@ -190,6 +190,7 @@ async function bootstrap(): Promise<void> {
     if (RUN_ONCE) {
         await enqueueSweep('startup_sweep');
         await drainQueue();
+        await releaseConsumer();
         cache.destroy();
         await mongoose.disconnect();
         return;
@@ -201,6 +202,7 @@ async function bootstrap(): Promise<void> {
         const processed = await processOne();
         if (!processed) await sleep(QUEUE_WAIT_SECONDS * 1_000);
     }
+    await releaseConsumer();
     cache.destroy();
     await mongoose.disconnect();
 }

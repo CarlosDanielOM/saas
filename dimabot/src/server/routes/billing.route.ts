@@ -14,11 +14,12 @@ import {
   AiUsageReceiptValidationError,
   buildAiUsagePacing,
   buildAiUsageSummary,
-  getCachedAiUsageTransactions,
-  paginateAiUsageTransactions,
   resolveAiUsagePeriod,
 } from '../../utils/ai_usage_receipts.js';
-import { getAiUsageRetentionDays, loadAiUsagePacingHistory } from '../../utils/ai_usage_ledger.js';
+import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
+
+import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
+import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
 
 type TargetPlan = 'premium' | 'pro';
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
@@ -408,28 +409,22 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
             maxDays: getAiUsageRetentionDays(planTier)
         });
-        const usageRead = target.user.polar_sh_customer_id
-            ? await getCachedAiUsageTransactions({
-                channelID: target.channelID,
-                customerId: target.user.polar_sh_customer_id,
-                window: period.window,
-                planTier
-            })
-            : null;
-        const transactions = capabilities.dailySpend ? usageRead?.transactions || [] : [];
-        const summary = buildAiUsageSummary(transactions, period.window);
-        const pacingHistory = target.user.polar_sh_customer_id
-            ? await loadAiUsagePacingHistory({
-                channelID: target.channelID,
-                customerId: target.user.polar_sh_customer_id,
-                planTier,
-                accountCreatedAt: target.user.created_at
-            })
-            : null;
+        const readInput = {
+            channelID: target.channelID, customerId: target.user.polar_sh_customer_id,
+            planTier, accountCreatedAt: target.user.created_at, window: period.window
+        };
+        const ledger = readInput.customerId ? await usageLedgerStatus(readInput) : null;
+        const dashboard = readInput.customerId ? await getAiUsageDashboard(readInput) : null;
+        const summary = dashboard?.summary || buildAiUsageSummary([], period.window);
+        // A custom chart range must not replace the actual cycle used for forecasting.
+        const cycle = period.billingPeriod.source === 'custom' ? await resolveAiUsagePeriod({
+            customerId: planTier === 'free' ? undefined : target.user.polar_sh_customer_id || undefined,
+            freePeriodAnchor: planTier === 'free' ? target.user.created_at : undefined,
+            timeZone: period.window.timeZone, maxDays: getAiUsageRetentionDays(planTier)
+        }) : period;
         const pacing = buildAiUsagePacing({
-            credits,
-            billingPeriod: period.billingPeriod,
-            history: pacingHistory
+            credits, billingPeriod: cycle.billingPeriod, history: dashboard?.history,
+            historyComplete: ledger?.status !== 'pending'
         });
 
         return res.status(200).json({
@@ -441,7 +436,9 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
                 capabilities,
                 credits,
                 billingPeriod: period.billingPeriod,
-                ledger: usageRead?.ledger || null,
+                ledger,
+                summaryUpdatedAt: dashboard?.refreshedAt || null,
+                pacingPeriod: cycle.billingPeriod,
                 pacing,
                 analytics: capabilities.dailySpend ? {
                     ...summary,
@@ -478,19 +475,18 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
             timeZone: getStringQueryParam(req.query.timezone) || 'UTC',
             maxDays: getAiUsageRetentionDays(planTier)
         });
-        const usageRead = target.user.polar_sh_customer_id
-            ? await getCachedAiUsageTransactions({
-                channelID: target.channelID,
-                customerId: target.user.polar_sh_customer_id,
-                window: period.window,
-                planTier
-            })
-            : null;
-        const transactions = usageRead?.transactions || [];
+        const readInput = { channelID: target.channelID, customerId: target.user.polar_sh_customer_id,
+            window: period.window, planTier };
+        const ledger = readInput.customerId ? await usageLedgerStatus(readInput) : null;
         const limitRaw = getStringQueryParam(req.query.limit);
-        const page = paginateAiUsageTransactions({
-            transactions,
+        const page = await queryAiUsageTransactions({
+            ...readInput,
             category: getStringQueryParam(req.query.category) || undefined,
+            source: getStringQueryParam(req.query.source) || undefined,
+            resourceId: getStringQueryParam(req.query.resourceId) || undefined,
+            requestId: getStringQueryParam(req.query.requestId) || undefined,
+            entryKind: getStringQueryParam(req.query.entryKind) || undefined,
+            adjustmentType: getStringQueryParam(req.query.adjustmentType) || undefined,
             cursor: getStringQueryParam(req.query.cursor) || undefined,
             limit: limitRaw ? Number(limitRaw) : 25
         });
@@ -509,7 +505,7 @@ router.get('/ai-usage/transactions', authMiddleware as any, async (req: Request,
                     dayCount: period.window.days.length
                 },
                 billingPeriod: period.billingPeriod,
-                ledger: usageRead?.ledger || null,
+                ledger,
                 category: getStringQueryParam(req.query.category) || null,
                 items: page.items,
                 nextCursor: page.nextCursor

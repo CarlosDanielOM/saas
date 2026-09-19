@@ -8,6 +8,7 @@ import {
   type AiUsageLedgerStatus,
   type AiUsagePacingHistory,
 } from './ai_usage_ledger.js';
+import { classifyAdjustment } from './ai_usage_classification.js';
 import { enqueueAiUsageBackfill } from './ai_usage_backfill_queue.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
 import type { AiCreditsData } from './billing.js';
@@ -67,6 +68,10 @@ export interface AiUsagePacing {
   status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted';
   forecastBasis: 'current_billing_period' | 'current_free_credit_period';
   forecastRateBasis: 'current_cycle' | 'retention_history';
+  confidence: 'low' | 'medium' | 'high';
+  confidenceReasons: string[];
+  recentAverageDailyCredits: number | null;
+  recentHistoryDays: number;
   quotaUsedPercent: number;
   averageDailyCredits: number;
   currentCycleAverageDailyCredits: number;
@@ -89,6 +94,8 @@ export interface AiUsageTransaction {
   entryKind: AiUsageEntryKind;
   category: AiUsageReceiptCategory;
   operation: string;
+  source?: string | null;
+  adjustmentType?: string | null;
   provider: string;
   model: string | null;
   quantity: number | null;
@@ -481,6 +488,7 @@ export function buildAiUsagePacing(input: {
   credits: Pick<AiCreditsData, 'used' | 'limit' | 'balance' | 'available' | 'status'>;
   billingPeriod: AiUsageBillingPeriod;
   history?: AiUsagePacingHistory | null;
+  historyComplete?: boolean;
   now?: Date;
 }): AiUsagePacing | null {
   if (!['subscription', 'free_monthly'].includes(input.billingPeriod.source) || !input.credits.available) return null;
@@ -522,8 +530,22 @@ export function buildAiUsagePacing(input: {
   else if (expectedToExhaustWithinPeriod) status = 'over_pace';
   else status = 'within_pace';
 
+  const confidenceReasons: string[] = [];
+  const historyDays = usableHistory?.dayCount || elapsedDays;
+  const activeDays = usableHistory?.activeDayCount ?? 0;
+  const variability = usableHistory?.coefficientOfVariation ?? Infinity;
+  if (historyDays < 7) confidenceReasons.push('insufficient_history');
+  if (activeDays < 3) confidenceReasons.push('limited_activity');
+  if (Number.isFinite(variability) && variability > 1) confidenceReasons.push('variable_usage');
+  if (input.historyComplete === false) confidenceReasons.push('history_sync_pending');
+  const confidence: AiUsagePacing['confidence'] = input.historyComplete === false || historyDays < 7 || activeDays < 3
+    ? 'low' : historyDays >= 21 && activeDays >= 7 && variability <= 1 ? 'high' : 'medium';
   return {
     status,
+    confidence,
+    confidenceReasons,
+    recentAverageDailyCredits: input.history?.recentAverageDailyCredits === undefined ? null : rounded(input.history.recentAverageDailyCredits),
+    recentHistoryDays: input.history?.recentDayCount || 0,
     forecastBasis: isSubscription ? 'current_billing_period' : 'current_free_credit_period',
     forecastRateBasis: usableHistory ? 'retention_history' : 'current_cycle',
     quotaUsedPercent: limit > 0 ? rounded((Math.max(0, input.credits.used) / limit) * 100) : 0,
@@ -598,6 +620,8 @@ export function normalizePolarUsageEvent(event: PolarUsageEventLike): AiUsageTra
     entryKind,
     category: receiptCategory(metadata.category),
     operation: safeText(metadata.operation, 'usage'),
+    source: optionalSafeText(metadata.usage_source),
+    adjustmentType: classifyAdjustment({ entryKind, operation: metadata.operation, source: metadata.usage_source, reason: metadata.reason }),
     provider: safeText(metadata.provider, 'unknown'),
     model: optionalSafeText(metadata.model),
     quantity: finiteNumber(metadata.quantity),

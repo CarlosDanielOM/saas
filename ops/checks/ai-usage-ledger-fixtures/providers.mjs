@@ -45,7 +45,10 @@ globalThis.fetch = async (input, init = {}) => {
     return json({ inserted: Array.isArray(body.events) ? body.events.length : 0, duplicates: 0 });
   }
   if (url.hostname === 'api.polar.sh' && /^\/v1\/customers\/[^/]+\/state\/?$/.test(url.pathname)) {
-    return json({ id: '11111111-1111-4111-8111-111111111111', active_subscriptions: [], active_meters: [] });
+    return json({ id: '11111111-1111-4111-8111-111111111111', created_at: '2025-01-07T00:00:00Z', modified_at: null,
+      metadata: {}, external_id: null, email: 'fixture@example.invalid', email_verified: true, type: 'individual', name: 'Fixture',
+      billing_address: null, tax_id: null, organization_id: 'candidate-organization', deleted_at: null,
+      active_subscriptions: [], granted_benefits: [], active_meters: [], avatar_url: '' });
   }
   if (url.hostname === 'us.i.posthog.com') return json({ status: 1 });
   if (url.hostname === 'qdrant.test') return json({ result: { collections: [] }, status: 'ok', time: 0 });

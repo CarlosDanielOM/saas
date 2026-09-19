@@ -1,5 +1,7 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
+import { USAGE_QUEUES, claimUsageJob, completeUsageJob, failUsageJob, monitorAiUsageQueues } from '../utils/ai_usage_queue_health.js';
+import { refreshAiUsageDashboards } from '../utils/ai_usage_dashboard.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 if (isDev) dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -13,11 +15,6 @@ const ENABLED = process.env.AI_USAGE_RECEIPTS_ENABLED !== 'false';
 const RUN_ONCE = process.argv.includes('--once');
 const DRY_RUN = process.argv.includes('--dry-run');
 
-const CLAIM_SCRIPT = `
-local item = redis.call('RPOP', KEYS[1])
-if item then redis.call('LPUSH', KEYS[2], item) end
-return item
-`;
 const RECLAIM_SCRIPT = `
 local moved = 0
 while true do
@@ -110,16 +107,13 @@ async function bootstrap(): Promise<void> {
                 keys: [AI_USAGE_RECEIPT_PROCESSING_KEY, AI_USAGE_RECEIPT_QUEUE_KEY], arguments: []
             });
             while (!shutdownRequested && !lockLost && counts.processed < BATCH_SIZE) {
-                const raw = await cache.eval(CLAIM_SCRIPT, {
-                    keys: [AI_USAGE_RECEIPT_QUEUE_KEY, AI_USAGE_RECEIPT_PROCESSING_KEY], arguments: []
-                });
+                const raw = await claimUsageJob(cache, USAGE_QUEUES[0]);
                 if (typeof raw !== 'string' || !raw) break;
                 counts.processed += 1;
                 const receipt = parseQueuedAiUsageReceipt(raw);
                 if (!receipt) {
                     counts.invalid += 1;
-                    await cache.rPush(`${AI_USAGE_RECEIPT_QUEUE_KEY}:dead`, raw);
-                    await cache.lRem(AI_USAGE_RECEIPT_PROCESSING_KEY, 1, raw);
+                    await failUsageJob(cache, USAGE_QUEUES[0], raw, true);
                     continue;
                 }
                 try {
@@ -127,16 +121,17 @@ async function bootstrap(): Promise<void> {
                     if (result === 'inserted') counts.inserted += 1;
                     else if (result === 'duplicate') counts.duplicates += 1;
                     else counts.expired += 1;
-                    await cache.lRem(AI_USAGE_RECEIPT_PROCESSING_KEY, 1, raw);
+                    await completeUsageJob(cache, USAGE_QUEUES[0], raw);
                     await cache.incr(`twitch:${receipt.channelID}:ai:usage-receipts:generation`);
                 } catch (caught) {
                     counts.failed += 1;
+                    await failUsageJob(cache, USAGE_QUEUES[0], raw);
                     await logError({
-                        worker: 'ai_usage_receipts', message: 'Receipt persistence failed; claim retained for retry',
+                        worker: 'ai_usage_receipts', message: 'Receipt persistence failed; requeued or retained in dead letters',
                         channelID: receipt.channelID,
                         error: caught instanceof Error ? caught.message : String(caught)
                     }, { destination: 'both' });
-                    break;
+                    continue;
                 }
             }
             if (counts.processed > 0 || RUN_ONCE) {
@@ -150,12 +145,20 @@ async function bootstrap(): Promise<void> {
 
     if (RUN_ONCE) {
         await run();
+        await refreshAiUsageDashboards();
+        await monitorAiUsageQueues(cache);
         cache.destroy();
         await mongoose.disconnect();
         return;
     }
+    let lastMaintenance = 0;
     while (!shutdownRequested) {
         await run();
+        if (Date.now() - lastMaintenance >= 10_000) {
+            await refreshAiUsageDashboards();
+            await monitorAiUsageQueues(cache);
+            lastMaintenance = Date.now();
+        }
         await Promise.race([sleep(INTERVAL_MS), shutdownSignal]);
     }
     cache.destroy();

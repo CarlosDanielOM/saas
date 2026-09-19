@@ -11,6 +11,8 @@ export interface IAiUsageReceipt {
     entryKind: 'usage' | 'adjustment';
     category: string;
     operation: string;
+    source?: string | null;
+    adjustmentType?: string | null;
     provider: string;
     model: string | null;
     quantity: number | null;
@@ -34,6 +36,8 @@ const aiUsageReceiptSchema = new Schema<IAiUsageReceipt>({
     entryKind: { type: String, enum: ['usage', 'adjustment'], required: true },
     category: { type: String, required: true },
     operation: { type: String, required: true },
+    source: { type: String, default: null },
+    adjustmentType: { type: String, default: null },
     provider: { type: String, required: true },
     model: { type: String, default: null },
     quantity: { type: Number, default: null },
@@ -49,6 +53,9 @@ const aiUsageReceiptSchema = new Schema<IAiUsageReceipt>({
 aiUsageReceiptSchema.index({ channelID: 1, customerId: 1, entryId: 1 }, { unique: true });
 aiUsageReceiptSchema.index({ channelID: 1, customerId: 1, occurredAt: -1, entryId: -1 });
 aiUsageReceiptSchema.index({ channelID: 1, customerId: 1, category: 1, occurredAt: -1, entryId: -1 });
+for (const field of ['source', 'resourceId', 'requestId', 'entryKind', 'adjustmentType']) {
+    aiUsageReceiptSchema.index({ channelID: 1, customerId: 1, [field]: 1, occurredAt: -1, entryId: -1 });
+}
 aiUsageReceiptSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const AiUsageReceiptSchema = model<IAiUsageReceipt>('ai_usage_receipts', aiUsageReceiptSchema);

@@ -30,7 +30,7 @@ test('queued receipts contain only itemized receipt fields', () => {
     assert.deepEqual(receipt, {
         channelID: 'channel-1', customerId: 'customer-1', id: 'entry-1', requestId: 'request-1',
         occurredAt: '2026-09-19T12:00:00.000Z', entryKind: 'usage', category: 'tts',
-        operation: 'synthesize', provider: 'fish', model: null, quantity: 100, unit: 'characters',
+        operation: 'synthesize', source: 'chat-command', adjustmentType: null, provider: 'fish', model: null, quantity: 100, unit: 'characters',
         credits: 150, resourceType: 'speech', resourceId: 'speech-1', itemized: true,
     });
     assert.equal('prompt' in receipt!, false);
@@ -65,4 +65,13 @@ test('background backfill jobs keep tier retention boundaries and reject malform
     assert.equal(parsed?.planTier, 'pro');
     assert.equal(parsed?.reason, 'daily_sweep');
     assert.equal(parsed?.attempts, 1);
+});
+
+test('adjustment classifications distinguish resets, grants and refunds without changing amounts', async () => {
+    const { classifyAdjustment } = await import('./ai_usage_classification.js');
+    assert.equal(classifyAdjustment({ entryKind: 'adjustment', source: 'free_credit_reset_worker' }), 'monthly_reset');
+    assert.equal(classifyAdjustment({ entryKind: 'adjustment', source: 'admin_credit_grant' }), 'manual_grant');
+    assert.equal(classifyAdjustment({ entryKind: 'adjustment', operation: 'refund' }), 'refund');
+    assert.equal(classifyAdjustment({ entryKind: 'usage', operation: 'refund' }), null);
+    assert.equal(classifyAdjustment({ entryKind: 'adjustment' }), 'other');
 });

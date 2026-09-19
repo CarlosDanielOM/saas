@@ -23,7 +23,7 @@ function account(id) {
 function runWorker(workerEntry) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [workerEntry, '--once'], {
-      cwd: process.cwd(), env: { ...process.env, AI_USAGE_RECEIPTS_ENABLED: 'true' },
+      cwd: process.cwd(), env: { ...process.env, AI_USAGE_RECEIPTS_ENABLED: 'true', AI_USAGE_BACKFILL_ENABLED: 'true' },
     });
     let output = '';
     const capture = chunk => { output += chunk.toString(); };
@@ -123,6 +123,45 @@ for (const [tier, days] of tiers) {
 }
 assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 0);
 assert.equal(await redis.lLen('cron:ai-usage-receipts:processing'), 0);
+
+
+const { persistAiUsageReceipt } = await import('/app/dist/utils/ai_usage_ledger.js');
+const Dashboards = (await import('/app/dist/schemas/ai_usage_dashboard.schema.js')).default;
+assert.ok(await Dashboards.exists({ channelID: 'ledger-pro' }));
+async function transactions(query = '') {
+  const response = await fetch(`${base}/billing/ai-usage/transactions?from=2026-09-18&to=2026-09-19&${query}`, { headers: { Authorization: 'Bearer ledger-token' } });
+  return { status: response.status, body: await response.json() };
+}
+const firstPage = await transactions('limit=1');
+assert.equal(firstPage.status, 200);
+assert.equal(firstPage.body.data.items.length, 1);
+const cursor = firstPage.body.data.nextCursor;
+assert.ok(cursor);
+// Removing the prior row must not invalidate the continuation boundary.
+await AiUsageReceiptSchema.deleteOne({ entryId: firstPage.body.data.items[0].id });
+const nextPage = await transactions(`limit=1&cursor=${encodeURIComponent(cursor)}`);
+assert.equal(nextPage.status, 200);
+assert.equal(nextPage.body.data.items[0].id, 'ledger-chat');
+assert.equal((await transactions('limit=101')).status, 400);
+assert.equal((await transactions('cursor=broken')).status, 400);
+assert.equal((await transactions(`category=tts&cursor=${encodeURIComponent(cursor)}`)).status, 400);
+assert.equal((await transactions('source=chat')).body.data.items.length, 1);
+assert.equal((await transactions('requestId=request-chat')).body.data.items.length, 1);
+assert.equal((await transactions('resourceId=missing')).body.data.items.length, 0);
+const adjustment = { channelID: 'ledger-pro', customerId: customer, id: 'test-grant', requestId: 'grant-request',
+ occurredAt: '2026-09-19T02:00:00Z', entryKind: 'adjustment', category: 'credit_adjustment', operation: 'grant',
+ source: 'admin_credit_grant', provider: 'polar', model: null, quantity: null, unit: null, credits: -100,
+ resourceType: null, resourceId: null, itemized: true };
+await persistAiUsageReceipt(adjustment, 'pro');
+const adjustmentPage = await transactions('entryKind=adjustment&adjustmentType=manual_grant');
+assert.equal(adjustmentPage.body.data.items[0].credits, -100);
+assert.equal(adjustmentPage.body.data.items[0].adjustmentType, 'manual_grant');
+assert.equal((await transactions('entryKind=usage')).body.data.items.length, 1);
+const freshSummary = await summary();
+assert.equal(freshSummary.analytics.totalSpentCredits, 50);
+assert.equal(freshSummary.analytics.grantedCredits, 100);
+assert.ok(freshSummary.summaryUpdatedAt);
+console.log('PASS API database cursors, scope validation, source/request/item filters, separate adjustments and dashboard refresh');
 
 redis.destroy();
 console.log('Background Mongo backfill, immediate API reads, local reuse, queue worker, aggregates, and tier retention passed');

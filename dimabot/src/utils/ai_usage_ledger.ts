@@ -1,3 +1,6 @@
+import Dashboards from '../schemas/ai_usage_dashboard.schema.js';
+import { withAiUsageLock } from './ai_usage_lock.js';
+import { classifyAdjustment } from './ai_usage_classification.js';
 import type { RedisClientType } from 'redis';
 import AiUsageDailySchema from '../schemas/ai_usage_daily.schema.js';
 import AiUsageLedgerStateSchema from '../schemas/ai_usage_ledger_state.schema.js';
@@ -31,6 +34,10 @@ export interface AiUsageLedgerStatus {
 }
 
 export interface AiUsagePacingHistory {
+    activeDayCount?: number;
+    coefficientOfVariation?: number;
+    recentAverageDailyCredits?: number;
+    recentDayCount?: number;
     averageDailyCredits: number;
     totalSpentCredits: number;
     dayCount: number;
@@ -86,6 +93,8 @@ export function buildQueuedAiUsageReceipt(input: {
         entryKind: input.context.entryKind,
         category: safeCategory(input.context.category),
         operation: input.context.operation,
+        source: input.context.source,
+        adjustmentType: classifyAdjustment(input.context),
         provider: input.context.provider,
         model: input.context.model || null,
         quantity: input.context.quantity ?? null,
@@ -102,7 +111,7 @@ export async function enqueueAiUsageReceipt(
     receipt: QueuedAiUsageReceipt | null
 ): Promise<void> {
     if (!receipt) return;
-    await cache.rPush(AI_USAGE_RECEIPT_QUEUE_KEY, JSON.stringify(receipt));
+    await cache.rPush(AI_USAGE_RECEIPT_QUEUE_KEY, JSON.stringify({ ...receipt, enqueuedAt: new Date().toISOString() }));
 }
 
 export function parseQueuedAiUsageReceipt(raw: string): QueuedAiUsageReceipt | null {
@@ -122,6 +131,8 @@ export function parseQueuedAiUsageReceipt(raw: string): QueuedAiUsageReceipt | n
             entryKind: parsed.entryKind === 'adjustment' || credits < 0 ? 'adjustment' : 'usage',
             category: safeCategory(parsed.category),
             operation: nullableString(parsed.operation) || 'usage',
+            source: nullableString(parsed.source),
+            adjustmentType: classifyAdjustment({ ...parsed, entryKind: parsed.entryKind === 'adjustment' || credits < 0 ? 'adjustment' : 'usage' }),
             provider: nullableString(parsed.provider) || 'unknown',
             model: nullableString(parsed.model),
             quantity: finiteNumber(parsed.quantity),
@@ -150,6 +161,8 @@ function receiptDocument(receipt: QueuedAiUsageReceipt, planTier: AiUsageRetenti
         entryKind: receipt.entryKind,
         category: safeCategory(receipt.category),
         operation: receipt.operation,
+        source: receipt.source || null,
+        adjustmentType: receipt.adjustmentType || classifyAdjustment(receipt),
         provider: receipt.provider,
         model: receipt.model,
         quantity: receipt.quantity,
@@ -163,39 +176,13 @@ function receiptDocument(receipt: QueuedAiUsageReceipt, planTier: AiUsageRetenti
     };
 }
 
-async function incrementDaily(receipt: QueuedAiUsageReceipt, planTier: AiUsageRetentionTier): Promise<void> {
-    const occurredAt = new Date(receipt.occurredAt);
-    const date = occurredAt.toISOString().slice(0, 10);
-    const dayStart = new Date(`${date}T00:00:00.000Z`);
-    const spent = receipt.credits > 0 && receipt.entryKind !== 'adjustment' ? receipt.credits : 0;
-    const granted = receipt.credits < 0 ? Math.abs(receipt.credits) : 0;
-    const increments: Record<string, number> = {
-        spentCredits: spent,
-        grantedCredits: granted,
-        netConsumedCredits: spent - granted,
-        transactionCount: spent > 0 ? 1 : 0
-    };
-    if (spent > 0) {
-        increments[`categories.${safeCategory(receipt.category)}.credits`] = spent;
-        increments[`categories.${safeCategory(receipt.category)}.transactionCount`] = 1;
-    }
-    await AiUsageDailySchema.collection.updateOne(
-        { channelID: receipt.channelID, customerId: receipt.customerId, date },
-        {
-            $setOnInsert: { channelID: receipt.channelID, customerId: receipt.customerId, date, dayStart },
-            $set: { retentionTier: planTier },
-            $max: { expiresAt: expiryFor(occurredAt, planTier) },
-            $inc: increments
-        } as any,
-        { upsert: true }
-    );
-}
-
 export async function persistAiUsageReceipt(
     receipt: QueuedAiUsageReceipt,
     planTierInput: unknown
 ): Promise<'inserted' | 'duplicate' | 'expired'> {
+    return withAiUsageLock(receipt.channelID, receipt.customerId, async () => {
     const planTier = validTier(planTierInput);
+    await Dashboards.updateMany({ channelID: receipt.channelID, customerId: receipt.customerId }, { $set: { dirty: true } });
     const document = receiptDocument(receipt, planTier);
     if (document.expiresAt.getTime() <= Date.now()) return 'expired';
     const result = await AiUsageReceiptSchema.updateOne(
@@ -203,9 +190,11 @@ export async function persistAiUsageReceipt(
         { $setOnInsert: document },
         { upsert: true }
     );
-    if (result.upsertedCount !== 1) return 'duplicate';
-    await incrementDaily(receipt, planTier);
-    return 'inserted';
+    // Rebuild on duplicate as well: a prior crash may have saved only the receipt.
+    const dayStart = new Date(receipt.occurredAt.slice(0, 10) + 'T00:00:00.000Z');
+    await rebuildUtcDailyAggregates(receipt.channelID, receipt.customerId, planTier, dayStart, new Date(dayStart.getTime() + 86_400_000 - 1));
+    return result.upsertedCount === 1 ? 'inserted' : 'duplicate';
+    });
 }
 
 export async function backfillAiUsageLedger(input: {
@@ -217,6 +206,8 @@ export async function backfillAiUsageLedger(input: {
     transactions: AiUsageTransaction[];
     now?: Date;
 }): Promise<void> {
+    return withAiUsageLock(input.channelID, input.customerId, async () => {
+    await Dashboards.updateMany({ channelID: input.channelID, customerId: input.customerId }, { $set: { dirty: true } });
     const planTier = validTier(input.planTier);
     const now = input.now || new Date();
     const floor = now.getTime() - getAiUsageRetentionDays(planTier) * 86_400_000;
@@ -230,7 +221,10 @@ export async function backfillAiUsageLedger(input: {
         await AiUsageReceiptSchema.bulkWrite(batch.map((receipt) => ({
             updateOne: {
                 filter: { channelID: receipt.channelID, customerId: receipt.customerId, entryId: receipt.id },
-                update: { $setOnInsert: receiptDocument(receipt, planTier) },
+                update: { $setOnInsert: (() => {
+                    const { source, adjustmentType, ...document } = receiptDocument(receipt, planTier);
+                    return document;
+                })(), $set: { source: receipt.source || null, adjustmentType: receipt.adjustmentType || classifyAdjustment(receipt) } },
                 upsert: true
             }
         })), { ordered: false });
@@ -252,6 +246,7 @@ export async function backfillAiUsageLedger(input: {
         },
         { upsert: true }
     );
+    });
 }
 
 async function rebuildUtcDailyAggregates(
@@ -261,36 +256,27 @@ async function rebuildUtcDailyAggregates(
     from: Date,
     to: Date
 ): Promise<void> {
-    const docs = await AiUsageReceiptSchema.find({
-        channelID,
-        customerId,
-        occurredAt: { $gte: from, $lte: to },
-        expiresAt: { $gt: new Date() }
-    }).lean().exec();
-    const rows = new Map<string, {
-        spentCredits: number;
-        grantedCredits: number;
-        transactionCount: number;
-        categories: Record<string, { credits: number; transactionCount: number }>;
-        expiresAt: Date;
-    }>();
-    for (const doc of docs) {
-        const date = doc.occurredAt.toISOString().slice(0, 10);
-        const row = rows.get(date) || {
-            spentCredits: 0, grantedCredits: 0, transactionCount: 0, categories: {}, expiresAt: doc.expiresAt
-        };
-        if (doc.expiresAt > row.expiresAt) row.expiresAt = doc.expiresAt;
-        if (doc.credits < 0) row.grantedCredits += Math.abs(doc.credits);
-        else if (doc.credits > 0 && doc.entryKind !== 'adjustment') {
-            row.spentCredits += doc.credits;
-            row.transactionCount += 1;
-            const category = safeCategory(doc.category);
-            const aggregate = row.categories[category] || { credits: 0, transactionCount: 0 };
-            aggregate.credits += doc.credits;
-            aggregate.transactionCount += 1;
-            row.categories[category] = aggregate;
-        }
-        rows.set(date, row);
+    from = new Date(from.toISOString().slice(0, 10) + 'T00:00:00.000Z');
+    to = new Date(new Date(to.toISOString().slice(0, 10) + 'T00:00:00.000Z').getTime() + 86_400_000 - 1);
+    const usage = { $and: [{ $gt: ['$credits', 0] }, { $ne: ['$entryKind', 'adjustment'] }] };
+    const groups = await AiUsageReceiptSchema.aggregate([
+        { $match: { channelID, customerId, occurredAt: { $gte: from, $lte: to }, expiresAt: { $gt: new Date() } } },
+        { $group: { _id: { date: { $dateToString: { date: '$occurredAt', format: '%Y-%m-%d', timezone: 'UTC' } }, category: '$category' },
+            spent: { $sum: { $cond: [usage, '$credits', 0] } },
+            granted: { $sum: { $cond: [{ $lt: ['$credits', 0] }, { $multiply: ['$credits', -1] }, 0] } },
+            debited: { $sum: { $cond: [{ $and: [{ $gt: ['$credits', 0] }, { $eq: ['$entryKind', 'adjustment'] }] }, '$credits', 0] } },
+            count: { $sum: { $cond: [usage, 1, 0] } }, expiresAt: { $max: '$expiresAt' }
+        } }
+    ]).exec();
+    const rows = new Map<string, { spentCredits: number; grantedCredits: number; debitedCredits: number;
+        transactionCount: number; categories: Record<string, { credits: number; transactionCount: number }>; expiresAt: Date }>();
+    for (const group of groups) {
+        const row = rows.get(group._id.date) || { spentCredits: 0, grantedCredits: 0, debitedCredits: 0, transactionCount: 0, categories: {} as Record<string, { credits: number; transactionCount: number }>, expiresAt: group.expiresAt };
+        row.spentCredits += group.spent; row.grantedCredits += group.granted; row.debitedCredits += group.debited;
+        row.transactionCount += group.count;
+        if (group.expiresAt > row.expiresAt) row.expiresAt = group.expiresAt;
+        if (group.count) row.categories[safeCategory(group._id.category)] = { credits: group.spent, transactionCount: group.count };
+        rows.set(group._id.date, row);
     }
     const fromDate = from.toISOString().slice(0, 10);
     const toDate = to.toISOString().slice(0, 10);
@@ -303,7 +289,7 @@ async function rebuildUtcDailyAggregates(
             dayStart: new Date(`${date}T00:00:00.000Z`),
             spentCredits: row.spentCredits,
             grantedCredits: row.grantedCredits,
-            netConsumedCredits: row.spentCredits - row.grantedCredits,
+            netConsumedCredits: row.spentCredits + row.debitedCredits - row.grantedCredits,
             transactionCount: row.transactionCount,
             categories: row.categories,
             retentionTier: planTier,
@@ -346,7 +332,7 @@ export async function getAiUsageLedgerState(input: {
     channelID: string;
     customerId: string;
 }): Promise<{ coverageStart: Date; backfilledAt: Date } | null> {
-    const state = await AiUsageLedgerStateSchema.findOne(input)
+    const state = await AiUsageLedgerStateSchema.findOne({ channelID: input.channelID, customerId: input.customerId })
         .select('coverageStart backfilledAt').lean().exec();
     return state ? { coverageStart: state.coverageStart, backfilledAt: state.backfilledAt } : null;
 }
@@ -412,6 +398,8 @@ export async function loadAiUsageLedgerTransactions(input: {
         entryKind: doc.entryKind,
         category: safeCategory(doc.category),
         operation: doc.operation,
+        source: doc.source || null,
+        adjustmentType: doc.adjustmentType || classifyAdjustment(doc),
         provider: doc.provider,
         model: doc.model,
         quantity: doc.quantity,
@@ -428,6 +416,8 @@ export async function adjustAiUsageRetention(channelIDs: string[], planTierInput
     const planTier = validTier(planTierInput);
     const days = getAiUsageRetentionDays(planTier);
     const now = new Date();
+    await Dashboards.deleteMany({ channelID: { $in: channelIDs } });
+    await AiUsageLedgerStateSchema.updateMany({ channelID: { $in: channelIDs } }, { $max: { coverageStart: new Date(now.getTime() - days * 86_400_000) } });
     await AiUsageReceiptSchema.updateMany({ channelID: { $in: channelIDs } }, [{
         $set: {
             retentionTier: planTier,
