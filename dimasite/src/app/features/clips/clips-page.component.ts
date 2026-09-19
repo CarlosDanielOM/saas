@@ -5,10 +5,14 @@ import {
   ElementRef,
   afterNextRender,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
   viewChild
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { of, startWith, switchMap } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -16,7 +20,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
-import { getRouteParam } from '../../shared/utils/route-param.util';
+import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { ClipDesignMockComponent } from './components/clip-design-mock.component';
 import { ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
 import { ClipsService } from './clips.service';
@@ -54,22 +58,25 @@ export class ClipsPageComponent {
   readonly testState = signal<ClipTestState>('idle');
   readonly testError = signal('');
 
-  readonly userSettings = computed<UserClipSettings>(() => {
-    const session = this.sessionAuth.session();
-    const tier = session?.appUser?.plan_tier || 'free';
-    return {
-      channelID: session?.appUser?.twitch_user_id || session?.twitchUser?.id || '',
-      login: (session?.twitchUser?.login || session?.appUser?.name || '').trim().toLowerCase(),
-      planTier: tier === 'premium' || tier === 'pro' ? tier : 'free'
-    };
+  readonly streamer = toSignal(watchRouteParam(this.route, 'streamer'), {
+    initialValue: getRouteParam(this.route, 'streamer')
   });
+  readonly channelID = toSignal(
+    watchRouteParam(this.route, 'streamer').pipe(
+      switchMap((streamer) => streamer
+        ? this.sessionAuth.resolveChannelID(streamer).pipe(startWith(null))
+        : of(null))
+    ),
+    { initialValue: null }
+  );
+
+  readonly userSettings = computed<UserClipSettings>(() => ({
+    channelID: this.channelID() ?? '',
+    login: this.sessionAuth.toRouteStreamer(this.channelID() ?? '', this.streamer() ?? ''),
+    planTier: this.sessionAuth.getPlanTierForStreamer(this.streamer())
+  }));
 
   readonly planTier = computed(() => this.userSettings().planTier);
-
-  readonly streamer = computed(() => {
-    const routeStreamer = getRouteParam(this.route, 'streamer');
-    return (routeStreamer || this.userSettings().login || '').trim().toLowerCase();
-  });
 
   readonly designs = computed(() => this.clipsService.getDesigns(this.userSettings()));
 
@@ -110,6 +117,10 @@ export class ClipsPageComponent {
   private testAttempts = 0;
 
   constructor() {
+    effect(() => {
+      this.streamer();
+      untracked(() => this.stopLivePreview());
+    });
     afterNextRender(() => this.bindTrackResize());
     this.destroyRef.onDestroy(() => {
       this.resizeObserver?.disconnect();

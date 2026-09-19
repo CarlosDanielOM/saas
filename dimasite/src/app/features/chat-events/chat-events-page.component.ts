@@ -53,7 +53,7 @@ export class ChatEventsPageComponent implements OnInit {
   readonly pendingActions = signal<Record<string, ChatEventPendingAction>>({});
 
   readonly userPlan = computed<PlanTier>(() => {
-    const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'none';
+    const tier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
     return tier === 'free' ? 'none' : tier === 'pro' ? 'premium_plus' : 'premium';
   });
 

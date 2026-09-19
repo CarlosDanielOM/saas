@@ -12,7 +12,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideAngularModule, Star, X } from 'lucide-angular';
 
 import { LanguageService } from '../../../services/language.service';
-import { SessionAuthService } from '../../../services/session-auth.service';
 import {
   PlanTier,
   PRESET_COLORS,
@@ -180,17 +179,16 @@ import {
                 <div class="lf-form-grid">
                   <label class="lf-field">
                     <span>{{ t('redemptions.createRewardModal.originalCostLabel') }}</span>
-                    <input type="number" formControlName="originalCost" min="0" [disabled]="!canEditPremiumFields()" />
+                    <input type="number" formControlName="originalCost" min="0" />
                   </label>
                   <label class="lf-field">
                     <span>{{ t('redemptions.createRewardModal.costChangeLabel') }}</span>
-                    <input type="number" formControlName="costChange" [disabled]="!canEditPremiumFields()" />
+                    <input type="number" formControlName="costChange" />
                   </label>
                   <label class="lf-check lf-field--full">
                     <input
                       type="checkbox"
                       formControlName="returnToOriginalCost"
-                      [disabled]="!canEditPremiumFields()"
                     />
                     <span>{{ t('redemptions.createRewardModal.returnToOriginalCostLabel') }}</span>
                   </label>
@@ -227,7 +225,6 @@ import {
 export class CreateRewardModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly languageService = inject(LanguageService);
-  private readonly sessionAuth = inject(SessionAuthService);
 
   readonly isOpen = input.required<boolean>();
   readonly redemption = input<Redemption | null>(null);
@@ -243,10 +240,7 @@ export class CreateRewardModalComponent {
 
   readonly isEditMode = computed(() => this.redemption() !== null);
 
-  readonly userPlan = computed<PlanTier>(() => {
-    const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'free';
-    return tier === 'free' ? 'none' : tier === 'pro' ? 'premium_plus' : 'premium';
-  });
+  readonly userPlan = input.required<PlanTier>();
 
   readonly canEditPremiumFields = computed(() => this.userPlan() !== 'none');
   readonly showPremiumFields = computed(() => true);
@@ -264,6 +258,15 @@ export class CreateRewardModalComponent {
     originalCost: [0, [Validators.min(0)]],
     costChange: [0],
     returnToOriginalCost: [false],
+  });
+
+  private readonly premiumFieldsEffect = effect(() => {
+    const enabled = this.canEditPremiumFields();
+    for (const control of [this.form.controls.originalCost, this.form.controls.costChange,
+      this.form.controls.returnToOriginalCost]) {
+      if (enabled) control.enable({ emitEvent: false });
+      else control.disable({ emitEvent: false });
+    }
   });
 
   private readonly isOpenEffect = effect(() => {

@@ -70,7 +70,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly redemptionToDelete = signal<Redemption | null>(null);
 
   readonly userPlan = computed<PlanTier>(() => {
-    const tier = this.sessionAuth.session()?.appUser?.plan_tier ?? 'free';
+    const tier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
     return tier === 'free' ? 'none' : tier === 'pro' ? 'premium_plus' : 'premium';
   });
 
