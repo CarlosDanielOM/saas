@@ -172,7 +172,7 @@ export class M3Mock3Component {
     { label: 'Custom commands', values: { free: 'Unlimited', premium: 'Unlimited', pro: 'Unlimited' } },
     { label: 'TTS', values: { free: 'Basic', premium: 'Neural', pro: 'Clone' } },
     { label: 'AI personalities', values: { free: '1', premium: '2', pro: '3' } },
-    { label: 'AI credits / mo', values: { free: '25k', premium: '125k', pro: '500k' } },
+    { label: 'AI credits / mo', values: { free: '25k', premium: '200k', pro: '800k' } },
     { label: 'Memory', values: { free: 'Off', premium: 'From chat', pro: 'Chat + summaries' } },
     { label: 'Retention', values: { free: '30d', premium: '180d', pro: '365d' } },
     { label: 'Support', values: { free: 'Standard', premium: 'Priority', pro: 'Priority +' } }

@@ -33,7 +33,7 @@ test('credit snapshot becomes exhausted exactly when usage reaches the limit', (
 
 test('meter snapshot is exhausted when Polar usage already equals the limit', () => {
     const snapshot = buildAiCreditsDataFromMeter(
-        { meter_id: AI_CREDITS_METER_ID, consumed_units: 125_000, balance: -125_000 },
+        { meter_id: AI_CREDITS_METER_ID, consumed_units: 200_000, balance: -200_000 },
         'premium',
     );
 

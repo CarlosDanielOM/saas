@@ -119,7 +119,7 @@ export class GrokMock3Component {
         'Smart moderation',
         'Human-like TTS',
         '2 AI personalities',
-        '125,000 AI credits / mo',
+        '200,000 AI credits / mo',
         'Advanced analytics (180d)'
       ]
     },
@@ -133,7 +133,7 @@ export class GrokMock3Component {
         'AI moderation',
         'Voice cloning TTS',
         '3 AI personalities',
-        '500,000 AI credits / mo',
+        '800,000 AI credits / mo',
         'Analytics retention 365d'
       ]
     }

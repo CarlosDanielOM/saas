@@ -207,7 +207,7 @@ for (const newer of ['timestamp', 'same-time event key']) {
             accounts: [{ type: 'twitch', id: 'current-twitch-owner' }] as IUsers['accounts'],
             polar_credit_snapshot: {
                 occurredAt: currentAt, eventKey: 'polar-webhook:delivery-9',
-                meters: [{ meter_id: AI_CREDITS_METER_ID, consumed_units: 500000, balance: -500000 }],
+                meters: [{ meter_id: AI_CREDITS_METER_ID, consumed_units: 800000, balance: -800000 }],
             },
         };
         await applyPolarCreditsDomainEvent(event('billing.customer.state.changed'), f.deps);
@@ -221,7 +221,7 @@ for (const newer of ['timestamp', 'same-time event key']) {
         ]);
         assert.equal(options.arguments[0], `${currentAt.getTime()}:polar-webhook:delivery-9`);
         assert.deepEqual(JSON.parse(options.arguments[1]), {
-            version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 500000, limit: 500000, balance: 0,
+            version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 800000, limit: 800000, balance: 0,
             meterId: AI_CREDITS_METER_ID, updatedAt: currentAt.toISOString(), available: true, status: 'exhausted',
         });
         assert.equal(options.arguments[2], '1');

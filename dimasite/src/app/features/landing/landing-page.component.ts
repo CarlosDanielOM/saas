@@ -215,8 +215,8 @@ export class LandingPageComponent implements OnInit {
     {
       label: 'AI credits / month',
       free: '25,000',
-      premium: '125,000',
-      pro: '500,000',
+      premium: '200,000',
+      pro: '800,000',
       note: 'Credits are non-rollover.'
     },
     { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' },

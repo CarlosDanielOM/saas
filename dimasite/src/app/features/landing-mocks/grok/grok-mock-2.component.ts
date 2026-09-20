@@ -111,7 +111,7 @@ export class GrokMock2Component {
     { label: 'Analytics', free: 'Basic', premium: 'Advanced', pro: 'Advanced' },
     { label: 'TTS', free: 'Basic', premium: 'Human-like', pro: 'Voice cloning' },
     { label: 'AI personalities', free: '1', premium: '2', pro: '3' },
-    { label: 'AI credits / month', free: '25,000', premium: '125,000', pro: '500,000' },
+    { label: 'AI credits / month', free: '25,000', premium: '200,000', pro: '800,000' },
     { label: 'Stream analytics retention', free: '30d', premium: '180d', pro: '365d' },
     { label: 'Chat memory retention', free: '15d', premium: '45d', pro: '120d' },
     { label: 'Max upload size', free: '5MB', premium: '25MB', pro: '100MB' }

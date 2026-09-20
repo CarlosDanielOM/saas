@@ -54,7 +54,7 @@ await UsersSchema.create({
 });
 await redis.hSet('token:ledger-token', { id: 'ledger-pro', login: 'ledger-pro', display_name: 'Ledger Pro' });
 await redis.set('twitch:ledger-pro:ai:credits', JSON.stringify({
-  version: 3, used: 200, limit: 500000, balance: 499800,
+  version: 3, used: 200, limit: 800000, balance: 799800,
   meterId: '5103e79b-fd74-4ba8-a287-f95574f9addf', updatedAt: new Date().toISOString(),
   available: true, status: 'available',
 }));

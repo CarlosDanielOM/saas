@@ -57,8 +57,8 @@ async function seedUser(id, planTier, token) {
   await redis.set(`twitch:${id}:ai:credits`, JSON.stringify({
     version: 3,
     used: 255,
-    limit: planTier === 'pro' ? 500000 : planTier === 'premium' ? 125000 : 25000,
-    balance: planTier === 'pro' ? 499745 : planTier === 'premium' ? 124745 : 24745,
+    limit: planTier === 'pro' ? 800000 : planTier === 'premium' ? 200000 : 25000,
+    balance: planTier === 'pro' ? 799745 : planTier === 'premium' ? 199745 : 24745,
     meterId: '5103e79b-fd74-4ba8-a287-f95574f9addf',
     updatedAt: '2026-09-19T12:00:00.000Z',
     available: true,

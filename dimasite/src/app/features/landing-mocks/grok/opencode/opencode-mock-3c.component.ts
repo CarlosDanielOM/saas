@@ -106,7 +106,7 @@ export class OpencodeMock3cComponent {
     { label: 'Custom commands', free: 'Unlimited', premium: 'Unlimited', pro: 'Unlimited' },
     { label: 'TTS', free: 'Basic', premium: 'Human-like', pro: 'Voice cloning' },
     { label: 'AI personalities', free: '1', premium: '2', pro: '3' },
-    { label: 'AI credits / mo', free: '25k', premium: '125k', pro: '500k' },
+    { label: 'AI credits / mo', free: '25k', premium: '200k', pro: '800k' },
     { label: 'Analytics retention', free: '30d', premium: '180d', pro: '365d' }
   ];
 

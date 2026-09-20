@@ -136,7 +136,7 @@ export class ProdDashboardMockComponent {
     bits30d: 12480,
     donations30d: 215,
     aiUsed: 128400,
-    aiLimit: 500000
+    aiLimit: 800000
   });
 
   readonly goals = signal<GoalItem[]>([

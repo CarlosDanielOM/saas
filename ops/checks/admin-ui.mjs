@@ -228,8 +228,8 @@ await context.route("**/*", async (route) => {
       data: {
         version: 1,
         used: 37500,
-        limit: 125000,
-        balance: 87500,
+        limit: 200000,
+        balance: 162500,
         available: true,
       },
     });
@@ -437,7 +437,16 @@ try {
   await screenshot("channel-mobile");
   assert.equal(
     await page.getByRole("progressbar").getAttribute("aria-valuenow"),
-    "30",
+    "19",
+  );
+  assert.deepEqual(
+    (
+      await page
+        .locator(".credit-grant-panel__presets button")
+        .allTextContents()
+    ).map((label) => label.trim()),
+    ["+25K", "+200K", "+800K"],
+    "credit grant presets must reflect the updated plan ceilings",
   );
   await page.locator('a.stat-clickable[href$="/commands"]').click();
   await page.getByRole("heading", { name: "Channel commands" }).waitFor();

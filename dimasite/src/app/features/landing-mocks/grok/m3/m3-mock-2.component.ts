@@ -116,7 +116,7 @@ export class M3Mock2Component {
     },
     {
       label: 'AI credits',
-      values: { free: '25,000', premium: '125,000', pro: '500,000' },
+      values: { free: '25,000', premium: '200,000', pro: '800,000' },
       footnote: 'Credits do not roll over month to month.'
     },
     {

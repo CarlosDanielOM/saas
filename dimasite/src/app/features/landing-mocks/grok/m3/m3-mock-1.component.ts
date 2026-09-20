@@ -130,7 +130,7 @@ export class M3Mock1Component {
     },
     {
       label: 'ai.credits',
-      values: { free: '25k', premium: '125k', pro: '500k' },
+      values: { free: '25k', premium: '200k', pro: '800k' },
       note: 'credits are non-rollover'
     },
     {

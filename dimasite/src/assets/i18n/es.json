@@ -1218,7 +1218,7 @@
       "upgradeCta": "Mejorar a Premium o Pro",
       "upgradeToProCta": "Mejorar a Pro",
       "maxTierNote": "Estas en el plan mas alto — gracias por el apoyo!",
-      "benefitCredits": "Hasta 500,000 creditos de IA / mes",
+      "benefitCredits": "Hasta 800,000 creditos de IA / mes",
       "benefitTts": "Todos los proveedores TTS, cobrados con creditos de IA",
       "benefitSupport": "Soporte prioritario+"
     },
@@ -2778,7 +2778,7 @@
         "name": "Premium",
         "price": "$6/mes",
         "benefits": [
-          "125,000 creditos de IA / mes",
+          "200,000 creditos de IA / mes",
           "Todos los proveedores TTS",
           "Aprendizaje de memoria del chat",
           "Visibilidad de subidas publica o privada",
@@ -2792,7 +2792,7 @@
         "name": "Pro",
         "price": "$15/mes",
         "benefits": [
-          "500,000 creditos de IA / mes",
+          "800,000 creditos de IA / mes",
           "Todos los proveedores TTS",
           "Aprende del chat + resúmenes de stream",
           "Visibilidad de subidas publica o privada",

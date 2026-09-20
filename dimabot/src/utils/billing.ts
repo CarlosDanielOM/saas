@@ -113,8 +113,8 @@ export const AI_CREDITS_METER_ID = '5103e79b-fd74-4ba8-a287-f95574f9addf';
 
 export const AI_CREDIT_LIMITS = {
   free: 25000,
-  premium: 125000,
-  pro: 500000
+  premium: 200000,
+  pro: 800000
 } as const;
 
 export const AI_CREDITS_CACHE_TTL_SECONDS = 5 * 60;

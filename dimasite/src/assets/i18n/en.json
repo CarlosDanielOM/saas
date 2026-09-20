@@ -1218,7 +1218,7 @@
       "upgradeCta": "Upgrade to Premium or Pro",
       "upgradeToProCta": "Upgrade to Pro",
       "maxTierNote": "You're on the top-tier plan — thanks for the support!",
-      "benefitCredits": "Up to 500,000 AI credits / month",
+      "benefitCredits": "Up to 800,000 AI credits / month",
       "benefitTts": "All TTS providers, billed from AI credits",
       "benefitSupport": "Priority+ support"
     },
@@ -2778,7 +2778,7 @@
         "name": "Premium",
         "price": "$6/mo",
         "benefits": [
-          "125,000 AI credits / month",
+          "200,000 AI credits / month",
           "All TTS providers",
           "Memory learning from chat",
           "Public or private upload visibility",
@@ -2792,7 +2792,7 @@
         "name": "Pro",
         "price": "$15/mo",
         "benefits": [
-          "500,000 AI credits / month",
+          "800,000 AI credits / month",
           "All TTS providers",
           "Learns from chat + stream summaries",
           "Public or private upload visibility",

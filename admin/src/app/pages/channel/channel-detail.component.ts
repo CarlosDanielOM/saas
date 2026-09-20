@@ -46,7 +46,7 @@ export class ChannelDetailComponent implements OnInit {
   readonly showReminderModal = signal(false);
   readonly isSendingReminder = signal(false);
 
-  readonly creditPresets = [25000, 125000, 500000] as const;
+  readonly creditPresets = [25000, 200000, 800000] as const;
   readonly customCreditAmount = signal('');
   readonly creditReason = signal('admin_manual_credit_grant');
   readonly isGrantingCredits = signal(false);
