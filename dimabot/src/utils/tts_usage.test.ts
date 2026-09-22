@@ -21,7 +21,7 @@ test('Piper speech does not consume credits or submit a paid billing event', asy
   assert.equal(ingest.mock.callCount(), 0);
 });
 
-test('Fish speech retains its credit rate and completes billing before returning', async () => {
+test('Fish speech retains its credit rate and queues durable billing before returning', async () => {
   const usage = await trackTtsUsage({
     channelID: 'test', streamer: { polar_sh_customer_id: 'customer' },
     provider: 'fish', characters: 100, text: 'Hello',
@@ -39,7 +39,7 @@ test('Fish speech retains its credit rate and completes billing before returning
     _cost: 0.15,
     characters: 100,
     reason: 'tts_fish',
-    mode: 'immediate',
+    mode: 'batch',
     externalId: 'entry-1',
     usage: {
       requestId: 'request-1',

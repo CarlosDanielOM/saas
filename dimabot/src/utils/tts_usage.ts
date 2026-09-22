@@ -147,7 +147,9 @@ export async function trackTtsUsage(
       _cost: usage.polarshCost,
       characters,
       reason: `tts_${provider}`,
-      mode: "immediate",
+      // The durable path projects the idempotent debit locally before trying
+      // Polar and retains the exact event for replay when Polar is unavailable.
+      mode: "batch",
       externalId: usageContext?.entryId,
       usage: {
         requestId: usageContext?.requestId,
