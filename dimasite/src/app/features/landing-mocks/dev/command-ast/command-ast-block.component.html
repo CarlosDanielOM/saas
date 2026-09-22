@@ -5,13 +5,19 @@
   [class]="'blk blk--' + tone(n.type) + ' blk--' + shape(n)"
   [class.blk--named]="!!varPaint(n)"
   [style.--chip]="varPaint(n)"
+  [style.--chip-ink]="varInk(n)"
   [class.is-on]="isSelected(n.id)"
   draggable="true"
+  tabindex="0"
+  role="group"
+  [attr.aria-label]="n.type + ' block. Press Enter to select.'"
   (click)="onSelect($event, n.id)"
+  (keydown.enter)="onSelectKey($event, n.id)"
+  (keydown.space)="onSelectKey($event, n.id)"
   (dragstart)="onDragStart($event, n.id)"
   (dragend)="onDragEnd()"
 >
-  <button type="button" class="blk__x" (click)="remove($event, n.id)" aria-label="Remove block">×</button>
+  <button type="button" class="blk__x" (click)="remove($event, n.id)" [attr.aria-label]="'Remove ' + n.type + ' block'">×</button>
 
   @switch (n.type) {
     @case ('literal') {

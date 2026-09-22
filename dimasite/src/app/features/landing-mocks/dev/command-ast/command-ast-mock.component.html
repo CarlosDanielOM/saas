@@ -1,7 +1,7 @@
 <div class="lf">
   <aside class="mock-bar" aria-label="Mock controls">
     <a routerLink="/mocks/dev" class="mock-bar__back">← Dev mocks</a>
-    <span class="mock-bar__chip">LOCAL ONLY</span>
+    <span class="mock-bar__chip">Interactive prototype</span>
   </aside>
 
   <header class="lf-nav">
@@ -9,122 +9,127 @@
       <span class="lf-brand__live" aria-hidden="true"></span>
       DomDimaBot
     </a>
-    <div class="lf-nav__actions">
-      <button
-        type="button"
-        class="lf-btn lf-btn--ghost lf-btn--tool"
-        (click)="toggleTheme()"
-        [attr.aria-label]="isDarkMode() ? 'Dark theme' : 'Light theme'"
-      >
-        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
-        <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
-      </button>
-    </div>
+    <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="toggleTheme()"
+      [attr.aria-label]="isDarkMode() ? 'Switch to light theme' : 'Switch to dark theme'">
+      <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+      <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+    </button>
   </header>
 
   <main class="lf-main">
-    <section class="lf-tile lf-tile--intro">
-      <p class="lf-kicker">Scratch-style command blocks · mock</p>
-      <div class="lf-actions">
-        <button type="button" class="lf-btn lf-btn--primary" (click)="store.run()">Try it</button>
-        <button type="button" class="lf-btn" (click)="store.undo()" [disabled]="!store.canUndo()">Undo</button>
-        <button type="button" class="lf-btn" (click)="store.redo()" [disabled]="!store.canRedo()">Redo</button>
-        <button type="button" class="lf-btn" (click)="store.clear()">Clear</button>
+    <section class="lf-tile intro" aria-labelledby="studio-title">
+      <div class="intro__copy">
+        <p class="lf-kicker">Command builder · prototype</p>
+        <h1 id="studio-title">Build a command, block by block.</h1>
+        <p class="intro__description">Pick an example, add blocks, and see the command text update as you build.</p>
+        <span class="intro__safety"><span class="intro__safety-dot" aria-hidden="true"></span> Safe to explore · Nothing is sent to Twitch</span>
       </div>
-      <div class="sample-row" role="group" aria-label="Examples">
-        @for (sample of samples; track sample.id) {
-          <button type="button" class="lf-chip" (click)="loadSample(sample.id)">{{ sample.label }}</button>
-        }
+      <div class="intro__controls">
+        <div class="sample-row" role="group" aria-label="Example commands">
+          <span class="sample-row__label">Start with an example</span>
+          <div class="sample-row__options">
+            @for (sample of samples; track sample.id) {
+              <button type="button" class="lf-chip" [class.is-active]="activeSampleId() === sample.id"
+                [attr.aria-pressed]="activeSampleId() === sample.id" (click)="loadSample(sample.id)">{{ sample.label }}</button>
+            }
+          </div>
+        </div>
+        <div class="lf-actions" role="group" aria-label="Command actions">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="runPreview()">Run preview</button>
+          <button type="button" class="lf-btn" (click)="store.undo()" [disabled]="!store.canUndo()">Undo</button>
+          <button type="button" class="lf-btn" (click)="store.redo()" [disabled]="!store.canRedo()">Redo</button>
+          <button type="button" class="lf-btn lf-btn--quiet" (click)="clearAll()" [disabled]="store.root().children.length === 0">Clear all</button>
+        </div>
       </div>
     </section>
 
-    <nav class="lf-mobile-tabs" aria-label="Editor panels">
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'palette'" (click)="setPanel('palette')">Blocks</button>
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'canvas'" (click)="setPanel('canvas')">Stage</button>
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'output'" (click)="setPanel('output')">Text</button>
+    <nav class="lf-mobile-tabs" aria-label="Editor sections">
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'palette'" [attr.aria-pressed]="panel() === 'palette'" (click)="setPanel('palette')">1 · Blocks</button>
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'canvas'" [attr.aria-pressed]="panel() === 'canvas'" (click)="setPanel('canvas')">2 · Canvas</button>
+      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'output'" [attr.aria-pressed]="panel() === 'output'" (click)="setPanel('output')">3 · Preview</button>
     </nav>
 
     <div class="lf-bento ast-bento">
-      <aside class="lf-tile ast-palette" [class.is-open]="panel() === 'palette'">
+      <aside class="lf-tile ast-palette" [class.is-open]="panel() === 'palette'" aria-labelledby="palette-title">
+        <div class="panel-head">
+          <span class="panel-head__eyebrow">01 · Build</span>
+          <h2 id="palette-title">Block library</h2>
+          <p>Tap to add a block. Drag it to choose where it goes.</p>
+        </div>
         @for (cat of categories; track cat.id) {
-          <h2 class="lf-h3">{{ cat.label }}</h2>
-          <div class="palette-grid">
-            @for (item of itemsFor(cat.id); track item.id) {
-              <button
-                type="button"
-                class="pal"
-                [attr.data-cat]="item.category"
-                draggable="true"
-                (dragstart)="onPaletteDrag($event, item)"
-                (dragend)="store.endDrag()"
-                (click)="store.placePalette(item)"
-              >
-                {{ item.label }}
-              </button>
-            }
-          </div>
+          <section class="palette-section" [attr.aria-label]="cat.label">
+            <h3 class="palette-section__title">{{ cat.label }}</h3>
+            <div class="palette-grid">
+              @for (item of itemsFor(cat.id); track item.id) {
+                <button type="button" class="pal" [attr.data-cat]="item.category" draggable="true"
+                  (dragstart)="onPaletteDrag($event, item)" (dragend)="store.endDrag()" (click)="placePalette(item)">
+                  {{ item.label }}
+                </button>
+              }
+            </div>
+          </section>
         }
       </aside>
 
-      <section class="lf-tile ast-canvas" [class.is-open]="panel() === 'canvas'" aria-label="Block canvas">
-        <div
-          class="canvas"
-          [class.is-drag]="store.draggingNow()"
-          (dragover)="onCanvasDragOver($event)"
-          (drop)="onCanvasDrop($event)"
-        >
+      <section class="lf-tile ast-canvas" [class.is-open]="panel() === 'canvas'" aria-labelledby="canvas-title">
+        <div class="panel-head panel-head--split">
+          <div>
+            <span class="panel-head__eyebrow">02 · Arrange</span>
+            <h2 id="canvas-title">Your command</h2>
+            <p>{{ store.root().children.length }} top-level {{ store.root().children.length === 1 ? 'block' : 'blocks' }} · Select a block to edit or move it</p>
+          </div>
+          <button type="button" class="lf-btn lf-btn--quiet canvas__delete" [disabled]="!store.selectedId()" (click)="store.removeSelected()">Delete selected</button>
+        </div>
+        <div class="canvas" [class.is-drag]="store.draggingNow()" (dragover)="onCanvasDragOver($event)" (drop)="onCanvasDrop($event)">
           @for (child of store.root().children; track child.id; let i = $index) {
-            @if (ghostAt(i)) {
-              <div class="canvas__ghost" aria-hidden="true">drop here</div>
-            }
+            @if (ghostAt(i)) { <div class="canvas__ghost" aria-hidden="true">drop here</div> }
             <div class="canvas__row" (dragover)="onRowDragOver($event, i)" (drop)="onRowDrop($event, i)">
               <app-command-ast-block [node]="child" />
             </div>
           }
-          @if (ghostAt(store.root().children.length)) {
-            <div class="canvas__ghost" aria-hidden="true">drop here</div>
-          }
+          @if (ghostAt(store.root().children.length)) { <div class="canvas__ghost" aria-hidden="true">drop here</div> }
           @if (store.root().children.length === 0) {
-            <p class="canvas__empty">Drag a block in, or paste command text on the right.</p>
+            <div class="canvas__empty">
+              <span class="canvas__empty-icon" aria-hidden="true">+</span>
+              <h3>Start with a block</h3>
+              <p>Choose one from the library or paste command text in Preview.</p>
+              <button type="button" class="lf-btn lf-btn--primary" (click)="setPanel('palette')">Browse blocks</button>
+            </div>
           }
         </div>
+        <button type="button" class="lf-btn canvas__add" (click)="setPanel('palette')">+ Add a block</button>
       </section>
 
-      <section class="lf-tile ast-out" [class.is-open]="panel() === 'output'">
-        <p class="lf-kicker">Command text</p>
-        <p class="lf-note">Paste a command here to turn it into blocks.</p>
-        <textarea
-          class="code"
-          rows="4"
-          [value]="sourceValue()"
-          (input)="onSourceInput($event)"
-          (paste)="onSourcePaste($event)"
-          (blur)="applySource()"
-          aria-label="Command source"
-        ></textarea>
-        <button type="button" class="lf-btn" (click)="applySource()">Make blocks</button>
-        @if (store.parseError()) {
-          <p class="lf-alert" role="alert">{{ store.parseError() }}</p>
-        }
-
-        <h2 class="lf-h3">Fake chat</h2>
-        <label class="field">
-          <span>Who is chatting</span>
-          <input [value]="store.context().user" (input)="patchUser($event)" />
-        </label>
-        <label class="field">
-          <span>Target / argument</span>
-          <input [value]="store.context().argument" (input)="patchArg($event)" />
-        </label>
-
-        <h2 class="lf-h3">What chat would see</h2>
-        @if (store.runError()) {
-          <p class="lf-alert" role="alert">{{ store.runError() }}</p>
-        } @else if (store.runOutput()) {
-          <pre class="code code--out">{{ store.runOutput() }}</pre>
-        } @else {
-          <p class="lf-note">Hit Try it — nothing is sent to Twitch.</p>
-        }
+      <section class="lf-tile ast-out" [class.is-open]="panel() === 'output'" aria-labelledby="preview-title">
+        <div class="panel-head">
+          <span class="panel-head__eyebrow">03 · Test</span>
+          <h2 id="preview-title">Text &amp; preview</h2>
+          <p>Edit the command text or try it with sample chat details.</p>
+        </div>
+        <div class="out-section">
+          <label class="out-section__label" for="command-source">Command text</label>
+          <textarea id="command-source" class="code" rows="5" [value]="sourceValue()" (input)="onSourceInput($event)"
+            aria-describedby="source-help" [attr.aria-invalid]="store.parseError() ? 'true' : null"></textarea>
+          <p id="source-help" class="lf-note">Changes to this text update the blocks when you select “Make blocks”.</p>
+          <button type="button" class="lf-btn lf-btn--text" (click)="applySource()" [disabled]="sourceDraft() === null">Make blocks</button>
+          @if (store.parseError()) { <p class="lf-alert" role="alert">{{ store.parseError() }}</p> }
+        </div>
+        <div class="out-section">
+          <h3>Sample chat</h3>
+          <label class="field"><span>Who is chatting</span><input [value]="store.context().user" (input)="patchUser($event)" /></label>
+          <label class="field"><span>Target / argument</span><input [value]="store.context().argument" (input)="patchArg($event)" /></label>
+        </div>
+        <div class="out-section out-section--result" aria-live="polite">
+          <h3>What chat would see</h3>
+          @if (store.runError()) {
+            <p class="lf-alert" role="alert">{{ store.runError() }}</p>
+          } @else if (store.runOutput()) {
+            <pre class="code code--out">{{ store.runOutput() }}</pre>
+          } @else {
+            <p class="lf-note">Select “Run preview” to see a sample response.</p>
+          }
+          <button type="button" class="lf-btn lf-btn--primary out-section__run" (click)="runPreview()">Run preview</button>
+        </div>
       </section>
     </div>
   </main>

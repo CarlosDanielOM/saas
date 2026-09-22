@@ -66,18 +66,22 @@
 
 .blk--fn {
   background: #4c97ff;
+  color: #102b56;
 }
 
 .blk--var {
   background: #ff8c1a;
+  color: #3b2000;
 }
 
 .blk--named {
   background: var(--chip, #ff8c1a);
+  color: var(--chip-ink, #3b2000);
 }
 
 .blk--logic {
   background: #59c059;
+  color: #143313;
 }
 
 .blk--flow {
@@ -90,12 +94,23 @@
   outline-offset: 1px;
 }
 
+.blk:focus-visible,
+.blk__x:focus-visible,
+.blk__in:focus-visible,
+.blk__op:focus-visible,
+.blk__store:focus-visible,
+.blk__add:focus-visible,
+.blk__plus:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
 .blk__x {
   position: absolute;
   top: -0.35rem;
   right: -0.35rem;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.7rem;
+  height: 1.7rem;
   display: none;
   border: 0;
   border-radius: 999px;
@@ -108,7 +123,8 @@
 }
 
 .blk:hover > .blk__x,
-.blk.is-on > .blk__x {
+.blk.is-on > .blk__x,
+.blk:focus-within > .blk__x {
   display: grid;
   place-items: center;
 }

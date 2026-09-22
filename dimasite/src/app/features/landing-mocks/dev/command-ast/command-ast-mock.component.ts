@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule, Moon, Sun } from 'lucide-angular';
 
@@ -14,6 +14,7 @@ import {
   type PaletteItem
 } from './command-ast-mock.model';
 import { CommandAstMockStore } from './command-ast-mock.store';
+import { toSource } from './command-ast-mock.source';
 
 @Component({
   selector: 'app-command-ast-mock',
@@ -34,6 +35,12 @@ export class CommandAstMockComponent {
   readonly samples = SAMPLES;
   readonly panel = signal<MockPanel>('canvas');
   readonly sourceDraft = signal<string | null>(null);
+  private readonly sampleSources = SAMPLES.map((sample) => ({ id: sample.id, source: toSource(sample.build()) }));
+  readonly activeSampleId = computed(() => this.sampleSources.find((sample) => sample.source === this.store.source())?.id ?? null);
+  private readonly resetDraftOnBlockChange = effect(() => {
+    this.store.root();
+    untracked(() => this.sourceDraft.set(null));
+  });
 
   itemsFor(category: PaletteCategory): PaletteItem[] {
     return this.palette.filter((item) => item.category === category);
@@ -53,6 +60,29 @@ export class CommandAstMockComponent {
 
   setPanel(panel: MockPanel): void {
     this.panel.set(panel);
+  }
+
+  placePalette(item: PaletteItem): void {
+    this.store.placePalette(item);
+    this.panel.set('canvas');
+  }
+
+  clearAll(): void {
+    this.sourceDraft.set(null);
+    this.store.clear();
+    this.panel.set('canvas');
+  }
+
+  runPreview(): void {
+    if (this.sourceDraft() !== null) {
+      this.applySource();
+      if (this.store.parseError()) {
+        this.panel.set('output');
+        return;
+      }
+    }
+    this.store.run();
+    this.panel.set('output');
   }
 
   rootTarget(index: number): DropTarget {
@@ -104,19 +134,13 @@ export class CommandAstMockComponent {
 
   onSourceInput(event: Event): void {
     this.sourceDraft.set((event.target as HTMLTextAreaElement).value);
-  }
-
-  onSourcePaste(event: ClipboardEvent): void {
-    const text = event.clipboardData?.getData('text') ?? '';
-    if (!text.trim()) return;
-    event.preventDefault();
-    this.sourceDraft.set(null);
-    this.store.loadFromSource(text);
+    this.store.parseError.set(null);
   }
 
   loadSample(id: string): void {
     this.sourceDraft.set(null);
     this.store.loadSample(id);
+    this.panel.set('canvas');
   }
 
   applySource(): void {
@@ -127,7 +151,10 @@ export class CommandAstMockComponent {
       return;
     }
     this.store.loadFromSource(draft);
-    if (!this.store.parseError()) this.sourceDraft.set(null);
+    if (!this.store.parseError()) {
+      this.sourceDraft.set(null);
+      this.panel.set('canvas');
+    }
   }
 
   patchUser(event: Event): void {

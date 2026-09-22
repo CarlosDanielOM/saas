@@ -58,6 +58,17 @@ export class CommandAstBlockComponent {
     return hashVarColor(`${scope}:${name}`);
   }
 
+  varInk(node: MockNode): string | null {
+    const color = this.varPaint(node);
+    if (!color) return null;
+    const channels = [1, 3, 5].map((start) => {
+      const value = Number.parseInt(color.slice(start, start + 2), 16) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+    return luminance > 0.18 ? '#0a0a0a' : '#fff';
+  }
+
   shape(node: MockNode): string {
     return blockShape(node, this.inset());
   }
@@ -92,6 +103,12 @@ export class CommandAstBlockComponent {
   onSelect(event: Event, id: string): void {
     event.stopPropagation();
     this.store.select(id);
+  }
+
+  onSelectKey(event: Event, id: string): void {
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    this.onSelect(event, id);
   }
 
   onDragStart(event: DragEvent, id: string): void {
