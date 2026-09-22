@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { Types } from 'mongoose';
 import JSONCOMMANDS from '../../config/commands/reservedcommands.json' with { type: 'json' };
 import { CommandsSchema } from '../../schemas/commands.schema.js';
 
@@ -25,6 +27,23 @@ type ReservedCommandsPayload =
     | { commands: LocalizedReservedCommandDefinition[] };
 
 const RESERVED_COMMANDS = (JSONCOMMANDS.commands || []) as ReservedCommandDefinition[];
+const DEFAULT_COMMAND_ID_NAMESPACE = 'dimabot:default-command:v1';
+
+function getDefaultCommandID(channelID: string, func: string): Types.ObjectId {
+    const hex = createHash('sha256')
+        .update(JSON.stringify([DEFAULT_COMMAND_ID_NAMESPACE, channelID, func]))
+        .digest('hex')
+        .slice(0, 24);
+
+    return new Types.ObjectId(hex);
+}
+
+function isDuplicateKeyError(error: unknown): error is { code: number } {
+    return typeof error === 'object'
+        && error !== null
+        && 'code' in error
+        && (error as { code?: unknown }).code === 11000;
+}
 
 export function normalizeSupportedLanguage(language?: string | null): SupportedLanguage {
     return String(language || '').trim().toLowerCase() === 'es' ? 'es' : 'en';
@@ -90,6 +109,11 @@ export async function ensureReservedCommands(channelID: string, channelName: str
         }
 
         const newCommand = new CommandsSchema({
+            // A stable _id turns concurrent first-activation seed attempts into
+            // one insert plus one duplicate-key no-op. MongoDB always enforces
+            // _id uniqueness, so this does not require an index migration over
+            // legacy command rows that may already contain duplicates.
+            _id: getDefaultCommandID(channelID, commandData.func),
             name: commandData.name,
             cmd: commandData.cmd,
             func: commandData.func,
@@ -110,8 +134,24 @@ export async function ensureReservedCommands(channelID: string, channelName: str
             createdAt: new Date()
         });
 
-        await newCommand.save();
-        createdCount += 1;
+        try {
+            await newCommand.save();
+            createdCount += 1;
+        } catch (error) {
+            if (!isDuplicateKeyError(error)) {
+                throw error;
+            }
+
+            const concurrentSeed = await CommandsSchema.exists({
+                _id: newCommand._id,
+                func: commandData.func,
+                channelID
+            });
+
+            if (!concurrentSeed) {
+                throw error;
+            }
+        }
     }
 
     return createdCount;
