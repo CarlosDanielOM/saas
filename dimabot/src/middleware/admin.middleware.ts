@@ -32,6 +32,18 @@ export function isCreatorTarget(targetID: string | undefined | null): boolean {
     return targetID === CREATOR_TWITCH_USER_ID;
 }
 
+export function canModifyCreatorAdminAssignment(
+    requesterID: string | undefined | null,
+    channelID: string | undefined | null,
+    targetAdminID: string | undefined | null
+): boolean {
+    if (!isCreatorTarget(targetAdminID)) {
+        return true;
+    }
+
+    return isCreatorUser(requesterID) || requesterID === channelID;
+}
+
 export async function getGlobalAdminRole(userID: string | undefined | null): Promise<GlobalAdminRole | null> {
     if (!userID) {
         return null;

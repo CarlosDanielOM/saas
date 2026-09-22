@@ -2,7 +2,7 @@ import express, { type Request, type Response } from "express";
 import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js";
 import { error as logError } from "../../utils/logger.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
-import { hasGlobalChannelOwnerAccess, isCreatorTarget, isCreatorUser } from "../../middleware/admin.middleware.js";
+import { canModifyCreatorAdminAssignment, hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
 import { AdminSchema } from "../../schemas/admin.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { addAdminToRoleCache, removeAdminFromRoleCache } from "../../utils/permissions/roles.js";
@@ -483,10 +483,10 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
                 });
             }
 
-            if (isCreatorTarget(twitchAccount.id) && !isCreatorUser(requesterID)) {
+            if (!canModifyCreatorAdminAssignment(requesterID, channelIdStr, twitchAccount.id)) {
                 return res.status(403).json({
                     error: true,
-                    message: 'Creator admin access cannot be modified by super admins',
+                    message: 'Global admins cannot modify creator access for another channel',
                     status: 403
                 });
             }
@@ -568,10 +568,10 @@ router.delete('/:channelID/:adminID', authMiddleware as any, async (req: AdminRe
                 });
             }
 
-            if (isCreatorTarget(adminIdStr) && !isCreatorUser(requesterID)) {
+            if (!canModifyCreatorAdminAssignment(requesterID, channelIdStr, adminIdStr)) {
                 return res.status(403).json({
                     error: true,
-                    message: 'Creator admin access cannot be modified by super admins',
+                    message: 'Global admins cannot modify creator access for another channel',
                     status: 403
                 });
             }
