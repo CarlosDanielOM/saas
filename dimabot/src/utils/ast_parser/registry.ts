@@ -207,7 +207,9 @@ function parseTemplateString(content: string, registry: Map<string, SyntaxDefini
 
             try {
                 const innerTokens = tokenize(exprContent, registry);
-                if (innerTokens.tokens.length > 0) {
+                if (innerTokens.error) {
+                    segments.push({ type: 'text', value: `[Parse error: ${innerTokens.error}]` });
+                } else if (innerTokens.tokens.length > 0) {
                     const exprResult = parseStarExpression(innerTokens.tokens, 0, registry, 0);
                     segments.push({ type: 'expr', node: exprResult.node });
                 } else {

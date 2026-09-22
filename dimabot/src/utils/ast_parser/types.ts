@@ -208,8 +208,10 @@ export interface ExecutionContext {
     saveResponses: () => Promise<void>;
     saveChannelVariable: (name: string, value: string) => Promise<void>;
     loadChannelVariable: (name: string) => Promise<string>;
-    saveUserVariable: (name: string, value: string) => Promise<void>;
+    deleteChannelVariable: (name: string) => Promise<void>;
+    saveUserVariable: (name: string, value: string, targetUserLogin?: string) => Promise<void>;
     loadUserVariable: (name: string, targetUserLogin?: string) => Promise<string>;
+    deleteUserVariable: (name: string, targetUserLogin?: string) => Promise<void>;
 }
 
 export interface ParseResult {

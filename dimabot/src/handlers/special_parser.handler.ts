@@ -314,6 +314,40 @@ async function saveScopedVariable(
     }
 }
 
+async function deleteScopedVariable(
+    channelID: string,
+    scopeType: string,
+    scopeName: string,
+    variableName: string,
+    userId: string = '',
+    userLogin: string = ''
+): Promise<void> {
+    const normalizedLogin = normalizeUserLogin(userLogin);
+    const query: FilterQuery<IAstVariables> = {
+        channelID,
+        scopeType,
+        scopeName,
+        ...(normalizedLogin ? { userLogin: normalizedLogin } : { userId })
+    };
+
+    try {
+        await AstVariablesSchema.updateOne(query, {
+            $unset: { [`variables.${variableName}`]: '' }
+        }).exec();
+    } catch (error) {
+        console.error('Error deleting AST scoped variable:', {
+            channelID,
+            scopeType,
+            scopeName,
+            userId,
+            userLogin,
+            variableName,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
 export async function parseSpecialCommands(
     text: string,
     context: ISpecialParserContext
@@ -410,13 +444,50 @@ export async function parseSpecialCommands(
 
             return '';
         },
-        saveUserVariable: async (name: string, value: string) => {
+        deleteChannelVariable: async (name: string) => {
+            for (const scopeName of [resolvedScopeName, ...resolvedScopeAliases]) {
+                await deleteScopedVariable(context.channelID, resolvedScopeType, scopeName, name);
+            }
+        },
+        saveUserVariable: async (name: string, value: string, targetUserLogin?: string) => {
             const userId = extracted.userID || '';
             const userLogin = extracted.userLogin || '';
-            if (!userId) {
+            const normalizedTargetLogin = normalizeUserLogin(targetUserLogin || '');
+            if (!userId && !normalizedTargetLogin) {
                 return;
             }
-            await saveScopedVariable(context.channelID, resolvedScopeType, resolvedScopeName, name, value, userId, userLogin);
+            const isOtherUser = normalizedTargetLogin && normalizedTargetLogin !== normalizeUserLogin(userLogin);
+            // A selected login needs a distinct userId for the existing unique
+            // index. If a real-id document already exists, saveScopedVariable
+            // falls back to its unique userLogin index.
+            const selectedUserId = isOtherUser ? `login:${normalizedTargetLogin}` : userId;
+            await saveScopedVariable(
+                context.channelID,
+                resolvedScopeType,
+                resolvedScopeName,
+                name,
+                value,
+                selectedUserId,
+                normalizedTargetLogin || userLogin
+            );
+        },
+        deleteUserVariable: async (name: string, targetUserLogin?: string) => {
+            const userId = extracted.userID || '';
+            const userLogin = extracted.userLogin || '';
+            const normalizedTargetLogin = normalizeUserLogin(targetUserLogin || '');
+            if (!userId && !normalizedTargetLogin) {
+                return;
+            }
+            for (const scopeName of [resolvedScopeName, ...resolvedScopeAliases]) {
+                await deleteScopedVariable(
+                    context.channelID,
+                    resolvedScopeType,
+                    scopeName,
+                    name,
+                    normalizedTargetLogin ? '' : userId,
+                    normalizedTargetLogin || userLogin
+                );
+            }
         },
         loadUserVariable: async (name: string, targetUserLogin?: string) => {
             const userId = extracted.userID || '';

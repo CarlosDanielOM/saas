@@ -13,6 +13,29 @@ export function unescapeLiteral(literal: string): string {
     return literal.includes('\\') ? literal.replace(ESCAPE_REGEX, '$1') : literal;
 }
 
+function validateDelimiters(tokens: string[], registry: Map<string, SyntaxDefinition>): string | undefined {
+    const stack: Array<{ opening: string; closing: string }> = [];
+    const pairs: Record<string, string> = { '(': ')', '[': ']', '{': '}' };
+    const closers = new Set([')', ']', '}']);
+
+    for (const token of tokens) {
+        const definition = registry.get(token);
+        if (definition) {
+            stack.push({ opening: token, closing: definition.endToken });
+        } else if (pairs[token]) {
+            stack.push({ opening: token, closing: pairs[token] });
+        } else if (closers.has(token)) {
+            if (stack.at(-1)?.closing !== token) {
+                return `Unexpected closing "${token}"`;
+            }
+            stack.pop();
+        }
+    }
+
+    const unclosed = stack.at(-1);
+    return unclosed ? `Unclosed "${unclosed.opening}"` : undefined;
+}
+
 export function tokenize(input: string, registry: Map<string, SyntaxDefinition> = SyntaxRegistry): TokenizeResult {
     const tokens: string[] = [];
     let i = 0;
@@ -78,6 +101,8 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
                 i = endIndex + 1;
                 continue;
             }
+
+            return { tokens, error: 'Unclosed array literal' };
         }
 
         if (remaining.startsWith('http://') || remaining.startsWith('https://')) {
@@ -87,7 +112,7 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
                 const char = input[urlEnd];
                 const slice = input.slice(urlEnd);
 
-                if (/\s/.test(char)) break;
+                if (/\s/.test(char) || char === ')') break;
 
                 let isStartToken = false;
                 for (const startToken of startTokens) {
@@ -197,6 +222,10 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
                 }
                 
                 endQuote++;
+            }
+
+            if (endQuote >= input.length) {
+                return { tokens, error: 'Unclosed quoted string' };
             }
             
             const quotedContent = input.slice(i + 1, endQuote);
@@ -373,5 +402,5 @@ export function tokenize(input: string, registry: Map<string, SyntaxDefinition> 
         }
     }
     
-    return { tokens };
+    return { tokens, error: validateDelimiters(tokens, registry) };
 }

@@ -36,7 +36,7 @@ test('escaped paren inside function args does not close the call', async () => {
 });
 
 test('escaped semicolon inside function args stays literal', async () => {
-    const result = await evaluateInput('$(say smiley \\;) done)');
+    const result = await evaluateInput('$(say smiley \\; done)');
 
     assert.equal(result.value, 'smiley ; done');
 });
@@ -71,10 +71,10 @@ test('quoted strings with parens keep working unchanged', async () => {
     assert.equal(result.value, 'quoted :) here');
 });
 
-test('unbalanced open paren degrades gracefully to literals', async () => {
-    const result = await evaluateInput('$(say unbalanced (oops)');
+test('unbalanced open paren reports a parse error', () => {
+    const result = parse('$(say unbalanced (oops)');
 
-    assert.equal(result.value, 'unbalanced ( oops )');
+    assert.match(result.error ?? '', /unclosed/i);
 });
 
 test('function args evaluate sequentially so last write wins', async () => {

@@ -1,0 +1,19 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_ast_parser_test",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "QDRANT_HOST": "qdrant.test",
+  "QDRANT_PORT": "6333",
+  "QDRANT_API_KEY": "dummy",
+  "POLARSH_OAT": "dummy",
+  "OTEL_SDK_DISABLED": "true",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "INTERNAL_API_URL": "http://127.0.0.1:3000",
+  "TWITCH_EVENTSUB_SECRET": "ast-parser-test-secret",
+  "CLIENT_ID": "ast-parser-test-client",
+  "AI_USAGE_RECEIPTS_ENABLED": "false",
+  "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false",
+  "EVENTSUB_RECONCILIATION_ENABLED": "false",
+  "AI_USAGE_BACKFILL_ENABLED": "false"
+}

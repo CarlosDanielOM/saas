@@ -199,7 +199,7 @@ function normalizeUserLogin(login: string): string {
 
 function getCacheUserScopeCandidates(context: ExecutionContext, targetUserLogin?: string): string[] {
     const normalizedTarget = normalizeUserLogin(String(targetUserLogin || ''));
-    if (normalizedTarget) {
+    if (normalizedTarget && normalizedTarget !== normalizeUserLogin(context.userLogin)) {
         return [`login:${normalizedTarget}`];
     }
 
@@ -225,6 +225,11 @@ function getScopeCandidates(context: ExecutionContext): string[] {
     }
 
     return [...new Set(candidates)];
+}
+
+function getUserVariableCacheKey(name: string, context: ExecutionContext, targetUserLogin?: string): string {
+    const login = normalizeUserLogin(targetUserLogin || context.userLogin);
+    return `${login ? `login:${login}` : `id:${context.userId || 'unknown'}`}:${name}`;
 }
 
 function canWriteDbVariables(plan: 'free' | 'premium' | 'pro'): boolean {
@@ -370,12 +375,13 @@ async function getValueFromStorage(
         }
 
         case 'dbUser': {
-            if (context.userCommandVariables.has(strippedName)) {
-                return context.userCommandVariables.get(strippedName) ?? '';
+            const cacheKey = getUserVariableCacheKey(strippedName, context, targetUserLogin);
+            if (context.userCommandVariables.has(cacheKey)) {
+                return context.userCommandVariables.get(cacheKey) ?? '';
             }
             const loadedValue = await context.loadUserVariable(strippedName, targetUserLogin);
             if (loadedValue !== undefined && loadedValue !== null && loadedValue !== '') {
-                context.userCommandVariables.set(strippedName, loadedValue);
+                context.userCommandVariables.set(cacheKey, loadedValue);
                 return loadedValue;
             }
             return '';
@@ -443,12 +449,13 @@ async function checkKeyExists(
         }
 
         case 'dbUser': {
-            if (context.userCommandVariables.has(strippedName)) {
+            const cacheKey = getUserVariableCacheKey(strippedName, context, targetUserLogin);
+            if (context.userCommandVariables.has(cacheKey)) {
                 return true;
             }
             const loadedValue = await context.loadUserVariable(strippedName, targetUserLogin);
             if (loadedValue !== undefined && loadedValue !== null && loadedValue !== '') {
-                context.userCommandVariables.set(strippedName, loadedValue);
+                context.userCommandVariables.set(cacheKey, loadedValue);
                 return true;
             }
             return false;
@@ -476,7 +483,8 @@ async function saveValueToStorage(
     name: string,
     storage: VariableStorage,
     value: string,
-    context: ExecutionContext
+    context: ExecutionContext,
+    targetUserLogin?: string
 ): Promise<void> {
     const strippedName = stripVarPrefix(name, storage);
 
@@ -494,7 +502,7 @@ async function saveValueToStorage(
         case 'cacheUser': {
             const redis = await getDragonflyClient();
             if (storage === 'cacheUser') {
-                const userScopeCandidates = getCacheUserScopeCandidates(context);
+                const userScopeCandidates = getCacheUserScopeCandidates(context, targetUserLogin);
                 for (const userScope of userScopeCandidates) {
                     const key = buildCacheKey(
                         context.platform,
@@ -527,8 +535,8 @@ async function saveValueToStorage(
             break;
 
         case 'dbUser':
-            await context.saveUserVariable(strippedName, value);
-            context.userCommandVariables.set(strippedName, value);
+            await context.saveUserVariable(strippedName, value, targetUserLogin);
+            context.userCommandVariables.set(getUserVariableCacheKey(strippedName, context, targetUserLogin), value);
             break;
     }
 }
@@ -606,26 +614,15 @@ async function deleteValueFromStorage(
         case 'db':
         case 'dbUser': {
             if (!accessor) {
-                // Delete entire variable from context caches
                 if (storage === 'db') {
+                    await context.deleteChannelVariable(strippedName);
                     context.commandVariables.delete(strippedName);
                 } else {
-                    context.userCommandVariables.delete(strippedName);
+                    await context.deleteUserVariable(strippedName, targetUserLogin);
+                    context.userCommandVariables.delete(getUserVariableCacheKey(strippedName, context, targetUserLogin));
                 }
             } else if (accessor.type === 'clear' || accessor.type === 'remove') {
-                // For db arrays, load, modify, save
-                let currentValue = '';
-                if (storage === 'db') {
-                    currentValue = context.commandVariables.get(strippedName) ?? '';
-                    if (!currentValue) {
-                        currentValue = await context.loadChannelVariable(strippedName);
-                    }
-                } else {
-                    currentValue = context.userCommandVariables.get(strippedName) ?? '';
-                    if (!currentValue) {
-                        currentValue = await context.loadUserVariable(strippedName, targetUserLogin);
-                    }
-                }
+                const currentValue = await getValueFromStorage(name, storage, context, targetUserLogin);
 
                 if (currentValue) {
                     try {
@@ -641,13 +638,7 @@ async function deleteValueFromStorage(
                                 }
                             }
                             const newValue = JSON.stringify(arr);
-                            if (storage === 'db') {
-                                await context.saveChannelVariable(strippedName, newValue);
-                                context.commandVariables.set(strippedName, newValue);
-                            } else {
-                                await context.saveUserVariable(strippedName, newValue);
-                                context.userCommandVariables.set(strippedName, newValue);
-                            }
+                            await saveValueToStorage(name, storage, newValue, context, targetUserLogin);
                         }
                     } catch {
                         // Not a JSON array, ignore
@@ -820,10 +811,19 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
         case 'setVar': {
             const setNode = node as SetVarNode;
-            const { name, storage, value, accessor } = setNode;
-            const valueResult = await evaluate(value, context);
+            const { name, storage, value, accessor, userSelector } = setNode;
+            let targetUserLogin: string | undefined;
+            let workingContext = context;
+
+            if ((storage === 'cacheUser' || storage === 'dbUser') && userSelector) {
+                const selectorResult = await evaluate(userSelector, workingContext);
+                targetUserLogin = String(selectorResult.value ?? '').trim();
+                workingContext = selectorResult.context;
+            }
+
+            const valueResult = await evaluate(value, workingContext);
             const valueStr = String(valueResult.value);
-            let currentContext = valueResult.context;
+            const currentContext = valueResult.context;
             const appendValues = Array.isArray(valueResult.value)
                 ? valueResult.value.map((item) => String(item))
                 : [valueStr];
@@ -848,16 +848,16 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
             }
 
             if (!accessor) {
-                await saveValueToStorage(name, storage, valueStr, context);
+                await saveValueToStorage(name, storage, valueStr, currentContext, targetUserLogin);
                 return { value: '', context: currentContext };
             }
 
-            const arrayData = await getArrayFromStorage(name, storage, context);
+            const arrayData = await getArrayFromStorage(name, storage, currentContext, targetUserLogin);
 
             switch (accessor.type) {
                 case 'append': {
                     arrayData.push(...appendValues);
-                    await saveValueToStorage(name, storage, JSON.stringify(arrayData), context);
+                    await saveValueToStorage(name, storage, JSON.stringify(arrayData), currentContext, targetUserLogin);
                     return { value: '', context: currentContext };
                 }
 
@@ -866,7 +866,7 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
                     const index = resolveArrayIndex(indexResult.value, arrayData.length);
                     if (index >= 0) {
                         arrayData[index] = valueStr;
-                        await saveValueToStorage(name, storage, JSON.stringify(arrayData), context);
+                        await saveValueToStorage(name, storage, JSON.stringify(arrayData), indexResult.context, targetUserLogin);
                     }
                     return { value: '', context: indexResult.context };
                 }
@@ -1379,8 +1379,10 @@ export function createExecutionContext(overrides: Partial<ExecutionContext> = {}
         saveResponses: async () => {},
         saveChannelVariable: async () => {},
         loadChannelVariable: async () => '',
+        deleteChannelVariable: async () => {},
         saveUserVariable: async () => {},
         loadUserVariable: async () => '',
+        deleteUserVariable: async () => {},
         ...overrides
     };
 }

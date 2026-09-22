@@ -107,16 +107,15 @@ export async function renderAstWithSourceReference(
 
         const expressionEnd = findExpressionEnd(input, i + token.length);
         if (expressionEnd === -1) {
-            output += input[i];
-            i++;
-            continue;
+            output += '[Parse error: Unclosed expression]';
+            break;
         }
 
         const expression = input.slice(i, expressionEnd + 1);
         const { ast, error } = parse(expression, registry);
 
         if (error) {
-            output += expression;
+            output += `[Parse error: ${error}]`;
             i = expressionEnd + 1;
             continue;
         }
