@@ -14,7 +14,7 @@ import {
 import { commandAllowed, ruleExempt, isExpressionAllowed, createUserIdentity, type RoleTag, type UserIdentity } from './index.js';
 
 interface FixtureFile {
-    identities: Record<string, { level: number; tags: string[] }>;
+    identities: Record<string, { level: number; tags: string[]; userId?: string; login?: string }>;
     valid: Array<{ name: string; expression: unknown }>;
     invalid: Array<{ name: string; expression: unknown; error: string }>;
     evaluations: Array<{ expression: unknown; identity: string; expected: boolean }>;
@@ -27,7 +27,7 @@ const fixtures: FixtureFile = JSON.parse(
 function buildIdentity(name: string): UserIdentity {
     const raw = fixtures.identities[name];
     assert.ok(raw, `fixture identity ${name} must exist`);
-    return createUserIdentity(raw.level, raw.tags as RoleTag[]);
+    return createUserIdentity(raw.level, raw.tags as RoleTag[], raw.userId, raw.login);
 }
 
 const viewer = buildIdentity('viewer');
@@ -205,6 +205,48 @@ test('commandAllowed: present-invalid expression fails closed even when the stor
     const command = { permissionExpression: { role: 'supermod' }, userLevel: 1 };
     assert.equal(commandAllowed(command, broadcaster), false, 'invalid trees never authorize, even for broadcaster');
     assert.equal(commandAllowed(command, mod), false);
+});
+
+test('a named user can be allowed alongside VIPs and mods', () => {
+    const expression = { or: [{ role: 'vip' }, { role: 'mod' }, { user: { id: '12345', login: 'user123' } }] };
+    assert.equal(inspectExpression(expression).mode, 'tags');
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(1, [], '12345', 'user123')), true);
+    assert.equal(commandAllowed({ permissionExpression: expression }, vip), true);
+    assert.equal(commandAllowed({ permissionExpression: expression }, mod), true);
+    assert.equal(commandAllowed({ permissionExpression: expression }, viewer), false);
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(1, [], 'other', 'user123')), false);
+});
+
+test('a named user can be excluded from an everyone rule', () => {
+    const expression = { and: [{ role: 'everyone' }, { not: { user: { id: '12345', login: 'user123' } } }] };
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(1, [], '67890', 'anotheruser')), true);
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(1, [], '12345', 'newname')), false);
+    assert.equal(ruleExempt({ exemptExpression: expression }, createUserIdentity(1, [], '12345', 'user123')), false);
+    assert.equal(ruleExempt({ exemptExpression: expression }, createUserIdentity(1, [], '67890', 'anotheruser')), true);
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(7, ['mod'], '12345', 'renamed')), false);
+    assert.equal(commandAllowed({ permissionExpression: expression }, viewer), false, 'missing Twitch ID must not bypass an exclusion');
+});
+
+test('unknown identity blocks user checks but retains decisive role matches', () => {
+    const allow = { or: [{ role: 'mod' }, { user: { id: '12345', login: 'user123' } }] };
+    assert.equal(commandAllowed({ permissionExpression: allow }, mod), true);
+    assert.equal(commandAllowed({ permissionExpression: allow }, viewer), false);
+    assert.equal(commandAllowed({ permissionExpression: { not: { user: { id: '12345', login: 'user123' } } } }, viewer), false);
+});
+
+test('malformed children remain denied beneath NOT', () => {
+    assert.equal(evaluateExpression({ not: {} } as never, viewer), false);
+});
+
+test('user leaves require a stable account ID and reject malformed shapes', () => {
+    for (const expression of [
+        { user: { login: 'user123' } },
+        { user: { id: '123abc', login: 'user123' } },
+        { user: { id: '12345', login: 'bad space' } },
+        { user: { id: '12345', login: 'user123', role: 'mod' } }
+    ]) {
+        assert.equal(inspectExpression(expression).mode, 'invalid');
+    }
 });
 
 test('ruleExempt: absent expression falls back to exemptUserLevel', () => {

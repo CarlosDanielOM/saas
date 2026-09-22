@@ -11,6 +11,7 @@ import { isRoleTag, type RoleTag, type UserIdentity } from './roles.js';
 export type PermissionExpression =
     | { role: RoleTag }
     | { level: number }
+    | { user: { id: string; login: string } }
     | { not: PermissionExpression }
     | { and: PermissionExpression[] }
     | { or: PermissionExpression[] };
@@ -23,7 +24,7 @@ export type ExpressionValidationResult =
     | { ok: true; value: PermissionExpression }
     | { ok: false; error: string };
 
-const DISCRIMINATOR_KEYS = ['role', 'level', 'not', 'and', 'or'] as const;
+const DISCRIMINATOR_KEYS = ['role', 'level', 'user', 'not', 'and', 'or'] as const;
 const DISCRIMINATOR_SET: ReadonlySet<string> = new Set(DISCRIMINATOR_KEYS);
 
 interface ValidationCounter {
@@ -73,6 +74,22 @@ function validateNode(input: unknown, depth: number, counter: ValidationCounter)
             return { ok: false, error: `level must be an integer between 1 and 10, got: ${String(level)}` };
         }
         return { ok: true, value: { level } };
+    }
+
+    if (discriminators[0] === 'user') {
+        const user = node.user;
+        if (!user || typeof user !== 'object' || Array.isArray(user) ||
+            Object.keys(user).length !== 2 || !Object.hasOwn(user, 'id') || !Object.hasOwn(user, 'login')) {
+            return { ok: false, error: 'user must contain exactly id and login' };
+        }
+        const { id, login } = user as Record<string, unknown>;
+        if (typeof id !== 'string' || !/^\d{1,20}$/.test(id)) {
+            return { ok: false, error: 'user id must be a Twitch account ID' };
+        }
+        if (typeof login !== 'string' || !/^[a-zA-Z0-9_]{1,25}$/.test(login)) {
+            return { ok: false, error: 'user login must be a Twitch login' };
+        }
+        return { ok: true, value: { user: { id, login: login.toLowerCase() } } };
     }
 
     if (discriminators[0] === 'not') {
@@ -138,47 +155,63 @@ export function inspectExpression(input: unknown): ExpressionState {
  * 3. Other role leaves check the identity's full tag set.
  * 4. `{level:n}` compares the legacy numeric level.
  *
- * Defense-in-depth: malformed nodes (empty groups, unknown shapes) evaluate
- * to `false` rather than throwing or failing open.
+ * Unknown identity fields and malformed nodes remain unknown through NOT.
+ * An unknown final result fails closed, while decisive role matches in an OR
+ * group can still grant access.
  */
 export function evaluateExpression(expr: PermissionExpression, identity: UserIdentity): boolean {
     if (identity.tags.has('broadcaster')) {
         return true;
     }
 
-    if (!expr || typeof expr !== 'object') {
-        return false;
+    return evaluateNode(expr, identity) === true;
+}
+
+/** `null` is unknown, not false: negating an unknown user must never grant access. */
+function evaluateNode(input: unknown, identity: UserIdentity): boolean | null {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+    const keys = Object.keys(input);
+    if (keys.length !== 1) return null;
+    const expr = input as Record<string, unknown>;
+
+    if (keys[0] === 'role') {
+        if (!isRoleTag(expr.role)) return null;
+        return expr.role === 'everyone' || identity.tags.has(expr.role);
     }
 
-    if ('role' in expr) {
-        const role = (expr as { role: unknown }).role;
-        if (role === 'everyone') return true;
-        return identity.tags.has(role as RoleTag);
+    if (keys[0] === 'level') {
+        const level = expr.level;
+        if (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 10) return null;
+        return identity.level >= level;
     }
 
-    if ('level' in expr) {
-        const level = (expr as { level: unknown }).level;
-        return typeof level === 'number' && identity.level >= level;
+    if (keys[0] === 'user') {
+        const user = expr.user;
+        if (!user || typeof user !== 'object' || Array.isArray(user) ||
+            typeof (user as { id?: unknown }).id !== 'string') return null;
+        if (!identity.userId) return null;
+        return (user as { id: string }).id === identity.userId;
     }
 
-    if ('not' in expr) {
-        const child = (expr as { not: unknown }).not as PermissionExpression;
-        return !evaluateExpression(child, identity);
+    if (keys[0] === 'not') {
+        const child = evaluateNode(expr.not, identity);
+        return child === null ? null : !child;
     }
 
-    if ('and' in expr) {
-        const children = (expr as { and: unknown }).and;
-        if (!Array.isArray(children) || children.length === 0) return false;
-        return children.every((child) => evaluateExpression(child as PermissionExpression, identity));
+    if (keys[0] === 'and' || keys[0] === 'or') {
+        const children = expr[keys[0]];
+        if (!Array.isArray(children) || children.length === 0) return null;
+        let unknown = false;
+        for (const child of children) {
+            const result = evaluateNode(child, identity);
+            if (keys[0] === 'and' && result === false) return false;
+            if (keys[0] === 'or' && result === true) return true;
+            if (result === null) unknown = true;
+        }
+        return unknown ? null : keys[0] === 'and';
     }
 
-    if ('or' in expr) {
-        const children = (expr as { or: unknown }).or;
-        if (!Array.isArray(children) || children.length === 0) return false;
-        return children.some((child) => evaluateExpression(child as PermissionExpression, identity));
-    }
-
-    return false;
+    return null;
 }
 
 /** Number of nodes in a tree (bounded by validation; safe on any shape). */
@@ -186,7 +219,7 @@ export function countExpressionNodes(expr: unknown): number {
     if (!expr || typeof expr !== 'object') return 0;
     const node = expr as Record<string, unknown>;
 
-    if ('role' in node || 'level' in node) return 1;
+    if ('role' in node || 'level' in node || 'user' in node) return 1;
     if ('not' in node) return 1 + countExpressionNodes(node.not);
     if ('and' in node || 'or' in node) {
         const children = (node.and ?? node.or) as unknown;

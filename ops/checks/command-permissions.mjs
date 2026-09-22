@@ -45,6 +45,32 @@ const baseCommand = {
 
 const greetID = (await CommandsSchema.findOne({ channelID: channel, cmd: 'greet' }).select('_id'))._id.toString();
 
+// Account references retain both display login and stable ID. The API stores
+// the sanitized tree; runtime checks compare only the ID.
+{
+    const named = { user: { id: '12345', login: 'User123' } };
+    const response = await api('PUT', `/commands/${channel}/${greetID}`, {
+        permissionExpression: { or: [{ role: 'vip' }, { role: 'mod' }, named] }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).command.permissionExpression, {
+        or: [{ role: 'vip' }, { role: 'mod' }, { user: { id: '12345', login: 'user123' } }]
+    });
+    const exclude = await api('PUT', `/commands/${channel}/${greetID}`, {
+        permissionExpression: { and: [{ role: 'everyone' }, { not: { user: { id: '12345', login: 'user123' } } }] }
+    });
+    assert.equal(exclude.status, 200);
+    assert.equal((await exclude.json()).command.permissionMode, 'tags');
+    const invalidUser = await api('PUT', `/commands/${channel}/${greetID}`, {
+        permissionExpression: { user: { id: '123abc', login: 'user123' } }
+    });
+    assert.equal(invalidUser.status, 400);
+    const restore = await api('PUT', `/commands/${channel}/${greetID}`, {
+        permissionExpression: { or: [{ role: 'sub' }, { role: 'vip' }] }
+    });
+    assert.equal(restore.status, 200);
+}
+
 // --- Create/update: invalid expressions are rejected with 400 ---
 {
     const bad = await api('POST', `/commands/${channel}`, { ...baseCommand, cmd: 'badexp', name: 'badexp', func: 'badexp', permissionExpression: { role: 'supermod' }, userLevel: 1, userLevelName: 'everyone' });

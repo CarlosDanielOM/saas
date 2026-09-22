@@ -31,6 +31,8 @@ test('default chatter resolves to level 1 with only the everyone tag', async () 
     const identity = await resolveUserIdentity('channel-1', message([]), new FakeRoleCache());
     assert.equal(identity.level, 1);
     assert.deepEqual([...identity.tags].sort(), ['everyone']);
+    assert.equal(identity.userId, 'user-1');
+    assert.equal(identity.login, 'viewer');
 });
 
 test('subscriber badge maps to level 2 and the sub tag', async () => {
@@ -198,10 +200,12 @@ test('createUserIdentity always includes the everyone tag', () => {
 });
 
 test('serialized identities round-trip through parseUserIdentity', () => {
-    const identity = createUserIdentity(7, ['mod', 'sub']);
+    const identity = createUserIdentity(7, ['mod', 'sub'], '12345', 'User123');
     const parsed = parseUserIdentity(serializeUserIdentity(identity));
     assert.equal(parsed.level, 7);
     assert.deepEqual([...parsed.tags].sort(), ['everyone', 'mod', 'sub']);
+    assert.equal(parsed.userId, '12345');
+    assert.equal(parsed.login, 'user123');
 });
 
 test('parseUserIdentity never fabricates authorization from garbage', () => {

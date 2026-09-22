@@ -117,9 +117,9 @@ await CommandsSchema.create({
     permissionExpression: null
 });
 
-const commandMessage = (id, text) => ({
-    chatter_user_id: 'viewer-user',
-    chatter_user_login: 'vieweruser',
+const commandMessage = (id, text, userID = 'viewer-user', login = 'vieweruser') => ({
+    chatter_user_id: userID,
+    chatter_user_login: login,
     chatter_user_name: 'ViewerUser',
     message_id: id,
     badges: [],
@@ -138,6 +138,31 @@ await messageHandler(channel, commandMessage('message-blocked', '!marker THIS CO
 await until(() => calls().some(call => call.warn === 'viewer-user'), 'moderation warning for command message');
 await sleep(250);
 assert.equal(calls().some(call => call.message === marker), false, 'moderated command never executes');
+
+// A named viewer can pass a role-restricted command; a different viewer cannot.
+await CommandsSchema.updateOne({ channelID: channel, cmd: 'marker' }, { $set: {
+    permissionExpression: { or: [{ role: 'vip' }, { role: 'mod' }, { user: { id: '12345', login: 'user123' } }] }
+} });
+await redis.del(`${channel}:commands:marker`);
+fs.writeFileSync(callsPath, '');
+await messageHandler(channel, commandMessage('message-named-allowed', '!marker hello', '12345', 'renamed'));
+await until(() => calls().some(call => call.message === marker), 'named account command response after rename');
+fs.writeFileSync(callsPath, '');
+await messageHandler(channel, commandMessage('message-other-denied', '!marker hello', '67890', 'otheruser'));
+await sleep(250);
+assert.equal(calls().some(call => call.message === marker), false, 'other viewer cannot use role-restricted command');
+
+// A named account can also be excluded from universal command access.
+await CommandsSchema.updateOne({ channelID: channel, cmd: 'marker' }, { $set: {
+    permissionExpression: { and: [{ role: 'everyone' }, { not: { user: { id: '12345', login: 'user123' } } }] }
+} });
+await redis.del(`${channel}:commands:marker`);
+fs.writeFileSync(callsPath, '');
+await messageHandler(channel, commandMessage('message-named-denied', '!marker hello', '12345', 'renamed'));
+await sleep(250);
+assert.equal(calls().some(call => call.message === marker), false, 'excluded named account cannot use everyone command');
+await messageHandler(channel, commandMessage('message-other-allowed', '!marker hello', '67890', 'otheruser'));
+await until(() => calls().some(call => call.message === marker), 'other viewer allowed by everyone rule');
 
 console.log('PASS bot: moderation precedes commands, role-cache failures preserve badge roles, broadcaster bypasses cache, errors are rate-limited');
 process.exit(0);

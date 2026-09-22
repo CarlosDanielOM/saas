@@ -22,7 +22,7 @@ async function until(fn, label) { for (let i = 0; i < 100; i++) { if (await fn()
 // Bot account token fixture so warn/delete/ban resolve the bot header.
 await redis.hSet('accounts:twitch:698614112:data', { id: '698614112', access_token: 'dummy-token', expires_at: String(Math.floor(Date.now() / 1000) + 36000) });
 
-const identity = (level, tags = []) => ({ level, tags: new Set(['everyone', ...tags]) });
+const identity = (level, tags = [], userId) => ({ level, tags: new Set(['everyone', ...tags]), userId });
 const message = (id, text, fragments = [], user = 'user1', login = 'viewer1') => ({
     chatter_user_id: user,
     chatter_user_login: login,
@@ -143,6 +143,14 @@ assert.equal((await runChatModeration(expressionChannel, message('msg-expr-sub',
 assert.equal((await runChatModeration(expressionChannel, message('msg-expr-vip', 'SHOUTING IN CAPS AS A VIP', [], 'vip1', 'vipone'), identity(5, ['vip']))).actionTaken, false, 'vip tag exempt via expression');
 assert.equal((await runChatModeration(expressionChannel, message('msg-expr-mod', 'SHOUTING IN CAPS AS A MOD', [], 'mod9', 'modnine'), identity(7, ['mod']))).actionTaken, true, 'mod without sub/vip tags is NOT exempt (stored numeric level stays inert in tag mode)');
 assert.equal((await runChatModeration(expressionChannel, message('msg-expr-bc', 'SHOUTING IN CAPS AS BROADCASTER', [], expressionChannel, 'expr'), identity(10, ['broadcaster']))).actionTaken, false, 'broadcaster always bypasses moderation');
+
+const namedChannel = 'named-exempt-channel';
+const namedRule = { ...rules.find(rule => rule.type === 'caps'), id: 'named-rule', exemptExpression: {
+    and: [{ role: 'everyone' }, { not: { user: { id: '12345', login: 'user123' } } }]
+} };
+await ChannelModerationSettingsSchema.create({ channelID: namedChannel, enabled: true, rules: [namedRule], settingsVersion: 1 });
+assert.equal((await runChatModeration(namedChannel, message('msg-named-other', 'CAPS FROM ANOTHER USER', [], '67890', 'other'), identity(1, [], '67890'))).actionTaken, false, 'everyone else exempt');
+assert.equal((await runChatModeration(namedChannel, message('msg-named-excluded', 'CAPS FROM EXCLUDED USER', [], '12345', 'renamed'), identity(1, [], '12345'))).actionTaken, true, 'same account is excluded even after renaming');
 
 const invalidRule = { ...rules.find(rule => rule.type === 'caps'), id: 'invalid-expression-rule', exemptExpression: { role: 'supermod' } };
 await ChannelModerationSettingsSchema.create({ channelID: 'invalid-expression-channel', enabled: true, rules: [invalidRule], settingsVersion: 1 });

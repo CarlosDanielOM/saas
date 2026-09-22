@@ -42,22 +42,33 @@ export interface UserIdentity {
     level: number;
     /** Full role set; always contains `everyone`. */
     tags: Set<RoleTag>;
+    /** Twitch account ID for user-specific rules; absent for synthetic identities. */
+    userId?: string;
+    /** Lowercase Twitch login for display and audit context. */
+    login?: string;
 }
 
 /** Serialized identity used to transport a resolved identity (e.g. AI tool tags). */
 export interface SerializedUserIdentity {
     level: number;
     tags: RoleTag[];
+    userId?: string;
+    login?: string;
 }
 
 export function isRoleTag(value: unknown): value is RoleTag {
     return typeof value === 'string' && ROLE_TAG_SET.has(value);
 }
 
-export function createUserIdentity(level: number, tags: Iterable<RoleTag> = []): UserIdentity {
+export function createUserIdentity(level: number, tags: Iterable<RoleTag> = [], userId?: string, login?: string): UserIdentity {
     const tagSet = new Set<RoleTag>(tags);
     tagSet.add('everyone');
-    return { level, tags: tagSet };
+    return {
+        level,
+        tags: tagSet,
+        ...(userId ? { userId } : {}),
+        ...(login ? { login: login.toLowerCase() } : {})
+    };
 }
 
 /** Explicit broadcaster identity for trusted streamer-authored AST execution. */
@@ -70,7 +81,7 @@ export function createDefaultIdentity(): UserIdentity {
 }
 
 export function serializeUserIdentity(identity: UserIdentity): SerializedUserIdentity {
-    return { level: identity.level, tags: [...identity.tags] };
+    return { level: identity.level, tags: [...identity.tags], userId: identity.userId, login: identity.login };
 }
 
 /**
@@ -83,13 +94,15 @@ export function parseUserIdentity(raw: unknown, fallbackLevel: number = 1): User
         return createUserIdentity(fallbackLevel, []);
     }
 
-    const record = raw as { level?: unknown; tags?: unknown };
+    const record = raw as { level?: unknown; tags?: unknown; userId?: unknown; login?: unknown };
     const level = typeof record.level === 'number' && Number.isFinite(record.level)
         ? Math.max(1, Math.min(BROADCASTER_USER_LEVEL, Math.trunc(record.level)))
         : fallbackLevel;
     const tags = Array.isArray(record.tags) ? record.tags.filter(isRoleTag) : [];
 
-    return createUserIdentity(level, tags);
+    const userId = typeof record.userId === 'string' && /^\d{1,20}$/.test(record.userId) ? record.userId : undefined;
+    const login = typeof record.login === 'string' && /^[a-zA-Z0-9_]{1,25}$/.test(record.login) ? record.login : undefined;
+    return createUserIdentity(level, tags, userId, login);
 }
 
 interface IBadgeLike {
@@ -343,7 +356,7 @@ export async function resolveUserIdentity(
     // role-cache outage.
     if (userID && userID === channelID) {
         tags.add('broadcaster');
-        return createUserIdentity(BROADCASTER_USER_LEVEL, tags);
+        return createUserIdentity(BROADCASTER_USER_LEVEL, tags, userID, userLogin);
     }
 
     try {
@@ -375,7 +388,7 @@ export async function resolveUserIdentity(
         }
     }
 
-    return createUserIdentity(level, tags);
+    return createUserIdentity(level, tags, userID, userLogin);
 }
 
 async function hasCachedRole(
