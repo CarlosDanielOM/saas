@@ -1674,6 +1674,12 @@
     "openingCheckout": "Opening checkout…",
     "loading": "Loading credit packs",
     "checkoutNote": "Checkout and payment are securely handled by Polar.",
+    "recipient": {
+      "kicker": "Purchase recipient",
+      "account": "Credits will be added to @{{account}}",
+      "owner": "Every pack purchased on this page is added to your signed-in Twitch account.",
+      "managedChannel": "You are viewing @{{streamer}} as an admin. This purchase will not add credits to that channel."
+    },
     "comparison": {
       "kicker": "Two ways to top up",
       "title": "What is the difference?",

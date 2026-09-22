@@ -1674,6 +1674,12 @@
     "openingCheckout": "Abriendo el pago…",
     "loading": "Cargando paquetes de créditos",
     "checkoutNote": "Polar gestiona el proceso de pago de forma segura.",
+    "recipient": {
+      "kicker": "Cuenta que recibe la compra",
+      "account": "Los créditos se añadirán a @{{account}}",
+      "owner": "Cada paquete comprado en esta página se añade a tu cuenta de Twitch conectada.",
+      "managedChannel": "Estás viendo a @{{streamer}} como administrador. Esta compra no añadirá créditos a ese canal."
+    },
     "comparison": {
       "kicker": "Dos formas de recargar",
       "title": "¿Cuál es la diferencia?",

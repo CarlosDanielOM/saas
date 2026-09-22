@@ -43,6 +43,31 @@
       </article>
     </section>
 
+    @if (purchaserLogin(); as account) {
+      <aside
+        class="lf-account-notice"
+        [class.lf-account-notice--managed]="isManagingDifferentAccount()"
+        aria-labelledby="credit-recipient-title"
+      >
+        <span class="lf-account-notice__icon" aria-hidden="true">
+          <app-lf-icon name="users" [size]="20" />
+        </span>
+        <div>
+          <p class="lf-kicker">{{ t('creditPacks.recipient.kicker') }}</p>
+          <h2 id="credit-recipient-title" class="lf-h3">
+            {{ t('creditPacks.recipient.account', { account }) }}
+          </h2>
+          @if (isManagingDifferentAccount()) {
+            <p>
+              {{ t('creditPacks.recipient.managedChannel', { streamer: streamer() }) }}
+            </p>
+          } @else {
+            <p>{{ t('creditPacks.recipient.owner') }}</p>
+          }
+        </div>
+      </aside>
+    }
+
     @if (purchaseCompleted()) {
       <div class="lf-success" role="status">
         <app-lf-icon name="check" />

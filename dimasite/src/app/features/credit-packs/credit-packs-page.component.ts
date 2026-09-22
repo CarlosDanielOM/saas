@@ -43,6 +43,14 @@ export class CreditPacksPageComponent {
   readonly streamer = computed(
     () => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()
   );
+  readonly purchaserLogin = computed(
+    () => (this.sessionAuth.session()?.twitchUser.login ?? '').trim().toLowerCase()
+  );
+  readonly isManagingDifferentAccount = computed(() => {
+    const purchaser = this.purchaserLogin();
+    const streamer = this.streamer();
+    return Boolean(purchaser && streamer && purchaser !== streamer);
+  });
   readonly planTier = computed(() =>
     this.catalog()?.planTier
     ?? this.sessionAuth.getPlanTierForStreamer(this.streamer())

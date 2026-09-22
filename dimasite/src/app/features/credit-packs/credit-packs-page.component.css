@@ -244,6 +244,53 @@
   background: var(--tile);
 }
 
+.lf-account-notice {
+  display: grid;
+  grid-template-columns: 2.7rem minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+  margin-top: 0.8rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 70%);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--accent-soft), var(--tile) 55%);
+}
+
+.lf-account-notice--managed {
+  border-color: color-mix(in srgb, var(--gold), transparent 65%);
+  background: color-mix(in srgb, var(--gold-soft), var(--tile) 50%);
+}
+
+.lf-account-notice__icon {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border-radius: 0.85rem;
+  color: var(--accent);
+  background: var(--tile);
+}
+
+.lf-account-notice--managed .lf-account-notice__icon {
+  color: var(--gold);
+}
+
+.lf-account-notice .lf-kicker {
+  margin-bottom: 0.35rem;
+}
+
+.lf-account-notice .lf-h3 {
+  overflow-wrap: anywhere;
+}
+
+.lf-account-notice p:last-child {
+  max-width: 70ch;
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
 .lf-success {
   color: var(--ok);
   background: color-mix(in srgb, var(--ok-soft), var(--tile) 55%);
