@@ -774,3 +774,12 @@
 }
 .lf-voice-picker__controls select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lf-voice-picker__controls .lf-btn { padding-inline: .85rem; white-space: nowrap; }
+.lf-favorites { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.lf-favorites > strong { display: block; color: var(--fg); font-size: .9rem; }
+.lf-favorites > p { color: var(--muted); font-size: .8rem; line-height: 1.5; margin: .35rem 0; }
+.lf-favorites ul { list-style: none; display: grid; gap: .5rem; padding: 0; margin: .75rem 0 0; }
+.lf-favorites li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .65rem; border: 1px solid var(--line); border-radius: .75rem; }
+.lf-favorites li span { min-width: 0; overflow-wrap: anywhere; }
+.lf-favorites li b { display: block; font-size: .85rem; }
+.lf-favorites li code { color: var(--gold); font-size: .75rem; }
+.lf-favorites li .lf-btn { min-height: 44px; flex-shrink: 0; }

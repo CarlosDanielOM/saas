@@ -370,7 +370,18 @@
         "choose": "Use voice",
         "chooseNamed": "Use {{name}} as default",
         "selectedShort": "Selected",
-        "phrase": "Preview phrase"
+        "phrase": "Preview phrase",
+        "addFavoriteNamed": "Add {{name}} to favorites",
+        "removeFavoriteNamed": "Remove {{name}} from favorites"
+      },
+      "favorites": {
+        "title": "Favorite Fish voices",
+        "hint": "Star voices in Find voice to save them here. Use an alias in commands, for example $(tts.fish fav_voice Hello chat).",
+        "empty": "No favorites yet.",
+        "remove": "Remove",
+        "removeNamed": "Remove {{name}} from favorites",
+        "loadError": "Could not load favorite voices.",
+        "saveError": "Could not update favorite voice."
       }
     },
     "referrals": {

@@ -146,11 +146,29 @@ const { registerTtsFunctions } = await import('/app/dist/utils/ast_parser/functi
 const { getFunctionHandler, createExecutionContext } = await import('/app/dist/utils/ast_parser/evaluator.js');
 registerTtsFunctions();
 const fishHandler = getFunctionHandler('tts.fish');
+const favoritesUrl = '/speech/favorites/' + channel;
+assert.equal((await request(favoritesUrl, 'GET', null, {})).status, 401);
+assert.equal((await request(favoritesUrl, 'POST', { id: 'a'.repeat(32) }, { Authorization: `Bearer ${token}-other`, 'Content-Type': 'application/json' })).status, 403);
+assert.equal((await request(favoritesUrl, 'POST', { id: 'invalid' })).status, 400);
+assert.deepEqual((await request(favoritesUrl)).body.data, []);
+const savedAlice = await request(favoritesUrl, 'POST', { id: 'a'.repeat(32), name: 'Untrusted name' });
+assert.equal(savedAlice.status, 200);
+assert.deepEqual(savedAlice.body.data, { id: 'a'.repeat(32), name: 'Test voice', alias: 'test_voice' });
+assert.equal((await request(favoritesUrl, 'POST', { id: 'a'.repeat(32) })).body.data.alias, 'test_voice');
+assert.equal((await request(favoritesUrl)).body.data.length, 1);
+const { makeFavoriteAlias } = await import('/app/dist/schemas/channel_fish_voice_favorites.schema.js');
+assert.equal(makeFavoriteAlias('Gojó', []), 'gojo_2');
+assert.equal(makeFavoriteAlias('Fav Voice', ['fav_voice']), 'fav_voice_2');
 for (const [argument, expected] of [['rias_gremory', 'a5711996953b4cfda57cb516e26fe1e0'], ['c'.repeat(32), 'c'.repeat(32)]]) {
   const result = await fishHandler([argument, 'Explicit voice test'], createExecutionContext({ broadcasterId: channel, userId: channel, userLogin: 'test' }));
   assert.equal(result, '');
   await finishSpeech(expected);
 }
+assert.equal(await fishHandler(['test_voice', 'Favorite voice test'], createExecutionContext({ broadcasterId: channel, userId: channel, userLogin: 'test' })), '');
+await finishSpeech('a'.repeat(32));
+assert.equal((await request(favoritesUrl + '/' + 'a'.repeat(32), 'DELETE')).status, 200);
+assert.deepEqual((await request(favoritesUrl)).body.data, []);
+assert.equal((await request('/speech/' + channel, 'POST', { mode: 'clone', text: 'Removed alias', cloneName: 'test_voice' })).status, 400);
 const { PREVIEW_PHRASES, choosePreviewPhrase } = await import('/app/dist/server/services/tts/fish_preview.service.js');
 for (const language of ['en', 'es']) {
   assert.equal(PREVIEW_PHRASES[language].length, 5);
@@ -163,5 +181,5 @@ assert.equal(resolveFishVoice('b'.repeat(32)), 'b'.repeat(32));
 assert.equal(resolveFishVoice('constructor'), null);
 for (const ws of sockets) ws.close();
 await redis.quit();
-console.log('Fish API: search filters, permissions, persistence, saved defaults, explicit tts.fish aliases/IDs, preview websocket, billing/cap, concurrency, provider failure and isolation passed.');
+console.log('Fish API: search filters, favorite persistence/permissions/alias resolution, saved defaults, explicit tts.fish aliases/IDs, preview websocket, billing/cap, concurrency, provider failure and isolation passed.');
 process.exit(0);

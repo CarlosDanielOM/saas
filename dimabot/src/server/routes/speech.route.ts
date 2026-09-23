@@ -8,6 +8,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { AdminSchema } from '../../schemas/admin.schema.js';
+import { addFishVoiceFavorite, getFishVoiceFavorites, removeFishVoiceFavorite, MAX_FISH_VOICE_FAVORITES } from '../../schemas/channel_fish_voice_favorites.schema.js';
 import {
     getChannelTtsSettings,
     normalizeChannelTtsSettings,
@@ -71,9 +72,13 @@ function resolveRequestedProvider(
     return 'piper';
 }
 
-function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string): string | null {
+async function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string): Promise<string | null> {
     if (provider === 'fish') {
-        return resolveFishVoice(mode === 'clone' && cloneName ? cloneName : settings.voices.cloneDefault);
+        const requested = mode === 'clone' && cloneName ? cloneName : settings.voices.cloneDefault;
+        const builtIn = resolveFishVoice(requested);
+        if (builtIn) return builtIn;
+        const favorite = (await getFishVoiceFavorites(settings.channelID)).find(item => item.alias === requested?.toLowerCase());
+        return favorite?.id ?? null;
     }
 
     return language === 'en' ? settings.voices.en : settings.voices.es;
@@ -248,6 +253,53 @@ router.get('/voices/:channelID', authMiddleware as any, async (req: AuthRequest,
         return res.status(status).json({ error: true, status, code: error instanceof VoiceRequestError ? error.code : 'catalog_unavailable', message: 'Unable to search voices' });
     }
 });
+router.get('/favorites/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!req.user || await getSettingsAccess(req.user.id, channelID) === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Access denied' });
+        }
+        return res.json({ error: false, status: 200, data: await getFishVoiceFavorites(channelID) });
+    } catch {
+        return res.status(500).json({ error: true, status: 500, message: 'Unable to load favorite voices' });
+    }
+});
+router.post('/favorites/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
+            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can save voices' });
+        }
+        const id = req.body?.id;
+        if (typeof id !== 'string' || !/^[a-f\d]{32}$/i.test(id)) {
+            return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
+        }
+        const voice = await getFishVoice(id.toLowerCase());
+        const favorite = await addFishVoiceFavorite(channelID, voice.id.toLowerCase(), voice.name);
+        return res.json({ error: false, status: 200, data: favorite });
+    } catch (error) {
+        if (error instanceof VoiceRequestError) return res.status(error.status).json({ error: true, status: error.status, code: error.code, message: error.message });
+        if (error instanceof Error && error.message === 'favorites_full') return res.status(409).json({ error: true, status: 409, code: 'favorites_full', message: `You can save up to ${MAX_FISH_VOICE_FAVORITES} voices` });
+        return res.status(500).json({ error: true, status: 500, message: 'Unable to save favorite voice' });
+    }
+});
+router.delete('/favorites/:channelID/:voiceID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
+            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can remove voices' });
+        }
+        const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
+        if (!/^[a-f\d]{32}$/i.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
+        await removeFishVoiceFavorite(channelID, id);
+        return res.json({ error: false, status: 200, data: await getFishVoiceFavorites(channelID) });
+    } catch {
+        return res.status(500).json({ error: true, status: 500, message: 'Unable to remove favorite voice' });
+    }
+});
 router.post('/preview-session/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
     res.set('Cache-Control', 'no-store');
     try {
@@ -373,7 +425,7 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             });
         }
 
-        const voice = resolveVoice(settings, mode, provider, language, body.cloneName);
+        const voice = await resolveVoice(settings, mode, provider, language, body.cloneName);
         if (!voice) {
             return res.status(400).json({
                 error: true,

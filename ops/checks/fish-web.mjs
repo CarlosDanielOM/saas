@@ -38,6 +38,7 @@ const voices = [
 let previews = 0;
 let previewFail = false;
 let searchQueries = [];
+let favorites = [];
 let lastPreviewBody;
 // Valid short WAV, generated locally. No provider synthesis or live credits.
 const wav = Buffer.alloc(44 + 1600);
@@ -87,6 +88,17 @@ await context.route('**/*', async route => {
     data = { items: voices.filter(v => v.name.toLowerCase().includes(name.toLowerCase()) &&
       (gender === 'all' || gender === v.gender) && (lang === 'all' || v.languages.includes(lang)) &&
       (license === 'all' || v.licensed === (license === 'licensed'))), page: Number(url.searchParams.get('page')), hasMore: !name && url.searchParams.get('page') === '1' };
+  } else if (url.pathname === '/speech/favorites/999991') {
+    if (route.request().method() === 'POST') {
+      const id = route.request().postDataJSON().id;
+      const voice = voices.find(v => v.id === id);
+      const favorite = { id, name: voice.name, alias: voice.name.toLowerCase() };
+      favorites.push(favorite);
+      data = favorite;
+    } else data = favorites;
+  } else if (url.pathname.startsWith('/speech/favorites/999991/') && route.request().method() === 'DELETE') {
+    favorites = favorites.filter(favorite => favorite.id !== url.pathname.split('/').at(-1));
+    data = favorites;
   } else if (url.pathname === '/speech/preview-session/999991') data = { ticket: 'test-ticket' };
   else if (url.pathname.includes('/live-status')) data = { isLive: false, currentViewers: 0 };
   return route.fulfill({ json: { error: false, status: 200, data } });
@@ -103,6 +115,11 @@ try {
   assert.equal(await browserUI.count(), 0, 'catalog stays out of the settings page');
   assert.equal(searchQueries.length, 0, 'catalog is fetched only when opened');
   await openBrowser();
+  await browserUI.getByRole('button', { name: 'Add Alice to favorites' }).click();
+  await browserUI.getByRole('button', { name: 'Remove Alice from favorites' }).waitFor();
+  assert.equal(await browserUI.getByRole('button', { name: 'Remove Alice from favorites' }).getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('.lf-favorites code').textContent(), 'alice');
+  assert.ok((await page.locator('#fish-default-voice').textContent()).includes('Alice'));
   for (const [width, theme] of [[320, 'dark'], [390, 'dark'], [1280, 'dark'], [320, 'light'], [1280, 'light']]) {
     await page.evaluate(theme => { document.documentElement.classList.toggle('dark', theme === 'dark'); document.documentElement.setAttribute('data-theme', theme); }, theme);
     await page.setViewportSize({ width, height: width < 640 ? 640 : 900 });
@@ -182,6 +199,10 @@ try {
   await browserUI.getByLabel('Search by name').fill('No match');
   await browserUI.getByText('No voices match', { exact: false }).waitFor();
   await page.reload();
+  assert.equal(await page.locator('.lf-favorites code').textContent(), 'alice', 'favorite persists across reload');
+  await page.getByRole('button', { name: 'Remove Alice from favorites' }).first().click();
+  await page.getByText('No favorites yet.').waitFor();
+  assert.equal(await page.locator('.lf-favorites code').count(), 0);
   await openBrowser();
   assert.equal(await browserUI.locator('.voice-card.is-selected h3').textContent(), 'Bea');
   previewFail = false;

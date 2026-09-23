@@ -8,6 +8,7 @@ import {
   EXPRESSIVE_TTS_TAG_GROUPS,
   type ExpressiveTtsTag,
   type FishVoice,
+  type FishVoiceFavorite,
   type TtsProvider,
   type TtsRole,
   type TtsSettings
@@ -75,6 +76,8 @@ export class TtsPageComponent {
 
   readonly urlCopied = signal(false);
   readonly voiceBrowserOpen = signal(false);
+  readonly fishFavorites = signal<FishVoiceFavorite[]>([]);
+  readonly favoriteSavingId = signal<string | null>(null);
   private readonly discoveredVoiceNames = signal<Record<string, string>>({});
   readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
   readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags }));
@@ -175,7 +178,10 @@ export class TtsPageComponent {
   readonly showCloneSettings = computed(() => this.ttsSettings()?.provider === 'fish');
   readonly cloneDefaultVoiceOptions = computed(() => {
     const current = this.ttsSettings()?.voices.cloneDefault;
-    return mergeCurrentOption(FISH_VOICE_OPTIONS, current, this.discoveredVoiceNames()[current ?? ''] || this.t('modules.tts.fields.savedValueOption', { value: current ?? '' }));
+    const favorites = this.fishFavorites().filter(favorite => !FISH_VOICE_OPTIONS.some(option => option.value === favorite.id))
+      .map(favorite => ({ value: favorite.id, label: `★ ${favorite.name}` }));
+    return mergeCurrentOption([...FISH_VOICE_OPTIONS, ...favorites], current,
+      this.discoveredVoiceNames()[current ?? ''] || this.t('modules.tts.fields.savedValueOption', { value: current ?? '' }));
   });
   readonly currentCloneDefaultVoiceLabel = computed(() => {
     const settings = this.ttsSettings();
@@ -272,6 +278,30 @@ export class TtsPageComponent {
     this.discoveredVoiceNames.update(names => ({ ...names, [voice.id]: voice.name }));
     this.updateTtsCloneDefault(voice.id);
     this.voiceBrowserOpen.set(false);
+  }
+
+  async toggleFishFavorite(voice: FishVoice): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || this.ttsReadOnly() || this.favoriteSavingId()) return;
+    this.favoriteSavingId.set(voice.id);
+    try {
+      const existing = this.fishFavorites().find(favorite => favorite.id === voice.id);
+      if (existing) {
+        this.fishFavorites.set(await firstValueFrom(this.ttsSettingsApi.removeFavorite(channelID, voice.id)));
+      } else {
+        const favorite = await firstValueFrom(this.ttsSettingsApi.addFavorite(channelID, voice.id));
+        this.fishFavorites.update(favorites => [...favorites, favorite]);
+      }
+    } catch (error) {
+      this.toastService.error(this.t('modules.tts.toasts.errorTitle'),
+        error instanceof Error ? error.message : this.t('modules.tts.favorites.saveError'));
+    } finally {
+      this.favoriteSavingId.set(null);
+    }
+  }
+
+  async removeFishFavorite(favorite: FishVoiceFavorite): Promise<void> {
+    await this.toggleFishFavorite({ id: favorite.id, name: favorite.name, languages: [], gender: null, licensed: null });
   }
 
   updateTtsCloneDefault(voiceValue: string): void {
@@ -398,6 +428,12 @@ export class TtsPageComponent {
       const settings = this.normalizeTtsSettings(response.settings);
       this.ttsSettings.set(settings);
       this.initialTtsSettings.set(this.deepCloneSettings(settings));
+      try {
+        this.fishFavorites.set(await firstValueFrom(this.ttsSettingsApi.getFavorites(channelID)));
+      } catch {
+        this.fishFavorites.set([]);
+        this.toastService.error(this.t('modules.tts.toasts.errorTitle'), this.t('modules.tts.favorites.loadError'));
+      }
     } catch (error) {
       console.error('Failed to load TTS settings:', {
         channelID,
@@ -423,6 +459,7 @@ export class TtsPageComponent {
   }
 
   private resetPageState(message: string): void {
+    this.fishFavorites.set([]);
     this.ttsLoading.set(false);
     this.ttsErrorMessage.set(message);
     this.ttsSettings.set(null);

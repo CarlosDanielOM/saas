@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, throwError } from 'rxjs';
 
-import { FishVoiceResults, FishVoiceFilters, TtsSettings, TtsSettingsResponse } from '../models/tts-settings.model';
+import { FishVoiceResults, FishVoiceFilters, FishVoiceFavorite, TtsSettings, TtsSettingsResponse } from '../models/tts-settings.model';
 import { ApiEnvelope } from '../models/admin.model';
 import { LinksService } from './links.service';
 import { HttpClient } from '@angular/common/http';
@@ -59,6 +59,24 @@ export class TtsSettingsApiService {
       if (response.error || !response.data) throw new Error('catalog_unavailable');
       return response.data;
     }));
+  }
+
+  getFavorites(channelID: string) {
+    return this.http.get<ApiEnvelope<FishVoiceFavorite[]>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}`)
+      .pipe(map(response => response.data ?? []));
+  }
+
+  addFavorite(channelID: string, id: string) {
+    return this.http.post<ApiEnvelope<FishVoiceFavorite>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}`, { id })
+      .pipe(map(response => {
+        if (!response.data) throw new Error('favorite_save_failed');
+        return response.data;
+      }));
+  }
+
+  removeFavorite(channelID: string, id: string) {
+    return this.http.delete<ApiEnvelope<FishVoiceFavorite[]>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}/${id}`)
+      .pipe(map(response => response.data ?? []));
   }
 
   createPreviewSession(channelID: string) {

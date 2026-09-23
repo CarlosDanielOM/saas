@@ -38,12 +38,15 @@ button.voice-close { width: 44px; height: 44px; padding: 0; flex-shrink: 0; font
 summary { cursor: pointer; min-height: 44px; padding: .7rem 0; color: var(--kicker); }
 .license-help p { margin: 0 0 .65rem; }
 .voice-results { display: grid; gap: .5rem; }
-.voice-card { display: grid; grid-template-columns: minmax(0, 1fr) 44px auto; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: .85rem; padding: .7rem; min-width: 0; }
+.voice-card { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: .85rem; padding: .7rem; min-width: 0; }
+.voice-card .primary { grid-column: 1 / -1; }
 .voice-card.is-selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .voice-info { min-width: 0; }
 .voice-meta { color: var(--muted); font-size: .7rem; line-height: 1.4; margin: .2rem 0; overflow-wrap: anywhere; }
 .license-badge { display: inline-block; border-radius: 999px; padding: .15rem .4rem; background: var(--accent-soft); color: var(--kicker); font-size: .65rem; font-weight: 650; }
 .voice-test { display: grid; place-items: center; width: 44px; padding: 0; }
+.voice-star { display: grid; place-items: center; width: 44px; padding: 0; color: var(--muted); }
+.voice-star.is-favorite { color: var(--gold); background: var(--gold-soft); }
 .voice-footer { flex-shrink: 0; padding: .5rem 1rem max(.6rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); max-height: 42dvh; overflow-y: auto; }
 .voice-footer-row { display: flex; gap: .75rem; align-items: center; justify-content: space-between; min-height: 44px; }
 .voice-save-hint { font-size: .73rem; line-height: 1.4; color: var(--muted); }
@@ -58,6 +61,8 @@ summary { cursor: pointer; min-height: 44px; padding: .7rem 0; color: var(--kick
 audio { display: block; width: 100%; height: 40px; min-width: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (min-width: 640px) {
+  .voice-card { grid-template-columns: minmax(0, 1fr) 44px 44px auto; }
+  .voice-card .primary { grid-column: auto; }
   .voice-dialog { width: min(calc(100% - 3rem), 56rem); height: min(88dvh, 46rem); margin: auto; border-radius: 1.25rem; }
   .voice-header { padding: 1rem 1.25rem .85rem; }.voice-toolbar, .voice-body, .voice-footer { padding-inline: 1.25rem; }
   .voice-filters { gap: .75rem; }.voice-filters select { font-size: .85rem; padding-inline: .6rem; }

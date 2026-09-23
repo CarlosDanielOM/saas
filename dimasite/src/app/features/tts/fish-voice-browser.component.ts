@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, viewChild, 
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, firstValueFrom, startWith } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
-import { FishPreview, FishVoice } from '../../models/tts-settings.model';
+import { FishPreview, FishVoice, FishVoiceFavorite } from '../../models/tts-settings.model';
 import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
@@ -18,9 +18,12 @@ import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 export class FishVoiceBrowserComponent {
   readonly channelID = input.required<string>();
   readonly selectedId = input('');
+  readonly favorites = input<FishVoiceFavorite[]>([]);
+  readonly favoriteSavingId = input<string | null>(null);
   readonly readOnly = input(false);
   readonly defaultLanguage = input<'en' | 'es'>('es');
   readonly selectVoice = output<FishVoice>();
+  readonly toggleFavorite = output<FishVoice>();
   readonly dismiss = output<void>();
   readonly filtersOpen = signal(false);
   readonly activeFilters = signal(0);
@@ -89,6 +92,7 @@ export class FishVoiceBrowserComponent {
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) this.dismiss.emit();
   }
   t(key: string, params?: Record<string, string | number>) { return this.language.translate(`modules.tts.browser.${key}`, params); }
+  isFavorite(id: string): boolean { return this.favorites().some(favorite => favorite.id === id); }
   async search(page = 1, channel = this.channelID()) {
     const version = ++this.requestVersion;
     this.resultsBody()?.nativeElement.scrollTo({ top: 0, behavior: 'instant' });

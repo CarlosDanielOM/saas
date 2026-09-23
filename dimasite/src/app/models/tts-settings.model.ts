@@ -69,6 +69,7 @@ export interface FishVoice {
   gender: 'female' | 'male' | null;
   licensed: boolean | null;
 }
+export interface FishVoiceFavorite { id: string; name: string; alias: string; }
 export interface FishVoiceResults { items: FishVoice[]; page: number; hasMore: boolean; }
 export interface FishVoiceFilters {
   name: string;
