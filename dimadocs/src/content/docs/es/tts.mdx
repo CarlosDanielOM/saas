@@ -1,144 +1,130 @@
 ---
-title: Texto a Voz
-description: Configura y usa la salida de voz texto a voz para tu stream.
+title: Texto a voz
+description: Configura la superposición de voz, las voces, los filtros y el TTS para chat o AST.
 sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+El texto a voz (TTS) lee en voz alta los mensajes del chat durante tu stream. Genera audio y lo reproduce mediante una superposición del navegador conectada a tu canal.
 
-El texto a voz (TTS) lee los mensajes de tus espectadores en voz alta durante tu stream. DomDimaBot soporta dos proveedores de TTS con diferentes calidades de voz, costos y capacidades.
+## Configurar la superposición de voz
 
-## Proveedores
+1. Abre el panel de tu canal y ve a **Módulos → Texto a voz**.
+2. Copia la URL del canal con **Copiar URL de voz**.
+3. Agrega esa URL como fuente de navegador en tu software de transmisión y mantenla abierta mientras quieras reproducir mensajes en cola.
+4. Habilita o agrega el comando de chat `!s` para tu canal y úsalo con `!s Hola chat!` para comprobar la reproducción.
 
-### Piper — Local (Todos los Planes)
+La superposición debe estar conectada para reproducir los mensajes en cola. La cola acepta una cantidad limitada de mensajes pendientes; el propietario del canal puede configurar el máximo.
 
-Piper es un motor de voz neural local que se ejecuta en el servidor de DomDimaBot. Esta disponible en todos los planes y usa creditos de IA.
+## Proveedores y voces
 
-**Costo en creditos IA:** 1 credito por 50 caracteres
+Elige el proveedor predeterminado en **Módulos → Texto a voz**. Esta opción se aplica a `!s` y a las funciones TTS predeterminadas de AST.
 
-**Voces disponibles:**
-- Ingles (EE.UU.) — `en_US-ryan-medium`
-- Espanol (Mexico) — `es_MX-ald-medium`
+### Piper
 
-**Caracteristicas:**
-- Sintesis rapida (local, sin llamadas a API)
-- Sin etiquetas expresivas/de emocion — las etiquetas se eliminan antes de hablar, pero el texto restante si se lee
-- Sin funciones premium de IA
-- Disponible para todos los usuarios sin importar su plan
+Piper es el proveedor de voz local. Las voces disponibles en el panel son:
 
----
+- Inglés (EE. UU.): Ryan — `en_US-ryan-medium`
+- Español (México): Ald — `es_MX-ald-medium`
 
-### Fish Audio — Voces Clonadas (Todos los Planes)
+La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se eliminan antes de que Piper hable; el texto restante sí se lee.
 
-Fish Audio ofrece voces clonadas de personajes. Esta disponible en todos los planes y usa creditos de IA.
+### Fish Audio
 
-**Voces disponibles:**
-- Gojo, Rias Gremory, Carlos Bodoque, Toji Fushiguro
+Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
 
-**Caracteristicas:**
-- Voces clonadas de personajes
-- Disponible con `$(tts.fish ...)` y `$(tts.clone ...)`
-- Tambien se puede usar como motor predeterminado del canal
+Fish Audio consume créditos de IA.
 
----
+Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los límites de créditos de IA se comparten entre las funciones de IA disponibles y varían según el plan; TTS no tiene una asignación mensual aparte.
 
-## Etiquetas Expresivas (Fish Audio)
+## Comando de chat
 
-Las voces de Fish Audio entienden etiquetas expresivas de habla. Agrega una o mas etiquetas entre corchetes dentro de un mensaje para que la voz realice esa emocion, entrega, sonido o efecto:
+### `!s` — leer un mensaje
 
+**Uso:** `!s <mensaje>`
+
+Cuando está habilitado como comando de chat, `!s` lee el mensaje con el proveedor y la voz predeterminados del canal. El idioma predeterminado del canal se usa para el prefijo hablado del nombre de usuario (`say` o `dice`); elige inglés o español en la configuración de TTS. El comando `!s` está deshabilitado en la configuración predeterminada incluida, así que habilítalo o créalo en tu canal antes de usarlo.
+
+```text
+!s Hola chat, bienvenidos al stream!
 ```
+
+El comando de chat aplica los filtros de mensajes del canal: omitir emotes, reemplazar enlaces, normalizar espacios y limitar la longitud del mensaje. El propietario puede cambiar estas opciones en el módulo TTS. Después de aplicar los filtros, el mensaje debe conservar texto que se pueda leer.
+
+## Funciones AST
+
+Usa estas funciones en comandos personalizados y acciones AST:
+
+| Función | Comportamiento |
+|---|---|
+| `$(tts <mensaje>)` | Habla con el proveedor y la voz predeterminados del canal. |
+| `$(tts.speak <mensaje>)` | Alias de `$(tts ...)`; no fuerza Piper. |
+| `$(tts.ai <mensaje>)` | Alias de `$(tts ...)`. |
+| `$(tts.clone <nombre_de_voz> <mensaje>)` | Habla con la voz Fish Audio indicada. El primer argumento es un nombre o ID de voz; el resto es el texto que se lee. |
+| `$(tts.fish <nombre_de_voz> <mensaje>)` | Alias de `$(tts.clone ...)`. |
+
+```text
+$(tts Hola chat!)
+$(tts.speak Usa el proveedor predeterminado del canal.)
+$(tts.clone gojo Hola desde Gojo!)
+```
+
+La cola procesa un elemento de voz a la vez por canal. Si la superposición del navegador está desconectada, el servidor rechaza nuevas solicitudes en vez de agregarlas a la cola. El máximo configurado también limita la cantidad de elementos pendientes.
+
+## Etiquetas expresivas
+
+Fish Audio admite etiquetas expresivas entre corchetes. Agrégalas al mensaje para pedir una emoción, un estilo de voz, un sonido vocal o un efecto:
+
+```text
 !s [happy] Excelente stream hoy!
-!s [whisper] [pause] Puedes guardar un secreto?
-$(tts.fish gojo [excited] Vamos!)
+!s [whisper] [pause] ¿Puedes guardar un secreto?
+$(tts.clone gojo [excited] ¡Vamos!)
 ```
 
-Las etiquetas aplican solo a **Fish Audio**. Piper las elimina antes de hablar, pero sigue leyendo el texto restante. El propietario puede habilitar o deshabilitar cualquier etiqueta en el panel bajo **Modulos → Texto a Voz → Controles de voz expresiva**; las etiquetas deshabilitadas o no reconocidas se eliminan antes de la sintesis.
+El propietario del canal puede habilitar o deshabilitar etiquetas individuales en **Módulos → Texto a voz → Controles de voz expresiva**. Las etiquetas deshabilitadas o no reconocidas se eliminan antes de la síntesis. Las etiquetas solo afectan a Fish Audio; Piper las elimina y lee el mensaje restante.
 
-Hay 75 etiquetas disponibles, agrupadas asi.
+Las etiquetas disponibles se agrupan así.
 
 ### Emociones
 
 `[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
 
-### Voz y Entrega
+### Voz y entrega
 
 `[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
 
-### Sonidos Vocales
+### Sonidos vocales
 
 `[laugh]` `[chuckle]` `[giggle]` `[cry]` `[sigh]` `[gasp]` `[inhale]` `[exhale]` `[sobbing]` `[groaning]` `[panting]` `[yawning]` `[snoring]` `[clear throat]`
 
-### Pausas y Efectos
+### Pausas y efectos
 
 `[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
 
-Algunas variantes comunes se aceptan como alias de la etiqueta que las controla — por ejemplo `[anger]` sigue a `[angry]`, `[whispering]` sigue a `[whisper]`, `[laughing]` sigue a `[laugh]`, y `[crowd laughing]` sigue a `[audience laughing]`.
+Algunos alias comunes son `[anger]` para `[angry]`, `[whispering]` para `[whisper]`, `[laughing]` para `[laugh]` y `[crowd laughing]` para `[audience laughing]`.
 
-<Aside type="note">
-Fish Audio interpreta tus etiquetas mientras haya creditos IA disponibles. Si los creditos se agotan o no se pueden verificar, el TTS vuelve a Piper (gratis), que elimina las etiquetas pero mantiene el texto hablado.
-</Aside>
+## Configurar TTS
 
----
+En **Módulos → Texto a voz**, el propietario del canal puede configurar:
 
-## Resumen de Costos en Creditos IA
+- Si TTS está habilitado para el canal.
+- El idioma y el proveedor predeterminados.
+- Las voces Piper en inglés y español, o la voz clonada predeterminada de Fish Audio cuando Fish está seleccionado.
+- La longitud máxima de los mensajes (30–500 caracteres).
+- El tamaño máximo de la cola pendiente (1–20 elementos).
+- Si los mensajes del comando de chat omiten emotes, reemplazan enlaces y normalizan espacios.
+- Qué etiquetas expresivas de Fish Audio están habilitadas.
 
-| Proveedor | Creditos IA |
-|-----------|-------------|
-| Piper | 1 por 50 caracteres |
-| Fish Audio | Usa creditos de IA |
+Los propietarios pueden cambiar la configuración. Los usuarios con permiso para ver la configuración pueden verla en modo de solo lectura. Las vistas previas de voz y los cambios de configuración son exclusivos del propietario.
 
-## Creditos IA Mensuales por Plan
+## Uso de créditos de IA
 
-| Plan | Creditos Mensuales |
-|------|--------------------|
+Piper es gratis y no consume créditos de IA. Fish Audio consume **1.5 créditos de IA por carácter**, redondeados hacia arriba en cada síntesis. Los límites de créditos se comparten entre las funciones de IA; los valores de plan configurados actualmente por el producto son:
+
+| Plan | Créditos mensuales de IA |
+|---|---:|
 | Free | 25,000 |
 | Premium | 200,000 |
 | Pro | 800,000 |
 
-<Aside type="note">
-Los creditos IA se consumen cuando un mensaje TTS se encola para sintesis. El costo en creditos se calcula sobre el conteo de caracteres del mensaje hablado.
-</Aside>
-
-## Comandos
-
-### `!s` — Hablar
-
-**Permiso:** Todos
-
-**Uso:** `!s <mensaje>`
-
-Hace que DomDimaBot lea tu mensaje en voz alta usando el proveedor y voz de TTS predeterminados del canal.
-
-**Ejemplo:**
-```
-!s Hola chat, bienvenidos al stream
-```
-
-### Funciones AST
-
-En comandos personalizados y el sistema AST, usa estas funciones para control detallado:
-
-| Funcion | Proveedor | Notas |
-|---------|-----------|-------|
-| `$(tts ...)` | Proveedor predeterminado | Usa el motor TTS predeterminado del canal |
-| `$(tts.speak ...)` | Solo Piper | Fuerza la voz local de Piper |
-| `$(tts.ai ...)` | Proveedor predeterminado | Igual que `$(tts ...)` |
-| `$(tts.clone ...)` | Fish Audio | TTS con voz clonada |
-| `$(tts.fish ...)` | Fish Audio | Igual que `$(tts.clone ...)` |
-
-**Ejemplos:**
-```
-$(tts.speak Hola desde Piper)
-$(tts.fish gojo Hola desde Fish Audio)
-```
-
-## Configuracion del Canal
-
-Configura el TTS en tu panel bajo **Modulos → Texto a Voz**:
-
-- **Habilitar/deshabilitar** TTS del canal
-- Seleccion de **proveedor predeterminado** (Piper o Fish Audio)
-- **Seleccion de voz** por idioma o voz clonada
-- **Filtros de mensaje** — omitir emotes, reemplazar enlaces, normalizar espacios, longitud maxima
-- **Configuracion de cola** — maximo de elementos TTS pendientes
+Consulta la guía del [panel](/es/dashboard/) para obtener más información sobre la configuración del canal.

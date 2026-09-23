@@ -1,55 +1,28 @@
 ---
-title: Recompensas del Canal
-description: Gestiona y automatiza las recompensas de puntos de tu canal de Twitch.
+title: Recompensas del canal
+description: Crea y gestiona recompensas de puntos del canal de Twitch y vincúlalas con acciones del bot.
 sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+El panel **Canjes** gestiona las recompensas de puntos personalizadas creadas mediante DomDimaBot y muestra tus recompensas de Twitch. Cada recompensa permite canjear puntos de Twitch; DomDimaBot puede procesar el canje y ejecutar el mensaje configurado para esa recompensa.
 
-Las recompensas de puntos del canal permiten a tus espectadores gastar sus puntos acumulados en experiencias e interacciones especiales.
+## Crea una recompensa de DomDimaBot
 
-## Configurar Recompensas
+1. Abre **Canjes** en el panel de tu canal y selecciona **Crear recompensa**.
+2. Define un título y un costo en puntos. También puedes configurar un mensaje para el espectador, un enfriamiento global en segundos, un mensaje, una duración, un color de fondo, si se requiere texto del espectador y si Twitch debe omitir la cola de solicitudes de canje.
+3. Guarda la recompensa. DomDimaBot la crea en Twitch y se registra para recibir sus eventos de canje.
 
-Ve a **Recompensas** en tu panel para crear y gestionar las recompensas de puntos del canal.
+Puedes editar, habilitar o deshabilitar y eliminar las recompensas personalizadas desde el panel. La sección **Twitch** muestra las recompensas obtenidas de Twitch; usa el botón de actualizar de esa sección para volver a cargar la lista.
 
-### Propiedades de las Recompensas
+## Configura qué sucede al canjear
 
-| Propiedad | Descripción |
-|-----------|-------------|
-| `title` | Nombre mostrado a los espectadores |
-| `cost` | Puntos requeridos para canjear |
-| `prompt` | Instrucciones mostradas al canjear |
-| `enabled` | Si los espectadores pueden canjear actualmente |
+El campo **Mensaje** pasa por el analizador de comandos especiales de DomDimaBot cuando se canjea la recompensa. Por ejemplo, un mensaje que incluya `$(trigger.send airhorn)` puede reproducir un disparador configurado. El analizador recibe como contexto el nombre de usuario, su login, el título de la recompensa y cualquier texto que haya enviado el espectador, para los comandos compatibles. La acción de un disparador también requiere que su fuente de navegador de OBS esté conectada; consulta [Disparadores y medios](/es/triggers/).
 
-## Recompensas Automáticas vs Manuales
+El panel no crea tipos de recompensa integrados separados para TTS, sonidos, shoutouts u otras acciones. Configura el mensaje de la recompensa con comandos del bot compatibles para ejecutar la acción deseada. Si el chat está habilitado, también se envía al chat el mensaje analizado cuando no está vacío.
 
-<Aside type="tip">
-DomDimaBot soporta tanto recompensas automatizadas (manejadas enteramente por el bot) como recompensas manuales (requieren tu aprobación).
-</Aside>
+## Enfriamientos y ajustes de las recompensas
 
-### Recompensas Automatizadas
+El campo de enfriamiento se aplica como **enfriamiento global** de Twitch para esa recompensa. No es un enfriamiento compartido por todas las recompensas ni uno por espectador. El costo, el mensaje para el espectador, el estado habilitado, el requisito de texto del espectador y el comportamiento de la cola son ajustes de la recompensa que se envían a Twitch. El mensaje de DomDimaBot se procesa localmente cuando llega el evento de canje.
 
-Estas recompensas se procesan inmediatamente cuando se canjean:
-
-- **Texto a Voz** — Leer mensajes de espectadores en voz alta
-- **Efectos de Sonido** — Reproducir clips de audio en la transmisión
-- **Disparadores de Overlay** — Mostrar animaciones/gráficos en la transmisión
-- **Comandos del Bot** — Ejecutar secuencias de comandos personalizados
-
-### Recompensas Manuales
-
-Estas recompensas requieren tu aprobación antes de ejecutar:
-
-- **Shoutouts** — Obtener un shoutout personalizado en transmisión
-- **Rey/Reina del Chat** — Rol de reconocimiento especial
-- **Solicitudes Personalizadas** — Interacciones especiales que apruebes
-
-## Enfriamientos de Recompensas
-
-Configura enfriamientos globales o por recompensa para prevenir spam:
-
-```
-Enfriamiento Global: 30 segundos (aplica a todas las recompensas)
-Efectos de Sonido: 60 segundos de enfriamiento por espectador
-```
+DomDimaBot también muestra la duración y el color de fondo de la recompensa. Los planes de pago permiten editar el costo original y el cambio de costo opcionales; estos ajustes pueden aumentar el costo tras un canje. La opción de volver al costo original controla si se restaura el costo variable.

@@ -1,0 +1,37 @@
+---
+title: Extensión de Twitch DimaFX
+description: Configura la tienda de la extensión de Twitch DimaFX y explica cómo los espectadores compran, guardan y activan contenido del canal.
+sidebar:
+  order: 8
+---
+
+DimaFX es una tienda de contenido multimedia para canales dentro de una extensión de Twitch. El broadcaster o un administrador del panel con permisos de DimaFX puede elegir contenido de la biblioteca multimedia del canal, asignarle un precio en Bits y publicar los elementos habilitados para los espectadores de la extensión.
+
+## Configurar la tienda del canal
+
+1. Inicia sesión en DomDimaBot con Twitch y selecciona el canal que administras.
+2. Abre **Módulos → DimaFX**. El módulo está disponible en el plan Free, sujeto a los permisos de acceso al panel.
+3. Crea un elemento, elige un recurso público disponible o uno que pertenezca al canal, y configura el nombre, la descripción opcional, la categoría, el precio, el volumen y si está habilitado. El precio debe ser uno de los valores que ofrece el formulario (por defecto: 0, 5, 10, 25, 50 o 100 Bits). El servidor asigna esos precios a SKU de la extensión de Twitch; no se pueden guardar valores que no estén admitidos.
+4. En Twitch, añade o activa la extensión DimaFX para el canal y abre su vista de configuración. Esa página espera la autorización de Twitch y ofrece **Iniciar sesión con Twitch**; inicia sesión en DomDimaBot para volver al módulo DimaFX de ese canal.
+5. Mantén conectado el cliente de superposición de activadores del canal cuando quieras que el contenido aparezca en directo. Una compra puede guardarse en el inventario sin reproducirse de inmediato, pero **Usar ahora** requiere que haya un cliente de superposición conectado.
+
+El módulo muestra los elementos configurados y permite a las personas autorizadas crearlos, editarlos, habilitarlos o deshabilitarlos, previsualizarlos y eliminarlos. Normalmente, eliminar un elemento no altera el valor del inventario que ya se guardó. La opción independiente de reembolso elimina las cantidades guardadas y devuelve su valor registrado como créditos DimaFX; no reembolsa Bits de Twitch.
+
+## Experiencia del espectador
+
+En el panel de la extensión de Twitch del canal, los espectadores pueden explorar los elementos habilitados, buscar o filtrar la biblioteca, previsualizar contenido y abrir un elemento para elegir una acción. Las compras con Bits solo están disponibles dentro de Twitch. Los elementos gratuitos usan directamente el flujo del servidor y no llaman a la API de compras con Bits de Twitch.
+
+Los espectadores pueden elegir **Usar ahora** para enviar el elemento a la superposición conectada, o **Guardar** para almacenar una copia en el inventario de ese canal. Guardar y usar créditos DimaFX requiere que el espectador comparta su identidad de Twitch con la extensión. Los espectadores anónimos pueden comprar con Bits y elegir **Usar ahora**, pero no pueden guardar elementos en el inventario ni gastar créditos.
+
+Cada espectador identificado tiene un saldo de créditos DimaFX independiente por canal. Si la superposición no puede aceptar una solicitud de **Usar ahora**, el servidor informa del error y devuelve el valor como créditos a los espectadores identificados. Los elementos guardados se pueden activar más tarde desde el inventario; si la superposición no acepta la activación, se restaura la copia guardada.
+
+Los ajustes del espectador solo controlan el acceso directo de las tarjetas de la tienda: **Créditos primero** o **Bits primero**, y **Usar ahora** o **Guardar**. Con **Bits primero**, el acceso directo usa Bits; la vista de detalles del elemento sigue mostrando las acciones explícitas disponibles. La configuración predeterminada es créditos primero y usar ahora. Para guardar estas preferencias, el espectador debe compartir su identidad.
+
+## Solución de problemas
+
+- Si la tienda está vacía, comprueba que los elementos estén habilitados y que los recursos del canal sigan disponibles.
+- Si un elemento no se activa, conecta el cliente de superposición de activadores del canal e inténtalo de nuevo. El valor de un uso inmediato fallido se devuelve como créditos al espectador identificado.
+- Si no aparecen los créditos, el inventario o las preferencias guardadas, comparte tu identidad de Twitch en la extensión. Twitch también puede solicitar la autorización de identidad por separado de la autorización de la extensión.
+- Si no puedes pagar con Bits, abre la extensión dentro de Twitch; el flujo de Bits no funciona fuera de Twitch.
+
+Usa la **Biblioteca multimedia** del panel para administrar recursos. Consulta [Activadores](/es/triggers/) para conocer el comportamiento de la superposición.

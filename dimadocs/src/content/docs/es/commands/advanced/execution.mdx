@@ -20,6 +20,11 @@ Esta página explica qué pasa cuando corre un comando AST y cómo depurarlo cua
 7. Las variables se escriben en memoria, caché o base de datos si hace falta
 8. La salida final se renderiza y se envía al chat
 
+
+## Contexto y permisos
+
+El contexto de ejecución aporta el canal, usuario, plan, ámbito del comando y, para comandos de eventos, la carga útil del evento. Los valores EventSub solo están disponibles para el evento correspondiente. La comprobación de permisos de funciones también depende de quién ejecuta: las acciones de chat e IA se verifican según el rol de quien las solicita, mientras que las plantillas creadas por el streamer se ejecutan según los permisos configurados para el comando o evento. Una referencia a otro comando no concede permisos adicionales.
+
 ## Por qué importa
 
 Entender el orden te ayuda a depurar problemas como:
@@ -52,8 +57,8 @@ Entender el orden te ayuda a depurar problemas como:
 
 ### Límites de referencia a comandos
 
-- profundidad máxima de recursión: `5`
-- los ciclos se detectan y se frenan
+- se evalúan como máximo cinco niveles anidados de referencias a comandos
+- se detienen las referencias repetidas dentro de la misma ruta
 
 ### Límites de delay
 

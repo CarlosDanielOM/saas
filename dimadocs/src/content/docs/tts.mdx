@@ -1,144 +1,130 @@
 ---
 title: Text to Speech
-description: Configure and use text-to-speech voice output for your stream.
+description: Configure the speech overlay, voices, filters, and chat or AST speech.
 sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+Text to speech (TTS) reads chat messages aloud in your stream. It generates audio and plays it through a browser overlay connected to your channel.
 
-Text-to-speech (TTS) reads viewer messages aloud during your stream. DomDimaBot supports two TTS providers with different voice qualities, costs, and capabilities.
+## Set up the speech overlay
 
-## Providers
+1. Open your channel dashboard and go to **Modules → Text to Speech**.
+2. Copy the channel's speech URL with **Copy speech URL**.
+3. Add that URL as a browser source in your streaming software and keep it open while you want queued speech to play.
+4. Enable or add a `!s` chat command for your channel, then use `!s Hello chat!` to check playback.
 
-### Piper — Local (All Plans)
+The overlay needs to be connected for queued messages to play. The queue accepts a limited number of pending messages; its maximum is configurable by the channel owner.
 
-Piper is a local neural voice engine running on the DomDimaBot server. It is available on all plan tiers and uses AI credits.
+## Providers and voices
 
-**AI Credit cost:** 1 credit per 50 characters
+Choose the default provider in **Modules → Text to Speech**. The setting applies to `!s` and to default AST TTS functions.
 
-**Voices available:**
-- English (US) — `en_US-ryan-medium`
-- Spanish (Mexico) — `es_MX-ald-medium`
+### Piper
 
-**Characteristics:**
-- Fast synthesis (local, no API calls)
-- No expressive/emotion tags — any tags are stripped before speaking, but the remaining text is still read
-- No premium AI features
-- Available to all users regardless of plan tier
+Piper is the local voice provider. Its available dashboard voices are:
 
----
+- English (US): Ryan — `en_US-ryan-medium`
+- Spanish (Mexico): Ald — `es_MX-ald-medium`
 
-### Fish Audio — Cloned Voices (All Plans)
+Piper synthesis does not consume AI credits. Expressive tags are removed before Piper speaks; the remaining words are still read.
 
-Fish Audio provides cloned character voices. It is available on all plan tiers and uses AI credits.
+### Fish Audio
 
-**Voices available:**
-- Gojo, Rias Gremory, Carlos Bodoque, Toji Fushiguro
+Fish Audio provides cloned voices. The dashboard includes a voice browser, and its preset voices include Gojo, Rias Gremory, Carlos Bodoque, and Toji Fushiguro. The selected clone can be the channel's default voice or an explicitly named voice in an AST command.
 
-**Characteristics:**
-- Cloned character voices
-- Available through `$(tts.fish ...)` and `$(tts.clone ...)`
-- Also usable as the channel default engine
+Fish Audio usage consumes AI credits.
 
----
+Both providers are available on Free, Premium, and Pro plans. AI credit limits are shared across eligible AI features and vary by plan; TTS does not have a separate monthly allowance.
 
-## Expressive Tags (Fish Audio)
+## Chat command
 
-Fish Audio voices understand expressive speech tags. Add one or more tags in square brackets inside a message to make the voice perform that emotion, delivery, sound, or effect:
+### `!s` — speak a message
 
+**Usage:** `!s <message>`
+
+When enabled as a chat command, `!s` reads the message using the channel's configured default provider and voice. The channel's default language is used for the spoken username prefix (`say` or `dice`); choose English or Spanish in the TTS settings. The `!s` command is disabled in the shipped default command configuration, so enable or create it for your channel before using it.
+
+```text
+!s Hello chat, welcome to the stream!
 ```
+
+The chat command applies the channel's message filters: skip emotes, replace links, normalize whitespace, and limit message length. The owner can change these in the TTS module. The message must still contain speakable text after filtering.
+
+## AST functions
+
+Use these functions in custom commands and AST actions:
+
+| Function | Behavior |
+|---|---|
+| `$(tts <message>)` | Speaks with the channel's configured default provider and voice. |
+| `$(tts.speak <message>)` | Alias for `$(tts ...)`; it does not force Piper. |
+| `$(tts.ai <message>)` | Alias for `$(tts ...)`. |
+| `$(tts.clone <voice_name> <message>)` | Speaks with the named Fish Audio voice. The first argument is a voice name or voice ID; the remaining text is spoken. |
+| `$(tts.fish <voice_name> <message>)` | Alias for `$(tts.clone ...)`. |
+
+```text
+$(tts Hello chat!)
+$(tts.speak This uses the channel default.)
+$(tts.clone gojo Hello from Gojo!)
+```
+
+The queue processes one speech item at a time for a channel. If the browser overlay is disconnected, the server rejects new speech requests rather than adding them to the queue. The configured queue maximum also limits pending items.
+
+## Expressive tags
+
+Fish Audio supports expressive tags written in square brackets. Put tags in the message to request an emotion, delivery style, vocal sound, or effect:
+
+```text
 !s [happy] Great stream today!
 !s [whisper] [pause] Can you keep a secret?
-$(tts.fish gojo [excited] Let's go!)
+$(tts.clone gojo [excited] Let's go!)
 ```
 
-Tags apply to **Fish Audio only**. Piper removes them before speaking but still reads the remaining text. Owners can enable or disable any tag in the dashboard under **Modules → Text to Speech → Expressive voice controls**; disabled and unrecognized tags are stripped before synthesis.
+The channel owner can enable or disable individual tags in **Modules → Text to Speech → Expressive voice controls**. Disabled and unrecognized tags are stripped before synthesis. Tags only affect Fish Audio; Piper strips them and speaks the remaining message.
 
-75 tags are available, grouped as follows.
+The available tags are grouped as follows.
 
 ### Emotions
 
 `[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
 
-### Voice & Delivery
+### Voice and delivery
 
 `[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
 
-### Vocal Sounds
+### Vocal sounds
 
 `[laugh]` `[chuckle]` `[giggle]` `[cry]` `[sigh]` `[gasp]` `[inhale]` `[exhale]` `[sobbing]` `[groaning]` `[panting]` `[yawning]` `[snoring]` `[clear throat]`
 
-### Pauses & Effects
+### Pauses and effects
 
 `[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
 
-Some common variants are accepted as aliases of the tag that controls them — for example `[anger]` follows `[angry]`, `[whispering]` follows `[whisper]`, `[laughing]` follows `[laugh]`, and `[crowd laughing]` follows `[audience laughing]`.
+Common aliases include `[anger]` for `[angry]`, `[whispering]` for `[whisper]`, `[laughing]` for `[laugh]`, and `[crowd laughing]` for `[audience laughing]`.
 
-<Aside type="note">
-Fish Audio performs your tags while AI credits are available. If credits run out or cannot be checked, TTS falls back to free Piper, which removes the tags but keeps the spoken text.
-</Aside>
+## Configure TTS
 
----
+In **Modules → Text to Speech**, the channel owner can configure:
 
-## AI Credit Costs Summary
+- Whether TTS is enabled for the channel.
+- The default language and provider.
+- The English and Spanish Piper voices, or the Fish Audio default clone voice when Fish is selected.
+- Maximum message length (30–500 characters).
+- Maximum pending queue size (1–20 items).
+- Whether chat-command messages skip emotes, replace links, and normalize whitespace.
+- Which expressive Fish Audio tags are enabled.
 
-| Provider | AI Credits |
-|---------|------------|
-| Piper | 1 per 50 characters |
-| Fish Audio | Uses AI credits |
+Channel owners can change settings. Users with settings-view access can view them read-only. Voice previews and changes to settings are owner-only.
 
-## Monthly AI Credits by Plan
+## AI credit use
 
-| Plan | Monthly Credits |
-|------|-----------------|
+Piper is free and consumes no AI credits. Fish Audio uses **1.5 AI credits per character**, rounded up for each synthesis. Credit limits are shared across AI features; the plan values currently configured by the product are:
+
+| Plan | Monthly AI credits |
+|---|---:|
 | Free | 25,000 |
 | Premium | 200,000 |
 | Pro | 800,000 |
 
-<Aside type="note">
-AI credits are consumed when a TTS message is queued for synthesis. The credit cost is calculated on the character count of the spoken message.
-</Aside>
-
-## Commands
-
-### `!s` — Speak
-
-**Permission:** Everyone
-
-**Usage:** `!s <message>`
-
-Makes DomDimaBot read your message aloud using the channel's default TTS provider and voice settings.
-
-**Example:**
-```
-!s Hello chat, welcome to the stream
-```
-
-### AST Functions
-
-In custom commands and the AST system, use these functions for fine-grained control:
-
-| Function | Provider | Notes |
-|----------|----------|-------|
-| `$(tts ...)` | Default provider | Uses channel's default TTS engine |
-| `$(tts.speak ...)` | Piper only | Forces the local Piper voice |
-| `$(tts.ai ...)` | Default provider | Same as `$(tts ...)` |
-| `$(tts.clone ...)` | Fish Audio | Cloned voice TTS |
-| `$(tts.fish ...)` | Fish Audio | Same as `$(tts.clone ...)` |
-
-**Examples:**
-```
-$(tts.speak Hello from Piper)
-$(tts.fish gojo Hello from Fish Audio)
-```
-
-## Channel Settings
-
-Configure TTS in your dashboard under **Modules → Text to Speech**:
-
-- **Enable/disable** channel TTS
-- **Default provider** selection (Piper or Fish Audio)
-- **Voice selection** per language or cloned voice
-- **Message filters** — skip emotes, replace links, normalize whitespace, max length
-- **Queue settings** — maximum pending TTS items
+See the [dashboard](/dashboard/) guide for more about your channel settings.

@@ -1,0 +1,36 @@
+---
+title: Stream Summaries
+description: Review stream metrics, AI recaps, highlights, and memory actions recorded after broadcasts.
+sidebar:
+  order: 8
+---
+
+Stream Summaries lists recorded broadcast sessions with their metrics, an AI-generated recap and highlights when available, and proposed or applied memory actions. It is available in the dashboard under **Modules → Stream Summaries**. The module is listed as stable and has no minimum plan tier. AI generation uses the channel's AI credit allowance; the exact cost depends on provider usage and is not shown as a fixed per-summary price.
+
+## Enable post-stream summaries
+
+1. Connect your Twitch channel and open **Modules → AI Personality**.
+2. Turn on **Stream summaries**.
+3. Under **Learning config**, turn on **Create post-stream summaries** and save the settings.
+4. Let the bot observe a broadcast, then open **Modules → Stream Summaries** to review results.
+
+The separate **AI chat responses** switch controls chat replies; it does not control stream summaries. The learning pipeline's general **Enable learning pipeline** switch controls weekly and monthly maintenance jobs, but post-stream summaries use the two switches above.
+
+By default, a stream-offline summary requires a session of at least 20 minutes and at least 30 sampled chat messages. You can change both thresholds in Learning config. A session below either threshold is recorded as **No-op** and does not produce a recap or memory actions. The service needs the stream session, viewer snapshots, and retained chat context to build a useful result.
+
+## Read a summary
+
+Select a session in the list to see its duration, average and peak viewers, sampled chat count, follows, subscriptions, Bits, and donations. The **Recap** tab shows the generated headline, recap, and highlights. The **Memories** tab shows proposed actions and, where available, their evidence, confidence, risk, and whether they were applied or skipped.
+
+Memory changes follow the confirmation and auto-apply settings in **AI Personality → Learning config**. Review those settings and the memory policy before enabling automatic changes. To review or manage retained memories directly, open the dashboard's **Memories** module.
+
+## Status and limitations
+
+- **Pending** means processing has not completed.
+- **Applied** means at least one memory action was applied; it does not guarantee every proposal was applied.
+- **No-op** means no action was applied, for example because the session did not meet its thresholds or the model proposed no applicable change.
+- **Failed** means the processing run did not complete successfully.
+
+The recap and memory suggestions are model output based on sampled chat and available session data. They can omit events, misread context, or contain errors; treat them as aids for review rather than a complete or authoritative transcript. Processing can also be delayed or unavailable when required data or an AI provider is unavailable. A stream-offline summary email is sent only when generation succeeds and the account has an active email destination.
+
+For plan credit allowances and other AI usage, see [Plans](/plans/). For memory, persona, and learning controls, see [AI Personality](/ai-personality/).

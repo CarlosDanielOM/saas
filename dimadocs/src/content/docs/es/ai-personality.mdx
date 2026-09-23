@@ -1,57 +1,30 @@
 ---
 title: Personalidad IA
-description: Dale a tu bot una personalidad única impulsada por IA.
+description: Configura la personalidad del bot, el contexto de la comunidad y las preferencias de memoria.
 sidebar:
   order: 6
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+Abre **Módulos → Personalidad IA** en el panel de tu canal para configurar cómo responde DomDimaBot en el chat. El módulo tiene un interruptor principal. Los resúmenes de transmisiones y las recomendaciones de clips tienen interruptores independientes en la misma página.
 
-La función de personalidad IA de DomDimaBot le da a tu bot la habilidad de participar en conversaciones naturales, responder al contexto y desarrollar un carácter único.
+## Perfiles y tono
 
-## Ajustes de Personalidad
+Cada perfil incluye nombre, instrucciones de personalidad, modo de personaje, tono, referencia opcional, campos de estilo de voz y frases características. Selecciona el perfil activo antes de editarlo. También puedes añadir reglas para orientar las respuestas.
 
-Configura el carácter de tu bot a través de estos ajustes:
+| Plan | Perfiles | Reglas | Usuarios conocidos | Ventana de contexto del chat |
+|---|---:|---:|---:|---:|
+| Gratis | 1 | 3 | 3 | 7 |
+| Premium | 2 | 5 | 10 | 15 |
+| Pro | 3 | Sin límite | Sin límite | 35 |
 
-| Ajuste | Descripción |
-|--------|-------------|
-| **Nombre** | Cómo los espectadores llaman a tu bot |
-| **Personalidad** | Rasgos core y patrones de comportamiento |
-| **Saludo** | Cómo el bot saluda a nuevos espectadores |
-| **Estilo de Respuesta** | Casual, formal, gracioso, etc. |
+La ventana de contexto es la cantidad configurada de mensajes recientes que puede considerar la personalidad IA. No garantiza que cada mensaje reciba una respuesta.
 
-## Usuarios Conocidos
+## Usuarios conocidos
 
-Puedes enseñarle a DomDimaBot sobre miembros específicos de la comunidad:
+Añade el nombre de usuario de Twitch, una descripción breve y una relación opcional para los miembros de la comunidad que quieras que el bot reconozca. El bot puede usar esos datos al responder. Evita guardar información privada o sensible en estos campos.
 
-```json
-{
-  "username": "superfan123",
-  "description": "Miembro de la comunidad desde hace mucho tiempo, juega RPGs",
-  "relationship": "friend"
-}
-```
+## Aprendizaje y memoria
 
-El bot usará este contexto para personalizar las interacciones.
+La página incluye controles para sugerencias y confirmación de recuerdos, resúmenes después del directo, mantenimiento y aplicación automática de cambios sugeridos. Revisa las opciones de creación, edición, archivo y eliminación automáticos antes de activarlas. La política de memoria también permite priorizar el chat reciente y elegir qué tipos de información recordada se pueden usar.
 
-## Comportamiento de Respuestas
-
-<Aside type="note">
-Las respuestas de IA son probabilísticas. El bot ocasionalmente puede decir cosas inesperadas. Usa los ajustes de moderación de contenido para filtrar mensajes inapropiados.
-</Aside>
-
-### Opciones de Configuración
-
-- **Frecuencia de respuestas** — Qué tan seguido el bot habla sin que le pidan
-- **Longitud máxima del mensaje** — Limitar el tamaño de las respuestas
-- **Memoria de conversación** — Cuántos mensajes pasados considera el bot
-- **Lista de ignorados** — Usuarios a los que el bot no responderá
-
-## Seguridad del Contenido
-
-Habilita funciones de moderación para filtrar:
-
-- Spam y exceso de mayúsculas
-- Enlaces (configurable por usuario)
-- Filtros de palabras personalizados
-- Limitación de tasa
+Las respuestas de IA pueden variar. Prueba un perfil en tu canal y ajusta sus instrucciones y reglas si las respuestas no encajan con tu comunidad. Para filtros del chat y permisos temporales para enlaces, consulta [Moderación del chat](/es/moderation/).

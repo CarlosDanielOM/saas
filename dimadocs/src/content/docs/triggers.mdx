@@ -1,67 +1,30 @@
 ---
 title: Triggers & Media
-description: Automate sounds, overlays, and animations during your stream.
+description: Build audio and video triggers from your media library and play them through an OBS browser source.
 sidebar:
   order: 5
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
+The Triggers dashboard manages a media library and named audio or video triggers. A trigger can be tested from the dashboard, called from a bot message with `$(trigger.send ...)`, or linked to a Twitch Channel Points reward.
 
-Triggers are event-based actions that happen automatically during your stream. Connect sounds, overlays, and more to specific moments.
+## Set up the browser source
 
-## Trigger Types
+1. Open **Triggers** in your streamer dashboard and copy the OBS link.
+2. In OBS, add a **Browser** source and paste the link. Keep that source active while streaming so it can receive trigger playback.
+3. Return to the dashboard and use **Test** on a trigger. The test dialog has its own embedded preview, so you can preview media there without an OBS source.
 
-### Chat-Based Triggers
+This is an OBS browser source that connects to DomDimaBot. There is no DomDimaBot OBS plugin to install. The dashboard also provides a preview link for its test dialog.
 
-Activate on specific chat messages or command usage:
-- Custom command invocations
-- Keyword detection
-- Phrase patterns
+## Add media and create a trigger
 
-### Event-Based Triggers
+Upload a file to **My Library**, choose an item from the public library, then create a trigger with a name and volume. Trigger names use letters, digits, and underscores. The current trigger player supports **audio and video**. Image and GIF assets can appear in the library, but cannot currently be attached as triggers.
 
-React to Twitch events automatically:
-- New followers
-- New subscribers
-- Raids
-- Bits donations
-- Channel point redemptions
+Free accounts can upload files up to 5 MB to the public library; public assets do not use private storage quota. Premium accounts can upload up to 25 MB per file and have 250 MB of private storage. Pro accounts can upload up to 100 MB per file and have 1 GB of private storage. Paid accounts can use public assets too. Private media is available only to its owner; public uploads are listed in the shared library.
 
-## Media Types
+## Choose how a trigger plays
 
-| Type | Description |
-|------|-------------|
-| **Sounds** | Audio clips played through stream audio |
-| **Overlays** | Visual graphics/animations shown on stream |
-| **TTS** | Text-to-speech messages |
-| **Combos** | Multiple media types chained together |
+- **Dashboard test:** Select **Test** on a trigger. Its embedded preview must connect before playback.
+- **Bot message:** Use `$(trigger.send trigger_name)` in a bot message or reward message. For example, `$(trigger.send airhorn)`. The trigger must exist and be enabled.
+- **Channel Points reward:** When creating or editing a trigger, enable its optional linked reward and set the reward title, cost, prompt, and message. The default message calls the trigger by name. Viewers can then redeem that Twitch reward to run its configured message.
 
-## Setting Up Triggers
-
-<Steps>
-
-1. **Navigate to Triggers**
-
-   Open the Triggers section in your dashboard.
-
-2. **Upload Media**
-
-   Upload your sound files, overlay images, or configure TTS settings.
-
-3. **Create Trigger**
-
-   Select your trigger event and link it to the desired media action.
-
-4. **Test**
-
-   Use the test button to preview how your trigger will behave live.
-
-</Steps>
-
-<Aside type="caution">
-Media triggers require OBS to be connected to DomDimaBot for overlays and some audio features to work properly.
-</Aside>
-
-## OBS Connection
-
-To use overlay triggers, you'll need the DomDimaBot OBS plugin installed. See the [OBS Setup guide](/triggers/obs-setup/) for instructions.
+The OBS browser source must be connected for live playback in your stream. If the dashboard preview has not connected and the test reports that no trigger clients are connected, retry the preview; for live playback, check that the OBS Browser source is open and uses the copied link for the correct channel.

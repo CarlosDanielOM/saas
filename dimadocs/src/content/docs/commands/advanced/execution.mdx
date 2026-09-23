@@ -20,6 +20,11 @@ This page explains what happens when an AST command runs and how to debug it whe
 7. Variables are written to memory, cache, or database if needed
 8. Final output is rendered and sent to chat
 
+
+## Context and permissions
+
+The execution context supplies the channel, user, plan, command scope, and (for event commands) event payload. EventSub values are only populated for the corresponding event. Function permission checks also depend on the caller: chat and AI actions are checked against the requesting user’s role, while streamer-authored command templates run behind their configured command or event access rules. A command reference does not grant extra permissions.
+
 ## Why this matters
 
 Understanding the order helps you debug issues like:
@@ -52,8 +57,8 @@ Understanding the order helps you debug issues like:
 
 ### Command reference limits
 
-- max recursion depth: `5`
-- cycles are detected and stopped
+- at most five nested command-reference levels are evaluated
+- repeated command references in the same reference path are stopped
 
 ### Delay limits
 

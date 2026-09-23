@@ -35,7 +35,7 @@ Variables are created by you. They can be temporary or persistent depending on t
 
 ### Important behavior
 
-1. Cache variables expire after about 24 hours.
+1. Each cache write refreshes a 24-hour expiration. This applies to both `#` and `##` variables.
 2. Expired cache values come back **blank**, not `0`.
 3. Assignment overwrites.
 
@@ -179,7 +179,7 @@ Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\
 | `<` | Less than | `%(age) < 18` |
 | `>=` | Greater than or equal | `%(wins) >= 10` |
 | `<=` | Less than or equal | `%(wins) <= 5` |
-| `~=` | Contains | `%(tags) ~= "gaming"` |
+| `~=` | Case-insensitive substring match | `%(tags) ~= "gaming"` |
 
 ### Arithmetic
 

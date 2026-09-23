@@ -9,394 +9,11 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Commands are the foundation of DomDimaBot. They are split into two categories: **Default Commands** (built-in) and **Custom Commands** (created by you).
 
-## Default Commands
+## Built-in commands
 
-These commands come pre-installed with DomDimaBot. They are built in, but we do **not** call them “reserved” here because they are gradually becoming normal commands that users can configure and edit.
+The built-in command catalog, seed enablement, usage syntax, and behavior live in the [Built-in command reference](/commands/built-in/). The shipped defaults seed enabled entries except `!s` and `!clearchat`; channel settings can differ. Use `!commands` to see the commands available to you in a particular channel.
 
-<Aside type="note">
-This section matches the current built-in command list from the bot config. Many of these commands can be enabled, disabled, and adjusted over time.
-</Aside>
-
-### Permission Levels
-
-- **Everyone** — any viewer can use it
-- **Moderator** — moderator-level access required
-- **Editor** — higher-level management commands
-
-### 🎮 Stream, Chat & Moderation
-
-| Command | Permission | Default State | What it does |
-|--------|------------|---------------|--------------|
-| `!anuncio` | Moderator | Enabled | Sends an announcement to the channel; visible on web browsers, not mobile |
-| `!promo` | Moderator | Enabled | Text-based promo / shoutout intended to be mobile-friendly |
-| `!so` | Moderator | Enabled | Mentions a user and can send a clip if clip support is active |
-| `!game` | Moderator | Enabled | Changes the current game / category |
-| `!title` | Moderator | Enabled | Changes the current stream title |
-| `!s` | Everyone | Disabled | Makes the bot speak in chat |
-| `!onlyemotes` | Moderator | Enabled | Toggles emote-only mode, optionally for a number of seconds |
-| `!vip` | Editor | Enabled | Grants VIP permanently or temporarily |
-| `!unvip` | Editor | Enabled | Removes VIP from a user |
-| `!mod` | Editor | Enabled | Grants moderator permanently or temporarily |
-| `!unmod` | Editor | Enabled | Removes moderator from a user |
-| `!vanish` | Everyone | Enabled | Makes a user vanish from chat |
-| `!clearchat` | Moderator | Disabled | Clears chat |
-
-### 🎯 Predictions & Polls
-
-| Command | Permission | Default State | What it does |
-|--------|------------|---------------|--------------|
-| `!predi` | Moderator | Enabled | Creates a prediction |
-| `!lockpredi` | Moderator | Enabled | Locks the current prediction so users can no longer vote |
-| `!endpredi` | Moderator | Enabled | Ends the current prediction and chooses the winner |
-| `!cancelpredi` | Moderator | Enabled | Cancels the current prediction |
-| `!poll` | Moderator | Enabled | Creates a poll |
-| `!endpoll` | Moderator | Enabled | Ends the current poll |
-| `!cancelpoll` | Moderator | Enabled | Cancels the current poll |
-
-### 🛠️ Command & Timer Management
-
-| Command | Permission | Default State | What it does |
-|--------|------------|---------------|--------------|
-| `!cc` | Moderator | Enabled | Creates a custom command |
-| `!ec` | Moderator | Enabled | Edits a custom command |
-| `!dc` | Moderator | Enabled | Deletes a custom command |
-| `!enable` | Moderator | Enabled | Enables a command |
-| `!disable` | Moderator | Enabled | Disables a command |
-| `!commands` | Everyone | Enabled | Shows the commands available to the user based on permissions |
-| `!cct` | Moderator | Enabled | Creates a custom timer command |
-| `!ect` | Moderator | Enabled | Edits an existing timer command |
-| `!dct` | Moderator | Enabled | Deletes a timer command |
-
-### 🎉 Utility & Fun
-
-| Command | Permission | Default State | What it does |
-|--------|------------|---------------|--------------|
-| `!ruletarusa` | Everyone | Enabled | Russian roulette; can timeout the user for 150 seconds |
-| `!sumimetro` | Everyone | Enabled | Gives a dominant / submissive reading for you or another user |
-| `!memide` | Everyone | Enabled | Returns an imaginary measurement |
-| `!amor` | Everyone | Enabled | Measures love between two users |
-| `!ponerla` | Everyone | Enabled | Returns a percentage chance |
-| `!mecabe` | Everyone | Enabled | Returns a measurement-style joke result |
-| `!followage` | Everyone | Enabled | Shows how long someone has followed the channel |
-| `!clip` | Everyone | Enabled | Creates a clip with optional duration and title |
-| `!duel` | Everyone | Enabled | Starts a duel between users |
-
-### Exact Syntax & Limits
-
-#### `!anuncio`
-
-**Usage:** `!anuncio <message>`  
-**Limit:** message cannot be longer than `300` characters  
-**Note:** visible on web browsers, not mobile
-
-**Example:**
-```text
-!anuncio Hello how are you
-```
-
-#### `!predi`
-
-**Usage:** `!predi <title>;<option1>/<option2>;<time in seconds>`  
-**Limits:**
-
-- title max `30` characters
-- options max `20` characters each
-- minimum `2` options, maximum `10`
-- options must be separated with `/`
-- time must be between `30` seconds and `5` minutes
-
-**Example:**
-```text
-!predi Will the streamer win?;Yes/No;60
-```
-
-#### `!endpredi`
-
-**Usage:** `!endpredi <option number>`  
-**Note:** the option number must be the winning option number
-
-**Example:**
-```text
-!endpredi 1
-```
-
-#### `!cancelpredi`
-
-**Usage:** `!cancelpredi`  
-**Note:** only works if the prediction is active or blocked
-
-#### `!lockpredi`
-
-**Usage:** `!lockpredi`  
-**Note:** only works if the prediction is active
-
-#### `!poll`
-
-**Usage:** `!poll <title>;<option1>/<option2>;<time in seconds>`  
-**Limits:**
-
-- title max `25` characters
-- options max `25` characters each
-- minimum `2` options, maximum `5`
-- options must be separated with `/`
-- time must be between `30` seconds and `5` minutes
-
-**Example:**
-```text
-!poll Will the streamer win?;Yes/No;60
-```
-
-#### `!endpoll`
-
-**Usage:** `!endpoll`  
-**Note:** only works if the poll is active
-
-#### `!cancelpoll`
-
-**Usage:** `!cancelpoll`  
-**Note:** only works if the poll is active
-
-#### `!game`
-
-**Usage:** `!game <game name>`
-
-**Example:**
-```text
-!game Fortnite
-```
-
-#### `!title`
-
-**Usage:** `!title <title>`
-
-**Example:**
-```text
-!title Hello how are you
-```
-
-#### `!s`
-
-**Usage:** `!s <message>`  
-**Default state:** disabled
-
-**Example:**
-```text
-!s Hello how are you
-```
-
-#### `!sumimetro`
-
-**Usage:** `!sumimetro [username]`
-
-**Examples:**
-```text
-!sumimetro
-!sumimetro username
-```
-
-#### `!memide`
-
-**Usage:** `!memide`
-
-#### `!amor`
-
-**Usage:**
-
-- `!amor <username>`
-- `!amor <user1> <user2>`
-
-**Notes:**
-
-- if you target yourself, the command responds with a negative phrase
-- if you provide no arguments, it reminds you how to use it and responds with a negative phrase
-
-#### `!ponerla`
-
-**Usage:** `!ponerla`
-
-#### `!mecabe`
-
-**Usage:** `!mecabe`
-
-#### `!onlyemotes`
-
-**Usage:** `!onlyemotes [seconds]`
-
-**Examples:**
-```text
-!onlyemotes
-!onlyemotes 10
-```
-
-#### `!cc`
-
-**Usage:** `!cc [options] <command name> <command response>`
-
-**Supported options:**
-
-- `-cd=<value>` for cooldown
-- `-ul=<value>` for user level
-
-**Limits:**
-
-- name cannot contain spaces
-- name cannot contain special characters
-- name max `20` characters
-- response max `450` characters
-
-**Examples:**
-```text
-!cc discord Follow me on my Discord Server: discord.cdom201.com
-!cc -cd=10 -ul=everyone discord Join my discord server at [link]
-```
-
-#### `!ec`
-
-**Usage:** `!ec [options] <command name> <command response>`
-
-**Supported options:**
-
-- `-cd=`
-- `-ul=`
-
-**Limits:**
-
-- name cannot contain spaces
-- name cannot contain special characters
-- name max `20` characters
-- response max `450` characters
-
-**Examples:**
-```text
-!ec discord Follow me on my discord: discord.cdom201.com
-!ec -cd=10 -ul=mod discord Follow me on my discord: discord.cdom201.com
-```
-
-#### `!dc`
-
-**Usage:** `!dc <command name>`
-
-**Example:**
-```text
-!dc discord
-```
-
-#### `!followage`
-
-**Usage:** `!followage [username]`
-
-#### `!clip`
-
-**Usage:**
-
-- `!clip`
-- `!clip 20`
-- `!clip Epic moment`
-- `!clip 20 Epic moment`
-
-**Behavior:**
-
-- if the first argument is a number, it is treated as duration
-- valid duration range is `5` to `60` seconds
-- if the first argument is not a number, it is treated as title
-- out-of-range durations default to `30` seconds
-
-#### `!vip`
-
-**Usage:** `!vip <username> [days]`
-
-**Note:** temporary VIP is available only for **Premium** and **Pro** users, with a maximum of `30` days.
-
-#### `!commands`
-
-**Usage:** `!commands`  
-**Note:** only shows commands available for that user's permission level
-
-#### `!clearchat`
-
-**Usage:** `!clearchat`  
-**Default state:** disabled
-
-#### `!enable`
-
-**Usage:** `!enable <command name>`
-
-#### `!disable`
-
-**Usage:** `!disable <command name>`
-
-#### `!cct`
-
-**Usage:** `!cct <timer name> <frequency> <message>`
-
-**Examples:**
-```text
-!cct mytimer 15 Hello world!
-!cct shoutout 30 Check out the socials!
-!cct pro-reminder 7m This Pro timer runs every seven minutes.
-```
-
-**Notes:**
-
-- this is a repeating timer command that runs only while the channel is live; it is separate from one-time countdown timers
-- a bare number is interpreted as minutes; `15m` and `1h` are also accepted
-- Free intervals: `15`, `30`, `45`, or `60` minutes
-- Premium intervals: multiples of `5` minutes from `5` through `180`
-- Pro intervals: any whole minute from `1` through `180`
-- existing out-of-tier intervals keep running after plan changes, but editing requires choosing an interval allowed by the current plan
-- timer messages support the full AST parser, including command references such as `#(command)`
-
-#### `!ect`
-
-**Usage:** `!ect <timer name> [frequency] [message]`
-
-**Note:** the timer must already exist and any edit must satisfy the current plan's interval rules
-
-**Example:**
-```text
-!ect mytimer 10m New message here
-```
-
-#### `!dct`
-
-**Usage:** `!dct <timer name>`
-
-**Example:**
-```text
-!dct mytimer
-```
-
-#### `!mod`
-
-**Usage:** `!mod <username> [days]`
-
-**Note:** temporary moderator is available only for **Premium** and **Pro** users, with a maximum of `30` days.
-
-#### `!unmod`
-
-**Usage:** `!unmod <username>`
-
-#### `!unvip`
-
-**Usage:** `!unvip <username>`
-
-#### `!vanish`
-
-**Usage:** `!vanish <username>`
-
-#### `!duel`
-
-**Usage:**
-
-- `!duel <username>`
-- `!duel accept`
-- `!duel decline`
-
-**Note:** the challenged user must accept or decline the duel
-
-<Aside type="tip">
-If you want advanced dynamic logic, variables, functions, chaining, or stored state, continue to the AST docs in the next section. The goal here is to describe the built-in command set as it currently exists.
-</Aside>
+This page focuses on streamer-created commands and repeating chat timers. For variables, functions, conditions, and command references, use the [AST guides](/commands/advanced/).
 
 ## Custom Commands
 
@@ -435,7 +52,7 @@ With options:
 
 | Option | Description |
 |--------|-------------|
-| `-cd=` | Cooldown in seconds: use an integer greater than `5` when creating with `!cc`. Values of `5` or below become `15`; `!ec` accepts `5`. |
+| `-cd=` | Cooldown in seconds. The minimum depends on the channel owner’s plan: Free `5`, Premium `3`, Pro `1`. |
 | `-ul=` | User level: `everyone`, `tier1`, `tier2`, `tier3`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster` |
 
 **Editing:** `!ec <name> <new response>`  
@@ -449,7 +66,6 @@ Navigate to the **Commands** section in your dashboard for a visual editor with:
 - Full command list with enable/disable toggles
 - Cooldown and permission settings
 - Response editor for command text / AST templates
-- Command usage statistics
 - Timer management
 
 </TabItem>
@@ -474,6 +90,25 @@ Use:
 - `$(twitch.game)` for the current game
 - `&p1`, `&p2`, `&t` for arguments
 - `%(...)` for variables you create yourself
+
+## Repeating Chat Timers
+
+Moderators can manage repeating chat messages with `!cct`, `!ect`, and `!dct`, or with `!timer create|edit|delete|list`. Timers send only while the channel is live. Timer messages can use AST syntax.
+
+```text
+!cct socials 15 Check out the channel links!
+!ect socials 30 Updated links are in the panels.
+!dct socials
+!timer list
+```
+
+Timer names can contain letters, numbers, and underscores, up to `30` characters. Messages are limited to `350` characters. Active timer limits are Free `5`, Premium `15`, and Pro `50`.
+
+- Free: `15`, `30`, `45`, or `60` minutes
+- Premium: multiples of `5` from `5` to `180` minutes
+- Pro: any whole minute from `1` to `180`
+
+Enter a whole number of minutes, or use an `m` or `h` suffix (for example `15m` or `1h`). Editing an existing timer must use an interval allowed by the current plan. A timer with an interval no longer allowed after a plan change can keep running, but must be changed to an allowed interval before it can be edited.
 
 ## Examples of Correct Custom Command Patterns
 

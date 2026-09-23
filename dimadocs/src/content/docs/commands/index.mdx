@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Learn how DomDimaBot commands work, from built-in commands to advanced AST command flows.
+description: Find built-in command syntax and learn how custom commands and AST flows work.
 sidebar:
   label: Commands
   order: 2
@@ -8,15 +8,20 @@ sidebar:
 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-DomDimaBot commands power chat automation — from simple replies to programmable AST flows.
+DomDimaBot commands let a channel run built-in actions and streamer-authored chat responses. The commands available in a channel depend on its command configuration and each command's enabled and permission settings.
 
 Choose your path:
 
 <CardGrid>
   <LinkCard
-    title="Commands Overview"
+    title="Built-in command reference"
+    href="/commands/built-in/"
+    description="Syntax and behavior for the built-in commands registered by the bot."
+  />
+  <LinkCard
+    title="Custom commands overview"
     href="/commands/overview/"
-    description="Built-in commands, permissions, cooldowns, and the default command set."
+    description="Create and manage custom chat commands, permissions, and cooldowns."
   />
   <LinkCard
     title="Advanced Custom Commands (AST)"
@@ -24,3 +29,5 @@ Choose your path:
     description="Syntax, functions, execution rules, and recipes for complex command logic."
   />
 </CardGrid>
+
+The `!commands` chat command lists enabled commands that the current chatter is allowed to use. The dashboard also has a Commands page for managing a channel's custom commands.

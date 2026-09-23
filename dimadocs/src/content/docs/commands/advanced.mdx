@@ -106,8 +106,12 @@ Some AST features depend on the streamer's plan.
 | Memory variables | Yes | Yes | Yes |
 | Cache variables (`#`, `##`) | Yes | Yes | Yes |
 | Database variables (`*`, `**`) | No | Yes | Yes |
-| Deeper loops | Limited | More | Most |
-| AI voice / cloned voice features | Yes | Yes | Yes |
+| Persistent database variable writes | No | Yes | Yes |
+| Loop nesting / iterations | 2 / 25 | 3 / 50 | 4 / 100 |
+
+<Aside type="note">
+Database variable writes require Premium or Pro. Cache values expire 24 hours after each write. TTS voice and clone availability depends on the channel’s TTS settings and plan; check the TTS guide for current details.
+</Aside>
 
 ## Recommended workflow
 

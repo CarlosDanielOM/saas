@@ -1,0 +1,28 @@
+---
+title: Recomendaciones de clips
+description: Analiza VOD recientes de Twitch para encontrar posibles momentos de clip, revisar candidatos y conocer el costo en créditos.
+sidebar:
+  order: 9
+---
+
+Recomendaciones de clips analiza el audio de un VOD de Twitch y devuelve posibles momentos para revisar. El módulo del panel está marcado actualmente como **Alfa**. El análisis manual está disponible en Free, Premium y Pro; el análisis automático al terminar un stream solo está disponible en Pro. La función requiere un VOD de Twitch al que el servicio pueda acceder y suficientes créditos de IA en el saldo del canal.
+
+## Analizar un VOD
+
+1. Abre **Módulos → Recomendaciones de clips** en el panel de tu canal.
+2. Consulta la lista de VOD recientes. Si hace falta, pulsa **Actualizar VOD**; la lista abarca los últimos siete días.
+3. Revisa el costo estimado que aparece en la tarjeta del VOD y selecciona **Analizar**.
+4. La solicitud se agrega a la cola para procesarse en segundo plano. Consulta **Análisis anteriores** para ver el estado: Pendiente, En proceso, Completado o Fallido.
+5. Revisa el intervalo, el motivo, la confianza y la verificación de video de cada candidato cuando estén disponibles. Confirma los candidatos aprobados por la verificación que quieras conservar o rechaza los que no quieras.
+
+El costo estimado es de 2.750 créditos de IA para un VOD de hasta 60 minutos, más 50 créditos por cada minuto que exceda los 60 (redondeado hacia arriba). El trabajador comprueba el saldo cuando comienza el procesamiento. Si el saldo es insuficiente, el VOD no está disponible o el proceso falla, el trabajo puede no completarse. Agregarlo a la cola no garantiza que se obtengan candidatos.
+
+## Análisis automático
+
+Los usuarios Pro pueden activar **Analizar automáticamente al terminar el stream** en este módulo. Cuando está habilitado, un evento de finalización del stream agrega a la cola el VOD más reciente de Twitch. Los usuarios Free y Premium pueden iniciar análisis manuales. Los trabajos automáticos tienen los mismos requisitos de VOD y créditos de IA que los manuales; asegúrate de que el canal tenga créditos suficientes según la duración del VOD.
+
+## Qué significa el resultado
+
+El modelo identifica posibles momentos a partir del audio del VOD y asigna a cada candidato un intervalo y una explicación. Una verificación de video independiente puede aprobar o rechazar candidatos; en el panel solo se pueden confirmar los que aprueba esa verificación. Confirmar o rechazar actualiza el estado de revisión del candidato. Esa acción no crea ni publica un clip de Twitch por sí sola.
+
+Los resultados son sugerencias, no momentos destacados garantizados. El análisis de audio puede pasar por alto el contexto visual, indicar tiempos o motivos inexactos o no devolver candidatos. El acceso al VOD, la disponibilidad del proveedor, la carga de la cola y el saldo de créditos pueden afectar la finalización del trabajo. Revisa la vista previa y el VOD antes de usar un momento sugerido. Consulta [Planes](/es/plans/) para ver las asignaciones mensuales de créditos.

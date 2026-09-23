@@ -1,0 +1,73 @@
+---
+title: Built-in command reference
+description: Syntax and behavior of DomDimaBot's built-in chat commands.
+sidebar:
+  label: Built-in commands
+  order: 3
+---
+
+This reference follows the bot's reserved command configuration and chat handler. A command must exist and be enabled in the channel to run; channel permissions and cooldowns can also restrict use. The command list in chat (`!commands`) is filtered for the chatter's permissions.
+
+## Command list
+
+| Command | Usage | Behavior |
+|---|---|---|
+| `!commands` | `!commands` | Lists enabled commands available to the chatter. |
+| `!followage` | `!followage [username]` | Shows how long the chatter, or the named user, has followed the channel. |
+| `!sumimetro` | `!sumimetro [username]` | Gives the chatter a reading; a username can request that user's stored reading. |
+| `!amor` | `!amor <username>` or `!amor <user1> <user2>` | Returns a playful love reading. |
+| `!memide` | `!memide` | Returns a random joke measurement. |
+| `!ponerla` | `!ponerla` | Returns a random joke percentage. |
+| `!mecabe` | `!mecabe` | Returns a random joke measurement. |
+| `!ruletarusa` | `!ruletarusa` | Plays Russian roulette; the result may time out the player. Timeout length varies with the player's previous losses: it starts at 10 seconds and increases with each recorded loss. |
+| `!duel` | `!duel <username>`, then `!duel accept` or `!duel decline` | Challenges a user, who can accept or decline. |
+| `!clip` | `!clip [seconds] [title]` | Creates a channel clip. If the first argument is a number, it is duration (5–60 seconds); otherwise it is the title. Out-of-range numeric durations use 30 seconds. |
+| `!so` | `!so <username>` | Sends a shoutout announcement; clip details may be included when available. |
+| `!promo` | `!promo <username>` | Sends a text shoutout intended to be visible to mobile viewers. |
+| `!anuncio` | `!anuncio <message>` | Sends a Twitch announcement. The message is limited to 300 characters. |
+| `!game` | `!game <game name>` | With a permitted user, changes the channel's game; without write permission, the handler returns the current game. |
+| `!title` | `!title <stream title>` | With a permitted user, changes the stream title; without write permission or without a title argument, returns the current title. |
+| `!onlyemotes` | `!onlyemotes [seconds]` | Toggles emote-only mode, or enables it for the given duration in seconds. |
+| `!s` | `!s <message>` | Queues the message for text-to-speech. Disabled in the shipped reserved command configuration. |
+| `!mod` | `!mod <username> [days]` | Adds a moderator. |
+| `!unmod` | `!unmod <username>` | Removes a moderator. |
+| `!vip` | `!vip <username> [days]` | Adds a VIP, optionally with a duration in days. |
+| `!unvip` | `!unvip <username>` | Removes a VIP. |
+| `!vanish` | `!vanish` | Makes the caller vanish from chat. |
+| `!poll` | `!poll <title>;<option1>/<option2>;<seconds>` | Creates a poll. Separate the title, slash-separated options, and duration in seconds with semicolons. Twitch validates the values and may reject an invalid poll. |
+| `!endpoll` | `!endpoll` | Ends the active poll. |
+| `!cancelpoll` | `!cancelpoll` | Cancels the active poll. |
+| `!predi` | `!predi <title>;<option1>/<option2>;<seconds>` | Creates a prediction. Separate the title, slash-separated outcomes, and duration in seconds with semicolons. Twitch validates the values and may reject an invalid prediction. |
+| `!lockpredi` | `!lockpredi` | Locks the active prediction. |
+| `!endpredi` | `!endpredi <winning option number>` | Ends the prediction and selects its winning option. |
+| `!cancelpredi` | `!cancelpredi` | Cancels an active or locked prediction. |
+| `!cc` | `!cc <name> <response>` | Creates a custom command. See [Custom commands](/commands/overview/). |
+| `!ec` | `!ec <name> <response>` | Edits a custom command. See [Custom commands](/commands/overview/). |
+| `!dc` | `!dc <name>` | Deletes a custom command. See [Custom commands](/commands/overview/). |
+| `!enable` | `!enable <name>` | Enables a command in the channel. |
+| `!disable` | `!disable <name>` | Disables a command in the channel. |
+| `!cct` | `!cct <name> <minutes> <message>` | Creates a repeating chat timer. Timer message rules and plan limits are documented in [Custom timers](/commands/overview/). |
+| `!ect` | `!ect <name> [minutes] [message]` | Edits an existing repeating chat timer. |
+| `!dct` | `!dct <name>` | Deletes a repeating chat timer. |
+| `!clearchat` | `!clearchat` | Clears chat. Disabled in the shipped reserved command configuration. |
+
+The command handler also contains an `archivepoll` action (`!archivepoll` when configured), although that command is not in the current reserved command list.
+
+## Details
+
+### Polls and predictions
+
+The syntax uses semicolons to separate the title, slash-separated choices, and duration in seconds. For example:
+
+```text
+!poll Will the streamer win?;Yes/No;60
+!predi Will the streamer win?;Yes/No;60
+```
+
+The command parser forwards the title, options, and duration to Twitch. Twitch may reject invalid values or an operation when there is no poll or prediction in the required state.
+
+### Permissions and configuration
+
+The shipped reserved-command configuration marks most listed commands enabled, while `!s` and `!clearchat` are disabled. This describes the seed configuration only. Each channel can have a different enabled state, permission policy, cooldown, or command availability. The `!commands` output is the channel-specific list visible to the current chatter.
+
+For streamer-authored replies and AST syntax, continue to [Advanced custom commands](/commands/advanced/).

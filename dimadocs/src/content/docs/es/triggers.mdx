@@ -1,67 +1,30 @@
 ---
-title: Disparadores y Medios
-description: Automatiza sonidos, overlays y animaciones durante tu transmisión.
+title: Disparadores y medios
+description: Crea disparadores de audio y video desde tu biblioteca y reprodúcelos mediante una fuente de navegador de OBS.
 sidebar:
   order: 5
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
+El panel **Disparadores** gestiona una biblioteca de medios y disparadores con nombre para audio o video. Puedes probar un disparador desde el panel, invocarlo en un mensaje del bot con `$(trigger.send ...)` o vincularlo a una recompensa de puntos del canal de Twitch.
 
-Los disparadores son acciones basadas en eventos que suceden automáticamente durante tu transmisión. Conecta sonidos, overlays y más a momentos específicos.
+## Configura la fuente de navegador
 
-## Tipos de Disparadores
+1. Abre **Disparadores** en el panel de tu canal y copia el enlace de OBS.
+2. En OBS, añade una fuente **Navegador** y pega el enlace. Mantén activa esa fuente durante la transmisión para que pueda recibir la reproducción.
+3. Vuelve al panel y pulsa **Probar** en un disparador. El cuadro de prueba tiene su propia vista previa integrada, así que puedes previsualizar el medio sin una fuente de OBS.
 
-### Disparadores Basados en Chat
+Es una fuente de navegador de OBS que se conecta a DomDimaBot. No hay que instalar ningún plugin de OBS de DomDimaBot. El panel también proporciona un enlace de vista previa para el cuadro de prueba.
 
-Se activan con mensajes específicos de chat o uso de comandos:
-- Invocaciones de comandos personalizados
-- Detección de palabras clave
-- Patrones de frases
+## Añade medios y crea un disparador
 
-### Disparadores Basados en Eventos
+Sube un archivo a **Mi biblioteca**, elige un elemento de la biblioteca pública y crea un disparador con un nombre y volumen. Los nombres aceptan letras, números y guiones bajos. El reproductor actual admite **audio y video**. Las imágenes y los GIF pueden aparecer en la biblioteca, pero todavía no se pueden adjuntar como disparadores.
 
-Reaccionan automáticamente a eventos de Twitch:
-- Nuevos seguidores
-- Nuevas suscripciones
-- Raids
-- Donaciones de Bits
-- Canjes de puntos del canal
+Las cuentas gratuitas pueden subir archivos de hasta 5 MB a la biblioteca pública; los archivos públicos no consumen cuota de almacenamiento privado. Las cuentas Premium pueden subir hasta 25 MB por archivo y tienen 250 MB de almacenamiento privado. Las cuentas Pro pueden subir hasta 100 MB por archivo y tienen 1 GB de almacenamiento privado. Los planes de pago también pueden usar archivos públicos. Los medios privados solo están disponibles para su propietario; los archivos públicos aparecen en la biblioteca compartida.
 
-## Tipos de Medios
+## Elige cómo reproducir un disparador
 
-| Tipo | Descripción |
-|------|-------------|
-| **Sonidos** | Clips de audio reproducidos a través del audio de la transmisión |
-| **Overlays** | Gráficos visuales/animaciones mostrados en la transmisión |
-| **TTS** | Mensajes de texto a voz |
-| **Combos** | Múltiples tipos de medios encadenados |
+- **Prueba desde el panel:** Pulsa **Probar** en un disparador. Su vista previa integrada debe conectarse antes de reproducirlo.
+- **Mensaje del bot:** Usa `$(trigger.send nombre_del_disparador)` en un mensaje del bot o de una recompensa. Por ejemplo, `$(trigger.send airhorn)`. El disparador debe existir y estar habilitado.
+- **Recompensa de puntos del canal:** Al crear o editar un disparador, habilita su recompensa vinculada opcional y define el título, el costo, el texto descriptivo y el mensaje de la recompensa. El mensaje predeterminado invoca el disparador por nombre. Luego, los espectadores pueden canjear esa recompensa de Twitch para ejecutar el mensaje configurado.
 
-## Configurar Disparadores
-
-<Steps>
-
-1. **Navega a Disparadores**
-
-   Abre la sección de Disparadores en tu panel.
-
-2. **Sube Medios**
-
-   Sube tus archivos de sonido, imágenes de overlay o configura los ajustes de TTS.
-
-3. **Crea un Disparador**
-
-   Selecciona el evento disparador y vincúlalo a la acción de medio deseada.
-
-4. **Prueba**
-
-   Usa el botón de prueba para previsualizar cómo actuará tu disparador en vivo.
-
-</Steps>
-
-<Aside type="caution">
-Los disparadores de medios requieren que OBS esté conectado a DomDimaBot para que los overlays y algunas funciones de audio funcionen correctamente.
-</Aside>
-
-## Conexión con OBS
-
-Para usar disparadores de overlay, necesitarás el plugin de OBS de DomDimaBot instalado. Consulta la [guía de configuración de OBS](/es/triggers/obs-setup/) para instrucciones.
+La fuente de navegador de OBS debe estar conectada para reproducir el medio en tu transmisión. Si la vista previa del panel aún no se conectó y la prueba indica que no hay clientes de disparadores conectados, vuelve a intentar la vista previa. Para la reproducción en vivo, comprueba que la fuente Navegador de OBS esté abierta y use el enlace copiado para el canal correcto.

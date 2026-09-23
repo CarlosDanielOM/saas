@@ -1,0 +1,45 @@
+---
+title: Memories
+description: Review and manage information the AI may retain about your channel.
+sidebar:
+  order: 7
+---
+
+The **Memories** page lets channel dashboard users review information the AI has stored or proposed from channel activity. It is available on **Free, Premium, and Pro**. Sign in, choose a channel, open **Modules**, then select **Memories**.
+
+Memories are structured notes used as context for AI features. They are not a searchable archive of every chat message. A memory can have source evidence, a channel or user subject, a type, a risk level, and a review status.
+
+## Memory types and statuses
+
+Types include **Preference**, **Running joke**, **Known user fact**, **Channel lore**, and **Boundary**. Risk is labeled **Low**, **Medium**, or **High**. The page can filter by status, type, and risk, and search loaded memory content, summaries, and subject usernames.
+
+Statuses shown by the page are:
+
+- **Candidate** or **Pending review** — proposed information awaiting a decision.
+- **Confirmed** — active memory that may be eligible for AI context.
+- **Rejected** — declined memory.
+- **Archived** — hidden from active memory use and retained in the archive list.
+
+Low-risk memories may be confirmed automatically when automatic confirmation is enabled and the confidence meets the configured threshold. Other proposals can remain for review. The AI Personality settings control learning, automatic review behavior, and memory policy.
+
+## Review and editing
+
+For a candidate or pending memory, choose **Approve** to confirm it or **Deny** to reject it. You can archive confirmed or pending memories, edit a memory's content, summary, type, or risk, or permanently delete it. The page asks you to confirm status changes and deletion; permanent deletion cannot be undone.
+
+Changing a memory's status affects whether it can be used as active AI context. The system also checks channel, status, subject scope, expiry when set, and memory policy before selecting context. User-scoped facts are not selected as channel-wide chat context by that retrieval path.
+
+## Privacy and controls
+
+AI Personality includes policy switches for potentially sensitive memories, user preference memories, and running jokes. Sensitive memories are disabled by default in the backend policy. Chat users can create user-scoped memories only about themselves; they cannot ask the system to store a fact about another chatter through that path.
+
+Memory records can contain the memory text and source evidence such as a message excerpt, username, user ID, and message ID. Review the content before approving it, and use edit, archive, or permanent delete controls when it should no longer be used. Deletion also removes the associated vector entry.
+
+The pricing comparison currently lists chat memory retention as **15 days on Free, 45 days on Premium, and 120 days on Pro**. Individual records can also have an expiry date. The exact retention behavior depends on the memory path and record; the page does not expose a retention timer for each record, so use the dashboard's current plan details and record expiry where shown rather than assuming every memory has the same age limit.
+
+## Limits and access
+
+The page requests memories in batches of 50 and offers **Load more**; the service caps one list request at 200 records. These are loading limits, not a stated total-memory allowance. Learning configuration also has per-channel pending and confirmed caps; the defaults in the service are 250 pending and 2,000 confirmed, and channel settings may change them.
+
+Plan access and dashboard permission are separate. Memories have no paid minimum tier in the module catalog, while the viewer still needs dashboard access to the selected channel.
+
+For learning controls and context behavior, see [AI Personality](/ai-personality/). For current plan allowances, see [Plans](/plans/) and [Modules](/modules/).

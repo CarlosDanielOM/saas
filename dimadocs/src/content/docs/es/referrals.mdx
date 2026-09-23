@@ -1,0 +1,35 @@
+---
+title: Referidos
+description: Crea códigos de referido, comparte enlaces de registro y consulta límites, atribución y recompensas.
+sidebar:
+  order: 9
+---
+
+El módulo Referidos permite al propietario del canal crear códigos de registro rastreables y consultar conversiones y créditos por referidos. Abre **Módulos → Referidos** en el panel.
+
+## Crear y compartir un código
+
+1. Inicia sesión y abre Referidos para tu propio canal. Los propietarios pueden crear y eliminar códigos; los administradores del panel con permiso de lectura pueden consultar los códigos y las estadísticas, pero no administrarlos.
+2. Elige **Crear código**, escribe un código único de 1 a 16 letras, números o guiones bajos y, de forma opcional, añade una etiqueta de hasta 50 caracteres. Los códigos no distinguen mayúsculas de minúsculas y se guardan en minúsculas.
+3. Copia el enlace generado `https://domdimabot.com/r/CODIGO` y compártelo con la persona que vaya a crear una cuenta de DomDimaBot.
+
+El límite de códigos activos depende del plan del propietario: Free permite 1, Premium 5 y Pro 15. Al eliminar un código, este se desactiva y libera un espacio. El código no concede un descuento de plan al nuevo usuario.
+
+## Cómo funciona la atribución
+
+La persona debe abrir el enlace de referido con la sesión cerrada. El sitio valida el código, guarda un código pendiente para el proceso de registro y lo envía cuando la persona crea una cuenta por primera vez. Los códigos solo se pueden asociar durante la creación inicial de la cuenta; el antiguo endpoint del panel para aplicar un código ya está retirado. Si se abre el enlace con una sesión iniciada, se borra cualquier código pendiente y se vuelve a la página principal.
+
+Los códigos inválidos y las solicitudes de validación fallidas no se asocian a la cuenta. Una persona no puede referir su propia cuenta y las cuentas existentes no pueden añadir un referido después. Comparte el enlace antes del registro y pide a la persona que complete el registro en la misma sesión del navegador.
+
+## Conversiones y recompensas
+
+El panel muestra los códigos activos, las conversiones, las ganancias totales por referidos, el saldo actual de tokens de la cuenta y el límite de códigos del plan del propietario. El saldo actual también puede incluir tokens obtenidos fuera del programa de referidos. Las conversiones y recompensas se procesan a partir de eventos de suscripción; un registro por sí solo no significa que se haya pagado una recompensa. El importe y el destinatario dependen del flujo de suscripción válido y del plan o la periodicidad; consulta el saldo y el historial de transacciones para ver el importe contabilizado.
+
+## Solución de problemas
+
+- **El enlace indica que el código no es válido:** comprueba que esté bien escrito y que siga activo.
+- **El registro no quedó atribuido:** la persona debe cerrar sesión al abrir el enlace y crear una cuenta nueva con el flujo de registro de ese mismo navegador. Las cuentas existentes no pueden aplicar un código después.
+- **No puedo crear un código:** comprueba que estás viendo tu propio canal y que todavía tienes un espacio disponible. Solo el propietario del canal puede crear o eliminar códigos.
+- **Una conversión todavía no tiene una recompensa asociada:** las conversiones y los tokens dependen del procesamiento de suscripciones; un registro gratuito por sí solo no genera una recompensa.
+
+Consulta [Planes](/es/plans/) para ver los niveles de plan y [Módulos](/es/modules/) para obtener información sobre el acceso al panel.

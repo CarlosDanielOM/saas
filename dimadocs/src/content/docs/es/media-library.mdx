@@ -1,0 +1,37 @@
+---
+title: Biblioteca de medios
+description: Sube, organiza y comparte medios que usan los activadores y las extensiones.
+sidebar:
+  order: 6
+---
+
+La **Biblioteca de medios** almacena imágenes, GIF, audio y video para tu canal. Ábrela desde **Panel → Modulos → Tu Biblioteca Multimedia**. La biblioteca muestra el nombre, tipo de medio, visibilidad y espacio utilizado por cada elemento. Usa **Actualizar** para volver a cargar la lista.
+
+## Subir medios
+
+1. Selecciona **Subir Media**.
+2. Elige un archivo o arrástralo al área de carga.
+3. Escribe un nombre con letras, números y guiones bajos. Debe comenzar con una letra, no puede terminar con un guion bajo y admite hasta 60 caracteres.
+4. Si aparece la opción, elige la visibilidad y selecciona **Subir a la Biblioteca**.
+
+El servidor comprueba el tipo MIME exacto del archivo. La lista permitida es: `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`; `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`; `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma` y `audio/m4a`. El selector puede mostrar archivos con otros tipos MIME —por ejemplo, `image/svg+xml`, `video/quicktime` o `audio/mpeg`— que el servidor no acepta con esta lista.
+
+| Plan | Tamaño máximo por archivo | Cuota de almacenamiento privado |
+|---|---:|---:|
+| Free | 5 MB | 0 MB (usa medios públicos) |
+| Premium | 25 MB | 250 MB |
+| Pro | 100 MB | 1 GB |
+
+Los archivos privados cuentan su tamaño contra la cuota de almacenamiento del canal. Los públicos no. Los canales Free solo pueden subir medios públicos. Los canales Premium y Pro pueden elegir entre visibilidad privada o pública; las nuevas cargas se configuran como privadas en esos planes y como públicas en Free.
+
+## Medios privados y públicos
+
+Los medios **privados** pertenecen a la biblioteca de tu canal y consumen su cuota de almacenamiento privado. Los **públicos** se comparten mediante la biblioteca pública y no consumen esa cuota. En el editor de Triggers, abre **Biblioteca Pública** para buscar por nombre, filtrar por tipo de medio, previsualizar un elemento y añadirlo a tu biblioteca. Añadir un elemento público no consume cuota.
+
+Puedes cambiar un elemento privado a público desde su tarjeta. Esto libera el espacio de la cuota, pero el cambio es irreversible: el recurso pasa a ser público y no se puede volver privado. Confirma este cambio con cuidado.
+
+## Eliminar medios y usarlos en Triggers
+
+Selecciona **Eliminar** en un elemento de la biblioteca para quitarlo. No se puede quitar un elemento que todavía utiliza un trigger; primero edita o elimina el trigger que lo usa. Quitar un elemento público de la biblioteca de tu canal no elimina el recurso público compartido. Cuando se quita la última copia de un recurso privado de las bibliotecas, también se elimina el archivo almacenado.
+
+Para vincular medios a una acción automática, crea o edita un trigger en **Módulos → Triggers**. Consulta [Triggers y medios](/es/triggers/) para ver cómo configurarlos y reproducirlos. La fuente de navegador de OBS debe estar conectada para que los medios del trigger se reproduzcan en tu transmisión.

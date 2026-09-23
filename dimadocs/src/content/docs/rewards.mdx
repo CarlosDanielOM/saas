@@ -1,55 +1,28 @@
 ---
 title: Channel Rewards
-description: Manage and automate your Twitch channel point rewards.
+description: Create and manage Twitch Channel Points rewards and connect them to bot actions.
 sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+The **Redemptions** dashboard manages custom Channel Points rewards created through DomDimaBot and displays your Twitch rewards. A reward is a Twitch point redemption; DomDimaBot can process its redemption and run the message configured for that reward.
 
-Channel point rewards let your viewers spend their accumulated points on special experiences and interactions.
+## Create a DomDimaBot reward
 
-## Setting Up Rewards
+1. Open **Redemptions** in your streamer dashboard and choose **Create reward**.
+2. Set a title and point cost. You can also set a prompt, a global cooldown in seconds, a message, duration, background color, whether viewer input is required, and whether Twitch should skip its redemption request queue.
+3. Save the reward. DomDimaBot creates the custom reward in Twitch and registers to receive its redemption events.
 
-Navigate to **Rewards** in your dashboard to create and manage channel point rewards.
+You can edit, enable or disable, and delete custom rewards from the dashboard. The **Twitch** section lists rewards fetched from Twitch; use its refresh button to reload that list.
 
-### Reward Properties
+## Configure what happens on redemption
 
-| Property | Description |
-|----------|-------------|
-| `title` | Display name shown to viewers |
-| `cost` | Points required to redeem |
-| `prompt` | Instructions shown when redeeming |
-| `enabled` | Whether viewers can currently redeem |
+The **Message** field is processed by DomDimaBot's special-command parser when the reward is redeemed. For example, a message containing `$(trigger.send airhorn)` can play a configured trigger. The parser receives the viewer name, login, reward title, and any viewer input as context for supported commands. A trigger action also requires its OBS browser source to be connected; see [Triggers & Media](/triggers/).
 
-## Automated vs Manual Rewards
+The dashboard does not create separate built-in reward types for TTS, sounds, shoutouts, or other actions. Configure the reward message with supported bot commands for the action you want. If chat is enabled, a nonempty parsed message is also sent to chat.
 
-<Aside type="tip">
-DomDimaBot supports both automated rewards (handled entirely by the bot) and manual rewards (require your approval).
-</Aside>
+## Cooldowns and reward settings
 
-### Automated Rewards
+The cooldown field maps to Twitch's **global cooldown** for that reward. It is not a shared cooldown across all rewards or a per-viewer cooldown. Cost, prompt, enable state, viewer-input requirement, and request-queue behavior are reward settings sent to Twitch. DomDimaBot's reward message is local processing data used when the redemption event arrives.
 
-These rewards are processed immediately when redeemed:
-
-- **Text to Speech** — Read viewer messages aloud
-- **Sound Effects** — Play audio clips in stream
-- **Overlay Triggers** — Show animations/graphics on stream
-- **Bot Commands** — Execute custom command sequences
-
-### Manual Rewards
-
-These rewards require your approval before action:
-
-- **Shoutouts** — Get a personalized on-stream shoutout
-- **Queen/King of the Chat** — Special recognition role
-- **Custom Requests** — Special interactions you approve
-
-## Reward Cooldowns
-
-Set global or per-reward cooldowns to prevent spam:
-
-```
-Global Cooldown: 30 seconds (applies to all rewards)
-Sound Effects: 60 second cooldown per viewer
-```
+DomDimaBot also shows the reward's duration and background color. Paid plans can edit the optional original-cost and cost-change settings; these can raise the reward's cost after a redemption. The return-to-original-cost option controls whether the changing cost is restored.

@@ -1,0 +1,36 @@
+---
+title: Resúmenes de streams
+description: Consulta métricas, recapitulaciones de IA, momentos destacados y acciones de memoria registradas después de las transmisiones.
+sidebar:
+  order: 8
+---
+
+Resúmenes de streams muestra las sesiones de transmisión registradas, sus métricas, una recapitulación y momentos destacados generados por IA cuando estén disponibles, además de acciones de memoria propuestas o aplicadas. Está en el panel, en **Módulos → Resúmenes de streams**. El módulo figura como estable y no exige un plan mínimo. La generación de IA usa la asignación de créditos de IA del canal; el costo exacto depende del uso del proveedor y no se muestra como un precio fijo por resumen.
+
+## Activar los resúmenes posteriores al stream
+
+1. Conecta tu canal de Twitch y abre **Módulos → Personalidad de IA**.
+2. Activa **Resúmenes de streams**.
+3. En **Configuración de aprendizaje**, activa **Crear resúmenes después del stream** y guarda los ajustes.
+4. Deja que el bot observe una transmisión y luego abre **Módulos → Resúmenes de streams** para consultar los resultados.
+
+El interruptor independiente **Respuestas de IA en el chat** controla las respuestas del chat; no controla los resúmenes. El interruptor general **Activar el flujo de aprendizaje** controla los trabajos de mantenimiento semanal y mensual, pero los resúmenes posteriores al stream dependen de los dos interruptores indicados arriba.
+
+De forma predeterminada, un resumen al terminar el stream requiere una sesión de al menos 20 minutos y 30 mensajes de chat muestreados como mínimo. Puedes cambiar ambos umbrales en Configuración de aprendizaje. Si una sesión no alcanza cualquiera de ellos, se registra como **Sin acción** y no genera una recapitulación ni acciones de memoria. Para preparar el resultado, el servicio necesita la sesión del stream, las capturas de espectadores y el contexto de chat conservado.
+
+## Consultar un resumen
+
+Selecciona una sesión de la lista para ver su duración, promedio y máximo de espectadores, cantidad de mensajes de chat muestreados, follows, suscripciones, Bits y donaciones. La pestaña **Recapitulación** muestra el título, la recapitulación y los momentos destacados generados. La pestaña **Memorias** muestra las acciones propuestas y, cuando estén disponibles, sus evidencias, confianza, riesgo y si se aplicaron o se omitieron.
+
+Los cambios de memoria siguen los ajustes de confirmación y aplicación automática de **Personalidad de IA → Configuración de aprendizaje**. Revisa esos controles y la política de memoria antes de activar cambios automáticos. Para consultar o administrar las memorias guardadas, abre el módulo **Memorias** del panel.
+
+## Estados y limitaciones
+
+- **Pendiente** significa que el procesamiento aún no terminó.
+- **Aplicado** significa que se aplicó al menos una acción de memoria; no garantiza que se aplicaran todas las propuestas.
+- **Sin acción** significa que no se aplicó ninguna acción; por ejemplo, porque la sesión no alcanzó los umbrales o el modelo no propuso cambios aplicables.
+- **Fallido** significa que el procesamiento no se completó correctamente.
+
+La recapitulación y las sugerencias de memoria son resultados del modelo basados en una muestra del chat y los datos disponibles de la sesión. Pueden omitir eventos, interpretar mal el contexto o contener errores; úsalas como ayuda para revisar, no como transcripción completa ni fuente definitiva. El procesamiento también puede demorarse o no estar disponible si faltan datos necesarios o el proveedor de IA no responde. Solo se envía un correo de resumen posterior al stream si la generación termina correctamente y la cuenta tiene un correo activo como destino.
+
+Consulta [Planes](/es/plans/) para ver los créditos de IA y otros límites. Para los controles de memoria, personalidad y aprendizaje, consulta [Personalidad de IA](/es/ai-personality/).

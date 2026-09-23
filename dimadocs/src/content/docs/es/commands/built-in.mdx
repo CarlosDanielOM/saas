@@ -1,0 +1,73 @@
+---
+title: Referencia de comandos integrados
+description: Sintaxis y comportamiento de los comandos integrados de DomDimaBot.
+sidebar:
+  label: Comandos integrados
+  order: 3
+---
+
+Esta referencia se basa en la configuración de comandos reservados y el manejador de chat del bot. Para ejecutarse, el comando debe existir y estar activado en el canal; los permisos y el cooldown también pueden limitar su uso. El comando de chat `!commands` filtra la lista según los permisos de quien lo usa.
+
+## Lista de comandos
+
+| Comando | Uso | Comportamiento |
+|---|---|---|
+| `!commands` | `!commands` | Muestra los comandos activados que la persona puede usar. |
+| `!followage` | `!followage [usuario]` | Muestra cuánto tiempo lleva siguiendo el canal quien lo usa o el usuario indicado. |
+| `!sumimetro` | `!sumimetro [usuario]` | Genera una lectura para quien lo usa; un nombre de usuario solicita la lectura guardada de esa persona. |
+| `!amor` | `!amor <usuario>` o `!amor <usuario1> <usuario2>` | Devuelve una lectura humorística de amor. |
+| `!memide` | `!memide` | Devuelve una medida aleatoria en tono de broma. |
+| `!ponerla` | `!ponerla` | Devuelve un porcentaje aleatorio en tono de broma. |
+| `!mecabe` | `!mecabe` | Devuelve una medida aleatoria en tono de broma. |
+| `!ruletarusa` | `!ruletarusa` | Juega a la ruleta rusa; el resultado puede aplicar un timeout a quien lo usa. La duración varía según las pérdidas anteriores: empieza en 10 segundos y aumenta con cada pérdida registrada. |
+| `!duel` | `!duel <usuario>`, luego `!duel accept` o `!duel decline` | Reta a un usuario, quien puede aceptar o rechazar. |
+| `!clip` | `!clip [segundos] [título]` | Crea un clip del canal. Si el primer argumento es un número, indica la duración (5–60 segundos); de lo contrario, se toma como título. Las duraciones numéricas fuera del rango usan 30 segundos. |
+| `!so` | `!so <usuario>` | Envía un anuncio de shoutout; puede incluir detalles de un clip si están disponibles. |
+| `!promo` | `!promo <usuario>` | Envía un shoutout de texto pensado para que lo vean usuarios de dispositivos móviles. |
+| `!anuncio` | `!anuncio <mensaje>` | Envía un anuncio de Twitch. El mensaje admite hasta 300 caracteres. |
+| `!game` | `!game <nombre del juego>` | Si quien lo usa tiene permiso, cambia el juego del canal; sin permiso para cambiarlo, el manejador devuelve el juego actual. |
+| `!title` | `!title <título del stream>` | Si quien lo usa tiene permiso, cambia el título del stream; sin permiso para cambiarlo o sin argumento, devuelve el título actual. |
+| `!onlyemotes` | `!onlyemotes [segundos]` | Alterna el modo de solo emotes o lo activa durante los segundos indicados. |
+| `!s` | `!s <mensaje>` | Envía el mensaje a la cola de texto a voz. Está desactivado en la configuración incluida de comandos reservados. |
+| `!mod` | `!mod <usuario> [días]` | Agrega un moderador. |
+| `!unmod` | `!unmod <usuario>` | Quita un moderador. |
+| `!vip` | `!vip <usuario> [días]` | Agrega un VIP, opcionalmente por una cantidad de días. |
+| `!unvip` | `!unvip <usuario>` | Quita un VIP. |
+| `!vanish` | `!vanish` | Hace que quien lo usa desaparezca del chat. |
+| `!poll` | `!poll <título>;<opción1>/<opción2>;<segundos>` | Crea una encuesta. Separa el título, las opciones separadas por barras y la duración en segundos con punto y coma. Twitch valida los valores y puede rechazar una encuesta no válida. |
+| `!endpoll` | `!endpoll` | Termina la encuesta activa. |
+| `!cancelpoll` | `!cancelpoll` | Cancela la encuesta activa. |
+| `!predi` | `!predi <título>;<opción1>/<opción2>;<segundos>` | Crea una predicción. Separa el título, los resultados separados por barras y la duración en segundos con punto y coma. Twitch valida los valores y puede rechazar una predicción no válida. |
+| `!lockpredi` | `!lockpredi` | Bloquea la predicción activa. |
+| `!endpredi` | `!endpredi <número de opción ganadora>` | Termina la predicción y selecciona la opción ganadora. |
+| `!cancelpredi` | `!cancelpredi` | Cancela una predicción activa o bloqueada. |
+| `!cc` | `!cc <nombre> <respuesta>` | Crea un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
+| `!ec` | `!ec <nombre> <respuesta>` | Edita un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
+| `!dc` | `!dc <nombre>` | Elimina un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
+| `!enable` | `!enable <nombre>` | Activa un comando en el canal. |
+| `!disable` | `!disable <nombre>` | Desactiva un comando en el canal. |
+| `!cct` | `!cct <nombre> <minutos> <mensaje>` | Crea un temporizador de chat repetitivo. Consulta [Temporizadores personalizados](/es/commands/overview/) para conocer las reglas y límites por plan. |
+| `!ect` | `!ect <nombre> [minutos] [mensaje]` | Edita un temporizador de chat repetitivo existente. |
+| `!dct` | `!dct <nombre>` | Elimina un temporizador de chat repetitivo. |
+| `!clearchat` | `!clearchat` | Limpia el chat. Está desactivado en la configuración incluida de comandos reservados. |
+
+El manejador también contiene una acción `archivepoll` (`!archivepoll` si se configura), aunque ese comando no aparece en la lista actual de comandos reservados.
+
+## Detalles
+
+### Encuestas y predicciones
+
+La sintaxis usa punto y coma para separar el título, las opciones separadas por barras y la duración en segundos. Por ejemplo:
+
+```text
+!poll ¿Ganará el streamer?;Sí/No;60
+!predi ¿Ganará el streamer?;Sí/No;60
+```
+
+El analizador del comando envía el título, las opciones y la duración a Twitch. Twitch puede rechazar valores no válidos o una operación si no hay una encuesta o predicción en el estado requerido.
+
+### Permisos y configuración
+
+La configuración incluida de comandos reservados marca como activada la mayoría de los comandos de la lista; `!s` y `!clearchat` están desactivados. Esto describe únicamente la configuración inicial. Cada canal puede tener otro estado de activación, política de permisos, cooldown o disponibilidad. La respuesta de `!commands` muestra la lista de ese canal que puede ver quien ejecuta el comando.
+
+Para respuestas creadas por el streamer y la sintaxis AST, consulta [Comandos personalizados avanzados](/es/commands/advanced/).

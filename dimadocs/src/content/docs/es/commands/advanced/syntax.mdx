@@ -35,7 +35,7 @@ Las variables las creas tú. Pueden ser temporales o persistentes según el pref
 
 ### Comportamientos importantes
 
-1. Las variables de caché expiran después de unas 24 horas.
+1. Cada escritura en caché renueva una expiración de 24 horas. Esto aplica a las variables `#` y `##`.
 2. Si una variable de caché expiró, vuelve **vacía**, no con `0`.
 3. La asignación sobrescribe.
 
@@ -179,7 +179,7 @@ Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, 
 | `<` | Menor que | `%(age) < 18` |
 | `>=` | Mayor o igual | `%(wins) >= 10` |
 | `<=` | Menor o igual | `%(wins) <= 5` |
-| `~=` | Contiene | `%(tags) ~= "gaming"` |
+| `~=` | Coincidencia de subcadena sin distinguir mayúsculas | `%(tags) ~= "gaming"` |
 
 ### Aritmética
 

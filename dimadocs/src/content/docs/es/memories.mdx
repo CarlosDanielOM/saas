@@ -1,0 +1,45 @@
+---
+title: Memorias
+description: Revisa y administra la información que la IA puede conservar sobre tu canal.
+sidebar:
+  order: 7
+---
+
+La página **Memorias** permite que las personas con acceso al panel del canal revisen la información que la IA guardó o propuso a partir de la actividad del canal. Está disponible en **Free, Premium y Pro**. Inicia sesión, elige un canal, abre **Módulos** y selecciona **Memorias**.
+
+Las memorias son notas estructuradas que sirven como contexto para las funciones de IA. No son un archivo consultable de todos los mensajes del chat. Cada memoria puede incluir evidencia de origen, un sujeto de canal o usuario, un tipo, un nivel de riesgo y un estado de revisión.
+
+## Tipos y estados
+
+Los tipos incluyen **Preferencia**, **Broma recurrente**, **Dato conocido de un usuario**, **Historia del canal** y **Límite**. El riesgo se muestra como **Bajo**, **Medio** o **Alto**. La página permite filtrar por estado, tipo y riesgo, y buscar en el contenido, los resúmenes y los nombres de usuario asociados a las memorias cargadas.
+
+Los estados que muestra la página son:
+
+- **Candidata** o **Pendiente de revisión**: información propuesta que espera una decisión.
+- **Confirmada**: memoria activa que puede ser apta para el contexto de la IA.
+- **Rechazada**: memoria que se descartó.
+- **Archivada**: se oculta del uso activo de memorias y permanece en la lista del archivo.
+
+Las memorias de riesgo bajo pueden confirmarse automáticamente si la confirmación automática está activada y la confianza alcanza el umbral configurado. Otras propuestas pueden quedar pendientes de revisión. Los ajustes de Personalidad de IA controlan el aprendizaje, la revisión automática y las políticas de memoria.
+
+## Revisión y edición
+
+En una memoria candidata o pendiente, elige **Aprobar** para confirmarla o **Rechazar** para descartarla. Puedes archivar memorias confirmadas o pendientes, editar su contenido, resumen, tipo o riesgo, o eliminarlas de forma permanente. La página solicita confirmar los cambios de estado y la eliminación; una eliminación permanente no se puede deshacer.
+
+El estado determina si la memoria puede usarse como contexto activo de la IA. Antes de seleccionar el contexto, el sistema también comprueba el canal, el estado, el ámbito del sujeto, la fecha de vencimiento cuando existe y la política de memoria. La ruta de recuperación para el chat no selecciona datos asociados a usuarios como contexto general del canal.
+
+## Privacidad y controles
+
+Personalidad de IA incluye opciones para permitir memorias potencialmente sensibles, preferencias de usuarios y bromas recurrentes. En la política del backend, las memorias sensibles están desactivadas de forma predeterminada. Mediante la ruta de chat, cada persona puede crear memorias asociadas a sí misma, pero no pedir que se guarde un dato sobre otra persona.
+
+Los registros pueden contener el texto de la memoria y evidencia de origen, como un fragmento del mensaje, nombre de usuario, ID de usuario, ID de mensaje y fecha. Revisa el contenido antes de aprobarlo. Usa editar, archivar o eliminar de forma permanente cuando ya no deba utilizarse. La eliminación también quita la entrada vectorial asociada.
+
+La comparación de precios muestra actualmente una retención de memorias de chat de **15 días en Free, 45 días en Premium y 120 días en Pro**. Algunos registros también pueden tener una fecha de vencimiento. El comportamiento exacto depende de la ruta de memoria y del registro; la página no muestra un temporizador de retención para cada elemento. Consulta los detalles vigentes del plan y la fecha de vencimiento del registro cuando esté disponible, en lugar de suponer que todas las memorias tienen el mismo límite de antigüedad.
+
+## Límites y acceso
+
+La página solicita memorias en lotes de 50 y ofrece **Cargar más**; el servicio limita cada solicitud de lista a 200 registros. Son límites de carga, no un límite total de memorias publicado. La configuración de aprendizaje también establece máximos por canal para memorias pendientes y confirmadas; los valores predeterminados del servicio son 250 pendientes y 2.000 confirmadas, y los ajustes del canal pueden cambiarlos.
+
+El acceso por plan y el permiso del panel son independientes. El catálogo de módulos no establece un plan de pago mínimo para Memorias, pero la persona que lo consulta necesita acceso al panel del canal seleccionado.
+
+Consulta [Personalidad de IA](/es/ai-personality/) para conocer los controles de aprendizaje y el uso del contexto. Revisa [Planes](/es/plans/) y [Módulos](/es/modules/) para ver las condiciones actuales.

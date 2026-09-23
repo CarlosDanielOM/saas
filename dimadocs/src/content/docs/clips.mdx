@@ -1,0 +1,31 @@
+---
+title: Clip overlay
+description: Set up the browser overlay that plays channel clips in OBS.
+---
+
+The Clips module provides a browser-source overlay for playing a channel clip when the bot queues one. The dashboard lets you copy an overlay URL, open a preview, adjust its timeout, and request a test clip.
+
+## Set up the overlay
+
+1. Open your channel dashboard and choose **Modules → Clips**.
+2. Select a design card and set the timeout (1–30 seconds; the initial value is 30 seconds).
+3. Copy the URL and add it to OBS as a **Browser Source**. You can also open the URL in a browser to preview it.
+4. Keep the browser source open, then use **Test design** in the dashboard. The test is queued through the bot and needs the overlay connection to be active. If the dashboard says the overlay is not connected, open the URL first and retry.
+
+The timeout is part of the copied URL. The dashboard keeps this value in the current page state; it does not save a channel preference. The page also does not persist a selected design.
+
+## Design availability
+
+The dashboard catalog currently lists Classic, Third, Tile, Cinema, Orbit, Pill, HUD, and Slash. It marks Classic as stable, while Third and the other redesigned options are marked beta. Premium users can access designs marked Premium; Pro also unlocks any design explicitly marked Premium Plus.
+
+There is a current implementation limit to keep in mind: the API route serving `/clip/:channelID` accepts only design IDs `1`, `2`, and `3`. Other design query values fall back to the default overlay. The dashboard's newer design IDs and labels therefore do not all map to distinct server overlays yet. Treat its mock previews as visual mockups; a test sends a real queued clip but does not confirm that every listed design is supported by the overlay route.
+
+## How clips play
+
+The overlay connects to the bot over a WebSocket and listens for queued clip playback. Keep the overlay open in the OBS scene for the bot to reach it. When playback ends, the overlay notifies the bot so the queue can continue. The dashboard test uses the same connected overlay path.
+
+## Troubleshooting
+
+- **Overlay not connected:** open the copied URL in OBS or a browser, leave it open, and retry the test.
+- **No clip plays:** confirm the channel ID in the URL and that a clip is available to the bot. Twitch clip creation and retrieval can take time.
+- **Design looks like Classic:** the route currently falls back to its default for design IDs outside 1–3, even if the dashboard card shows another option.

@@ -1,69 +1,27 @@
 ---
 title: Dashboard
-description: Navigate and use the DomDimaBot dashboard.
+description: Find channel status, chat controls, activity, and modules.
 sidebar:
-  order: 6
+  order: 2
 ---
 
-The DomDimaBot dashboard is your central hub for configuring and monitoring your bot.
+The dashboard is scoped to a channel. Open **Dashboard**, **Commands**, **Modules**, or **Settings** from the top navigation. On a narrow screen, open the menu to reach the same sections.
 
-## Dashboard Sections
+## Dashboard overview
 
-### Overview
+The main page shows the channel's live or offline status and, when live, stream details such as viewer count, game, and title. It also shows activity counters, stream history, and AI usage information where available. Values depend on the data the channel has collected.
 
-The main dashboard view shows:
-- Current stream status
-- Quick stats (viewers, followers, commands used)
-- Recent activity feed
-- Active triggers
+Use **Join Bot** or **Leave Chat** on this page to change whether DomDimaBot participates in chat. The page shows chat and connection status next to this control.
 
-### Commands
+## Find a feature
 
-- Create and edit chat commands
-- Set permissions and cooldowns
-- Preview command responses
-- Organize commands with tags
+| Navigation | What you can do |
+|---|---|
+| **Commands** | Create, edit, and manage channel chat commands. |
+| **Modules** | Browse features such as triggers, TTS, moderation, and analytics. A module card shows its availability or plan requirement. |
+| **Settings** | Manage the channel's dashboard administrators. Owners can add or remove admins. |
+| **Profile menu** | Open profile settings, view your plan, buy credits, change theme or language, and sign out. |
 
-### Rewards
+Some module pages are experimental or still in development. Check the status shown on each card before relying on it for a live stream. The [modules guide](/modules/) lists current statuses.
 
-- Manage channel point rewards
-- View redemption history
-- Set automated vs manual rewards
-- Configure cooldown periods
-
-### Triggers
-
-- Upload media files (sounds, images)
-- Configure trigger events
-- Test trigger sequences
-- Monitor OBS connection status
-
-### Settings
-
-- **General** — Channel name, language, timezone
-- **Permissions** — Who can use what features
-- **Moderation** — Auto-moderation settings
-- **Integrations** — Connect external services
-
-## Quick Actions
-
-Access common actions from the top navbar:
-
-| Action | Description |
-|--------|-------------|
-| **Test Command** | Quickly test any command |
-| **Toggle Stream Mode** | Enable/disable stream-specific features |
-| **Emergency Stop** | Instantly disable all triggers |
-| **Dashboard Refresh** | Force sync with Twitch |
-
-## Navigation
-
-Use the sidebar to navigate between sections. The sidebar is collapsible on smaller screens.
-
-- **Dashboard** — Overview and quick actions
-- **Commands** — Manage chat commands
-- **Rewards** — Channel point rewards
-- **Triggers** — Media and automation
-- **AI Personality** — Bot character settings
-- **Analytics** — Stream metrics and insights
-- **Settings** — Configuration options
+If the header shows **Activate Bot**, **Reauthenticate**, or **Update Permissions**, follow it to grant or renew Twitch permissions. See [Getting Started](/getting-started/).

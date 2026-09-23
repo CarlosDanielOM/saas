@@ -1,81 +1,41 @@
 ---
 title: Getting Started
-description: Set up DomDimaBot and start streaming smarter.
+description: Sign in, authorize your channel, and turn on DomDimaBot chat.
 sidebar:
   order: 1
 ---
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-Welcome to DomDimaBot! This guide will walk you through getting your bot connected and configured.
-
-## Authentication Levels
-
-DomDimaBot has two levels of access:
-
-| Feature | Basic Access | Full Access |
-|---------|-------------|-------------|
-| Custom commands | ✅ | ✅ |
-| Chat interaction | ✅ | ✅ |
-| AI personality chat | ❌ | ✅ |
-| Channel rewards | ❌ | ✅ |
-| Triggers & media | ❌ | ✅ |
-| Moderation tools | ❌ | ✅ |
-| Analytics | ❌ | ✅ |
-| Streamer integrations | ❌ | ✅ |
-
-**Basic Access** is granted automatically when you first log in with Twitch.
-
-**Full Access** requires you to authorize the bot to access your Twitch account with all required permissions.
-
-## Setup Process
+DomDimaBot connects to your Twitch channel through the dashboard. Signing in, authorizing channel permissions, and joining chat are separate steps.
 
 <Steps>
 
-1. **Visit the dashboard**
+1. **Sign in with Twitch**
 
-   Go to [domdimabot.com](https://domdimabot.com) and click **Login with Twitch**.
+   Open [domdimabot.com](https://domdimabot.com) and choose **Login with Twitch**. A new account starts on the Free plan. Your subscription plan and Twitch permissions are separate: upgrading a plan does not grant Twitch permissions.
 
-2. **Authenticate with Twitch**
+2. **Activate and authorize your channel**
 
-   - If this is your first time, a DomDimaBot account will be created automatically
-   - If you've used DomDimaBot before, you'll be logged into your existing account
+   In the dashboard header, use **Activate Bot**, **Reauthenticate**, or **Update Permissions** if that button appears. Twitch will show the permissions being requested. Return to the dashboard after authorizing.
 
-   At this point you have **Basic Access** and can use custom commands and basic chat features.
-
-3. **Authorize for Full Access** *(optional but recommended)*
-
-   Click **Authorize Bot** in the dashboard header.
-
-   You'll be redirected to Twitch to grant the required permissions. The bot needs access to moderation tools, chat, polls, predictions, subscriptions, and more — everything it needs to run your stream smoothly.
-
-   <Aside type="tip">
-   You must have 2FA enabled on your Twitch account to grant these permissions. No sensitive data like your stream key is ever requested.
+   <Aside type="note">
+   If Twitch permissions expire or change, the header can ask you to authorize again. The dashboard may still be accessible while a bot feature needs renewed permission.
    </Aside>
 
-   When you authorize, DomDimaBot automatically:
-   - Creates default commands for your channel
-   - Sets up default webhooks for live events
-   - Configures your account with sensible defaults
+3. **Join chat**
 
-   If you skip this step, you'll need to set everything up manually.
+   On your channel dashboard, choose **Join Bot**. The status changes when chat is enabled. You can use **Leave Chat** later to turn chat participation off.
 
-4. **Configure settings**
+4. **Set up a command or module**
 
-   Set up your preferred language, timezone, and notification preferences from the dashboard.
-
-5. **Test your bot**
-
-   Type `!ping` in your Twitch chat to verify the bot is responding.
+   Open **Commands** to manage chat commands. Open **Modules** to find features such as TTS, triggers, chat moderation, and channel rewards. Availability depends on the module's status, your plan, and your channel permissions.
 
 </Steps>
 
-## Next Steps
+## Where to go next
 
-Once you're set up, explore these guides:
-
-- **[Commands](/commands/overview/)** — Create custom chat commands
-- **[Rewards](/rewards/)** — Set up channel point redemptions
-- **[Triggers](/triggers/)** — Automate sounds and overlays
-- **[Follow Defense](/follow-defense/)** — Protect your channel from follow floods and hate raids
-- **[AI Personality](/ai-personality/)** — Configure your bot's character
+- [Dashboard](/dashboard/) — Find the live status, chat control, activity, and usage.
+- [Commands](/commands/) — Learn built-in and custom commands.
+- [Modules](/modules/) — See the available tools and their status.
+- [Plans](/plans/) — Compare Free, Premium, and Pro.

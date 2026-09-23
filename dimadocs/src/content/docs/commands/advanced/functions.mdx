@@ -63,20 +63,21 @@ For multi-word search or replacement values, use quotes: `$(replace "old text" "
 
 ## Moderation functions
 
-| Function | Description | Args | Level |
-|----------|-------------|------|-------|
+| Function | Description | Args | Access notes |
+|----------|-------------|------|--------------|
 | `$(vip)` or `$(add.vip)` | Add VIP | `username [days]` | Mod |
 | `$(unvip)` | Remove VIP | `username` | Mod |
 | `$(ban)` | Ban or timeout user | `username [duration_seconds]` | Mod |
-| `$(ban.mod)` | Ban and optionally restore mod | `username seconds true|false` | Mod |
-| `$(mod)` or `$(add.mod)` | Add moderator | `username [days]` | Owner |
-| `$(unmod)` | Remove moderator | `username` | Owner |
+| `$(ban.mod)` | Remove a moderator, then ban/timeout them; optionally restore mod after a timeout | `username seconds [true|false]` | Requires level 8 for AI calls; authored commands use configured command permissions |
+| `$(mod)` or `$(add.mod)` | Add moderator | `username [days]` | Requires level 8 for AI calls; authored commands use configured command permissions |
+| `$(unmod)` | Remove moderator | `username` | Requires level 8 for AI calls; authored commands use configured command permissions |
 | `$(clear.chat)` | Clear chat | none | Mod |
 | `$(emoteonly)` | Toggle emote-only mode | `[duration_seconds]` | Mod |
 | `$(bot.mode attack)` | Manually activate Follow Defense Attack Mode | none | Mod |
 | `$(bot.mode status)` | Show current Follow Defense mode | none | Mod |
+| `$(permit [username] [seconds])` | Temporarily bypass channel moderation filters; without arguments permits everyone for 60 seconds | `[username] [seconds]` | Mod |
 
-Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro**.
+Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro**. Pin, moderation, and channel actions are checked against function permissions for AI calls; streamer-authored commands are governed by their configured command access.
 
 <Aside type="caution">
 `$(bot.mode attack)` can permanently ban tracked followers from an active follow wave. Use it only in moderator-only commands such as `!defmode`. See [Follow Defense](/follow-defense/) for details.
@@ -90,8 +91,8 @@ Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro*
 | `$(unraid)` | Cancel raid | `$(unraid)` |
 | `$(set.title new_title)` | Update stream title | `$(set.title Playing Valorant!)` |
 | `$(set.game game_name)` | Update category | `$(set.game Valorant)` |
-| `$(start.prediction title;opt1/opt2;seconds)` | Start prediction | `$(start.prediction Who wins?;A/B;120)` |
-| `$(start.poll title;opt1/opt2;seconds)` | Start poll | `$(start.poll Favorite game?;COD/Halo;60)` |
+| `$(start.prediction "title;opt1/opt2;seconds")` | Start prediction; quote the complete semicolon-separated argument | `$(start.prediction "Who wins?;A/B;120")` |
+| `$(start.poll "title;opt1/opt2;seconds")` | Start poll; quote the complete semicolon-separated argument | `$(start.poll "Favorite game?;COD/Halo;60")` |
 | `$(ad)` | Ad duration in seconds | `$(ad)` |
 | `$(ad.time)` | Ad duration in seconds | `$(ad.time)` |
 | `$(ai prompt)` | AI-generated response | `$(ai tell a joke)` |
@@ -140,14 +141,25 @@ These only return useful data when the command is triggered by the matching Even
 | `$(redemption.input)` | `channel.points_redemption` | User redemption input |
 | `$(ad)` | `channel.ad_break` | Ad duration |
 
+## Pinned chat messages
+
+| Function | Description | Usage |
+|----------|-------------|-------|
+| `$(pin [duration] message)` / `$(pin.create ...)` | Send and pin a chat message; optional duration is 30–1800 seconds | `$(pin.create 300 Rules: be kind)` |
+| `$(pin.update seconds)` | Change the current pin duration (30–1800 seconds) | `$(pin.update 600)` |
+| `$(pin.del)` / `$(pin.delete)` | Unpin the current chat message | `$(pin.del)` |
+
+These actions require moderator level access.
+
 ## TTS functions
 
 | Function | Plan | Description | Usage |
 |----------|------|-------------|-------|
-| `$(tts message)` | All | Queue default TTS | `$(tts Hello world)` |
-| `$(tts.speak message)` | All | Same as `$(tts ...)` | `$(tts.speak Hello)` |
-| `$(tts.ai message)` | All | Same as `$(tts ...)` | `$(tts.ai Hello world)` |
-| `$(tts.clone name message)` | All | Voice clone TTS | `$(tts.clone voice1 Hello)` |
+| `$(tts message)` | Depends on channel TTS settings and plan | Queue default TTS | `$(tts Hello world)` |
+| `$(tts.speak message)` | Depends on channel TTS settings and plan | Same as `$(tts ...)` | `$(tts.speak Hello)` |
+| `$(tts.ai message)` | Depends on channel TTS settings and plan | Same as `$(tts ...)` | `$(tts.ai Hello world)` |
+| `$(tts.clone name message)` | Depends on TTS settings and plan | Speak with a named Fish Audio voice | `$(tts.clone voice1 Hello)` |
+| `$(tts.fish name message)` | Depends on TTS settings and plan | Alias of `$(tts.clone ...)` | `$(tts.fish voice1 Hello)` |
 
 ## Trigger functions
 

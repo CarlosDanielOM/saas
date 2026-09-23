@@ -1,0 +1,24 @@
+---
+title: Analytics
+description: Learn what the channel analytics hub currently includes and how its access works.
+sidebar:
+  order: 8
+---
+
+The **Analytics** hub is available to **Premium and Pro** channels. The module catalog lists Analytics and Follow Ledger as separate entitlements, and each has a Premium minimum tier (Pro also qualifies). You also need permission to view the channel dashboard.
+
+The hub is currently marked **Beta** in the page UI and ships one user-facing tool: **Follow Ledger**. The hub mentions other analytics ideas as planned; chat activity and similar future tools are not available through this page today.
+
+## Open the hub
+
+Sign in, choose a channel, open **Modules**, and select **Analytics**. The current hub links to Follow Ledger, shows the plan status, and indicates that the tool focuses on current followers.
+
+## What data retention means here
+
+The public plan comparison lists stream analytics retention of **30 days on Free, 180 days on Premium, and 365 days on Pro**. That pricing label describes the stream analytics allowance, not a retention period for Follow Ledger. The analytics backend also currently removes viewer snapshot records older than 90 days; this implementation detail does not establish a plan-specific retention guarantee for every analytics record.
+
+Follow Ledger has no published retention period in its page or API. Its display is limited to current followers; historical ended relationships are stored separately by the service but are not exposed by the current dashboard view. See [Plans](/plans/) for the current pricing comparison.
+
+## Access and availability
+
+Plan entitlement does not replace dashboard access or required Twitch authorization. If the hub or Follow Ledger is unavailable, confirm that the selected channel has Premium or Pro and that your account has access to its dashboard. Follow Ledger is identified as Beta in its page UI; the module catalog's maturity label can differ from the feature's page label.

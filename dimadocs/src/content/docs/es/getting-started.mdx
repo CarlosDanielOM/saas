@@ -1,81 +1,41 @@
 ---
-title: Getting Started
-description: Configura DomDimaBot y empieza a transmitir más inteligentemente.
+title: Primeros pasos
+description: Inicia sesión, autoriza tu canal y activa el chat de DomDimaBot.
 sidebar:
   order: 1
 ---
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-¡Bienvenido a DomDimaBot! Esta guía te ayudará a conectar y configurar tu bot.
-
-## Niveles de Autenticación
-
-DomDimaBot tiene dos niveles de acceso:
-
-| Función | Acceso Básico | Acceso Completo |
-|---------|-------------|----------------|
-| Comandos personalizados | ✅ | ✅ |
-| Interacción en chat | ✅ | ✅ |
-| Chat con personalidad IA | ❌ | ✅ |
-| Recompensas del canal | ❌ | ✅ |
-| Disparadores y medios | ❌ | ✅ |
-| Herramientas de moderación | ❌ | ✅ |
-| Analíticas | ❌ | ✅ |
-| Integraciones del streamer | ❌ | ✅ |
-
-El **Acceso Básico** se otorga automáticamente cuando inicias sesión por primera vez con Twitch.
-
-El **Acceso Completo** requiere que autorices al bot para acceder a tu cuenta de Twitch con todos los permisos necesarios.
-
-## Proceso de Configuración
+DomDimaBot se conecta a tu canal de Twitch desde el panel. Iniciar sesión, autorizar los permisos del canal y unir el bot al chat son pasos distintos.
 
 <Steps>
 
-1. **Visita el panel de control**
+1. **Inicia sesión con Twitch**
 
-   Ve a [domdimabot.com](https://domdimabot.com) y haz clic en **Iniciar sesión con Twitch**.
+   Abre [domdimabot.com](https://domdimabot.com) y elige **Iniciar sesión con Twitch**. Una cuenta nueva comienza con el plan Gratis. El plan y los permisos de Twitch son independientes: cambiar de plan no concede permisos de Twitch.
 
-2. **Autentícate con Twitch**
+2. **Activa y autoriza tu canal**
 
-   - Si es tu primera vez, una cuenta de DomDimaBot se creará automáticamente
-   - Si ya has usado DomDimaBot antes, iniciarás sesión con tu cuenta existente
+   En la cabecera del panel, usa **Activar Bot**, **Reautenticar** o **Actualizar Permisos** si aparece ese botón. Twitch mostrará los permisos solicitados. Vuelve al panel después de autorizar.
 
-   En este punto tienes **Acceso Básico** y puedes usar comandos personalizados y funciones básicas de chat.
-
-3. **Autoriza el Acceso Completo** *(opcional pero recomendado)*
-
-   Haz clic en **Autorizar Bot** en el encabezado del panel.
-
-   Serás redirigido a Twitch para otorgar los permisos necesarios. El bot necesita acceso a herramientas de moderación, chat, encuestas, predicciones, suscripciones y más — todo lo que necesita para ejecutar tu transmisión sin problemas.
-
-   <Aside type="tip">
-   Debes tener 2FA habilitado en tu cuenta de Twitch para otorgar estos permisos. Nunca se solicitan datos sensibles como tu clave de transmisión.
+   <Aside type="note">
+   Si los permisos caducan o cambian, la cabecera puede pedirte que autorices de nuevo. El panel puede seguir accesible aunque una función del bot necesite renovar permisos.
    </Aside>
 
-   Cuando autorizas, DomDimaBot automáticamente:
-   - Crea comandos predeterminados para tu canal
-   - Configura webhooks predeterminados para eventos en vivo
-   - Prepara tu cuenta con valores por defecto
+3. **Une el bot al chat**
 
-   Si omites este paso, tendrás que configurar todo manualmente.
+   En el panel de tu canal, elige **Encender el bot**. El estado cambia cuando el chat está activado. Puedes usar **Apagar el bot** más tarde para desactivar la participación del bot.
 
-4. **Configura los ajustes**
+4. **Configura un comando o módulo**
 
-   Configura tu idioma preferido, zona horaria y preferencias de notificación desde el panel.
-
-5. **Prueba tu bot**
-
-   Escribe `!ping` en tu chat de Twitch para verificar que el bot está respondiendo.
+   Abre **Comandos** para administrar comandos del chat. Abre **Módulos** para encontrar funciones como voz, disparadores, moderación y recompensas. La disponibilidad depende del estado del módulo, tu plan y los permisos del canal.
 
 </Steps>
 
-## Próximos Pasos
+## Siguientes pasos
 
-Una vez configurado, explora estas guías:
-
-- **[Comandos](/es/commands/overview/)** — Crea comandos personalizados de chat
-- **[Recompensas](/es/rewards/)** — Configura canjes de puntos del canal
-- **[Disparadores](/es/triggers/)** — Automatiza sonidos y overlays
-- **[Defensa de Follows](/es/follow-defense/)** — Protege tu canal de avalanchas de follows y hate raids
-- **[Personalidad IA](/es/ai-personality/)** — Configura el carácter de tu bot
+- [Panel de control](/es/dashboard/) — Consulta el directo, el control del chat, la actividad y el uso.
+- [Comandos](/es/commands/) — Aprende sobre comandos integrados y personalizados.
+- [Módulos](/es/modules/) — Consulta las herramientas y su estado.
+- [Planes](/es/plans/) — Compara Gratis, Premium y Pro.

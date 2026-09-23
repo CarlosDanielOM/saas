@@ -1,0 +1,20 @@
+---
+title: Redemptions
+description: View Twitch Channel Points rewards and manage DomDimaBot rewards from the dashboard.
+sidebar:
+  order: 7
+---
+
+The **Redemptions** dashboard page has two lists: **Custom redemptions** managed through DomDimaBot, and **Twitch** rewards fetched from Twitch. This page is for configuring rewards, not for processing viewers' individual redemption queue.
+
+## Custom redemptions
+
+Each DomDimaBot reward card shows its title, prompt, cost, global cooldown, and whether it is enabled. Use **Create reward** to add one. For an existing custom reward, you can edit it, enable or disable it, or delete it. The reward settings and message behavior are covered in [Channel Rewards](/rewards/).
+
+After creating or changing a reward in Twitch, use **Refresh** to reload the dashboard lists. The combined refresh has a short cooldown. You can also refresh the Twitch list on its own.
+
+## Twitch rewards
+
+The **Twitch** section displays Channel Points rewards read from Twitch. These cards are read only here; use the reward's controls on Twitch to manage it. A Twitch reward with the same title as one of your DomDimaBot custom rewards is omitted from this separate list to avoid showing it twice.
+
+DomDimaBot custom rewards create and manage Twitch channel point rewards connected to the bot's redemption behavior. For configuration details, supported message actions, cooldown semantics, and plan-gated cost options, see [Channel Rewards](/rewards/).

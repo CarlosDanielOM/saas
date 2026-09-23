@@ -1,0 +1,35 @@
+---
+title: Referrals
+description: Create referral codes, share signup links, and understand code limits, attribution, and referral rewards.
+sidebar:
+  order: 9
+---
+
+The Referrals module lets a channel owner create trackable signup codes and review conversions and referral credits. Open **Modules → Referrals** in the dashboard.
+
+## Create and share a code
+
+1. Sign in and open Referrals for your own channel. Channel owners can create and delete codes; dashboard admins with view access can inspect codes and stats but cannot manage them.
+2. Choose **Create code**, enter a unique code of 1–16 letters, numbers, or underscores, and optionally add a label of up to 50 characters. Codes are case-insensitive and saved in lowercase.
+3. Copy the generated `https://domdimabot.com/r/CODE` link and share it with the person who is creating a DomDimaBot account.
+
+The active code limit depends on the owner's plan: Free allows 1, Premium 5, and Pro 15. Deleting a code deactivates it and frees a slot. The code itself does not grant the new user a plan discount.
+
+## How attribution works
+
+The recipient must open the referral link while signed out. The site validates the code, stores a pending code for the signup flow, and sends it when the recipient first creates an account. Referral codes can only be attached during initial account creation; the dashboard's old apply endpoint is retired. Opening the link while already signed in clears any pending referral code and returns to the home page.
+
+Invalid codes and failed validation requests are not attached to the account. A person cannot refer their own account, and an existing account cannot add a referral later. Share the link before signup and ask the recipient to complete signup in the same browser session.
+
+## Conversions and rewards
+
+The dashboard shows the active codes, conversions, total referral earnings, current account token balance, and the code allowance for the owner's plan. The current balance can include tokens earned outside the referral program. Conversion counts and rewards are processed by subscription events; a signup alone does not mean a reward has been paid. The reward amount and destination depend on the qualifying subscription flow and plan/cadence, so use the dashboard balance and transaction history for the posted amount.
+
+## Troubleshooting
+
+- **The link says invalid:** check spelling and make sure the code is still active.
+- **The signup was not attributed:** the recipient must be signed out when opening the link and must use that browser's signup flow to create a new account. Existing accounts cannot apply a code later.
+- **I cannot create a code:** check that you are viewing your own channel and still have a code slot. Only the channel owner can create or delete codes.
+- **A conversion has no matching reward yet:** conversion and token rewards are tied to subscription processing; a free signup alone does not pay a reward.
+
+See [Plans](/plans/) for plan tiers and [Modules](/modules/) for dashboard access information.

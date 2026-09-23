@@ -1,0 +1,37 @@
+---
+title: Media Library
+description: Upload, organize, and share media used by triggers and extensions.
+sidebar:
+  order: 6
+---
+
+The **Media Library** stores images, GIFs, audio, and video for your channel. Open it from **Dashboard → Modules → Media Library**. Your library shows each item's name, media type, visibility, and storage charge. Use **Refresh** to reload the list.
+
+## Upload media
+
+1. Choose **Upload**.
+2. Select a file or drag it into the file area.
+3. Enter a name using letters, numbers, and underscores. It must start with a letter, cannot end with an underscore, and can be up to 60 characters.
+4. Choose visibility when the option is available, then upload.
+
+The server checks the file’s exact MIME type. Its allowlist is: `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`; `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`; and `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`. The picker may show files with other MIME types — for example, `image/svg+xml`, `video/quicktime`, or `audio/mpeg` — that this server allowlist does not accept.
+
+| Plan | Maximum file size | Private storage quota |
+|---|---:|---:|
+| Free | 5 MB | 0 MB (use public media) |
+| Premium | 25 MB | 250 MB |
+| Pro | 100 MB | 1 GB |
+
+Private uploads count their file size toward the channel's storage quota. Public uploads do not. Free channels can upload public media only. Premium and Pro channels can choose private or public visibility; new uploads default to private on those plans and public on Free.
+
+## Private and public media
+
+**Private** media belongs to your channel library and uses its private storage quota. **Public** media is shared through the public library and does not use your private quota. In the Triggers editor, open the public library to search by name, filter by media type, preview an item, and add it to your library. Adding a public item does not charge storage quota.
+
+You can promote a private item to public from its library card. This releases its quota charge, but the change is one way: the asset becomes public and cannot be made private again. Confirm the visibility change carefully.
+
+## Remove media and use it in triggers
+
+Choose **Delete** on a library item to remove it. An item that is still referenced by a trigger cannot be removed; first edit or delete the trigger that uses it. Removing a public item from your channel library does not delete the shared public asset. When the last library copy of a private asset is removed, its stored asset is deleted.
+
+To attach library media to an automated action, create or edit a trigger in **Modules → Triggers**. See [Triggers & Media](/triggers/) for trigger setup and playback requirements. The OBS browser source must be connected for trigger media to play in your stream.

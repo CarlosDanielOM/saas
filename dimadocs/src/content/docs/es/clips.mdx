@@ -1,0 +1,31 @@
+---
+title: Superposición de clips
+description: Configura la superposición de navegador que reproduce clips del canal en OBS.
+---
+
+El módulo Clips ofrece una superposición de fuente de navegador para reproducir un clip del canal cuando el bot lo agrega a la cola. El panel permite copiar la URL de la superposición, abrir una vista previa, ajustar su tiempo de espera y solicitar una prueba.
+
+## Configurar la superposición
+
+1. Abre el panel de tu canal y selecciona **Módulos → Clips**.
+2. Elige una tarjeta de diseño y ajusta el tiempo de espera (de 1 a 30 segundos; el valor inicial es 30 segundos).
+3. Copia la URL y agrégala a OBS como **Fuente de navegador**. También puedes abrirla en un navegador para ver la superposición.
+4. Deja abierta la fuente del navegador y pulsa **Probar diseño** en el panel. El bot agrega un clip de prueba a la cola y la superposición debe estar conectada. Si el panel indica que no hay conexión, abre primero la URL y vuelve a intentarlo.
+
+El tiempo de espera forma parte de la URL copiada. El panel conserva ese valor solo mientras la página está abierta; no guarda una preferencia del canal. La página tampoco guarda el diseño seleccionado.
+
+## Disponibilidad de diseños
+
+El catálogo del panel muestra Classic, Third, Tile, Cinema, Orbit, Pill, HUD y Slash. Classic aparece como estable; Third y los demás diseños nuevos aparecen como beta. Las cuentas Premium pueden usar los diseños marcados como Premium; Pro también desbloquea cualquier diseño marcado explícitamente como Premium Plus.
+
+Hay un límite actual de implementación: la ruta de API que sirve `/clip/:channelID` solo acepta los identificadores de diseño `1`, `2` y `3`. Otros valores vuelven a la superposición predeterminada. Por eso, los identificadores y nombres de diseño nuevos del panel todavía no corresponden todos a superposiciones distintas en el servidor. Considera las vistas previas de muestra como maquetas visuales; la prueba envía un clip real a la cola, pero no confirma que la ruta admita todos los diseños mostrados.
+
+## Reproducción de clips
+
+La superposición se conecta al bot mediante WebSocket y escucha los clips en cola. Mantén abierta la superposición en la escena de OBS para que el bot pueda comunicarse con ella. Al terminar la reproducción, la superposición avisa al bot para continuar la cola. La prueba del panel usa la misma conexión activa.
+
+## Solución de problemas
+
+- **La superposición no está conectada:** abre la URL copiada en OBS o en un navegador, déjala abierta y vuelve a probar.
+- **No se reproduce ningún clip:** confirma el ID del canal en la URL y que haya un clip disponible para el bot. Twitch puede tardar en crear o encontrar un clip.
+- **El diseño parece Classic:** actualmente la ruta vuelve al diseño predeterminado para identificadores distintos de 1, 2 y 3, aunque la tarjeta del panel muestre otra opción.

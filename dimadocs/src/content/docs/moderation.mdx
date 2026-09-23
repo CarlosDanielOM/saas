@@ -1,0 +1,55 @@
+---
+title: Chat Moderation
+description: Configure DomDimaBot chat filters, exemptions, escalation steps, and action history.
+---
+
+DomDimaBot's Chat Moderation module checks Twitch chat messages against rules you configure. It can warn, delete, timeout, or ban a chatter when a rule matches. The module is available on the **Free** plan and is marked beta in the module catalog.
+
+## Open the moderation settings
+
+In your dashboard, open **Modules** and choose **Chat Moderation**. You need dashboard access to view the page and the `moderation:manage` permission to change or save settings. Users without that permission can view settings in read-only mode.
+
+The page has a master **Filter chat** switch. Rules do nothing while this switch is off. Save your changes to make them active.
+
+New streamers receive default settings when their account is first activated: Caps, Links, and Emote spam are enabled; Blocked words is present but disabled and has no terms. Existing channels are not automatically seeded with those rules. If your page has no rules, add the ones you want and save them.
+
+## Rule types
+
+Each rule checks one kind of message. You can add up to 20 rules per channel, enable or disable a rule, and remove it.
+
+| Rule | What it checks | Configuration |
+| --- | --- | --- |
+| **Caps** | Messages with enough uppercase letters. | Choose a minimum uppercase-letter count or a maximum uppercase-letter percentage. The minimum message length prevents short messages from triggering the rule. Only letters count; Twitch emote fragments are excluded from caps counting. |
+| **Links** | URLs with a domain that is not allowed. | Add domains such as `twitch.tv` to the allowlist. Subdomains are allowed too, so `clips.twitch.tv` is covered by `twitch.tv`. |
+| **Emote spam** | Twitch messages with more emote fragments than the configured maximum. | Set the maximum emote count. |
+| **Blocked words** | A listed word or phrase appearing as a whole term. | Add terms separated by commas or Enter. Matching ignores letter case and accents; a listed term does not match inside a longer word. |
+
+The link detector is a practical chat filter, not a full URL validator. If a link is not detected as a URL, this rule will not act on it.
+
+## Choose actions and exemptions
+
+Each rule has a first, second, and third offense action. The third action repeats for later offenses. The available actions are:
+
+- **Just count it** records the offense but takes no moderation action and lets the message continue through normal processing.
+- **Warn** sends a Twitch warning.
+- **Delete** deletes the matching message.
+- **Timeout** applies a timeout for the duration you set.
+- **Ban** applies a permanent ban.
+
+For actions other than “Just count it,” the configured reason is used for the Twitch action when supported and for a public chat notice. Public notices are rate-limited per chatter; this does not rate-limit the moderation action itself.
+
+Use **Skip this rule for** to exempt a role level and everyone above it. The usual choice is moderators and above. The broadcaster and the bot account are always skipped by the message moderation gate.
+
+Set **Forget warnings after** to control how long an offense count is remembered. The supported range is 1 minute to 24 hours; the default is 1 hour. Each rule tracks offenses separately for each chatter. The first offense starts the timer; after the window expires, the next matching message starts at step one again.
+
+## Permit a temporary bypass
+
+Custom AST commands can call `$(permit)` to bypass moderation filters temporarily. With no arguments it permits everyone in the channel for 60 seconds. You can permit one user with `$(permit username)` or choose a duration with `$(permit username seconds)`; durations range from 1 to 600 seconds. A numeric argument alone permits everyone for that many seconds. Restrict any command using this function to trusted users. See [AST moderation functions](/commands/advanced/functions/).
+
+## Action history and failures
+
+The **Recent Actions** table shows moderation actions from the last 30 days, including the rule, action, offense number, and whether the action succeeded. The API returns up to 100 records per page; the dashboard shows 10 per page.
+
+A rule match is detected before the bot handles commands or sends its AI response. For warn, delete, timeout, or ban, the message pipeline stops after the match even though the Twitch action is started asynchronously. If Twitch rejects an action or the bot lacks the required Twitch authorization, the attempt is marked failed in the action history; the bot logs the error. Check that the bot has the channel permissions needed for moderation and review the recorded failure before relying on a rule.
+
+If moderation settings or cache access encounters an internal error, the error is logged and the message continues through normal chat processing. This keeps a moderation infrastructure problem from stopping other chat features.

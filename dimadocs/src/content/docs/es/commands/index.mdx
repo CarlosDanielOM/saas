@@ -1,6 +1,6 @@
 ---
 title: Comandos
-description: Aprende cómo funcionan los comandos de DomDimaBot, desde los integrados hasta los flujos avanzados con AST.
+description: Consulta la sintaxis de los comandos integrados y aprende sobre comandos personalizados y flujos AST.
 sidebar:
   label: Comandos
   order: 2
@@ -8,15 +8,20 @@ sidebar:
 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-Los comandos de DomDimaBot impulsan la automatización del chat — desde respuestas simples hasta flujos AST programables.
+Los comandos de DomDimaBot permiten ejecutar acciones integradas y respuestas de chat creadas por el streamer. Los comandos disponibles en cada canal dependen de su configuración y de los ajustes de activación y permisos de cada comando.
 
 Elige tu camino:
 
 <CardGrid>
   <LinkCard
-    title="Resumen de comandos"
+    title="Referencia de comandos integrados"
+    href="/es/commands/built-in/"
+    description="Sintaxis y comportamiento de los comandos integrados registrados por el bot."
+  />
+  <LinkCard
+    title="Resumen de comandos personalizados"
     href="/es/commands/overview/"
-    description="Comandos integrados, permisos, cooldowns y el set de comandos por defecto."
+    description="Crea y administra comandos personalizados, permisos y cooldowns."
   />
   <LinkCard
     title="Comandos avanzados (AST)"
@@ -24,3 +29,5 @@ Elige tu camino:
     description="Sintaxis, funciones, reglas de ejecución y recetas para lógica compleja."
   />
 </CardGrid>
+
+El comando de chat `!commands` muestra los comandos activados que el usuario actual tiene permiso para usar. El panel también incluye una página de Commands para administrar los comandos personalizados del canal.

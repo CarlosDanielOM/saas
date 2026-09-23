@@ -1,0 +1,37 @@
+---
+title: Eventos del chat
+description: Configura anuncios en el chat mediante Twitch EventSub.
+---
+
+Eventos del chat conecta eventos compatibles de Twitch con mensajes en el chat de tu canal. El panel carga las tarjetas disponibles desde el catálogo de eventos del bot y las suscripciones EventSub de tu canal; por eso, las tarjetas y sus requisitos de plan pueden cambiar cuando se actualiza el catálogo.
+
+## Abrir el módulo
+
+Inicia sesión, abre el panel de tu canal y selecciona **Módulos → Eventos del chat**. La página muestra las tarjetas de eventos, cuántas están activadas y cuántos eventos Premium o Pro hay en el catálogo cargado.
+
+## Configurar un evento
+
+1. Elige una tarjeta y abre su configuración.
+2. Ajusta los controles disponibles para ese evento. Según la entrada del catálogo, puede haber un mensaje, un número, una casilla o niveles de mensajes para Bits.
+3. Guarda la configuración y activa el evento. Si todavía no existe una suscripción, se crea una suscripción Twitch EventSub; si ya existe, puedes activarla o desactivarla desde la tarjeta.
+4. Para quitar una suscripción, usa **Eliminar evento** en el panel de configuración. Al eliminarla se borra la suscripción; al desactivarla, queda disponible para volver a activarla.
+
+El formulario solo muestra los controles definidos para cada evento. Por ejemplo, el backend actual admite un mensaje final opcional y una casilla para anuncios, una casilla opcional para clips y un mínimo de espectadores para raids, y niveles de mensajes para Bits. Las variables de los mensajes dependen del evento: usa las que indique el control y no asumas que todos admiten las mismas.
+
+Algunos tipos de suscripción no se pueden desactivar mediante la API. En esos casos, borra el mensaje del evento para silenciar el anuncio en el chat; la API rechazará la desactivación de la suscripción.
+
+## Tipos de eventos
+
+El conjunto de suscripciones integrado en el backend incluye mensajes del chat, follows, inicio y fin de stream, raids, avances de encuestas y predicciones, inicio, avance y fin de Hype Train, menciones recibidas, anuncios, actualizaciones del usuario y del canal, suscripciones, regalos de suscripción, mensajes de resuscripción y finales de suscripción, Bits y mensajes retenidos por AutoMod. El catálogo de tarjetas del panel se guarda en la base de datos y puede mostrar solo un subconjunto u otras entradas configuradas. La entrega de EventSub también depende de la autorización de Twitch y de que Twitch acepte la suscripción.
+
+Bits usa el tipo canónico `channel.bits.use`. El panel normaliza las suscripciones antiguas `channel.cheer` y `channel.bit.use` para mostrarlas en esa misma tarjeta.
+
+## Planes y límites
+
+Una entrada del catálogo puede requerir el plan Free, Premium o Pro. El panel muestra los eventos bloqueados y el backend comprueba el plan del canal al crear o actualizar una suscripción. El límite de niveles de mensajes de Bits proviene de la configuración del evento, si está definida. El backend es la autoridad y rechaza los cambios que superen el límite aplicable; si el catálogo no define límites, el valor predeterminado del servidor es 0 para Free, 2 para Premium y 5 para Pro. El valor genérico predeterminado del editor puede diferir del valor del servidor, así que es posible que el servidor rechace al guardar un número que el editor muestra como disponible.
+
+## Solución de problemas
+
+- Si no aparece un evento, puede que no esté en el catálogo; tener una suscripción de Twitch no crea por sí sola una tarjeta.
+- Si falla la activación, comprueba que la cuenta pueda administrar el canal, que el plan incluya el evento y que la autorización de Twitch siga vigente.
+- Si el evento está activado pero no aparece ningún anuncio, revisa el mensaje/configuración y la entrega de Twitch EventSub. Algunos tipos no se pueden desactivar; solo se pueden silenciar borrando su mensaje.

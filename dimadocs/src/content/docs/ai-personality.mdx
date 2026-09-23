@@ -1,57 +1,30 @@
 ---
 title: AI Personality
-description: Give your bot a unique personality powered by AI.
+description: Configure the bot's persona, community context, and memory preferences.
 sidebar:
   order: 6
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+Open **Modules → AI Personality** in your channel dashboard to configure how DomDimaBot responds in chat. The module has a master switch. Stream summaries and clip recommendations have separate switches on the same page.
 
-DomDimaBot's AI personality feature gives your bot the ability to engage in natural conversation, respond to context, and develop a unique character.
+## Profiles and tone
 
-## Personality Settings
+Each profile has a name, personality prompt, persona mode, tone preset, optional persona reference, voice style fields, and catchphrases. Select the active profile before editing it. You can also add rules that guide responses.
 
-Configure your bot's character through these settings:
+| Plan | Profiles | Rules | Known users | Chat context window |
+|---|---:|---:|---:|---:|
+| Free | 1 | 3 | 3 | 7 |
+| Premium | 2 | 5 | 10 | 15 |
+| Pro | 3 | Unlimited | Unlimited | 35 |
 
-| Setting | Description |
-|---------|-------------|
-| **Name** | What viewers call your bot |
-| **Personality** | Core traits and behavior patterns |
-| **Greeting** | How the bot greets new chatters |
-| **Response Style** | Casual, formal, funny, etc. |
+The context window is the configured number of recent chat messages considered by the personality feature. It does not guarantee that every message will produce a response.
 
-## Known Users
+## Known users
 
-You can teach DomDimaBot about specific community members:
+Add a Twitch username, a short description, and an optional relationship for community members you want the bot to recognize. The bot can use this information when responding. Avoid storing private or sensitive information in these fields.
 
-```json
-{
-  "username": "superfan123",
-  "description": "Long-time community member, plays RPGs",
-  "relationship": "friend"
-}
-```
+## Learning and memory
 
-The bot will use this context to personalize interactions.
+The page includes learning controls for memory suggestions and confirmation, post-stream summaries, maintenance, and automatic application of suggested changes. Review the automatic create, edit, archive, and delete switches before enabling them. The memory policy also lets you choose whether to prioritize recent chat and which kinds of remembered information can be used.
 
-## Response Behavior
-
-<Aside type="note">
-AI responses are probabilistic. The bot may occasionally say unexpected things. Use content moderation settings to filter inappropriate messages.
-</Aside>
-
-### Configuration Options
-
-- **Response frequency** — How often the bot talks unprompted
-- **Max message length** — Limit response size
-- **Conversation memory** — How many past messages the bot considers
-- **Ignore list** — Users the bot won't respond to
-
-## Content Safety
-
-Enable moderation features to filter:
-
-- Spam and excessive caps
-- Links (configurable per-user)
-- Custom word filters
-- Rate limiting
+AI replies can vary. Test a profile in your channel, then adjust its prompt and rules if its responses do not fit your community. For chat filtering and temporary link permits, see [Chat Moderation](/moderation/).

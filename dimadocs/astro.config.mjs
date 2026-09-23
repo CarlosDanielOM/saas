@@ -21,6 +21,16 @@ const sidebar = [
         translations: { es: 'Panel de control' },
         slug: 'dashboard',
       },
+      {
+        label: 'Plans',
+        translations: { es: 'Planes' },
+        slug: 'plans',
+      },
+      {
+        label: 'Modules',
+        translations: { es: 'Módulos' },
+        slug: 'modules',
+      },
     ],
   },
   {
@@ -33,6 +43,31 @@ const sidebar = [
         slug: 'commands',
       },
       {
+        label: 'Chat Events',
+        translations: { es: 'Eventos del chat' },
+        slug: 'chat-events',
+      },
+      {
+        label: 'Analytics & Follow Ledger',
+        translations: { es: 'Analíticas y registro de seguidores' },
+        slug: 'analytics',
+      },
+      {
+        label: 'Clips',
+        translations: { es: 'Clips' },
+        slug: 'clips',
+      },
+      {
+        label: 'DimaFX',
+        translations: { es: 'DimaFX' },
+        slug: 'dimafx',
+      },
+      {
+        label: 'Referrals',
+        translations: { es: 'Referidos' },
+        slug: 'referrals',
+      },
+      {
         label: 'Text to Speech',
         translations: { es: 'Texto a voz' },
         slug: 'tts',
@@ -43,9 +78,19 @@ const sidebar = [
         slug: 'rewards',
       },
       {
+        label: 'Redemptions',
+        translations: { es: 'Canjes' },
+        slug: 'redemptions',
+      },
+      {
         label: 'Triggers & Media',
         translations: { es: 'Disparadores y medios' },
         slug: 'triggers',
+      },
+      {
+        label: 'Media Library',
+        translations: { es: 'Biblioteca de medios' },
+        slug: 'media-library',
       },
       {
         label: 'AI Personality',
@@ -57,12 +102,37 @@ const sidebar = [
         translations: { es: 'Defensa de follows' },
         slug: 'follow-defense',
       },
+      {
+        label: 'Chat Moderation',
+        translations: { es: 'Moderación del chat' },
+        slug: 'moderation',
+      },
+      {
+        label: 'Memories',
+        translations: { es: 'Memorias' },
+        slug: 'memories',
+      },
+      {
+        label: 'Stream Summaries',
+        translations: { es: 'Resúmenes de transmisiones' },
+        slug: 'stream-summaries',
+      },
+      {
+        label: 'Clip Recommendations',
+        translations: { es: 'Recomendaciones de clips' },
+        slug: 'clip-recommendations',
+      },
     ],
   },
   {
     label: 'Commands guide',
     translations: { es: 'Guía de comandos' },
     items: [
+      {
+        label: 'Built-in commands',
+        translations: { es: 'Comandos integrados' },
+        slug: 'commands/built-in',
+      },
       {
         label: 'Overview',
         translations: { es: 'Resumen' },

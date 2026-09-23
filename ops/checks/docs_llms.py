@@ -43,13 +43,20 @@ def links(markdown):
 
 
 all_sources = set()
+required_guides = {
+    'analytics', 'chat-events', 'clip-recommendations', 'clips', 'dimafx',
+    'media-library', 'memories', 'moderation', 'modules', 'plans',
+    'redemptions', 'referrals', 'stream-summaries', 'commands/built-in',
+}
 for prefix, language in [('', 'en'), ('/es', 'es')]:
     index = fetch(prefix + '/llms.txt', 'text/plain')
     assert index.startswith('# DomDimaBot documentation')
     assert '## Command creation: read in this order' in index
     text_urls = [url for url in links(index) if urlsplit(url).path.endswith('/index.txt')]
-    assert len(text_urls) >= 16, len(text_urls)
+    assert len(text_urls) >= 30, len(text_urls)
     assert len(set(text_urls)) == len(text_urls), 'Duplicate index entries'
+    for guide in required_guides:
+        assert ORIGIN + prefix + '/' + guide + '/index.txt' in text_urls, (language, guide)
     full = fetch(prefix + '/llms-full.txt', 'text/plain')
     for url in text_urls:
         path = urlsplit(url).path
@@ -72,9 +79,15 @@ for prefix, language in [('', 'en'), ('/es', 'es')]:
             if target_path.endswith('.txt'):
                 assert fetch(target, 'text/plain').startswith('# '), target
     overview = fetch(prefix + '/commands/overview/index.txt')
-    for expected in ['!cc -cd=300 -ul=tier1', '`450`', '`everyone`']:
+    for expected in ['!cc -cd=300 -ul=tier1', '`350`', '`everyone`']:
         assert expected in overview, expected
     assert '-ul=sub ' not in overview
+    built_in = fetch(prefix + '/commands/built-in/index.txt')
+    for expected in ['!commands', '!s', '!clearchat']:
+        assert expected in built_in, (language, expected)
+    modules = fetch(prefix + '/modules/index.txt')
+    for guide in required_guides - {'commands/built-in', 'modules', 'plans'}:
+        assert ORIGIN + prefix + '/' + guide + '/index.txt' in modules, (language, guide)
     syntax = fetch(prefix + '/commands/advanced/syntax/index.txt')
     greeting = 'Hello' if language == 'en' else 'Hola'
     for example in ['%(#wins *(%(#wins) + 1))', '$(say hello \\:\\))', '"' + greeting + ' ${$(user)}!"', '&p1']:

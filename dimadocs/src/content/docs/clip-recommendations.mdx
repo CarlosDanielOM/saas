@@ -1,0 +1,28 @@
+---
+title: Clip Recommendations
+description: Analyze recent Twitch VODs for likely clip moments, review candidates, and understand credit costs.
+sidebar:
+  order: 9
+---
+
+Clip Recommendations analyzes the audio of a Twitch VOD and returns likely moments to review. The dashboard module is currently marked **Alpha**. Manual analysis is available on Free, Premium, and Pro; automatic analysis after a stream ends is Pro-only. The feature requires a Twitch VOD that the service can access and enough AI credits in the channel balance.
+
+## Analyze a VOD
+
+1. Open **Modules → Clip Recommendations** in your channel dashboard.
+2. Review the recent VOD list. Use **Refresh VODs** if needed; the list covers the recent seven-day period.
+3. Check the estimated credit cost shown on the VOD card, then select **Analyze**.
+4. The request is queued for background processing. Check **Past Analyses** for Pending, Processing, Completed, or Failed status.
+5. Review each candidate's time range, reason, confidence, and video check when available. Confirm candidates that pass the video check and that you want to keep, or deny candidates you do not want.
+
+The estimate is 2,750 AI credits for a VOD up to 60 minutes, plus 50 credits for each minute over 60 (rounded up). The worker checks the balance when processing starts. If the balance is too low, the VOD is unavailable, or processing fails, the job may not complete. Queueing a job is not a guarantee that candidates will be returned.
+
+## Automatic analysis
+
+Pro users can enable **Auto-analyze after stream ends** in this module. When enabled, a stream-offline event queues analysis of the latest Twitch VOD. Free and Premium users can still start manual analyses. Automatic jobs use the same VOD and AI-credit requirements as manual jobs; make sure the channel has enough credits for the VOD duration.
+
+## What a result means
+
+The model identifies likely moments from VOD audio and gives each candidate a time range and explanation. A separate video check can approve or reject candidates; only candidates approved by that check can be confirmed in the dashboard. Confirmation or denial updates the candidate's review status. It does not itself create or publish a Twitch clip.
+
+Results are suggestions, not guaranteed highlights. Audio analysis can miss visual context, produce inaccurate timestamps or reasons, or return no candidates. VOD access, provider availability, queue load, and credit balance can affect whether a job finishes. Review the preview and the VOD before using any suggested moment. See [Plans](/plans/) for monthly credit allowances.

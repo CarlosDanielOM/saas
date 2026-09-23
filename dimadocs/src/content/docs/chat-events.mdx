@@ -1,0 +1,37 @@
+---
+title: Chat Events
+description: Configure Twitch EventSub announcements in chat.
+---
+
+Chat Events lets you connect supported Twitch events to messages in your channel chat. The dashboard loads the available event cards from the bot's event catalog and your channel's EventSub subscriptions, so the exact cards and their plan labels can change as that catalog is maintained.
+
+## Open the module
+
+Sign in, open your channel dashboard, and choose **Modules → Chat Events**. The page shows the event cards, how many are enabled, and the number of premium or Pro events in the loaded catalog.
+
+## Configure an event
+
+1. Choose an event card and open its configuration.
+2. Set the controls shown for that event. Depending on the catalog entry, controls can include a message, a number, a checkbox, or cheer message tiers.
+3. Save the configuration, then enable the event. Enabling creates a Twitch EventSub subscription when one does not already exist; an existing subscription can be enabled or disabled from its card.
+4. To remove a subscription, use **Delete event** in the configuration panel. Deleting removes the subscription; disabling keeps it available to turn on again.
+
+The form only displays controls defined for that event. For example, the current backend handles an optional ending message and enable switch for ad breaks, an optional clip switch and minimum-viewer setting for raids, and cheer tiers for Bits. Message placeholders are event-specific; use the placeholder shown by the control rather than assuming every event supports the same variables.
+
+Some subscription types cannot be disabled through the API. For these, clear the event's message to silence its chat output; the API rejects disabling the subscription itself.
+
+## Event types
+
+The backend's built-in subscription set includes chat messages, follows, stream online/offline, raids, poll and prediction progress, Hype Train begin/progress/end, received shoutouts, ad breaks, user and channel updates, subscriptions, gifted subscriptions, resubscription messages and ends, Bits, and AutoMod held messages. The dashboard's event catalog is database-backed, and may expose only a subset or additional configured entries. EventSub delivery also depends on Twitch authorization and the subscription being accepted by Twitch.
+
+Bits uses the canonical `channel.bits.use` event type. Older `channel.cheer` and `channel.bit.use` subscriptions are normalized to that card in the dashboard.
+
+## Plans and limits
+
+An event catalog entry can require Free, Premium, or Pro access. The dashboard shows locked events and the backend checks the channel's plan when a subscription is created or updated. Cheer message tier limits come from that event's catalog configuration when present. The backend is authoritative and rejects saves that exceed its applicable limit; when the catalog has no tier limits, its fallback is 0 for Free, 2 for Premium, and 5 for Pro. The editor's generic client-side fallback can differ from this server fallback, so a value shown as available in the editor may still be rejected when saved.
+
+## Troubleshooting
+
+- If an event is missing, the catalog may not include it; the Twitch subscription list alone does not create an event card.
+- If enabling fails, check that the signed-in account can manage the channel, the plan includes the event, and Twitch authorization is current.
+- If the event is enabled but no announcement appears, check the event's message/configuration and Twitch EventSub delivery. Some event types are intentionally non-disableable and can only be silenced by clearing their message.
