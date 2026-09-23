@@ -83,7 +83,7 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
     }
 
     const language = input.language || settings.defaultLanguage;
-    const spokenMessage = buildSpokenUserMessage(resolveDisplayName(input), normalized.text, language);
+    const spokenMessage = buildSpokenUserMessage(resolveDisplayName(input), normalized.text, language, input.source);
 
     const resolvedMode = await resolveTtsMode(input);
 

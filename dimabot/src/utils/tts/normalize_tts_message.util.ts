@@ -86,7 +86,16 @@ export function normalizeTtsMessage(
     };
 }
 
-export function buildSpokenUserMessage(userName: string, message: string, language: TtsLanguage): string {
+export function buildSpokenUserMessage(
+    userName: string,
+    message: string,
+    language: TtsLanguage,
+    source: 'chat-command' | 'ast' | 'redemption' = 'chat-command'
+): string {
+    if (source === 'ast') {
+        return message;
+    }
+
     const cleanedUserName = String(userName || '').trim();
     if (!cleanedUserName) {
         return message;
