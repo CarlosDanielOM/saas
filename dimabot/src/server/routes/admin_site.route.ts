@@ -22,6 +22,14 @@ import {
 import { DomainEventSchema } from '../../schemas/domain_event.schema.js';
 import { replayDeadDomainEvent } from '../../utils/domain_event_consumer.js';
 import { getDomainEventHealth } from '../../utils/domain_event_health.js';
+import {
+    AiUsageReceiptLimitError, AiUsageReceiptValidationError, buildAiUsagePacing,
+    buildAiUsageSummary, resolveAiUsagePeriod
+} from '../../utils/ai_usage_receipts.js';
+import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
+import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
+import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
+import { cacheCreditPackBillingContext } from '../../utils/billing.js';
 
 interface AuthRequest extends Request {
     user?: {
@@ -137,6 +145,22 @@ function ensureSuperAdmin(req: AuthRequest, res: Response): boolean {
     }
 
     return true;
+}
+
+function usageQuery(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
+}
+
+function adminUsageError(res: Response, caught: unknown) {
+    const message = caught instanceof Error ? caught.message : String(caught);
+    if (caught instanceof AiUsageReceiptValidationError) {
+        return res.status(400).json({ error: true, message, status: 400 });
+    }
+    if (caught instanceof AiUsageReceiptLimitError) {
+        return res.status(422).json({ error: true, message, status: 422 });
+    }
+    console.error('Error loading admin AI usage:', caught);
+    return res.status(502).json({ error: true, message: 'AI usage history is temporarily unavailable', status: 502 });
 }
 
 async function fetchLiveByChannelIds(channelIDs: string[]): Promise<Map<string, TwitchLiveStream>> {
@@ -734,6 +758,93 @@ router.get('/users/:channelID/ai-credits', authMiddleware as any, async (req: Au
             message: 'Internal server error',
             status: 500
         });
+    }
+});
+
+router.get('/users/:channelID/ai-usage/summary', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!ensureSuperAdmin(req, res)) return;
+        const channelID = String(req.params.channelID);
+        const user = await UsersSchema.findOne({ 'accounts.id': channelID, 'accounts.type': 'twitch' });
+        if (!user) return res.status(404).json({ error: true, message: 'User not found', status: 404 });
+
+        const planTier = user.plan_tier || 'free';
+        const credits = await getAiCredits(user, channelID);
+        const period = await resolveAiUsagePeriod({
+            customerId: planTier === 'free' ? undefined : user.polar_sh_customer_id || undefined,
+            freePeriodAnchor: planTier === 'free' ? user.created_at : undefined,
+            from: usageQuery(req.query.from) || undefined,
+            to: usageQuery(req.query.to) || undefined,
+            timeZone: usageQuery(req.query.timezone) || 'UTC',
+            maxDays: getAiUsageRetentionDays(planTier)
+        });
+        if (user.polar_sh_customer_id && planTier !== 'free' && period.billingPeriod.source === 'subscription') {
+            await cacheCreditPackBillingContext({
+                customerId: user.polar_sh_customer_id, planTier,
+                expiresAt: period.billingPeriod.endsAt
+            });
+        }
+        const readInput = {
+            channelID, customerId: user.polar_sh_customer_id,
+            planTier, accountCreatedAt: user.created_at, window: period.window
+        };
+        const ledger = readInput.customerId ? await usageLedgerStatus(readInput) : null;
+        const dashboard = readInput.customerId ? await getAiUsageDashboard(readInput) : null;
+        const summary = dashboard?.summary || buildAiUsageSummary([], period.window);
+        const cycle = period.billingPeriod.source === 'custom' ? await resolveAiUsagePeriod({
+            customerId: planTier === 'free' ? undefined : user.polar_sh_customer_id || undefined,
+            freePeriodAnchor: planTier === 'free' ? user.created_at : undefined,
+            timeZone: period.window.timeZone, maxDays: getAiUsageRetentionDays(planTier)
+        }) : period;
+        const pacing = buildAiUsagePacing({
+            credits, billingPeriod: cycle.billingPeriod, history: dashboard?.history,
+            historyComplete: ledger?.status !== 'pending'
+        });
+
+        return res.status(200).json({
+            error: false, message: 'AI usage summary fetched successfully', status: 200,
+            data: {
+                planTier, credits, billingPeriod: period.billingPeriod, ledger, pacing,
+                analytics: { ...summary, billingPeriod: period.billingPeriod, pacing }
+            }
+        });
+    } catch (caught) {
+        return adminUsageError(res, caught);
+    }
+});
+
+router.get('/users/:channelID/ai-usage/transactions', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        if (!ensureSuperAdmin(req, res)) return;
+        const channelID = String(req.params.channelID);
+        const user = await UsersSchema.findOne({ 'accounts.id': channelID, 'accounts.type': 'twitch' });
+        if (!user) return res.status(404).json({ error: true, message: 'User not found', status: 404 });
+
+        const planTier = user.plan_tier || 'free';
+        const period = await resolveAiUsagePeriod({
+            customerId: planTier === 'free' ? undefined : user.polar_sh_customer_id || undefined,
+            freePeriodAnchor: planTier === 'free' ? user.created_at : undefined,
+            from: usageQuery(req.query.from) || undefined,
+            to: usageQuery(req.query.to) || undefined,
+            timeZone: usageQuery(req.query.timezone) || 'UTC',
+            maxDays: getAiUsageRetentionDays(planTier)
+        });
+        const readInput = { channelID, customerId: user.polar_sh_customer_id, planTier, window: period.window };
+        const ledger = readInput.customerId ? await usageLedgerStatus(readInput) : null;
+        const limitRaw = usageQuery(req.query.limit);
+        const page = await queryAiUsageTransactions({
+            ...readInput,
+            category: usageQuery(req.query.category) || undefined,
+            cursor: usageQuery(req.query.cursor) || undefined,
+            limit: limitRaw ? Number(limitRaw) : 25
+        });
+
+        return res.status(200).json({
+            error: false, message: 'Itemized AI usage fetched successfully', status: 200,
+            data: { planTier, billingPeriod: period.billingPeriod, ledger, items: page.items, nextCursor: page.nextCursor }
+        });
+    } catch (caught) {
+        return adminUsageError(res, caught);
     }
 });
 

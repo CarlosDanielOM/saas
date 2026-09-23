@@ -1,0 +1,105 @@
+<div class="page usage-page">
+  <a class="back-link" [routerLink]="['/channels', channelID]">← Back to user</a>
+  <header class="usage-header">
+    <div>
+      <p class="usage-kicker">AI credit usage</p>
+      <h1>{{ channelID }}</h1>
+      <p>Balance, spending, and itemized activity for this account.</p>
+    </div>
+    <button type="button" class="btn btn--secondary" (click)="load()" [disabled]="loading()">Refresh</button>
+  </header>
+
+  <section class="usage-range" aria-label="Usage date range">
+    <label>From <input type="date" [value]="from()" (input)="onFrom($event)" /></label>
+    <label>To <input type="date" [value]="to()" (input)="onTo($event)" /></label>
+    <button type="button" class="btn btn--primary" (click)="applyRange()" [disabled]="loading()">Apply range</button>
+    @if (customRange()) {
+      <button type="button" class="btn btn--secondary" (click)="resetRange()" [disabled]="loading()">Current period</button>
+    }
+  </section>
+  @if (rangeError()) { <p class="usage-notice" role="alert">{{ rangeError() }}</p> }
+
+  @if (loading() && !summary()) {
+    <p role="status">Loading usage…</p>
+  } @else if (error()) {
+    <div class="usage-notice" role="alert">{{ error() }} <button type="button" class="btn btn--secondary" (click)="load()">Retry</button></div>
+  } @else if (summary(); as data) {
+    <p class="usage-period">
+      {{ data.planTier.toUpperCase() }} · {{ data.billingPeriod.from }} to {{ data.billingPeriod.to }}
+      @if (data.ledger?.status === 'pending') { · Earlier activity is still being prepared }
+    </p>
+
+    <section class="usage-metrics" aria-label="Credit totals">
+      <article class="usage-card">
+        <h2>Balance</h2>
+        @if (data.credits.available) {
+          <strong>{{ format(data.credits.balance) }}</strong>
+          <p>{{ format(data.credits.used) }} used of {{ format(data.credits.limit) }}</p>
+        } @else { <p>No credit account is linked yet.</p> }
+      </article>
+      <article class="usage-card"><h2>Spent in range</h2><strong>{{ format(data.analytics.totalSpentCredits) }}</strong><p>{{ format(data.analytics.averageDailySpentCredits) }} per day</p></article>
+      <article class="usage-card"><h2>Transactions</h2><strong>{{ format(data.analytics.transactionCount) }}</strong><p>{{ format(data.analytics.grantedCredits) }} granted · {{ format(data.analytics.netConsumedCredits) }} net consumed</p></article>
+      <article class="usage-card"><h2>Pacing</h2>
+        @if (data.pacing; as pace) {
+          <strong>{{ format(pace.projectedPeriodCredits) }}</strong>
+          <p>Projected period spend · {{ pace.remainingPeriodDays }} days remaining</p>
+        } @else { <p>Not available</p> }
+      </article>
+    </section>
+
+    <div class="usage-breakdowns">
+      <section class="usage-card" aria-labelledby="daily-heading">
+        <h2 id="daily-heading">Daily spending</h2>
+        @if (data.analytics.daily.length) {
+          <div class="usage-days">
+            @for (point of data.analytics.daily; track point.date) {
+              <div class="usage-day">
+                <span>{{ day(point.date) }}</span>
+                <div class="usage-bar" aria-hidden="true"><span [style.width.%]="point.credits / maxDaily() * 100"></span></div>
+                <strong>{{ format(point.credits) }}</strong>
+              </div>
+            }
+          </div>
+        } @else { <p>No daily usage in this range.</p> }
+      </section>
+      <section class="usage-card" aria-labelledby="categories-heading">
+        <h2 id="categories-heading">Categories</h2>
+        @if (data.analytics.categories.length) {
+          @for (item of data.analytics.categories; track item.category) {
+            <div class="usage-category"><span>{{ label(item.category) }}</span><strong>{{ format(item.credits) }} <small>({{ item.percentage }}%)</small></strong></div>
+          }
+        } @else { <p>No categorized usage in this range.</p> }
+      </section>
+    </div>
+
+    <section class="usage-card usage-ledger" aria-labelledby="ledger-heading">
+      <h2 id="ledger-heading">Itemized transactions</h2>
+      <div class="usage-filters" role="group" aria-label="Filter transactions by category">
+        <button type="button" [class.active]="category() === null" (click)="selectCategory(null)">All</button>
+        @for (item of categories; track item) {
+          <button type="button" [class.active]="category() === item" (click)="selectCategory(item)">{{ label(item) }}</button>
+        }
+      </div>
+      @if (transactionsError()) {
+        <div class="usage-notice" role="alert">{{ transactionsError() }} <button type="button" class="btn btn--secondary" (click)="loadTransactions(true)">Retry</button></div>
+      } @else if (transactionsLoading() && !transactions().length) {
+        <p role="status">Loading transactions…</p>
+      } @else if (!transactions().length) {
+        <p>No transactions in this range.</p>
+      } @else {
+        <ul class="usage-transactions">
+          @for (item of transactions(); track item.id) {
+            <li>
+              <div><strong>{{ label(item.category) }}</strong><span>{{ item.operation }} @if (item.model) { · {{ item.model }} }</span></div>
+              <div><time [attr.datetime]="item.occurredAt">{{ date(item.occurredAt) }}</time><strong>{{ item.entryKind === 'adjustment' || item.credits < 0 ? '+' : '−' }}{{ format(item.credits < 0 ? -item.credits : item.credits) }}</strong></div>
+            </li>
+          }
+        </ul>
+        @if (nextCursor()) {
+          <button type="button" class="btn btn--secondary" (click)="loadMore()" [disabled]="transactionsLoading()">{{ transactionsLoading() ? 'Loading…' : 'Load more' }}</button>
+        }
+      }
+      <p class="usage-footnote">Itemized records are available from {{ date(data.analytics.itemizationStartedAt) }} and remain available for {{ data.planTier === 'pro' ? '90' : data.planTier === 'premium' ? '60' : '30' }} days.</p>
+    </section>
+  }
+</div>

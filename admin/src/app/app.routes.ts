@@ -49,6 +49,12 @@ export const routes: Routes = [
         title: 'Channel | DimaBot Admin',
       },
       {
+        path: 'channels/:channelID/usage',
+        loadComponent: () =>
+          import('./pages/channel/channel-usage.component').then((m) => m.ChannelUsageComponent),
+        title: 'AI Credit Usage | DimaBot Admin',
+      },
+      {
         path: 'channels/:channelID/eventsubs',
         loadComponent: () =>
           import('./pages/channel/channel-eventsubs.component').then(

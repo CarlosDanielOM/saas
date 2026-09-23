@@ -107,6 +107,7 @@
         </div>
         <div class="detail-item detail-item--full" [class]="aiCreditsItemClass()">
           <span class="detail-item__label">AI Credit Usage</span>
+          <a class="btn btn--secondary" [routerLink]="['/channels', o.user.channelID, 'usage']">View full credit usage</a>
           @if (aiCredits() && aiCreditsAvailable()) {
             <span class="detail-item__value credit-usage__summary">
               <span class="credit-usage__label">{{ aiCreditsLabel() }}</span>
