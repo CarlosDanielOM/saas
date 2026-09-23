@@ -28,7 +28,11 @@ import {
   type AiCreditStatus,
 } from "../utils/billing.js";
 import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util.js";
+import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
+
+const TTS_PROCESSING_TTL_SECONDS = 150;
+const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 35_000;
 
 export interface TtsRequestPayload {
   channelID: string;
@@ -79,6 +83,7 @@ class TtsQueueHandler {
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
+  synthesisTimeoutMs = DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS;
   private readonly services: Record<RuntimeTtsProvider, TtsServiceContract> = {
     piper: piperTtsService,
     fish: fishTtsService,
@@ -122,13 +127,19 @@ class TtsQueueHandler {
       };
     }
 
+    const processingKey = `twitch:${payload.channelID}:tts:processing`;
+    let processingActive = this.processingChannels.has(payload.channelID);
+    if (!processingActive) {
+      const staleLock = await this.cache!.get(processingKey);
+      if (staleLock) {
+        await this.cache!.del(processingKey);
+      }
+    }
+
     const queueLength = await this.cache!.zCard(
       `twitch:${payload.channelID}:tts:queue`,
     );
-    const isProcessing = await this.cache!.exists(
-      `twitch:${payload.channelID}:tts:processing`,
-    );
-    const totalPending = queueLength + (isProcessing ? 1 : 0);
+    const totalPending = queueLength + (processingActive ? 1 : 0);
 
     if (totalPending >= settings.queue.maxItems) {
       return {
@@ -174,11 +185,10 @@ class TtsQueueHandler {
       // Analytics must never interrupt queueing.
     }
 
-    if (!isProcessing) {
-      await this.cache!.set(
-        `twitch:${payload.channelID}:tts:processing`,
-        "pending",
-      );
+    if (!processingActive) {
+      await this.cache!.set(processingKey, "pending", {
+        EX: TTS_PROCESSING_TTL_SECONDS,
+      });
       void this.processNext(payload.channelID);
     }
 
@@ -202,233 +212,291 @@ class TtsQueueHandler {
     if (this.processingChannels.has(channelID)) {
       return;
     }
-
-    const next = await this.cache!.zPopMin(`twitch:${channelID}:tts:queue`);
-    if (!next) {
-      const processingKey = await this.cache!.get(
-        `twitch:${channelID}:tts:processing`,
-      );
-      if (processingKey === "pending") {
-        await this.cache!.del(`twitch:${channelID}:tts:processing`);
-      }
-      return;
-    }
-
-    const speechID = next.value;
-    if (!speechID) {
-      return;
-    }
-
-    const rawData = await this.cache!.get(
-      `twitch:${channelID}:tts:queue:data:${speechID}`,
-    );
-    if (!rawData) {
-      await this.cache!.del(`twitch:${channelID}:tts:processing`);
-      void this.processNext(channelID);
-      return;
-    }
-
-    let queueItem: TtsQueueItem;
-    try {
-      queueItem = JSON.parse(rawData) as TtsQueueItem;
-    } catch {
-      await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
-      await this.cache!.del(`twitch:${channelID}:tts:processing`);
-      void this.processNext(channelID);
-      return;
-    }
-
-    const usageRequestID = queueItem.usageRequestID ||= randomUUID();
-    const usageEntryID = queueItem.usageEntryID ||= randomUUID();
-    queueItem.timestamp ||= Date.now();
-    const requestedProvider = queueItem.provider;
-
     this.processingChannels.add(channelID);
-    await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID);
 
-    let streamer: Awaited<ReturnType<typeof TwitchStreamers.getTwitchAccountById>> = null;
+    let activeSpeechID: string | undefined;
     try {
-      streamer = await TwitchStreamers.getTwitchAccountById(channelID);
-    } catch (error) {
-      console.error("Failed to load TTS billing account; using free voice", { channelID, error });
-    }
-    let creditStatus: AiCreditStatus = "available";
-    if (queueItem.provider === "fish") {
-      creditStatus = "unavailable";
-      try {
-        const exhausted = await isAiCreditsExhausted(channelID, this.cache!);
-        if (exhausted) {
-          creditStatus = "exhausted";
-        } else if (streamer) {
-          creditStatus = (await getAiCredits(streamer, channelID)).status;
+      while (true) {
+        const next = await this.cache!.zPopMin(`twitch:${channelID}:tts:queue`);
+        if (!next?.value) {
+          this.processingChannels.delete(channelID);
+          await this.cache!.del(`twitch:${channelID}:tts:processing`);
+          if ((await this.cache!.zCard(`twitch:${channelID}:tts:queue`)) > 0) {
+            void this.processNext(channelID);
+          }
+          return;
         }
-      } catch (creditError) {
-        console.error("Failed to check AI credits before TTS synthesis; using Piper", {
-          channelID,
+
+        const speechID = next.value;
+        activeSpeechID = speechID;
+
+        const rawData = await this.cache!.get(
+          `twitch:${channelID}:tts:queue:data:${speechID}`,
+        );
+        if (!rawData) {
+          continue;
+        }
+
+        let queueItem: TtsQueueItem;
+        try {
+          queueItem = JSON.parse(rawData) as TtsQueueItem;
+        } catch {
+          await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
+          continue;
+        }
+
+        const usageRequestID = queueItem.usageRequestID ||= randomUUID();
+        const usageEntryID = queueItem.usageEntryID ||= randomUUID();
+        queueItem.timestamp ||= Date.now();
+        const requestedProvider = queueItem.provider;
+        let fallbackReason: string | undefined;
+
+        await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID, {
+          EX: TTS_PROCESSING_TTL_SECONDS,
+        });
+
+        let streamer: Awaited<ReturnType<typeof TwitchStreamers.getTwitchAccountById>> = null;
+        try {
+          streamer = await TwitchStreamers.getTwitchAccountById(channelID);
+        } catch (error) {
+          console.error("Failed to load TTS billing account; using free voice", { channelID, error });
+        }
+        let creditStatus: AiCreditStatus = "available";
+        if (queueItem.provider === "fish") {
+          creditStatus = "unavailable";
+          try {
+            const exhausted = await isAiCreditsExhausted(channelID, this.cache!);
+            if (exhausted) {
+              creditStatus = "exhausted";
+            } else if (streamer) {
+              creditStatus = (await getAiCredits(streamer, channelID)).status;
+            }
+          } catch (creditError) {
+            console.error("Failed to check AI credits before TTS synthesis; using Piper", {
+              channelID,
+              speechID,
+              error:
+                creditError instanceof Error
+                  ? creditError.message
+                  : String(creditError),
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+          queueItem = resolveTtsForCreditStatus(queueItem, creditStatus);
+          if (queueItem.provider !== requestedProvider) {
+            fallbackReason = creditStatus;
+          }
+        }
+
+        if (!queueItem.text.trim()) {
+          try {
+            trackAiOperation({
+              requestId: usageRequestID,
+              channelID,
+              category: "tts",
+              operation: "synthesize",
+              source: queueItem.source,
+              lifecycle: "failed",
+              requestedProvider,
+              actualProvider: queueItem.provider,
+              fallbackReason,
+              errorCode: "empty_text_after_fallback",
+              resourceType: "speech",
+              resourceId: speechID,
+              latencyMs: Date.now() - queueItem.timestamp,
+            });
+          } catch {
+            // Analytics must never interrupt queue processing.
+          }
+          await this.cleanupSpeech(channelID, speechID);
+          this.processingChannels.add(channelID);
+          continue;
+        }
+
+        const synthesize = async () => {
+          const ttsService = this.services[queueItem.provider] || piperTtsService;
+          try {
+            return await promiseWithTimeout(
+              ttsService.synthesize({
+                channelID,
+                speechID,
+                mode: queueItem.mode,
+                provider: queueItem.provider,
+                model: queueItem.model,
+                text: queueItem.text,
+                language: queueItem.language,
+                voice: queueItem.voice,
+                cloneName: queueItem.cloneName,
+                outputPath: "",
+              }),
+              queueItem.provider === "fish"
+                ? Math.min(this.synthesisTimeoutMs, 25_000)
+                : this.synthesisTimeoutMs,
+              "TTS synthesis timed out",
+            );
+          } catch (synthesisError) {
+            return {
+              error: true,
+              message:
+                synthesisError instanceof Error
+                  ? synthesisError.message
+                  : String(synthesisError),
+            };
+          }
+        };
+
+        let synthesisResult = await synthesize();
+        if ((synthesisResult.error || !synthesisResult.outputPath || !synthesisResult.publicPath)
+          && queueItem.provider === "fish") {
+          const fishError = synthesisResult.message;
+          queueItem = resolveTtsForCreditStatus(queueItem, "unavailable");
+          fallbackReason = "fish_synthesis_failed";
+          if (queueItem.text.trim()) {
+            synthesisResult = await synthesize();
+          }
+          console.warn("Fish TTS unavailable; used Piper fallback", {
+            channelID,
+            speechID,
+            fishError,
+            piperError: synthesisResult.error ? synthesisResult.message : undefined,
+          });
+        }
+
+        if (
+          synthesisResult.error ||
+          !synthesisResult.outputPath ||
+          !synthesisResult.publicPath
+        ) {
+          console.error("TTS synthesis failed:", {
+            channelID,
+            speechID,
+            error: synthesisResult.message,
+            timestamp: new Date().toISOString(),
+          });
+
+          try {
+            trackAiOperation({
+              requestId: usageRequestID,
+              channelID,
+              category: "tts",
+              operation: "synthesize",
+              source: queueItem.source,
+              lifecycle: "failed",
+              requestedProvider,
+              actualProvider: queueItem.provider,
+              fallbackReason,
+              errorCode: "synthesis_failed",
+              resourceType: "speech",
+              resourceId: speechID,
+              latencyMs: Date.now() - queueItem.timestamp,
+            });
+          } catch {
+            // Analytics must never interrupt queue processing.
+          }
+
+          await this.cleanupSpeech(channelID, speechID);
+          this.processingChannels.add(channelID);
+          continue;
+        }
+
+        // Track TTS usage for billing
+        try {
+          await trackTtsUsage({
+            channelID,
+            streamer: {
+              polar_sh_customer_id: streamer?.polar_sh_customer_id,
+              plan_tier: streamer?.plan_tier,
+            },
+            provider: queueItem.provider,
+            characters: queueItem.text.length,
+            text: queueItem.text,
+            usage: {
+              entryId: usageEntryID,
+              requestId: usageRequestID,
+              source: queueItem.source,
+              resourceType: "speech",
+              resourceId: speechID,
+            },
+          });
+        } catch (trackingError) {
+          console.error("Failed to track TTS usage:", {
+            channelID,
+            speechID,
+            error:
+              trackingError instanceof Error
+                ? trackingError.message
+                : String(trackingError),
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        try {
+          trackAiOperation({
+            requestId: usageRequestID,
+            channelID,
+            category: "tts",
+            operation: "synthesize",
+            source: queueItem.source,
+            lifecycle: "completed",
+            requestedProvider,
+            actualProvider: queueItem.provider,
+            fallbackReason,
+            resourceType: "speech",
+            resourceId: speechID,
+            latencyMs: Date.now() - queueItem.timestamp,
+          });
+        } catch {
+          // Analytics must never interrupt queue processing.
+        }
+
+        this.currentFiles.set(
+          `${channelID}:${speechID}`,
+          synthesisResult.outputPath,
+        );
+
+        const io = getIO();
+        if (!io) {
+          console.error("Socket.IO not initialized for TTS playback");
+          await this.cleanupSpeech(channelID, speechID);
+          this.processingChannels.add(channelID);
+          continue;
+        }
+
+        const timeout = setTimeout(() => {
+          void this.handleSpeechEnded(channelID, speechID);
+        }, 30000);
+
+        this.currentTimeouts.set(`${channelID}:${speechID}`, timeout);
+
+        io.of(`/speech/${channelID}`).emit("speech", {
           speechID,
-          error:
-            creditError instanceof Error
-              ? creditError.message
-              : String(creditError),
-          timestamp: new Date().toISOString(),
+          audioUrl: synthesisResult.publicPath,
+          mimeType: synthesisResult.mimeType || "audio/wav",
+          mode: queueItem.mode,
+          text: queueItem.text,
         });
+        return;
       }
-
-      queueItem = resolveTtsForCreditStatus(queueItem, creditStatus);
-    }
-
-    if (!queueItem.text.trim()) {
-      try {
-        trackAiOperation({
-          requestId: usageRequestID,
-          channelID,
-          category: "tts",
-          operation: "synthesize",
-          source: queueItem.source,
-          lifecycle: "failed",
-          requestedProvider,
-          actualProvider: queueItem.provider,
-          fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
-          errorCode: "empty_text_after_fallback",
-          resourceType: "speech",
-          resourceId: speechID,
-          latencyMs: Date.now() - queueItem.timestamp,
-        });
-      } catch {
-        // Analytics must never interrupt queue processing.
-      }
-      await this.cleanupSpeech(channelID, speechID);
-      void this.processNext(channelID);
-      return;
-    }
-
-    const ttsService = this.services[queueItem.provider] || piperTtsService;
-    const synthesisResult = await ttsService.synthesize({
-      channelID,
-      speechID,
-      mode: queueItem.mode,
-      provider: queueItem.provider,
-      model: queueItem.model,
-      text: queueItem.text,
-      language: queueItem.language,
-      voice: queueItem.voice,
-      cloneName: queueItem.cloneName,
-      outputPath: "",
-    });
-
-    if (
-      synthesisResult.error ||
-      !synthesisResult.outputPath ||
-      !synthesisResult.publicPath
-    ) {
-      console.error("TTS synthesis failed:", {
+    } catch (error) {
+      console.error("TTS queue failed:", {
         channelID,
-        speechID,
-        error: synthesisResult.message,
+        speechID: activeSpeechID,
+        error: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString(),
       });
-
+      this.processingChannels.delete(channelID);
       try {
-        trackAiOperation({
-          requestId: usageRequestID,
-          channelID,
-          category: "tts",
-          operation: "synthesize",
-          source: queueItem.source,
-          lifecycle: "failed",
-          requestedProvider,
-          actualProvider: queueItem.provider,
-          fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
-          errorCode: "synthesis_failed",
-          resourceType: "speech",
-          resourceId: speechID,
-          latencyMs: Date.now() - queueItem.timestamp,
-        });
+        await this.cache!.del(`twitch:${channelID}:tts:processing`);
+        if (activeSpeechID) {
+          await this.cache!.del(
+            `twitch:${channelID}:tts:queue:data:${activeSpeechID}`,
+          );
+        }
       } catch {
-        // Analytics must never interrupt queue processing.
+        // Drop the in-memory lock even when Redis is unavailable.
       }
-
-      await this.cleanupSpeech(channelID, speechID);
-      void this.processNext(channelID);
-      return;
     }
-
-    // Track TTS usage for billing
-    try {
-      await trackTtsUsage({
-        channelID,
-        streamer: {
-          polar_sh_customer_id: streamer?.polar_sh_customer_id,
-          plan_tier: streamer?.plan_tier,
-        },
-        provider: queueItem.provider,
-        characters: queueItem.text.length,
-        text: queueItem.text,
-        usage: {
-          entryId: usageEntryID,
-          requestId: usageRequestID,
-          source: queueItem.source,
-          resourceType: "speech",
-          resourceId: speechID,
-        },
-      });
-    } catch (trackingError) {
-      console.error("Failed to track TTS usage:", {
-        channelID,
-        speechID,
-        error:
-          trackingError instanceof Error
-            ? trackingError.message
-            : String(trackingError),
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    try {
-      trackAiOperation({
-        requestId: usageRequestID,
-        channelID,
-        category: "tts",
-        operation: "synthesize",
-        source: queueItem.source,
-        lifecycle: "completed",
-        requestedProvider,
-        actualProvider: queueItem.provider,
-        fallbackReason: requestedProvider !== queueItem.provider ? creditStatus : undefined,
-        resourceType: "speech",
-        resourceId: speechID,
-        latencyMs: Date.now() - queueItem.timestamp,
-      });
-    } catch {
-      // Analytics must never interrupt queue processing.
-    }
-
-    this.currentFiles.set(
-      `${channelID}:${speechID}`,
-      synthesisResult.outputPath,
-    );
-
-    const io = getIO();
-    if (!io) {
-      console.error("Socket.IO not initialized for TTS playback");
-      await this.cleanupSpeech(channelID, speechID);
-      void this.processNext(channelID);
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      void this.handleSpeechEnded(channelID, speechID);
-    }, 30000);
-
-    this.currentTimeouts.set(`${channelID}:${speechID}`, timeout);
-
-    io.of(`/speech/${channelID}`).emit("speech", {
-      speechID,
-      audioUrl: synthesisResult.publicPath,
-      mimeType: synthesisResult.mimeType || "audio/wav",
-      mode: queueItem.mode,
-      text: queueItem.text,
-    });
   }
 
   async handleSpeechEnded(channelID: string, speechID?: string): Promise<void> {
@@ -436,10 +504,12 @@ class TtsQueueHandler {
       await this.init();
     }
 
+    const storedSpeechID = await this.cache!.get(
+      `twitch:${channelID}:tts:processing`,
+    );
     const currentSpeechID =
       speechID ||
-      (await this.cache!.get(`twitch:${channelID}:tts:processing`)) ||
-      undefined;
+      (storedSpeechID && storedSpeechID !== "pending" ? storedSpeechID : undefined);
     if (!currentSpeechID) {
       this.processingChannels.delete(channelID);
       await this.cache!.del(`twitch:${channelID}:tts:processing`);
@@ -449,6 +519,47 @@ class TtsQueueHandler {
 
     await this.cleanupSpeech(channelID, currentSpeechID);
     void this.processNext(channelID);
+  }
+
+  async releaseStaleProcessingLocks(): Promise<void> {
+    if (!this.cache) {
+      await this.init();
+    }
+
+    const keys = await this.cache!.keys("twitch:*:tts:processing");
+    for (const key of keys) {
+      const channelID = key.split(":")[1];
+      if (!channelID || this.processingChannels.has(channelID)) {
+        continue;
+      }
+      await this.cache!.del(key);
+    }
+  }
+
+  async resumeIfIdle(channelID: string): Promise<void> {
+    if (!this.cache) {
+      await this.init();
+    }
+    if (this.processingChannels.has(channelID)) {
+      return;
+    }
+
+    const processingKey = `twitch:${channelID}:tts:processing`;
+    const staleLock = await this.cache!.get(processingKey);
+    if (this.processingChannels.has(channelID)) {
+      return;
+    }
+    if (staleLock) {
+      await this.cache!.del(processingKey);
+    }
+    if (this.processingChannels.has(channelID)) {
+      return;
+    }
+
+    const queueLength = await this.cache!.zCard(`twitch:${channelID}:tts:queue`);
+    if (queueLength > 0) {
+      void this.processNext(channelID);
+    }
   }
 
   async cleanupSpeech(channelID: string, speechID: string): Promise<void> {

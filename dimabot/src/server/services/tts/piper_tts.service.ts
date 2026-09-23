@@ -111,7 +111,8 @@ async function runPiperHttp(request: TtsSynthesisRequest, baseUrl: string): Prom
         body: JSON.stringify({
             text: request.text,
             voice: request.voice
-        })
+        }),
+        signal: AbortSignal.timeout(30_000)
     });
 
     if (!response.ok) {

@@ -3,8 +3,8 @@ import path from 'path';
 
 import { FishAudioClient, type Backends } from 'fish-audio';
 
-import { error as logError, warn as logWarn } from '../../../utils/logger.js';
 import { reinforceFishTtsTags } from '../../../utils/tts/expressive_tts_tags.util.js';
+import { readAudioStream } from '../../../utils/tts/tts_deadline.util.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
 import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
 
@@ -19,8 +19,8 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
-const PRIMARY_FISH_TTS_BACKEND = 's2.1-pro';
-const FALLBACK_FISH_TTS_BACKEND = 's2.1-pro-free';
+const FISH_TTS_BACKEND = 's2.1-pro-free';
+const FISH_ATTEMPT_TIMEOUT_MS = 20_000;
 
 function getFishApiKey(): string | null {
     const key = process.env.FISH_AUDIO_API_KEY;
@@ -41,7 +41,8 @@ async function convertWithBackend(
     fishAudio: FishAudioClient,
     text: string,
     referenceId: string,
-    backend: string
+    backend: string,
+    signal: AbortSignal
 ) {
     return await fishAudio.textToSpeech.convert(
         {
@@ -49,45 +50,33 @@ async function convertWithBackend(
             reference_id: referenceId,
             format: 'mp3'
         },
-        backend as Backends
+        backend as Backends,
+        {
+            abortSignal: signal,
+            timeoutInSeconds: FISH_ATTEMPT_TIMEOUT_MS / 1000
+        }
     );
 }
 
-async function synthesizeWithFallback(
+async function readBackendAudio(
     fishAudio: FishAudioClient,
     text: string,
     referenceId: string,
-    channelID: string
-): Promise<{ audio: ReadableStream<Uint8Array>; usedBackend: string }> {
+    backend: string
+): Promise<Buffer> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FISH_ATTEMPT_TIMEOUT_MS);
     try {
-        const audio = await convertWithBackend(fishAudio, text, referenceId, PRIMARY_FISH_TTS_BACKEND);
-        return { audio, usedBackend: PRIMARY_FISH_TTS_BACKEND };
-    } catch (primaryError) {
-        const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
-        await logWarn({
-            event: 'fish_tts_fallback',
-            from: PRIMARY_FISH_TTS_BACKEND,
-            to: FALLBACK_FISH_TTS_BACKEND,
-            primaryError: primaryMessage
-        }, { channelId: channelID });
-
-        try {
-            const audio = await convertWithBackend(fishAudio, text, referenceId, FALLBACK_FISH_TTS_BACKEND);
-            return { audio, usedBackend: FALLBACK_FISH_TTS_BACKEND };
-        } catch (fallbackError) {
-            const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-            await logError({
-                event: 'fish_tts_total_failure',
-                primary: PRIMARY_FISH_TTS_BACKEND,
-                fallback: FALLBACK_FISH_TTS_BACKEND,
-                primaryError: primaryMessage,
-                fallbackError: fallbackMessage
-            }, { channelId: channelID });
-
-            throw new Error(
-                `Fish Audio TTS failed on primary '${PRIMARY_FISH_TTS_BACKEND}' and fallback '${FALLBACK_FISH_TTS_BACKEND}': ${fallbackMessage}`
-            );
+        // The Fish client clears its own deadline once response headers arrive.
+        // This abort still covers the audio body, which is the read that can hang.
+        const audio = await convertWithBackend(fishAudio, text, referenceId, backend, controller.signal);
+        const buffer = await readAudioStream(audio, controller.signal);
+        if (buffer.length === 0) {
+            throw new Error(`Fish Audio TTS returned empty audio from '${backend}'`);
         }
+        return buffer;
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -109,19 +98,18 @@ class FishTtsService implements TtsProvider {
             const fishAudio = new FishAudioClient({ apiKey });
             const referenceId = String(request.voice).trim();
 
-            const { audio, usedBackend } = await synthesizeWithFallback(
+            const audio = await readBackendAudio(
                 fishAudio,
                 request.text,
                 referenceId,
-                request.channelID
+                FISH_TTS_BACKEND
             );
 
-            const buffer = Buffer.from(await new Response(audio).arrayBuffer());
-            await fs.writeFile(outputPath, buffer);
+            await fs.writeFile(outputPath, audio);
 
             return {
                 error: false,
-                message: `Speech synthesized with Fish Audio (${usedBackend})`,
+                message: `Speech synthesized with Fish Audio (${FISH_TTS_BACKEND})`,
                 outputPath,
                 publicPath: buildPublicPath(request.channelID, request.speechID),
                 mimeType: 'audio/mpeg'

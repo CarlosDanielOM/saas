@@ -283,13 +283,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             await cacheClient!.set(`twitch:${channelID}:tts:connected`, "true");
             console.log(`${account.name} (${channelID}) connected to speech`);
 
-            const isProcessing = await cacheClient!.exists(`twitch:${channelID}:tts:processing`);
-            if (!isProcessing) {
-                const queueLength = await cacheClient!.zCard(`twitch:${channelID}:tts:queue`);
-                if (queueLength > 0) {
-                    void ttsQueueHandler.processNext(channelID);
-                }
-            }
+            await ttsQueueHandler.resumeIfIdle(channelID);
 
             // Handle speech-ended event from overlay
             socket.on('speech-ended', async (data: { speechID?: string, channelID?: string }) => {

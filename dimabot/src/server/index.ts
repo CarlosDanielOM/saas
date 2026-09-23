@@ -87,6 +87,18 @@ try {
 // Initialize clip queue handler
 await clipQueueHandler.init();
 await ttsQueueHandler.init();
+try {
+    await ttsQueueHandler.releaseStaleProcessingLocks();
+} catch (lockError) {
+    await error(
+        {
+            function: 'server-bootstrap',
+            step: 'tts-processing-locks',
+            error: lockError instanceof Error ? lockError.message : String(lockError)
+        },
+        { destination: 'both' }
+    );
+}
 
 if (process.env.STREAM_ANALYTICS_INLINE === 'true') {
     await reconcileLiveSessionsOnStartup();
