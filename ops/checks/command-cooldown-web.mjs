@@ -62,8 +62,13 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.equal(await body.evaluate(el => el.scrollWidth > el.clientWidth), false);
       const cooldownBox = await cooldown.boundingBox();
-      const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
-      assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'cooldown and user level share a row');
+      if (width >= 640) {
+        const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
+        assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'desktop cooldown and user level share a row');
+      } else {
+        const accessBox = await modal.locator('.lf-mobile-access-trigger').boundingBox();
+        assert.ok(accessBox.y > cooldownBox.y, 'mobile access editor follows cooldown');
+      }
       const submit = modal.locator('button[type="submit"]');
       const before = await submit.boundingBox();
       assert.ok(before.y >= 0 && before.y + before.height <= page.viewportSize().height, 'actions visible without scrolling');

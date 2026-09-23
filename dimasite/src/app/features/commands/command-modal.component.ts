@@ -2,13 +2,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   effect,
   inject,
   input,
   output,
-  signal
+  signal,
+  viewChild
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 
 import {
   Command,
@@ -16,7 +20,18 @@ import {
   USER_LEVELS,
   USER_LEVEL_NAMES
 } from '../../models/command.model';
+import {
+  ACCESS_TAGS,
+  buildAccessExpression,
+  emptyAccessDraft,
+  parseAccessDraft,
+  type AccessDraft,
+  type AccessTag,
+  type TagDecision,
+  type TwitchAccountRef
+} from '../../models/permission-expression.model';
 import { LanguageService } from '../../services/language.service';
+import { TwitchAccountLookupService } from '../../services/twitch-account-lookup.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 export type PlanTier = 'free' | 'premium' | 'pro';
@@ -35,7 +50,7 @@ const PRO_QUICK = [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180] as const;
 
 @Component({
   selector: 'app-command-modal',
-  imports: [ReactiveFormsModule, LfIconComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, LfIconComponent],
   templateUrl: './command-modal.component.html',
   styleUrl: './command-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -43,6 +58,13 @@ const PRO_QUICK = [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180] as const;
 export class CommandModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly languageService = inject(LanguageService);
+  private readonly accountLookup = inject(TwitchAccountLookupService);
+  private accessSession = 0;
+  private readonly mobileAccessTrigger = viewChild<ElementRef<HTMLButtonElement>>('mobileAccessTrigger');
+  private readonly mobileTagsBackButton = viewChild<ElementRef<HTMLButtonElement>>('mobileTagsBackButton');
+  private readonly mobileAccountsBackButton = viewChild<ElementRef<HTMLButtonElement>>('mobileAccountsBackButton');
+  private readonly desktopAccountsTrigger = viewChild<ElementRef<HTMLButtonElement>>('desktopAccountsTrigger');
+  private readonly desktopAccountsClose = viewChild<ElementRef<HTMLButtonElement>>('desktopAccountsClose');
 
   readonly isOpen = input.required<boolean>();
   readonly command = input<Command | null>(null);
@@ -53,6 +75,24 @@ export class CommandModalComponent {
   readonly isEditMode = signal(false);
   readonly isSaving = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly accessDraft = signal<AccessDraft>(emptyAccessDraft(1));
+  readonly mobileAccessView = signal<'main' | 'tags' | 'accounts'>('main');
+  readonly accountsOpen = signal(false);
+  readonly lookupInput = signal({ allow: '', exclude: '' });
+  readonly lookupPending = signal<'allow' | 'exclude' | null>(null);
+  readonly lookupError = signal<string | null>(null);
+  readonly accessTags = ACCESS_TAGS;
+  readonly maxUsersPerList = 5;
+
+  readonly hasCustomAccess = computed(() => {
+    const draft = this.accessDraft();
+    return !draft.editable || ACCESS_TAGS.some((tag) => draft.tags[tag] !== 'neutral') ||
+      draft.allowUsers.length > 0 || draft.excludeUsers.length > 0;
+  });
+  readonly accountCount = computed(() => {
+    const draft = this.accessDraft();
+    return draft.allowUsers.length + draft.excludeUsers.length;
+  });
 
   readonly save = output<CommandModalSavePayload>();
   readonly cancel = output<void>();
@@ -103,6 +143,7 @@ export class CommandModalComponent {
     });
     effect(() => {
       if (!this.isOpen()) {
+        this.accessSession += 1;
         this.isSaving.set(false);
         this.formError.set(null);
         return;
@@ -119,6 +160,12 @@ export class CommandModalComponent {
     return USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone';
   }
 
+  whoCanUse(level: number): string {
+    if (level <= 1) return this.t('commands.access.anyone');
+    if (level >= 10) return this.t('commands.access.onlyYou');
+    return this.t('commands.access.levelAndAbove', { role: this.t(this.getUserLevelName(level)) });
+  }
+
   onOverlayClick(event: Event): void {
     if (event.target === event.currentTarget) {
       this.onCancel();
@@ -127,6 +174,122 @@ export class CommandModalComponent {
 
   onCancel(): void {
     this.cancel.emit();
+  }
+
+  tagDecision(tag: AccessTag): TagDecision {
+    return this.accessDraft().tags[tag];
+  }
+
+  tagLabel(tag: AccessTag): string {
+    return this.t(`commands.access.tags.${tag}`);
+  }
+
+  cycleTag(tag: AccessTag): void {
+    const draft = this.accessDraft();
+    if (!draft.editable) return;
+    const next: Record<TagDecision, TagDecision> = {
+      neutral: 'allow', allow: 'exclude', exclude: 'neutral'
+    };
+    this.accessDraft.set({
+      ...draft,
+      tags: { ...draft.tags, [tag]: next[draft.tags[tag]] }
+    });
+  }
+
+  setBaseLevel(raw: string): void {
+    const level = Number(raw);
+    if (!Number.isInteger(level) || level < 1 || level > 10) return;
+    this.commandForm.controls.userLevel.setValue(level);
+    this.accessDraft.update((draft) => ({ ...draft, baseLevel: level }));
+  }
+
+  resetAdvancedAccess(): void {
+    this.accessDraft.set(emptyAccessDraft(Number(this.commandForm.controls.userLevel.value) || 1));
+    this.lookupError.set(null);
+  }
+
+  openMobileTags(): void {
+    this.mobileAccessView.set('tags');
+    setTimeout(() => this.mobileTagsBackButton()?.nativeElement.focus());
+  }
+
+  openMobileAccounts(): void {
+    this.mobileAccessView.set('accounts');
+    this.lookupError.set(null);
+    setTimeout(() => this.mobileAccountsBackButton()?.nativeElement.focus());
+  }
+
+  backMobileAccess(): void {
+    const next = this.mobileAccessView() === 'accounts' ? 'tags' : 'main';
+    this.mobileAccessView.set(next);
+    this.lookupError.set(null);
+    setTimeout(() => (next === 'tags' ? this.mobileTagsBackButton() : this.mobileAccessTrigger())?.nativeElement.focus());
+  }
+
+  openDesktopAccounts(): void {
+    this.accountsOpen.set(true);
+    this.lookupError.set(null);
+    setTimeout(() => this.desktopAccountsClose()?.nativeElement.focus());
+  }
+
+  closeDesktopAccounts(): void {
+    this.accountsOpen.set(false);
+    setTimeout(() => this.desktopAccountsTrigger()?.nativeElement.focus());
+  }
+
+  setLookupInput(kind: 'allow' | 'exclude', value: string): void {
+    this.lookupInput.update((current) => ({ ...current, [kind]: value }));
+    this.lookupError.set(null);
+  }
+
+  canAddAccount(kind: 'allow' | 'exclude'): boolean {
+    return this.accessDraft()[kind === 'allow' ? 'allowUsers' : 'excludeUsers'].length < this.maxUsersPerList;
+  }
+
+  async addAccount(kind: 'allow' | 'exclude'): Promise<void> {
+    if (this.lookupPending() || !this.canAddAccount(kind) || !this.accessDraft().editable) return;
+    const input = this.lookupInput()[kind];
+    const session = this.accessSession;
+    this.lookupPending.set(kind);
+    this.lookupError.set(null);
+    try {
+      const resolved = await firstValueFrom(this.accountLookup.lookup(input));
+      if (!this.isOpen() || session !== this.accessSession) return;
+      const draft = this.accessDraft();
+      const target = kind === 'allow' ? 'allowUsers' : 'excludeUsers';
+      const opposite = kind === 'allow' ? 'excludeUsers' : 'allowUsers';
+      if (draft[target].some((user) => user.id === resolved.id)) {
+        this.lookupError.set(this.t('commands.access.alreadyAdded'));
+        return;
+      }
+      this.accessDraft.set({
+        ...draft,
+        [target]: [...draft[target], resolved],
+        [opposite]: draft[opposite].filter((user) => user.id !== resolved.id)
+      });
+      this.lookupInput.update((current) => ({ ...current, [kind]: '' }));
+    } catch {
+      if (this.isOpen() && session === this.accessSession) {
+        this.lookupError.set(this.t('commands.access.lookupError'));
+      }
+    } finally {
+      if (session === this.accessSession) this.lookupPending.set(null);
+    }
+  }
+
+  removeAccount(kind: 'allow' | 'exclude', user: TwitchAccountRef): void {
+    const key = kind === 'allow' ? 'allowUsers' : 'excludeUsers';
+    this.accessDraft.update((draft) => ({
+      ...draft,
+      [key]: draft[key].filter((entry) => entry.id !== user.id)
+    }));
+  }
+
+  accessSummary(): string {
+    const draft = this.accessDraft();
+    if (!draft.editable) return this.t('commands.access.advancedRule');
+    if (!this.hasCustomAccess()) return this.whoCanUse(draft.baseLevel);
+    return this.t('commands.access.customSummary', { count: this.accountCount() });
   }
 
   setTimerEnabled(enabled: boolean): void {
@@ -145,6 +308,10 @@ export class CommandModalComponent {
   }
 
   onSubmit(): void {
+    if (this.lookupPending() || this.lookupInput().allow.trim() || this.lookupInput().exclude.trim()) {
+      this.formError.set(this.t('commands.access.finishUsername'));
+      return;
+    }
     if (this.commandForm.invalid) {
       this.commandForm.markAllAsTouched();
       this.formError.set(this.t('commands.modal.validationRequired'));
@@ -183,6 +350,13 @@ export class CommandModalComponent {
       channel: ''
     };
 
+    if (this.accessDraft().editable) {
+      request.permissionExpression = buildAccessExpression({
+        ...this.accessDraft(),
+        baseLevel: request.userLevel
+      });
+    }
+
     this.save.emit({
       command: request,
       timer: {
@@ -195,21 +369,29 @@ export class CommandModalComponent {
   }
 
   private setupForm(): void {
+    this.accessSession += 1;
     const cmd = this.command();
     this.isEditMode.set(!!cmd);
     this.formError.set(null);
+    this.mobileAccessView.set('main');
+    this.accountsOpen.set(false);
+    this.lookupInput.set({ allow: '', exclude: '' });
+    this.lookupError.set(null);
+    this.lookupPending.set(null);
 
     const existingMinutes = this.existingTimerMinutes();
     const hasTimer = existingMinutes !== null && existingMinutes !== undefined && existingMinutes > 0;
 
     if (cmd) {
+      const access = parseAccessDraft(cmd.permissionExpression, cmd.userLevel);
+      this.accessDraft.set(access);
       this.commandForm.patchValue({
         name: cmd.name,
         cmd: cmd.cmd,
         message: cmd.message,
         description: cmd.description || '',
         cooldown: cmd.cooldown,
-        userLevel: cmd.userLevel,
+        userLevel: access.baseLevel,
         enabled: cmd.enabled,
         timerEnabled: hasTimer && !cmd.reserved,
         timerMinutes: hasTimer ? existingMinutes : this.defaultTimerMinutes()
@@ -227,6 +409,7 @@ export class CommandModalComponent {
         this.commandForm.get('timerMinutes')?.enable({ emitEvent: false });
       }
     } else {
+      this.accessDraft.set(emptyAccessDraft(1));
       this.commandForm.reset({
         name: '',
         cmd: '',

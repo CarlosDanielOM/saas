@@ -172,7 +172,7 @@
 
                 <span>{{ command.cooldown }}s</span>
 
-                <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                <span>{{ commandAccessLabel(command) }}</span>
 
                 <span class="lf-status-cell">
                   <span
@@ -314,7 +314,7 @@
                   </span>
                   <span class="lf-meta-pill">
                     <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
-                    <span class="lf-meta-pill__value">{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                    <span class="lf-meta-pill__value">{{ commandAccessLabel(command) }}</span>
                   </span>
                 </div>
 

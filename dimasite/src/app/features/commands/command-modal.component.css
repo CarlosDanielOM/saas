@@ -426,3 +426,403 @@
     animation: none;
   }
 }
+
+/* Permission editor: the ordinary command form stays compact on mobile. */
+.lf-modal__primary {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.lf-modal__primary .lf-form {
+  flex: 1;
+  min-height: 0;
+}
+
+.lf-modal__primary .lf-form__body {
+  flex: 1;
+}
+
+.lf-form-grid--compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lf-main-fields,
+.lf-mobile-tags-view,
+.lf-mobile-accounts-view,
+.lf-account-editor {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.lf-modal__title--tags,
+.lf-modal__title--accounts,
+.lf-mobile-tags-view,
+.lf-mobile-accounts-view,
+.lf-access-desktop,
+.lf-level-field,
+.lf-account-pane,
+.lf-form__actions--subview {
+  display: none;
+}
+
+.lf-mobile-access-trigger,
+.lf-account-trigger {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--input-bg);
+  color: var(--fg);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lf-mobile-access-trigger span:first-child,
+.lf-account-trigger span:first-child {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.lf-mobile-access-trigger strong,
+.lf-account-trigger strong {
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.lf-mobile-access-trigger small,
+.lf-account-trigger small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-mobile-access-trigger__edit,
+.lf-account-trigger > span:last-child {
+  color: var(--kicker);
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.lf-access-back {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--kicker);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lf-access-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.lf-access-tag {
+  min-height: 44px;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lf-access-tag--allow {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--fg);
+}
+
+.lf-access-tag--exclude {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
+}
+
+.lf-access-tag > span {
+  margin-right: 0.2rem;
+  font-size: 1rem;
+}
+
+.lf-access-instruction {
+  font-size: 0.72rem;
+}
+
+.lf-access-warning {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--btn);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.lf-access-warning button {
+  justify-self: start;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--kicker);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lf-account-trigger {
+  background: color-mix(in srgb, var(--accent) 8%, var(--btn));
+}
+
+.lf-account-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.lf-account-group__title {
+  margin: 0;
+  color: var(--fg);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.lf-account-group__title::before {
+  content: '';
+  display: inline-block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+  border-radius: 50%;
+}
+
+.lf-account-group__title--allow::before {
+  background: var(--accent);
+}
+
+.lf-account-group__title--exclude::before {
+  background: var(--danger);
+}
+
+.lf-account-user,
+.lf-account-add {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: var(--input-bg);
+  color: var(--fg);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.lf-account-user button,
+.lf-account-add button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.lf-account-add {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.lf-account-add--exclude {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 5%, transparent);
+}
+
+.lf-account-add input {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0.35rem 0.2rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.lf-account-add input::placeholder {
+  color: var(--muted);
+}
+
+.lf-account-add button {
+  color: var(--kicker);
+}
+
+.lf-account-add button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lf-account-editor > .lf-note {
+  font-size: 0.72rem;
+}
+
+.lf-modal[data-mobile-view='tags'] .lf-main-fields,
+.lf-modal[data-mobile-view='accounts'] .lf-main-fields {
+  display: none;
+}
+
+.lf-modal[data-mobile-view='tags'] .lf-mobile-tags-view,
+.lf-modal[data-mobile-view='accounts'] .lf-mobile-accounts-view {
+  display: grid;
+}
+
+.lf-modal[data-mobile-view='tags'] .lf-modal__title--main,
+.lf-modal[data-mobile-view='accounts'] .lf-modal__title--main {
+  display: none;
+}
+
+.lf-modal[data-mobile-view='tags'] .lf-modal__title--tags,
+.lf-modal[data-mobile-view='accounts'] .lf-modal__title--accounts {
+  display: block;
+}
+
+.lf-modal--subview .lf-form__actions--main {
+  display: none;
+}
+
+.lf-modal--subview .lf-form__actions--subview {
+  display: grid;
+}
+
+.lf-form__actions--subview .lf-btn--primary {
+  background: color-mix(in srgb, var(--accent) 78%, #000);
+  border-color: color-mix(in srgb, var(--accent) 78%, #000);
+}
+
+.lf-modal--subview {
+  height: auto;
+  max-height: 92dvh;
+}
+
+@media (max-width: 639px) {
+  .lf-main-fields > .lf-form-grid:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lf-main-fields > .lf-field textarea {
+    min-height: 4rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .lf-form-grid--compact {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+  .lf-modal__title--tags,
+  .lf-modal__title--accounts,
+  .lf-modal[data-mobile-view='tags'] .lf-modal__title--tags,
+  .lf-modal[data-mobile-view='accounts'] .lf-modal__title--accounts,
+  .lf-mobile-tags-view,
+  .lf-mobile-accounts-view,
+  .lf-modal[data-mobile-view='tags'] .lf-mobile-tags-view,
+  .lf-modal[data-mobile-view='accounts'] .lf-mobile-accounts-view,
+  .lf-mobile-access-trigger,
+  .lf-form__actions--subview,
+  .lf-modal--subview .lf-form__actions--subview {
+    display: none;
+  }
+
+  .lf-modal[data-mobile-view='tags'] .lf-modal__title--main,
+  .lf-modal[data-mobile-view='accounts'] .lf-modal__title--main {
+    display: block;
+  }
+
+  .lf-modal[data-mobile-view='tags'] .lf-main-fields,
+  .lf-modal[data-mobile-view='accounts'] .lf-main-fields,
+  .lf-access-desktop,
+  .lf-level-field {
+    display: grid;
+  }
+
+  .lf-modal--subview .lf-form__actions--main {
+    display: flex;
+  }
+
+  .lf-modal--subview {
+    height: auto;
+    max-height: min(90dvh, 52rem);
+  }
+
+  .lf-modal.lf-modal--expanded {
+    width: min(100%, 58rem);
+    flex-direction: row;
+  }
+
+  .lf-modal--expanded .lf-modal__primary {
+    width: 58%;
+  }
+
+  .lf-modal--expanded .lf-account-pane {
+    display: flex;
+    width: 42%;
+    min-width: 0;
+    flex-direction: column;
+    border-left: 1px solid var(--line);
+    background: color-mix(in srgb, var(--tile) 94%, var(--fg));
+  }
+
+  .lf-account-pane__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    padding: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .lf-account-pane__head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 750;
+  }
+
+  .lf-account-pane__body {
+    min-height: 0;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+}

@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, List, Moon, Search, Sun, LayoutGrid } from 'lucide-angular';
 import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap } from 'rxjs';
 
-import { Command, USER_LEVELS } from '../../models/command.model';
+import { Command, USER_LEVEL_NAMES } from '../../models/command.model';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
@@ -163,8 +163,15 @@ export class PublicCommandsPageComponent {
   }
 
   getUserLevelLabel(command: Command): string {
-    const normalizedLevel = command.userLevelName || USER_LEVELS[command.userLevel] || 'everyone';
-    return this.t(`commands.userLevels.${normalizedLevel}`);
+    if (command.permissionMode === 'invalid') return this.t('commands.access.advancedRule');
+    if (command.permissionExpression != null || command.permissionMode === 'tags') {
+      return this.t('commands.access.customAccess');
+    }
+    if (command.userLevel <= 1) return this.t('commands.access.anyone');
+    if (command.userLevel >= 10) return this.t('commands.access.onlyYou');
+    return this.t('commands.access.levelAndAbove', {
+      role: this.t(USER_LEVEL_NAMES[command.userLevel] ?? 'commands.userLevels.everyone')
+    });
   }
 
   languageLabel(): string {
