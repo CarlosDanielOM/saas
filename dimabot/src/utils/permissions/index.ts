@@ -12,52 +12,60 @@ import { evaluateExpression, inspectExpression, type ExpressionState, type Permi
 import type { UserIdentity } from './roles.js';
 
 /**
- * The dashboard writes flat allow/exclude expressions. For those expressions,
- * an explicit account decision takes priority over a role decision. Keep the
- * normal Boolean evaluator for arbitrary advanced trees, where a user leaf
- * may be conditional on another node.
+ * The dashboard writes flat allow/exclude expressions. In those expressions,
+ * Everyone sets the default, specific tags override that default, and named
+ * accounts override tags. Keep Boolean evaluation for arbitrary advanced trees.
  */
-function flatLeaves(expression: PermissionExpression, allowLevel: boolean): PermissionExpression[] | null {
+function flatLeaves(expression: PermissionExpression): PermissionExpression[] | null {
     const leaves = 'or' in expression ? expression.or : [expression];
     if (leaves.length === 0 || leaves.some((leaf) =>
-        !('role' in leaf || 'user' in leaf || (allowLevel && 'level' in leaf)))) {
+        !('role' in leaf || 'user' in leaf))) {
         return null;
     }
     return leaves;
 }
 
-function flatAccountOverride(expression: PermissionExpression, userId: string): boolean | undefined {
+function flatAccessDecision(expression: PermissionExpression, identity: UserIdentity): boolean | undefined {
     let allowed: PermissionExpression[] = [];
     let excluded: PermissionExpression[] = [];
 
     if ('and' in expression) {
         if (expression.and.length !== 2 || !('not' in expression.and[1])) return undefined;
-        const allowLeaves = flatLeaves(expression.and[0], true);
-        const excludeLeaves = flatLeaves(expression.and[1].not, false);
+        const allowLeaves = flatLeaves(expression.and[0]);
+        const excludeLeaves = flatLeaves(expression.and[1].not);
         if (!allowLeaves || !excludeLeaves) return undefined;
         allowed = allowLeaves;
         excluded = excludeLeaves;
     } else if ('not' in expression) {
-        const excludeLeaves = flatLeaves(expression.not, false);
+        const excludeLeaves = flatLeaves(expression.not);
         if (!excludeLeaves) return undefined;
         excluded = excludeLeaves;
     } else {
-        const allowLeaves = flatLeaves(expression, true);
+        const allowLeaves = flatLeaves(expression);
         if (!allowLeaves) return undefined;
         allowed = allowLeaves;
     }
 
-    if (excluded.some((leaf) => 'user' in leaf && leaf.user.id === userId)) return false;
-    if (allowed.some((leaf) => 'user' in leaf && leaf.user.id === userId)) return true;
-    return undefined;
+    // An unresolved account identity must not bypass a named exclusion.
+    // Unmatched account allows cannot grant access, so other tag rules can
+    // still decide when only account allows are present.
+    if (!identity.userId && excluded.some((leaf) => 'user' in leaf)) return undefined;
+    if (excluded.some((leaf) => 'user' in leaf && leaf.user.id === identity.userId)) return false;
+    if (allowed.some((leaf) => 'user' in leaf && leaf.user.id === identity.userId)) return true;
+
+    const matchesSpecificRole = (leaf: PermissionExpression): boolean =>
+        'role' in leaf && leaf.role !== 'everyone' && identity.tags.has(leaf.role);
+    if (excluded.some(matchesSpecificRole)) return false;
+    if (allowed.some(matchesSpecificRole)) return true;
+    if (allowed.some((leaf) => 'role' in leaf && leaf.role === 'everyone')) return true;
+    if (excluded.some((leaf) => 'role' in leaf && leaf.role === 'everyone')) return false;
+    return allowed.length === 0;
 }
 
 function evaluateAccessExpression(expression: PermissionExpression, identity: UserIdentity): boolean {
     if (identity.tags.has('broadcaster')) return true;
-    if (identity.userId) {
-        const override = flatAccountOverride(expression, identity.userId);
-        if (override !== undefined) return override;
-    }
+    const decision = flatAccessDecision(expression, identity);
+    if (decision !== undefined) return decision;
     return evaluateExpression(expression, identity);
 }
 

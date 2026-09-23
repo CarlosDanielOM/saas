@@ -179,6 +179,26 @@ try {
     console.log('PASS moderation keeps Everyone excluded with a named account exemption');
   }
   {
+    const { context, page, writes, errors } = await testContext(browser, 390, 844);
+    const editor = page.locator('.lf-rule-access');
+    await editor.locator('> summary').click();
+    await editor.getByRole('button', { name: 'Tags and accounts' }).click();
+    await editor.getByRole('button', { name: 'Everyone: Rule applies' }).waitFor();
+    await editor.getByRole('button', { name: 'VIP: No rule' }).click();
+    await editor.getByRole('button', { name: 'Mod: No rule' }).click();
+    await editor.getByRole('button', { name: 'Everyone: Rule applies' }).waitFor();
+    await editor.getByRole('button', { name: 'VIP: Exempt' }).waitFor();
+    await editor.getByRole('button', { name: 'Mod: Exempt' }).waitFor();
+    await page.getByRole('button', { name: 'Save Settings' }).click();
+    await page.waitForFunction(() => document.querySelector('.lf-save-bar button')?.hasAttribute('disabled'));
+    assert.deepEqual(writes[0].rules[0].exemptExpression, {
+      and: [{ or: [{ role: 'vip' }, { role: 'mod' }] }, { not: { role: 'everyone' } }]
+    });
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log('PASS moderation keeps Everyone rule-applies with VIP and Mod exemptions');
+  }
+  {
     const legacyMixed = { or: [{ level: 7 }, { role: 'vip' }] };
     const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
     const editor = page.locator('.lf-rule-access');

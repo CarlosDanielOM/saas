@@ -169,6 +169,20 @@ await ChannelModerationSettingsSchema.create({ channelID: overrideChannel, enabl
 assert.equal((await runChatModeration(overrideChannel, message('msg-override-allowed', 'CAPS FROM THE ALLOWED ACCOUNT', [], '12345', 'renamed'), allowedAccount)).actionTaken, false, 'named account is exempt after renaming despite excluded Everyone');
 assert.equal((await runChatModeration(overrideChannel, message('msg-override-other', 'CAPS FROM ANOTHER ACCOUNT', [], '67890', 'other'), otherAccount)).actionTaken, true, 'excluded Everyone still applies to other accounts');
 
+const staffOnlyExpression = { and: [
+    { or: [{ role: 'vip' }, { role: 'mod' }] },
+    { not: { role: 'everyone' } }
+] };
+const staffChannel = 'staff-only-channel';
+const staffRule = { ...rules.find(rule => rule.type === 'caps'), id: 'staff-only-rule', exemptExpression: staffOnlyExpression };
+await ChannelModerationSettingsSchema.create({ channelID: staffChannel, enabled: true, rules: [staffRule], settingsVersion: 1 });
+assert.equal(commandAllowed({ permissionExpression: staffOnlyExpression }, identity(5, ['vip'], 'vip2')), true, 'VIP can run command with Everyone excluded');
+assert.equal(commandAllowed({ permissionExpression: staffOnlyExpression }, identity(7, ['mod'], 'mod2')), true, 'Mod can run command with Everyone excluded');
+assert.equal(commandAllowed({ permissionExpression: staffOnlyExpression }, identity(1, [], 'viewer2')), false, 'viewer cannot run command with Everyone excluded');
+assert.equal((await runChatModeration(staffChannel, message('msg-staff-vip', 'CAPS FROM AN EXEMPT VIP', [], 'vip2', 'vip2'), identity(5, ['vip'], 'vip2'))).actionTaken, false, 'VIP exempt despite Everyone rule-applies');
+assert.equal((await runChatModeration(staffChannel, message('msg-staff-mod', 'CAPS FROM AN EXEMPT MOD', [], 'mod2', 'mod2'), identity(7, ['mod'], 'mod2'))).actionTaken, false, 'Mod exempt despite Everyone rule-applies');
+assert.equal((await runChatModeration(staffChannel, message('msg-staff-viewer', 'CAPS FROM ANOTHER VIEWER', [], 'viewer2', 'viewer2'), identity(1, [], 'viewer2'))).actionTaken, true, 'Everyone rule still applies to viewer');
+
 const invalidRule = { ...rules.find(rule => rule.type === 'caps'), id: 'invalid-expression-rule', exemptExpression: { role: 'supermod' } };
 await ChannelModerationSettingsSchema.create({ channelID: 'invalid-expression-channel', enabled: true, rules: [invalidRule], settingsVersion: 1 });
 assert.equal((await runChatModeration('invalid-expression-channel', message('msg-inv', 'CAPS WITH A BROKEN POLICY', [], 'admin1', 'adminone'), identity(9, ['admin']))).actionTaken, true, 'present invalid expression grants no exemption, even to admins');
@@ -183,7 +197,7 @@ try {
     if (process.env.SAAS_FIXTURES_REQUIRED === '1') throw err;
 }
 
-console.log(`PASS ${process.env.SAAS_TARGET}: ladder escalation, notices throttled, permits, exemptions, links/emote/blacklist rules, parser contract, seed vs cache/stub, expression exemptions, account overrides`);
+console.log(`PASS ${process.env.SAAS_TARGET}: ladder escalation, notices throttled, permits, exemptions, links/emote/blacklist rules, parser contract, seed vs cache/stub, expression exemptions, account and tag overrides`);
 
 // --- API surface (only when verifying the api target) ---
 if (process.env.SAAS_TARGET === 'api') {

@@ -904,7 +904,7 @@
       "alwaysApply": "Rule always applies",
       "addExempt": "Add exempt account",
       "addApply": "Add account the rule applies to",
-      "exclusionsWin": "Excluded tags beat exempt tags. Account exceptions override tag rules.",
+      "exclusionsWin": "Everyone sets the default. Specific exempt tags can override it; specific rule-applies tags beat exempt tags. Account exceptions take priority.",
       "advancedWarning": "This rule has an advanced tag expression. It stays unchanged unless you reset the tag rules or choose user level.",
       "legacyWarning": "This older rule combines user level with tags. Choose user level or reset the tag rules before saving.",
       "chooseMethod": "Choose one exemption method for every legacy combined rule before saving.",
@@ -2011,7 +2011,7 @@
       "tagsTitle": "Tag access",
       "cycleHintDesktop": "Click a tag: allow → exclude → clear.",
       "cycleHintMobile": "Tap a tag to allow it, tap again to exclude it, then clear it.",
-      "denyWins": "Excluded tags beat allowed tags. Account exceptions override tag rules.",
+      "denyWins": "Everyone sets the default. Specific allowed tags can override it; specific excluded tags beat allowed tags. Account exceptions take priority.",
       "state": {
         "neutral": "No rule",
         "allow": "Allowed",

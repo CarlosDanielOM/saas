@@ -253,6 +253,34 @@ test('an excluded account overrides an allowed VIP tag', () => {
     assert.equal(ruleExempt({ exemptExpression: expression }, createUserIdentity(5, ['vip'], '12345', 'renamed')), false);
 });
 
+test('flat tag decisions use Everyone as the default, independent of click order', () => {
+    const cases = [
+        { name: 'only Mod excluded', expression: { not: { role: 'mod' } }, viewer: true, vip: true, mod: false },
+        { name: 'only Mod allowed', expression: { role: 'mod' }, viewer: false, vip: false, mod: true },
+        { name: 'Everyone allowed and Mod excluded', expression: { and: [{ role: 'everyone' }, { not: { role: 'mod' } }] }, viewer: true, vip: true, mod: false },
+        { name: 'Everyone and Mod allowed', expression: { or: [{ role: 'everyone' }, { role: 'mod' }] }, viewer: true, vip: true, mod: true },
+        { name: 'Everyone excluded and Mod allowed', expression: { and: [{ role: 'mod' }, { not: { role: 'everyone' } }] }, viewer: false, vip: false, mod: true },
+        { name: 'Everyone excluded and VIP or Mod allowed', expression: { and: [{ or: [{ role: 'vip' }, { role: 'mod' }] }, { not: { role: 'everyone' } }] }, viewer: false, vip: true, mod: true }
+    ];
+    for (const policy of cases) {
+        for (const [label, identity, expected] of [['viewer', viewer, policy.viewer], ['vip', vip, policy.vip], ['mod', mod, policy.mod]] as const) {
+            assert.equal(commandAllowed({ permissionExpression: policy.expression }, identity), expected, `${policy.name}: ${label}`);
+            assert.equal(ruleExempt({ exemptExpression: policy.expression }, identity), expected, `${policy.name}: moderation ${label}`);
+        }
+    }
+});
+
+test('specific excluded tags beat specific allowed tags, while account decisions beat both', () => {
+    const expression = { and: [
+        { or: [{ role: 'vip' }, { role: 'mod' }, { user: { id: '12345', login: 'user123' } }] },
+        { not: { or: [{ role: 'everyone' }, { role: 'sub' }, { user: { id: '67890', login: 'badactor' } }] } }
+    ] };
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(5, ['vip'], '12345', 'renamed')), true, 'named account allowed despite excluded Everyone');
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(5, ['vip'], '67890', 'renamed')), false, 'named exclusion overrides VIP');
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(5, ['vip'], '55555', 'other')), true, 'VIP overrides excluded Everyone');
+    assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(5, ['vip', 'sub'], '44444', 'other')), false, 'excluded Sub overrides allowed VIP');
+});
+
 test('advanced conditional user expressions keep their Boolean meaning', () => {
     const expression = { and: [{ role: 'vip' }, { user: { id: '12345', login: 'user123' } }] };
     assert.equal(commandAllowed({ permissionExpression: expression }, createUserIdentity(1, [], '12345', 'user123')), false);

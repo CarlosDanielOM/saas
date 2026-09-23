@@ -20,7 +20,7 @@ This document is the source of truth for the implementation. Read the root `AGEN
 | 6 | Tag vocabulary | Flat: `everyone`, `sub`, `vip`, `founder`, `mod`, `editor`, `admin`, `broadcaster`. |
 | 7 | Role inheritance | `founder` also implies `sub`. Within a valid expression, `broadcaster` **always matches everything** (global override). Invalid stored configuration still fails closed so it can be repaired rather than silently executed. |
 | 8 | Empty expression | There is no valid empty tag expression. Missing/`null` selects level mode; `{}`, empty `and`, and empty `or` are invalid and fail closed if found in storage. |
-| 9 | `everyone` tag | Exists and must be selected explicitly for tag-mode access by everyone. `{role:'everyone'}` is true for every user; `not(everyone)` is true for nobody (except the broadcaster override in a valid expression). |
+| 9 | `everyone` tag | In dashboard-authored flat rules, Everyone sets the default: allowed grants all, excluded denies all, and neutral uses the specific allow/exclude tags. Specific tags can override the Everyone default. In arbitrary Boolean trees, `{role:'everyone'}` remains true for every user. |
 | 10 | Command management auth | Level-mode commands: unchanged (`callerLevel >= command.userLevel`). **Tag-mode commands: manage (create/edit/delete) requires `callerLevel >= 7`** (mod/editor/admin/broadcaster). |
 | 11 | Reserved commands | Keep numeric seeding; no change. |
 | 12 | AI/AST `minUserLevel` | Stays numeric this phase. Out of scope. |
@@ -36,6 +36,10 @@ This document is the source of truth for the implementation. Read the root `AGEN
 - `or(not(everyone), {role:'mod'})` → equivalent to "only mods".
 - `{role:'sub'}` → strict: only users holding the `sub` tag (founders qualify; mods qualify only if they are also subscribed).
 - `{level:7}` → legacy `identity.level >= 7`; editors/admins/broadcasters qualify. **Use this to preserve old behavior.** Converting a "mod" level command to `{role:'mod'}` *removes* editor/admin access — this must be documented in the editor UI.
+
+### Dashboard flat-rule precedence
+
+The command and moderation editors save a flat allow/exclude expression. The runtime gates interpret those flat expressions in this order: named account exclusion, named account allow, matching specific tag exclusion, matching specific tag allow, Everyone allow/exclude, then the default. If any specific tag or account is allowed and Everyone is neutral, unmatched users are denied; with only exclusions, unmatched users are allowed. For example, Everyone excluded with VIP and Mod allowed admits VIPs and mods. The broadcaster always passes a valid gate. Arbitrary advanced expression trees keep their Boolean meaning.
 
 ---
 
@@ -132,7 +136,7 @@ Validation (`validateExpression(input): { ok: true; value } | { ok: false; error
 - Bounds: `MAX_DEPTH = 4`, `MAX_NODES = 25`.
 - Define depth consistently with the root at depth `1`; reject a child that would exceed `MAX_DEPTH`.
 - Validation is also the sanitizer for all API ingress (expressions are user-supplied and evaluated server-side).
-- `{role:'everyone'}` is the only tag-mode representation for universal access. The editor cannot save tag mode without at least one valid node.
+- `{role:'everyone'}` grants universal access. A flat exclusion-only rule can also grant all users except those matching its exclusions. The editor cannot save tag mode without at least one valid node.
 - Backend code never generates localized descriptions. Dimasite describes a validated tree using i18n role/operator labels.
 
 ### 2.3 Gate helpers
@@ -377,7 +381,7 @@ Backend changes span the bot and API services; the customer frontend is `dimasit
 
 - **Strict tags vs hierarchical levels** is the top source of surprises: `{role:'mod'}` excludes editors/admins. The editor UI must warn and offer level-preserving conversion.
 - `Mixed` schema values are untrusted; inspect on every read. Only missing/`null` falls back to a level. Present-invalid fails closed and emits a configuration error.
-- “Everyone in tag mode” always means the explicit `{role:'everyone'}` node. Empty UI state cannot be saved.
+- A flat dashboard rule can grant everyone with an explicit Everyone allow or with exclusions only. Empty UI state cannot be saved.
 - Server and client each validate/evaluate expressions; keep them in lockstep with shared fixtures. Human-readable summaries exist only in dimasite and use i18n.
 - AST execution must carry an explicit origin and identity. LLM AST uses the requesting chatter; trusted authored AST uses broadcaster identity. Never authorize from synthetic badge data.
 - Role cache authorization depends on one canonical `twitch:` namespace. Admin/editor mutation and removal paths must update the same keys the resolver reads.

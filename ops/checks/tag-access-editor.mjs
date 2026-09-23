@@ -208,6 +208,32 @@ try {
     console.log('PASS excluded Everyone remains selected with a named account allow');
   }
   {
+    const { context, page, writes, errors } = await testContext(browser, 390, 844);
+    await page.getByRole('button', { name: /add command/i }).first().click();
+    const modal = page.locator('app-command-modal');
+    await modal.locator('[formControlName="name"]').fill('VIP or Mod greeting');
+    await modal.locator('[formControlName="cmd"]').fill('staffgreet');
+    await modal.locator('[formControlName="message"]').fill('Hello');
+    await modal.locator('.lf-mobile-access-trigger').click();
+    await modal.locator('.lf-mobile-tags-view').getByRole('button', { name: 'Tags and accounts' }).click();
+    await modal.getByRole('button', { name: 'Everyone: No rule' }).click();
+    await modal.getByRole('button', { name: 'Everyone: Allowed' }).click();
+    await modal.getByRole('button', { name: 'VIP: No rule' }).click();
+    await modal.getByRole('button', { name: 'Mod: No rule' }).click();
+    await modal.getByRole('button', { name: 'Everyone: Excluded' }).waitFor();
+    await modal.getByRole('button', { name: 'VIP: Allowed' }).waitFor();
+    await modal.getByRole('button', { name: 'Mod: Allowed' }).waitFor();
+    await modal.getByRole('button', { name: 'Done' }).click();
+    await modal.getByRole('button', { name: 'Create' }).click();
+    await modal.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.deepEqual(writes[0].body.permissionExpression, {
+      and: [{ or: [{ role: 'vip' }, { role: 'mod' }] }, { not: { role: 'everyone' } }]
+    });
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log('PASS mobile command keeps excluded Everyone with VIP and Mod allowed');
+  }
+  {
     const legacyMixed = { or: [{ level: 5 }, { role: 'vip' }] };
     const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();

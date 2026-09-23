@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAccessExpression, cycleAccessTag, emptyAccessDraft, parseAccessDraft } from './permission-expression.model';
+import { ACCESS_TAGS, buildAccessExpression, cycleAccessTag, emptyAccessDraft, parseAccessDraft } from './permission-expression.model';
 
 describe('shared tag access expression adapter', () => {
   it('stores exact allow and exclude rules with Twitch IDs and round-trips them', () => {
@@ -63,20 +63,35 @@ describe('shared tag access expression adapter', () => {
     expect(legacy.legacyCombined).toBe(true);
   });
 
-  it('clears the everyone allow rule when a more specific tag is allowed', () => {
+  it('retains Everyone and specific allowed tags in either click order', () => {
     const draft = emptyAccessDraft();
     draft.tags.everyone = 'allow';
     const next = cycleAccessTag(draft, 'vip');
-    expect(next.tags.everyone).toBe('neutral');
+    expect(next.tags.everyone).toBe('allow');
     expect(next.tags.vip).toBe('allow');
+    expect(parseAccessDraft(buildAccessExpression(next))).toEqual(next);
+
+    const reverse = cycleAccessTag(cycleAccessTag(emptyAccessDraft(), 'vip'), 'everyone');
+    expect(reverse.tags).toEqual(next.tags);
   });
 
-  it('lets moderation start with no exemptions and then allow a specific tag', () => {
+  it('keeps excluded Everyone when VIP and Mod are allowed', () => {
     const draft = emptyAccessDraft();
     draft.tags.everyone = 'exclude';
     expect(buildAccessExpression(draft)).toEqual({ not: { role: 'everyone' } });
-    const next = cycleAccessTag(draft, 'vip');
-    expect(next.tags.everyone).toBe('neutral');
-    expect(buildAccessExpression(next)).toEqual({ role: 'vip' });
+    const next = cycleAccessTag(cycleAccessTag(draft, 'vip'), 'mod');
+    expect(next.tags.everyone).toBe('exclude');
+    expect(next.tags.vip).toBe('allow');
+    expect(next.tags.mod).toBe('allow');
+    expect(buildAccessExpression(next)).toEqual({
+      and: [{ or: [{ role: 'vip' }, { role: 'mod' }] }, { not: { role: 'everyone' } }]
+    });
+    expect(parseAccessDraft(buildAccessExpression(next))).toEqual(next);
+  });
+
+  it('keeps every tag allowed when all chips are clicked', () => {
+    const draft = ACCESS_TAGS.reduce(cycleAccessTag, emptyAccessDraft());
+    expect(ACCESS_TAGS.every((tag) => draft.tags[tag] === 'allow')).toBe(true);
+    expect(parseAccessDraft(buildAccessExpression(draft))).toEqual(draft);
   });
 });

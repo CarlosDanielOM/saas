@@ -266,8 +266,6 @@ export class CommandModalComponent {
       }
       this.accessDraft.set({
         ...draft,
-        tags: kind === 'allow' && draft.tags.everyone === 'allow'
-          ? { ...draft.tags, everyone: 'neutral' } : draft.tags,
         [target]: [...draft[target], resolved],
         [opposite]: draft[opposite].filter((user) => user.id !== resolved.id)
       });

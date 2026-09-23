@@ -150,18 +150,7 @@ export function cycleAccessTag(draft: AccessDraft, tag: AccessTag): AccessDraft 
   const next: Record<TagDecision, TagDecision> = {
     neutral: 'allow', allow: 'exclude', exclude: 'neutral'
   };
-  const decision = next[draft.tags[tag]];
-  const tags = { ...draft.tags, [tag]: decision };
-  if (decision === 'allow') {
-    if (tag === 'everyone') {
-      for (const other of ACCESS_TAGS) {
-        if (other !== 'everyone' && tags[other] === 'allow') tags[other] = 'neutral';
-      }
-    } else if (tags.everyone !== 'neutral') {
-      tags.everyone = 'neutral';
-    }
-  }
-  return { ...draft, tags };
+  return { ...draft, tags: { ...draft.tags, [tag]: next[draft.tags[tag]] } };
 }
 
 export function buildAccessExpression(draft: AccessDraft): PermissionExpression | null {
