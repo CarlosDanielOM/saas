@@ -195,19 +195,96 @@
                   }
                 </div>
 
+                <details class="lf-rule-access">
+                  <summary>
+                    <span>{{ t('moderation.access.title') }}</span>
+                    <small>{{ ruleAccessDraft(rule).legacyCombined ? t('commands.access.legacyCombined') : ruleAccessMode(rule) === 'level' ? t('commands.access.levelMode') : t('commands.access.tagsMode') }}</small>
+                  </summary>
+                  <div class="lf-rule-access__body">
+                    <p class="lf-note">{{ t('moderation.access.modeHint') }}</p>
+                    <div class="lf-rule-access__modes" role="group" [attr.aria-label]="t('moderation.access.title')">
+                      <button type="button" [class.is-selected]="ruleAccessMode(rule) === 'level'"
+                        [attr.aria-pressed]="ruleAccessMode(rule) === 'level'" [disabled]="!canManage()"
+                        (click)="setRuleAccessMode(rule, 'level')">{{ t('commands.access.levelMode') }}</button>
+                      <button type="button" [class.is-selected]="ruleAccessMode(rule) === 'tags'"
+                        [attr.aria-pressed]="ruleAccessMode(rule) === 'tags'" [disabled]="!canManage()"
+                        (click)="setRuleAccessMode(rule, 'tags')">{{ t('commands.access.tagsMode') }}</button>
+                    </div>
+                    @if (ruleAccessMode(rule) === 'level') {
+                      <label class="lf-field">
+                        <span>{{ t('moderation.rules.exemptLevel') }}</span>
+                        <select class="lf-select" [value]="rule.exemptUserLevel"
+                          (change)="updateExemptLevel(rule.id, $any($event.target).value)" [disabled]="!canManage()">
+                          @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
+                            <option [value]="level" [selected]="level === rule.exemptUserLevel">{{ level }}</option>
+                          }
+                        </select>
+                        <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
+                      </label>
+                    } @else if (ruleAccessDraft(rule).editable) {
+                      <p class="lf-note">{{ t('moderation.access.tagHint') }}</p>
+                      <div class="lf-rule-access__tags" role="group" [attr.aria-label]="t('commands.access.tagsTitle')">
+                        @for (tag of accessTags; track tag) {
+                          <button type="button" class="lf-rule-access__tag"
+                            [class.is-allowed]="ruleTagDecision(rule, tag) === 'allow'"
+                            [class.is-excluded]="ruleTagDecision(rule, tag) === 'exclude'"
+                            [disabled]="!canManage()" (click)="cycleRuleTag(rule, tag)"
+                            [attr.aria-label]="ruleTagLabel(tag) + ': ' + t('moderation.access.state.' + ruleTagDecision(rule, tag))">
+                            @if (ruleTagDecision(rule, tag) === 'allow') { <span aria-hidden="true">✓</span> }
+                            @if (ruleTagDecision(rule, tag) === 'exclude') { <span aria-hidden="true">×</span> }
+                            {{ ruleTagLabel(tag) }}
+                          </button>
+                        }
+                      </div>
+                      <details class="lf-rule-access__accounts">
+                        <summary>{{ t('commands.access.accountsTitle') }} <small>{{ ruleAccountCount(rule) }}</small></summary>
+                        <p class="lf-note">{{ t('moderation.access.accountHint') }}</p>
+                        @for (kind of ['allow', 'exclude']; track kind) {
+                          <div class="lf-rule-access__account-group">
+                            <strong>{{ kind === 'allow' ? t('moderation.access.alwaysExempt') : t('moderation.access.alwaysApply') }}</strong>
+                            @for (user of kind === 'allow' ? ruleAccessDraft(rule).allowUsers : ruleAccessDraft(rule).excludeUsers; track user.id) {
+                              <span class="lf-rule-access__user">&#64;{{ user.login }}
+                                @if (canManage()) {
+                                  <button type="button" (click)="removeRuleAccount(rule, $any(kind), user)"
+                                    [attr.aria-label]="t('commands.access.removeUser', { login: user.login })">×</button>
+                                }
+                              </span>
+                            }
+                            @if (canManage() && canAddRuleAccount(rule, $any(kind))) {
+                              <div class="lf-rule-access__add">
+                                <input type="text" autocomplete="off" maxlength="26"
+                                  [value]="ruleAccountInput(rule.id, $any(kind))"
+                                  (input)="setRuleAccountInput(rule.id, $any(kind), $any($event.target).value)"
+                                  (keydown.enter)="$event.preventDefault(); addRuleAccount(rule, $any(kind))"
+                                  [placeholder]="t('commands.access.usernamePlaceholder')"
+                                  [attr.aria-label]="kind === 'allow' ? t('moderation.access.alwaysExempt') : t('moderation.access.alwaysApply')" />
+                                <button type="button" (click)="addRuleAccount(rule, $any(kind))"
+                                  [disabled]="accessLookupPending() !== null || !ruleAccountInput(rule.id, $any(kind)).trim()"
+                                  [attr.aria-label]="kind === 'allow' ? t('moderation.access.addExempt') : t('moderation.access.addApply')">
+                                  {{ accessLookupPending() === rule.id + ':' + kind ? '…' : '+' }}
+                                </button>
+                              </div>
+                            }
+                          </div>
+                        }
+                        <p class="lf-note">{{ t('commands.access.accountIdHint') }}</p>
+                      </details>
+                      <p class="lf-note">{{ t('moderation.access.exclusionsWin') }}</p>
+                    } @else {
+                      <div class="lf-rule-access__warning">
+                        <span>{{ t(ruleAccessDraft(rule).legacyCombined ? 'moderation.access.legacyWarning' : 'moderation.access.advancedWarning') }}</span>
+                        @if (canManage()) {
+                          <button type="button" (click)="resetRuleTags(rule.id)">{{ t('commands.access.reset') }}</button>
+                        }
+                      </div>
+                    }
+                    @if (accessLookupError()[rule.id]) {
+                      <p class="lf-rule-access__error" role="alert">{{ accessLookupError()[rule.id] }}</p>
+                    }
+                  </div>
+                </details>
+
                 <div class="lf-form-grid">
-                  <label class="lf-field">
-                    <span>{{ t('moderation.rules.exemptLevel') }}</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      [value]="rule.exemptUserLevel"
-                      (change)="updateExemptLevel(rule.id, $any($event.target).value)"
-                      [disabled]="!canManage()"
-                    />
-                    <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
-                  </label>
                   <label class="lf-field lf-field--wide">
                     <span>{{ t('moderation.rules.reason') }}</span>
                     <input

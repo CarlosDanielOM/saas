@@ -7,7 +7,7 @@
       [attr.data-mobile-view]="mobileAccessView()"
       role="dialog"
       aria-modal="true"
-      [attr.aria-label]="mobileAccessView() === 'tags' ? t('commands.placeholder.userLevel') : mobileAccessView() === 'accounts' ? t('commands.access.accountsTitle') : isEditMode() ? t('commands.modal.editTitle') : t('commands.modal.createTitle')"
+      [attr.aria-label]="mobileAccessView() === 'tags' ? t('commands.access.title') : mobileAccessView() === 'accounts' ? t('commands.access.accountsTitle') : isEditMode() ? t('commands.modal.editTitle') : t('commands.modal.createTitle')"
       (click)="$event.stopPropagation()"
     >
       <div class="lf-modal__primary">
@@ -17,7 +17,7 @@
             <h2 class="lf-modal__title lf-modal__title--main">
               {{ isEditMode() ? t('commands.modal.editTitle') : t('commands.modal.createTitle') }}
             </h2>
-            <h2 class="lf-modal__title lf-modal__title--tags">{{ t('commands.placeholder.userLevel') }}</h2>
+            <h2 class="lf-modal__title lf-modal__title--tags">{{ t('commands.access.title') }}</h2>
             <h2 class="lf-modal__title lf-modal__title--accounts">{{ t('commands.access.accountsTitle') }}</h2>
           </div>
           <button type="button" class="lf-modal__close" (click)="onCancel()" [attr.aria-label]="t('common.close')">
@@ -52,7 +52,7 @@
                 <input type="text" formControlName="description" maxlength="200" />
               </label>
 
-              <div class="lf-form-grid lf-form-grid--compact">
+              <div class="lf-form-grid lf-form-grid--compact" [class.lf-form-grid--access-tags]="accessMode() === 'tags'">
                 <label class="lf-field">
                   <span>{{ t('commands.modal.cooldownLabel') }}</span>
                   <div class="lf-input-suffix">
@@ -62,23 +62,25 @@
                   <span class="lf-note">{{ t('commands.modal.cooldownHint', { seconds: minCooldown() }) }}</span>
                 </label>
 
+                @if (accessMode() === 'level') {
                 <label class="lf-field lf-level-field">
                   <span>{{ t('commands.placeholder.userLevel') }}</span>
                   <select
                     formControlName="userLevel"
                     (change)="setBaseLevel($any($event.target).value)"
-                    [attr.aria-label]="t('commands.access.baseLevel')"
+                    [attr.aria-label]="t('commands.placeholder.userLevel')"
                   >
                     @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
                       <option [value]="level">{{ whoCanUse(level) }}</option>
                     }
                   </select>
-                  <span class="lf-note">{{ t('commands.access.baseHint') }}</span>
+                  <span class="lf-note">{{ t('commands.access.levelHint') }}</span>
                 </label>
+                }
 
                 <button type="button" class="lf-mobile-access-trigger" #mobileAccessTrigger (click)="openMobileTags()">
                   <span>
-                    <strong>{{ t('commands.placeholder.userLevel') }}</strong>
+                    <strong>{{ t('commands.access.title') }}</strong>
                     <small>{{ accessSummary() }}</small>
                   </span>
                   <span class="lf-mobile-access-trigger__edit">{{ t('common.edit') }} ›</span>
@@ -86,6 +88,15 @@
               </div>
 
               <div class="lf-access-desktop">
+                <p class="lf-access-mode-title">{{ t('commands.access.title') }}</p>
+                <p class="lf-note">{{ t('commands.access.modeHint') }}</p>
+                <div class="lf-access-mode" role="group" [attr.aria-label]="t('commands.access.title')">
+                  <button type="button" [class.lf-access-mode--selected]="accessMode() === 'level'"
+                    [attr.aria-pressed]="accessMode() === 'level'" (click)="setAccessMode('level')">{{ t('commands.access.levelMode') }}</button>
+                  <button type="button" [class.lf-access-mode--selected]="accessMode() === 'tags'"
+                    [attr.aria-pressed]="accessMode() === 'tags'" (click)="setAccessMode('tags')">{{ t('commands.access.tagsMode') }}</button>
+                </div>
+                @if (accessMode() === 'tags') {
                 @if (accessDraft().editable) {
                   <div class="lf-access-tags" role="group" [attr.aria-label]="t('commands.access.tagsTitle')">
                     @for (tag of accessTags; track tag) {
@@ -110,9 +121,10 @@
                   </button>
                 } @else {
                   <div class="lf-access-warning">
-                    <span>{{ t('commands.access.advancedWarning') }}</span>
+                    <span>{{ t(accessDraft().legacyCombined ? 'commands.access.legacyWarning' : 'commands.access.advancedWarning') }}</span>
                     <button type="button" (click)="resetAdvancedAccess()">{{ t('commands.access.reset') }}</button>
                   </div>
+                }
                 }
               </div>
 
@@ -173,15 +185,24 @@
 
             <div class="lf-mobile-tags-view">
               <button type="button" class="lf-access-back" #mobileTagsBackButton (click)="backMobileAccess()">‹ {{ t('commands.access.backToCommand') }}</button>
-              @if (accessDraft().editable) {
+              <p class="lf-note">{{ t('commands.access.modeHint') }}</p>
+              <div class="lf-access-mode" role="group" [attr.aria-label]="t('commands.access.title')">
+                <button type="button" [class.lf-access-mode--selected]="accessMode() === 'level'"
+                  [attr.aria-pressed]="accessMode() === 'level'" (click)="setAccessMode('level')">{{ t('commands.access.levelMode') }}</button>
+                <button type="button" [class.lf-access-mode--selected]="accessMode() === 'tags'"
+                  [attr.aria-pressed]="accessMode() === 'tags'" (click)="setAccessMode('tags')">{{ t('commands.access.tagsMode') }}</button>
+              </div>
+              @if (accessMode() === 'level') {
                 <label class="lf-field">
-                  <span>{{ t('commands.access.baseLevel') }}</span>
+                  <span>{{ t('commands.placeholder.userLevel') }}</span>
                   <select [value]="commandForm.controls.userLevel.value" (change)="setBaseLevel($any($event.target).value)">
                     @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
                       <option [value]="level" [selected]="level === commandForm.controls.userLevel.value">{{ whoCanUse(level) }}</option>
                     }
                   </select>
                 </label>
+                <p class="lf-note">{{ t('commands.access.levelHint') }}</p>
+              } @else if (accessDraft().editable) {
                 <p class="lf-note">{{ t('commands.access.cycleHintMobile') }}</p>
                 <div class="lf-access-tags" role="group" [attr.aria-label]="t('commands.access.tagsTitle')">
                   @for (tag of accessTags; track tag) {
@@ -203,7 +224,7 @@
                 <p class="lf-note">{{ t('commands.access.denyWins') }}</p>
               } @else {
                 <div class="lf-access-warning">
-                  <span>{{ t('commands.access.advancedWarning') }}</span>
+                  <span>{{ t(accessDraft().legacyCombined ? 'commands.access.legacyWarning' : 'commands.access.advancedWarning') }}</span>
                   <button type="button" (click)="resetAdvancedAccess()">{{ t('commands.access.reset') }}</button>
                 </div>
               }

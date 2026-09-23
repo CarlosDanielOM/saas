@@ -16,7 +16,7 @@ const app = {
 const expression = {
   and: [
     { or: [
-      { level: 10 }, { role: 'vip' }, { role: 'mod' },
+      { role: 'vip' }, { role: 'mod' },
       { user: { id: '111', login: 'user123' } }
     ] },
     { not: { or: [
@@ -40,7 +40,7 @@ function hasUserId(node, id) {
   );
 }
 
-async function testContext(browser, width, height) {
+async function testContext(browser, width, height, initialExpression = expression) {
   const context = await browser.newContext({ viewport: { width, height } });
   await context.addInitScript(({ user, app }) => localStorage.setItem('dimasite.session.v1', JSON.stringify({
     version: 2, token: 'test-only', createdAt: new Date().toISOString(),
@@ -48,7 +48,7 @@ async function testContext(browser, width, height) {
     twitchUser: user, appUser: app, permissions: {}
   })), { user, app });
   await context.routeWebSocket(/api\.domdimabot\.com/, ws => ws.close());
-  const commands = [{ ...fixture }];
+  const commands = [{ ...fixture, permissionExpression: initialExpression }];
   const writes = [];
   await context.route('**/*', async route => {
     const request = route.request();
@@ -97,12 +97,16 @@ try {
     const { context, page, writes, errors } = await testContext(browser, 1440, 900);
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
+    await modal.locator('.lf-access-desktop').getByRole('button', { name: 'Tags and accounts' }).waitFor();
     await modal.getByRole('button', { name: 'VIP: Allowed' }).click();
     await modal.getByRole('button', { name: 'VIP: Excluded' }).waitFor();
     await modal.getByRole('button', { name: 'VIP: Excluded' }).click();
     await modal.getByRole('button', { name: 'VIP: No rule' }).waitFor();
     await modal.getByRole('button', { name: 'VIP: No rule' }).click();
     await modal.getByRole('button', { name: 'VIP: Allowed' }).waitFor();
+    if (process.env.SAAS_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/command-desktop.png` });
+    }
 
     await modal.getByRole('button', { name: /Account exceptions 2/ }).click();
     await modal.getByRole('textbox', { name: 'Always allow' }).fill('newviewer');
@@ -115,6 +119,16 @@ try {
     assert.equal(writes[0].method, 'PUT');
     assert.ok(hasUserId(writes[0].body.permissionExpression, '333'), 'resolved Twitch ID saved');
     assert.ok(hasUserId(writes[0].body.permissionExpression, '222'), 'existing exclusion preserved');
+    assert.equal(JSON.stringify(writes[0].body.permissionExpression).includes('"level"'), false,
+      'tag mode does not combine with user level');
+    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await modal.locator('.lf-access-desktop').getByRole('button', { name: 'User level' }).click();
+    await modal.locator('.lf-level-field select').selectOption('7');
+    await modal.getByRole('button', { name: 'Save', exact: true }).click();
+    await modal.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(writes.length, 2);
+    assert.equal(writes[1].body.permissionExpression, null, 'level mode clears tag rules');
+    assert.equal(writes[1].body.userLevel, 7);
     assert.deepEqual(errors, []);
     await context.close();
     console.log('PASS desktop tag cycle, account lookup, ID-backed update and modal layout');
@@ -131,7 +145,10 @@ try {
     assert.ok(footer && footer.y + footer.height <= 844, 'mobile action bar stays visible');
 
     await modal.locator('.lf-mobile-access-trigger').click();
-    assert.equal(await modal.locator('.lf-mobile-tags-view select').inputValue(), '1');
+    await modal.locator('.lf-mobile-tags-view').getByRole('button', { name: 'Tags and accounts' }).click();
+    if (process.env.SAAS_SCREENSHOT_DIR) {
+      await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/command-mobile.png` });
+    }
     await modal.locator('.lf-mobile-tags-view .lf-account-trigger').click();
     await modal.getByRole('textbox', { name: 'Always exclude' }).fill('user123');
     await modal.getByRole('button', { name: 'Add to always exclude' }).click();
@@ -143,7 +160,7 @@ try {
     assert.equal(writes.length, 1);
     assert.equal(writes[0].method, 'POST');
     assert.deepEqual(writes[0].body.permissionExpression, {
-      and: [{ level: 1 }, { not: { user: { id: '111', login: 'user123' } } }]
+      not: { user: { id: '111', login: 'user123' } }
     }, 'everyone except named account');
     assert.deepEqual(errors, []);
     await context.close();
@@ -154,13 +171,32 @@ try {
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('.lf-mobile-access-trigger').click();
-    assert.equal(await modal.locator('.lf-mobile-tags-view select').inputValue(), '10');
+    assert.equal(await modal.locator('.lf-mobile-tags-view').getByRole('button', { name: 'Tags and accounts' }).getAttribute('aria-pressed'), 'true');
     const axe = await new AxeBuilder({ page }).include('app-command-modal').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     assert.deepEqual(errors, []);
     await context.close();
     console.log('PASS 320px editor layout and modal accessibility');
+  }
+  {
+    const legacyMixed = { or: [{ level: 5 }, { role: 'vip' }] };
+    const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
+    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    const modal = page.locator('app-command-modal');
+    await modal.locator('.lf-access-desktop').getByText('This older command combines user level with tags.').waitFor();
+    await modal.getByRole('button', { name: 'Save', exact: true }).click();
+    await modal.getByRole('alert').getByText('Choose user level or reset the legacy tag rule before saving.').waitFor();
+    assert.equal(writes.length, 0, 'legacy combined rule cannot be saved again');
+    await modal.locator('.lf-access-desktop').getByRole('button', { name: 'User level' }).click();
+    await modal.getByRole('button', { name: 'Save', exact: true }).click();
+    await modal.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(writes.length, 1);
+    assert.equal(writes[0].body.permissionExpression, null,
+      'explicit level choice replaces the previous mixed rule');
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log('PASS legacy combined rule requires an explicit mode choice');
   }
 } finally {
   await browser.close();

@@ -23,7 +23,9 @@ import {
 import {
   ACCESS_TAGS,
   buildAccessExpression,
+  cycleAccessTag,
   emptyAccessDraft,
+  hasAccessRules,
   parseAccessDraft,
   type AccessDraft,
   type AccessTag,
@@ -75,7 +77,8 @@ export class CommandModalComponent {
   readonly isEditMode = signal(false);
   readonly isSaving = signal(false);
   readonly formError = signal<string | null>(null);
-  readonly accessDraft = signal<AccessDraft>(emptyAccessDraft(1));
+  readonly accessDraft = signal<AccessDraft>(emptyAccessDraft());
+  readonly accessMode = signal<'level' | 'tags'>('level');
   readonly mobileAccessView = signal<'main' | 'tags' | 'accounts'>('main');
   readonly accountsOpen = signal(false);
   readonly lookupInput = signal({ allow: '', exclude: '' });
@@ -84,11 +87,6 @@ export class CommandModalComponent {
   readonly accessTags = ACCESS_TAGS;
   readonly maxUsersPerList = 5;
 
-  readonly hasCustomAccess = computed(() => {
-    const draft = this.accessDraft();
-    return !draft.editable || ACCESS_TAGS.some((tag) => draft.tags[tag] !== 'neutral') ||
-      draft.allowUsers.length > 0 || draft.excludeUsers.length > 0;
-  });
   readonly accountCount = computed(() => {
     const draft = this.accessDraft();
     return draft.allowUsers.length + draft.excludeUsers.length;
@@ -187,24 +185,28 @@ export class CommandModalComponent {
   cycleTag(tag: AccessTag): void {
     const draft = this.accessDraft();
     if (!draft.editable) return;
-    const next: Record<TagDecision, TagDecision> = {
-      neutral: 'allow', allow: 'exclude', exclude: 'neutral'
-    };
-    this.accessDraft.set({
-      ...draft,
-      tags: { ...draft.tags, [tag]: next[draft.tags[tag]] }
-    });
+    this.accessDraft.set(cycleAccessTag(draft, tag));
+  }
+
+  setAccessMode(mode: 'level' | 'tags'): void {
+    if (mode === this.accessMode()) return;
+    this.accessSession += 1;
+    this.lookupPending.set(null);
+    this.lookupInput.set({ allow: '', exclude: '' });
+    this.lookupError.set(null);
+    this.accountsOpen.set(false);
+    this.accessMode.set(mode);
+    this.formError.set(null);
   }
 
   setBaseLevel(raw: string): void {
     const level = Number(raw);
     if (!Number.isInteger(level) || level < 1 || level > 10) return;
     this.commandForm.controls.userLevel.setValue(level);
-    this.accessDraft.update((draft) => ({ ...draft, baseLevel: level }));
   }
 
   resetAdvancedAccess(): void {
-    this.accessDraft.set(emptyAccessDraft(Number(this.commandForm.controls.userLevel.value) || 1));
+    this.accessDraft.set(emptyAccessDraft());
     this.lookupError.set(null);
   }
 
@@ -264,6 +266,8 @@ export class CommandModalComponent {
       }
       this.accessDraft.set({
         ...draft,
+        tags: kind === 'allow' && draft.tags.everyone !== 'neutral'
+          ? { ...draft.tags, everyone: 'neutral' } : draft.tags,
         [target]: [...draft[target], resolved],
         [opposite]: draft[opposite].filter((user) => user.id !== resolved.id)
       });
@@ -287,8 +291,8 @@ export class CommandModalComponent {
 
   accessSummary(): string {
     const draft = this.accessDraft();
-    if (!draft.editable) return this.t('commands.access.advancedRule');
-    if (!this.hasCustomAccess()) return this.whoCanUse(draft.baseLevel);
+    if (this.accessMode() === 'level') return this.whoCanUse(Number(this.commandForm.controls.userLevel.value) || 1);
+    if (!draft.editable) return this.t(draft.legacyCombined ? 'commands.access.legacyCombined' : 'commands.access.advancedRule');
     return this.t('commands.access.customSummary', { count: this.accountCount() });
   }
 
@@ -308,8 +312,17 @@ export class CommandModalComponent {
   }
 
   onSubmit(): void {
-    if (this.lookupPending() || this.lookupInput().allow.trim() || this.lookupInput().exclude.trim()) {
+    if (this.accessMode() === 'tags' && this.accessDraft().legacyCombined) {
+      this.formError.set(this.t('commands.access.chooseMethod'));
+      return;
+    }
+    if (this.accessMode() === 'tags' &&
+      (this.lookupPending() || this.lookupInput().allow.trim() || this.lookupInput().exclude.trim())) {
       this.formError.set(this.t('commands.access.finishUsername'));
+      return;
+    }
+    if (this.accessMode() === 'tags' && this.accessDraft().editable && !hasAccessRules(this.accessDraft())) {
+      this.formError.set(this.t('commands.access.chooseRule'));
       return;
     }
     if (this.commandForm.invalid) {
@@ -350,11 +363,10 @@ export class CommandModalComponent {
       channel: ''
     };
 
-    if (this.accessDraft().editable) {
-      request.permissionExpression = buildAccessExpression({
-        ...this.accessDraft(),
-        baseLevel: request.userLevel
-      });
+    if (this.accessMode() === 'level') {
+      request.permissionExpression = null;
+    } else if (this.accessDraft().editable) {
+      request.permissionExpression = buildAccessExpression(this.accessDraft());
     }
 
     this.save.emit({
@@ -383,15 +395,16 @@ export class CommandModalComponent {
     const hasTimer = existingMinutes !== null && existingMinutes !== undefined && existingMinutes > 0;
 
     if (cmd) {
-      const access = parseAccessDraft(cmd.permissionExpression, cmd.userLevel);
+      const access = parseAccessDraft(cmd.permissionExpression);
       this.accessDraft.set(access);
+      this.accessMode.set(cmd.permissionExpression == null ? 'level' : 'tags');
       this.commandForm.patchValue({
         name: cmd.name,
         cmd: cmd.cmd,
         message: cmd.message,
         description: cmd.description || '',
         cooldown: cmd.cooldown,
-        userLevel: access.baseLevel,
+        userLevel: cmd.userLevel,
         enabled: cmd.enabled,
         timerEnabled: hasTimer && !cmd.reserved,
         timerMinutes: hasTimer ? existingMinutes : this.defaultTimerMinutes()
@@ -409,7 +422,8 @@ export class CommandModalComponent {
         this.commandForm.get('timerMinutes')?.enable({ emitEvent: false });
       }
     } else {
-      this.accessDraft.set(emptyAccessDraft(1));
+      this.accessDraft.set(emptyAccessDraft());
+      this.accessMode.set('level');
       this.commandForm.reset({
         name: '',
         cmd: '',

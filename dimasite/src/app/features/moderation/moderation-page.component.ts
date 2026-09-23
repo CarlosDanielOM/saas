@@ -37,7 +37,20 @@ import {
   MODERATION_RULE_TYPES,
   buildNewModerationRule
 } from '../../models/moderation.model';
+import {
+  ACCESS_TAGS,
+  buildAccessExpression,
+  cycleAccessTag,
+  emptyAccessDraft,
+  hasAccessRules,
+  parseAccessDraft,
+  type AccessDraft,
+  type AccessTag,
+  type TagDecision,
+  type TwitchAccountRef
+} from '../../models/permission-expression.model';
 import { ModerationApiService } from '../../services/moderation-api.service';
+import { TwitchAccountLookupService } from '../../services/twitch-account-lookup.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
@@ -76,6 +89,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly moderationApi = inject(ModerationApiService);
+  private readonly accountLookup = inject(TwitchAccountLookupService);
   private readonly toastService = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
 
@@ -92,6 +106,12 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly canManage = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly pendingListInput = signal(false);
+  readonly accessTags = ACCESS_TAGS;
+  readonly accessLookupInputs = signal<Record<string, string>>({});
+  readonly accessLookupPending = signal<string | null>(null);
+  readonly accessLookupError = signal<Record<string, string>>({});
+  readonly maxUsersPerList = 5;
+  private accessGeneration = 0;
 
   readonly logsPagination = signal<PaginationState>({ page: 1, limit: 10, total: 0 });
 
@@ -182,6 +202,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.accessGeneration += 1;
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -280,6 +301,10 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   private async loadSettings(channelID: string): Promise<void> {
+    this.accessGeneration += 1;
+    this.accessLookupInputs.set({});
+    this.accessLookupError.set({});
+    this.accessLookupPending.set(null);
     this.settingsLoading.set(true);
     this.errorMessage.set(null);
 
@@ -338,6 +363,17 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
         this.t('moderation.toasts.errorTitle'),
         this.t('moderation.permission.readOnly')
       );
+      return;
+    }
+
+    if (currentSettings.rules.some((rule) =>
+      rule.exemptExpression != null && this.ruleAccessDraft(rule).legacyCombined)) {
+      this.errorMessage.set(this.t('moderation.access.chooseMethod'));
+      return;
+    }
+
+    if (this.accessLookupPending() || Object.values(this.accessLookupInputs()).some((value) => value.trim())) {
+      this.errorMessage.set(this.t('moderation.access.finishUsername'));
       return;
     }
 
@@ -405,6 +441,135 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.patchRule(ruleID, { exemptUserLevel: Math.min(10, Math.max(1, parsed)) });
   }
 
+  ruleAccessMode(rule: ModerationRule): 'level' | 'tags' {
+    return rule.exemptExpression == null ? 'level' : 'tags';
+  }
+
+  ruleAccessDraft(rule: ModerationRule): AccessDraft {
+    return parseAccessDraft(rule.exemptExpression);
+  }
+
+  ruleTagDecision(rule: ModerationRule, tag: AccessTag): TagDecision {
+    return this.ruleAccessDraft(rule).tags[tag];
+  }
+
+  ruleTagLabel(tag: AccessTag): string {
+    return this.t(`commands.access.tags.${tag}`);
+  }
+
+  setRuleAccessMode(rule: ModerationRule, mode: 'level' | 'tags'): void {
+    if (!this.canManage() || mode === this.ruleAccessMode(rule)) return;
+    this.accessGeneration += 1;
+    this.accessLookupPending.set(null);
+    this.clearRuleLookup(rule.id);
+    this.patchRule(rule.id, { exemptExpression: mode === 'level' ? null : { not: { role: 'everyone' } } });
+  }
+
+  resetRuleTags(ruleID: string): void {
+    if (!this.canManage()) return;
+    this.patchRule(ruleID, { exemptExpression: { not: { role: 'everyone' } } });
+    this.accessLookupError.update((errors) => ({ ...errors, [ruleID]: '' }));
+  }
+
+  cycleRuleTag(rule: ModerationRule, tag: AccessTag): void {
+    if (!this.canManage()) return;
+    const draft = this.ruleAccessDraft(rule);
+    if (!draft.editable) return;
+    let next = cycleAccessTag(draft, tag);
+    if (!hasAccessRules(next)) {
+      // The persisted tag mode needs an expression. Keep the safe "nobody
+      // exempt" state when the final specific rule is cleared; let the
+      // Everyone chip toggle directly to exempting everyone.
+      next = emptyAccessDraft();
+      next.tags.everyone = tag === 'everyone' ? 'allow' : 'exclude';
+    }
+    this.patchRule(rule.id, { exemptExpression: buildAccessExpression(next) });
+    this.accessLookupError.update((errors) => ({ ...errors, [rule.id]: '' }));
+  }
+
+  ruleAccountCount(rule: ModerationRule): number {
+    const draft = this.ruleAccessDraft(rule);
+    return draft.allowUsers.length + draft.excludeUsers.length;
+  }
+
+  ruleAccountInput(ruleID: string, kind: 'allow' | 'exclude'): string {
+    return this.accessLookupInputs()[`${ruleID}:${kind}`] ?? '';
+  }
+
+  setRuleAccountInput(ruleID: string, kind: 'allow' | 'exclude', value: string): void {
+    this.accessLookupInputs.update((inputs) => ({ ...inputs, [`${ruleID}:${kind}`]: value }));
+    this.accessLookupError.update((errors) => ({ ...errors, [ruleID]: '' }));
+  }
+
+  canAddRuleAccount(rule: ModerationRule, kind: 'allow' | 'exclude'): boolean {
+    const draft = this.ruleAccessDraft(rule);
+    return draft.editable && draft[kind === 'allow' ? 'allowUsers' : 'excludeUsers'].length < this.maxUsersPerList;
+  }
+
+  async addRuleAccount(rule: ModerationRule, kind: 'allow' | 'exclude'): Promise<void> {
+    if (!this.canManage() || this.accessLookupPending() || !this.canAddRuleAccount(rule, kind)) return;
+    const key = `${rule.id}:${kind}`;
+    const input = this.ruleAccountInput(rule.id, kind);
+    const generation = this.accessGeneration;
+    this.accessLookupPending.set(key);
+    this.accessLookupError.update((errors) => ({ ...errors, [rule.id]: '' }));
+    try {
+      const user = await firstValueFrom(this.accountLookup.lookup(input));
+      if (generation !== this.accessGeneration) return;
+      const currentRule = this.settings()?.rules.find((item) => item.id === rule.id);
+      if (!currentRule || this.ruleAccessMode(currentRule) !== 'tags') return;
+      const draft = this.ruleAccessDraft(currentRule);
+      const target = kind === 'allow' ? 'allowUsers' : 'excludeUsers';
+      const opposite = kind === 'allow' ? 'excludeUsers' : 'allowUsers';
+      if (draft[target].some((entry) => entry.id === user.id)) {
+        this.accessLookupError.update((errors) => ({ ...errors, [rule.id]: this.t('commands.access.alreadyAdded') }));
+        return;
+      }
+      const next: AccessDraft = {
+        ...draft,
+        tags: kind === 'allow' && draft.tags.everyone !== 'neutral'
+          ? { ...draft.tags, everyone: 'neutral' } : draft.tags,
+        [target]: [...draft[target], user],
+        [opposite]: draft[opposite].filter((entry) => entry.id !== user.id)
+      };
+      this.patchRule(rule.id, { exemptExpression: buildAccessExpression(next) });
+      this.setRuleAccountInput(rule.id, kind, '');
+    } catch {
+      if (generation === this.accessGeneration) {
+        this.accessLookupError.update((errors) => ({ ...errors, [rule.id]: this.t('commands.access.lookupError') }));
+      }
+    } finally {
+      if (generation === this.accessGeneration) this.accessLookupPending.set(null);
+    }
+  }
+
+  removeRuleAccount(rule: ModerationRule, kind: 'allow' | 'exclude', user: TwitchAccountRef): void {
+    if (!this.canManage()) return;
+    const draft = this.ruleAccessDraft(rule);
+    if (!draft.editable) return;
+    const key = kind === 'allow' ? 'allowUsers' : 'excludeUsers';
+    let next: AccessDraft = { ...draft, [key]: draft[key].filter((entry) => entry.id !== user.id) };
+    if (!hasAccessRules(next)) {
+      next = emptyAccessDraft();
+      next.tags.everyone = 'exclude';
+    }
+    this.patchRule(rule.id, { exemptExpression: buildAccessExpression(next) });
+  }
+
+  private clearRuleLookup(ruleID: string): void {
+    this.accessLookupInputs.update((inputs) => {
+      const next = { ...inputs };
+      delete next[`${ruleID}:allow`];
+      delete next[`${ruleID}:exclude`];
+      return next;
+    });
+    this.accessLookupError.update((errors) => {
+      const next = { ...errors };
+      delete next[ruleID];
+      return next;
+    });
+  }
+
   updateCapsMode(ruleID: string, mode: string): void {
     if (mode !== 'count' && mode !== 'percentage') return;
     this.patchRule(ruleID, { capsThresholdMode: mode });
@@ -440,6 +605,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   removeRule(ruleID: string): void {
+    this.accessGeneration += 1;
+    this.accessLookupPending.set(null);
+    this.clearRuleLookup(ruleID);
     this.settings.update((s) =>
       s ? { ...s, rules: s.rules.filter((rule) => rule.id !== ruleID) } : s
     );

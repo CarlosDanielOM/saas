@@ -20,21 +20,22 @@ export const ACCESS_TAGS: readonly AccessTag[] = [
 ];
 
 export interface AccessDraft {
-  baseLevel: number;
   tags: Record<AccessTag, TagDecision>;
   allowUsers: TwitchAccountRef[];
   excludeUsers: TwitchAccountRef[];
   /** Arbitrary backend trees are preserved until the streamer explicitly resets them. */
   editable: boolean;
+  /** Older combined rules must be replaced with one mode before saving. */
+  legacyCombined: boolean;
 }
 
-export function emptyAccessDraft(baseLevel: number): AccessDraft {
+export function emptyAccessDraft(): AccessDraft {
   return {
-    baseLevel,
     tags: Object.fromEntries(ACCESS_TAGS.map((tag) => [tag, 'neutral'])) as Record<AccessTag, TagDecision>,
     allowUsers: [],
     excludeUsers: [],
-    editable: true
+    editable: true,
+    legacyCombined: false
   };
 }
 
@@ -63,49 +64,67 @@ function account(value: unknown): TwitchAccountRef | null {
   return { id: object['id'], login: object['login'].toLowerCase() };
 }
 
+function containsLevel(value: unknown, depth = 0): boolean {
+  if (depth > 5) return false;
+  if (onlyKey(value, 'level')) return true;
+  const not = onlyKey(value, 'not');
+  if (not) return containsLevel(not['not'], depth + 1);
+  for (const operator of ['and', 'or']) {
+    const group = onlyKey(value, operator);
+    if (group && Array.isArray(group[operator])) {
+      return group[operator].some((child) => containsLevel(child, depth + 1));
+    }
+  }
+  return false;
+}
+
 /**
  * Read the flat rules this editor creates. Preserve any other expression instead
  * of silently flattening an AND/OR tree and changing its authorization meaning.
  */
-export function parseAccessDraft(expression: unknown, fallbackLevel: number): AccessDraft {
-  const draft = emptyAccessDraft(fallbackLevel);
+export function parseAccessDraft(expression: unknown): AccessDraft {
+  const draft = emptyAccessDraft();
   if (expression === null || expression === undefined) return draft;
+  const unsupported = (): AccessDraft => ({
+    ...emptyAccessDraft(), editable: false, legacyCombined: containsLevel(expression)
+  });
 
-  let allowNode = expression;
+  let allowNode: unknown = expression;
   let denyNode: unknown = null;
+  const rootNot = onlyKey(expression, 'not');
+  if (rootNot) {
+    allowNode = null;
+    denyNode = rootNot['not'];
+  }
   const and = onlyKey(expression, 'and');
   if (and) {
     const children = and['and'];
-    if (!Array.isArray(children) || children.length !== 2) return { ...draft, editable: false };
+    if (!Array.isArray(children) || children.length !== 2) return unsupported();
     const not = onlyKey(children[1], 'not');
-    if (!not) return { ...draft, editable: false };
+    if (!not) return unsupported();
     allowNode = children[0];
     denyNode = not['not'];
   }
 
-  const allows = leaves(allowNode);
+  const allows = allowNode === null ? [] : leaves(allowNode);
   const denies = denyNode === null ? [] : leaves(denyNode);
-  if (!allows || !denies) return { ...draft, editable: false };
+  if (!allows || !denies) return unsupported();
 
-  let foundLevel = false;
   const seenUsers = new Set<string>();
   for (const [kind, group] of [['allow', allows], ['exclude', denies]] as const) {
     for (const item of group) {
       const level = onlyKey(item, 'level');
       if (level) {
-        const value = level['level'];
-        if (kind !== 'allow' || foundLevel || typeof value !== 'number' ||
-          !Number.isInteger(value) || value < 1 || value > 10) return { ...draft, editable: false };
-        draft.baseLevel = value;
-        foundLevel = true;
-        continue;
+        // Older editor builds embedded a numeric level in tag mode. Keep the
+        // original expression intact until the streamer chooses a new mode.
+        return unsupported();
       }
 
       const role = onlyKey(item, 'role');
       if (role) {
         const tag = role['role'];
         if (!ACCESS_TAGS.includes(tag as AccessTag) || draft.tags[tag as AccessTag] !== 'neutral') {
-          return { ...draft, editable: false };
+          return unsupported();
         }
         draft.tags[tag as AccessTag] = kind;
         continue;
@@ -113,26 +132,44 @@ export function parseAccessDraft(expression: unknown, fallbackLevel: number): Ac
 
       const user = onlyKey(item, 'user');
       const resolved = user ? account(user['user']) : null;
-      if (!resolved || seenUsers.has(resolved.id)) return { ...draft, editable: false };
+      if (!resolved || seenUsers.has(resolved.id)) return unsupported();
       seenUsers.add(resolved.id);
       (kind === 'allow' ? draft.allowUsers : draft.excludeUsers).push(resolved);
     }
   }
 
-  // A role-only expression has an implicit broadcaster override in the backend.
-  // Level 10 provides the same baseline when the streamer edits it here.
-  if (!foundLevel) draft.baseLevel = 10;
   return draft;
+}
+
+export function hasAccessRules(draft: AccessDraft): boolean {
+  return ACCESS_TAGS.some((tag) => draft.tags[tag] !== 'neutral') ||
+    draft.allowUsers.length > 0 || draft.excludeUsers.length > 0;
+}
+
+export function cycleAccessTag(draft: AccessDraft, tag: AccessTag): AccessDraft {
+  const next: Record<TagDecision, TagDecision> = {
+    neutral: 'allow', allow: 'exclude', exclude: 'neutral'
+  };
+  const decision = next[draft.tags[tag]];
+  const tags = { ...draft.tags, [tag]: decision };
+  if (decision === 'allow') {
+    if (tag === 'everyone') {
+      for (const other of ACCESS_TAGS) {
+        if (other !== 'everyone' && tags[other] === 'allow') tags[other] = 'neutral';
+      }
+    } else if (tags.everyone !== 'neutral') {
+      tags.everyone = 'neutral';
+    }
+  }
+  return { ...draft, tags };
 }
 
 export function buildAccessExpression(draft: AccessDraft): PermissionExpression | null {
   const allowedTags = ACCESS_TAGS.filter((tag) => draft.tags[tag] === 'allow');
   const deniedTags = ACCESS_TAGS.filter((tag) => draft.tags[tag] === 'exclude');
-  if (allowedTags.length === 0 && deniedTags.length === 0 &&
-    draft.allowUsers.length === 0 && draft.excludeUsers.length === 0) return null;
+  if (!hasAccessRules(draft)) return null;
 
   const allowed: PermissionExpression[] = [
-    { level: draft.baseLevel },
     ...allowedTags.map((role): PermissionExpression => ({ role })),
     ...draft.allowUsers.map((user): PermissionExpression => ({ user }))
   ];
@@ -140,8 +177,10 @@ export function buildAccessExpression(draft: AccessDraft): PermissionExpression 
     ...deniedTags.map((role): PermissionExpression => ({ role })),
     ...draft.excludeUsers.map((user): PermissionExpression => ({ user }))
   ];
-  const allow: PermissionExpression = allowed.length === 1 ? allowed[0] : { or: allowed };
+  const allow: PermissionExpression | null = allowed.length === 0 ? null :
+    allowed.length === 1 ? allowed[0] : { or: allowed };
   if (denied.length === 0) return allow;
   const deny: PermissionExpression = denied.length === 1 ? denied[0] : { or: denied };
-  return { and: [allow, { not: deny }] };
+  // Exclusion-only rules mean everyone except the selected tags/accounts.
+  return allow ? { and: [allow, { not: deny }] } : { not: deny };
 }

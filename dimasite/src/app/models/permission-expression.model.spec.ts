@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAccessExpression, emptyAccessDraft, parseAccessDraft } from './permission-expression.model';
+import { buildAccessExpression, cycleAccessTag, emptyAccessDraft, parseAccessDraft } from './permission-expression.model';
 
-describe('command access expression adapter', () => {
+describe('shared tag access expression adapter', () => {
   it('stores exact allow and exclude rules with Twitch IDs and round-trips them', () => {
-    const draft = emptyAccessDraft(10);
+    const draft = emptyAccessDraft();
     draft.tags.vip = 'allow';
     draft.tags.mod = 'allow';
     draft.tags.sub = 'exclude';
@@ -15,7 +15,7 @@ describe('command access expression adapter', () => {
     expect(expression).toEqual({
       and: [
         { or: [
-          { level: 10 }, { role: 'vip' }, { role: 'mod' },
+          { role: 'vip' }, { role: 'mod' },
           { user: { id: '123456', login: 'user123' } }
         ] },
         { not: { or: [
@@ -24,24 +24,45 @@ describe('command access expression adapter', () => {
         ] } }
       ]
     });
-    expect(parseAccessDraft(expression, 1)).toEqual(draft);
+    expect(parseAccessDraft(expression)).toEqual(draft);
   });
 
   it('supports everyone except one account without granting through the exclusion', () => {
-    const draft = emptyAccessDraft(1);
+    const draft = emptyAccessDraft();
     draft.excludeUsers = [{ id: '123456', login: 'user123' }];
     expect(buildAccessExpression(draft)).toEqual({
-      and: [{ level: 1 }, { not: { user: { id: '123456', login: 'user123' } } }]
+      not: { user: { id: '123456', login: 'user123' } }
     });
+    expect(parseAccessDraft(buildAccessExpression(draft))).toEqual(draft);
   });
 
   it('keeps legacy level mode when no tag or account rule exists', () => {
-    expect(buildAccessExpression(emptyAccessDraft(5))).toBeNull();
-    expect(parseAccessDraft(null, 5).baseLevel).toBe(5);
+    expect(buildAccessExpression(emptyAccessDraft())).toBeNull();
+    expect(parseAccessDraft(null)).toEqual(emptyAccessDraft());
   });
 
   it('refuses to flatten an advanced expression with different semantics', () => {
     const nested = { and: [{ role: 'vip' }, { role: 'mod' }] };
-    expect(parseAccessDraft(nested, 1).editable).toBe(false);
+    expect(parseAccessDraft(nested).editable).toBe(false);
+    const legacy = parseAccessDraft({ or: [{ level: 5 }, { role: 'vip' }] });
+    expect(legacy.editable).toBe(false);
+    expect(legacy.legacyCombined).toBe(true);
+  });
+
+  it('clears the everyone allow rule when a more specific tag is allowed', () => {
+    const draft = emptyAccessDraft();
+    draft.tags.everyone = 'allow';
+    const next = cycleAccessTag(draft, 'vip');
+    expect(next.tags.everyone).toBe('neutral');
+    expect(next.tags.vip).toBe('allow');
+  });
+
+  it('lets moderation start with no exemptions and then allow a specific tag', () => {
+    const draft = emptyAccessDraft();
+    draft.tags.everyone = 'exclude';
+    expect(buildAccessExpression(draft)).toEqual({ not: { role: 'everyone' } });
+    const next = cycleAccessTag(draft, 'vip');
+    expect(next.tags.everyone).toBe('neutral');
+    expect(buildAccessExpression(next)).toEqual({ role: 'vip' });
   });
 });
