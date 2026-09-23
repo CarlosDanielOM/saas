@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: ae27f9fb3938
+# Catalog version: 9359477316f1
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -138,6 +138,11 @@
 # $(emoteonly [seconds]) - Toggles emote-only mode on/off. Optional seconds auto-disables it after the duration when enabling.
 #   Example: $(emoteonly)
 #   Example: $(emoteonly 600)
+# $(permit [username] [seconds]) - Grants a temporary bypass of the channel moderation filters (caps, links, emote spam, blacklist). With a username only that user is permitted; with only a number everyone is permitted for that many seconds; with no arguments everyone is permitted for 60 seconds.
+#   Example: $(permit)
+#   Example: $(permit gooduser)
+#   Example: $(permit 120)
+#   Example: $(permit gooduser 120)
 # $(unmod username) - Removes moderator from a user.
 #   Example: $(unmod someuser)
 # $(unvip username) - Removes VIP from a user.
@@ -182,6 +187,10 @@
 #   Example: $(trigger.send airhorn true)
 #
 # --- tts ---
+# $(set.voice voice_name) - Changes the channel default Fish TTS voice to one of the four built-in voices or a saved favorite. Also selects Fish as the TTS provider. A voice outside this account is rejected.
+#   Example: $(set.voice gojo)
+#   Example: $(set.voice rias_gremory)
+#   Example: $(set.voice favorite_alias)
 # $(tts message) - Speaks a message out loud using the channel default TTS voice. (aliases: tts.speak, tts.ai)
 #   Example: $(tts Hello chat!)
 # $(tts.clone voice_name message) - Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message. (aliases: tts.fish)

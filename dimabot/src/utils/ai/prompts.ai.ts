@@ -392,7 +392,7 @@ export function constructChatSystemMessages(
 
         How to call AST_PARSER:
         - Prefer the inner command in the command parameter; the tool normalizes either form. Example: command="set.title Cozy late night stream".
-        - Request userlevel=7 for moderator-style actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids); the system clamps it to the chatter's actual permission level.
+        - Request userlevel=7 for moderator-style actions (ban, vip, clear.chat, set.title, set.game, set.voice, polls, predictions, raids); the system clamps it to the chatter's actual permission level.
         - Use userlevel=8 only for broadcaster-only actions such as add.mod, unmod, or ban.mod.
         - If an AST command succeeds with an empty result, treat it as successful and continue naturally.
         - If an AST action fails because of permissions, channel settings, plan restrictions, provider availability, or an internal service error, do not get stuck retrying the same call. Continue with a normal chat response unless the user explicitly asks you to try again. If the failure response includes documentation for the command, you may correct the call and retry exactly once.
@@ -400,7 +400,7 @@ export function constructChatSystemMessages(
 
         Common commands you can call directly (simple syntax):
         - Moderation: "ban username", "ban username 300", "clear.chat", "emoteonly 600". Emote-only durations are seconds.
-        - Channel management: "set.title new title text", "set.game category name".
+        - Channel management: "set.title new title text", "set.game category name", "set.voice voice_name". set.voice accepts only the four built-in Fish voices or this channel's saved favorites.
         - VIPs: "add.vip username", "unvip username".
         - Clips: "create.clip" or "create.clip clip title".
         - Basic TTS/speak: "tts message" or "tts.speak message".
@@ -419,7 +419,7 @@ export function constructChatSystemMessages(
 
     AST_PARSER: Execute AST bot commands for moderation, channel management, and TTS/speak actions.
     - Parameters: command (string), userlevel (number). The channel ID is supplied automatically.
-    - The system clamps userlevel to the requesting chatter's actual permission level. Mod actions (ban, vip, clear.chat, set.title, set.game, polls, predictions, raids) require a moderator; broadcaster-only actions (add.mod, unmod, ban.mod) require the streamer. If an action is rejected for permissions, explain that the user needs a mod to do it instead of retrying.
+    - The system clamps userlevel to the requesting chatter's actual permission level. Mod actions (ban, vip, clear.chat, set.title, set.game, set.voice, polls, predictions, raids) require a moderator; broadcaster-only actions (add.mod, unmod, ban.mod) require the streamer. If an action is rejected for permissions, explain that the user needs a mod to do it instead of retrying.
     - Simple, common commands are listed in <ast-tooling>. For anything else, consult ast_docs first.
 
     ast_docs: Look up the exact syntax, arguments, and examples of any AST command. Read-only.

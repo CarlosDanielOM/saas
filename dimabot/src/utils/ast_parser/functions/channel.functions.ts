@@ -9,6 +9,9 @@ import { createPoll } from '../../../functions/polls/index.js';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { executeAiCommand } from '../../../utils/ai/openrouter/command.ai.js';
 import { formatBadges, type IBadge } from '../../../utils/badges.js';
+import { getFishVoiceFavorites, type FishVoiceFavorite } from '../../../schemas/channel_fish_voice_favorites.schema.js';
+import { setChannelFishVoice } from '../../../schemas/channel_tts_settings.schema.js';
+import { FISH_VOICES } from '../../../server/services/tts/fish_tts.service.js';
 
 function parseRawArgument(args: unknown[], fallback?: string): string {
     if (args.length > 0) {
@@ -85,6 +88,36 @@ const setGameHandler: FunctionHandler = async (args, ctx) => {
 
     await ChatFunctions.sendTwitchChatMessage(ctx.broadcasterId, `Game updated to: ${selectedGame.name}`);
     return '';
+};
+
+export function resolveAccountVoice(name: string, favorites: FishVoiceFavorite[]): { key: string; label: string } | null {
+    const requested = name.trim().toLowerCase();
+    if (!requested) return null;
+
+    const builtIn = Object.keys(FISH_VOICES).find(key => key === requested || key.replaceAll('_', ' ') === requested);
+    if (builtIn) return { key: builtIn, label: builtIn };
+
+    const favorite = favorites.find(item => item.alias.toLowerCase() === requested)
+        ?? favorites.find(item => item.name.trim().toLowerCase() === requested);
+    return favorite ? { key: favorite.alias, label: favorite.name } : null;
+}
+
+const setVoiceHandler: FunctionHandler = async (args, ctx) => {
+    const name = parseRawArgument(args, ctx.argument);
+    if (!name) return 'Usage: $(set.voice voice_name)';
+
+    try {
+        const favorites = await getFishVoiceFavorites(ctx.broadcasterId);
+        const voice = resolveAccountVoice(name, favorites);
+        if (!voice) return `Error: Voice "${name}" is not on this account. Choose one of the four default voices or a saved favorite.`;
+
+        await setChannelFishVoice(ctx.broadcasterId, voice.key, ctx.streamer?.name || '');
+        await ChatFunctions.sendTwitchChatMessage(ctx.broadcasterId, `TTS voice changed to ${voice.label}.`);
+        return '';
+    } catch (error) {
+        console.error('Error setting channel TTS voice:', error);
+        return 'Error: Unable to change the TTS voice right now.';
+    }
 };
 
 const startPredictionHandler: FunctionHandler = async (args, ctx) => {
@@ -199,6 +232,14 @@ export function registerChannelFunctions(): void {
         examples: ['set.game Just Chatting'],
         minUserLevel: 7,
         keywords: ['game', 'category', 'juego', 'categoria', 'cambiar juego']
+    });
+    registerFunction('set.voice', setVoiceHandler, {
+        description: 'Changes the channel default Fish TTS voice to one of the four built-in voices or a saved favorite. Also selects Fish as the TTS provider. A voice outside this account is rejected.',
+        syntax: 'set.voice voice_name',
+        category: 'tts',
+        examples: ['set.voice gojo', 'set.voice rias_gremory', 'set.voice favorite_alias'],
+        minUserLevel: 7,
+        keywords: ['voice', 'tts voice', 'fish audio', 'change voice', 'cambiar voz', 'voz favorita']
     });
     registerFunction('start.prediction', startPredictionHandler, {
         description: 'Starts a channel points prediction (betting with points). Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-10 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.',

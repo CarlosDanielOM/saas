@@ -1,9 +1,9 @@
 {
-  "version": "ae27f9fb3938",
-  "generatedAt": "2026-09-04T05:13:15.095Z",
+  "version": "9359477316f1",
+  "generatedAt": "2026-09-23T21:24:52.446Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 64,
+  "functionCount": 66,
   "entries": [
     {
       "name": "user",
@@ -239,6 +239,33 @@
         "revocar moderador"
       ],
       "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "permit",
+      "description": "Grants a temporary bypass of the channel moderation filters (caps, links, emote spam, blacklist). With a username only that user is permitted; with only a number everyone is permitted for that many seconds; with no arguments everyone is permitted for 60 seconds.",
+      "syntax": "permit [username] [seconds]",
+      "category": "moderation",
+      "examples": [
+        "permit",
+        "permit gooduser",
+        "permit 120",
+        "permit gooduser 120"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "permit",
+        "allow link",
+        "bypass filter",
+        "permitir",
+        "permitir enlace",
+        "excepcion"
+      ],
+      "destructive": false,
       "surfaces": [
         "action",
         "authoring"
@@ -583,6 +610,32 @@
         "juego",
         "categoria",
         "cambiar juego"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "set.voice",
+      "description": "Changes the channel default Fish TTS voice to one of the four built-in voices or a saved favorite. Also selects Fish as the TTS provider. A voice outside this account is rejected.",
+      "syntax": "set.voice voice_name",
+      "category": "tts",
+      "examples": [
+        "set.voice gojo",
+        "set.voice rias_gremory",
+        "set.voice favorite_alias"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "voice",
+        "tts voice",
+        "fish audio",
+        "change voice",
+        "cambiar voz",
+        "voz favorita"
       ],
       "destructive": false,
       "surfaces": [

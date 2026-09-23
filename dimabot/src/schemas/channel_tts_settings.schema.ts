@@ -185,6 +185,18 @@ export async function upsertChannelTtsSettings(
     return await getChannelTtsSettings(channelID, channel);
 }
 
+/** Change only the Fish default so concurrent edits to other TTS settings survive. */
+export async function setChannelFishVoice(channelID: string, voice: string, channel: string = ''): Promise<void> {
+    await ChannelTtsSettingsSchema.updateOne(
+        { channelID },
+        {
+            $set: { provider: 'fish', 'voices.cloneDefault': voice },
+            $setOnInsert: { channelID, channel }
+        },
+        { upsert: true }
+    );
+}
+
 export function getChannelTtsSettingsModel(): Model<IChannelTtsSettings> {
     return ChannelTtsSettingsSchema;
 }
