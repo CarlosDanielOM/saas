@@ -227,6 +227,12 @@ export class TtsPageComponent {
     return this.languageService.translate(key, params);
   }
 
+  scrollToFishFavorites(): void {
+    const section = document.getElementById('fish-voice-favorites');
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    section?.focus({ preventScroll: true });
+  }
+
   async copySpeechUrl(): Promise<void> {
     const url = this.speechApiUrl();
     if (!url) {
@@ -276,7 +282,11 @@ export class TtsPageComponent {
   chooseFishVoice(voice: FishVoice): void {
     if (this.ttsReadOnly() || this.ttsSaving()) return;
     this.discoveredVoiceNames.update(names => ({ ...names, [voice.id]: voice.name }));
-    this.updateTtsCloneDefault(voice.id);
+    this.patchTtsSettings(settings => ({
+      ...settings,
+      provider: 'fish',
+      voices: { ...settings.voices, cloneDefault: voice.id }
+    }));
     this.voiceBrowserOpen.set(false);
   }
 

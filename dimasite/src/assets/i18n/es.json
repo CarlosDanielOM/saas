@@ -372,7 +372,9 @@
         "selectedShort": "Elegida",
         "phrase": "Frase de prueba",
         "addFavoriteNamed": "Añadir {{name}} a favoritas",
-        "removeFavoriteNamed": "Quitar {{name}} de favoritas"
+        "removeFavoriteNamed": "Quitar {{name}} de favoritas",
+        "saveShort": "Guardar voz",
+        "savedShort": "Voz guardada"
       },
       "favorites": {
         "title": "Voces favoritas de Fish",

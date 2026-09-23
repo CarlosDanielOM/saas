@@ -60,6 +60,7 @@
             [attr.aria-label]="t(isFavorite(voice.id) ? 'removeFavoriteNamed' : 'addFavoriteNamed', { name: voice.name })"
             [attr.title]="t(isFavorite(voice.id) ? 'removeFavoriteNamed' : 'addFavoriteNamed', { name: voice.name })">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="m12 2.8 2.84 5.76 6.36.92-4.6 4.49 1.09 6.33L12 17.31l-5.69 2.99 1.09-6.33-4.6-4.49 6.36-.92L12 2.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" [attr.fill]="isFavorite(voice.id) ? 'currentColor' : 'none'" /></svg>
+            <span class="voice-star__label">{{ t(isFavorite(voice.id) ? 'savedShort' : 'saveShort') }}</span>
           </button>
           <button type="button" class="primary" [disabled]="readOnly() || loading() || selectedId() === voice.id"
             (click)="selectVoice.emit(voice)" [attr.aria-label]="t('chooseNamed', { name: voice.name })">

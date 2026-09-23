@@ -372,7 +372,9 @@
         "selectedShort": "Selected",
         "phrase": "Preview phrase",
         "addFavoriteNamed": "Add {{name}} to favorites",
-        "removeFavoriteNamed": "Remove {{name}} from favorites"
+        "removeFavoriteNamed": "Remove {{name}} from favorites",
+        "saveShort": "Save voice",
+        "savedShort": "Saved voice"
       },
       "favorites": {
         "title": "Favorite Fish voices",

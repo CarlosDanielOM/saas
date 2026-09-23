@@ -10,6 +10,9 @@
         <h1 class="lf-title">{{ t('modules.tts.title') }} <span>{{ t('modules.tts.eyebrow') }}</span></h1>
         <p class="lf-copy">{{ t('modules.tts.subtitle') }}</p>
         <div class="lf-actions">
+          @if (hasTtsSettings()) {
+            <button type="button" class="lf-btn" (click)="scrollToFishFavorites()">{{ t('modules.tts.favorites.title') }}</button>
+          }
           @if (speechApiUrl()) {
             <button type="button" class="lf-btn" (click)="copySpeechUrl()">
               {{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}
@@ -179,27 +182,7 @@
                     <option [value]="voice.value" [selected]="voice.value === (tts.voices.cloneDefault || 'gojo')">{{ voice.label }}</option>
                   }
                 </select>
-                <button type="button" class="lf-btn" aria-haspopup="dialog" [disabled]="ttsSaving()"
-                  (click)="voiceBrowserOpen.set(true)">{{ t('modules.tts.browser.findVoice') }}</button>
               </div>
-            </div>
-            <div class="lf-favorites" aria-live="polite">
-              <strong>{{ t('modules.tts.favorites.title') }}</strong>
-              <p>{{ t('modules.tts.favorites.hint') }}</p>
-              @if (fishFavorites().length) {
-                <ul>
-                  @for (favorite of fishFavorites(); track favorite.id) {
-                    <li>
-                      <span><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
-                      @if (!ttsReadOnly()) {
-                        <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId()"
-                          (click)="removeFishFavorite(favorite)"
-                          [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
-                      }
-                    </li>
-                  }
-                </ul>
-              } @else { <p>{{ t('modules.tts.favorites.empty') }}</p> }
             </div>
           } @else {
             <div class="lf-form-grid">
@@ -228,6 +211,28 @@
               </label>
             </div>
           }
+          <div id="fish-voice-favorites" class="lf-favorites" aria-live="polite" tabindex="-1">
+            <div class="lf-favorites__head">
+              <strong>{{ t('modules.tts.favorites.title') }}</strong>
+              <button type="button" class="lf-btn" aria-haspopup="dialog" [disabled]="ttsSaving()"
+                (click)="voiceBrowserOpen.set(true)">{{ t('modules.tts.browser.findVoice') }}</button>
+            </div>
+            <p>{{ t('modules.tts.favorites.hint') }}</p>
+            @if (fishFavorites().length) {
+              <ul>
+                @for (favorite of fishFavorites(); track favorite.id) {
+                  <li>
+                    <span><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
+                    @if (!ttsReadOnly()) {
+                      <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId()"
+                        (click)="removeFishFavorite(favorite)"
+                        [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else { <p>{{ t('modules.tts.favorites.empty') }}</p> }
+          </div>
         </article>
 
         <!-- Filters -->
@@ -272,7 +277,7 @@
         </article>
       </section>
 
-      @if (voiceBrowserOpen() && showCloneSettings() && channelID(); as id) {
+      @if (voiceBrowserOpen() && channelID(); as id) {
         <app-fish-voice-browser [channelID]="id" [selectedId]="tts.voices.cloneDefault || ''"
           [favorites]="fishFavorites()" [favoriteSavingId]="favoriteSavingId()"
           [readOnly]="ttsReadOnly() || ttsSaving()" [defaultLanguage]="tts.defaultLanguage"
