@@ -527,7 +527,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       }
       const next: AccessDraft = {
         ...draft,
-        tags: kind === 'allow' && draft.tags.everyone !== 'neutral'
+        tags: kind === 'allow' && draft.tags.everyone === 'allow'
           ? { ...draft.tags, everyone: 'neutral' } : draft.tags,
         [target]: [...draft[target], user],
         [opposite]: draft[opposite].filter((entry) => entry.id !== user.id)

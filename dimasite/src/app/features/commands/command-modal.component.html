@@ -115,6 +115,7 @@
                     }
                   </div>
                   <p class="lf-note lf-access-instruction">{{ t('commands.access.cycleHintDesktop') }}</p>
+                  <p class="lf-note lf-access-instruction">{{ t('commands.access.denyWins') }}</p>
                   <button type="button" class="lf-account-trigger" #desktopAccountsTrigger (click)="openDesktopAccounts()" [attr.aria-expanded]="accountsOpen()">
                     <span><strong>{{ t('commands.access.accountsTitle') }}</strong><small>{{ t('commands.access.accountCount', { count: accountCount() }) }}</small></span>
                     <span aria-hidden="true">›</span>

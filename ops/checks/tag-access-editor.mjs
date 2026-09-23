@@ -180,6 +180,34 @@ try {
     console.log('PASS 320px editor layout and modal accessibility');
   }
   {
+    const { context, page, writes, errors } = await testContext(browser, 390, 844);
+    await page.getByRole('button', { name: /add command/i }).first().click();
+    const modal = page.locator('app-command-modal');
+    await modal.locator('[formControlName="name"]').fill('Private greeting');
+    await modal.locator('[formControlName="cmd"]').fill('privategreet');
+    await modal.locator('[formControlName="message"]').fill('Hello');
+    await modal.locator('.lf-mobile-access-trigger').click();
+    await modal.locator('.lf-mobile-tags-view').getByRole('button', { name: 'Tags and accounts' }).click();
+    await modal.getByRole('button', { name: 'Everyone: No rule' }).click();
+    await modal.getByRole('button', { name: 'Everyone: Allowed' }).click();
+    await modal.locator('.lf-mobile-tags-view .lf-account-trigger').click();
+    await modal.getByRole('textbox', { name: 'Always allow' }).fill('user123');
+    await modal.getByRole('button', { name: 'Add to always allow' }).click();
+    await modal.locator('.lf-mobile-accounts-view:visible').getByText('@user123').waitFor();
+    await modal.getByRole('button', { name: 'Done' }).click();
+    await modal.getByRole('button', { name: 'Everyone: Excluded' }).waitFor();
+    await modal.getByRole('button', { name: 'Done' }).click();
+    await modal.getByRole('button', { name: 'Create' }).click();
+    await modal.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(writes.length, 1);
+    assert.deepEqual(writes[0].body.permissionExpression, {
+      and: [{ user: { id: '111', login: 'user123' } }, { not: { role: 'everyone' } }]
+    });
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log('PASS excluded Everyone remains selected with a named account allow');
+  }
+  {
     const legacyMixed = { or: [{ level: 5 }, { role: 'vip' }] };
     const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
     await page.getByRole('button', { name: 'Edit', exact: true }).first().click();

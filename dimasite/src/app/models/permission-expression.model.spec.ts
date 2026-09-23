@@ -36,6 +36,20 @@ describe('shared tag access expression adapter', () => {
     expect(parseAccessDraft(buildAccessExpression(draft))).toEqual(draft);
   });
 
+  it('retains an excluded Everyone tag alongside a specifically allowed account', () => {
+    const draft = emptyAccessDraft();
+    draft.tags.everyone = 'exclude';
+    draft.allowUsers = [{ id: '123456', login: 'user123' }];
+    const expression = buildAccessExpression(draft);
+    expect(expression).toEqual({
+      and: [
+        { user: { id: '123456', login: 'user123' } },
+        { not: { role: 'everyone' } }
+      ]
+    });
+    expect(parseAccessDraft(expression)).toEqual(draft);
+  });
+
   it('keeps legacy level mode when no tag or account rule exists', () => {
     expect(buildAccessExpression(emptyAccessDraft())).toBeNull();
     expect(parseAccessDraft(null)).toEqual(emptyAccessDraft());

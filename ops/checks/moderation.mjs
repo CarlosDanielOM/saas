@@ -11,6 +11,7 @@ import { grantPermit } from '/app/dist/utils/moderation/permit.js';
 import { offenseKey } from '/app/dist/utils/moderation/offenses.js';
 import { parsePermitArgs } from '/app/dist/utils/moderation/permit.js';
 import { seedDefaultModerationSettings } from '/app/dist/utils/moderation/defaults.js';
+import { commandAllowed } from '/app/dist/utils/permissions/index.js';
 
 const mongo = await getMongoDBConnection('moderation-check');
 const redis = await getDragonflyClient('moderation-check');
@@ -152,6 +153,22 @@ await ChannelModerationSettingsSchema.create({ channelID: namedChannel, enabled:
 assert.equal((await runChatModeration(namedChannel, message('msg-named-other', 'CAPS FROM ANOTHER USER', [], '67890', 'other'), identity(1, [], '67890'))).actionTaken, false, 'everyone else exempt');
 assert.equal((await runChatModeration(namedChannel, message('msg-named-excluded', 'CAPS FROM EXCLUDED USER', [], '12345', 'renamed'), identity(1, [], '12345'))).actionTaken, true, 'same account is excluded even after renaming');
 
+// Explicit account decisions take priority over broad tag exclusions in the
+// flat expressions saved by the dashboard. The stored ID survives a rename.
+const overrideExpression = { and: [
+    { user: { id: '12345', login: 'user123' } },
+    { not: { role: 'everyone' } }
+] };
+const allowedAccount = identity(1, [], '12345');
+const otherAccount = identity(1, [], '67890');
+assert.equal(commandAllowed({ permissionExpression: overrideExpression }, allowedAccount), true, 'named account can run a command when Everyone is excluded');
+assert.equal(commandAllowed({ permissionExpression: overrideExpression }, otherAccount), false, 'other account cannot run the command');
+const overrideChannel = 'named-override-channel';
+const overrideRule = { ...rules.find(rule => rule.type === 'caps'), id: 'named-override-rule', exemptExpression: overrideExpression };
+await ChannelModerationSettingsSchema.create({ channelID: overrideChannel, enabled: true, rules: [overrideRule], settingsVersion: 1 });
+assert.equal((await runChatModeration(overrideChannel, message('msg-override-allowed', 'CAPS FROM THE ALLOWED ACCOUNT', [], '12345', 'renamed'), allowedAccount)).actionTaken, false, 'named account is exempt after renaming despite excluded Everyone');
+assert.equal((await runChatModeration(overrideChannel, message('msg-override-other', 'CAPS FROM ANOTHER ACCOUNT', [], '67890', 'other'), otherAccount)).actionTaken, true, 'excluded Everyone still applies to other accounts');
+
 const invalidRule = { ...rules.find(rule => rule.type === 'caps'), id: 'invalid-expression-rule', exemptExpression: { role: 'supermod' } };
 await ChannelModerationSettingsSchema.create({ channelID: 'invalid-expression-channel', enabled: true, rules: [invalidRule], settingsVersion: 1 });
 assert.equal((await runChatModeration('invalid-expression-channel', message('msg-inv', 'CAPS WITH A BROKEN POLICY', [], 'admin1', 'adminone'), identity(9, ['admin']))).actionTaken, true, 'present invalid expression grants no exemption, even to admins');
@@ -166,7 +183,7 @@ try {
     if (process.env.SAAS_FIXTURES_REQUIRED === '1') throw err;
 }
 
-console.log(`PASS ${process.env.SAAS_TARGET}: ladder escalation, notices throttled, permits, exemptions, links/emote/blacklist rules, parser contract, seed vs cache/stub, expression exemptions`);
+console.log(`PASS ${process.env.SAAS_TARGET}: ladder escalation, notices throttled, permits, exemptions, links/emote/blacklist rules, parser contract, seed vs cache/stub, expression exemptions, account overrides`);
 
 // --- API surface (only when verifying the api target) ---
 if (process.env.SAAS_TARGET === 'api') {

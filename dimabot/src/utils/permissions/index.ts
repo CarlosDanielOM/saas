@@ -11,6 +11,56 @@
 import { evaluateExpression, inspectExpression, type ExpressionState, type PermissionExpression } from './expression.js';
 import type { UserIdentity } from './roles.js';
 
+/**
+ * The dashboard writes flat allow/exclude expressions. For those expressions,
+ * an explicit account decision takes priority over a role decision. Keep the
+ * normal Boolean evaluator for arbitrary advanced trees, where a user leaf
+ * may be conditional on another node.
+ */
+function flatLeaves(expression: PermissionExpression, allowLevel: boolean): PermissionExpression[] | null {
+    const leaves = 'or' in expression ? expression.or : [expression];
+    if (leaves.length === 0 || leaves.some((leaf) =>
+        !('role' in leaf || 'user' in leaf || (allowLevel && 'level' in leaf)))) {
+        return null;
+    }
+    return leaves;
+}
+
+function flatAccountOverride(expression: PermissionExpression, userId: string): boolean | undefined {
+    let allowed: PermissionExpression[] = [];
+    let excluded: PermissionExpression[] = [];
+
+    if ('and' in expression) {
+        if (expression.and.length !== 2 || !('not' in expression.and[1])) return undefined;
+        const allowLeaves = flatLeaves(expression.and[0], true);
+        const excludeLeaves = flatLeaves(expression.and[1].not, false);
+        if (!allowLeaves || !excludeLeaves) return undefined;
+        allowed = allowLeaves;
+        excluded = excludeLeaves;
+    } else if ('not' in expression) {
+        const excludeLeaves = flatLeaves(expression.not, false);
+        if (!excludeLeaves) return undefined;
+        excluded = excludeLeaves;
+    } else {
+        const allowLeaves = flatLeaves(expression, true);
+        if (!allowLeaves) return undefined;
+        allowed = allowLeaves;
+    }
+
+    if (excluded.some((leaf) => 'user' in leaf && leaf.user.id === userId)) return false;
+    if (allowed.some((leaf) => 'user' in leaf && leaf.user.id === userId)) return true;
+    return undefined;
+}
+
+function evaluateAccessExpression(expression: PermissionExpression, identity: UserIdentity): boolean {
+    if (identity.tags.has('broadcaster')) return true;
+    if (identity.userId) {
+        const override = flatAccountOverride(expression, identity.userId);
+        if (override !== undefined) return override;
+    }
+    return evaluateExpression(expression, identity);
+}
+
 function parseLegacyLevel(value: unknown): number {
     if (typeof value === 'number' && Number.isFinite(value)) {
         return value;
@@ -38,7 +88,7 @@ export function commandAllowed(
 
     const state = inspectExpression(command.permissionExpression);
     if (state.mode === 'tags') {
-        return evaluateExpression(state.expression, identity);
+        return evaluateAccessExpression(state.expression, identity);
     }
     if (state.mode === 'invalid') {
         return false;
@@ -62,7 +112,7 @@ export function ruleExempt(
 
     const state = inspectExpression(rule.exemptExpression);
     if (state.mode === 'tags') {
-        return evaluateExpression(state.expression, identity);
+        return evaluateAccessExpression(state.expression, identity);
     }
     if (state.mode === 'invalid') {
         return false;

@@ -904,7 +904,7 @@
       "alwaysApply": "La regla siempre se aplica",
       "addExempt": "Añadir cuenta exenta",
       "addApply": "Añadir cuenta sujeta a la regla",
-      "exclusionsWin": "Las etiquetas y cuentas excluidas siguen sujetas a esta regla aunque otra etiqueta esté exenta.",
+      "exclusionsWin": "Las etiquetas excluidas prevalecen sobre las exentas. Las excepciones de cuentas prevalecen sobre las etiquetas.",
       "advancedWarning": "Esta regla tiene una expresión avanzada. Se conservará hasta que restablezcas las etiquetas o elijas el nivel de usuario.",
       "legacyWarning": "Esta regla antigua combina el nivel de usuario con etiquetas. Elige el nivel o restablece las etiquetas antes de guardar.",
       "chooseMethod": "Elige un método de exención para cada regla antigua combinada antes de guardar.",
@@ -2011,7 +2011,7 @@
       "tagsTitle": "Acceso por etiquetas",
       "cycleHintDesktop": "Haz clic en una etiqueta: permitir → excluir → borrar.",
       "cycleHintMobile": "Toca una etiqueta para permitirla, otra vez para excluirla y otra para borrarla.",
-      "denyWins": "Las exclusiones tienen prioridad aunque el usuario tenga una etiqueta permitida.",
+      "denyWins": "Las etiquetas excluidas prevalecen sobre las permitidas. Las excepciones de cuentas prevalecen sobre las etiquetas.",
       "state": {
         "neutral": "Sin regla",
         "allow": "Permitido",

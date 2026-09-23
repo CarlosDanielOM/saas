@@ -158,6 +158,27 @@ try {
     console.log('PASS mobile moderation account exclusion, layout and accessibility');
   }
   {
+    const { context, page, writes, errors } = await testContext(browser, 390, 844);
+    const editor = page.locator('.lf-rule-access');
+    await editor.locator('> summary').click();
+    await editor.getByRole('button', { name: 'Tags and accounts' }).click();
+    await editor.getByRole('button', { name: 'Everyone: Rule applies' }).waitFor();
+    await editor.locator('.lf-rule-access__accounts > summary').click();
+    await editor.getByRole('textbox', { name: 'Always exempt' }).fill('user123');
+    await editor.getByRole('button', { name: 'Add exempt account' }).click();
+    await editor.getByText('@user123').waitFor();
+    await editor.getByRole('button', { name: 'Everyone: Rule applies' }).waitFor();
+    await page.getByRole('button', { name: 'Save Settings' }).click();
+    await page.waitForFunction(() => document.querySelector('.lf-save-bar button')?.hasAttribute('disabled'));
+    assert.equal(writes.length, 1);
+    assert.deepEqual(writes[0].rules[0].exemptExpression, {
+      and: [{ user: { id: '111', login: 'user123' } }, { not: { role: 'everyone' } }]
+    });
+    assert.deepEqual(errors, []);
+    await context.close();
+    console.log('PASS moderation keeps Everyone excluded with a named account exemption');
+  }
+  {
     const legacyMixed = { or: [{ level: 7 }, { role: 'vip' }] };
     const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
     const editor = page.locator('.lf-rule-access');
