@@ -1,11 +1,13 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { LanguageService } from '../../../services/language.service';
 
 interface DevMockCard {
   id: string;
   title: string;
   description: string;
   badge: string;
+  translated?: boolean;
 }
 
 @Component({
@@ -24,9 +26,9 @@ interface DevMockCard {
       <div class="dev-index__grid">
         @for (mock of mocks; track mock.id) {
           <a class="dev-card" [routerLink]="['/mocks/dev', mock.id]">
-            <span class="dev-card__badge">{{ mock.badge }}</span>
-            <h2>{{ mock.title }}</h2>
-            <p>{{ mock.description }}</p>
+            <span class="dev-card__badge">{{ mock.translated ? t(mock.badge) : mock.badge }}</span>
+            <h2>{{ mock.translated ? t(mock.title) : mock.title }}</h2>
+            <p>{{ mock.translated ? t(mock.description) : mock.description }}</p>
             <span class="dev-card__path">/mocks/dev/{{ mock.id }}</span>
           </a>
         }
@@ -137,7 +139,21 @@ interface DevMockCard {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DevMockIndexComponent {
+  private readonly language = inject(LanguageService);
+
+  t(key: string): string {
+    this.language.currentLanguage();
+    return this.language.translate(`overlayMock.${key}`);
+  }
+
   readonly mocks: DevMockCard[] = [
+    {
+      id: 'overlay-editor',
+      title: 'mockIndexTitle',
+      badge: 'mockIndexBadge',
+      description: 'mockIndexDescription',
+      translated: true
+    },
     {
       id: 'clips',
       title: 'Clip overlay · Design 1',

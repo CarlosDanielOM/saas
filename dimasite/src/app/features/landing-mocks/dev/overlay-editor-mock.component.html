@@ -1,0 +1,127 @@
+<div class="editor">
+  <header class="topbar">
+    <div class="topbar__brand">
+      <a routerLink="/mocks/dev" class="icon-button" [attr.aria-label]="t('back')"><lucide-icon [name]="icons.ArrowLeft" [size]="19" aria-hidden="true" /></a>
+      <span class="brand-pulse" aria-hidden="true"></span>
+      <span class="brand-name">DomDimaBot</span>
+      <span class="topbar__divider" aria-hidden="true"></span>
+      <span class="topbar__section">{{ t('studio') }}</span>
+      <span class="mock-chip">{{ t('prototype') }}</span>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-button" type="button" (click)="toggleLanguage()" [attr.aria-label]="t('switchLanguage')">{{ language.currentLanguage() === 'en' ? 'ES' : 'EN' }}</button>
+      <button class="icon-button" type="button" (click)="toggleTheme()" [attr.aria-label]="t('switchTheme')"><lucide-icon [name]="isDark() ? icons.Moon : icons.Sun" [size]="18" aria-hidden="true" /></button>
+      <button class="save-button" type="button" (click)="saveDraft()"><lucide-icon [name]="icons.Save" [size]="16" aria-hidden="true" />{{ saved() ? t('saved') : t('saveDraft') }}</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="intro">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>{{ t('eyebrow') }}</p>
+        <h1>{{ t('title') }}</h1>
+        <p class="intro__copy">{{ t('description') }}</p>
+      </div>
+      <div class="intro__meta"><span>{{ t('canvasSize') }}</span><span class="meta-separator" aria-hidden="true">·</span><span>{{ t('localOnly') }}</span></div>
+    </div>
+
+    <nav class="mobile-tabs" [attr.aria-label]="t('sections')">
+      <button type="button" [class.active]="panel() === 'library'" [attr.aria-pressed]="panel() === 'library'" (click)="setPanel('library')">{{ t('library') }}</button>
+      <button type="button" [class.active]="panel() === 'canvas'" [attr.aria-pressed]="panel() === 'canvas'" (click)="setPanel('canvas')">{{ t('canvas') }}</button>
+      <button type="button" [class.active]="panel() === 'properties'" [attr.aria-pressed]="panel() === 'properties'" (click)="setPanel('properties')">{{ t('properties') }}</button>
+    </nav>
+
+    <div class="workspace">
+      <aside class="side-panel library" [class.mobile-open]="panel() === 'library'" [attr.aria-label]="t('library')">
+        <div class="panel-heading"><div><p class="panel-kicker">01 / {{ t('build') }}</p><h2>{{ t('addSource') }}</h2></div><span class="panel-count">03</span></div>
+        <p class="panel-description">{{ t('libraryHint') }}</p>
+        <div class="palette">
+          @for (kind of palette; track kind) {
+            <button type="button" class="palette-item" [attr.data-kind]="kind" draggable="true" (dragstart)="onPaletteDrag($event, kind)" (click)="addWidget(kind)">
+              <span class="palette-item__icon"><lucide-icon [name]="widgetIcon(kind)" [size]="20" aria-hidden="true" /></span>
+              <span class="palette-item__text"><strong>{{ t(kind + 'Name') }}</strong><small>{{ t(kind + 'Description') }}</small></span>
+              <lucide-icon class="palette-item__add" [name]="icons.Plus" [size]="17" aria-hidden="true" />
+            </button>
+          }
+        </div>
+        <div class="library-note"><lucide-icon [name]="icons.Grip" [size]="17" aria-hidden="true" /><span>{{ t('dragHint') }}</span></div>
+        <div class="layers">
+          <div class="layers__heading"><h3>{{ t('layers') }}</h3><span>{{ widgets().length }}</span></div>
+          @for (widget of widgets().slice().reverse(); track widget.id) {
+            <button type="button" class="layer" [class.selected]="widget.id === selectedId()" (click)="select(widget.id); setPanel('properties')">
+              <lucide-icon [name]="widgetIcon(widget.kind)" [size]="15" aria-hidden="true" />
+              <span>{{ t(widget.kind + 'Name') }}</span>
+              @if (!widget.visible) { <lucide-icon [name]="icons.EyeOff" [size]="14" [attr.aria-label]="t('hidden')" /> }
+              @if (widget.locked) { <lucide-icon [name]="icons.LockKeyhole" [size]="14" [attr.aria-label]="t('locked')" /> }
+            </button>
+          }
+        </div>
+      </aside>
+
+      <section class="canvas-panel" [class.mobile-open]="panel() === 'canvas'" [attr.aria-label]="t('canvas')">
+        <div class="canvas-toolbar">
+          <div><p class="panel-kicker">02 / {{ t('compose') }}</p><h2>{{ t('stageTitle') }}</h2></div>
+          <div class="canvas-toolbar__tools"><span class="resolution">1920 × 1080</span><button type="button" class="toolbar-button" [attr.aria-pressed]="snap()" (click)="toggleSnap()">{{ snap() ? t('snapOn') : t('snapOff') }}</button></div>
+        </div>
+        <div class="stage-scroll">
+          <div class="stage-frame">
+            <div class="stage" (dragover)="onCanvasDragOver($event)" (drop)="onCanvasDrop($event)">
+              <div class="stage__crosshair" aria-hidden="true"></div>
+              <div class="stage__label">{{ t('streamPreview') }}</div>
+              <div class="stage__safe" aria-hidden="true"></div>
+              @for (widget of widgets(); track widget.id) {
+                @if (widget.visible) {
+                  <div class="widget" role="button" tabindex="0" [attr.aria-pressed]="selectedId() === widget.id" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="preview() === widget.kind" [class.is-locked]="widget.locked"
+                    [style.left.%]="widget.x / 19.2" [style.top.%]="widget.y / 10.8" [style.width.%]="widget.width / 19.2" [style.height.%]="widget.height / 10.8"
+                    (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="t(widget.kind + 'Name') + ' ' + t('canvasItem')">
+                    <div class="widget__content">
+                      @switch (widget.kind) {
+                        @case ('tts') {
+                          <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
+                          <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>
+                          <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                        }
+                        @case ('trigger') {
+                          <span class="widget__icon"><lucide-icon [name]="icons.Zap" [size]="18" aria-hidden="true" /></span>
+                          <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
+                        }
+                        @case ('clip') {
+                          <span class="clip-play"><lucide-icon [name]="icons.Play" [size]="22" aria-hidden="true" /></span>
+                          <div class="clip-caption"><small>{{ t('clipPreviewLabel') }}</small><strong>{{ t('clipPreviewText') }}</strong></div>
+                        }
+                      }
+                    </div>
+                    @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+        <div class="canvas-footer"><span><span class="footer-dot" aria-hidden="true"></span>{{ t('previewNote') }}</span><span>{{ widgets().length }} {{ t('sources') }}</span></div>
+        <p class="canvas-swipe-hint">{{ t('scrollCanvas') }}</p>
+        <div class="event-tester"><div><p class="panel-kicker">{{ t('testEvents') }}</p><p>{{ t('testDescription') }}</p></div><div class="event-tester__actions">@for (kind of palette; track kind) { <button type="button" (click)="previewWidget(kind)"><lucide-icon [name]="icons.Play" [size]="13" aria-hidden="true" />{{ t(kind + 'Name') }}</button> }</div></div>
+      </section>
+
+      <aside class="side-panel properties" [class.mobile-open]="panel() === 'properties'" [attr.aria-label]="t('properties')">
+        <div class="panel-heading"><div><p class="panel-kicker">03 / {{ t('fineTune') }}</p><h2>{{ t('properties') }}</h2></div><lucide-icon [name]="icons.Layers3" [size]="19" aria-hidden="true" /></div>
+        @if (selected(); as item) {
+          <div class="selected-card" [attr.data-kind]="item.kind"><span class="selected-card__icon"><lucide-icon [name]="widgetIcon(item.kind)" [size]="19" aria-hidden="true" /></span><div><strong>{{ t(item.kind + 'Name') }}</strong><small>{{ t('selectedLayer') }}</small></div></div>
+          <div class="property-group"><div class="property-group__heading"><h3>{{ t('position') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
+            <label><span>X</span><input type="number" [value]="item.x" min="0" [max]="1920 - item.width" (change)="updateDimension('x', $event)" /></label>
+            <label><span>Y</span><input type="number" [value]="item.y" min="0" [max]="1080 - item.height" (change)="updateDimension('y', $event)" /></label>
+          </div></div>
+          <div class="property-group"><div class="property-group__heading"><h3>{{ t('size') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
+            <label><span>W</span><input type="number" [value]="item.width" min="160" [max]="1920 - item.x" (change)="updateDimension('width', $event)" /></label>
+            <label><span>H</span><input type="number" [value]="item.height" min="90" [max]="1080 - item.y" (change)="updateDimension('height', $event)" /></label>
+          </div></div>
+          <div class="property-group"><h3>{{ t('layerOptions') }}</h3><div class="option-row"><span>{{ t('visible') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('visible')" [attr.aria-pressed]="item.visible" (click)="toggleVisibility(item.id)"><lucide-icon [name]="item.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" />{{ item.visible ? t('on') : t('off') }}</button></div><div class="option-row"><span>{{ t('lockPosition') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('lockPosition')" [attr.aria-pressed]="item.locked" (click)="toggleLock(item.id)"><lucide-icon [name]="icons.LockKeyhole" [size]="15" aria-hidden="true" />{{ item.locked ? t('on') : t('off') }}</button></div></div>
+          <div class="property-group"><h3>{{ t('stackOrder') }}</h3><div class="order-actions"><button type="button" (click)="moveLayer(1)">{{ t('bringForward') }}</button><button type="button" (click)="moveLayer(-1)">{{ t('sendBackward') }}</button></div></div>
+          <div class="danger-actions"><button type="button" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="16" aria-hidden="true" />{{ t('duplicate') }}</button><button type="button" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" />{{ t('delete') }}</button></div>
+        } @else { <div class="empty-selection"><lucide-icon [name]="icons.Layers3" [size]="28" aria-hidden="true" /><p>{{ t('selectPrompt') }}</p></div> }
+        <button type="button" class="reset-button" (click)="resetDraft()"><lucide-icon [name]="icons.RotateCcw" [size]="15" aria-hidden="true" />{{ t('reset') }}</button>
+      </aside>
+    </div>
+    <p class="mock-disclaimer">{{ t('disclaimer') }}</p>
+  </main>
+</div>
