@@ -27,6 +27,7 @@ export interface IMemoryValidationRecord {
     type: MemoryType;
     risk: MemoryRisk;
     subjectScope: MemorySubjectScope;
+    subjectUsername?: string;
     summary: string;
     expiresAt?: Date | null;
 }
@@ -36,6 +37,7 @@ export interface IValidatedMemoryContextItem {
     memory_type: MemoryType;
     risk: MemoryRisk;
     summary: string;
+    subjectUsername?: string;
     score: number;
 }
 
@@ -109,7 +111,6 @@ export function selectValidatedChannelMemories(params: {
         if (!record ||
             record.channelID !== params.channelID ||
             record.status !== 'confirmed' ||
-            record.subjectScope !== 'channel' ||
             (record.expiresAt instanceof Date && record.expiresAt <= now) ||
             getMemoryPolicyViolation(record.type, record.risk, record.subjectScope, params.policy)) {
             return [];
@@ -119,7 +120,25 @@ export function selectValidatedChannelMemories(params: {
             memory_type: record.type,
             risk: record.risk,
             summary: record.summary,
+            subjectUsername: record.subjectScope === 'user' ? record.subjectUsername : undefined,
             score: candidate.score
         }];
     }).slice(0, Math.max(0, params.limit));
+}
+
+/** Explicit recall can include any subject in the same channel after policy checks. */
+export function selectValidatedRecallMemories<T extends IMemoryValidationRecord>(params: {
+    channelID: string;
+    records: T[];
+    policy: IMemoryPolicySettings;
+    limit: number;
+    now?: Date;
+}): T[] {
+    const now = params.now || new Date();
+    return params.records.filter((record) =>
+        record.channelID === params.channelID &&
+        record.status === 'confirmed' &&
+        !(record.expiresAt instanceof Date && record.expiresAt <= now) &&
+        !getMemoryPolicyViolation(record.type, record.risk, record.subjectScope, params.policy)
+    ).slice(0, Math.max(0, params.limit));
 }

@@ -823,6 +823,7 @@ export async function validateChannelMemoryContext(
                 type: memory.type,
                 risk: memory.risk,
                 subjectScope: memory.subject.scope,
+                subjectUsername: memory.subject.username,
                 summary: memory.summary,
                 expiresAt: memory.expiresAt
             })),

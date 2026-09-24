@@ -3,8 +3,10 @@ import { constructChatSystemMessages } from '../utils/ai/prompts.ai.js';
 import {
     getMemoryPolicyViolation,
     resolveChatMemorySubject,
-    selectValidatedChannelMemories
+    selectValidatedChannelMemories,
+    selectValidatedRecallMemories
 } from '../utils/ai/memory/memory_policy.js';
+import { isPassiveMemoryRelevant } from '../utils/ai/memory/memory_relevance.js';
 import { generateQdrantPointId, qdrantPointBelongsToMemory } from '../utils/qdrant/qdrant_point_id.js';
 
 assert.equal(
@@ -109,7 +111,40 @@ const validated = selectValidatedChannelMemories({
     limit: 5,
     now: new Date('2025-01-01')
 });
-assert.deepEqual(validated.map((memory) => memory.memory_id), ['confirmed']);
+assert.deepEqual(validated.map((memory) => memory.memory_id), ['confirmed', 'user-memory']);
+
+const groupMemories = selectValidatedChannelMemories({
+    channelID: 'channel-a',
+    candidates: [{ memory_id: 'alice-fact', score: 0.78 }],
+    records: [{
+        memoryID: 'alice-fact', channelID: 'channel-a', status: 'confirmed', type: 'known_user_fact',
+        risk: 'low', subjectScope: 'user', subjectUsername: 'Alice', summary: 'Alice works at the library'
+    }],
+    policy: { allowSensitiveMemories: false, allowUserPreferenceMemories: true, allowRunningJokes: true },
+    limit: 2
+});
+assert.deepEqual(groupMemories.map((memory) => memory.subjectUsername), ['Alice']);
+
+assert.equal(isPassiveMemoryRelevant('What do you remember about this channel?', 'A channel running joke', 0.55), false);
+assert.equal(isPassiveMemoryRelevant('What game does Alex stream?', 'Alex streams chess on Fridays', 0.58), true);
+assert.equal(isPassiveMemoryRelevant('Where did Alice work?', 'Works at the library Alice', 0.58), true);
+assert.equal(isPassiveMemoryRelevant('What game does Alex stream?', 'Alex streams chess on Fridays', 0.40), false);
+assert.equal(isPassiveMemoryRelevant('Unrelated question', 'Alex streams chess on Fridays', 0.80), true);
+
+const recallRecords = [
+    { memoryID: 'other-user', channelID: 'channel-a', status: 'confirmed', type: 'known_user_fact', risk: 'low', subjectScope: 'user', summary: 'Alice works at the library' },
+    { memoryID: 'other-channel', channelID: 'channel-b', status: 'confirmed', type: 'known_user_fact', risk: 'low', subjectScope: 'user', summary: 'Private elsewhere' },
+    { memoryID: 'pending', channelID: 'channel-a', status: 'pending_review', type: 'known_user_fact', risk: 'low', subjectScope: 'user', summary: 'Unreviewed' },
+    { memoryID: 'sensitive', channelID: 'channel-a', status: 'confirmed', type: 'known_user_fact', risk: 'high', subjectScope: 'user', summary: 'Sensitive' },
+    { memoryID: 'expired', channelID: 'channel-a', status: 'confirmed', type: 'known_user_fact', risk: 'low', subjectScope: 'user', summary: 'Expired', expiresAt: new Date('2024-01-01') }
+] as const;
+assert.deepEqual(selectValidatedRecallMemories({
+    channelID: 'channel-a',
+    records: recallRecords.map((record) => ({ ...record })),
+    policy: { allowSensitiveMemories: false, allowUserPreferenceMemories: true, allowRunningJokes: true },
+    limit: 5,
+    now: new Date('2025-01-01')
+}).map((memory) => memory.memoryID), ['other-user']);
 
 const messages = constructChatSystemMessages(
     { name: 'TestStreamer' },

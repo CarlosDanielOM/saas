@@ -120,6 +120,32 @@
     {
       "type": "function",
       "function": {
+        "name": "recall_memory",
+        "description": "Read confirmed memories in the current channel when someone explicitly asks what the bot remembers or asks about a past fact. Any chatter may ask about another person in this channel. For a named person, pass username. Use overview for broad requests and search for a specific fact. Never use for unrelated ordinary chat.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["overview", "search"],
+              "description": "overview for a broad list of memories; search for a specific question or topic"
+            },
+            "query": {
+              "type": "string",
+              "description": "The specific question or topic for search mode. Omit for overview."
+            },
+            "username": {
+              "type": "string",
+              "description": "The person whose memory is requested, including when that person is not the current chatter. The channel is enforced automatically."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "create_memory",
         "description": "Save important information to memory for future reference. Use when you learn something about the channel, streamer preferences, user facts, or when told to remember or avoid something. The AI will confirm if saved or indicate pending review.",
         "parameters": {

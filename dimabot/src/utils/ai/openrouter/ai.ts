@@ -904,6 +904,7 @@ export async function chat(
         channelID,
         query: message,
         limit: memoryLimits.channel,
+        subjectScope: 'any',
       }),
       memoryPolicy?.allowUserPreferenceMemories === false
         ? Promise.resolve([])
@@ -931,6 +932,7 @@ export async function chat(
           memoryID: item.memory_id,
           type: item.memory_type,
           summary: item.summary,
+          subjectUsername: item.subjectUsername,
           relevanceScore: item.score,
         }));
     }

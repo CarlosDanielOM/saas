@@ -1,9 +1,10 @@
 import { generateEmbedding } from '../../../ai/lfm2_embeddings/index.js';
 import { getQdrantConnection } from '../../../databases/qdrant.database.js';
 import { debug, error } from '../../../logger.js';
+import { isPassiveMemoryRelevant, PASSIVE_CANDIDATE_SCORE } from '../../../ai/memory/memory_relevance.js';
 
 const COLLECTION_NAME = 'twitch_channel_memories';
-const DEFAULT_MIN_SCORE = 0.72;
+const EXPLICIT_MIN_SCORE = 0.55;
 
 export interface IRetrievedMemoryItem {
     score: number;
@@ -27,6 +28,8 @@ export interface IRetrieveChannelMemoryContextParams {
     query: string;
     limit: number;
     minScore?: number;
+    mode?: 'passive' | 'explicit';
+    subjectScope?: 'channel' | 'any';
 }
 
 export interface IRetrieveChannelMemoryContextResult {
@@ -106,7 +109,8 @@ async function queryPoints(
     channelID: string,
     embedding: number[],
     limit: number,
-    minScore: number
+    minScore: number,
+    subjectScope: 'channel' | 'any'
 ): Promise<IQdrantPoint[]> {
     const filter = {
         must: [
@@ -117,18 +121,17 @@ async function queryPoints(
             {
                 key: 'status',
                 match: { value: 'confirmed' }
-            },
-            {
-                key: 'subject_scope',
-                match: { value: 'channel' }
             }
         ]
     };
+    if (subjectScope === 'channel') {
+        filter.must.push({ key: 'subject_scope', match: { value: 'channel' } });
+    }
 
     if (typeof qdrantClient.query === 'function') {
         const rawResults = await qdrantClient.query(COLLECTION_NAME, {
             query: embedding,
-            limit: limit * 3,
+            limit: limit * 8,
             with_payload: true,
             filter,
             score_threshold: minScore
@@ -139,7 +142,7 @@ async function queryPoints(
     if (typeof qdrantClient.search === 'function') {
         const rawResults = await qdrantClient.search(COLLECTION_NAME, {
             vector: embedding,
-            limit: limit * 3,
+            limit: limit * 8,
             with_payload: true,
             filter,
             score_threshold: minScore
@@ -150,7 +153,7 @@ async function queryPoints(
     if (typeof qdrantClient.queryPoints === 'function') {
         const rawResults = await qdrantClient.queryPoints(COLLECTION_NAME, {
             query: embedding,
-            limit: limit * 3,
+            limit: limit * 8,
             with_payload: true,
             filter,
             score_threshold: minScore
@@ -182,14 +185,17 @@ export async function retrieveChannelMemoryContext(
             };
         }
 
-        const minScore = params.minScore ?? DEFAULT_MIN_SCORE;
+        const mode = params.mode || 'passive';
+        const minScore = params.minScore ?? (mode === 'explicit' ? EXPLICIT_MIN_SCORE : PASSIVE_CANDIDATE_SCORE);
         const qdrantClient = await getQdrantConnection('retrieveChannelMemoryContext');
-        const rawPoints = await queryPoints(qdrantClient, params.channelID, embeddingResult.embedding, params.limit, minScore);
+        const rawPoints = await queryPoints(qdrantClient, params.channelID, embeddingResult.embedding, params.limit, minScore, params.subjectScope || 'channel');
 
         const items = rawPoints
             .map(parsePoint)
             .filter((item): item is IRetrievedMemoryItem => item !== null)
-            .filter((item) => item.channel_id === params.channelID && item.score >= minScore)
+            .filter((item) => item.channel_id === params.channelID && item.status === 'confirmed' && item.score >= minScore)
+            .filter((item) => mode === 'explicit' || params.minScore !== undefined ||
+                isPassiveMemoryRelevant(params.query, `${item.summary} ${item.subject_username || ''}`, item.score))
             .sort((a, b) => {
                 if (b.score === a.score) {
                     return b.updated_at - a.updated_at;
@@ -203,7 +209,8 @@ export async function retrieveChannelMemoryContext(
             channelID: params.channelID,
             requestedLimit: params.limit,
             retrieved: items.length,
-            minScore
+            minScore,
+            mode
         }, { destination: 'cache' });
 
         return {
