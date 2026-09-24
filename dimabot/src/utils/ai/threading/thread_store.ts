@@ -31,6 +31,8 @@ export interface ThreadMeta {
 }
 
 export interface PromptContextTurn {
+    role: 'user' | 'assistant';
+    sourceMessageId?: string;
     timestamp: number;
     username: string;
     message: string;
@@ -248,6 +250,8 @@ export async function getThreadPromptContext(
 ): Promise<PromptContextTurn[]> {
     const turns = await getThreadTurns(channelID, threadID, Math.max(1, promptTurns));
     return turns.map((turn) => ({
+        role: turn.role,
+        sourceMessageId: turn.sourceMessageId,
         timestamp: turn.timestamp,
         username: turn.username || (turn.role === 'assistant' ? 'DomDimaBot' : 'UnknownUser'),
         message: turn.message,

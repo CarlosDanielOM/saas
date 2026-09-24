@@ -272,7 +272,11 @@ export async function AiResponse(
         userContext,
         message,
         chatHistory,
-        toolContext
+        toolContext,
+        undefined,
+        null,
+        null,
+        { toolsEnabled: false }
     );
 
     // API headers

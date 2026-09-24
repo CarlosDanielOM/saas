@@ -11,7 +11,7 @@ export type PlanTier = 'pro' | 'premium' | 'free';
  * Thread limits per plan tier.
  *
  * promptTurns is the token-cost driver (turns actually injected into the LLM
- * prompt) and scales ~2-2.5x per tier. The rest are cheap Redis storage bounds
+ * prompt). Each user or assistant message counts as one turn. The rest are Redis storage bounds
  * and mainly affect how long threads survive before eviction.
  */
 export function getThreadLimitsForTier(planTier: PlanTier): ThreadLimits {
@@ -19,22 +19,22 @@ export function getThreadLimitsForTier(planTier: PlanTier): ThreadLimits {
         return {
             maxChannelThreads: 250,
             maxUserThreads: 12,
-            maxTurnsStored: 60,
-            promptTurns: 20
+            maxTurnsStored: 120,
+            promptTurns: 100
         };
     }
     if (planTier === 'premium') {
         return {
             maxChannelThreads: 100,
             maxUserThreads: 6,
-            maxTurnsStored: 40,
-            promptTurns: 10
+            maxTurnsStored: 60,
+            promptTurns: 40
         };
     }
     return {
         maxChannelThreads: 40,
         maxUserThreads: 3,
         maxTurnsStored: 20,
-        promptTurns: 4
+        promptTurns: 10
     };
 }

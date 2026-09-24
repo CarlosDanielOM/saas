@@ -18,6 +18,7 @@ import { getDragonflyClient } from "../../databases/dragonfly.database.js";
 import { isAiCreditsExhausted } from "../../billing.js";
 import { ingestPolarSHEvent } from "../../polarsh.js";
 import { constructChatSystemMessages } from "../prompts.ai.js";
+import { mergeChatHistories, type ChatContextMessage } from "../chat_context.js";
 import { MODELS, TOKEN_LIMITS, selectChatModel } from "../constants.js";
 import { createFetchWithRetry } from "../fetch.utils.js";
 import {
@@ -107,20 +108,15 @@ export interface IStreamerData {
 }
 
 export interface IChatHistoryMessage {
+  role?: 'user' | 'assistant';
+  sourceMessageId?: string;
   timestamp: number;
   badges?: string;
   username: string;
   message: string;
 }
 
-export interface ISemanticChatHistoryItem {
-  source: "live" | "semantic" | "thread";
-  timestamp: number;
-  badges?: string;
-  username: string;
-  message: string;
-  relevanceScore?: number;
-}
+export type ISemanticChatHistoryItem = ChatContextMessage;
 
 export interface IChatMessageTags {
   badges: IBadge[];
@@ -300,10 +296,9 @@ function getEffectiveSemanticLimit(
 }
 
 /**
- * Get the combined chat history limit based on tier
- * This is the max total messages (live + semantic) we send to the LLM
+ * Background chat budget (live + semantic), separate from direct thread turns.
  */
-function getCombinedHistoryLimitForTier(planTier: string | undefined): number {
+function getBackgroundHistoryLimitForTier(planTier: string | undefined): number {
   if (planTier === "pro") return 100;
   if (planTier === "premium") return 35;
   return 15;
@@ -318,40 +313,6 @@ function getMemoryContextLimitsForTier(planTier: string | undefined): {
   return { channel: 2, currentUser: 2 };
 }
 
-/**
- * Merge thread, live (Redis), and semantic (Qdrant) chat histories
- * - Thread messages take priority (direct conversation with the current user)
- * - Live messages are always included next (recency/freshness)
- * - Semantic messages are added if not duplicates
- * - Results sorted by timestamp, newest first
- * - Total limited by tier-based cap
- */
-function mergeChatHistories(
-  threadHistory: ISemanticChatHistoryItem[],
-  liveHistory: ISemanticChatHistoryItem[],
-  semanticHistory: ISemanticChatHistoryItem[],
-  maxLimit: number,
-): ISemanticChatHistoryItem[] {
-  // Deduplicate by message content, keeping the highest-priority version
-  // (groups are processed in priority order: thread > live > semantic)
-  const uniqueByMessage = new Map<string, ISemanticChatHistoryItem>();
-
-  for (const group of [threadHistory, liveHistory, semanticHistory]) {
-    for (const item of group) {
-      const key = item.message.toLowerCase();
-      if (!uniqueByMessage.has(key)) {
-        uniqueByMessage.set(key, item);
-      }
-    }
-  }
-
-  // Convert to array and sort by timestamp (newest first)
-  const merged = Array.from(uniqueByMessage.values()).sort(
-    (a, b) => b.timestamp - a.timestamp,
-  );
-
-  return merged.slice(0, maxLimit);
-}
 
 export async function getChannelPersonality(
   channelID: string,
@@ -818,6 +779,8 @@ export async function chat(
 
   // Build the direct conversation thread with the current user (mini-thread)
   const threadItems: ISemanticChatHistoryItem[] = threadHistory.map((msg) => ({
+    role: msg.role,
+    sourceMessageId: msg.sourceMessageId,
     source: "thread" as const,
     timestamp: msg.timestamp,
     badges: msg.badges || "",
@@ -972,15 +935,15 @@ export async function chat(
     );
   }
 
-  // Get combined history limit based on tier
-  const combinedLimit = getCombinedHistoryLimitForTier(streamer?.plan_tier);
+  // Keep the direct thread independently of the ambient chat budget.
+  const backgroundLimit = getBackgroundHistoryLimitForTier(streamer?.plan_tier);
 
   // Merge thread, live and semantic histories (thread > live > semantic priority)
   const chatHistory = mergeChatHistories(
     threadItems,
     liveHistory,
     semanticHistory,
-    combinedLimit,
+    backgroundLimit,
   );
 
   // Fetch ambient context (stream state, channel emotes) - best effort,
@@ -991,7 +954,7 @@ export async function chat(
   ]);
 
   // Use shared utility to construct messages (no tools yet at this stage)
-  // constructChatSystemMessages returns: [system_message, user_message_with_prompt]
+  // Returns stable instructions, reference context, direct turns, and the latest request.
   const systemMessages = constructChatSystemMessages(
     streamerData,
     effectivePersonality,
@@ -1002,6 +965,7 @@ export async function chat(
     memoryContext,
     streamContext,
     emoteNames,
+    { toolsEnabled: !disableTools },
   );
 
   // Convert to OpenRouter message format

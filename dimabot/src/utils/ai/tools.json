@@ -16,7 +16,9 @@
               "description": "The search query to look up on the web"
             }
           },
-          "required": ["query"]
+          "required": [
+            "query"
+          ]
         }
       }
     },
@@ -37,7 +39,10 @@
               "description": "What the user is asking the code to do - used for context if code needs to make decisions"
             }
           },
-          "required": ["code", "request"]
+          "required": [
+            "code",
+            "request"
+          ]
         }
       }
     },
@@ -45,7 +50,7 @@
       "type": "function",
       "function": {
         "name": "AST_PARSER",
-        "description": "Execute bot commands using AST syntax. Use this to perform moderation actions (ban, timeout, vip), channel management (set.title, set.game), or other bot operations. The channel ID is automatically provided by the system. If you are not 100% sure of a command's exact syntax or arguments, call ast_docs FIRST to look it up. Examples: 'ban username 300', 'set.title New Stream Title', 'add.vip username', 'clear.chat'",
+        "description": "Execute real bot actions for moderation, channel management, clips, and speech. Prefer inner command syntax; a wrapped $() form is also normalized. Common commands: ban username; ban username 300 (timeout in seconds); clear.chat; emoteonly 600 (seconds); set.title new title; set.game category; set.voice voice_name; add.vip username; unvip username; create.clip [optional title]; tts message; tts.speak message; tts.fish voice_name_or_voice_id message. Built-in Fish voices: gojo, rias_gremory, carlos_bodoque, toji_fushiguro. set.voice only accepts those built-ins or this channel's saved favorites. For every other command, any structured arguments (polls, predictions, temporary roles, pins, triggers, ad breaks, loop/string helpers), or uncertainty about syntax, call ast_docs FIRST and use its exact syntax. The channel ID is supplied automatically. Permissions use the chatter's verified identity; never retry permission denials.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -58,7 +63,10 @@
               "description": "Requested permission level: 7 for mod actions (ban, vip, clear.chat, set.title, set.game, set.voice, polls, predictions, raids), 8 for broadcaster-only actions (add.mod, unmod, ban.mod). The system clamps this to the requesting chatter's actual permission level, so never claim a level above what the chatter has."
             }
           },
-          "required": ["command", "userlevel"]
+          "required": [
+            "command",
+            "userlevel"
+          ]
         }
       }
     },
@@ -76,7 +84,10 @@
             },
             "surface": {
               "type": "string",
-              "enum": ["action", "authoring"],
+              "enum": [
+                "action",
+                "authoring"
+              ],
               "description": "Optional. 'action' (default) for things the bot executes in chat; 'authoring' for functions used inside command/reward message templates (counters, event data, string helpers)."
             },
             "limit": {
@@ -84,7 +95,9 @@
               "description": "Optional max number of matches (1-10, default 3)."
             }
           },
-          "required": ["query"]
+          "required": [
+            "query"
+          ]
         }
       }
     },
@@ -127,7 +140,10 @@
           "properties": {
             "mode": {
               "type": "string",
-              "enum": ["overview", "search"],
+              "enum": [
+                "overview",
+                "search"
+              ],
               "description": "overview for a broad list of memories; search for a specific question or topic"
             },
             "query": {
@@ -153,7 +169,13 @@
           "properties": {
             "type": {
               "type": "string",
-              "enum": ["boundary", "preference", "known_user_fact", "channel_lore", "running_joke"],
+              "enum": [
+                "boundary",
+                "preference",
+                "known_user_fact",
+                "channel_lore",
+                "running_joke"
+              ],
               "description": "Type of memory - boundary=don't do something, preference=streamer likes/dislikes, known_user_fact=user info, channel_lore=important events, running_joke=recurring jokes"
             },
             "content": {
@@ -166,7 +188,11 @@
             },
             "risk": {
               "type": "string",
-              "enum": ["low", "medium", "high"],
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
               "description": "Risk level - low=harmless, high=potentially sensitive"
             },
             "username": {
@@ -174,7 +200,11 @@
               "description": "Only for a fact about the current chatter. Never provide another user's username; the system binds user facts to the verified current chatter identity."
             }
           },
-          "required": ["type", "content", "summary"]
+          "required": [
+            "type",
+            "content",
+            "summary"
+          ]
         }
       }
     }
