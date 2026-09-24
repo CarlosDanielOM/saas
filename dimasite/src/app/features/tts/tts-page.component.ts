@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import {
@@ -62,7 +63,7 @@ function mergeCurrentOption(options: VoiceOption[], currentValue: string | null 
 
 @Component({
   selector: 'app-tts-page',
-  imports: [RouterLink, FishVoiceBrowserComponent, LfIconComponent],
+  imports: [RouterLink, ReactiveFormsModule, FishVoiceBrowserComponent, LfIconComponent],
   templateUrl: './tts-page.component.html',
   styleUrl: './tts-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -78,6 +79,12 @@ export class TtsPageComponent {
   readonly voiceBrowserOpen = signal(false);
   readonly fishFavorites = signal<FishVoiceFavorite[]>([]);
   readonly favoriteSavingId = signal<string | null>(null);
+  readonly editingFavoriteId = signal<string | null>(null);
+  readonly favoriteAliasError = signal<string | null>(null);
+  readonly favoriteAliasControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(/^[a-z][a-z0-9_]{0,39}$/i)]
+  });
   private readonly discoveredVoiceNames = signal<Record<string, string>>({});
   readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
   readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags }));
@@ -188,7 +195,8 @@ export class TtsPageComponent {
     const voiceName = settings?.voices.cloneDefault;
     if (!voiceName) return 'Gojo';
     const found = FISH_VOICE_OPTIONS.find((v) => v.value === voiceName);
-    return found?.label ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
+    const favorite = this.fishFavorites().find(item => item.id === voiceName || item.alias === voiceName);
+    return found?.label ?? favorite?.name ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
   });
   readonly currentDefaultProviderLabel = computed(() => this.getProviderLabel(this.ttsSettings()?.provider ?? 'piper'));
 
@@ -312,6 +320,52 @@ export class TtsPageComponent {
 
   async removeFishFavorite(favorite: FishVoiceFavorite): Promise<void> {
     await this.toggleFishFavorite({ id: favorite.id, name: favorite.name, languages: [], gender: null, licensed: null });
+  }
+
+  editFavoriteAlias(favorite: FishVoiceFavorite): void {
+    if (this.ttsReadOnly() || this.ttsSaving() || this.favoriteSavingId()) return;
+    this.editingFavoriteId.set(favorite.id);
+    this.favoriteAliasControl.setValue(favorite.alias);
+    this.favoriteAliasError.set(null);
+  }
+
+  cancelFavoriteAliasEdit(): void {
+    this.editingFavoriteId.set(null);
+    this.favoriteAliasError.set(null);
+  }
+
+  async saveFavoriteAlias(favorite: FishVoiceFavorite): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || this.ttsReadOnly() || this.ttsSaving() || this.favoriteSavingId()) return;
+    const alias = this.favoriteAliasControl.value.trim().toLowerCase();
+    this.favoriteAliasControl.setValue(alias);
+    if (this.favoriteAliasControl.invalid) {
+      this.favoriteAliasError.set(this.t('modules.tts.favorites.nicknameInvalid'));
+      return;
+    }
+    this.favoriteAliasError.set(null);
+    this.favoriteSavingId.set(favorite.id);
+    try {
+      const updated = await firstValueFrom(this.ttsSettingsApi.renameFavorite(channelID, favorite.id, alias));
+      this.fishFavorites.update(favorites => favorites.map(item => item.id === updated.id ? updated : item));
+      // A previous set.voice may have stored the old alias as the selected value.
+      const pinDefault = (settings: TtsSettings | null) => settings?.voices.cloneDefault === favorite.alias
+        ? { ...settings, voices: { ...settings.voices, cloneDefault: favorite.id } }
+        : settings;
+      this.ttsSettings.update(pinDefault);
+      this.initialTtsSettings.update(pinDefault);
+      this.cancelFavoriteAliasEdit();
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error ? error.code : null;
+      const messageKey = code === 'alias_taken' ? 'nicknameTaken'
+        : code === 'invalid_alias' ? 'nicknameInvalid'
+        : code === 'favorite_not_found' ? 'nicknameMissing' : null;
+      this.favoriteAliasError.set(messageKey
+        ? this.t(`modules.tts.favorites.${messageKey}`)
+        : error instanceof Error ? error.message : this.t('modules.tts.favorites.saveError'));
+    } finally {
+      this.favoriteSavingId.set(null);
+    }
   }
 
   updateTtsCloneDefault(voiceValue: string): void {
@@ -470,6 +524,7 @@ export class TtsPageComponent {
 
   private resetPageState(message: string): void {
     this.fishFavorites.set([]);
+    this.cancelFavoriteAliasEdit();
     this.ttsLoading.set(false);
     this.ttsErrorMessage.set(message);
     this.ttsSettings.set(null);

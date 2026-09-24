@@ -74,6 +74,23 @@ export class TtsSettingsApiService {
       }));
   }
 
+  renameFavorite(channelID: string, id: string, alias: string) {
+    return this.http.patch<ApiEnvelope<FishVoiceFavorite>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}/${id}`, { alias })
+      .pipe(
+        map(response => {
+          if (!response.data) throw new Error('favorite_rename_failed');
+          return response.data;
+        }),
+        catchError(error => {
+          const requestError = this.toRequestError(error, 'Could not rename favorite voice');
+          if (error instanceof HttpErrorResponse && typeof error.error?.code === 'string') {
+            Object.assign(requestError, { code: error.error.code });
+          }
+          return throwError(() => requestError);
+        })
+      );
+  }
+
   removeFavorite(channelID: string, id: string) {
     return this.http.delete<ApiEnvelope<FishVoiceFavorite[]>>(`${this.linksService.getApiUrl()}/speech/favorites/${channelID}/${id}`)
       .pipe(map(response => response.data ?? []));

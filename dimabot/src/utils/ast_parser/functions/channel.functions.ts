@@ -99,7 +99,7 @@ export function resolveAccountVoice(name: string, favorites: FishVoiceFavorite[]
 
     const favorite = favorites.find(item => item.alias.toLowerCase() === requested)
         ?? favorites.find(item => item.name.trim().toLowerCase() === requested);
-    return favorite ? { key: favorite.alias, label: favorite.name } : null;
+    return favorite ? { key: favorite.id, label: favorite.name } : null;
 }
 
 const setVoiceHandler: FunctionHandler = async (args, ctx) => {

@@ -63,7 +63,7 @@ test('all four built-in voices are accepted at level 7', async () => {
 test('saved favorite aliases and display names are accepted', async () => {
     assert.equal(await run('$(set.voice my_favorite_voice)'), '');
     assert.equal(await run('$(set.voice My Favorite Voice)'), '');
-    assert.deepEqual(savedVoices.slice(-2), ['my_favorite_voice', 'my_favorite_voice']);
+    assert.deepEqual(savedVoices.slice(-2), ['a'.repeat(32), 'a'.repeat(32)]);
 });
 
 test('an unknown voice never changes settings', async () => {

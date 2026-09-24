@@ -8,7 +8,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { hasGlobalChannelOwnerAccess } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { AdminSchema } from '../../schemas/admin.schema.js';
-import { addFishVoiceFavorite, getFishVoiceFavorites, removeFishVoiceFavorite, MAX_FISH_VOICE_FAVORITES } from '../../schemas/channel_fish_voice_favorites.schema.js';
+import { addFishVoiceFavorite, getFishVoiceFavorites, removeFishVoiceFavorite, renameFishVoiceFavorite, FavoriteAliasError, MAX_FISH_VOICE_FAVORITES } from '../../schemas/channel_fish_voice_favorites.schema.js';
 import {
     getChannelTtsSettings,
     normalizeChannelTtsSettings,
@@ -283,6 +283,24 @@ router.post('/favorites/:channelID', authMiddleware as any, async (req: AuthRequ
         if (error instanceof VoiceRequestError) return res.status(error.status).json({ error: true, status: error.status, code: error.code, message: error.message });
         if (error instanceof Error && error.message === 'favorites_full') return res.status(409).json({ error: true, status: 409, code: 'favorites_full', message: `You can save up to ${MAX_FISH_VOICE_FAVORITES} voices` });
         return res.status(500).json({ error: true, status: 500, message: 'Unable to save favorite voice' });
+    }
+});
+router.patch('/favorites/:channelID/:voiceID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
+            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can rename favorite voices' });
+        }
+        const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
+        if (!/^[a-f\d]{32}$/.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
+        const favorite = await renameFishVoiceFavorite(channelID, id, req.body?.alias);
+        return res.json({ error: false, status: 200, data: favorite });
+    } catch (error) {
+        if (error instanceof FavoriteAliasError) {
+            return res.status(error.status).json({ error: true, status: error.status, code: error.code, message: error.message });
+        }
+        return res.status(500).json({ error: true, status: 500, message: 'Unable to rename favorite voice' });
     }
 });
 router.delete('/favorites/:channelID/:voiceID', authMiddleware as any, async (req: AuthRequest, res: Response) => {

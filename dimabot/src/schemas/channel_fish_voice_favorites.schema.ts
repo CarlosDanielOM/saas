@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { FISH_VOICES } from '../server/services/tts/fish_tts.service.js';
+import { ChannelTtsSettingsSchema } from './channel_tts_settings.schema.js';
 
 export interface FishVoiceFavorite {
     id: string;
@@ -13,6 +14,24 @@ interface ChannelFishVoiceFavorites {
 }
 
 export const MAX_FISH_VOICE_FAVORITES = 20;
+
+export class FavoriteAliasError extends Error {
+    constructor(public status: number, public code: string, message: string) { super(message); }
+}
+
+export function normalizeFavoriteAlias(value: unknown): string {
+    if (typeof value !== 'string') {
+        throw new FavoriteAliasError(400, 'invalid_alias', 'Nickname must use 1–40 letters, numbers, or underscores and start with a letter.');
+    }
+    const alias = value.trim().toLowerCase();
+    if (!/^[a-z][a-z0-9_]{0,39}$/.test(alias)) {
+        throw new FavoriteAliasError(400, 'invalid_alias', 'Nickname must use 1–40 letters, numbers, or underscores and start with a letter.');
+    }
+    if (Object.hasOwn(FISH_VOICES, alias)) {
+        throw new FavoriteAliasError(409, 'alias_taken', 'That nickname is reserved for a built-in voice.');
+    }
+    return alias;
+}
 
 const favoriteSchema = new Schema<FishVoiceFavorite>({
     id: { type: String, required: true },
@@ -63,4 +82,33 @@ export async function addFishVoiceFavorite(channelID: string, id: string, name: 
 
 export async function removeFishVoiceFavorite(channelID: string, id: string): Promise<void> {
     await ChannelFishVoiceFavoritesSchema.updateOne({ channelID }, { $pull: { favorites: { id } } });
+}
+
+export async function renameFishVoiceFavorite(channelID: string, id: string, value: unknown): Promise<FishVoiceFavorite> {
+    const alias = normalizeFavoriteAlias(value);
+    const favorites = await getFishVoiceFavorites(channelID);
+    const existing = favorites.find(favorite => favorite.id === id);
+    if (!existing) throw new FavoriteAliasError(404, 'favorite_not_found', 'Favorite voice not found on this account.');
+    if (existing.alias === alias) return existing;
+
+    // Older set.voice calls stored aliases as defaults. Move that setting to the
+    // stable voice ID before changing the alias, so the selected voice keeps working.
+    await ChannelTtsSettingsSchema.updateOne(
+        { channelID, 'voices.cloneDefault': existing.alias },
+        { $set: { 'voices.cloneDefault': id } }
+    );
+
+    const updated = await ChannelFishVoiceFavoritesSchema.findOneAndUpdate(
+        { channelID, 'favorites.id': id, 'favorites.alias': { $ne: alias } },
+        { $set: { 'favorites.$[target].alias': alias } },
+        { arrayFilters: [{ 'target.id': id }], new: true }
+    ).lean();
+    if (!updated) {
+        const current = await getFishVoiceFavorites(channelID);
+        const now = current.find(favorite => favorite.id === id);
+        if (!now) throw new FavoriteAliasError(404, 'favorite_not_found', 'Favorite voice not found on this account.');
+        if (now.alias === alias) return now;
+        throw new FavoriteAliasError(409, 'alias_taken', 'That nickname is already used by another favorite voice.');
+    }
+    return updated.favorites.find(favorite => favorite.id === id)!;
 }

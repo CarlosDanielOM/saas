@@ -780,9 +780,18 @@
 .lf-favorites__head .lf-btn { flex-shrink: 0; }
 .lf-favorites > p { color: var(--muted); font-size: .8rem; line-height: 1.5; margin: .35rem 0; }
 .lf-favorites ul { list-style: none; display: grid; gap: .5rem; padding: 0; margin: .75rem 0 0; }
-.lf-favorites li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .65rem; border: 1px solid var(--line); border-radius: .75rem; }
+.lf-favorites li { display: grid; gap: .65rem; padding: .65rem; border: 1px solid var(--line); border-radius: .75rem; }
+.lf-favorites__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; min-width: 0; }
+.lf-favorites__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .lf-favorites li span { min-width: 0; overflow-wrap: anywhere; }
 .lf-favorites li b { display: block; font-size: .85rem; }
 .lf-favorites li code { color: var(--gold); font-size: .75rem; }
 .lf-favorites li .lf-btn { min-height: 44px; flex-shrink: 0; }
+.lf-favorites__edit { display: grid; gap: .5rem; padding-top: .65rem; border-top: 1px solid var(--line); }
+.lf-favorites__edit label { color: var(--fg); font-size: .8rem; font-weight: 700; }
+.lf-favorites__edit-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lf-favorites__edit input { flex: 1 1 10rem; min-width: 0; min-height: 44px; padding: .6rem .7rem; border: 1px solid var(--btn-border); border-radius: .75rem; background: var(--input-bg); color: var(--fg); font: inherit; }
+.lf-favorites__edit input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lf-favorites__edit p { margin: 0; color: var(--muted); font-size: .76rem; line-height: 1.45; }
+.lf-favorites__edit .lf-favorites__error { color: var(--danger); }
 @media (min-width: 640px) { .lf-voice-picker__controls { max-width: 24rem; } }

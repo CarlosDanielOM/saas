@@ -222,11 +222,34 @@
               <ul>
                 @for (favorite of fishFavorites(); track favorite.id) {
                   <li>
-                    <span><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
-                    @if (!ttsReadOnly()) {
-                      <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId()"
-                        (click)="removeFishFavorite(favorite)"
-                        [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
+                    <div class="lf-favorites__row">
+                      <span><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
+                      @if (!ttsReadOnly()) {
+                        <div class="lf-favorites__actions">
+                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId() || ttsSaving()"
+                            (click)="editFavoriteAlias(favorite)"
+                            [attr.aria-label]="t('modules.tts.favorites.editNamed', { name: favorite.name })">{{ t('modules.tts.favorites.edit') }}</button>
+                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId() || ttsSaving()"
+                            (click)="removeFishFavorite(favorite)"
+                            [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
+                        </div>
+                      }
+                    </div>
+                    @if (editingFavoriteId() === favorite.id) {
+                      <form class="lf-favorites__edit" (submit)="$event.preventDefault(); saveFavoriteAlias(favorite)">
+                        <label [for]="'favorite-alias-' + favorite.id">{{ t('modules.tts.favorites.nicknameLabel') }}</label>
+                        <div class="lf-favorites__edit-controls">
+                          <input [id]="'favorite-alias-' + favorite.id" type="text" [formControl]="favoriteAliasControl"
+                            maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false"
+                            [attr.aria-describedby]="'favorite-alias-hint-' + favorite.id"
+                            [attr.aria-invalid]="!!favoriteAliasError()" [disabled]="!!favoriteSavingId()" />
+                          <button type="submit" class="lf-btn lf-btn--primary" [disabled]="!!favoriteSavingId()">{{ t('modules.tts.favorites.saveNickname') }}</button>
+                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId()"
+                            (click)="cancelFavoriteAliasEdit()">{{ t('modules.tts.favorites.cancel') }}</button>
+                        </div>
+                        <p [id]="'favorite-alias-hint-' + favorite.id">{{ t('modules.tts.favorites.nicknameHint') }}</p>
+                        @if (favoriteAliasError(); as error) { <p class="lf-favorites__error" role="alert">{{ error }}</p> }
+                      </form>
                     }
                   </li>
                 }
