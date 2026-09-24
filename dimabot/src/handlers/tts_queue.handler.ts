@@ -32,7 +32,7 @@ import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
-const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 35_000;
+const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
 
 export interface TtsRequestPayload {
   channelID: string;
@@ -331,7 +331,7 @@ class TtsQueueHandler {
                 outputPath: "",
               }),
               queueItem.provider === "fish"
-                ? Math.min(this.synthesisTimeoutMs, 25_000)
+                ? Math.min(this.synthesisTimeoutMs, 45_000)
                 : this.synthesisTimeoutMs,
               "TTS synthesis timed out",
             );

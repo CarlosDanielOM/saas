@@ -19,7 +19,7 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
-const FISH_TTS_BACKEND = 's2.1-pro-free';
+const FISH_TTS_BACKENDS = ['s2.1-pro', 's2.1-pro-free'] as const;
 const FISH_ATTEMPT_TIMEOUT_MS = 20_000;
 
 function getFishApiKey(): string | null {
@@ -98,18 +98,32 @@ class FishTtsService implements TtsProvider {
             const fishAudio = new FishAudioClient({ apiKey });
             const referenceId = String(request.voice).trim();
 
-            const audio = await readBackendAudio(
-                fishAudio,
-                request.text,
-                referenceId,
-                FISH_TTS_BACKEND
-            );
+            let audio: Buffer | undefined;
+            let usedBackend: string | undefined;
+            const failures: string[] = [];
+            for (const backend of FISH_TTS_BACKENDS) {
+                try {
+                    audio = await readBackendAudio(fishAudio, request.text, referenceId, backend);
+                    usedBackend = backend;
+                    break;
+                } catch (backendError) {
+                    const message = backendError instanceof Error ? backendError.message : String(backendError);
+                    failures.push(`${backend}: ${message}`);
+                }
+            }
+
+            if (!audio || !usedBackend) {
+                return {
+                    error: true,
+                    message: `Fish Audio TTS failed on both backends: ${failures.join('; ')}`
+                };
+            }
 
             await fs.writeFile(outputPath, audio);
 
             return {
                 error: false,
-                message: `Speech synthesized with Fish Audio (${FISH_TTS_BACKEND})`,
+                message: `Speech synthesized with Fish Audio (${usedBackend})`,
                 outputPath,
                 publicPath: buildPublicPath(request.channelID, request.speechID),
                 mimeType: 'audio/mpeg'
