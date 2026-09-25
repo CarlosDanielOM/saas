@@ -139,6 +139,12 @@ interface DevMockCard {
 export class DevMockIndexComponent {
   readonly mocks: DevMockCard[] = [
     {
+      id: 'roulette-astra',
+      title: 'Roulette · Astra concepts',
+      badge: '3 interactive designs',
+      description: 'Orbit, Ticket and Spotlight: three independent wheel compositions with local spins and weighted prizes.'
+    },
+    {
       id: 'roulette',
       title: 'Roulette · 3 designs',
       badge: 'Interactive mock',

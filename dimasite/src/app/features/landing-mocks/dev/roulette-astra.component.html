@@ -1,0 +1,224 @@
+<div class="experience" [attr.data-concept]="concept()">
+  <header class="masthead">
+    <a routerLink="/mocks/dev" class="wordmark"
+      ><span class="brand-dot"></span>DomDimaBot <span class="slash">/</span>
+      <span>{{ t('collection') }}</span></a
+    >
+    <div class="header-tools">
+      <span class="local-tag">{{ common('localOnly') }}</span
+      ><button type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('language')">
+        {{ language.currentLanguage() === 'en' ? 'ES' : 'EN' }}
+      </button>
+    </div>
+  </header>
+  <main>
+    <nav class="concept-nav" [attr.aria-label]="common('chooseDesign')">
+      @for (item of concepts; track item) {
+        <a
+          routerLink="."
+          [queryParams]="{ design: item }"
+          [class.active]="concept() === item"
+          [attr.aria-current]="concept() === item ? 'page' : null"
+          ><span>0{{ $index + 1 }}</span
+          >{{ t(item) }}</a
+        >
+      }
+    </nav>
+    <div class="intro">
+      <div>
+        <p class="eyebrow">{{ t(concept() + 'Kicker') }}</p>
+        <h1>{{ t(concept() + 'Title') }}</h1>
+      </div>
+      <p class="intro-copy">{{ t(concept() + 'Description') }}</p>
+    </div>
+    <div class="composition">
+      <section class="wheel-tile lf-tile" [attr.aria-label]="common('wheelArea')">
+        <div class="wheel-top">
+          <span class="eyebrow">{{ t('session') }}</span
+          ><span class="round-label">{{ t('round') }} {{ rounds() + 1 }}</span>
+        </div>
+        <div class="instrument">
+          <div class="orbit-track" aria-hidden="true"></div>
+          <div
+            class="pointer-track"
+            [style.transform]="'rotate(' + pointer() + 'deg)'"
+            aria-hidden="true"
+          >
+            <span class="needle"></span>
+          </div>
+          <div
+            class="disc"
+            [style.background]="gradient()"
+            [style.transform]="'rotate(' + angle() + 'deg)'"
+            [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
+            aria-hidden="true"
+          >
+            @for (slice of slices(); track slice.id) {
+              <span class="separator" [style.transform]="'rotate(' + slice.start + 'deg)'"></span>
+              <div class="slice-label" [style.transform]="'rotate(' + slice.middle + 'deg)'">
+                <span
+                  [style.transform]="'rotate(' + (-slice.middle - angle()) + 'deg)'"
+                  [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
+                  >{{ $index + 1 }}</span
+                >
+              </div>
+            }
+          </div>
+          <button
+            class="hub"
+            type="button"
+            (click)="spin()"
+            [disabled]="!ready()"
+            [attr.aria-label]="common('spin')"
+          >
+            <span class="hub-icon" aria-hidden="true">↗</span
+            ><span>{{ spinning() ? t('wait') : t('go') }}</span>
+          </button>
+        </div>
+        <div class="wheel-caption">
+          <span class="status-dot" [class.busy]="spinning()"></span
+          >{{ spinning() ? common('spinning') : t('ready') }}<span class="caption-divider">/</span
+          >{{ entries().length }} {{ common('items') }}
+        </div>
+        <div
+          class="result-strip"
+          aria-live="polite"
+          aria-atomic="true"
+          [class.has-result]="result()"
+        >
+          <span class="result-symbol" aria-hidden="true">✳</span>
+          <div>
+            <span class="eyebrow">{{ result() ? common('winner') : t('upNext') }}</span
+            ><strong>{{ result()?.name || t('anticipation') }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="entries-tile lf-tile">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">{{ t('lineup') }}</p>
+            <h2>{{ t('prizes') }}</h2>
+          </div>
+          <span class="count">{{ entries().length.toString().padStart(2, '0') }}</span>
+        </div>
+        <p class="section-copy">{{ t('weightHint') }}</p>
+        <div class="entry-list">
+          @for (entry of slices(); track entry.id) {
+            <div class="entry" [class.selected]="result()?.id === entry.id">
+              <span class="entry-number" [style.background]="entry.color">{{ $index + 1 }}</span>
+              <div class="entry-info">
+                <strong>{{ entry.name }}</strong
+                ><span>{{ entry.chance }}% {{ t('chance') }}</span>
+              </div>
+              <label class="weight"
+                ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
+                ><input
+                  type="number"
+                  min="1"
+                  max="10"
+                  [value]="entry.weight"
+                  [disabled]="spinning()"
+                  (change)="setWeight(entry.id, $event)"
+                /><span aria-hidden="true">×</span></label
+              >
+              <button
+                class="remove"
+                type="button"
+                [disabled]="spinning()"
+                (click)="remove(entry.id)"
+                [attr.aria-label]="t('remove') + ' ' + entry.name"
+              >
+                ×
+              </button>
+            </div>
+          } @empty {
+            <p>{{ t('empty') }}</p>
+          }
+        </div>
+        <form class="add-form" (submit)="$event.preventDefault(); add()">
+          <label for="astra-entry">{{ t('addPrize') }}</label>
+          <div>
+            <input
+              id="astra-entry"
+              maxlength="40"
+              [placeholder]="t('placeholder')"
+              [value]="draft()"
+              (input)="setDraft($event)"
+              [disabled]="spinning()"
+            /><button type="submit" [disabled]="spinning() || entries().length >= 12">
+              {{ common('add') }}<span aria-hidden="true"> +</span>
+            </button>
+          </div>
+        </form>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+      </section>
+
+      <section class="settings-tile lf-tile">
+        <div class="settings-title">
+          <p class="eyebrow">{{ t('makeItYours') }}</p>
+          <h2>{{ t('controls') }}</h2>
+        </div>
+        <fieldset [disabled]="spinning()">
+          <legend>{{ common('arrowPosition') }}</legend>
+          <div class="pointer-options">
+            @for (side of ['top', 'right', 'bottom', 'left']; track side) {
+              <button
+                type="button"
+                [class.selected]="pointer() === $index * 90"
+                [attr.aria-pressed]="pointer() === $index * 90"
+                (click)="pointer.set($index * 90)"
+              >
+                <span aria-hidden="true" [style.transform]="'rotate(' + $index * 90 + 'deg)'"
+                  >↑</span
+                ><span>{{ common('pointer.' + side) }}</span>
+              </button>
+            }
+          </div>
+        </fieldset>
+        <div class="duration-control">
+          <label for="astra-duration"
+            >{{ common('duration') }} <strong>{{ duration() }}s</strong></label
+          ><input
+            id="astra-duration"
+            type="range"
+            min="2"
+            max="8"
+            [value]="duration()"
+            (input)="setDuration($event)"
+            [disabled]="spinning()"
+          />
+          <div class="range-labels">
+            <span>{{ t('quick') }}</span
+            ><span>{{ t('suspense') }}</span>
+          </div>
+        </div>
+        <button class="spin-cta" type="button" [disabled]="!ready()" (click)="spin()">
+          {{ spinning() ? common('spinning') : common('spin') }}<span aria-hidden="true">↗</span>
+        </button>
+        @if (entries().length < 2) {
+          <p class="minimum-note">{{ common('needTwo') }}</p>
+        }
+      </section>
+      <section class="history-tile lf-tile">
+        <h2>{{ t('recent') }}</h2>
+        <div class="history-items">
+          @for (name of history(); track $index) {
+            <span
+              ><i aria-hidden="true">{{ $index + 1 }}</i
+              >{{ name }}</span
+            >
+          } @empty {
+            <p>{{ t('noHistory') }}</p>
+          }
+        </div>
+      </section>
+    </div>
+    <footer>
+      <span>{{ t('footer') }}</span
+      ><a routerLink="/mocks/dev/roulette">{{ t('otherCollection') }} ↗</a>
+    </footer>
+  </main>
+</div>
