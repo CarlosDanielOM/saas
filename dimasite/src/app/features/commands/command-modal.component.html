@@ -54,7 +54,7 @@
 
         <div class="lf-form-grid lf-form-grid--compact">
           <label class="lf-field">
-            <span>{{ t('commands.placeholder.cooldown') }}</span>
+            <span>{{ t('commands.modal.cooldownLabel') }}</span>
             <div class="lf-input-suffix">
               <input type="number" [min]="zeroCooldownAvailable() ? 0 : minCooldown()" max="60" formControlName="cooldown" />
               <span>s</span>
@@ -67,9 +67,10 @@
             <span>{{ t('commands.placeholder.userLevel') }}</span>
             <select formControlName="userLevel">
               @for (level of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; track level) {
-                <option [value]="level">{{ level }} — {{ t(getUserLevelName(level)) }}</option>
+                <option [value]="level">{{ whoCanUse(level) }}</option>
               }
             </select>
+            <span class="lf-note">{{ t('commands.modal.whoCanUseHint') }}</span>
           </label>
         </div>
 

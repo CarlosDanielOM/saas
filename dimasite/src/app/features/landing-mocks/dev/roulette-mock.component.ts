@@ -7,7 +7,17 @@ type Pointer = 'top' | 'right' | 'bottom' | 'left';
 interface Entry { id: number; name: string; weight: number; color: string }
 interface Slice extends Entry { start: number; size: number; center: number; chance: number }
 
-const COLORS = ['#855cf0', '#f47d68', '#f3b849', '#43b9a9', '#4b8fe9', '#e577ac', '#79b95e', '#a483dd'];
+/** Soft Live First pastels for dashboard-friendly Studio. */
+const STUDIO_COLORS = ['#855cf0', '#f47d68', '#f3b849', '#43b9a9', '#4b8fe9', '#e577ac', '#79b95e', '#a483dd'];
+/** Neon stream/OBS Stage palette — vivid under dark lighting. */
+const STAGE_COLORS = ['#ff5c8a', '#ffb020', '#5ce1e6', '#b388ff', '#7CFF6B', '#ff7a59', '#4da3ff', '#f0e56b'];
+/** Compact ops greens and ink accents for dense editing. */
+const COMPACT_COLORS = ['#277a59', '#c45c26', '#2f6fed', '#8a5a2b', '#0f766e', '#b45309', '#1d4ed8', '#365314'];
+const PALETTES: Record<Design, string[]> = {
+  studio: STUDIO_COLORS,
+  stage: STAGE_COLORS,
+  compact: COMPACT_COLORS
+};
 const POINTER_ANGLE: Record<Pointer, number> = { top: 0, right: 90, bottom: 180, left: 270 };
 
 @Component({
@@ -27,10 +37,10 @@ export class RouletteMockComponent {
   readonly design = signal<Design>('studio');
   readonly pointer = signal<Pointer>('top');
   readonly entries = signal<Entry[]>([
-    { id: 1, name: 'Pizza night', weight: 3, color: COLORS[0] },
-    { id: 2, name: 'Game break', weight: 2, color: COLORS[1] },
-    { id: 3, name: 'Chat picks', weight: 2, color: COLORS[2] },
-    { id: 4, name: 'Mystery prize', weight: 1, color: COLORS[3] }
+    { id: 1, name: 'Pizza night', weight: 3, color: STUDIO_COLORS[0] },
+    { id: 2, name: 'Game break', weight: 2, color: STUDIO_COLORS[1] },
+    { id: 3, name: 'Chat picks', weight: 2, color: STUDIO_COLORS[2] },
+    { id: 4, name: 'Mystery prize', weight: 1, color: STUDIO_COLORS[3] }
   ]);
   readonly draftName = signal('');
   readonly sessionName = signal('Friday stream picks');
@@ -65,7 +75,13 @@ export class RouletteMockComponent {
     return this.language.translate(`rouletteMock.${key}`, params);
   }
 
-  setDesign(value: Design): void { this.design.set(value); }
+  setDesign(value: Design): void {
+    this.design.set(value);
+    const palette = PALETTES[value];
+    this.entries.update((entries) =>
+      entries.map((entry, index) => ({ ...entry, color: palette[index % palette.length] }))
+    );
+  }
   setPointer(value: Pointer): void { if (!this.spinning()) this.pointer.set(value); }
   setDraft(event: Event): void { this.draftName.set((event.target as HTMLInputElement).value); }
   setSessionName(event: Event): void { this.sessionName.set((event.target as HTMLInputElement).value); }
@@ -84,7 +100,8 @@ export class RouletteMockComponent {
     const name = this.draftName().trim();
     if (!name) { this.error.set(this.t('nameRequired')); return; }
     if (this.entries().length >= 12) { this.error.set(this.t('itemLimit')); return; }
-    this.entries.update((entries) => [...entries, { id: this.nextId++, name: name.slice(0, 40), weight: 1, color: COLORS[entries.length % COLORS.length] }]);
+    const palette = PALETTES[this.design()];
+    this.entries.update((entries) => [...entries, { id: this.nextId++, name: name.slice(0, 40), weight: 1, color: palette[entries.length % palette.length] }]);
     this.draftName.set('');
     this.error.set('');
     this.winner.set(null);
@@ -95,11 +112,12 @@ export class RouletteMockComponent {
     this.error.set('');
   }
   reset(): void {
+    const palette = PALETTES[this.design()];
     this.entries.set([
-      { id: this.nextId++, name: 'Pizza night', weight: 3, color: COLORS[0] },
-      { id: this.nextId++, name: 'Game break', weight: 2, color: COLORS[1] },
-      { id: this.nextId++, name: 'Chat picks', weight: 2, color: COLORS[2] },
-      { id: this.nextId++, name: 'Mystery prize', weight: 1, color: COLORS[3] }
+      { id: this.nextId++, name: 'Pizza night', weight: 3, color: palette[0] },
+      { id: this.nextId++, name: 'Game break', weight: 2, color: palette[1] },
+      { id: this.nextId++, name: 'Chat picks', weight: 2, color: palette[2] },
+      { id: this.nextId++, name: 'Mystery prize', weight: 1, color: palette[3] }
     ]);
     this.history.set([]);
     this.winner.set(null);

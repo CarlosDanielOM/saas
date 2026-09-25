@@ -147,6 +147,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly kpis = computed<DashboardKpis>(() => this.bootstrap()?.kpis ?? this.emptyKpis());
   readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
+  readonly planLabel = computed(() => {
+    const tier = this.planTier();
+    if (tier === 'premium') return this.t('navbar.planPremium');
+    if (tier === 'pro') return this.t('navbar.planPro');
+    return this.t('navbar.planFree');
+  });
   readonly lockIcon = Lock;
   readonly soonIcon = Clock;
 

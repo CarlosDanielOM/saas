@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, List, Moon, Search, Sun, LayoutGrid } from 'lucide-angular';
 import { combineLatest, distinctUntilChanged, map, of, shareReplay, switchMap } from 'rxjs';
 
-import { Command, USER_LEVELS } from '../../models/command.model';
+import { Command, whoCanUsePhrase } from '../../models/command.model';
 import { AnalyticsService } from '../../services/analytics.service';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
@@ -163,8 +163,7 @@ export class PublicCommandsPageComponent {
   }
 
   getUserLevelLabel(command: Command): string {
-    const normalizedLevel = command.userLevelName || USER_LEVELS[command.userLevel] || 'everyone';
-    return this.t(`commands.userLevels.${normalizedLevel}`);
+    return whoCanUsePhrase(command.userLevel, (key, params) => this.t(key, params));
   }
 
   languageLabel(): string {

@@ -9,11 +9,11 @@
           <span>{{ streamer() || '—' }}</span>
         </h1>
         <p class="lf-copy">{{ t('moderation.subtitle') }}</p>
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" (click)="retryLoad()" [disabled]="settingsLoading()">
-            {{ t('common.retry') }}
-          </button>
-        </div>
+        <ol class="plain-guide" [attr.aria-label]="t('moderation.guide.label')">
+          <li><span>1</span><p>{{ t('moderation.guide.on') }}</p></li>
+          <li><span>2</span><p>{{ t('moderation.guide.rule') }}</p></li>
+          <li><span>3</span><p>{{ t('moderation.guide.steps') }}</p></li>
+        </ol>
       </article>
 
       <article
@@ -91,13 +91,13 @@
           <span>{{ t('moderation.offenseWindow') }}</span>
           <input
             type="number"
-            min="60"
-            max="86400"
-            [value]="cfg.offenseWindowSeconds"
-            (change)="updateOffenseWindow($any($event.target).value)"
+            min="1"
+            max="1440"
+            [value]="offenseWindowMinutes(cfg.offenseWindowSeconds)"
+            (change)="updateOffenseWindowMinutes($any($event.target).value)"
             [disabled]="!canManage()"
           />
-          <small>{{ t('moderation.status.windowHint') }}</small>
+          <small>{{ t('moderation.offenseWindowUnit') }}. {{ t('moderation.status.windowHint') }}</small>
         </label>
       </section>
 
@@ -181,7 +181,10 @@
                       </select>
                       @if (row.step.action === 'timeout') {
                         <label class="lf-ladder__timeout">
-                          <span>{{ t('moderation.rules.timeoutSeconds') }}</span>
+                          <span>
+                            {{ t('moderation.rules.timeoutSeconds') }}
+                            <small>{{ formatDuration(row.step.timeoutSeconds) }}</small>
+                          </span>
                           <input
                             type="number"
                             min="1"
@@ -198,14 +201,18 @@
                 <div class="lf-form-grid">
                   <label class="lf-field">
                     <span>{{ t('moderation.rules.exemptLevel') }}</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      [value]="rule.exemptUserLevel"
+                    <select
+                      class="lf-select"
                       (change)="updateExemptLevel(rule.id, $any($event.target).value)"
                       [disabled]="!canManage()"
-                    />
+                      [attr.aria-label]="t('moderation.rules.exemptLevel')"
+                    >
+                      @for (level of exemptLevels; track level) {
+                        <option [value]="level" [selected]="level === rule.exemptUserLevel">
+                          {{ whoCanUse(level) }}
+                        </option>
+                      }
+                    </select>
                     <small>{{ t('moderation.rules.exemptLevelHint') }}</small>
                   </label>
                   <label class="lf-field lf-field--wide">

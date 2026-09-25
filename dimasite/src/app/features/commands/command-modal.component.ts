@@ -14,7 +14,8 @@ import {
   Command,
   CreateCommandRequest,
   USER_LEVELS,
-  USER_LEVEL_NAMES
+  USER_LEVEL_NAMES,
+  whoCanUsePhrase
 } from '../../models/command.model';
 import { LanguageService } from '../../services/language.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
@@ -126,6 +127,10 @@ export class CommandModalComponent {
 
   getUserLevelName(level: number): string {
     return USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone';
+  }
+
+  whoCanUse(level: number): string {
+    return whoCanUsePhrase(level, (key, params) => this.t(key, params));
   }
 
   onOverlayClick(event: Event): void {

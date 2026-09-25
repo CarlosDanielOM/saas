@@ -123,6 +123,11 @@
       "stage": "Stage",
       "compact": "Compact"
     },
+    "designDesc": {
+      "studio": "Soft Live First dashboard look — pastel slices, thick white rim, gentle hub. Best when the wheel sits next to stream tools.",
+      "stage": "Dark OBS stage — neon slices, gold rim glow, casino pegs. Built to pop on stream overlays.",
+      "compact": "Dense ops desk — flat segments, thin ink rim, notch pointer. Maximum editing space, minimal chrome."
+    },
     "wheelArea": "Roulette wheel",
     "livePreview": "Wheel preview",
     "items": "items",
@@ -1056,39 +1061,46 @@
     }
   },
   "moderation": {
-    "badge": "Automod",
+    "badge": "Chat filter",
     "title": "Chat Moderation",
-    "subtitle": "Filter spam, caps, links, and blocked words. Each rule escalates a chatter through warn, delete, timeout, and ban.",
+    "subtitle": "Stop spam, shouty messages, links, and words you do not want. You choose what happens the first time, the next time, and every time after that.",
     "backToModules": "Back to modules",
-    "enabled": "Enable Moderation",
-    "enabledDescription": "Run your rules on every chat message before commands and AI replies. Moderation is free for every channel.",
-    "enabledDisabledNote": "Moderation is off. No messages are filtered and no actions are taken.",
-    "offenseWindow": "Offense window (seconds)",
+    "guide": {
+      "label": "How a filter works",
+      "on": "Turn the filter on. Nothing happens until you do.",
+      "rule": "Add one rule, such as Links or Blocked words.",
+      "steps": "Set the first time, the second time, and what keeps happening after that. One hour is a good memory."
+    },
+    "enabled": "Filter chat",
+    "enabledDescription": "When this is on, the bot checks every message before it replies. Filtering is free.",
+    "enabledDisabledNote": "The filter is off, so chat is not being checked.",
+    "offenseWindow": "Forget warnings after",
+    "offenseWindowUnit": "minutes",
     "status": {
-      "currentStatus": "Current Status",
-      "enabledChip": "Active",
-      "disabledChip": "Disabled",
-      "rulesCount": "Active rules",
-      "totalRules": "Total rules",
-      "window": "Offense window",
-      "windowHint": "Offenses older than this window are forgotten and the ladder restarts."
+      "currentStatus": "Right now",
+      "enabledChip": "On",
+      "disabledChip": "Off",
+      "rulesCount": "Rules turned on",
+      "totalRules": "Rules you have",
+      "window": "Memory",
+      "windowHint": "If someone stays out of trouble this long, the bot starts them over at the first step. 60 minutes is a good start."
     },
     "rules": {
-      "title": "Moderation Rules",
-      "subtitle": "Each rule escalates a chatter through three offense rungs. The third rung repeats for every later offense.",
-      "empty": "No rules yet. Add a rule to start filtering chat.",
-      "addRule": "Add {{type}} rule",
-      "remove": "Remove rule",
-      "enabled": "Rule enabled",
-      "exemptLevel": "Exempt user level",
-      "exemptLevelHint": "Chatters at or above this level (1-10) skip the rule. 7 = moderators.",
-      "reason": "Warn / timeout reason",
-      "reasonPlaceholder": "Message shown to the chatter",
-      "firstOffense": "1st offense",
-      "secondOffense": "2nd offense",
-      "thirdOffense": "3rd offense",
-      "thirdOffenseHint": "Repeats for every later offense.",
-      "timeoutSeconds": "Timeout seconds",
+      "title": "Your rules",
+      "subtitle": "Each rule has three steps. The third step is what happens every time after that.",
+      "empty": "No rules yet. Add one to start filtering chat.",
+      "addRule": "Add {{type}}",
+      "remove": "Remove",
+      "enabled": "Rule on",
+      "exemptLevel": "Skip this rule for",
+      "exemptLevelHint": "People at this role, and everyone above it, are not caught. “Mods and above” is the usual choice.",
+      "reason": "What they see",
+      "reasonPlaceholder": "A short note, like “Please don’t post links”",
+      "firstOffense": "First time",
+      "secondOffense": "Second time",
+      "thirdOffense": "Every time after",
+      "thirdOffenseHint": "This step repeats.",
+      "timeoutSeconds": "How long they can't type",
       "action": "Action",
       "maxReached": "You have reached the maximum of {{max}} rules."
     },
@@ -1120,7 +1132,7 @@
       "termPlaceholder": "blocked phrase"
     },
     "actions": {
-      "off": "Off (count only)",
+      "off": "Just count it",
       "warn": "Warn",
       "delete": "Delete",
       "timeout": "Timeout",
@@ -1564,9 +1576,17 @@
     }
   },
   "dashboard": {
-    "pageLabel": "Control Center",
+    "pageLabel": "Home",
     "title": "Channel Dashboard",
-    "subtitle": "A clean view of growth, stream performance, and recent history.",
+    "subtitle": "See how the channel is doing, and turn the bot on before you go live.",
+    "guide": {
+      "label": "Start here",
+      "bot": "Turn the bot on so it can sit in your chat. If it already says it is in chat, you are set.",
+      "commands": "Add a command",
+      "commandsRest": "your viewers can type, like !discord.",
+      "tools": "Open your tools",
+      "toolsRest": "when you want greetings, a voice, clips, or a chat filter."
+    },
     "referralPromo": {
       "title": "Earn with Referrals",
       "message": "Get 50 credits for Premium referrals and 100 credits for Pro referrals!",
@@ -1576,9 +1596,9 @@
     "loading": "Loading your dashboard...",
     "empty": "No dashboard data is available yet.",
     "connection": {
-      "connected": "Connected",
+      "connected": "Live updates on",
       "connecting": "Connecting",
-      "disconnected": "Disconnected"
+      "disconnected": "Live updates off"
     },
     "connectionTooltip": {
       "connected": "Live updates",
@@ -1716,10 +1736,10 @@
     },
     "quickActions": {
       "title": "Quick Actions",
-      "joinBot": "Join Bot",
-      "leaveChat": "Leave Chat",
-      "statusActive": "Bot is active in chat",
-      "statusInactive": "Bot is not in chat",
+      "joinBot": "Turn the bot on",
+      "leaveChat": "Turn the bot off",
+      "statusActive": "The bot is in your chat and can answer.",
+      "statusInactive": "The bot is off. Turn it on before your next stream.",
       "error": "Failed to update bot status"
     },
     "activity": {
@@ -2053,14 +2073,20 @@
   },
   "commands": {
     "title": "Commands",
-    "subtitle": "Command management is protected by server-side permissions and will be expanded here.",
+    "subtitle": "These are the !commands people type in your chat. Add one, choose who can use it, or turn it off.",
     "heading": "Commands",
+    "guide": {
+      "label": "How to add a command",
+      "add": "Press Add command. Type the word after the !, then the reply chat should see.",
+      "who": "Choose who can use it. “Anyone in chat” is the usual choice.",
+      "off": "Turn a command off if you might want it later. Delete it only when you are sure."
+    },
     "metrics": {
-      "total": "Total",
-      "enabled": "Enabled",
-      "disabled": "Disabled",
-      "reserved": "Reserved",
-      "timer": "Timer"
+      "total": "All commands",
+      "enabled": "Turned on",
+      "disabled": "Turned off",
+      "reserved": "Built in",
+      "timer": "Repeats"
     },
     "public": {
       "eyebrow": "Read-only channel commands",
@@ -2083,7 +2109,7 @@
     },
     "addCommand": "Add Command",
     "loading": "Loading commands...",
-    "refresh": "Hard refresh",
+    "refresh": "Reload",
     "refreshing": "Refreshing...",
     "refreshCooldown": "Refresh in {{seconds}}s",
     "deleteTitle": "Delete Command",
@@ -2135,30 +2161,39 @@
     "placeholder": {
       "name": "Name",
       "command": "Command",
-      "function": "Function",
-      "description": "Description",
-      "cooldown": "Cooldown",
-      "userLevel": "User Level",
+      "function": "Reply",
+      "description": "Note for you",
+      "cooldown": "Wait",
+      "userLevel": "Who can use it",
       "status": "Status",
       "actions": "Actions",
-      "reservedCommand": "Reserved Command",
+      "reservedCommand": "Built in",
       "public": "Public",
-      "noCommandsFound": "No commands found. Create your first command!"
+      "noCommandsFound": "No commands yet. Add one and your chat can use it right away."
     },
     "userLevels": {
       "everyone": "Everyone",
-      "tier1": "Tier 1",
-      "tier2": "Tier 2",
-      "tier3": "Tier 3",
+      "tier1": "Subscribers",
+      "tier2": "Tier 2 subs",
+      "tier3": "Tier 3 subs",
       "founders": "Founders",
-      "vip": "VIP",
-      "mod": "Mod",
-      "editor": "Editor",
-      "admin": "Admin",
-      "streamer": "Streamer"
+      "founder": "Founders",
+      "vip": "VIPs",
+      "mod": "Mods",
+      "editor": "Editors",
+      "admin": "Admins",
+      "streamer": "You",
+      "broadcaster": "You"
+    },
+    "whoCanUse": {
+      "everyone": "Anyone in chat",
+      "onlyYou": "Only you",
+      "andAbove": "{{role}} and above"
     },
     "modal": {
-      "cooldownHint": "Minimum for your plan: {{seconds}}s.",
+      "cooldownLabel": "Wait between uses",
+      "cooldownHint": "The shortest wait on your plan is {{seconds}} seconds.",
+      "whoCanUseHint": "People below this role cannot use the command. Subscribers means anyone subscribed.",
       "createTitle": "Create Command",
       "editTitle": "Edit Command",
       "createButton": "Create",
@@ -2179,14 +2214,14 @@
     "search": {
       "placeholder": "Search by name or command...",
       "searchButton": "Search",
-      "notFoundHint": "No commands found. Press Enter to search the API.",
-      "noResultsInCache": "No commands found in cached data. Try searching."
+      "notFoundHint": "Nothing matched. Press Enter to look again.",
+      "noResultsInCache": "Nothing matched yet. Press Enter to look again."
     },
     "legend": {
       "title": "Command types",
-      "normal": "Custom commands",
-      "reserved": "Reserved commands",
-      "timer": "Timer-linked commands"
+      "normal": "Commands you wrote",
+      "reserved": "Built-in commands",
+      "timer": "Commands that repeat"
     }
   },
   "common": {

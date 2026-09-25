@@ -12,12 +12,15 @@
         <h1>{{ t('title') }}<span>.</span></h1>
         <p class="subtitle">{{ t('subtitle') }}</p>
       </div>
-      <div class="design-switch" role="group" [attr.aria-label]="t('chooseDesign')">
-        @for (option of designs; track option) {
-          <button type="button" [class.active]="design() === option" [attr.aria-pressed]="design() === option" (click)="setDesign(option)">
-            <span class="design-number">0{{ $index + 1 }}</span> {{ t('design.' + option) }}
-          </button>
-        }
+      <div class="design-picker">
+        <div class="design-switch" role="group" [attr.aria-label]="t('chooseDesign')">
+          @for (option of designs; track option) {
+            <button type="button" [class.active]="design() === option" [attr.aria-pressed]="design() === option" (click)="setDesign(option)">
+              <span class="design-number">0{{ $index + 1 }}</span> {{ t('design.' + option) }}
+            </button>
+          }
+        </div>
+        <p class="design-blurb">{{ t('designDesc.' + design()) }}</p>
       </div>
     </div>
 
@@ -47,14 +50,16 @@
           <h2>{{ sessionName() || t('untitled') }}</h2>
         </div>
         <div class="wheel-wrap" [attr.data-pointer]="pointer()">
+          <span class="wheel-halo" aria-hidden="true"></span>
           <span class="pointer" aria-hidden="true"></span>
           <div class="wheel" [style.background]="gradient()" [style.transform]="'rotate(' + rotation() + 'deg)'" [style.transition]="transition()" aria-hidden="true">
+            <div class="wheel-ticks" aria-hidden="true"></div>
             @for (slice of slices(); track slice.id) {
               <div class="wheel-label" [style.transform]="labelPosition(slice.center)" [style.--counter-rotation]="labelPosition(-slice.center - rotation())">
                 <span>{{ slice.name }}</span>
               </div>
             }
-            <div class="wheel-hub"></div>
+            <div class="wheel-hub"><span class="hub-mark" aria-hidden="true"></span></div>
           </div>
         </div>
         <div class="wheel-actions">

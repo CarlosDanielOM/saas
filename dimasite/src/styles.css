@@ -1549,6 +1549,59 @@ body {
   min-height: 2.1rem;
 }
 
+/* Plain-language "do this first" steps. Used on streamer pages. Tokens inherit from the page. */
+.plain-guide {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  max-width: 38rem;
+}
+
+.plain-guide li {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  color: var(--fg, #14151a);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.plain-guide li > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--accent-soft, rgba(124, 58, 237, 0.12));
+  color: var(--kicker, #6d28d9);
+  font-weight: 750;
+  font-size: 0.78rem;
+}
+
+.plain-guide p {
+  margin: 0;
+}
+
+.plain-guide a {
+  color: inherit;
+  font-weight: 750;
+  text-underline-offset: 0.15em;
+}
+
+.plain-guide a:hover {
+  color: var(--kicker, #6d28d9);
+}
+
+.plain-guide a:focus-visible {
+  outline: 2px solid var(--accent, #7c3aed);
+  outline-offset: 3px;
+  border-radius: 0.2rem;
+}
+
 .metric-value {
   margin: 0.3rem 0 0;
   font-size: clamp(1.35rem, 2.4vw, 2rem);

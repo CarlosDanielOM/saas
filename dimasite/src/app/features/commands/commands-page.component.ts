@@ -13,7 +13,7 @@ import { List, LayoutGrid, Edit3, Trash2, Power, PowerOff } from 'lucide-angular
 import { LucideAngularModule } from 'lucide-angular';
 import { combineLatest, map, of, switchMap } from 'rxjs';
 
-import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES } from '../../models/command.model';
+import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -820,6 +820,10 @@ export class CommandsPageComponent {
 
   getUserLevelName(level: number): string {
     return USER_LEVEL_NAMES[level] || 'commands.userLevels.everyone';
+  }
+
+  whoCanUse(level: number): string {
+    return whoCanUsePhrase(level, (key, params) => this.t(key, params));
   }
 
   private initializeFromURL(): void {

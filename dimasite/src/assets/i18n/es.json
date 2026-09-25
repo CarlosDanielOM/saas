@@ -123,6 +123,11 @@
       "stage": "Escenario",
       "compact": "Compacto"
     },
+    "designDesc": {
+      "studio": "Look suave Live First para el panel — porciones pastel, borde blanco grueso y centro suave. Ideal junto a las herramientas del stream.",
+      "stage": "Escenario oscuro para OBS — porciones neón, borde dorado brillante y clavijas de casino. Pensado para destacar en overlays.",
+      "compact": "Escritorio denso de operaciones — segmentos planos, borde fino y flecha en muesca. Más espacio para editar, menos adornos."
+    },
     "wheelArea": "Ruleta",
     "livePreview": "Vista de la ruleta",
     "items": "opciones",
@@ -1056,39 +1061,46 @@
     }
   },
   "moderation": {
-    "badge": "Automod",
+    "badge": "Filtro de chat",
     "title": "Moderación del Chat",
-    "subtitle": "Filtra spam, mayúsculas, enlaces y palabras bloqueadas. Cada regla escala al usuario por aviso, borrado, timeout y ban.",
+    "subtitle": "Frena el spam, los mensajes a gritos, los enlaces y las palabras que no quieres. Tú eliges qué pasa la primera vez, la siguiente y cada vez después.",
     "backToModules": "Volver a módulos",
-    "enabled": "Activar Moderación",
-    "enabledDescription": "Aplica tus reglas a cada mensaje del chat antes de los comandos y las respuestas de IA. La moderación es gratis para todos los canales.",
-    "enabledDisabledNote": "La moderación está desactivada. No se filtra ningún mensaje ni se toman acciones.",
-    "offenseWindow": "Ventana de infracciones (segundos)",
+    "guide": {
+      "label": "Cómo funciona un filtro",
+      "on": "Enciende el filtro. Hasta entonces no pasa nada.",
+      "rule": "Añade una regla, como Enlaces o Palabras bloqueadas.",
+      "steps": "Elige la primera vez, la segunda y qué sigue pasando después. Una hora de memoria es un buen comienzo."
+    },
+    "enabled": "Filtrar el chat",
+    "enabledDescription": "Cuando está encendido, el bot revisa cada mensaje antes de responder. Filtrar es gratis.",
+    "enabledDisabledNote": "El filtro está apagado, así que el chat no se está revisando.",
+    "offenseWindow": "Olvidar avisos después de",
+    "offenseWindowUnit": "minutos",
     "status": {
-      "currentStatus": "Estado Actual",
-      "enabledChip": "Activa",
-      "disabledChip": "Desactivada",
-      "rulesCount": "Reglas activas",
-      "totalRules": "Reglas totales",
-      "window": "Ventana de infracciones",
-      "windowHint": "Las infracciones más antiguas que esta ventana se olvidan y la escalera se reinicia."
+      "currentStatus": "Ahora",
+      "enabledChip": "Encendido",
+      "disabledChip": "Apagado",
+      "rulesCount": "Reglas encendidas",
+      "totalRules": "Reglas que tienes",
+      "window": "Memoria",
+      "windowHint": "Si alguien se porta bien durante este tiempo, el bot lo empieza de nuevo en el primer paso. 60 minutos es un buen comienzo."
     },
     "rules": {
-      "title": "Reglas de Moderación",
-      "subtitle": "Cada regla escala al usuario por tres niveles de infracción. El tercer nivel se repite en cada infracción posterior.",
-      "empty": "Aún no hay reglas. Añade una regla para empezar a filtrar el chat.",
-      "addRule": "Añadir regla de {{type}}",
-      "remove": "Eliminar regla",
-      "enabled": "Regla activa",
-      "exemptLevel": "Nivel de usuario exento",
-      "exemptLevelHint": "Los usuarios con este nivel o superior (1-10) omiten la regla. 7 = moderadores.",
-      "reason": "Motivo de aviso / timeout",
-      "reasonPlaceholder": "Mensaje que se muestra al usuario",
-      "firstOffense": "1ª infracción",
-      "secondOffense": "2ª infracción",
-      "thirdOffense": "3ª infracción",
-      "thirdOffenseHint": "Se repite en cada infracción posterior.",
-      "timeoutSeconds": "Segundos de timeout",
+      "title": "Tus reglas",
+      "subtitle": "Cada regla tiene tres pasos. El tercero es lo que pasa cada vez después.",
+      "empty": "Aún no hay reglas. Añade una para empezar a filtrar el chat.",
+      "addRule": "Añadir {{type}}",
+      "remove": "Quitar",
+      "enabled": "Regla encendida",
+      "exemptLevel": "Saltar esta regla para",
+      "exemptLevelHint": "La gente de este rol, y quien esté por encima, no entra en el filtro. “Moderadores o más” es lo habitual.",
+      "reason": "Lo que ven",
+      "reasonPlaceholder": "Una nota corta, como “No publiques enlaces”",
+      "firstOffense": "Primera vez",
+      "secondOffense": "Segunda vez",
+      "thirdOffense": "Cada vez después",
+      "thirdOffenseHint": "Este paso se repite.",
+      "timeoutSeconds": "Cuánto tiempo no pueden escribir",
       "action": "Acción",
       "maxReached": "Has alcanzado el máximo de {{max}} reglas."
     },
@@ -1120,7 +1132,7 @@
       "termPlaceholder": "frase bloqueada"
     },
     "actions": {
-      "off": "Desactivado (solo contar)",
+      "off": "Solo contarlo",
       "warn": "Aviso",
       "delete": "Borrar",
       "timeout": "Timeout",
@@ -1564,9 +1576,17 @@
     }
   },
   "dashboard": {
-    "pageLabel": "Centro de Control",
+    "pageLabel": "Inicio",
     "title": "Panel del Canal",
-    "subtitle": "Una vista clara del crecimiento, rendimiento y el historial reciente.",
+    "subtitle": "Mira cómo va el canal y enciende el bot antes de salir en vivo.",
+    "guide": {
+      "label": "Empieza aquí",
+      "bot": "Enciende el bot para que esté en tu chat. Si ya dice que está en el chat, no tienes que hacer nada.",
+      "commands": "Añade un comando",
+      "commandsRest": "que tu chat pueda escribir, como !discord.",
+      "tools": "Abre tus herramientas",
+      "toolsRest": "cuando quieras saludos, una voz, clips o un filtro de chat."
+    },
     "referralPromo": {
       "title": "Gana con Referencias",
       "message": "Recibe 50 creditos por referencias Premium y 100 creditos por referencias Pro!",
@@ -1576,9 +1596,9 @@
     "loading": "Cargando tu panel...",
     "empty": "Todavia no hay datos para mostrar.",
     "connection": {
-      "connected": "Conectado",
+      "connected": "Datos en vivo",
       "connecting": "Conectando",
-      "disconnected": "Desconectado"
+      "disconnected": "Sin datos en vivo"
     },
     "connectionTooltip": {
       "connected": "Actualizaciones en vivo",
@@ -1716,10 +1736,10 @@
     },
     "quickActions": {
       "title": "Acciones Rápidas",
-      "joinBot": "Unir Bot",
-      "leaveChat": "Salir del Chat",
-      "statusActive": "Bot está activo en el chat",
-      "statusInactive": "Bot no está en el chat",
+      "joinBot": "Encender el bot",
+      "leaveChat": "Apagar el bot",
+      "statusActive": "El bot está en tu chat y puede responder.",
+      "statusInactive": "El bot está apagado. Enciéndelo antes del próximo stream.",
       "error": "Error al actualizar estado del bot"
     },
     "activity": {
@@ -2053,14 +2073,20 @@
   },
   "commands": {
     "title": "Comandos",
-    "subtitle": "La gestion de comandos usa permisos del servidor y se expandira aqui.",
+    "subtitle": "Estos son los !comandos que la gente escribe en tu chat. Añade uno, elige quién puede usarlo o apágalo.",
     "heading": "Comandos",
+    "guide": {
+      "label": "Cómo añadir un comando",
+      "add": "Pulsa Agregar comando. Escribe la palabra después del ! y luego la respuesta que verá el chat.",
+      "who": "Elige quién puede usarlo. “Cualquiera en el chat” es lo habitual.",
+      "off": "Apaga un comando si quizá lo quieres después. Bórralo solo cuando estés seguro."
+    },
     "metrics": {
-      "total": "Total",
-      "enabled": "Habilitados",
-      "disabled": "Deshabilitados",
-      "reserved": "Reservados",
-      "timer": "Timer"
+      "total": "Todos",
+      "enabled": "Encendidos",
+      "disabled": "Apagados",
+      "reserved": "Incluidos",
+      "timer": "Se repiten"
     },
     "public": {
       "eyebrow": "Comandos del canal en solo lectura",
@@ -2083,7 +2109,7 @@
     },
     "addCommand": "Agregar Comando",
     "loading": "Cargando comandos...",
-    "refresh": "Recarga fuerte",
+    "refresh": "Recargar",
     "refreshing": "Recargando...",
     "refreshCooldown": "Recarga en {{seconds}}s",
     "deleteTitle": "Eliminar Comando",
@@ -2135,30 +2161,39 @@
     "placeholder": {
       "name": "Nombre",
       "command": "Comando",
-      "function": "Funcion",
-      "description": "Descripcion",
-      "cooldown": "Enfriamiento",
-      "userLevel": "Nivel de Usuario",
+      "function": "Respuesta",
+      "description": "Nota para ti",
+      "cooldown": "Espera",
+      "userLevel": "Quién puede usarlo",
       "status": "Estado",
       "actions": "Acciones",
-      "reservedCommand": "Comando Reservado",
+      "reservedCommand": "Incluido",
       "public": "Publico",
-      "noCommandsFound": "No se encontraron comandos. ¡Crea tu primer comando!"
+      "noCommandsFound": "Aún no hay comandos. Añade uno y tu chat podrá usarlo enseguida."
     },
     "userLevels": {
       "everyone": "Todos",
-      "tier1": "Tier 1",
-      "tier2": "Tier 2",
-      "tier3": "Tier 3",
+      "tier1": "Suscriptores",
+      "tier2": "Subs de nivel 2",
+      "tier3": "Subs de nivel 3",
       "founders": "Fundadores",
-      "vip": "VIP",
-      "mod": "Mod",
-      "editor": "Editor",
-      "admin": "Admin",
-      "streamer": "Streamer"
+      "founder": "Fundadores",
+      "vip": "VIPs",
+      "mod": "Moderadores",
+      "editor": "Editores",
+      "admin": "Admins",
+      "streamer": "Tú",
+      "broadcaster": "Tú"
+    },
+    "whoCanUse": {
+      "everyone": "Cualquiera en el chat",
+      "onlyYou": "Solo tú",
+      "andAbove": "{{role}} o más"
     },
     "modal": {
-      "cooldownHint": "Mínimo de tu plan: {{seconds}}s.",
+      "cooldownLabel": "Espera entre usos",
+      "cooldownHint": "La espera más corta de tu plan es {{seconds}} segundos.",
+      "whoCanUseHint": "Quien esté por debajo de este rol no puede usar el comando. Suscriptores significa cualquiera suscrito.",
       "createTitle": "Crear comando",
       "editTitle": "Editar comando",
       "createButton": "Crear",
@@ -2179,14 +2214,14 @@
     "search": {
       "placeholder": "Buscar por nombre o comando...",
       "searchButton": "Buscar",
-      "notFoundHint": "No se encontraron comandos. Presiona Enter para buscar en la API.",
-      "noResultsInCache": "No se encontraron comandos en los datos cacheados. Intenta buscar."
+      "notFoundHint": "Nada coincidió. Pulsa Enter para buscar otra vez.",
+      "noResultsInCache": "Todavía no hay coincidencias. Pulsa Enter para buscar otra vez."
     },
     "legend": {
       "title": "Tipos de comando",
-      "normal": "Comandos personalizados",
-      "reserved": "Comandos reservados",
-      "timer": "Comandos con timer"
+      "normal": "Comandos que escribiste",
+      "reserved": "Comandos incluidos",
+      "timer": "Comandos que se repiten"
     }
   },
   "common": {

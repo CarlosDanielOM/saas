@@ -551,6 +551,7 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
 
             const twitchAccount = user.accounts[twitchAccountIndex];
             const channelID = twitchAccount.id;
+            const wasFirstActivation = !twitchAccount.actived;
 
             const updatedUser = await updateUserDataTokens(
                 user._id.toString(),
@@ -564,7 +565,7 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
                 return res.status(500).send('Internal server error');
             }
 
-            if (!twitchAccount.actived && (updatedUser as IUsers).polar_sh_customer_id) {
+            if (wasFirstActivation && (updatedUser as IUsers).polar_sh_customer_id) {
                 const ingestResult = await ingestPolarSHEvent({
                     customerId: (updatedUser as IUsers).polar_sh_customer_id,
                     cost: -25,
@@ -582,7 +583,7 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
             }
 
             // Send welcome email on first activation
-            if (!twitchAccount.actived) {
+            if (wasFirstActivation) {
                 const userEmail = (updatedUser as IUsers).email || twitchAccount.email;
                 if (userEmail) {
                     const streamerName = twitchAccount.name || (updatedUser as IUsers).name || 'Streamer';
@@ -608,6 +609,12 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
                 }
             }
 
+            // Seed before the bot cache / EventSub so chat cannot cache a
+            // 5-minute "no settings" miss ahead of the default-on document.
+            if (wasFirstActivation) {
+                await seedDefaultModerationSettings(channelID, twitchAccount.name || twitchUser?.login || '');
+            }
+
             await TwitchStreamers.updateTwitchAccountsInCache();
             await seedTwitchTokenCache(channelID, access_token, refresh_token, expires_in);
 
@@ -628,13 +635,6 @@ router.get('/register', async (req: Request<{}, {}, {}, OAuthCallbackRequest>, r
                 await subscribeAllEventSubs(channelID);
 
                 await createReservedCommands(channelID, streamer.name);
-
-                // First-time activation only: seed enabled moderation defaults
-                // for new streamers. Existing channels keep whatever they have
-                // (no moderation unless they configured it themselves).
-                if (!twitchAccount.actived) {
-                    await seedDefaultModerationSettings(channelID, streamer.name);
-                }
             }
 
             if (twitchUser?.login && twitchAccount.name !== twitchUser.login) {
@@ -1218,8 +1218,9 @@ router.get('/mock-register', async (req: Request<{}, {}, {}, OAuthCallbackReques
             }
 
             const channelID = twitchAccount.id;
+            const wasFirstActivation = !twitchAccount.actived;
 
-            if (!twitchAccount.actived && user.polar_sh_customer_id) {
+            if (wasFirstActivation && user.polar_sh_customer_id) {
                 const ingestResult = await ingestPolarSHEvent({
                     customerId: user.polar_sh_customer_id,
                     cost: -25,
@@ -1234,6 +1235,10 @@ router.get('/mock-register', async (req: Request<{}, {}, {}, OAuthCallbackReques
                         timestamp: new Date().toISOString()
                     });
                 }
+            }
+
+            if (wasFirstActivation) {
+                await seedDefaultModerationSettings(channelID, twitchAccount.name || username);
             }
 
             await TwitchStreamers.updateTwitchAccountsInCache();
@@ -1257,7 +1262,7 @@ router.get('/mock-register', async (req: Request<{}, {}, {}, OAuthCallbackReques
                 await createReservedCommands(channelID, streamer.name);
 
                 await UsersSchema.updateOne(
-                    { _id: user._id },
+                    { _id: user._id, accounts: { $elemMatch: { type: 'twitch', id: channelID } } },
                     { $set: { 'accounts.$.actived': true, 'accounts.$.chat_enabled': true } }
                 );
 

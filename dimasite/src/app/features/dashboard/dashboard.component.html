@@ -40,6 +40,27 @@
             {{ t('dashboard.subtitle') }}
           </p>
 
+          <ol class="plain-guide" [attr.aria-label]="t('dashboard.guide.label')">
+            <li>
+              <span>1</span>
+              <p>{{ t('dashboard.guide.bot') }}</p>
+            </li>
+            <li>
+              <span>2</span>
+              <p>
+                <a [routerLink]="['/', streamer(), 'commands']">{{ t('dashboard.guide.commands') }}</a>
+                {{ t('dashboard.guide.commandsRest') }}
+              </p>
+            </li>
+            <li>
+              <span>3</span>
+              <p>
+                <a [routerLink]="['/', streamer(), 'modules']">{{ t('dashboard.guide.tools') }}</a>
+                {{ t('dashboard.guide.toolsRest') }}
+              </p>
+            </li>
+          </ol>
+
           <div class="lf-actions">
             <button
               type="button"
@@ -75,9 +96,6 @@
 
           <p class="lf-feed" [class.lf-feed--on]="chatEnabled()" [class.lf-feed--warn]="!chatEnabled()">
             {{ chatEnabled() ? t('dashboard.quickActions.statusActive') : t('dashboard.quickActions.statusInactive') }}
-            @if (streamHealth().responseTimeMs > 0) {
-              · API {{ streamHealth().responseTimeMs }}ms
-            }
           </p>
         </article>
 
@@ -88,7 +106,7 @@
             } @else {
               <span class="lf-chip lf-chip--muted">{{ t('dashboard.liveStream.offline') }}</span>
             }
-            <span class="lf-spotlight__count">{{ planTier() }}</span>
+            <span class="lf-spotlight__count">{{ planLabel() }}</span>
           </div>
 
           <div class="lf-channel">
@@ -247,14 +265,8 @@
             </button>
           </div>
           <div class="lf-status-row">
-            <span class="lf-chip" [class.lf-chip--live]="chatEnabled()" [class.lf-chip--muted]="!chatEnabled()">
-              {{ chatEnabled() ? t('dashboard.quickActions.statusActive') : t('dashboard.quickActions.statusInactive') }}
-            </span>
             <span class="lf-chip" [class.lf-chip--ok]="streamHealth().isConnected" [class.lf-chip--muted]="!streamHealth().isConnected">
-              {{ streamHealth().isConnected ? t('dashboard.health.connected') : t('dashboard.health.disconnected') }}
-              @if (streamHealth().responseTimeMs > 0) {
-                · {{ streamHealth().responseTimeMs }}ms
-              }
+              {{ streamHealth().isConnected ? t('dashboard.connection.connected') : t('dashboard.connection.disconnected') }}
             </span>
           </div>
         </article>
@@ -262,7 +274,7 @@
         <article class="lf-tile lf-ai lf-metric--ai">
           <div class="lf-spotlight__head">
             <p class="lf-label lf-label--inline">{{ t('dashboard.kpis.aiCredits') }}</p>
-            <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTier() }}</span>
+            <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
           </div>
           @if (aiCreditsAvailable()) {
             <p class="lf-value lf-value--sm">{{ aiCreditsLabel() }}</p>

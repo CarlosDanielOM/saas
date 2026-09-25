@@ -39,6 +39,31 @@ const commandPermissions: Record<string, number> = {
   broadcaster: 10,
 };
 
+/** Names that mean an existing level. The stored name stays the canonical one. */
+const commandPermissionAliases: Record<string, string> = {
+  streamer: "broadcaster",
+};
+
+/** `-ul=` accepts a level name, the `streamer` alias, or an integer from 1 to 10. Digits win, so `10` is broadcaster. */
+export function resolveChatUserLevel(
+  value: unknown
+): { userLevel: number; userLevelName: string } | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  if (/^\d{1,2}$/.test(raw)) {
+    const userLevel = Number(raw);
+    const userLevelName = commandPermissionsLevels[userLevel];
+    if (!userLevelName) return null;
+    return { userLevel, userLevelName };
+  }
+
+  const userLevelName = commandPermissionAliases[raw] ?? raw;
+  const userLevel = commandPermissions[userLevelName];
+  if (!userLevel) return null;
+  return { userLevel, userLevelName };
+}
+
 const cmdOptionsExistsRegex = new RegExp(
   /^\-([a-z]+\=[a-zA-Z0-9]+)(?:\W)?(.*)?$/,
 );
@@ -180,31 +205,18 @@ export async function createCommand(
             return { error: true, status: 400, message: `Command cooldown must be 0 or at least ${minCooldown} seconds` };
           }
           break;
-        case "ul":
-          if (option.value.length > 1) {
-            const level = commandPermissions[option.value];
-            if (level) {
-              cmdOptions.userLevel = Number(level);
-              cmdOptions.userLevelName = option.value;
-            } else {
-              return {
-                error: true,
-                message: `User level ${option.value} is invalid`,
-              };
-            }
-          } else {
-            const level = commandPermissionsLevels[Number(option.value)];
-            if (level) {
-              cmdOptions.userLevel = Number(option.value);
-              cmdOptions.userLevelName = level;
-            } else {
-              return {
-                error: true,
-                message: `User level ${option.value} is invalid`,
-              };
-            }
+        case "ul": {
+          const resolved = resolveChatUserLevel(option.value);
+          if (!resolved) {
+            return {
+              error: true,
+              message: `User level ${option.value} is invalid`,
+            };
           }
+          cmdOptions.userLevel = resolved.userLevel;
+          cmdOptions.userLevelName = resolved.userLevelName;
           break;
+        }
         default:
           break;
       }
@@ -424,31 +436,18 @@ export async function editCommand(
             return { error: true, status: 400, message: `Command cooldown must be 0 or at least ${minCooldown} seconds` };
           }
           break;
-        case "ul":
-          if (option.value.length > 1) {
-            const level = commandPermissions[option.value];
-            if (level) {
-              command.userLevel = Number(level);
-              command.userLevelName = option.value;
-            } else {
-              return {
-                error: true,
-                message: `User level ${option.value} is invalid`,
-              };
-            }
-          } else {
-            const level = commandPermissionsLevels[Number(option.value)];
-            if (level) {
-              command.userLevel = Number(level);
-              command.userLevelName = level;
-            } else {
-              return {
-                error: true,
-                message: `User level ${option.value} is invalid`,
-              };
-            }
+        case "ul": {
+          const resolved = resolveChatUserLevel(option.value);
+          if (!resolved) {
+            return {
+              error: true,
+              message: `User level ${option.value} is invalid`,
+            };
           }
+          command.userLevel = resolved.userLevel;
+          command.userLevelName = resolved.userLevelName;
           break;
+        }
         default:
           break;
       }

@@ -12,6 +12,12 @@
 
         <p class="lf-copy">{{ t('commands.subtitle') }}</p>
 
+        <ol class="plain-guide" [attr.aria-label]="t('commands.guide.label')">
+          <li><span>1</span><p>{{ t('commands.guide.add') }}</p></li>
+          <li><span>2</span><p>{{ t('commands.guide.who') }}</p></li>
+          <li><span>3</span><p>{{ t('commands.guide.off') }}</p></li>
+        </ol>
+
         <div class="lf-actions">
           <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
             {{ t('commands.addCommand') }}
@@ -172,7 +178,7 @@
 
                 <span>{{ command.cooldown }}s</span>
 
-                <span>{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                <span class="lf-matrix__who">{{ whoCanUse(command.userLevel) }}</span>
 
                 <span class="lf-status-cell">
                   <span
@@ -314,7 +320,7 @@
                   </span>
                   <span class="lf-meta-pill">
                     <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
-                    <span class="lf-meta-pill__value">{{ command.userLevel }} - {{ t(command.userLevelName) }}</span>
+                    <span class="lf-meta-pill__value">{{ whoCanUse(command.userLevel) }}</span>
                   </span>
                 </div>
 

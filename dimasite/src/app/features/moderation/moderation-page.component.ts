@@ -41,6 +41,7 @@ import { ModerationApiService } from '../../services/moderation-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
+import { whoCanUsePhrase } from '../../models/command.model';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
@@ -229,11 +230,30 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString();
   }
 
+  readonly exemptLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+  whoCanUse(level: number): string {
+    return whoCanUsePhrase(level, (key, params) => this.t(key, params));
+  }
+
+  offenseWindowMinutes(seconds: number): number {
+    if (!Number.isFinite(seconds) || seconds <= 0) return 60;
+    return Math.max(1, Math.round(seconds / 60));
+  }
+
+  updateOffenseWindowMinutes(value: string): void {
+    const minutes = Number.parseInt(value, 10);
+    if (!Number.isFinite(minutes)) return;
+    this.updateOffenseWindow(String(minutes * 60));
+  }
+
   formatDuration(seconds: number): string {
     if (!Number.isFinite(seconds) || seconds <= 0) return '—';
     if (seconds < 60) return `${seconds}s`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
   }
 
   totalLogsPages(): number {

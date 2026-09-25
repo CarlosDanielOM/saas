@@ -426,13 +426,13 @@
   grid-template-columns:
     minmax(7.5rem, 1fr)
     minmax(5.5rem, 0.8fr)
-    minmax(9rem, 1.5fr)
-    minmax(7rem, 1.1fr)
+    minmax(9rem, 1.35fr)
+    minmax(7rem, 1fr)
     5.25rem
-    minmax(5rem, 0.7fr)
+    13.75rem
     4rem;
   gap: 0.55rem;
-  min-width: 48rem;
+  min-width: 58rem;
   padding: 0.85rem 0.8rem;
   border-bottom: 1px solid var(--line);
   align-items: center;
@@ -457,6 +457,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.lf-matrix__who {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 
 .lf-matrix__row--off {
