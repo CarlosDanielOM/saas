@@ -15,7 +15,7 @@ separate data-release procedure, not a side effect of application startup.
 is `speach` or `speech`. Empty/legacy default bodies become the full default AST;
 other implicit templates are wrapped in `$(tts ...)`; already explicit TTS AST
 is retained. Commands become editable. Existing enabled states, names, access
-rules, and unrelated commands are unchanged. A formerly reserved zero-cooldown
+rules, and unrelated commands are unchanged. An existing zero-cooldown speech
 command gets 5 seconds only if another editable command already owns that
 channel's allowance. All previous field values are backed up, including absent
 fields. The script parses candidate AST before preparing the plan.
@@ -35,6 +35,10 @@ fields. The script parses candidate AST before preparing the plan.
    prepared plan, compares each original value before writing, and invalidates
    only the affected command cache keys. Review changed/unchanged/conflict counts.
    A conflict fails the operation rather than overwriting a concurrent edit.
+   If a legacy editable speech row already shares zero cooldown with another
+   command, review it against the original backup and amend only its planned
+   cooldown to 5. Preserve the original backup and save the amended plan separately;
+   never re-prepare already converted message bodies.
 5. Verify the resulting rows against the plan using read-only queries. Deploy the
    verified bot/cron/site candidates and check readiness and served defaults.
 

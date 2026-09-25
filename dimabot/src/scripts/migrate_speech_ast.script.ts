@@ -39,7 +39,7 @@ async function run(): Promise<void> {
             const parsed = parse(next.message!);
             if (parsed.error) throw new Error(`Cannot migrate malformed template in command ${document._id}`);
             // Preserve an editable command that already owns the zero-CD allowance.
-            if (document.reserved && document.cooldown === 0 && (assignedZeroSlots.has(document.channelID) || await CommandsSchema.collection.countDocuments({
+            if (document.cooldown === 0 && (assignedZeroSlots.has(document.channelID) || await CommandsSchema.collection.countDocuments({
                 channelID: document.channelID, _id: { $ne: document._id }, reserved: { $ne: true }, cooldown: 0
             }))) next.cooldown = 5;
             if (next.cooldown === 0) assignedZeroSlots.add(document.channelID);

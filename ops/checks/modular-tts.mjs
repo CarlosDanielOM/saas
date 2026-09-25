@@ -147,6 +147,8 @@ if(apiReady) {
   assert.equal(reread.commands.find(x=>x._id===String(seeded._id)).message,'Just text &t','API neither wraps nor rewrites normal command bodies');
   assert.equal((await api('PUT',`/commands/${channel}/${seeded._id}`,{cooldown:null})).status,400);
 }
+const legacyEditable=await CommandsSchema.create({channelID:'legacy-editable-duplicate',cmd:'s',func:'speach',message:'',reserved:false,cooldown:0});
+await CommandsSchema.create({channelID:'legacy-editable-duplicate',cmd:'other',func:'custom',message:'hello',reserved:false,cooldown:0});
 const legacyFree=await CommandsSchema.create({channelID:'legacy-free-slot',channel:'legacy',cmd:'s',func:'speach',message:'',reserved:true,cooldown:0});
 const legacy=await CommandsSchema.create({channelID:'legacy-migration',channel:'legacy',cmd:'s',func:'speach',message:'$(user) dice: &t',reserved:true,cooldown:0});
 await CommandsSchema.create({channelID:'legacy-migration',cmd:'custom',func:'custom',message:'hello',reserved:false,cooldown:0});
@@ -158,10 +160,14 @@ migrate('--prepare');migrate('--apply');
 let converted=await CommandsSchema.findById(legacy._id);
 assert.equal(converted.message,'$(tts $(user) dice: &t)');assert.equal(converted.reserved,false);assert.equal(converted.cooldown,5);
 assert.equal(await redis.get('legacy-migration:commands:s'),null);
+assert.equal((await CommandsSchema.findById(legacyEditable._id)).cooldown,5);
+assert.equal((await CommandsSchema.findById(legacyEditable._id)).message,'$(tts $(user) dice: &t)');
 assert.equal((await CommandsSchema.findById(legacyFree._id)).cooldown,0);
 assert.equal((await CommandsSchema.findById(legacyFree._id)).message,'$(tts $(user) dice: &t)');
 migrate('--apply');migrate('--rollback');
 converted=await CommandsSchema.findById(legacy._id);
+assert.equal((await CommandsSchema.findById(legacyEditable._id)).cooldown,0);
+assert.equal((await CommandsSchema.findById(legacyEditable._id)).message,'');
 assert.equal((await CommandsSchema.findById(legacyFree._id)).message,'');
 assert.equal((await CommandsSchema.findById(legacyFree._id)).reserved,true);
 assert.equal(converted.message,legacy.message);assert.equal(converted.reserved,true);assert.equal(converted.cooldown,0);
