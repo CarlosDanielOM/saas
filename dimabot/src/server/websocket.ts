@@ -262,6 +262,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         //? Speech Namespace
         io.of(/^\/speech\/\w+$/).on('connection', async (socket) => {
             const channelID = socket.nsp.name.split('/')[2];
+            socket.data.ttsReady = false;
 
             const account = await TwitchStreamers.getTwitchAccountById(channelID);
             if (!account) {
@@ -282,6 +283,9 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
             await cacheClient!.set(`twitch:${channelID}:tts:connected`, "true");
             console.log(`${account.name} (${channelID}) connected to speech`);
+            if (!socket.connected) return;
+            socket.data.ttsReady = true;
+            socket.emit('speech-reset');
 
             socket.on('speech-playback', (data) => {
                 ttsQueueHandler.handleSpeechPlayback(channelID, data);
@@ -289,11 +293,13 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             socket.on('speech-ended', async (data: { speechID?: string, reason?: string }) => {
                 await ttsQueueHandler.handleSpeechEnded(channelID, data?.speechID, data?.reason);
             });
-            await ttsQueueHandler.resumeIfIdle(channelID);
 
             // Handle disconnect with 5s delay
             socket.on('disconnect', () => {
                 console.log(`${account.name} (${channelID}) disconnected from speech`);
+                void ttsQueueHandler.handleOverlayDisconnected(channelID).catch(error => {
+                    console.error('TTS disconnect cleanup failed', { channelID, error });
+                });
 
                 const timeout = setTimeout(async () => {
                     const namespace = io?.of(`/speech/${channelID}`);
@@ -311,6 +317,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
                 disconnectTimeouts.set(`speech:${channelID}`, timeout);
             });
+            await ttsQueueHandler.resumeIfIdle(channelID);
         });
 
         // Setup stale connection cleanup job - only clean up truly stale connections

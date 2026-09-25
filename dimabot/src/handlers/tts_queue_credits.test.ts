@@ -9,7 +9,7 @@ let scriptedQueue: Array<{ value: string }> | null = null;
 const synthesis: Array<{ provider: string; text: string; voice: string }> = [];
 const synthesizeImpls: Record<string, (request: { text: string; voice: string }) => Promise<{ error: boolean; message: string }>> = {};
 const emitted: Array<{ event: string; payload: { mode: string; audioUrl: string } }> = [];
-let playbackAvailable = false;
+let playbackAvailable = true;
 const cache = {
   zPopMin: async () => {
     if (scriptedQueue) {
@@ -30,7 +30,7 @@ const cache = {
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
 mock.module('../server/websocket.js', { namedExports: { getIO: () => playbackAvailable
-  ? { of: () => ({ emit: (event: string, payload: { mode: string; audioUrl: string }) => emitted.push({ event, payload }) }) }
+  ? { of: () => ({ sockets: new Map([['test', { connected: true, data: { ttsReady: true } }]]), emit: (event: string, payload: { mode: string; audioUrl: string }) => emitted.push({ event, payload }) }) }
   : null } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
   getTwitchAccountById: async () => {
@@ -252,6 +252,86 @@ test('playback progress extends the deadline, stalled heartbeats do not, and dup
     await ttsQueueHandler.cleanupChannel('timing');
     t.mock.timers.reset();
     cache.del = originalDel;
+    synthesizeImpls.piper = originalPiper;
+    playbackAvailable = false;
+    scriptedQueue = null;
+  }
+});
+
+test('early completion cannot unlock synthesis; disconnect discards its result and preserves waiting work', async () => {
+  const originalPiper = synthesizeImpls.piper;
+  const originalZCard = cache.zCard;
+  let finishSynthesis!: (value: { error: boolean; message: string; outputPath: string; publicPath: string }) => void;
+  let started = 0;
+  synthesizeImpls.piper = async () => {
+    started++;
+    if (started === 1) return new Promise(resolve => { finishSynthesis = resolve; });
+    return {error:false,message:'ok',outputPath:'/tmp/tts-test/audio.wav',publicPath:'/test/audio'};
+  };
+  cache.zCard = async () => scriptedQueue?.length ?? 0;
+  creditStatus = 'exhausted';
+  playbackAvailable = true;
+  scriptedQueue = [{value:'in-flight'},{value:'waiting'}];
+  const before = emitted.length;
+  const processing = ttsQueueHandler.processNext('disconnect-synthesis');
+  try {
+    while (!started) await new Promise<void>(resolve=>setImmediate(resolve));
+    await ttsQueueHandler.handleSpeechEnded('disconnect-synthesis','in-flight');
+    await new Promise<void>(resolve=>setImmediate(resolve));
+    assert.equal(started,1,'early completion must not start concurrent synthesis');
+    playbackAvailable = false;
+    await ttsQueueHandler.handleOverlayDisconnected('disconnect-synthesis');
+    finishSynthesis({error:false,message:'ok',outputPath:'/tmp/tts-test/audio.wav',publicPath:'/test/audio'});
+    await processing;
+    assert.equal(emitted.length,before,'interrupted synthesis is not delivered');
+    assert.equal(scriptedQueue.length,1,'waiting speech remains queued while disconnected');
+    playbackAvailable = true;
+    await ttsQueueHandler.resumeIfIdle('disconnect-synthesis');
+    for(let i=0;i<100 && emitted.length===before;i++) await new Promise<void>(resolve=>setImmediate(resolve));
+    assert.equal(emitted.length,before+1);
+    assert.equal(started,2);
+    await ttsQueueHandler.handleSpeechEnded('disconnect-synthesis','waiting');
+    await new Promise<void>(resolve=>setImmediate(resolve));
+  } finally {
+    finishSynthesis?.({error:true,message:'cleanup',outputPath:'',publicPath:''});
+    await processing;
+    await ttsQueueHandler.cleanupChannel('disconnect-synthesis');
+    synthesizeImpls.piper = originalPiper;
+    cache.zCard = originalZCard;
+    playbackAvailable = false;
+    scriptedQueue = null;
+  }
+});
+
+test('dropping a failed item retains the producer lock through cleanup', async () => {
+  const originalPiper = synthesizeImpls.piper;
+  const originalCleanup = ttsQueueHandler.cleanupSpeech.bind(ttsQueueHandler);
+  let started = 0;
+  let afterCleanup = 0;
+  creditStatus = 'exhausted';
+  playbackAvailable = true;
+  scriptedQueue = [{value:'failed'},{value:'next'}];
+  synthesizeImpls.piper = async () => {
+    started++;
+    return started === 1 ? {error:true,message:'fixture failure'}
+      : {error:false,message:'ok',outputPath:'/tmp/tts-test/audio.wav',publicPath:'/test/audio'};
+  };
+  ttsQueueHandler.cleanupSpeech = async (channel, id, keepProcessing) => {
+    await originalCleanup(channel, id, keepProcessing);
+    if (id === 'failed') {
+      await ttsQueueHandler.processNext(channel);
+      afterCleanup = started;
+    }
+  };
+  try {
+    await ttsQueueHandler.processNext('cleanup-lock');
+    assert.equal(afterCleanup,1,'another queue request cannot acquire the producer during cleanup');
+    assert.equal(started,2);
+    await ttsQueueHandler.handleSpeechEnded('cleanup-lock','next');
+    await new Promise<void>(resolve=>setImmediate(resolve));
+  } finally {
+    ttsQueueHandler.cleanupSpeech = originalCleanup;
+    await ttsQueueHandler.cleanupChannel('cleanup-lock');
     synthesizeImpls.piper = originalPiper;
     playbackAvailable = false;
     scriptedQueue = null;

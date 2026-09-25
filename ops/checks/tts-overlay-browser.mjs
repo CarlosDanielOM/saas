@@ -29,11 +29,12 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('https://cdnjs.cloudflare.com/**', route => route.fulfill({ contentType: 'application/javascript', body: `
-    window.outbound = []; window.io = () => ({
-      on(event, handler) { if (event === 'speech') window.deliverSpeech = handler; },
+    window.outbound = []; window.handlers = {}; window.io = () => ({
+      on(event, handler) { handlers[event] = handler; if (event === 'speech') window.deliverSpeech = handler; },
       emit(event, payload) { outbound.push({ event, ...payload }); }
     });` }));
   await page.goto(`http://127.0.0.1:${server.address().port}/speech/fixture`);
+  await page.evaluate(() => handlers['speech-reset']?.());
   const deliver = (id, url = `/${id}.wav`) => page.evaluate(({id, url}) => deliverSpeech({ speechID: id, audioUrl: url }), {id, url});
   const ended = () => page.evaluate(() => outbound.filter(e => e.event === 'speech-ended'));
   await deliver('first');
@@ -73,6 +74,24 @@ try {
   assert.equal(stalled.at(-1).reason, 'ended');
   assert.equal(stalled.at(-1).position, 3);
   assert.equal(await page.locator('audio').count(), 0, 'completed media is stopped and removed');
+  await deliver('disconnect-playing');
+  await page.waitForFunction(() => document.querySelector('audio')?.currentTime > .25);
+  await deliver('disconnect-queued');
+  await page.evaluate(() => handlers.disconnect?.());
+  assert.equal(await page.locator('audio').count(), 0);
+  await deliver('recovered-stale-packet');
+  assert.equal(await page.locator('audio').count(), 0, 'old connection packets ignored before synchronization');
+  await page.evaluate(() => { handlers.connect?.(); handlers['speech-reset']?.(); });
+  await deliver('after-reconnect');
+  await page.waitForFunction(() => outbound.some(e => e.event === 'speech-ended' && e.speechID === 'after-reconnect'));
+  assert.equal((await ended()).filter(e => ['disconnect-playing','disconnect-queued','recovered-stale-packet'].includes(e.speechID)).length, 0);
+  // Aborting a pending download must also prevent it starting later.
+  await deliver('disconnect-loading', '/slow.wav');
+  await page.evaluate(() => handlers.disconnect?.());
+  await page.evaluate(() => { handlers.connect?.(); handlers['speech-reset']?.(); });
+  await deliver('after-abort');
+  await page.waitForFunction(() => outbound.some(e => e.event === 'speech-ended' && e.speechID === 'after-abort'));
+  assert.equal(await page.locator('audio').count(), 0);
   assert.deepEqual(errors, []);
   console.log('PASS: real Chromium media completes in order; slow download, abort/retry, duplicate and failed delivery covered');
 } finally {

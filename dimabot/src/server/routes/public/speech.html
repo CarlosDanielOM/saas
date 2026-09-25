@@ -29,6 +29,7 @@
         const queue = [];
         const seen = new Set();
         let current = null;
+        let synchronized = false;
 
         function report(item, phase) {
             socket.emit('speech-playback', {
@@ -37,7 +38,7 @@
             });
         }
 
-        function finish(item, reason) {
+        function finish(item, reason, notify = true) {
             if (current !== item || item.finished) return;
             item.finished = true;
             clearInterval(item.watchdog);
@@ -50,7 +51,7 @@
                 item.audio.remove();
             }
             if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
-            socket.emit('speech-ended', { speechID: item.speechID, reason, position });
+            if (notify) socket.emit('speech-ended', { speechID: item.speechID, reason, position });
             current = null;
             void playNext();
         }
@@ -117,7 +118,23 @@
             }
         }
 
+        function resetPlayback() {
+            synchronized = false;
+            queue.length = 0;
+            if (current) finish(current, 'disconnected', false);
+        }
+
+        socket.on('disconnect', resetPlayback);
+        socket.on('connect', resetPlayback);
+        socket.on('speech-reset', () => {
+            resetPlayback();
+            synchronized = true;
+        });
+
         socket.on('speech', (payload) => {
+            // Ignore packets recovered from the old connection until the server
+            // has reset this session. Interrupted speech is never replayed.
+            if (!synchronized) return;
             if (!payload?.audioUrl || !payload.speechID || seen.has(payload.speechID)) return;
             seen.add(payload.speechID);
             // Bound duplicate history for overlays that stay open for weeks.

@@ -82,6 +82,8 @@ class TtsQueueHandler {
   private initialized = false;
   private processingChannels = new Set<string>();
   private activeSpeechIds = new Map<string, string>();
+  private dispatchedSpeechIds = new Map<string, string>();
+  private interruptedSpeechIds = new Map<string, string>();
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
   private playbackPositions = new Map<string, number>();
   private currentFiles = new Map<string, string>();
@@ -102,14 +104,23 @@ class TtsQueueHandler {
   }
 
   async isOverlayConnected(channelID: string): Promise<boolean> {
-    if (!this.cache) {
-      await this.init();
-    }
+    return this.hasOverlayConnection(channelID);
+  }
 
-    const connected = await this.cache!.exists(
-      `twitch:${channelID}:tts:connected`,
-    );
-    return connected === 1;
+  private hasOverlayConnection(channelID: string): boolean {
+    // The Redis flag can outlive a socket (especially across an API restart).
+    const sockets = getIO()?.of(`/speech/${channelID}`).sockets;
+    return !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
+  }
+
+  async handleOverlayDisconnected(channelID: string): Promise<void> {
+    if (this.hasOverlayConnection(channelID) || !this.processingChannels.has(channelID)) return;
+    const activeID = this.activeSpeechIds.get(channelID);
+    if (activeID) this.interruptedSpeechIds.set(channelID, activeID);
+    const speechID = this.dispatchedSpeechIds.get(channelID);
+    if (speechID) await this.handleSpeechEnded(channelID, speechID, 'disconnected');
+    // During synthesis, retain the lock until the provider settles. The result
+    // is discarded before dispatch, so reconnect cannot start a second producer.
   }
 
   async queueRequest(
@@ -220,11 +231,16 @@ class TtsQueueHandler {
     let activeSpeechID: string | undefined;
     try {
       while (true) {
+        if (!this.hasOverlayConnection(channelID)) {
+          this.processingChannels.delete(channelID);
+          this.interruptedSpeechIds.delete(channelID);
+          return; // Preserve waiting requests until an overlay reconnects.
+        }
         const next = await this.cache!.zPopMin(`twitch:${channelID}:tts:queue`);
         if (!next?.value) {
+          await this.cache!.del(`twitch:${channelID}:tts:processing`);
           this.processingChannels.delete(channelID);
           this.activeSpeechIds.delete(channelID);
-          await this.cache!.del(`twitch:${channelID}:tts:processing`);
           if ((await this.cache!.zCard(`twitch:${channelID}:tts:queue`)) > 0) {
             void this.processNext(channelID);
           }
@@ -233,6 +249,7 @@ class TtsQueueHandler {
 
         const speechID = next.value;
         activeSpeechID = speechID;
+        this.activeSpeechIds.set(channelID, speechID);
 
         const rawData = await this.cache!.get(
           `twitch:${channelID}:tts:queue:data:${speechID}`,
@@ -246,6 +263,11 @@ class TtsQueueHandler {
           queueItem = JSON.parse(rawData) as TtsQueueItem;
         } catch {
           await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
+          continue;
+        }
+
+        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+          await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
 
@@ -314,8 +336,7 @@ class TtsQueueHandler {
           } catch {
             // Analytics must never interrupt queue processing.
           }
-          await this.cleanupSpeech(channelID, speechID);
-          this.processingChannels.add(channelID);
+          await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
 
@@ -400,8 +421,7 @@ class TtsQueueHandler {
             // Analytics must never interrupt queue processing.
           }
 
-          await this.cleanupSpeech(channelID, speechID);
-          this.processingChannels.add(channelID);
+          await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
 
@@ -460,15 +480,25 @@ class TtsQueueHandler {
           synthesisResult.outputPath,
         );
 
+        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+          await this.cleanupSpeech(channelID, speechID, true);
+          continue;
+        }
+
         const io = getIO();
         if (!io) {
           console.error("Socket.IO not initialized for TTS playback");
-          await this.cleanupSpeech(channelID, speechID);
-          this.processingChannels.add(channelID);
+          await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
 
         const playbackTimeoutMs = await getTtsPlaybackTimeoutMs(synthesisResult.outputPath);
+        // Duration inspection yields; a disconnect may have happened meanwhile.
+        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+          await this.cleanupSpeech(channelID, speechID, true);
+          continue;
+        }
+        this.dispatchedSpeechIds.set(channelID, speechID);
         this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
@@ -513,7 +543,7 @@ class TtsQueueHandler {
   }
 
   handleSpeechPlayback(channelID: string, data: { speechID?: string; phase?: string; position?: number }): void {
-    if (!data?.speechID || this.activeSpeechIds.get(channelID) !== data.speechID) return;
+    if (!data?.speechID || this.dispatchedSpeechIds.get(channelID) !== data.speechID) return;
     const key = `${channelID}:${data.speechID}`;
     const previous = this.playbackPositions.get(key);
     const position = data.position;
@@ -529,9 +559,10 @@ class TtsQueueHandler {
   }
 
   async handleSpeechEnded(channelID: string, speechID?: string, reason = 'ended'): Promise<void> {
-    if (!speechID || this.activeSpeechIds.get(channelID) !== speechID) return;
+    if (!speechID || this.dispatchedSpeechIds.get(channelID) !== speechID) return;
     // Claim completion before the first await. Concurrent duplicate events must
     // not both clean up and release a newer item after Redis yields.
+    this.dispatchedSpeechIds.delete(channelID);
     this.activeSpeechIds.delete(channelID);
     console.log('TTS finished', { channelID, speechID, reason });
     await this.cleanupSpeech(channelID, speechID);
@@ -579,12 +610,14 @@ class TtsQueueHandler {
     }
   }
 
-  async cleanupSpeech(channelID: string, speechID: string): Promise<void> {
+  async cleanupSpeech(channelID: string, speechID: string, keepProcessing = false): Promise<void> {
     if (!this.cache) {
       await this.init();
     }
 
     const timeoutKey = `${channelID}:${speechID}`;
+    this.interruptedSpeechIds.delete(channelID);
+    if (this.dispatchedSpeechIds.get(channelID) === speechID) this.dispatchedSpeechIds.delete(channelID);
     this.playbackPositions.delete(timeoutKey);
     const timeout = this.currentTimeouts.get(timeoutKey);
     if (timeout) {
@@ -599,7 +632,7 @@ class TtsQueueHandler {
 
     await this.cache!.del(`twitch:${channelID}:tts:processing`);
     await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
-    this.processingChannels.delete(channelID);
+    if (!keepProcessing) this.processingChannels.delete(channelID);
     if (this.activeSpeechIds.get(channelID) === speechID) {
       this.activeSpeechIds.delete(channelID);
     }
