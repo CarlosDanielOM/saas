@@ -1,5 +1,7 @@
 {
   "rouletteMock": {
+    "stage": {"ready": "Listos para elegir", "theWheel": "La ruleta está lista", "odds": "Probabilidades de hoy"},
+    "compact": {"entries": "Opciones", "totalWeight": "Peso total", "pointer": "Flecha", "oddsBoard": "Probabilidades de un vistazo"},
     "back": "Todos los mocks",
     "playground": "laboratorio",
     "localOnly": "Mock local",

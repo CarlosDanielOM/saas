@@ -1,5 +1,7 @@
 {
   "rouletteMock": {
+    "stage": {"ready": "Ready to draw", "theWheel": "The wheel is live", "odds": "Tonight’s odds"},
+    "compact": {"entries": "Entries", "totalWeight": "Total weight", "pointer": "Pointer", "oddsBoard": "Odds at a glance"},
     "back": "All mocks",
     "playground": "playground",
     "localOnly": "Local mock",

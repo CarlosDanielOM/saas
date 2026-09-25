@@ -21,6 +21,21 @@
       </div>
     </div>
 
+    @if (design() === 'stage') {
+      <div class="stage-marquee" aria-hidden="true">
+        <span>{{ t('stage.ready') }}</span><span class="marquee-star">✦</span>
+        <span>{{ sessionName() || t('untitled') }}</span><span class="marquee-star">✦</span>
+        <span>{{ t('stage.theWheel') }}</span>
+      </div>
+    }
+    @if (design() === 'compact') {
+      <div class="compact-summary">
+        <div><span>{{ t('compact.entries') }}</span><strong>{{ entries().length }}</strong></div>
+        <div><span>{{ t('compact.totalWeight') }}</span><strong>{{ totalWeight() }}</strong></div>
+        <div><span>{{ t('compact.pointer') }}</span><strong>{{ t('pointer.' + pointer()) }}</strong></div>
+      </div>
+    }
+
     <div class="layout">
       <section class="wheel-panel" [attr.aria-label]="t('wheelArea')">
         <div class="panel-topline">
@@ -57,6 +72,25 @@
             <span class="winner-placeholder">{{ t('winnerPlaceholder') }}</span>
           }
         </div>
+        @if (design() === 'stage') {
+          <div class="stage-ticker" [attr.aria-label]="t('stage.odds')">
+            <span class="ticker-label">{{ t('stage.odds') }}</span>
+            @for (slice of slices(); track slice.id) {
+              <span class="ticker-entry"><i [style.background]="slice.color" aria-hidden="true"></i>{{ slice.name }} <strong>{{ chance(slice.weight) }}</strong></span>
+            }
+          </div>
+        }
+        @if (design() === 'compact') {
+          <div class="odds-board" [attr.aria-label]="t('compact.oddsBoard')">
+            <h3>{{ t('compact.oddsBoard') }}</h3>
+            @for (slice of slices(); track slice.id) {
+              <div class="odds-line">
+                <span>{{ slice.name }}</span><strong>{{ chance(slice.weight) }}</strong>
+                <i [style.--bar-color]="slice.color" [style.--bar-width]="chance(slice.weight)" aria-hidden="true"></i>
+              </div>
+            }
+          </div>
+        }
       </section>
 
       <div class="controls">
