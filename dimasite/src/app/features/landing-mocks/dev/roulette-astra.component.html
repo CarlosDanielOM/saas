@@ -42,6 +42,13 @@
           <span class="eyebrow">{{ t('session') }}</span
           ><span class="round-label">{{ t('round') }} {{ rounds() + 1 }}</span>
         </div>
+        <div class="draw-summary">
+          <span>{{ entries().length }} {{ t('distinctItems') }}</span
+          ><span>{{ slotCount() }} {{ t('slots') }}</span
+          ><span
+            >{{ t('totalWeight') }} <strong>{{ total() }}</strong></span
+          >
+        </div>
         @if (concept() === 'grid') {
           <div class="board-status" role="status" aria-live="polite">
             <span class="status-dot" [class.busy]="spinning()"></span
@@ -51,27 +58,20 @@
             {{ spinning() ? t('gridDrawing') : t('gridStart') }}<span aria-hidden="true">↗</span>
           </button>
           <div class="prize-grid" [class.is-drawing]="spinning()" [class.is-revealed]="result()">
-            @for (entry of slices(); track entry.id) {
+            @for (entry of visibleSlices(); track entry.key) {
               <article
                 class="prize-card"
-                [class.is-active]="highlighted() === entry.id && spinning()"
-                [class.is-winner]="result()?.id === entry.id"
+                [id]="'prize-' + entry.key"
+                [attr.data-slot-key]="entry.key"
+                [class.is-active]="highlighted() === entry.key && spinning()"
+                [class.is-winner]="result()?.key === entry.key"
                 [style.--card-accent]="entry.color"
               >
                 <div class="card-top">
-                  <span class="card-index">{{ ($index + 1).toString().padStart(2, '0') }}</span
+                  <span class="card-index">{{ (entry.index + 1).toString().padStart(2, '0') }}</span
                   ><span class="card-winner">{{
-                    result()?.id === entry.id ? common('winner') : ''
-                  }}</span
-                  ><button
-                    type="button"
-                    class="card-remove"
-                    [disabled]="spinning()"
-                    (click)="remove(entry.id)"
-                    [attr.aria-label]="t('remove') + ' ' + entry.name"
-                  >
-                    ×
-                  </button>
+                    result()?.key === entry.key ? common('winner') : ''
+                  }}</span>
                 </div>
                 <div class="card-face">
                   <span class="card-mark" aria-hidden="true">✳</span>
@@ -79,24 +79,38 @@
                 </div>
                 <div class="card-bottom">
                   <span
-                    >{{ entry.chance }}% <span class="chance-word">{{ t('chance') }}</span></span
-                  ><label
-                    ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
-                    ><input
-                      type="number"
-                      min="1"
-                      max="10"
-                      [value]="entry.weight"
-                      [disabled]="spinning()"
-                      (change)="setWeight(entry.id, $event)"
-                    /><span aria-hidden="true">×</span></label
-                  >
+                    >{{ t('weight') }} <strong>{{ entry.weight }}</strong></span
+                  ><span>{{ entry.chance }}%</span>
                 </div>
+                <span class="copy-label">{{
+                  t('copyOf', { copy: entry.copy, count: entry.multiplier })
+                }}</span>
               </article>
             } @empty {
               <div class="board-empty">{{ t('empty') }}</div>
             }
           </div>
+          @if (boardPages() > 1) {
+            <div class="board-pagination pagination" [attr.aria-label]="t('boardPages')">
+              <button
+                type="button"
+                [disabled]="spinning() || boardPage() === 0"
+                (click)="changePage('board', -1)"
+                [attr.aria-label]="t('previous')"
+              >
+                ←</button
+              ><span>{{ t('pageOf', { page: boardPage() + 1, count: boardPages() }) }}</span
+              ><button
+                type="button"
+                [disabled]="spinning() || boardPage() + 1 >= boardPages()"
+                (click)="changePage('board', 1)"
+                [attr.aria-label]="t('next')"
+              >
+                →
+              </button>
+            </div>
+            <p class="all-eligible">{{ t('allEligible', { count: slotCount() }) }}</p>
+          }
           <div class="draw-timeline" aria-hidden="true">
             <div>
               <span>{{
@@ -125,14 +139,17 @@
               [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
               aria-hidden="true"
             >
-              @for (slice of slices(); track slice.id) {
+              @for (slice of separatorSlices(); track slice.key) {
                 <span class="separator" [style.transform]="'rotate(' + slice.start + 'deg)'"></span>
+              }
+              @for (slice of labeledSlices(); track slice.key) {
                 <div class="slice-label" [style.transform]="'rotate(' + slice.middle + 'deg)'">
                   <span
                     [style.transform]="'rotate(' + (-slice.middle - angle()) + 'deg)'"
                     [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
-                    ><b>{{ $index + 1 }}</b
-                    ><small [title]="slice.name">{{ slice.name }}</small></span
+                    ><b>{{ slice.index + 1 }}</b
+                    ><small [title]="slice.name">{{ slice.name }}</small
+                    ><em>{{ t('weight') }} {{ slice.weight }}</em></span
                   >
                 </div>
               }
@@ -149,10 +166,13 @@
             </button>
           </div>
         }
+        @if (concept() !== 'grid' && denseWheel()) {
+          <p class="dense-wheel-note">{{ t('denseWheel') }}</p>
+        }
         <div class="wheel-caption" [class.grid-hidden]="concept() === 'grid'">
           <span class="status-dot" [class.busy]="spinning()"></span
           >{{ spinning() ? common('spinning') : t('ready') }}<span class="caption-divider">/</span
-          >{{ entries().length }} {{ common('items') }}
+          >{{ slotCount() }} {{ t('slots') }}
         </div>
         <div
           class="result-strip"
@@ -164,6 +184,12 @@
           <div>
             <span class="eyebrow">{{ result() ? common('winner') : t('upNext') }}</span
             ><strong>{{ result()?.name || t('anticipation') }}</strong>
+            @if (result(); as selected) {
+              <p class="result-details">
+                {{ t('copyOf', { copy: selected.copy, count: selected.multiplier }) }} ·
+                {{ t('weight') }} {{ selected.weight }}
+              </p>
+            }
           </div>
         </div>
       </section>
@@ -176,42 +202,94 @@
           </div>
           <span class="count">{{ entries().length.toString().padStart(2, '0') }}</span>
         </div>
-        <p class="section-copy">
-          {{ concept() === 'grid' ? t('gridWeightHint') : t('weightHint') }}
-        </p>
-        @if (concept() !== 'grid') {
-          <div class="entry-list">
-            @for (entry of slices(); track entry.id) {
-              <div class="entry" [class.selected]="result()?.id === entry.id">
-                <span class="entry-number" [style.background]="entry.color">{{ $index + 1 }}</span>
-                <div class="entry-info">
-                  <strong>{{ entry.name }}</strong
-                  ><span>{{ entry.chance }}% {{ t('chance') }}</span>
-                </div>
-                <label class="weight"
-                  ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
-                  ><input
-                    type="number"
-                    min="1"
-                    max="10"
-                    [value]="entry.weight"
-                    [disabled]="spinning()"
-                    (change)="setWeight(entry.id, $event)"
-                  /><span aria-hidden="true">×</span></label
-                >
-                <button
-                  class="remove"
-                  type="button"
-                  [disabled]="spinning()"
-                  (click)="remove(entry.id)"
-                  [attr.aria-label]="t('remove') + ' ' + entry.name"
-                >
-                  ×
-                </button>
+        <p class="section-copy">{{ t('oddsHint') }}</p>
+        <details class="odds-explanation">
+          <summary>{{ t('howOddsWork') }}</summary>
+          <p>{{ t('oddsFormula') }}</p>
+          <p>{{ t('oddsExample') }}</p>
+        </details>
+        <label class="search-label" for="roulette-search">{{ t('search') }}</label>
+        <input
+          class="entry-search"
+          id="roulette-search"
+          type="search"
+          [value]="search()"
+          [disabled]="spinning()"
+          (input)="setSearch($event)"
+          [placeholder]="t('searchPlaceholder')"
+        />
+        <div class="entry-list">
+          @for (entry of visibleEntries(); track entry.id) {
+            <div
+              class="entry"
+              [class.selected]="result()?.id === entry.id"
+              [attr.data-entry-id]="entry.id"
+            >
+              <span class="entry-number" [style.background]="entry.color">{{
+                entry.index + 1
+              }}</span>
+              <div class="entry-info">
+                <strong>{{ entry.name }}</strong
+                ><span>{{ entry.chance }}% {{ t('combinedChance') }}</span>
               </div>
-            } @empty {
-              <p>{{ t('empty') }}</p>
-            }
+              <label class="number-field"
+                ><span>{{ t('weight') }}</span
+                ><input
+                  type="number"
+                  min="1"
+                  step="1"
+                  [attr.aria-label]="t('weight') + ' ' + entry.name"
+                  [value]="entry.weight"
+                  [disabled]="spinning()"
+                  (change)="setNumber(entry.id, 'weight', $event)"
+                  data-field="weight"
+              /></label>
+              <label class="number-field"
+                ><span>{{ t('multiplier') }}</span
+                ><input
+                  type="number"
+                  min="1"
+                  step="1"
+                  [attr.aria-label]="t('multiplier') + ' ' + entry.name"
+                  [value]="entry.multiplier"
+                  [disabled]="spinning()"
+                  (change)="setNumber(entry.id, 'multiplier', $event)"
+                  data-field="multiplier"
+              /></label>
+              <button
+                class="remove"
+                type="button"
+                [disabled]="spinning()"
+                (click)="remove(entry.id)"
+                [attr.aria-label]="t('removeAllCopies', { name: entry.name })"
+              >
+                ×
+              </button>
+            </div>
+          } @empty {
+            <p class="empty-search">{{ entries().length ? t('noMatches') : t('empty') }}</p>
+          }
+        </div>
+        @if (editorPages() > 1) {
+          <div class="editor-pagination pagination" [attr.aria-label]="t('editorPages')">
+            <button
+              type="button"
+              [disabled]="spinning() || editorPage() === 0"
+              (click)="changePage('editor', -1)"
+              [attr.aria-label]="t('previous')"
+            >
+              ←</button
+            ><span
+              >{{ t('pageOf', { page: editorPage() + 1, count: editorPages() }) }} ·
+              {{ filteredEntries().length }} {{ common('items') }}</span
+            ><button
+              type="button"
+              [disabled]="spinning() || editorPage() + 1 >= editorPages()"
+              (click)="changePage('editor', 1)"
+              [attr.aria-label]="t('next')"
+            >
+              →
+            </button>
           </div>
         }
         <form class="add-form" (submit)="$event.preventDefault(); add()">
@@ -219,16 +297,49 @@
           <div>
             <input
               id="astra-entry"
-              maxlength="40"
+              maxlength="120"
               [placeholder]="t('placeholder')"
               [value]="draft()"
               (input)="setDraft($event)"
               [disabled]="spinning()"
-            /><button type="submit" [disabled]="spinning() || entries().length >= 12">
+            /><button type="submit" [disabled]="spinning()">
               {{ common('add') }}<span aria-hidden="true"> +</span>
             </button>
           </div>
         </form>
+        <details class="bulk-import">
+          <summary>{{ t('bulkTitle') }}</summary>
+          <p>{{ t('bulkHint') }}</p>
+          <label for="roulette-bulk">{{ t('bulkLabel') }}</label>
+          <textarea
+            id="roulette-bulk"
+            rows="6"
+            [value]="bulkDraft()"
+            (input)="setBulkDraft($event)"
+            [disabled]="spinning()"
+            [placeholder]="t('bulkPlaceholder')"
+          ></textarea>
+          <label class="replace-check"
+            ><input
+              type="checkbox"
+              [checked]="replaceOnImport()"
+              (change)="setReplace($event)"
+              [disabled]="spinning()"
+            />{{ t('replaceItems') }}</label
+          >
+          <button
+            class="import-button"
+            type="button"
+            [disabled]="spinning() || !bulkDraft().trim()"
+            (click)="importEntries()"
+          >
+            {{ t('importItems') }}
+          </button>
+          <p class="capacity-note">{{ t('capacityNote') }}</p>
+        </details>
+        @if (importNotice()) {
+          <p class="import-notice" role="status">{{ importNotice() }}</p>
+        }
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
@@ -287,8 +398,8 @@
                 : common('spin')
           }}<span aria-hidden="true">↗</span>
         </button>
-        @if (entries().length < 2) {
-          <p class="minimum-note">{{ common('needTwo') }}</p>
+        @if (slotCount() < 2) {
+          <p class="minimum-note">{{ t('needTwoSlots') }}</p>
         }
       </section>
       <section class="history-tile lf-tile">
