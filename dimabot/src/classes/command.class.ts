@@ -7,6 +7,7 @@ import type {
     ICommandUpdateResponse,
     ICommandExistsResponse
 } from '../interfaces/commands/command.response.interface.js';
+import { writeCommandWithCooldown, CommandCooldownError } from '../utils/command_cooldown_write.js';
 import { error } from '../utils/logger.js';
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
@@ -48,7 +49,7 @@ class Commands {
             }
 
             const commandData = new CommandsSchema(command);
-            const saved = await commandData.save();
+            const saved = await writeCommandWithCooldown(channelID, commandData.cooldown, null, () => commandData.save());
 
             if (!saved) {
                 return {
@@ -72,6 +73,7 @@ class Commands {
                 type: 'command_created'
             };
         } catch (err) {
+            if (err instanceof CommandCooldownError) return { error: true, message: err.message, status: 400, type: 'invalid_cooldown' };
             await error({ function: 'Commands.createCommand', channelID, error: err instanceof Error ? err.message : String(err) }, { channelId: channelID, destination: 'both' });
             return {
                 error: true,
@@ -312,7 +314,7 @@ class Commands {
                 };
             }
 
-            await command.updateOne(updateData);
+            await writeCommandWithCooldown(channelID, updateData.cooldown, { _id: command._id, cooldown: command.cooldown, reserved: command.reserved && updateData.reserved !== false }, () => command.updateOne(updateData).exec());
             await this.invalidateCache(channelID, commandCMD);
 
             return {
@@ -322,6 +324,7 @@ class Commands {
                 type: 'command_updated'
             };
         } catch (err) {
+            if (err instanceof CommandCooldownError) return { error: true, message: err.message, status: 400, type: 'invalid_cooldown' };
             await error({ function: 'Commands.updateCommandInDB', channelID, error: err instanceof Error ? err.message : String(err) }, { channelId: channelID, destination: 'both' });
             return {
                 error: true,

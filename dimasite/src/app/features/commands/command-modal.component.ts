@@ -47,6 +47,11 @@ export class CommandModalComponent {
   readonly isOpen = input.required<boolean>();
   readonly command = input<Command | null>(null);
   readonly planTier = input<PlanTier>('free');
+  readonly commands = input<Command[]>([]);
+  readonly allowTimer = input(true);
+  readonly zeroCooldownAvailable = computed(() => this.command()?.reserved ? this.command()?.cooldown === 0 : !this.commands().some(item =>
+    !item.reserved && item.cooldown === 0 && (item._id || item.id) !== (this.command()?._id || this.command()?.id)));
+  readonly isSpeech = computed(() => ['speach', 'speech'].includes(this.command()?.func || ''));
   /** Existing timer interval for this command (minutes), if linked. */
   readonly existingTimerMinutes = input<number | null>(null);
 
@@ -98,7 +103,11 @@ export class CommandModalComponent {
   constructor() {
     effect(() => {
       const cooldown = this.commandForm.controls.cooldown;
-      cooldown.setValidators([Validators.required, Validators.min(this.minCooldown()), Validators.max(60)]);
+      const minimum = this.minCooldown();
+      const zeroAllowed = this.zeroCooldownAvailable();
+      cooldown.setValidators([Validators.required, Validators.max(60), control =>
+        (Number(control.value) === 0 && zeroAllowed) || Number(control.value) >= minimum
+          ? null : { cooldown: true }]);
       cooldown.updateValueAndValidity({ emitEvent: false });
     });
     effect(() => {
@@ -152,7 +161,7 @@ export class CommandModalComponent {
     }
 
     const formValue = this.commandForm.getRawValue();
-    const timerEnabled = Boolean(formValue.timerEnabled) && !this.isReserved();
+    const timerEnabled = Boolean(formValue.timerEnabled) && !this.isReserved() && this.allowTimer();
     const timerMinutes = Number(formValue.timerMinutes);
 
     if (timerEnabled) {
@@ -171,12 +180,12 @@ export class CommandModalComponent {
       cmd: String(formValue.cmd || '')
         .trim()
         .replace(/^!/, ''),
-      func: String(formValue.cmd || '')
+      func: this.command()?.func || String(formValue.cmd || '')
         .trim()
         .replace(/^!/, ''),
       message: String(formValue.message || '').trim(),
       description: formValue.description ? String(formValue.description).trim() : null,
-      cooldown: Number(formValue.cooldown) || 10,
+      cooldown: Number(formValue.cooldown ?? 10),
       userLevel: Number(formValue.userLevel) || 1,
       userLevelName: USER_LEVELS[Number(formValue.userLevel) || 1],
       enabled: formValue.enabled !== false,
@@ -209,7 +218,7 @@ export class CommandModalComponent {
         message: cmd.message,
         description: cmd.description || '',
         cooldown: cmd.cooldown,
-        userLevel: cmd.userLevel,
+        userLevel: cmd.userLevel || 1,
         enabled: cmd.enabled,
         timerEnabled: hasTimer && !cmd.reserved,
         timerMinutes: hasTimer ? existingMinutes : this.defaultTimerMinutes()

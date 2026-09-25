@@ -1,3 +1,6 @@
+import { Command } from '../../models/command.model';
+import { CommandsApiService } from '../../services/commands-api.service';
+import { CommandModalComponent, CommandModalSavePayload } from '../commands/command-modal.component';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -63,7 +66,7 @@ function mergeCurrentOption(options: VoiceOption[], currentValue: string | null 
 
 @Component({
   selector: 'app-tts-page',
-  imports: [RouterLink, ReactiveFormsModule, FishVoiceBrowserComponent, LfIconComponent],
+  imports: [CommandModalComponent, RouterLink, ReactiveFormsModule, FishVoiceBrowserComponent, LfIconComponent],
   templateUrl: './tts-page.component.html',
   styleUrl: './tts-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -74,6 +77,51 @@ export class TtsPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly ttsSettingsApi = inject(TtsSettingsApiService);
   private readonly toastService = inject(ToastService);
+
+  private readonly commandsApi = inject(CommandsApiService);
+  readonly commands = signal<Command[]>([]);
+  readonly speechCommand = computed(() => this.commands().find(command => ['speach', 'speech'].includes(command.func)) ?? null);
+  readonly commandEditorOpen = signal(false);
+  readonly commandSaving = signal(false);
+  readonly commandsPath = computed(() => ['/', this.streamer(), 'commands']);
+
+  async openCommandEditor(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID || this.ttsReadOnly()) return;
+    await this.loadSpeechCommand(channelID);
+    if (this.speechCommand()) this.commandEditorOpen.set(true);
+  }
+
+  private async loadSpeechCommand(channelID: string): Promise<void> {
+    const commands: Command[] = [];
+    for (let skip = 0; ; skip += 100) {
+      const page = await firstValueFrom(this.commandsApi.getCommands(channelID, { skip, limit: 100, skipCache: true }));
+      commands.push(...page);
+      if (page.length < 100) break;
+    }
+    if (this.channelID() === channelID) this.commands.set(commands);
+  }
+
+  async saveSpeechCommand(payload: CommandModalSavePayload): Promise<void> {
+    const command = this.speechCommand();
+    const channelID = this.channelID();
+    if (!command || !channelID || this.ttsReadOnly() || this.commandSaving()) return;
+    this.commandSaving.set(true);
+    try {
+      const { name, cmd, message, description, cooldown, userLevel, userLevelName, enabled } = payload.command;
+      const saved = await firstValueFrom(this.commandsApi.updateCommand(channelID, command._id || command.id,
+        { name, cmd, message, description, cooldown, userLevel, userLevelName, enabled }));
+      if (!saved) throw new Error(this.t('commands.toast.saveErrorMessage'));
+      if (this.channelID() !== channelID) return;
+      this.commands.update(commands => commands.map(item => (item._id || item.id) === (command._id || command.id) ? saved : item));
+      this.commandEditorOpen.set(false);
+      this.toastService.success(this.t('commands.toast.savedTitle'), this.t('commands.toast.savedMessage'));
+    } catch (error) {
+      this.toastService.error(this.t('commands.toast.saveErrorTitle'), error instanceof Error ? error.message : this.t('commands.toast.saveErrorMessage'));
+    } finally {
+      this.commandSaving.set(false);
+    }
+  }
 
   readonly urlCopied = signal(false);
   readonly voiceBrowserOpen = signal(false);
@@ -226,6 +274,9 @@ export class TtsPageComponent {
       }
 
       this.voiceBrowserOpen.set(false);
+      this.commandEditorOpen.set(false);
+      this.commands.set([]);
+      void this.loadSpeechCommand(resolution.channelID);
       this.lastLoadedChannelID = resolution.channelID;
       void this.loadTtsSettings(resolution.channelID);
     });

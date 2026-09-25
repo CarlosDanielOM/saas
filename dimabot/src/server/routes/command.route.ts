@@ -7,6 +7,9 @@ import UsersSchema from "../../schemas/users.schema.js";
 import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
 import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissions/index.js";
 
+import { isSpeechCommand, speechTemplate } from '../../utils/tts/speech_template.util.js';
+import { writeCommandWithCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
+
 const router = express.Router();
 
 /** Computes the non-localized permission mode for API responses. */
@@ -98,6 +101,7 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             commands = commands.map((command) => {
                 const mapped = {
                     ...command,
+                    ...(isSpeechCommand(command) ? { message: speechTemplate(command.message), reserved: false } : {}),
                     permissionMode: permissionModeFor(command)
                 };
 
@@ -207,7 +211,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 message: body.message,
                 responses: body.responses ?? [],
                 type: body.type ?? 'command',
-                reserved: body.reserved ?? false,
+                reserved: false,
                 description: body.description ?? '',
                 cooldown: body.cooldown ?? 10,
                 enabled: body.enabled ?? true,
@@ -218,7 +222,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 channel: body.channel,
             });
 
-            await newCommand.save();
+            await writeCommandWithCooldown(channelIdStr, newCommand.cooldown, null, () => newCommand.save());
 
             const cacheClient = await getDragonflyClient();
             await cacheClient.del(`${channelIdStr}:commands:${body.cmd}`);
@@ -231,6 +235,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 status: 200
             });
         } catch (error) {
+            if (error instanceof CommandCooldownError) return res.status(400).send({ error: true, message: error.message, status: 400 });
             console.error('Error in POST /:channelID:', {
                 channelID: req.params.channelID,
                 body: req.body,
@@ -287,11 +292,11 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
-            if (command.reserved && 'message' in updatePayload) {
+            if (command.reserved && !isSpeechCommand(command) && 'message' in updatePayload) {
                 delete updatePayload.message;
             }
 
-            if (command.reserved && 'description' in updatePayload) {
+            if (command.reserved && !isSpeechCommand(command) && 'description' in updatePayload) {
                 delete updatePayload.description;
             }
 
@@ -342,11 +347,16 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
-            const updatedCommand = await CommandsSchema.findOneAndUpdate(
+            if (isSpeechCommand(command)) updatePayload.reserved = false;
+            const currentCooldown = { _id: command._id, cooldown: command.cooldown,
+                reserved: command.reserved && !isSpeechCommand(command) };
+            const cooldownToValidate = 'cooldown' in updatePayload ? updatePayload.cooldown :
+                (isSpeechCommand(command) && command.reserved ? command.cooldown : undefined);
+            const updatedCommand = await writeCommandWithCooldown(channelIdStr, cooldownToValidate, currentCooldown, () => CommandsSchema.findOneAndUpdate(
                 { channelID: channelIdStr, _id: commandIdStr },
                 updatePayload,
                 { new: true }
-            );
+            ).exec());
 
             if (!updatedCommand) {
                 return res.status(404).send({
@@ -379,6 +389,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 status: 200
             });
         } catch (error) {
+            if (error instanceof CommandCooldownError) return res.status(400).send({ error: true, message: error.message, status: 400 });
             console.error('Error in PUT /:channelID/:commandID:', {
                 channelID: req.params.channelID,
                 commandID: req.params.commandID,

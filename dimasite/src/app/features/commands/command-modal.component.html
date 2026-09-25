@@ -44,6 +44,7 @@
         <label class="lf-field">
           <span>{{ t('commands.placeholder.function') }}</span>
           <textarea rows="3" formControlName="message" maxlength="500"></textarea>
+          @if (isSpeech()) { <span class="lf-note">{{ t('modules.tts.command.templateHint') }}</span> }
         </label>
 
         <label class="lf-field">
@@ -55,10 +56,11 @@
           <label class="lf-field">
             <span>{{ t('commands.placeholder.cooldown') }}</span>
             <div class="lf-input-suffix">
-              <input type="number" [min]="minCooldown()" max="60" formControlName="cooldown" />
+              <input type="number" [min]="zeroCooldownAvailable() ? 0 : minCooldown()" max="60" formControlName="cooldown" />
               <span>s</span>
             </div>
             <span class="lf-note">{{ t('commands.modal.cooldownHint', { seconds: minCooldown() }) }}</span>
+            <span class="lf-note">{{ t(zeroCooldownAvailable() ? 'commands.modal.zeroCooldownAvailable' : 'commands.modal.zeroCooldownUsed') }}</span>
           </label>
 
           <label class="lf-field">
@@ -76,6 +78,7 @@
           <span>{{ t('common.enabled') }}</span>
         </label>
 
+        @if (allowTimer()) {
         <div class="lf-timer-block" [class.lf-timer-block--disabled]="isReserved()">
           <label class="lf-check">
             <input
@@ -140,6 +143,8 @@
             <p class="lf-note">{{ t('commands.modal.timerReservedBlocked') }}</p>
           }
         </div>
+
+        }
 
         @if (formError()) {
           <p class="lf-form-error" role="alert">{{ formError() }}</p>

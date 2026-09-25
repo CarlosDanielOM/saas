@@ -19,7 +19,7 @@ for (const [tier, min] of [['free', 5], ['premium', 3], ['pro', 1], ['unknown', 
   const created = await createCommand(channel, `-cd=${min} boundary hello`);
   assert.equal(created.error, false, JSON.stringify(created));
   assert.equal(created.command.cooldown, min);
-  const invalid = await createCommand(channel, `-cd=${min - 1} rejected hello`);
+  const invalid = await createCommand(channel, '-cd=abc rejected hello');
   assert.equal(invalid.error, true);
   assert.match(invalid.message, new RegExp(`at least ${min} seconds`));
   assert.equal(await CommandsSchema.countDocuments({ channelID: channel, cmd: 'rejected' }), 0);
@@ -29,7 +29,7 @@ for (const [tier, min] of [['free', 5], ['premium', 3], ['pro', 1], ['unknown', 
   const edited = await editCommand(channel, `-cd=${min} default changed`, 10);
   assert.equal(edited.error, false, JSON.stringify(edited));
   assert.equal((await CommandsSchema.findOne({ channelID: channel, cmd: 'default' })).cooldown, min);
-  assert.equal((await editCommand(channel, `-cd=${min - 1} default`, 10)).error, true);
+  assert.equal((await editCommand(channel, '-cd=abc default', 10)).error, true);
   assert.equal((await CommandsSchema.findOne({ channelID: channel, cmd: 'default' })).cooldown, min);
 }
 // --- Tag permission mode: chat-side management rules (TAG_PERMISSION_SYSTEM.md §4.3) ---

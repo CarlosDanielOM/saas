@@ -561,6 +561,13 @@
         "removeNamed": "Remove {{name}} from favorites",
         "loadError": "Could not load favorite voices.",
         "saveError": "Could not update favorite voice."
+      },
+      "command": {
+        "title": "TTS command",
+        "hint": "Edit the same command here or on the Commands page.",
+        "templateHint": "AST template: $(user) says: &t. $(user) is the viewer; &t is their message.",
+        "edit": "Edit TTS command",
+        "openCommands": "Open commands"
       }
     },
     "referrals": {
@@ -2165,7 +2172,9 @@
       "timerHintPro": "Pro: 1–180 minutes.",
       "timerInvalid": "Choose a valid timer interval for your plan.",
       "timerReservedBlocked": "Reserved commands cannot use timers.",
-      "validationRequired": "Fill in the required fields."
+      "validationRequired": "Fill in the required fields.",
+      "zeroCooldownAvailable": "You can give one editable command a 0s cooldown on any plan.",
+      "zeroCooldownUsed": "Another command uses your 0s cooldown slot."
     },
     "search": {
       "placeholder": "Search by name or command...",

@@ -603,21 +603,16 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 break;
             case 'speach':
             case 'speech':
-                const speechResult = await indexCommands.speech(channelID, STREAMER.name, {
+                await indexCommands.speech(channelID, STREAMER.name, {
                     id: messageEventData.chatter_user_id || '',
                     username: messageEventData.chatter_user_login || '',
                     'display-name': messageEventData.chatter_user_name || messageEventData.chatter_user_login || '',
                     emoteNames: (messageEventData.message.fragments || [])
                         .filter((fragment) => fragment.type === 'emote' && typeof fragment.text === 'string')
                         .map((fragment) => fragment.text)
-                }, streamerArgument);
-                if (command === 's') {
-                    res = null;
-                } else if (speechResult.error) {
-                    res = { error: true, message: speechResult.message || 'Error enviando TTS' };
-                } else {
-                    res = { error: false, message: speechResult.message };
-                }
+                }, streamerArgument, commandDBData.command?.message, command);
+                // Speech commands are silent in chat, including after a rename.
+                res = null;
                 break;
 
             case 'vanish':

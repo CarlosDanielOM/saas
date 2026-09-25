@@ -207,15 +207,17 @@
       }
     },
     {
-      "name": "Speach Chat",
+      "name": "Speech Chat",
       "cmd": "s",
       "func": "speach",
       "type": "command",
       "reserved": false,
       "cooldown": 0,
-      "enabled": false,
+      "enabled": true,
+      "userLevel": 1,
+      "userLevelName": "everyone",
       "platform": "twitch",
-      "message": "$(tts &t)",
+      "message": "$(user) dice: &t",
       "description": {
         "en": "Speak in the chat | Example: !s <message> | Example: !s Hello how are you",
         "es": "Habla en el chat | Ejemplo: !s <mensaje> | Ejemplo: !s Hola como estas"

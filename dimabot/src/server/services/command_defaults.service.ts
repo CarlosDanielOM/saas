@@ -1,3 +1,4 @@
+import { writeCommandWithCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
 import { createHash } from 'node:crypto';
 import { Types } from 'mongoose';
 import JSONCOMMANDS from '../../config/commands/reservedcommands.json' with { type: 'json' };
@@ -11,6 +12,7 @@ interface ReservedCommandDefinition {
     func: string;
     type: string;
     reserved: boolean;
+    message?: string;
     description?: Partial<Record<SupportedLanguage, string>> | string;
     enabled?: boolean;
     cooldown?: number;
@@ -125,7 +127,7 @@ export async function ensureReservedCommands(channelID: string, channelName: str
             userLevel: commandData.userLevel || 0,
             userLevelName: commandData.userLevelName || 'everyone',
             reserved: commandData.reserved,
-            message: '',
+            message: commandData.message || '',
             responses: [],
             paused: false,
             platform: 'twitch',
@@ -135,7 +137,18 @@ export async function ensureReservedCommands(channelID: string, channelName: str
         });
 
         try {
-            await newCommand.save();
+            if (!newCommand.reserved && newCommand.cooldown === 0) {
+                try {
+                    await writeCommandWithCooldown(channelID, 0, null, () => newCommand.save());
+                } catch (error) {
+                    if (!(error instanceof CommandCooldownError)) throw error;
+                    // Existing custom commands retain their slot when missing defaults are added.
+                    newCommand.cooldown = 5;
+                    await newCommand.save();
+                }
+            } else {
+                await newCommand.save();
+            }
             createdCount += 1;
         } catch (error) {
             if (!isDuplicateKeyError(error)) {

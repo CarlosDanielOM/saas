@@ -1,3 +1,4 @@
+import { isSpeechCommand, speechTemplate } from '../utils/tts/speech_template.util.js';
 import Commands from "../classes/command.class.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
@@ -174,10 +175,10 @@ export async function createCommand(
     for (const option of options) {
       switch (option.name) {
         case "cd":
-          if (Number.isFinite(Number(option.value)) && Number(option.value) >= minCooldown) {
+          if (Number.isFinite(Number(option.value)) && (Number(option.value) === 0 || Number(option.value) >= minCooldown)) {
             cmdOptions.cooldown = Number(option.value);
           } else {
-            return { error: true, status: 400, message: `Command cooldown must be at least ${minCooldown} seconds` };
+            return { error: true, status: 400, message: `Command cooldown must be 0 or at least ${minCooldown} seconds` };
           }
           break;
         case "ul":
@@ -386,6 +387,10 @@ export async function editCommand(
     if (!streamer) return { error: true, message: "Streamer not found" };
     const minCooldown = getMinimumCommandCooldown(streamer.plan_tier);
     const command = oldCommand.command;
+    if (isSpeechCommand(command)) {
+      command.reserved = false;
+      command.message = speechTemplate(command.message);
+    }
 
     const commandIsTagMode = inspectExpression(command.permissionExpression).mode !== "level";
 
@@ -418,10 +423,10 @@ export async function editCommand(
     for (const option of options) {
       switch (option.name) {
         case "cd":
-          if (Number.isFinite(Number(option.value)) && Number(option.value) >= minCooldown) {
+          if (Number.isFinite(Number(option.value)) && (Number(option.value) === 0 || Number(option.value) >= minCooldown)) {
             command.cooldown = Number(option.value);
           } else {
-            return { error: true, status: 400, message: `Command cooldown must be at least ${minCooldown} seconds` };
+            return { error: true, status: 400, message: `Command cooldown must be 0 or at least ${minCooldown} seconds` };
           }
           break;
         case "ul":

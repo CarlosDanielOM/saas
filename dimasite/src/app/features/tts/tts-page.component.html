@@ -87,6 +87,22 @@
         </section>
       }
 
+      <section class="lf-tile lf-endpoint" data-testid="tts-command">
+        <div class="lf-endpoint__copy">
+          <h2 class="lf-h2">{{ t('modules.tts.command.title') }}</h2>
+          <p class="lf-note">{{ t('modules.tts.command.hint') }}</p>
+          @if (speechCommand(); as command) {
+            <code>!{{ command.cmd }} · {{ command.cooldown }}s</code>
+            <p class="lf-note">{{ command.message }}</p>
+          }
+        </div>
+        @if (speechCommand()) {
+          <button type="button" class="lf-btn" [disabled]="ttsReadOnly() || commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
+        } @else {
+          <a class="lf-btn" [routerLink]="commandsPath()">{{ t('modules.tts.command.openCommands') }}</a>
+        }
+      </section>
+
       <section class="lf-bento lf-bento--settings">
         <!-- Behavior -->
         <article class="lf-tile">
@@ -368,3 +384,7 @@
     }
   </main>
 </div>
+
+<app-command-modal [isOpen]="commandEditorOpen()" [command]="speechCommand()"
+  [commands]="commands()" [planTier]="planTier()" [allowTimer]="false"
+  (save)="saveSpeechCommand($event)" (cancel)="commandEditorOpen.set(false)" />

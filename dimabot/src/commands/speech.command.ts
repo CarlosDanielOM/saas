@@ -1,3 +1,4 @@
+import { renderSpeechTemplate } from '../utils/tts/speech_template.util.js';
 import { error } from '../utils/logger.js';
 import { queueDefaultTts } from '../utils/tts/queue_default_tts.util.js';
 import { trackTts } from '../utils/posthog_events.js';
@@ -18,9 +19,9 @@ interface SpeechResponse {
     where?: string;
 }
 
-export async function speechCommand(channelID: string, channelName: string, tags: Tags, argument?: string): Promise<SpeechResponse> {
+export async function speechCommand(channelID: string, channelName: string, tags: Tags, argument?: string, template?: string, commandName = 's'): Promise<SpeechResponse> {
     try {
-        const rawMessage = argument ?? undefined;
+        const rawMessage = argument?.trim();
 
         if (!rawMessage) {
             return {
@@ -35,6 +36,10 @@ export async function speechCommand(channelID: string, channelName: string, tags
         const speachData = await queueDefaultTts({
             channelID,
             rawMessage,
+            render: (text) => renderSpeechTemplate(template, text, channelID, {
+                chatter_user_id: tags.id, chatter_user_login: tags.username,
+                chatter_user_name: tags['display-name']
+            }, commandName),
             source: 'chat-command',
             userID: tags.id,
             userLogin: tags.username,

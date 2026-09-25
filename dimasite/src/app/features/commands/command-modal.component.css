@@ -6,6 +6,7 @@
   --muted: #667085;
   --line: rgba(15, 17, 21, 0.08);
   --accent: #7c3aed;
+  --primary: #7c3aed;
   --accent-soft: rgba(124, 58, 237, 0.12);
   --live: #ef4444;
   --kicker: #6d28d9;
@@ -378,8 +379,8 @@
 }
 
 .lf-btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
 }
 

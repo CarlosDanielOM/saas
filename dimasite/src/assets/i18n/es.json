@@ -561,6 +561,13 @@
         "removeNamed": "Quitar {{name}} de favoritas",
         "loadError": "No se pudieron cargar las voces favoritas.",
         "saveError": "No se pudo actualizar la voz favorita."
+      },
+      "command": {
+        "title": "Comando TTS",
+        "hint": "Edita el mismo comando aquí o en la página de Comandos.",
+        "templateHint": "Plantilla AST: $(user) dice: &t. $(user) es el usuario; &t es su mensaje.",
+        "edit": "Editar comando TTS",
+        "openCommands": "Abrir comandos"
       }
     },
     "referrals": {
@@ -2165,7 +2172,9 @@
       "timerHintPro": "Pro: 1–180 minutos.",
       "timerInvalid": "Elige un intervalo válido para tu plan.",
       "timerReservedBlocked": "Los comandos reservados no pueden usar temporizadores.",
-      "validationRequired": "Completa los campos obligatorios."
+      "validationRequired": "Completa los campos obligatorios.",
+      "zeroCooldownAvailable": "Puedes dar 0s de cooldown a un comando editable en cualquier plan.",
+      "zeroCooldownUsed": "Otro comando ya usa tu espacio de cooldown de 0s."
     },
     "search": {
       "placeholder": "Buscar por nombre o comando...",

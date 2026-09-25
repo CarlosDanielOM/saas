@@ -53,7 +53,7 @@ try {
     await modal.locator('[formControlName="name"]').fill('Boundary');
     await modal.locator('[formControlName="cmd"]').fill('boundary');
     await modal.locator('[formControlName="message"]').fill('Hello');
-    assert.equal(await cooldown.getAttribute('min'), String(min));
+    assert.equal(await cooldown.getAttribute('min'), '0');
     await modal.getByText(`Minimum for your plan: ${min}s.`, { exact: true }).waitFor();
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width < 640 ? 667 : 900 });
@@ -78,7 +78,7 @@ try {
       await body.evaluate(el => { el.scrollTop = 0; });
       await modal.getByRole('dialog').screenshot({ path: `/tmp/saas-cooldown-${tier}-${width}.png` });
     }
-    await cooldown.fill(String(min - 1));
+    await cooldown.fill(String(min === 1 ? -1 : min - 1));
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
     assert.equal(writes.length, 0, 'below-plan value blocked');
     await cooldown.fill('61');
@@ -99,7 +99,7 @@ try {
     await cooldown.waitFor();
     assert.equal(await cooldown.inputValue(), String(min));
     assert.equal(await level.inputValue(), '7', 'edit rehydrates the selected level');
-    await cooldown.fill(String(min - 1));
+    await cooldown.fill(String(min === 1 ? -1 : min - 1));
     assert.equal(await modal.locator('button[type="submit"]').isDisabled(), true);
     assert.equal(writes.length, 1, 'edit blocks below minimum');
     await cooldown.fill(String(min));
