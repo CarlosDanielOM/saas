@@ -40,6 +40,6 @@ assert match, 'Overlay editor lazy route missing from published entry'
 editor = fetch(match.group(1))
 for feature in ('onCanvasDrop', 'onPointerMove', 'onWidgetKeydown', 'updateDimension',
                 'toggleVisibility', 'duplicateSelected', 'deleteSelected', 'saveDraft',
-                'resetDraft', 'domdimabot-overlay-editor-mock-v1'):
+                'resetDraft', 'saveDesign', 'toggleEvent', 'publish', 'failMedia', 'domdimabot-overlay-editor-mock-v2'):
     assert feature in editor, f'Overlay editor interaction missing: {feature}'
 print('Overlay editor route, assets, and interactive draft code are present in the candidate bundle.')
