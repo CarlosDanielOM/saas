@@ -10,13 +10,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LanguageService } from '../../../services/language.service';
 
-type Concept = 'orbit' | 'ticket' | 'spotlight';
+type Concept = 'orbit' | 'ticket' | 'spotlight' | 'grid';
 interface Entry {
   id: number;
   name: string;
   weight: number;
 }
 const PALETTES: Record<Concept, string[]> = {
+  grid: ['#cbbaff', '#f4c968', '#ec9baf', '#a5d5c2', '#b0c9ee', '#e9b896'],
   orbit: ['#cbbaff', '#e6ddff', '#ae93f5', '#d6caf1', '#f0eaff', '#bca7ec'],
   ticket: ['#f4ad85', '#ffe0aa', '#ccb5ef', '#a6d9cd', '#f0bdd1', '#dbe29e'],
   spotlight: ['#c0a5ff', '#f4c968', '#ec9baf', '#a5d5c2', '#b0c9ee', '#e9b896'],
@@ -26,7 +27,7 @@ const PALETTES: Record<Concept, string[]> = {
   selector: 'app-roulette-astra',
   imports: [RouterLink],
   templateUrl: './roulette-astra.component.html',
-  styleUrl: './roulette-astra.component.css',
+  styleUrls: ['./roulette-astra.component.css', './roulette-card-grid.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RouletteAstraComponent {
@@ -36,7 +37,7 @@ export class RouletteAstraComponent {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private frame: number | undefined;
   private nextId = 7;
-  readonly concepts: Concept[] = ['orbit', 'ticket', 'spotlight'];
+  readonly concepts: Concept[] = ['orbit', 'ticket', 'spotlight', 'grid'];
   readonly concept = signal<Concept>('orbit');
   readonly entries = signal<Entry[]>(
     Array.from({ length: 6 }, (_, i) => ({ id: i + 1, name: '', weight: 1 })),
@@ -50,6 +51,9 @@ export class RouletteAstraComponent {
   readonly result = signal<{ name: string; id: number } | null>(null);
   readonly history = signal<string[]>([]);
   readonly rounds = signal(0);
+  readonly highlighted = signal<number | null>(null);
+  readonly progress = signal(0);
+  readonly remaining = computed(() => Math.ceil(this.duration() * (1 - this.progress())));
   readonly error = signal('');
   readonly total = computed(() => this.entries().reduce((sum, entry) => sum + entry.weight, 0));
   readonly slices = computed(() => {
@@ -136,6 +140,43 @@ export class RouletteAstraComponent {
   setDuration(event: Event): void {
     if (!this.spinning()) this.duration.set(Number((event.target as HTMLInputElement).value));
   }
+  private reveal(selected: { name: string; id: number }): void {
+    this.result.set(selected);
+    this.highlighted.set(selected.id);
+    this.progress.set(1);
+    this.rounds.update((round) => round + 1);
+    this.history.update((history) => [selected.name, ...history].slice(0, 4));
+    this.spinning.set(false);
+  }
+
+  private animateCards(selected: { name: string; id: number }, ids: number[]): void {
+    const start = performance.now();
+    const length = this.duration() * 1000;
+    let nextHop = 0;
+    let lastProgress = -1;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      if (elapsed >= length) {
+        this.reveal(selected);
+        this.frame = undefined;
+        return;
+      }
+      const fraction = elapsed / length;
+      // Update the countdown at most ten times a second. Slow the hops near the reveal.
+      if (elapsed - lastProgress >= 100) {
+        this.progress.set(fraction);
+        lastProgress = elapsed;
+      }
+      if (elapsed >= nextHop && !this.reducedMotion()) {
+        const candidates = ids.filter((id) => id !== this.highlighted());
+        this.highlighted.set(candidates[Math.floor(Math.random() * candidates.length)]);
+        nextHop = elapsed + 140 + 520 * Math.pow(fraction, 3);
+      }
+      this.frame = requestAnimationFrame(tick);
+    };
+    this.frame = requestAnimationFrame(tick);
+  }
+
   spin(): void {
     if (!this.ready()) return;
     const value = Math.random() * this.total();
@@ -149,16 +190,23 @@ export class RouletteAstraComponent {
     this.spinning.set(true);
     this.result.set(null);
     this.error.set('');
+    this.highlighted.set(null);
+    this.progress.set(0);
+    if (this.concept() === 'grid') {
+      // The weighted result is sampled once; the highlight is only the reveal animation.
+      this.animateCards(
+        { name: selected.name, id: selected.id },
+        this.entries().map((entry) => entry.id),
+      );
+      return;
+    }
     const remainder = ((this.angle() % 360) + 360) % 360;
     const target = (((this.pointer() - selected.middle - remainder) % 360) + 360) % 360;
     this.frame = requestAnimationFrame(() => {
       this.angle.update((angle) => angle + (reduce ? 0 : 1800) + target);
       this.timer = setTimeout(
         () => {
-          this.result.set({ name: selected.name, id: selected.id });
-          this.rounds.update((round) => round + 1);
-          this.history.update((history) => [selected.name, ...history].slice(0, 4));
-          this.spinning.set(false);
+          this.reveal({ name: selected.name, id: selected.id });
         },
         reduce ? 0 : this.duration() * 1000 + 100,
       );

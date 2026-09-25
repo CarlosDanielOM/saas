@@ -1,5 +1,18 @@
 {
   "rouletteAstra": {
+    "grid": "Card grid",
+    "gridKicker": "04 / A different kind of draw",
+    "gridTitle": "Let the cards decide.",
+    "gridDescription": "Every possibility in view. Follow the highlight as it slows down and lands on your next moment.",
+    "gridArea": "Prize card grid",
+    "gridDrawing": "Finding your next moment…",
+    "gridRevealed": "The card has spoken",
+    "gridReady": "Your board is ready",
+    "gridWaiting": "Waiting for your cue",
+    "gridSetup": "Build your board",
+    "gridWeightHint": "Each card shows its prize. Change the × weight on a card to adjust its chance; the moving highlight is just for suspense.",
+    "gridDuration": "Reveal duration",
+    "gridStart": "Start the draw",
     "collection": "Wheel lab",
     "language": "Switch language",
     "orbit": "Orbit",

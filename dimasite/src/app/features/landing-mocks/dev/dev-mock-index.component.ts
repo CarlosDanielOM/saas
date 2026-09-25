@@ -141,8 +141,8 @@ export class DevMockIndexComponent {
     {
       id: 'roulette-astra',
       title: 'Roulette · Astra concepts',
-      badge: '3 interactive designs',
-      description: 'Orbit, Ticket and Spotlight: three independent wheel compositions with local spins and weighted prizes.'
+      badge: 'Wheel + card grid',
+      description: 'Orbit, Ticket, Spotlight and Card Grid: local weighted draws with wheel or card reveals.'
     },
     {
       id: 'roulette',

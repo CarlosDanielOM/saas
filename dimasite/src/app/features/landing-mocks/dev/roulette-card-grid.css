@@ -1,0 +1,401 @@
+/* Labels stay upright with the wheel; the full prize text is also in the lineup. */
+.slice-label > span {
+  left: calc(50% - 40px);
+  width: 80px;
+  height: auto;
+  gap: 3px;
+}
+.slice-label b {
+  font-size: 18px;
+  line-height: 1;
+}
+.slice-label small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 80px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.concept-nav {
+  gap: 2px;
+}
+.concept-nav a {
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+.concept-nav a[aria-disabled='true'] {
+  cursor: wait;
+}
+.grid-hidden {
+  display: none;
+}
+
+/* Card grid: a dark draw board with its controls on a separate side rail. */
+[data-concept='grid'] .wheel-tile {
+  --board-bg: #171922;
+  --board-card: #242631;
+  --board-fg: #f5f3ff;
+  --board-muted: #b9b8ca;
+  --board-line: #414354;
+  --board-accent: #cbbaff;
+  color: var(--board-fg);
+  background: var(--board-bg);
+  border-color: var(--board-line);
+  padding: 20px 14px 0;
+  min-height: 0;
+  align-items: stretch;
+}
+[data-concept='grid'] .wheel-top .eyebrow {
+  color: var(--board-muted);
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+[data-concept='grid'] .round-label {
+  color: var(--board-fg);
+  background: var(--board-card);
+  white-space: nowrap;
+}
+.board-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 0 16px;
+  font-size: 12px;
+  color: var(--board-muted);
+  min-height: 20px;
+}
+.board-status .status-dot {
+  background: var(--board-accent);
+}
+.prize-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.prize-card {
+  min-width: 0;
+  aspect-ratio: 1;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border: 2px solid var(--board-line);
+  border-radius: 16px;
+  background: var(--board-card);
+  position: relative;
+  transition:
+    border-color 100ms,
+    box-shadow 100ms;
+}
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+}
+.card-index {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--board-muted);
+}
+.card-winner {
+  margin-left: auto;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 800;
+}
+.card-remove {
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--board-muted);
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+  border-radius: 8px;
+  margin-right: -8px;
+}
+.card-remove:hover:not(:disabled) {
+  background: #ffffff12;
+}
+.card-face {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 0 10px;
+}
+.card-mark {
+  color: var(--card-accent);
+  font-size: 22px;
+  line-height: 1;
+}
+.card-face h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+  overflow-wrap: anywhere;
+}
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  color: var(--board-muted);
+  font-size: 11px;
+  border-top: 1px solid var(--board-line);
+  padding-top: 6px;
+}
+.card-bottom label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.card-bottom input {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--board-line);
+  border-radius: 8px;
+  background: transparent;
+  text-align: center;
+  color: var(--board-fg);
+  font-size: 14px;
+  appearance: textfield;
+}
+.card-bottom input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.chance-word {
+  display: none;
+}
+.prize-card.is-active {
+  border-color: var(--board-accent);
+  box-shadow:
+    inset 0 0 0 1px var(--board-accent),
+    0 0 0 2px #cbbaff20;
+}
+.prize-card.is-active::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--board-accent);
+}
+.prize-card.is-winner {
+  --board-fg: #281d3e;
+  --board-muted: #513f6c;
+  --board-line: #9b81c3;
+  background: #e4d6ff;
+  color: var(--board-fg);
+  border-color: #e4d6ff;
+  box-shadow: 0 8px 30px #0003;
+}
+.prize-card.is-winner .card-mark {
+  color: #6941a5;
+}
+.prize-card.is-winner .card-winner {
+  color: #51347d;
+}
+.board-empty {
+  grid-column: 1/-1;
+  padding: 44px 16px;
+  border: 1px dashed var(--board-line);
+  border-radius: 16px;
+  color: var(--board-muted);
+  text-align: center;
+  line-height: 1.7;
+}
+.draw-timeline {
+  margin: 20px 0 24px;
+}
+.draw-timeline > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--board-muted);
+  margin-bottom: 12px;
+}
+.draw-timeline strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--board-fg);
+}
+.timeline-track {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--board-line);
+  overflow: hidden;
+}
+.timeline-track span {
+  display: block;
+  height: 100%;
+  background: var(--board-accent);
+  transform-origin: left;
+  transition: transform 120ms linear;
+}
+[data-concept='grid'] .result-strip {
+  --muted: var(--board-muted);
+  background: #ffffff04;
+  border-color: var(--board-line);
+  width: calc(100% + 28px);
+  margin: 0 -14px;
+  color: var(--board-fg);
+  padding: 18px 20px;
+}
+[data-concept='grid'] .result-symbol {
+  color: var(--board-accent);
+}
+[data-concept='grid'] .entries-tile .section-copy {
+  font-size: 13px;
+}
+[data-concept='grid'] .entries-tile .add-form {
+  border-top: 0;
+  padding-top: 6px;
+}
+[data-concept='grid'] .settings-title {
+  display: block;
+}
+[data-concept='grid'] .settings-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+[data-concept='grid'] .spin-cta {
+  min-height: 58px;
+}
+@media (min-width: 640px) {
+  .concept-nav {
+    gap: 20px;
+  }
+  .concept-nav a {
+    flex-direction: row;
+    min-width: 120px;
+    gap: 10px;
+    font-size: 13px;
+  }
+  [data-concept='grid'] .wheel-tile {
+    padding: 26px 24px 0;
+  }
+  .prize-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .prize-card {
+    padding: 12px 14px;
+  }
+  .card-face h3 {
+    font-size: 18px;
+  }
+  .card-winner {
+    font-size: 9px;
+  }
+  [data-concept='grid'] .result-strip {
+    width: calc(100% + 48px);
+    margin: 0 -24px;
+    padding: 22px 24px;
+  }
+}
+@media (min-width: 960px) {
+  [data-concept='grid'] .composition {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+  [data-concept='grid'] .wheel-tile {
+    grid-column: 1;
+    grid-row: 1/4;
+  }
+  [data-concept='grid'] .settings-tile {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-concept='grid'] .entries-tile {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  [data-concept='grid'] .history-tile {
+    grid-column: 2;
+    grid-row: 3;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  [data-concept='grid'] .history-items {
+    flex-direction: column;
+  }
+  [data-concept='grid'] .card-face h3 {
+    font-size: 20px;
+  }
+  [data-concept='grid'] .card-mark {
+    font-size: 28px;
+  }
+}
+@media (min-width: 1200px) {
+  .chance-word {
+    display: inline;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prize-card,
+  .timeline-track span {
+    transition: none;
+  }
+}
+:host-context(html.dark) [data-concept='grid'] .spin-cta {
+  color: #211d2d;
+}
+.prize-card {
+  width: 100%;
+}
+
+/* Let narrow cards grow with wrapped names instead of clipping their controls. */
+.prize-card {
+  aspect-ratio: auto;
+  min-height: 190px;
+}
+.card-top,
+.card-bottom {
+  flex-shrink: 0;
+}
+.board-start {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  background: var(--board-accent);
+  color: #281d3e;
+  font-size: 13px;
+  font-weight: 800;
+}
+@media (min-width: 640px) {
+  .prize-card {
+    min-height: 220px;
+  }
+}
+@media (min-width: 960px) {
+  .prize-card {
+    aspect-ratio: 1;
+    min-height: 230px;
+  }
+  [data-concept='grid'] .composition {
+    grid-template-rows: auto auto 1fr;
+  }
+  .board-start {
+    display: none;
+  }
+}

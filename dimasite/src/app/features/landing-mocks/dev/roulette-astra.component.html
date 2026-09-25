@@ -15,8 +15,10 @@
     <nav class="concept-nav" [attr.aria-label]="common('chooseDesign')">
       @for (item of concepts; track item) {
         <a
-          routerLink="."
+          [routerLink]="spinning() ? null : '.'"
           [queryParams]="{ design: item }"
+          [attr.aria-disabled]="spinning()"
+          (click)="spinning() && $event.preventDefault()"
           [class.active]="concept() === item"
           [attr.aria-current]="concept() === item ? 'page' : null"
           ><span>0{{ $index + 1 }}</span
@@ -32,50 +34,122 @@
       <p class="intro-copy">{{ t(concept() + 'Description') }}</p>
     </div>
     <div class="composition">
-      <section class="wheel-tile lf-tile" [attr.aria-label]="common('wheelArea')">
+      <section
+        class="wheel-tile lf-tile"
+        [attr.aria-label]="concept() === 'grid' ? t('gridArea') : common('wheelArea')"
+      >
         <div class="wheel-top">
           <span class="eyebrow">{{ t('session') }}</span
           ><span class="round-label">{{ t('round') }} {{ rounds() + 1 }}</span>
         </div>
-        <div class="instrument">
-          <div class="orbit-track" aria-hidden="true"></div>
-          <div
-            class="pointer-track"
-            [style.transform]="'rotate(' + pointer() + 'deg)'"
-            aria-hidden="true"
-          >
-            <span class="needle"></span>
+        @if (concept() === 'grid') {
+          <div class="board-status" role="status" aria-live="polite">
+            <span class="status-dot" [class.busy]="spinning()"></span
+            >{{ spinning() ? t('gridDrawing') : result() ? t('gridRevealed') : t('gridReady') }}
           </div>
-          <div
-            class="disc"
-            [style.background]="gradient()"
-            [style.transform]="'rotate(' + angle() + 'deg)'"
-            [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
-            aria-hidden="true"
-          >
-            @for (slice of slices(); track slice.id) {
-              <span class="separator" [style.transform]="'rotate(' + slice.start + 'deg)'"></span>
-              <div class="slice-label" [style.transform]="'rotate(' + slice.middle + 'deg)'">
-                <span
-                  [style.transform]="'rotate(' + (-slice.middle - angle()) + 'deg)'"
-                  [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
-                  >{{ $index + 1 }}</span
-                >
-              </div>
+          <button class="board-start" type="button" [disabled]="!ready()" (click)="spin()">
+            {{ spinning() ? t('gridDrawing') : t('gridStart') }}<span aria-hidden="true">↗</span>
+          </button>
+          <div class="prize-grid" [class.is-drawing]="spinning()" [class.is-revealed]="result()">
+            @for (entry of slices(); track entry.id) {
+              <article
+                class="prize-card"
+                [class.is-active]="highlighted() === entry.id && spinning()"
+                [class.is-winner]="result()?.id === entry.id"
+                [style.--card-accent]="entry.color"
+              >
+                <div class="card-top">
+                  <span class="card-index">{{ ($index + 1).toString().padStart(2, '0') }}</span
+                  ><span class="card-winner">{{
+                    result()?.id === entry.id ? common('winner') : ''
+                  }}</span
+                  ><button
+                    type="button"
+                    class="card-remove"
+                    [disabled]="spinning()"
+                    (click)="remove(entry.id)"
+                    [attr.aria-label]="t('remove') + ' ' + entry.name"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div class="card-face">
+                  <span class="card-mark" aria-hidden="true">✳</span>
+                  <h3>{{ entry.name }}</h3>
+                </div>
+                <div class="card-bottom">
+                  <span
+                    >{{ entry.chance }}% <span class="chance-word">{{ t('chance') }}</span></span
+                  ><label
+                    ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
+                    ><input
+                      type="number"
+                      min="1"
+                      max="10"
+                      [value]="entry.weight"
+                      [disabled]="spinning()"
+                      (change)="setWeight(entry.id, $event)"
+                    /><span aria-hidden="true">×</span></label
+                  >
+                </div>
+              </article>
+            } @empty {
+              <div class="board-empty">{{ t('empty') }}</div>
             }
           </div>
-          <button
-            class="hub"
-            type="button"
-            (click)="spin()"
-            [disabled]="!ready()"
-            [attr.aria-label]="common('spin')"
-          >
-            <span class="hub-icon" aria-hidden="true">↗</span
-            ><span>{{ spinning() ? t('wait') : t('go') }}</span>
-          </button>
-        </div>
-        <div class="wheel-caption">
+          <div class="draw-timeline" aria-hidden="true">
+            <div>
+              <span>{{
+                spinning() ? t('gridDrawing') : result() ? t('gridRevealed') : t('gridWaiting')
+              }}</span
+              ><strong>{{ spinning() ? remaining() : duration() }}s</strong>
+            </div>
+            <div class="timeline-track">
+              <span [style.transform]="'scaleX(' + progress() + ')'"></span>
+            </div>
+          </div>
+        } @else {
+          <div class="instrument">
+            <div class="orbit-track" aria-hidden="true"></div>
+            <div
+              class="pointer-track"
+              [style.transform]="'rotate(' + pointer() + 'deg)'"
+              aria-hidden="true"
+            >
+              <span class="needle"></span>
+            </div>
+            <div
+              class="disc"
+              [style.background]="gradient()"
+              [style.transform]="'rotate(' + angle() + 'deg)'"
+              [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
+              aria-hidden="true"
+            >
+              @for (slice of slices(); track slice.id) {
+                <span class="separator" [style.transform]="'rotate(' + slice.start + 'deg)'"></span>
+                <div class="slice-label" [style.transform]="'rotate(' + slice.middle + 'deg)'">
+                  <span
+                    [style.transform]="'rotate(' + (-slice.middle - angle()) + 'deg)'"
+                    [style.transition-duration]="reducedMotion() ? '0s' : duration() + 's'"
+                    ><b>{{ $index + 1 }}</b
+                    ><small [title]="slice.name">{{ slice.name }}</small></span
+                  >
+                </div>
+              }
+            </div>
+            <button
+              class="hub"
+              type="button"
+              (click)="spin()"
+              [disabled]="!ready()"
+              [attr.aria-label]="common('spin')"
+            >
+              <span class="hub-icon" aria-hidden="true">↗</span
+              ><span>{{ spinning() ? t('wait') : t('go') }}</span>
+            </button>
+          </div>
+        }
+        <div class="wheel-caption" [class.grid-hidden]="concept() === 'grid'">
           <span class="status-dot" [class.busy]="spinning()"></span
           >{{ spinning() ? common('spinning') : t('ready') }}<span class="caption-divider">/</span
           >{{ entries().length }} {{ common('items') }}
@@ -98,44 +172,48 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">{{ t('lineup') }}</p>
-            <h2>{{ t('prizes') }}</h2>
+            <h2>{{ concept() === 'grid' ? t('gridSetup') : t('prizes') }}</h2>
           </div>
           <span class="count">{{ entries().length.toString().padStart(2, '0') }}</span>
         </div>
-        <p class="section-copy">{{ t('weightHint') }}</p>
-        <div class="entry-list">
-          @for (entry of slices(); track entry.id) {
-            <div class="entry" [class.selected]="result()?.id === entry.id">
-              <span class="entry-number" [style.background]="entry.color">{{ $index + 1 }}</span>
-              <div class="entry-info">
-                <strong>{{ entry.name }}</strong
-                ><span>{{ entry.chance }}% {{ t('chance') }}</span>
-              </div>
-              <label class="weight"
-                ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
-                ><input
-                  type="number"
-                  min="1"
-                  max="10"
-                  [value]="entry.weight"
+        <p class="section-copy">
+          {{ concept() === 'grid' ? t('gridWeightHint') : t('weightHint') }}
+        </p>
+        @if (concept() !== 'grid') {
+          <div class="entry-list">
+            @for (entry of slices(); track entry.id) {
+              <div class="entry" [class.selected]="result()?.id === entry.id">
+                <span class="entry-number" [style.background]="entry.color">{{ $index + 1 }}</span>
+                <div class="entry-info">
+                  <strong>{{ entry.name }}</strong
+                  ><span>{{ entry.chance }}% {{ t('chance') }}</span>
+                </div>
+                <label class="weight"
+                  ><span class="sr-only">{{ common('weight') }} {{ entry.name }}</span
+                  ><input
+                    type="number"
+                    min="1"
+                    max="10"
+                    [value]="entry.weight"
+                    [disabled]="spinning()"
+                    (change)="setWeight(entry.id, $event)"
+                  /><span aria-hidden="true">×</span></label
+                >
+                <button
+                  class="remove"
+                  type="button"
                   [disabled]="spinning()"
-                  (change)="setWeight(entry.id, $event)"
-                /><span aria-hidden="true">×</span></label
-              >
-              <button
-                class="remove"
-                type="button"
-                [disabled]="spinning()"
-                (click)="remove(entry.id)"
-                [attr.aria-label]="t('remove') + ' ' + entry.name"
-              >
-                ×
-              </button>
-            </div>
-          } @empty {
-            <p>{{ t('empty') }}</p>
-          }
-        </div>
+                  (click)="remove(entry.id)"
+                  [attr.aria-label]="t('remove') + ' ' + entry.name"
+                >
+                  ×
+                </button>
+              </div>
+            } @empty {
+              <p>{{ t('empty') }}</p>
+            }
+          </div>
+        }
         <form class="add-form" (submit)="$event.preventDefault(); add()">
           <label for="astra-entry">{{ t('addPrize') }}</label>
           <div>
@@ -161,26 +239,29 @@
           <p class="eyebrow">{{ t('makeItYours') }}</p>
           <h2>{{ t('controls') }}</h2>
         </div>
-        <fieldset [disabled]="spinning()">
-          <legend>{{ common('arrowPosition') }}</legend>
-          <div class="pointer-options">
-            @for (side of ['top', 'right', 'bottom', 'left']; track side) {
-              <button
-                type="button"
-                [class.selected]="pointer() === $index * 90"
-                [attr.aria-pressed]="pointer() === $index * 90"
-                (click)="pointer.set($index * 90)"
-              >
-                <span aria-hidden="true" [style.transform]="'rotate(' + $index * 90 + 'deg)'"
-                  >↑</span
-                ><span>{{ common('pointer.' + side) }}</span>
-              </button>
-            }
-          </div>
-        </fieldset>
+        @if (concept() !== 'grid') {
+          <fieldset [disabled]="spinning()">
+            <legend>{{ common('arrowPosition') }}</legend>
+            <div class="pointer-options">
+              @for (side of ['top', 'right', 'bottom', 'left']; track side) {
+                <button
+                  type="button"
+                  [class.selected]="pointer() === $index * 90"
+                  [attr.aria-pressed]="pointer() === $index * 90"
+                  (click)="pointer.set($index * 90)"
+                >
+                  <span aria-hidden="true" [style.transform]="'rotate(' + $index * 90 + 'deg)'"
+                    >↑</span
+                  ><span>{{ common('pointer.' + side) }}</span>
+                </button>
+              }
+            </div>
+          </fieldset>
+        }
         <div class="duration-control">
           <label for="astra-duration"
-            >{{ common('duration') }} <strong>{{ duration() }}s</strong></label
+            >{{ concept() === 'grid' ? t('gridDuration') : common('duration') }}
+            <strong>{{ duration() }}s</strong></label
           ><input
             id="astra-duration"
             type="range"
@@ -196,7 +277,15 @@
           </div>
         </div>
         <button class="spin-cta" type="button" [disabled]="!ready()" (click)="spin()">
-          {{ spinning() ? common('spinning') : common('spin') }}<span aria-hidden="true">↗</span>
+          {{
+            concept() === 'grid'
+              ? spinning()
+                ? t('gridDrawing')
+                : t('gridStart')
+              : spinning()
+                ? common('spinning')
+                : common('spin')
+          }}<span aria-hidden="true">↗</span>
         </button>
         @if (entries().length < 2) {
           <p class="minimum-note">{{ common('needTwo') }}</p>

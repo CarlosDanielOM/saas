@@ -1,5 +1,18 @@
 {
   "rouletteAstra": {
+    "grid": "Tarjetas",
+    "gridKicker": "04 / Otra forma de sortear",
+    "gridTitle": "Que decidan las tarjetas.",
+    "gridDescription": "Todas las posibilidades a la vista. Sigue el resaltado mientras se ralentiza y elige tu próximo momento.",
+    "gridArea": "Cuadrícula de premios",
+    "gridDrawing": "Buscando tu próximo momento…",
+    "gridRevealed": "La tarjeta ha hablado",
+    "gridReady": "Tu tablero está listo",
+    "gridWaiting": "Esperando tu señal",
+    "gridSetup": "Prepara tu tablero",
+    "gridWeightHint": "Cada tarjeta muestra su premio. Cambia el peso × para ajustar su probabilidad; el resaltado móvil solo añade suspense.",
+    "gridDuration": "Duración del sorteo",
+    "gridStart": "Iniciar el sorteo",
     "collection": "Laboratorio de ruletas",
     "language": "Cambiar idioma",
     "orbit": "Órbita",
