@@ -217,7 +217,7 @@
       "userLevel": 1,
       "userLevelName": "everyone",
       "platform": "twitch",
-      "message": "$(user) dice: &t",
+      "message": "$(tts $(user) dice: &t)",
       "description": {
         "en": "Speak in the chat | Example: !s <message> | Example: !s Hello how are you",
         "es": "Habla en el chat | Ejemplo: !s <mensaje> | Ejemplo: !s Hola como estas"

@@ -71,7 +71,10 @@ async function queueTts(
             userID: ctx.userId,
             userLogin: ctx.userLogin,
             userName: ctx.userDisplayName,
-            userLevel: ctx.userLevel
+            userLevel: ctx.userLevel,
+            emoteNames: ((ctx.eventData?.message as { fragments?: { type?: string; text?: string }[] } | undefined)?.fragments || [])
+                .filter(fragment => fragment.type === 'emote' && typeof fragment.text === 'string')
+                .map(fragment => fragment.text!)
         });
 
         return {

@@ -565,7 +565,7 @@
       "command": {
         "title": "TTS command",
         "hint": "Edit the same command here or on the Commands page.",
-        "templateHint": "AST template: $(user) says: &t. $(user) is the viewer; &t is their message.",
+        "templateHint": "AST command: $(tts $(user) says: &t). $(user) is the viewer; &t is their message.",
         "edit": "Edit TTS command",
         "openCommands": "Open commands"
       }

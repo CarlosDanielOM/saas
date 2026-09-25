@@ -10,7 +10,6 @@ import { addModeratorCommand } from "./add_moderator.command.js";
 import { removeModeratorCommand } from "./remove_moderator.command.js";
 import { createClipCommand } from "./create_clip.command.js";
 import { onlyEmotesCommand } from "./only_emotes.command.js";
-import { speechCommand } from "./speech.command.js";
 import { promoCommand } from "./promo.command.js";
 import { vanishCommand } from "./vanish.command.js";
 import { duelCommand } from "./duel.command.js";
@@ -34,7 +33,6 @@ export const indexCommands = {
     removeModerator: removeModeratorCommand,
     createClip: createClipCommand,
     onlyEmotes: onlyEmotesCommand,
-    speech: speechCommand,
     promo: promoCommand,
     vanish: vanishCommand,
     duel: duelCommand,

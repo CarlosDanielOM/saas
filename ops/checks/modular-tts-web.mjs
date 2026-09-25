@@ -11,7 +11,7 @@ try {
   const user={id:'999991',login:'test',display_name:'Test'};
   const app={name:'Test',email:'test@example.invalid',language:'en',plan_tier:tier,actived:true,chat_enabled:true,twitch_user_id:user.id,has_permissions:true,up_to_date_permissions:true,administrating:[]};
   await context.addInitScript(({user,app})=>localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,token:'test-only',createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3600000).toISOString(),twitchUser:user,appUser:app,permissions:{}})),{user,app});
-  const commands=[{_id:'speech',name:'Speech Chat',cmd:'s',func:'speach',message:'$(user) dice: &t',cooldown:0,userLevel:0,userLevelName:'everyone',enabled:true,reserved:false,channelID:user.id,channel:'test',createdAt:new Date().toISOString()}];
+  const commands=[{_id:'speech',name:'Speech Chat',cmd:'s',func:'speach',message:'$(tts $(user) dice: &t)',cooldown:0,userLevel:0,userLevelName:'everyone',enabled:true,reserved:false,channelID:user.id,channel:'test',createdAt:new Date().toISOString()}];
   const writes=[];
   await context.routeWebSocket(/api\.domdimabot\.com/,ws=>ws.close());
   await context.route('**/*',async route=>{
@@ -46,7 +46,7 @@ try {
   const cooldown=modal.locator('[formControlName="cooldown"]');
   const message=modal.locator('[formControlName="message"]');
   assert.equal(await cooldown.inputValue(),'0');
-  assert.equal(await message.inputValue(),'$(user) dice: &t');
+  assert.equal(await message.inputValue(),'$(tts $(user) dice: &t)');
   assert.equal(await modal.locator('[formControlName="timerEnabled"]').count(),0);
   for(const width of [320,390,1280]) {
    await page.setViewportSize({width,height:width<640?740:950});
@@ -57,17 +57,17 @@ try {
   const axe=await new AxeBuilder({page}).include('app-command-modal').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   if(axe.violations.length) console.log(JSON.stringify(axe.violations,null,2));
   assert.deepEqual(axe.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[]);
-  await message.fill('$(user) says: &t');
+  await message.fill('$(tts $(user) says: &t)');
   await modal.locator('[formControlName="cmd"]').fill('say');
   await modal.locator('button[type="submit"]').click();
   await modal.getByRole('dialog').waitFor({state:'hidden'});
   assert.equal(writes.at(-1).cooldown,0);assert.equal(commands[0].func,'speach');
-  await page.locator('[data-testid="tts-command"]').getByText('$(user) says: &t',{exact:true}).waitFor();
+  await page.locator('[data-testid="tts-command"]').getByText('$(tts $(user) says: &t)',{exact:true}).waitFor();
   await page.goto(base+'/test/commands');
   await page.getByRole('button',{name:'Edit',exact:true}).first().click();
-  assert.equal(await message.inputValue(),'$(user) says: &t');
+  assert.equal(await message.inputValue(),'$(tts $(user) says: &t)');
   assert.equal(await cooldown.inputValue(),'0');
-  await message.fill('Listen to $(user): &t');
+  await message.fill('$(tts Listen to $(user): &t)');
   await modal.locator('button[type="submit"]').click();
   await modal.getByRole('dialog').waitFor({state:'hidden'});
   await page.getByRole('button',{name:/add command/i}).first().click();
@@ -81,7 +81,7 @@ try {
   await modal.locator('button[type="submit"]').click();await modal.getByRole('dialog').waitFor({state:'hidden'});
   assert.equal(writes.at(-1).cooldown,0,'create preserves zero');
   await page.goto(base+'/test/modules/tts');
-  await page.locator('[data-testid="tts-command"]').getByText('Listen to $(user): &t',{exact:true}).waitFor();
+  await page.locator('[data-testid="tts-command"]').getByText('$(tts Listen to $(user): &t)',{exact:true}).waitFor();
   await page.getByRole('button',{name:'Edit TTS command',exact:true}).click();await cooldown.fill('0');assert.equal(await modal.locator('button[type="submit"]').isDisabled(),true,'module also enforces occupied slot');
   assert.deepEqual(errors,[]);await context.close();console.log(`PASS ${tier}: shared TTS/commands saves, rename, zero cooldown slot, mobile/desktop, accessibility`);
  }

@@ -565,7 +565,7 @@
       "command": {
         "title": "Comando TTS",
         "hint": "Edita el mismo comando aquí o en la página de Comandos.",
-        "templateHint": "Plantilla AST: $(user) dice: &t. $(user) es el usuario; &t es su mensaje.",
+        "templateHint": "Comando AST: $(tts $(user) dice: &t). $(user) es el usuario; &t es su mensaje.",
         "edit": "Editar comando TTS",
         "openCommands": "Abrir comandos"
       }

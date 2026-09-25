@@ -1,4 +1,3 @@
-import { isSpeechCommand, speechTemplate } from '../utils/tts/speech_template.util.js';
 import Commands from "../classes/command.class.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
@@ -387,10 +386,6 @@ export async function editCommand(
     if (!streamer) return { error: true, message: "Streamer not found" };
     const minCooldown = getMinimumCommandCooldown(streamer.plan_tier);
     const command = oldCommand.command;
-    if (isSpeechCommand(command)) {
-      command.reserved = false;
-      command.message = speechTemplate(command.message);
-    }
 
     const commandIsTagMode = inspectExpression(command.permissionExpression).mode !== "level";
 

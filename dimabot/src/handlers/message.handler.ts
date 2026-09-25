@@ -601,20 +601,6 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     res = { error: false, message: onlyEmotesResult.message };
                 }
                 break;
-            case 'speach':
-            case 'speech':
-                await indexCommands.speech(channelID, STREAMER.name, {
-                    id: messageEventData.chatter_user_id || '',
-                    username: messageEventData.chatter_user_login || '',
-                    'display-name': messageEventData.chatter_user_name || messageEventData.chatter_user_login || '',
-                    emoteNames: (messageEventData.message.fragments || [])
-                        .filter((fragment) => fragment.type === 'emote' && typeof fragment.text === 'string')
-                        .map((fragment) => fragment.text)
-                }, streamerArgument, commandDBData.command?.message, command);
-                // Speech commands are silent in chat, including after a rename.
-                res = null;
-                break;
-
             case 'vanish':
                 const vanishResult = await indexCommands.vanish(channelID, tags, modID);
                 if (vanishResult.error) {

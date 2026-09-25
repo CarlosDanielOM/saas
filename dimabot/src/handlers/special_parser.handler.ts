@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FilterQuery } from 'mongoose';
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import type { ITwitchEventData } from '../interfaces/twitch/eventsub.interface.js';
@@ -16,6 +17,8 @@ export interface ISpecialParserContext {
     eventData?: ITwitchEventData | Record<string, unknown>;
     eventsubData?: IEventsub | Record<string, unknown>;
     argument?: string;
+    /** Keep command arguments literal, including when nested inside AST functions. */
+    literalArguments?: boolean;
     count?: number;
     variables?: Record<string, string>;
     userPlan?: 'free' | 'premium' | 'pro';
@@ -48,6 +51,7 @@ interface IExtractedNumericInfo {
 
 interface IPlaceholderResolution {
     text: string;
+    variables?: Record<string, string>;
     error?: string;
 }
 
@@ -106,13 +110,21 @@ function unescapeInput(input: unknown): string {
         .replace(/\\\^/g, '^');
 }
 
-function resolveArgumentPlaceholders(template: string, argument: string): IPlaceholderResolution {
+function resolveArgumentPlaceholders(template: string, argument: string, literal = false): IPlaceholderResolution {
     const input = String(template || '');
 
     if (!input.includes('&p') && !input.includes('&t')) {
         return { text: input };
     }
 
+    const variables: Record<string, string> = {};
+    const prefix = `cmd_arg_${randomUUID().replace(/-/g, '')}`;
+    const bind = (value: string): string => {
+        if (!literal) return value;
+        const name = `${prefix}_${Object.keys(variables).length}`;
+        variables[name] = value;
+        return `%(${name})`;
+    };
     const argumentText = String(argument || '').trim();
     const argTokens = argumentText.length > 0 ? argumentText.split(/\s+/).filter(Boolean) : [];
     const createdPositions = new Set<number>();
@@ -127,7 +139,7 @@ function resolveArgumentPlaceholders(template: string, argument: string): IPlace
                 textModeStarted = true;
                 textTail = argTokens.slice(maxCreatedPosition).join(' ');
             }
-            return textTail;
+            return bind(textTail);
         }
 
         const position = Number.parseInt(String(pIndexRaw || ''), 10);
@@ -148,7 +160,7 @@ function resolveArgumentPlaceholders(template: string, argument: string): IPlace
             }
         }
 
-        return argTokens[position - 1] ?? '';
+        return bind(argTokens[position - 1] ?? '');
     });
 
     if (hasInvalidOrder) {
@@ -158,7 +170,7 @@ function resolveArgumentPlaceholders(template: string, argument: string): IPlace
         };
     }
 
-    return { text };
+    return { text, variables };
 }
 
 function normalizeScopeName(scopeName: string): string {
@@ -352,7 +364,7 @@ export async function parseSpecialCommands(
     text: string,
     context: ISpecialParserContext
 ): Promise<ISpecialParserResult> {
-    const placeholderResolution = resolveArgumentPlaceholders(text, context.argument || '');
+    const placeholderResolution = resolveArgumentPlaceholders(text, context.argument || '', context.literalArguments);
     if (placeholderResolution.error) {
         return {
             parsedText: `[Parser error: ${placeholderResolution.error}]`,
@@ -383,6 +395,10 @@ export async function parseSpecialCommands(
         for (const [key, value] of Object.entries(context.variables)) {
             variables.set(key, value);
         }
+    }
+
+    for (const [key, value] of Object.entries(placeholderResolution.variables || {})) {
+        variables.set(key, value);
     }
 
     const effectiveUserLevel = resolveAuthoredAstUserLevel(eventData, context.userLevel);

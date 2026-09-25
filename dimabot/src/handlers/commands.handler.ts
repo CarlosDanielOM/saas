@@ -137,6 +137,7 @@ async function commandHandler(
         scopeAliases: commandData.name ? [commandData.name] : [],
         eventData: messageEventData,
         argument: argument || '',
+        literalArguments: true,
         count: commandData.count || 0,
         userLevel: BROADCASTER_USER_LEVEL
     });

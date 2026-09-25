@@ -9,7 +9,6 @@ import {
 interface QueueDefaultTtsInput {
     channelID: string;
     rawMessage: string;
-    render?: (message: string) => Promise<string>;
     source: 'chat-command' | 'ast' | 'redemption';
     preferredMode?: 'default' | 'speak';
     userID?: string;
@@ -84,7 +83,7 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
     }
 
     const language = input.language || settings.defaultLanguage;
-    const spokenMessage = input.render ? await input.render(normalized.text) : buildSpokenUserMessage(resolveDisplayName(input), normalized.text, language, input.source);
+    const spokenMessage = buildSpokenUserMessage(resolveDisplayName(input), normalized.text, language, input.source);
 
     if (!spokenMessage.trim()) return { error: true, message: 'No message provided', status: 400, type: 'error' };
 

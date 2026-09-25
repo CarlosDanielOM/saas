@@ -7,7 +7,6 @@ import UsersSchema from "../../schemas/users.schema.js";
 import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
 import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissions/index.js";
 
-import { isSpeechCommand, speechTemplate } from '../../utils/tts/speech_template.util.js';
 import { writeCommandWithCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
 
 const router = express.Router();
@@ -101,7 +100,6 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             commands = commands.map((command) => {
                 const mapped = {
                     ...command,
-                    ...(isSpeechCommand(command) ? { message: speechTemplate(command.message), reserved: false } : {}),
                     permissionMode: permissionModeFor(command)
                 };
 
@@ -292,11 +290,11 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
-            if (command.reserved && !isSpeechCommand(command) && 'message' in updatePayload) {
+            if (command.reserved && 'message' in updatePayload) {
                 delete updatePayload.message;
             }
 
-            if (command.reserved && !isSpeechCommand(command) && 'description' in updatePayload) {
+            if (command.reserved && 'description' in updatePayload) {
                 delete updatePayload.description;
             }
 
@@ -347,12 +345,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
-            if (isSpeechCommand(command)) updatePayload.reserved = false;
-            const currentCooldown = { _id: command._id, cooldown: command.cooldown,
-                reserved: command.reserved && !isSpeechCommand(command) };
-            const cooldownToValidate = 'cooldown' in updatePayload ? updatePayload.cooldown :
-                (isSpeechCommand(command) && command.reserved ? command.cooldown : undefined);
-            const updatedCommand = await writeCommandWithCooldown(channelIdStr, cooldownToValidate, currentCooldown, () => CommandsSchema.findOneAndUpdate(
+            const updatedCommand = await writeCommandWithCooldown(channelIdStr, updatePayload.cooldown, command, () => CommandsSchema.findOneAndUpdate(
                 { channelID: channelIdStr, _id: commandIdStr },
                 updatePayload,
                 { new: true }
