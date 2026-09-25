@@ -2,6 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
+  effect,
+  viewChild,
   computed,
   inject,
   signal,
@@ -11,6 +14,10 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LanguageService } from '../../../services/language.service';
 import {
+  CARD_CAPACITIES,
+  CardSize,
+  orderSlots,
+  shuffleSlots,
   DrawConfigurationError,
   drawTotals,
   expandSlots,
@@ -50,6 +57,7 @@ const PALETTES: Record<Concept, string[]> = {
     './roulette-astra.component.css',
     './roulette-card-grid.css',
     './roulette-entries.css',
+    './roulette-board.css',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -72,8 +80,14 @@ export class RouletteAstraComponent {
   readonly importNotice = signal('');
   readonly search = signal('');
   readonly editorPage = signal(0);
-  readonly boardPage = signal(0);
-  readonly boardPageSize = 12;
+  readonly cardSizes: CardSize[] = ['large', 'medium', 'small'];
+  readonly cardSize = signal<CardSize>('large');
+  readonly cardCapacities = CARD_CAPACITIES;
+  readonly cardCapacity = computed(() => CARD_CAPACITIES[this.cardSize()]);
+  readonly cardBoard = viewChild<ElementRef<HTMLElement>>('cardBoard');
+  readonly boardBounds = signal({ width: 800, height: 400 });
+  readonly slotOrder = signal<string[]>([]);
+  readonly shuffleNotice = signal('');
   readonly editorPageSize = 10;
   readonly pointer = signal(0);
   readonly duration = signal(4);
@@ -105,12 +119,13 @@ export class RouletteAstraComponent {
   readonly slices = computed(() => {
     let start = 0;
     const rows = new Map(this.itemRows().map((row) => [row.id, row]));
-    return expandSlots(this.entries()).map((slot) => {
+    return orderSlots(expandSlots(this.entries()), this.slotOrder()).map((slot) => {
       const row = rows.get(slot.id)!;
       const sweep = (slot.weight / this.total()) * 360;
       const slice = {
         ...row,
         ...slot,
+        name: row.name,
         start,
         sweep,
         middle: start + sweep / 2,
@@ -123,15 +138,25 @@ export class RouletteAstraComponent {
   readonly labeledSlices = computed(() => this.slices().filter((slice) => slice.sweep >= 24));
   readonly separatorSlices = computed(() => (this.slotCount() <= 72 ? this.slices() : []));
   readonly denseWheel = computed(() => this.labeledSlices().length < this.slotCount());
-  readonly visibleSlices = computed(() =>
-    this.slices().slice(
-      this.boardPage() * this.boardPageSize,
-      (this.boardPage() + 1) * this.boardPageSize,
-    ),
-  );
-  readonly boardPages = computed(() =>
-    Math.max(1, Math.ceil(this.slotCount() / this.boardPageSize)),
-  );
+  readonly gridOverCapacity = computed(() => this.slotCount() > this.cardCapacity());
+  readonly boardLayout = computed(() => {
+    const { width, height } = this.boardBounds();
+    const count = Math.max(1, Math.min(this.slotCount(), this.cardCapacity()));
+    const gap = 4;
+    let best = { columns: 1, rows: count, cellWidth: width, cellHeight: height / count };
+    let score = 0;
+    for (let columns = 1; columns <= count; columns++) {
+      const rows = Math.ceil(count / columns);
+      const cellWidth = (width - gap * (columns - 1)) / columns;
+      const cellHeight = (height - gap * (rows - 1)) / rows;
+      const candidateScore = Math.min(cellWidth, cellHeight);
+      if (candidateScore > score) {
+        score = candidateScore;
+        best = { columns, rows, cellWidth, cellHeight };
+      }
+    }
+    return best;
+  });
   readonly filteredEntries = computed(() => {
     const query = this.search().trim().toLocaleLowerCase();
     return this.itemRows().filter((entry) => entry.name.toLocaleLowerCase().includes(query));
@@ -152,12 +177,32 @@ export class RouletteAstraComponent {
           .join(',')})`
       : 'var(--line)',
   );
-  readonly ready = computed(() => this.slotCount() >= 2 && !this.spinning());
+  readonly ready = computed(
+    () =>
+      this.slotCount() >= 2 &&
+      !this.spinning() &&
+      (this.concept() !== 'grid' || !this.gridOverCapacity()),
+  );
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const requested = params.get('design');
-      if (this.concepts.includes(requested as Concept)) this.concept.set(requested as Concept);
+      if (this.concepts.includes(requested as Concept)) {
+        this.concept.set(requested as Concept);
+        if (requested === 'grid' && this.gridOverCapacity()) {
+          const fitting = this.cardSizes.find((size) => CARD_CAPACITIES[size] >= this.slotCount());
+          if (fitting) this.cardSize.set(fitting);
+        }
+      }
+    });
+    effect((onCleanup) => {
+      const board = this.cardBoard()?.nativeElement;
+      if (!board || typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(([entry]) => {
+        this.boardBounds.set({ width: entry.contentRect.width, height: entry.contentRect.height });
+      });
+      observer.observe(board);
+      onCleanup(() => observer.disconnect());
     });
     this.destroyRef.onDestroy(() => {
       clearTimeout(this.timer);
@@ -191,11 +236,33 @@ export class RouletteAstraComponent {
     this.search.set((event.target as HTMLInputElement).value);
     this.editorPage.set(0);
   }
-  changePage(which: 'board' | 'editor', delta: number): void {
-    if (this.spinning()) return;
-    const page = which === 'board' ? this.boardPage : this.editorPage;
-    const pages = which === 'board' ? this.boardPages() : this.editorPages();
-    page.set(Math.max(0, Math.min(pages - 1, page() + delta)));
+  changePage(delta: number): void {
+    if (!this.spinning())
+      this.editorPage.set(Math.max(0, Math.min(this.editorPages() - 1, this.editorPage() + delta)));
+  }
+  setCardSize(size: CardSize): void {
+    if (!this.spinning()) {
+      this.cardSize.set(size);
+      this.error.set('');
+    }
+  }
+  cardTextFits(name: string): boolean {
+    const { cellWidth, cellHeight } = this.boardLayout();
+    const lines = Math.ceil((name.length * 6.5) / Math.max(1, cellWidth - 16));
+    return cellWidth >= 100 && cellHeight >= 90 && lines * 16 + 68 <= cellHeight;
+  }
+  shufflePositions(): void {
+    if (this.spinning() || this.concept() === 'grid' || this.slotCount() < 2) return;
+    this.slotOrder.set(shuffleSlots(this.slices()).map((slot) => slot.key));
+    this.result.set(null);
+    this.highlighted.set(null);
+    this.progress.set(0);
+    this.reducedMotion.set(true);
+    this.angle.set(0);
+    this.shuffleNotice.set(this.t('shuffled'));
+  }
+  closeWinner(): void {
+    (this.document.getElementById('roulette-winner') as HTMLDialogElement | null)?.close();
   }
   private report(error: unknown): void {
     this.error.set(
@@ -205,13 +272,20 @@ export class RouletteAstraComponent {
   private updateEntries(entries: Entry[]): boolean {
     if (this.spinning()) return false;
     try {
-      drawTotals(entries);
+      const next = drawTotals(entries);
+      if (
+        this.concept() === 'grid' &&
+        next.slots > this.cardCapacity() &&
+        !(this.gridOverCapacity() && next.slots < this.slotCount())
+      ) {
+        this.error.set(this.t('cardLimitError', { count: next.slots, max: this.cardCapacity() }));
+        return false;
+      }
     } catch (error) {
       this.report(error);
       return false;
     }
     this.entries.set(entries);
-    this.boardPage.set(Math.min(this.boardPage(), this.boardPages() - 1));
     this.editorPage.set(Math.min(this.editorPage(), this.editorPages() - 1));
     this.result.set(null);
     this.highlighted.set(null);
@@ -264,7 +338,6 @@ export class RouletteAstraComponent {
         this.nextId += added.length;
         this.search.set('');
         this.editorPage.set(0);
-        this.boardPage.set(0);
         this.importNotice.set(this.t('imported', { count: added.length }));
         this.bulkDraft.set('');
       }
@@ -285,12 +358,16 @@ export class RouletteAstraComponent {
     this.rounds.update((round) => round + 1);
     this.history.update((history) => [selected.name, ...history].slice(0, 4));
     this.spinning.set(false);
-    this.boardPage.set(Math.floor(selected.index / this.boardPageSize));
     if (this.concept() === 'grid') {
       this.frame = requestAnimationFrame(() => {
-        this.document
-          .getElementById('prize-' + selected.key)
-          ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        const dialog = this.document.getElementById('roulette-winner') as HTMLDialogElement | null;
+        if (
+          this.concept() === 'grid' &&
+          this.result()?.key === selected.key &&
+          dialog &&
+          !dialog.open
+        )
+          dialog.showModal();
         this.frame = undefined;
       });
     }
@@ -337,7 +414,7 @@ export class RouletteAstraComponent {
     if (this.concept() === 'grid') {
       this.animateCards(
         selected,
-        this.visibleSlices().map((slot) => slot.key),
+        this.slices().map((slot) => slot.key),
       );
       return;
     }

@@ -1,5 +1,19 @@
 {
   "rouletteAstra": {
+    "cardSize": "Tamaño de tarjeta y capacidad",
+    "cardSizes": {
+        "large": "Grande",
+        "medium": "Mediana",
+        "small": "Pequeña"
+    },
+    "cardLimitTitle": "La lista supera este tamaño de tarjeta",
+    "cardLimitError": "Esta lista tiene {{count}} casillas; el tamaño elegido admite {{max}}. Elige tarjetas más pequeñas o reduce la lista o los multiplicadores. No se ha eliminado nada.",
+    "cardLimitRecovery": "Los tableros admiten un máximo de 100 casillas. La ruleta puede seguir usando toda esta lista, hasta 10.000 casillas.",
+    "cardCapacityNote": "Este tamaño admite {{max}} casillas, incluidas las copias. Todas caben en un tablero. Las tarjetas pequeñas ocultan su texto; la ganadora se abre con el nombre completo.",
+    "backToBoard": "Volver al tablero",
+    "shufflePositions": "Mezclar posiciones",
+    "shuffleHint": "Mezcla las copias sin cambiar las probabilidades.",
+    "shuffled": "Posiciones mezcladas. Los pesos y las probabilidades no cambiaron.",
     "distinctItems": "elementos",
     "slots": "casillas",
     "totalWeight": "Peso total",

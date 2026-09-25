@@ -1,5 +1,19 @@
 {
   "rouletteAstra": {
+    "cardSize": "Card size and board capacity",
+    "cardSizes": {
+        "large": "Large",
+        "medium": "Medium",
+        "small": "Small"
+    },
+    "cardLimitTitle": "This list is too large for this card size",
+    "cardLimitError": "This list has {{count}} slots; the selected card size allows {{max}}. Choose a smaller card size or reduce the list or multipliers. Nothing has been discarded.",
+    "cardLimitRecovery": "Card boards support at most 100 slots. The wheel can still use this complete list, up to 10,000 slots.",
+    "cardCapacityNote": "This card size supports {{max}} slots, including copies. All cards fit on one board. Small cards hide their text; the winner opens with its full name.",
+    "backToBoard": "Back to board",
+    "shufflePositions": "Shuffle positions",
+    "shuffleHint": "Mix individual copies. Keep the same odds.",
+    "shuffled": "Positions shuffled. Weights and chances are unchanged.",
     "distinctItems": "items",
     "slots": "slots",
     "totalWeight": "Total weight",

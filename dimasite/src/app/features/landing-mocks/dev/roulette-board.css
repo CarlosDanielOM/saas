@@ -1,0 +1,218 @@
+/* Keep every eligible card in one viewport-sized board. */
+[data-concept='grid'] .masthead {
+  padding: 6px 16px;
+  min-height: 56px;
+}
+[data-concept='grid'] main {
+  padding: 12px 16px 32px;
+}
+[data-concept='grid'] .intro {
+  padding: 12px 0;
+  margin: 0;
+}
+[data-concept='grid'] .intro h1 {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+  margin-top: 0;
+}
+[data-concept='grid'] .intro .eyebrow,
+[data-concept='grid'] .intro-copy,
+[data-concept='grid'] .result-strip {
+  display: none;
+}
+[data-concept='grid'] .wheel-tile {
+  padding: 12px;
+}
+[data-concept='grid'] .draw-summary {
+  margin: 8px 0;
+  font-size: 10px;
+}
+.board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.card-size-options {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+.card-size-options button {
+  flex: 1;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid var(--board-line);
+  border-radius: 8px;
+  color: var(--board-fg);
+  background: var(--board-card);
+  font-size: 11px;
+}
+.card-size-options button span {
+  color: var(--board-muted);
+  margin-left: 3px;
+}
+.card-size-options button.selected {
+  border-color: var(--board-accent);
+  background: #cbbaff20;
+}
+[data-concept='grid'] .board-start {
+  display: flex;
+  flex: 1 1 140px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+}
+[data-concept='grid'] .prize-grid {
+  height: clamp(100px, calc(100svh - 420px), 720px);
+  gap: 4px;
+  overflow: hidden;
+}
+[data-concept='grid'] .prize-card {
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  padding: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+[data-concept='grid'] .card-top {
+  min-height: 14px;
+}
+[data-concept='grid'] .card-face {
+  gap: 4px;
+  padding: 4px 0;
+}
+[data-concept='grid'] .card-face h3 {
+  font-size: 13px;
+  line-height: 16px;
+  letter-spacing: 0;
+}
+[data-concept='grid'] .card-mark {
+  font-size: 18px;
+}
+[data-concept='grid'] .card-bottom {
+  font-size: 10px;
+  padding-top: 3px;
+}
+[data-concept='grid'] .copy-label {
+  font-size: 9px;
+  margin-top: 3px;
+}
+[data-concept='grid'] .card-text-hidden {
+  padding: 0;
+  border-color: var(--card-accent);
+}
+[data-concept='grid'] .card-text-hidden .card-face,
+[data-concept='grid'] .card-text-hidden .card-bottom,
+[data-concept='grid'] .card-text-hidden .copy-label,
+[data-concept='grid'] .card-text-hidden .card-winner {
+  display: none;
+}
+[data-concept='grid'] .card-text-hidden .card-top {
+  height: 100%;
+  justify-content: center;
+}
+[data-concept='grid'] .card-text-hidden .card-index {
+  font-size: 10px;
+}
+[data-concept='grid'] .card-text-hidden.is-active {
+  background: #78669c;
+  border-color: #fff;
+}
+[data-concept='grid'] .card-text-hidden.is-winner {
+  border-color: #fff;
+}
+[data-concept='grid'] .draw-timeline {
+  margin: 10px 0 0;
+}
+[data-concept='grid'] .draw-timeline > div:first-child {
+  margin-bottom: 6px;
+}
+.card-capacity-block {
+  padding: 24px 12px;
+  line-height: 1.6;
+  color: var(--board-muted);
+}
+.card-capacity-block strong {
+  color: var(--board-fg);
+}
+.winner-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 28px;
+  overflow: auto;
+  border: 1px solid #cbbaff;
+  border-radius: 20px;
+  background: #242631;
+  color: #f5f3ff;
+  text-align: center;
+  box-shadow: 0 24px 100px #0008;
+}
+.winner-dialog::backdrop {
+  background: #10101ac9;
+  backdrop-filter: blur(4px);
+}
+.winner-dialog .eyebrow {
+  color: #cbbaff;
+}
+.winner-star {
+  display: block;
+  color: #cbbaff;
+  font-size: 48px;
+  margin: 16px 0;
+}
+.winner-dialog h2 {
+  font-size: 28px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  margin: 12px 0;
+}
+.winner-dialog > p {
+  color: #b9b8ca;
+  font-size: 13px;
+}
+.winner-dialog button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 10px;
+  background: #cbbaff;
+  color: #281d3e;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.wheel-shuffle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+}
+.shuffle-button {
+  min-height: 44px;
+  padding: 8px 14px;
+  background: var(--tile);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+}
+.wheel-shuffle > span,
+.shuffle-notice {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+@media (min-width: 640px) {
+  [data-concept='grid'] .prize-grid {
+    height: clamp(100px, calc(100svh - 360px), 720px);
+  }
+  [data-concept='grid'] .board-start {
+    flex: 0 1 180px;
+  }
+}

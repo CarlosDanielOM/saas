@@ -1,4 +1,4 @@
-<div class="experience" [attr.data-concept]="concept()">
+<div class="experience" [attr.data-concept]="concept()" [attr.data-card-size]="cardSize()">
   <header class="masthead">
     <a routerLink="/mocks/dev" class="wordmark"
       ><span class="brand-dot"></span>DomDimaBot <span class="slash">/</span>
@@ -50,67 +50,98 @@
           >
         </div>
         @if (concept() === 'grid') {
-          <div class="board-status" role="status" aria-live="polite">
-            <span class="status-dot" [class.busy]="spinning()"></span
-            >{{ spinning() ? t('gridDrawing') : result() ? t('gridRevealed') : t('gridReady') }}
-          </div>
-          <button class="board-start" type="button" [disabled]="!ready()" (click)="spin()">
-            {{ spinning() ? t('gridDrawing') : t('gridStart') }}<span aria-hidden="true">↗</span>
-          </button>
-          <div class="prize-grid" [class.is-drawing]="spinning()" [class.is-revealed]="result()">
-            @for (entry of visibleSlices(); track entry.key) {
-              <article
-                class="prize-card"
-                [id]="'prize-' + entry.key"
-                [attr.data-slot-key]="entry.key"
-                [class.is-active]="highlighted() === entry.key && spinning()"
-                [class.is-winner]="result()?.key === entry.key"
-                [style.--card-accent]="entry.color"
-              >
-                <div class="card-top">
-                  <span class="card-index">{{ (entry.index + 1).toString().padStart(2, '0') }}</span
-                  ><span class="card-winner">{{
-                    result()?.key === entry.key ? common('winner') : ''
-                  }}</span>
-                </div>
-                <div class="card-face">
-                  <span class="card-mark" aria-hidden="true">✳</span>
-                  <h3>{{ entry.name }}</h3>
-                </div>
-                <div class="card-bottom">
-                  <span
-                    >{{ t('weight') }} <strong>{{ entry.weight }}</strong></span
-                  ><span>{{ entry.chance }}%</span>
-                </div>
-                <span class="copy-label">{{
-                  t('copyOf', { copy: entry.copy, count: entry.multiplier })
-                }}</span>
-              </article>
-            } @empty {
-              <div class="board-empty">{{ t('empty') }}</div>
-            }
-          </div>
-          @if (boardPages() > 1) {
-            <div class="board-pagination pagination" [attr.aria-label]="t('boardPages')">
-              <button
-                type="button"
-                [disabled]="spinning() || boardPage() === 0"
-                (click)="changePage('board', -1)"
-                [attr.aria-label]="t('previous')"
-              >
-                ←</button
-              ><span>{{ t('pageOf', { page: boardPage() + 1, count: boardPages() }) }}</span
-              ><button
-                type="button"
-                [disabled]="spinning() || boardPage() + 1 >= boardPages()"
-                (click)="changePage('board', 1)"
-                [attr.aria-label]="t('next')"
-              >
-                →
-              </button>
+          <div class="board-toolbar">
+            <div class="card-size-options" role="group" [attr.aria-label]="t('cardSize')">
+              @for (size of cardSizes; track size) {
+                <button
+                  type="button"
+                  [disabled]="spinning()"
+                  [class.selected]="cardSize() === size"
+                  [attr.aria-pressed]="cardSize() === size"
+                  (click)="setCardSize(size)"
+                >
+                  {{ t('cardSizes.' + size) }} <span>{{ cardCapacities[size] }}</span>
+                </button>
+              }
             </div>
-            <p class="all-eligible">{{ t('allEligible', { count: slotCount() }) }}</p>
+            <button class="board-start" type="button" [disabled]="!ready()" (click)="spin()">
+              {{ spinning() ? t('gridDrawing') : t('gridStart') }}<span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          @if (gridOverCapacity()) {
+            <div class="card-capacity-block" role="status">
+              <strong>{{ t('cardLimitTitle') }}</strong>
+              <p>{{ t('cardLimitError', { count: slotCount(), max: cardCapacity() }) }}</p>
+              <p>{{ t('cardLimitRecovery') }}</p>
+            </div>
+          } @else {
+            <div
+              class="prize-grid"
+              #cardBoard
+              [class.is-drawing]="spinning()"
+              [class.is-revealed]="result()"
+              [style.grid-template-columns]="
+                'repeat(' + boardLayout().columns + ', minmax(0, 1fr))'
+              "
+              [style.grid-template-rows]="'repeat(' + boardLayout().rows + ', minmax(0, 1fr))'"
+            >
+              @for (entry of slices(); track entry.key) {
+                <article
+                  class="prize-card"
+                  [class.card-text-hidden]="!cardTextFits(entry.name)"
+                  [attr.aria-label]="entry.name + ' · ' + t('weight') + ' ' + entry.weight"
+                  [title]="entry.name"
+                  [id]="'prize-' + entry.key"
+                  [attr.data-slot-key]="entry.key"
+                  [class.is-active]="highlighted() === entry.key && spinning()"
+                  [class.is-winner]="result()?.key === entry.key"
+                  [style.--card-accent]="entry.color"
+                >
+                  <div class="card-top">
+                    <span class="card-index">{{
+                      (entry.index + 1).toString().padStart(2, '0')
+                    }}</span
+                    ><span class="card-winner">{{
+                      result()?.key === entry.key ? common('winner') : ''
+                    }}</span>
+                  </div>
+                  <div class="card-face">
+                    <span class="card-mark" aria-hidden="true">✳</span>
+                    <h3>{{ entry.name }}</h3>
+                  </div>
+                  <div class="card-bottom">
+                    <span
+                      >{{ t('weight') }} <strong>{{ entry.weight }}</strong></span
+                    ><span>{{ entry.chance }}%</span>
+                  </div>
+                  <span class="copy-label">{{
+                    t('copyOf', { copy: entry.copy, count: entry.multiplier })
+                  }}</span>
+                </article>
+              } @empty {
+                <div class="board-empty">{{ t('empty') }}</div>
+              }
+            </div>
           }
+          <dialog
+            id="roulette-winner"
+            class="winner-dialog"
+            aria-labelledby="roulette-winner-title"
+            aria-describedby="roulette-winner-name"
+          >
+            @if (result(); as selected) {
+              <p class="eyebrow" id="roulette-winner-title">{{ common('winner') }}</p>
+              <span class="winner-star" aria-hidden="true">✳</span>
+              <h2 id="roulette-winner-name">{{ selected.name }}</h2>
+              <p>
+                {{ t('copyOf', { copy: selected.copy, count: selected.multiplier }) }} ·
+                {{ t('weight') }} {{ selected.weight }}
+              </p>
+              <button type="button" autofocus (click)="closeWinner()">
+                {{ t('backToBoard') }}
+              </button>
+            }
+          </dialog>
           <div class="draw-timeline" aria-hidden="true">
             <div>
               <span>{{
@@ -123,6 +154,19 @@
             </div>
           </div>
         } @else {
+          <div class="wheel-shuffle">
+            <button
+              class="shuffle-button"
+              type="button"
+              [disabled]="spinning() || slotCount() < 2"
+              (click)="shufflePositions()"
+            >
+              {{ t('shufflePositions') }} <span aria-hidden="true">⇄</span></button
+            ><span>{{ t('shuffleHint') }}</span>
+          </div>
+          @if (shuffleNotice()) {
+            <p class="shuffle-notice" role="status">{{ shuffleNotice() }}</p>
+          }
           <div class="instrument">
             <div class="orbit-track" aria-hidden="true"></div>
             <div
@@ -140,7 +184,11 @@
               aria-hidden="true"
             >
               @for (slice of separatorSlices(); track slice.key) {
-                <span class="separator" [style.transform]="'rotate(' + slice.start + 'deg)'"></span>
+                <span
+                  class="separator"
+                  [attr.data-slot-key]="slice.key"
+                  [style.transform]="'rotate(' + slice.start + 'deg)'"
+                ></span>
               }
               @for (slice of labeledSlices(); track slice.key) {
                 <div class="slice-label" [style.transform]="'rotate(' + slice.middle + 'deg)'">
@@ -275,7 +323,7 @@
             <button
               type="button"
               [disabled]="spinning() || editorPage() === 0"
-              (click)="changePage('editor', -1)"
+              (click)="changePage(-1)"
               [attr.aria-label]="t('previous')"
             >
               ←</button
@@ -285,7 +333,7 @@
             ><button
               type="button"
               [disabled]="spinning() || editorPage() + 1 >= editorPages()"
-              (click)="changePage('editor', 1)"
+              (click)="changePage(1)"
               [attr.aria-label]="t('next')"
             >
               →
@@ -335,7 +383,13 @@
           >
             {{ t('importItems') }}
           </button>
-          <p class="capacity-note">{{ t('capacityNote') }}</p>
+          <p class="capacity-note">
+            {{
+              concept() === 'grid'
+                ? t('cardCapacityNote', { max: cardCapacity() })
+                : t('capacityNote')
+            }}
+          </p>
         </details>
         @if (importNotice()) {
           <p class="import-notice" role="status">{{ importNotice() }}</p>

@@ -94,3 +94,34 @@ export function parseBulkEntries(
       return entry;
     });
 }
+
+export const CARD_CAPACITIES = { large: 50, medium: 75, small: 100 } as const;
+export type CardSize = keyof typeof CARD_CAPACITIES;
+
+/** Keep a shuffled position for surviving copies; append newly added copies. */
+export function orderSlots(slots: readonly DrawSlot[], keys: readonly string[]): DrawSlot[] {
+  const remaining = new Map(slots.map((slot) => [slot.key, slot]));
+  const ordered: DrawSlot[] = [];
+  for (const key of keys) {
+    const slot = remaining.get(key);
+    if (slot) {
+      ordered.push(slot);
+      remaining.delete(key);
+    }
+  }
+  ordered.push(...remaining.values());
+  return ordered.map((slot, index) => ({ ...slot, index }));
+}
+
+/** Fisher–Yates permutes individual copies; no entry weights are changed. */
+export function shuffleSlots(
+  slots: readonly DrawSlot[],
+  randomIndex: (upperBound: number) => number = randomTicket,
+): DrawSlot[] {
+  const shuffled = [...slots];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = randomIndex(i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.map((slot, index) => ({ ...slot, index }));
+}
