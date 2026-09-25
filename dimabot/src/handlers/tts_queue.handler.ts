@@ -29,6 +29,7 @@ import {
 } from "../utils/billing.js";
 import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util.js";
 import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
+import { getTtsPlaybackTimeoutMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
@@ -80,6 +81,7 @@ class TtsQueueHandler {
   private cache: RedisClientType | null = null;
   private initialized = false;
   private processingChannels = new Set<string>();
+  private activeSpeechIds = new Map<string, string>();
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
@@ -220,6 +222,7 @@ class TtsQueueHandler {
         const next = await this.cache!.zPopMin(`twitch:${channelID}:tts:queue`);
         if (!next?.value) {
           this.processingChannels.delete(channelID);
+          this.activeSpeechIds.delete(channelID);
           await this.cache!.del(`twitch:${channelID}:tts:processing`);
           if ((await this.cache!.zCard(`twitch:${channelID}:tts:queue`)) > 0) {
             void this.processNext(channelID);
@@ -251,6 +254,7 @@ class TtsQueueHandler {
         const requestedProvider = queueItem.provider;
         let fallbackReason: string | undefined;
 
+        this.activeSpeechIds.set(channelID, speechID);
         await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID, {
           EX: TTS_PROCESSING_TTL_SECONDS,
         });
@@ -463,9 +467,15 @@ class TtsQueueHandler {
           continue;
         }
 
+        const playbackTimeoutMs = await getTtsPlaybackTimeoutMs(synthesisResult.outputPath);
         const timeout = setTimeout(() => {
+          console.warn("TTS overlay did not finish speech before timeout", {
+            channelID,
+            speechID,
+            playbackTimeoutMs,
+          });
           void this.handleSpeechEnded(channelID, speechID);
-        }, 30000);
+        }, playbackTimeoutMs);
 
         this.currentTimeouts.set(`${channelID}:${speechID}`, timeout);
 
@@ -486,6 +496,7 @@ class TtsQueueHandler {
         timestamp: new Date().toISOString(),
       });
       this.processingChannels.delete(channelID);
+      this.activeSpeechIds.delete(channelID);
       try {
         await this.cache!.del(`twitch:${channelID}:tts:processing`);
         if (activeSpeechID) {
@@ -507,6 +518,10 @@ class TtsQueueHandler {
     const storedSpeechID = await this.cache!.get(
       `twitch:${channelID}:tts:processing`,
     );
+    if (speechID && this.activeSpeechIds.get(channelID) !== speechID) {
+      // A late or duplicate browser event must not release the next item.
+      return;
+    }
     const currentSpeechID =
       speechID ||
       (storedSpeechID && storedSpeechID !== "pending" ? storedSpeechID : undefined);
@@ -582,6 +597,9 @@ class TtsQueueHandler {
     await this.cache!.del(`twitch:${channelID}:tts:processing`);
     await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
     this.processingChannels.delete(channelID);
+    if (this.activeSpeechIds.get(channelID) === speechID) {
+      this.activeSpeechIds.delete(channelID);
+    }
   }
 
   async cleanupChannel(channelID: string): Promise<void> {
@@ -636,6 +654,7 @@ class TtsQueueHandler {
     }
 
     this.processingChannels.delete(channelID);
+    this.activeSpeechIds.delete(channelID);
   }
 
   private scheduleFileCleanup(fileKey: string, outputPath: string): void {

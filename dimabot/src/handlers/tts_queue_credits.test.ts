@@ -116,6 +116,8 @@ test('a Fish synthesis that never finishes releases the channel and continues th
 
 test('a failed Fish request emits Piper audio for playback', async () => {
   const originalPiper = synthesizeImpls.piper;
+  const originalGet = cache.get;
+  const originalDel = cache.del;
   synthesizeImpls.piper = async (request) => {
     synthesis.push({ provider: 'piper', text: request.text, voice: request.voice });
     return { error: false, message: 'ok', outputPath: '/tmp/tts-test/audio.wav', publicPath: '/test/audio' };
@@ -133,11 +135,36 @@ test('a failed Fish request emits Piper audio for playback', async () => {
       speechID: 'speech-test', audioUrl: '/test/audio', mimeType: 'audio/wav',
       mode: 'speak', text: 'Hello',
     } }]);
+    const removed: string[] = [];
+    cache.get = async (key: string) => key.endsWith(':tts:processing') ? null : originalGet(key);
+    cache.del = async (key?: string | string[]) => {
+      if (key) removed.push(...(Array.isArray(key) ? key : [key]));
+    };
     await ttsQueueHandler.handleSpeechEnded('playback-test', 'speech-test');
+    assert.ok(removed.includes('twitch:playback-test:tts:processing'), 'expired Redis key still releases active playback');
   } finally {
+    cache.get = originalGet;
+    cache.del = originalDel;
     await ttsQueueHandler.cleanupChannel('playback-test');
     playbackAvailable = false;
     synthesizeImpls.piper = originalPiper;
+  }
+});
+
+test('a late overlay completion cannot release a newer speech', async () => {
+  const originalGet = cache.get;
+  const originalDel = cache.del;
+  const removed: string[] = [];
+  cache.get = async (key: string) => key.endsWith(':tts:processing') ? 'new-speech' : originalGet(key);
+  cache.del = async (key?: string | string[]) => {
+    if (key) removed.push(...(Array.isArray(key) ? key : [key]));
+  };
+  try {
+    await ttsQueueHandler.handleSpeechEnded('late-channel', 'old-speech');
+    assert.deepEqual(removed, []);
+  } finally {
+    cache.get = originalGet;
+    cache.del = originalDel;
   }
 });
 

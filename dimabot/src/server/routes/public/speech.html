@@ -26,17 +26,22 @@
         });
 
         let currentAudio = null;
+        let currentWatchdog = null;
 
-        function finishSpeech(speechID) {
+        function finishSpeech(speechID, audio) {
+            if (currentAudio !== audio || audio.dataset.finished === 'true') {
+                return;
+            }
+            audio.dataset.finished = 'true';
+            clearInterval(currentWatchdog);
+            currentWatchdog = null;
             socket.emit('speech-ended', {
                 channelID,
                 speechID
             });
 
-            if (currentAudio) {
-                currentAudio.remove();
-                currentAudio = null;
-            }
+            audio.remove();
+            currentAudio = null;
         }
 
         socket.on('speech', (payload) => {
@@ -45,6 +50,8 @@
             }
 
             if (currentAudio) {
+                clearInterval(currentWatchdog);
+                currentWatchdog = null;
                 currentAudio.pause();
                 currentAudio.remove();
                 currentAudio = null;
@@ -56,18 +63,33 @@
             audio.dataset.speechId = payload.speechID;
 
             audio.addEventListener('ended', () => {
-                finishSpeech(payload.speechID);
+                finishSpeech(payload.speechID, audio);
             }, { once: true });
 
             audio.addEventListener('error', () => {
-                finishSpeech(payload.speechID);
+                finishSpeech(payload.speechID, audio);
             }, { once: true });
 
             document.body.appendChild(audio);
             currentAudio = audio;
 
+            // OBS can fetch an audio file but leave playback stalled without
+            // firing ended or error. Release that item once media time stops
+            // advancing, so later speech does not wait for the server fallback.
+            let lastPosition = 0;
+            let lastProgressAt = Date.now();
+            currentWatchdog = setInterval(() => {
+                if (currentAudio !== audio) return;
+                if (audio.currentTime > lastPosition + 0.05) {
+                    lastPosition = audio.currentTime;
+                    lastProgressAt = Date.now();
+                } else if (Date.now() - lastProgressAt >= 8000) {
+                    finishSpeech(payload.speechID, audio);
+                }
+            }, 1000);
+
             audio.play().catch(() => {
-                finishSpeech(payload.speechID);
+                finishSpeech(payload.speechID, audio);
             });
         });
     </script>
