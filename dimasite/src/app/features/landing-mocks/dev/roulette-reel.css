@@ -1,0 +1,251 @@
+/* Reel: a broadcast prize tape that slides past a fixed marker. */
+[data-concept='reel'] {
+  --bg: #0c0e13;
+  --tile: #151922;
+  --fg: #f6f3ec;
+  --muted: #a3a3b2;
+  --line: #2b303c;
+  --accent: #f4b942;
+  --radius: 22px;
+  --shadow: none;
+}
+/* Re-assert the amber reel theme after the shared dark tokens. */
+:host-context(html.dark) [data-concept='reel'] {
+  --bg: #0c0e13;
+  --tile: #151922;
+  --fg: #f6f3ec;
+  --muted: #a3a3b2;
+  --line: #2b303c;
+  --accent: #f4b942;
+  --shadow: none;
+}
+[data-concept='reel'] .wheel-tile {
+  background:
+    radial-gradient(120% 80% at 50% -12%, #f4b9421f, transparent 62%),
+    linear-gradient(180deg, #171b25, #12151d);
+  border-color: var(--line);
+}
+[data-concept='reel'] .round-label {
+  background: #0a0c11;
+  color: var(--muted);
+}
+[data-concept='reel'] .spin-cta {
+  color: #1a1206;
+}
+[data-concept='reel'] .entry.selected {
+  background: #f4b9421f;
+}
+[data-concept='reel'] .has-result {
+  background: #f4b9421a;
+}
+.reel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-top: 14px;
+}
+.reel-toolbar .shuffle-button {
+  flex: 1;
+  min-height: 48px;
+}
+.reel-start {
+  display: flex;
+  flex: 1 1 150px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #1a1206;
+  font-size: 13px;
+  font-weight: 800;
+}
+.reel-start > span {
+  font-size: 20px;
+}
+.reel {
+  position: relative;
+  width: 100%;
+  height: 196px;
+  margin: 18px 0 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #0a0c11, #0e1118);
+  isolation: isolate;
+}
+.reel::before,
+.reel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 54px;
+  z-index: 3;
+  pointer-events: none;
+}
+.reel::before {
+  left: 0;
+  background: linear-gradient(90deg, #0a0c11 18%, transparent);
+}
+.reel::after {
+  right: 0;
+  background: linear-gradient(270deg, #0a0c11 18%, transparent);
+}
+.reel-strip {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.12, 0.72, 0.08, 1);
+  will-change: transform;
+}
+.reel-cell {
+  flex: 0 0 148px;
+  width: 148px;
+  min-width: 148px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--cell-accent, var(--accent));
+  border-radius: 12px;
+  background: #171b25;
+  transition:
+    border-color 140ms,
+    box-shadow 140ms,
+    background 140ms;
+}
+.reel-cell-index {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.reel-cell strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+.reel-cell-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.reel-cell-copy {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f4b9421f;
+  color: var(--accent);
+  font-weight: 800;
+}
+.reel-cell.is-winner {
+  border-color: var(--accent);
+  background: #221d10;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 14px 40px #f4b94233;
+}
+.reel-cell.is-winner strong {
+  color: #ffe6b0;
+}
+.reel-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, var(--accent), #f4b94222 72%, transparent);
+  box-shadow: 0 0 20px #f4b94277;
+  z-index: 2;
+  pointer-events: none;
+}
+.reel-marker::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid var(--accent);
+}
+.reel-capacity-block {
+  width: 100%;
+  margin: 20px 0 8px;
+  padding: 24px 18px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  background: #12151d;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.reel-capacity-block strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--fg);
+  font-size: 15px;
+}
+.reel-capacity-block p {
+  margin: 0 0 8px;
+}
+.reel-capacity-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #1a1206;
+  font-weight: 800;
+}
+@media (min-width: 640px) {
+  .reel {
+    height: 220px;
+  }
+  .reel-cell strong {
+    font-size: 16px;
+  }
+}
+@media (min-width: 960px) {
+  .reel {
+    height: 240px;
+  }
+  .reel-start {
+    display: none;
+  }
+  /* Let the reel tile size to its content instead of the wheel's fixed stage height. */
+  [data-concept='reel'] .wheel-tile {
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reel-strip,
+  .reel-cell {
+    transition: none;
+  }
+}

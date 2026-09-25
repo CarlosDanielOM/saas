@@ -26,7 +26,7 @@ import {
   selectSlot,
 } from './roulette-draw';
 
-type Concept = 'orbit' | 'ticket' | 'spotlight' | 'grid';
+type Concept = 'orbit' | 'ticket' | 'spotlight' | 'grid' | 'reel';
 interface Entry {
   id: number;
   name: string;
@@ -42,11 +42,17 @@ interface PrizeResult {
   weight: number;
   multiplier: number;
 }
+/** Reel cells use a fixed pitch so the landing offset stays exact at every breakpoint. */
+const REEL_CELL_WIDTH = 148;
+const REEL_GAP = 10;
+const REEL_PITCH = REEL_CELL_WIDTH + REEL_GAP;
+const REEL_MAX_ITEMS = 60;
 const PALETTES: Record<Concept, string[]> = {
   grid: ['#cbbaff', '#f4c968', '#ec9baf', '#a5d5c2', '#b0c9ee', '#e9b896'],
   orbit: ['#cbbaff', '#e6ddff', '#ae93f5', '#d6caf1', '#f0eaff', '#bca7ec'],
   ticket: ['#f4ad85', '#ffe0aa', '#ccb5ef', '#a6d9cd', '#f0bdd1', '#dbe29e'],
   spotlight: ['#c0a5ff', '#f4c968', '#ec9baf', '#a5d5c2', '#b0c9ee', '#e9b896'],
+  reel: ['#f4b942', '#ef7d5a', '#7fd1b9', '#8aa7f0', '#e6a0d8', '#f0d98a'],
 };
 
 @Component({
@@ -58,6 +64,7 @@ const PALETTES: Record<Concept, string[]> = {
     './roulette-card-grid.css',
     './roulette-entries.css',
     './roulette-board.css',
+    './roulette-reel.css',
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -69,7 +76,7 @@ export class RouletteAstraComponent {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private frame: number | undefined;
   private nextId = 7;
-  readonly concepts: Concept[] = ['orbit', 'ticket', 'spotlight', 'grid'];
+  readonly concepts: Concept[] = ['orbit', 'ticket', 'spotlight', 'grid', 'reel'];
   readonly concept = signal<Concept>('orbit');
   readonly entries = signal<Entry[]>(
     Array.from({ length: 6 }, (_, i) => ({ id: i + 1, name: '', weight: 1, multiplier: 1 })),
@@ -83,9 +90,14 @@ export class RouletteAstraComponent {
   readonly cardSizes: CardSize[] = ['large', 'medium', 'small'];
   readonly cardSize = signal<CardSize>('large');
   readonly cardCapacities = CARD_CAPACITIES;
+  readonly reelMaxItems = REEL_MAX_ITEMS;
   readonly cardCapacity = computed(() => CARD_CAPACITIES[this.cardSize()]);
   readonly cardBoard = viewChild<ElementRef<HTMLElement>>('cardBoard');
   readonly boardBounds = signal({ width: 800, height: 400 });
+  readonly reelViewport = viewChild<ElementRef<HTMLElement>>('reelViewport');
+  readonly reelWidth = signal(800);
+  readonly reelOffset = signal(0);
+  readonly reelSnap = signal(false);
   readonly slotOrder = signal<string[]>([]);
   readonly shuffleNotice = signal('');
   readonly editorPageSize = 10;
@@ -139,6 +151,62 @@ export class RouletteAstraComponent {
   readonly separatorSlices = computed(() => (this.slotCount() <= 72 ? this.slices() : []));
   readonly denseWheel = computed(() => this.labeledSlices().length < this.slotCount());
   readonly gridOverCapacity = computed(() => this.slotCount() > this.cardCapacity());
+  readonly isWheel = computed(() => this.concept() !== 'grid' && this.concept() !== 'reel');
+  readonly reelEntries = computed(() => {
+    const seen = new Set<number>();
+    const rows: Array<{
+      id: number;
+      index: number;
+      name: string;
+      color: string;
+      weight: number;
+      multiplier: number;
+      chance: string;
+    }> = [];
+    for (const slice of this.slices()) {
+      if (seen.has(slice.id)) continue;
+      seen.add(slice.id);
+      rows.push({
+        id: slice.id,
+        index: rows.length,
+        name: slice.name,
+        color: slice.color,
+        weight: slice.weight,
+        multiplier: slice.multiplier,
+        chance: this.chance(slice.weight * slice.multiplier),
+      });
+    }
+    return rows;
+  });
+  readonly reelOverCapacity = computed(
+    () => this.concept() === 'reel' && this.reelEntries().length > REEL_MAX_ITEMS,
+  );
+  readonly reelCycles = computed(() => {
+    const items = this.reelEntries().length;
+    if (!items) return 5;
+    const cycleWidth = items * REEL_PITCH;
+    const need = Math.ceil(Math.max(this.reelWidth(), 320) / cycleWidth) + 5;
+    return Math.min(Math.max(5, need), 10);
+  });
+  readonly reelCells = computed(() => {
+    const items = this.reelEntries();
+    const cycles = this.reelCycles();
+    const cells: Array<(typeof items)[number] & { key: string; slot: number }> = [];
+    for (let cycle = 0; cycle < cycles; cycle++) {
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        cells.push({ ...item, key: `${cycle}:${item.id}`, slot: cycle * items.length + index });
+      }
+    }
+    return cells;
+  });
+  readonly spinLabel = computed(() => {
+    if (this.concept() === 'grid')
+      return this.spinning() ? this.t('gridDrawing') : this.t('gridStart');
+    if (this.concept() === 'reel')
+      return this.spinning() ? this.t('reelDrawing') : this.t('reelStart');
+    return this.spinning() ? this.common('spinning') : this.common('spin');
+  });
   readonly boardLayout = computed(() => {
     const { width, height } = this.boardBounds();
     const count = Math.max(1, Math.min(this.slotCount(), this.cardCapacity()));
@@ -181,6 +249,7 @@ export class RouletteAstraComponent {
     () =>
       this.slotCount() >= 2 &&
       !this.spinning() &&
+      !this.reelOverCapacity() &&
       (this.concept() !== 'grid' || !this.gridOverCapacity()),
   );
 
@@ -202,6 +271,20 @@ export class RouletteAstraComponent {
         this.boardBounds.set({ width: entry.contentRect.width, height: entry.contentRect.height });
       });
       observer.observe(board);
+      onCleanup(() => observer.disconnect());
+    });
+    effect((onCleanup) => {
+      const reel = this.reelViewport()?.nativeElement;
+      if (!reel || typeof ResizeObserver === 'undefined') return;
+      let seeded = false;
+      const observer = new ResizeObserver(([entry]) => {
+        this.reelWidth.set(Math.max(320, entry.contentRect.width));
+        if (!seeded) {
+          seeded = true;
+          this.reelOffset.set(this.reelIdleOffset());
+        }
+      });
+      observer.observe(reel);
       onCleanup(() => observer.disconnect());
     });
     this.destroyRef.onDestroy(() => {
@@ -370,7 +453,54 @@ export class RouletteAstraComponent {
           dialog.showModal();
         this.frame = undefined;
       });
+    } else if (this.concept() === 'reel') {
+      const cycleWidth = this.reelEntries().length * REEL_PITCH;
+      this.reelSnap.set(true);
+      if (cycleWidth > 0) {
+        let rebased = this.reelOffset() % cycleWidth;
+        if (rebased > 0) rebased -= cycleWidth;
+        this.reelOffset.set(rebased);
+      }
+      this.frame = requestAnimationFrame(() => {
+        this.reelSnap.set(false);
+        this.frame = undefined;
+      });
     }
+  }
+  /** Centers a cell under the marker for the idle state, in the same range spins rebase to. */
+  private reelIdleOffset(): number {
+    const items = this.reelEntries().length;
+    if (!items) return 0;
+    const cycleWidth = items * REEL_PITCH;
+    const center = Math.max(this.reelWidth(), REEL_CELL_WIDTH) / 2;
+    let offset = center - ((items - 1) * REEL_PITCH + REEL_CELL_WIDTH / 2);
+    while (offset > 0) offset -= cycleWidth;
+    while (offset <= -cycleWidth) offset += cycleWidth;
+    return offset;
+  }
+  /** Slides the periodic prize strip so the winning entry stops under the marker. */
+  private animateReel(selected: PrizeResult): void {
+    const items = this.reelEntries();
+    const itemIndex = items.findIndex((item) => item.id === selected.id);
+    if (itemIndex < 0 || !items.length) {
+      this.reveal(selected);
+      return;
+    }
+    const cycleWidth = items.length * REEL_PITCH;
+    const center = Math.max(this.reelWidth(), REEL_CELL_WIDTH) / 2;
+    const winnerOffset = center - (itemIndex * REEL_PITCH + REEL_CELL_WIDTH / 2);
+    const from = this.reelOffset();
+    const travel = Math.max(cycleWidth * 2, 600);
+    const cycles = Math.ceil((winnerOffset - (from - travel)) / cycleWidth);
+    const target = winnerOffset - cycles * cycleWidth;
+    const reduce = this.reducedMotion();
+    this.frame = requestAnimationFrame(() => {
+      this.reelOffset.set(target);
+      this.timer = setTimeout(
+        () => this.reveal(selected),
+        reduce ? 0 : this.duration() * 1000 + 100,
+      );
+    });
   }
   private animateCards(selected: PrizeResult, keys: string[]): void {
     const start = performance.now();
@@ -416,6 +546,10 @@ export class RouletteAstraComponent {
         selected,
         this.slices().map((slot) => slot.key),
       );
+      return;
+    }
+    if (this.concept() === 'reel') {
+      this.animateReel(selected);
       return;
     }
     const remainder = ((this.angle() % 360) + 360) % 360;

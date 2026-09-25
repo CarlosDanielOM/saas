@@ -36,7 +36,13 @@
     <div class="composition">
       <section
         class="wheel-tile lf-tile"
-        [attr.aria-label]="concept() === 'grid' ? t('gridArea') : common('wheelArea')"
+        [attr.aria-label]="
+          concept() === 'grid'
+            ? t('gridArea')
+            : concept() === 'reel'
+              ? t('reelArea')
+              : common('wheelArea')
+        "
       >
         <div class="wheel-top">
           <span class="eyebrow">{{ t('session') }}</span
@@ -153,6 +159,71 @@
               <span [style.transform]="'scaleX(' + progress() + ')'"></span>
             </div>
           </div>
+        } @else if (concept() === 'reel') {
+          <div class="reel-toolbar">
+            <button
+              class="shuffle-button"
+              type="button"
+              [disabled]="spinning() || reelEntries().length < 2"
+              (click)="shufflePositions()"
+            >
+              {{ t('shufflePositions') }} <span aria-hidden="true">⇄</span>
+            </button>
+            @if (!reelOverCapacity()) {
+              <button class="reel-start" type="button" [disabled]="!ready()" (click)="spin()">
+                {{ spinning() ? t('reelDrawing') : t('reelStart')
+                }}<span aria-hidden="true">↗</span>
+              </button>
+            }
+          </div>
+          @if (shuffleNotice()) {
+            <p class="shuffle-notice" role="status">{{ shuffleNotice() }}</p>
+          }
+          @if (reelOverCapacity()) {
+            <div class="reel-capacity-block" role="status">
+              <strong>{{ t('reelCapacityTitle') }}</strong>
+              <p>{{ t('reelCapacityError', { count: reelEntries().length, max: reelMaxItems }) }}</p>
+              <p>{{ t('reelCapacityRecovery') }}</p>
+              <a class="reel-capacity-action" routerLink="." [queryParams]="{ design: 'orbit' }">{{
+                t('reelCapacityAction')
+              }}</a>
+            </div>
+          } @else {
+            <div
+              class="reel"
+              #reelViewport
+              [class.is-spinning]="spinning()"
+              [class.is-revealed]="result()"
+              [attr.aria-label]="t('reelArea')"
+            >
+              <div
+                class="reel-strip"
+                [style.transform]="'translateX(' + reelOffset() + 'px)'"
+                [style.transition-duration]="reelSnap() || reducedMotion() ? '0s' : duration() + 's'"
+              >
+                @for (cell of reelCells(); track cell.key) {
+                  <article
+                    class="reel-cell"
+                    [class.is-winner]="result()?.id === cell.id"
+                    [style.--cell-accent]="cell.color"
+                    [title]="cell.name"
+                  >
+                    <span class="reel-cell-index">{{
+                      (cell.index + 1).toString().padStart(2, '0')
+                    }}</span>
+                    <strong>{{ cell.name }}</strong>
+                    <span class="reel-cell-meta"
+                      ><span>{{ cell.chance }}%</span>
+                      @if (cell.multiplier > 1) {
+                        <span class="reel-cell-copy">×{{ cell.multiplier }}</span>
+                      }
+                    </span>
+                  </article>
+                }
+              </div>
+              <span class="reel-marker" aria-hidden="true"></span>
+            </div>
+          }
         } @else {
           <div class="wheel-shuffle">
             <button
@@ -214,7 +285,7 @@
             </button>
           </div>
         }
-        @if (concept() !== 'grid' && denseWheel()) {
+        @if (isWheel() && denseWheel()) {
           <p class="dense-wheel-note">{{ t('denseWheel') }}</p>
         }
         <div class="wheel-caption" [class.grid-hidden]="concept() === 'grid'">
@@ -246,7 +317,13 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">{{ t('lineup') }}</p>
-            <h2>{{ concept() === 'grid' ? t('gridSetup') : t('prizes') }}</h2>
+            <h2>{{
+              concept() === 'grid'
+                ? t('gridSetup')
+                : concept() === 'reel'
+                  ? t('reelPrizes')
+                  : t('prizes')
+            }}</h2>
           </div>
           <span class="count">{{ entries().length.toString().padStart(2, '0') }}</span>
         </div>
@@ -404,7 +481,7 @@
           <p class="eyebrow">{{ t('makeItYours') }}</p>
           <h2>{{ t('controls') }}</h2>
         </div>
-        @if (concept() !== 'grid') {
+        @if (isWheel()) {
           <fieldset [disabled]="spinning()">
             <legend>{{ common('arrowPosition') }}</legend>
             <div class="pointer-options">
@@ -442,15 +519,7 @@
           </div>
         </div>
         <button class="spin-cta" type="button" [disabled]="!ready()" (click)="spin()">
-          {{
-            concept() === 'grid'
-              ? spinning()
-                ? t('gridDrawing')
-                : t('gridStart')
-              : spinning()
-                ? common('spinning')
-                : common('spin')
-          }}<span aria-hidden="true">↗</span>
+          {{ spinLabel() }}<span aria-hidden="true">↗</span>
         </button>
         @if (slotCount() < 2) {
           <p class="minimum-note">{{ t('needTwoSlots') }}</p>
