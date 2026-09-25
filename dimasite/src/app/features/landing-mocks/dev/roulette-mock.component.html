@@ -1,0 +1,116 @@
+<div class="roulette" [attr.data-design]="design()">
+  <header class="topbar">
+    <a routerLink="/mocks/dev" class="back-link">← {{ t('back') }}</a>
+    <span class="brand"><i aria-hidden="true"></i> DomDimaBot <span class="brand-suffix">/ {{ t('playground') }}</span></span>
+    <span class="mock-badge">{{ t('localOnly') }}</span>
+  </header>
+
+  <main class="page">
+    <div class="intro">
+      <div>
+        <p class="eyebrow">{{ t('eyebrow') }}</p>
+        <h1>{{ t('title') }}<span>.</span></h1>
+        <p class="subtitle">{{ t('subtitle') }}</p>
+      </div>
+      <div class="design-switch" role="group" [attr.aria-label]="t('chooseDesign')">
+        @for (option of designs; track option) {
+          <button type="button" [class.active]="design() === option" [attr.aria-pressed]="design() === option" (click)="setDesign(option)">
+            <span class="design-number">0{{ $index + 1 }}</span> {{ t('design.' + option) }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="layout">
+      <section class="wheel-panel" [attr.aria-label]="t('wheelArea')">
+        <div class="panel-topline">
+          <span class="section-tag">{{ t('livePreview') }}</span>
+          <span class="count-pill">{{ entries().length }} {{ t('items') }}</span>
+        </div>
+        <div class="wheel-heading">
+          <p>{{ t('session') }}</p>
+          <h2>{{ sessionName() || t('untitled') }}</h2>
+        </div>
+        <div class="wheel-wrap" [attr.data-pointer]="pointer()">
+          <span class="pointer" aria-hidden="true"></span>
+          <div class="wheel" [style.background]="gradient()" [style.transform]="'rotate(' + rotation() + 'deg)'" [style.transition]="transition()" aria-hidden="true">
+            @for (slice of slices(); track slice.id) {
+              <div class="wheel-label" [style.transform]="labelPosition(slice.center)" [style.--counter-rotation]="labelPosition(-slice.center - rotation())">
+                <span>{{ slice.name }}</span>
+              </div>
+            }
+            <div class="wheel-hub"></div>
+          </div>
+        </div>
+        <div class="wheel-actions">
+          <button class="spin-button" type="button" [disabled]="!canSpin()" (click)="spin()">
+            {{ spinning() ? t('spinning') : t('spin') }} <span aria-hidden="true">↗</span>
+          </button>
+          <p class="spin-helper">{{ t('spinHint') }}</p>
+        </div>
+        <div class="winner" [class.winner--visible]="winner() !== null" aria-live="polite">
+          @if (winner(); as selected) {
+            <span class="winner-kicker">{{ t('winner') }}</span>
+            <strong>{{ selected.name }}</strong>
+            <span>{{ t('winnerChance', { chance: chance(selected.weight) }) }}</span>
+          } @else {
+            <span class="winner-placeholder">{{ t('winnerPlaceholder') }}</span>
+          }
+        </div>
+      </section>
+
+      <div class="controls">
+        <section class="control-panel entries-panel">
+          <div class="control-head">
+            <div><p class="eyebrow">{{ t('stepOne') }}</p><h2>{{ t('entriesTitle') }}</h2></div>
+            <button type="button" class="text-button" [disabled]="spinning()" (click)="reset()">{{ t('reset') }}</button>
+          </div>
+          <p class="panel-desc">{{ t('entriesHint') }}</p>
+          <label class="field-label" for="roulette-session">{{ t('sessionName') }}</label>
+          <input id="roulette-session" class="session-input" [value]="sessionName()" [disabled]="spinning()" maxlength="48" (input)="setSessionName($event)" />
+          <div class="entries-head"><span>{{ t('entry') }}</span><span>{{ t('weight') }}</span><span>{{ t('chance') }}</span></div>
+          <div class="entry-list">
+            @for (entry of entries(); track entry.id) {
+              <div class="entry-row">
+                <span class="entry-dot" [style.background]="entry.color" aria-hidden="true"></span>
+                <input class="entry-name" [attr.aria-label]="t('entryName')" [value]="entry.name" [disabled]="spinning()" maxlength="40" (input)="setName(entry.id, $event)" />
+                <input class="weight-input" type="number" min="1" max="10" [attr.aria-label]="t('weightFor', { name: entry.name })" [value]="entry.weight" [disabled]="spinning()" (change)="setWeight(entry.id, $event)" />
+                <span class="chance">{{ chance(entry.weight) }}</span>
+                <button class="remove-button" type="button" [disabled]="spinning()" [attr.aria-label]="t('remove', { name: entry.name })" (click)="remove(entry.id)">×</button>
+              </div>
+            }
+          </div>
+          <form class="add-row" (submit)="$event.preventDefault(); add()">
+            <input [attr.aria-label]="t('addPlaceholder')" [placeholder]="t('addPlaceholder')" [value]="draftName()" [disabled]="spinning()" maxlength="40" (input)="setDraft($event)" />
+            <button type="submit" [disabled]="spinning() || entries().length >= 12">+ {{ t('add') }}</button>
+          </form>
+          @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+          <p class="footnote">{{ t('weightNote') }}</p>
+        </section>
+
+        <section class="control-panel settings-panel">
+          <div class="control-head"><div><p class="eyebrow">{{ t('stepTwo') }}</p><h2>{{ t('settingsTitle') }}</h2></div></div>
+          <p class="panel-desc">{{ t('settingsHint') }}</p>
+          <span class="field-label">{{ t('arrowPosition') }}</span>
+          <div class="position-grid" role="group" [attr.aria-label]="t('arrowPosition')">
+            @for (side of pointers; track side) {
+              <button type="button" [class.selected]="pointer() === side" [attr.aria-pressed]="pointer() === side" [disabled]="spinning()" (click)="setPointer(side)">
+                <span class="position-icon" [attr.data-side]="side" aria-hidden="true">▲</span>{{ t('pointer.' + side) }}
+              </button>
+            }
+          </div>
+          <label class="field-label duration-label" for="roulette-duration">{{ t('duration') }} <strong>{{ duration() }}s</strong></label>
+          <input id="roulette-duration" class="duration-range" type="range" min="3" max="8" step="1" [value]="duration()" [disabled]="spinning()" (input)="setDuration($event)" />
+          <div class="range-ends"><span>3s</span><span>8s</span></div>
+        </section>
+        <section class="control-panel history-panel">
+          <div class="control-head"><div><p class="eyebrow">{{ t('stepThree') }}</p><h2>{{ t('historyTitle') }}</h2></div></div>
+          @if (history().length) {
+            <ol class="history-list">@for (name of history(); track $index) { <li><span>{{ name }}</span><small>#{{ $index + 1 }}</small></li> }</ol>
+          } @else { <p class="empty-history">{{ t('historyEmpty') }}</p> }
+        </section>
+      </div>
+    </div>
+    <p class="local-note">{{ t('localNote') }}</p>
+  </main>
+</div>

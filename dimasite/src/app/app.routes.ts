@@ -255,6 +255,14 @@ export const routes: Routes = [
         title: 'Command AST Blocks | DomDimaBot'
       },
       {
+        path: 'roulette',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/roulette-mock.component').then(
+            (m) => m.RouletteMockComponent
+          ),
+        title: 'Roulette Designs | DomDimaBot'
+      },
+      {
         path: 'lf-status',
         loadComponent: () =>
           import('./features/landing-mocks/dev/lf-auth-status-hub.component').then(

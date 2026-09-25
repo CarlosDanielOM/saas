@@ -139,6 +139,13 @@ interface DevMockCard {
 export class DevMockIndexComponent {
   readonly mocks: DevMockCard[] = [
     {
+      id: 'roulette',
+      title: 'Roulette · 3 designs',
+      badge: 'Interactive mock',
+      description:
+        'Three playable wheel layouts with weighted entries, pointer placement and a local winner history.'
+    },
+    {
       id: 'clips',
       title: 'Clip overlay · Design 1',
       badge: 'Design mocks',
