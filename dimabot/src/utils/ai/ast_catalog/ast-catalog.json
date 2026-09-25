@@ -1,9 +1,9 @@
 {
-  "version": "9359477316f1",
-  "generatedAt": "2026-09-23T21:24:52.446Z",
+  "version": "99cb54de6c6e",
+  "generatedAt": "2026-09-25T03:18:20.774Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 66,
+  "functionCount": 71,
   "entries": [
     {
       "name": "user",
@@ -666,6 +666,72 @@
       ]
     },
     {
+      "name": "get.prediction",
+      "description": "Reads the current active or locked prediction from Twitch and returns its question and numbered option titles. Call this before end.prediction so the winner matches the question and actual option order.",
+      "syntax": "get.prediction",
+      "category": "channel",
+      "examples": [
+        "get.prediction"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "current prediction",
+        "prediction options",
+        "read prediction",
+        "opciones prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "end.prediction",
+      "description": "Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.",
+      "syntax": "end.prediction \"exact option title\"",
+      "category": "channel",
+      "examples": [
+        "end.prediction \"No\"",
+        "end.prediction 1"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "end prediction",
+        "resolve prediction",
+        "terminar prediccion",
+        "resolver prediccion"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "cancel.prediction",
+      "description": "Cancels the current active or locked channel points prediction without choosing a winner. Fetches the current prediction from Twitch.",
+      "syntax": "cancel.prediction",
+      "category": "channel",
+      "examples": [
+        "cancel.prediction"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "cancel prediction",
+        "refund prediction",
+        "cancelar prediccion"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
       "name": "start.poll",
       "description": "Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.",
       "syntax": "start.poll \"title;option1/option2;seconds\"",
@@ -683,6 +749,49 @@
         "votacion"
       ],
       "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "end.poll",
+      "description": "Ends the current active poll and archives its results. Fetches the current poll from Twitch.",
+      "syntax": "end.poll",
+      "category": "channel",
+      "examples": [
+        "end.poll"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "end poll",
+        "archive poll",
+        "terminar encuesta",
+        "archivar encuesta"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "cancel.poll",
+      "description": "Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.",
+      "syntax": "cancel.poll",
+      "category": "channel",
+      "examples": [
+        "cancel.poll"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "cancel poll",
+        "terminate poll",
+        "cancelar encuesta"
+      ],
+      "destructive": true,
       "surfaces": [
         "action",
         "authoring"

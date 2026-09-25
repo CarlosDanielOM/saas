@@ -40,8 +40,6 @@ interface EndPredictionResponse {
 
 export async function endPrediction(channelID: string, predictionID: string, status: string, winnerID: string | null = null): Promise<EndPredictionResponse> {
     try {
-        const cacheClient = await getDragonflyClient('endPrediction');
-
         if (status !== 'RESOLVED' && status !== 'CANCELED' && status !== 'LOCKED') {
             return {
                 error: true,
@@ -119,7 +117,11 @@ export async function endPrediction(channelID: string, predictionID: string, sta
             predictionData.winning_outcome = winning_outcome;
         }
 
-        await cacheClient.del(`twitch:${channelID}:predictions`);
+        // Twitch has committed the change; cache cleanup must not turn it into
+        // a reported failure (or block the response) when Dragonfly is down.
+        void getDragonflyClient('endPrediction')
+            .then(client => client.del(`twitch:${channelID}:predictions`))
+            .catch(error => console.error('Prediction cache cleanup failed:', error));
 
         return {
             error: false,

@@ -10,8 +10,8 @@ mock.module('../../functions/channels/index.js', { namedExports: { setChannelInf
 mock.module('../../functions/chats/index.js', { namedExports: { sendTwitchChatMessage: forbiddenEffect } });
 mock.module('../../functions/users/index.js', { namedExports: { getTwitchUserByLogin: forbiddenEffect } });
 mock.module('../../functions/search/index.js', { namedExports: { searchCategories: forbiddenEffect } });
-mock.module('../../functions/predictions/index.js', { namedExports: { createPrediction: forbiddenEffect } });
-mock.module('../../functions/polls/index.js', { namedExports: { createPoll: forbiddenEffect } });
+mock.module('../../functions/predictions/index.js', { namedExports: { createPrediction: forbiddenEffect, getPrediction: forbiddenEffect, endPrediction: forbiddenEffect } });
+mock.module('../../functions/polls/index.js', { namedExports: { createPoll: forbiddenEffect, getPoll: forbiddenEffect, endPoll: forbiddenEffect } });
 mock.module('../../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById: forbiddenEffect } });
 mock.module('../ai/openrouter/command.ai.js', { namedExports: { executeAiCommand: forbiddenEffect } });
 const { registerChannelFunctions } = await import('./functions/channel.functions.js');

@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 9359477316f1
+# Catalog version: 99cb54de6c6e
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -45,6 +45,17 @@
 #   Example: $(ai tell me a joke)
 #
 # --- channel ---
+# $(cancel.poll) - Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.
+#   Example: $(cancel.poll)
+# $(cancel.prediction) - Cancels the current active or locked channel points prediction without choosing a winner. Fetches the current prediction from Twitch.
+#   Example: $(cancel.prediction)
+# $(end.poll) - Ends the current active poll and archives its results. Fetches the current poll from Twitch.
+#   Example: $(end.poll)
+# $(end.prediction "exact option title") - Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.
+#   Example: $(end.prediction "No")
+#   Example: $(end.prediction 1)
+# $(get.prediction) - Reads the current active or locked prediction from Twitch and returns its question and numbered option titles. Call this before end.prediction so the winner matches the question and actual option order.
+#   Example: $(get.prediction)
 # $(raid channel) - Starts a raid to another channel.
 #   Example: $(raid friendlystreamer)
 # $(set.game game name) - Changes the stream category. Searches Twitch categories by name and picks the best match.

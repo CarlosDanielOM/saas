@@ -41,11 +41,11 @@ interface GetPredictionResponse {
 
 export async function getPrediction(channelID: string, predictionID: string | null = null, cache: boolean = false): Promise<GetPredictionResponse> {
     try {
-        const cacheClient = await getDragonflyClient('getPrediction');
+        const cacheClient = cache ? await getDragonflyClient('getPrediction') : null;
         const cacheKey = `twitch:${channelID}:predictions`;
 
         if (cache) {
-            const cachedData = await cacheClient.get(cacheKey);
+            const cachedData = await cacheClient!.get(cacheKey);
             if (cachedData) {
                 const parsedData = JSON.parse(cachedData);
                 return {
@@ -100,7 +100,9 @@ export async function getPrediction(channelID: string, predictionID: string | nu
             };
         }
 
-        const prediction = data.data[0];
+        const prediction = predictionID
+            ? data.data[0]
+            : data.data.find((item: { status?: string }) => item.status === 'ACTIVE' || item.status === 'LOCKED') ?? data.data[0];
 
         const outcomes = prediction.outcomes.map((outcome: any) => {
             return {
@@ -130,7 +132,7 @@ export async function getPrediction(channelID: string, predictionID: string | nu
         }
 
         if (cache) {
-            await cacheClient.set(cacheKey, JSON.stringify(predictionData));
+            await cacheClient!.set(cacheKey, JSON.stringify(predictionData));
         }
 
         return {

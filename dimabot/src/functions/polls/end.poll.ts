@@ -26,8 +26,6 @@ interface EndPollResponse {
 
 export async function endPoll(channelID: string, pollID: string, status: string): Promise<EndPollResponse> {
     try {
-        const cacheClient = await getDragonflyClient('endPoll');
-
         if (status !== 'TERMINATED' && status !== 'ARCHIVED') {
             return {
                 error: true,
@@ -91,7 +89,11 @@ export async function endPoll(channelID: string, pollID: string, status: string)
             channel: poll.broadcaster_login
         };
 
-        await cacheClient.del(`twitch:${channelID}:polls`);
+        // Twitch has committed the change; cache cleanup must not turn it into
+        // a reported failure (or block the response) when Dragonfly is down.
+        void getDragonflyClient('endPoll')
+            .then(client => client.del(`twitch:${channelID}:polls`))
+            .catch(error => console.error('Poll cache cleanup failed:', error));
 
         return {
             error: false,

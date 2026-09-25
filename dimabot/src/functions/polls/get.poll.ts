@@ -27,11 +27,11 @@ interface GetPollResponse {
 
 export async function getPoll(channelID: string, pollID: string | null = null, cache: boolean = false): Promise<GetPollResponse> {
     try {
-        const cacheClient = await getDragonflyClient('getPoll');
+        const cacheClient = cache ? await getDragonflyClient('getPoll') : null;
         const cacheKey = `twitch:${channelID}:polls`;
 
         if (cache) {
-            const cachedData = await cacheClient.get(cacheKey);
+            const cachedData = await cacheClient!.get(cacheKey);
             if (cachedData) {
                 const parsedData = JSON.parse(cachedData);
                 return {
@@ -86,7 +86,9 @@ export async function getPoll(channelID: string, pollID: string | null = null, c
             };
         }
 
-        const poll = data.data[0];
+        const poll = pollID
+            ? data.data[0]
+            : data.data.find((item: { status?: string }) => item.status === 'ACTIVE') ?? data.data[0];
 
         const choices = poll.choices.map((choice: any) => {
             return {
@@ -106,7 +108,7 @@ export async function getPoll(channelID: string, pollID: string | null = null, c
         };
 
         if (cache) {
-            await cacheClient.set(cacheKey, JSON.stringify(pollData));
+            await cacheClient!.set(cacheKey, JSON.stringify(pollData));
         }
 
         return {
