@@ -83,6 +83,7 @@ class TtsQueueHandler {
   private processingChannels = new Set<string>();
   private activeSpeechIds = new Map<string, string>();
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
+  private playbackPositions = new Map<string, number>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
   synthesisTimeoutMs = DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS;
@@ -468,16 +469,8 @@ class TtsQueueHandler {
         }
 
         const playbackTimeoutMs = await getTtsPlaybackTimeoutMs(synthesisResult.outputPath);
-        const timeout = setTimeout(() => {
-          console.warn("TTS overlay did not finish speech before timeout", {
-            channelID,
-            speechID,
-            playbackTimeoutMs,
-          });
-          void this.handleSpeechEnded(channelID, speechID);
-        }, playbackTimeoutMs);
-
-        this.currentTimeouts.set(`${channelID}:${speechID}`, timeout);
+        this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
+        console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
         io.of(`/speech/${channelID}`).emit("speech", {
           speechID,
@@ -510,29 +503,38 @@ class TtsQueueHandler {
     }
   }
 
-  async handleSpeechEnded(channelID: string, speechID?: string): Promise<void> {
-    if (!this.cache) {
-      await this.init();
-    }
+  private armPlaybackTimeout(channelID: string, speechID: string, delay: number): void {
+    const key = `${channelID}:${speechID}`;
+    clearTimeout(this.currentTimeouts.get(key));
+    this.currentTimeouts.set(key, setTimeout(() => {
+      console.warn('TTS overlay playback timed out', { channelID, speechID, delay });
+      void this.handleSpeechEnded(channelID, speechID, 'timeout');
+    }, delay));
+  }
 
-    const storedSpeechID = await this.cache!.get(
-      `twitch:${channelID}:tts:processing`,
-    );
-    if (speechID && this.activeSpeechIds.get(channelID) !== speechID) {
-      // A late or duplicate browser event must not release the next item.
-      return;
+  handleSpeechPlayback(channelID: string, data: { speechID?: string; phase?: string; position?: number }): void {
+    if (!data?.speechID || this.activeSpeechIds.get(channelID) !== data.speechID) return;
+    const key = `${channelID}:${data.speechID}`;
+    const previous = this.playbackPositions.get(key);
+    const position = data.position;
+    // Only the first receipt or advancing media time extends the deadline.
+    // A stuck client sending heartbeats must not hold the queue forever.
+    if (previous === undefined || (Number.isFinite(position) && position! > previous + 0.05)) {
+      this.playbackPositions.set(key, Number.isFinite(position) ? Math.max(0, position!) : 0);
+      this.armPlaybackTimeout(channelID, data.speechID, 60_000);
+      if (previous === undefined || previous === 0) {
+        console.log('TTS playback', { channelID, speechID: data.speechID, phase: data.phase, position });
+      }
     }
-    const currentSpeechID =
-      speechID ||
-      (storedSpeechID && storedSpeechID !== "pending" ? storedSpeechID : undefined);
-    if (!currentSpeechID) {
-      this.processingChannels.delete(channelID);
-      await this.cache!.del(`twitch:${channelID}:tts:processing`);
-      void this.processNext(channelID);
-      return;
-    }
+  }
 
-    await this.cleanupSpeech(channelID, currentSpeechID);
+  async handleSpeechEnded(channelID: string, speechID?: string, reason = 'ended'): Promise<void> {
+    if (!speechID || this.activeSpeechIds.get(channelID) !== speechID) return;
+    // Claim completion before the first await. Concurrent duplicate events must
+    // not both clean up and release a newer item after Redis yields.
+    this.activeSpeechIds.delete(channelID);
+    console.log('TTS finished', { channelID, speechID, reason });
+    await this.cleanupSpeech(channelID, speechID);
     void this.processNext(channelID);
   }
 
@@ -583,6 +585,7 @@ class TtsQueueHandler {
     }
 
     const timeoutKey = `${channelID}:${speechID}`;
+    this.playbackPositions.delete(timeoutKey);
     const timeout = this.currentTimeouts.get(timeoutKey);
     if (timeout) {
       clearTimeout(timeout);

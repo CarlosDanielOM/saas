@@ -25,72 +25,105 @@
             reconnectionDelayMax: 5000
         });
 
-        let currentAudio = null;
-        let currentWatchdog = null;
+        // Keep deliveries ordered even after a reconnect or a server recovery timeout.
+        const queue = [];
+        const seen = new Set();
+        let current = null;
 
-        function finishSpeech(speechID, audio) {
-            if (currentAudio !== audio || audio.dataset.finished === 'true') {
-                return;
-            }
-            audio.dataset.finished = 'true';
-            clearInterval(currentWatchdog);
-            currentWatchdog = null;
-            socket.emit('speech-ended', {
-                channelID,
-                speechID
+        function report(item, phase) {
+            socket.emit('speech-playback', {
+                speechID: item.speechID, phase,
+                position: item.audio?.currentTime || 0
             });
+        }
 
-            audio.remove();
-            currentAudio = null;
+        function finish(item, reason) {
+            if (current !== item || item.finished) return;
+            item.finished = true;
+            clearInterval(item.watchdog);
+            item.controller?.abort();
+            const position = item.audio?.currentTime || 0;
+            if (item.audio) {
+                item.audio.pause();
+                item.audio.removeAttribute('src');
+                item.audio.load(); // Cancel pending play promises and network/media work.
+                item.audio.remove();
+            }
+            if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
+            socket.emit('speech-ended', { speechID: item.speechID, reason, position });
+            current = null;
+            void playNext();
+        }
+
+        async function download(item) {
+            for (let attempt = 0; attempt < 2; attempt++) {
+                item.controller = new AbortController();
+                const timeout = setTimeout(() => item.controller.abort(), 20000);
+                try {
+                    const response = await fetch(item.audioUrl, { signal: item.controller.signal });
+                    if (!response.ok) throw new Error(`Audio HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    if (!blob.size) throw new Error('Empty audio');
+                    return blob;
+                } catch (error) {
+                    if (attempt === 1 || item.finished) throw error;
+                } finally {
+                    clearTimeout(timeout);
+                }
+            }
+        }
+
+        async function playNext() {
+            if (current || !queue.length) return;
+            const item = current = queue.shift();
+            report(item, 'loading');
+            try {
+                // Start only once all bytes are local: network buffering cannot
+                // stop a sentence halfway through or consume its playback budget.
+                const blob = await download(item);
+                if (item.finished) return;
+                item.blobUrl = URL.createObjectURL(blob);
+                const audio = item.audio = document.createElement('audio');
+                audio.src = item.blobUrl;
+                audio.dataset.speechId = item.speechID;
+                audio.addEventListener('ended', () => finish(item, 'ended'));
+                audio.addEventListener('error', () => finish(item, 'media-error'));
+                audio.addEventListener('playing', () => report(item, 'playing'));
+                document.body.appendChild(audio);
+                let lastPosition = 0;
+                let lastProgressAt = Date.now();
+                let recovered = false;
+                item.watchdog = setInterval(() => {
+                    if (current !== item || item.finished) return;
+                    if (audio.currentTime > lastPosition + 0.05) {
+                        lastPosition = audio.currentTime;
+                        lastProgressAt = Date.now();
+                        report(item, 'progress');
+                    } else if (Date.now() - lastProgressAt >= 15000) {
+                        if (recovered) return finish(item, 'stalled');
+                        // One local decoder restart, resuming at the same position.
+                        // No new HTTP download and no replay of the whole sentence.
+                        recovered = true;
+                        lastProgressAt = Date.now();
+                        report(item, 'recovering');
+                        audio.load();
+                        audio.currentTime = lastPosition;
+                        audio.play().catch(() => finish(item, 'play-error'));
+                    }
+                }, 2000);
+                await audio.play();
+            } catch {
+                finish(item, item.audio ? 'play-error' : 'download-error');
+            }
         }
 
         socket.on('speech', (payload) => {
-            if (!payload || !payload.audioUrl || !payload.speechID) {
-                return;
-            }
-
-            if (currentAudio) {
-                clearInterval(currentWatchdog);
-                currentWatchdog = null;
-                currentAudio.pause();
-                currentAudio.remove();
-                currentAudio = null;
-            }
-
-            const audio = document.createElement('audio');
-            audio.autoplay = true;
-            audio.src = payload.audioUrl;
-            audio.dataset.speechId = payload.speechID;
-
-            audio.addEventListener('ended', () => {
-                finishSpeech(payload.speechID, audio);
-            }, { once: true });
-
-            audio.addEventListener('error', () => {
-                finishSpeech(payload.speechID, audio);
-            }, { once: true });
-
-            document.body.appendChild(audio);
-            currentAudio = audio;
-
-            // OBS can fetch an audio file but leave playback stalled without
-            // firing ended or error. Release that item once media time stops
-            // advancing, so later speech does not wait for the server fallback.
-            let lastPosition = 0;
-            let lastProgressAt = Date.now();
-            currentWatchdog = setInterval(() => {
-                if (currentAudio !== audio) return;
-                if (audio.currentTime > lastPosition + 0.05) {
-                    lastPosition = audio.currentTime;
-                    lastProgressAt = Date.now();
-                } else if (Date.now() - lastProgressAt >= 8000) {
-                    finishSpeech(payload.speechID, audio);
-                }
-            }, 1000);
-
-            audio.play().catch(() => {
-                finishSpeech(payload.speechID, audio);
-            });
+            if (!payload?.audioUrl || !payload.speechID || seen.has(payload.speechID)) return;
+            seen.add(payload.speechID);
+            // Bound duplicate history for overlays that stay open for weeks.
+            if (seen.size > 1000) seen.delete(seen.values().next().value);
+            queue.push({ speechID: payload.speechID, audioUrl: payload.audioUrl });
+            void playNext();
         });
     </script>
 </body>

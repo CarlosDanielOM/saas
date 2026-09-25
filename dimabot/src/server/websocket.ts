@@ -283,12 +283,13 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             await cacheClient!.set(`twitch:${channelID}:tts:connected`, "true");
             console.log(`${account.name} (${channelID}) connected to speech`);
 
-            await ttsQueueHandler.resumeIfIdle(channelID);
-
-            // Handle speech-ended event from overlay
-            socket.on('speech-ended', async (data: { speechID?: string, channelID?: string }) => {
-                await ttsQueueHandler.handleSpeechEnded(data.channelID || channelID, data.speechID);
+            socket.on('speech-playback', (data) => {
+                ttsQueueHandler.handleSpeechPlayback(channelID, data);
             });
+            socket.on('speech-ended', async (data: { speechID?: string, reason?: string }) => {
+                await ttsQueueHandler.handleSpeechEnded(channelID, data?.speechID, data?.reason);
+            });
+            await ttsQueueHandler.resumeIfIdle(channelID);
 
             // Handle disconnect with 5s delay
             socket.on('disconnect', () => {

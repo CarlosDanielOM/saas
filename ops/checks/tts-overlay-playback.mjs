@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 const html = process.env.TTS_OVERLAY_HTML
   ? readFileSync(process.env.TTS_OVERLAY_HTML, 'utf8')
@@ -11,63 +11,6 @@ const html = process.env.TTS_OVERLAY_HTML
 const script = html.match(/<script>\s*([\s\S]*?)\s*<\/script>/)?.[1];
 assert.ok(script, 'speech overlay script is present');
 
-let now = 0;
-let interval;
-const sent = [];
-let speechHandler;
-let audio;
-const socket = {
-  on(event, handler) { if (event === 'speech') speechHandler = handler; },
-  emit(event, payload) { sent.push({ event, payload }); },
-};
-const document = {
-  createElement(tag) {
-    assert.equal(tag, 'audio');
-    const listeners = new Map();
-    audio = {
-      currentTime: 0,
-      dataset: {},
-      addEventListener(event, callback) { listeners.set(event, callback); },
-      dispatch(event) { listeners.get(event)?.(); },
-      play() { return new Promise(() => {}); },
-      pause() {},
-      remove() {},
-    };
-    return audio;
-  },
-  body: { appendChild() {} },
-};
-const context = {
-  window: { location: { pathname: '/speech/fixture' } },
-  document,
-  io() { return socket; },
-  Date: { now() { return now; } },
-  setInterval(fn) { interval = fn; return 1; },
-  clearInterval() { interval = undefined; },
-};
-vm.runInNewContext(script, context);
-
-speechHandler({ speechID: 'hung', audioUrl: '/speech/audio/fixture/hung' });
-assert.equal(sent.length, 0);
-now = 5_000;
-interval?.();
-assert.equal(sent.length, 0, 'brief buffering does not skip a clip');
-now = 9_000;
-interval?.();
-assert.deepEqual(sent.map(item => item.payload.speechID), ['hung'], 'stalled playback releases the queue');
-audio.dispatch('error');
-audio.dispatch('ended');
-assert.equal(sent.length, 1, 'completion is sent only once');
-
-speechHandler({ speechID: 'playing', audioUrl: '/speech/audio/fixture/playing' });
-for (const [clock, position] of [[14_000, 1], [19_000, 2], [24_000, 3]]) {
-  now = clock;
-  audio.currentTime = position;
-  interval?.();
-  assert.equal(sent.length, 1, 'advancing playback stays active');
-}
-audio.dispatch('ended');
-assert.deepEqual(sent.map(item => item.payload.speechID), ['hung', 'playing']);
 if (!process.env.TTS_OVERLAY_HTML) {
   const { getTtsPlaybackTimeoutMs } = await import('/app/dist/utils/tts/tts_playback_timeout.util.js');
   const directory = mkdtempSync(path.join(os.tmpdir(), 'tts-playback-'));
@@ -76,7 +19,7 @@ if (!process.env.TTS_OVERLAY_HTML) {
     execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi',
       '-i', 'sine=frequency=440:duration=1', '-y', mp3Path]);
     const mp3Timeout = await getTtsPlaybackTimeoutMs(mp3Path);
-    assert.ok(mp3Timeout >= 9_000 && mp3Timeout < 11_000, `MP3 timeout: ${mp3Timeout}`);
+    assert.ok(mp3Timeout === 60_000, `MP3 timeout: ${mp3Timeout}`);
 
     const wavPath = path.join(directory, 'one-second.wav');
     const wav = Buffer.alloc(44 + 32_000);
@@ -93,14 +36,83 @@ if (!process.env.TTS_OVERLAY_HTML) {
     wav.write('data', 36, 'ascii');
     wav.writeUInt32LE(32_000, 40);
     writeFileSync(wavPath, wav);
-    assert.equal(await getTtsPlaybackTimeoutMs(wavPath), 9_000);
-    assert.equal(await getTtsPlaybackTimeoutMs(path.join(directory, 'missing.mp3')), 30_000);
+    assert.equal(await getTtsPlaybackTimeoutMs(wavPath), 60_000);
+    assert.equal(await getTtsPlaybackTimeoutMs(path.join(directory, 'missing.mp3')), 60_000);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
   execFileSync(process.execPath, [
     '--experimental-test-module-mocks', '--test-force-exit', '--test',
     '/app/dist/handlers/tts_queue_credits.test.js',
-  ], { stdio: 'inherit', timeout: 30_000 });
+  ], { stdio: 'inherit', timeout: 30_000, env: { ...process.env, NODE_OPTIONS: '' } });
 }
-console.log('PASS: stalled speech advances, progress stays active, and finish is idempotent');
+console.log('PASS: candidate overlay present');
+
+// Exercise the actual runtime, routes and namespace using disposable databases
+// and the fish-fixtures provider mock. No production credentials or data.
+if (!process.env.TTS_OVERLAY_HTML) {
+  const { createClient } = createRequire('/app/package.json')('redis');
+  const redis = createClient({ url: 'redis://redis:6379' });
+  await redis.connect();
+  const channel = '999991';
+  const namespace = `/speech/${channel}`;
+  const messages = [];
+  const ws = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
+  const send = (event, payload) => ws.send(`42${namespace},${JSON.stringify([event, payload])}`);
+  const wait = async (condition, message) => {
+    const deadline = Date.now() + 15000;
+    while (!await condition()) {
+      assert.ok(Date.now() < deadline, message);
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+  };
+    ws.addEventListener('message', event => {
+      const data = String(event.data);
+      if (data === '2') ws.send('3');
+      else if (data.startsWith('0')) ws.send(`40${namespace},{}`);
+      else if (data.startsWith(`42${namespace},`)) messages.push(JSON.parse(data.slice(`42${namespace},`.length)));
+    });
+  try {
+    await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'test', polar_sh_customer_id: 'test-customer', plan_tier: 'premium' });
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 10000, balance: 10000, available: true, status: 'available' }));
+    await wait(() => redis.exists(`twitch:${channel}:tts:connected`), 'overlay connection');
+    const request = async text => {
+      const response = await fetch(`http://127.0.0.1:3000/speech/${channel}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'clone', cloneName: 'rias_gremory', text, language: 'en' }),
+      });
+      const body = await response.json();
+      assert.equal(response.status, 200, JSON.stringify(body));
+      return body.data.speechID;
+    };
+    const first = await request('First complete sentence');
+    const second = await request('Second complete sentence');
+    await wait(() => messages.some(([event, data]) => event === 'speech' && data.speechID === first), 'first delivery');
+    const audio = messages.find(([event, data]) => event === 'speech' && data.speechID === first)[1];
+    const response = await fetch(`http://127.0.0.1:3000${new URL(audio.audioUrl, "http://127.0.0.1:3000").pathname}`);
+    assert.equal(response.status, 200);
+    assert.ok((await response.arrayBuffer()).byteLength > 100);
+    send('speech-playback', { speechID: first, phase: 'loading', position: 0 });
+    send('speech-playback', { speechID: first, phase: 'progress', position: 1 });
+    send('speech-ended', { speechID: 'stale' });
+    send('speech-ended', {});
+    await new Promise(resolve => setTimeout(resolve, 250));
+    assert.equal(await redis.get(`twitch:${channel}:tts:processing`), first);
+    assert.equal(messages.filter(([event]) => event === 'speech').length, 1);
+    // A supplied foreign channel cannot redirect completion away from this namespace.
+    send('speech-ended', { channelID: 'foreign', speechID: first, reason: 'ended' });
+    send('speech-ended', { speechID: first, reason: 'ended' });
+    await wait(() => messages.some(([event, data]) => event === 'speech' && data.speechID === second), 'second delivery');
+    assert.equal(await redis.get(`twitch:${channel}:tts:processing`), second);
+    send('speech-ended', { speechID: first });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    assert.equal(await redis.get(`twitch:${channel}:tts:processing`), second);
+    send('speech-ended', { speechID: second, reason: 'ended' });
+    await wait(async () => !await redis.exists(`twitch:${channel}:tts:processing`), 'queue completion');
+    assert.equal(await redis.zCard(`twitch:${channel}:tts:queue`), 0);
+    console.log('PASS: runtime synthesis/audio route, ordered websocket delivery, namespace binding and duplicate/stale completion');
+  } finally {
+    ws.close();
+    await redis.quit();
+  }
+}

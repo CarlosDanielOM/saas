@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const mp3Duration = createRequire(import.meta.url)('mp3-duration') as (filePath: string) => Promise<number>;
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 async function wavDurationSeconds(filePath: string): Promise<number> {
   const file = await open(filePath, 'r');
@@ -33,7 +33,7 @@ export async function getTtsPlaybackTimeoutMs(filePath: string): Promise<number>
     if (!Number.isFinite(duration) || duration <= 0) return DEFAULT_TIMEOUT_MS;
     // The overlay normally acknowledges playback. This is a recovery window
     // for missing acknowledgements, with time for the browser to fetch audio.
-    return Math.max(8_000, Math.min(120_000, Math.ceil(duration * 1000) + 8_000));
+    return Math.max(60_000, Math.ceil(duration * 1000) + 30_000);
   } catch {
     return DEFAULT_TIMEOUT_MS;
   }

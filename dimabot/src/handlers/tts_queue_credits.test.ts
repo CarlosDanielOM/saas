@@ -213,3 +213,47 @@ test('overlay resume clears a processing key left by a dead process', async () =
     cache.zCard = originalZCard;
   }
 });
+
+test('playback progress extends the deadline, stalled heartbeats do not, and duplicate finishes release only once', async (t) => {
+  const originalPiper = synthesizeImpls.piper;
+  const originalDel = cache.del;
+  const removed: string[] = [];
+  synthesizeImpls.piper = async () => ({ error: false, message: 'ok',
+    outputPath: '/tmp/tts-test/audio.wav', publicPath: '/test/audio' });
+  cache.del = async (key) => { if (typeof key === 'string') removed.push(key); };
+  creditStatus = 'exhausted';
+  playbackAvailable = true;
+  scriptedQueue = [{ value: 'first' }, { value: 'second' }];
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const before = emitted.length;
+  try {
+    await ttsQueueHandler.processNext('timing');
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'loading', position: 0 });
+    t.mock.timers.tick(59_000);
+    assert.equal(emitted.length, before + 1);
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 });
+    t.mock.timers.tick(2_000);
+    assert.equal(emitted.length, before + 1, 'playing past dispatch deadline does not advance queue');
+    ttsQueueHandler.handleSpeechPlayback('timing', { speechID: 'first', phase: 'progress', position: 1 });
+    t.mock.timers.tick(58_000);
+    for (let i = 0; i < 30 && emitted.length === before + 1; i++) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    assert.equal(emitted.length, before + 2, 'stalled heartbeat cannot extend deadline');
+    await Promise.all([
+      ttsQueueHandler.handleSpeechEnded('timing', 'second'),
+      ttsQueueHandler.handleSpeechEnded('timing', 'second'),
+      ttsQueueHandler.handleSpeechEnded('timing'),
+      ttsQueueHandler.handleSpeechEnded('timing', 'first'),
+    ]);
+    assert.equal(removed.filter(key => key.endsWith(':queue:data:second')).length, 1);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  } finally {
+    await ttsQueueHandler.cleanupChannel('timing');
+    t.mock.timers.reset();
+    cache.del = originalDel;
+    synthesizeImpls.piper = originalPiper;
+    playbackAvailable = false;
+    scriptedQueue = null;
+  }
+});
