@@ -729,7 +729,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 }
                 break;
             case 'cancelpredi':
-                const cancelPredictionResult = await indexCommands.prediction('CANCELLED', channelID, '');
+                const cancelPredictionResult = await indexCommands.prediction('CANCELED', channelID, '');
                 if (cancelPredictionResult.error) {
                     res = { error: true, message: cancelPredictionResult.message || 'Error al cancelar prediction' };
                 } else {
