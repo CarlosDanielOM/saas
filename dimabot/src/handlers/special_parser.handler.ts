@@ -360,19 +360,10 @@ async function deleteScopedVariable(
     }
 }
 
-export async function parseSpecialCommands(
-    text: string,
-    context: ISpecialParserContext
-): Promise<ISpecialParserResult> {
-    const placeholderResolution = resolveArgumentPlaceholders(text, context.argument || '', context.literalArguments);
-    if (placeholderResolution.error) {
-        return {
-            parsedText: `[Parser error: ${placeholderResolution.error}]`,
-            count: context.count || 0,
-            countModified: false
-        };
-    }
-
+export async function createSpecialExecutionContext(
+    context: ISpecialParserContext,
+    literalVariables: Record<string, string> = {}
+): Promise<ExecutionContext> {
     registerAllFunctions();
     const streamer = await TwitchStreamers.getTwitchAccountById(context.channelID);
 
@@ -397,7 +388,7 @@ export async function parseSpecialCommands(
         }
     }
 
-    for (const [key, value] of Object.entries(placeholderResolution.variables || {})) {
+    for (const [key, value] of Object.entries(literalVariables)) {
         variables.set(key, value);
     }
 
@@ -413,7 +404,7 @@ export async function parseSpecialCommands(
     const resolvedScopeAliases = normalizeScopeNames(context.scopeAliases || [])
         .filter((name) => name !== resolvedScopeName);
 
-    const astContext: ExecutionContext = createExecutionContext({
+    return createExecutionContext({
         broadcasterId: context.channelID,
         userId: extracted.userID || '',
         userLogin: extracted.userLogin || '',
@@ -553,6 +544,22 @@ export async function parseSpecialCommands(
             return '';
         }
     });
+}
+
+export async function parseSpecialCommands(
+    text: string,
+    context: ISpecialParserContext
+): Promise<ISpecialParserResult> {
+    const placeholderResolution = resolveArgumentPlaceholders(text, context.argument || '', context.literalArguments);
+    if (placeholderResolution.error) {
+        return {
+            parsedText: `[Parser error: ${placeholderResolution.error}]`,
+            count: context.count || 0,
+            countModified: false
+        };
+    }
+
+    const astContext = await createSpecialExecutionContext(context, placeholderResolution.variables);
 
     const { parsedText: renderedText, context: resultContext } = await renderAstWithSourceReference(
         placeholderResolution.text,

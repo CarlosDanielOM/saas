@@ -205,6 +205,7 @@ export interface ExecutionContext {
     commandVariables: Map<string, string>;
     userCommandVariables: Map<string, string>;
     countModified?: boolean;
+    timerDepth?: number;
     saveResponses: () => Promise<void>;
     saveChannelVariable: (name: string, value: string) => Promise<void>;
     loadChannelVariable: (name: string) => Promise<string>;

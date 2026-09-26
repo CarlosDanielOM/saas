@@ -13,6 +13,7 @@ import { getPolarShClient } from '../utils/polarsh.js';
 import { info } from '../utils/logger.js';
 import { startBotRuntimeMetricsLoop } from '../utils/observability/bot_runtime_metrics.js';
 import startSDKLogger from '../utils/opentelemetry_posthog.js';
+import { startAstTimerScheduler } from '../utils/ast_timer_runtime.js';
 import { ensureAstCatalogVectors } from '../utils/ai/ast_catalog/index.js';
 //? TODO: Add other eventsub imports
 
@@ -37,6 +38,8 @@ startBotRuntimeMetricsLoop();
 await pubSubManager.init();
 
 await TwitchStreamers.getTwitchAccountsFromDB();
+
+await startAstTimerScheduler();
 
 twitchEventsub();
 

@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 99cb54de6c6e
+# Catalog version: 13a2196dadfe
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -130,6 +130,8 @@
 #   Example: $(continue)
 # $(delay seconds) - Pauses execution for the given number of seconds (0-60). Used to sequence multi-step command flows.
 #   Example: $(delay 3)
+# $(timer seconds message_and_actions) - Schedules an unevaluated message and its nested actions after 1-604800 seconds. Returns immediately. Survives bot restarts in cache; overdue jobs run within a 10-minute grace period, then expire. Each invocation creates a separate timer; execution is at most once.
+#   Example: $(timer 300 5 minutes over! $(trigger.send hurray))
 #
 # --- moderation ---
 # $(add.mod username [days]) - Grants moderator to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days). (aliases: mod, channel.add.mod, twitch.add.mod)

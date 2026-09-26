@@ -35,6 +35,15 @@ const continueHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerDelayFunctions(): void {
+    // Evaluated lazily by the evaluator; registration supplies catalog metadata.
+    registerFunction('timer', async () => '', {
+        description: 'Schedules an unevaluated message and its nested actions after 1-604800 seconds. Returns immediately. Survives bot restarts in cache; overdue jobs run within a 10-minute grace period, then expire. Each invocation creates a separate timer; execution is at most once.',
+        syntax: 'timer seconds message_and_actions',
+        category: 'flow',
+        examples: ['timer 300 5 minutes over! $(trigger.send hurray)'],
+        keywords: ['timer', 'schedule', 'countdown', 'temporizador', 'deferred'],
+        surfaces: ['authoring']
+    });
     registerFunction('delay', delayHandler, {
         description: 'Pauses execution for the given number of seconds (0-60). Used to sequence multi-step command flows.',
         syntax: 'delay seconds',

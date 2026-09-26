@@ -1,9 +1,9 @@
 {
-  "version": "99cb54de6c6e",
-  "generatedAt": "2026-09-25T03:18:20.774Z",
+  "version": "13a2196dadfe",
+  "generatedAt": "2026-09-26T06:05:49.537Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 71,
+  "functionCount": 72,
   "entries": [
     {
       "name": "user",
@@ -1228,6 +1228,28 @@
       "destructive": false,
       "surfaces": [
         "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "timer",
+      "description": "Schedules an unevaluated message and its nested actions after 1-604800 seconds. Returns immediately. Survives bot restarts in cache; overdue jobs run within a 10-minute grace period, then expire. Each invocation creates a separate timer; execution is at most once.",
+      "syntax": "timer seconds message_and_actions",
+      "category": "flow",
+      "examples": [
+        "timer 300 5 minutes over! $(trigger.send hurray)"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "timer",
+        "schedule",
+        "countdown",
+        "temporizador",
+        "deferred"
+      ],
+      "destructive": false,
+      "surfaces": [
         "authoring"
       ]
     },

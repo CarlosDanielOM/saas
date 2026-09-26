@@ -876,6 +876,11 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
 
         case 'function': {
             const funcNode = node as FunctionNode;
+            // Timer bodies are programs to execute later, never eager arguments.
+            if (funcNode.name === 'timer') {
+                const { evaluateTimer } = await import('./timer.js');
+                return evaluateTimer(funcNode, context);
+            }
             // Evaluate args sequentially, threading context, so side effects
             // (e.g. `$(fn %(a 1) %(a 2))`) apply in deterministic left-to-right order.
             const args: unknown[] = [];
