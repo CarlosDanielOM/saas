@@ -74,6 +74,7 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
 ];
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
+  roulette: Sparkles,
   'chat-events': MessagesSquare,
   moderation: Hammer,
   clips: Scissors,
@@ -134,6 +135,7 @@ export class ModulesPageComponent {
     const streamerName = this.streamer();
 
     return [
+      this.buildModule('roulette', this.t('roulette.title'), 'roulette.subtitle', streamerName, userPlanTier),
       this.buildModule('clips', 'Clips', 'modules.clips.description', streamerName, userPlanTier),
       this.buildModule(
         'chat-events',

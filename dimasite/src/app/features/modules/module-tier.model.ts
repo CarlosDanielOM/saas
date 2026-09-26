@@ -1,6 +1,7 @@
 export type PlanTier = 'free' | 'premium' | 'pro';
 
 export type ModuleId =
+  | 'roulette'
   | 'clips'
   | 'chat-events'
   | 'triggers'
@@ -32,6 +33,7 @@ export interface ModuleTierRequirement {
 }
 
 export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequirement>> = {
+  roulette: { id: 'roulette', minTier: 'pro', displayName: 'Roulette', defaultStatus: 'alpha', category: 'engagement', priority: 85 },
   'chat-events': {
     id: 'chat-events',
     minTier: 'free',

@@ -1,0 +1,394 @@
+<div class="lf-main" data-plan="pro">
+  <header>
+    <div>
+      <a [routerLink]="['/', streamer, 'modules']">← {{ t('modules') }}</a>
+      <p class="eyebrow">{{ t('alpha') }} · {{ t('pro') }}</p>
+      <h1>{{ t('title') }}</h1>
+      <p class="subtitle">{{ t('subtitle') }}</p>
+    </div>
+  </header>
+  @if (!pro()) {
+    <section class="lf-tile">
+      <h2>{{ t('proOnly') }}</h2>
+      <p>{{ t('proDescription') }}</p>
+      <button class="primary" (click)="upgradePlan()">{{ t('upgrade') }}</button>
+    </section>
+  } @else if (!owner()) {
+    <section class="lf-tile">
+      <h2>{{ t('ownerOnly') }}</h2>
+      <p>{{ t('ownerDescription') }}</p>
+    </section>
+  } @else {
+    @if (error()) {
+      <div class="feedback error" role="alert">
+        {{ error() }} <button (click)="init()" [disabled]="busy()">{{ t('refresh') }}</button>
+      </div>
+    }
+    @if (notice()) {
+      <p class="feedback" role="status">{{ notice() }}</p>
+    }
+    @if (loading()) {
+      <p role="status">{{ t('loading') }}</p>
+    } @else if (state(); as state) {
+      <div class="workspace">
+        <aside class="lf-tile library">
+          <h2>
+            {{ t('library') }} <span class="count">{{ state.roulettes.length }} / 20</span>
+          </h2>
+          <nav [attr.aria-label]="t('library')">
+            @for (r of state.roulettes; track r.id) {
+              <button
+                [class.selected]="selectedId() === r.id"
+                [attr.aria-pressed]="selectedId() === r.id"
+                (click)="select(r.id)"
+                [disabled]="busy()"
+              >
+                <strong>{{ r.name }}</strong
+                ><small
+                  >{{ r.alias }}
+                  @if (state.activeId === r.id) {
+                    · {{ t('active') }}
+                  }
+                </small>
+              </button>
+            }
+          </nav>
+          @if (!state.roulettes.length) {
+            <p>{{ t('emptyLibrary') }}</p>
+          }
+          <form [formGroup]="createForm" (ngSubmit)="create()">
+            <h3>{{ t('new') }}</h3>
+            <label>{{ t('name') }}<input formControlName="name" maxlength="120" required /></label
+            ><label
+              >{{ t('alias')
+              }}<input
+                formControlName="alias"
+                pattern="[a-z][a-z0-9_-]{0,39}"
+                required
+                aria-describedby="alias-help" /></label
+            ><small id="alias-help">{{ t('aliasHelp') }}</small
+            ><button
+              class="primary"
+              [disabled]="busy() || createForm.invalid || state.roulettes.length >= 20"
+            >
+              {{ t('create') }}
+            </button>
+          </form>
+        </aside>
+        <div class="editor">
+          @if (selected(); as r) {
+            <section class="lf-tile stage">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">{{ t('preview') }}</p>
+                  <h2>{{ r.name }}</h2>
+                </div>
+                <span class="badge" [class.live]="state.visible">{{
+                  state.visible ? t('visible') : t('hidden')
+                }}</span>
+              </div>
+              <app-roulette-display
+                [roulette]="r"
+                [draw]="previewDraw()"
+                [serverTime]="state.serverTime"
+              />
+              <div class="controls">
+                <button
+                  class="primary"
+                  (click)="action('start')"
+                  [disabled]="busy() || spinning() || !copies()"
+                >
+                  {{ spinning() ? t('drawing') : t('start') }}</button
+                ><button (click)="action('shuffle')" [disabled]="busy() || spinning() || !copies()">
+                  {{ t('shuffle') }}</button
+                ><button
+                  (click)="action('switch')"
+                  [disabled]="busy() || spinning() || state.activeId === r.id"
+                >
+                  {{ t('setActive') }}</button
+                ><button
+                  (click)="action(state.visible ? 'hide' : 'show')"
+                  [disabled]="busy() || !state.activeId"
+                >
+                  {{ state.visible ? t('hide') : t('show') }}
+                </button>
+              </div>
+              <p class="hint">{{ t('visibilityHelp') }}</p>
+            </section>
+            <section class="lf-tile">
+              <div class="section-heading">
+                <h2>{{ t('items') }}</h2>
+                <span class="count">{{ copies() }} / {{ capacity() }} {{ t('copies') }}</span>
+              </div>
+              <p>{{ t('weightsHelp') }}</p>
+              <form class="item-form" [formGroup]="itemForm" (ngSubmit)="saveItem()">
+                <label
+                  >{{ t('label') }}<input formControlName="label" maxlength="120" required /></label
+                ><label
+                  >{{ t('multiplier')
+                  }}<input
+                    type="number"
+                    formControlName="multiplier"
+                    min="1"
+                    step="1"
+                    required /></label
+                ><label
+                  >{{ t('weight')
+                  }}<input
+                    type="number"
+                    formControlName="weight"
+                    min="1"
+                    step="1"
+                    required /></label
+                ><button class="primary" [disabled]="busy() || itemForm.invalid">
+                  {{ editItemId() ? t('saveItem') : t('addItem') }}
+                </button>
+                @if (editItemId()) {
+                  <button type="button" (click)="cancelItem()">{{ t('cancel') }}</button>
+                }
+              </form>
+              <label class="search"
+                >{{ t('search')
+                }}<input
+                  type="search"
+                  [value]="query()"
+                  (input)="query.set($any($event.target).value); page.set(0)"
+              /></label>
+              <ul class="items">
+                @for (item of items(); track item.id) {
+                  <li>
+                    <div>
+                      <strong>{{ item.label }}</strong
+                      ><small
+                        >×{{ item.multiplier }} · {{ t('weight') }} {{ item.weight }} ·
+                        {{ odds(item) }}</small
+                      ><button
+                        class="id-button"
+                        (click)="copy(item.id)"
+                        [attr.aria-label]="t('copyId') + ': ' + item.label"
+                      >
+                        {{ t('copyId') }}
+                      </button>
+                    </div>
+                    <div class="row-actions">
+                      <button
+                        (click)="edit(item)"
+                        [disabled]="busy()"
+                        [attr.aria-label]="t('edit') + ': ' + item.label"
+                      >
+                        {{ t('edit') }}</button
+                      ><button
+                        (click)="removeItem(item.id)"
+                        [disabled]="busy()"
+                        [attr.aria-label]="t('remove') + ': ' + item.label"
+                      >
+                        {{ t('remove') }}
+                      </button>
+                    </div>
+                  </li>
+                } @empty {
+                  <li>{{ t('noItems') }}</li>
+                }
+              </ul>
+              @if (matchingItems().length > 10) {
+                <div class="controls">
+                  <button (click)="page.set(page() - 1)" [disabled]="page() === 0">
+                    {{ t('previous') }}</button
+                  ><span>{{ page() + 1 }}</span
+                  ><button
+                    (click)="page.set(page() + 1)"
+                    [disabled]="(page() + 1) * 10 >= matchingItems().length"
+                  >
+                    {{ t('next') }}
+                  </button>
+                </div>
+              }
+            </section>
+            <section class="lf-tile">
+              <h2>{{ t('settings') }}</h2>
+              <form [formGroup]="config" (ngSubmit)="saveConfig()">
+                <fieldset [disabled]="busy() || spinning()">
+                  <div class="form-grid">
+                    <label
+                      >{{ t('name')
+                      }}<input formControlName="name" maxlength="120" required /></label
+                    ><label>{{ t('alias') }}<input formControlName="alias" required /></label>
+                    <label
+                      >{{ t('design')
+                      }}<select formControlName="design" [attr.aria-label]="t('design')">
+                        <option value="wheel">{{ t('wheel') }}</option>
+                        <option value="cards">{{ t('cards') }}</option>
+                        <option value="reel">{{ t('reel') }}</option>
+                      </select></label
+                    >
+                    <label
+                      >{{ t('cardSize')
+                      }}<select formControlName="cardSize" [attr.aria-label]="t('cardSize')">
+                        <option value="large">{{ t('large') }}</option>
+                        <option value="medium">{{ t('medium') }}</option>
+                        <option value="small">{{ t('small') }}</option>
+                      </select></label
+                    >
+                    <label
+                      >{{ t('duration')
+                      }}<input
+                        type="number"
+                        formControlName="durationSeconds"
+                        min="1"
+                        max="120"
+                        step="1"
+                        required
+                    /></label>
+                    <label
+                      >{{ t('colors') }}<input formControlName="colors" required /><small>{{
+                        t('colorsHelp')
+                      }}</small></label
+                    >
+                    <label
+                      >{{ t('insertion')
+                      }}<select formControlName="insertion" [attr.aria-label]="t('insertion')">
+                        <option value="append">{{ t('append') }}</option>
+                        <option value="random">{{ t('random') }}</option>
+                      </select></label
+                    >
+                    <label
+                      >{{ t('duplicates')
+                      }}<select formControlName="duplicate" [attr.aria-label]="t('duplicates')">
+                        <option value="separate">{{ t('separate') }}</option>
+                        <option value="increase">{{ t('increase') }}</option>
+                      </select></label
+                    >
+                    <label
+                      >{{ t('winnerAction')
+                      }}<select
+                        formControlName="winnerAction"
+                        [attr.aria-label]="t('winnerAction')"
+                      >
+                        <option value="keep">{{ t('keep') }}</option>
+                        <option value="remove-copy">{{ t('removeCopy') }}</option>
+                        <option value="remove-item">{{ t('removeItem') }}</option>
+                      </select></label
+                    >
+                    <label
+                      >{{ t('autoHide')
+                      }}<input
+                        type="number"
+                        formControlName="hideAfterSeconds"
+                        min="1"
+                        max="3600"
+                        step="1"
+                      /><small>{{ t('autoHideHelp') }}</small></label
+                    >
+                    <label class="check"
+                      ><input type="checkbox" formControlName="shuffleBeforeDraw" />{{
+                        t('shuffleBefore')
+                      }}</label
+                    ><label class="check"
+                      ><input type="checkbox" formControlName="showOnStart" />{{
+                        t('showOnStart')
+                      }}</label
+                    >
+                  </div>
+                  <button class="primary" [disabled]="config.invalid || !config.dirty">
+                    {{ t('saveSettings') }}
+                  </button>
+                </fieldset>
+              </form>
+              @if (confirmDelete()) {
+                <p>{{ t('deleteConfirm') }}</p>
+                <div class="controls">
+                  <button class="danger" (click)="remove()" [disabled]="busy() || spinning()">
+                    {{ t('confirmDelete') }}</button
+                  ><button (click)="confirmDelete.set(false)">{{ t('cancel') }}</button>
+                </div>
+              } @else {
+                <button
+                  class="danger"
+                  (click)="confirmDelete.set(true)"
+                  [disabled]="busy() || spinning()"
+                >
+                  {{ t('deleteRoulette') }}
+                </button>
+              }
+            </section>
+          }
+          <!-- Exclude private source links from autocapture and session recordings. -->
+          <section class="lf-tile ph-no-capture">
+            <h2>{{ t('overlay') }}</h2>
+            <p>{{ t('overlayHelp') }}</p>
+            @if (overlayUrl()) {
+              <label
+                >{{ t('overlayLink')
+                }}<input readonly [value]="overlayUrl()" (focus)="$any($event.target).select()"
+              /></label>
+              <div class="controls">
+                <button (click)="copy(overlayUrl())">{{ t('copyLink') }}</button
+                ><a
+                  class="button"
+                  [href]="overlayUrl()"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{ t('openOverlay') }}</a
+                >
+              </div>
+            }
+            @if (confirmRotate()) {
+              <p>{{ t('rotateWarning') }}</p>
+              <div class="controls">
+                <button (click)="token()" [disabled]="busy()">{{ t('confirmRotate') }}</button
+                ><button (click)="confirmRotate.set(false)">{{ t('cancel') }}</button>
+              </div>
+            } @else {
+              <button (click)="confirmRotate.set(true)" [disabled]="busy()">
+                {{ overlayUrl() ? t('rotate') : t('generate') }}
+              </button>
+            }
+          </section>
+          @if (selected()) {
+            <section class="lf-tile">
+              <h2>{{ t('automation') }}</h2>
+              <p>{{ t('astHelp') }}</p>
+              @for (
+                name of [
+                  'add',
+                  'update',
+                  'remove',
+                  'shuffle',
+                  'start',
+                  'show',
+                  'hide',
+                  'switch',
+                  'result',
+                ];
+                track name
+              ) {
+                <div class="ast">
+                  <code>{{ ast(name) }}</code
+                  ><button
+                    (click)="copy(ast(name))"
+                    [attr.aria-label]="t('copy') + ' roulette.' + name"
+                  >
+                    {{ t('copy') }}
+                  </button>
+                </div>
+              }
+            </section>
+          }
+          <section class="lf-tile">
+            <h2>{{ t('history') }}</h2>
+            <ol class="history">
+              @for (draw of state.history.slice(0, 10); track draw.id) {
+                <li>
+                  <strong>{{ draw.winner.label }}</strong
+                  ><small>{{ draw.winner.copy }} / {{ draw.winner.multiplier }}</small>
+                </li>
+              } @empty {
+                <li>{{ t('noHistory') }}</li>
+              }
+            </ol>
+          </section>
+        </div>
+      </div>
+    }
+  }
+</div>

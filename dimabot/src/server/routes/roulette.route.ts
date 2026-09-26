@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { RouletteError, object, text, integer, fail } from '../../roulette/model.js';
-import { execute, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
+import { execute, requirePro, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
 
 export const rouletteRoute = express.Router();
 const param = (req: Request, name: string) => text(req.params[name], name, 100);
@@ -20,7 +20,7 @@ rouletteRoute.use(authMiddleware);
 rouletteRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, message: 'Channel owner required', status: 403 }); return; }
-  next();
+  void requirePro(param(req, 'channelID')).then(() => next(), next);
 });
 rouletteRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(param(req, 'channelID')))));
 rouletteRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(param(req, 'channelID')), namespace: `/overlays/roulette/${param(req, 'channelID')}` })));

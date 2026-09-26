@@ -53,7 +53,7 @@ export class AnalyticsService {
   }
 
   initialize(): void {
-    if (!this.isBrowser() || this.initialized()) {
+    if (!this.isBrowser() || this.initialized() || this.isPrivateRouletteOverlay()) {
       return;
     }
 
@@ -62,6 +62,8 @@ export class AnalyticsService {
       defaults: environment.POSTHOG_DEFAULTS,
       capture_pageview: false,
       capture_pageleave: true,
+      // OBS source URLs carry a private bearer in their fragment.
+      before_send: (event) => this.isPrivateRouletteOverlay() ? null : event,
     });
 
     if (this.shouldDisableCapture()) {
@@ -246,7 +248,11 @@ export class AnalyticsService {
       return true;
     }
 
-    return ['localhost', '127.0.0.1', 'dima.local'].includes(window.location.hostname);
+    return this.isPrivateRouletteOverlay() || ['localhost', '127.0.0.1', 'dima.local'].includes(window.location.hostname);
+  }
+
+  private isPrivateRouletteOverlay(): boolean {
+    return this.isBrowser() && window.location.pathname.startsWith('/overlays/roulette/');
   }
 
   private isBrowser(): boolean {

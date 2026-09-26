@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
-import { authorizeOverlay, overlaySnapshot, RouletteChannel } from '../../roulette/service.js';
+import { authorizeOverlay, hasPro, overlaySnapshot, RouletteChannel } from '../../roulette/service.js';
 
 /** Database revisions recover missed events across API/bot/cron without lossy pubsub. */
 export function registerRouletteOverlay(io: Server): void {
@@ -30,6 +30,7 @@ export function registerRouletteOverlay(io: Server): void {
       const poll = async () => {
         if (owned.busy) return; owned.busy = true;
         try {
+          if (!await hasPro(channelId)) { for (const client of owned.sockets) client.disconnect(true); return; }
           const version = await RouletteChannel.findById(channelId, { revision: 1, dueAt: 1, tokenHash: 1 }).lean();
           for (const client of owned.sockets) {
             if (!version || client.data.rouletteTokenHash !== version.tokenHash) { client.disconnect(true); continue; }
@@ -37,7 +38,7 @@ export function registerRouletteOverlay(io: Server): void {
             const state = await overlaySnapshot(channelId);
             if (client.connected) { client.emit('roulette-state', state); client.data.rouletteRevision = state.revision; }
           }
-        } catch { for (const client of owned.sockets) client.emit('roulette-error', { code: 'unavailable', message: 'State temporarily unavailable; reconnecting automatically' }); }
+        } catch { for (const client of owned.sockets) { client.data.rouletteRevision = undefined; client.emit('roulette-error', { code: 'unavailable', message: 'State temporarily unavailable; reconnecting automatically' }); } }
         finally { owned.busy = false; }
       };
       channels.set(channelId, group);

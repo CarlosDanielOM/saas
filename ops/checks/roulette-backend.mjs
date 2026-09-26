@@ -13,6 +13,8 @@ const mongo = await getMongoDBConnection('roulette-check');
 const redis = await getDragonflyClient('roulette-check');
 await svc.RouletteChannel.init();
 const channel = '990011';
+const { default: Users } = await import('/app/dist/schemas/users.schema.js');
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
 await redis.hSet('token:roulette-owner-test', { id: channel, login: 'fixture', display_name: 'Fixture' });
 await redis.hSet('token:roulette-other-test', { id: '990012', login: 'other', display_name: 'Other' });
 let base = 'http://127.0.0.1:3000';
@@ -149,9 +151,11 @@ const child = execFileSync('node', ['--input-type=module', '-e', `import {snapsh
 assert(child.includes('DRAW=' + beforeRestart));
 // Prove the completion worker works without readers or an OBS connection.
 const workerChannel = '990014';
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: workerChannel }], plan_tier: 'pro' });
 await svc.execute(workerChannel, { operation: 'create', data: { name: 'Worker', alias: 'worker', durationSeconds: 1, settings: { winnerAction: 'remove-item' } } });
 await svc.execute(workerChannel, { operation: 'add', roulette: 'worker', data: { label: 'Only' } });
 await svc.execute(workerChannel, { operation: 'start', roulette: 'worker' });
+await Users.updateOne({ 'accounts.id': workerChannel }, { $set: { plan_tier: 'free' } });
 await new Promise(resolve => setTimeout(resolve, 2200));
 if (process.env.SAAS_TARGET !== 'cron') execFileSync('node', ['/app/dist/workers/roulette.worker.js', '--once'], { encoding: 'utf8' });
 const workerState = await svc.RouletteChannel.findById(workerChannel).lean();
@@ -177,6 +181,27 @@ state = await svc.snapshot(channel); assert.equal(state.activeId, null); assert.
 assert.equal(state.roulettes[0].id, id);
 await request('POST', root + '/actions/start', {}, 404);
 await request('POST', root + '/actions/switch', { roulette: id });
+
+// Pro-only Alpha across API, AST and existing overlay connections (no roulette revision change).
+const currentToken = (await request('POST', root + '/overlay-token', {})).token;
+const downgradeSocket = await connectOverlay(currentToken); await downgradeSocket.wait(m => m.includes('roulette-state'));
+const beforeDowngrade = (await svc.snapshot(channel)).revision;
+for (const tier of ['free', 'premium']) {
+  await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: tier } });
+  await request('GET', root, undefined, 403);
+  await request('POST', root + '/roulettes', { name:'Denied', alias:'denied' }, 403);
+  await request('POST', root + '/overlay-token', {}, 403);
+  await request('GET', root + '/overlay', undefined, 401, currentToken);
+  await assert.rejects(() => svc.execute(channel, { operation:'show' }), e => e.code === 'pro_required');
+  assert.equal(await svc.authorizeOverlay(channel, currentToken), false);
+  assert.match(String(await ast('$(roulette.result giveaways)')), /requires Pro/);
+  assert.match(String(await ast('$(roulette.add giveaways "Denied")')), /requires Pro/);
+}
+await downgradeSocket.wait(m => m.startsWith('41')); downgradeSocket.ws.close();
+assert.equal((await svc.snapshot(channel)).revision, beforeDowngrade, 'denied access does not mutate data');
+await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'pro' } });
+assert.equal((await request('GET', root)).roulettes[0].id, id, 'upgrading preserves saved data');
+
 console.log(`PASS ${process.env.SAAS_TARGET}: persistence, CAS concurrency, API ownership, validation, idempotency, frozen draws, completion, WebSocket reconnect/revocation and real AST parsing/permissions`);
 if (io) await new Promise(resolve => io.close(resolve));
 await redis.quit(); await mongo.disconnect(); process.exit(0);

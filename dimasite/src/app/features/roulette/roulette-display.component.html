@@ -1,0 +1,77 @@
+<div
+  class="display"
+  [attr.data-design]="design()"
+  [attr.data-draw]="draw()?.id"
+  [attr.data-winner]="done() ? draw()?.winner?.key : null"
+>
+  @if (!slots().length) {
+    <p class="empty">{{ t('emptyPreview') }}</p>
+  } @else {
+    @switch (design()) {
+      @case ('reel') {
+        <div class="reel" aria-hidden="true">
+          <span class="marker"></span>
+          @for (cell of reel(); track cell.key) {
+            <div
+              class="reel-card"
+              [class.winner]="done() && cell.slot.key === draw()?.winner?.key && cell.offset === 0"
+              [style.transform]="'translateX(' + cell.offset + 'px)'"
+              [style.--prize]="cell.color"
+            >
+              <span class="copy">{{ cell.slot.copy }} / {{ cell.slot.multiplier }}</span
+              ><strong>{{ cell.slot.label }}</strong>
+            </div>
+          }
+        </div>
+      }
+      @case ('cards') {
+        <div
+          class="cards"
+          [attr.data-size]="draw()?.cardSize ?? roulette()?.cardSize"
+          aria-hidden="true"
+        >
+          @for (slot of slots(); track slot.key; let i = $index) {
+            <div
+              class="card"
+              [class.highlight]="!!draw() && highlight() === i"
+              [style.--prize]="color(i)"
+            >
+              <small>{{ slot.copy }} / {{ slot.multiplier }}</small
+              ><strong>{{ slot.label }}</strong>
+            </div>
+          }
+        </div>
+      }
+      @default {
+        <div class="wheel" aria-hidden="true">
+          <span class="pointer">▼</span>
+          <svg viewBox="0 0 400 400" [style.transform]="'rotate(' + rotation() + 'deg)'">
+            @if (slots().length === 1) {
+              <circle cx="200" cy="200" r="190" [attr.fill]="color(0)" />
+            } @else {
+              @for (part of segments(); track part.slot.key) {
+                <path [attr.d]="part.path" [attr.fill]="part.color" />
+              }
+            }
+            @if (slots().length <= 30) {
+              @for (part of segments(); track part.slot.key) {
+                <text
+                  x="375"
+                  y="204"
+                  text-anchor="end"
+                  [attr.transform]="'rotate(' + part.angle + ' 200 200)'"
+                >
+                  {{ part.slot.label.slice(0, 18) }}
+                </text>
+              }
+            }
+            <circle cx="200" cy="200" r="18" fill="#151922" />
+          </svg>
+        </div>
+      }
+    }
+    <p class="result" role="status">
+      {{ done() ? draw()?.winner?.label : draw() ? t('drawing') : t('ready') }}
+    </p>
+  }
+</div>

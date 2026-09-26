@@ -186,3 +186,9 @@ scripts/saas-ops verify RUN --dependency mongo --dependency redis \
 The check exercises real HTTP authentication, quoted AST parsing, concurrent starts,
 idempotent retry after completion, reconnects, token revocation, durable process
 recovery, capacity rejection and individual-copy removal with disposable data.
+
+## Alpha access
+
+Roulette is currently exclusive to Pro broadcasters. Account APIs, AST operations (including result), and overlay authentication check the owning Twitch account’s `plan_tier`. Existing overlay connections disconnect after a downgrade. Saved roulettes remain intact, and already-started draws still settle through the completion worker.
+
+The dashboard lives at `/:streamer/modules/roulette`; the OBS browser source is `/overlays/roulette/:channelID#TOKEN`. Its private token is stored only on the generating browser for later copying; replacing it revokes old links. During Alpha, management is owner-only.
