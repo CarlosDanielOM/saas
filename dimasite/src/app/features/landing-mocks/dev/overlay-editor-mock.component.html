@@ -154,6 +154,12 @@
                         }
                       }
                     </div>
+                    @for (event of mediaEvents(widget); track event.id) {
+                      @if (event.media; as media) {
+                        <app-overlay-test-player [media]="media" [muted]="mediaMuted(event, widget.id)" [playLabel]="t('tapToPlay')"
+                          (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
+                      }
+                    }
                     @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
                   </div>
                 }
@@ -172,7 +178,15 @@
             <button type="button" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="14" aria-hidden="true" />{{ t('testDesign') }}</button>
           </div>
         } @else {
-          <div class="event-tester"><div><p class="panel-kicker">{{ t('testEvents') }}</p><p>{{ t('testDescription') }}</p></div><div class="event-tester__actions">@for (kind of eventKinds; track kind) { <button type="button" (click)="previewWidget(kind)"><lucide-icon [name]="icons.Play" [size]="13" aria-hidden="true" />{{ t(kind + 'Name') }}</button> }</div></div>
+          <div class="test-account">
+            @if (testChannel(); as channel) {
+              <label class="property-field"><span>{{ t('testStreamer') }}</span><select [attr.aria-label]="t('testStreamer')" [value]="channel.id" (change)="changeTestChannel($event)">
+                @for (option of testChannels(); track option.id) { <option [value]="option.id" [selected]="option.id === channel.id">{{ option.login }}</option> }
+              </select></label>
+              <p>{{ t('realTestHint') }}</p>
+            } @else { <p>{{ t('testSignIn') }} <a routerLink="/login">{{ t('signIn') }}</a></p> }
+          </div>
+          <div class="event-tester"><div><p class="panel-kicker">{{ t('testEvents') }}</p><p>{{ t('testDescription') }}</p></div><div class="event-tester__actions">@for (kind of eventKinds; track kind) { <button type="button" [disabled]="testBusy(kind)" (click)="previewWidget(kind)"><lucide-icon [name]="icons.Play" [size]="13" aria-hidden="true" />{{ t(kind + 'Name') }}</button> }</div></div>
           <div class="queue-panel">
             <div class="queue-heading"><h3>{{ t('waitTogether') }}</h3><span>{{ t('pendingCount', { count: queue().length }) }}</span></div>
             <p>{{ t('waitHint') }}</p><div class="event-checks">@for (kind of eventKinds; track kind) { <label><input type="checkbox" [checked]="scene().waitFor.includes(kind)" (change)="toggleWait(kind)" />{{ t(kind + 'Name') }}</label> }</div>

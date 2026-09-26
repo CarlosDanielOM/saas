@@ -3354,7 +3354,7 @@
     "previewNote": "Vista del diseño · contenido de ejemplo",
     "sources": "fuentes",
     "testEvents": "Probar un evento",
-    "testDescription": "Los eventos duran 2,5 segundos. Prueba varios para ver la espera y la superposición.",
+    "testDescription": "Los clips y triggers reproducen archivos reales. TTS y alertas usan animaciones de ejemplo.",
     "fineTune": "Ajustar",
     "selectedLayer": "Fuente seleccionada",
     "position": "Posición",
@@ -3372,7 +3372,7 @@
     "delete": "Eliminar",
     "selectPrompt": "Selecciona una fuente del lienzo para editarla.",
     "reset": "Restablecer ejemplo",
-    "disclaimer": "Prototipo interactivo · los borradores, diseños y publicaciones se guardan en este navegador. Los eventos y archivos son simulados; no hay conexiones en vivo.",
+    "disclaimer": "Prototipo · los diseños se guardan en este navegador. Los clips usan tu módulo en vivo; los triggers reproducen aquí tus archivos. Los demás eventos son simulados.",
     "mockIndexTitle": "Editor de overlays",
     "mockIndexBadge": "Estudio interactivo",
     "mockIndexDescription": "Organiza TTS, alertas de triggers y clips en un lienzo. Arrastra, cambia tamaños, prueba y guarda un borrador local.",
@@ -3449,6 +3449,19 @@
     "urlRegenerated": "URL de ejemplo regenerada. En la función final, la anterior dejará de funcionar.",
     "mediaReleased": "Error de archivo simulado. El siguiente evento puede reproducirse.",
     "storageError": "El almacenamiento está lleno o no está disponible. Tus cambios siguen aquí, pero no se pudieron guardar.",
-    "eventMediaDescription": "Archivo para este evento"
+    "eventMediaDescription": "Archivo para este evento",
+    "testStreamer": "Streamer de prueba",
+    "testSignIn": "Inicia sesión para probar tus clips y triggers guardados.",
+    "signIn": "Iniciar sesión",
+    "realTestHint": "Los clips usan el módulo en vivo y pueden aparecer en otros overlays conectados. Los triggers se prueban aquí.",
+    "testAddSource": "Primero añade o muestra una fuente de ese tipo en el lienzo.",
+    "clipLoading": "Cargando un clip del streamer seleccionado…",
+    "triggerLoading": "Cargando un trigger guardado al azar…",
+    "clipTestError": "No se pudo iniciar la prueba. Comprueba que el streamer tenga clips e inténtalo de nuevo.",
+    "triggerTestError": "No se pudo cargar un trigger. Revisa tu acceso al canal y sus archivos e inténtalo de nuevo.",
+    "noTriggers": "Aún no hay triggers guardados: mostrando el brillo de prueba.",
+    "mediaReady": "Archivo de prueba listo. Si la reproducción está bloqueada, pulsa Reproducir en la fuente.",
+    "testPlaybackError": "No se pudo reproducir el archivo. Se ha liberado su turno en la cola.",
+    "tapToPlay": "Reproducir archivo"
   }
 }

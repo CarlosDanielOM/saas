@@ -46,6 +46,7 @@ try {
  await change('Sample user','Mika');
  assert.equal(await page.locator('.text-preview').innerText(),'Welcome Mika!');
  await page.locator('.design-event-tabs').getByRole('button',{name:'Bits',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.design-event-tabs .active')?.textContent.trim()==='Bits');
  await page.getByLabel('Text template',{exact:true}).fill('$(user) sent $(amount) bits');
  await change('Sample amount',250);
  assert.equal(await page.locator('.text-preview').innerText(),'Mika sent 250 bits');
@@ -80,7 +81,7 @@ try {
  await events.getByRole('button',{name:'Bits',exact:true}).evaluate(button=>{for(let i=0;i<100;i++)button.click();});
  await page.clock.runFor(32);
  assert.match(await page.locator('.queue-heading').innerText(),/100 waiting/);
- await events.getByRole('button',{name:'Clips',exact:true}).dispatchEvent('click');await page.clock.runFor(32);
+ await events.getByRole('button',{name:'Subscriptions',exact:true}).dispatchEvent('click');await page.clock.runFor(32);
  assert.match(await page.locator('.queue-status').innerText(),/1 playing independently/);
  await page.getByRole('button',{name:/Publish preview/}).dispatchEvent('click');await page.clock.runFor(32);
  assert.match(await page.locator('.queue-heading').innerText(),/100 waiting/);

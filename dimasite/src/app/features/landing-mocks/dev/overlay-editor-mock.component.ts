@@ -1,4 +1,8 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { SessionAuthService } from '../../../services/session-auth.service';
+import { OverlayTestMediaService, TestChannel, TestMedia } from './overlay-test-media.service';
+import { OverlayTestPlayerComponent } from './overlay-test-player.component';
 import { RouterLink } from '@angular/router';
 import { ArrowLeft, Bell, Clapperboard, Copy, Eye, EyeOff, Grip, Image, Layers3, LockKeyhole, Moon, Play, Plus, RotateCcw, Save, Sparkles, Sun, Trash2, Type, Volume2, Zap, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../../services/language.service';
@@ -7,10 +11,11 @@ import { ALERT_EVENTS, EVENT_KINDS, STORAGE_KEY, AlertDesign, AlertEvent, EventK
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
-interface MockEvent { id: number; kind: EventKind }
+interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia }
+interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor-mock', imports: [RouterLink, LucideAngularModule],
+  selector: 'app-overlay-editor-mock', imports: [RouterLink, LucideAngularModule, OverlayTestPlayerComponent], providers: [OverlayTestMediaService],
   templateUrl: './overlay-editor-mock.component.html', styleUrl: './overlay-editor-mock.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()' }
@@ -18,9 +23,23 @@ interface MockEvent { id: number; kind: EventKind }
 export class OverlayEditorMockComponent {
   readonly language = inject(LanguageService);
   private readonly theme = inject(ThemeService);
+  readonly auth = inject(SessionAuthService);
+  private readonly testMedia = inject(OverlayTestMediaService);
+  private readonly jobs = new Map<number, MediaJob>();
+  private readonly channelChoice = signal('');
+  readonly testChannels = computed<TestChannel[]>(() => {
+    const session = this.auth.session();
+    if (!session) return [];
+    const own = { id: session.appUser.twitch_user_id, login: session.twitchUser.login };
+    return [own, ...session.appUser.administrating.filter(c => c.channelID !== own.id).map(c => ({ id: c.channelID, login: c.channelName }))];
+  });
+  readonly testChannel = computed(() => {
+    const channels = this.testChannels();
+    const selected = this.channelChoice() || this.auth.getLastViewedStreamerSnapshot();
+    return channels.find(c => c.id === selected || c.login === selected) ?? channels[0] ?? null;
+  });
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
-  private queueTimer?: ReturnType<typeof setTimeout>;
   private nextId = Date.now();
   readonly icons = { ArrowLeft, Bell, Clapperboard, Copy, Eye, EyeOff, Grip, Layers3, LockKeyhole, Moon, Play, Plus, RotateCcw, Save, Sun, Trash2, Volume2, Zap };
   readonly alertEvents = ALERT_EVENTS;
@@ -53,7 +72,7 @@ export class OverlayEditorMockComponent {
   constructor() {
     this.seed();
     afterNextRender(() => this.restoreDraft());
-    inject(DestroyRef).onDestroy(() => this.timers.forEach(timer => clearTimeout(timer)));
+    inject(DestroyRef).onDestroy(() => this.resetSimulation());
   }
   t(key: string, params?: Record<string, string | number>): string {
     this.language.currentLanguage(); return this.language.translate(`overlayMock.${key}`, params);
@@ -77,6 +96,7 @@ export class OverlayEditorMockComponent {
   private updateWidgets(update: (widgets: OverlayWidget[]) => OverlayWidget[]): void {
     if (this.designDraft()) this.designDraft.update(d => d ? { ...d, events: { ...d.events, [this.designEvent()]: { ...d.events[this.designEvent()], widgets: update(d.events[this.designEvent()].widgets) } } } : d);
     else this.updateScene({ widgets: update(this.widgets()) });
+    this.reconcileTests();
     this.saved.set(false);
   }
   private updateScene(changes: Partial<OverlayScene>): void {
@@ -155,6 +175,7 @@ export class OverlayEditorMockComponent {
     this.scenes.update(all=>[...all,scene]); this.sceneId.set(scene.id); this.selectedId.set(null); this.resetSimulation(); this.saved.set(false);
   }
   openDesign(id?: string): void {
+    this.resetSimulation();
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
     this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.libraryOpen.set(false); this.panel.set('canvas'); this.selectedId.set(this.widgets()[1]?.id ?? null); this.saved.set(false);
   }
@@ -184,23 +205,101 @@ export class OverlayEditorMockComponent {
   isPlaying(widget: OverlayWidget): boolean {
     return this.designDraft()?this.previewDesign():[this.active(),...this.parallel()].some(e=>e&&(widget.kind===e.kind || widget.kind==='alert'&&widget.events?.includes(e.kind as AlertEvent)));
   }
+  changeTestChannel(event: Event): void { this.resetSimulation(); this.channelChoice.set(this.value(event)); }
+  testBusy(kind: EventKind): boolean {
+    return (kind === 'clip' || kind === 'trigger') && [...this.queue(), this.active(), ...this.parallel()].some(e => e?.kind === kind);
+  }
+  mediaEvents(widget: OverlayWidget): MockEvent[] {
+    if (this.designDraft()) return [];
+    return [this.active(), ...this.parallel()].filter((e): e is MockEvent => Boolean(e?.media && e.targets?.includes(widget.id)));
+  }
+  mediaMuted(event: MockEvent, widgetId: string): boolean {
+    const firstVisible = event.targets?.find(id => this.widgets().some(w => w.id === id && w.visible));
+    return firstVisible !== widgetId;
+  }
   previewWidget(kind: EventKind): void {
-    const event={id:this.nextId++,kind};
-    if(this.scene().waitFor.includes(kind)){ this.queue.update(q=>[...q,event]); this.runNext(); }
-    else { this.parallel.update(q=>[...q,event]); this.later(()=>this.parallel.update(q=>q.filter(e=>e.id!==event.id)),2500); }
+    if (this.testBusy(kind)) return;
+    const real = kind === 'clip' || kind === 'trigger';
+    const channel = this.testChannel();
+    if (real && (!this.auth.hasValidSession() || !channel)) { this.notice.set('testSignIn'); return; }
+    const targets = this.widgets().filter(w => w.visible && w.kind === kind).map(w => w.id);
+    if (real && !targets.length) { this.notice.set('testAddSource'); return; }
+    const event: MockEvent = { id: this.nextId++, kind, ...(real && channel ? { channel: { ...channel }, targets } : {}) };
+    if (this.scene().waitFor.includes(kind)) { this.queue.update(q => [...q, event]); this.runNext(); }
+    else { this.parallel.update(q => [...q, event]); this.startEvent(event); }
   }
   private runNext(): void {
-    if(this.active()||!this.queue().length) return;
-    const [event,...rest]=this.queue(); this.queue.set(rest); this.active.set(event);
-    this.queueTimer=this.later(()=>{this.active.set(null);this.runNext();},2500);
+    if (this.active() || !this.queue().length) return;
+    const [event, ...rest] = this.queue(); this.queue.set(rest); this.active.set(event); this.startEvent(event);
+  }
+  private startEvent(event: MockEvent): void {
+    if (!event.channel) { this.later(() => this.finishEvent(event.id), 2500); return; }
+    const visible = new Set(this.widgets().filter(w => w.visible).map(w => w.id));
+    const targets = event.targets?.filter(id => visible.has(id)) ?? [];
+    if (!targets.length) { this.finishEvent(event.id); return; }
+    const job: MediaJob = { pending: new Set(targets), started: new Set() };
+    this.jobs.set(event.id, job);
+    this.notice.set(event.kind === 'clip' ? 'clipLoading' : 'triggerLoading');
+    if (event.kind === 'clip') {
+      job.cancel = this.testMedia.startClip(event.channel, media => this.showMedia(event.id, media), () => {
+        if (this.jobs.has(event.id)) { this.notice.set('clipTestError'); this.finishEvent(event.id); }
+      });
+    } else {
+      const request: Subscription = this.testMedia.randomTrigger(event.channel).subscribe({
+        next: media => {
+          if (!this.jobs.has(event.id)) return;
+          if (media) this.showMedia(event.id, media);
+          else { this.notice.set('noTriggers'); job.timer = this.later(() => this.finishEvent(event.id), 2500); }
+        },
+        error: () => { if (this.jobs.has(event.id)) { this.notice.set('triggerTestError'); this.finishEvent(event.id); } }
+      });
+      job.cancel = () => request.unsubscribe();
+    }
+  }
+  private showMedia(id: number, media: TestMedia): void {
+    const job = this.jobs.get(id); if (!job) return;
+    const patch = (e: MockEvent) => e.id === id ? { ...e, media } : e;
+    this.active.update(e => e ? patch(e) : e); this.parallel.update(all => all.map(patch));
+    this.notice.set('mediaReady');
+    // Loading/autoplay failures must not hold the scheduler forever.
+    job.timer = this.later(() => { this.notice.set('testPlaybackError'); this.finishEvent(id); }, 30000);
+  }
+  mediaStarted(id: number, widgetId: string, actualDuration?: number): void {
+    const job = this.jobs.get(id); if (!job || job.started.has(widgetId)) return;
+    job.started.add(widgetId);
+    if (job.started.size !== 1) return;
+    if (job.timer) { clearTimeout(job.timer); this.timers.delete(job.timer); }
+    const event = [this.active(), ...this.parallel()].find(e => e?.id === id);
+    const duration = event?.media?.type === 'image' ? 5 : event?.media?.duration ?? (Number.isFinite(actualDuration) && actualDuration! > 0 ? actualDuration! + 15 : undefined);
+    // Clips use the clip module's 30s maximum; other media finishes on ended/error.
+    job.timer = this.later(() => this.finishEvent(id), duration ? duration * 1000 : 300000);
+  }
+  mediaFinished(id: number, widgetId: string, error = false): void {
+    const job = this.jobs.get(id); if (!job || !job.pending.delete(widgetId)) return;
+    if (error) this.notice.set('testPlaybackError');
+    if (!job.pending.size) this.finishEvent(id);
+  }
+  private finishEvent(id: number): void {
+    const job = this.jobs.get(id);
+    this.jobs.delete(id);
+    if (job?.timer) { clearTimeout(job.timer); this.timers.delete(job.timer); }
+    job?.cancel?.();
+    this.parallel.update(all => all.filter(e => e.id !== id));
+    if (this.active()?.id === id) { this.active.set(null); this.runNext(); }
+  }
+  private reconcileTests(): void {
+    const visible = new Set(this.widgets().filter(w => w.visible).map(w => w.id));
+    for (const [id, job] of this.jobs) {
+      for (const target of job.pending) if (!visible.has(target)) job.pending.delete(target);
+      if (!job.pending.size) this.finishEvent(id);
+    }
   }
   failMedia(): void {
-    if(!this.active()) return;
-    if(this.queueTimer){clearTimeout(this.queueTimer);this.timers.delete(this.queueTimer);}
-    this.active.set(null); this.notice.set('mediaReleased'); this.runNext();
+    const active = this.active(); if (!active) return;
+    this.notice.set('mediaReleased'); this.finishEvent(active.id);
   }
   testDesign(): void { this.previewDesign.set(true); this.later(()=>this.previewDesign.set(false),(this.designDraft()?.events[this.designEvent()].duration??5)*1000); }
-  private resetSimulation(): void { this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
+  private resetSimulation(): void { this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   publish(): void {
     const scene=this.scene(); this.updateScene({revision:scene.revision+1,published:clone({width:scene.width,height:scene.height,widgets:scene.widgets,waitFor:scene.waitFor,designs:this.designs().filter(d=>scene.widgets.some(w=>w.designId===d.id))})});
     if (this.persist()) this.notice.set('publishedNotice');

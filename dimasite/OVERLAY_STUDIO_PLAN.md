@@ -2,7 +2,7 @@
 
 Status: interactive frontend prototype only. Backend implementation still needs the
 streamer's green light. The mock route is `/mocks/dev/overlay-editor`; all saved data
-and published snapshots are local to the current browser. Media and events are simulated.
+and published snapshots are local to the current browser. Clip tests now use the selected signed-in streamer’s existing clip test endpoint and live socket. Trigger tests load a random saved trigger and play its media locally, with a glow fallback for an empty trigger list. Other events remain simulated.
 
 ## Durable documents
 

@@ -3354,7 +3354,7 @@
     "previewNote": "Layout preview · sample content",
     "sources": "sources",
     "testEvents": "Try an event",
-    "testDescription": "Sample events play for 2.5 seconds. Try several to see waiting and overlap.",
+    "testDescription": "Clips and triggers play real media. TTS and alerts use sample animations.",
     "fineTune": "Fine tune",
     "selectedLayer": "Selected source",
     "position": "Position",
@@ -3372,7 +3372,7 @@
     "delete": "Delete",
     "selectPrompt": "Select a source on the canvas to edit it.",
     "reset": "Reset example layout",
-    "disclaimer": "Interactive prototype · drafts, saved designs and published previews stay in this browser. Events and media are simulated; no live connections are made.",
+    "disclaimer": "Prototype · layouts and saved designs stay in this browser. Clip tests use your live clip module; trigger tests play your saved media here. Other events are simulated.",
     "mockIndexTitle": "Overlay editor",
     "mockIndexBadge": "Interactive studio",
     "mockIndexDescription": "Arrange TTS, trigger alerts, and clips on a stream canvas. Drag, resize, test, and save a local draft.",
@@ -3449,6 +3449,19 @@
     "urlRegenerated": "Example URL regenerated. In the live feature, the previous URL will stop working.",
     "mediaReleased": "Media error simulated. The next queued event can play.",
     "storageError": "Browser storage is unavailable or full. Your changes are still here, but could not be saved.",
-    "eventMediaDescription": "Media for this event layout"
+    "eventMediaDescription": "Media for this event layout",
+    "testStreamer": "Test streamer",
+    "testSignIn": "Sign in to test your clips and saved triggers.",
+    "signIn": "Sign in",
+    "realTestHint": "Clips use the live clip module and may also play in connected overlays. Saved triggers preview here.",
+    "testAddSource": "Add or show a matching source on the canvas first.",
+    "clipLoading": "Loading a clip from the selected streamer…",
+    "triggerLoading": "Loading a random saved trigger…",
+    "clipTestError": "The clip test could not start. Check that this streamer has clips, then try again.",
+    "triggerTestError": "Could not load a saved trigger. Check your channel access and its media, then try again.",
+    "noTriggers": "No saved triggers yet — showing the glow preview.",
+    "mediaReady": "Test media ready. If playback is blocked, tap Play on the source.",
+    "testPlaybackError": "The media could not play. Its queue slot has been released.",
+    "tapToPlay": "Play media"
   }
 }

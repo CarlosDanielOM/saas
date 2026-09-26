@@ -208,3 +208,9 @@ select:focus-visible,textarea:focus-visible { outline:3px solid var(--accent); o
 :host-context(html.dark) { --danger:#fb8da5 }
 .danger-actions button:last-child { color:var(--danger) }
 .selected-card small { color:var(--fg) }
+
+.test-account { margin:0 0 14px; font-size:11px; color:var(--muted); line-height:1.6 }
+.test-account .property-field { max-width:280px }
+.test-account a { color:var(--accent); display:inline-flex; align-items:center; min-height:44px }
+.widget app-overlay-test-player { z-index:1 }
+.widget .resize-handle { z-index:2 }
