@@ -1,3 +1,4 @@
+import { registerStudio, studioHasSource } from '../overlays/live.js';
 import { registerRouletteOverlay } from './services/roulette-overlay.service.js';
 import { Server as SocketIOServer } from "socket.io";
 import http, { type Server as HttpServer } from "http";
@@ -42,6 +43,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
         registerFishPreview(io);
         registerRouletteOverlay(io);
+        registerStudio(io);
 
         //? Clip Namespace with heartbeat mechanism
         io.of(/^\/clip\/\w+$/).on('connection', async (socket) => {
@@ -92,7 +94,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             // Handle clip-ended event from OBS
             socket.on('clip-ended', async (data: { channelID: string, clipID?: string }) => {
                 // Use the handler's cleanup method which also clears timeouts
-                await clipQueueHandler.handleClipEnded(data.channelID, data.clipID);
+                await clipQueueHandler.handleClipEnded(channelID, data.clipID);
             });
 
             // Handle heartbeat/ping from OBS
@@ -109,7 +111,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
                     const namespace = io?.of(`/clip/${channelID}`);
                     if (namespace) {
                         const sockets = await namespace.fetchSockets();
-                        if (sockets.length === 0) {
+                        if (sockets.length === 0 && !studioHasSource(channelID, 'clip')) {
                             await cacheClient!.del(`twitch:${channelID}:clips:connected`);
                             await cacheClient!.del(`twitch:${channelID}:clips:timeouts:default`);
                             console.log(`${channelID} OBS connection removed (30s timeout)`);
@@ -335,7 +337,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
                     const clipNamespace = io.of(`/clip/${channel.id}`);
                     const clipSockets = await clipNamespace.fetchSockets();
 
-                    if (clipSockets.length === 0) {
+                    if (clipSockets.length === 0 && !studioHasSource(channel.id, 'clip')) {
                         // Check heartbeat timestamp - only delete if no heartbeat for 60+ seconds
                         const lastActivity = await cacheClient.get(`twitch:${channel.id}:clips:last_activity`);
                         const now = Date.now();
@@ -352,7 +354,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
                     const speechNamespace = io.of(`/speech/${channel.id}`);
                     const speechSockets = await speechNamespace.fetchSockets();
 
-                    if (speechSockets.length === 0) {
+                    if (speechSockets.length === 0 && !studioHasSource(channel.id, 'tts')) {
                         const speechConnected = await cacheClient.exists(`twitch:${channel.id}:tts:connected`);
                         if (speechConnected) {
                             // Speech doesn't have heartbeat, so just check if flag exists with no active sockets

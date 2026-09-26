@@ -1,3 +1,4 @@
+import { studioHasSource, publishStudioTrigger } from '../../overlays/bridge.js';
 import express, { type Request, type Response } from 'express';
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
@@ -1610,7 +1611,7 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
         const namespace = io.of(namespacePath);
         const sockets = await namespace.fetchSockets();
 
-        if (sockets.length === 0) {
+        if (sockets.length === 0 && !studioHasSource(channelIdStr, 'trigger')) {
             await error({
                 error: 'No Connected Trigger Clients',
                 message: 'No trigger overlay clients connected',
@@ -1632,6 +1633,7 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
 
         try {
             namespace.emit('trigger', body);
+            publishStudioTrigger(channelIdStr, body);
         } catch (emitError) {
             await error({
                 error: 'Internal Server Error',

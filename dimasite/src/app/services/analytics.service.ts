@@ -252,7 +252,7 @@ export class AnalyticsService {
   }
 
   private isPrivateRouletteOverlay(): boolean {
-    return this.isBrowser() && window.location.pathname.startsWith('/overlays/roulette/');
+    return this.isBrowser() && window.location.pathname.startsWith('/overlays/');
   }
 
   private isBrowser(): boolean {

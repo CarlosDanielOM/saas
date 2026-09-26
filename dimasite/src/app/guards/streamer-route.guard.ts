@@ -23,6 +23,7 @@ const KNOWN_STREAMER_CHILDREN = new Set([
 ]);
 const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['roulette', null],
+  ['overlays', null],
   ['clips', null],
   ['chat-events', null],
   ['triggers', null],

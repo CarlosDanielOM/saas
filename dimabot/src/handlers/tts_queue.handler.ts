@@ -1,3 +1,4 @@
+import { studioHasSource, publishStudioMedia } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
@@ -110,7 +111,7 @@ class TtsQueueHandler {
   private hasOverlayConnection(channelID: string): boolean {
     // The Redis flag can outlive a socket (especially across an API restart).
     const sockets = getIO()?.of(`/speech/${channelID}`).sockets;
-    return !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
+    return studioHasSource(channelID, 'tts') || !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
   }
 
   async handleOverlayDisconnected(channelID: string): Promise<void> {
@@ -502,6 +503,7 @@ class TtsQueueHandler {
         this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
+        await publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text);
         io.of(`/speech/${channelID}`).emit("speech", {
           speechID,
           audioUrl: synthesisResult.publicPath,
@@ -509,6 +511,9 @@ class TtsQueueHandler {
           mode: queueItem.mode,
           text: queueItem.text,
         });
+        if (![...io.of(`/speech/${channelID}`).sockets.values()].some(socket => socket.connected && socket.data.ttsReady)) {
+          await this.handleSpeechEnded(channelID, speechID, 'retained-by-overlay-studio');
+        }
         return;
       }
     } catch (error) {

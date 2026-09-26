@@ -2,6 +2,7 @@ export type PlanTier = 'free' | 'premium' | 'pro';
 
 export type ModuleId =
   | 'roulette'
+  | 'overlays'
   | 'clips'
   | 'chat-events'
   | 'triggers'
@@ -33,6 +34,7 @@ export interface ModuleTierRequirement {
 }
 
 export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequirement>> = {
+  overlays: { id: 'overlays', minTier: 'pro', displayName: 'Overlay Studio', defaultStatus: 'alpha', category: 'engagement', priority: 84 },
   roulette: { id: 'roulette', minTier: 'pro', displayName: 'Roulette', defaultStatus: 'alpha', category: 'engagement', priority: 85 },
   'chat-events': {
     id: 'chat-events',

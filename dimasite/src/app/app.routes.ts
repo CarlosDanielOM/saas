@@ -9,6 +9,7 @@ import { permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
 
 export const routes: Routes = [
+  { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
   { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'Roulette Overlay' },
   {
     path: '',
@@ -774,6 +775,9 @@ export const routes: Routes = [
               permission: 'dashboard:view'
             },
             title: 'Modules | DomDimaBot'
+          },
+          {
+            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
           {
             path: 'roulette',

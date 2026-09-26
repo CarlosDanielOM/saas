@@ -1,3 +1,4 @@
+import { publishStudioMedia } from '../overlays/bridge.js';
 import type { RedisClientType } from 'redis';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { pubSubManager, type ClipRequestData } from '../classes/pubsub_manager.class.js';
@@ -9,6 +10,8 @@ class ClipQueueHandler {
     private currentTimeouts: Map<string, NodeJS.Timeout> = new Map();
     private processingChannels: Set<string> = new Set();
     private initialized = false;
+    private activeClipIds = new Map<string, string>();
+    private channelSubscriptions = new Map<string, Promise<void>>();
 
     async init(): Promise<void> {
         if (this.initialized) {
@@ -32,16 +35,16 @@ class ClipQueueHandler {
             throw new Error('ClipQueueHandler not initialized');
         }
 
-        try {
-            await pubSubManager.subscribeToClipRequests(channelID, async (clipData: ClipRequestData) => {
-                await this.handleClipRequest(channelID, clipData);
-            });
-
-            console.log(`Subscribed to clip requests for channel ${channelID}`);
-        } catch (error) {
-            console.error(`Error subscribing to channel ${channelID}:`, error);
+        const existing = this.channelSubscriptions.get(channelID);
+        if (existing) return existing;
+        const subscription = pubSubManager.subscribeToClipRequests(channelID, async (clipData: ClipRequestData) => {
+            await this.handleClipRequest(channelID, clipData);
+        }).catch(error => {
+            this.channelSubscriptions.delete(channelID);
             throw error;
-        }
+        });
+        this.channelSubscriptions.set(channelID, subscription);
+        await subscription;
     }
 
     private async handleClipRequest(channelID: string, clipData: ClipRequestData): Promise<void> {
@@ -137,6 +140,7 @@ class ClipQueueHandler {
         }
 
         const timeoutKey = `${channelID}:${clipData.clipID}`;
+        this.activeClipIds.set(channelID, clipData.clipID);
         let timeoutSeconds = 60;
         let timeout: NodeJS.Timeout | null = null;
 
@@ -207,7 +211,9 @@ class ClipQueueHandler {
                 streamerColor: clipData.streamerColor
             };
 
+            await publishStudioMedia(channelID, 'clip', { type: 'video', title: clipData.title || '', volume: 1, duration: Math.min(30, Number(clipData.duration) || 30) }, `${downloadDir}/${channelID}-clip.mp4`, 'video/mp4');
             io.of(`/clip/${channelID}`).emit('play-clip', clipPayload);
+            if (!io.of(`/clip/${channelID}`).sockets.size) await this.handleClipEnded(channelID, clipData.clipID);
             
             // Keep timeout active - it will be cleared when clip ends normally or if it times out
             // The timeout serves as a safety net in case OBS never sends 'clip-ended'
@@ -235,6 +241,7 @@ class ClipQueueHandler {
         }
 
         try {
+            if (this.activeClipIds.get(channelID) === clipID) this.activeClipIds.delete(channelID);
             await this.cache.del(`twitch:${channelID}:clip:processing`);
             await this.cache.del(`twitch:${channelID}:clips:queue:data:${clipID}`);
             this.processingChannels.delete(channelID);
@@ -264,21 +271,9 @@ class ClipQueueHandler {
             return;
         }
 
-        // If clipID is missing, try to find it from the queue data
-        if (!clipID) {
-            // Get the oldest clip from queue (should be the one currently processing)
-            const queueKeys = await this.cache.keys(`twitch:${channelID}:clips:queue:data:*`);
-            if (queueKeys.length > 0) {
-                // Extract clipID from key pattern: twitch:channelID:clips:queue:data:clipID
-                const firstKey = queueKeys[0];
-                const extractedClipID = firstKey.split(':').pop();
-                if (extractedClipID) {
-                    clipID = extractedClipID;
-                }
-            }
-        }
-
-        await this.cleanupClip(channelID, clipID || 'unknown');
+        if (!clipID || this.activeClipIds.get(channelID) !== clipID) return;
+        this.activeClipIds.delete(channelID);
+        await this.cleanupClip(channelID, clipID);
         await this.processNextClip(channelID);
     }
 

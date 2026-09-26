@@ -1,3 +1,4 @@
+import { overlayStudioRoute } from './routes/overlay-studio.route.js';
 import { rouletteRoute } from './routes/roulette.route.js';
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
@@ -45,6 +46,7 @@ export const server = async (): Promise<Express.Application> => {
         // Setup webhooks first (raw body required for signature validation)
         app.use('/polar/webhook', polarshWebhook);
 
+        app.use('/overlay-studio', express.json({ limit: '5mb' }));
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         app.use(express.static(path.join(__dirname, 'routes', 'public')));
@@ -119,6 +121,7 @@ export const server = async (): Promise<Express.Application> => {
         // Setup timers routes
         app.use('/timers', timerRoute);
         app.use('/roulettes', rouletteRoute);
+        app.use('/overlay-studio', overlayStudioRoute);
 
         // Setup follow defense routes
         app.use('/follow-defense', followDefenseRoute);
