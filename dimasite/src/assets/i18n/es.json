@@ -73,7 +73,7 @@
     "reelStart": "Lanzar el carrete",
     "reelDrawing": "Girando el carrete…",
     "reelCapacityTitle": "Este carrete admite menos premios",
-    "reelCapacityError": "El carrete sortea hasta {{max}} elementos y esta lista tiene {{count}}. Quita algunos o usa otro concepto. No se ha eliminado nada.",
+    "reelCapacityError": "El carrete admite hasta {{max}} tarjetas, incluidas las copias del multiplicador, y esta lista tiene {{count}}. Reduce los multiplicadores, quita elementos o usa otro concepto. No se ha eliminado nada.",
     "reelCapacityRecovery": "El concepto de ruleta sigue usando la lista completa, hasta 10.000 casillas.",
     "reelCapacityAction": "Cambiar a Órbita",
     "collection": "Laboratorio de ruletas",

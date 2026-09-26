@@ -73,7 +73,7 @@
     "reelStart": "Send the reel",
     "reelDrawing": "Rolling the reel…",
     "reelCapacityTitle": "This reel holds fewer prizes",
-    "reelCapacityError": "The reel draws up to {{max}} items, and this list has {{count}}. Remove some items or use another concept. Nothing has been discarded.",
+    "reelCapacityError": "The reel holds up to {{max}} cards, including multiplier copies, and this list has {{count}}. Reduce multipliers, remove items, or use another concept. Nothing has been discarded.",
     "reelCapacityRecovery": "The wheel concept still draws from the complete list, up to 10,000 slots.",
     "reelCapacityAction": "Switch to Orbit",
     "collection": "Wheel lab",

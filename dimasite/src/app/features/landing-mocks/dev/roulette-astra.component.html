@@ -201,10 +201,11 @@
                 [style.transform]="'translateX(' + reelOffset() + 'px)'"
                 [style.transition-duration]="reelSnap() || reducedMotion() ? '0s' : duration() + 's'"
               >
-                @for (cell of reelCells(); track cell.key) {
+                @for (cell of reelCells(); track cell.renderKey) {
                   <article
                     class="reel-cell"
-                    [class.is-winner]="result()?.id === cell.id"
+                    [class.is-winner]="result()?.key === cell.key"
+                    [attr.data-slot-key]="cell.key"
                     [style.--cell-accent]="cell.color"
                     [title]="cell.name"
                   >
@@ -215,7 +216,7 @@
                     <span class="reel-cell-meta"
                       ><span>{{ cell.chance }}%</span>
                       @if (cell.multiplier > 1) {
-                        <span class="reel-cell-copy">×{{ cell.multiplier }}</span>
+                        <span class="reel-cell-copy">{{ t('copyOf', { copy: cell.copy, count: cell.multiplier }) }}</span>
                       }
                     </span>
                   </article>

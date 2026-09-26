@@ -152,32 +152,8 @@ export class RouletteAstraComponent {
   readonly denseWheel = computed(() => this.labeledSlices().length < this.slotCount());
   readonly gridOverCapacity = computed(() => this.slotCount() > this.cardCapacity());
   readonly isWheel = computed(() => this.concept() !== 'grid' && this.concept() !== 'reel');
-  readonly reelEntries = computed(() => {
-    const seen = new Set<number>();
-    const rows: Array<{
-      id: number;
-      index: number;
-      name: string;
-      color: string;
-      weight: number;
-      multiplier: number;
-      chance: string;
-    }> = [];
-    for (const slice of this.slices()) {
-      if (seen.has(slice.id)) continue;
-      seen.add(slice.id);
-      rows.push({
-        id: slice.id,
-        index: rows.length,
-        name: slice.name,
-        color: slice.color,
-        weight: slice.weight,
-        multiplier: slice.multiplier,
-        chance: this.chance(slice.weight * slice.multiplier),
-      });
-    }
-    return rows;
-  });
+  // Keep every multiplier copy in the shared shuffled order, just like the wheel.
+  readonly reelEntries = computed(() => this.slices());
   readonly reelOverCapacity = computed(
     () => this.concept() === 'reel' && this.reelEntries().length > REEL_MAX_ITEMS,
   );
@@ -191,11 +167,11 @@ export class RouletteAstraComponent {
   readonly reelCells = computed(() => {
     const items = this.reelEntries();
     const cycles = this.reelCycles();
-    const cells: Array<(typeof items)[number] & { key: string; slot: number }> = [];
+    const cells: Array<(typeof items)[number] & { renderKey: string; slot: number }> = [];
     for (let cycle = 0; cycle < cycles; cycle++) {
       for (let index = 0; index < items.length; index++) {
         const item = items[index];
-        cells.push({ ...item, key: `${cycle}:${item.id}`, slot: cycle * items.length + index });
+        cells.push({ ...item, renderKey: `${cycle}:${item.key}`, slot: cycle * items.length + index });
       }
     }
     return cells;
@@ -278,7 +254,7 @@ export class RouletteAstraComponent {
       if (!reel || typeof ResizeObserver === 'undefined') return;
       let seeded = false;
       const observer = new ResizeObserver(([entry]) => {
-        this.reelWidth.set(Math.max(320, entry.contentRect.width));
+        this.reelWidth.set(Math.max(1, entry.contentRect.width));
         if (!seeded) {
           seeded = true;
           this.reelOffset.set(this.reelIdleOffset());
@@ -342,6 +318,7 @@ export class RouletteAstraComponent {
     this.progress.set(0);
     this.reducedMotion.set(true);
     this.angle.set(0);
+    if (this.concept() === 'reel') this.reelOffset.set(this.reelIdleOffset());
     this.shuffleNotice.set(this.t('shuffled'));
   }
   closeWinner(): void {
@@ -369,6 +346,10 @@ export class RouletteAstraComponent {
       return false;
     }
     this.entries.set(entries);
+    if (this.concept() === 'reel') {
+      this.reducedMotion.set(true);
+      this.reelOffset.set(this.reelIdleOffset());
+    }
     this.editorPage.set(Math.min(this.editorPage(), this.editorPages() - 1));
     this.result.set(null);
     this.highlighted.set(null);
@@ -481,7 +462,7 @@ export class RouletteAstraComponent {
   /** Slides the periodic prize strip so the winning entry stops under the marker. */
   private animateReel(selected: PrizeResult): void {
     const items = this.reelEntries();
-    const itemIndex = items.findIndex((item) => item.id === selected.id);
+    const itemIndex = items.findIndex((item) => item.key === selected.key);
     if (itemIndex < 0 || !items.length) {
       this.reveal(selected);
       return;
