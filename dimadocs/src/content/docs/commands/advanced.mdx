@@ -21,7 +21,8 @@ Use AST when you want your command to do more than send fixed text.
 - build dynamic replies
 - run conditionals like if / else logic
 - work with arrays and loops
-- call Twitch, moderation, TTS, trigger, and EventSub functions
+- call Twitch, moderation, availability, TTS, roulette, trigger, and EventSub functions
+- schedule delayed AST actions that survive bot restarts
 - chain commands together
 
 ## Important: variables are not built in
@@ -54,12 +55,13 @@ This AST section is now split into smaller guides so it is easier to learn.
 
 2. **[AST Functions Reference](/commands/advanced/functions)**
    - user and Twitch functions
-   - moderation and channel actions
+   - moderation, channel, availability, and roulette actions
    - counters, clips, followage
-   - EventSub, TTS, triggers, chat send
+   - polls, predictions, EventSub, TTS, triggers, chat send
 
 3. **[AST Execution, Errors & Limits](/commands/advanced/execution)**
    - how the parser runs
+   - delayed timer execution and recovery
    - common errors
    - loop and recursion limits
    - debugging mindset

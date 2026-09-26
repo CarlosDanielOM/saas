@@ -277,7 +277,18 @@ Puedes ejecutar un comando dentro de otro:
 
 - profundidad máxima de recursión: `5`
 - los ciclos se detectan y bloquean
-- la salida del comando referenciado se parsea y se inserta de vuelta
+- primero se envía la respuesta del comando externo; después se ejecutan los comandos referenciados en el orden escrito
+- cada comando referenciado envía su propia respuesta; el texto renderizado no se vuelve a parsear
+
+## Timers programados
+
+`$(timer segundos mensaje_y_acciones)` programa el cuerpo para ejecutarlo más tarde y devuelve el control de inmediato. El delay debe ser de `1` a `604800` segundos (siete días). El timer guarda su AST y contexto de ejecución en la caché del bot, por lo que puede recuperarse después de un reinicio. Si el bot está desconectado cuando vence, todavía puede ejecutarse dentro de una ventana de gracia de 10 minutos; después expira. Cada llamada crea un timer independiente y cada timer se ejecuta como máximo una vez.
+
+```bash
+$(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
+```
+
+El mensaje y la acción se evalúan cuando se activa el timer. Se pueden anidar timers hasta cinco niveles. Cada canal puede tener como máximo 100 timers pendientes.
 
 ## Verificación de existencia
 

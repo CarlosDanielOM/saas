@@ -79,6 +79,12 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
+## Documentation Work
+
+- When the active agent or harness provides GPT-6 Luna, use GPT-6 Luna in **high reasoning/thinking mode** for documentation updates.
+- For a broad docs refresh, delegate source-backed audits to separate agents when the harness permits it. Give each agent a non-overlapping set of files and feature sources, stay within the actual concurrency limit, and have one integrator reconcile terminology and English/Spanish parity.
+- Delegation does not replace verification. Repository guidance changes need a reviewed diff and `git diff --check`; published `dimadocs` content still needs the docs preview, candidate build, behavior check, deployment, and production verification described above.
+
 ## Where to Edit – Quick Reference
 
 **Backend (dimabot)**:

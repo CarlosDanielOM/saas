@@ -11,7 +11,7 @@ Commands are the foundation of DomDimaBot. They are split into two categories: *
 
 ## Built-in commands
 
-The built-in command catalog, seed enablement, usage syntax, and behavior live in the [Built-in command reference](/commands/built-in/). The shipped defaults seed enabled entries except `!s` and `!clearchat`; channel settings can differ. Use `!commands` to see the commands available to you in a particular channel.
+The built-in command catalog, seed enablement, usage syntax, and behavior live in the [Built-in command reference](/commands/built-in/). New channel defaults enable `!s` and disable `!clearchat`; channel settings can differ. Use `!commands` to see the commands available to you in a particular channel.
 
 This page focuses on streamer-created commands and repeating chat timers. For variables, functions, conditions, and command references, use the [AST guides](/commands/advanced/).
 
@@ -52,11 +52,13 @@ With options:
 
 | Option | Description |
 |--------|-------------|
-| `-cd=` | Cooldown in seconds. The minimum depends on the channel owner’s plan: Free `5`, Premium `3`, Pro `1`. |
+| `-cd=` | Cooldown in seconds. The minimum depends on the channel owner’s plan: Free `5`, Premium `3`, Pro `1`. One editable command per channel may use `0`; new channel defaults already use that slot for `!s`. |
 | `-ul=` | User level, by number `1`–`10` or name: `1`/`everyone`, `2`/`tier1`, `3`/`tier2`, `4`/`tier3`, `5`/`vip`, `6`/`founder`, `7`/`mod`, `8`/`editor`, `9`/`admin`, `10`/`broadcaster`. `streamer` is an alias for `broadcaster`. `!cc -ul=7` and `!cc -ul=mod` are the same. |
 
 **Editing:** `!ec <name> <new response>`  
 **Deleting:** `!dc <name>`
+
+The built-in `!cc`, `!ec`, and `!dc` commands require moderator access by default. Editing or deleting a custom command also checks that command's access level; tag-restricted commands require a moderator to manage. The dashboard's Commands page provides the visual permission editor.
 
 </TabItem>
 <TabItem label="Via Dashboard">

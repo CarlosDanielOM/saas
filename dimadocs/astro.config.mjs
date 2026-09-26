@@ -122,6 +122,16 @@ const sidebar = [
         translations: { es: 'Recomendaciones de clips' },
         slug: 'clip-recommendations',
       },
+      {
+        label: 'Roulette (Alpha · Pro)',
+        translations: { es: 'Ruleta (Alfa · Pro)' },
+        slug: 'roulette',
+      },
+      {
+        label: 'Overlay Studio (Alpha · Pro)',
+        translations: { es: 'Estudio de overlays (Alfa · Pro)' },
+        slug: 'overlay-studio',
+      },
     ],
   },
   {
@@ -183,7 +193,7 @@ export default defineConfig({
     starlight({
       title: 'DomDimaBot Docs',
       description:
-        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, and stream protection.',
+        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, and Pro Alpha Roulette and Overlay Studio.',
       defaultLocale: 'root',
       locales: {
         root: {

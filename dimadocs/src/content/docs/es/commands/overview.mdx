@@ -11,7 +11,7 @@ Los comandos son la base de DomDimaBot. Se dividen en dos categorías: **Comando
 
 ## Comandos incluidos
 
-El catálogo de comandos, su activación inicial, sintaxis y comportamiento están en la [referencia de comandos incluidos](/es/commands/built-in/). La configuración inicial activa las entradas salvo `!s` y `!clearchat`; cada canal puede tener otros ajustes. Usa `!commands` para ver los comandos disponibles para ti en un canal.
+El catálogo de comandos, su activación inicial, sintaxis y comportamiento están en la [referencia de comandos incluidos](/es/commands/built-in/). La configuración inicial de canales nuevos activa `!s` y desactiva `!clearchat`; cada canal puede tener otros ajustes. Usa `!commands` para ver los comandos disponibles para ti en un canal.
 
 Esta página se centra en los comandos y temporizadores de chat recurrentes que crean los streamers. Para variables, funciones, condiciones y referencias a otros comandos, consulta las [guías de AST](/es/commands/advanced/).
 
@@ -52,11 +52,13 @@ Con opciones:
 
 | Opción | Descripción |
 |--------|-------------|
-| `-cd=` | Enfriamiento en segundos. El mínimo depende del plan del dueño del canal: Free `5`, Premium `3`, Pro `1`. |
+| `-cd=` | Enfriamiento en segundos. El mínimo depende del plan del dueño del canal: Free `5`, Premium `3`, Pro `1`. Un comando editable por canal puede usar `0`; la configuración inicial de canales nuevos ya usa ese espacio para `!s`. |
 | `-ul=` | Nivel de usuario, con número `1`–`10` o nombre: `1`/`everyone`, `2`/`tier1`, `3`/`tier2`, `4`/`tier3`, `5`/`vip`, `6`/`founder`, `7`/`mod`, `8`/`editor`, `9`/`admin`, `10`/`broadcaster`. `streamer` es un alias de `broadcaster`. `!cc -ul=7` y `!cc -ul=mod` son lo mismo. |
 
 **Editar:** `!ec <nombre> <nueva respuesta>`  
 **Eliminar:** `!dc <nombre>`
+
+De forma predeterminada, los comandos integrados `!cc`, `!ec` y `!dc` requieren acceso de moderador. Para editar o eliminar un comando personalizado también se comprueba su nivel de acceso; los comandos con permisos basados en etiquetas requieren que lo gestione un moderador. La página Commands del panel ofrece el editor visual de permisos.
 
 </TabItem>
 <TabItem label="Por Dashboard">

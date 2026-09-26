@@ -18,7 +18,7 @@ Esta página explica qué pasa cuando corre un comando AST y cómo depurarlo cua
 5. Los tokens se parsean en un AST
 6. El AST se evalúa
 7. Las variables se escriben en memoria, caché o base de datos si hace falta
-8. La salida final se renderiza y se envía al chat
+8. La salida final se renderiza y se envía al chat; las referencias a comandos se despachan después como comandos separados
 
 
 ## Contexto y permisos
@@ -63,6 +63,10 @@ Entender el orden te ayuda a depurar problemas como:
 ### Límites de delay
 
 - `$(delay N)` soporta hasta `60` segundos
+- `$(timer segundos cuerpo)` programa el cuerpo para dentro de `1` a `604800` segundos (hasta siete días)
+- Cada timer guarda el AST y el contexto de ejecución en la caché del bot y puede recuperarse tras un reinicio
+- Un timer vencido tiene una ventana de gracia de 10 minutos si el bot estuvo desconectado; se ejecuta como máximo una vez
+- El anidamiento de timers está limitado a cinco niveles y a 100 timers pendientes por canal
 
 ## Checklist de debugging
 
@@ -124,6 +128,14 @@ Si una variable `#` o `##` expiró, volverá vacía.
 ### Posición de `&t`
 
 `&t` debe ir al final. No puedes definir nuevos `&pN` después.
+
+### El cuerpo del timer se ejecuta más tarde
+
+`$(timer ...)` guarda el cuerpo para ejecutarlo después; el mensaje y las acciones anidadas no se evalúan cuando empieza el comando. Devuelve el control de inmediato y, al vencer el plazo, envía el mensaje renderizado y realiza las acciones. Si el timer lleva más de 10 minutos vencido, expira.
+
+### Los comandos referenciados envían mensajes separados
+
+El comando externo envía primero su respuesta. Luego se ejecutan en orden los comandos llamados con `#(...)`, y cada uno envía su propia respuesta. El texto renderizado no se vuelve a interpretar como AST.
 
 ### Abusar de bucles
 

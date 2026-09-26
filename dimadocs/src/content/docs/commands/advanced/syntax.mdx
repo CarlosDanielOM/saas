@@ -277,7 +277,18 @@ You can run one command from inside another:
 
 - max recursion depth: `5`
 - cycles are detected and blocked
-- referenced output is parsed and substituted back in
+- the outer command response is sent first, then referenced commands run in authored order
+- each referenced command sends its own response; rendered text is not parsed a second time
+
+## Scheduled timers
+
+`$(timer seconds message_and_actions)` schedules its body to run later and returns immediately. The delay must be from `1` to `604800` seconds (seven days). The timer stores its AST and execution context in the bot cache, so it can recover after a bot restart. If the bot is offline when the timer is due, it can still run within a 10-minute grace period; after that it expires. Each call creates a separate timer, and a timer runs at most once.
+
+```bash
+$(timer 300 "Five minutes are up!" $(trigger.send airhorn))
+```
+
+The message and action are evaluated when the timer fires. Timers can be nested up to five levels. At most 100 pending timers are allowed per channel.
 
 ## Exists checks
 

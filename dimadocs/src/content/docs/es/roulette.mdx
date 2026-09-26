@@ -1,0 +1,65 @@
+---
+title: Roulette Alpha
+description: Crea sorteos ponderados de rueda, tarjetas y cinta, conecta la superposición de OBS y automatiza Roulette con AST.
+---
+
+Roulette Alpha ofrece al propietario del canal una biblioteca de premios guardados, una vista previa del sorteo y una fuente de navegador de OBS de solo lectura. El panel y las acciones de Roulette requieren **Pro**. Durante la fase Alpha, solo el propietario del canal puede administrar sus roulettes.
+
+## Abrir Roulette
+
+1. Inicia sesión con la cuenta de Twitch propietaria del canal.
+2. Abre el panel del canal y selecciona **Módulos → Roulette**.
+3. Crea una roulette con un nombre y un alias en minúsculas, como `giveaways`.
+
+Puedes guardar hasta 20 roulettes por canal. Usa el alias en AST; debe comenzar con una letra y puede contener letras minúsculas, números, guiones bajos y guiones. Si el alias contiene un guion, escríbelo entre comillas en las expresiones AST.
+
+## Añadir premios y ajustar las probabilidades
+
+Añade un elemento con etiqueta, multiplicador y peso. El multiplicador crea esa cantidad de copias con posiciones independientes. El peso controla la probabilidad de selección de cada copia. Por ejemplo, un elemento con multiplicador 3 y peso 2 aporta seis boletos ponderados. Su probabilidad es el total de sus boletos dividido entre el total de boletos de la roulette.
+
+Elige cómo se agregan las copias nuevas:
+
+- **Al final** las agrega al final; **Aleatoria** inserta cada copia nueva en una posición aleatoria.
+- **Separar** conserva como elementos distintos las etiquetas repetidas; **Aumentar** añade copias al elemento existente con la misma etiqueta. Para aumentar, los pesos y las acciones deben coincidir.
+
+La capacidad depende del diseño: la rueda admite 10 000 copias; la cinta admite 60; las tarjetas admiten 50, 75 o 100 copias en tamaño grande, mediano o pequeño. El peso afecta las probabilidades del sorteo, no el tamaño visual del elemento.
+
+## Configurar y ejecutar un sorteo
+
+Elige el diseño de **rueda**, **tarjetas** o **cinta**, configura los colores y establece una duración de 1 a 120 segundos. El tamaño solo se aplica al diseño de tarjetas. Otras opciones permiten mezclar antes de cada sorteo, mostrar la superposición al comenzar y ocultarla después de un tiempo tras finalizar. También puedes conservar el elemento ganador, eliminar solo la copia ganadora o eliminar todo el elemento.
+
+El servidor elige y guarda el ganador cuando comienza el sorteo. La fuente de OBS muestra ese mismo sorteo guardado, por lo que reconectarla durante el giro no cambia el resultado. Solo puede ejecutarse un sorteo a la vez por canal. Si ya hay uno en curso, espera a que termine antes de iniciar otro o cambiar de roulette. Ocultar la superposición no cancela el sorteo.
+
+Puedes indicar un nombre de usuario de Twitch como objetivo de un sorteo iniciado desde el panel; si lo dejas en blanco, el objetivo es el streamer. El script AST opcional del elemento ganador se ejecuta una vez después de terminar el sorteo, sin importar su multiplicador. Puede usar al objetivo seleccionado como `$(user)` y leer las variables de contexto con `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)` y `%(roulette_item)`. Usa únicamente acciones AST que quieras ejecutar con la autoridad del propietario del canal.
+
+## Añadir la superposición a OBS
+
+1. En la sección **Superposición** del panel de Roulette, genera un enlace de fuente de navegador.
+2. Añade la URL a OBS como **Fuente de navegador** y deja la fuente conectada en la escena.
+3. Usa **Copiar** en el panel para copiar o reemplazar el enlace cuando sea necesario.
+
+La URL contiene un token privado de solo lectura. Trátala como una contraseña: cualquier persona que tenga el enlace puede ver la superposición de Roulette. Al rotar el token, se revoca el enlace anterior. El token no permite cambiar la configuración.
+
+La vista previa del panel puede ejecutar un sorteo sin OBS. OBS es necesario para mostrarlo en la transmisión. La superposición solo muestra la roulette activa, no toda la biblioteca guardada.
+
+## Automatizar Roulette con AST
+
+Las funciones Roulette están disponibles en comandos y otros contextos AST. Requieren acceso Pro para el canal. Estos ejemplos usan el alias `giveaways`:
+
+```text
+$(roulette.add giveaways "VIP por un día" 3 10)
+$(roulette.start giveaways)
+$(roulette.result giveaways)
+```
+
+Las funciones son `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start` y `roulette.result`. `add` acepta un alias, una etiqueta entre comillas, un multiplicador opcional y un peso opcional. `remove` y `update` reciben el alias y el ID del elemento. `start` puede omitir el alias para usar la roulette activa. `result` devuelve la etiqueta del último ganador cuyo sorteo terminó, o texto vacío si todavía no terminó ninguno.
+
+Por ejemplo, un script del premio ganador puede usar `$(timer 300 $(user), puedes volver a hablar.)` para programar un recordatorio al objetivo seleccionado. El recordatorio de un temporizador no aplica un timeout por sí solo; agrega la acción de moderación por separado si eso es lo que quieres.
+
+## Límites y solución de problemas
+
+- **Roulette no está disponible:** confirma que el canal tenga Pro y que hayas iniciado sesión como su propietario. El panel, las funciones AST y la superposición comprueban el acceso.
+- **No se inicia el sorteo:** añade al menos un elemento, revisa el límite de copias del diseño y espera a que termine cualquier sorteo activo.
+- **OBS no muestra Roulette:** abre la URL generada en OBS, confirma que la superposición esté visible y genera un token nuevo si se rotó el enlace.
+- **No se ejecutó una acción ganadora:** la acción se ejecuta al terminar el sorteo. El sistema hace como máximo un intento; una interrupción del proceso después de reclamar la acción puede impedir que termine.
+- **Se quitó Pro:** las roulettes guardadas permanecen y los sorteos ya iniciados se completan, pero se requiere Pro para acceder al panel, AST y la superposición.

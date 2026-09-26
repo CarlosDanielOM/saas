@@ -18,7 +18,7 @@ This page explains what happens when an AST command runs and how to debug it whe
 5. Tokens are parsed into an AST
 6. The AST is evaluated
 7. Variables are written to memory, cache, or database if needed
-8. Final output is rendered and sent to chat
+8. Final output is rendered and sent to chat; command references are dispatched afterward as separate commands
 
 
 ## Context and permissions
@@ -63,6 +63,10 @@ Understanding the order helps you debug issues like:
 ### Delay limits
 
 - `$(delay N)` supports up to `60` seconds
+- `$(timer seconds body)` schedules the body for `1` to `604800` seconds later (up to seven days)
+- Each timer saves its AST and execution context in the bot cache and can recover after a restart
+- A due timer gets a 10-minute grace period if the bot was offline; timers run at most once
+- Timer nesting is limited to five levels, with at most 100 pending timers per channel
 
 ## Debugging checklist
 
@@ -124,6 +128,14 @@ If a `#` or `##` variable expired, it comes back blank.
 ### `&t` placement
 
 `&t` must be last. You cannot define new `&pN` placeholders after it.
+
+### Timer body runs later
+
+`$(timer ...)` stores its body for later; its message and nested actions are not evaluated while the command is first running. It returns immediately, then sends any rendered message and performs its actions when the deadline arrives. If the timer is overdue by more than 10 minutes, it expires.
+
+### Referenced commands send separately
+
+The outer command sends its response first. Commands called with `#(...)` then run in order and send their own responses. Their rendered text is not interpreted as AST a second time.
 
 ### Loop overuse
 

@@ -97,6 +97,54 @@ Las duraciones temporales de mod y VIP de `1` a `365` días requieren **Premium 
 | `$(ad.time)` | Duración del anuncio en segundos | `$(ad.time)` |
 | `$(ai prompt)` | Respuesta generada por IA | `$(ai tell a joke)` |
 
+### Encuestas y predicciones
+
+Estas funciones requieren acceso de moderador en comandos creados por el streamer. Pon entre comillas el argumento completo `título;opciones;segundos`, porque el punto y coma está reservado. Separa las opciones con `/`.
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(start.poll "title;choice1/choice2;seconds")` | Inicia una encuesta con 2–5 opciones | `$(start.poll "Best map?;Nuke/Mirage;120")` |
+| `$(get.poll)` | Lee la encuesta activa o la más reciente si no hay una activa; incluye estado y votos | `$(get.poll)` |
+| `$(end.poll)` | Termina la encuesta activa y archiva sus resultados | `$(end.poll)` |
+| `$(cancel.poll)` | Termina la encuesta activa sin archivar sus resultados | `$(cancel.poll)` |
+| `$(start.prediction "title;choice1/choice2;seconds")` | Inicia una predicción de puntos del canal con 2–10 opciones | `$(start.prediction "Will we win?;Yes/No;120")` |
+| `$(get.prediction)` | Lee la predicción activa o bloqueada y sus opciones numeradas | `$(get.prediction)` |
+| `$(lock.prediction)` | Cierra las apuestas sin elegir ganador; una predicción bloqueada permanece así | `$(lock.prediction)` |
+| `$(end.prediction option)` | Resuelve con el título exacto de una opción o su número empezando por 1 | `$(end.prediction "No")` o `$(end.prediction 1)` |
+| `$(cancel.prediction)` | Cancela la predicción activa o bloqueada sin elegir ganador | `$(cancel.prediction)` |
+
+Llama a `get.prediction` antes de resolver para revisar la pregunta y el orden real de las opciones. `end.prediction` vuelve a consultar la predicción activa y rechaza opciones inexistentes, ambiguas o inválidas.
+
+## Funciones de disponibilidad
+
+Los moderadores pueden activar o desactivar uno de sus comandos personalizados o recompensas de puntos de Twitch. Los nombres deben coincidir exactamente, sin distinguir mayúsculas; en comandos, el `!` inicial es opcional. En recompensas, usa el título exacto o el ID si hay títulos ambiguos.
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(disable.command "name" [seconds])` | Desactiva un comando; puede restaurar su estado anterior después | `$(disable.command spoilers 300)` |
+| `$(enable.command "name" [seconds])` | Activa un comando; puede restaurar su estado anterior después | `$(enable.command spoilers 300)` |
+| `$(disable.redemption "title-or-id" [seconds])` | Desactiva una recompensa de Twitch; puede restaurar su estado anterior después | `$(disable.redemption "Hydrate" 300)` |
+| `$(enable.redemption "title-or-id" [seconds])` | Activa una recompensa de Twitch; puede restaurar su estado anterior después | `$(enable.redemption "Hydrate" 300)` |
+
+La duración opcional es un número entero de `1` a `604800` segundos (siete días). Al vencer, el elemento recupera el estado que tenía antes del cambio temporal, incluso después de reiniciar el bot. Repetir el mismo cambio temporal extiende el plazo. Si omites la duración, se cancela la restauración pendiente. Pon entre comillas los nombres con espacios.
+
+## Funciones de ruleta
+
+Estos controles AST requieren **Pro**. Identifica la ruleta con su alias o ID; las operaciones que lo omiten usan la ruleta activa. Salvo `result` y `add`, estas funciones no devuelven texto al chat. `add` devuelve el ID del elemento nuevo, que puedes guardar en una variable AST.
+
+| Función | Descripción | Uso |
+|---------|-------------|-----|
+| `$(roulette.add roulette_id "item label" [multiplier] [weight])` | Añade copias de un elemento; multiplier y weight valen 1 por defecto | `$(roulette.add giveaways "VIP for a day" 3 10)` |
+| `$(roulette.remove roulette_id item_id)` | Quita un elemento y todas sus copias | `$(roulette.remove giveaways item_id)` |
+| `$(roulette.update roulette_id item_id multiplier [weight])` | Cambia el número de copias y, opcionalmente, el peso | `$(roulette.update giveaways item_id 3 10)` |
+| `$(roulette.shuffle roulette_id)` | Mezcla las copias sin cambiar sus probabilidades | `$(roulette.shuffle giveaways)` |
+| `$(roulette.switch roulette_id)` | Selecciona la ruleta activa sin cambiar su visibilidad | `$(roulette.switch giveaways)` |
+| `$(roulette.show)` / `$(roulette.hide)` | Muestra u oculta el overlay; ocultarlo no cancela un sorteo | `$(roulette.show)` |
+| `$(roulette.start [roulette_id])` | Inicia la ruleta activa o indicada y registra un ganador | `$(roulette.start giveaways)` |
+| `$(roulette.result [roulette_id])` | Devuelve la etiqueta del ganador más reciente o vacío si todavía no hay uno | `$(roulette.result giveaways)` |
+
+Puedes asociar una acción AST a un elemento desde el editor de ruletas. Se ejecuta cuando ese elemento gana y dispone de `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)` y `%(roulette_item)`. Restringe quién puede iniciar un sorteo si las acciones pueden cambiar el estado del canal.
+
 ## Funciones de conteo
 
 | Función | Descripción | Uso |
@@ -153,6 +201,8 @@ Estas acciones requieren acceso de nivel moderador.
 
 ## Funciones de TTS
 
+Las llamadas TTS se ejecutan dentro del AST del comando personalizado y usan el acceso configurado para ese comando. Las llamadas por defecto usan la voz TTS configurada para el canal. `tts.clone`/`tts.fish` usan una voz Fish Audio disponible para el canal, mientras que `set.voice` cambia la voz y el proveedor predeterminados del canal.
+
 | Función | Plan | Descripción | Uso |
 |---------|------|-------------|-----|
 | `$(tts message)` | Depende de la configuración TTS y del plan del canal | Cola de TTS por defecto | `$(tts Hello world)` |
@@ -160,6 +210,7 @@ Estas acciones requieren acceso de nivel moderador.
 | `$(tts.ai message)` | Depende de la configuración TTS y del plan del canal | Igual que `$(tts ...)` | `$(tts.ai Hello world)` |
 | `$(tts.clone name message)` | Depende de la configuración TTS y del plan | Habla con una voz Fish Audio indicada por nombre | `$(tts.clone voice1 Hello)` |
 | `$(tts.fish name message)` | Depende de la configuración TTS y del plan | Alias de `$(tts.clone ...)` | `$(tts.fish voice1 Hello)` |
+| `$(set.voice voice_name)` | Acción de moderador; elige una de las cuatro voces Fish integradas o un favorito guardado y cambia el proveedor TTS del canal a Fish | `$(set.voice gojo)` o `$(set.voice favorite_alias)` |
 
 ## Funciones de trigger
 

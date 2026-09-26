@@ -28,7 +28,7 @@ This reference follows the bot's reserved command configuration and chat handler
 | `!game` | `!game <game name>` | With a permitted user, changes the channel's game; without write permission, the handler returns the current game. |
 | `!title` | `!title <stream title>` | With a permitted user, changes the stream title; without write permission or without a title argument, returns the current title. |
 | `!onlyemotes` | `!onlyemotes [seconds]` | Toggles emote-only mode, or enables it for the given duration in seconds. |
-| `!s` | `!s <message>` | Queues the message for text-to-speech. Disabled in the shipped reserved command configuration. |
+| `!s` | `!s <message>` | Queues the message for text-to-speech. New channel defaults enable it for everyone with a 0-second cooldown. It is an editable command and uses the normal command AST. |
 | `!mod` | `!mod <username> [days]` | Adds a moderator. |
 | `!unmod` | `!unmod <username>` | Removes a moderator. |
 | `!vip` | `!vip <username> [days]` | Adds a VIP, optionally with a duration in days. |
@@ -57,17 +57,19 @@ The command handler also contains an `archivepoll` action (`!archivepoll` when c
 
 ### Polls and predictions
 
-The syntax uses semicolons to separate the title, slash-separated choices, and duration in seconds. For example:
+The syntax uses semicolons to separate the title, slash-separated choices, and duration in seconds. Polls accept 2–5 choices and predictions accept 2–10. Both require a duration between 30 seconds and 5 minutes; poll titles and choices are limited to 25 characters, while prediction titles are limited to 30 and outcomes to 20. Twitch validates the values and may reject an invalid request. For example:
 
 ```text
 !poll Will the streamer win?;Yes/No;60
 !predi Will the streamer win?;Yes/No;60
 ```
 
-The command parser forwards the title, options, and duration to Twitch. Twitch may reject invalid values or an operation when there is no poll or prediction in the required state.
+Poll and prediction commands require moderator access by default. `!endpoll` archives an active poll; `!cancelpoll` terminates it without archiving. `!lockpredi` closes betting, `!endpredi <number>` resolves an active or locked prediction using the numbered outcome, and `!cancelpredi` cancels it. Each action requires the poll or prediction to be in a compatible state.
+
+When the AI action tools are available, DomDimaBot can also read the current poll or prediction and its numbered choices; poll results include vote totals. To resolve a prediction, it reads the question and outcome order before selecting the winner. These actions still require moderator permissions.
 
 ### Permissions and configuration
 
-The shipped reserved-command configuration marks most listed commands enabled, while `!s` and `!clearchat` are disabled. This describes the seed configuration only. Each channel can have a different enabled state, permission policy, cooldown, or command availability. The `!commands` output is the channel-specific list visible to the current chatter.
+New channel defaults enable `!s` for everyone at a 0-second cooldown and disable `!clearchat`. `!poll`, `!predi`, their management commands, and command-management commands such as `!cc`, `!ec`, and `!dc` require moderator access by default. `!mod`, `!unmod`, `!vip`, and `!unvip` require editor access by default. Role checks use the chatter's verified Twitch identity. Channels can change command availability, access, and cooldowns, so `!commands` shows the list visible to the current chatter. Existing channels may retain their saved settings.
 
 For streamer-authored replies and AST syntax, continue to [Advanced custom commands](/commands/advanced/).

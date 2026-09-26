@@ -21,7 +21,8 @@ Usa AST cuando quieres que un comando haga algo más que enviar texto fijo.
 - construir respuestas dinámicas
 - ejecutar lógica tipo if / else
 - trabajar con arrays y bucles
-- llamar funciones de Twitch, moderación, TTS, triggers y EventSub
+- llamar funciones de Twitch, moderación, disponibilidad, TTS, ruleta, triggers y EventSub
+- programar acciones AST con delay que sobreviven reinicios del bot
 - encadenar comandos entre sí
 
 ## Importante: las variables no vienen creadas
@@ -54,12 +55,13 @@ Esta sección AST ahora está dividida en guías más pequeñas para que sea má
 
 2. **[Referencia de Funciones AST](/es/commands/advanced/functions)**
    - funciones de usuario y Twitch
-   - acciones de moderación y canal
+   - acciones de moderación, canal, disponibilidad y ruleta
    - contadores, clips, followage
-   - EventSub, TTS, triggers y chat send
+   - encuestas, predicciones, EventSub, TTS, triggers y chat send
 
 3. **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution)**
    - cómo corre el parser
+   - ejecución y recuperación de timers
    - errores comunes
    - límites de bucles y recursión
    - mentalidad de debugging

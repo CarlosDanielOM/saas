@@ -33,7 +33,7 @@ Piper synthesis does not consume AI credits. Expressive tags are removed before 
 
 Fish Audio provides cloned voices. The dashboard includes a voice browser, and its preset voices include Gojo, Rias Gremory, Carlos Bodoque, and Toji Fushiguro. The selected clone can be the channel's default voice or an explicitly named voice in an AST command.
 
-Fish Audio usage consumes AI credits.
+Fish Audio usage consumes AI credits. In the voice browser, channel owners can save up to 20 voices as favorites and give each one a nickname. The nickname is used in AST voice commands; favorite names and nicknames are also available when changing the channel's default voice.
 
 Both providers are available on Free, Premium, and Pro plans. AI credit limits are shared across eligible AI features and vary by plan; TTS does not have a separate monthly allowance.
 
@@ -43,7 +43,7 @@ Both providers are available on Free, Premium, and Pro plans. AI credit limits a
 
 **Usage:** `!s <message>`
 
-When enabled as a chat command, `!s` reads the message using the channel's configured default provider and voice. The channel's default language is used for the spoken username prefix (`say` or `dice`); choose English or Spanish in the TTS settings. The `!s` command is disabled in the shipped default command configuration, so enable or create it for your channel before using it.
+`!s` runs as a regular AST command and reads the message using the channel's configured default provider and voice. Its default template speaks the username followed by `dice:` and the message. Edit the Speech Chat command to change that template; the TTS language setting selects the voice language and does not change the template text. The shipped **Speech Chat** command `!s` is enabled by default for everyone. You can edit it from this page or from **Commands**. Its default cooldown is 0 seconds; only one editable command per channel can use a 0-second cooldown. Other commands must use a cooldown of at least 5 seconds on Free, 3 seconds on Premium, or 1 second on Pro.
 
 ```text
 !s Hello chat, welcome to the stream!
@@ -58,18 +58,21 @@ Use these functions in custom commands and AST actions:
 | Function | Behavior |
 |---|---|
 | `$(tts <message>)` | Speaks with the channel's configured default provider and voice. |
-| `$(tts.speak <message>)` | Alias for `$(tts ...)`; it does not force Piper. |
+| `$(tts.speak <message>)` | Speaks with Piper, even when Fish Audio is the channel default. |
 | `$(tts.ai <message>)` | Alias for `$(tts ...)`. |
-| `$(tts.clone <voice_name> <message>)` | Speaks with the named Fish Audio voice. The first argument is a voice name or voice ID; the remaining text is spoken. |
-| `$(tts.fish <voice_name> <message>)` | Alias for `$(tts.clone ...)`. |
+| `$(tts.clone <voice> <message>)` | Speaks with a Fish Audio voice. Use a built-in voice name, a saved favorite's nickname, or a Fish voice ID as the first argument; the remaining text is spoken. |
+| `$(tts.fish <voice> <message>)` | Alias for `$(tts.clone ...)`. |
+| `$(set.voice <voice>)` | Changes the channel's default Fish Audio voice and selects Fish Audio as the provider. Use one of the four built-in voice names, or a saved favorite's nickname or display name. This action requires moderator-level access. |
 
 ```text
 $(tts Hello chat!)
-$(tts.speak This uses the channel default.)
+$(tts.speak This uses Piper.)
 $(tts.clone gojo Hello from Gojo!)
+$(tts.clone my_favorite Hello from my saved voice!)
+$(set.voice my_favorite)
 ```
 
-The queue processes one speech item at a time for a channel. If the browser overlay is disconnected, the server rejects new speech requests rather than adding them to the queue. The configured queue maximum also limits pending items.
+The queue plays speech in order, one item at a time per channel. Its configured maximum (1–20) counts the item currently playing along with queued items. If the browser overlay is disconnected, the server rejects new speech requests. When it reconnects, speech still waiting in the queue can continue; speech interrupted by the disconnect is not replayed.
 
 ## Expressive tags
 
@@ -111,7 +114,7 @@ In **Modules → Text to Speech**, the channel owner can configure:
 - The default language and provider.
 - The English and Spanish Piper voices, or the Fish Audio default clone voice when Fish is selected.
 - Maximum message length (30–500 characters).
-- Maximum pending queue size (1–20 items).
+- Maximum number of queued and currently playing items (1–20).
 - Whether chat-command messages skip emotes, replace links, and normalize whitespace.
 - Which expressive Fish Audio tags are enabled.
 

@@ -51,6 +51,34 @@ Para comandos de redención o EventSub, primero confirma que el comando esté as
 
 Mantén la moderación, cambios de roles o ajustes del canal, encuestas, TTS y triggers detrás de permisos apropiados para el comando o evento. Prueba el texto y las condiciones antes de añadir esas acciones.
 
+### Desactivar temporalmente un comando
+
+Esto desactiva `!spoilers` durante cinco minutos y después restaura el estado que tenía antes:
+
+```bash
+$(disable.command spoilers 300)
+"!spoilers queda pausado durante cinco minutos."
+```
+
+### Programar un mensaje y una acción
+
+El timer devuelve el control de inmediato. El cuerpo se ejecuta después de cinco minutos, incluso si el bot se reinicia mientras tanto:
+
+```bash
+$(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
+```
+
+### Usar las opciones reales de la predicción
+
+Lee la predicción activa antes de resolverla. Usa el número que muestra `get.prediction` o el título exacto de la opción:
+
+```bash
+$(get.prediction)
+$(end.prediction 1)
+```
+
+Consulta la [Referencia de Funciones AST](/es/commands/advanced/functions) para ver operaciones de encuestas, predicciones, ruletas y disponibilidad.
+
 <Aside type="caution">
 El bot realiza acciones reales cuando ejecutas estas funciones. Prueba con un mensaje inocuo o un comando restringido antes de habilitar acciones como `$(ban ...)`, `$(set.title ...)` o `$(trigger.send ...)`.
 </Aside>

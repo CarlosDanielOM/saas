@@ -51,6 +51,34 @@ For redemption or EventSub commands, first confirm the command is attached to th
 
 Keep moderation, role changes, channel settings, polls, TTS, and trigger actions behind appropriate command or event access controls. Test the text and conditions before adding those actions.
 
+### Temporarily disable a command
+
+This disables `!spoilers` for five minutes, then restores the state it had before the timer started:
+
+```bash
+$(disable.command spoilers 300)
+"!spoilers is paused for five minutes."
+```
+
+### Schedule a message and action
+
+The timer returns immediately. Its body runs after five minutes, even if the bot restarts in between:
+
+```bash
+$(timer 300 "Five minutes are up!" $(trigger.send airhorn))
+```
+
+### Use the actual prediction choices
+
+Read the current prediction before resolving it. Use the numbered choice shown by `get.prediction` or its exact title:
+
+```bash
+$(get.prediction)
+$(end.prediction 1)
+```
+
+See [AST Functions Reference](/commands/advanced/functions) for poll, prediction, roulette, and availability operations.
+
 <Aside type="caution">
 The bot performs real actions when these functions run. Test with a harmless message or a restricted command before enabling actions such as `$(ban ...)`, `$(set.title ...)`, or `$(trigger.send ...)`.
 </Aside>

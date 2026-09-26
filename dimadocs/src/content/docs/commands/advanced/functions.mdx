@@ -97,6 +97,54 @@ Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro*
 | `$(ad.time)` | Ad duration in seconds | `$(ad.time)` |
 | `$(ai prompt)` | AI-generated response | `$(ai tell a joke)` |
 
+### Polls and predictions
+
+These functions require moderator access in streamer-authored commands. Quote the entire `title;options;seconds` argument because semicolons are reserved syntax. Use `/` between choices.
+
+| Function | Description | Usage |
+|----------|-------------|-------|
+| `$(start.poll "title;choice1/choice2;seconds")` | Start a poll with 2–5 choices | `$(start.poll "Best map?;Nuke/Mirage;120")` |
+| `$(get.poll)` | Read the active poll, or the latest poll if none is active; includes status and vote totals | `$(get.poll)` |
+| `$(end.poll)` | End the active poll and archive its results | `$(end.poll)` |
+| `$(cancel.poll)` | End the active poll without archiving its results | `$(cancel.poll)` |
+| `$(start.prediction "title;choice1/choice2;seconds")` | Start a channel-points prediction with 2–10 choices | `$(start.prediction "Will we win?;Yes/No;120")` |
+| `$(get.prediction)` | Read the active or locked prediction and its numbered choices | `$(get.prediction)` |
+| `$(lock.prediction)` | Close betting without choosing a winner; already locked predictions stay locked | `$(lock.prediction)` |
+| `$(end.prediction option)` | Resolve with an exact choice title or its 1-based number | `$(end.prediction "No")` or `$(end.prediction 1)` |
+| `$(cancel.prediction)` | Cancel the active or locked prediction without choosing a winner | `$(cancel.prediction)` |
+
+Call `get.prediction` before ending one so you can check the question and actual choice order. `end.prediction` fetches the current prediction again and rejects missing, ambiguous, or invalid choices.
+
+## Availability functions
+
+Moderators can enable or disable one of their custom commands or Twitch channel-point rewards. Names are matched exactly without case sensitivity; for commands, the leading `!` is optional. For rewards, use the exact title or reward ID when titles are ambiguous.
+
+| Function | Description | Usage |
+|----------|-------------|-------|
+| `$(disable.command "name" [seconds])` | Disable a command, optionally restoring its prior state later | `$(disable.command spoilers 300)` |
+| `$(enable.command "name" [seconds])` | Enable a command, optionally restoring its prior state later | `$(enable.command spoilers 300)` |
+| `$(disable.redemption "title-or-id" [seconds])` | Disable a Twitch redemption, optionally restoring its prior state later | `$(disable.redemption "Hydrate" 300)` |
+| `$(enable.redemption "title-or-id" [seconds])` | Enable a Twitch redemption, optionally restoring its prior state later | `$(enable.redemption "Hydrate" 300)` |
+
+The optional duration is a whole number of seconds from `1` to `604800` (seven days). When it expires, the item returns to the state it had before the timed change, including after a bot restart. Repeating the same timed change extends the deadline. Omitting the duration cancels any pending restoration. Quote names that contain spaces.
+
+## Roulette functions
+
+These AST controls require **Pro**. Identify a roulette by its saved alias or ID; operations that omit it use the active roulette. Except for `result` and `add`, these functions return no chat text. `add` returns the new item ID, which you can save in an AST variable.
+
+| Function | Description | Usage |
+|----------|-------------|-------|
+| `$(roulette.add roulette_id "item label" [multiplier] [weight])` | Add copies of an item; multiplier and weight default to 1 | `$(roulette.add giveaways "VIP for a day" 3 10)` |
+| `$(roulette.remove roulette_id item_id)` | Remove an item and all its copies | `$(roulette.remove giveaways item_id)` |
+| `$(roulette.update roulette_id item_id multiplier [weight])` | Change an item's copy count and optionally its weight | `$(roulette.update giveaways item_id 3 10)` |
+| `$(roulette.shuffle roulette_id)` | Shuffle copies without changing their odds | `$(roulette.shuffle giveaways)` |
+| `$(roulette.switch roulette_id)` | Select the active roulette without changing visibility | `$(roulette.switch giveaways)` |
+| `$(roulette.show)` / `$(roulette.hide)` | Show or hide the overlay; hiding does not cancel a draw | `$(roulette.show)` |
+| `$(roulette.start [roulette_id])` | Start the active or named roulette and record a winner | `$(roulette.start giveaways)` |
+| `$(roulette.result [roulette_id])` | Return the most recently completed winner label, or blank if there is none | `$(roulette.result giveaways)` |
+
+You can attach an AST action to an item in the roulette editor. It runs when that item wins, with `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)` available. Restrict who can start a draw when winner actions can change channel state.
+
 ## Count functions
 
 | Function | Description | Usage |
@@ -153,6 +201,8 @@ These actions require moderator level access.
 
 ## TTS functions
 
+TTS calls run inside the custom command's AST and use that command's configured access. The default calls speak with the channel's configured TTS voice. `tts.clone`/`tts.fish` use a Fish Audio voice available to the channel, while `set.voice` changes the default channel voice and provider.
+
 | Function | Plan | Description | Usage |
 |----------|------|-------------|-------|
 | `$(tts message)` | Depends on channel TTS settings and plan | Queue default TTS | `$(tts Hello world)` |
@@ -160,6 +210,7 @@ These actions require moderator level access.
 | `$(tts.ai message)` | Depends on channel TTS settings and plan | Same as `$(tts ...)` | `$(tts.ai Hello world)` |
 | `$(tts.clone name message)` | Depends on TTS settings and plan | Speak with a named Fish Audio voice | `$(tts.clone voice1 Hello)` |
 | `$(tts.fish name message)` | Depends on TTS settings and plan | Alias of `$(tts.clone ...)` | `$(tts.fish voice1 Hello)` |
+| `$(set.voice voice_name)` | Moderator action; choose one of the four built-in Fish voices or a saved favorite, and switch the channel provider to Fish | `$(set.voice gojo)` or `$(set.voice favorite_alias)` |
 
 ## Trigger functions
 

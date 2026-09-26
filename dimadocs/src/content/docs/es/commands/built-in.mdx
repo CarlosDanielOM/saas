@@ -28,7 +28,7 @@ Esta referencia se basa en la configuración de comandos reservados y el manejad
 | `!game` | `!game <nombre del juego>` | Si quien lo usa tiene permiso, cambia el juego del canal; sin permiso para cambiarlo, el manejador devuelve el juego actual. |
 | `!title` | `!title <título del stream>` | Si quien lo usa tiene permiso, cambia el título del stream; sin permiso para cambiarlo o sin argumento, devuelve el título actual. |
 | `!onlyemotes` | `!onlyemotes [segundos]` | Alterna el modo de solo emotes o lo activa durante los segundos indicados. |
-| `!s` | `!s <mensaje>` | Envía el mensaje a la cola de texto a voz. Está desactivado en la configuración incluida de comandos reservados. |
+| `!s` | `!s <mensaje>` | Envía el mensaje a la cola de texto a voz. La configuración inicial de canales nuevos lo activa para todos con un enfriamiento de 0 segundos. Es un comando editable y usa el AST normal de comandos. |
 | `!mod` | `!mod <usuario> [días]` | Agrega un moderador. |
 | `!unmod` | `!unmod <usuario>` | Quita un moderador. |
 | `!vip` | `!vip <usuario> [días]` | Agrega un VIP, opcionalmente por una cantidad de días. |
@@ -57,17 +57,19 @@ El manejador también contiene una acción `archivepoll` (`!archivepoll` si se c
 
 ### Encuestas y predicciones
 
-La sintaxis usa punto y coma para separar el título, las opciones separadas por barras y la duración en segundos. Por ejemplo:
+La sintaxis usa punto y coma para separar el título, las opciones separadas por barras y la duración en segundos. Las encuestas admiten de 2 a 5 opciones y las predicciones de 2 a 10. Ambas requieren una duración de 30 segundos a 5 minutos; los títulos y opciones de encuestas tienen un máximo de 25 caracteres, mientras que los títulos de predicciones admiten 30 y sus resultados 20. Twitch valida los valores y puede rechazar una solicitud no válida. Por ejemplo:
 
 ```text
 !poll ¿Ganará el streamer?;Sí/No;60
 !predi ¿Ganará el streamer?;Sí/No;60
 ```
 
-El analizador del comando envía el título, las opciones y la duración a Twitch. Twitch puede rechazar valores no válidos o una operación si no hay una encuesta o predicción en el estado requerido.
+De forma predeterminada, los comandos de encuestas y predicciones requieren acceso de moderador. `!endpoll` archiva una encuesta activa; `!cancelpoll` la termina sin archivarla. `!lockpredi` cierra las apuestas, `!endpredi <número>` resuelve una predicción activa o bloqueada con el resultado numerado y `!cancelpredi` la cancela. Cada acción requiere que la encuesta o predicción esté en un estado compatible.
+
+Cuando las herramientas de acciones de IA están disponibles, DomDimaBot también puede leer la encuesta o predicción actual y sus opciones numeradas; los resultados de encuestas incluyen los totales de votos. Para resolver una predicción, primero lee la pregunta y el orden de los resultados. Estas acciones siguen requiriendo permisos de moderador.
 
 ### Permisos y configuración
 
-La configuración incluida de comandos reservados marca como activada la mayoría de los comandos de la lista; `!s` y `!clearchat` están desactivados. Esto describe únicamente la configuración inicial. Cada canal puede tener otro estado de activación, política de permisos, cooldown o disponibilidad. La respuesta de `!commands` muestra la lista de ese canal que puede ver quien ejecuta el comando.
+La configuración inicial de canales nuevos activa `!s` para todos con un enfriamiento de 0 segundos y desactiva `!clearchat`. De forma predeterminada, `!poll`, `!predi`, sus comandos de gestión y comandos de administración como `!cc`, `!ec` y `!dc` requieren acceso de moderador. `!mod`, `!unmod`, `!vip` y `!unvip` requieren acceso de editor. Los permisos se comprueban con la identidad verificada de Twitch de quien escribe. Cada canal puede cambiar la disponibilidad, el acceso y los enfriamientos; `!commands` muestra la lista visible para quien lo ejecuta. Los canales existentes pueden conservar sus propios ajustes.
 
 Para respuestas creadas por el streamer y la sintaxis AST, consulta [Comandos personalizados avanzados](/es/commands/advanced/).

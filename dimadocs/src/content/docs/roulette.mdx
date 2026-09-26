@@ -1,0 +1,65 @@
+---
+title: Roulette Alpha
+description: Create weighted wheel, card, and reel draws, connect the OBS overlay, and automate roulette with AST.
+---
+
+Roulette Alpha gives a channel owner a saved prize library, a live draw preview, and a read-only OBS browser source. The dashboard and roulette actions require **Pro**. During Alpha, only the channel owner can manage the channel's roulettes.
+
+## Open Roulette
+
+1. Sign in as the Twitch account that owns the channel.
+2. Open the channel dashboard and choose **Modules → Roulette**.
+3. Create a roulette with a name and a lowercase alias, such as `giveaways`.
+
+You can save up to 20 roulettes for a channel. Use the alias in AST; it must begin with a letter and may contain lowercase letters, numbers, underscores, and hyphens. Quote aliases containing a hyphen in AST expressions.
+
+## Add prizes and set the odds
+
+Add an item with a label, multiplier, and weight. The multiplier creates that many separately ordered copies. Weight controls each copy's selection chance. For example, an item with multiplier 3 and weight 2 contributes six weighted tickets. Its chance is the item's total tickets divided by the total tickets across the roulette.
+
+Choose how new copies enter the order:
+
+- **Append** adds them at the end; **Random** inserts each new copy at a random position.
+- **Separate** keeps matching labels as separate items; **Increase** adds copies to the existing matching label. Increase requires matching weights and actions.
+
+Capacity depends on the display: a wheel supports 10,000 copies; a reel supports 60; cards support 50, 75, or 100 copies for large, medium, or small cards. The weight setting affects the draw odds, not the visual size of an item.
+
+## Configure and run a draw
+
+Choose a **wheel**, **cards**, or **reel** design, set its colors, and choose a draw duration from 1 to 120 seconds. Card size applies to the cards design. Other settings let you shuffle before each draw, show the overlay when a draw starts, and hide it a set time after a draw ends. A roulette can also keep the winning item, remove only its winning copy, or remove the whole item after the draw.
+
+The server chooses and saves the winner when the draw starts. The OBS source displays that same saved draw, so reconnecting during a spin does not create a different result. Only one draw can run at a time for the channel. If a draw is already running, finish it before starting or switching to another roulette. Hiding the overlay does not cancel a draw.
+
+You can enter a Twitch username as the target for a dashboard-started draw; leaving it blank targets the streamer. A winning item's optional AST script runs once after the draw ends, regardless of its multiplier. It can use the selected target as `$(user)` and read the draw context variables with `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Use only AST actions you intend to run with the channel owner's authority.
+
+## Add the overlay to OBS
+
+1. In the Roulette dashboard, use the **Overlay** section to generate a browser-source link.
+2. Add that URL to OBS as a **Browser Source** and leave the source connected in the scene.
+3. Use **Copy** in the dashboard to copy or replace the link if needed.
+
+The URL contains a private, read-only token. Treat it like a password: anyone with the link can view the roulette overlay. Rotating the token revokes the old link. The token cannot edit roulette settings.
+
+The dashboard preview can run a draw without OBS. OBS is needed to show the draw on stream. The overlay displays only the active roulette, not the whole saved library.
+
+## Automate Roulette with AST
+
+Roulette functions are available in commands and other AST contexts. They require the channel's Pro access. The starter examples use the alias `giveaways`:
+
+```text
+$(roulette.add giveaways "VIP for a day" 3 10)
+$(roulette.start giveaways)
+$(roulette.result giveaways)
+```
+
+The functions are `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start`, and `roulette.result`. `add` accepts an alias, a quoted item label, optional multiplier, and optional weight. `remove` and `update` take the roulette alias and item ID. `start` can omit the alias to use the active roulette. `result` returns the latest completed winner label, or empty text if no draw has completed.
+
+For a winning-item script, for example, `$(timer 300 $(user), you can speak again.)` schedules a reminder to the selected target. A timer reminder does not apply a timeout by itself; add the moderation action separately if that is your intent.
+
+## Limits and troubleshooting
+
+- **Roulette is unavailable:** confirm the channel has Pro and that you are signed in as its owner. Access is checked by the dashboard, AST functions, and the overlay.
+- **A draw will not start:** add at least one item, check the display's copy limit, and wait for any active draw to finish.
+- **OBS shows no roulette:** open the generated URL in OBS, confirm the overlay is visible, and generate a fresh token if the link was rotated.
+- **A winner action did not run:** the action runs after the draw completes. The system makes at most one execution attempt; a process interruption after the action is claimed can prevent it from finishing.
+- **Pro is removed:** saved roulettes remain, and an already-started draw still completes, but new dashboard, AST, and overlay access requires Pro.

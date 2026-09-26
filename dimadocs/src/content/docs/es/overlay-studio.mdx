@@ -1,0 +1,55 @@
+---
+title: Overlay Studio Alpha
+description: Diseña superposiciones reutilizables, publícalas como fuentes de navegador de OBS y conecta alertas, clips, triggers y TTS.
+---
+
+Overlay Studio Alpha permite al propietario del canal crear diseños de fuente de navegador con capas de eventos y contenido multimedia. Requiere **Pro** y, durante la fase Alpha, solo el propietario del canal puede editar sus superposiciones. El editor está en **Módulos → Overlay Studio**, dentro del panel del canal.
+
+## Crear una superposición
+
+1. Inicia sesión con la cuenta de Twitch propietaria del canal y abre **Módulos → Overlay Studio**.
+2. Elige una superposición o selecciona **Nueva superposición**. Configura el nombre y las dimensiones del lienzo (de 100 a 7680 píxeles por lado).
+3. Añade fuentes desde la biblioteca. Puedes agregar áreas para TTS, reproducción de triggers y clips; alertas de eventos; texto; imágenes; videos y acentos animados.
+4. Arrastra las capas en el lienzo o ajusta su posición, tamaño, visibilidad, bloqueo y orden en el editor. Guarda el borrador mientras trabajas.
+
+Cada canal puede tener hasta 25 superposiciones, 50 diseños de alerta reutilizables y 60 capas por lienzo. Al cambiar el tamaño del lienzo, las coordenadas de las capas existentes no se mueven ni se escalan. El orden de las capas controla qué contenido aparece delante.
+
+## Crear diseños de alerta reutilizables
+
+Cada diseño de alerta tiene una composición independiente para follows, Bits, suscripciones y raids. Cada capa de alerta permite elegir qué eventos recibe, y una superposición puede incluir varias capas de alerta. Puedes reutilizar un diseño guardado en capas de alerta de distintas superposiciones. Al editar un diseño compartido, se actualizan los borradores que lo usan; publica cada superposición para actualizar su versión activa.
+
+El servidor interpreta el texto de las alertas con el renderizador AST. Algunos valores disponibles son `$(user)`, `$(cheer.amount)`, `$(cheer.message)`, `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)`, `$(raid.channel)` y `$(raid.viewers)`. Para Bits, usa `$(cheer.amount)`; `$(amount)` no es un alias. Las plantillas admiten expresiones de visualización y formato de texto, pero no comandos ni acciones que cambien el estado.
+
+## Usar imágenes y videos
+
+Abre **Configuración → Biblioteca de recursos** para subir y administrar archivos privados de diseño. Después, selecciona **Explorar** en una capa de imagen o video de Overlay Studio. El selector también permite usar una URL multimedia HTTPS. La biblioteca acepta PNG, JPEG, GIF, WebP, MP4 y WebM; cada archivo puede pesar hasta 50 MB. No se aceptan archivos SVG ni HTML. El espacio depende del plan: 100 MB para Free, 500 MB para Premium y 5 GB para Pro.
+
+Las superposiciones publicadas solo pueden leer los recursos incluidos en su diseño publicado. La biblioteca privada protege el almacenamiento y los enlaces de acceso, pero los espectadores pueden ver el contenido que aparece en la transmisión. Los videos de las capas multimedia globales se repiten sin sonido.
+
+## Probar y publicar en OBS
+
+La vista previa del editor ayuda a revisar las posiciones y los diseños de muestra. Las pruebas de clips y triggers usan las rutas activas de sus módulos; necesitan un clip o trigger disponible y una sesión autenticada del canal. La prueba TTS del editor es una animación de muestra. Usa la prueba de alerta en vivo para enviar una alerta de muestra a las fuentes publicadas que estén conectadas.
+
+1. Guarda el borrador y selecciona **Publicar** para la superposición.
+2. Abre los ajustes de **Fuente de navegador** del editor y copia la URL.
+3. Añade la URL a OBS como **Fuente de navegador** y déjala abierta en la escena.
+
+La publicación guarda una instantánea de la superposición y de los diseños de alerta que utiliza. Los cambios posteriores del borrador no afectan esa instantánea hasta que vuelvas a publicar. Una fuente abierta obtiene la nueva versión publicada sin perder su cola pendiente. Si publicas mientras se reproduce un evento, el evento actual conserva el diseño con el que comenzó.
+
+La URL es un enlace privado de solo lectura. Trátala como una contraseña y compártela únicamente con personas que deban ver la superposición. **Regenerar URL** revoca el enlace anterior. El editor desactiva las analíticas en las páginas privadas y la fuente no envía un referente.
+
+## Colas y reproducción de eventos
+
+Elige qué categorías deben esperar juntas en la cola FIFO compartida de una superposición. Las demás pueden reproducirse en paralelo. Cada fuente de navegador conectada se suscribe y recibe eventos por separado. Administra las fuentes duplicadas de OBS manualmente; añadir una fuente de Overlay Studio no desactiva las fuentes de navegador existentes de TTS, clips o triggers, por lo que pueden reproducirse eventos duplicados si ambas rutas están activas.
+
+La fuente recibe eventos nuevos de follows, Bits, suscripciones/regalos y raids mientras está conectada; no reproduce alertas de cuando estuvo desconectada. El TTS y los clips generados se copian a las fuentes de Studio conectadas antes de que avance el productor existente. La reproducción pendiente pertenece a la sesión: actualizar la fuente de OBS o reiniciar la API no reproduce de nuevo esos archivos. Los diseños guardados y las composiciones publicadas sí persisten.
+
+## Límites y solución de problemas
+
+- **No puedes abrir el editor:** confirma que el canal tenga Pro y que hayas iniciado sesión como su propietario. El servidor comprueba ambas condiciones para administrar y mostrar las fuentes publicadas.
+- **No aparece un cambio en OBS:** guarda el borrador, publica la superposición y luego actualiza o vuelve a abrir la fuente de navegador.
+- **La fuente dejó de funcionar tras cambiar la URL o el plan:** usa la URL actual y confirma que Pro siga activo. Regenerar un enlace revoca el anterior.
+- **No se oye o ve una capa de alerta o multimedia:** comprueba que la fuente esté conectada, que la capa esté visible, que el evento esté seleccionado en esa alerta y que su categoría no esté esperando detrás de otro evento en cola.
+- **No puedes seleccionar o borrar un recurso:** revisa el formato y tamaño del archivo, el espacio disponible del plan y si el recurso sigue referenciado por una superposición o diseño.
+
+Overlay Studio Alpha todavía no ofrece listas permitidas de IDs de triggers por alerta, un modo general de GIF/imagen para triggers ni una función AST para vaciar la cola.

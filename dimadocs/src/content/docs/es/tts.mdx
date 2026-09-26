@@ -33,7 +33,7 @@ La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se el
 
 Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
 
-Fish Audio consume créditos de IA.
+Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y asignar un apodo a cada una. El apodo se usa en los comandos de voz AST; el nombre de la favorita y su apodo también están disponibles al cambiar la voz predeterminada del canal.
 
 Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los límites de créditos de IA se comparten entre las funciones de IA disponibles y varían según el plan; TTS no tiene una asignación mensual aparte.
 
@@ -43,7 +43,7 @@ Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los lím
 
 **Uso:** `!s <mensaje>`
 
-Cuando está habilitado como comando de chat, `!s` lee el mensaje con el proveedor y la voz predeterminados del canal. El idioma predeterminado del canal se usa para el prefijo hablado del nombre de usuario (`say` o `dice`); elige inglés o español en la configuración de TTS. El comando `!s` está deshabilitado en la configuración predeterminada incluida, así que habilítalo o créalo en tu canal antes de usarlo.
+`!s` funciona como un comando AST normal y lee el mensaje con el proveedor y la voz predeterminados del canal. Su plantilla predeterminada dice el nombre de usuario seguido de `dice:` y el mensaje. Edita el comando Speech Chat para cambiar la plantilla; el idioma de TTS selecciona el idioma de la voz, pero no cambia el texto de la plantilla. El comando **Speech Chat** `!s` viene habilitado para todos. Puedes editarlo desde esta página o desde **Comandos**. Su enfriamiento predeterminado es de 0 segundos; solo un comando editable por canal puede tener un enfriamiento de 0 segundos. Los demás comandos deben tener un enfriamiento mínimo de 5 segundos en Free, 3 segundos en Premium o 1 segundo en Pro.
 
 ```text
 !s Hola chat, bienvenidos al stream!
@@ -58,18 +58,21 @@ Usa estas funciones en comandos personalizados y acciones AST:
 | Función | Comportamiento |
 |---|---|
 | `$(tts <mensaje>)` | Habla con el proveedor y la voz predeterminados del canal. |
-| `$(tts.speak <mensaje>)` | Alias de `$(tts ...)`; no fuerza Piper. |
+| `$(tts.speak <mensaje>)` | Habla con Piper, incluso si Fish Audio es el proveedor predeterminado del canal. |
 | `$(tts.ai <mensaje>)` | Alias de `$(tts ...)`. |
-| `$(tts.clone <nombre_de_voz> <mensaje>)` | Habla con la voz Fish Audio indicada. El primer argumento es un nombre o ID de voz; el resto es el texto que se lee. |
-| `$(tts.fish <nombre_de_voz> <mensaje>)` | Alias de `$(tts.clone ...)`. |
+| `$(tts.clone <voz> <mensaje>)` | Habla con una voz de Fish Audio. Usa como primer argumento el nombre de una voz integrada, el apodo de una favorita guardada o el ID de una voz Fish; el resto es el texto que se lee. |
+| `$(tts.fish <voz> <mensaje>)` | Alias de `$(tts.clone ...)`. |
+| `$(set.voice <voz>)` | Cambia la voz predeterminada del canal a una voz Fish Audio y selecciona Fish Audio como proveedor. Usa el nombre de una de las cuatro voces integradas, o el apodo o nombre visible de una favorita guardada. Esta acción requiere permisos de moderador. |
 
 ```text
 $(tts Hola chat!)
-$(tts.speak Usa el proveedor predeterminado del canal.)
+$(tts.speak Usa Piper.)
 $(tts.clone gojo Hola desde Gojo!)
+$(tts.clone mi_favorita Hola desde mi voz guardada!)
+$(set.voice mi_favorita)
 ```
 
-La cola procesa un elemento de voz a la vez por canal. Si la superposición del navegador está desconectada, el servidor rechaza nuevas solicitudes en vez de agregarlas a la cola. El máximo configurado también limita la cantidad de elementos pendientes.
+La cola reproduce los mensajes en orden, uno a la vez por canal. El máximo configurado (1–20) cuenta tanto el elemento que se reproduce como los que esperan en la cola. Si la superposición del navegador está desconectada, el servidor rechaza nuevas solicitudes. Cuando se vuelve a conectar, puede continuar con los mensajes que aún esperan; no vuelve a reproducir el mensaje interrumpido por la desconexión.
 
 ## Etiquetas expresivas
 
@@ -111,7 +114,7 @@ En **Módulos → Texto a voz**, el propietario del canal puede configurar:
 - El idioma y el proveedor predeterminados.
 - Las voces Piper en inglés y español, o la voz clonada predeterminada de Fish Audio cuando Fish está seleccionado.
 - La longitud máxima de los mensajes (30–500 caracteres).
-- El tamaño máximo de la cola pendiente (1–20 elementos).
+- La cantidad máxima de elementos en espera o reproducción (1–20).
 - Si los mensajes del comando de chat omiten emotes, reemplazan enlaces y normalizan espacios.
 - Qué etiquetas expresivas de Fish Audio están habilitadas.
 

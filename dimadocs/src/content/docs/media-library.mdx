@@ -1,11 +1,13 @@
 ---
 title: Media Library
-description: Upload, organize, and share media used by triggers and extensions.
+description: Upload and manage trigger media shared with your channel.
 sidebar:
   order: 6
 ---
 
 The **Media Library** stores images, GIFs, audio, and video for your channel. Open it from **Dashboard → Modules → Media Library**. Your library shows each item's name, media type, visibility, and storage charge. Use **Refresh** to reload the list.
+
+This library is for trigger media. The separate **Asset Library** in **Dashboard → Settings** stores private images and videos for visual designs, including Overlay Studio. Its files, quota, and management are separate from this media library; an Asset Library image or video cannot be selected as a trigger.
 
 ## Upload media
 
@@ -35,3 +37,7 @@ You can promote a private item to public from its library card. This releases it
 Choose **Delete** on a library item to remove it. An item that is still referenced by a trigger cannot be removed; first edit or delete the trigger that uses it. Removing a public item from your channel library does not delete the shared public asset. When the last library copy of a private asset is removed, its stored asset is deleted.
 
 To attach library media to an automated action, create or edit a trigger in **Modules → Triggers**. See [Triggers & Media](/triggers/) for trigger setup and playback requirements. The OBS browser source must be connected for trigger media to play in your stream.
+
+## Design assets
+
+Use **Dashboard → Settings → Asset Library → Browse Asset Library** for reusable design images and video. It accepts PNG, JPG/JPEG, GIF, WebP, MP4, and WebM files up to 50 MB each. The design-storage allowances are 100 MB for Free, 500 MB for Premium, and 5 GB for Pro. These allowances do not change the trigger-media limits above. Assets can be selected in Overlay Studio layers and alert designs; see [Overlay Studio Alpha](/overlay-studio/) for setup. To delete an asset used by a saved design or published overlay, remove the reference from the design and republish the affected overlay first.
