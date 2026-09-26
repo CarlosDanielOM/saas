@@ -1,6 +1,8 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
+import { getTwitchUserByLogin } from '../../functions/users/get_user_by_login.users.js';
+import type { DrawActor } from '../../roulette/action-model.js';
 import { RouletteError, object, text, integer, fail } from '../../roulette/model.js';
 import { execute, requirePro, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
 
@@ -24,13 +26,16 @@ rouletteRoute.use('/:channelID', (req: AuthRequest, res, next) => {
 });
 rouletteRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(param(req, 'channelID')))));
 rouletteRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(param(req, 'channelID')), namespace: `/overlays/roulette/${param(req, 'channelID')}` })));
-async function action(req: Request, res: Response, operation: Action['operation'], data?: Record<string, unknown>) {
+async function action(req: Request, res: Response, operation: Action['operation'], data?: Record<string, unknown>, actor?: DrawActor) {
   const revision = req.header('If-Match');
   const expectedRevision = revision === undefined ? undefined : integer(Number(revision.replace(/^"|"$/g, '')), 'If-Match', 0);
   return ok(res, await execute(param(req, 'channelID'), { operation,
     ...(req.params.rouletteID ? { roulette: param(req, 'rouletteID') } : {}),
     ...(req.params.itemID ? { itemId: param(req, 'itemID') } : {}), ...(data ? { data } : {}),
-  }, req.header('Idempotency-Key'), expectedRevision));
+  }, req.header('Idempotency-Key'), expectedRevision, operation === 'start' ? actor ?? {
+    userId: (req as AuthRequest).user!.id, userLogin: (req as AuthRequest).user!.login ?? '',
+    userDisplayName: (req as AuthRequest).user!.display_name ?? ''
+  } : undefined));
 }
 rouletteRoute.post('/:channelID/roulettes', wrap((req, res) => action(req, res, 'create', object(req.body))));
 rouletteRoute.patch('/:channelID/roulettes/:rouletteID', wrap((req, res) => action(req, res, 'configure', object(req.body))));
@@ -38,14 +43,22 @@ rouletteRoute.delete('/:channelID/roulettes/:rouletteID', wrap((req, res) => act
 rouletteRoute.post('/:channelID/roulettes/:rouletteID/items', wrap((req, res) => action(req, res, 'add', object(req.body))));
 rouletteRoute.patch('/:channelID/roulettes/:rouletteID/items/:itemID', wrap((req, res) => action(req, res, 'update', object(req.body))));
 rouletteRoute.delete('/:channelID/roulettes/:rouletteID/items/:itemID', wrap((req, res) => action(req, res, 'remove')));
-rouletteRoute.post('/:channelID/actions/:action', wrap((req, res) => {
+rouletteRoute.post('/:channelID/actions/:action', wrap(async (req, res) => {
   const operation = param(req, 'action');
   if (!['show', 'hide', 'start', 'switch', 'shuffle'].includes(operation)) fail('invalid', 'Unknown action');
   const body = object(req.body ?? {});
-  if (Object.keys(body).some(k => k !== 'roulette')) fail('invalid', 'Unknown action field');
+  if (Object.keys(body).some(k => k !== 'roulette' && !(operation === 'start' && k === 'user'))) fail('invalid', 'Unknown action field');
   if (body.roulette !== undefined) req.params.rouletteID = text(body.roulette, 'roulette');
   if (operation === 'switch' && !body.roulette) fail('invalid', 'roulette is required');
-  return action(req, res, operation as Action['operation']);
+  let actor: DrawActor | undefined;
+  if (body.user !== undefined && body.user !== '') {
+    const login = text(body.user, 'user', 26).replace(/^@/, '').toLowerCase();
+    if (!/^[a-z0-9_]{1,25}$/.test(login)) fail('invalid_user', 'Enter a Twitch username');
+    const resolved = await getTwitchUserByLogin(login);
+    if (resolved.error || !resolved.data) fail('invalid_user', 'Could not find that Twitch user', 400);
+    actor = { userId: resolved.data.id, userLogin: resolved.data.login, userDisplayName: resolved.data.display_name };
+  }
+  return action(req, res, operation as Action['operation'], undefined, actor);
 }));
 rouletteRoute.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const known = error instanceof RouletteError;

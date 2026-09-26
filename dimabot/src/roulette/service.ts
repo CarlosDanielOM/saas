@@ -4,6 +4,8 @@ import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import * as domain from './model.js';
 import type { State } from './model.js';
 import Users from '../schemas/users.schema.js';
+import { parse } from '../utils/ast_parser/parser.js';
+import type { DrawActor, WinnerAction } from './action-model.js';
 
 /** Alpha entitlement follows the broadcaster, never the command caller. */
 export async function hasPro(channelId: string): Promise<boolean> {
@@ -15,16 +17,20 @@ export async function requirePro(channelId: string): Promise<void> {
 }
 
 interface Receipt { key: string; fingerprint: string; result: string; at: number }
-interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[] }
+interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[]; actions: WinnerAction[]; actionDueAt: number | null }
 const schema = new Schema<Stored>({
+  actions: { type: [new Schema<WinnerAction>({ drawId: String, rouletteId: String, itemId: String, label: String, source: String, dueAt: Number, status: String, actor: Schema.Types.Mixed, startedAt: Number, finishedAt: Number }, { _id: false })], default: [] }, actionDueAt: { type: Number, default: null },
   _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true },
   tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, result: String, at: Number }, { _id: false })], default: [] },
 }, { versionKey: false, collection: 'roulette_channels' });
 schema.index({ dueAt: 1 });
+schema.index({ actionDueAt: 1 });
 export const RouletteChannel = model<Stored>('RouletteChannel', schema);
 export type Operation = 'create' | 'configure' | 'delete' | 'add' | 'update' | 'remove' | 'shuffle' | 'switch' | 'show' | 'hide' | 'start';
 export interface Action { operation: Operation; roulette?: string; itemId?: string; data?: Record<string, unknown> }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+export const actionDue = (actions: WinnerAction[]) => { const pending = actions.filter(a => a.status === 'pending'); return pending.length ? Math.min(...pending.map(a => a.dueAt)) : null; };
+const actionRuns = (actions: WinnerAction[] = []) => actions.slice(-100).map(({ drawId, status }) => ({ drawId, status }));
 const due = (state: State) => state.draw?.completedAt === null ? state.draw.endsAt : state.hideAt;
 function channel(value: string): string { return domain.text(value, 'channel', 100); }
 async function load(channelId: string): Promise<Stored> {
@@ -67,11 +73,17 @@ function apply(state: State, action: Action, now: number): string {
   }
 }
 /** One channel document is the atomic boundary across API, bot and cron processes. */
-export async function execute(channelId: string, action: Action, requestKey?: string, expectedRevision?: number) {
+export async function execute(channelId: string, action: Action, requestKey?: string, expectedRevision?: number, actor?: DrawActor) {
   await requirePro(channelId);
+  if ((action.operation === 'add' || action.operation === 'update') && action.data?.action !== undefined) {
+    const source = domain.actionSource(action.data.action);
+    if (source && parse(source).error) domain.fail('invalid_action', 'Invalid AST syntax in item action');
+  }
+  if (actor && (typeof actor.userId !== 'string' || typeof actor.userLogin !== 'string' || typeof actor.userDisplayName !== 'string'
+    || actor.userId.length > 100 || actor.userLogin.length > 100 || actor.userDisplayName.length > 120 || (actor.argument?.length ?? 0) > 2000)) domain.fail('invalid', 'Invalid draw actor');
   if (requestKey !== undefined) domain.text(requestKey, 'Idempotency-Key', 128);
   if (expectedRevision !== undefined) domain.integer(expectedRevision, 'revision', 0);
-  const fingerprint = hash(JSON.stringify(action)); const receiptKey = requestKey ? hash(requestKey) : null;
+  const fingerprint = hash(JSON.stringify(actor ? { ...action, actor } : action)); const receiptKey = requestKey ? hash(requestKey) : null;
   for (let retry = 0; retry < 20; retry++) {
     const doc = await load(channelId); const now = Date.now();
     const receipt = receiptKey && doc.receipts.find(r => r.key === receiptKey && now - r.at < 86400000);
@@ -82,13 +94,26 @@ export async function execute(channelId: string, action: Action, requestKey?: st
     if (expectedRevision !== undefined && expectedRevision !== doc.revision) domain.fail('revision_conflict', 'State changed; refresh before saving', 409);
     domain.settle(doc.state, now);
     const result = apply(doc.state, action, now);
+    const actions = doc.actions ?? [];
+    if (action.operation === 'start') {
+      const draw = doc.state.draw!;
+      const winner = domain.find(doc.state, draw.rouletteId).items.find(i => i.id === draw.winner.itemId)!;
+      if (winner.action) {
+        if (actions.filter(a => a.status === 'pending' || a.status === 'running').length >= 100) domain.fail('capacity', 'Too many pending item actions');
+        actions.push({ drawId: draw.id, rouletteId: draw.rouletteId, itemId: winner.id, label: winner.label,
+          source: winner.action, dueAt: draw.endsAt, status: 'pending', ...(actor ? { actor } : {}) });
+      }
+    }
+    const retained = actions.filter(a => a.status === 'pending' || a.status === 'running');
+    const recent = actions.filter(a => a.status !== 'pending' && a.status !== 'running').slice(-100);
+    const savedActions = [...recent, ...retained];
     const aliases = doc.state.roulettes.map(r => r.alias);
     if (new Set(aliases).size !== aliases.length || doc.state.roulettes.some(r => aliases.includes(r.id))) domain.fail('alias_conflict', 'Alias already exists in this channel', 409);
     if (Buffer.byteLength(JSON.stringify(doc.state)) > 4 * 1024 * 1024) domain.fail('capacity', 'Channel roulette storage limit reached');
     const receipts = doc.receipts.filter(r => now - r.at < 86400000);
     if (receiptKey) receipts.push({ key: receiptKey, fingerprint, result, at: now });
     const saved = await RouletteChannel.updateOne({ _id: channelId, revision: doc.revision }, {
-      $set: { state: doc.state, dueAt: due(doc.state), receipts: receipts.slice(-200) }, $inc: { revision: 1 },
+      $set: { actions: savedActions, actionDueAt: actionDue(savedActions), state: doc.state, dueAt: due(doc.state), receipts: receipts.slice(-200) }, $inc: { revision: 1 },
     });
     if (saved.modifiedCount) return { revision: doc.revision + 1, result, replayed: false };
   }
@@ -97,11 +122,11 @@ export async function execute(channelId: string, action: Action, requestKey?: st
 export async function snapshot(channelId: string) {
   for (let retry = 0; retry < 20; retry++) {
     const doc = await load(channelId);
-    if (!domain.settle(doc.state, Date.now())) return { revision: doc.revision, serverTime: Date.now(), ...doc.state };
+    if (!domain.settle(doc.state, Date.now())) return { revision: doc.revision, serverTime: Date.now(), ...doc.state, actionRuns: actionRuns(doc.actions) };
     const saved = await RouletteChannel.updateOne({ _id: channelId, revision: doc.revision }, {
       $set: { state: doc.state, dueAt: due(doc.state) }, $inc: { revision: 1 },
     });
-    if (saved.modifiedCount) return { revision: doc.revision + 1, serverTime: Date.now(), ...doc.state };
+    if (saved.modifiedCount) return { revision: doc.revision + 1, serverTime: Date.now(), ...doc.state, actionRuns: actionRuns(doc.actions) };
   }
   return domain.fail('busy', 'Roulette is busy', 409);
 }
@@ -119,8 +144,10 @@ export async function authorizeOverlay(channelId: string, token: unknown): Promi
 }
 export async function overlaySnapshot(channelId: string) {
   const s = await snapshot(channelId);
-  return { revision: s.revision, serverTime: s.serverTime, visible: s.visible,
-    roulette: s.roulettes.find(r => r.id === s.activeId) ?? null, draw: s.draw, hideAt: s.hideAt };
+  const active = s.roulettes.find(r => r.id === s.activeId);
+  // OBS tokens can view the display, never the broadcaster's executable scripts.
+  const roulette = active ? { ...active, items: active.items.map(({ action: _action, ...item }) => item) } : null;
+  return { revision: s.revision, serverTime: s.serverTime, visible: s.visible, roulette, draw: s.draw, hideAt: s.hideAt };
 }
 /** Poll only indexed deadlines; snapshots also settle lazily after downtime. */
 export async function settleDue(): Promise<void> {

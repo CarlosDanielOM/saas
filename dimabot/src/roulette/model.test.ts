@@ -61,3 +61,15 @@ test('duplicate merging is explicit and rejects ambiguous weight changes', () =>
   assert.equal(item.id, id); assert.equal(item.multiplier, 5);
   assert.throws(() => r.add(roulette, { label: 'VIP', weight: 2 }));
 });
+test('item scripts are optional, editable, bounded and never expanded into visual copies', () => {
+  const { roulette } = fixture();
+  const item = r.add(roulette, { label: 'Silence', multiplier: 3, action: '$(timer 300 Done)' });
+  assert.equal(item.action, '$(timer 300 Done)');
+  assert(r.slots(roulette).every(slot => !('action' in slot)));
+  r.updateItem(roulette,item.id,{ action:'' }); assert.equal(item.action,'');
+  assert.throws(() => r.updateItem(roulette,item.id,{action:'a'.repeat(8001)}));
+  assert.throws(() => r.updateItem(roulette,item.id,{action:5}));
+  roulette.settings.duplicate='increase';r.updateItem(roulette,item.id,{action:'$(timer 30 Done)'});
+  assert.throws(()=>r.add(roulette,{label:'Silence',action:'different'}));
+  r.add(roulette,{label:'Silence'});assert.equal(item.action,'$(timer 30 Done)');
+});

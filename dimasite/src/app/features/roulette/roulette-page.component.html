@@ -92,11 +92,21 @@
                 [draw]="previewDraw()"
                 [serverTime]="state.serverTime"
               />
+              <label class="target-user"
+                >{{ t('targetUser') }}
+                <input
+                  [formControl]="targetUser"
+                  maxlength="26"
+                  [attr.aria-label]="t('targetUser')"
+                  aria-describedby="target-help"
+                />
+                <small id="target-help">{{ t('targetHelp') }}</small>
+              </label>
               <div class="controls">
                 <button
                   class="primary"
                   (click)="action('start')"
-                  [disabled]="busy() || spinning() || !copies()"
+                  [disabled]="busy() || spinning() || !copies() || targetUser.invalid"
                 >
                   {{ spinning() ? t('drawing') : t('start') }}</button
                 ><button (click)="action('shuffle')" [disabled]="busy() || spinning() || !copies()">
@@ -140,6 +150,18 @@
                     min="1"
                     step="1"
                     required /></label
+                ><label class="item-action ph-no-capture"
+                  >{{ t('itemAction') }}
+                  <textarea
+                    formControlName="action"
+                    rows="3"
+                    maxlength="8000"
+                    spellcheck="false"
+                    [attr.aria-label]="t('itemAction')"
+                    aria-describedby="action-help"
+                  ></textarea>
+                  <small id="action-help">{{ t('actionHelp') }}</small>
+                  <code>{{ t('actionExample') }}</code> </label
                 ><button class="primary" [disabled]="busy() || itemForm.invalid">
                   {{ editItemId() ? t('saveItem') : t('addItem') }}
                 </button>
@@ -162,7 +184,11 @@
                       ><small
                         >×{{ item.multiplier }} · {{ t('weight') }} {{ item.weight }} ·
                         {{ odds(item) }}</small
-                      ><button
+                      >
+                      @if (item.action) {
+                        <small class="action-badge">{{ t('hasAction') }}</small>
+                      }
+                      <button
                         class="id-button"
                         (click)="copy(item.id)"
                         [attr.aria-label]="t('copyId') + ': ' + item.label"
@@ -380,7 +406,8 @@
               @for (draw of state.history.slice(0, 10); track draw.id) {
                 <li>
                   <strong>{{ draw.winner.label }}</strong
-                  ><small>{{ draw.winner.copy }} / {{ draw.winner.multiplier }}</small>
+                  ><small>{{ draw.winner.copy }} / {{ draw.winner.multiplier }}</small
+                  ><small>{{ actionStatus(draw.id) }}</small>
                 </li>
               } @empty {
                 <li>{{ t('noHistory') }}</li>

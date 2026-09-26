@@ -3564,6 +3564,21 @@
     "saveError": "No se pudo confirmar la solicitud. Actualiza y revisa el estado guardado antes de reintentar.",
     "saved": "Ajustes guardados.",
     "copied": "Copiado al portapapeles.",
-    "copyError": "Portapapeles no disponible. Selecciona y copia el texto manualmente."
+    "copyError": "Portapapeles no disponible. Selecciona y copia el texto manualmente.",
+    "itemAction": "Al ganar este premio (AST, opcional)",
+    "actionHelp": "Se ejecuta en el servidor tras el sorteo, una vez por premio ganador sin importar su multiplicador. Usa $(user) para el destinatario y $(timer segundos ...) para acciones diferidas. Las acciones interrumpidas no se reintentan automáticamente.",
+    "actionExample": "$(user), ¡5 minutos sin hablar! $(timer 300 $(user), ya puedes volver a hablar.)",
+    "hasAction": "Acción AST configurada",
+    "actionSyntaxError": "La acción tiene sintaxis AST inválida. Revisa los paréntesis e inténtalo de nuevo.",
+    "targetUser": "Usuario destinatario (opcional)",
+    "targetHelp": "Los sorteos manuales usan este usuario de Twitch, o tu usuario si está vacío. Los comandos y eventos usan el usuario de su contexto AST.",
+    "targetError": "No se pudo encontrar ese usuario de Twitch. Revisa el nombre e inténtalo de nuevo.",
+    "actionStatus": {
+      "pending": "Acción pendiente",
+      "running": "Acción iniciada",
+      "done": "Acción enviada",
+      "failed": "Acción fallida",
+      "skipped": "Acción omitida (requiere Pro)"
+    }
   }
 }

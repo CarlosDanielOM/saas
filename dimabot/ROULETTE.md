@@ -1,8 +1,9 @@
 # Roulette backend v1
 
 The `roulette` module persists saved roulettes, individual multiplier copies, order,
-settings, overlay state and server-selected draw results. The dashboard and OBS
-renderer are intentionally separate future work; no overlay HTML is served yet.
+settings, overlay state and server-selected draw results. The Pro-only Alpha dashboard supports wheel, cards and reel designs, with a
+read-only OBS renderer. Cards remain stationary and highlight random positions
+before settling on the server-selected winner.
 
 ## Ownership and storage
 
@@ -38,11 +39,11 @@ after editing. Snapshots and token responses use `Cache-Control: no-store`.
 | POST | `/roulettes` | Create from `{name, alias, ...configuration}`; returns roulette ID |
 | PATCH | `/roulettes/:roulette` | Partial configuration |
 | DELETE | `/roulettes/:roulette` | Delete saved roulette; deleting active roulette clears/hides overlay |
-| POST | `/roulettes/:roulette/items` | `{label, multiplier?: 1, weight?: 1}`; returns item ID |
-| PATCH | `/roulettes/:roulette/items/:item` | Partial `{label, multiplier, weight}` |
+| POST | `/roulettes/:roulette/items` | `{label, multiplier?: 1, weight?: 1, action?: ""}`; returns item ID |
+| PATCH | `/roulettes/:roulette/items/:item` | Partial `{label, multiplier, weight, action}` |
 | DELETE | `/roulettes/:roulette/items/:item` | Remove all copies of the item |
 | POST | `/actions/show`, `/actions/hide` | `{}`; visibility only |
-| POST | `/actions/start` | `{roulette?: idOrAlias}`; defaults to active; returns draw ID |
+| POST | `/actions/start` | `{roulette?: idOrAlias, user?: twitchLogin}`; defaults to active and streamer; returns draw ID |
 | POST | `/actions/switch` | `{roulette: idOrAlias}`; preserves visibility |
 | POST | `/actions/shuffle` | `{roulette?: idOrAlias}`; defaults to active |
 | POST | `/overlay-token` | Rotate token; returns token once and Socket.IO namespace |
@@ -87,7 +88,8 @@ small cards. Invalid additions or design changes reject the entire mutation.
 
 `insertion=random` inserts each new copy independently without reordering existing
 copies. `duplicate=increase` merges the first exact matching label; conflicting
-weights reject the addition so an increase cannot silently change existing odds.
+weights or explicitly different actions reject the addition so an increase cannot
+silently change existing odds or scripts. Omitting action preserves the existing script.
 The default creates a separate item even when labels match. Multiplier updates
 preserve surviving copy keys and create/remove only the difference.
 
@@ -114,6 +116,43 @@ Show/hide after completion cancels a pending hide deadline. Switch clears the ol
 draw display/deadline while preserving visibility. Starting with `showOnStart=false`
 preserves visibility. Empty roulettes cannot start.
 
+## Winning item actions and target users
+
+Items may have an optional `action` AST script (maximum 8,000 characters). Empty
+text clears it. The owner-only API validates AST syntax before saving. The script
+runs once for the winning item, regardless of its multiplier, after the draw ends.
+For example:
+
+```text
+$(user), no speaking for 5 minutes! $(timer 300 $(user), you can speak again.)
+```
+
+This example announces the restriction and a later reminder; it does not itself
+apply a Twitch timeout. Existing AST functions and command references are available.
+Scripts run with the owning streamer's authoring authority, while user expressions
+refer to the saved target. `roulette_id`, `roulette_draw_id`, `roulette_item_id` and
+`roulette_item` are supplied as AST context variables.
+
+`$(roulette.start ...)` saves the initiating execution context's user ID, login,
+display name and original argument. This applies equally to commands and event
+triggers (bits, subs, follows, etc.). Manual dashboard starts accept an optional
+Twitch username, resolved server-side; blank uses the streamer. When an automated
+context has no user, the streamer is the fallback. Timers retain this target context.
+
+The winning script and target are frozen in the same atomic write as the draw.
+Editing or deleting an item during animation affects future draws. Scripts are
+stored privately, never in visual slots or OBS snapshots. A separate supervised
+`roulette-actions` worker settles completion before executing due scripts. Actions
+remain pending through downtime and do not depend on an open browser.
+
+The worker durably claims an action before evaluating it. Claims are never retried:
+this gives at most one attempt, not guaranteed exactly-once external effects. If the
+process stops after claiming, the action remains marked started and may not finish.
+Completed or failed scripts are not automatically repeated. A Pro downgrade before
+dispatch skips the action. Existing timer behavior applies after a timer is scheduled.
+Management snapshots include `actionRuns: [{drawId, status}]`, where status is
+`pending|running|done|failed|skipped`; the dashboard shows it beside draw history.
+
 ## OBS transport contract
 
 Connect Socket.IO to `/overlays/roulette/:channelID` with `auth: {token}`. The token
@@ -129,6 +168,7 @@ The backend emits `roulette-state` with:
 ```
 
 `roulette` is only the active saved configuration (or null), never the full library.
+Item scripts and action execution context are stripped from overlay responses.
 `draw` is the latest active draw snapshot, with `completedAt=null` while spinning.
 Render `draw.slots` during a draw, not the mutable `roulette.items`. Use `serverTime`
 to align animation timing; reconnect mid-spin resumes the same draw, while an

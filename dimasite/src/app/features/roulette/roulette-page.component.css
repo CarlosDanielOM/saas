@@ -353,3 +353,33 @@ code {
     top: 90px;
   }
 }
+
+.item-action {
+  grid-column: 1 / -1;
+}
+.item-action code {
+  color: var(--muted);
+  font-size: 11px;
+}
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 90px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 12px monospace;
+}
+textarea:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.target-user {
+  margin-top: 16px;
+}
+.action-badge {
+  color: var(--accent);
+}

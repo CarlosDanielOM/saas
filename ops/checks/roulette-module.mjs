@@ -164,6 +164,7 @@ try {
             } else if (suffix[2] === "items") {
               if (method === "POST") {
                 const item = prize(body.label, body.multiplier, body.weight);
+                item.action = body.action ?? "";
                 selected.items.push(item);
                 selected.order.push(...item.copies);
                 data = { result: item.id };
@@ -213,6 +214,7 @@ try {
                 selected.order.reverse();
                 break;
               case "start": {
+                assert.equal(body.user, "punished");
                 const copies = slots(selected);
                 state.activeId = selected.id;
                 state.visible = true;
@@ -256,6 +258,9 @@ try {
       .getByLabel("Prize label", { exact: true })
       .fill("Community choice");
     await module.getByLabel("Multiplier", { exact: true }).fill("4");
+    await module
+      .getByLabel("When this item wins (AST, optional)", { exact: true })
+      .fill("$(timer 300 $(user), speak again.)");
     await module.getByLabel("Weight", { exact: true }).fill("3");
     await module.getByRole("button", { name: "Add item", exact: true }).click();
     await module
@@ -263,9 +268,19 @@ try {
       .first()
       .waitFor();
     assert.equal(r.order.length, 10);
+    assert.equal(r.items.at(-1).action, "$(timer 300 $(user), speak again.)");
+    await module
+      .getByLabel("Target username (optional)", { exact: true })
+      .fill("punished");
     await module
       .getByRole("button", { name: "Edit: Community choice", exact: true })
       .click();
+    assert.equal(
+      await module
+        .getByLabel("When this item wins (AST, optional)", { exact: true })
+        .inputValue(),
+      "$(timer 300 $(user), speak again.)",
+    );
     await module.getByLabel("Multiplier", { exact: true }).fill("5");
     await module
       .getByRole("button", { name: "Save item", exact: true })
@@ -307,6 +322,48 @@ try {
       await page.waitForTimeout(150);
       assert.equal(r.design, design);
       await module.locator(`[data-design="${design}"]`).waitFor();
+      if (design === "cards") {
+        const boxes = () =>
+          module
+            .locator(".card")
+            .evaluateAll((nodes) =>
+              nodes.map((n) => ({
+                x: n.getBoundingClientRect().x - n.parentElement.getBoundingClientRect().x,
+                y: n.getBoundingClientRect().y - n.parentElement.getBoundingClientRect().y,
+              })),
+            );
+        await module
+          .getByRole("button", { name: "Start draw", exact: true })
+          .click();
+        const before = await boxes();
+        const hops = await module.locator(".cards").evaluate(async (board) => {
+          const seen = [];
+          for (let i = 0; i < 28; i++) {
+            const index = [...board.children].findIndex((n) =>
+              n.classList.contains("highlight"),
+            );
+            if (seen.at(-1) !== index) seen.push(index);
+            await new Promise((r) => setTimeout(r, 40));
+          }
+          return seen;
+        });
+        assert(hops.length >= 3, "cards highlight several different copies");
+        assert(
+          hops.slice(1).some((index, i) => Math.abs(index - hops[i]) > 1),
+          "cards jump across the board",
+        );
+        assert.deepEqual(await boxes(), before, "cards themselves do not move");
+        const winningIndex = state.draw.slots.findIndex(
+          (s) => s.key === state.draw.winner.key,
+        );
+        assert(
+          await module
+            .locator(".card")
+            .nth(winningIndex)
+            .evaluate((n) => n.classList.contains("highlight")),
+          "random animation lands on saved winner",
+        );
+      }
     }
     forceConflict = true;
     await module.getByLabel("Draw duration (seconds)").fill("5");

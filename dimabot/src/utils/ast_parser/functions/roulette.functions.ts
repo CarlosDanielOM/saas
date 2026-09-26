@@ -37,7 +37,7 @@ export function registerRouletteFunctions(): void {
           multiplier: integer(Number(args[2]), 'multiplier'),
           ...(args[3] !== undefined ? { weight: integer(Number(args[3]), 'weight') } : {}),
         };
-        const result = await execute(channel, action);
+        const result = await execute(channel, action, undefined, undefined, name === 'start' ? { userId: ctx.userId ?? '', userLogin: ctx.userLogin ?? '', userDisplayName: ctx.userDisplayName ?? '', argument: (ctx.argument ?? '').slice(0, 2000) } : undefined);
         // IDs can be captured in an AST variable; other actions stay silent.
         return name === 'add' ? result.result : '';
       } catch (error) {

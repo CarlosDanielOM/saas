@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LinksService } from '../../services/links.service';
 export interface RouletteItem {
+  action?: string;
   id: string;
   label: string;
   multiplier: number;
@@ -49,6 +50,10 @@ export interface RouletteDraw {
   colors: string[];
 }
 export interface RouletteState {
+  actionRuns?: Array<{
+    drawId: string;
+    status: 'pending' | 'running' | 'done' | 'failed' | 'skipped';
+  }>;
   revision: number;
   serverTime: number;
   roulettes: Roulette[];

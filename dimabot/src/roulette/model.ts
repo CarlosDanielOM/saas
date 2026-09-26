@@ -6,7 +6,7 @@ const newId = () => randomUUID().replaceAll('-', '');
 export class RouletteError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
 }
-export interface Item { id: string; label: string; multiplier: number; weight: number; copies: string[] }
+export interface Item { id: string; label: string; multiplier: number; weight: number; copies: string[]; action?: string }
 export interface Settings {
   insertion: 'append' | 'random'; duplicate: 'separate' | 'increase'; shuffleBeforeDraw: boolean;
   showOnStart: boolean; hideAfterSeconds: number | null; winnerAction: 'keep' | 'remove-copy' | 'remove-item';
@@ -43,6 +43,10 @@ export function text(value: unknown, field: string, max = 120): string {
 export function integer(value: unknown, field: string, min = 1, max = Number.MAX_SAFE_INTEGER): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) fail('invalid', `${field} must be an integer between ${min} and ${max}`);
   return value;
+}
+export function actionSource(value: unknown): string {
+  if (typeof value !== 'string' || value.length > 8000) fail('invalid', 'Item action must be text up to 8000 characters');
+  return value.trim();
 }
 function choice<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
   if (!allowed.includes(value as T)) fail('invalid', `Invalid ${field}`);
@@ -110,13 +114,15 @@ export function find(state: State, reference?: string): Roulette {
   return r || fail('not_found', 'Roulette not found in this channel', 404);
 }
 export function add(r: Roulette, data: Record<string, unknown>, random = randomTicket): Item {
-  if (Object.keys(data).some(k => !['label', 'multiplier', 'weight'].includes(k))) fail('invalid', 'Unknown item field');
+  if (Object.keys(data).some(k => !['label', 'multiplier', 'weight', 'action'].includes(k))) fail('invalid', 'Unknown item field');
   const label = text(data.label, 'label');
   const multiplier = integer(data.multiplier === undefined ? 1 : data.multiplier, 'multiplier', 1, 10000);
   const weight = integer(data.weight === undefined ? 1 : data.weight, 'weight');
   let item = r.settings.duplicate === 'increase' ? r.items.find(i => i.label === label) : undefined;
   if (item && item.weight !== weight) fail('weight_conflict', 'Existing item has a different weight; update it explicitly', 409);
-  if (!item) { item = { id: newId(), label, multiplier: 0, weight, copies: [] }; r.items.push(item); }
+  const action = data.action === undefined ? undefined : actionSource(data.action);
+  if (item && action !== undefined && (item.action ?? '') !== action) fail('action_conflict', 'Existing item has a different action; edit it explicitly', 409);
+  if (!item) { item = { id: newId(), label, multiplier: 0, weight, copies: [], action: action ?? '' }; r.items.push(item); }
   item.multiplier += multiplier;
   validate(r);
   for (let i = 0; i < multiplier; i++) {
@@ -130,8 +136,9 @@ export function remove(r: Roulette, itemId: string): void {
   const keys = new Set(item.copies); r.order = r.order.filter(key => !keys.has(key)); r.items = r.items.filter(i => i.id !== itemId);
 }
 export function updateItem(r: Roulette, itemId: string, data: Record<string, unknown>): Item {
-  if (Object.keys(data).some(k => !['label', 'multiplier', 'weight'].includes(k))) fail('invalid', 'Unknown item field');
+  if (Object.keys(data).some(k => !['label', 'multiplier', 'weight', 'action'].includes(k))) fail('invalid', 'Unknown item field');
   const item = r.items.find(i => i.id === itemId) || fail('not_found', 'Item not found', 404);
+  if (data.action !== undefined) item.action = actionSource(data.action);
   if (data.label !== undefined) item.label = text(data.label, 'label');
   if (data.weight !== undefined) item.weight = integer(data.weight, 'weight');
   if (data.multiplier !== undefined) item.multiplier = integer(data.multiplier, 'multiplier', 1, 10000);

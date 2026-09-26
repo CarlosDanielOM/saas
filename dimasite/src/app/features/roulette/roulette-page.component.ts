@@ -79,7 +79,9 @@ export class RoulettePageComponent {
     name: ['', [Validators.required, Validators.maxLength(120)]],
     alias: ['', [Validators.required, Validators.pattern(/^[a-z][a-z0-9_-]{0,39}$/)]],
   });
+  readonly targetUser = this.fb.control('', [Validators.pattern(/^@?[a-zA-Z0-9_]{1,25}$/)]);
   readonly itemForm = this.fb.group({
+    action: ['', Validators.maxLength(8000)],
     label: ['', [Validators.required, Validators.maxLength(120)]],
     multiplier: [1, [Validators.required, Validators.min(1)]],
     weight: [1, [Validators.required, Validators.min(1)]],
@@ -182,6 +184,11 @@ export class RoulettePageComponent {
   }
   private handleError(e: unknown): void {
     const status = e instanceof HttpErrorResponse ? e.status : 0;
+    const code = e instanceof HttpErrorResponse ? e.error?.code : '';
+    if (code === 'invalid_action' || code === 'invalid_user') {
+      this.error.set(this.t(code === 'invalid_action' ? 'actionSyntaxError' : 'targetError'));
+      return;
+    }
     this.error.set(
       this.t(
         status === 403
@@ -254,11 +261,16 @@ export class RoulettePageComponent {
   }
   edit(item: RouletteItem): void {
     this.editItemId.set(item.id);
-    this.itemForm.reset({ label: item.label, multiplier: item.multiplier, weight: item.weight });
+    this.itemForm.reset({
+      label: item.label,
+      multiplier: item.multiplier,
+      weight: item.weight,
+      action: item.action ?? '',
+    });
   }
   cancelItem(): void {
     this.editItemId.set('');
-    this.itemForm.reset({ label: '', multiplier: 1, weight: 1 });
+    this.itemForm.reset({ label: '', multiplier: 1, weight: 1, action: '' });
   }
   async saveItem(): Promise<void> {
     if (this.itemForm.invalid) return;
@@ -283,10 +295,18 @@ export class RoulettePageComponent {
       this.confirmDelete.set(false);
   }
   async action(action: string): Promise<void> {
+    if (action === 'start' && this.targetUser.invalid) return;
     await this.mutate(
       'POST',
       `/actions/${action}`,
-      ['show', 'hide'].includes(action) ? {} : { roulette: this.selectedId() },
+      ['show', 'hide'].includes(action)
+        ? {}
+        : {
+            roulette: this.selectedId(),
+            ...(action === 'start' && this.targetUser.value.trim()
+              ? { user: this.targetUser.value.trim() }
+              : {}),
+          },
     );
   }
   async token(): Promise<void> {
@@ -325,6 +345,10 @@ export class RoulettePageComponent {
   }
   upgradePlan(): void {
     void this.upgrade.promptUpgradeForModule({ moduleId: 'roulette', source: 'roulette_alpha' });
+  }
+  actionStatus(drawId: string): string {
+    const run = this.state()?.actionRuns?.find((a) => a.drawId === drawId);
+    return run ? this.t('actionStatus.' + run.status) : '';
   }
   odds(item: RouletteItem): string {
     return `${(((item.weight * item.multiplier) / Math.max(1, this.totalWeight())) * 100).toFixed(1)}%`;

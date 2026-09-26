@@ -3564,6 +3564,21 @@
     "saveError": "The request could not be confirmed. Refresh and check the saved state before retrying.",
     "saved": "Settings saved.",
     "copied": "Copied to clipboard.",
-    "copyError": "Clipboard unavailable. Select and copy the text manually."
+    "copyError": "Clipboard unavailable. Select and copy the text manually.",
+    "itemAction": "When this item wins (AST, optional)",
+    "actionHelp": "Runs on the server after the draw, once per winning item regardless of its multiplier. Use $(user) for the target and $(timer seconds ...) for delayed actions. Interrupted actions are not automatically retried.",
+    "actionExample": "$(user), no speaking for 5 minutes! $(timer 300 $(user), you can speak again.)",
+    "hasAction": "AST action attached",
+    "actionSyntaxError": "The item action has invalid AST syntax. Check parentheses and try again.",
+    "targetUser": "Target username (optional)",
+    "targetHelp": "Manual draws use this Twitch user, or you if blank. Commands and events use the user in their AST context.",
+    "targetError": "Could not resolve that Twitch username. Check the name and try again.",
+    "actionStatus": {
+      "pending": "Action pending",
+      "running": "Action started",
+      "done": "Action dispatched",
+      "failed": "Action failed",
+      "skipped": "Action skipped (Pro required)"
+    }
   }
 }

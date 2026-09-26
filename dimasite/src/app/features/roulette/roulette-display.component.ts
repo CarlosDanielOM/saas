@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
+import { cardSequence, cardHighlight } from './card-highlight';
 import { Roulette, RouletteDraw, slotsFor } from './roulette-api.service';
 
 /** Both dashboard and OBS render the same server-selected, frozen draw. */
@@ -76,10 +77,12 @@ export class RouletteDisplayComponent {
       };
     }),
   );
+  readonly cardPath = computed(() => {
+    const draw = this.draw();
+    return draw ? cardSequence(draw.id, this.slots().length, draw.endsAt - draw.startedAt) : [];
+  });
   readonly highlight = computed(() =>
-    this.done()
-      ? this.winnerIndex()
-      : Math.floor(this.position()) % Math.max(1, this.slots().length),
+    cardHighlight(this.cardPath(), this.progress(), this.winnerIndex()),
   );
   constructor() {
     effect((onCleanup) => {

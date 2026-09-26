@@ -12,6 +12,7 @@ const { registerAllFunctions } = await import('/app/dist/utils/ast_parser/functi
 const mongo = await getMongoDBConnection('roulette-check');
 const redis = await getDragonflyClient('roulette-check');
 await svc.RouletteChannel.init();
+await redis.set('app:twitch:token','fixture-app-token');
 const channel = '990011';
 const { default: Users } = await import('/app/dist/schemas/users.schema.js');
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
@@ -202,6 +203,71 @@ assert.equal((await svc.snapshot(channel)).revision, beforeDowngrade, 'denied ac
 await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'pro' } });
 assert.equal((await request('GET', root)).roulettes[0].id, id, 'upgrading preserves saved data');
 
+// Item actions run on the server, with frozen scripts/identities and one persisted claim.
+const actions = await import('/app/dist/roulette/actions.js');
+const { readFileSync } = await import('node:fs');
+await redis.hSet(`accounts:twitch:${channel}:data`, {id:channel,name:'fixture',plan_tier:'pro'});
+const messages = () => { try { return readFileSync('/tmp/saas-fixtures/roulette-messages.jsonl','utf8').trim().split('\n').filter(Boolean).map(JSON.parse); } catch { return []; } };
+async function until(predicate) { for(let i=0;i<120;i++) { if(await predicate()) return; await new Promise(r=>setTimeout(r,100)); } throw new Error('Action check timed out'); }
+const { AstTimerScheduler } = await import('/app/dist/utils/ast_timer_runtime.js');
+const timerScheduler = process.env.SAAS_TARGET === 'bot' ? null : new AstTimerScheduler(redis);
+await timerScheduler?.start();
+const automation = (await request('POST',root+'/roulettes',{name:'Actions',alias:'actions',durationSeconds:1,settings:{winnerAction:'remove-item'}})).result;
+const automationPath = root+'/roulettes/'+automation;
+await request('POST',automationPath+'/items',{label:'Invalid',action:'$(timer 2'},400);
+const actionItem=(await request('POST',automationPath+'/items',{label:'Silence',multiplier:3,action:'ROULETTE_TEST_START $(user) $(timer 1 ROULETTE_TEST_END $(user))'})).result;
+await request('POST',root+'/actions/start',{roulette:automation,user:'not found!'},400);
+await request('POST',root+'/actions/start',{roulette:automation,user:'missing'},400);
+const spin = await request('POST',root+'/actions/start',{roulette:automation,user:'@punished'},200,'roulette-owner-test',{'Idempotency-Key':'action-start'});
+await request('PATCH',automationPath+'/items/'+actionItem,{action:'ROULETTE_TEST_CHANGED'});
+const publicState = await svc.overlaySnapshot(channel);
+assert(!JSON.stringify(publicState).includes('ROULETTE_TEST'), 'private AST never reaches OBS');
+await new Promise(r=>setTimeout(r,1200));
+if(process.env.SAAS_TARGET !== 'cron') execFileSync('node',['/app/dist/workers/roulette-actions.worker.js','--once'],{encoding:'utf8'});
+await until(()=>messages().some(m=>m.message.includes('ROULETTE_TEST_END')));
+assert.equal(messages().filter(m=>m.message.includes('ROULETTE_TEST_START')).length,1,'one action for three winning copies');
+assert(messages().filter(m=>/START|END/.test(m.message)).every(m=>m.message.includes('Punished')),'timer retains selected user');
+assert(!messages().some(m=>m.message.includes('CHANGED')),'draw freezes script');
+assert.equal((await svc.snapshot(channel)).roulettes.find(r=>r.id===automation).items.length,0,'winner removal does not lose action');
+const replayAction = await request('POST',root+'/actions/start',{roulette:automation,user:'@punished'},200,'roulette-owner-test',{'Idempotency-Key':'action-start'});
+assert.equal(replayAction.result,spin.result);assert(replayAction.replayed);
+await actions.runDueActions();assert.equal(messages().filter(m=>m.message.includes('START')).length,1);
+assert.equal((await svc.snapshot(channel)).actionRuns.find(a=>a.drawId===spin.result).status,'done');
+// Events enter through the ordinary AST parser, preserving their actor.
+await request('POST',automationPath+'/items',{label:'Event',action:'ROULETTE_TEST_EVENT $(user)'});
+const { parseSpecialCommands } = await import('/app/dist/handlers/special_parser.handler.js');
+const eventStart = await parseSpecialCommands('$(roulette.start actions)',{channelID:channel,scopeType:'event',eventData:{user_id:'990098',user_login:'eventuser',user_name:'EventUser'}});
+assert.equal(eventStart.parsedText,'');
+await new Promise(r=>setTimeout(r,1200));
+if(process.env.SAAS_TARGET !== 'cron') execFileSync('node',['/app/dist/workers/roulette-actions.worker.js','--once'],{encoding:'utf8'});
+await until(()=>messages().some(m=>m.message.includes('ROULETTE_TEST_EVENT EventUser')));
+// A claim survives crashes/restarts; competing consumers cannot replay an arbitrary side effect.
+await request('PATCH',automationPath,{durationSeconds:120});
+await request('POST',automationPath+'/items',{label:'Claim',action:'ROULETTE_TEST_NEVER'});
+await request('POST',root+'/actions/start',{roulette:automation});
+const claims=await Promise.all(Array.from({length:8},()=>actions.claimAction(channel,Date.now()+121000)));
+assert.equal(claims.filter(Boolean).length,1);
+assert.equal(claims.find(Boolean).actor.userId,channel,'dashboard defaults to streamer');
+execFileSync('node',['/app/dist/workers/roulette-actions.worker.js','--once'],{encoding:'utf8'});
+assert(!messages().some(m=>m.message.includes('NEVER')));
+// Downgrades skip queued actions; delivery failures remain failed without automatic retries.
+await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'pro'}});
+await redis.hSet(`accounts:twitch:${workerChannel}:data`,{id:workerChannel,name:'fixtureworker',plan_tier:'pro'});
+await svc.execute(workerChannel,{operation:'add',roulette:'worker',data:{label:'Skip',action:'ROULETTE_TEST_SKIPPED'}});
+const skipDraw=await svc.execute(workerChannel,{operation:'start',roulette:'worker'});
+await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'free'}});
+await new Promise(r=>setTimeout(r,1200));
+await actions.runDueActions();
+await until(async()=> (await svc.snapshot(workerChannel)).actionRuns.find(a=>a.drawId===skipDraw.result)?.status==='skipped');
+assert(!messages().some(m=>m.message.includes('SKIPPED')));
+await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'pro'}});
+await svc.execute(workerChannel,{operation:'add',roulette:'worker',data:{label:'Fail',action:'ROULETTE_TEST_FAIL'}});
+const failDraw=await svc.execute(workerChannel,{operation:'start',roulette:'worker'});
+await new Promise(r=>setTimeout(r,1200));
+await actions.runDueActions();
+await until(async()=> (await svc.snapshot(workerChannel)).actionRuns.find(a=>a.drawId===failDraw.result)?.status==='failed');
+await actions.runDueActions();assert.equal(messages().filter(m=>m.message.includes('ROULETTE_TEST_FAIL')).length,1);
+timerScheduler?.stop();
 console.log(`PASS ${process.env.SAAS_TARGET}: persistence, CAS concurrency, API ownership, validation, idempotency, frozen draws, completion, WebSocket reconnect/revocation and real AST parsing/permissions`);
 if (io) await new Promise(resolve => io.close(resolve));
 await redis.quit(); await mongo.disconnect(); process.exit(0);
