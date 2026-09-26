@@ -1,3 +1,4 @@
+import type { CommandExecutionAuthorization } from '../../handlers/commands.handler.js';
 export type NodeType = 'root' | 'setVar' | 'getVar' | 'deleteVar' | 'function' | 'literal' | 'custom' | 'exists' | 'binary' | 'unary' | 'ternary' | 'template' | 'arrayLiteral' | 'commandRef' | 'loopVar' | 'loopAssign' | 'forLoop';
 
 export type TemplateSegment = { type: 'text'; value: string } | { type: 'expr'; node: AstNode };
@@ -173,6 +174,28 @@ export interface AstAuthorization {
     identity?: AstAuthorizationIdentity;
 }
 
+/** Shared across a command call tree; copied into cached timers as data. */
+export interface CommandReferenceState {
+    visitedCommands: Set<string>;
+    commandRefDepth: number;
+    commandRefBudget: { remaining: number };
+    timerDepth?: number;
+}
+
+export interface CommandReferenceRequest {
+    channelID: string;
+    commandName: string;
+    argument: string;
+    eventData: Record<string, unknown>;
+    authorization: CommandExecutionAuthorization;
+    state: CommandReferenceState;
+}
+
+export interface AstMessage {
+    parsedText: string;
+    commandReferences?: CommandReferenceRequest[];
+}
+
 export interface ExecutionContext {
     variables: Map<string, unknown>;
     arrays: Map<string, string[]>;
@@ -196,6 +219,8 @@ export interface ExecutionContext {
     scopeAliases: string[];
     commandName: string;
     commandId: string;
+    commandReferences: CommandReferenceRequest[];
+    commandRefBudget: { remaining: number };
     visitedCommands?: Set<string>;
     commandRefDepth?: number;
     loopExit?: LoopExitType;

@@ -1,3 +1,4 @@
+import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -148,9 +149,7 @@ async function main(): Promise<void> {
                     parse: parseSpecialCommands
                 });
 
-                if (parsedMessage) {
-                    await sendTwitchChatMessage(channelID, parsedMessage);
-                }
+                await deliverAstMessage(channelID, parsedMessage);
 
                 await cache.set(heartbeatKey, '0');
                 await cache.set(heartbeatUnitKey, TIMER_FREQUENCY_UNIT);

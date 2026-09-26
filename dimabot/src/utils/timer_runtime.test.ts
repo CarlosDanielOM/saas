@@ -21,7 +21,7 @@ test('passes the original timer template through the full AST parser', async () 
     });
 
     assert.equal(receivedText, template);
-    assert.equal(parsed, 'rendered output');
+    assert.equal(parsed.parsedText, 'rendered output');
     assert.equal(receivedContext?.scopeType, 'timer');
     assert.equal(receivedContext?.scopeName, 'socials');
     assert.equal(receivedContext?.argument, '');
@@ -43,5 +43,5 @@ test('trims rendered output and preserves intentionally empty output', async () 
         parse: async () => ({ parsedText: '   ', count: 0, countModified: false })
     });
 
-    assert.equal(parsed, '');
+    assert.equal(parsed.parsedText, '');
 });

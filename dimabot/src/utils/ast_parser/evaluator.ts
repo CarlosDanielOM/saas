@@ -1247,91 +1247,45 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
         }
 
         case 'commandRef': {
-            const cmdRefNode = node as CommandRefNode;
-            const { commandName, args } = cmdRefNode;
-
-            const MAX_COMMAND_REF_DEPTH = 5;
-            const currentDepth = context.commandRefDepth ?? 0;
-            if (currentDepth >= MAX_COMMAND_REF_DEPTH) {
+            const { commandName, args } = node as CommandRefNode;
+            const name = commandName.trim().toLowerCase();
+            const depth = context.commandRefDepth ?? 0;
+            const visited = context.visitedCommands ?? new Set<string>();
+            const key = `${context.broadcasterId}:${name}`;
+            if (depth >= 5 || visited.has(key) || context.commandRefBudget.remaining <= 0) {
                 return { value: '', context };
             }
 
-            const visitedCommands = context.visitedCommands ?? new Set<string>();
-            const commandKey = `${context.broadcasterId}:${commandName.toLowerCase()}`;
-            if (visitedCommands.has(commandKey)) {
-                return { value: '', context };
+            const values: string[] = [];
+            let currentContext = context;
+            for (const arg of args) {
+                const result = await evaluate(arg, currentContext);
+                currentContext = result.context;
+                values.push(String(result.value ?? ''));
             }
-
-            const newVisitedCommands = new Set(visitedCommands);
-            newVisitedCommands.add(commandKey);
-
-            let argsString = '';
-            if (args.length > 0) {
-                const argsResults: string[] = [];
-                let argsContext = context;
-                for (const arg of args) {
-                    const argResult = await evaluate(arg, argsContext);
-                    argsContext = argResult.context;
-                    argsResults.push(String(argResult.value ?? ''));
+            if (currentContext.commandRefBudget.remaining <= 0) return { value: '', context: currentContext };
+            currentContext.commandRefBudget.remaining--;
+            // A reference is a deferred invocation, never a text substitution.
+            // Delivery executes it only after the surrounding message is sent.
+            currentContext.commandReferences.push({
+                channelID: currentContext.broadcasterId,
+                commandName: name,
+                argument: values.join(' '),
+                eventData: {
+                    ...currentContext.eventData,
+                    chatter_user_id: currentContext.userId || currentContext.broadcasterId,
+                    chatter_user_login: currentContext.userLogin || currentContext.broadcasterId,
+                    chatter_user_name: currentContext.userDisplayName || currentContext.userLogin || currentContext.broadcasterId
+                },
+                authorization: resolveCommandRefAuthorization(currentContext),
+                state: {
+                    visitedCommands: new Set([...visited, key]),
+                    commandRefDepth: depth + 1,
+                    commandRefBudget: currentContext.commandRefBudget,
+                    timerDepth: currentContext.timerDepth
                 }
-                argsString = argsResults.join(' ');
-            }
-
-            try {
-                const { commandHandler } = await import('../../handlers/commands.handler.js');
-
-                // Explicit AST authorization context: an LLM command
-                // reference evaluates the referenced command's policy against
-                // the REAL requesting chatter; a streamer-authored reference
-                // runs trusted, since the outer command/event gate already
-                // passed. Authorization never comes from the synthetic event
-                // badges below.
-                const authorization = resolveCommandRefAuthorization(context);
-                const fakeEventData = {
-                    chatter_user_id: context.userId || context.broadcasterId,
-                    chatter_user_login: context.userLogin || context.broadcasterId,
-                    chatter_user_name: context.userDisplayName || context.userLogin || context.broadcasterId,
-                    badges: []
-                };
-
-                const result = await commandHandler(
-                    context.broadcasterId,
-                    fakeEventData,
-                    commandName.toLowerCase(),
-                    argsString || undefined,
-                    authorization
-                );
-
-                if (result.error || !result.message) {
-                    return { value: '', context };
-                }
-
-                const nestedContext: ExecutionContext = {
-                    ...context,
-                    visitedCommands: newVisitedCommands,
-                    commandRefDepth: currentDepth + 1,
-                    argument: argsString || context.argument,
-                    commandName: commandName.toLowerCase()
-                };
-
-                const { ast, error } = parse(result.message);
-                if (error) {
-                    // Restore the original visited set: cycle protection is per
-                    // reference path, so siblings may reuse the same command.
-                    return { value: result.message, context: { ...nestedContext, visitedCommands: context.visitedCommands } };
-                }
-
-                const nestedResult = await evaluate(ast, nestedContext);
-                return { value: nestedResult.value, context: { ...nestedResult.context, visitedCommands: context.visitedCommands } };
-            } catch (error) {
-                console.error('Error in commandRef evaluation:', {
-                    commandName,
-                    args: argsString,
-                    broadcasterId: context.broadcasterId,
-                    error: error instanceof Error ? error.message : String(error)
-                });
-                return { value: '', context };
-            }
+            });
+            return { value: '', context: currentContext };
         }
 
         case 'root': {
@@ -1368,6 +1322,8 @@ export function createExecutionContext(overrides: Partial<ExecutionContext> = {}
         enforceFunctionPermissions: true,
         count: 0,
         countModified: false,
+        commandReferences: [],
+        commandRefBudget: { remaining: 50 },
         streamer: null,
         platform: 'twitch',
         scopeType: 'command',

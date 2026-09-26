@@ -151,7 +151,7 @@ export class AstTimerScheduler {
 export async function executeAstTimerJob(job: AstTimerJob): Promise<void> {
     const { createSpecialExecutionContext } = await import('../handlers/special_parser.handler.js');
     const { evaluate } = await import('./ast_parser/evaluator.js');
-    const { sendTwitchChatMessage } = await import('../functions/chats/send_message.chat.js');
+    const { deliverAstMessage } = await import('./ast_command_delivery.js');
     const saved = job.context;
     const base = await createSpecialExecutionContext({
         channelID: saved.broadcasterId, scopeType: saved.scopeType, scopeName: saved.scopeName,
@@ -166,11 +166,10 @@ export async function executeAstTimerJob(job: AstTimerJob): Promise<void> {
         loopVars: new Map(saved.loopVars), visitedCommands: new Set(saved.visitedCommands)
     };
     const result = await evaluate(job.body, context);
-    const message = String(result.value ?? '').trim();
-    if (message) {
-        const sent = await sendTwitchChatMessage(saved.broadcasterId, message);
-        if (sent.error) throw new Error(sent.message);
-    }
+    const sent = await deliverAstMessage(saved.broadcasterId, {
+        parsedText: String(result.value ?? ''), commandReferences: result.context.commandReferences
+    });
+    if (sent.error) throw new Error(sent.message);
 }
 
 export async function startAstTimerScheduler(): Promise<void> {

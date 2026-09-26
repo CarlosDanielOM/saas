@@ -1,3 +1,4 @@
+import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { sendTwitchChatMessage } from "../functions/chats/index.js";
 import { parseSpecialCommands } from "./special_parser.handler.js";
@@ -23,9 +24,7 @@ export const cheersHandler = async (channelID: string, eventData: ITwitchEventDa
             count: 0
         });
 
-        if(parsedMessage.parsedText == '' || parsedMessage.parsedText == null) return;
-
-        sendTwitchChatMessage(channelID, parsedMessage.parsedText);
+        await deliverAstMessage(channelID, parsedMessage);
 
     } catch (err) {
         await logError({

@@ -27,7 +27,8 @@ export const sumimetroCommand = async (channelID: string, user: string, touser: 
 
         return {
             error: false,
-            message: parsedMessage,
+            message: parsedMessage.parsedText,
+            commandReferences: parsedMessage.commandReferences,
             status: 200,
             type: 'success'
         };

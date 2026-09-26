@@ -1,3 +1,5 @@
+import type { CommandReferenceState, CommandReferenceRequest } from '../utils/ast_parser/types.js';
+import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { ITwitchEventData } from '../interfaces/twitch/eventsub.interface.js';
 import Commands from '../classes/command.class.js';
 import { parseSpecialCommands } from './special_parser.handler.js';
@@ -29,6 +31,7 @@ interface ICommandResponse {
     status: number;
     type: string;
     command?: ICommandData;
+    commandReferences?: CommandReferenceRequest[];
 }
 
 /**
@@ -84,7 +87,8 @@ async function commandHandler(
     messageEventData: ITwitchEventData | Record<string, unknown>,
     command: string,
     argument?: string,
-    authorization?: CommandExecutionAuthorization
+    authorization?: CommandExecutionAuthorization,
+    referenceState?: CommandReferenceState
 ): Promise<ICommandResponse> {
     const cmdDB = await Commands.getCommandFromDB(channelID, command);
 
@@ -127,11 +131,26 @@ async function commandHandler(
         };
     }
 
+    // Shared by direct chat and references (including API/cron invocations).
+    const cooldown = Number(cmdDB.command.cooldown ?? 0);
+    if (Number.isFinite(cooldown) && cooldown > 0) {
+        const cache = await getDragonflyClient('CommandCooldown');
+        const acquired = await cache.set(`command:execution:cooldown:${channelID}:${command.toLowerCase()}`, '1',
+            { NX: true, PX: Math.ceil(cooldown * 1000) });
+        if (!acquired) return { error: true, message: 'Command is on cooldown', status: 429, type: 'command_cooldown' };
+    }
+    const state: CommandReferenceState = referenceState ?? {
+        visitedCommands: new Set([`${channelID}:${command.toLowerCase()}`]),
+        commandRefDepth: 0,
+        commandRefBudget: { remaining: 50 }
+    };
+
     // The command body is streamer-authored and the outer gate has passed, so
     // it executes with the explicit trusted broadcaster identity — never with
     // an identity inferred from the (possibly synthetic) event badges.
     const specialRes = await parseSpecialCommands(commandData.message, {
         channelID,
+        commandReferenceState: state,
         scopeType: 'command',
         scopeName: commandData.cmd || command,
         scopeAliases: commandData.name ? [commandData.name] : [],
@@ -152,7 +171,8 @@ async function commandHandler(
         message: commandData.message,
         status: 200,
         type: 'success',
-        command: commandData
+        command: commandData,
+        ...(specialRes.commandReferences?.length ? { commandReferences: specialRes.commandReferences } : {})
     };
 }
 

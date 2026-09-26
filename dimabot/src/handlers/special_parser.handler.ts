@@ -6,10 +6,11 @@ import { AstVariablesSchema, type IAstVariables } from '../schemas/ast_variables
 import type { IEventsub } from '../schemas/eventsub.schema.js';
 import { createExecutionContext, renderAstWithSourceReference } from '../utils/ast_parser/index.js';
 import { registerAllFunctions } from '../utils/ast_parser/functions/index.js';
-import type { ExecutionContext } from '../utils/ast_parser/types.js';
+import type { ExecutionContext, CommandReferenceState, CommandReferenceRequest } from '../utils/ast_parser/types.js';
 import { resolveAuthoredAstUserLevel } from './special_parser.userlevel.js';
 
 export interface ISpecialParserContext {
+    commandReferenceState?: CommandReferenceState;
     channelID: string;
     scopeType?: string;
     scopeName?: string;
@@ -27,6 +28,7 @@ export interface ISpecialParserContext {
 }
 
 export interface ISpecialParserResult {
+    commandReferences?: CommandReferenceRequest[];
     parsedText: string;
     count: number;
     countModified: boolean;
@@ -406,6 +408,7 @@ export async function createSpecialExecutionContext(
 
     return createExecutionContext({
         broadcasterId: context.channelID,
+        ...(context.commandReferenceState ?? {}),
         userId: extracted.userID || '',
         userLogin: extracted.userLogin || '',
         userDisplayName: extracted.userName || '',
@@ -571,7 +574,8 @@ export async function parseSpecialCommands(
     return {
         parsedText,
         count: resultContext.count,
-        countModified: resultContext.countModified ?? false
+        countModified: resultContext.countModified ?? false,
+        ...(resultContext.commandReferences.length ? { commandReferences: resultContext.commandReferences } : {})
     };
 }
 

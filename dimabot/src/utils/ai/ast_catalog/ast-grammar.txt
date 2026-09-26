@@ -8,7 +8,9 @@
 # *(condition ? T : F)   - Logic/Ternary (if/else), also arithmetic
 # ^(variable)            - Check if a variable exists
 # %del(variable)         - Delete a variable
-# #(commandName args)    - Reference another command's response
+# #(commandName args)    - Run a custom command separately after the current message; inserts no text
+# References send their own responses in order, retain literal arguments, and respect command cooldowns.
+# Cycles are blocked per call path; maximum 5 nested references and 50 invocations per execution.
 
 # Variable storage prefixes (inside %() names):
 # %(name)     - In-memory (per execution)

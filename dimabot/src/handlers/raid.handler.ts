@@ -1,3 +1,4 @@
+import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import { handleShoutoutCommand } from '../commands/shoutout.command.js';
 import { parseSpecialCommands } from './special_parser.handler.js';
 import type { IEventsub } from '../schemas/eventsub.schema.js';
@@ -100,6 +101,8 @@ export async function raidHandler(
                 type: 'error'
             };
         }
+
+        await deliverAstMessage(to_broadcaster_user_id, { parsedText: '', commandReferences: parsedResult.commandReferences });
 
         return {
             error: false,

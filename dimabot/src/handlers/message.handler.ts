@@ -1,3 +1,4 @@
+import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import ChatHistory from "../classes/chat_history.js";
 import { commandHandler } from "./commands.handler.js";
@@ -732,8 +733,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     origin: 'chat',
                     identity
                 });
-                if (!cmdResult.error && cmdResult.message) {
-                    res = { error: false, message: cmdResult.message };
+                if (!cmdResult.error) {
+                    res = { error: false, message: cmdResult.message, commandReferences: cmdResult.commandReferences };
                 }
                 break;
             }
@@ -778,9 +779,8 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             // logger({error: true, message: res.message, response: res, username: messageEventData.chatter_user_name, channel: messageEventData.channel_name}, true, channelID, `command-${channelID}-${command}-${messageEventData.chatter_user_name}`);
         }
 
-        if(!res || !res.message) return;
-
-        sendTwitchChatMessage(channelID, res.message)
+        if (!res) return;
+        await deliverAstMessage(channelID, { parsedText: res.message || '', commandReferences: res.commandReferences });
     } catch (err) {
         messageHandlerFailed = true;
         await logError({

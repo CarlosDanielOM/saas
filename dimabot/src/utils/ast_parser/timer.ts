@@ -16,6 +16,7 @@ export function snapshotTimerContext(ctx: ExecutionContext) {
         eventData: ctx.eventData, eventsubData: ctx.eventsubData, extraContext: ctx.extraContext,
         platform: ctx.platform, scopeType: ctx.scopeType, scopeName: ctx.scopeName,
         scopeAliases: ctx.scopeAliases, commandName: ctx.commandName, commandId: ctx.commandId,
+        commandRefBudget: { ...ctx.commandRefBudget },
         commandRefDepth: ctx.commandRefDepth, visitedCommands: [...(ctx.visitedCommands ?? [])],
         commandResponses: ctx.commandResponses,
         variables: [...ctx.variables], arrays: [...ctx.arrays], loopVars: [...(ctx.loopVars ?? [])],

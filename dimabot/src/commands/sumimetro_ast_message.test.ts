@@ -24,7 +24,7 @@ test('renders AST sumimetro messages through the supplied parser', async () => {
         }
     );
 
-    assert.equal(result, 'vtluciel obtuvo 42%');
+    assert.equal(result.parsedText, 'vtluciel obtuvo 42%');
     assert.deepEqual(calls, [{
         text: '$(user) obtuvo %(##sumiso)%',
         context: {

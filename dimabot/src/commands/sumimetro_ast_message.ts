@@ -1,6 +1,6 @@
-interface SumimetroAstParserResult {
-    parsedText: string;
-}
+import type { AstMessage } from '../utils/ast_parser/types.js';
+
+type SumimetroAstParserResult = AstMessage;
 
 interface SumimetroAstParserContext {
     channelID: string;
@@ -48,7 +48,7 @@ export async function renderAstSumimetroMessage(
     user: string,
     commandName: string,
     parseAst: SumimetroAstParser
-): Promise<string> {
+): Promise<Awaited<ReturnType<SumimetroAstParser>>> {
     const result = await parseAst(message, {
         channelID,
         scopeType: 'command',
@@ -60,5 +60,5 @@ export async function renderAstSumimetroMessage(
         }
     });
 
-    return result.parsedText;
+    return result;
 }

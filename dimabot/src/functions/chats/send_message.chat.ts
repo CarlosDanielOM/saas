@@ -1,3 +1,5 @@
+import type { CommandReferenceRequest } from '../../utils/ast_parser/types.js';
+import { deliverAstMessage } from '../../utils/ast_command_delivery.js';
 import { error as logError, warn as logWarn } from "../../utils/logger.js";
 import { getTwitchHelixUrl } from "../../utils/links.js";
 import { getAppToken } from "../../utils/tokens.js";
@@ -47,11 +49,13 @@ export const sendTwitchChatMessage = async (
         }
 
         let finalMessage = message;
+        let commandReferences: CommandReferenceRequest[] | undefined;
 
         if (context) {
             try {
                 const parsedResult = await parseSpecialCommands(message, context);
                 finalMessage = parsedResult.parsedText;
+                commandReferences = parsedResult.commandReferences;
             } catch (parseError) {
                 await logWarn({
                     function: 'sendTwitchChatMessage.parseSpecialCommands',
@@ -59,6 +63,11 @@ export const sendTwitchChatMessage = async (
                     error: parseError instanceof Error ? parseError.message : String(parseError)
                 }, { channelId: channelID, destination: 'both' });
             }
+        }
+
+        if (!finalMessage.trim()) {
+            const delivered = await deliverAstMessage(channelID, { parsedText: '', commandReferences });
+            return { ...delivered, data: undefined, type: delivered.error ? 'error' : 'success' };
         }
 
         let body = {
@@ -129,6 +138,8 @@ export const sendTwitchChatMessage = async (
                 data: data.data[0],
             }
         }
+
+        await deliverAstMessage(channelID, { parsedText: '', commandReferences });
 
         return {
             error: false,

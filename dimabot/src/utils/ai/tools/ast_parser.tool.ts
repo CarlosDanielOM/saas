@@ -6,6 +6,7 @@
  * channel management, or other bot operations.
  */
 
+import { deliverAstMessage } from '../../ast_command_delivery.js';
 import { parseAndEvaluate } from '../../ast_parser/index.js';
 import { findAstCatalogEntry } from '../ast_catalog/index.js';
 import type { AstCatalogEntry } from '../ast_catalog/types.js';
@@ -145,7 +146,8 @@ export async function execute(
         }
 
         // Execute the AST command
-        const { result } = await parseAndEvaluate(astCommand, execContext);
+        const { result, context: resultContext } = await parseAndEvaluate(astCommand, execContext);
+        await deliverAstMessage(channelID, { parsedText: '', commandReferences: resultContext.commandReferences });
 
         const resultStr = String(result ?? 'Command executed successfully');
 

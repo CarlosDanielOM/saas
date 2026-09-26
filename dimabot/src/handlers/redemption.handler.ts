@@ -1,3 +1,5 @@
+import type { AstMessage } from '../utils/ast_parser/types.js';
+import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import { sendTwitchChatMessage, type SendMessageContext } from "../functions/chats/send_message.chat.js";
 import { vipRedemptionFun } from "../functions/redemptions/vip.redemption.js";
 import { customRedemptionReward } from "../functions/redemptions/custom.redemption.js";
@@ -19,9 +21,9 @@ async function runRedemptionSpecialFunctions(
     channelID: string,
     eventData: IRedemptionEvent,
     rewardTitle: string
-): Promise<string> {
+): Promise<AstMessage> {
     if (!rawMessage || rawMessage.trim() === '') {
-        return '';
+        return { parsedText: '' };
     }
 
     try {
@@ -37,7 +39,7 @@ async function runRedemptionSpecialFunctions(
             userLevel: 10
         });
 
-        return parsed.parsedText;
+        return parsed;
     } catch (err) {
         console.error('Error running redemption special functions:', {
             channelID,
@@ -57,7 +59,7 @@ async function runRedemptionSpecialFunctions(
             stack: err instanceof Error ? err.stack : undefined
         }, { channelId: channelID, destination: 'both' });
 
-        return rawMessage;
+        return { parsedText: rawMessage };
     }
 }
 
@@ -117,16 +119,15 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                if (parsedRewardMessage.trim() !== '') {
-                    await sendTwitchChatMessage(broadcaster_user_id, parsedRewardMessage, null);
-                }
+                await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
             } else if (vipResult.rewardMessage) {
-                await runRedemptionSpecialFunctions(
+                const parsed = await runRedemptionSpecialFunctions(
                     vipResult.rewardMessage,
                     broadcaster_user_id,
                     eventData,
                     reward.title
                 );
+                await deliverAstMessage(broadcaster_user_id, parsed, false);
             }
 
             return {
@@ -186,16 +187,15 @@ export async function redemptionHandler(
                     eventData,
                     reward.title
                 );
-                if (parsedRewardMessage.trim() !== '') {
-                    await sendTwitchChatMessage(broadcaster_user_id, parsedRewardMessage, null);
-                }
+                await deliverAstMessage(broadcaster_user_id, parsedRewardMessage);
             } else if (customResult.rewardMessage) {
-                await runRedemptionSpecialFunctions(
+                const parsed = await runRedemptionSpecialFunctions(
                     customResult.rewardMessage,
                     broadcaster_user_id,
                     eventData,
                     reward.title
                 );
+                await deliverAstMessage(broadcaster_user_id, parsed, false);
             }
 
             return {
@@ -262,12 +262,10 @@ export async function redemptionHandler(
             user: user_name,
             reward: reward.title,
             trigger: trigger.name,
-            parsedRewardMessage
+            parsedRewardMessage: parsedRewardMessage.parsedText
         }, { channelId: broadcaster_user_id, destination: 'both' });
 
-        if (chatEnabled && parsedRewardMessage) {
-            await sendTwitchChatMessage(broadcaster_user_id, parsedRewardMessage, null);
-        }
+        await deliverAstMessage(broadcaster_user_id, parsedRewardMessage, chatEnabled);
 
         return {
             error: false,

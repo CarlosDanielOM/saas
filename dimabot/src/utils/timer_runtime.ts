@@ -18,7 +18,7 @@ interface RenderTimerMessageOptions {
     parse: TimerAstParser;
 }
 
-export async function renderTimerMessage(options: RenderTimerMessageOptions): Promise<string> {
+export async function renderTimerMessage(options: RenderTimerMessageOptions): Promise<ISpecialParserResult> {
     const streamerLogin = options.streamerName.toLowerCase();
     const eventData = {
         chatter_user_id: options.channelID,
@@ -40,5 +40,5 @@ export async function renderTimerMessage(options: RenderTimerMessageOptions): Pr
         eventData
     });
 
-    return result.parsedText.trim();
+    return { ...result, parsedText: result.parsedText.trim() };
 }

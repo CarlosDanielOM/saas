@@ -110,7 +110,7 @@ export async function handleShoutoutCommand(
                 announcementResult
             });
 
-            sendTwitchChatMessage(channelID, message);
+            await sendTwitchChatMessage(channelID, message);
         }
 
         const cooldownKey = `${channelID}:${targetUserData.id}`;
