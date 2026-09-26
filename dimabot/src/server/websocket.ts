@@ -1,3 +1,4 @@
+import { registerRouletteOverlay } from './services/roulette-overlay.service.js';
 import { Server as SocketIOServer } from "socket.io";
 import http, { type Server as HttpServer } from "http";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
@@ -40,6 +41,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         });
 
         registerFishPreview(io);
+        registerRouletteOverlay(io);
 
         //? Clip Namespace with heartbeat mechanism
         io.of(/^\/clip\/\w+$/).on('connection', async (socket) => {

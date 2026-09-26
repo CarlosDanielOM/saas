@@ -1,3 +1,4 @@
+import { rouletteRoute } from './routes/roulette.route.js';
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import path from "path";
@@ -117,6 +118,7 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup timers routes
         app.use('/timers', timerRoute);
+        app.use('/roulettes', rouletteRoute);
 
         // Setup follow defense routes
         app.use('/follow-defense', followDefenseRoute);

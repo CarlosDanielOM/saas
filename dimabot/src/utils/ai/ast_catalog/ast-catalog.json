@@ -1,10 +1,217 @@
 {
-  "version": "13a2196dadfe",
-  "generatedAt": "2026-09-26T06:05:49.537Z",
+  "version": "d065a3185f45",
+  "generatedAt": "2026-09-26T06:30:05.657Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 72,
+  "functionCount": 81,
   "entries": [
+    {
+      "name": "roulette.add",
+      "description": "Adds an item; multiplier creates copies, weight sets chance per copy.",
+      "syntax": "roulette.add roulette_id \"item label\" [multiplier] [weight]",
+      "category": "roulette",
+      "examples": [
+        "roulette.add giveaways \"VIP for a day\" 3 10"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.remove",
+      "description": "Removes an item and all its copies.",
+      "syntax": "roulette.remove roulette_id item_id",
+      "category": "roulette",
+      "examples": [
+        "roulette.remove giveaways item_id"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.update",
+      "description": "Updates an item multiplier and optionally its weight.",
+      "syntax": "roulette.update roulette_id item_id multiplier [weight]",
+      "category": "roulette",
+      "examples": [
+        "roulette.update giveaways item_id 3 10"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.shuffle",
+      "description": "Shuffles individual copies without changing odds.",
+      "syntax": "roulette.shuffle roulette_id",
+      "category": "roulette",
+      "examples": [
+        "roulette.shuffle giveaways"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.switch",
+      "description": "Selects the active roulette without changing visibility.",
+      "syntax": "roulette.switch roulette_id",
+      "category": "roulette",
+      "examples": [
+        "roulette.switch giveaways"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.show",
+      "description": "Shows the active roulette overlay.",
+      "syntax": "roulette.show",
+      "category": "roulette",
+      "examples": [
+        "roulette.show"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.hide",
+      "description": "Hides the roulette overlay without cancelling its draw.",
+      "syntax": "roulette.hide",
+      "category": "roulette",
+      "examples": [
+        "roulette.hide"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.start",
+      "description": "Starts the active or specified roulette and saves one authoritative winner.",
+      "syntax": "roulette.start [roulette_id]",
+      "category": "roulette",
+      "examples": [
+        "roulette.start"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "roulette.result",
+      "description": "Returns the most recently completed winner label.",
+      "syntax": "roulette.result [roulette_id]",
+      "category": "roulette",
+      "examples": [
+        "roulette.result"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "roulette",
+        "wheel",
+        "reel",
+        "ruleta",
+        "sorteo"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
     {
       "name": "user",
       "description": "Returns the username of the caller / current chatter.",
