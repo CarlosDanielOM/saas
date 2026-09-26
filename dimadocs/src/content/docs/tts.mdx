@@ -33,9 +33,9 @@ Piper synthesis does not consume AI credits. Expressive tags are removed before 
 
 Fish Audio provides cloned voices. The dashboard includes a voice browser, and its preset voices include Gojo, Rias Gremory, Carlos Bodoque, and Toji Fushiguro. The selected clone can be the channel's default voice or an explicitly named voice in an AST command.
 
-Fish Audio usage consumes AI credits. In the voice browser, channel owners can save up to 20 voices as favorites and rename each favorite's nickname. A nickname is 1–40 letters, numbers, or underscores, starts with a letter, and is normalized to lowercase. Spaces in a voice's display name become underscores in its generated nickname: **Pinky Pie** normally becomes `pinky_pie` when that nickname is available; a number suffix is added if it is already in use.
+Fish Audio usage consumes AI credits. In the voice browser, channel owners can save up to 20 voices as favorites and rename each favorite's nickname. The UI continues to show the voice's display name (for example, **Pinky Pie** or **Carlos Bodoque**) and shows its nickname alongside it. A nickname is 1–40 letters, numbers, or underscores, starts with a letter, and is normalized to lowercase. Spaces in a voice's display name become underscores in its generated nickname: **Pinky Pie** normally gets `pinky_pie`; a number suffix is added if that nickname is already in use.
 
-Use a favorite's nickname or Fish voice ID as the first argument to `$(tts.clone ...)`; the nickname is the convenient choice for names with spaces. `$(set.voice ...)` accepts a favorite's nickname or its full display name, including spaces.
+For `$(tts.clone ...)` and its alias `$(tts.fish ...)`, the first argument is a single voice key: use a built-in key such as `carlos_bodoque`, a saved favorite's nickname such as `pinky_pie`, or a Fish voice ID. The display name with spaces is not parsed as one voice argument. For example, to speak using the built-in Carlos Bodoque voice in a command that passes the triggering text, use `$(tts.fish carlos_bodoque &t)`. If a voice is saved as a favorite and its nickname is changed to `bodoquin`, use `$(tts.fish bodoquin &t)`. `$(set.voice ...)` accepts a favorite's nickname or its full display name, including spaces.
 
 Both providers are available on Free, Premium, and Pro plans. AI credit limits are shared across eligible AI features and vary by plan; TTS does not have a separate monthly allowance.
 
@@ -70,9 +70,13 @@ Use these functions in custom commands and AST actions:
 $(tts Hello chat!)
 $(tts.speak This uses Piper.)
 $(tts.clone gojo Hello from Gojo!)
-$(tts.clone my_favorite Hello from my saved voice!)
+$(tts.fish carlos_bodoque &t)
+$(tts.fish pinky_pie &t)
+$(tts.fish bodoquin &t)
 $(set.voice my_favorite)
 ```
+
+Save a voice as a favorite before changing its nickname. Built-in voices can also be used directly by their built-in keys, such as `carlos_bodoque`; renaming a saved favorite changes the nickname used in AST, not the name shown as the voice's display name.
 
 The queue plays speech in order, one item at a time per channel. Its configured maximum (1–20) counts the item currently playing along with queued items. If the browser overlay is disconnected, the server rejects new speech requests. When it reconnects, speech still waiting in the queue can continue; speech interrupted by the disconnect is not replayed.
 

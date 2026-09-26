@@ -33,9 +33,9 @@ La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se el
 
 Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
 
-Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible de una voz se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente se convierte en `pinky_pie` si está disponible; si ya se usa, se agrega un número al final.
+Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. La interfaz sigue mostrando el nombre visible de la voz (por ejemplo, **Pinky Pie** o **Carlos Bodoque**) y muestra el apodo junto a él. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente recibe `pinky_pie`; si ya se usa ese apodo, se agrega un número al final.
 
-Usa el apodo de una favorita o el ID de la voz Fish como primer argumento de `$(tts.clone ...)`; el apodo es la opción más práctica para nombres con espacios. `$(set.voice ...)` acepta el apodo o el nombre visible completo de una favorita, incluso si tiene espacios.
+En `$(tts.clone ...)` y su alias `$(tts.fish ...)`, el primer argumento es una sola clave de voz: usa una clave integrada como `carlos_bodoque`, el apodo de una favorita guardada como `pinky_pie` o un ID de voz Fish. El nombre visible con espacios no se interpreta como un solo argumento de voz. Por ejemplo, para hablar con la voz integrada de Carlos Bodoque en un comando que recibe el texto que escribió el usuario, usa `$(tts.fish carlos_bodoque &t)`. Si guardas una voz como favorita y cambias su apodo a `bodoquin`, usa `$(tts.fish bodoquin &t)`. `$(set.voice ...)` acepta el apodo o el nombre visible completo de una favorita, incluso si tiene espacios.
 
 Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los límites de créditos de IA se comparten entre las funciones de IA disponibles y varían según el plan; TTS no tiene una asignación mensual aparte.
 
@@ -70,9 +70,13 @@ Usa estas funciones en comandos personalizados y acciones AST:
 $(tts Hola chat!)
 $(tts.speak Usa Piper.)
 $(tts.clone gojo Hola desde Gojo!)
-$(tts.clone mi_favorita Hola desde mi voz guardada!)
+$(tts.fish carlos_bodoque &t)
+$(tts.fish pinky_pie &t)
+$(tts.fish bodoquin &t)
 $(set.voice mi_favorita)
 ```
+
+Guarda una voz como favorita antes de cambiar su apodo. También puedes usar las voces integradas directamente con sus claves, como `carlos_bodoque`; al cambiar el apodo de una favorita, cambia el nombre que se usa en AST, pero no el nombre visible de la voz.
 
 La cola reproduce los mensajes en orden, uno a la vez por canal. El máximo configurado (1–20) cuenta tanto el elemento que se reproduce como los que esperan en la cola. Si la superposición del navegador está desconectada, el servidor rechaza nuevas solicitudes. Cuando se vuelve a conectar, puede continuar con los mensajes que aún esperan; no vuelve a reproducir el mensaje interrumpido por la desconexión.
 
