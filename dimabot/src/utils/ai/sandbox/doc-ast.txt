@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: cceb952f1528
+# Catalog version: e849a2896bd6
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -45,6 +45,20 @@
 # --- ai ---
 # $(ai prompt) - Generates an AI response for the given prompt using the channel AI personality.
 #   Example: $(ai tell me a joke)
+#
+# --- availability ---
+# $(disable.command "name" [seconds]) - Disables a command in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.
+#   Example: $(disable.command discord)
+#   Example: $(disable.command discord 300)
+# $(disable.redemption "name" [seconds]) - Disables a redemption in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.
+#   Example: $(disable.redemption "Hydrate")
+#   Example: $(disable.redemption "Hydrate" 300)
+# $(enable.command "name" [seconds]) - Enables a command in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.
+#   Example: $(enable.command discord)
+#   Example: $(enable.command discord 300)
+# $(enable.redemption "name" [seconds]) - Enables a redemption in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.
+#   Example: $(enable.redemption "Hydrate")
+#   Example: $(enable.redemption "Hydrate" 300)
 #
 # --- channel ---
 # $(cancel.poll) - Terminates the current active poll without archiving its results. Fetches the current poll from Twitch.

@@ -20,6 +20,16 @@ globalThis.fetch = async (input, options) => {
     await capture('chat', JSON.parse(options.body));
     return Response.json({ data: [{ message_id: 'fixture', is_sent: true }] });
   }
+  if (url.hostname === 'api.twitch.tv' && url.pathname === '/helix/channel_points/custom_rewards') {
+    const body = JSON.parse(options.body);
+    await capture('reward', { id: url.searchParams.get('id'), ...body });
+    const id = url.searchParams.get('id');
+    if (await captureClient.get(`test:availability:fail:${id}`)) {
+      return Response.json({ error: 'Unavailable', message: 'Fixture Twitch failure' }, { status: 503 });
+    }
+    await captureClient.set(`test:availability:reward:${id}`, String(body.is_enabled));
+    return Response.json({ data: [{ id, is_enabled: body.is_enabled }] });
+  }
   if (url.hostname === '127.0.0.1') return originalFetch(input, options);
   if (url.hostname === 'qdrant.test') return Response.json(
     url.pathname === '/' ? { version: '1.18.0' } : { status: 'ok', time: 0, result:

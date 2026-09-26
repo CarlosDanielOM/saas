@@ -1,3 +1,4 @@
+import { registerAvailabilityFunctions } from './availability.functions.js';
 import { registerRouletteFunctions } from './roulette.functions.js';
 import { registerUserFunctions } from './user.functions.js';
 import { registerRandomFunctions } from './random.functions.js';
@@ -22,6 +23,7 @@ export function registerAllFunctions(): void {
     if (registered) return;
     registered = true;
     
+    registerAvailabilityFunctions();
     registerRouletteFunctions();
     registerUserFunctions();
     registerRandomFunctions();

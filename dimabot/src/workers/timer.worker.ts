@@ -230,6 +230,20 @@ async function main(): Promise<void> {
 
         await getDragonflyClient('TimerWorker');
         await getMongoDBConnection('TimerWorker');
+        // Independent from recurring chat timers and their minute-scale lock.
+        // These durable restorations must run after downtime and while offline.
+        const { recoverAvailability } = await import('../utils/availability/service.js');
+        let recoveringAvailability = false;
+        const recover = async () => {
+            if (recoveringAvailability || shutdownRequested) return;
+            recoveringAvailability = true;
+            try { await recoverAvailability(); }
+            catch (error) { console.error('Availability recovery will retry', error); }
+            finally { recoveringAvailability = false; }
+        };
+        await recover();
+        if (!RUN_ONCE) setInterval(() => { void recover(); }, 2000).unref();
+
         await TwitchStreamers.getTwitchAccountsFromDB();
 
         let lockAcquired = await acquireWorkerLock(lockOwnerId);

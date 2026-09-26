@@ -1,4 +1,4 @@
-import Commands from '../classes/command.class.js';
+import { setAvailability } from '../utils/availability/service.js';
 
 interface EnableCommandResponse {
     error: boolean;
@@ -9,27 +9,7 @@ interface EnableCommandResponse {
 
 export async function enableCommandCommand(channelID: string, argument: string): Promise<EnableCommandResponse> {
     try {
-        const command = await Commands.getCommandFromDB(channelID, argument);
-
-        if (command.error || !command.command) {
-            return {
-                error: true,
-                message: 'Command not found',
-                status: 404,
-                type: 'command_not_found'
-            };
-        }
-
-        if (command.command.enabled) {
-            return {
-                error: true,
-                message: 'Command is already enabled',
-                status: 400,
-                type: 'command_enabled'
-            };
-        }
-
-        await Commands.updateCommandInDB(channelID, argument, { enabled: true });
+        await setAvailability('command', channelID, argument.trim(), true);
 
         return {
             error: false,
@@ -48,7 +28,8 @@ export async function enableCommandCommand(channelID: string, argument: string):
 
         return {
             error: true,
-            message: 'Internal server error',
+            message: error instanceof Error ? error.message : 'Internal server error',
+            status: error instanceof Error && /not found/i.test(error.message) ? 404 : 500,
             type: 'error'
         };
     }

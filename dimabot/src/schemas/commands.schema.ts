@@ -1,3 +1,4 @@
+import { addAvailabilityFields } from '../utils/availability/schema.js';
 import { Schema, model, Types } from 'mongoose';
 import type { PermissionExpression } from '../utils/permissions/expression.js';
 
@@ -73,5 +74,7 @@ const commandsSchema = new Schema({
         year: { type: Number, default: () => new Date().getFullYear() },
     }
 })
+
+addAvailabilityFields(commandsSchema, 'enabled');
 
 export const CommandsSchema = model<ICommands>('Commands', commandsSchema);

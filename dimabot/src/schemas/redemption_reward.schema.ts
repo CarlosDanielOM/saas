@@ -1,3 +1,4 @@
+import { addAvailabilityFields } from '../utils/availability/schema.js';
 import { Schema, model, Types } from 'mongoose';
 
 export interface IRedemptionReward {
@@ -42,5 +43,7 @@ const redemptionRewardSchema = new Schema<IRedemptionReward>({
     createdFrom: { type: String, default: 'domdimabot' },
     createdFor: { type: String, default: 'twitch' },
 });
+
+addAvailabilityFields(redemptionRewardSchema, 'isEnabled');
 
 export const RedemptionRewardSchema = model<IRedemptionReward>('redemptionreward', redemptionRewardSchema);

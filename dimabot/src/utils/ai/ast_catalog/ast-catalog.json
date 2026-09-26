@@ -1,10 +1,106 @@
 {
-  "version": "cceb952f1528",
-  "generatedAt": "2026-09-26T07:03:15.278Z",
+  "version": "e849a2896bd6",
+  "generatedAt": "2026-09-26T07:20:46.277Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 86,
+  "functionCount": 90,
   "entries": [
+    {
+      "name": "enable.command",
+      "description": "Enables a command in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.",
+      "syntax": "enable.command \"name\" [seconds]",
+      "category": "availability",
+      "examples": [
+        "enable.command discord",
+        "enable.command discord 300"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "enable",
+        "command",
+        "temporary",
+        "availability",
+        "activar"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "disable.command",
+      "description": "Disables a command in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.",
+      "syntax": "disable.command \"name\" [seconds]",
+      "category": "availability",
+      "examples": [
+        "disable.command discord",
+        "disable.command discord 300"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "disable",
+        "command",
+        "temporary",
+        "availability",
+        "desactivar"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "enable.redemption",
+      "description": "Enables a redemption in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.",
+      "syntax": "enable.redemption \"name\" [seconds]",
+      "category": "availability",
+      "examples": [
+        "enable.redemption \"Hydrate\"",
+        "enable.redemption \"Hydrate\" 300"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "enable",
+        "redemption",
+        "temporary",
+        "availability",
+        "activar"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "disable.redemption",
+      "description": "Disables a redemption in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.",
+      "syntax": "disable.redemption \"name\" [seconds]",
+      "category": "availability",
+      "examples": [
+        "disable.redemption \"Hydrate\"",
+        "disable.redemption \"Hydrate\" 300"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "disable",
+        "redemption",
+        "temporary",
+        "availability",
+        "desactivar"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
     {
       "name": "roulette.add",
       "description": "Adds an item; multiplier creates copies, weight sets chance per copy.",
