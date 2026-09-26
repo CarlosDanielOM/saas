@@ -4,6 +4,13 @@ import * as ChannelFunctions from '../../../functions/channels/index.js';
 import * as ChatFunctions from '../../../functions/chats/index.js';
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 
+const liveHandler: FunctionHandler = async (_args, ctx) => {
+    const result = await ChannelFunctions.isLive(ctx.broadcasterId);
+    // Never return an error string: it would be truthy inside an AST conditional.
+    if (result.error) return false;
+    return Array.isArray(result.data) && result.data.length > 0;
+};
+
 const subsHandler: FunctionHandler = async (_args, ctx) => {
     const result = await ChannelFunctions.getChannelSubscriptions(ctx.broadcasterId);
     if (result.error) {
@@ -98,6 +105,11 @@ const channelLoginHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerTwitchFunctions(): void {
+    registerFunction('twitch.live', liveHandler, {
+        description: 'Returns true when the channel is live, false when offline or its status cannot be retrieved. Suitable for conditionals.',
+        syntax: 'twitch.live', category: 'twitch-data', examples: ['twitch.live'],
+        keywords: ['live', 'online', 'offline', 'stream status', 'en directo']
+    });
     registerFunction('twitch.subs', subsHandler, {
         description: 'Returns the total subscriber count of the channel.',
         syntax: 'twitch.subs',

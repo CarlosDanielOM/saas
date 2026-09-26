@@ -1,9 +1,9 @@
 {
-  "version": "d065a3185f45",
-  "generatedAt": "2026-09-26T06:30:05.657Z",
+  "version": "cceb952f1528",
+  "generatedAt": "2026-09-26T07:03:15.278Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 81,
+  "functionCount": 86,
   "entries": [
     {
       "name": "roulette.add",
@@ -306,6 +306,28 @@
       ]
     },
     {
+      "name": "warn",
+      "description": "Issues an official Twitch warning to a user with a required reason (1-500 characters).",
+      "syntax": "warn username reason",
+      "category": "moderation",
+      "examples": [
+        "warn someuser Please stop posting spoilers"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "warn",
+        "warning",
+        "advertir",
+        "advertencia"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
       "name": "add.vip",
       "description": "Grants VIP to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).",
       "syntax": "add.vip username [days]",
@@ -515,6 +537,29 @@
         "emote only",
         "solo emotes",
         "modo emotes"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.live",
+      "description": "Returns true when the channel is live, false when offline or its status cannot be retrieved. Suitable for conditionals.",
+      "syntax": "twitch.live",
+      "category": "twitch-data",
+      "examples": [
+        "twitch.live"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "live",
+        "online",
+        "offline",
+        "stream status",
+        "en directo"
       ],
       "destructive": false,
       "surfaces": [
@@ -895,6 +940,27 @@
       ]
     },
     {
+      "name": "lock.prediction",
+      "description": "Closes betting on the current prediction without choosing a winner. Already locked predictions are left unchanged.",
+      "syntax": "lock.prediction",
+      "category": "channel",
+      "examples": [
+        "lock.prediction"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "lock prediction",
+        "close betting",
+        "cerrar prediccion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
       "name": "end.prediction",
       "description": "Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.",
       "syntax": "end.prediction \"exact option title\"",
@@ -954,6 +1020,28 @@
         "vote",
         "votar",
         "votacion"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "get.poll",
+      "description": "Reads the active poll, or the latest poll when none is active, including its question, status, numbered choices and vote totals.",
+      "syntax": "get.poll",
+      "category": "channel",
+      "examples": [
+        "get.poll"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "read poll",
+        "poll results",
+        "votes",
+        "resultados encuesta"
       ],
       "destructive": false,
       "surfaces": [
@@ -1520,6 +1608,30 @@
       ],
       "destructive": false,
       "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "announce",
+      "description": "Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters.",
+      "syntax": "announce [color] message",
+      "category": "chat",
+      "examples": [
+        "announce Welcome everyone!",
+        "announce purple Five minutes left!"
+      ],
+      "aliases": [
+        "chat.announcement"
+      ],
+      "minUserLevel": 7,
+      "keywords": [
+        "announcement",
+        "announce",
+        "anuncio"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
         "authoring"
       ]
     },

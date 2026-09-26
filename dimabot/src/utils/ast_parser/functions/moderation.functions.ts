@@ -624,8 +624,25 @@ const permitHandler: FunctionHandler = async (args, ctx) => {
     return `Everyone has been permitted to bypass moderation filters for ${parsed.seconds} seconds`;
 };
 
+const warnHandler: FunctionHandler = async (args, ctx) => {
+    const raw = args.map(arg => String(arg ?? '')).join(' ').trim();
+    const match = raw.match(/^@?([a-zA-Z0-9_]{1,25})\s+([\s\S]+)$/);
+    if (!match || !match[2].trim()) return 'Usage: $(warn username reason)';
+    const reason = match[2].trim();
+    if (reason.length > 500) return 'warn: reason must be at most 500 characters';
+    const target = await UserFunctions.getTwitchUserByLogin(match[1].toLowerCase());
+    if (target.error || !target.data?.id) return `warn: ${target.message || 'User not found'}`;
+    const result = await ModerationFunctions.warnUser(ctx.broadcasterId, target.data.id, reason);
+    return result.error ? `warn: ${result.message}` : '';
+};
+
 export function registerModerationFunctions(): void {
     startRestoreModeratorWorker();
+    registerFunction('warn', warnHandler, {
+        description: 'Issues an official Twitch warning to a user with a required reason (1-500 characters).',
+        syntax: 'warn username reason', category: 'moderation', examples: ['warn someuser Please stop posting spoilers'],
+        minUserLevel: 7, destructive: true, keywords: ['warn', 'warning', 'advertir', 'advertencia']
+    });
 
     const vipMetadata: FunctionMetadata = {
         description: 'Grants VIP to a user. Optional days makes it temporary (premium/pro plans only, 1-365 days).',

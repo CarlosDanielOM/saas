@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: d065a3185f45
+# Catalog version: cceb952f1528
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -56,8 +56,12 @@
 # $(end.prediction "exact option title") - Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.
 #   Example: $(end.prediction "No")
 #   Example: $(end.prediction 1)
+# $(get.poll) - Reads the active poll, or the latest poll when none is active, including its question, status, numbered choices and vote totals.
+#   Example: $(get.poll)
 # $(get.prediction) - Reads the current active or locked prediction from Twitch and returns its question and numbered option titles. Call this before end.prediction so the winner matches the question and actual option order.
 #   Example: $(get.prediction)
+# $(lock.prediction) - Closes betting on the current prediction without choosing a winner. Already locked predictions are left unchanged.
+#   Example: $(lock.prediction)
 # $(raid channel) - Starts a raid to another channel.
 #   Example: $(raid friendlystreamer)
 # $(set.game game name) - Changes the stream category. Searches Twitch categories by name and picks the best match.
@@ -72,6 +76,9 @@
 #   Example: $(unraid)
 #
 # --- chat ---
+# $(announce [color] message) - Sends a Twitch announcement. Optional first word selects blue, green, orange, purple or primary; default primary. Message must be 1-500 characters. (aliases: chat.announcement)
+#   Example: $(announce Welcome everyone!)
+#   Example: $(announce purple Five minutes left!)
 # $(chat.send message) - Sends a message to chat as the bot.
 #   Example: $(chat.send Hello everyone!)
 #
@@ -162,6 +169,8 @@
 #   Example: $(unmod someuser)
 # $(unvip username) - Removes VIP from a user.
 #   Example: $(unvip someuser)
+# $(warn username reason) - Issues an official Twitch warning to a user with a required reason (1-500 characters).
+#   Example: $(warn someuser Please stop posting spoilers)
 #
 # --- pin ---
 # $(pin.create [duration] message) - Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument. (aliases: pin)
@@ -242,6 +251,8 @@
 #   Example: $(twitch.follows)
 # $(twitch.game) - Returns the current game/category of the stream.
 #   Example: $(twitch.game)
+# $(twitch.live) - Returns true when the channel is live, false when offline or its status cannot be retrieved. Suitable for conditionals.
+#   Example: $(twitch.live)
 # $(twitch.login) - Returns the login name (lowercase, URL-safe) of the channel.
 #   Example: $(twitch.login)
 # $(twitch.subs) - Returns the total subscriber count of the channel.

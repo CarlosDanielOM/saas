@@ -154,6 +154,17 @@ const getPredictionHandler: FunctionHandler = async (_args, ctx) => {
     return `Question: ${current.data.title}\nStatus: ${current.data.status}\nOptions:\n${options.map((option, index) => `${index + 1}: ${option.title}`).join('\n')}`;
 };
 
+const lockPredictionHandler: FunctionHandler = async (_args, ctx) => {
+    const current = await getPrediction(ctx.broadcasterId);
+    if (current.error) return `Error locking prediction: ${current.message}`;
+    if (!current.data?.id || !['ACTIVE', 'LOCKED'].includes(current.data.status || '')) {
+        return 'Error locking prediction: there is no active prediction.';
+    }
+    if (current.data.status === 'LOCKED') return '';
+    const result = await endPrediction(ctx.broadcasterId, current.data.id, 'LOCKED');
+    return result.error ? `Error locking prediction: ${result.message}` : '';
+};
+
 const endPredictionHandler: FunctionHandler = async (args, ctx) => {
     const rawOption = parseRawArgument(args, ctx.argument);
     if (!rawOption) return 'Usage: $(end.prediction "exact option title") or $(end.prediction option_number)';
@@ -215,6 +226,15 @@ const startPollHandler: FunctionHandler = async (args, ctx) => {
 
     const result = await createPoll(ctx.broadcasterId, title, options, duration);
     return result.error ? `Error starting poll: ${result.message}` : '';
+};
+
+const getPollHandler: FunctionHandler = async (_args, ctx) => {
+    const current = await getPoll(ctx.broadcasterId);
+    if (current.error) return `Error getting poll: ${current.message}`;
+    if (!current.data?.id) return 'Error getting poll: there is no poll.';
+    const choices = current.data.choices || [];
+    if (!choices.length) return 'Error getting poll: Twitch returned no choices.';
+    return `Question: ${current.data.title} | Status: ${current.data.status} | Choices: ${choices.map((choice, index) => `${index + 1}: ${choice.title} (${choice.votes ?? 0} votes)`).join(' | ')}`;
 };
 
 const endPollHandler: FunctionHandler = async (_args, ctx) => {
@@ -332,6 +352,11 @@ export function registerChannelFunctions(): void {
         minUserLevel: 7,
         keywords: ['current prediction', 'prediction options', 'read prediction', 'opciones prediccion']
     });
+    registerFunction('lock.prediction', lockPredictionHandler, {
+        description: 'Closes betting on the current prediction without choosing a winner. Already locked predictions are left unchanged.',
+        syntax: 'lock.prediction', category: 'channel', examples: ['lock.prediction'],
+        minUserLevel: 7, keywords: ['lock prediction', 'close betting', 'cerrar prediccion']
+    });
     registerFunction('end.prediction', endPredictionHandler, {
         description: 'Resolves the current active or locked prediction with the exact winning option title or its number (starting at 1). Call get.prediction first to inspect the question and actual option order. The current prediction is fetched again before resolving.',
         syntax: 'end.prediction "exact option title"',
@@ -357,6 +382,11 @@ export function registerChannelFunctions(): void {
         examples: ['start.poll "Best map?;Nuke/Mirage/Inferno;120"'],
         minUserLevel: 7,
         keywords: ['poll', 'encuesta', 'vote', 'votar', 'votacion']
+    });
+    registerFunction('get.poll', getPollHandler, {
+        description: 'Reads the active poll, or the latest poll when none is active, including its question, status, numbered choices and vote totals.',
+        syntax: 'get.poll', category: 'channel', examples: ['get.poll'],
+        minUserLevel: 7, keywords: ['read poll', 'poll results', 'votes', 'resultados encuesta']
     });
     registerFunction('end.poll', endPollHandler, {
         description: 'Ends the current active poll and archives its results. Fetches the current poll from Twitch.',
