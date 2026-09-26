@@ -33,7 +33,9 @@ La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se el
 
 Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
 
-Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y asignar un apodo a cada una. El apodo se usa en los comandos de voz AST; el nombre de la favorita y su apodo también están disponibles al cambiar la voz predeterminada del canal.
+Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible de una voz se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente se convierte en `pinky_pie` si está disponible; si ya se usa, se agrega un número al final.
+
+Usa el apodo de una favorita o el ID de la voz Fish como primer argumento de `$(tts.clone ...)`; el apodo es la opción más práctica para nombres con espacios. `$(set.voice ...)` acepta el apodo o el nombre visible completo de una favorita, incluso si tiene espacios.
 
 Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los límites de créditos de IA se comparten entre las funciones de IA disponibles y varían según el plan; TTS no tiene una asignación mensual aparte.
 
