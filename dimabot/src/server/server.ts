@@ -1,4 +1,5 @@
 import { overlayStudioRoute } from './routes/overlay-studio.route.js';
+import { assetLibraryRoute } from './routes/asset-library.route.js';
 import { rouletteRoute } from './routes/roulette.route.js';
 import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
@@ -122,6 +123,7 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/timers', timerRoute);
         app.use('/roulettes', rouletteRoute);
         app.use('/overlay-studio', overlayStudioRoute);
+        app.use('/asset-library', assetLibraryRoute);
 
         // Setup follow defense routes
         app.use('/follow-defense', followDefenseRoute);

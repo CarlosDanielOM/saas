@@ -10,6 +10,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -21,10 +22,11 @@ interface ChannelResolutionState {
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.css',
-  imports: [LfIconComponent],
+  imports: [LfIconComponent, AssetLibraryDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SettingsPageComponent {
+  readonly assetsOpen = signal(false);
   private readonly route = inject(ActivatedRoute);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);

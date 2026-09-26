@@ -57,6 +57,16 @@
       </article>
     </section>
 
+    @if (isOwnerView() && ownerChannelID()) {
+      <section class="lf-tile lf-section" aria-labelledby="settings-asset-title">
+        <p class="lf-kicker">{{ t('assetLibrary.private') }}</p>
+        <h2 class="lf-h2" id="settings-asset-title">{{ t('assetLibrary.title') }}</h2>
+        <p class="lf-copy lf-copy--tight">{{ t('assetLibrary.description') }}</p>
+        <p class="lf-note">{{ t('assetLibrary.allowances') }}</p>
+        <div class="lf-actions"><button type="button" class="lf-btn lf-btn--primary" (click)="assetsOpen.set(true)">{{ t('assetLibrary.browse') }}</button></div>
+      </section>
+    }
+
     @if (errorMessage()) {
       <div class="lf-banner lf-banner--error" role="alert">
         <p>{{ errorMessage() }}</p>
@@ -196,3 +206,6 @@
     </section>
   </main>
 </div>
+@if (assetsOpen() && isOwnerView() && ownerChannelID()) {
+  <app-asset-library-dialog [owner]="ownerChannelID()" [selectable]="false" (closed)="assetsOpen.set(false)" />
+}

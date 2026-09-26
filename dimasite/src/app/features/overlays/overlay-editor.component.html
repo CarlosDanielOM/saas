@@ -51,7 +51,7 @@
               <div class="design-thumbnail"><div class="design-mini-canvas" [style.aspect-ratio]="design.width + ' / ' + design.height">
                 @for (layer of design.events.follow.widgets; track layer.id) { @if (layer.visible) {
                   <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                    @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [layer]="layer" /> }
+                    @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [owner]="channel" [layer]="layer" /> }
                   </div>
                 } }
               </div></div>
@@ -131,7 +131,7 @@
                             <div class="alert-render">
                               @for (layer of alertLayout(widget); track layer.id) {
                                 @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                  @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [layer]="layer" /> }
+                                  @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [owner]="channel" [layer]="layer" /> }
                                 </div> }
                               }
                             </div>
@@ -139,8 +139,8 @@
                           }
                         }
                         @case ('text') { <strong class="text-preview" [style.color]="widget.color" [style.font-size.px]="widget.fontSize">{{ renderText(widget.text) }}</strong> }
-                        @case ('image') { <app-overlay-layer [layer]="widget" /> }
-                        @case ('video') { <app-overlay-layer [layer]="widget" /> }
+                        @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
+                        @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
                         @case ('animation') { <span class="design-spark" [class.spark-playing]="previewDesign()" aria-hidden="true">✦</span> }
                         @case ('tts') {
                           <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
@@ -225,7 +225,15 @@
           </div></div>
           <div class="property-group"><h3>{{ t('layerOptions') }}</h3><div class="option-row"><span>{{ t('visible') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('visible')" [attr.aria-pressed]="item.visible" (click)="toggleVisibility(item.id)"><lucide-icon [name]="item.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" />{{ item.visible ? t('on') : t('off') }}</button></div><div class="option-row"><span>{{ t('lockPosition') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('lockPosition')" [attr.aria-pressed]="item.locked" (click)="toggleLock(item.id)"><lucide-icon [name]="icons.LockKeyhole" [size]="15" aria-hidden="true" />{{ item.locked ? t('on') : t('off') }}</button></div></div>
           <div class="property-group"><h3>{{ t('stackOrder') }}</h3><div class="order-actions"><button type="button" (click)="moveLayer(1)">{{ t('bringForward') }}</button><button type="button" (click)="moveLayer(-1)">{{ t('sendBackward') }}</button></div></div>
-          @if (item.kind === 'image' || item.kind === 'video') { <label class="property-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (change)="patchSelected({mediaUrl:value($event)})" placeholder="https://" /></label><p>{{ t('assetsLater') }}</p> }
+          @if (item.kind === 'image' || item.kind === 'video') {
+            <button type="button" class="toolbar-button" [disabled]="!channel || busy()" (click)="assetPickerOpen.set(true)">{{ language.translate('assetLibrary.browse') }}</button>
+            @if (item.assetId) {
+              <p>{{ language.translate('assetLibrary.privateSelected') }}</p>
+              <button type="button" class="toolbar-button" (click)="patchSelected({assetId:undefined})">{{ language.translate('assetLibrary.detach') }}</button>
+            } @else {
+              <label class="property-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (change)="patchSelected({mediaUrl:value($event),assetId:undefined})" placeholder="https://" /></label>
+            }
+          }
           @if (item.kind === 'text' || item.kind === 'animation') { <label class="property-field"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({color:value($event)})" /></label> }
           @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (change)="patchSelected({fontSize:+value($event)})" /></label> }
           <div class="danger-actions"><button type="button" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="16" aria-hidden="true" />{{ t('duplicate') }}</button><button type="button" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" />{{ t('delete') }}</button></div>
@@ -241,3 +249,7 @@
 </fieldset>
 }
 </div>
+
+@if (assetPickerOpen() && channel) {
+  <app-asset-library-dialog [owner]="channel" [kind]="assetKind()" (selected)="useAsset($event)" (closed)="assetPickerOpen.set(false)" />
+}

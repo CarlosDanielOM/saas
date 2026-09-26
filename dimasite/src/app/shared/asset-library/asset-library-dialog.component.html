@@ -1,0 +1,48 @@
+<dialog #dialog aria-labelledby="asset-library-title" aria-describedby="asset-library-description" (cancel)="close($event)" (keydown)="trapFocus($event)">
+  <header>
+    <div><span class="kicker"><lucide-icon [img]="icons.LockKeyhole" [size]="14" /> {{ t('private') }}</span><h2 id="asset-library-title">{{ t('title') }}</h2></div>
+    <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="busy()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" /></button>
+  </header>
+  <p id="asset-library-description" class="description">{{ t('description') }}</p>
+  @if (library(); as data) {
+    <section class="quota" [attr.data-plan]="data.planTier" [attr.aria-label]="t('storage')">
+      <div><strong>{{ t('storage') }}</strong><span>{{ t('usage', { used: size(data.usedBytes), total: size(data.quotaBytes) }) }}</span></div>
+      <progress [value]="usage()" max="100" [attr.aria-label]="t('storage')"></progress>
+      <p>{{ t('allowances') }}</p>
+    </section>
+    <div class="tools">
+      <label class="search"><lucide-icon [img]="icons.Search" [size]="18" /><input type="search" autofocus [attr.aria-label]="t('search')" [placeholder]="t('search')" [value]="query()" (input)="search($event)" /></label>
+      @if (kind() === 'all') { <select [attr.aria-label]="t('filter')" [value]="filter()" (change)="setFilter($event)"><option value="all">{{ t('all') }}</option><option value="image">{{ t('images') }}</option><option value="video">{{ t('videos') }}</option></select> }
+      <input #fileInput type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" (change)="upload($event)" />
+      <button class="primary" type="button" [disabled]="busy() || full()" (click)="fileInput.click()"><lucide-icon [img]="icons.Upload" [size]="17" />{{ t(busy() ? 'working' : 'upload') }}</button>
+    </div>
+    <p class="hint">{{ t('formats') }}</p>
+    @if (full()) { <p class="warning" role="status">{{ t('quotaExceeded') }}</p> }
+  }
+  @if (error()) { <div class="warning" role="alert">{{ t(error()) }} @if (!library()) { <button type="button" (click)="retry()">{{ t('retry') }}</button> }</div> }
+  <section class="body" [attr.aria-busy]="loading() || busy()" [attr.aria-label]="t('title')">
+    @if (loading()) { <div class="empty" role="status">{{ t('loading') }}</div> }
+    @else if (library()) {
+      @if (visible().length) {
+        <div class="grid">
+          @for (asset of visible(); track asset.id) {
+            <button type="button" class="asset" [class.chosen]="chosen()?.id === asset.id" [attr.aria-pressed]="chosen()?.id === asset.id" [disabled]="busy()" (click)="choose(asset)">
+              <div class="thumbnail">@if (asset.kind === 'image') { <app-asset-preview [assetId]="asset.id" [owner]="owner()" /> } @else { <lucide-icon [img]="icons.Image" [size]="32" /> <span>{{ t('video') }}</span> }</div>
+              <strong>{{ asset.name }}</strong><span>{{ size(asset.bytes) }} · {{ asset.width }} × {{ asset.height }}</span>
+            </button>
+          }
+        </div>
+        @if (visible().length < filtered().length) { <button class="more" type="button" (click)="showMore()">{{ t('more') }}</button> }
+      } @else { <div class="empty"><lucide-icon [img]="icons.Image" [size]="34" /><h3>{{ t(library()!.assets.length ? 'noResults' : 'empty') }}</h3><p>{{ t('emptyHelp') }}</p></div> }
+    }
+  </section>
+  @if (chosen(); as asset) {
+    <section class="selection"><div class="selected-preview"><app-asset-preview [assetId]="asset.id" [owner]="owner()" [kind]="asset.kind" [name]="asset.name" [controls]="true" /></div><div><strong>{{ asset.name }}</strong><p>{{ size(asset.bytes) }} · {{ asset.width }} × {{ asset.height }}</p></div></section>
+  }
+  <footer>
+    @if (chosen()) { <button type="button" class="danger" [disabled]="busy()" (click)="remove()">{{ t(confirming() ? 'confirmDelete' : 'delete') }}</button> }
+    @if (confirming()) { <button type="button" [disabled]="busy()" (click)="confirming.set(false)">{{ t('cancel') }}</button> }
+    @if (selectable()) { <button type="button" class="primary use" [disabled]="!chosen() || busy() || (kind() !== 'all' && chosen()?.kind !== kind())" (click)="use()">{{ t('use') }}</button> }
+    @else { <button type="button" class="primary use" [disabled]="busy()" (click)="close()">{{ t('close') }}</button> }
+  </footer>
+</dialog>

@@ -4,6 +4,8 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, TestChannel, TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
 import { OverlayMediaComponent } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
+import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
+import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
 import { OverlayApi, StudioState } from './overlay-api.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
@@ -19,7 +21,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent], providers: [OverlayTestMediaService],
+  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent], providers: [OverlayTestMediaService],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()' }
@@ -37,7 +39,9 @@ export class OverlayEditorComponent {
   readonly confirmRotate = signal(false);
   readonly confirmDelete = signal(false);
   private revision = 0;
-  private channel = '';
+  channel = '';
+  readonly assetPickerOpen = signal(false);
+  readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
   private disposed = false;
   readonly language = inject(LanguageService);
   private readonly theme = inject(ThemeService);
@@ -137,6 +141,10 @@ export class OverlayEditorComponent {
   }
   private patch(id: string, changes: Partial<OverlayWidget>): void { this.updateWidgets(all => all.map(w => w.id === id ? { ...w, ...changes } : w)); }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
+  useAsset(asset: DesignAsset): void {
+    if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
+    this.assetPickerOpen.set(false);
+  }
   widgetIcon(kind: WidgetKind) { return ({ tts: Volume2, trigger: Zap, clip: Clapperboard, alert: Bell, text: Type, image: Image, video: Play, animation: Sparkles })[kind]; }
   widgetName(widget: OverlayWidget): string { return widget.name || this.t(`${widget.kind}Name`); }
   addWidget(kind: WidgetKind, position?: { x: number; y: number }): void {

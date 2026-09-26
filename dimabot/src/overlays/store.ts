@@ -30,8 +30,10 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (w.name !== undefined) item.name = typeof w.name === 'string' && w.name.length <= 80 ? w.name : string(w.name, 80);
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
-    if (w.mediaUrl) { const url = string(w.mediaUrl, 2048); if (!/^https:\/\//i.test(url) || new URL(url).username || new URL(url).password) throw new OverlayError('Media requires an HTTPS URL'); item.mediaUrl = url; }
-    if (w.assetId) item.assetId = id(w.assetId);
+    if (w.assetId) {
+      if (!['image', 'video'].includes(kind) || !/^[a-f0-9]{24}$/.test(String(w.assetId))) throw new OverlayError('Invalid design asset');
+      item.assetId = id(w.assetId);
+    } else if (w.mediaUrl) { const url = string(w.mediaUrl, 2048); if (!/^https:\/\//i.test(url) || new URL(url).username || new URL(url).password) throw new OverlayError('Media requires an HTTPS URL'); item.mediaUrl = url; }
     if (w.color) { if (!/^#[0-9a-f]{6}$/i.test(String(w.color))) throw new OverlayError('Invalid color'); item.color = String(w.color); }
     if (w.fontSize !== undefined) item.fontSize = number(w.fontSize, 8, 300);
     return item;
@@ -68,9 +70,9 @@ export async function load(channel: string): Promise<StudioState> {
   }
   return { schemaVersion: 1, revision: stored!.revision, scenes: stored!.scenes, designs: stored!.designs };
 }
-export async function change(channel: string, revision: number, operation: (state: StudioState) => void): Promise<StudioState> {
+export async function change(channel: string, revision: number, operation: (state: StudioState) => void | Promise<void>): Promise<StudioState> {
   const state = await load(channel); if (!Number.isInteger(revision) || revision !== state.revision) throw new OverlayError('The draft changed. Reload before saving.', 409);
-  operation(state);
+  await operation(state);
   const result = await Studio.updateOne({ _id: channel, revision }, { $set: { scenes: state.scenes, designs: state.designs }, $inc: { revision: 1 } });
   if (!result.modifiedCount) throw new OverlayError('The draft changed. Reload before saving.', 409);
   return { ...state, revision: revision + 1 };

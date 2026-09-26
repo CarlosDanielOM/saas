@@ -14,7 +14,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text'].includes(w.kind)) {
-        <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [layer]="w" /></div>
+        <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" /></div>
       } }
       @for (job of playing(); track job.event.id) {
         @for (w of job.widgets; track w.id) {
@@ -25,7 +25,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [layer]="part" (failed)="finishPlacement(job.event.id,w.id)" /></div>
+                  <div class="placement" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" (failed)="finishPlacement(job.event.id,w.id)" /></div>
                 } }
               }
             }
@@ -41,7 +41,7 @@ export class OverlayRuntimeComponent {
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
   private readonly language = inject(LanguageService);
-  private readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
+  readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
   private readonly clientId = crypto.randomUUID();
   private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: { clientId: this.clientId }, transports: ['websocket'], autoConnect: false });
   private queue: Event[] = [];
