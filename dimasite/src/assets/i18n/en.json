@@ -2523,6 +2523,10 @@
         "kick": "Kick",
         "none": "None"
       },
+      "tiers": {
+        "premium": "Premium",
+        "pro": "Pro"
+      },
       "chip": "Live now",
       "channels": "channels",
       "emptyHero": "No channels live right now — metrics still update live."

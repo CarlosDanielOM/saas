@@ -27,6 +27,7 @@ export interface LiveChannelBoardEntry {
   viewers: number;
   profileImageUrl: string;
   botPlatforms: Array<'twitch' | 'kick'>;
+  planTier: 'free' | 'premium' | 'pro';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -187,7 +188,8 @@ export class SiteAnalyticsService {
           channel: String(raw['channel'] || raw['channelID'] || '').trim(),
           viewers: this.safeNumber(raw['viewers']),
           profileImageUrl: String(raw['profileImageUrl'] || ''),
-          botPlatforms
+          botPlatforms,
+          planTier: raw['planTier'] === 'premium' || raw['planTier'] === 'pro' ? raw['planTier'] : 'free'
         };
       })
       .filter((e): e is LiveChannelBoardEntry => Boolean(e && e.channel))

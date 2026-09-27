@@ -11,6 +11,7 @@ export interface ILiveChannel {
     startedAt?: string;
     fetchedAt?: string;
     botPlatforms: ('twitch' | 'kick')[];
+    planTier: 'free' | 'premium' | 'pro';
 }
 
 export interface ISiteAnalytics {
@@ -40,7 +41,8 @@ const liveChannelSchema = new Schema<ILiveChannel>({
     botPlatforms: {
         type: [{ type: String, enum: ['twitch', 'kick'] }],
         default: []
-    }
+    },
+    planTier: { type: String, default: 'free', enum: ['free', 'premium', 'pro'] }
 }, { _id: false });
 
 const siteAnalyticsSchema = new Schema<ISiteAnalytics>({

@@ -54,6 +54,7 @@ export interface LiveChannelNormalized {
     startedAt: string;
     fetchedAt: string;
     botPlatforms: ('twitch' | 'kick')[];
+    planTier: 'free' | 'premium' | 'pro';
 }
 
 interface SiteAnalyticsSnapshot {
@@ -142,7 +143,8 @@ function normalizeLiveChannel(value: unknown): LiveChannelNormalized | null {
         profileImageUrl: String(raw.profileImageUrl || ''),
         startedAt: String(raw.startedAt || ''),
         fetchedAt: String(raw.fetchedAt || ''),
-        botPlatforms: botPlatformsRaw
+        botPlatforms: botPlatformsRaw,
+        planTier: raw.planTier === 'premium' || raw.planTier === 'pro' ? raw.planTier : 'free'
     };
 }
 
@@ -321,11 +323,12 @@ async function fetchProfileImagesByIds(channelIDs: string[]): Promise<Map<string
 interface AccountInfo {
     channel: string;
     botPlatforms: ('twitch' | 'kick')[];
+    planTier: 'free' | 'premium' | 'pro';
 }
 
-async function refreshLiveChannelsBoard(): Promise<LiveChannelNormalized[]> {
+export async function refreshLiveChannelsBoard(): Promise<LiveChannelNormalized[]> {
     const users = await UsersSchema.find({ 'accounts.type': 'twitch' })
-        .select('accounts')
+        .select('accounts plan_tier')
         .lean();
     const accountsByChannelID = new Map<string, AccountInfo>();
 
@@ -346,7 +349,8 @@ async function refreshLiveChannelsBoard(): Promise<LiveChannelNormalized[]> {
         }
         accountsByChannelID.set(String(twitchAccount.id), {
             channel: String(twitchAccount.name || twitchAccount.id),
-            botPlatforms: Array.from(enabledPlatforms)
+            botPlatforms: Array.from(enabledPlatforms),
+            planTier: user.plan_tier === 'premium' || user.plan_tier === 'pro' ? user.plan_tier : 'free'
         });
     }
 
@@ -370,7 +374,8 @@ async function refreshLiveChannelsBoard(): Promise<LiveChannelNormalized[]> {
                 profileImageUrl: String(profileByChannelID.get(channelID) || ''),
                 startedAt: String(stream.started_at || ''),
                 fetchedAt,
-                botPlatforms: account?.botPlatforms || []
+                botPlatforms: account?.botPlatforms || [],
+                planTier: account?.planTier || 'free'
             };
         })
         .sort((a, b) => b.viewers - a.viewers);

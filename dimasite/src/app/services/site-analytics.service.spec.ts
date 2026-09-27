@@ -4,7 +4,7 @@ import { compareLiveChannels } from './live-channel-order';
 import type { LiveChannelBoardEntry } from './site-analytics.service';
 
 function channel(channel: string, viewers: number, botPlatforms: LiveChannelBoardEntry['botPlatforms']): LiveChannelBoardEntry {
-  return { channelID: channel, channel, viewers, profileImageUrl: '', botPlatforms };
+  return { channelID: channel, channel, viewers, profileImageUrl: '', botPlatforms, planTier: 'free' };
 }
 
 describe('landing live channel order', () => {

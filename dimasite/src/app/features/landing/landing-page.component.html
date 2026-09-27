@@ -99,6 +99,11 @@
                 } @else {
                   <span>{{ t('landing.liveNow.platforms.none') }}</span>
                 }
+                @if (channel.botPlatforms.length > 0 && channel.planTier !== 'free') {
+                  <span [class.lf-tag--premium]="channel.planTier === 'premium'" [class.lf-tag--pro]="channel.planTier === 'pro'">
+                    {{ t('landing.liveNow.tiers.' + channel.planTier) }}
+                  </span>
+                }
               </div>
             </div>
           </div>
@@ -125,6 +130,11 @@
                     }
                   } @else {
                     <span>{{ t('landing.liveNow.platforms.none') }}</span>
+                  }
+                  @if (channel.botPlatforms.length > 0 && channel.planTier !== 'free') {
+                    <span [class.lf-tag--premium]="channel.planTier === 'premium'" [class.lf-tag--pro]="channel.planTier === 'pro'">
+                      {{ t('landing.liveNow.tiers.' + channel.planTier) }}
+                    </span>
                   }
                 </div>
                 <span class="lf-spotlight__row-viewers">{{ formatViewers(channel.viewers) }}</span>
