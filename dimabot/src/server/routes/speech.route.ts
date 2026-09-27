@@ -50,7 +50,8 @@ interface SpeechPostBody {
     };
 }
 
-type SettingsAccessRole = 'owner' | 'manager' | 'admin' | 'none';
+type TtsAccessRole = 'owner' | 'manager' | 'admin' | 'none';
+type TtsAccessPermission = 'tts:view' | 'tts:manage';
 
 function normalizeRouteParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] || '' : value || '';
@@ -84,7 +85,7 @@ async function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, pro
     return language === 'en' ? settings.voices.en : settings.voices.es;
 }
 
-async function getSettingsAccess(requesterID: string, channelID: string, permission: 'settings:view' | 'settings:manage' = 'settings:view'): Promise<SettingsAccessRole> {
+async function getTtsAccess(requesterID: string, channelID: string, permission: TtsAccessPermission = 'tts:view'): Promise<TtsAccessRole> {
     if (requesterID === channelID) {
         return 'owner';
     }
@@ -100,7 +101,7 @@ async function getSettingsAccess(requesterID: string, channelID: string, permiss
         permissions: { $in: ['*', permission] }
     }).lean();
 
-    return admin ? (admin.permissions.includes('*') || admin.permissions.includes('settings:manage') ? 'manager' : 'admin') : 'none';
+    return admin ? (admin.permissions.includes('*') || admin.permissions.includes('tts:manage') ? 'manager' : 'admin') : 'none';
 }
 
 router.get('/settings/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
@@ -129,7 +130,7 @@ router.get('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
-        const role = await getSettingsAccess(requesterID, channelID);
+        const role = await getTtsAccess(requesterID, channelID);
         if (role === 'none') {
             return res.status(403).json({
                 error: true,
@@ -191,11 +192,11 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
-        const role = await getSettingsAccess(requesterID, channelID, 'settings:manage');
+        const role = await getTtsAccess(requesterID, channelID, 'tts:manage');
         if (role === 'none') {
             return res.status(403).json({
                 error: true,
-                message: 'Settings Manage permission required to update TTS settings',
+                message: 'TTS Manage permission required to update TTS settings',
                 status: 403
             });
         }
@@ -238,12 +239,12 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
     }
 });
 
-// These routes share settings authorization; preview tickets are single-use.
+// These routes share TTS authorization; preview tickets are single-use.
 router.get('/voices/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID) === 'none') {
+        if (!req.user || await getTtsAccess(req.user.id, channelID) === 'none') {
             return res.status(403).json({ error: true, status: 403, message: 'Access denied' });
         }
         const data = await searchFishVoices(parseVoiceSearch(req.query));
@@ -257,7 +258,7 @@ router.get('/favorites/:channelID', authMiddleware as any, async (req: AuthReque
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID) === 'none') {
+        if (!req.user || await getTtsAccess(req.user.id, channelID) === 'none') {
             return res.status(403).json({ error: true, status: 403, message: 'Access denied' });
         }
         return res.json({ error: false, status: 200, data: await getFishVoiceFavorites(channelID) });
@@ -269,8 +270,8 @@ router.post('/favorites/:channelID', authMiddleware as any, async (req: AuthRequ
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
-            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to save voices' });
+        if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'TTS Manage permission required to save voices' });
         }
         const id = req.body?.id;
         if (typeof id !== 'string' || !/^[a-f\d]{32}$/i.test(id)) {
@@ -289,8 +290,8 @@ router.patch('/favorites/:channelID/:voiceID', authMiddleware as any, async (req
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
-            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to rename favorite voices' });
+        if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'TTS Manage permission required to rename favorite voices' });
         }
         const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
         if (!/^[a-f\d]{32}$/.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
@@ -307,8 +308,8 @@ router.delete('/favorites/:channelID/:voiceID', authMiddleware as any, async (re
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
-            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to remove voices' });
+        if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'TTS Manage permission required to remove voices' });
         }
         const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
         if (!/^[a-f\d]{32}$/i.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
@@ -322,8 +323,8 @@ router.post('/preview-session/:channelID', authMiddleware as any, async (req: Au
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!/^\d+$/.test(channelID) || !req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
-            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to preview voices' });
+        if (!/^\d+$/.test(channelID) || !req.user || await getTtsAccess(req.user.id, channelID, 'tts:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'TTS Manage permission required to preview voices' });
         }
         const ticket = await createPreviewTicket(channelID);
         return res.json({ error: false, status: 200, data: { ticket } });

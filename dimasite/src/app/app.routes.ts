@@ -904,7 +904,7 @@ export const routes: Routes = [
               import('./features/tts/tts-page.component').then((m) => m.TtsPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'settings:view'
+              permission: 'tts:view'
             },
             title: 'Text to Speech | DomDimaBot'
           },

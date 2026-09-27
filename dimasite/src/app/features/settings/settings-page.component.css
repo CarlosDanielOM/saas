@@ -512,76 +512,143 @@
 .lf-permission-modes {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin: 1.1rem 0;
+  gap: 0.5rem;
+  margin: 1.1rem 0 1rem;
+}
+
+.lf-permission-mode,
+.lf-permission-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1.15;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.lf-permission-mode {
+  padding: 0.55rem 1rem;
+  font-size: 0.86rem;
+}
+
+.lf-permission-mode--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.lf-permission-mode code,
+.lf-permission-pill code {
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  letter-spacing: -0.02em;
+}
+
+.lf-permission-full-note {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.lf-permission-section {
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--line);
 }
 
 .lf-permission-section + .lf-permission-section {
-  margin-top: 1.3rem;
+  margin-top: 1rem;
 }
 
-.lf-permission-section h4 {
-  margin: 0 0 0.35rem;
+.lf-permission-section__head h4 {
+  margin: 0 0 0.25rem;
   color: var(--fg);
-  font-size: 1rem;
+  font-size: 0.94rem;
 }
 
-.lf-permission-section .lf-note {
-  margin: 0.2rem 0 0.7rem;
+.lf-permission-section__head .lf-note {
+  margin: 0;
+  font-size: 0.82rem;
 }
 
-.lf-permission-grid {
-  display: grid;
+.lf-permission-pills {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.8rem;
 }
 
-.lf-permission-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 0.9rem;
-  background: var(--input-bg);
+.lf-permission-pill {
+  max-width: 100%;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.79rem;
+  white-space: nowrap;
 }
 
-.lf-permission-row--chat {
-  margin-top: 0.8rem;
+.lf-permission-pill::before {
+  content: '';
+  width: 0.48rem;
+  height: 0.48rem;
+  flex: 0 0 auto;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+
+.lf-permission-pill--selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.lf-permission-row strong {
-  font-size: 0.9rem;
+.lf-permission-pill--manage.lf-permission-pill--selected {
+  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+  background: var(--gold-soft);
+  color: var(--gold);
 }
 
-.lf-permission-row__checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+.lf-permission-pill--chat.lf-permission-pill--selected {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
-.lf-permission-row__checks label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  color: var(--fg);
-  font-size: 0.86rem;
-  cursor: pointer;
+.lf-permission-pill--selected::before {
+  background: currentColor;
+  opacity: 1;
 }
 
-.lf-permission-row__checks input {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: var(--accent);
+.lf-permission-mode:hover:not(:disabled),
+.lf-permission-pill:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: currentColor;
 }
 
-@media (min-width: 640px) {
-  .lf-permission-row {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+.lf-permission-mode:focus-visible,
+.lf-permission-pill:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.lf-permission-pill:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.lf-permission-hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-permission-mode,
+  .lf-permission-pill {
+    transition: none;
   }
 }
 

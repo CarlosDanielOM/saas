@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire((process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser') + '/package.json');
 const { chromium } = require('playwright');
-const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4202';
+const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4204';
 const channelID = '99004401';
 const adminID = '99004402';
 const streamer = 'permission_streamer';
@@ -52,7 +52,7 @@ async function fixture(grants, width) {
       const permission = url.searchParams.get('permission');
       data = { allowed: grants.has('*') || grants.has(permission), role: 'admin' };
     } else if (url.pathname === `/speech/settings/${channelID}`) {
-      data = { role: grants.has('*') || grants.has('settings:manage') ? 'manager' : 'admin', settings: speech };
+      data = { role: grants.has('*') || grants.has('tts:manage') ? 'manager' : 'admin', settings: speech };
     } else if (url.pathname === `/speech/favorites/${channelID}`) data = [];
     else if (url.pathname === `/commands/${channelID}`) data = { commands: [command] };
     return route.fulfill({ json: { error: false, status: 200, data } });
@@ -69,7 +69,7 @@ async function visit(page, path) {
 }
 
 try {
-  const view = await fixture(new Set(['dashboard:view', 'commands:view', 'settings:view']), 320);
+  const view = await fixture(new Set(['dashboard:view', 'commands:view', 'tts:view']), 320);
   await visit(view.page, 'modules');
   await view.page.getByText('Text to Speech', { exact: true }).waitFor();
   assert.equal(await view.page.locator('.lf-mod').filter({ hasText: 'DimaFX' }).count(), 0, 'module without View grant is hidden');
@@ -84,18 +84,18 @@ try {
   await visit(view.page, 'modules/tts');
   await view.page.locator('section[data-testid="tts-command"]').waitFor();
   await view.page.locator('.lf-toggle-row input[type="checkbox"]').first().waitFor({ state: 'attached' });
-  assert.equal(await view.page.locator('.lf-toggle-row input[type="checkbox"]').first().isDisabled(), true, 'Settings View is read-only');
+  assert.equal(await view.page.locator('.lf-toggle-row input[type="checkbox"]').first().isDisabled(), true, 'TTS View is read-only');
   assert.equal(await view.page.getByRole('button', { name: 'Edit TTS command' }).count(), 0, 'Commands View cannot edit TTS command');
   assert.equal(await view.page.getByRole('link', { name: 'Open Commands' }).count(), 1, 'Commands View can open command list');
   assert.deepEqual(view.errors, [], 'View-only pages have no browser runtime errors');
   await view.context.close();
 
-  const settingsOnly = await fixture(new Set(['dashboard:view', 'settings:view']), 390);
+  const settingsOnly = await fixture(new Set(['dashboard:view', 'tts:view']), 390);
   await visit(settingsOnly.page, 'modules/tts');
   await settingsOnly.page.locator('section[data-testid="tts-command"]').waitFor();
   await settingsOnly.page.waitForTimeout(150);
   assert.equal(await settingsOnly.page.getByRole('link', { name: 'Open Commands' }).count(), 0, 'TTS does not link to an ungranted command page');
-  assert.deepEqual(settingsOnly.errors, [], 'Settings-only page has no browser runtime errors');
+  assert.deepEqual(settingsOnly.errors, [], 'TTS-only page has no browser runtime errors');
   await settingsOnly.context.close();
 
   const full = await fixture(new Set(['*']), 1280);

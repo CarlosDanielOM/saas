@@ -458,8 +458,8 @@
         "copy": "`!s` and `$(tts ...)` use the default engine selected above. Use `$(tts.speak ...)` to force Piper, or `$(tts.fish ...)` / `$(tts.clone ...)` for Fish Audio voices."
       },
       "footer": {
-        "owner": "You can change these TTS defaults with Settings Manage permission.",
-        "readOnly": "You can view the live TTS setup, but need Settings Manage permission to change it."
+        "owner": "You can change these TTS defaults with tts:manage.",
+        "readOnly": "You can view the live TTS setup, but need tts:manage to change it."
       },
       "actions": {
         "save": "Save TTS settings",
@@ -2365,6 +2365,7 @@
         "description": "Choose full access or select what this admin can view and change. Owner-only billing and account controls stay with the streamer.",
         "mode": "Permission mode",
         "full": "Full access",
+        "fullDescription": "The * grant includes Chat Admin and every channel website permission.",
         "custom": "Custom access",
         "chatOnly": "Chat only",
         "websiteOnly": "Website only",
@@ -2375,7 +2376,7 @@
         "chatDescription": "Grants elevated bot permissions in Twitch chat. This alone does not grant access to the channel website.",
         "chatEnabled": "Chat Admin",
         "websiteTitle": "Channel website",
-        "websiteDescription": "Choose which website features this admin can view or manage. Leave these clear for chat-only access.",
+        "websiteDescription": "Select the exact website grants to give this admin. Leave these clear for chat-only access.",
         "dashboardIncluded": "Dashboard View is included when any other website permission is selected.",
         "oneRequired": "Select Chat Admin or at least one website permission.",
         "edit": "Edit permissions",
@@ -2386,7 +2387,7 @@
         "cancel": "Cancel",
         "categories": {
           "dashboard": "Dashboard", "analytics": "Analytics", "billing": "AI usage and credits", "referrals": "Referrals", "summaries": "Stream summaries", "clips": "Clip recommendations",
-          "commands": "Commands and timers", "triggers": "Triggers and media", "settings": "Bot and TTS settings",
+          "commands": "Commands and timers", "triggers": "Triggers and media", "settings": "Bot settings", "tts": "Text to Speech",
           "moderation": "Moderation and Follow Defense", "eventsubs": "Event subscriptions", "rewards": "Rewards and redemptions",
           "ai": "AI personality", "memories": "AI memories", "dimafx": "DimaFX", "admins": "Admin list", "chat": "Admin chat role"
         }
@@ -2474,8 +2475,8 @@
         "copy": "`tts.ai` and `tts.clone` are wired into the contract now, but they will stay unavailable until the future Runpod voice providers are added."
       },
       "footer": {
-        "owner": "You can change these TTS defaults with Settings Manage permission.",
-        "readOnly": "You can view the live TTS setup, but need Settings Manage permission to change it."
+        "owner": "You can change these TTS defaults with tts:manage.",
+        "readOnly": "You can view the live TTS setup, but need tts:manage to change it."
       },
       "actions": {
         "save": "Save TTS settings",

@@ -458,8 +458,8 @@
         "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, o `$(tts.fish ...)` / `$(tts.clone ...)` para voces de Fish Audio."
       },
       "footer": {
-        "owner": "Puedes cambiar estos valores de TTS con el permiso Gestión de configuración.",
-        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso Gestión de configuración para cambiarla."
+        "owner": "Puedes cambiar estos valores de TTS con el permiso tts:manage.",
+        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso tts:manage para cambiarla."
       },
       "actions": {
         "save": "Guardar configuracion TTS",
@@ -2365,6 +2365,7 @@
         "description": "Elige acceso completo o selecciona lo que este admin puede ver y cambiar. Los controles de facturacion y cuenta exclusivos del propietario siguen con el streamer.",
         "mode": "Modo de permisos",
         "full": "Acceso completo",
+        "fullDescription": "El permiso * incluye Admin del chat y todos los permisos del sitio web del canal.",
         "custom": "Acceso personalizado",
         "chatOnly": "Solo chat",
         "websiteOnly": "Solo sitio web",
@@ -2375,7 +2376,7 @@
         "chatDescription": "Otorga permisos elevados del bot en el chat de Twitch. Por si solo, no da acceso al sitio web del canal.",
         "chatEnabled": "Admin del chat",
         "websiteTitle": "Sitio web del canal",
-        "websiteDescription": "Elige las funciones del sitio web que este admin puede ver o gestionar. Dejalas sin marcar para dar acceso solo al chat.",
+        "websiteDescription": "Selecciona los permisos exactos del sitio web para este admin. Dejalos sin marcar para dar acceso solo al chat.",
         "dashboardIncluded": "La opcion Ver del dashboard se incluye al seleccionar cualquier otro permiso del sitio web.",
         "oneRequired": "Selecciona Admin del chat o al menos un permiso del sitio web.",
         "edit": "Editar permisos",
@@ -2386,7 +2387,7 @@
         "cancel": "Cancelar",
         "categories": {
           "dashboard": "Dashboard", "analytics": "Analiticas", "billing": "Uso y creditos de IA", "referrals": "Referidos", "summaries": "Resumenes de stream", "clips": "Recomendaciones de clips",
-          "commands": "Comandos y temporizadores", "triggers": "Triggers y medios", "settings": "Configuracion del bot y TTS",
+          "commands": "Comandos y temporizadores", "triggers": "Triggers y medios", "settings": "Configuracion del bot", "tts": "Texto a voz",
           "moderation": "Moderacion y defensa contra follows", "eventsubs": "Suscripciones de eventos", "rewards": "Recompensas y canjes",
           "ai": "Personalidad de IA", "memories": "Memorias de IA", "dimafx": "DimaFX", "admins": "Lista de admins", "chat": "Rol admin en el chat"
         }
@@ -2474,8 +2475,8 @@
         "copy": "`tts.ai` y `tts.clone` ya estan conectados al contrato, pero seguiran no disponibles hasta agregar los providers futuros de voz en Runpod."
       },
       "footer": {
-        "owner": "Puedes cambiar estos valores de TTS con el permiso Gestión de configuración.",
-        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso Gestión de configuración para cambiarla."
+        "owner": "Puedes cambiar estos valores de TTS con el permiso tts:manage.",
+        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso tts:manage para cambiarla."
       },
       "actions": {
         "save": "Guardar configuracion TTS",

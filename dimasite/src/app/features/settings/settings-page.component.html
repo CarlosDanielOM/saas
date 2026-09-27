@@ -170,52 +170,40 @@
             </button>
           </div>
           <div class="lf-permission-modes" role="group" [attr.aria-label]="t('settings.admins.permissions.mode')">
-            <button type="button" class="lf-btn" [class.lf-btn--primary]="fullAccess()" [attr.aria-pressed]="fullAccess()" (click)="fullAccess.set(true)">
-              {{ t('settings.admins.permissions.full') }}
+            <button type="button" class="lf-permission-mode" [class.lf-permission-mode--active]="fullAccess()" [attr.aria-pressed]="fullAccess()" (click)="fullAccess.set(true)">
+              <code>*</code> {{ t('settings.admins.permissions.full') }}
             </button>
-            <button type="button" class="lf-btn" [class.lf-btn--primary]="!fullAccess()" [attr.aria-pressed]="!fullAccess()" (click)="fullAccess.set(false)">
+            <button type="button" class="lf-permission-mode" [class.lf-permission-mode--active]="!fullAccess()" [attr.aria-pressed]="!fullAccess()" (click)="fullAccess.set(false)">
               {{ t('settings.admins.permissions.custom') }}
             </button>
           </div>
-          @if (!fullAccess()) {
-            <div class="lf-permission-section">
-              <h4>{{ t('settings.admins.permissions.chatTitle') }}</h4>
-              <p class="lf-note">{{ t('settings.admins.permissions.chatDescription') }}</p>
-              <div class="lf-permission-row lf-permission-row--chat">
-                <strong>{{ t('settings.admins.permissions.categories.chat') }}</strong>
-                <div class="lf-permission-row__checks">
-                  <label>
-                    <input type="checkbox" [checked]="chatAdminEnabled()" (change)="onChatAdminChange($event)" />
-                    {{ t('settings.admins.permissions.chatEnabled') }}
-                  </label>
-                </div>
+          @if (fullAccess()) {
+            <p class="lf-note lf-permission-full-note">{{ t('settings.admins.permissions.fullDescription') }}</p>
+          } @else {
+            <div class="lf-permission-section" role="group" [attr.aria-label]="t('settings.admins.permissions.chatTitle')">
+              <div class="lf-permission-section__head">
+                <h4>{{ t('settings.admins.permissions.chatTitle') }}</h4>
+                <p class="lf-note">{{ t('settings.admins.permissions.chatDescription') }}</p>
+              </div>
+              <div class="lf-permission-pills">
+                <button type="button" class="lf-permission-pill lf-permission-pill--chat" [class.lf-permission-pill--selected]="chatAdminEnabled()" [attr.aria-pressed]="chatAdminEnabled()" [attr.title]="t('settings.admins.permissions.chatEnabled')" (click)="toggleChatAdmin(!chatAdminEnabled())">
+                  <code>chat:admin</code>
+                </button>
               </div>
             </div>
-            <div class="lf-permission-section">
-              <h4>{{ t('settings.admins.permissions.websiteTitle') }}</h4>
-              <p class="lf-note">{{ t('settings.admins.permissions.websiteDescription') }}</p>
-              <p class="lf-note">{{ t('settings.admins.permissions.dashboardIncluded') }}</p>
-              <div class="lf-permission-grid">
-                @for (group of permissionGroups; track group.key) {
-                  <div class="lf-permission-row">
-                    <strong>{{ t('settings.admins.permissions.categories.' + group.key) }}</strong>
-                    <div class="lf-permission-row__checks">
-                      @if (group.view.length) {
-                        <label>
-                          <input type="checkbox" [checked]="isGranted(group, 'view')" [disabled]="group.key === 'dashboard' && hasWebsiteFeatureGrant()" (change)="onGrantChange($event, group, 'view')" />
-                          {{ t('settings.admins.permissions.view') }}
-                        </label>
-                      }
-                      @if (group.manage.length) {
-                        <label>
-                          <input type="checkbox" [checked]="isGranted(group, 'manage')" (change)="onGrantChange($event, group, 'manage')" />
-                          {{ t('settings.admins.permissions.manage') }}
-                        </label>
-                      }
-                    </div>
-                  </div>
+            <div class="lf-permission-section" role="group" [attr.aria-label]="t('settings.admins.permissions.websiteTitle')">
+              <div class="lf-permission-section__head">
+                <h4>{{ t('settings.admins.permissions.websiteTitle') }}</h4>
+                <p class="lf-note">{{ t('settings.admins.permissions.websiteDescription') }}</p>
+              </div>
+              <div class="lf-permission-pills lf-permission-pills--website">
+                @for (permission of permissionPills; track permission.key) {
+                  <button type="button" class="lf-permission-pill" [class.lf-permission-pill--manage]="permission.kind === 'manage'" [class.lf-permission-pill--selected]="draftPermissions().includes(permission.key)" [attr.aria-pressed]="draftPermissions().includes(permission.key)" [attr.title]="t('settings.admins.permissions.categories.' + permission.group)" [disabled]="permission.key === 'dashboard:view' && hasWebsiteFeatureGrant()" (click)="toggleGrant(permission.key, !draftPermissions().includes(permission.key))">
+                    <code>{{ permission.key }}</code>
+                  </button>
                 }
               </div>
+              <p class="lf-note lf-permission-hint">{{ t('settings.admins.permissions.dashboardIncluded') }}</p>
             </div>
             @if (!canSavePermissions()) {
               <p class="lf-note" role="status">{{ t('settings.admins.permissions.oneRequired') }}</p>

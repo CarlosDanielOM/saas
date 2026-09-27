@@ -10,9 +10,18 @@ test('full access remains the single wildcard grant', () => {
 
 test('custom manage permissions include their view and dashboard grants', () => {
     assert.deepEqual(parseChannelAdminPermissions(['commands:manage']), ['dashboard:view', 'commands:manage', 'commands:view']);
+    assert.deepEqual(parseChannelAdminPermissions(['tts:manage']), ['dashboard:view', 'tts:manage', 'tts:view']);
     assert.deepEqual(parseChannelAdminPermissions(['admins:view']), ['dashboard:view', 'admins:view', 'settings:view']);
     assert.equal(grantsChatAdminRole(['dashboard:view', 'commands:manage']), false);
     assert.equal(grantsChatAdminRole(['chat:admin']), true);
+});
+
+test('TTS grants are independent from bot settings grants', () => {
+    assert.deepEqual(parseChannelAdminPermissions(['tts:view']), ['dashboard:view', 'tts:view']);
+    assert.deepEqual(parseChannelAdminPermissions(['settings:manage']), ['dashboard:view', 'settings:manage', 'settings:view']);
+    assert.deepEqual(parseChannelAdminPermissions(['tts:manage', 'settings:view']), [
+        'dashboard:view', 'tts:manage', 'settings:view', 'tts:view'
+    ]);
 });
 
 test('chat and website permissions are independent', () => {

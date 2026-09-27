@@ -11,7 +11,7 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
-import { CHANNEL_ADMIN_PERMISSION_GROUPS, type ChannelAdminPermissionGroup } from './channel-admin-permissions';
+import { CHANNEL_ADMIN_PERMISSION_GROUPS } from './channel-admin-permissions';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -41,7 +41,12 @@ export class SettingsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly pendingAddIDs = signal<string[]>([]);
   readonly pendingDeleteIDs = signal<string[]>([]);
-  readonly permissionGroups = CHANNEL_ADMIN_PERMISSION_GROUPS.filter((group) => group.key !== 'chat');
+  readonly permissionPills = CHANNEL_ADMIN_PERMISSION_GROUPS
+    .filter((group) => group.key !== 'chat')
+    .flatMap((group) => [
+      ...group.view.map((key) => ({ key, group: group.key, kind: 'view' as const })),
+      ...group.manage.map((key) => ({ key, group: group.key, kind: 'manage' as const }))
+    ]);
   readonly editingAdmin = signal<AdminRecord | null>(null);
   readonly editingCandidate = signal<AdminCandidate | null>(null);
   readonly fullAccess = signal(true);
@@ -228,6 +233,15 @@ export class SettingsPageComponent {
       if (grants.delete('dimafx:all')) {
         for (const permission of ['dimafx:view', 'dimafx:edit', 'dimafx:delete']) grants.add(permission);
       }
+      for (const group of CHANNEL_ADMIN_PERMISSION_GROUPS) {
+        if (group.manage.some((permission) => grants.has(permission))) {
+          for (const permission of group.view) grants.add(permission);
+        }
+      }
+      if (grants.has('admins:view')) grants.add('settings:view');
+      if ([...grants].some((permission) => permission !== 'chat:admin' && permission !== '*')) {
+        grants.add('dashboard:view');
+      }
       this.editingAdmin.set(target);
       this.editingCandidate.set(null);
       this.fullAccess.set(target.permissions.includes('*'));
@@ -247,11 +261,6 @@ export class SettingsPageComponent {
     this.editingCandidate.set(null);
   }
 
-  isGranted(group: ChannelAdminPermissionGroup, kind: 'view' | 'manage'): boolean {
-    const keys = group[kind];
-    return this.fullAccess() || (keys.length > 0 && keys.every((key) => this.draftPermissions().includes(key)));
-  }
-
   accessLabel(permissions: string[]): string {
     if (permissions.includes('*')) return this.t('settings.admins.permissions.full');
     const chat = permissions.includes('chat:admin');
@@ -262,15 +271,24 @@ export class SettingsPageComponent {
     return this.t('settings.admins.permissions.custom');
   }
 
-  toggleGrant(group: ChannelAdminPermissionGroup, kind: 'view' | 'manage', enabled: boolean): void {
+  toggleGrant(key: string, enabled: boolean): void {
     if (this.fullAccess()) return;
-    if (group.key === 'dashboard' && !enabled && this.hasWebsiteFeatureGrant()) return;
+    if (key === 'dashboard:view' && !enabled && this.hasWebsiteFeatureGrant()) return;
+    const group = CHANNEL_ADMIN_PERMISSION_GROUPS.find((entry) =>
+      entry.view.includes(key) || entry.manage.includes(key)
+    );
+    if (!group || group.key === 'chat') return;
     const next = new Set(this.draftPermissions());
-    for (const key of group[kind]) enabled ? next.add(key) : next.delete(key);
-    if (kind === 'manage' && enabled) for (const key of group.view) next.add(key);
-    if (kind === 'view' && !enabled) for (const key of group.manage) next.delete(key);
-    if (group.key === 'admins' && enabled) next.add('settings:view');
-    if (enabled && group.key !== 'dashboard') next.add('dashboard:view');
+    if (enabled) {
+      next.add(key);
+      if (group.manage.includes(key)) for (const view of group.view) next.add(view);
+      if (key === 'admins:view') next.add('settings:view');
+      if (key !== 'dashboard:view') next.add('dashboard:view');
+    } else {
+      next.delete(key);
+      if (group.view.includes(key)) for (const manage of group.manage) next.delete(manage);
+      if (key === 'settings:view') next.delete('admins:view');
+    }
     this.draftPermissions.set([...next]);
   }
 
@@ -280,16 +298,6 @@ export class SettingsPageComponent {
     if (enabled) next.add('chat:admin');
     else next.delete('chat:admin');
     this.draftPermissions.set([...next]);
-  }
-
-  onChatAdminChange(event: Event): void {
-    const target = event.target;
-    if (target instanceof HTMLInputElement) this.toggleChatAdmin(target.checked);
-  }
-
-  onGrantChange(event: Event, group: ChannelAdminPermissionGroup, kind: 'view' | 'manage'): void {
-    const target = event.target;
-    if (target instanceof HTMLInputElement) this.toggleGrant(group, kind, target.checked);
   }
 
   async savePermissions(): Promise<void> {

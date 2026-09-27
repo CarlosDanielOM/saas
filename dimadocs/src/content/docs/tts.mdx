@@ -14,7 +14,7 @@ Text to speech (TTS) reads chat messages aloud in your stream. It generates audi
 3. Add that URL as a browser source in your streaming software and keep it open while you want queued speech to play.
 4. Enable or add a `!s` chat command for your channel, then use `!s Hello chat!` to check playback.
 
-The overlay needs to be connected for queued messages to play. The queue accepts a limited number of pending messages; its maximum is configurable by the channel owner.
+The overlay needs to be connected for queued messages to play. The queue accepts a limited number of pending messages; the channel owner or an admin with `tts:manage` can configure its maximum.
 
 ## Providers and voices
 
@@ -33,7 +33,7 @@ Piper synthesis does not consume AI credits. Expressive tags are removed before 
 
 Fish Audio provides cloned voices. The dashboard includes a voice browser, and its preset voices include Gojo, Rias Gremory, Carlos Bodoque, and Toji Fushiguro. The selected clone can be the channel's default voice or an explicitly named voice in an AST command.
 
-Fish Audio usage consumes AI credits. In the voice browser, channel owners can save up to 20 voices as favorites and rename each favorite's nickname. The UI continues to show the voice's display name (for example, **Pinky Pie** or **Carlos Bodoque**) and shows its nickname alongside it. A nickname is 1–40 letters, numbers, or underscores, starts with a letter, and is normalized to lowercase. Spaces in a voice's display name become underscores in its generated nickname: **Pinky Pie** normally gets `pinky_pie`; a number suffix is added if that nickname is already in use.
+Fish Audio usage consumes AI credits. In the voice browser, channel owners and admins with `tts:manage` can save up to 20 voices as favorites and rename each favorite's nickname. The UI continues to show the voice's display name (for example, **Pinky Pie** or **Carlos Bodoque**) and shows its nickname alongside it. A nickname is 1–40 letters, numbers, or underscores, starts with a letter, and is normalized to lowercase. Spaces in a voice's display name become underscores in its generated nickname: **Pinky Pie** normally gets `pinky_pie`; a number suffix is added if that nickname is already in use.
 
 For `$(tts.clone ...)` and its alias `$(tts.fish ...)`, the first argument is a single voice key: use a built-in key such as `carlos_bodoque`, a saved favorite's nickname such as `pinky_pie`, or a Fish voice ID. The display name with spaces is not parsed as one voice argument. For example, to speak using the built-in Carlos Bodoque voice in a command that passes the triggering text, use `$(tts.fish carlos_bodoque &t)`. If a voice is saved as a favorite and its nickname is changed to `bodoquin`, use `$(tts.fish bodoquin &t)`. `$(set.voice ...)` accepts a favorite's nickname or its full display name, including spaces.
 
@@ -51,7 +51,7 @@ Both providers are available on Free, Premium, and Pro plans. AI credit limits a
 !s Hello chat, welcome to the stream!
 ```
 
-The chat command applies the channel's message filters: skip emotes, replace links, normalize whitespace, and limit message length. The owner can change these in the TTS module. The message must still contain speakable text after filtering.
+The chat command applies the channel's message filters: skip emotes, replace links, normalize whitespace, and limit message length. The owner or an admin with `tts:manage` can change these in the TTS module. The message must still contain speakable text after filtering.
 
 ## AST functions
 
@@ -90,7 +90,7 @@ Fish Audio supports expressive tags written in square brackets. Put tags in the 
 $(tts.clone gojo [excited] Let's go!)
 ```
 
-The channel owner can enable or disable individual tags in **Modules → Text to Speech → Expressive voice controls**. Disabled and unrecognized tags are stripped before synthesis. Tags only affect Fish Audio; Piper strips them and speaks the remaining message.
+Channel owners and admins with `tts:manage` can enable or disable individual tags in **Modules → Text to Speech → Expressive voice controls**. Disabled and unrecognized tags are stripped before synthesis. Tags only affect Fish Audio; Piper strips them and speaks the remaining message.
 
 The available tags are grouped as follows.
 
@@ -114,7 +114,7 @@ Common aliases include `[anger]` for `[angry]`, `[whispering]` for `[whisper]`, 
 
 ## Configure TTS
 
-In **Modules → Text to Speech**, the channel owner can configure:
+In **Modules → Text to Speech**, the channel owner or an admin with `tts:manage` can configure:
 
 - Whether TTS is enabled for the channel.
 - The default language and provider.
@@ -124,7 +124,16 @@ In **Modules → Text to Speech**, the channel owner can configure:
 - Whether chat-command messages skip emotes, replace links, and normalize whitespace.
 - Which expressive Fish Audio tags are enabled.
 
-Channel owners can change settings. Users with settings-view access can view them read-only. Voice previews and changes to settings are owner-only.
+### Channel admin access
+
+Channel owners can always access TTS. For channel admins, grants are independent:
+
+- `tts:view` lets the admin read TTS module settings.
+- `tts:manage` lets the admin edit TTS settings and save, rename, or remove Fish Audio favorites. It also includes `tts:view`.
+- `commands:manage` lets the admin edit the **Speech Chat** `!s` command. It does not grant access to TTS settings by itself.
+- `*` retains full access, including TTS and command management.
+
+You can combine these with `chat:admin`; for example, an admin can manage chat while only viewing TTS settings. TTS voice previews require `tts:manage`.
 
 ## AI credit use
 

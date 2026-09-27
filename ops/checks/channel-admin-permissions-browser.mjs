@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire((process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser') + '/package.json');
 const { chromium } = require('playwright');
-const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4203';
+const base = process.env.SAAS_PREVIEW_URL || 'http://127.0.0.1:4204';
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const user = { id: '99001101', login: 'permission_owner', display_name: 'Permission Owner' };
 const app = { name: 'Permission Owner', email: 'owner@example.invalid', language: 'en', plan_tier: 'free', actived: true, chat_enabled: true, twitch_user_id: user.id, has_permissions: true, up_to_date_permissions: true, administrating: [] };
@@ -47,17 +47,22 @@ try {
   await page.getByText('existing_admin', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Edit permissions' }).click();
   const editor = page.locator('.lf-permission-editor');
+  const grant = key => editor.getByRole('button', { name: key, exact: true });
   await editor.getByRole('button', { name: 'Custom access' }).click();
-  assert.equal(await editor.getByLabel('Chat Admin').isChecked(), true, 'custom access starts with Chat Admin on');
-  const commands = editor.locator('.lf-permission-row').filter({ hasText: 'Commands and timers' });
-  await commands.getByLabel('Manage').check();
+  assert.equal(await grant('chat:admin').getAttribute('aria-pressed'), 'true', 'custom access starts with Chat Admin on');
+  assert.equal(await grant('tts:view').getAttribute('aria-pressed'), 'false', 'TTS starts separate from Bot Settings');
+  await grant('tts:manage').click();
   await page.waitForTimeout(100);
-  assert.equal(await commands.getByLabel('View').isChecked(), true, 'Manage implies View');
-  const dashboard = editor.locator('.lf-permission-row').filter({ hasText: 'Dashboard' });
-  assert.equal(await dashboard.getByLabel('View').isChecked(), true, 'website grant includes Dashboard View');
-  await editor.getByLabel('Chat Admin').uncheck();
+  assert.equal(await grant('tts:view').getAttribute('aria-pressed'), 'true', 'TTS Manage implies TTS View');
+  assert.equal(await grant('dashboard:view').getAttribute('aria-pressed'), 'true', 'website grant includes Dashboard View');
+  assert.equal(await grant('settings:view').getAttribute('aria-pressed'), 'false', 'TTS does not grant Bot Settings');
   await editor.getByRole('button', { name: 'Save permissions' }).click();
-  assert.deepEqual(writes.at(-1).body.permissions.sort(), ['commands:manage', 'commands:view', 'dashboard:view'].sort());
+  assert.deepEqual(writes.at(-1).body.permissions.sort(), ['chat:admin', 'tts:manage', 'tts:view', 'dashboard:view'].sort(), 'chat and limited TTS website access coexist');
+
+  await page.getByRole('button', { name: 'Edit permissions' }).first().click();
+  await grant('chat:admin').click();
+  await editor.getByRole('button', { name: 'Save permissions' }).click();
+  assert.deepEqual(writes.at(-1).body.permissions.sort(), ['tts:manage', 'tts:view', 'dashboard:view'].sort(), 'TTS website grants work without Chat Admin');
 
   await page.getByRole('searchbox').fill('new_admin');
   await page.getByRole('button', { name: 'Add as admin' }).click();
@@ -68,16 +73,16 @@ try {
   const newAdminRow = page.locator('.lf-list__row').filter({ hasText: 'new_admin' });
   await newAdminRow.getByRole('button', { name: 'Edit permissions' }).click();
   await editor.getByRole('button', { name: 'Custom access' }).click();
-  assert.equal(await editor.getByLabel('Chat Admin').isChecked(), true, 'switching from Full defaults to Chat Admin');
-  assert.equal(await dashboard.getByLabel('View').isChecked(), false, 'Chat Admin alone has no website grant');
+  assert.equal(await grant('chat:admin').getAttribute('aria-pressed'), 'true', 'switching from Full defaults to Chat Admin');
+  assert.equal(await grant('dashboard:view').getAttribute('aria-pressed'), 'false', 'Chat Admin alone has no website grant');
   await editor.getByRole('button', { name: 'Save permissions' }).click();
   assert.deepEqual(writes.at(-1).body.permissions, ['chat:admin'], 'chat-only assignment saves without dashboard access');
 
   await newAdminRow.getByRole('button', { name: 'Edit permissions' }).click();
-  await editor.getByLabel('Chat Admin').uncheck();
+  await grant('chat:admin').click();
   await page.waitForTimeout(100);
   assert.equal(await editor.getByRole('button', { name: 'Save permissions' }).isDisabled(), true, 'empty custom access cannot save');
-  await commands.getByLabel('View').check();
+  await grant('commands:view').click();
   await editor.getByRole('button', { name: 'Save permissions' }).click();
   assert.deepEqual(writes.at(-1).body.permissions.sort(), ['commands:view', 'dashboard:view'].sort(), 'website-only assignment has no chat role');
 
@@ -89,7 +94,7 @@ try {
     await editor.getByRole('button', { name: 'Cancel' }).click();
   }
   assert.deepEqual(errors, [], 'no browser runtime errors');
-  console.log('PASS site: Full, chat-only, website-only, View/Manage, and responsive picker at 320/390/1280px');
+  console.log('PASS site: pill picker, independent TTS grants, combined chat/website access, Full and responsive layouts at 320/390/1280px');
   await context.close();
 } finally {
   await browser.close();

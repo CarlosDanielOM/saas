@@ -14,7 +14,7 @@ El texto a voz (TTS) lee en voz alta los mensajes del chat durante tu stream. Ge
 3. Agrega esa URL como fuente de navegador en tu software de transmisión y mantenla abierta mientras quieras reproducir mensajes en cola.
 4. Habilita o agrega el comando de chat `!s` para tu canal y úsalo con `!s Hola chat!` para comprobar la reproducción.
 
-La superposición debe estar conectada para reproducir los mensajes en cola. La cola acepta una cantidad limitada de mensajes pendientes; el propietario del canal puede configurar el máximo.
+La superposición debe estar conectada para reproducir los mensajes en cola. La cola acepta una cantidad limitada de mensajes pendientes; el propietario del canal o un administrador con `tts:manage` puede configurar el máximo.
 
 ## Proveedores y voces
 
@@ -33,7 +33,7 @@ La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se el
 
 Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
 
-Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. La interfaz sigue mostrando el nombre visible de la voz (por ejemplo, **Pinky Pie** o **Carlos Bodoque**) y muestra el apodo junto a él. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente recibe `pinky_pie`; si ya se usa ese apodo, se agrega un número al final.
+Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal y los administradores con `tts:manage` pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. La interfaz sigue mostrando el nombre visible de la voz (por ejemplo, **Pinky Pie** o **Carlos Bodoque**) y muestra el apodo junto a él. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente recibe `pinky_pie`; si ya se usa ese apodo, se agrega un número al final.
 
 En `$(tts.clone ...)` y su alias `$(tts.fish ...)`, el primer argumento es una sola clave de voz: usa una clave integrada como `carlos_bodoque`, el apodo de una favorita guardada como `pinky_pie` o un ID de voz Fish. El nombre visible con espacios no se interpreta como un solo argumento de voz. Por ejemplo, para hablar con la voz integrada de Carlos Bodoque en un comando que recibe el texto que escribió el usuario, usa `$(tts.fish carlos_bodoque &t)`. Si guardas una voz como favorita y cambias su apodo a `bodoquin`, usa `$(tts.fish bodoquin &t)`. `$(set.voice ...)` acepta el apodo o el nombre visible completo de una favorita, incluso si tiene espacios.
 
@@ -51,7 +51,7 @@ Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los lím
 !s Hola chat, bienvenidos al stream!
 ```
 
-El comando de chat aplica los filtros de mensajes del canal: omitir emotes, reemplazar enlaces, normalizar espacios y limitar la longitud del mensaje. El propietario puede cambiar estas opciones en el módulo TTS. Después de aplicar los filtros, el mensaje debe conservar texto que se pueda leer.
+El comando de chat aplica los filtros de mensajes del canal: omitir emotes, reemplazar enlaces, normalizar espacios y limitar la longitud del mensaje. El propietario o un administrador con `tts:manage` puede cambiar estas opciones en el módulo TTS. Después de aplicar los filtros, el mensaje debe conservar texto que se pueda leer.
 
 ## Funciones AST
 
@@ -90,7 +90,7 @@ Fish Audio admite etiquetas expresivas entre corchetes. Agrégalas al mensaje pa
 $(tts.clone gojo [excited] ¡Vamos!)
 ```
 
-El propietario del canal puede habilitar o deshabilitar etiquetas individuales en **Módulos → Texto a voz → Controles de voz expresiva**. Las etiquetas deshabilitadas o no reconocidas se eliminan antes de la síntesis. Las etiquetas solo afectan a Fish Audio; Piper las elimina y lee el mensaje restante.
+Los propietarios del canal y los administradores con `tts:manage` pueden habilitar o deshabilitar etiquetas individuales en **Módulos → Texto a voz → Controles de voz expresiva**. Las etiquetas deshabilitadas o no reconocidas se eliminan antes de la síntesis. Las etiquetas solo afectan a Fish Audio; Piper las elimina y lee el mensaje restante.
 
 Las etiquetas disponibles se agrupan así.
 
@@ -114,7 +114,7 @@ Algunos alias comunes son `[anger]` para `[angry]`, `[whispering]` para `[whispe
 
 ## Configurar TTS
 
-En **Módulos → Texto a voz**, el propietario del canal puede configurar:
+En **Módulos → Texto a voz**, el propietario del canal o un administrador con `tts:manage` puede configurar:
 
 - Si TTS está habilitado para el canal.
 - El idioma y el proveedor predeterminados.
@@ -124,7 +124,16 @@ En **Módulos → Texto a voz**, el propietario del canal puede configurar:
 - Si los mensajes del comando de chat omiten emotes, reemplazan enlaces y normalizan espacios.
 - Qué etiquetas expresivas de Fish Audio están habilitadas.
 
-Los propietarios pueden cambiar la configuración. Los usuarios con permiso para ver la configuración pueden verla en modo de solo lectura. Las vistas previas de voz y los cambios de configuración son exclusivos del propietario.
+### Acceso de administradores del canal
+
+Los propietarios del canal siempre pueden acceder a TTS. Para los administradores del canal, los permisos son independientes:
+
+- `tts:view` permite leer la configuración del módulo TTS.
+- `tts:manage` permite editar la configuración de TTS y guardar, cambiar el apodo o quitar voces favoritas de Fish Audio. También incluye `tts:view`.
+- `commands:manage` permite editar el comando **Speech Chat** `!s`. Por sí solo, no permite acceder a la configuración de TTS.
+- `*` conserva el acceso completo, incluida la administración de TTS y comandos.
+
+Estos permisos se pueden combinar con `chat:admin`; por ejemplo, un administrador puede administrar el chat y solo ver la configuración de TTS. Las vistas previas de voz requieren `tts:manage`.
 
 ## Uso de créditos de IA
 

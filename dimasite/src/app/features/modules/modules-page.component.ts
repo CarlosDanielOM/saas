@@ -83,7 +83,7 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
   triggers: 'triggers:view',
   dimafx: 'dimafx:view',
   redemptions: 'rewards:view',
-  tts: 'settings:view',
+  tts: 'tts:view',
   referrals: 'referrals:view',
   'ai-personality': 'ai:view',
   memories: 'memories:view',

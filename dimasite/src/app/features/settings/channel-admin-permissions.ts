@@ -15,6 +15,7 @@ export const CHANNEL_ADMIN_PERMISSION_GROUPS: readonly ChannelAdminPermissionGro
   { key: 'commands', view: ['commands:view'], manage: ['commands:manage'] },
   { key: 'triggers', view: ['triggers:view'], manage: ['triggers:upload', 'triggers:attach', 'triggers:edit', 'triggers:delete'] },
   { key: 'settings', view: ['settings:view'], manage: ['settings:manage'] },
+  { key: 'tts', view: ['tts:view'], manage: ['tts:manage'] },
   { key: 'moderation', view: ['moderation:view'], manage: ['moderation:manage'] },
   { key: 'eventsubs', view: ['eventsubs:view'], manage: ['eventsubs:manage'] },
   { key: 'rewards', view: ['rewards:view'], manage: ['rewards:manage'] },
