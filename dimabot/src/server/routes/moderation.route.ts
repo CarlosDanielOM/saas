@@ -244,7 +244,7 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 const prior = current?.rules.find(item => item.id === rule.id);
                 // Downgraded channels may keep or disable their saved inactive
                 // configuration while editing free rules, but cannot add paid features.
-                if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(prior.semantic) !== JSON.stringify(rule.semantic)
+                if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(parseAdvancedRule({ type: rule.type, semantic: prior.semantic }).semantic) !== JSON.stringify(rule.semantic)
                     || (prior.variations?.mode ?? 'off') !== rule.variations?.mode
                     || JSON.stringify(prior.variations?.overrides ?? []) !== JSON.stringify(rule.variations?.overrides ?? [])
                     || (rule.variations?.mode !== 'off' && JSON.stringify(prior.terms) !== JSON.stringify(rule.terms))) {

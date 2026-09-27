@@ -48,6 +48,20 @@ test('strict decision parsing fails open on malformed or borderline scores', () 
     assert.equal(parseSemanticResponse(response(0.5)).verdict, 'uncertain');
     for (const invalid of [null, {}, response('0.99'), response(2), response(Number.NaN)]) assert.equal(parseSemanticResponse(invalid).status, 'invalid_response');
 });
+test('per-rule confidence supports 0–100%, decimals, and defaults to 85%', () => {
+    const response = (noul: number) => ({ answers: { violation: { type: 'noul', noul } }, usage: { cost: 0, input_tokens: 150 } });
+    assert.equal(parseAdvancedRule({ type: 'blacklist' }).semantic.thresholdPercent, 85);
+    assert.equal(parseSemanticResponse(response(0.87)).verdict, 'violation');
+    assert.equal(parseSemanticResponse(response(0.87), 90).verdict, 'uncertain');
+    assert.equal(parseSemanticResponse(response(0.855), 85.5).verdict, 'violation');
+    assert.equal(parseSemanticResponse(response(0.854), 85.5).verdict, 'uncertain');
+    assert.equal(parseSemanticResponse(response(0), 0).verdict, 'violation');
+    assert.equal(parseSemanticResponse(response(1), 100).verdict, 'violation');
+    assert.equal(parseSemanticResponse(response(0.99), 100).verdict, 'uncertain');
+    for (const thresholdPercent of [0, 0.1, 85, 85.5, 100]) assert.equal(parseAdvancedRule({ type: 'blacklist', semantic: { thresholdPercent } }).semantic.thresholdPercent, thresholdPercent);
+    for (const thresholdPercent of [-1, 101, NaN, Infinity, '85', null]) assert.throws(() => parseAdvancedRule({ type: 'blacklist', semantic: { thresholdPercent } }));
+    assert.equal(parseSemanticResponse(response(1), NaN).status, 'invalid_configuration');
+});
 test('policy and message remain separate; model request uses supported string state', () => {
     const rule = buildDefaultModerationRules()[3];
     rule.semantic = { enabled: true, policy: 'Prohibit using Rinn as a nickname, but allow discouraging it.', examples: [], onUncertain: 'allow_and_log' };

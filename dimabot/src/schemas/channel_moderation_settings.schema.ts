@@ -140,6 +140,7 @@ const moderationRuleSchema = new Schema<IModerationRule>({
     patterns: { type: [new Schema({ id: String, source: String, boundary: String, ignoreCase: Boolean }, { _id: false })], default: [] },
     semantic: { type: new Schema({
         enabled: { type: Boolean, default: false },
+        thresholdPercent: { type: Number, default: 85, min: 0, max: 100 },
         policy: { type: String, default: '', maxlength: 2000 },
         examples: { type: [new Schema({ message: String, label: String }, { _id: false })], default: [] },
         onUncertain: { type: String, enum: ['allow_and_log'], default: 'allow_and_log' }

@@ -128,6 +128,17 @@ try {
             assert.equal(saves.at(-1).rules[0].patterns[0].source, 'f(?:u|a)?ck(?:ing|y)?');
             assert.equal(saves.at(-1).rules[0].semantic.enabled, false);
             await toggle.check();
+            const threshold = feature.locator('.semantic-threshold');
+            assert.equal(await threshold.inputValue(), '85', 'default flagging confidence');
+            const slider = feature.locator('.confidence-slider');
+            await slider.focus();
+            await slider.press('Home');
+            await page.waitForFunction(() => document.querySelector('.semantic-threshold')?.value === '0');
+            assert.match(await feature.locator('.confidence-example').innerText(), language === 'es' ? /entraría/ : /enter the offense ladder/);
+            await slider.press('End');
+            await page.waitForFunction(() => document.querySelector('.semantic-threshold')?.value === '100');
+            assert.match(await feature.locator('.confidence-example').innerText(), language === 'es' ? /se permitiría/ : /allowed and logged/);
+            await threshold.fill('85.5');
             await feature.getByText(language === 'es' ? /según la cantidad de texto/ : /based on the amount of text/).waitFor();
             assert.doesNotMatch(await feature.innerText(), /\$|USD|0[.,]042|million input tokens/);
             await feature.locator('textarea:not(.generated-regex)').fill('The author uses profanity in a negative or hostile way, rather than as positive praise.');
@@ -139,6 +150,24 @@ try {
             assert.equal(saves.at(-1).rules[0].semantic.enabled, true);
             assert.equal(saves.at(-1).rules[0].semantic.examples[0].label, 'allow');
             assert.equal(saves.at(-1).rules[0].semantic.onUncertain, 'allow_and_log');
+            assert.equal(saves.at(-1).rules[0].semantic.thresholdPercent, 85.5);
+            await page.reload();
+            await threshold.waitFor();
+            assert.equal(await threshold.inputValue(), '85.5', 'custom confidence survives reload');
+            for (const value of ['0', '100']) {
+                await threshold.fill(value);
+                await saveChanges();
+                await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+                assert.equal(saves.at(-1).rules[0].semantic.thresholdPercent, Number(value));
+            }
+            const beforeInvalid = saves.length;
+            await threshold.fill('');
+            await save.click();
+            await feature.getByText(language === 'es' ? /Introduce un porcentaje de confianza/ : /Enter a confidence percentage/).first().waitFor();
+            assert.equal(saves.length, beforeInvalid, 'clearing the field must not silently save 0%');
+            await threshold.fill('85');
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
         }
         await feature.locator('.decision-message').waitFor();
         assert.match(await feature.innerText(), /180/);
@@ -147,6 +176,7 @@ try {
             await page.evaluate(theme => { document.documentElement.classList.toggle('dark', theme === 'dark'); document.documentElement.setAttribute('data-theme', theme); }, theme);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow at ${width}`);
             await page.screenshot({ path: `${artifacts}/${tier}-${language}-${width}-${theme}.png`, fullPage: true });
+            if (tier !== 'free') await feature.locator('.confidence-control').screenshot({ path: `${artifacts}/confidence-${tier}-${language}-${width}-${theme}.png` });
         }
         const axe = await new AxeBuilder({ page }).include('app-moderation-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
         assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), [], 'moderation accessibility');

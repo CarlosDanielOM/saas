@@ -1206,6 +1206,16 @@
       "failed": "Could not prepare variations. Your saved rules are unchanged. Try again or choose common variations."
     },
     "advanced": {
+      "modelScore": "Model violation score",
+      "exampleSkips": "Example: a matching message with an 87% violation score would be allowed and logged at this setting, without advancing this rule’s offense ladder.",
+      "exampleFlags": "Example: a matching message with an 87% violation score would enter the offense ladder at this setting.",
+      "thresholdGuide": "Start at 85%. Check recent decisions: lower the threshold if real violations are slipping through; raise it if acceptable messages are being flagged. Adjust a few percentage points at a time and check several examples, including the languages used in your chat. You can choose any value from 0–100%, including decimals.",
+      "lenient": "More lenient →",
+      "aggressive": "← More aggressive",
+      "sensitivity": "Moderation sensitivity",
+      "thresholdInvalid": "Enter a confidence percentage from 0 to 100. Decimals are allowed.",
+      "threshold": "Flagging confidence (%)",
+      "thresholdHint": "Move left to flag more matching messages; move right to require a higher violation score. The score is the model’s estimate, not guaranteed accuracy.",
       "title": "Word variations",
       "paid": "Premium · Pro",
       "upgrade": "Regex and contextual review require Premium or Pro. Saved rules using these features are inactive on Free.",

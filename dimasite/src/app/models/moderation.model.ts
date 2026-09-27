@@ -44,6 +44,7 @@ export interface ModerationPattern {
 
 export interface ModerationSemanticPolicy {
   enabled: boolean;
+  thresholdPercent?: number;
   policy: string;
   examples: Array<{ message: string; label: 'allow' | 'violation' }>;
   onUncertain: 'allow_and_log';
@@ -168,6 +169,6 @@ export function buildNewModerationRule(type: ModerationRuleType): ModerationRule
     terms: [],
     patterns: [],
     variations: { mode: 'off', entries: [] },
-    semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' }
+    semantic: { enabled: false, thresholdPercent: 85, policy: '', examples: [], onUncertain: 'allow_and_log' }
   };
 }

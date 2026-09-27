@@ -1206,6 +1206,16 @@
       "failed": "No se pudieron preparar las variaciones. Tus reglas guardadas no han cambiado. Inténtalo de nuevo o elige variaciones comunes."
     },
     "advanced": {
+      "modelScore": "Puntuación de infracción del modelo",
+      "exampleSkips": "Ejemplo: un mensaje coincidente con una puntuación de infracción del 87% se permitiría y registraría con este ajuste, sin avanzar en la escala de sanciones de esta regla.",
+      "exampleFlags": "Ejemplo: un mensaje coincidente con una puntuación de infracción del 87% entraría en la escala de sanciones con este ajuste.",
+      "thresholdGuide": "Empieza en 85%. Revisa las decisiones recientes: baja el umbral si se escapan infracciones reales; súbelo si se marcan mensajes aceptables. Ajusta unos pocos puntos porcentuales cada vez y revisa varios ejemplos, incluidos los idiomas de tu chat. Puedes elegir cualquier valor entre 0 y 100%, incluidos decimales.",
+      "lenient": "Más permisiva →",
+      "aggressive": "← Más agresiva",
+      "sensitivity": "Sensibilidad de moderación",
+      "thresholdInvalid": "Introduce un porcentaje de confianza entre 0 y 100. Se permiten decimales.",
+      "threshold": "Confianza para marcar (%)",
+      "thresholdHint": "Mueve a la izquierda para marcar más mensajes coincidentes; a la derecha para exigir una puntuación de infracción mayor. La puntuación es una estimación del modelo, no una precisión garantizada.",
       "title": "Variaciones de palabras",
       "paid": "Premium · Pro",
       "upgrade": "Las expresiones regulares y la revisión contextual requieren Premium o Pro. Las reglas guardadas con estas funciones están inactivas en Free.",

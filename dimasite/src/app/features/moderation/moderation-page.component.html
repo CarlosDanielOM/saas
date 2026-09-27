@@ -467,6 +467,33 @@
                         </label>
                       </div>
                       @if (rule.semantic?.enabled) {
+                        <div class="confidence-control">
+                          <label class="lf-field">
+                            <span>{{ t('moderation.advanced.sensitivity') }}</span>
+                            <input class="confidence-slider" type="range" min="0" max="100" step="any"
+                              [value]="semanticThresholdValue(rule)"
+                              [attr.aria-describedby]="'confidence-guide-' + rule.id"
+                              [attr.aria-valuetext]="semanticThresholdValue(rule) + '%'"
+                              (input)="updateSemanticThreshold(rule.id, $any($event.target).value)"
+                              [disabled]="!canManage() || !hasPaidModeration()" />
+                          </label>
+                          <div class="confidence-directions" aria-hidden="true">
+                            <span>{{ t('moderation.advanced.aggressive') }}</span>
+                            <span>{{ t('moderation.advanced.lenient') }}</span>
+                          </div>
+                        <label class="lf-field">
+                          <span>{{ t('moderation.advanced.threshold') }}</span>
+                          <input class="semantic-threshold" type="number" min="0" max="100" step="any"
+                            [value]="semanticThresholdValue(rule)"
+                            (input)="updateSemanticThreshold(rule.id, $any($event.target).value)"
+                            [disabled]="!canManage() || !hasPaidModeration()" />
+                        </label>
+                        <p class="lf-note" [id]="'confidence-guide-' + rule.id">{{ t('moderation.advanced.thresholdHint') }}</p>
+                        @if (validSemanticThreshold(rule.semantic?.thresholdPercent ?? 85)) {
+                          <p class="lf-note confidence-example" aria-live="polite">{{ t((rule.semantic?.thresholdPercent ?? 85) <= 87 ? 'moderation.advanced.exampleFlags' : 'moderation.advanced.exampleSkips') }}</p>
+                        }
+                        <p class="lf-note">{{ t('moderation.advanced.thresholdGuide') }}</p>
+                        </div>
                         <label class="lf-field">
                           <span>{{ t('moderation.advanced.policy') }}</span>
                           <textarea rows="4" maxlength="2000" [value]="rule.semantic?.policy ?? ''"
@@ -616,6 +643,9 @@
                   </div>
                   <p class="decision-message">{{ decision.messageText }}</p>
                   <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
+                  @if (decision.scores?.violation !== undefined) {
+                    <p class="lf-note">{{ t('moderation.advanced.modelScore') }}: {{ ((decision.scores?.violation ?? 0) * 100).toFixed(1) }}%</p>
+                  }
                   @if (decision.consequence.action) {
                     <p class="lf-note">{{ actionLabel(decision.consequence.action) }} · #{{ decision.consequence.offenseNumber }} · {{ t(decision.consequence.success === undefined ? 'moderation.decisions.pendingAction' : decision.consequence.success ? 'moderation.logs.success' : 'moderation.logs.failed') }}</p>
                   } @else {

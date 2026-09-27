@@ -11,19 +11,19 @@ export interface ModerationPattern {
 }
 export interface SemanticPolicy {
     enabled: boolean;
+    thresholdPercent?: number;
     policy: string;
     examples: Array<{ message: string; label: 'allow' | 'violation' }>;
     onUncertain: 'allow_and_log';
 }
 export interface ModerationMatch { matcherID: string; text: string; start: number; end: number }
-export const emptySemanticPolicy = (): SemanticPolicy => ({ enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' });
+export const emptySemanticPolicy = (): SemanticPolicy => ({ enabled: false, thresholdPercent: 85, policy: '', examples: [], onUncertain: 'allow_and_log' });
 export const paidModeration = (tier: unknown): boolean => tier === 'premium' || tier === 'pro';
 export const MODERATION_RETENTION_DAYS = 180;
 export const MODERATION_VISIBLE_DAYS = 30;
 export const SEMANTIC_MODEL = 'respan/span-01-lite';
-export const DECISION_POLICY_VERSION = 'contextual-v1';
+export const DECISION_POLICY_VERSION = 'contextual-v2';
 export const SEMANTIC_DEADLINE_MS = 4_000;
-export const VIOLATION_THRESHOLD = 0.9;
 export const ALLOW_THRESHOLD = 0.1;
 
 const compiledPatterns = new Map<string, RE2>();
@@ -73,6 +73,8 @@ export function parseAdvancedRule(input: Record<string, unknown>): { patterns: M
         const raw = input.semantic as Record<string, unknown>;
         if (raw.enabled !== undefined && typeof raw.enabled !== 'boolean') throw new Error('Invalid contextual review switch');
         semantic.enabled = raw.enabled === true;
+        if (raw.thresholdPercent !== undefined && (typeof raw.thresholdPercent !== 'number' || !Number.isFinite(raw.thresholdPercent) || raw.thresholdPercent < 0 || raw.thresholdPercent > 100)) throw new Error('Flagging confidence must be a percentage from 0 to 100');
+        semantic.thresholdPercent = raw.thresholdPercent === undefined ? 85 : raw.thresholdPercent as number;
         if (raw.policy !== undefined && typeof raw.policy !== 'string') throw new Error('Policy must be text');
         semantic.policy = String(raw.policy ?? '').trim();
         if (semantic.policy.length > 2_000 || (semantic.enabled && !semantic.policy)) throw new Error('Enabled contextual review needs a policy of 1–2000 characters');

@@ -404,6 +404,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.errorMessage.set(null);
 
     try {
+      if (currentSettings.rules.some(rule => rule.semantic?.enabled && !this.validSemanticThreshold(rule.semantic.thresholdPercent ?? 85))) {
+        throw new Error(this.t('moderation.advanced.thresholdInvalid'));
+      }
       for (const rule of currentSettings.rules) {
         if (this.hasPaidModeration() && rule.type === 'blacklist' && rule.variations && rule.variations.mode !== 'off') {
           this.generatingRule.set(rule.id);
@@ -544,7 +547,21 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   updateSemantic(ruleID: string, patch: Partial<ModerationSemanticPolicy>): void {
     const rule = this.settings()?.rules.find(item => item.id === ruleID);
-    if (rule) this.patchRule(ruleID, { semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log', ...rule.semantic, ...patch } });
+    if (rule) this.patchRule(ruleID, { semantic: { enabled: false, thresholdPercent: 85, policy: '', examples: [], onUncertain: 'allow_and_log', ...rule.semantic, ...patch } });
+  }
+
+  updateSemanticThreshold(ruleID: string, value: string): void {
+    if (!this.canManage() || !this.hasPaidModeration()) return;
+    this.updateSemantic(ruleID, { thresholdPercent: value.trim() ? Number(value) : Number.NaN });
+  }
+
+  validSemanticThreshold(value: number): boolean {
+    return Number.isFinite(value) && value >= 0 && value <= 100;
+  }
+
+  semanticThresholdValue(rule: ModerationRule): number | string {
+    const value = rule.semantic?.thresholdPercent ?? 85;
+    return Number.isFinite(value) ? value : '';
   }
 
   addExample(ruleID: string, label: 'allow' | 'violation'): void {

@@ -67,6 +67,18 @@ try {
     assert.equal((await runChatModeration('semantic-paid', message('negative', 'You are a fucking idiot'), identity)).actionTaken, true);
     assert.equal(await count('semantic-paid', semantic), 1);
 
+    // The same 87% model score obeys each rule's saved threshold.
+    for (const [name, thresholdPercent, flags] of [['default', undefined, true], ['strict', 90, false], ['decimal', 86.5, true], ['minimum', 0, true], ['maximum', 100, false]]) {
+        const rule = { ...semantic, semantic: { ...semantic.semantic, ...(thresholdPercent === undefined ? {} : { thresholdPercent }) } };
+        await seed(`confidence-${name}`, rule);
+        if (thresholdPercent === undefined) await Settings.collection.updateOne({ channelID: `confidence-${name}` }, { $unset: { 'rules.0.semantic.thresholdPercent': '' } });
+        assert.equal((await runChatModeration(`confidence-${name}`, message(`confidence-${name}`, 'fuck SCORE87'), identity)).actionTaken, flags);
+        assert.equal(await count(`confidence-${name}`, rule), flags ? 1 : 0);
+        const audit = await decision(`confidence-${name}`);
+        assert.equal(audit.rule.semantic.thresholdPercent, thresholdPercent ?? 85, 'training snapshot explicitly preserves applied threshold, including legacy rules');
+        assert.equal(audit.decisionPolicyVersion, 'contextual-v2');
+    }
+
     for (const status of ['UNCERTAIN', 'INVALID', 'UNAVAILABLE', 'TIMEOUT']) {
         assert.equal((await runChatModeration('semantic-paid', message(`fallback-${status}`, `fuck ${status}`), identity)).actionTaken, false, status);
         assert.equal(await count('semantic-paid', semantic), 1, `${status} never increments`);
@@ -258,6 +270,16 @@ try {
         const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
         assert.equal(saved.status, 200);
         assert.equal((await saved.json()).data.rules[0].semantic.policy, semantic.semantic.policy);
+        for (const thresholdPercent of [0, 85.5, 100]) {
+            const rule = { ...semantic, semantic: { ...semantic.semantic, thresholdPercent } };
+            assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [rule] })).status, 200);
+            const loaded = await (await api('GET', 'semantic-paid/settings')).json();
+            assert.equal(loaded.data.rules[0].semantic.thresholdPercent, thresholdPercent);
+        }
+        for (const thresholdPercent of [-1, 101, '85', null]) {
+            const rule = { ...semantic, semantic: { ...semantic.semantic, thresholdPercent } };
+            assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [rule] })).status, 400);
+        }
         const versions = await Promise.all([1, 2].map(async () => {
             const response = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
             assert.equal(response.status, 200);

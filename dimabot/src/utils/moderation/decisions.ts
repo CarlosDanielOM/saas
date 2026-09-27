@@ -11,6 +11,7 @@ export async function createModerationDecision(input: Pick<IModerationDecision,
     const semantic = input.mode === 'semantic';
     return await ModerationDecision.findOneAndUpdate({ _id: id }, { $setOnInsert: {
         ...input, _id: id,
+        rule: semantic ? { ...input.rule, semantic: { ...input.rule.semantic!, thresholdPercent: input.rule.semantic?.thresholdPercent ?? 85 } } : input.rule,
         state: semantic ? 'pending' : 'completed', verdict: semantic ? 'uncertain' : 'violation',
         status: semantic ? 'pending' : 'matched', model: semantic ? SEMANTIC_MODEL : '',
         decisionPolicyVersion: DECISION_POLICY_VERSION,
