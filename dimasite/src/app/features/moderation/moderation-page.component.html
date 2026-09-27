@@ -365,6 +365,94 @@
                       />
                       <small>{{ t('moderation.fields.termsHint') }}</small>
                     </div>
+                    <div class="advanced-moderation">
+                      <div class="lf-row-head">
+                        <h3 class="lf-h3">{{ t('moderation.advanced.title') }}</h3>
+                        <span class="lf-chip lf-chip--gold">{{ t('moderation.advanced.paid') }}</span>
+                      </div>
+                      @if (!hasPaidModeration()) {
+                        <p class="lf-note lf-note--warn">{{ t('moderation.advanced.upgrade') }}</p>
+                      }
+                      <p class="lf-note">{{ t('moderation.advanced.regexHint') }}</p>
+                      @for (pattern of rule.patterns ?? []; track pattern.id) {
+                        <div class="pattern-editor">
+                          <label class="lf-field">
+                            <span>{{ t('moderation.advanced.pattern') }}</span>
+                            <input type="text" class="regex-input" maxlength="250" [value]="pattern.source"
+                              [placeholder]="t('moderation.advanced.patternPlaceholder')"
+                              (input)="updatePattern(rule.id, pattern.id, { source: $any($event.target).value })"
+                              [disabled]="!canManage() || !hasPaidModeration()" />
+                          </label>
+                          <div class="pattern-options">
+                            <label class="lf-field">
+                              <span>{{ t('moderation.advanced.boundary') }}</span>
+                              <select class="lf-select" [value]="pattern.boundary"
+                                (change)="updatePatternBoundary(rule.id, pattern.id, $any($event.target).value)"
+                                [disabled]="!canManage() || !hasPaidModeration()">
+                                <option value="whole_word">{{ t('moderation.advanced.wholeWord') }}</option>
+                                <option value="anywhere">{{ t('moderation.advanced.anywhere') }}</option>
+                              </select>
+                            </label>
+                            <label class="check-option">
+                              <input type="checkbox" [checked]="pattern.ignoreCase"
+                                (change)="updatePattern(rule.id, pattern.id, { ignoreCase: $any($event.target).checked })"
+                                [disabled]="!canManage() || !hasPaidModeration()" />
+                              {{ t('moderation.advanced.ignoreCase') }}
+                            </label>
+                            @if (canManage()) {
+                              <button type="button" class="lf-btn lf-btn--compact" (click)="removePattern(rule.id, pattern.id)">{{ t('common.delete') }}</button>
+                            }
+                          </div>
+                        </div>
+                      }
+                      @if (canManage() && hasPaidModeration() && (rule.patterns?.length ?? 0) < 10) {
+                        <button type="button" class="lf-btn lf-btn--compact" (click)="addPattern(rule.id)">{{ t('moderation.advanced.addPattern') }}</button>
+                      }
+                      <div class="lf-row-head semantic-toggle">
+                        <div>
+                          <h3 class="lf-h3">{{ t('moderation.advanced.semantic') }}</h3>
+                          <p class="lf-note">{{ t(rule.semantic?.enabled ? 'moderation.advanced.semanticOn' : 'moderation.advanced.semanticOff') }}</p>
+                        </div>
+                        <label class="lf-switch">
+                          <input type="checkbox" [checked]="rule.semantic?.enabled ?? false"
+                            (change)="updateSemantic(rule.id, { enabled: $any($event.target).checked })"
+                            [disabled]="!canManage() || !hasPaidModeration()"
+                            [attr.aria-label]="t('moderation.advanced.semantic')" />
+                          <span class="lf-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </div>
+                      @if (rule.semantic?.enabled) {
+                        <label class="lf-field">
+                          <span>{{ t('moderation.advanced.policy') }}</span>
+                          <textarea rows="4" maxlength="2000" [value]="rule.semantic?.policy ?? ''"
+                            [placeholder]="t('moderation.advanced.policyPlaceholder')"
+                            (input)="updateSemantic(rule.id, { policy: $any($event.target).value })"
+                            [disabled]="!canManage() || !hasPaidModeration()"></textarea>
+                        </label>
+                        <p class="lf-note">{{ t('moderation.advanced.examplesHint') }}</p>
+                        @for (example of rule.semantic?.examples ?? []; track $index; let i = $index) {
+                          <div class="example-editor">
+                            <label class="lf-field">
+                              <span>{{ t('moderation.decisions.verdicts.' + example.label) }}</span>
+                              <input type="text" maxlength="500" [value]="example.message"
+                                (input)="updateExample(rule.id, i, $any($event.target).value)"
+                                [disabled]="!canManage() || !hasPaidModeration()" />
+                            </label>
+                            @if (canManage() && hasPaidModeration()) {
+                              <button type="button" class="lf-btn lf-btn--compact" (click)="removeExample(rule.id, i)">{{ t('common.delete') }}</button>
+                            }
+                          </div>
+                        }
+                        @if (canManage() && hasPaidModeration() && (rule.semantic?.examples?.length ?? 0) < 10) {
+                          <div class="lf-add-row">
+                            <button type="button" class="lf-btn lf-btn--compact" (click)="addExample(rule.id, 'allow')">{{ t('moderation.advanced.addAllowed') }}</button>
+                            <button type="button" class="lf-btn lf-btn--compact" (click)="addExample(rule.id, 'violation')">{{ t('moderation.advanced.addViolation') }}</button>
+                          </div>
+                        }
+                        <p class="lf-note">{{ t('moderation.advanced.fallback') }}</p>
+                        <p class="lf-note">{{ t('moderation.advanced.credits') }}</p>
+                      }
+                    </div>
                   }
                 }
               </article>
@@ -449,6 +537,50 @@
                 </button>
               </div>
             }
+          }
+        </div>
+      </section>
+
+      <section class="lf-section" [attr.aria-label]="t('moderation.decisions.title')">
+        <div class="lf-section__head">
+          <div>
+            <h2 class="lf-h2">{{ t('moderation.decisions.title') }}</h2>
+            <p class="lf-copy lf-copy--tight">{{ t('moderation.decisions.subtitle') }}</p>
+          </div>
+          <button type="button" class="lf-btn lf-btn--compact" (click)="loadDecisions()" [disabled]="decisionsLoading()">{{ t('moderation.decisions.refresh') }}</button>
+        </div>
+        <div class="lf-tile">
+          @if (decisionsError()) {
+            <p role="alert" class="lf-note lf-note--warn">{{ t('moderation.decisions.error') }}</p>
+          } @else if (decisionsLoading()) {
+            <p class="lf-note" role="status">{{ t('common.loading') }}</p>
+          } @else if (!decisions().length) {
+            <p class="lf-note">{{ t('moderation.decisions.empty') }}</p>
+          } @else {
+            <div class="decision-list">
+              @for (decision of decisions(); track decision._id) {
+                <article class="decision-entry">
+                  <div class="lf-row-head">
+                    <strong>{{ decision.username }}</strong>
+                    <span class="lf-chip" [class.lf-chip--danger]="decision.verdict === 'violation'" [class.lf-chip--ok]="decision.verdict === 'allow'">
+                      {{ t('moderation.decisions.verdicts.' + decision.verdict) }}
+                    </span>
+                  </div>
+                  <p class="decision-message">{{ decision.messageText }}</p>
+                  <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
+                  @if (decision.consequence.action) {
+                    <p class="lf-note">{{ actionLabel(decision.consequence.action) }} · #{{ decision.consequence.offenseNumber }} · {{ t(decision.consequence.success === undefined ? 'moderation.decisions.pendingAction' : decision.consequence.success ? 'moderation.logs.success' : 'moderation.logs.failed') }}</p>
+                  } @else {
+                    <p class="lf-note">{{ t('moderation.decisions.noOffense') }}</p>
+                  }
+                </article>
+              }
+            </div>
+            <div class="lf-pager">
+              <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page <= 1" (click)="goToDecisionsPage(decisionsPagination().page - 1)">{{ t('common.previous') }}</button>
+              <span>{{ decisionsPagination().page }}</span>
+              <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page * decisionsPagination().limit >= decisionsPagination().total" (click)="goToDecisionsPage(decisionsPagination().page + 1)">{{ t('common.next') }}</button>
+            </div>
           }
         </div>
       </section>

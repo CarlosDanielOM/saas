@@ -288,16 +288,18 @@
   position: relative;
   display: inline-flex;
   width: 3.25rem;
-  height: 1.9rem;
+  height: 2.75rem;
+  align-items: center;
   flex-shrink: 0;
   cursor: pointer;
 }
 
-.lf-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.lf-switch input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; margin: 0; z-index: 1; cursor: pointer; }
+.lf-switch input:focus-visible + .lf-switch__track { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .lf-switch__track {
   width: 100%;
-  height: 100%;
+  height: 1.9rem;
   border-radius: 999px;
   background: var(--btn);
   border: 1px solid var(--line);
@@ -350,6 +352,7 @@
 }
 
 .lf-field input,
+.lf-field textarea,
 .lf-select {
   width: 100%;
   border: 1px solid var(--line);
@@ -374,12 +377,14 @@
 }
 
 .lf-field input:focus,
+.lf-field textarea:focus,
 .lf-select:focus {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .lf-field input:disabled,
+.lf-field textarea:disabled,
 .lf-select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -640,3 +645,26 @@
     transition: none;
   }
 }
+
+.advanced-moderation {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.lf-chip--gold { color: var(--gold); background: var(--gold-soft); }
+.pattern-editor { display: grid; gap: 0.65rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: 0.85rem; min-width: 0; }
+.regex-input { font-family: ui-monospace, monospace; }
+.pattern-options { display: flex; flex-wrap: wrap; align-items: end; gap: 0.65rem; }
+.pattern-options .lf-field { flex: 1 1 11rem; }
+.check-option { display: flex; align-items: center; gap: 0.5rem; min-height: 44px; font-size: 0.85rem; cursor: pointer; }
+.check-option input { width: 1.15rem; height: 1.15rem; accent-color: var(--accent); }
+.semantic-toggle { padding-top: 0.85rem; border-top: 1px solid var(--line); }
+.lf-field textarea { resize: vertical; min-height: 7rem; line-height: 1.5; }
+.example-editor { display: flex; gap: 0.65rem; align-items: end; }
+.example-editor .lf-field { flex: 1; min-width: 0; }
+.decision-list { display: grid; gap: 0.85rem; }
+.decision-entry { padding-bottom: 0.85rem; border-bottom: 1px solid var(--line); min-width: 0; }
+.decision-message { margin: 0.65rem 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.decision-entry .lf-note { margin: 0.4rem 0; }

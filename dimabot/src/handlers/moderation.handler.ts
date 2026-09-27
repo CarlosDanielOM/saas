@@ -9,6 +9,11 @@ import { inspectExpression, ruleExempt, shouldLogPermissionError, type UserIdent
 import { error as logError } from '../utils/logger.js';
 import { TWITCH_BOT_ACCOUNT_ID } from '../utils/header.js';
 import type { IChatMessage } from '../interfaces/twitch/eventsub.interface.js';
+import Users from '../schemas/users.schema.js';
+import ChatHistory from '../classes/chat_history.js';
+import { ModerationDecision, type ModerationContextMessage } from '../schemas/moderation_decision.schema.js';
+import { findBlacklistMatches, paidModeration, SEMANTIC_DEADLINE_MS, type ModerationMatch } from '../utils/moderation/advanced.js';
+import { createModerationDecision, awaitSemanticDecision } from '../utils/moderation/decisions.js';
 
 const SETTINGS_CACHE_TTL_SECONDS = 300;
 export const NO_SETTINGS_SENTINEL = '{"none":true}';
@@ -91,14 +96,14 @@ export interface ChatModerationResult {
 
 /**
  * The moderation gate. Runs inline in the message pipeline after the identity
- * is resolved and before AI/command processing. Detection is synchronous and
- * cheap (cached settings + pure evaluators); the consequence (Helix calls)
- * is fired asynchronously so Twitch API latency never delays the pipeline.
+ * is resolved and before AI/command processing. Detection uses cached settings and pure evaluators. Contextual candidates
+ * await a bounded background-worker review; consequences (Helix calls)
+ * execute asynchronously.
  *
  * Fail-open by design: a moderation infrastructure error must never break
  * chat features — the error is logged and the message proceeds.
  */
-export async function runChatModeration(channelID: string, messageEventData: IChatMessage, identity: UserIdentity): Promise<ChatModerationResult> {
+async function moderateMessage(channelID: string, messageEventData: IChatMessage, identity: UserIdentity, receivedAt: number): Promise<ChatModerationResult> {
     try {
         const chatterID = messageEventData.chatter_user_id || '';
         const chatterLogin = (messageEventData.chatter_user_login || '').toLowerCase();
@@ -116,6 +121,14 @@ export async function runChatModeration(channelID: string, messageEventData: ICh
         // An active permit (user or channel-wide) bypasses every rule.
         if (await hasActivePermit(channelID, chatterLogin)) {
             return { actionTaken: false };
+        }
+
+        // Delivery retries must not repeat a review, debit, ladder increment or
+        // downstream command. A pending receipt also fences overlapping deliveries.
+        const cache = await getDragonflyClient('moderation.messageReceipt');
+        if (messageEventData.message_id) {
+            const receipt = await cache.set(`moderation:${channelID}:message:${messageEventData.message_id}`, '1', { NX: true, EX: 86400 });
+            if (!receipt) return { actionTaken: true };
         }
 
         const fragments = messageEventData.message.fragments || [];
@@ -149,15 +162,63 @@ export async function runChatModeration(channelID: string, messageEventData: ICh
 
             if (ruleExempt(rule, identity)) continue;
 
+            const advanced = rule.type === 'blacklist' && Boolean(rule.patterns?.length || rule.semantic?.enabled);
+            let matches: ModerationMatch[] = [];
             const result = evaluateRule(
                 rule,
                 input,
                 rule.type === 'blacklist' ? getBlacklistPattern(channelID, settings, rule) : undefined
             );
-            if (!result.triggered) continue;
+            if (rule.type === 'blacklist') matches = findBlacklistMatches(input.text, rule.terms, rule.patterns || []);
+            if (!result.triggered && !matches.length) continue;
 
-            const offenseNumber = await recordOffense(channelID, rule.id, chatterID, settings.offenseWindowSeconds);
+            let context: ModerationContextMessage[] = [];
+            if (rule.semantic?.enabled) {
+                const history = await ChatHistory.getRecentMessages(channelID, 30);
+                context = history.filter((item: ModerationContextMessage) => item.messageID !== messageEventData.message_id
+                    && item.timestamp <= receivedAt && item.timestamp >= receivedAt - 60_000)
+                    .slice(0, 7).reverse().map((item: ModerationContextMessage) => ({
+                        messageID: item.messageID || '', username: String(item.username).slice(0, 100),
+                        message: String(item.message).slice(0, 500), timestamp: item.timestamp
+                    }));
+            }
+            let decision = await createModerationDecision({
+                channelID, userID: chatterID, username: messageEventData.chatter_user_name || chatterLogin,
+                messageID: messageEventData.message_id, messageText: input.text,
+                ruleID: rule.id, rule, settingsVersion: settings.settingsVersion, matches, context,
+                mode: rule.semantic?.enabled ? 'semantic' : rule.patterns?.length ? 'regex' : 'literal',
+                deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
+            });
+            if (advanced) {
+                const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+                if (!paidModeration(owner?.plan_tier)) {
+                    await ModerationDecision.updateOne({ _id: decision._id }, { $set: { state: 'completed', verdict: 'uncertain', status: 'plan_required', 'consequence.status': 'allowed_fallback' } });
+                    continue;
+                }
+            }
+            if (rule.semantic?.enabled) {
+                decision = await awaitSemanticDecision(decision);
+                if (decision.verdict !== 'violation') {
+                    await ModerationDecision.updateOne({ _id: decision._id }, { $set: { 'consequence.status': decision.verdict === 'allow' ? 'allowed' : 'allowed_fallback' } });
+                    continue;
+                }
+                // Recheck current policy and permits after the asynchronous review.
+                const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+                const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+                if (Date.now() >= decision.deadline.getTime() || !current?.enabled || current.settingsVersion !== settings.settingsVersion
+                    || !paidModeration(owner?.plan_tier) || await hasActivePermit(channelID, chatterLogin)) {
+                    await ModerationDecision.updateOne({ _id: decision._id }, { $set: { 'consequence.status': 'cancelled', 'charge.status': 'none', 'charge.credits': 0, 'charge.billableCostUSD': 0 } });
+                    continue;
+                }
+            }
+
+            const claim = await ModerationDecision.updateOne({ _id: decision._id, 'consequence.status': 'none' }, { $set: { 'consequence.status': 'claimed' } });
+            if (!claim.modifiedCount) continue;
+
+            const offenseNumber = await recordOffense(channelID, rule.id, chatterID, settings.offenseWindowSeconds, decision._id);
             const step = resolveOffenseStep(rule, offenseNumber);
+
+            await ModerationDecision.updateOne({ _id: decision._id }, { $set: { consequence: { status: 'scheduled', action: step.action, offenseNumber } } });
 
             const executionInput = {
                 channelID,
@@ -167,7 +228,8 @@ export async function runChatModeration(channelID: string, messageEventData: ICh
                 messageText: input.text,
                 rule,
                 step,
-                offenseNumber
+                offenseNumber,
+                decisionID: decision._id
             };
 
             if (step.action === 'off') {
@@ -200,4 +262,17 @@ export async function runChatModeration(channelID: string, messageEventData: ICh
         }, { channelId: channelID, destination: 'both' });
         return { actionTaken: false };
     }
+}
+
+// The production bot is a single host. Serialize each chatter's moderation
+// gates so a faster second review cannot overtake the first offense. Other
+// chatters/channels keep processing; every semantic request has a fixed deadline.
+const userGates = new Map<string, Promise<ChatModerationResult>>();
+export async function runChatModeration(channelID: string, message: IChatMessage, identity: UserIdentity, receivedAt = Date.now()): Promise<ChatModerationResult> {
+    const key = `${channelID}:${message.chatter_user_id}`;
+    const preceding = userGates.get(key);
+    const task = (preceding ? preceding.catch(() => ({ actionTaken: false })) : Promise.resolve()).then(() => moderateMessage(channelID, message, identity, receivedAt));
+    userGates.set(key, task);
+    try { return await task; }
+    finally { if (userGates.get(key) === task) userGates.delete(key); }
 }

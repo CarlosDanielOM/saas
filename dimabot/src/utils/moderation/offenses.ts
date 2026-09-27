@@ -11,9 +11,19 @@ export function offenseKey(channelID: string, ruleID: string, userID: string): s
  * offense starts the expiry, so a user who stops offending returns to a
  * clean slate after the window elapses.
  */
-export async function recordOffense(channelID: string, ruleID: string, userID: string, windowSeconds: number): Promise<number> {
+export async function recordOffense(channelID: string, ruleID: string, userID: string, windowSeconds: number, decisionID?: string): Promise<number> {
     const cache = await getDragonflyClient('moderation.recordOffense');
     const key = offenseKey(channelID, ruleID, userID);
+    if (decisionID) {
+        return Number(await cache.eval(`
+            local previous = redis.call('GET', KEYS[2])
+            if previous then return tonumber(previous) end
+            local count = redis.call('INCR', KEYS[1])
+            if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+            redis.call('SET', KEYS[2], count, 'EX', 86400)
+            return count
+        `, { keys: [key, `moderation:offense-receipt:${decisionID}`], arguments: [String(Math.max(60, Math.floor(windowSeconds)))] }));
+    }
     const count = await cache.incr(key);
     if (count === 1) {
         await cache.expire(key, Math.max(60, Math.floor(windowSeconds)));

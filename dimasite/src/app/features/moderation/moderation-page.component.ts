@@ -8,6 +8,7 @@ import {
   signal
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   catchError,
@@ -29,7 +30,10 @@ import type {
   ModerationRule,
   ModerationRuleType,
   ModerationSettings,
-  OffenseStepKey
+  OffenseStepKey,
+  ModerationPattern,
+  ModerationSemanticPolicy,
+  ModerationDecisionEntry
 } from '../../models/moderation.model';
 import {
   MODERATION_ACTION_OPTIONS,
@@ -87,6 +91,10 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly settings = signal<ModerationSettings | null>(null);
   readonly initialSettings = signal<ModerationSettings | null>(null);
   readonly logs = signal<ModerationActionLogEntry[]>([]);
+  readonly decisions = signal<ModerationDecisionEntry[]>([]);
+  readonly decisionsLoading = signal(false);
+  readonly decisionsError = signal(false);
+  readonly decisionsPagination = signal<PaginationState>({ page: 1, limit: 10, total: 0 });
   readonly settingsLoading = signal(true);
   readonly logsLoading = signal(false);
   readonly savingSettings = signal(false);
@@ -135,6 +143,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly planTier = computed(() => {
     return this.sessionAuth.getPlanTierForStreamer(this.streamer());
   });
+  readonly hasPaidModeration = computed(() => this.planTier() === 'premium' || this.planTier() === 'pro');
 
   readonly settingsDirty = computed(() => {
     const current = this.settings();
@@ -275,6 +284,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     await Promise.all([
       this.loadSettings(channelID),
       this.loadLogs(channelID),
+      this.loadDecisions(channelID),
       this.loadPermission(channelID)
     ]);
   }
@@ -345,6 +355,30 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadDecisions(channelID = this.channelID()): Promise<void> {
+    if (!channelID) return;
+    this.decisionsLoading.set(true);
+    this.decisionsError.set(false);
+    try {
+      const { page, limit } = this.decisionsPagination();
+      const response = await firstValueFrom(this.moderationApi.getDecisions(channelID, page, limit));
+      if (response.error || !response.data) throw new Error('Unable to load decisions');
+      this.decisions.set(response.data.decisions);
+      this.decisionsPagination.update(p => ({ ...p, total: response.data!.total }));
+    } catch { this.decisionsError.set(true); }
+    finally { this.decisionsLoading.set(false); }
+  }
+
+  async goToDecisionsPage(page: number): Promise<void> {
+    this.decisionsPagination.update(p => ({ ...p, page }));
+    await this.loadDecisions();
+  }
+
+  decisionStatus(status: string): string {
+    const known = ['pending', 'matched', 'completed', 'uncertain', 'timeout', 'unavailable', 'invalid_response', 'rate_limited', 'quota_exhausted', 'credits_unavailable', 'plan_required', 'policy_changed'];
+    return this.t(`moderation.decisions.statuses.${known.includes(status) ? status : 'unavailable'}`);
+  }
+
   async saveSettings(): Promise<void> {
     const channelID = this.channelID();
     const currentSettings = this.settings();
@@ -384,7 +418,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       await this.loadLogs(channelID);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : this.t('moderation.errors.saveFailed');
+        error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+          ? error.error.message : error instanceof Error ? error.message : this.t('moderation.errors.saveFailed');
       this.errorMessage.set(message);
       this.toastService.error(this.t('moderation.toasts.errorTitle'), message);
     } finally {
@@ -413,6 +448,48 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   updateRuleType(ruleID: string, type: string): void {
     if (!MODERATION_RULE_TYPES.includes(type as ModerationRuleType)) return;
     this.patchRule(ruleID, { type: type as ModerationRuleType });
+  }
+
+  addPattern(ruleID: string): void {
+    if (!this.hasPaidModeration() || !this.canManage()) return;
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (!rule || (rule.patterns?.length ?? 0) >= 10) return;
+    this.patchRule(ruleID, { patterns: [...(rule.patterns ?? []), { id: crypto.randomUUID(), source: '', boundary: 'whole_word', ignoreCase: true }] });
+  }
+
+  updatePattern(ruleID: string, patternID: string, patch: Partial<ModerationPattern>): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (rule) this.patchRule(ruleID, { patterns: rule.patterns?.map(pattern => pattern.id === patternID ? { ...pattern, ...patch } : pattern) });
+  }
+
+  updatePatternBoundary(ruleID: string, patternID: string, boundary: string): void {
+    if (boundary === 'whole_word' || boundary === 'anywhere') this.updatePattern(ruleID, patternID, { boundary });
+  }
+
+  removePattern(ruleID: string, patternID: string): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (rule) this.patchRule(ruleID, { patterns: rule.patterns?.filter(pattern => pattern.id !== patternID) });
+  }
+
+  updateSemantic(ruleID: string, patch: Partial<ModerationSemanticPolicy>): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (rule) this.patchRule(ruleID, { semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log', ...rule.semantic, ...patch } });
+  }
+
+  addExample(ruleID: string, label: 'allow' | 'violation'): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (!rule || (rule.semantic?.examples.length ?? 0) >= 10) return;
+    this.updateSemantic(ruleID, { examples: [...(rule.semantic?.examples ?? []), { message: '', label }] });
+  }
+
+  updateExample(ruleID: string, index: number, message: string): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (rule) this.updateSemantic(ruleID, { examples: rule.semantic?.examples.map((example, i) => i === index ? { ...example, message } : example) });
+  }
+
+  removeExample(ruleID: string, index: number): void {
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (rule) this.updateSemantic(ruleID, { examples: rule.semantic?.examples.filter((_, i) => i !== index) });
   }
 
   updateRuleReason(ruleID: string, reason: string): void {

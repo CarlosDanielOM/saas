@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { LinksService } from './links.service';
 import type {
   ModerationLogsResponse,
+  ModerationDecisionsResponse,
   ModerationSettingsPayload,
   ModerationSettingsResponse
 } from '../models/moderation.model';
@@ -44,5 +45,10 @@ export class ModerationApiService {
       `${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/logs`,
       { params }
     );
+  }
+
+  getDecisions(channelID: string, page = 1, limit = 10): Observable<ModerationDecisionsResponse> {
+    const params = new HttpParams().set('limit', limit).set('skip', Math.max(0, (page - 1) * limit));
+    return this.http.get<ModerationDecisionsResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/decisions`, { params });
   }
 }

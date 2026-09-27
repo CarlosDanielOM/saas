@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Schema, model } from 'mongoose';
 import type { PermissionExpression } from '../utils/permissions/expression.js';
+import type { ModerationPattern, SemanticPolicy } from '../utils/moderation/advanced.js';
 
 export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';
 export type ModerationAction = 'off' | 'warn' | 'delete' | 'timeout' | 'ban';
@@ -34,6 +35,8 @@ export interface IModerationRule {
     allowlistDomains: string[];
     maxEmoteCount: number;
     terms: string[];
+    patterns?: ModerationPattern[];
+    semantic?: SemanticPolicy;
 }
 
 export interface IChannelModerationSettings {
@@ -130,7 +133,14 @@ const moderationRuleSchema = new Schema<IModerationRule>({
     minMessageLength: { type: Number, default: MODERATION_RULE_DEFAULTS.minMessageLength, min: 1, max: 500 },
     allowlistDomains: { type: [String], default: [] },
     maxEmoteCount: { type: Number, default: MODERATION_RULE_DEFAULTS.maxEmoteCount, min: 1, max: 100 },
-    terms: { type: [String], default: [] }
+    terms: { type: [String], default: [] },
+    patterns: { type: [new Schema({ id: String, source: String, boundary: String, ignoreCase: Boolean }, { _id: false })], default: [] },
+    semantic: { type: new Schema({
+        enabled: { type: Boolean, default: false },
+        policy: { type: String, default: '', maxlength: 2000 },
+        examples: { type: [new Schema({ message: String, label: String }, { _id: false })], default: [] },
+        onUncertain: { type: String, enum: ['allow_and_log'], default: 'allow_and_log' }
+    }, { _id: false }), default: () => ({ enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' }) }
 }, { _id: false });
 
 const channelModerationSettingsSchema = new Schema<IChannelModerationSettings>({

@@ -50,6 +50,7 @@ let isMod = false;
 let tries = 0;
 
 export const messageHandler = async (channelID: string, messageEventData: IChatMessage) => {
+    const receivedAt = Date.now();
     const metricTracker = startMessageHandlerMetric();
     let messageHandlerFailed = false;
     try {
@@ -66,7 +67,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
 
         const formattedBadges = await formatBadges({ badges: messageEventData.badges });
 
-        await ChatHistory.addMessage(channelID, messageEventData.chatter_user_name!, messageEventData.message.text, formattedBadges.badgeList);
+        await ChatHistory.addMessage(channelID, messageEventData.chatter_user_name!, messageEventData.message.text, formattedBadges.badgeList, 'twitch', messageEventData.message_id, receivedAt);
 
         void incrementSiteAnalytics('total_messages', 1).catch((analyticsError) => {
             console.error('Error incrementing site analytics from message handler:', {
@@ -97,7 +98,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
 
         // Every chat message passes through moderation before command or timer
         // dispatch. A taken action stops the rest of the message pipeline.
-        const moderationResult = await runChatModeration(channelID, messageEventData, identity);
+        const moderationResult = await runChatModeration(channelID, messageEventData, identity, receivedAt);
         if (moderationResult.actionTaken) {
             return;
         }

@@ -1084,7 +1084,7 @@
       "steps": "Elige la primera vez, la segunda y qué sigue pasando después. Una hora de memoria es un buen comienzo."
     },
     "enabled": "Filtrar el chat",
-    "enabledDescription": "Cuando está encendido, el bot revisa cada mensaje antes de responder. Filtrar es gratis.",
+    "enabledDescription": "El bot revisa los mensajes antes de responder. Los filtros básicos son gratuitos; regex y revisión contextual están disponibles en planes de pago.",
     "enabledDisabledNote": "El filtro está apagado, así que el chat no se está revisando.",
     "offenseWindow": "Olvidar avisos después de",
     "offenseWindowUnit": "minutos",
@@ -1184,6 +1184,62 @@
       "savedTitle": "Moderación guardada",
       "savedMessage": "Tus reglas de moderación ya están activas.",
       "errorTitle": "Error"
+    },
+    "advanced": {
+      "title": "Variaciones de palabras",
+      "paid": "Premium · Pro",
+      "upgrade": "Las expresiones regulares y la revisión contextual requieren Premium o Pro. Las reglas guardadas con estas funciones están inactivas en Free.",
+      "regexHint": "Los patrones amplían tus palabras bloqueadas. Usa regex RE2 sin /barras/, anticipaciones ni referencias inversas. La coincidencia de palabra completa evita detectar fragmentos dentro de palabras normales.",
+      "pattern": "Patrón regex",
+      "patternPlaceholder": "f(?:u|a)?ck(?:ing|y)?",
+      "boundary": "Límites de coincidencia",
+      "wholeWord": "Palabra completa",
+      "anywhere": "En cualquier parte del mensaje",
+      "ignoreCase": "Ignorar mayúsculas",
+      "addPattern": "Añadir patrón regex",
+      "semantic": "Revisar el contexto antes de actuar",
+      "semanticOn": "Las palabras o patrones coincidentes se revisan según tu política. Solo las infracciones confirmadas avanzan la escala.",
+      "semanticOff": "La revisión contextual está desactivada. Cualquier coincidencia de palabra o regex avanza directamente la escala de esta regla.",
+      "policy": "¿Qué debe considerarse una infracción?",
+      "policyPlaceholder": "El autor usa lenguaje vulgar de forma negativa u hostil, en lugar de como elogio positivo.",
+      "examplesHint": "Los ejemplos opcionales ayudan a distinguir mensajes permitidos de infracciones.",
+      "addAllowed": "Añadir ejemplo permitido",
+      "addViolation": "Añadir ejemplo de infracción",
+      "fallback": "Las revisiones inciertas, los tiempos de espera agotados y los créditos no disponibles permiten el mensaje y registran el resultado sin infracción. Las demás reglas siguen aplicándose.",
+      "credits": "Usa créditos de IA existentes a 0,042 USD por millón de tokens de entrada, redondeados hacia arriba a créditos enteros por revisión. Las revisiones fallidas o inciertas no se cobran."
+    },
+    "decisions": {
+      "title": "Decisiones de moderación",
+      "subtitle": "Coincidencias, decisiones contextuales y resultados de los últimos 30 días. Los registros se conservan internamente durante 180 días para mejorar la moderación.",
+      "refresh": "Actualizar decisiones",
+      "empty": "Todavía no se han revisado mensajes coincidentes.",
+      "error": "No se pudieron cargar las decisiones. Intenta actualizar.",
+      "pendingAction": "Acción pendiente",
+      "noOffense": "No se registró ninguna infracción.",
+      "verdicts": {
+        "allow": "Permitido",
+        "violation": "Infracción",
+        "uncertain": "Incierto / omitido"
+      },
+      "modes": {
+        "literal": "Coincidencia de palabra",
+        "regex": "Coincidencia regex",
+        "semantic": "Revisión contextual"
+      },
+      "statuses": {
+        "pending": "Revisión pendiente",
+        "matched": "Patrón coincidente",
+        "completed": "Revisión completada",
+        "uncertain": "Confianza insuficiente",
+        "timeout": "Tiempo de revisión agotado",
+        "unavailable": "Revisión no disponible",
+        "invalid_response": "Respuesta del modelo no válida",
+        "rate_limited": "Límite de solicitudes del modelo",
+        "quota_exhausted": "Créditos de IA agotados",
+        "credits_unavailable": "Créditos de IA no disponibles",
+        "plan_required": "Requiere un plan de pago",
+        "policy_changed": "La regla cambió durante la revisión"
+      }
     }
   },
   "analyticsHub": {

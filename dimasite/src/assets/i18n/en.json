@@ -1084,7 +1084,7 @@
       "steps": "Set the first time, the second time, and what keeps happening after that. One hour is a good memory."
     },
     "enabled": "Filter chat",
-    "enabledDescription": "When this is on, the bot checks every message before it replies. Filtering is free.",
+    "enabledDescription": "The bot checks messages before replying. Basic filters are free; regex and contextual review are available on paid plans.",
     "enabledDisabledNote": "The filter is off, so chat is not being checked.",
     "offenseWindow": "Forget warnings after",
     "offenseWindowUnit": "minutes",
@@ -1184,6 +1184,62 @@
       "savedTitle": "Moderation saved",
       "savedMessage": "Your moderation rules are now live.",
       "errorTitle": "Error"
+    },
+    "advanced": {
+      "title": "Word variations",
+      "paid": "Premium · Pro",
+      "upgrade": "Regex and contextual review require Premium or Pro. Saved rules using these features are inactive on Free.",
+      "regexHint": "Patterns extend your blocked words. Use RE2 regex without /slashes/, lookaround, or backreferences. Whole-word matching prevents matches inside ordinary words.",
+      "pattern": "Regex pattern",
+      "patternPlaceholder": "f(?:u|a)?ck(?:ing|y)?",
+      "boundary": "Match boundaries",
+      "wholeWord": "Whole word",
+      "anywhere": "Anywhere in the message",
+      "ignoreCase": "Ignore case",
+      "addPattern": "Add regex pattern",
+      "semantic": "Review context before acting",
+      "semanticOn": "A matching word or pattern is reviewed against your policy. Only confirmed violations advance the ladder.",
+      "semanticOff": "Contextual review is off. Any matching word or regex advances this rule’s offense ladder directly.",
+      "policy": "What should count as a violation?",
+      "policyPlaceholder": "The author uses profanity in a negative or hostile way, rather than as positive praise.",
+      "examplesHint": "Optional examples help distinguish allowed messages from violations.",
+      "addAllowed": "Add allowed example",
+      "addViolation": "Add violation example",
+      "fallback": "Uncertain reviews, timeouts, and unavailable credits allow the message and log the outcome without an offense. Other rules still apply.",
+      "credits": "Uses existing AI credits at $0.042 per million input tokens, rounded up to whole credits per review. Failed or uncertain reviews are not charged."
+    },
+    "decisions": {
+      "title": "Moderation decisions",
+      "subtitle": "Matches, contextual decisions, and outcomes from the last 30 days. Records are retained internally for 180 days to improve moderation.",
+      "refresh": "Refresh decisions",
+      "empty": "No matching messages have been reviewed yet.",
+      "error": "Could not load decisions. Try refreshing.",
+      "pendingAction": "Pending action",
+      "noOffense": "No offense recorded.",
+      "verdicts": {
+        "allow": "Allowed",
+        "violation": "Violation",
+        "uncertain": "Uncertain / skipped"
+      },
+      "modes": {
+        "literal": "Word match",
+        "regex": "Regex match",
+        "semantic": "Contextual review"
+      },
+      "statuses": {
+        "pending": "Review pending",
+        "matched": "Pattern matched",
+        "completed": "Review completed",
+        "uncertain": "Insufficient confidence",
+        "timeout": "Review timed out",
+        "unavailable": "Review unavailable",
+        "invalid_response": "Invalid model response",
+        "rate_limited": "Model rate limit",
+        "quota_exhausted": "AI credits exhausted",
+        "credits_unavailable": "AI credits unavailable",
+        "plan_required": "Paid plan required",
+        "policy_changed": "Rule changed during review"
+      }
     }
   },
   "analyticsHub": {

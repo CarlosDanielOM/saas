@@ -18,7 +18,7 @@ class ChatHistory {
         return this.cacheClient;
     }
 
-    async addMessage(channelID: string, username: string, message: string, formattedBadges?: string[], platform: 'twitch' | 'kick' = 'twitch') {
+    async addMessage(channelID: string, username: string, message: string, formattedBadges?: string[], platform: 'twitch' | 'kick' = 'twitch', messageID?: string, timestamp = Date.now()) {
         try {
             const cache = await this.cache;
 
@@ -28,7 +28,7 @@ class ChatHistory {
             }
 
             const key = `${platform}:${channelID}:chat:history`;
-            const messageData = JSON.stringify({ username, message:message, timestamp: Date.now(), badges: formattedBadges });
+            const messageData = JSON.stringify({ username, message:message, timestamp, messageID, badges: formattedBadges });
             
             // Add new message
             await cache.lPush(key, messageData);

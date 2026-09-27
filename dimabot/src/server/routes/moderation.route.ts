@@ -23,6 +23,9 @@ import { invalidateModerationSettingsCache } from '../../handlers/moderation.han
 import { existingChannelModerationView } from '../../utils/moderation/seed_plan.js';
 import { inspectExpression, type PermissionExpression } from '../../utils/permissions/index.js';
 import { error as logError } from '../../utils/logger.js';
+import Users from '../../schemas/users.schema.js';
+import { ModerationDecision } from '../../schemas/moderation_decision.schema.js';
+import { parseAdvancedRule, paidModeration, MODERATION_VISIBLE_DAYS } from '../../utils/moderation/advanced.js';
 
 interface ModerationRequest extends Request {
     user?: {
@@ -117,6 +120,9 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
     }
 
     const input = raw as Record<string, unknown>;
+    let advanced: ReturnType<typeof parseAdvancedRule>;
+    try { advanced = parseAdvancedRule(input); }
+    catch (error) { return { error: `Rule ${index + 1}: ${error instanceof Error ? error.message : 'Invalid advanced rule'}` }; }
     const type = String(input.type || '');
     if (!RULE_TYPES.has(type)) {
         return { error: `Rule ${index + 1}: type must be one of caps, links, emote_spam, blacklist` };
@@ -155,7 +161,8 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         minMessageLength: clampInt(input.minMessageLength, 1, 500, MODERATION_RULE_DEFAULTS.minMessageLength),
         allowlistDomains,
         maxEmoteCount: clampInt(input.maxEmoteCount, 1, 100, MODERATION_RULE_DEFAULTS.maxEmoteCount),
-        terms: normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100)
+        terms: normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100),
+        ...advanced
     };
 
     return { rule };
@@ -215,6 +222,21 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
         }
 
         const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+        if (new Set(rules.map(rule => rule.id)).size !== rules.length) {
+            return res.status(400).json({ error: true, message: 'Rule IDs must be unique', status: 400 });
+        }
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+        if (!paidModeration(owner?.plan_tier)) {
+            for (const rule of rules) {
+                if (!rule.patterns?.length && !rule.semantic?.enabled) continue;
+                const prior = current?.rules.find(item => item.id === rule.id);
+                // Downgraded channels may keep or disable their saved inactive
+                // configuration while editing free rules, but cannot add paid features.
+                if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(prior.semantic) !== JSON.stringify(rule.semantic)) {
+                    return res.status(403).json({ error: true, message: 'Regex and contextual moderation require Premium or Pro', status: 403 });
+                }
+            }
+        }
 
         const updated = await ChannelModerationSettingsSchema.findOneAndUpdate({
             channelID
@@ -223,9 +245,9 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 channel: access.channelName,
                 enabled: typeof body.enabled === 'boolean' ? body.enabled : (current?.enabled ?? MODERATION_SETTINGS_DEFAULTS.enabled),
                 offenseWindowSeconds: clampInt(body.offenseWindowSeconds, MIN_OFFENSE_WINDOW_SECONDS, MAX_OFFENSE_WINDOW_SECONDS, current?.offenseWindowSeconds ?? MODERATION_SETTINGS_DEFAULTS.offenseWindowSeconds),
-                rules,
-                settingsVersion: (current?.settingsVersion ?? MODERATION_SETTINGS_DEFAULTS.settingsVersion) + 1
-            }
+                rules
+            },
+            $inc: { settingsVersion: 1 }
         }, {
             new: true,
             upsert: true,
@@ -252,12 +274,13 @@ router.get('/:channelID/logs', authMiddleware as any, async (req: ModerationRequ
         const access = await validateAccess(req, res, channelID, 'dashboard:view');
         if (!access) return;
 
-        const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
-        const skip = Math.max(0, Number(req.query.skip) || 0);
+        const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit) || 50)));
+        const skip = Math.min(100000, Math.max(0, Math.floor(Number(req.query.skip) || 0)));
+        const filter = { channelID, createdAt: { $gte: new Date(Date.now() - MODERATION_VISIBLE_DAYS * 86400000) } };
 
         const [logs, total] = await Promise.all([
-            ModerationActionLogSchema.find({ channelID }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            ModerationActionLogSchema.countDocuments({ channelID })
+            ModerationActionLogSchema.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            ModerationActionLogSchema.countDocuments(filter)
         ]);
 
         return res.status(200).json({
@@ -269,6 +292,25 @@ router.get('/:channelID/logs', authMiddleware as any, async (req: ModerationRequ
     } catch (err) {
         await logError({ function: 'moderationRoute.getLogs', error: err instanceof Error ? err.message : String(err) });
         return res.status(500).json({ error: true, message: 'Unable to load moderation logs', status: 500 });
+    }
+});
+
+router.get('/:channelID/decisions', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID);
+        if (!await validateAccess(req, res, channelID, 'dashboard:view')) return;
+        const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit) || 20)));
+        const skip = Math.min(100000, Math.max(0, Math.floor(Number(req.query.skip) || 0)));
+        const filter = { channelID, createdAt: { $gte: new Date(Date.now() - MODERATION_VISIBLE_DAYS * 86400000) } };
+        const [decisions, total] = await Promise.all([
+            ModerationDecision.find(filter).select('_id username messageText ruleID mode verdict status scores consequence createdAt charge.credits')
+                .sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
+            ModerationDecision.countDocuments(filter)
+        ]);
+        return res.json({ error: false, status: 200, data: { decisions, total, limit, skip } });
+    } catch (error) {
+        await logError({ function: 'moderationRoute.decisions', error: error instanceof Error ? error.message : String(error) });
+        return res.status(500).json({ error: true, message: 'Unable to load moderation decisions', status: 500 });
     }
 });
 

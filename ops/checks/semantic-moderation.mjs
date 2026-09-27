@@ -1,0 +1,182 @@
+// Runs only in saas-ops' disposable Mongo/Redis network with provider mocks.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { spawn } from 'node:child_process';
+import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
+import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
+import { ChannelModerationSettingsSchema as Settings, buildDefaultModerationRules } from '/app/dist/schemas/channel_moderation_settings.schema.js';
+import { ModerationDecision as Decisions } from '/app/dist/schemas/moderation_decision.schema.js';
+import { ModerationActionLogSchema as Actions } from '/app/dist/schemas/moderation_action_log.schema.js';
+import { runChatModeration, invalidateModerationSettingsCache } from '/app/dist/handlers/moderation.handler.js';
+import { offenseKey } from '/app/dist/utils/moderation/offenses.js';
+import { grantPermit } from '/app/dist/utils/moderation/permit.js';
+import { parseAdvancedRule } from '/app/dist/utils/moderation/advanced.js';
+import ChatHistory from '/app/dist/classes/chat_history.js';
+
+const mongo = await getMongoDBConnection('semantic-test');
+const redis = await getDragonflyClient('semantic-test');
+await Decisions.init();
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const calls = () => { try { return fs.readFileSync('/tmp/saas-fixtures/calls.jsonl', 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse); } catch { return []; } };
+async function until(fn, label) { for (let i = 0; i < 120; i++) { if (await fn()) return; await sleep(100); } throw new Error(`timeout: ${label}`); }
+// cron's actual supervisor starts the worker. Other candidates use the exact
+// compiled worker entrypoint as a task-owned child, never an in-process mock.
+let worker;
+if (process.env.SAAS_TARGET !== 'cron') worker = spawn(process.execPath, ['dist/workers/semantic_moderation.worker.js'], { stdio: ['ignore', 'inherit', 'inherit'], env: process.env });
+const identity = { level: 1, tags: new Set(['everyone']) };
+const message = (id, text, user = 'viewer') => ({ chatter_user_id: user, chatter_user_login: user, chatter_user_name: user, message_id: id, badges: [], message: { text, fragments: [] } });
+const count = async (channel, rule, user = 'viewer') => Number(await redis.get(offenseKey(channel, rule.id, user)) || 0);
+const decision = (id) => Decisions.findOne({ messageID: id }).lean();
+const baseRule = () => ({ ...buildDefaultModerationRules()[3], id: 'words', enabled: true, terms: ['fuck'], ...parseAdvancedRule({ type: 'blacklist', patterns: [{ id: 'variants', source: 'f(?:u|a)?ck(?:ing|y)?' }] }) });
+async function seed(channel, rule, tier = 'premium') {
+    await Settings.create({ channelID: channel, channel, enabled: true, rules: [rule], settingsVersion: 2 });
+    await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: channel }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
+    await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: tier });
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
+}
+try {
+    await redis.hSet('accounts:twitch:698614112:data', { id: '698614112', access_token: 'dummy', expires_at: String(Math.floor(Date.now() / 1000) + 36000) });
+    const direct = baseRule();
+    await seed('regex-direct', direct);
+    for (const [i, text] of ['fuck this', 'fucky', 'fcky', 'facky'].entries()) {
+        assert.equal((await runChatModeration('regex-direct', message(`direct-${i}`, text), identity)).actionTaken, true);
+        assert.equal(await count('regex-direct', direct), i + 1);
+    }
+    await until(async () => await Decisions.countDocuments({ channelID: 'regex-direct', 'consequence.status': 'executed' }) === 4, 'direct ladder');
+    assert.deepEqual((await Decisions.find({ channelID: 'regex-direct' }).sort({ createdAt: 1 }).lean()).map(d => d.consequence.action), ['warn', 'delete', 'timeout', 'timeout']);
+    assert.equal(calls().filter(c => c.review).length, 0, 'regex-only never calls AI');
+    await runChatModeration('regex-direct', message('direct-0', 'fuck this'), identity);
+    assert.equal(await count('regex-direct', direct), 4, 'duplicate does not increment');
+    assert.equal((await runChatModeration('regex-direct', message('no-candidate', 'classic headshot'), identity)).actionTaken, false);
+    assert.equal(await decision('no-candidate'), null, 'no candidate requires no review or decision');
+
+    const semantic = { ...baseRule(), semantic: { enabled: true, policy: 'Prohibit negative or hostile profanity. Allow praise.', examples: [], onUncertain: 'allow_and_log' } };
+    await seed('semantic-paid', semantic);
+    await ChatHistory.addMessage('semantic-paid', 'another', 'earlier conversation', [], 'twitch', 'context-prior', Date.now() - 1000);
+    await ChatHistory.addMessage('semantic-paid', 'another', 'old conversation', [], 'twitch', 'context-old', Date.now() - 120000);
+    assert.equal((await runChatModeration('semantic-paid', message('positive', 'That was fucking awesome, pretty good headshot'), identity)).actionTaken, false);
+    assert.equal(await count('semantic-paid', semantic), 0, 'positive candidate never increments');
+    const positive = await decision('positive');
+    assert.equal(positive.verdict, 'allow');
+    assert.equal(positive.context.length, 1);
+    assert.equal(positive.context[0].messageID, 'context-prior');
+    assert.equal(Math.round((positive.expiresAt - positive.createdAt) / 86400000), 180);
+    assert.equal((await runChatModeration('semantic-paid', message('negative', 'You are a fucking idiot'), identity)).actionTaken, true);
+    assert.equal(await count('semantic-paid', semantic), 1);
+
+    for (const status of ['UNCERTAIN', 'INVALID', 'UNAVAILABLE', 'TIMEOUT']) {
+        assert.equal((await runChatModeration('semantic-paid', message(`fallback-${status}`, `fuck ${status}`), identity)).actionTaken, false, status);
+        assert.equal(await count('semantic-paid', semantic), 1, `${status} never increments`);
+        const logged = await decision(`fallback-${status}`);
+        assert.equal(logged.verdict, 'uncertain');
+        assert.equal(logged.charge.credits, 0);
+    }
+    await sleep(700);
+    assert.equal((await decision('fallback-TIMEOUT')).verdict, 'uncertain', 'late violation does not overwrite timeout');
+    assert.equal(await count('semantic-paid', semantic), 1);
+
+    await redis.set('twitch:semantic-paid:ai:exhaust', 'true');
+    const beforeQuota = calls().filter(c => c.review).length;
+    assert.equal((await runChatModeration('semantic-paid', message('quota', 'fuck this'), identity)).actionTaken, false);
+    assert.equal((await decision('quota')).status, 'quota_exhausted');
+    assert.equal(calls().filter(c => c.review).length, beforeQuota);
+    await redis.del(['twitch:semantic-paid:ai:exhaust', 'semantic-paid:ai:exhaust']);
+
+    const nickname = { ...semantic, terms: [], patterns: parseAdvancedRule({ type: 'blacklist', patterns: [{ source: 'r+i+(?:n+i+)*n+' }] }).patterns,
+        semantic: { ...semantic.semantic, policy: 'Prohibit using Rinn as a nickname. Allow discussing or discouraging the nickname.' } };
+    await seed('nickname-paid', nickname, 'pro');
+    assert.equal((await runChatModeration('nickname-paid', message('nickname-allow', "Don't call her Rinn"), identity)).actionTaken, false);
+    assert.equal((await runChatModeration('nickname-paid', message('nickname-violation', 'Yeah, Rinn is losing the game'), identity)).actionTaken, true);
+    assert.equal((await runChatModeration('nickname-paid', message('nickname-no-match', 'bring'), identity)).actionTaken, false);
+    nickname.semantic.policy = 'Prohibit any mention of Rinn, even when discouraging it.';
+    await Settings.updateOne({ channelID: 'nickname-paid' }, { $set: { rules: [nickname] }, $inc: { settingsVersion: 1 } });
+    await invalidateModerationSettingsCache('nickname-paid');
+    assert.equal((await runChatModeration('nickname-paid', message('nickname-any', "Don't call her Rinn"), identity)).actionTaken, true);
+
+    await seed('free-regex', direct, 'free');
+    assert.equal((await runChatModeration('free-regex', message('free-regex', 'fcky'), identity)).actionTaken, false);
+    assert.equal((await decision('free-regex')).status, 'plan_required');
+    const literal = { ...baseRule(), patterns: [] };
+    await seed('free-literal', literal, 'free');
+    assert.equal((await runChatModeration('free-literal', message('free-literal', 'fuck this'), identity)).actionTaken, true);
+    const mod = { level: 7, tags: new Set(['everyone', 'mod']) };
+    assert.equal((await runChatModeration('semantic-paid', message('exempt', 'fuck this', 'mod'), mod)).actionTaken, false);
+    await grantPermit('semantic-paid', 60, 'permitted');
+    assert.equal((await runChatModeration('semantic-paid', message('permitted', 'fuck this', 'permitted'), identity)).actionTaken, false);
+    assert.equal(await decision('exempt'), null);
+    assert.equal(await decision('permitted'), null);
+
+    // A model review that allows this rule must continue to later rules.
+    const caps = { ...buildDefaultModerationRules()[0], minMessageLength: 1, minCapsCount: 2 };
+    await seed('multiple-rules', semantic);
+    await Settings.updateOne({ channelID: 'multiple-rules' }, { $set: { rules: [semantic, caps] } });
+    assert.equal((await runChatModeration('multiple-rules', message('later-rule', 'WOW fucking awesome'), identity)).actionTaken, true);
+    assert.equal(await count('multiple-rules', semantic), 0);
+    assert.equal(await count('multiple-rules', caps), 1);
+
+    // Slow responses cannot reorder the user's ladder.
+    await seed('ordered', semantic);
+    await Promise.all([
+        runChatModeration('ordered', message('order-first', 'fuck SLOW', 'ordered-viewer'), identity),
+        runChatModeration('ordered', message('order-second', 'fuck this', 'ordered-viewer'), identity)
+    ]);
+    assert.equal((await decision('order-first')).consequence.offenseNumber, 1);
+    assert.equal((await decision('order-second')).consequence.offenseNumber, 2);
+    // Settings changed while the provider is in flight cancel the consequence.
+    const changed = runChatModeration('ordered', message('policy-changed', 'fuck SLOW', 'changed-viewer'), identity);
+    await until(() => calls().some(c => c.review === 'fuck SLOW' && c.state.targetMessage.author === 'changed-viewer'), 'slow review started');
+    await Settings.updateOne({ channelID: 'ordered' }, { $set: { enabled: false }, $inc: { settingsVersion: 1 } });
+    assert.equal((await changed).actionTaken, false);
+    assert.equal(await count('ordered', semantic, 'changed-viewer'), 0);
+
+    await runChatModeration('semantic-paid', message('billable', 'fuck BILLABLE', 'billing-viewer'), identity);
+    await until(async () => (await decision('billable')).charge.status === 'recorded', 'credit receipt');
+    const bill = await decision('billable');
+    assert.equal(bill.charge.credits, 1);
+    assert.equal(bill.cost, 0, 'actual free provider cost retained');
+    assert.equal(bill.charge.billableCostUSD, 150 * 0.042 / 1_000_000);
+    assert.equal(bill.charge.pricingVersion, 'span-lite-jev-equivalent-v1');
+    await runChatModeration('semantic-paid', message('billable', 'fuck BILLABLE', 'billing-viewer'), identity);
+    assert.equal(JSON.parse(await redis.get('twitch:semantic-paid:ai:credits')).used, 3, 'two completed reviews and billable review charged once; uncertain reviews are free');
+
+    const expired = new Date(Date.now() - 31 * 86400000);
+    await Decisions.updateOne({ _id: positive._id }, { $set: { createdAt: expired } });
+    assert.ok(await Decisions.findById(positive._id), '31-day decision retained for training');
+    const indexes = await Decisions.collection.indexes();
+    assert.ok(indexes.some(index => index.key.expiresAt === 1 && index.expireAfterSeconds === 0));
+
+    if (process.env.SAAS_TARGET === 'api') {
+        await redis.hSet('token:semantic-owner', { id: 'semantic-paid', login: 'semantic-paid', display_name: 'Owner' });
+        await redis.hSet('token:free-owner', { id: 'free-literal', login: 'free-literal', display_name: 'Owner' });
+        const api = (method, path, body, token = 'semantic-owner') => fetch(`http://127.0.0.1:3000/moderation/${path}`, {
+            method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body ? { body: JSON.stringify(body) } : {})
+        });
+        await until(async () => { try { return (await api('GET', 'semantic-paid/settings')).status === 200; } catch { return false; } }, 'API ready');
+        assert.equal((await api('GET', 'semantic-paid/decisions', null, null)).status, 401);
+        assert.equal((await api('GET', 'free-literal/decisions')).status, 403);
+        const listed = await (await api('GET', 'semantic-paid/decisions?limit=100')).json();
+        assert.ok(!listed.data.decisions.some(row => row._id === positive._id), '31-day records hidden server-side');
+        assert.ok(listed.data.decisions.some(row => row.status === 'timeout'));
+        assert.ok(listed.data.decisions.every(row => !row.context && !row.rule && !row.charge.customerID), 'internal training context and billing identifiers not exposed');
+        assert.equal((await api('PUT', 'free-literal/settings', { enabled: true, rules: [direct] }, 'free-owner')).status, 403);
+        const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
+        assert.equal(saved.status, 200);
+        assert.equal((await saved.json()).data.rules[0].semantic.policy, semantic.semantic.policy);
+        const versions = await Promise.all([1, 2].map(async () => {
+            const response = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
+            assert.equal(response.status, 200);
+            return (await response.json()).data.settingsVersion;
+        }));
+        assert.equal(new Set(versions).size, 2, 'concurrent saves receive distinct policy versions');
+        const invalid = { ...direct, patterns: [{ id: 'bad', source: '(?<=x)y' }] };
+        assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [invalid] })).status, 400);
+        assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [semantic, semantic] })).status, 400);
+        assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [{ ...semantic, semantic: { enabled: true, policy: '' } }] })).status, 400);
+        await Actions.updateMany({ channelID: 'semantic-paid' }, { $set: { createdAt: expired } });
+        assert.equal((await (await api('GET', 'semantic-paid/logs')).json()).data.total, 0, 'action logs also enforce 30-day window');
+    }
+    console.log('PASS semantic moderation: direct regex ladder; allow/violation/uncertain/error/late/quota; context; policies; tiers; permits; ordering; dedupe and credits; 180/30-day retention and authorization');
+} finally {
+    if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
+}
+process.exit(0);

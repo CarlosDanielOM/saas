@@ -6,6 +6,7 @@ import { TWITCH_BOT_ACCOUNT_ID } from '../../utils/header.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { error as logError } from '../../utils/logger.js';
 import { ModerationActionLogSchema } from '../../schemas/moderation_action_log.schema.js';
+import { ModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import type { IModerationOffenseStep, IModerationRule } from '../../schemas/channel_moderation_settings.schema.js';
 
 const NOTICE_COOLDOWN_SECONDS = 60;
@@ -19,6 +20,7 @@ export interface ModerationExecutionInput {
     rule: IModerationRule;
     step: IModerationOffenseStep;
     offenseNumber: number;
+    decisionID?: string;
 }
 
 export interface ModerationExecutionResult {
@@ -56,6 +58,9 @@ async function sendNoticeThrottled(channelID: string, userID: string, username: 
 
 async function writeActionLog(input: ModerationExecutionInput, success: boolean, errorMessage: string | null): Promise<void> {
     try {
+        if (input.decisionID) await ModerationDecision.updateOne({ _id: input.decisionID }, { $set: {
+            consequence: { status: 'executed', action: input.step.action, offenseNumber: input.offenseNumber, success, errorMessage }
+        } });
         await ModerationActionLogSchema.create({
             channelID: input.channelID,
             userID: input.userID,

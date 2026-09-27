@@ -24,7 +24,38 @@ export interface ModerationRule {
   allowlistDomains: string[];
   maxEmoteCount: number;
   terms: string[];
+  patterns?: ModerationPattern[];
+  semantic?: ModerationSemanticPolicy;
 }
+
+export interface ModerationPattern {
+  id: string;
+  source: string;
+  boundary: 'whole_word' | 'anywhere';
+  ignoreCase: boolean;
+}
+
+export interface ModerationSemanticPolicy {
+  enabled: boolean;
+  policy: string;
+  examples: Array<{ message: string; label: 'allow' | 'violation' }>;
+  onUncertain: 'allow_and_log';
+}
+
+export interface ModerationDecisionEntry {
+  _id: string;
+  username: string;
+  messageText: string;
+  ruleID: string;
+  mode: 'literal' | 'regex' | 'semantic';
+  verdict: 'allow' | 'violation' | 'uncertain';
+  status: string;
+  scores: { violation?: number } | null;
+  consequence: { status: string; action?: ModerationAction; offenseNumber?: number; success?: boolean };
+  charge: { credits: number };
+  createdAt: string;
+}
+export type ModerationDecisionsResponse = ApiEnvelope<{ decisions: ModerationDecisionEntry[]; total: number; limit: number; skip: number }>;
 
 export interface ModerationSettings {
   channelID: string;
@@ -127,6 +158,8 @@ export function buildNewModerationRule(type: ModerationRuleType): ModerationRule
     minMessageLength: MODERATION_DEFAULTS.minMessageLength,
     allowlistDomains: [],
     maxEmoteCount: MODERATION_DEFAULTS.maxEmoteCount,
-    terms: []
+    terms: [],
+    patterns: [],
+    semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' }
   };
 }
