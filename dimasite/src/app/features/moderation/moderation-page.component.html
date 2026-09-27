@@ -66,7 +66,7 @@
         <p class="lf-note lf-note--warn">{{ t('moderation.permission.readOnly') }}</p>
       }
 
-      <section class="lf-tile" [class.lf-tile--dim]="!cfg.enabled">
+      <section class="lf-tile" [class.lf-tile--dim]="!cfg.enabled" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
         <div class="lf-row-head">
           <div>
             <p class="lf-kicker">{{ t('moderation.enabled') }}</p>
@@ -101,7 +101,7 @@
         </label>
       </section>
 
-      <section class="lf-section" [attr.aria-label]="t('moderation.rules.title')">
+      <section class="lf-section" [attr.aria-label]="t('moderation.rules.title')" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
         <div class="lf-section__head">
           <div>
             <p class="lf-kicker">{{ t('moderation.rules.title') }}</p>
@@ -373,6 +373,31 @@
                       @if (!hasPaidModeration()) {
                         <p class="lf-note lf-note--warn">{{ t('moderation.advanced.upgrade') }}</p>
                       }
+                      <label class="lf-field">
+                        <span>{{ t('moderation.variations.mode') }}</span>
+                        <select class="lf-select variation-mode" [value]="rule.variations?.mode ?? 'off'"
+                          (change)="updateVariationMode(rule.id, $any($event.target).value)" [disabled]="!canManage() || !hasPaidModeration()">
+                          <option value="off">{{ t('moderation.variations.off') }}</option>
+                          <option value="common">{{ t('moderation.variations.common') }}</option>
+                          <option value="broad">{{ t('moderation.variations.broad') }}</option>
+                        </select>
+                      </label>
+                      <p class="lf-note">{{ t('moderation.variations.' + (rule.variations?.mode ?? 'off') + 'Hint') }}</p>
+                      @if (rule.variations && rule.variations.mode !== 'off') {
+                        <p class="lf-note">{{ t('moderation.variations.free') }}</p>
+                        @if (canManage() && hasPaidModeration()) {
+                          <button type="button" class="lf-btn lf-btn--compact variation-preview" (click)="previewVariations(rule.id)" [disabled]="!rule.terms.length">{{ t('moderation.variations.preview') }}</button>
+                        }
+                        @if (variationExamples(rule).length) {
+                          <div class="variation-examples" [attr.aria-label]="t('moderation.variations.examples')">
+                            @for (entry of variationExamples(rule); track entry.term) {
+                              <p><strong>{{ entry.term }}</strong><span> → {{ entry.spellings.slice(0, 6).join(', ') }}</span></p>
+                            }
+                          </div>
+                        }
+                      }
+                      <details class="manual-patterns" [open]="!!rule.patterns?.length">
+                        <summary>{{ t('moderation.variations.advanced') }}</summary>
                       <p class="lf-note">{{ t('moderation.advanced.regexHint') }}</p>
                       @for (pattern of rule.patterns ?? []; track pattern.id) {
                         <div class="pattern-editor">
@@ -408,6 +433,7 @@
                       @if (canManage() && hasPaidModeration() && (rule.patterns?.length ?? 0) < 10) {
                         <button type="button" class="lf-btn lf-btn--compact" (click)="addPattern(rule.id)">{{ t('moderation.advanced.addPattern') }}</button>
                       }
+                      </details>
                       <div class="lf-row-head semantic-toggle">
                         <div>
                           <h3 class="lf-h3">{{ t('moderation.advanced.semantic') }}</h3>
@@ -461,6 +487,9 @@
         }
       </section>
 
+      @if (generatingRule()) {
+        <p class="lf-note variation-progress" role="status">{{ t('moderation.variations.generating') }}</p>
+      }
       <section class="lf-section" [attr.aria-label]="t('moderation.logs.title')">
         <div class="lf-section__head">
           <div>
@@ -591,9 +620,11 @@
             type="button"
             class="lf-btn lf-btn--primary"
             (click)="saveSettings()"
-            [disabled]="savingSettings() || !settingsDirty()"
+            [disabled]="savingSettings() || !!generatingRule() || !settingsDirty()"
           >
-            @if (savingSettings()) {
+            @if (generatingRule()) {
+              {{ t('moderation.variations.generating') }}
+            } @else if (savingSettings()) {
               {{ t('moderation.save.saving') }}
             } @else {
               {{ t('moderation.save.save') }}

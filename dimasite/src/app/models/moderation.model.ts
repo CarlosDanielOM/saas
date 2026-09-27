@@ -26,7 +26,14 @@ export interface ModerationRule {
   terms: string[];
   patterns?: ModerationPattern[];
   semantic?: ModerationSemanticPolicy;
+  variations?: ModerationVariations;
 }
+
+export type VariationMode = 'off' | 'common' | 'broad';
+export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string }
+export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[] }
+export interface VariationJob { id: string; state: 'pending' | 'processing' | 'completed' | 'failed'; entries: GeneratedVariation[]; error: string }
+export type VariationResponse = ApiEnvelope<VariationJob>;
 
 export interface ModerationPattern {
   id: string;
@@ -160,6 +167,7 @@ export function buildNewModerationRule(type: ModerationRuleType): ModerationRule
     maxEmoteCount: MODERATION_DEFAULTS.maxEmoteCount,
     terms: [],
     patterns: [],
+    variations: { mode: 'off', entries: [] },
     semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' }
   };
 }

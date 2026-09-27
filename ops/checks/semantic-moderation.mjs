@@ -10,7 +10,10 @@ import { ModerationActionLogSchema as Actions } from '/app/dist/schemas/moderati
 import { runChatModeration, invalidateModerationSettingsCache } from '/app/dist/handlers/moderation.handler.js';
 import { offenseKey } from '/app/dist/utils/moderation/offenses.js';
 import { grantPermit } from '/app/dist/utils/moderation/permit.js';
-import { parseAdvancedRule } from '/app/dist/utils/moderation/advanced.js';
+import { parseAdvancedRule, findBlacklistMatches } from '/app/dist/utils/moderation/advanced.js';
+import { ModerationVariationJob as VariationJobs, ModerationVariationCache as VariationCache } from '/app/dist/schemas/moderation_variation.schema.js';
+import { requestVariationJob, resolveVariations } from '/app/dist/utils/moderation/variation_jobs.js';
+import { buildVariation, rulePatterns } from '/app/dist/utils/moderation/variations.js';
 import ChatHistory from '/app/dist/classes/chat_history.js';
 
 const mongo = await getMongoDBConnection('semantic-test');
@@ -139,6 +142,58 @@ try {
     await runChatModeration('semantic-paid', message('billable', 'fuck BILLABLE', 'billing-viewer'), identity);
     assert.equal(JSON.parse(await redis.get('twitch:semantic-paid:ai:credits')).used, 3, 'two completed reviews and billable review charged once; uncertain reviews are free');
 
+    // Automatic patterns support every word in a rule; both modes use the same
+    // independently optional semantic gate and offense ladder.
+    const commonRule = { ...baseRule(), terms: ['fuck', 'rinn'], patterns: [], variations: { mode: 'common', entries: ['fuck', 'rinn'].map(term => buildVariation(term)) } };
+    await seed('auto-common', commonRule);
+    assert.equal((await runChatModeration('auto-common', message('auto-repeat', 'fuuuck'), identity)).actionTaken, true);
+    assert.equal((await runChatModeration('auto-common', message('auto-nickname', 'Riiinnnn'), identity)).actionTaken, true);
+    assert.equal((await runChatModeration('auto-common', message('auto-boundary', 'bring'), identity)).actionTaken, false);
+    await seed('auto-review', { ...commonRule, semantic: semantic.semantic });
+    assert.equal((await runChatModeration('auto-review', message('auto-positive', 'fuuuck awesome'), identity)).actionTaken, false);
+    assert.equal((await runChatModeration('auto-review', message('auto-negative', 'fuuuck this'), identity)).actionTaken, true);
+    await seed('auto-free', commonRule, 'free');
+    assert.equal((await runChatModeration('auto-free', message('auto-free', 'fuuuck'), identity)).actionTaken, false);
+
+    const largeRule = { variations: { mode: 'common', entries: Array.from({ length: 200 }, (_, i) => buildVariation(`word${i}`)) } };
+    assert.ok(findBlacklistMatches('wooord199', [], rulePatterns(largeRule)).length, '200 generated words run in native RE2');
+    const timeoutJob = await VariationJobs.create({ _id: 'expired-generation', channelID: 'auto-common', terms: ['word'], entries: [], state: 'processing', deadline: new Date(Date.now() - 1000), expiresAt: new Date(Date.now() + 86400000) });
+    await until(async () => (await VariationJobs.findById(timeoutJob._id).lean()).state === 'failed', 'orphaned generation timeout');
+
+    await seed('auto-muse', commonRule);
+    const generation = await requestVariationJob('auto-muse', ['fuck', 'rinn'], []);
+    assert.equal(generation.state, 'pending');
+    assert.equal((await requestVariationJob('auto-muse', ['fuck', 'rinn'], [])).id, generation.id, 'in-flight job reused');
+    await until(async () => (await VariationJobs.findById(generation.id).lean()).state === 'completed', 'Muse generation');
+    const generated = await VariationJobs.findById(generation.id).lean();
+    assert.equal(generated.model, 'meta/muse-spark-1.3-contributor');
+    assert.equal(generated.entries.length, 2);
+    assert.equal(generated.creditsCharged, 0);
+    assert.equal(generated.providerUsage[0].cost, 0.00004, 'platform provider cost retained');
+    assert.equal(JSON.parse(await redis.get('twitch:auto-muse:ai:credits')).used, 0, 'generation never debits user credits');
+    const generatedCalls = calls().filter(c => c.generation).length;
+    assert.equal((await requestVariationJob('auto-muse', ['fuck', 'rinn'], [])).state, 'completed');
+    assert.equal(calls().filter(c => c.generation).length, generatedCalls, 'cached generation makes no new call');
+    const changedTerms = await requestVariationJob('auto-muse', ['fuck', 'rinn', 'newword'], []);
+    await until(async () => (await VariationJobs.findById(changedTerms.id).lean()).state === 'completed', 'only changed words');
+    assert.deepEqual(calls().filter(c => c.generation).at(-1).generation, ['newword']);
+    const broadRule = { ...commonRule, variations: await resolveVariations('auto-muse', ['fuck', 'rinn'], 'broad', []) };
+    await Settings.updateOne({ channelID: 'auto-muse' }, { $set: { rules: [broadRule] }, $inc: { settingsVersion: 1 } });
+    await invalidateModerationSettingsCache('auto-muse');
+    assert.equal((await runChatModeration('auto-muse', message('auto-broad', 'facky'), identity)).actionTaken, true);
+    await Settings.updateOne({ channelID: 'auto-muse' }, { $set: { rules: [{ ...broadRule, semantic: semantic.semantic }] }, $inc: { settingsVersion: 1 } });
+    await invalidateModerationSettingsCache('auto-muse');
+    assert.equal((await runChatModeration('auto-muse', message('auto-broad-allow', 'fucky awesome'), identity)).actionTaken, false);
+    assert.equal((await runChatModeration('auto-muse', message('auto-broad-violation', 'fcky this'), identity)).actionTaken, true);
+    for (const term of ['invalidgen', 'unavailablegen']) {
+        const failed = await requestVariationJob('auto-muse', [term], []);
+        await until(async () => (await VariationJobs.findById(failed.id).lean()).state === 'failed', term);
+        assert.equal(await VariationCache.countDocuments({ channelID: 'auto-muse', 'entry.term': term }), 0);
+    }
+    await redis.set('moderation:auto-muse:variation-words', '500');
+    await assert.rejects(requestVariationJob('auto-muse', ['quota-word'], []), error => error.status === 429);
+    assert.equal((await requestVariationJob('auto-muse', ['fuck'], [])).state, 'completed', 'cached terms work after generation quota exhausted');
+
     const expired = new Date(Date.now() - 31 * 86400000);
     await Decisions.updateOne({ _id: positive._id }, { $set: { createdAt: expired } });
     assert.ok(await Decisions.findById(positive._id), '31-day decision retained for training');
@@ -159,6 +214,26 @@ try {
         assert.ok(listed.data.decisions.some(row => row.status === 'timeout'));
         assert.ok(listed.data.decisions.every(row => !row.context && !row.rule && !row.charge.customerID), 'internal training context and billing identifiers not exposed');
         assert.equal((await api('PUT', 'free-literal/settings', { enabled: true, rules: [direct] }, 'free-owner')).status, 403);
+        assert.equal((await api('POST', 'free-literal/variations', { terms: ['fuck'], mode: 'broad' }, 'free-owner')).status, 403);
+        assert.equal((await api('GET', `semantic-paid/variations/${generation.id}`)).status, 404, 'job IDs cannot cross channels');
+        assert.equal((await api('POST', 'semantic-paid/variations', { terms: Array(201).fill('word'), mode: 'broad' })).status, 400);
+        const commonResponse = await api('POST', 'semantic-paid/variations', { terms: ['fuck', 'rinn'], mode: 'common' });
+        assert.equal((await commonResponse.json()).data.entries.length, 2);
+        const forged = { ...commonRule, variations: { mode: 'broad', entries: [{ term: 'fuck', pattern: { source: '.*' } }] } };
+        assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [forged] })).status, 409, 'client cannot inject generated patterns');
+        const commonSaved = await (await api('PUT', 'semantic-paid/settings', { rules: [commonRule] })).json();
+        assert.equal(commonSaved.data.rules[0].variations.entries.length, 2);
+        const broadResponse = await (await api('POST', 'semantic-paid/variations', { terms: ['fuck', 'rinn'], mode: 'broad' })).json();
+        let prepared;
+        await until(async () => {
+            prepared = await (await api('GET', `semantic-paid/variations/${broadResponse.data.id}`)).json();
+            return prepared.data.state === 'completed';
+        }, 'API broad generation');
+        assert.equal(prepared.data.entries.length, 2);
+        const trusted = await (await api('PUT', 'semantic-paid/settings', { rules: [forged] })).json();
+        assert.equal(trusted.data.rules[0].variations.entries.length, 2);
+        assert.ok(trusted.data.rules[0].variations.entries.every(entry => entry.pattern.source !== '.*'), 'generated artifacts come from owned server cache');
+
         const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
         assert.equal(saved.status, 200);
         assert.equal((await saved.json()).data.rules[0].semantic.policy, semantic.semantic.policy);
@@ -175,7 +250,7 @@ try {
         await Actions.updateMany({ channelID: 'semantic-paid' }, { $set: { createdAt: expired } });
         assert.equal((await (await api('GET', 'semantic-paid/logs')).json()).data.total, 0, 'action logs also enforce 30-day window');
     }
-    console.log('PASS semantic moderation: direct regex ladder; allow/violation/uncertain/error/late/quota; context; policies; tiers; permits; ordering; dedupe and credits; 180/30-day retention and authorization');
+    console.log('PASS Muse variations: cache, changed words, two modes with/without semantics, free generation, ownership, quotas, invalid/unavailable outputs; semantic moderation: direct regex ladder; allow/violation/uncertain/error/late/quota; context; policies; tiers; permits; ordering; dedupe and credits; 180/30-day retention and authorization');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }

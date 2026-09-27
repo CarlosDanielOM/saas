@@ -668,3 +668,11 @@
 .decision-entry { padding-bottom: 0.85rem; border-bottom: 1px solid var(--line); min-width: 0; }
 .decision-message { margin: 0.65rem 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .decision-entry .lf-note { margin: 0.4rem 0; }
+
+.manual-patterns { border-top: 1px solid var(--line); padding-top: 0.5rem; }
+.manual-patterns summary { cursor: pointer; min-height: 44px; padding: 0.7rem 0; font-size: 0.875rem; }
+.manual-patterns[open] > :not(summary) { margin-top: 0.65rem; }
+.variation-examples { border: 1px solid var(--line); border-radius: 0.85rem; padding: 0.75rem; max-height: 15rem; overflow: auto; }
+.variation-examples p { margin: 0.35rem 0; font-size: 0.85rem; line-height: 1.6; overflow-wrap: anywhere; }
+.variation-examples span { color: var(--muted); }
+.variation-progress { padding: 1rem; border: 1px solid var(--line); border-radius: 0.85rem; }

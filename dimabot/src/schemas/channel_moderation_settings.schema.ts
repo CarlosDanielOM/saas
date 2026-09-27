@@ -1,3 +1,4 @@
+import type { ModerationVariations } from '../utils/moderation/variations.js';
 import crypto from 'crypto';
 import { Schema, model } from 'mongoose';
 import type { PermissionExpression } from '../utils/permissions/expression.js';
@@ -37,6 +38,7 @@ export interface IModerationRule {
     terms: string[];
     patterns?: ModerationPattern[];
     semantic?: SemanticPolicy;
+    variations?: ModerationVariations;
 }
 
 export interface IChannelModerationSettings {
@@ -134,6 +136,7 @@ const moderationRuleSchema = new Schema<IModerationRule>({
     allowlistDomains: { type: [String], default: [] },
     maxEmoteCount: { type: Number, default: MODERATION_RULE_DEFAULTS.maxEmoteCount, min: 1, max: 100 },
     terms: { type: [String], default: [] },
+    variations: { type: Schema.Types.Mixed, default: () => ({ mode: 'off', entries: [] }) },
     patterns: { type: [new Schema({ id: String, source: String, boundary: String, ignoreCase: Boolean }, { _id: false })], default: [] },
     semantic: { type: new Schema({
         enabled: { type: Boolean, default: false },

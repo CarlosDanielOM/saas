@@ -1,3 +1,6 @@
+import { variationMode, variationTerms, buildVariation } from '../../utils/moderation/variations.js';
+import { requestVariationJob, resolveVariations, variationJobView, VariationError } from '../../utils/moderation/variation_jobs.js';
+import { ModerationVariationJob } from '../../schemas/moderation_variation.schema.js';
 import crypto from 'crypto';
 import express, { type Request, type Response } from 'express';
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
@@ -123,7 +126,11 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
     let advanced: ReturnType<typeof parseAdvancedRule>;
     try { advanced = parseAdvancedRule(input); }
     catch (error) { return { error: `Rule ${index + 1}: ${error instanceof Error ? error.message : 'Invalid advanced rule'}` }; }
+    let mode: ReturnType<typeof variationMode>;
+    try { mode = variationMode(input.variations); }
+    catch (error) { return { error: error instanceof Error ? error.message : 'Invalid variations' }; }
     const type = String(input.type || '');
+    if (type !== 'blacklist' && mode !== 'off') return { error: 'Word variations require a blocked-word rule' };
     if (!RULE_TYPES.has(type)) {
         return { error: `Rule ${index + 1}: type must be one of caps, links, emote_spam, blacklist` };
     }
@@ -162,7 +169,8 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         allowlistDomains,
         maxEmoteCount: clampInt(input.maxEmoteCount, 1, 100, MODERATION_RULE_DEFAULTS.maxEmoteCount),
         terms: normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100),
-        ...advanced
+        ...advanced,
+        variations: { mode, entries: [] }
     };
 
     return { rule };
@@ -228,15 +236,19 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         if (!paidModeration(owner?.plan_tier)) {
             for (const rule of rules) {
-                if (!rule.patterns?.length && !rule.semantic?.enabled) continue;
+                if (!rule.patterns?.length && !rule.semantic?.enabled && rule.variations?.mode === 'off') continue;
                 const prior = current?.rules.find(item => item.id === rule.id);
                 // Downgraded channels may keep or disable their saved inactive
                 // configuration while editing free rules, but cannot add paid features.
-                if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(prior.semantic) !== JSON.stringify(rule.semantic)) {
+                if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(prior.semantic) !== JSON.stringify(rule.semantic)
+                    || (prior.variations?.mode ?? 'off') !== rule.variations?.mode
+                    || (rule.variations?.mode !== 'off' && JSON.stringify(prior.terms) !== JSON.stringify(rule.terms))) {
                     return res.status(403).json({ error: true, message: 'Regex and contextual moderation require Premium or Pro', status: 403 });
                 }
             }
         }
+
+        for (const rule of rules) rule.variations = await resolveVariations(channelID, rule.terms, rule.variations!.mode, current?.rules || []);
 
         const updated = await ChannelModerationSettingsSchema.findOneAndUpdate({
             channelID
@@ -263,8 +275,40 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
             data: updated.toObject()
         });
     } catch (err) {
+        if (err instanceof VariationError) return res.status(err.status).json({ error: true, status: err.status, message: err.message });
         await logError({ function: 'moderationRoute.putSettings', error: err instanceof Error ? err.message : String(err) });
         return res.status(500).json({ error: true, message: 'Unable to save moderation settings', status: 500 });
+    }
+});
+
+router.post('/:channelID/variations', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID);
+        if (!await validateAccess(req, res, channelID, 'moderation:manage')) return;
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+        if (!paidModeration(owner?.plan_tier)) return res.status(403).json({ error: true, message: 'Word variations require Premium or Pro', status: 403 });
+        let terms: string[], mode: ReturnType<typeof variationMode>;
+        try { terms = variationTerms(req.body?.terms); mode = variationMode({ mode: req.body?.mode }); }
+        catch (error) { return res.status(400).json({ error: true, status: 400, message: error instanceof Error ? error.message : 'Invalid variation request' }); }
+        const prior = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+        const data = mode === 'broad' ? await requestVariationJob(channelID, terms, prior?.rules || [])
+            : { id: '', state: 'completed', error: '', entries: mode === 'common' ? terms.map(term => buildVariation(term)) : [] };
+        return res.json({ error: false, status: 200, data });
+    } catch (error) {
+        if (error instanceof VariationError) return res.status(error.status).json({ error: true, status: error.status, message: error.message });
+        await logError({ function: 'moderationRoute.variations', error: error instanceof Error ? error.message : String(error) });
+        return res.status(503).json({ error: true, status: 503, message: 'Could not prepare word variations. Your saved rules are unchanged.' });
+    }
+});
+router.get('/:channelID/variations/:jobID', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
+    try {
+        const channelID = getParam(req.params.channelID);
+        if (!await validateAccess(req, res, channelID, 'moderation:manage')) return;
+        const job = await ModerationVariationJob.findOne({ _id: getParam(req.params.jobID), channelID }).lean();
+        if (!job) return res.status(404).json({ error: true, status: 404, message: 'Variation request not found' });
+        return res.json({ error: false, status: 200, data: variationJobView(job) });
+    } catch {
+        return res.status(503).json({ error: true, status: 503, message: 'Could not load word variations' });
     }
 });
 

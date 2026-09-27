@@ -1185,6 +1185,21 @@
       "savedMessage": "Tus reglas de moderación ya están activas.",
       "errorTitle": "Error"
     },
+    "variations": {
+      "mode": "Coincidencia de palabras",
+      "off": "Palabras exactas",
+      "common": "Variaciones comunes",
+      "broad": "Variaciones amplias",
+      "offHint": "Detecta las palabras que escribes. Los patrones manuales de abajo también se aplican.",
+      "commonHint": "También detecta letras repetidas, como Rinn → Rin, Riiin, Rinnnn. Se aplica a cada palabra de esta regla.",
+      "broadHint": "La IA añade variantes cercanas, letras omitidas y sustituciones. Se recomienda revisar el contexto para reducir coincidencias incorrectas.",
+      "free": "Preparar variaciones no consume créditos de IA. Las revisiones de contexto siguen usando créditos cuando están activadas.",
+      "preview": "Vista previa de variaciones",
+      "examples": "Ejemplos de coincidencias",
+      "advanced": "Avanzado: regex manual",
+      "generating": "Preparando variaciones… Tus reglas guardadas siguen activas hasta que termine.",
+      "failed": "No se pudieron preparar las variaciones. Tus reglas guardadas no han cambiado. Inténtalo de nuevo o elige variaciones comunes."
+    },
     "advanced": {
       "title": "Variaciones de palabras",
       "paid": "Premium · Pro",

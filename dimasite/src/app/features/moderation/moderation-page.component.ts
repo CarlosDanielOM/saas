@@ -24,6 +24,8 @@ import {
 } from 'rxjs';
 
 import type {
+  VariationMode,
+  GeneratedVariation,
   ModerationAction,
   ModerationActionLogEntry,
   ModerationOffenseStep,
@@ -98,6 +100,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly settingsLoading = signal(true);
   readonly logsLoading = signal(false);
   readonly savingSettings = signal(false);
+  readonly generatingRule = signal<string | null>(null);
+  private destroyed = false;
   readonly canManage = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly pendingListInput = signal(false);
@@ -192,6 +196,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -381,9 +386,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   async saveSettings(): Promise<void> {
     const channelID = this.channelID();
-    const currentSettings = this.settings();
+    const currentSettings = this.settings() ? structuredClone(this.settings()!) : null;
 
-    if (!channelID || !currentSettings || this.savingSettings() || !this.settingsDirty()) {
+    if (!channelID || !currentSettings || this.savingSettings() || this.generatingRule() || !this.settingsDirty()) {
       return;
     }
 
@@ -399,11 +404,20 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.errorMessage.set(null);
 
     try {
+      for (const rule of currentSettings.rules) {
+        if (this.hasPaidModeration() && rule.type === 'blacklist' && rule.variations && rule.variations.mode !== 'off') {
+          this.generatingRule.set(rule.id);
+          rule.variations.entries = await this.fetchVariations(channelID, rule);
+        }
+      }
+      this.generatingRule.set(null);
+      if (this.destroyed) return;
       const response = await firstValueFrom(
         this.moderationApi.updateSettings(channelID, {
           enabled: currentSettings.enabled,
           offenseWindowSeconds: currentSettings.offenseWindowSeconds,
-          rules: currentSettings.rules
+          // Generated artifacts are resolved server-side; avoid echoing large previews.
+          rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: [] } : undefined }))
         })
       );
       if (response.error || !response.data) {
@@ -424,6 +438,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       this.toastService.error(this.t('moderation.toasts.errorTitle'), message);
     } finally {
       this.savingSettings.set(false);
+      this.generatingRule.set(null);
     }
   }
 
@@ -448,6 +463,42 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   updateRuleType(ruleID: string, type: string): void {
     if (!MODERATION_RULE_TYPES.includes(type as ModerationRuleType)) return;
     this.patchRule(ruleID, { type: type as ModerationRuleType });
+  }
+
+  updateVariationMode(ruleID: string, mode: string): void {
+    if (mode !== 'off' && mode !== 'common' && mode !== 'broad') return;
+    this.patchRule(ruleID, { variations: { mode, entries: [] } });
+  }
+
+  variationExamples(rule: ModerationRule): GeneratedVariation[] {
+    const terms = new Set(rule.terms.map(term => term.normalize('NFC').trim().replace(/\s+/gu, ' ').toLowerCase()));
+    return (rule.variations?.entries ?? []).filter(entry => terms.has(entry.term));
+  }
+
+  private async fetchVariations(channelID: string, rule: ModerationRule): Promise<GeneratedVariation[]> {
+    const deadline = Date.now() + 310000;
+    let response = await firstValueFrom(this.moderationApi.prepareVariations(channelID, rule.terms, rule.variations?.mode ?? 'off'));
+    while (!this.destroyed && response.data && ['pending', 'processing'].includes(response.data.state) && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (this.destroyed) break;
+      response = await firstValueFrom(this.moderationApi.getVariationJob(channelID, response.data.id));
+    }
+    if (this.destroyed || response.error || response.data?.state !== 'completed') throw new Error(this.t('moderation.variations.failed'));
+    return response.data.entries;
+  }
+
+  async previewVariations(ruleID: string): Promise<void> {
+    const channelID = this.channelID();
+    const rule = this.settings()?.rules.find(item => item.id === ruleID);
+    if (!channelID || !rule || !this.canManage() || !this.hasPaidModeration() || this.generatingRule() || this.savingSettings()) return;
+    this.generatingRule.set(ruleID);
+    this.errorMessage.set(null);
+    try {
+      const entries = await this.fetchVariations(channelID, rule);
+      if (!this.destroyed) this.patchRule(ruleID, { variations: { mode: rule.variations?.mode ?? 'off', entries } });
+    } catch (error) {
+      if (!this.destroyed) this.errorMessage.set(error instanceof HttpErrorResponse && typeof error.error?.message === 'string' ? error.error.message : this.t('moderation.variations.failed'));
+    } finally { this.generatingRule.set(null); }
   }
 
   addPattern(ruleID: string): void {

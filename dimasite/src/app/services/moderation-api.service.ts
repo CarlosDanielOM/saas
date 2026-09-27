@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 
 import { LinksService } from './links.service';
 import type {
+  VariationMode,
+  VariationResponse,
   ModerationLogsResponse,
   ModerationDecisionsResponse,
   ModerationSettingsPayload,
@@ -35,6 +37,14 @@ export class ModerationApiService {
       `${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/settings`,
       payload
     );
+  }
+
+  prepareVariations(channelID: string, terms: string[], mode: VariationMode): Observable<VariationResponse> {
+    return this.http.post<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations`, { terms, mode });
+  }
+
+  getVariationJob(channelID: string, jobID: string): Observable<VariationResponse> {
+    return this.http.get<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations/${encodeURIComponent(jobID)}`);
   }
 
   getLogs(channelID: string, page = 1, limit = 20): Observable<ModerationLogsResponse> {

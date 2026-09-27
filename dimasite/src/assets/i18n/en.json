@@ -1185,6 +1185,21 @@
       "savedMessage": "Your moderation rules are now live.",
       "errorTitle": "Error"
     },
+    "variations": {
+      "mode": "Word matching",
+      "off": "Exact words",
+      "common": "Common variations",
+      "broad": "Broader variations",
+      "offHint": "Match the words you enter. Any manual patterns below still apply.",
+      "commonHint": "Also catch repeated letters, such as Rinn → Rin, Riiin, Rinnnn. Applies to every word in this rule.",
+      "broadHint": "AI adds close spelling variations, missing letters and substitutions. Contextual review is recommended to reduce false matches.",
+      "free": "Preparing variations uses no AI credits. Contextual reviews still use credits when enabled.",
+      "preview": "Preview variations",
+      "examples": "Matching examples",
+      "advanced": "Advanced: manual regex",
+      "generating": "Preparing word variations… Your saved rules stay active until this finishes.",
+      "failed": "Could not prepare variations. Your saved rules are unchanged. Try again or choose common variations."
+    },
     "advanced": {
       "title": "Word variations",
       "paid": "Premium · Pro",

@@ -1,3 +1,4 @@
+import { rulePatterns } from '../utils/moderation/variations.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { ChannelModerationSettingsSchema, type IChannelModerationSettings, type IModerationRule } from '../schemas/channel_moderation_settings.schema.js';
 import { evaluateRule, type ModerationRuleInput } from '../utils/moderation/rules/index.js';
@@ -162,14 +163,14 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
 
             if (ruleExempt(rule, identity)) continue;
 
-            const advanced = rule.type === 'blacklist' && Boolean(rule.patterns?.length || rule.semantic?.enabled);
+            const advanced = rule.type === 'blacklist' && Boolean(rulePatterns(rule).length || rule.variations?.mode && rule.variations.mode !== 'off' || rule.semantic?.enabled);
             let matches: ModerationMatch[] = [];
             const result = evaluateRule(
                 rule,
                 input,
                 rule.type === 'blacklist' ? getBlacklistPattern(channelID, settings, rule) : undefined
             );
-            if (rule.type === 'blacklist') matches = findBlacklistMatches(input.text, rule.terms, rule.patterns || []);
+            if (rule.type === 'blacklist') matches = findBlacklistMatches(input.text, rule.terms, rulePatterns(rule));
             if (!result.triggered && !matches.length) continue;
 
             let context: ModerationContextMessage[] = [];
@@ -186,7 +187,7 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
                 channelID, userID: chatterID, username: messageEventData.chatter_user_name || chatterLogin,
                 messageID: messageEventData.message_id, messageText: input.text,
                 ruleID: rule.id, rule, settingsVersion: settings.settingsVersion, matches, context,
-                mode: rule.semantic?.enabled ? 'semantic' : rule.patterns?.length ? 'regex' : 'literal',
+                mode: rule.semantic?.enabled ? 'semantic' : rulePatterns(rule).length ? 'regex' : 'literal',
                 deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
             });
             if (advanced) {

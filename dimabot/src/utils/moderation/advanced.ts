@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { RE2 } from 're2-wasm';
+import RE2 from 're2';
 import { compileBlacklistPattern } from './rules/blacklist.rule.js';
 import { foldText } from './normalize.js';
 
@@ -34,7 +34,7 @@ function compilePattern(pattern: ModerationPattern): RE2 {
     const source = pattern.boundary === 'whole_word'
         ? `(^|[^\\p{L}\\p{N}])(${pattern.source})($|[^\\p{L}\\p{N}])` : pattern.source;
     const compiled = new RE2(source, pattern.ignoreCase ? 'iu' : 'u');
-    if (compiledPatterns.size >= 2_000) compiledPatterns.clear();
+    if (compiledPatterns.size >= 1_000) compiledPatterns.clear();
     compiledPatterns.set(key, compiled);
     return compiled;
 }
@@ -113,9 +113,8 @@ export function findBlacklistMatches(text: string, terms: string[], patterns: Mo
         if (!match) continue;
         const matchedText = pattern.boundary === 'whole_word' ? match[2] : match[0];
         if (!matchedText) continue;
-        // re2-wasm 1.x reports code-point indexes, while JS substring and the
-        // stored span contract use UTF-16 offsets (emoji occupy two code units).
-        const start = Array.from(text).slice(0, match.index).join('').length
+        // Native RE2 uses the same UTF-16 offsets as JS strings.
+        const start = match.index
             + (pattern.boundary === 'whole_word' ? (match[1]?.length ?? 0) : 0);
         matches.push({ matcherID: pattern.id, text: matchedText, start, end: start + matchedText.length });
     }

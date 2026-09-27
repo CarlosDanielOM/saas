@@ -20,11 +20,15 @@ try {
                 expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: twitch, appUser: app, permissions: {} }));
         }, { twitch, app, language });
         let cfg = { channelID: twitch.id, channel: 'test', enabled: true, offenseWindowSeconds: 3600, settingsVersion: 2,
-            rules: [{ id: 'words', type: 'blacklist', enabled: true, terms: ['fuck'], patterns: [],
+            rules: [{ id: 'words', type: 'blacklist', enabled: true, terms: ['fuck', 'rinn'], patterns: [], variations: { mode: 'off', entries: [] },
                 semantic: { enabled: false, policy: '', examples: [], onUncertain: 'allow_and_log' },
                 firstOffense: { action: 'warn', timeoutSeconds: 60 }, secondOffense: { action: 'delete', timeoutSeconds: 60 }, thirdOffense: { action: 'timeout', timeoutSeconds: 60 },
                 reason: 'Please follow channel rules', exemptUserLevel: 7, capsThresholdMode: 'count', minCapsCount: 8, maxCapsPercentage: 70, minMessageLength: 10, allowlistDomains: [], maxEmoteCount: 10 }] };
         const saves = [];
+        const generations = [];
+        let failGeneration = false;
+        let jobPolls = 0;
+        const generatedEntries = terms => terms.map(term => ({ term, spellings: [term, term === 'fuck' ? 'fcky' : 'riiinn'], pattern: { id: 'auto-' + term, source: term, boundary: 'whole_word', ignoreCase: true }, version: 'spelling-variants-v1' }));
         await context.route('**/*', async route => {
             const url = new URL(route.request().url());
             if (url.origin === new URL(base).origin) return route.continue();
@@ -32,8 +36,15 @@ try {
             let data = {};
             if (url.pathname === '/auth/session') data = { twitch, app };
             else if (url.pathname.includes('/access')) data = { allowed: true, role: 'owner', planTier: tier };
-            else if (url.pathname.endsWith('/settings')) {
-                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload }; }
+            else if (url.pathname.endsWith('/variations')) {
+                const payload = route.request().postDataJSON(); generations.push(payload);
+                data = payload.mode === 'broad' ? { id: 'job1', state: 'pending', entries: [], error: '' } : { id: '', state: 'completed', entries: generatedEntries(payload.terms), error: '' };
+            } else if (url.pathname.endsWith('/variations/job1')) {
+                jobPolls++;
+                data = failGeneration ? { id: 'job1', state: 'failed', entries: [], error: 'invalid_generation' }
+                    : { id: 'job1', state: 'completed', entries: generatedEntries(generations.at(-1).terms), error: '' };
+            } else if (url.pathname.endsWith('/settings')) {
+                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload, rules: payload.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: rule.variations.mode === 'off' ? [] : generatedEntries(rule.terms) } : undefined })) }; }
                 data = cfg;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [], total: 0, limit: 10, skip: 0 };
             else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'decision1', username: 'viewer', messageText: 'That was fucking awesome',
@@ -54,12 +65,42 @@ try {
             assert.equal(await feature.getByRole('button', { name: 'Add regex pattern', exact: true }).count(), 0);
             await feature.getByText('Saved rules using these features are inactive on Free.', { exact: false }).waitFor();
         } else {
+            const mode = feature.locator('.variation-mode');
+            const save = feature.locator('.lf-save-bar button');
+            const saveChanges = async () => {
+                const saved = page.waitForResponse(response => response.url().endsWith('/settings') && response.request().method() === 'PUT');
+                await save.click();
+                await saved;
+            };
+            await mode.selectOption('common');
+            await feature.locator('.variation-preview').click();
+            await feature.locator('.variation-examples').waitFor();
+            assert.equal(generations.at(-1).mode, 'common');
+            assert.deepEqual(generations.at(-1).terms, ['fuck', 'rinn']);
+            await saveChanges();
+            await page.waitForFunction(() => document.querySelector('.lf-save-bar button')?.disabled);
+            await mode.selectOption('broad');
+            failGeneration = true;
+            const savedBeforeFailure = saves.length;
+            await save.click();
+            await feature.getByText(language === 'es' ? /No se pudieron preparar/ : /Could not prepare variations/).first().waitFor();
+            assert.equal(saves.length, savedBeforeFailure, 'generation failure leaves saved configuration unchanged');
+            failGeneration = false;
+            await feature.locator('.variation-preview').click();
+            await feature.locator('.variation-examples').waitFor();
+            assert.ok(jobPolls >= 2);
+            assert.equal(generations.at(-1).mode, 'broad');
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(saves.at(-1).rules[0].variations.mode, 'broad');
+            assert.equal(saves.at(-1).rules[0].semantic.enabled, false, 'broad mode permits direct ladder');
+            await feature.locator('.manual-patterns summary').click();
             await feature.getByRole('button', { name: language === 'es' ? 'Añadir patrón regex' : 'Add regex pattern', exact: true }).click();
             await feature.getByLabel(language === 'es' ? 'Patrón regex' : 'Regex pattern', { exact: true }).fill('f(?:u|a)?ck(?:ing|y)?');
             // Regex-only is an intentional, saveable mode.
-            const save = feature.locator('.lf-save-bar button');
-            await save.click();
-            await page.waitForFunction(() => !document.querySelector('.lf-save-bar button')?.textContent.includes('Saving'));
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            await page.waitForTimeout(200);
             assert.equal(saves.at(-1).rules[0].patterns[0].source, 'f(?:u|a)?ck(?:ing|y)?');
             assert.equal(saves.at(-1).rules[0].semantic.enabled, false);
             await toggle.check();
@@ -67,8 +108,9 @@ try {
             await feature.locator('textarea').fill('The author uses profanity in a negative or hostile way, rather than as positive praise.');
             await feature.getByRole('button', { name: language === 'es' ? 'Añadir ejemplo permitido' : 'Add allowed example', exact: true }).click();
             await feature.locator('.example-editor input').fill('That was fucking awesome');
-            await save.click();
-            await page.waitForTimeout(150);
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            await page.waitForTimeout(200);
             assert.equal(saves.at(-1).rules[0].semantic.enabled, true);
             assert.equal(saves.at(-1).rules[0].semantic.examples[0].label, 'allow');
             assert.equal(saves.at(-1).rules[0].semantic.onUncertain, 'allow_and_log');
@@ -86,5 +128,5 @@ try {
         assert.deepEqual(errors, [], 'browser runtime errors');
         await context.close();
     }
-    console.log('PASS moderation UI: paid/free gates; regex-only and contextual saves; examples; decision logs; EN/ES; mobile/desktop; accessibility');
+    console.log('PASS automatic variations UI: common/broad previews, multiple words, failed generation preserves saved rules; moderation UI: paid/free gates; regex-only and contextual saves; examples; decision logs; EN/ES; mobile/desktop; accessibility');
 } finally { await browser.close(); }
