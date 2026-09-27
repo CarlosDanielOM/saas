@@ -1186,6 +1186,11 @@
       "errorTitle": "Error"
     },
     "variations": {
+      "regexHint": "Cada patrón amplía su palabra bloqueada. La coincidencia ignora mayúsculas y usa límites de palabra completa. Tus cambios reemplazan el patrón generado y se conservan al guardar o previsualizar. Cambiar el modo restablece los patrones.",
+      "prepareHint": "Previsualiza las variaciones para ver y editar sus patrones.",
+      "regexFor": "Regex de variaciones para",
+      "reset": "Restablecer regex generado",
+      "edited": "Regex personalizado — ver Avanzado",
       "mode": "Coincidencia de palabras",
       "off": "Palabras exactas",
       "common": "Variaciones comunes",
@@ -1196,7 +1201,7 @@
       "free": "Preparar variaciones no consume créditos de IA. Las revisiones de contexto siguen usando créditos cuando están activadas.",
       "preview": "Vista previa de variaciones",
       "examples": "Ejemplos de coincidencias",
-      "advanced": "Avanzado: regex manual",
+      "advanced": "Avanzado: ver o editar regex",
       "generating": "Preparando variaciones… Tus reglas guardadas siguen activas hasta que termine.",
       "failed": "No se pudieron preparar las variaciones. Tus reglas guardadas no han cambiado. Inténtalo de nuevo o elige variaciones comunes."
     },
@@ -1221,7 +1226,7 @@
       "addAllowed": "Añadir ejemplo permitido",
       "addViolation": "Añadir ejemplo de infracción",
       "fallback": "Las revisiones inciertas, los tiempos de espera agotados y los créditos no disponibles permiten el mensaje y registran el resultado sin infracción. Las demás reglas siguen aplicándose.",
-      "credits": "Usa créditos de IA existentes a 0,042 USD por millón de tokens de entrada, redondeados hacia arriba a créditos enteros por revisión. Las revisiones fallidas o inciertas no se cobran."
+      "credits": "La revisión de contexto consume créditos de IA según la cantidad de texto revisado, incluidas tus reglas y la conversación cercana. Las revisiones fallidas o inciertas no consumen créditos."
     },
     "decisions": {
       "title": "Decisiones de moderación",

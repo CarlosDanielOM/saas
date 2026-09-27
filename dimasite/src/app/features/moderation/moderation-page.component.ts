@@ -417,7 +417,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
           enabled: currentSettings.enabled,
           offenseWindowSeconds: currentSettings.offenseWindowSeconds,
           // Generated artifacts are resolved server-side; avoid echoing large previews.
-          rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: [] } : undefined }))
+          rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: [], overrides: this.activeVariationOverrides(rule) } : undefined }))
         })
       );
       if (response.error || !response.data) {
@@ -475,6 +475,26 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     return (rule.variations?.entries ?? []).filter(entry => terms.has(entry.term));
   }
 
+  activeVariationOverrides(rule: ModerationRule) {
+    const terms = new Set(rule.terms.map(term => term.normalize('NFC').trim().replace(/\s+/gu, ' ').toLowerCase()));
+    return (rule.variations?.overrides ?? []).filter(item => terms.has(item.term));
+  }
+
+  variationRegex(rule: ModerationRule, entry: GeneratedVariation): string {
+    return rule.variations?.overrides?.find(item => item.term === entry.term)?.source ?? entry.pattern.source;
+  }
+
+  isVariationEdited(rule: ModerationRule, term: string): boolean {
+    return !!rule.variations?.overrides?.some(item => item.term === term);
+  }
+
+  editVariationRegex(rule: ModerationRule, entry: GeneratedVariation, source: string): void {
+    if (!rule.variations || !this.canManage() || !this.hasPaidModeration()) return;
+    const overrides = this.activeVariationOverrides(rule).filter(item => item.term !== entry.term);
+    if (source !== entry.pattern.source) overrides.push({ term: entry.term, source });
+    this.patchRule(rule.id, { variations: { ...rule.variations, overrides } });
+  }
+
   private async fetchVariations(channelID: string, rule: ModerationRule): Promise<GeneratedVariation[]> {
     const deadline = Date.now() + 310000;
     let response = await firstValueFrom(this.moderationApi.prepareVariations(channelID, rule.terms, rule.variations?.mode ?? 'off'));
@@ -495,7 +515,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.errorMessage.set(null);
     try {
       const entries = await this.fetchVariations(channelID, rule);
-      if (!this.destroyed) this.patchRule(ruleID, { variations: { mode: rule.variations?.mode ?? 'off', entries } });
+      if (!this.destroyed) this.patchRule(ruleID, { variations: { mode: rule.variations?.mode ?? 'off', entries, overrides: this.activeVariationOverrides(rule) } });
     } catch (error) {
       if (!this.destroyed) this.errorMessage.set(error instanceof HttpErrorResponse && typeof error.error?.message === 'string' ? error.error.message : this.t('moderation.variations.failed'));
     } finally { this.generatingRule.set(null); }

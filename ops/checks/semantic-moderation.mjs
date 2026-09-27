@@ -234,6 +234,27 @@ try {
         assert.equal(trusted.data.rules[0].variations.entries.length, 2);
         assert.ok(trusted.data.rules[0].variations.entries.every(entry => entry.pattern.source !== '.*'), 'generated artifacts come from owned server cache');
 
+        for (const mode of ['common', 'broad']) {
+            const edited = { ...commonRule, variations: { mode, entries: [], overrides: [{ term: 'rinn', source: 'rinn|rynn' }] } };
+            const response = await api('PUT', 'semantic-paid/settings', { rules: [edited] });
+            assert.equal(response.status, 200);
+            const persisted = (await (await api('GET', 'semantic-paid/settings')).json()).data.rules[0];
+            assert.equal(persisted.variations.overrides[0].source, 'rinn|rynn');
+            await invalidateModerationSettingsCache('semantic-paid');
+            assert.equal((await runChatModeration('semantic-paid', message(`edited-${mode}`, 'rynn', `edit-${mode}`), identity)).actionTaken, true);
+            assert.equal((await runChatModeration('semantic-paid', message(`edited-no-${mode}`, 'riiinn', `edit-${mode}`), identity)).actionTaken, false, 'override replaces generated regex');
+            assert.equal((await runChatModeration('semantic-paid', message(`edited-boundary-${mode}`, 'bring', `edit-${mode}`), identity)).actionTaken, false);
+            for (const source of ['(', '.*', '(?=rinn)rinn']) {
+                const invalidEdit = { ...edited, variations: { ...edited.variations, overrides: [{ term: 'rinn', source }] } };
+                assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [invalidEdit] })).status, 400);
+            }
+            assert.equal((await api('PUT', 'free-literal/settings', { rules: [edited] }, 'free-owner')).status, 403);
+            const reset = { ...edited, variations: { ...edited.variations, overrides: [] } };
+            assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [reset] })).status, 200);
+            await invalidateModerationSettingsCache('semantic-paid');
+            assert.equal((await runChatModeration('semantic-paid', message(`reset-${mode}`, 'riiinn', `edit-${mode}`), identity)).actionTaken, true);
+        }
+
         const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
         assert.equal(saved.status, 200);
         assert.equal((await saved.json()).data.rules[0].semantic.policy, semantic.semantic.policy);

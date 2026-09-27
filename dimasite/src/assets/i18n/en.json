@@ -1186,6 +1186,11 @@
       "errorTitle": "Error"
     },
     "variations": {
+      "regexHint": "Each pattern extends its blocked word. Matching ignores case and uses whole-word boundaries. Your edits replace the generated pattern and are kept when saving or previewing. Changing the matching mode resets edits.",
+      "prepareHint": "Preview variations to see and edit their patterns.",
+      "regexFor": "Variation regex for",
+      "reset": "Reset to generated regex",
+      "edited": "Custom regex — see Advanced",
       "mode": "Word matching",
       "off": "Exact words",
       "common": "Common variations",
@@ -1196,7 +1201,7 @@
       "free": "Preparing variations uses no AI credits. Contextual reviews still use credits when enabled.",
       "preview": "Preview variations",
       "examples": "Matching examples",
-      "advanced": "Advanced: manual regex",
+      "advanced": "Advanced: view or edit regex",
       "generating": "Preparing word variations… Your saved rules stay active until this finishes.",
       "failed": "Could not prepare variations. Your saved rules are unchanged. Try again or choose common variations."
     },
@@ -1221,7 +1226,7 @@
       "addAllowed": "Add allowed example",
       "addViolation": "Add violation example",
       "fallback": "Uncertain reviews, timeouts, and unavailable credits allow the message and log the outcome without an offense. Other rules still apply.",
-      "credits": "Uses existing AI credits at $0.042 per million input tokens, rounded up to whole credits per review. Failed or uncertain reviews are not charged."
+      "credits": "Contextual review uses AI credits based on the amount of text reviewed, including your rules and nearby conversation. Failed or uncertain reviews are not charged."
     },
     "decisions": {
       "title": "Moderation decisions",

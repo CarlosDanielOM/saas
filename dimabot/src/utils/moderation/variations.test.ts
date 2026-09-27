@@ -1,8 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildVariation, variationMode, variationTerms, rulePatterns, museVariationRequest, VARIATION_MODEL } from './variations.js';
+import { buildVariation, variationMode, variationTerms, variationOverrides, rulePatterns, museVariationRequest, VARIATION_MODEL } from './variations.js';
 import { findBlacklistMatches } from './advanced.js';
 const matches = (term: string, text: string, variants: string[] = []) => findBlacklistMatches(text, [], [buildVariation(term, variants).pattern]).length > 0;
+test('edited variations replace generated matching in both modes and reset cleanly', () => {
+    for (const mode of ['common', 'broad'] as const) {
+        const entries = [buildVariation('rinn', ['rin']), buildVariation('fuck', ['fcky'])];
+        const overrides = variationOverrides([{ term: 'Rinn', source: 'rinn|rynn' }], ['rinn', 'fuck'], mode);
+        const patterns = rulePatterns({ variations: { mode, entries, overrides } });
+        assert.ok(findBlacklistMatches('RYNN', [], patterns).length);
+        assert.equal(findBlacklistMatches('rin', [], patterns).length, 0, 'generated pattern is replaced');
+        assert.equal(findBlacklistMatches('bring', [], patterns).length, 0);
+        assert.ok(findBlacklistMatches('fcky', [], patterns).length, 'other words unaffected');
+        assert.ok(findBlacklistMatches('rin', [], rulePatterns({ variations: { mode, entries, overrides: [] } })).length);
+    }
+    for (const source of ['(', '.*', '(?=rinn)rinn', '(rinn)\\1', 'x'.repeat(2001)]) {
+        assert.throws(() => variationOverrides([{ term: 'rinn', source }], ['rinn'], 'common'));
+    }
+    assert.throws(() => variationOverrides([{ term: 'other', source: 'other' }], ['rinn'], 'broad'));
+    assert.throws(() => variationOverrides([{ term: 'rinn', source: 'rinn' }, { term: 'Rinn', source: 'rin' }], ['rinn'], 'broad'));
+    assert.throws(() => variationOverrides([{ term: 'rinn', source: 'rinn' }], ['rinn'], 'off'));
+});
 test('common variants stretch repeated letters while preserving word boundaries and literal punctuation', () => {
     for (const text of ['Rin', 'Riiin', 'Rinnnn', '🎉 Rinn!']) assert.ok(matches('Rinn', text), text);
     for (const text of ['bring', 'string', 'árinn', '水Rinn']) assert.equal(matches('Rinn', text), false, text);

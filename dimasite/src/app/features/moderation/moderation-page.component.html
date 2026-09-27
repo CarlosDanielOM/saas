@@ -391,13 +391,32 @@
                         @if (variationExamples(rule).length) {
                           <div class="variation-examples" [attr.aria-label]="t('moderation.variations.examples')">
                             @for (entry of variationExamples(rule); track entry.term) {
-                              <p><strong>{{ entry.term }}</strong><span> → {{ entry.spellings.slice(0, 6).join(', ') }}</span></p>
+                              <p><strong>{{ entry.term }}</strong><span> → {{ isVariationEdited(rule, entry.term) ? t('moderation.variations.edited') : entry.spellings.slice(0, 6).join(', ') }}</span></p>
                             }
                           </div>
                         }
                       }
                       <details class="manual-patterns" [open]="!!rule.patterns?.length">
                         <summary>{{ t('moderation.variations.advanced') }}</summary>
+                        @if (rule.variations && rule.variations.mode !== 'off') {
+                          <p class="lf-note">{{ t('moderation.variations.regexHint') }}</p>
+                          @if (!variationExamples(rule).length) {
+                            <p class="lf-note">{{ t('moderation.variations.prepareHint') }}</p>
+                          }
+                          @for (entry of variationExamples(rule); track entry.term) {
+                            <div class="generated-pattern-editor">
+                              <label class="lf-field">
+                                <span>{{ t('moderation.variations.regexFor') }} {{ entry.term }}</span>
+                                <textarea class="lf-input generated-regex" rows="3" maxlength="2000" spellcheck="false"
+                                  [value]="variationRegex(rule, entry)" (input)="editVariationRegex(rule, entry, $any($event.target).value)"
+                                  [readOnly]="!canManage() || !hasPaidModeration()"></textarea>
+                              </label>
+                              @if (isVariationEdited(rule, entry.term) && canManage() && hasPaidModeration()) {
+                                <button type="button" class="lf-btn lf-btn--compact reset-variation" (click)="editVariationRegex(rule, entry, entry.pattern.source)">{{ t('moderation.variations.reset') }}</button>
+                              }
+                            </div>
+                          }
+                        }
                       <p class="lf-note">{{ t('moderation.advanced.regexHint') }}</p>
                       @for (pattern of rule.patterns ?? []; track pattern.id) {
                         <div class="pattern-editor">

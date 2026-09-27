@@ -676,3 +676,7 @@
 .variation-examples p { margin: 0.35rem 0; font-size: 0.85rem; line-height: 1.6; overflow-wrap: anywhere; }
 .variation-examples span { color: var(--muted); }
 .variation-progress { padding: 1rem; border: 1px solid var(--line); border-radius: 0.85rem; }
+
+.generated-pattern-editor { display: grid; gap: 0.5rem; min-width: 0; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+.generated-regex { width: 100%; min-height: 5rem; resize: vertical; font-family: monospace; overflow-wrap: anywhere; }
+.reset-variation { justify-self: start; }

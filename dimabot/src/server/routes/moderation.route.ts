@@ -1,4 +1,4 @@
-import { variationMode, variationTerms, buildVariation } from '../../utils/moderation/variations.js';
+import { variationMode, variationTerms, variationOverrides, buildVariation } from '../../utils/moderation/variations.js';
 import { requestVariationJob, resolveVariations, variationJobView, VariationError } from '../../utils/moderation/variation_jobs.js';
 import { ModerationVariationJob } from '../../schemas/moderation_variation.schema.js';
 import crypto from 'crypto';
@@ -127,7 +127,11 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
     try { advanced = parseAdvancedRule(input); }
     catch (error) { return { error: `Rule ${index + 1}: ${error instanceof Error ? error.message : 'Invalid advanced rule'}` }; }
     let mode: ReturnType<typeof variationMode>;
-    try { mode = variationMode(input.variations); }
+    let overrides: ReturnType<typeof variationOverrides>;
+    try {
+        mode = variationMode(input.variations);
+        overrides = variationOverrides((input.variations as { overrides?: unknown } | undefined)?.overrides, normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100), mode);
+    }
     catch (error) { return { error: error instanceof Error ? error.message : 'Invalid variations' }; }
     const type = String(input.type || '');
     if (type !== 'blacklist' && mode !== 'off') return { error: 'Word variations require a blocked-word rule' };
@@ -170,7 +174,7 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         maxEmoteCount: clampInt(input.maxEmoteCount, 1, 100, MODERATION_RULE_DEFAULTS.maxEmoteCount),
         terms: normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100),
         ...advanced,
-        variations: { mode, entries: [] }
+        variations: { mode, entries: [], overrides }
     };
 
     return { rule };
@@ -242,13 +246,17 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 // configuration while editing free rules, but cannot add paid features.
                 if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(prior.semantic) !== JSON.stringify(rule.semantic)
                     || (prior.variations?.mode ?? 'off') !== rule.variations?.mode
+                    || JSON.stringify(prior.variations?.overrides ?? []) !== JSON.stringify(rule.variations?.overrides ?? [])
                     || (rule.variations?.mode !== 'off' && JSON.stringify(prior.terms) !== JSON.stringify(rule.terms))) {
                     return res.status(403).json({ error: true, message: 'Regex and contextual moderation require Premium or Pro', status: 403 });
                 }
             }
         }
 
-        for (const rule of rules) rule.variations = await resolveVariations(channelID, rule.terms, rule.variations!.mode, current?.rules || []);
+        for (const rule of rules) rule.variations = {
+            ...await resolveVariations(channelID, rule.terms, rule.variations!.mode, current?.rules || []),
+            overrides: rule.variations!.overrides
+        };
 
         const updated = await ChannelModerationSettingsSchema.findOneAndUpdate({
             channelID

@@ -44,7 +44,7 @@ try {
                 data = failGeneration ? { id: 'job1', state: 'failed', entries: [], error: 'invalid_generation' }
                     : { id: 'job1', state: 'completed', entries: generatedEntries(generations.at(-1).terms), error: '' };
             } else if (url.pathname.endsWith('/settings')) {
-                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload, rules: payload.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: rule.variations.mode === 'off' ? [] : generatedEntries(rule.terms) } : undefined })) }; }
+                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload, rules: payload.rules.map(rule => ({ ...rule, variations: rule.variations ? { ...rule.variations, entries: rule.variations.mode === 'off' ? [] : generatedEntries(rule.terms) } : undefined })) }; }
                 data = cfg;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [], total: 0, limit: 10, skip: 0 };
             else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'decision1', username: 'viewer', messageText: 'That was fucking awesome',
@@ -79,6 +79,22 @@ try {
             assert.deepEqual(generations.at(-1).terms, ['fuck', 'rinn']);
             await saveChanges();
             await page.waitForFunction(() => document.querySelector('.lf-save-bar button')?.disabled);
+            await feature.locator('.manual-patterns summary').click();
+            const generated = feature.locator('.generated-regex');
+            assert.equal(await generated.count(), 2);
+            assert.equal(await generated.first().inputValue(), 'fuck');
+            await generated.first().fill('f(?:u|a)ck');
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(saves.at(-1).rules[0].variations.overrides[0].source, 'f(?:u|a)ck');
+            await page.reload();
+            await feature.locator('.variation-mode').waitFor();
+            await feature.locator('.manual-patterns summary').click();
+            assert.equal(await generated.first().inputValue(), 'f(?:u|a)ck', 'edited common regex survives reload');
+            await feature.locator('.reset-variation').click();
+            await page.waitForFunction(() => document.querySelector('.generated-regex')?.value === 'fuck');
+            assert.equal(await generated.first().inputValue(), 'fuck');
+            await feature.locator('.manual-patterns summary').click();
             await mode.selectOption('broad');
             failGeneration = true;
             const savedBeforeFailure = saves.length;
@@ -95,6 +111,14 @@ try {
             assert.equal(saves.at(-1).rules[0].variations.mode, 'broad');
             assert.equal(saves.at(-1).rules[0].semantic.enabled, false, 'broad mode permits direct ladder');
             await feature.locator('.manual-patterns summary').click();
+            assert.equal(await generated.count(), 2);
+            await generated.first().fill('f(?:u|a)?ck(?:ing|y)?');
+            await feature.locator('.variation-preview').click();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(await generated.first().inputValue(), 'f(?:u|a)?ck(?:ing|y)?', 'preview preserves broader regex edits');
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(saves.at(-1).rules[0].variations.overrides[0].source, 'f(?:u|a)?ck(?:ing|y)?');
             await feature.getByRole('button', { name: language === 'es' ? 'Añadir patrón regex' : 'Add regex pattern', exact: true }).click();
             await feature.getByLabel(language === 'es' ? 'Patrón regex' : 'Regex pattern', { exact: true }).fill('f(?:u|a)?ck(?:ing|y)?');
             // Regex-only is an intentional, saveable mode.
@@ -104,8 +128,9 @@ try {
             assert.equal(saves.at(-1).rules[0].patterns[0].source, 'f(?:u|a)?ck(?:ing|y)?');
             assert.equal(saves.at(-1).rules[0].semantic.enabled, false);
             await toggle.check();
-            await feature.getByText(language === 'es' ? /0,042 USD/ : /\$0\.042/).waitFor();
-            await feature.locator('textarea').fill('The author uses profanity in a negative or hostile way, rather than as positive praise.');
+            await feature.getByText(language === 'es' ? /según la cantidad de texto/ : /based on the amount of text/).waitFor();
+            assert.doesNotMatch(await feature.innerText(), /\$|USD|0[.,]042|million input tokens/);
+            await feature.locator('textarea:not(.generated-regex)').fill('The author uses profanity in a negative or hostile way, rather than as positive praise.');
             await feature.getByRole('button', { name: language === 'es' ? 'Añadir ejemplo permitido' : 'Add allowed example', exact: true }).click();
             await feature.locator('.example-editor input').fill('That was fucking awesome');
             await saveChanges();

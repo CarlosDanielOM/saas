@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
+import RE2 from 're2';
 import { escapeRegExp, foldText } from './normalize.js';
 import { findBlacklistMatches, type ModerationPattern } from './advanced.js';
 
 export type VariationMode = 'off' | 'common' | 'broad';
 export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string }
-export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[] }
+export interface VariationOverride { term: string; source: string }
+export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[]; overrides?: VariationOverride[] }
 export const VARIATION_VERSION = 'spelling-variants-v1';
 export const VARIATION_MODEL = 'meta/muse-spark-1.3-contributor';
 export const variationTerm = (term: string) => term.normalize('NFC').trim().replace(/\s+/gu, ' ').toLowerCase();
@@ -19,6 +21,25 @@ export function variationMode(raw: unknown): VariationMode {
 export function variationTerms(raw: unknown): string[] {
     if (!Array.isArray(raw) || raw.length > 200 || raw.some(term => typeof term !== 'string' || !term.trim() || term.length > 100)) throw new Error('Use up to 200 words or phrases of 1–100 characters');
     return [...new Set(raw.map(term => variationTerm(term)))];
+}
+export function variationOverrides(raw: unknown, terms: string[], mode: VariationMode): VariationOverride[] {
+    if (raw === undefined) return [];
+    if (!Array.isArray(raw) || raw.length > 200) throw new Error('Use at most one edited regex per blocked word');
+    const allowed = new Set(terms.map(variationTerm));
+    const seen = new Set<string>();
+    const overrides = raw.map(item => {
+        if (!item || typeof item.term !== 'string' || typeof item.source !== 'string') throw new Error('Invalid edited variation regex');
+        const term = variationTerm(item.term);
+        if (!allowed.has(term) || seen.has(term)) throw new Error('Each edited regex must belong to a different blocked word');
+        seen.add(term);
+        if (!item.source.trim() || item.source.length > 2000) throw new Error('Edited variation regex must contain 1–2000 characters');
+        try {
+            if (new RE2(item.source, 'iu').test('')) throw new Error('empty match');
+        } catch { throw new Error('Invalid variation regex. Use RE2 without lookaround, backreferences, or empty matches.'); }
+        return { term, source: item.source };
+    });
+    if (mode === 'off' && overrides.length) throw new Error('Edited variation regex requires common or broader variations');
+    return overrides;
 }
 function editDistance(a: string, b: string): number {
     const left = Array.from(a), right = Array.from(b);
@@ -67,7 +88,8 @@ export function rulePatterns(rule: { patterns?: ModerationPattern[]; variations?
     if (!entries.length) return rule.patterns || [];
     // One compiled alternation per rule avoids compiling 200 Unicode boundary
     // expressions on the chat loop's first message after a settings change.
-    const source = `(?:${entries.map(entry => entry.pattern.source).join('|')})`;
+    const overrides = new Map(rule.variations?.overrides?.map(item => [item.term, item.source]));
+    const source = `(?:${entries.map(entry => `(?:${overrides.get(entry.term) ?? entry.pattern.source})`).join('|')})`;
     const id = 'auto-all-' + createHash('sha256').update(source).digest('hex').slice(0, 24);
     return [...(rule.patterns || []), { id, source, boundary: 'whole_word', ignoreCase: true }];
 }
