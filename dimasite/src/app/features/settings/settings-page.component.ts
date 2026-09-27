@@ -216,10 +216,17 @@ export class SettingsPageComponent {
   openPermissionEditor(target: AdminRecord | AdminCandidate): void {
     if (!this.isOwnerView()) return;
     if ('adminID' in target) {
+      const grants = new Set(target.permissions);
+      if (grants.delete('triggers:all')) {
+        for (const permission of ['triggers:view', 'triggers:upload', 'triggers:attach', 'triggers:edit', 'triggers:delete']) grants.add(permission);
+      }
+      if (grants.delete('dimafx:all')) {
+        for (const permission of ['dimafx:view', 'dimafx:edit', 'dimafx:delete']) grants.add(permission);
+      }
       this.editingAdmin.set(target);
       this.editingCandidate.set(null);
       this.fullAccess.set(target.permissions.includes('*'));
-      this.draftPermissions.set(target.permissions.includes('*') ? ['dashboard:view'] : [...target.permissions]);
+      this.draftPermissions.set(target.permissions.includes('*') ? ['dashboard:view'] : [...grants]);
     } else {
       this.editingCandidate.set(target);
       this.editingAdmin.set(null);

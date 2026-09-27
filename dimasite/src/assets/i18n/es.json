@@ -458,8 +458,8 @@
         "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, o `$(tts.fish ...)` / `$(tts.clone ...)` para voces de Fish Audio."
       },
       "footer": {
-        "owner": "Los propietarios pueden cambiar estos valores por defecto. Los administradores pueden revisar la configuracion sin editarla.",
-        "readOnly": "Estas viendo la configuracion de TTS en modo de solo lectura. Solo el propietario del canal puede cambiarla."
+        "owner": "Puedes cambiar estos valores de TTS con el permiso Gestión de configuración.",
+        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso Gestión de configuración para cambiarla."
       },
       "actions": {
         "save": "Guardar configuracion TTS",
@@ -960,6 +960,7 @@
     "badge": "Proteccion",
     "title": "Follow Defense",
     "subtitle": "Protege tu canal de inundaciones de follows y hate raids.",
+    "permission": { "readOnly": "Puedes ver la defensa contra seguidores, pero necesitas permiso de Gestión de moderación para cambiarla." },
     "backToModules": "Volver a modulos",
     "enabled": "Habilitar Follow Defense",
     "enabledDescription": "Desactiva esto si usas otro sistema de proteccion o no quieres que DimaBot interfiera con alertas/moderacion de follows.",
@@ -2464,8 +2465,8 @@
         "copy": "`tts.ai` y `tts.clone` ya estan conectados al contrato, pero seguiran no disponibles hasta agregar los providers futuros de voz en Runpod."
       },
       "footer": {
-        "owner": "El owner ya puede cambiar estos defaults. Los admins igual pueden revisar la configuracion actual sin editarla.",
-        "readOnly": "Estas viendo la configuracion activa de TTS en modo solo lectura. Solo el owner del canal puede cambiarla."
+        "owner": "Puedes cambiar estos valores de TTS con el permiso Gestión de configuración.",
+        "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso Gestión de configuración para cambiarla."
       },
       "actions": {
         "save": "Guardar configuracion TTS",
@@ -2754,9 +2755,15 @@
       "nextUp": "A continuacion"
     }
   },
+  "permissions": {
+    "viewOnly": "Puedes ver esta función, pero necesitas el permiso Administrar para cambiarla.",
+    "checking": "Comprobando el acceso al canal...",
+    "noModules": "No hay módulos disponibles con tus permisos actuales para este canal."
+  },
   "chatEvents": {
     "title": "Eventos de Chat",
     "subtitle": "Gestiona las respuestas automaticas de tu canal para follows, suscripciones, bits y mas.",
+    "permission": { "readOnly": "Puedes ver los eventos del chat, pero necesitas permiso de Gestión de eventos para cambiarlos." },
     "heroBadge": "Automatizacion de Interaccion",
     "backToModules": "Volver a Modulos",
     "loading": "Cargando eventos de chat...",
@@ -2847,6 +2854,7 @@
   "redemptions": {
     "title": "Canjeos de Puntos del Canal",
     "subtitle": "Crea y gestiona recompensas de puntos del canal personalizadas para que tus espectadores las canjeen durante los streams.",
+    "permission": { "readOnly": "Puedes ver las recompensas, pero necesitas permiso de Gestión de recompensas para cambiarlas." },
     "heroBadge": "Involucra a Tu Audiencia",
     "backToModules": "Volver a Modulos",
     "createRewardButton": "Crear Recompensa",

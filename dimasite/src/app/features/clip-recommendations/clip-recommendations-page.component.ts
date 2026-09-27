@@ -9,7 +9,7 @@ import {
   signal
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -43,6 +43,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
   readonly streamer = signal('');
   readonly channelID = signal<string | null>(null);
+  readonly canManage = signal(false);
   readonly loading = signal(true);
   readonly loadingVods = signal(true);
   readonly queueingVodId = signal<string | null>(null);
@@ -76,7 +77,13 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
     this.sessionAuth.resolveChannelID(streamer).subscribe((channelID) => {
       this.channelID.set(channelID);
+      this.canManage.set(false);
       if (channelID) {
+        this.sessionAuth.checkPermission(channelID, 'clips:manage').pipe(
+          catchError(() => of(false))
+        ).subscribe((allowed) => {
+          if (this.channelID() === channelID) this.canManage.set(allowed);
+        });
         void Promise.all([this.loadAll(false), this.loadVods(false)]);
         this.startPolling();
       } else {
@@ -171,7 +178,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
   async toggleAutoAnalyze(): Promise<void> {
     const channelID = this.channelID();
-    if (!channelID || !this.canAutoAnalyze()) return;
+    if (!channelID || !this.canManage() || !this.canAutoAnalyze()) return;
     const nextValue = !this.autoAnalyzeEnabled();
     this.savingConfig.set(true);
     try {
@@ -193,7 +200,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
 
   async queueAnalysis(vod: TwitchVodInfo): Promise<void> {
     const channelID = this.channelID();
-    if (!channelID || !vod?.id || this.queueingVodId() === vod.id) return;
+    if (!channelID || !this.canManage() || !vod?.id || this.queueingVodId() === vod.id) return;
     this.queuedVodIds.add(vod.id);
     this.queueingVodId.set(vod.id);
     try {
@@ -225,7 +232,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
     action: 'confirm' | 'deny'
   ): Promise<void> {
     const channelID = this.channelID();
-    if (!channelID) return;
+    if (!channelID || !this.canManage()) return;
     try {
       await firstValueFrom(this.api.setCandidateStatus(channelID, recommendationID, candidateID, action));
       this.toastService.success(

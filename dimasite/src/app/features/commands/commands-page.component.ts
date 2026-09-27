@@ -6,12 +6,12 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { List, LayoutGrid, Edit3, Trash2, Power, PowerOff } from 'lucide-angular';
 import { LucideAngularModule } from 'lucide-angular';
-import { combineLatest, map, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
 import { CommandsApiService } from '../../services/commands-api.service';
@@ -60,6 +60,15 @@ export class CommandsPageComponent {
 
   // Route params - resolved to channelID
   readonly channelID = signal<string | null>(null);
+  private readonly manageAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? this.sessionAuth.checkPermission(channelID, 'commands:manage').pipe(
+          map((allowed) => ({ channelID, allowed })),
+          catchError(() => of({ channelID, allowed: false }))
+        )
+      : of({ channelID: null, allowed: false }))
+  ), { initialValue: { channelID: null as string | null, allowed: false } });
+  readonly canManage = computed(() => this.manageAccess().channelID === this.channelID() && this.manageAccess().allowed);
   private readonly routeStreamer$ = combineLatest([
     this.route.paramMap,
     this.route.parent?.paramMap ?? of(convertToParamMap({}))
@@ -456,12 +465,14 @@ export class CommandsPageComponent {
   // ========== Modal Handlers ==========
 
   openCreateModal(): void {
+    if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     this.editingCommand.set(null);
     this.showCommandModal.set(true);
   }
 
   openEditModal(command: Command): void {
+    if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     this.editingCommand.set(command);
     this.showCommandModal.set(true);
@@ -473,6 +484,7 @@ export class CommandsPageComponent {
   }
 
   onModalSave(payload: CommandModalSavePayload): void {
+    if (!this.canManage()) return;
     const channelID = this.channelID();
     if (!channelID) return;
 
@@ -569,6 +581,7 @@ export class CommandsPageComponent {
   // ========== Enable/Disable ==========
 
   enableCommand(commandId: string): void {
+    if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     if (this.isPending(commandId)) return;
 
@@ -601,6 +614,7 @@ export class CommandsPageComponent {
   }
 
   disableCommand(commandId: string): void {
+    if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     if (this.isPending(commandId)) return;
 
@@ -635,6 +649,7 @@ export class CommandsPageComponent {
   // ========== Delete ==========
 
   promptDeleteCommand(command: Command): void {
+    if (!this.canManage()) return;
     const commandId = this.getCommandId(command);
     if (command.reserved || !commandId || this.isPending(commandId)) return;
     this.commandToDelete.set(command);
@@ -642,6 +657,7 @@ export class CommandsPageComponent {
   }
 
   confirmDelete(): void {
+    if (!this.canManage()) return;
     const command = this.commandToDelete();
     if (!command) return;
 

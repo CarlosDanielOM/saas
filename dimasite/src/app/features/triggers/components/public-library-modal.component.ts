@@ -54,6 +54,7 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   readonly channelId = input.required<string>();
   readonly ownedAssetIds = input.required<string[]>();
+  readonly canAttach = input(false);
 
   readonly close = output<void>();
   readonly assetAdded = output<MediaLibraryMutationResult>();
@@ -178,6 +179,7 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   }
 
   addAsset(asset: MediaAsset): void {
+    if (!this.canAttach()) return;
     const channelId = this.channelId();
     if (!channelId || this.isAssetAdded(asset._id) || this.isAddingAsset(asset._id)) {
       return;

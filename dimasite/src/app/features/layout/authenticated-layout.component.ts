@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { distinctUntilChanged, map } from 'rxjs';
+import { catchError, distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
 import { Coins, Languages, LogOut, LucideAngularModule, Moon, RefreshCw, ShieldAlert, Sparkles, Sun, User, Zap } from 'lucide-angular';
 
 import { AnalyticsService } from '../../services/analytics.service';
@@ -79,6 +79,11 @@ export class AuthenticatedLayoutComponent {
     const ownerChannelID = current.appUser.twitch_user_id?.trim().toLowerCase() || '';
 
     return routeStreamer !== ownerLogin && routeStreamer !== ownerChannelID;
+  });
+  readonly navigationAccess = signal({ commands: false, settings: false });
+  private readonly navigationIdentity = computed(() => {
+    const current = this.session();
+    return `${current?.appUser.twitch_user_id ?? ''}:${current?.twitchUser.login ?? ''}`;
   });
   readonly currentDashboardLink = computed(() => {
     const activeStreamer = this.streamer().trim();
@@ -182,6 +187,33 @@ export class AuthenticatedLayoutComponent {
   readonly profileIcon = User;
 
   constructor() {
+    effect((onCleanup) => {
+      this.navigationIdentity();
+      const streamer = this.streamer().trim().toLowerCase();
+      const current = untracked(this.session);
+      if (!current || !streamer) {
+        this.navigationAccess.set({ commands: false, settings: false });
+        return;
+      }
+
+      if (streamer === current.twitchUser.login?.toLowerCase() || streamer === current.appUser.twitch_user_id) {
+        this.navigationAccess.set({ commands: true, settings: true });
+        return;
+      }
+
+      this.navigationAccess.set({ commands: false, settings: false });
+      const subscription = untracked(() => this.sessionAuth.resolveChannelID(streamer).pipe(
+        switchMap((channelID) => channelID
+          ? forkJoin({
+              commands: this.sessionAuth.checkPermission(channelID, 'commands:view'),
+              settings: this.sessionAuth.checkPermission(channelID, 'admins:view')
+            })
+          : of({ commands: false, settings: false })),
+        catchError(() => of({ commands: false, settings: false }))
+      ).subscribe((access) => this.navigationAccess.set(access)));
+      onCleanup(() => subscription.unsubscribe());
+    });
+
     effect(() => {
       const tier = this.planTier();
       if (typeof document !== 'undefined') {

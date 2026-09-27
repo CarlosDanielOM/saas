@@ -1105,6 +1105,10 @@
     align-items: start;
   }
 
+  .lf-bento--workspace.lf-bento--readonly {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .lf-tile--form {
     position: sticky;
     top: 4.5rem;

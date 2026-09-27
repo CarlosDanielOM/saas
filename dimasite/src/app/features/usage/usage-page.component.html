@@ -76,10 +76,12 @@
             @if (creditsExhausted()) {
               <p class="lf-note lf-note--warn">{{ t('usage.balance.exhaustedNote') }}</p>
             }
+            @if (isOwnerView()) {
             <a class="lf-btn lf-btn--primary lf-balance__store" [routerLink]="creditStoreLink()">
               <app-lf-icon name="plus"></app-lf-icon>
               {{ t('usage.balance.buyCredits') }}
             </a>
+            }
           } @else {
             <p class="lf-value lf-value--sm">{{ t('usage.balance.unavailable') }}</p>
           }
@@ -152,7 +154,7 @@
               </p>
             }
             <p class="lf-note">{{ t('usage.pacing.basis.' + pace.forecastBasis) }}</p>
-            @if (recommendedPack(); as pack) {
+            @if (isOwnerView() && recommendedPack(); as pack) {
               <aside class="lf-recommendation" aria-labelledby="usage-pack-title">
                 <h3 id="usage-pack-title" class="lf-h3">{{ t('usage.recommendation.title') }}</h3>
                 <p class="lf-note">{{ t('usage.recommendation.body', { credits: formatCredits(pack.credits), price: formatPackPrice(pack) }) }}</p>
@@ -202,10 +204,12 @@
               <h3 class="lf-h3">{{ t('usage.analytics.lockedTitle') }}</h3>
               <p class="lf-copy lf-copy--tight">{{ t('usage.analytics.lockedBody') }}</p>
             </div>
+            @if (isOwnerView()) {
             <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
               <app-lf-icon name="star"></app-lf-icon>
               {{ t('usage.analytics.lockedCta', { tier: lockedTierLabel('premium') }) }}
             </button>
+            }
           </article>
         } @else if (loading()) {
           <div class="lf-tile lf-skeleton" aria-hidden="true">
@@ -300,10 +304,12 @@
               <h3 class="lf-h3">{{ t('usage.transactions.lockedTitle') }}</h3>
               <p class="lf-copy lf-copy--tight">{{ t('usage.transactions.lockedBody') }}</p>
             </div>
+            @if (isOwnerView()) {
             <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
               <app-lf-icon name="star"></app-lf-icon>
               {{ t('usage.transactions.lockedCta', { tier: lockedTierLabel('pro') }) }}
             </button>
+            }
           </article>
         } @else {
           <div class="lf-filter" role="group" [attr.aria-label]="t('usage.transactions.filterLabel')">

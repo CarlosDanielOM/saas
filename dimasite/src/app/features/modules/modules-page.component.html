@@ -66,13 +66,17 @@
       </article>
     </section>
 
-    @if (filteredModules().length === 0) {
+    @if (!accessReady()) {
+      <div class="lf-tile lf-empty" role="status">{{ t('permissions.checking') }}</div>
+    } @else if (filteredModules().length === 0) {
       <div class="lf-tile lf-empty" role="status">
-        <h3 class="lf-empty__title">{{ t('modules.noResults') }}</h3>
-        <p class="lf-empty__copy">{{ t('modules.adjustFilters') }}</p>
-        <button type="button" class="lf-btn" (click)="resetFilters()">
-          {{ t('modules.resetFilters') }}
-        </button>
+        <h3 class="lf-empty__title">{{ t(modules().length ? 'modules.noResults' : 'permissions.noModules') }}</h3>
+        @if (modules().length) {
+          <p class="lf-empty__copy">{{ t('modules.adjustFilters') }}</p>
+          <button type="button" class="lf-btn" (click)="resetFilters()">
+            {{ t('modules.resetFilters') }}
+          </button>
+        }
       </div>
     } @else {
       @for (group of moduleGroups(); track $index) {

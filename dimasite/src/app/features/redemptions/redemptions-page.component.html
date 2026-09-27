@@ -7,9 +7,11 @@
         <h1 class="lf-title">{{ t('redemptions.title') }} <span>{{ t('redemptions.customTag') }}</span></h1>
         <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
         <div class="lf-actions">
+          @if (canManage()) {
           <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
             + {{ t('redemptions.createRewardButton') }}
           </button>
+          }
           <button
             type="button"
             class="lf-btn"
@@ -24,6 +26,9 @@
             }
           </button>
         </div>
+        @if (permissionLoaded() && !canManage()) {
+          <p class="lf-note lf-note--warn">{{ t('redemptions.permission.readOnly') }}</p>
+        }
         <div class="lf-metrics">
           <div class="lf-metric">
             <span class="lf-metric__value">{{ customRedemptions().length }}</span>
@@ -64,9 +69,11 @@
         @if (customRedemptions().length === 0) {
           <div class="lf-empty">
             <p>{{ t('redemptions.noCustomRedemptions') }}</p>
+            @if (canManage()) {
             <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
               {{ t('redemptions.createFirstReward') }}
             </button>
+            }
           </div>
         } @else {
           <div class="lf-reward-grid">
@@ -98,6 +105,7 @@
                     </span>
                   </div>
 
+                  @if (canManage()) {
                   <div class="lf-reward-actions">
                     <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(redemption)">
                       {{ t('common.edit') }}
@@ -119,6 +127,7 @@
                       {{ t('common.delete') }}
                     </button>
                   </div>
+                  }
                 </div>
               </article>
             }
@@ -209,6 +218,7 @@
   </main>
 </div>
 
+@if (canManage()) {
 <app-create-reward-modal
   [userPlan]="userPlan()"
   [isOpen]="isCreateModalOpen()"
@@ -228,3 +238,4 @@
   (confirm)="confirmDeleteRedemption()"
   (cancel)="closeDeleteModal()"
 />
+}

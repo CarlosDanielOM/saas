@@ -11,9 +11,11 @@
             <span [class.lf-spin]="loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
             {{ t('common.refresh') }}
           </button>
+          @if (canEdit()) {
           <button type="button" class="lf-btn lf-btn--primary" (click)="resetForm()">
             + {{ t('modules.dimafx.newItem') }}
           </button>
+          }
         </div>
       </article>
 
@@ -42,7 +44,7 @@
       </section>
     }
 
-    <section class="lf-bento lf-bento--workspace">
+    <section class="lf-bento lf-bento--workspace" [class.lf-bento--readonly]="!canEdit()">
       <!-- Storefront items -->
       <div class="lf-tile lf-tile--list">
         <div class="lf-section-head">
@@ -101,9 +103,11 @@
                     <span class="lf-meta-text">{{ item.volume }}%</span>
                   </div>
                   <div class="lf-item-card__actions">
+                    @if (canEdit()) {
                     <button type="button" class="lf-btn lf-btn--xs" (click)="selectItem(item)">
                       {{ t('modules.dimafx.edit') }}
                     </button>
+                    }
                     @if (item.mediaUrl) {
                       <button
                         type="button"
@@ -113,12 +117,14 @@
                         {{ t('modules.dimafx.preview') }}
                       </button>
                     }
+                    @if (canDelete()) {
                     <button type="button" class="lf-btn lf-btn--xs lf-btn--danger" (click)="deleteItem(item, false)">
                       {{ t('modules.dimafx.delete') }}
                     </button>
                     <button type="button" class="lf-btn lf-btn--xs lf-btn--warn" (click)="deleteItem(item, true)">
                       {{ t('modules.dimafx.refundDelete') }}
                     </button>
+                    }
                   </div>
                 </div>
               </article>
@@ -133,6 +139,7 @@
       </div>
 
       <!-- Create / Edit form -->
+      @if (canEdit()) {
       <aside class="lf-tile lf-tile--form">
         <div class="lf-section-head">
           <h2 class="lf-h2">{{ isEditing() ? t('modules.dimafx.editTitle') : t('modules.dimafx.createTitle') }}</h2>
@@ -261,6 +268,7 @@
           </button>
         </form>
       </aside>
+      }
     </section>
   </main>
 </div>

@@ -13,9 +13,11 @@
         <p class="lf-copy">{{ t('modules.library.subtitle') }}</p>
 
         <div class="lf-actions">
+          @if (canUpload()) {
           <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
             {{ t('modules.library.actions.upload') }}
           </button>
+          }
           <button type="button" class="lf-btn" (click)="refresh()" [disabled]="loading()">
             {{ t('common.refresh') }}
           </button>
@@ -72,9 +74,11 @@
           <p class="lf-kicker">{{ t('modules.library.eyebrow') }}</p>
           <h2 class="lf-h2">{{ t('modules.library.title') }}</h2>
         </div>
+        @if (canUpload()) {
         <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openUploadModal()">
           {{ t('modules.library.actions.upload') }}
         </button>
+        }
       </div>
 
       @if (loading()) {
@@ -82,9 +86,11 @@
       } @else if (items().length === 0) {
         <div class="lf-tile lf-empty" role="status">
           <h3 class="lf-empty__title">{{ t('modules.library.states.empty') }}</h3>
+          @if (canUpload()) {
           <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
             {{ t('modules.library.actions.upload') }}
           </button>
+          }
         </div>
       } @else {
         <div class="lf-bento lf-bento--media">
@@ -108,7 +114,7 @@
                 {{ (item.localAlias || item.asset?.displayName) | displayName }}
               </h3>
               <p class="lf-media__meta">
-                @if (item.assetScope === 'private') {
+                @if (item.assetScope === 'private' && canEdit()) {
                   {{ formatBytes(item.quotaBytesCharged) }} · {{ t('modules.library.card.chargesQuota') }}
                 } @else {
                   {{ t('modules.library.card.freeQuota') }}
@@ -125,6 +131,7 @@
                     {{ t('modules.library.actions.makePublic') }}
                   </button>
                 }
+                @if (canDelete()) {
                 <button
                   type="button"
                   class="lf-btn lf-btn--danger lf-btn--compact"
@@ -132,6 +139,7 @@
                 >
                   {{ t('common.delete') }}
                 </button>
+                }
               </div>
             </article>
           }

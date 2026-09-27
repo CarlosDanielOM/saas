@@ -39,6 +39,7 @@
               {{ configureButtonLabel() }}
             </button>
           }
+          @if (canManage()) {
           <button
             type="button"
             class="lf-btn lf-btn--xs lf-btn--warn"
@@ -49,7 +50,8 @@
           >
             {{ isDisabling() ? t('chatEvents.pending.disabling') : t('chatEvents.disable') }}
           </button>
-        } @else if (event().releaseStage !== 'coming_soon' && event().releaseStage !== 'maintenance') {
+          }
+        } @else if (canManage() && event().releaseStage !== 'coming_soon' && event().releaseStage !== 'maintenance') {
           <button
             type="button"
             class="lf-btn lf-btn--xs lf-btn--primary"
@@ -63,7 +65,7 @@
             {{ t('chatEvents.configure') }}
           </button>
         }
-      } @else {
+      } @else if (canManage()) {
         <button type="button" class="lf-btn lf-btn--xs lf-btn--gold" (click)="onUpgradeClick()">
           {{ t('chatEvents.upgrade') }}
         </button>
@@ -75,6 +77,7 @@
     <app-config-panel
       [event]="event()"
       [userPlan]="userPlan()"
+      [canManage]="canManage()"
       [pendingAction]="pendingAction()"
       (save)="saveConfiguration()"
       (delete)="deleteEvent()"

@@ -81,7 +81,7 @@
             <input
               type="checkbox"
               [checked]="isAiEnabled()"
-              [disabled]="saving()"
+              [disabled]="saving() || !canManage()"
               (change)="updateEnabled($any($event.target).checked)"
               [attr.aria-label]="t('modules.aiPersonality.masterToggle.title')"
             />
@@ -98,7 +98,7 @@
             <input
               type="checkbox"
               [checked]="settings.streamSummariesEnabled"
-              [disabled]="saving()"
+              [disabled]="saving() || !canManage()"
               (change)="updateFeatureToggle('streamSummariesEnabled', $any($event.target).checked)"
             />
           </label>
@@ -110,7 +110,7 @@
             <input
               type="checkbox"
               [checked]="settings.recommendationsEnabled"
-              [disabled]="saving()"
+              [disabled]="saving() || !canManage()"
               (change)="updateFeatureToggle('recommendationsEnabled', $any($event.target).checked)"
             />
           </label>
@@ -145,7 +145,7 @@
             <p class="lf-kicker">{{ t('modules.aiPersonality.profiles.kicker') }}</p>
             <h2 class="lf-h2">{{ t('modules.aiPersonality.profiles.title') }}</h2>
           </div>
-          <button type="button" class="lf-btn lf-btn--compact" [disabled]="profileLimitReached() || saving()" (click)="addProfile()">
+          <button type="button" class="lf-btn lf-btn--compact" [disabled]="profileLimitReached() || saving() || !canManage()" (click)="addProfile()">
             {{ t('modules.aiPersonality.profiles.add') }}
           </button>
         </div>
@@ -158,7 +158,7 @@
               (click)="selectProfile(profile.profileID)"
             >
               <span>{{ profile.name || t('modules.aiPersonality.defaults.profileName') }}</span>
-              @if (settings.profiles.length > 1) {
+              @if (settings.profiles.length > 1 && canManage()) {
                 <span
                   class="lf-pill__remove"
                   role="button"
@@ -183,11 +183,11 @@
           <div class="lf-form-grid">
             <label class="lf-field">
               <span>{{ t('modules.aiPersonality.fields.profileName') }}</span>
-              <input [value]="activeProfile.name" [disabled]="saving()" (input)="updateActiveProfileField('name', $any($event.target).value)" />
+              <input [value]="activeProfile.name" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('name', $any($event.target).value)" />
             </label>
             <label class="lf-field">
               <span>{{ t('modules.aiPersonality.fields.personaMode') }}</span>
-              <select [value]="activeProfile.personaMode" [disabled]="saving()" (change)="updateActivePersonaMode($any($event.target).value)">
+              <select [value]="activeProfile.personaMode" [disabled]="saving() || !canManage()" (change)="updateActivePersonaMode($any($event.target).value)">
                 @for (mode of personaModes; track mode.value) {
                   <option [value]="mode.value">{{ t(mode.labelKey) }}</option>
                 }
@@ -195,7 +195,7 @@
             </label>
             <label class="lf-field">
               <span>{{ t('modules.aiPersonality.fields.tonePreset') }}</span>
-              <select [value]="activeProfile.tonePreset" [disabled]="saving()" (change)="updateActiveTonePreset($any($event.target).value)">
+              <select [value]="activeProfile.tonePreset" [disabled]="saving() || !canManage()" (change)="updateActiveTonePreset($any($event.target).value)">
                 @for (preset of tonePresets; track preset.value) {
                   <option [value]="preset.value">{{ t(preset.labelKey) }}</option>
                 }
@@ -203,11 +203,11 @@
             </label>
             <label class="lf-field lf-field--full">
               <span>{{ t('modules.aiPersonality.fields.personaReference') }}</span>
-              <input [value]="activeProfile.personaReference" [disabled]="saving()" (input)="updateActiveProfileField('personaReference', $any($event.target).value)" />
+              <input [value]="activeProfile.personaReference" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('personaReference', $any($event.target).value)" />
             </label>
             <label class="lf-field lf-field--full">
               <span>{{ t('modules.aiPersonality.fields.personalityPrompt') }}</span>
-              <textarea rows="8" [value]="activeProfile.personality" [disabled]="saving()" (input)="updateActiveProfileField('personality', $any($event.target).value)"></textarea>
+              <textarea rows="8" [value]="activeProfile.personality" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('personality', $any($event.target).value)"></textarea>
             </label>
           </div>
         </section>
@@ -219,29 +219,29 @@
           <div class="lf-form-grid">
             <label class="lf-field">
               <span>{{ t('modules.aiPersonality.fields.voiceTone') }}</span>
-              <input [value]="activeProfile.voiceProfile.tone" [disabled]="saving()" (input)="updateActiveVoiceField('tone', $any($event.target).value)" />
+              <input [value]="activeProfile.voiceProfile.tone" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('tone', $any($event.target).value)" />
             </label>
             <label class="lf-field">
               <span>{{ t('modules.aiPersonality.fields.voiceCadence') }}</span>
-              <input [value]="activeProfile.voiceProfile.cadence" [disabled]="saving()" (input)="updateActiveVoiceField('cadence', $any($event.target).value)" />
+              <input [value]="activeProfile.voiceProfile.cadence" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('cadence', $any($event.target).value)" />
             </label>
             <label class="lf-field lf-field--full">
               <span>{{ t('modules.aiPersonality.fields.voiceStyle') }}</span>
-              <input [value]="activeProfile.voiceProfile.style" [disabled]="saving()" (input)="updateActiveVoiceField('style', $any($event.target).value)" />
+              <input [value]="activeProfile.voiceProfile.style" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('style', $any($event.target).value)" />
             </label>
           </div>
 
           <div class="lf-list-head">
             <h3 class="lf-h3">{{ t('modules.aiPersonality.voice.catchphrasesTitle') }}</h3>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving()" (click)="addCatchphrase()">
+            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || !canManage()" (click)="addCatchphrase()">
               {{ t('modules.aiPersonality.voice.addCatchphrase') }}
             </button>
           </div>
           <div class="lf-stack">
             @for (catchphrase of activeProfile.voiceProfile.catchphrases; track $index) {
               <div class="lf-stack-row">
-                <input [value]="catchphrase" [disabled]="saving()" (input)="updateCatchphrase($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
+                <input [value]="catchphrase" [disabled]="saving() || !canManage()" (input)="updateCatchphrase($index, $any($event.target).value)" />
+                <button type="button" class="lf-icon-btn" [disabled]="saving() || !canManage()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </div>
             } @empty {
               <p class="lf-note">{{ t('modules.aiPersonality.voice.noCatchphrases') }}</p>
@@ -256,7 +256,7 @@
               <p class="lf-kicker">{{ t('modules.aiPersonality.rules.kicker') }}</p>
               <h2 class="lf-h2">{{ t('modules.aiPersonality.rules.title') }}</h2>
             </div>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || rulesLimitReached()" (click)="addRule()">
+            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || rulesLimitReached() || !canManage()" (click)="addRule()">
               {{ t('modules.aiPersonality.rules.add') }}
             </button>
           </div>
@@ -266,8 +266,8 @@
           <div class="lf-stack">
             @for (rule of settings.rules; track $index) {
               <div class="lf-stack-row">
-                <input [value]="rule" [disabled]="saving()" (input)="updateRule($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving() || settings.rules.length <= 1" (click)="removeRule($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
+                <input [value]="rule" [disabled]="saving() || !canManage()" (input)="updateRule($index, $any($event.target).value)" />
+                <button type="button" class="lf-icon-btn" [disabled]="saving() || settings.rules.length <= 1 || !canManage()" (click)="removeRule($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </div>
             }
           </div>
@@ -280,7 +280,7 @@
               <p class="lf-kicker">{{ t('modules.aiPersonality.knownUsers.kicker') }}</p>
               <h2 class="lf-h2">{{ t('modules.aiPersonality.knownUsers.title') }}</h2>
             </div>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || knownUsersLimitReached()" (click)="addKnownUser()">
+            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || knownUsersLimitReached() || !canManage()" (click)="addKnownUser()">
               {{ t('modules.aiPersonality.knownUsers.add') }}
             </button>
           </div>
@@ -293,18 +293,18 @@
                 <div class="lf-form-grid">
                   <label class="lf-field">
                     <span>{{ t('modules.aiPersonality.fields.username') }}</span>
-                    <input [value]="knownUser.username" [disabled]="saving()" (input)="updateKnownUserField($index, 'username', $any($event.target).value)" />
+                    <input [value]="knownUser.username" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'username', $any($event.target).value)" />
                   </label>
                   <label class="lf-field">
                     <span>{{ t('modules.aiPersonality.fields.relationship') }}</span>
-                    <input [value]="knownUser.relationship" [disabled]="saving()" (input)="updateKnownUserField($index, 'relationship', $any($event.target).value)" />
+                    <input [value]="knownUser.relationship" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'relationship', $any($event.target).value)" />
                   </label>
                   <label class="lf-field lf-field--full">
                     <span>{{ t('modules.aiPersonality.fields.description') }}</span>
-                    <textarea rows="3" [value]="knownUser.description" [disabled]="saving()" (input)="updateKnownUserField($index, 'description', $any($event.target).value)"></textarea>
+                    <textarea rows="3" [value]="knownUser.description" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'description', $any($event.target).value)"></textarea>
                   </label>
                 </div>
-                <button type="button" class="lf-icon-btn lf-icon-btn--corner" [disabled]="saving()" (click)="removeKnownUser($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
+                <button type="button" class="lf-icon-btn lf-icon-btn--corner" [disabled]="saving() || !canManage()" (click)="removeKnownUser($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
               </article>
             } @empty {
               <p class="lf-note">{{ t('modules.aiPersonality.knownUsers.empty') }}</p>
@@ -330,35 +330,35 @@
                     <strong>{{ t('modules.aiPersonality.learning.fields.enabled') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.enabled') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.enabled" [disabled]="saving()" (change)="updateLearningToggle('enabled', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.enabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('enabled', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.autoConfirmEnabled') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.autoConfirmEnabled') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoConfirmEnabled" [disabled]="saving()" (change)="updateLearningToggle('autoConfirmEnabled', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.autoConfirmEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoConfirmEnabled', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.postStreamSummaryEnabled') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.postStreamSummaryEnabled') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.postStreamSummaryEnabled" [disabled]="saving()" (change)="updateLearningToggle('postStreamSummaryEnabled', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.postStreamSummaryEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('postStreamSummaryEnabled', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.weeklyMaintenanceEnabled') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.weeklyMaintenanceEnabled') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.weeklyMaintenanceEnabled" [disabled]="saving()" (change)="updateLearningToggle('weeklyMaintenanceEnabled', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.weeklyMaintenanceEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('weeklyMaintenanceEnabled', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.monthlyMaintenanceEnabled') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.monthlyMaintenanceEnabled') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.monthlyMaintenanceEnabled" [disabled]="saving()" (change)="updateLearningToggle('monthlyMaintenanceEnabled', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.monthlyMaintenanceEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('monthlyMaintenanceEnabled', $any($event.target).checked)" />
                 </label>
               </div>
 
@@ -369,87 +369,87 @@
                     <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyCreates') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.autoApplyCreates') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyCreates" [disabled]="saving()" (change)="updateLearningToggle('autoApplyCreates', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyCreates" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyCreates', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyEdits') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.autoApplyEdits') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyEdits" [disabled]="saving()" (change)="updateLearningToggle('autoApplyEdits', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyEdits" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyEdits', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyArchives') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.autoApplyArchives') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyArchives" [disabled]="saving()" (change)="updateLearningToggle('autoApplyArchives', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyArchives" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyArchives', $any($event.target).checked)" />
                 </label>
                 <label class="lf-toggle-card">
                   <div>
                     <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyPermanentDeletes') }}</strong>
                     <p>{{ t('modules.aiPersonality.learning.hints.autoApplyPermanentDeletes') }}</p>
                   </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyPermanentDeletes" [disabled]="saving()" (change)="updateLearningToggle('autoApplyPermanentDeletes', $any($event.target).checked)" />
+                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyPermanentDeletes" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyPermanentDeletes', $any($event.target).checked)" />
                 </label>
               </div>
 
               <div class="lf-form-grid lf-form-grid--dense">
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.autoConfirmThreshold') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.autoConfirmThreshold" [disabled]="saving()" (input)="updateLearningNumber('autoConfirmThreshold', $any($event.target).value)" />
+                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.autoConfirmThreshold" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('autoConfirmThreshold', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.minMessageLength') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.minMessageLength" [disabled]="saving()" (input)="updateLearningNumber('minMessageLength', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.minMessageLength" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minMessageLength', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.maxPendingMemories') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxPendingMemories" [disabled]="saving()" (input)="updateLearningNumber('maxPendingMemories', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxPendingMemories" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxPendingMemories', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.maxConfirmedMemories') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxConfirmedMemories" [disabled]="saving()" (input)="updateLearningNumber('maxConfirmedMemories', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxConfirmedMemories" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxConfirmedMemories', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.summaryMinDurationMinutes') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinDurationMinutes" [disabled]="saving()" (input)="updateLearningNumber('summaryMinDurationMinutes', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinDurationMinutes" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('summaryMinDurationMinutes', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.summaryMinChatMessages') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinChatMessages" [disabled]="saving()" (input)="updateLearningNumber('summaryMinChatMessages', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinChatMessages" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('summaryMinChatMessages', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.createMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.createMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('createMinConfidence', $any($event.target).value)" />
+                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.createMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('createMinConfidence', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.editMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.editMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('editMinConfidence', $any($event.target).value)" />
+                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.editMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('editMinConfidence', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.archiveMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.archiveMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('archiveMinConfidence', $any($event.target).value)" />
+                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.archiveMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('archiveMinConfidence', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.deleteMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.deleteMinConfidence" [disabled]="saving()" (input)="updateLearningNumber('deleteMinConfidence', $any($event.target).value)" />
+                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.deleteMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('deleteMinConfidence', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.maxActionsPerRun') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxActionsPerRun" [disabled]="saving()" (input)="updateLearningNumber('maxActionsPerRun', $any($event.target).value)" />
+                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxActionsPerRun" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxActionsPerRun', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.maxDeletesPerRun') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.maxDeletesPerRun" [disabled]="saving()" (input)="updateLearningNumber('maxDeletesPerRun', $any($event.target).value)" />
+                  <input type="number" min="0" step="1" [value]="settings.learningConfig.maxDeletesPerRun" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxDeletesPerRun', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.minMemoryAgeDaysForDelete') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minMemoryAgeDaysForDelete" [disabled]="saving()" (input)="updateLearningNumber('minMemoryAgeDaysForDelete', $any($event.target).value)" />
+                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minMemoryAgeDaysForDelete" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minMemoryAgeDaysForDelete', $any($event.target).value)" />
                 </label>
                 <label class="lf-field">
                   <span>{{ t('modules.aiPersonality.learning.fields.minUnusedDaysForDelete') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minUnusedDaysForDelete" [disabled]="saving()" (input)="updateLearningNumber('minUnusedDaysForDelete', $any($event.target).value)" />
+                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minUnusedDaysForDelete" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minUnusedDaysForDelete', $any($event.target).value)" />
                 </label>
               </div>
             </div>
@@ -467,28 +467,28 @@
                 <strong>{{ t('modules.aiPersonality.memory.fields.prioritizeRecentChat') }}</strong>
                 <p>{{ t('modules.aiPersonality.memory.hints.prioritizeRecentChat') }}</p>
               </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.prioritizeRecentChat" [disabled]="saving()" (change)="updateMemoryPolicy('prioritizeRecentChat', $any($event.target).checked)" />
+              <input type="checkbox" [checked]="settings.memoryPolicy.prioritizeRecentChat" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('prioritizeRecentChat', $any($event.target).checked)" />
             </label>
             <label class="lf-toggle-card">
               <div>
                 <strong>{{ t('modules.aiPersonality.memory.fields.allowSensitiveMemories') }}</strong>
                 <p>{{ t('modules.aiPersonality.memory.hints.allowSensitiveMemories') }}</p>
               </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowSensitiveMemories" [disabled]="saving()" (change)="updateMemoryPolicy('allowSensitiveMemories', $any($event.target).checked)" />
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowSensitiveMemories" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowSensitiveMemories', $any($event.target).checked)" />
             </label>
             <label class="lf-toggle-card">
               <div>
                 <strong>{{ t('modules.aiPersonality.memory.fields.allowUserPreferenceMemories') }}</strong>
                 <p>{{ t('modules.aiPersonality.memory.hints.allowUserPreferenceMemories') }}</p>
               </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowUserPreferenceMemories" [disabled]="saving()" (change)="updateMemoryPolicy('allowUserPreferenceMemories', $any($event.target).checked)" />
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowUserPreferenceMemories" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowUserPreferenceMemories', $any($event.target).checked)" />
             </label>
             <label class="lf-toggle-card">
               <div>
                 <strong>{{ t('modules.aiPersonality.memory.fields.allowRunningJokes') }}</strong>
                 <p>{{ t('modules.aiPersonality.memory.hints.allowRunningJokes') }}</p>
               </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowRunningJokes" [disabled]="saving()" (change)="updateMemoryPolicy('allowRunningJokes', $any($event.target).checked)" />
+              <input type="checkbox" [checked]="settings.memoryPolicy.allowRunningJokes" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowRunningJokes', $any($event.target).checked)" />
             </label>
           </div>
         </section>
@@ -497,11 +497,12 @@
       <p class="lf-footer-note">{{ t('modules.aiPersonality.footer') }}</p>
 
       <!-- Sticky save (heavy settings pattern) -->
+      @if (canManage()) {
       <div class="lf-save-bar">
         <button
           type="button"
           class="lf-btn lf-btn--primary"
-          [disabled]="saving() || !dirty()"
+          [disabled]="saving() || !dirty() || !canManage()"
           (click)="saveSettings()"
         >
           @if (saving()) {
@@ -511,6 +512,7 @@
           }
         </button>
       </div>
+      }
     } @else {
       <div class="lf-tile lf-empty">
         <p>{{ t('modules.aiPersonality.states.empty') }}</p>

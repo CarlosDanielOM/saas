@@ -27,6 +27,7 @@ export class ConfigPanelComponent {
   readonly event = input<ChatEvent | undefined>(undefined);
   readonly userPlan = input.required<PlanTier>();
   readonly pendingAction = input<ChatEventPendingAction>('none');
+  readonly canManage = input(false);
   readonly save = output<void>();
   readonly delete = output<void>();
 
@@ -83,14 +84,17 @@ export class ConfigPanelComponent {
   }
 
   onTiersChange(control: ConfigControl, tiers: CheerTier[]): void {
+    if (!this.canManage()) return;
     control.value = tiers;
   }
 
   onSave(): void {
+    if (!this.canManage()) return;
     this.save.emit();
   }
 
   onDelete(): void {
+    if (!this.canManage()) return;
     if (!this.canDelete()) {
       this.toastService.info(
         this.t('chatEvents.toasts.deleteNotAllowedTitle'),

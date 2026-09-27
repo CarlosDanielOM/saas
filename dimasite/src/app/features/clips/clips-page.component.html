@@ -143,9 +143,11 @@
 
                 <div class="lf-slide__actions">
                   @if (isDesignLocked(design)) {
+                    @if (isOwnerView()) {
                     <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
                       {{ t('clips.upgradeToAccess') }}
                     </button>
+                    }
                   } @else {
                     <button type="button" class="lf-btn lf-btn--primary" (click)="copyUrl()">
                       {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
@@ -160,6 +162,7 @@
                     </a>
                   }
 
+                  @if (canManage()) {
                   <button
                     type="button"
                     class="lf-btn"
@@ -174,9 +177,10 @@
                         : t('clips.testDesign')
                     }}
                   </button>
+                  }
                 </div>
 
-                @if (!canTest()) {
+                @if (canManage() && !canTest()) {
                   <p class="lf-note">{{ t('clips.testWarning') }}</p>
                 }
               </div>

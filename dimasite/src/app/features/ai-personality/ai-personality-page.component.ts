@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
+import { catchError, distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import {
   AiKnownUser,
@@ -92,6 +92,14 @@ export class AiPersonalityPageComponent {
     } satisfies ChannelResolutionState
   });
   readonly channelID = computed(() => this.channelResolution().channelID);
+  readonly canManage = toSignal(this.channelID$.pipe(
+    switchMap((resolution) => resolution.channelID
+      ? this.sessionAuth.checkPermission(resolution.channelID, 'ai:manage').pipe(
+          catchError(() => of(false)),
+          startWith(false)
+        )
+      : of(false))
+  ), { initialValue: false });
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? (['/', streamer, 'modules'] as const) : (['/'] as const);
@@ -385,6 +393,7 @@ export class AiPersonalityPageComponent {
   }
 
   async saveSettings(): Promise<void> {
+    if (!this.canManage()) return;
     const channelID = this.channelID();
     const settings = this.settings();
     const activeProfile = this.activeProfile();

@@ -54,6 +54,7 @@ export class EventCardComponent {
   readonly event = input.required<ChatEvent>();
   readonly userPlan = input.required<PlanTier>();
   readonly userAccess = input.required<UserAccess>();
+  readonly canManage = input(false);
   readonly pendingAction = input<ChatEventPendingAction>('none');
   readonly configure = output<void>();
   readonly toggle = output<void>();
@@ -214,6 +215,7 @@ export class EventCardComponent {
   }
 
   toggleFeature(): void {
+    if (!this.canManage()) return;
     if (this.event().enabled && !this.canDisable()) {
       this.toastService.info(
         this.t('chatEvents.toasts.disableNotAllowedTitle'),
@@ -225,14 +227,17 @@ export class EventCardComponent {
   }
 
   saveConfiguration(): void {
+    if (!this.canManage()) return;
     this.save.emit();
   }
 
   deleteEvent(): void {
+    if (!this.canManage()) return;
     this.delete.emit();
   }
 
   onUpgradeClick(): void {
+    if (!this.canManage()) return;
     this.upgrade.emit();
   }
 

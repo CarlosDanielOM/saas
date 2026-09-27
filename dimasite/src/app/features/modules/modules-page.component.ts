@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import {
   Bot,
   Brain,
@@ -73,6 +74,28 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
   'tts'
 ];
 
+/** Matches the page guards. Overlay Studio and Roulette are broadcaster-only. */
+const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
+  overlays: null,
+  roulette: null,
+  clips: 'clips:view',
+  'chat-events': 'eventsubs:view',
+  triggers: 'triggers:view',
+  dimafx: 'dimafx:view',
+  redemptions: 'rewards:view',
+  tts: 'settings:view',
+  referrals: 'referrals:view',
+  'ai-personality': 'ai:view',
+  memories: 'memories:view',
+  analytics: 'analytics:view',
+  'analytics.follows': 'analytics:view',
+  'follow-defense': 'moderation:view',
+  moderation: 'moderation:view',
+  'stream-summaries': 'summaries:view',
+  library: 'triggers:view',
+  'clip-recommendations': 'clips:view'
+};
+
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
   roulette: Sparkles,
   overlays: Sparkles,
@@ -117,6 +140,17 @@ export class ModulesPageComponent {
     const sessionStreamer =
       this.sessionAuth.session()?.twitchUser.login || this.sessionAuth.session()?.appUser?.name;
     return (routeStreamer || sessionStreamer || '').trim().toLowerCase();
+  });
+  private readonly accessIdentity = computed(() => {
+    const current = this.sessionAuth.session();
+    return `${current?.appUser.twitch_user_id ?? ''}:${current?.twitchUser.login ?? ''}`;
+  });
+  readonly allowedModules = signal<ReadonlySet<ModuleId>>(new Set());
+  readonly accessReady = signal(false);
+  readonly isManagedChannel = computed(() => {
+    const current = this.sessionAuth.session();
+    const streamer = this.streamer();
+    return Boolean(current && streamer && streamer !== current.twitchUser.login?.toLowerCase() && streamer !== current.appUser.twitch_user_id);
   });
 
   readonly searchQuery = signal('');
@@ -231,8 +265,42 @@ export class ModulesPageComponent {
         streamerName,
         userPlanTier
       )
-    ].sort((a, b) => a.priority - b.priority);
+    ].filter((module) => this.allowedModules().has(module.id)).sort((a, b) => a.priority - b.priority);
   });
+
+  constructor() {
+    effect((onCleanup) => {
+      this.accessIdentity();
+      const streamer = this.streamer();
+      const current = untracked(this.sessionAuth.session);
+      this.accessReady.set(false);
+      this.allowedModules.set(new Set());
+      if (!current || !streamer) return;
+
+      if (streamer === current.twitchUser.login?.toLowerCase() || streamer === current.appUser.twitch_user_id) {
+        this.allowedModules.set(new Set(Object.keys(MODULE_VIEW_PERMISSIONS) as ModuleId[]));
+        this.accessReady.set(true);
+        return;
+      }
+
+      const permissions = [...new Set(Object.values(MODULE_VIEW_PERMISSIONS).filter((value): value is string => Boolean(value)))];
+      const subscription = untracked(() => this.sessionAuth.resolveChannelID(streamer).pipe(
+        switchMap((channelID) => channelID
+          ? forkJoin(permissions.map((permission) => this.sessionAuth.checkPermission(channelID, permission).pipe(catchError(() => of(false)))))
+          : of(permissions.map(() => false))),
+        catchError(() => of(permissions.map(() => false)))
+      ).subscribe((granted) => {
+        const allowedPermissions = new Set(permissions.filter((_, index) => granted[index]));
+        this.allowedModules.set(new Set(
+          (Object.entries(MODULE_VIEW_PERMISSIONS) as [ModuleId, string | null][])
+            .filter(([, permission]) => permission && allowedPermissions.has(permission))
+            .map(([moduleID]) => moduleID)
+        ));
+        this.accessReady.set(true);
+      }));
+      onCleanup(() => subscription.unsubscribe());
+    });
+  }
 
   /** Grouped by importance on the default view; a flat list when searching or filtering. */
   readonly moduleGroups = computed<ModuleGroup[]>(() => {
@@ -315,6 +383,7 @@ export class ModulesPageComponent {
     }
 
     if (module.isLocked) {
+      if (this.isManagedChannel()) return this.t('modules.unavailable');
       return this.t('modules.upgradeToAccess');
     }
 
@@ -339,7 +408,7 @@ export class ModulesPageComponent {
   }
 
   isUpgradeable(module: ModuleDisplay): boolean {
-    return Boolean(module.path) && module.status !== 'coming_soon' && module.isLocked;
+    return Boolean(module.path) && module.status !== 'coming_soon' && module.isLocked && !this.isManagedChannel();
   }
 
   onCategoryChange(category: Category): void {
@@ -378,6 +447,7 @@ export class ModulesPageComponent {
   }
 
   onUpgradeClick(module: ModuleDisplay): void {
+    if (this.isManagedChannel()) return;
     void this.upgradeService.promptUpgradeForModule({
       moduleId: module.id,
       source: 'modules_page_card'

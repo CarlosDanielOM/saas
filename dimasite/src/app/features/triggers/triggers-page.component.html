@@ -26,12 +26,16 @@
               {{ t('common.refresh') }}
             }
           </button>
+          @if (canUpload()) {
           <button type="button" class="lf-btn" (click)="openUploadModal()">
             {{ t('triggers.uploadMedia') }}
           </button>
+          }
+          @if (canAttach()) {
           <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
             + {{ t('triggers.createTrigger') }}
           </button>
+          }
         </div>
       </article>
 
@@ -92,9 +96,11 @@
               <h2 class="lf-h2">{{ t('triggers.activeSectionTitle') }}</h2>
               <p class="lf-note">{{ t('triggers.activeSectionCaption') }}</p>
             </div>
+            @if (canAttach()) {
             <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
               + {{ t('triggers.createTrigger') }}
             </button>
+            }
           </div>
 
           @if (isLoadingTriggers() && !triggers().length) {
@@ -103,9 +109,11 @@
             <div class="lf-empty">
               <h3 class="lf-h3">{{ t('triggers.emptyTitle') }}</h3>
               <p>{{ t('triggers.emptyMessage') }}</p>
+              @if (canAttach()) {
               <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
                 {{ t('triggers.createFirstTrigger') }}
               </button>
+              }
             </div>
           } @else {
             <div class="lf-item-grid">
@@ -158,18 +166,24 @@
                       }
                     </p>
                     <div class="lf-item-card__actions">
+                      @if (canTest()) {
                       <button type="button" class="lf-btn lf-btn--xs" (click)="openTestModal(trigger)">
                         {{ t('triggers.testAction') }}
                       </button>
+                      }
+                      @if (canEdit()) {
                       <button type="button" class="lf-btn lf-btn--xs" (click)="openEditModal(trigger)">
                         {{ t('common.edit') }}
                       </button>
                       <button type="button" class="lf-btn lf-btn--xs" (click)="toggleTrigger(trigger)">
                         {{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}
                       </button>
+                      }
+                      @if (canDelete()) {
                       <button type="button" class="lf-btn lf-btn--xs lf-btn--danger" (click)="openDeleteTrigger(trigger)">
                         {{ t('common.delete') }}
                       </button>
+                      }
                     </div>
                   </div>
                 </article>
@@ -189,12 +203,16 @@
           </div>
 
           <div class="lf-rail-actions">
+            @if (canAttach()) {
             <button type="button" class="lf-btn lf-btn--compact" (click)="openPublicLibraryModal()">
               {{ t('triggers.browsePublicLibrary') }}
             </button>
+            }
+            @if (canUpload()) {
             <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="openUploadModal()">
               {{ t('triggers.uploadMedia') }}
             </button>
+            }
           </div>
 
           <label class="lf-search-wrap">
@@ -264,6 +282,7 @@
                       }
                     </p>
                   </div>
+                  @if (canDelete()) {
                   <button
                     type="button"
                     class="lf-btn lf-btn--xs lf-btn--danger"
@@ -272,6 +291,7 @@
                   >
                     <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
                   </button>
+                  }
                 </article>
               } @empty {
                 <div class="lf-empty lf-empty--compact">
@@ -659,6 +679,7 @@
   <app-public-library-modal
     [channelId]="channelID()!"
     [ownedAssetIds]="libraryAssetIds()"
+    [canAttach]="canAttach()"
     (close)="closePublicLibraryModal()"
     (assetAdded)="handlePublicLibraryAssetAdded($event)"
   />

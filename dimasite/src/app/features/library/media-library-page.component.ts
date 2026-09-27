@@ -8,9 +8,9 @@ import {
   signal,
   viewChild
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { distinctUntilChanged, map, of, shareReplay, startWith, switchMap } from 'rxjs';
+import { catchError, distinctUntilChanged, forkJoin, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import { DisplayNamePipe } from '../../pipes/display-name.pipe';
 import { LanguageService } from '../../services/language.service';
@@ -160,6 +160,18 @@ export class MediaLibraryPageComponent {
   });
 
   readonly channelID = computed(() => this.channelResolution().channelID);
+  private readonly mutationAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? forkJoin({
+          upload: this.sessionAuth.checkPermission(channelID, 'triggers:upload').pipe(catchError(() => of(false))),
+          edit: this.sessionAuth.checkPermission(channelID, 'triggers:edit').pipe(catchError(() => of(false))),
+          delete: this.sessionAuth.checkPermission(channelID, 'triggers:delete').pipe(catchError(() => of(false)))
+        }).pipe(map((grants) => ({ channelID, ...grants })))
+      : of({ channelID: null, upload: false, edit: false, delete: false }))
+  ), { initialValue: { channelID: null as string | null, upload: false, edit: false, delete: false } });
+  readonly canUpload = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().upload);
+  readonly canEdit = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().edit);
+  readonly canDelete = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().delete);
 
   constructor() {
     effect(() => {
@@ -207,6 +219,7 @@ export class MediaLibraryPageComponent {
   }
 
   openUploadModal(): void {
+    if (!this.canUpload()) return;
     const canPrivate = this.planTier() !== 'free';
     this.isDraggingUpload.set(false);
     this.uploadForm.set({
@@ -279,6 +292,7 @@ export class MediaLibraryPageComponent {
   }
 
   submitUpload(): void {
+    if (!this.canUpload()) return;
     const channelId = this.channelID();
     if (!channelId) return;
     const form = this.uploadForm();
@@ -322,6 +336,7 @@ export class MediaLibraryPageComponent {
   }
 
   deleteItem(item: MediaLibraryItem): void {
+    if (!this.canDelete()) return;
     const id = this.channelID();
     if (!id) return;
     if (!confirm(this.t('modules.library.confirm.delete'))) return;
@@ -343,6 +358,7 @@ export class MediaLibraryPageComponent {
   }
 
   confirmMakePublic(item: MediaLibraryItem): void {
+    if (!this.canEdit()) return;
     this.makePublicConfirm.set(item);
   }
 
@@ -351,6 +367,7 @@ export class MediaLibraryPageComponent {
   }
 
   commitMakePublic(item: MediaLibraryItem): void {
+    if (!this.canEdit()) return;
     const id = this.channelID();
     if (!id) {
       this.makePublicConfirm.set(null);

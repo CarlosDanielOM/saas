@@ -9,7 +9,7 @@ import {
   type OnDestroy,
   type OnInit
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   ArrowLeft,
@@ -24,7 +24,7 @@ import {
   Zap,
   type LucideIconData
 } from 'lucide-angular';
-import { firstValueFrom, map } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { SafeUrlPipe } from '../../pipes/safe-url.pipe';
 import { DisplayNamePipe } from '../../pipes/display-name.pipe';
@@ -136,6 +136,21 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     requireSync: true
   });
   readonly channelID = signal<string | null>(null);
+  private readonly mutationAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? forkJoin({
+          upload: this.sessionAuth.checkPermission(channelID, 'triggers:upload').pipe(catchError(() => of(false))),
+          attach: this.sessionAuth.checkPermission(channelID, 'triggers:attach').pipe(catchError(() => of(false))),
+          edit: this.sessionAuth.checkPermission(channelID, 'triggers:edit').pipe(catchError(() => of(false))),
+          delete: this.sessionAuth.checkPermission(channelID, 'triggers:delete').pipe(catchError(() => of(false)))
+        }).pipe(map((grants) => ({ channelID, ...grants })))
+      : of({ channelID: null, upload: false, attach: false, edit: false, delete: false }))
+  ), { initialValue: { channelID: null as string | null, upload: false, attach: false, edit: false, delete: false } });
+  readonly canUpload = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().upload);
+  readonly canAttach = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().attach);
+  readonly canEdit = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().edit);
+  readonly canDelete = computed(() => this.mutationAccess().channelID === this.channelID() && this.mutationAccess().delete);
+  readonly canTest = computed(() => this.canAttach() || this.canEdit());
   readonly triggers = signal<TriggerRecord[]>([]);
   readonly libraryItems = signal<MediaLibraryItem[]>([]);
   readonly activePreviewAsset = signal<MediaAsset | null>(null);
@@ -422,6 +437,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openCreateModal(): void {
+    if (!this.canAttach()) return;
     const firstLibraryItem = this.triggerCapableLibraryItems()[0];
     this.triggerFormMode.set('create');
     this.editingTriggerId.set(null);
@@ -435,6 +451,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openEditModal(trigger: TriggerRecord): void {
+    if (!this.canEdit()) return;
     this.triggerFormMode.set('edit');
     this.editingTriggerId.set(trigger._id);
     this.triggerForm.set({
@@ -528,6 +545,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   submitTriggerForm(): void {
+    if (this.triggerFormMode() === 'create' ? !this.canAttach() : !this.canEdit()) return;
     const channelId = this.channelID();
     if (!channelId || this.isSubmittingTrigger()) {
       return;
@@ -597,6 +615,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   toggleTrigger(trigger: TriggerRecord): void {
+    if (!this.canEdit()) return;
     const channelId = this.channelID();
     if (!channelId) {
       return;
@@ -621,6 +640,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openDeleteTrigger(trigger: TriggerRecord): void {
+    if (!this.canDelete()) return;
     this.pendingDelete.set({
       type: 'trigger',
       id: trigger._id,
@@ -629,6 +649,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openDeleteLibraryItem(item: MediaLibraryItem): void {
+    if (!this.canDelete()) return;
     const raw = item.localAlias || item.asset?.displayName || item.asset?.fileName || item._id;
     const label = raw.replace(/_+/g, ' ').trim();
     this.pendingDelete.set({
@@ -639,6 +660,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   confirmDelete(): void {
+    if (!this.canDelete()) return;
     const channelId = this.channelID();
     const pending = this.pendingDelete();
     if (!channelId || !pending) {
@@ -679,6 +701,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openUploadModal(): void {
+    if (!this.canUpload()) return;
     this.isDraggingUpload.set(false);
     this.uploadForm.set({
       name: '',
@@ -767,6 +790,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   submitUpload(): void {
+    if (!this.canUpload()) return;
     const channelId = this.channelID();
     const form = this.uploadForm();
     if (!channelId || !form.file || !form.name.trim()) {
@@ -795,6 +819,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openPublicLibraryModal(): void {
+    if (!this.canAttach()) return;
     this.isPublicLibraryModalOpen.set(true);
   }
 
@@ -803,6 +828,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   handlePublicLibraryAssetAdded(result: { item: MediaLibraryItem; meta: MediaLibraryMeta }): void {
+    if (!this.canAttach()) return;
     this.libraryItems.update((items) => {
       if (items.some((item) => item._id === result.item._id || item.assetID === result.item.assetID)) {
         return items;
@@ -814,6 +840,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   openTestModal(trigger: TriggerRecord): void {
+    if (!this.canTest()) return;
     this.testPreviewReady = false;
     this.pendingPreviewPayload = null;
     this.testingTrigger.set(trigger);
@@ -843,6 +870,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   }
 
   fireTriggerTest(): void {
+    if (!this.canTest()) return;
     const channelId = this.channelID();
     const trigger = this.testingTrigger();
     if (!channelId || !trigger) {

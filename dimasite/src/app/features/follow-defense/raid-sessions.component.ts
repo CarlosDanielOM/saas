@@ -15,6 +15,7 @@ import type { RaidSession, RaidFollower, RaidSessionsPage, RaidFollowersPage } f
 })
 export class RaidSessionsComponent {
   readonly channelID = input.required<string>();
+  readonly canManage = input(false);
   readonly moderated = output<void>();
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly api = inject(FollowDefenseApiService);
@@ -91,6 +92,7 @@ export class RaidSessionsComponent {
   }
 
   ask(session: RaidSession, follower?: RaidFollower) {
+    if (!this.canManage()) return;
     this.selection.set({ channel: this.channelID(), session, follower, requestID: crypto.randomUUID() });
     this.confirmError.set('');
     this.changeDetector.detectChanges();
@@ -105,7 +107,7 @@ export class RaidSessionsComponent {
 
   async confirm() {
     const selected = this.selection();
-    if (!selected || this.submitting()) return;
+    if (!this.canManage() || !selected || this.submitting()) return;
     this.submitting.set(true);
     this.confirmError.set('');
     try {

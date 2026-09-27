@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -61,6 +62,16 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
 
   readonly streamer = computed(() => getRouteParam(this.route, 'streamer') || this.sessionAuth.session()?.appUser.name || '');
   readonly channelID = signal('');
+  private readonly mutationAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? forkJoin({
+          edit: this.sessionAuth.checkPermission(channelID, 'dimafx:edit').pipe(catchError(() => of(false))),
+          delete: this.sessionAuth.checkPermission(channelID, 'dimafx:delete').pipe(catchError(() => of(false)))
+        }).pipe(map((grants) => ({ channelID, ...grants })))
+      : of({ channelID, edit: false, delete: false }))
+  ), { initialValue: { channelID: '', edit: false, delete: false } });
+  readonly canEdit = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().edit);
+  readonly canDelete = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().delete);
   readonly isEditing = computed(() => Boolean(this.selectedItemId()));
   readonly canSubmit = computed(() => Boolean(this.channelID() && this.selectedAssetID() && this.name().trim() && this.bitsPrice() >= 0));
   readonly enabledCount = computed(() => this.items().filter((item) => item.isEnabled).length);
@@ -91,6 +102,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   private previewAudio: HTMLAudioElement | null = null;
 
   openMediaModal(): void {
+    if (!this.canEdit()) return;
     this.mediaSearchQuery.set('');
     this.mediaFilter.set('all');
     this.isMediaModalOpen.set(true);
@@ -207,6 +219,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   selectAssetFromModal(asset: AssetOption): void {
+    if (!this.canEdit()) return;
     this.selectedAssetID.set(asset.id);
     if (!this.name().trim()) {
       this.name.set(asset.label);
@@ -275,7 +288,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     try {
       const [itemsResponse, library, publicAssets] = await Promise.all([
         firstValueFrom(this.dimafxService.getItems(this.channelID())),
-        firstValueFrom(this.triggersService.getLibrary(this.channelID())),
+        firstValueFrom(this.triggersService.getLibrary(this.channelID())).catch(() => null),
         firstValueFrom(this.triggersService.getPublicAssets())
       ]);
       this.items.set(itemsResponse.items);
@@ -284,7 +297,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
         this.bitsPrice.set(itemsResponse.allowedBitPrices[0] || 5);
       }
       this.assetOptions.set(this.buildAssetOptions(
-        library.items.map((item) => item.asset).filter((asset): asset is MediaAsset => Boolean(asset)),
+        (library?.items ?? []).map((item) => item.asset).filter((asset): asset is MediaAsset => Boolean(asset)),
         publicAssets
       ));
     } catch (error) {
@@ -297,6 +310,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   selectItem(item: ChannelExtensionItem): void {
+    if (!this.canEdit()) return;
     this.selectedItemId.set(item.id);
     this.selectedAssetID.set(item.assetID);
     this.name.set(item.name);
@@ -311,6 +325,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   resetForm(): void {
+    if (!this.canEdit()) return;
     this.selectedItemId.set(null);
     this.selectedAssetID.set('');
     this.name.set('');
@@ -325,7 +340,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   async save(): Promise<void> {
-    if (!this.canSubmit() || this.saving()) return;
+    if (!this.canEdit() || !this.canSubmit() || this.saving()) return;
     this.saving.set(true);
     try {
       const payload = {
@@ -362,6 +377,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   async deleteItem(item: ChannelExtensionItem, refundSaved: boolean): Promise<void> {
+    if (!this.canDelete()) return;
     try {
       await firstValueFrom(this.dimafxService.deleteItem(this.channelID(), item.id, refundSaved));
       this.items.update((items) => items.filter((candidate) => candidate.id !== item.id));

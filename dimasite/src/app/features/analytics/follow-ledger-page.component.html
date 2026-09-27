@@ -43,9 +43,11 @@
         <span class="lf-chip lf-chip--gold"><app-lf-icon name="lock"></app-lf-icon> Premium · Pro</span>
         <h2 class="lf-h2">{{ t('analytics.follows.lockedTitle') }}</h2>
         <p class="lf-copy lf-copy--tight">{{ t('analytics.follows.lockedDescription') }}</p>
+        @if (isOwnerView()) {
         <button type="button" class="lf-btn lf-btn--primary" (click)="showUpgradeNotice()">
           {{ t('analytics.follows.lockedCta') }}
         </button>
+        }
       </section>
     } @else {
       @if (errorMessage()) {

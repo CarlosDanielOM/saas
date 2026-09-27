@@ -5,7 +5,7 @@ import { dashboardAccessGuard } from './guards/dashboard-access.guard';
 import { PublicCommandsPageComponent } from './features/commands/public-commands-page.component';
 import { ForbiddenPageComponent } from './features/forbidden/forbidden-page.component';
 import { NotFoundPageComponent } from './features/not-found/not-found-page.component';
-import { permissionGuard } from './guards/permission.guard';
+import { channelOwnerGuard, permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
 
 export const routes: Routes = [
@@ -777,12 +777,12 @@ export const routes: Routes = [
             title: 'Modules | DomDimaBot'
           },
           {
-            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
+            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
           {
             path: 'roulette',
             loadComponent: () => import('./features/roulette/roulette-page.component').then(m => m.RoulettePageComponent),
-            canActivate: [permissionGuard], data: { permission: 'dashboard:view' }, title: 'Roulette Alpha | DomDimaBot'
+            canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Roulette Alpha | DomDimaBot'
           },
           {
             path: 'clips',
@@ -800,7 +800,7 @@ export const routes: Routes = [
               import('./features/chat-events/chat-events-page.component').then((m) => m.ChatEventsPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'eventsubs:view'
             },
               title: 'Chat Events | DomDimaBot'
           },

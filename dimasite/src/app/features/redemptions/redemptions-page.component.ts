@@ -60,6 +60,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly twitchRedemptions = signal<TwitchRedemption[]>([]);
   readonly isLoading = signal(true);
   readonly isLoadingTwitch = signal(false);
+  readonly canManage = signal(false);
+  readonly permissionLoaded = signal(false);
 
   readonly refreshCooldown = signal(0);
   readonly twitchRefreshCooldown = signal(0);
@@ -112,9 +114,20 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     }
 
     this.channelID.set(resolvedChannelId);
+    void this.loadPermission(resolvedChannelId);
     this.loadRedemptions(resolvedChannelId);
     this.loadTwitchRedemptions(resolvedChannelId);
     this.startCooldownTimers();
+  }
+
+  private async loadPermission(channelID: string): Promise<void> {
+    try {
+      this.canManage.set(await firstValueFrom(this.sessionAuth.checkPermission(channelID, 'rewards:manage')));
+    } catch {
+      this.canManage.set(false);
+    } finally {
+      this.permissionLoaded.set(true);
+    }
   }
 
   ngOnDestroy(): void {
@@ -215,11 +228,13 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   openCreateModal(): void {
+    if (!this.canManage()) return;
     this.redemptionToEdit.set(null);
     this.isCreateModalOpen.set(true);
   }
 
   openEditModal(redemption: Redemption): void {
+    if (!this.canManage()) return;
     this.redemptionToEdit.set(redemption);
     this.isCreateModalOpen.set(true);
   }
@@ -237,6 +252,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   onRewardCreated(data: RedemptionCreateRequest): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) return;
 
@@ -250,6 +266,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   onRewardUpdated(event: { id: string; data: RedemptionUpdateRequest }): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) return;
 
@@ -271,6 +288,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   toggleEnabled(redemption: Redemption): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) return;
     const redemptionId = this.getRedemptionId(redemption);
@@ -293,6 +311,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   deleteRedemption(redemption: Redemption): void {
+    if (!this.canManage()) return;
     this.redemptionToDelete.set(redemption);
     this.showDeleteModal.set(true);
   }
@@ -303,6 +322,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   }
 
   confirmDeleteRedemption(): void {
+    if (!this.canManage()) return;
     const redemption = this.redemptionToDelete();
     if (!redemption) {
       this.closeDeleteModal();

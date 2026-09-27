@@ -2,10 +2,10 @@ import { Command } from '../../models/command.model';
 import { CommandsApiService } from '../../services/commands-api.service';
 import { CommandModalComponent, CommandModalSavePayload } from '../commands/command-modal.component';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
+import { catchError, distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import {
   EXPRESSIVE_TTS_TAGS,
@@ -87,7 +87,7 @@ export class TtsPageComponent {
 
   async openCommandEditor(): Promise<void> {
     const channelID = this.channelID();
-    if (!channelID || this.ttsReadOnly()) return;
+    if (!channelID || !this.canManageSpeechCommand()) return;
     await this.loadSpeechCommand(channelID);
     if (this.speechCommand()) this.commandEditorOpen.set(true);
   }
@@ -105,7 +105,7 @@ export class TtsPageComponent {
   async saveSpeechCommand(payload: CommandModalSavePayload): Promise<void> {
     const command = this.speechCommand();
     const channelID = this.channelID();
-    if (!command || !channelID || this.ttsReadOnly() || this.commandSaving()) return;
+    if (!command || !channelID || !this.canManageSpeechCommand() || this.commandSaving()) return;
     this.commandSaving.set(true);
     try {
       const { name, cmd, message, description, cooldown, userLevel, userLevelName, enabled } = payload.command;
@@ -178,6 +178,24 @@ export class TtsPageComponent {
   });
 
   readonly channelID = computed(() => this.channelResolution().channelID);
+  private readonly commandManageAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? this.sessionAuth.checkPermission(channelID, 'commands:manage').pipe(
+          map((allowed) => ({ channelID, allowed })),
+          catchError(() => of({ channelID, allowed: false }))
+        )
+      : of({ channelID: null, allowed: false }))
+  ), { initialValue: { channelID: null as string | null, allowed: false } });
+  readonly canManageSpeechCommand = computed(() => this.commandManageAccess().channelID === this.channelID() && this.commandManageAccess().allowed);
+  private readonly commandViewAccess = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? this.sessionAuth.checkPermission(channelID, 'commands:view').pipe(
+          map((allowed) => ({ channelID, allowed })),
+          catchError(() => of({ channelID, allowed: false }))
+        )
+      : of({ channelID: null, allowed: false }))
+  ), { initialValue: { channelID: null as string | null, allowed: false } });
+  readonly canViewSpeechCommand = computed(() => this.commandViewAccess().channelID === this.channelID() && this.commandViewAccess().allowed);
   readonly modulePath = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];

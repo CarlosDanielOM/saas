@@ -25,6 +25,9 @@ export class AnalyticsHubPageComponent {
     const sessionStreamer = this.sessionAuth.session()?.twitchUser.login;
     return (routeStreamer || sessionStreamer || '').trim().toLowerCase();
   });
+  readonly isOwnerView = computed(() =>
+    Boolean(this.streamer() && this.sessionAuth.session()?.twitchUser.login?.toLowerCase() === this.streamer())
+  );
   readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly hasPaidAccess = computed(() => this.planTier() !== 'free');
   readonly modulesLink = computed(() => {
@@ -56,6 +59,7 @@ export class AnalyticsHubPageComponent {
   }
 
   openLockedNotice(): void {
+    if (!this.isOwnerView()) return;
     void this.upgradeService.promptUpgradeForModule({
       moduleId: 'analytics.follows',
       source: 'analytics_hub',

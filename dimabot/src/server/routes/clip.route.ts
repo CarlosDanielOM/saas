@@ -2,6 +2,9 @@ import express, { type Request, type Response } from "express";
 import { promo } from "../../functions/promo/index.js";
 import path from "path";
 import { getDirname } from "../../utils/pollyfills.js";
+import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
+import type { AuthRequest } from '../../middleware/types.js';
 
 const router = express.Router();
 const __dirname = getDirname(import.meta.url);
@@ -36,7 +39,7 @@ router.get('/:channelID', async (req: Request, res: Response) => {
     });
 
     // POST /clip/test - Test endpoint for promo
-router.post('/test', async (req: Request, res: Response) => {
+router.post('/test', authMiddleware as any, async (req: AuthRequest, res: Response) => {
     try {
         const { channelID, streamer } = req.body;
 
@@ -46,6 +49,17 @@ router.post('/test', async (req: Request, res: Response) => {
                 message: 'channelID and streamer are required',
                 status: 400
             });
+        }
+
+        if (typeof channelID !== 'string' || !/^\d+$/.test(channelID)) {
+            return res.status(400).json({ error: true, message: 'Invalid channelID', status: 400 });
+        }
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'clips:manage');
+        if (!access.allowed) {
+            return res.status(403).json({ error: true, message: 'Clips Manage permission required', status: 403 });
+        }
+        if (typeof streamer !== 'string' || !/^[a-z0-9_]{1,25}$/i.test(streamer)) {
+            return res.status(400).json({ error: true, message: 'Invalid streamer login', status: 400 });
         }
 
         const result = await promo(channelID, streamer, true);

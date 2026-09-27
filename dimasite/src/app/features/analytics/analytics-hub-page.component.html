@@ -62,7 +62,7 @@
             <a class="lf-btn lf-btn--primary" [routerLink]="followLedgerLink()">
               {{ t('analyticsHub.followLedger.open') }} <app-lf-icon name="forward"></app-lf-icon>
             </a>
-          } @else {
+          } @else if (isOwnerView()) {
             <button type="button" class="lf-btn lf-btn--gold" (click)="openLockedNotice()">
               <app-lf-icon name="lock"></app-lf-icon> {{ t('analyticsHub.followLedger.lockedCta') }}
             </button>

@@ -4,7 +4,8 @@ import test from 'node:test';
 
 import {
     CREATOR_TWITCH_USER_ID,
-    canModifyCreatorAdminAssignment
+    canModifyCreatorAdminAssignment,
+    expandChannelPermissionChecks
 } from './admin.middleware.js';
 
 test('channel owners can add or remove the creator from their own admin list', () => {
@@ -42,4 +43,10 @@ test('admin add and remove routes both enforce the creator assignment policy', (
     );
 
     assert.equal(policyCalls?.length, 2);
+});
+
+test('specific trigger and DimaFX checks honor legacy module-wide grants', () => {
+    assert.deepEqual(expandChannelPermissionChecks('triggers:edit'), ['*', 'triggers:edit', 'triggers:all']);
+    assert.deepEqual(expandChannelPermissionChecks('dimafx:view'), ['*', 'dimafx:view', 'dimafx:all']);
+    assert.deepEqual(expandChannelPermissionChecks('commands:manage'), ['*', 'commands:manage']);
 });

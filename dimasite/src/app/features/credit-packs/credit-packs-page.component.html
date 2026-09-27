@@ -138,6 +138,7 @@
                 <li><app-lf-icon name="check" /> {{ t('creditPacks.credit.rollover') }}</li>
                 <li><app-lf-icon name="check" /> {{ t('creditPacks.credit.noExpiration') }}</li>
               </ul>
+              @if (canPurchase()) {
               <button
                 type="button"
                 class="lf-btn lf-btn--primary lf-pack-card__cta"
@@ -152,6 +153,7 @@
                   <app-lf-icon name="forward" />
                 }
               </button>
+              }
             </article>
           }
         </div>
@@ -174,7 +176,7 @@
           </span>
           <p class="lf-copy lf-copy--tight">{{ t('creditPacks.recharge.description') }}</p>
 
-          @if (!hasActivePaidSubscription()) {
+          @if (canPurchase() && !hasActivePaidSubscription()) {
             <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
               <app-lf-icon name="star" />
               {{ t('creditPacks.recharge.upgrade') }}
@@ -204,6 +206,7 @@
                 <li><app-lf-icon name="zap" /> {{ t('creditPacks.recharge.moreValue') }}</li>
                 <li><app-lf-icon name="timer" /> {{ rechargeExpiryLabel() }}</li>
               </ul>
+              @if (canPurchase()) {
               <button
                 type="button"
                 class="lf-btn lf-btn--primary lf-pack-card__cta"
@@ -222,6 +225,7 @@
                   <app-lf-icon name="forward" />
                 }
               </button>
+              }
             </article>
           }
         </div>

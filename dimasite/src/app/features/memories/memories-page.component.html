@@ -34,6 +34,10 @@
       </article>
     </section>
 
+    @if (!canManage()) {
+      <div class="lf-banner" role="status">{{ t('permissions.viewOnly') }}</div>
+    }
+
     <section class="lf-section" [attr.aria-label]="t('modules.memories.filters.status')">
       <div class="lf-filters">
         <div class="lf-tabs" role="tablist">
@@ -123,6 +127,7 @@
                 <span>{{ t('modules.memories.fields.created') }}: {{ formatDate(memory.createdAt) }}</span>
               </div>
 
+              @if (canManage()) {
               <div class="lf-mem__actions">
                 @if (memory.status === 'pending_review' || memory.status === 'candidate') {
                   <button
@@ -164,6 +169,7 @@
                   {{ t('modules.memories.actions.delete') }}
                 </button>
               </div>
+              }
             </article>
           }
         </div>
@@ -183,7 +189,7 @@
     </section>
   </main>
 
-  @if (editModalOpen()) {
+  @if (canManage() && editModalOpen()) {
     <div class="lf-modal-overlay" (click)="onEditBackdrop($event)">
       <div
         class="lf-modal lf-modal--edit"
@@ -258,7 +264,7 @@
     </div>
   }
 
-  @if (confirmDialogOpen() && confirmAction(); as action) {
+  @if (canManage() && confirmDialogOpen() && confirmAction(); as action) {
     <div class="lf-modal-overlay" (click)="onConfirmBackdrop($event)">
       <div class="lf-modal lf-modal--confirm" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
         <h2 class="lf-modal__title">{{ getConfirmTitle(action) }}</h2>

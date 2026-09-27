@@ -107,6 +107,9 @@ export class FollowLedgerPageComponent {
     } satisfies ChannelResolutionState
   });
   readonly channelID = computed(() => this.channelResolution().channelID);
+  readonly isOwnerView = computed(() =>
+    Boolean(this.channelID() && this.sessionAuth.session()?.appUser.twitch_user_id === this.channelID())
+  );
   readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly hasPaidAccess = computed(() => this.planTier() !== 'free');
   readonly showInitialLoading = computed(() => this.loading() && this.rows().length === 0);
@@ -300,6 +303,7 @@ export class FollowLedgerPageComponent {
   }
 
   showUpgradeNotice(): void {
+    if (!this.isOwnerView()) return;
     void this.upgradeService.promptUpgradeForModule({
       moduleId: 'analytics.follows',
       source: 'follow_ledger'

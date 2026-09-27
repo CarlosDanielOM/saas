@@ -6,6 +6,9 @@
         <p class="lf-kicker">{{ t('chatEvents.heroBadge') }}</p>
         <h1 class="lf-title">{{ t('chatEvents.title') }} <span>Events</span></h1>
         <p class="lf-copy">{{ t('chatEvents.subtitle') }}</p>
+        @if (permissionLoaded() && !canManage()) {
+          <p class="lf-note lf-note--warn">{{ t('chatEvents.permission.readOnly') }}</p>
+        }
       </article>
 
       <article class="lf-tile lf-tile--spotlight">
@@ -37,6 +40,7 @@
             [event]="event"
             [userPlan]="userPlan()"
             [userAccess]="getUserAccess(event)"
+            [canManage]="canManage()"
             [pendingAction]="getPendingAction(event.type)"
             (configure)="toggleConfigure(event)"
             (toggle)="toggleFeature(event)"

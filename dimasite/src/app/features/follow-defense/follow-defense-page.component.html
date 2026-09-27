@@ -58,7 +58,7 @@
     </section>
 
     @if (channelID(); as channel) {
-      <app-raid-sessions [channelID]="channel" (moderated)="refreshStatus()" />
+      <app-raid-sessions [channelID]="channel" [canManage]="canManage()" (moderated)="refreshStatus()" />
     }
 
     @if (errorMessage()) {
@@ -73,6 +73,9 @@
     @if (settingsLoading() && !settings()) {
       <div class="lf-tile lf-empty">{{ t('followDefense.states.loading') }}</div>
     } @else if (settings(); as cfg) {
+      @if (permissionLoaded() && !canManage()) {
+        <p class="lf-note lf-note--warn">{{ t('followDefense.permission.readOnly') }}</p>
+      }
       @if (status()) {
         <section class="lf-tile" [attr.aria-label]="t('followDefense.status.currentMode')">
           <p class="lf-kicker">{{ t('followDefense.status.currentMode') }}</p>
@@ -112,7 +115,7 @@
             }
           </div>
           <label class="lf-switch">
-            <input type="checkbox" [checked]="cfg.enabled" (change)="updateEnabled($any($event.target).checked)" [attr.aria-label]="t('followDefense.enabled')" />
+            <input type="checkbox" [checked]="cfg.enabled" (change)="updateEnabled($any($event.target).checked)" [disabled]="!canManage()" [attr.aria-label]="t('followDefense.enabled')" />
             <span class="lf-switch__track" aria-hidden="true"></span>
           </label>
         </div>
@@ -131,7 +134,7 @@
             <div class="lf-row-head">
               <h3 class="lf-h3">{{ t('followDefense.silentMode') }}</h3>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="cfg.silentModeEnabled" (change)="updateSilentModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.silentMode')" />
+                <input type="checkbox" [checked]="cfg.silentModeEnabled" (change)="updateSilentModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.silentMode')" />
                 <span class="lf-switch__track" aria-hidden="true"></span>
               </label>
             </div>
@@ -139,17 +142,17 @@
             <div class="lf-form-grid">
               <label class="lf-field">
                 <span>{{ t('followDefense.followsThreshold') }}</span>
-                <input type="number" min="1" [value]="cfg.silentThresholdX" (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <input type="number" min="1" [value]="cfg.silentThresholdX" (change)="updateSilentThreshold($any($event.target).value, 'silentThresholdX')" [disabled]="!canManage() || !cfg.enabled || !cfg.silentModeEnabled" />
                 <small>{{ t('followDefense.silentModeThresholdHint') }}</small>
               </label>
               <label class="lf-field">
                 <span>{{ t('followDefense.detectionWindow') }}</span>
-                <input type="number" min="1" [value]="cfg.silentWindowYSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <input type="number" min="1" [value]="cfg.silentWindowYSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentWindowYSeconds')" [disabled]="!canManage() || !cfg.enabled || !cfg.silentModeEnabled" />
                 <small>{{ t('followDefense.seconds') }}</small>
               </label>
               <label class="lf-field">
                 <span>{{ t('followDefense.trackingDuration') }}</span>
-                <input type="number" min="1" [value]="cfg.silentDurationSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')" [disabled]="!cfg.enabled || !cfg.silentModeEnabled" />
+                <input type="number" min="1" [value]="cfg.silentDurationSeconds" (change)="updateSilentThreshold($any($event.target).value, 'silentDurationSeconds')" [disabled]="!canManage() || !cfg.enabled || !cfg.silentModeEnabled" />
                 <small>{{ t('followDefense.seconds') }}</small>
               </label>
             </div>
@@ -159,7 +162,7 @@
             <div class="lf-row-head">
               <h3 class="lf-h3">{{ t('followDefense.protectionMode') }}</h3>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="cfg.protectionModeEnabled" (change)="updateProtectionModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.protectionMode')" />
+                <input type="checkbox" [checked]="cfg.protectionModeEnabled" (change)="updateProtectionModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.protectionMode')" />
                 <span class="lf-switch__track" aria-hidden="true"></span>
               </label>
             </div>
@@ -167,7 +170,7 @@
             <div class="lf-form-grid">
               <label class="lf-field">
                 <span>{{ t('followDefense.protectionThreshold') }}</span>
-                <input type="number" min="1" [value]="cfg.protectionThresholdB" (change)="updateProtectionThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.protectionModeEnabled" />
+                <input type="number" min="1" [value]="cfg.protectionThresholdB" (change)="updateProtectionThreshold($any($event.target).value)" [disabled]="!canManage() || !cfg.enabled || !cfg.protectionModeEnabled" />
                 <small>{{ t('followDefense.protectionThresholdHint') }}</small>
               </label>
             </div>
@@ -177,20 +180,20 @@
             <div class="lf-row-head">
               <h3 class="lf-h3">{{ t('followDefense.attackMode') }}</h3>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="cfg.attackModeEnabled" (change)="updateAttackModeEnabled($any($event.target).checked)" [disabled]="!cfg.enabled" [attr.aria-label]="t('followDefense.attackMode')" />
+                <input type="checkbox" [checked]="cfg.attackModeEnabled" (change)="updateAttackModeEnabled($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" [attr.aria-label]="t('followDefense.attackMode')" />
                 <span class="lf-switch__track" aria-hidden="true"></span>
               </label>
             </div>
             <p class="lf-copy lf-copy--tight">{{ t('followDefense.attackModeDescription') }}</p>
             <label class="lf-field lf-raid-setting">
               <span>{{ t('raidSessions.resetOnRaid') }}</span>
-              <input type="checkbox" [checked]="cfg.resetAttackOnNewRaid !== false" (change)="updateResetAttackOnNewRaid($any($event.target).checked)" [disabled]="!cfg.enabled" />
+              <input type="checkbox" [checked]="cfg.resetAttackOnNewRaid !== false" (change)="updateResetAttackOnNewRaid($any($event.target).checked)" [disabled]="!canManage() || !cfg.enabled" />
             </label>
             <p class="lf-copy">{{ t('raidSessions.resetOnRaidHint') }}</p>
             <div class="lf-form-grid">
               <label class="lf-field">
                 <span>{{ t('followDefense.attackThreshold') }}</span>
-                <input type="number" min="1" [value]="cfg.attackThreshold ?? ''" [placeholder]="t('followDefense.dynamic.placeholder')" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!cfg.enabled || !cfg.attackModeEnabled" />
+                <input type="number" min="1" [value]="cfg.attackThreshold ?? ''" [placeholder]="t('followDefense.dynamic.placeholder')" (change)="updateAttackThreshold($any($event.target).value)" [disabled]="!canManage() || !cfg.enabled || !cfg.attackModeEnabled" />
                 <small>{{ t('followDefense.attackThresholdHint') }}</small>
               </label>
               <div class="lf-field">
@@ -213,6 +216,7 @@
 
       </section>
 
+      @if (canManage()) {
       <section class="lf-tile lf-tile--actions">
         <p class="lf-note lf-note--warn">{{ t('followDefense.attackWarning') }}</p>
         <div class="lf-actions">
@@ -224,6 +228,7 @@
           }
         </div>
       </section>
+      }
 
       <section class="lf-section" [attr.aria-label]="t('followDefense.history')">
         <div class="lf-section__head">
@@ -332,6 +337,7 @@
         </div>
       </section>
 
+      @if (canManage()) {
       <div class="lf-save-bar">
         <button type="button" class="lf-btn lf-btn--primary" (click)="saveSettings()" [disabled]="savingSettings() || !settingsDirty()">
           @if (savingSettings()) {
@@ -341,6 +347,7 @@
           }
         </button>
       </div>
+      }
     }
   </main>
 

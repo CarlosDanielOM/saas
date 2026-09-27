@@ -59,3 +59,20 @@ export const permissionGuard: CanActivateFn = (route, state) => {
     )
   );
 };
+
+/** Overlay Studio and Roulette currently require the broadcaster's own account. */
+export const channelOwnerGuard: CanActivateFn = (route, state) => {
+  const sessionAuth = inject(SessionAuthService);
+  const router = inject(Router);
+  const streamer = getRouteParamFromSnapshot(route, 'streamer');
+  const ownerID = sessionAuth.getSessionSnapshot()?.appUser.twitch_user_id;
+  if (!streamer || !ownerID) return router.createUrlTree(['/']);
+  return sessionAuth.resolveChannelID(streamer).pipe(
+    map((channelID) => channelID === ownerID
+      ? true
+      : router.createUrlTree(['/', streamer, '403'], {
+          queryParams: { permission: 'channel:owner', from: state.url }
+        })),
+    catchError(() => of(router.createUrlTree(['/'])))
+  );
+};

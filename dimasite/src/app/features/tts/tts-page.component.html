@@ -96,9 +96,9 @@
             <p class="lf-note">{{ command.message }}</p>
           }
         </div>
-        @if (speechCommand()) {
-          <button type="button" class="lf-btn" [disabled]="ttsReadOnly() || commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
-        } @else {
+        @if (speechCommand() && canManageSpeechCommand()) {
+          <button type="button" class="lf-btn" [disabled]="commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
+        } @else if (canViewSpeechCommand()) {
           <a class="lf-btn" [routerLink]="commandsPath()">{{ t('modules.tts.command.openCommands') }}</a>
         }
       </section>

@@ -19,9 +19,11 @@
         </ol>
 
         <div class="lf-actions">
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-            {{ t('commands.addCommand') }}
-          </button>
+          @if (canManage()) {
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+              {{ t('commands.addCommand') }}
+            </button>
+          }
           <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="loading()">
             {{ t('commands.refresh') }}
           </button>
@@ -126,7 +128,7 @@
               <span class="sortable" (click)="onSort('enabled')">
                 {{ t('commands.placeholder.status') }} {{ getSortIcon('enabled') }}
               </span>
-              <span>{{ t('commands.placeholder.actions') }}</span>
+              <span>{{ canManage() ? t('commands.placeholder.actions') : '' }}</span>
             </div>
 
             @if (paginatedCommands().length === 0) {
@@ -193,7 +195,7 @@
                 <span class="lf-actions-cell">
                   @if (isPending(commandTrackId(command))) {
                     <span class="lf-chip lf-chip--muted lf-chip--status">{{ getPendingLabel(commandTrackId(command)) }}</span>
-                  } @else {
+                  } @else if (canManage()) {
                     <button type="button" class="lf-text-link" (click)="openEditModal(command)">
                       {{ t('common.edit') }}
                     </button>
@@ -327,7 +329,7 @@
                 <div class="lf-cmd__actions">
                   @if (isPending(commandTrackId(command))) {
                     <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
-                  } @else {
+                  } @else if (canManage()) {
                     <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(command)">
                       {{ t('common.edit') }}
                     </button>

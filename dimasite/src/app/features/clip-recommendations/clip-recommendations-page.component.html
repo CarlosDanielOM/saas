@@ -50,6 +50,10 @@
       </article>
     </section>
 
+    @if (!canManage()) {
+      <div class="lf-banner" role="status">{{ t('permissions.viewOnly') }}</div>
+    }
+
     <section
       class="lf-tile lf-auto"
       [class.lf-auto--locked]="!canAutoAnalyze()"
@@ -67,7 +71,7 @@
           type="checkbox"
           [checked]="autoAnalyzeEnabled()"
           (change)="toggleAutoAnalyze()"
-          [disabled]="!canAutoAnalyze() || savingConfig()"
+          [disabled]="!canManage() || !canAutoAnalyze() || savingConfig()"
           [attr.aria-label]="t('clipRecommendations.auto.title')"
         />
         <span class="lf-switch__track" aria-hidden="true"></span>
@@ -124,6 +128,7 @@
                     })
                   }}
                 </p>
+                @if (canManage()) {
                 <button
                   type="button"
                   class="lf-btn lf-btn--primary lf-btn--block"
@@ -136,6 +141,7 @@
                     {{ t('clipRecommendations.actions.analyze') }}
                   }
                 </button>
+                }
               </div>
             </article>
           }
@@ -234,6 +240,7 @@
                       @if (candidate.videoWhy) {
                         <p class="lf-candidate__why">{{ candidate.videoWhy }}</p>
                       }
+                      @if (canManage()) {
                       <div class="lf-candidate__actions">
                         <button
                           type="button"
@@ -252,6 +259,7 @@
                           {{ t('clipRecommendations.actions.deny') }}
                         </button>
                       </div>
+                      }
                     </div>
                   </article>
                 }

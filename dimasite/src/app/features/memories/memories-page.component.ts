@@ -6,9 +6,9 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom, map } from 'rxjs';
+import { catchError, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 
 import {
   Memory,
@@ -60,6 +60,14 @@ export class MemoriesPageComponent {
   });
 
   readonly channelID = signal<string | null>(null);
+  readonly canManage = toSignal(toObservable(this.channelID).pipe(
+    switchMap((channelID) => channelID
+      ? this.sessionAuth.checkPermission(channelID, 'memories:manage').pipe(
+          catchError(() => of(false)),
+          startWith(false)
+        )
+      : of(false))
+  ), { initialValue: false });
 
   readonly memories = signal<Memory[]>([]);
   readonly total = signal(0);
@@ -294,6 +302,7 @@ export class MemoriesPageComponent {
   }
 
   openEditModal(memory: Memory): void {
+    if (!this.canManage()) return;
     this.editingMemory.set(memory);
     this.editForm.set({
       content: memory.content,
@@ -317,6 +326,7 @@ export class MemoriesPageComponent {
   }
 
   async saveEdit(): Promise<void> {
+    if (!this.canManage()) return;
     const memory = this.editingMemory();
     const channelID = this.channelID();
     if (!memory || !channelID) return;
@@ -350,6 +360,7 @@ export class MemoriesPageComponent {
   }
 
   openConfirmDialog(action: 'approve' | 'deny' | 'archive' | 'delete', memory: Memory): void {
+    if (!this.canManage()) return;
     this.confirmAction.set(action);
     this.confirmMemory.set(memory);
     this.confirmDialogOpen.set(true);
@@ -368,6 +379,10 @@ export class MemoriesPageComponent {
   }
 
   async confirmActionHandler(): Promise<void> {
+    if (!this.canManage()) {
+      this.closeConfirmDialog();
+      return;
+    }
     const action = this.confirmAction();
     const memory = this.confirmMemory();
     const channelID = this.channelID();

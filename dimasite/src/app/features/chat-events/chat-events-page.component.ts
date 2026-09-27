@@ -49,6 +49,8 @@ export class ChatEventsPageComponent implements OnInit {
 
   readonly events = signal<ChatEvent[]>([]);
   readonly isLoading = signal(true);
+  readonly canManage = signal(false);
+  readonly permissionLoaded = signal(false);
   readonly configuringEvent = signal<string | null>(null);
   readonly pendingActions = signal<Record<string, ChatEventPendingAction>>({});
 
@@ -73,7 +75,18 @@ export class ChatEventsPageComponent implements OnInit {
     }
 
     this.channelID.set(resolvedChannelId);
+    void this.loadPermission(resolvedChannelId);
     this.loadEvents(resolvedChannelId);
+  }
+
+  private async loadPermission(channelID: string): Promise<void> {
+    try {
+      this.canManage.set(await firstValueFrom(this.sessionAuth.checkPermission(channelID, 'eventsubs:manage')));
+    } catch {
+      this.canManage.set(false);
+    } finally {
+      this.permissionLoaded.set(true);
+    }
   }
 
   t(key: string, params?: Record<string, string | number>): string {
@@ -149,6 +162,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   toggleFeature(event: ChatEvent): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) {
       return;
@@ -188,6 +202,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   saveConfiguration(event: ChatEvent): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) {
       return;
@@ -221,6 +236,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   deleteEvent(event: ChatEvent): void {
+    if (!this.canManage()) return;
     const channelId = this.channelID();
     if (!channelId) {
       return;
@@ -274,6 +290,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   onUpgrade(): void {
+    if (!this.canManage()) return;
     const streamer = this.streamer();
     if (streamer) {
       void this.router.navigate([streamer, 'settings']);

@@ -11,8 +11,8 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { of, startWith, switchMap } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of, startWith, switchMap } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -69,6 +69,20 @@ export class ClipsPageComponent {
     ),
     { initialValue: null }
   );
+  readonly canManage = toSignal(
+    toObservable(this.channelID).pipe(
+      switchMap((channelID) => channelID
+        ? this.sessionAuth.checkPermission(channelID, 'clips:manage').pipe(
+            catchError(() => of(false)),
+            startWith(false)
+          )
+        : of(false))
+    ),
+    { initialValue: false }
+  );
+  readonly isOwnerView = computed(() =>
+    Boolean(this.channelID() && this.sessionAuth.session()?.appUser.twitch_user_id === this.channelID())
+  );
 
   readonly userSettings = computed<UserClipSettings>(() => ({
     channelID: this.channelID() ?? '',
@@ -109,7 +123,7 @@ export class ClipsPageComponent {
   });
 
   readonly canTest = computed(
-    () => Boolean(this.selectedDesign()) && Boolean(this.userSettings().channelID)
+    () => this.canManage() && Boolean(this.selectedDesign()) && Boolean(this.userSettings().channelID)
   );
 
   private resizeObserver: ResizeObserver | null = null;
@@ -226,6 +240,7 @@ export class ClipsPageComponent {
   }
 
   openUpgrade(): void {
+    if (!this.isOwnerView()) return;
     void this.upgradeService.promptUpgradeForAnyPlan('clips_design');
   }
 
@@ -276,6 +291,7 @@ export class ClipsPageComponent {
   }
 
   retryTest(): void {
+    if (!this.canManage()) return;
     const design = this.testingDesign();
     if (design) {
       this.testAttempts = 0;

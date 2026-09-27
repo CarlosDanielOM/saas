@@ -119,7 +119,7 @@
                   type="button"
                   class="lf-btn lf-btn--xs lf-btn--block"
                   [class.lf-btn--primary]="!isAssetAdded(asset._id)"
-                  [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
+                  [disabled]="!canAttach() || isAssetAdded(asset._id) || isAddingAsset(asset._id)"
                   (click)="addAsset(asset)"
                 >
                   @if (isAddingAsset(asset._id)) {
@@ -163,7 +163,7 @@
                 type="button"
                 class="lf-btn lf-btn--xs"
                 [class.lf-btn--primary]="!isAssetAdded(asset._id)"
-                [disabled]="isAssetAdded(asset._id) || isAddingAsset(asset._id)"
+                [disabled]="!canAttach() || isAssetAdded(asset._id) || isAddingAsset(asset._id)"
                 (click)="addAsset(asset)"
               >
                 @if (isAddingAsset(asset._id)) {

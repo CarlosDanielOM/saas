@@ -103,6 +103,18 @@ export interface ChannelAccessContext {
     role: 'owner' | 'admin' | 'none';
 }
 
+/** Preserve legacy module-wide grants when checking a specific feature action. */
+export function expandChannelPermissionChecks(permission: string | string[]): string[] {
+    const requested = (Array.isArray(permission) ? permission : [permission])
+        .filter((value): value is string => typeof value === 'string');
+    return [...new Set([
+        '*',
+        ...requested,
+        ...(requested.some((value) => value.startsWith('triggers:')) ? ['triggers:all'] : []),
+        ...(requested.some((value) => value.startsWith('dimafx:')) ? ['dimafx:all'] : [])
+    ])];
+}
+
 export async function getChannelAccessContext(
     requesterID: string | undefined | null,
     targetChannelID: string | undefined | null,
@@ -120,7 +132,7 @@ export async function getChannelAccessContext(
         return { allowed: true, role: 'owner' };
     }
 
-    const permissionsToCheck = ['*', ...(Array.isArray(permission) ? permission : [permission])];
+    const permissionsToCheck = expandChannelPermissionChecks(permission);
     const admin = await AdminSchema.findOne({
         channelID: targetChannelID,
         adminID: requesterID,

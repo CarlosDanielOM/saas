@@ -18,7 +18,7 @@
                 type="text"
                 [id]="'control-' + control.id"
                 [(ngModel)]="control.value"
-                [disabled]="isBusy()"
+                [disabled]="isBusy() || !canManage()"
                 [placeholder]="control.placeholder || ''"
                 class="lf-config__input"
               />
@@ -28,7 +28,7 @@
                 type="number"
                 [id]="'control-' + control.id"
                 [(ngModel)]="control.value"
-                [disabled]="isBusy()"
+                [disabled]="isBusy() || !canManage()"
                 class="lf-config__input lf-config__input--number"
               />
             }
@@ -38,7 +38,7 @@
                   type="checkbox"
                   [id]="'control-' + control.id"
                   [(ngModel)]="control.value"
-                  [disabled]="isBusy()"
+                  [disabled]="isBusy() || !canManage()"
                 />
                 <span>{{ t('chatEvents.enabled') }}</span>
               </label>
@@ -49,7 +49,7 @@
                   [tiers]="control.value"
                   [tierLimits]="event()?.tierLimits"
                   [userPlan]="userPlan()"
-                  [disabled]="isBusy()"
+                  [disabled]="isBusy() || !canManage()"
                   (tiersChange)="onTiersChange(control, $event)"
                 />
               }
@@ -60,6 +60,7 @@
     }
   </div>
 
+  @if (canManage()) {
   <div class="lf-config__actions">
     <button
       type="button"
@@ -76,4 +77,5 @@
       {{ isSaving() ? t('chatEvents.pending.saving') : t('chatEvents.saveChanges') }}
     </button>
   </div>
+  }
 </div>

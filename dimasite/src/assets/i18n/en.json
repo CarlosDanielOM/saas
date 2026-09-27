@@ -458,8 +458,8 @@
         "copy": "`!s` and `$(tts ...)` use the default engine selected above. Use `$(tts.speak ...)` to force Piper, or `$(tts.fish ...)` / `$(tts.clone ...)` for Fish Audio voices."
       },
       "footer": {
-        "owner": "Owners can change these defaults now. Admins can still review the current setup without editing it.",
-        "readOnly": "You are viewing the live TTS setup in read-only mode. Only the channel owner can change it."
+        "owner": "You can change these TTS defaults with Settings Manage permission.",
+        "readOnly": "You can view the live TTS setup, but need Settings Manage permission to change it."
       },
       "actions": {
         "save": "Save TTS settings",
@@ -960,6 +960,7 @@
     "badge": "Protection",
     "title": "Follow Defense",
     "subtitle": "Protect your channel from follow floods and hate raids.",
+    "permission": { "readOnly": "You can view follow defense, but need Manage permission for moderation to change it." },
     "backToModules": "Back to modules",
     "enabled": "Enable Follow Defense",
     "enabledDescription": "Turn this off if you use another protection system or do not want DimaBot to interfere with follow alerts/moderation.",
@@ -2464,8 +2465,8 @@
         "copy": "`tts.ai` and `tts.clone` are wired into the contract now, but they will stay unavailable until the future Runpod voice providers are added."
       },
       "footer": {
-        "owner": "Owners can change these defaults now. Admins can still review the current setup without editing it.",
-        "readOnly": "You are viewing the live TTS setup in read-only mode. Only the channel owner can change it."
+        "owner": "You can change these TTS defaults with Settings Manage permission.",
+        "readOnly": "You can view the live TTS setup, but need Settings Manage permission to change it."
       },
       "actions": {
         "save": "Save TTS settings",
@@ -2754,9 +2755,15 @@
       "nextUp": "Coming up next"
     }
   },
+  "permissions": {
+    "viewOnly": "You can view this feature, but you need Manage permission to change it.",
+    "checking": "Checking channel access...",
+    "noModules": "No modules are available with your current channel permissions."
+  },
   "chatEvents": {
     "title": "Chat Events",
     "subtitle": "Manage your channel's automated chat responses for follows, subscriptions, bits, and more.",
+    "permission": { "readOnly": "You can view chat events, but need Manage permission for events to change them." },
     "heroBadge": "Engagement Automation",
     "backToModules": "Back to Modules",
     "loading": "Loading chat events...",
@@ -2847,6 +2854,7 @@
   "redemptions": {
     "title": "Channel Point Redemptions",
     "subtitle": "Create and manage custom channel point rewards for your viewers to redeem during streams.",
+    "permission": { "readOnly": "You can view rewards, but need Manage permission for rewards to change them." },
     "heroBadge": "Engage Your Audience",
     "backToModules": "Back to Modules",
     "createRewardButton": "Create Reward",

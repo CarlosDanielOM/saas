@@ -98,6 +98,9 @@ export class UsagePageComponent {
     } satisfies ChannelResolutionState
   });
   readonly channelID = computed(() => this.channelResolution().channelID);
+  readonly isOwnerView = computed(() =>
+    Boolean(this.channelID() && this.sessionAuth.session()?.appUser.twitch_user_id === this.channelID())
+  );
 
   readonly summary = signal<AiUsageSummaryData | null>(null);
   readonly loading = signal(true);
@@ -362,6 +365,7 @@ export class UsagePageComponent {
   }
 
   openUpgrade(): void {
+    if (!this.isOwnerView()) return;
     void this.upgradeService.promptUpgradeForAnyPlan('usage_page');
   }
 

@@ -46,6 +46,9 @@ export class CreditPacksPageComponent {
   readonly purchaserLogin = computed(
     () => (this.sessionAuth.session()?.twitchUser.login ?? '').trim().toLowerCase()
   );
+  readonly canPurchase = computed(() =>
+    Boolean(this.purchaserLogin() && this.purchaserLogin() === this.streamer())
+  );
   readonly isManagingDifferentAccount = computed(() => {
     const purchaser = this.purchaserLogin();
     const streamer = this.streamer();
@@ -119,6 +122,7 @@ export class CreditPacksPageComponent {
   }
 
   async startCheckout(pack: CreditPackOffer): Promise<void> {
+    if (!this.canPurchase()) return;
     if (!pack.eligible) {
       await this.upgradeService.promptUpgradeForAnyPlan('credit_pack_store');
       return;

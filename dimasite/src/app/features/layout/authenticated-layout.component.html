@@ -21,6 +21,7 @@
           {{ t('navbar.myDashboard') }}
         </a>
       }
+      @if (navigationAccess().commands) {
       <a
         class="auth-navbar__link"
         [routerLink]="['/', streamer(), 'commands']"
@@ -30,6 +31,7 @@
       >
         {{ t('navbar.commands') }}
       </a>
+      }
       <a
         class="auth-navbar__link"
         [routerLink]="['/', streamer(), 'modules']"
@@ -39,6 +41,7 @@
       >
         {{ t('navbar.modules') }}
       </a>
+      @if (navigationAccess().settings) {
       <a
         class="auth-navbar__link"
         [routerLink]="['/', streamer(), 'settings']"
@@ -48,6 +51,7 @@
       >
         {{ t('navbar.settings') }}
       </a>
+      }
       <a
         class="auth-navbar__link"
         [routerLink]="['/', streamer(), 'admin-hub']"
@@ -188,15 +192,19 @@
                 {{ t('navbar.myDashboard') }}
               </a>
             }
+            @if (navigationAccess().commands) {
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'commands']" (click)="closeMobileMenu()">
               {{ t('navbar.commands') }}
             </a>
+            }
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'modules']" (click)="closeMobileMenu()">
               {{ t('navbar.modules') }}
             </a>
+            @if (navigationAccess().settings) {
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'settings']" (click)="closeMobileMenu()">
               {{ t('navbar.settings') }}
             </a>
+            }
             <a class="auth-navbar__mobile-link" [routerLink]="['/', streamer(), 'admin-hub']" (click)="closeMobileMenu()">
               {{ t('navbar.adminHub') }}
             </a>
