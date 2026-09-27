@@ -21,6 +21,7 @@ import { CommandUserVariablesSchema } from "../../schemas/command_user_variables
 import { timingSafeEqual } from "node:crypto";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
+import { CHANNEL_WEBSITE_ACCESS_PERMISSIONS } from "../../middleware/channel_permissions.js";
 import { ensureReservedCommands } from "../services/command_defaults.service.js";
 import { seedDefaultModerationSettings } from '../../utils/moderation/defaults.js';
 import { cleanupChannelMediaOwnership } from '../../utils/media_cleanup.js';
@@ -120,7 +121,8 @@ function normalizeTwitchLogin(value?: string | null): string {
 async function getAdministratingChannels(adminID: string): Promise<AdminChannelSummary[]> {
     const rows = await AdminSchema.find({
         adminID,
-        actived: true
+        actived: true,
+        permissions: { $in: CHANNEL_WEBSITE_ACCESS_PERMISSIONS }
     })
         .select('channelID channelName -_id')
         .lean();

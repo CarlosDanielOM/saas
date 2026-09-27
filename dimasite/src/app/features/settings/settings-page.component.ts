@@ -41,11 +41,16 @@ export class SettingsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly pendingAddIDs = signal<string[]>([]);
   readonly pendingDeleteIDs = signal<string[]>([]);
-  readonly permissionGroups = CHANNEL_ADMIN_PERMISSION_GROUPS;
+  readonly permissionGroups = CHANNEL_ADMIN_PERMISSION_GROUPS.filter((group) => group.key !== 'chat');
   readonly editingAdmin = signal<AdminRecord | null>(null);
   readonly editingCandidate = signal<AdminCandidate | null>(null);
   readonly fullAccess = signal(true);
-  readonly draftPermissions = signal<string[]>(['dashboard:view']);
+  readonly draftPermissions = signal<string[]>(['chat:admin']);
+  readonly chatAdminEnabled = computed(() => this.fullAccess() || this.draftPermissions().includes('chat:admin'));
+  readonly hasWebsiteFeatureGrant = computed(() =>
+    this.draftPermissions().some((permission) => permission !== 'chat:admin' && permission !== 'dashboard:view')
+  );
+  readonly canSavePermissions = computed(() => this.fullAccess() || this.draftPermissions().length > 0);
   readonly savingPermissions = signal(false);
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
@@ -226,12 +231,12 @@ export class SettingsPageComponent {
       this.editingAdmin.set(target);
       this.editingCandidate.set(null);
       this.fullAccess.set(target.permissions.includes('*'));
-      this.draftPermissions.set(target.permissions.includes('*') ? ['dashboard:view'] : [...grants]);
+      this.draftPermissions.set(target.permissions.includes('*') ? ['chat:admin'] : [...grants]);
     } else {
       this.editingCandidate.set(target);
       this.editingAdmin.set(null);
       this.fullAccess.set(true);
-      this.draftPermissions.set(['dashboard:view']);
+      this.draftPermissions.set(['chat:admin']);
       this.clearSearch();
     }
   }
@@ -247,15 +252,39 @@ export class SettingsPageComponent {
     return this.fullAccess() || (keys.length > 0 && keys.every((key) => this.draftPermissions().includes(key)));
   }
 
+  accessLabel(permissions: string[]): string {
+    if (permissions.includes('*')) return this.t('settings.admins.permissions.full');
+    const chat = permissions.includes('chat:admin');
+    const website = permissions.some((permission) => permission !== 'chat:admin');
+    if (chat && !website) return this.t('settings.admins.permissions.chatOnly');
+    if (website && !chat) return this.t('settings.admins.permissions.websiteOnly');
+    if (chat && website) return this.t('settings.admins.permissions.websiteAndChat');
+    return this.t('settings.admins.permissions.custom');
+  }
+
   toggleGrant(group: ChannelAdminPermissionGroup, kind: 'view' | 'manage', enabled: boolean): void {
-    if (group.key === 'dashboard' || this.fullAccess()) return;
+    if (this.fullAccess()) return;
+    if (group.key === 'dashboard' && !enabled && this.hasWebsiteFeatureGrant()) return;
     const next = new Set(this.draftPermissions());
     for (const key of group[kind]) enabled ? next.add(key) : next.delete(key);
     if (kind === 'manage' && enabled) for (const key of group.view) next.add(key);
     if (kind === 'view' && !enabled) for (const key of group.manage) next.delete(key);
     if (group.key === 'admins' && enabled) next.add('settings:view');
-    next.add('dashboard:view');
+    if (enabled && group.key !== 'dashboard') next.add('dashboard:view');
     this.draftPermissions.set([...next]);
+  }
+
+  toggleChatAdmin(enabled: boolean): void {
+    if (this.fullAccess()) return;
+    const next = new Set(this.draftPermissions());
+    if (enabled) next.add('chat:admin');
+    else next.delete('chat:admin');
+    this.draftPermissions.set([...next]);
+  }
+
+  onChatAdminChange(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.toggleChatAdmin(target.checked);
   }
 
   onGrantChange(event: Event, group: ChannelAdminPermissionGroup, kind: 'view' | 'manage'): void {
@@ -264,7 +293,7 @@ export class SettingsPageComponent {
   }
 
   async savePermissions(): Promise<void> {
-    if (this.savingPermissions()) return;
+    if (this.savingPermissions() || !this.canSavePermissions()) return;
     const channelID = this.channelID();
     if (!channelID || !this.isOwnerView()) return;
     const permissions = this.fullAccess() ? ['*'] : this.draftPermissions();

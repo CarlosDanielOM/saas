@@ -178,31 +178,51 @@
             </button>
           </div>
           @if (!fullAccess()) {
-            <p class="lf-note">{{ t('settings.admins.permissions.dashboardRequired') }}</p>
-            <div class="lf-permission-grid">
-              @for (group of permissionGroups; track group.key) {
-                <div class="lf-permission-row">
-                  <strong>{{ t('settings.admins.permissions.categories.' + group.key) }}</strong>
-                  <div class="lf-permission-row__checks">
-                    @if (group.view.length) {
-                      <label>
-                        <input type="checkbox" [checked]="isGranted(group, 'view')" [disabled]="group.key === 'dashboard'" (change)="onGrantChange($event, group, 'view')" />
-                        {{ t('settings.admins.permissions.view') }}
-                      </label>
-                    }
-                    @if (group.manage.length) {
-                      <label>
-                        <input type="checkbox" [checked]="isGranted(group, 'manage')" (change)="onGrantChange($event, group, 'manage')" />
-                        {{ t('settings.admins.permissions.manage') }}
-                      </label>
-                    }
-                  </div>
+            <div class="lf-permission-section">
+              <h4>{{ t('settings.admins.permissions.chatTitle') }}</h4>
+              <p class="lf-note">{{ t('settings.admins.permissions.chatDescription') }}</p>
+              <div class="lf-permission-row lf-permission-row--chat">
+                <strong>{{ t('settings.admins.permissions.categories.chat') }}</strong>
+                <div class="lf-permission-row__checks">
+                  <label>
+                    <input type="checkbox" [checked]="chatAdminEnabled()" (change)="onChatAdminChange($event)" />
+                    {{ t('settings.admins.permissions.chatEnabled') }}
+                  </label>
                 </div>
-              }
+              </div>
             </div>
+            <div class="lf-permission-section">
+              <h4>{{ t('settings.admins.permissions.websiteTitle') }}</h4>
+              <p class="lf-note">{{ t('settings.admins.permissions.websiteDescription') }}</p>
+              <p class="lf-note">{{ t('settings.admins.permissions.dashboardIncluded') }}</p>
+              <div class="lf-permission-grid">
+                @for (group of permissionGroups; track group.key) {
+                  <div class="lf-permission-row">
+                    <strong>{{ t('settings.admins.permissions.categories.' + group.key) }}</strong>
+                    <div class="lf-permission-row__checks">
+                      @if (group.view.length) {
+                        <label>
+                          <input type="checkbox" [checked]="isGranted(group, 'view')" [disabled]="group.key === 'dashboard' && hasWebsiteFeatureGrant()" (change)="onGrantChange($event, group, 'view')" />
+                          {{ t('settings.admins.permissions.view') }}
+                        </label>
+                      }
+                      @if (group.manage.length) {
+                        <label>
+                          <input type="checkbox" [checked]="isGranted(group, 'manage')" (change)="onGrantChange($event, group, 'manage')" />
+                          {{ t('settings.admins.permissions.manage') }}
+                        </label>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+            @if (!canSavePermissions()) {
+              <p class="lf-note" role="status">{{ t('settings.admins.permissions.oneRequired') }}</p>
+            }
           }
           <div class="lf-actions">
-            <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions()" (click)="savePermissions()">
+            <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions() || !canSavePermissions()" (click)="savePermissions()">
               {{ savingPermissions() ? t('settings.admins.permissions.saving') : t('settings.admins.permissions.save') }}
             </button>
           </div>
@@ -226,7 +246,7 @@
               </div>
 
               <div class="lf-list__actions">
-                <span class="lf-chip">{{ admin.permissions.includes('*') ? t('settings.admins.permissions.full') : t('settings.admins.permissions.custom') }}</span>
+                <span class="lf-chip">{{ accessLabel(admin.permissions) }}</span>
                 <span
                   class="lf-chip lf-chip--status"
                   [class.lf-chip--live]="admin.actived"

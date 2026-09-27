@@ -115,6 +115,19 @@ test('view-only admins do not gain the chat admin tag, and permission changes re
     assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-9']);
 });
 
+test('chat-only admins gain the chat role while web-only admins do not', async () => {
+    const cache = new FakeRoleCache();
+    const admin = { adminID: 'admin-9', adminName: 'NewAdmin', channelName: 'streamer', actived: true };
+
+    await addAdminToRoleCache(cache, CHANNEL, { ...admin, permissions: ['chat:admin'] });
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-9']);
+    assert.deepEqual(cache.members(adminsKey(CHANNEL)), ['newadmin']);
+
+    await addAdminToRoleCache(cache, CHANNEL, { ...admin, permissions: ['dashboard:view', 'commands:manage'] });
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), []);
+    assert.deepEqual(cache.members(adminsKey(CHANNEL)), []);
+});
+
 test('removeAdminFromRoleCache removes login, ID, and detail hash together', async () => {
     const cache = new FakeRoleCache();
     await addAdminToRoleCache(cache, CHANNEL, {

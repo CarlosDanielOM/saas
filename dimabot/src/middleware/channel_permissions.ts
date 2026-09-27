@@ -19,6 +19,9 @@ export const CHANNEL_ADMIN_PERMISSIONS = [
     'chat:admin'
 ] as const;
 
+/** A channel appears in the website's admin switcher only with dashboard access. */
+export const CHANNEL_WEBSITE_ACCESS_PERMISSIONS = ['*', 'dashboard:view'] as const;
+
 const assignable = new Set<string>(CHANNEL_ADMIN_PERMISSIONS);
 const manageRequiresView: Record<string, string> = {
     'commands:manage': 'commands:view',
@@ -47,8 +50,10 @@ export function parseChannelAdminPermissions(value: unknown): string[] | null {
         const requiredView = manageRequiresView[permission];
         if (requiredView && !permissions.includes(requiredView)) permissions.push(requiredView);
     }
-    // The authenticated channel shell and admin hub both require dashboard access.
-    if (!permissions.includes('dashboard:view')) permissions.unshift('dashboard:view');
+    // Website grants need the dashboard shell. A chat-only admin has no website access.
+    if (permissions.some((permission) => permission !== 'chat:admin') && !permissions.includes('dashboard:view')) {
+        permissions.unshift('dashboard:view');
+    }
     return permissions;
 }
 

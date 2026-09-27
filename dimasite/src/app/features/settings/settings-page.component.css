@@ -516,6 +516,20 @@
   margin: 1.1rem 0;
 }
 
+.lf-permission-section + .lf-permission-section {
+  margin-top: 1.3rem;
+}
+
+.lf-permission-section h4 {
+  margin: 0 0 0.35rem;
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+.lf-permission-section .lf-note {
+  margin: 0.2rem 0 0.7rem;
+}
+
 .lf-permission-grid {
   display: grid;
   gap: 0.5rem;
@@ -530,6 +544,11 @@
   border: 1px solid var(--line);
   border-radius: 0.9rem;
   background: var(--input-bg);
+}
+
+.lf-permission-row--chat {
+  margin-top: 0.8rem;
+  background: var(--accent-soft);
 }
 
 .lf-permission-row strong {
