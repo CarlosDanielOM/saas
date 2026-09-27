@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { DestroyRef, Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 
 import { SiteStats } from '../models/site-stats.model';
+import { compareLiveChannels } from './live-channel-order';
 
 /**
  * Public site analytics (metrics + live channels).
@@ -190,6 +191,6 @@ export class SiteAnalyticsService {
         };
       })
       .filter((e): e is LiveChannelBoardEntry => Boolean(e && e.channel))
-      .sort((a, b) => b.viewers - a.viewers);
+      .sort(compareLiveChannels);
   }
 }
