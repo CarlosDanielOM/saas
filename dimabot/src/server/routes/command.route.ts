@@ -143,7 +143,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
             const body = req.body;
 
-            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
             if (!access.allowed) {
                 return res.status(403).send({
                     error: true,
@@ -258,7 +258,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
             const body = req.body;
             const language = typeof req.query.language === 'string' ? req.query.language : undefined;
 
-            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
             if (!access.allowed) {
                 return res.status(403).send({
                     error: true,
@@ -406,7 +406,7 @@ router.delete('/:channelID/:commandID', authMiddleware as any, async (req: Reque
             const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
             const commandIdStr = Array.isArray(commandID) ? commandID[0] : commandID;
 
-            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+            const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
             if (!access.allowed) {
                 return res.status(403).send({
                     error: true,

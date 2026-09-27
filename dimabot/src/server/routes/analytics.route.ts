@@ -48,7 +48,7 @@ function toPositiveInt(value: unknown, fallback: number): number {
 }
 
 async function getAccessContext(requesterID: string, channelID: string): Promise<{ allowed: boolean; role: 'owner' | 'admin' | 'none' }> {
-    return getChannelAccessContext(requesterID, channelID, ['dashboard:view', 'analytics:view']);
+    return getChannelAccessContext(requesterID, channelID, 'analytics:view');
 }
 
 const router = express.Router();

@@ -85,7 +85,7 @@ function extractCheerTiers(config: unknown, body: unknown): unknown[] | null {
     return null;
 }
 
-async function getAccess(requesterID: string, channelID: string): Promise<'owner' | 'admin' | 'none'> {
+async function getAccess(requesterID: string, channelID: string, permission: 'eventsubs:view' | 'eventsubs:manage' = 'eventsubs:view'): Promise<'owner' | 'admin' | 'none'> {
     if (requesterID === channelID) {
         return 'owner';
     }
@@ -98,7 +98,7 @@ async function getAccess(requesterID: string, channelID: string): Promise<'owner
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'dashboard:view', 'settings:view'] }
+        permissions: { $in: ['*', permission] }
     }).lean();
 
     return admin ? 'admin' : 'none';
@@ -318,7 +318,7 @@ router.post('/:channelID/test', authMiddleware as any, async (req: EventsubReque
             });
         }
 
-        const access = await getAccess(requesterID, channelIdStr);
+        const access = await getAccess(requesterID, channelIdStr, 'eventsubs:manage');
         if (access === 'none') {
             return res.status(403).json({
                 error: true,
@@ -502,7 +502,7 @@ router.get('/:channelID', authMiddleware as any, async (req: EventsubRequest, re
                 });
             }
 
-            const access = await getAccess(requesterID, channelIdStr);
+            const access = await getAccess(requesterID, channelIdStr, 'eventsubs:manage');
             if (access === 'none') {
                 return res.status(403).json({
                     error: true,
@@ -596,7 +596,7 @@ router.delete('/:channelID/:id', authMiddleware as any, async (req: EventsubRequ
                 });
             }
 
-            const access = await getAccess(requesterID, channelIdStr);
+            const access = await getAccess(requesterID, channelIdStr, 'eventsubs:manage');
             if (access === 'none') {
                 return res.status(403).json({
                     error: true,
@@ -671,7 +671,7 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: EventsubReque
                 });
             }
 
-            const access = await getAccess(requesterID, channelIdStr);
+            const access = await getAccess(requesterID, channelIdStr, 'eventsubs:manage');
             if (access === 'none') {
                 return res.status(403).json({
                     error: true,

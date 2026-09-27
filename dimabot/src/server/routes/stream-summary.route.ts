@@ -15,7 +15,7 @@ async function checkAccess(requesterID: string, channelID: string): Promise<bool
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'dashboard:view'] }
+        permissions: { $in: ['*', 'summaries:view'] }
     }).lean().exec();
     return !!admin;
 }

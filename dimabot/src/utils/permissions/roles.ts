@@ -2,6 +2,7 @@ import { getDragonflyClient } from '../databases/dragonfly.database.js';
 import { recordRedisOpsEstimate } from '../observability/bot_runtime_metrics.js';
 import type { IChatMessage } from '../../interfaces/twitch/eventsub.interface.js';
 import { shouldLogPermissionError } from './error_rate_limit.js';
+import { grantsChatAdminRole } from '../../middleware/channel_permissions.js';
 
 /**
  * Tag permission system — identity resolution (TAG_PERMISSION_SYSTEM.md §2.1).
@@ -235,7 +236,7 @@ export interface AdminCacheEntry {
 }
 
 function adminPermissionsToString(permissions: unknown): string {
-    return JSON.stringify(Array.isArray(permissions) ? permissions : ['*']);
+    return JSON.stringify(Array.isArray(permissions) ? permissions : []);
 }
 
 /**
@@ -259,8 +260,10 @@ export async function populateAdminCache(
         const adminName = String(admin.adminName || '').toLowerCase();
         if (!adminID || !adminName) continue;
 
-        await client.sAdd(adminsKey(channelID), adminName);
-        await client.sAdd(adminsIdsKey(channelID), adminID);
+        if (admin.actived && grantsChatAdminRole(admin.permissions)) {
+            await client.sAdd(adminsKey(channelID), adminName);
+            await client.sAdd(adminsIdsKey(channelID), adminID);
+        }
         await client.hSet(adminDetailKey(channelID, adminID), {
             adminID,
             adminName,
@@ -282,8 +285,13 @@ export async function addAdminToRoleCache(
     const adminName = String(admin.adminName || '').toLowerCase();
     if (!adminID || !adminName) return;
 
-    await client.sAdd(adminsIdsKey(channelID), adminID);
-    await client.sAdd(adminsKey(channelID), adminName);
+    if (admin.actived && grantsChatAdminRole(admin.permissions)) {
+        await client.sAdd(adminsIdsKey(channelID), adminID);
+        await client.sAdd(adminsKey(channelID), adminName);
+    } else {
+        await client.sRem(adminsIdsKey(channelID), adminID);
+        await client.sRem(adminsKey(channelID), adminName);
+    }
     await client.hSet(adminDetailKey(channelID, adminID), {
         adminID,
         adminName,

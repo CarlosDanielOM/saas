@@ -181,13 +181,14 @@ export class AdminApiService {
       );
   }
 
-  addAdmin(channelID: string, channelName: string, candidate: AdminCandidate) {
+  addAdmin(channelID: string, channelName: string, candidate: AdminCandidate, permissions: string[] = ['*']) {
     const normalizedChannelID = channelID.trim();
 
     return this.http
       .post<ApiEnvelope<void>>(`${this.linksService.getApiUrl()}/admins/${normalizedChannelID}`, {
         channelName,
-        adminName: candidate.login
+        adminName: candidate.login,
+        permissions
       })
       .pipe(
         map((response) => {
@@ -204,7 +205,7 @@ export class AdminApiService {
             channelName,
             channelID: normalizedChannelID,
             actived: true,
-            permissions: ['*']
+            permissions
           };
 
           const adminsKey = this.getAdminsCacheKey(normalizedChannelID);
@@ -225,6 +226,29 @@ export class AdminApiService {
           }
         }),
         catchError((error) => throwError(() => this.toRequestError(error, 'Failed to add admin')))
+      );
+  }
+
+  updatePermissions(channelID: string, admin: AdminRecord, permissions: string[]) {
+    const normalizedChannelID = channelID.trim();
+    return this.http
+      .put<ApiEnvelope<{ permissions: string[] }>>(
+        `${this.linksService.getApiUrl()}/admins/${normalizedChannelID}/${admin.adminID}/permissions`,
+        { permissions }
+      )
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || 'Failed to update admin permissions');
+          return response.data.permissions;
+        }),
+        tap((updated) => {
+          const cacheKey = this.getAdminsCacheKey(normalizedChannelID);
+          const cached = this.getFromCache(this.adminCache, cacheKey);
+          if (cached) this.setCache(this.adminCache, cacheKey, cached.map((entry) =>
+            entry.adminID === admin.adminID ? { ...entry, permissions: updated } : entry
+          ));
+        }),
+        catchError((error) => throwError(() => this.toRequestError(error, 'Failed to update admin permissions')))
       );
   }
 

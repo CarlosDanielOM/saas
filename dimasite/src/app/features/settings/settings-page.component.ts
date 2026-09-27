@@ -11,6 +11,7 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
+import { CHANNEL_ADMIN_PERMISSION_GROUPS, type ChannelAdminPermissionGroup } from './channel-admin-permissions';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -40,6 +41,12 @@ export class SettingsPageComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly pendingAddIDs = signal<string[]>([]);
   readonly pendingDeleteIDs = signal<string[]>([]);
+  readonly permissionGroups = CHANNEL_ADMIN_PERMISSION_GROUPS;
+  readonly editingAdmin = signal<AdminRecord | null>(null);
+  readonly editingCandidate = signal<AdminCandidate | null>(null);
+  readonly fullAccess = signal(true);
+  readonly draftPermissions = signal<string[]>(['dashboard:view']);
+  readonly savingPermissions = signal(false);
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -206,7 +213,79 @@ export class SettingsPageComponent {
     await this.loadSettingsData(channelID, this.isOwnerView());
   }
 
-  async addAdmin(candidate: AdminCandidate): Promise<void> {
+  openPermissionEditor(target: AdminRecord | AdminCandidate): void {
+    if (!this.isOwnerView()) return;
+    if ('adminID' in target) {
+      this.editingAdmin.set(target);
+      this.editingCandidate.set(null);
+      this.fullAccess.set(target.permissions.includes('*'));
+      this.draftPermissions.set(target.permissions.includes('*') ? ['dashboard:view'] : [...target.permissions]);
+    } else {
+      this.editingCandidate.set(target);
+      this.editingAdmin.set(null);
+      this.fullAccess.set(true);
+      this.draftPermissions.set(['dashboard:view']);
+      this.clearSearch();
+    }
+  }
+
+  closePermissionEditor(): void {
+    if (this.savingPermissions()) return;
+    this.editingAdmin.set(null);
+    this.editingCandidate.set(null);
+  }
+
+  isGranted(group: ChannelAdminPermissionGroup, kind: 'view' | 'manage'): boolean {
+    const keys = group[kind];
+    return this.fullAccess() || (keys.length > 0 && keys.every((key) => this.draftPermissions().includes(key)));
+  }
+
+  toggleGrant(group: ChannelAdminPermissionGroup, kind: 'view' | 'manage', enabled: boolean): void {
+    if (group.key === 'dashboard' || this.fullAccess()) return;
+    const next = new Set(this.draftPermissions());
+    for (const key of group[kind]) enabled ? next.add(key) : next.delete(key);
+    if (kind === 'manage' && enabled) for (const key of group.view) next.add(key);
+    if (kind === 'view' && !enabled) for (const key of group.manage) next.delete(key);
+    if (group.key === 'admins' && enabled) next.add('settings:view');
+    next.add('dashboard:view');
+    this.draftPermissions.set([...next]);
+  }
+
+  onGrantChange(event: Event, group: ChannelAdminPermissionGroup, kind: 'view' | 'manage'): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.toggleGrant(group, kind, target.checked);
+  }
+
+  async savePermissions(): Promise<void> {
+    if (this.savingPermissions()) return;
+    const channelID = this.channelID();
+    if (!channelID || !this.isOwnerView()) return;
+    const permissions = this.fullAccess() ? ['*'] : this.draftPermissions();
+    const candidate = this.editingCandidate();
+    const admin = this.editingAdmin();
+    if (!candidate && !admin) return;
+    this.savingPermissions.set(true);
+    try {
+      if (candidate) {
+        await this.addAdmin(candidate, permissions);
+      } else if (admin) {
+        const updated = await firstValueFrom(this.adminApi.updatePermissions(channelID, admin, permissions));
+        this.admins.update((rows) => rows.map((row) => row.adminID === admin.adminID ? { ...row, permissions: updated } : row));
+        this.toastService.success(this.t('settings.admins.permissions.saved'), admin.adminName);
+      }
+      this.editingCandidate.set(null);
+      this.editingAdmin.set(null);
+    } catch (error) {
+      this.toastService.error(
+        this.t('settings.admins.toasts.errorTitle'),
+        error instanceof Error ? error.message : this.t('settings.admins.permissions.saveFailed')
+      );
+    } finally {
+      this.savingPermissions.set(false);
+    }
+  }
+
+  async addAdmin(candidate: AdminCandidate, permissions: string[] = ['*']): Promise<void> {
     const channelID = this.channelID();
     const channelName = this.ownerChannelLogin();
 
@@ -217,7 +296,7 @@ export class SettingsPageComponent {
     this.pendingAddIDs.update((ids) => [...ids, candidate.id]);
 
     try {
-      await firstValueFrom(this.adminApi.addAdmin(channelID, channelName, candidate));
+      await firstValueFrom(this.adminApi.addAdmin(channelID, channelName, candidate, permissions));
 
       this.admins.update((admins) =>
         [...admins, {
@@ -226,7 +305,7 @@ export class SettingsPageComponent {
           channelName,
           channelID,
           actived: true,
-          permissions: ['*']
+          permissions
         }].sort((left, right) => left.adminName.localeCompare(right.adminName))
       );
       this.candidates.update((candidates) => candidates.filter((entry) => entry.id !== candidate.id));
@@ -244,10 +323,7 @@ export class SettingsPageComponent {
         timestamp: new Date().toISOString()
       });
 
-      this.toastService.error(
-        this.t('settings.admins.toasts.errorTitle'),
-        error instanceof Error ? error.message : this.t('settings.admins.errors.addFailed')
-      );
+      throw error;
     } finally {
       this.pendingAddIDs.update((ids) => ids.filter((id) => id !== candidate.id));
     }

@@ -736,7 +736,7 @@ export const routes: Routes = [
           import('./features/usage/usage-page.component').then((m) => m.UsagePageComponent),
         canActivate: [permissionGuard],
         data: {
-          permission: 'dashboard:view'
+          permission: 'billing:view'
         },
         title: 'AI Usage | DomDimaBot'
       },
@@ -748,7 +748,7 @@ export const routes: Routes = [
           ),
         canActivate: [permissionGuard],
         data: {
-          permission: 'dashboard:view'
+          permission: 'billing:view'
         },
         title: 'Credit Store | DomDimaBot'
       },
@@ -790,7 +790,7 @@ export const routes: Routes = [
               import('./features/clips/clips-page.component').then((m) => m.ClipsPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'clips:view'
             },
             title: 'Clips | DomDimaBot'
           },
@@ -820,7 +820,7 @@ export const routes: Routes = [
               import('./features/dimafx/dimafx-page.component').then((m) => m.DimafxPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'dimafx:view'
             },
             title: 'DimaFX | DomDimaBot'
           },
@@ -832,7 +832,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'ai:view'
             },
             title: 'AI Personality | DomDimaBot'
           },
@@ -844,7 +844,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'memories:view'
             },
             title: 'Memories | DomDimaBot'
           },
@@ -860,19 +860,19 @@ export const routes: Routes = [
                   ),
                 canActivate: [permissionGuard],
                 data: {
-                  permission: 'dashboard:view'
+                  permission: 'analytics:view'
                 },
                 title: 'Analytics | DomDimaBot'
               },
-              {
-                path: 'follows',
+          {
+            path: 'follows',
                 loadComponent: () =>
                   import('./features/analytics/follow-ledger-page.component').then(
                     (m) => m.FollowLedgerPageComponent
                   ),
                 canActivate: [permissionGuard],
                 data: {
-                  permission: 'dashboard:view'
+                  permission: 'analytics:view'
                 },
                 title: 'Follow Ledger | DomDimaBot'
               }
@@ -884,7 +884,7 @@ export const routes: Routes = [
               import('./features/referrals/referrals-page.component').then((m) => m.ReferralsPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'referrals:view'
             },
             title: 'Referrals | DomDimaBot'
           },
@@ -894,7 +894,7 @@ export const routes: Routes = [
               import('./features/redemptions/redemptions-page.component').then((m) => m.RedemptionsPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'rewards:view'
             },
             title: 'Redemptions | DomDimaBot'
           },
@@ -916,7 +916,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'moderation:view'
             },
             title: 'Follow Defense | DomDimaBot'
           },
@@ -928,7 +928,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'moderation:view'
             },
             title: 'Chat Moderation | DomDimaBot'
           },
@@ -940,7 +940,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'summaries:view'
             },
             title: 'Stream Summaries | DomDimaBot'
           },
@@ -952,7 +952,7 @@ export const routes: Routes = [
               ),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'clips:view'
             },
             title: 'Clip Recommendations | DomDimaBot'
           },
@@ -962,7 +962,7 @@ export const routes: Routes = [
               import('./features/library/media-library-page.component').then((m) => m.MediaLibraryPageComponent),
             canActivate: [permissionGuard],
             data: {
-              permission: 'dashboard:view'
+              permission: 'triggers:view'
             },
             title: 'Media Library | DomDimaBot'
           }
@@ -974,7 +974,7 @@ export const routes: Routes = [
           import('./features/settings/settings-page.component').then((m) => m.SettingsPageComponent),
         canActivate: [permissionGuard],
         data: {
-          permission: 'settings:view'
+          permission: 'admins:view'
         },
         title: 'Settings | DomDimaBot'
       },

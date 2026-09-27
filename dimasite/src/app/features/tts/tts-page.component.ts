@@ -192,7 +192,7 @@ export class TtsPageComponent {
     return Boolean(streamer && this.ownerLogin() === streamer) || Boolean(channelID && channelID === this.ownerChannelID());
   });
   readonly hasTtsSettings = computed(() => this.ttsSettings() !== null);
-  readonly ttsReadOnly = computed(() => this.ttsRole() !== 'owner');
+  readonly ttsReadOnly = computed(() => this.ttsRole() !== 'owner' && this.ttsRole() !== 'manager');
   readonly ttsDirty = computed(
     () => this.serializeTtsSettings(this.ttsSettings()) !== this.serializeTtsSettings(this.initialTtsSettings())
   );

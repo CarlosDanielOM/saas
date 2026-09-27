@@ -89,7 +89,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -154,7 +154,7 @@ router.patch('/:channelID/:timerName', authMiddleware as any, async (req: Reques
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -205,7 +205,7 @@ router.patch('/:channelID/:timerName/toggle', authMiddleware as any, async (req:
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -247,7 +247,7 @@ router.delete('/:channelID/:timerName', authMiddleware as any, async (req: Reque
         const { channelID, timerName } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,

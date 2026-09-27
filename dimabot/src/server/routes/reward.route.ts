@@ -77,7 +77,7 @@ router.get('/twitch/:channelID', authMiddleware as any, async (req: Request, res
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'rewards:view');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -142,7 +142,7 @@ router.get('/:channelID', authMiddleware as any, async (req: Request, res: Respo
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'rewards:view');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -201,7 +201,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
         const { channelID } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'rewards:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -276,7 +276,7 @@ router.delete('/:channelID/:id', authMiddleware as any, async (req: Request, res
         const { channelID, id } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'rewards:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -365,7 +365,7 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: Request, res:
         const { channelID, id } = req.params;
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'rewards:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,

@@ -2358,6 +2358,29 @@
     },
     "admins": {
       "eyebrow": "Admin access",
+      "permissions": {
+        "kicker": "Channel permissions",
+        "title": "Admin permissions",
+        "description": "Choose full access or select what this admin can view and change. Owner-only billing and account controls stay with the streamer.",
+        "mode": "Permission mode",
+        "full": "Full access",
+        "custom": "Custom access",
+        "view": "View",
+        "manage": "Manage",
+        "edit": "Edit permissions",
+        "save": "Save permissions",
+        "saving": "Saving...",
+        "saved": "Permissions saved",
+        "saveFailed": "Could not save permissions.",
+        "cancel": "Cancel",
+        "dashboardRequired": "Dashboard viewing is included so this admin can open the channel workspace.",
+        "categories": {
+          "dashboard": "Dashboard", "analytics": "Analytics", "billing": "AI usage and credits", "referrals": "Referrals", "summaries": "Stream summaries", "clips": "Clip recommendations",
+          "commands": "Commands and timers", "triggers": "Triggers and media", "settings": "Bot and TTS settings",
+          "moderation": "Moderation and Follow Defense", "eventsubs": "Event subscriptions", "rewards": "Rewards and redemptions",
+          "ai": "AI personality", "memories": "AI memories", "dimafx": "DimaFX", "admins": "Admin list", "chat": "Admin chat role"
+        }
+      },
       "subtitle": "Manage who can help run this channel. Current admins are listed here, and owners can add more from the registered user directory.",
       "ownerMode": "Owner controls enabled",
       "adminMode": "Read-only admin view",

@@ -17,14 +17,14 @@ import {
 
 const router = express.Router();
 
-async function checkAccess(requesterID: string, channelID: string): Promise<boolean> {
+async function checkAccess(requesterID: string, channelID: string, permission: 'clips:view' | 'clips:manage' = 'clips:view'): Promise<boolean> {
     if (requesterID === channelID) return true;
     if (await hasGlobalChannelOwnerAccess(requesterID, channelID)) return true;
     const admin = await AdminSchema.findOne({
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'dashboard:view'] }
+        permissions: { $in: ['*', permission] }
     }).lean().exec();
     return !!admin;
 }
@@ -83,7 +83,7 @@ router.put('/:channelID/config', authMiddleware as any, async (req: AuthRequest,
         const channelID = String(req.params.channelID || '').trim();
         const requesterID = getRequesterID(req);
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
-        if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
+        if (!(await checkAccess(requesterID, channelID, 'clips:manage'))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
         const user = await getChannelUser(channelID);
         if (!user) return res.status(404).json({ error: true, message: 'User not found', status: 404 });
@@ -149,7 +149,7 @@ router.post('/:channelID/queue', authMiddleware as any, async (req: AuthRequest,
         const channelID = String(req.params.channelID || '').trim();
         const requesterID = getRequesterID(req);
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
-        if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
+        if (!(await checkAccess(requesterID, channelID, 'clips:manage'))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
 
         const requestedVodId = String(req.body?.vodId || '').trim();
         if (requestedVodId && !/^\d{1,30}$/.test(requestedVodId)) {
@@ -229,7 +229,7 @@ router.post('/:channelID/:recommendationID/candidates/:candidateID/:action', aut
         const action = String(req.params.action || '').trim();
         const requesterID = getRequesterID(req);
         if (!requesterID) return res.status(401).json({ error: true, message: 'Authentication required', status: 401 });
-        if (!(await checkAccess(requesterID, channelID))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
+        if (!(await checkAccess(requesterID, channelID, 'clips:manage'))) return res.status(403).json({ error: true, message: 'Forbidden: access denied', status: 403 });
         if (!Types.ObjectId.isValid(recommendationID) || !Types.ObjectId.isValid(candidateID)) {
             return res.status(400).json({ error: true, message: 'Invalid recommendation or candidate ID', status: 400 });
         }

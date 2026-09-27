@@ -3,6 +3,7 @@ import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js"
 import { error as logError } from "../../utils/logger.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
 import { canModifyCreatorAdminAssignment, hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
+import { parseChannelAdminPermissions } from "../../middleware/channel_permissions.js";
 import { AdminSchema } from "../../schemas/admin.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { addAdminToRoleCache, removeAdminFromRoleCache } from "../../utils/permissions/roles.js";
@@ -418,6 +419,7 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
             const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
             const requesterID = req.user?.id;
             const { channelName, adminName } = req.body;
+            const permissions = parseChannelAdminPermissions(req.body?.permissions ?? ['*']);
 
             if (!requesterID) {
                 return res.status(401).json({
@@ -433,6 +435,10 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
                     message: 'Only the channel owner can add admins',
                     status: 403
                 });
+            }
+
+            if (!permissions) {
+                return res.status(400).json({ error: true, message: 'Invalid admin permissions', status: 400 });
             }
 
             if (!channelName || !adminName) {
@@ -505,7 +511,7 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
                 channelName,
                 adminID: twitchAccount.id,
                 adminName: twitchAccount.name,
-                permissions: ['*'],
+                permissions,
                 actived: true
             });
 
@@ -516,7 +522,7 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
                 adminID: twitchAccount.id,
                 adminName: twitchAccount.name,
                 channelName,
-                permissions: ['*'],
+                permissions,
                 actived: true
             });
 
@@ -544,6 +550,35 @@ router.post('/:channelID', authMiddleware as any, async (req: AdminRequest, res:
             });
         }
     });
+
+router.put('/:channelID/:adminID/permissions', authMiddleware as any, async (req: AdminRequest, res: Response) => {
+    try {
+        const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
+        const adminID = Array.isArray(req.params.adminID) ? req.params.adminID[0] : req.params.adminID;
+        const requesterID = req.user?.id;
+        if (!requesterID) return res.status(401).json({ error: true, message: 'Unauthorized', status: 401 });
+        if (!(await canManageChannelAsOwner(requesterID, channelID))) {
+            return res.status(403).json({ error: true, message: 'Only the channel owner can change admin permissions', status: 403 });
+        }
+        if (!canModifyCreatorAdminAssignment(requesterID, channelID, adminID)) {
+            return res.status(403).json({ error: true, message: 'Global admins cannot modify creator access for another channel', status: 403 });
+        }
+        const permissions = parseChannelAdminPermissions(req.body?.permissions);
+        if (!permissions) return res.status(400).json({ error: true, message: 'Invalid admin permissions', status: 400 });
+
+        const admin = await AdminSchema.findOne({ channelID, adminID });
+        if (!admin) return res.status(404).json({ error: true, message: 'Admin not found', status: 404 });
+        admin.permissions = permissions;
+        await admin.save();
+        const cacheClient = await getDragonflyClient();
+        await addAdminToRoleCache(cacheClient, channelID, admin);
+
+        return res.status(200).json({ error: false, message: 'Admin permissions updated', status: 200, data: { permissions } });
+    } catch (error) {
+        console.error('Error updating admin permissions:', error);
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
 
 router.delete('/:channelID/:adminID', authMiddleware as any, async (req: AdminRequest, res: Response) => {
         try {

@@ -370,7 +370,7 @@ const router = express.Router();
 router.get('/:channelID', authMiddleware as any, async (req: any, res: Response) => {
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
 
-        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'ai:view');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -420,7 +420,7 @@ router.put('/:channelID', authMiddleware as any, async (req: any, res: Response)
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
         const body = req.body as UpdatePersonalityRequest;
 
-        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'ai:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -567,7 +567,7 @@ router.post('/:channelID/known-users', authMiddleware as any, async (req: any, r
         const channelID = Array.isArray(req.params.channelID) ? req.params.channelID[0] : req.params.channelID;
         const body = req.body as AddKnownUserRequest;
 
-        const access = await getChannelAccessContext(req.user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext(req.user?.id, channelID, 'ai:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,

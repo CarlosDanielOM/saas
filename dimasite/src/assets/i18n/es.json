@@ -2358,6 +2358,29 @@
     },
     "admins": {
       "eyebrow": "Acceso admin",
+      "permissions": {
+        "kicker": "Permisos del canal",
+        "title": "Permisos del admin",
+        "description": "Elige acceso completo o selecciona lo que este admin puede ver y cambiar. Los controles de facturacion y cuenta exclusivos del propietario siguen con el streamer.",
+        "mode": "Modo de permisos",
+        "full": "Acceso completo",
+        "custom": "Acceso personalizado",
+        "view": "Ver",
+        "manage": "Gestionar",
+        "edit": "Editar permisos",
+        "save": "Guardar permisos",
+        "saving": "Guardando...",
+        "saved": "Permisos guardados",
+        "saveFailed": "No se pudieron guardar los permisos.",
+        "cancel": "Cancelar",
+        "dashboardRequired": "Se incluye acceso al dashboard para que este admin pueda abrir el espacio del canal.",
+        "categories": {
+          "dashboard": "Dashboard", "analytics": "Analiticas", "billing": "Uso y creditos de IA", "referrals": "Referidos", "summaries": "Resumenes de stream", "clips": "Recomendaciones de clips",
+          "commands": "Comandos y temporizadores", "triggers": "Triggers y medios", "settings": "Configuracion del bot y TTS",
+          "moderation": "Moderacion y defensa contra follows", "eventsubs": "Suscripciones de eventos", "rewards": "Recompensas y canjes",
+          "ai": "Personalidad de IA", "memories": "Memorias de IA", "dimafx": "DimaFX", "admins": "Lista de admins", "chat": "Rol admin en el chat"
+        }
+      },
       "subtitle": "Administra quien puede ayudar a gestionar este canal. Los admins actuales aparecen aqui y el owner puede agregar mas desde el directorio de usuarios registrados.",
       "ownerMode": "Controles de owner activos",
       "adminMode": "Vista admin de solo lectura",

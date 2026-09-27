@@ -32,7 +32,7 @@ router.get('/:channelID', authMiddleware as any, async (req: Request, res: Respo
     try {
         const channelID = getStringParam(req.params.channelID);
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'memories:view');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -103,7 +103,7 @@ router.get('/:channelID/:memoryId', authMiddleware as any, async (req: Request, 
     try {
         const channelID = getStringParam(req.params.channelID);
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'memories:view');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -157,7 +157,7 @@ router.patch('/:channelID/:memoryId', authMiddleware as any, async (req: Request
     try {
         const channelID = getStringParam(req.params.channelID);
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'memories:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -233,7 +233,7 @@ router.patch('/:channelID/:memoryId/status', authMiddleware as any, async (req: 
     try {
         const channelID = getStringParam(req.params.channelID);
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'memories:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,
@@ -307,7 +307,7 @@ router.delete('/:channelID/:memoryId', authMiddleware as any, async (req: Reques
     try {
         const channelID = getStringParam(req.params.channelID);
 
-        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'dashboard:view');
+        const access = await getChannelAccessContext((req as any).user?.id, channelID, 'memories:manage');
         if (!access.allowed) {
             return res.status(403).json({
                 error: true,

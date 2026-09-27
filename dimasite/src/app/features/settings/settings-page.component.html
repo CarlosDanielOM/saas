@@ -129,7 +129,7 @@
                           type="button"
                           class="lf-btn lf-btn--primary lf-btn--compact"
                           [disabled]="isAdding(candidate.id)"
-                          (click)="addAdmin(candidate)"
+                          (click)="openPermissionEditor(candidate)"
                         >
                           {{
                             isAdding(candidate.id)
@@ -157,6 +157,58 @@
         <p class="lf-note lf-note--pad">{{ t('settings.admins.search.ownerHint') }}</p>
       }
 
+      @if (editingCandidate() || editingAdmin()) {
+        <section class="lf-tile lf-permission-editor" [attr.aria-label]="t('settings.admins.permissions.title')">
+          <div class="lf-permission-editor__head">
+            <div>
+              <p class="lf-kicker">{{ t('settings.admins.permissions.kicker') }}</p>
+              <h3 class="lf-h2">{{ editingCandidate()?.display_name || editingAdmin()?.adminName }}</h3>
+              <p class="lf-copy lf-copy--tight">{{ t('settings.admins.permissions.description') }}</p>
+            </div>
+            <button type="button" class="lf-btn lf-btn--compact" (click)="closePermissionEditor()" [disabled]="savingPermissions()">
+              {{ t('settings.admins.permissions.cancel') }}
+            </button>
+          </div>
+          <div class="lf-permission-modes" role="group" [attr.aria-label]="t('settings.admins.permissions.mode')">
+            <button type="button" class="lf-btn" [class.lf-btn--primary]="fullAccess()" [attr.aria-pressed]="fullAccess()" (click)="fullAccess.set(true)">
+              {{ t('settings.admins.permissions.full') }}
+            </button>
+            <button type="button" class="lf-btn" [class.lf-btn--primary]="!fullAccess()" [attr.aria-pressed]="!fullAccess()" (click)="fullAccess.set(false)">
+              {{ t('settings.admins.permissions.custom') }}
+            </button>
+          </div>
+          @if (!fullAccess()) {
+            <p class="lf-note">{{ t('settings.admins.permissions.dashboardRequired') }}</p>
+            <div class="lf-permission-grid">
+              @for (group of permissionGroups; track group.key) {
+                <div class="lf-permission-row">
+                  <strong>{{ t('settings.admins.permissions.categories.' + group.key) }}</strong>
+                  <div class="lf-permission-row__checks">
+                    @if (group.view.length) {
+                      <label>
+                        <input type="checkbox" [checked]="isGranted(group, 'view')" [disabled]="group.key === 'dashboard'" (change)="onGrantChange($event, group, 'view')" />
+                        {{ t('settings.admins.permissions.view') }}
+                      </label>
+                    }
+                    @if (group.manage.length) {
+                      <label>
+                        <input type="checkbox" [checked]="isGranted(group, 'manage')" (change)="onGrantChange($event, group, 'manage')" />
+                        {{ t('settings.admins.permissions.manage') }}
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <div class="lf-actions">
+            <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions()" (click)="savePermissions()">
+              {{ savingPermissions() ? t('settings.admins.permissions.saving') : t('settings.admins.permissions.save') }}
+            </button>
+          </div>
+        </section>
+      }
+
       @if (loading() && !admins().length) {
         <div class="lf-tile lf-empty">{{ t('settings.admins.states.loadingAdmins') }}</div>
       } @else {
@@ -174,6 +226,7 @@
               </div>
 
               <div class="lf-list__actions">
+                <span class="lf-chip">{{ admin.permissions.includes('*') ? t('settings.admins.permissions.full') : t('settings.admins.permissions.custom') }}</span>
                 <span
                   class="lf-chip lf-chip--status"
                   [class.lf-chip--live]="admin.actived"
@@ -183,6 +236,9 @@
                 </span>
 
                 @if (isOwnerView()) {
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="openPermissionEditor(admin)">
+                    {{ t('settings.admins.permissions.edit') }}
+                  </button>
                   <button
                     type="button"
                     class="lf-btn lf-btn--danger lf-btn--compact"

@@ -57,7 +57,7 @@ async function hasDashboardCreditAccess(requesterID: string, channelID: string):
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'dashboard:view'] }
+        permissions: { $in: ['*', 'billing:view'] }
     }).lean();
 
     return Boolean(admin);

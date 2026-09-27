@@ -50,7 +50,7 @@ interface SpeechPostBody {
     };
 }
 
-type SettingsAccessRole = 'owner' | 'admin' | 'none';
+type SettingsAccessRole = 'owner' | 'manager' | 'admin' | 'none';
 
 function normalizeRouteParam(value: string | string[] | undefined): string {
     return Array.isArray(value) ? value[0] || '' : value || '';
@@ -84,7 +84,7 @@ async function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, pro
     return language === 'en' ? settings.voices.en : settings.voices.es;
 }
 
-async function getSettingsAccess(requesterID: string, channelID: string): Promise<SettingsAccessRole> {
+async function getSettingsAccess(requesterID: string, channelID: string, permission: 'settings:view' | 'settings:manage' = 'settings:view'): Promise<SettingsAccessRole> {
     if (requesterID === channelID) {
         return 'owner';
     }
@@ -97,10 +97,10 @@ async function getSettingsAccess(requesterID: string, channelID: string): Promis
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'settings:view'] }
+        permissions: { $in: ['*', permission] }
     }).lean();
 
-    return admin ? 'admin' : 'none';
+    return admin ? (admin.permissions.includes('*') || admin.permissions.includes('settings:manage') ? 'manager' : 'admin') : 'none';
 }
 
 router.get('/settings/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
@@ -191,11 +191,11 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
-        const role = await getSettingsAccess(requesterID, channelID);
-        if (role !== 'owner') {
+        const role = await getSettingsAccess(requesterID, channelID, 'settings:manage');
+        if (role === 'none') {
             return res.status(403).json({
                 error: true,
-                message: 'Only the channel owner can update TTS settings',
+                message: 'Settings Manage permission required to update TTS settings',
                 status: 403
             });
         }
@@ -238,7 +238,7 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
     }
 });
 
-// These routes share settings authorization; preview tickets are owner-only and single-use.
+// These routes share settings authorization; preview tickets are single-use.
 router.get('/voices/:channelID', authMiddleware as any, async (req: AuthRequest, res: Response) => {
     res.set('Cache-Control', 'no-store');
     try {
@@ -269,8 +269,8 @@ router.post('/favorites/:channelID', authMiddleware as any, async (req: AuthRequ
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
-            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can save voices' });
+        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to save voices' });
         }
         const id = req.body?.id;
         if (typeof id !== 'string' || !/^[a-f\d]{32}$/i.test(id)) {
@@ -289,8 +289,8 @@ router.patch('/favorites/:channelID/:voiceID', authMiddleware as any, async (req
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
-            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can rename favorite voices' });
+        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to rename favorite voices' });
         }
         const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
         if (!/^[a-f\d]{32}$/.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
@@ -307,8 +307,8 @@ router.delete('/favorites/:channelID/:voiceID', authMiddleware as any, async (re
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
-            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can remove voices' });
+        if (!req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to remove voices' });
         }
         const id = normalizeRouteParam(req.params.voiceID).toLowerCase();
         if (!/^[a-f\d]{32}$/i.test(id)) return res.status(400).json({ error: true, status: 400, message: 'Invalid voice ID' });
@@ -322,8 +322,8 @@ router.post('/preview-session/:channelID', authMiddleware as any, async (req: Au
     res.set('Cache-Control', 'no-store');
     try {
         const channelID = normalizeRouteParam(req.params.channelID);
-        if (!/^\d+$/.test(channelID) || !req.user || await getSettingsAccess(req.user.id, channelID) !== 'owner') {
-            return res.status(403).json({ error: true, status: 403, message: 'Only the channel owner can preview voices' });
+        if (!/^\d+$/.test(channelID) || !req.user || await getSettingsAccess(req.user.id, channelID, 'settings:manage') === 'none') {
+            return res.status(403).json({ error: true, status: 403, message: 'Settings Manage permission required to preview voices' });
         }
         const ticket = await createPreviewTicket(channelID);
         return res.json({ error: false, status: 200, data: { ticket } });

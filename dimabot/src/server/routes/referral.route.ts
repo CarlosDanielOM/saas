@@ -104,7 +104,7 @@ async function getReferralAccessContext(
         channelID,
         adminID: requesterID,
         actived: true,
-        permissions: { $in: ['*', 'dashboard:view'] }
+        permissions: { $in: ['*', 'referrals:view'] }
     }).lean();
 
     if (admin) {

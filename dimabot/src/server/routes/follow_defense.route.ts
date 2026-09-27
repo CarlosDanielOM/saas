@@ -90,10 +90,6 @@ function parseJson<T>(value: string | null): T | null {
     }
 }
 
-async function getAccessContext(requesterID: string, channelID: string): Promise<{ allowed: boolean; role: 'owner' | 'admin' | 'none' }> {
-    return getChannelAccessContext(requesterID, channelID, 'dashboard:view');
-}
-
 async function validateAccess(req: FollowDefenseRequest, res: Response, channelID: string): Promise<{ allowed: true; role: 'owner' | 'admin'; channelName: string } | null> {
     const requesterID = req.user?.id;
 
@@ -116,7 +112,7 @@ async function validateAccess(req: FollowDefenseRequest, res: Response, channelI
         return null;
     }
 
-    const access = await getAccessContext(requesterID, channelID);
+    const access = await getChannelAccessContext(requesterID, channelID, req.method === 'GET' ? 'moderation:view' : 'moderation:manage');
     if (!access.allowed) {
         res.status(403).json({
             error: true,

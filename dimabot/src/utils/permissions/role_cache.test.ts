@@ -66,8 +66,8 @@ test('populateAdminCache rebuilds canonical sets and detail hashes, clearing sta
         { adminID: 'admin-2', adminName: 'SecondAdmin', channelName: 'streamer', permissions: [], actived: false }
     ]);
 
-    assert.deepEqual(cache.members(adminsKey(CHANNEL)), ['firstadmin', 'secondadmin']);
-    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-1', 'admin-2']);
+    assert.deepEqual(cache.members(adminsKey(CHANNEL)), ['firstadmin']);
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-1']);
 
     const detail = await cache.hGetAll(adminDetailKey(CHANNEL, 'admin-1'));
     assert.equal(detail.adminID, 'admin-1');
@@ -98,6 +98,21 @@ test('addAdminToRoleCache updates the canonical sets and detail hash immediately
     const detail = await cache.hGetAll(adminDetailKey(CHANNEL, 'admin-9'));
     assert.equal(detail.adminName, 'newadmin');
     assert.equal(detail.actived, 'true');
+});
+
+test('view-only admins do not gain the chat admin tag, and permission changes revoke it', async () => {
+    const cache = new FakeRoleCache();
+    const admin = { adminID: 'admin-9', adminName: 'NewAdmin', channelName: 'streamer', actived: true };
+    await addAdminToRoleCache(cache, CHANNEL, { ...admin, permissions: ['*'] });
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-9']);
+
+    await addAdminToRoleCache(cache, CHANNEL, { ...admin, permissions: ['dashboard:view'] });
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), []);
+    assert.deepEqual(cache.members(adminsKey(CHANNEL)), []);
+    assert.equal((await cache.hGetAll(adminDetailKey(CHANNEL, 'admin-9'))).permissions, '["dashboard:view"]');
+
+    await addAdminToRoleCache(cache, CHANNEL, { ...admin, permissions: ['dashboard:view', 'chat:admin'] });
+    assert.deepEqual(cache.members(adminsIdsKey(CHANNEL)), ['admin-9']);
 });
 
 test('removeAdminFromRoleCache removes login, ID, and detail hash together', async () => {

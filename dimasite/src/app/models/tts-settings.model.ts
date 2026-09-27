@@ -1,6 +1,6 @@
 import { ApiEnvelope } from './admin.model';
 
-export type TtsRole = 'owner' | 'admin' | 'none';
+export type TtsRole = 'owner' | 'manager' | 'admin' | 'none';
 export type TtsProvider = 'piper' | 'fish';
 
 export const EXPRESSIVE_TTS_TAG_GROUPS = {

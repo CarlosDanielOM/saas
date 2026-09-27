@@ -194,7 +194,7 @@ async function getSettings(channelID: string, channelName: string): Promise<ICha
 router.get('/:channelID/settings', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
     try {
         const channelID = getParam(req.params.channelID);
-        const access = await validateAccess(req, res, channelID, 'dashboard:view');
+        const access = await validateAccess(req, res, channelID, 'moderation:view');
         if (!access) return;
 
         const settings = await getSettings(channelID, access.channelName);
@@ -323,7 +323,7 @@ router.get('/:channelID/variations/:jobID', authMiddleware as any, async (req: M
 router.get('/:channelID/logs', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
     try {
         const channelID = getParam(req.params.channelID);
-        const access = await validateAccess(req, res, channelID, 'dashboard:view');
+        const access = await validateAccess(req, res, channelID, 'moderation:view');
         if (!access) return;
 
         const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit) || 50)));
@@ -350,7 +350,7 @@ router.get('/:channelID/logs', authMiddleware as any, async (req: ModerationRequ
 router.get('/:channelID/decisions', authMiddleware as any, async (req: ModerationRequest, res: Response) => {
     try {
         const channelID = getParam(req.params.channelID);
-        if (!await validateAccess(req, res, channelID, 'dashboard:view')) return;
+        if (!await validateAccess(req, res, channelID, 'moderation:view')) return;
         const limit = Math.min(100, Math.max(1, Math.floor(Number(req.query.limit) || 20)));
         const skip = Math.min(100000, Math.max(0, Math.floor(Number(req.query.skip) || 0)));
         const filter = { channelID, createdAt: { $gte: new Date(Date.now() - MODERATION_VISIBLE_DAYS * 86400000) } };

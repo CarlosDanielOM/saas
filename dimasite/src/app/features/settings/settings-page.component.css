@@ -498,6 +498,74 @@
   font-weight: 600;
 }
 
+.lf-permission-editor {
+  margin: 0 0 0.85rem;
+}
+
+.lf-permission-editor__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.lf-permission-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1.1rem 0;
+}
+
+.lf-permission-grid {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.lf-permission-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--input-bg);
+}
+
+.lf-permission-row strong {
+  font-size: 0.9rem;
+}
+
+.lf-permission-row__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.lf-permission-row__checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  color: var(--fg);
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.lf-permission-row__checks input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+@media (min-width: 640px) {
+  .lf-permission-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
 @media (min-width: 640px) {
   .lf-main {
     padding: 1.25rem 1.25rem 2.5rem;
