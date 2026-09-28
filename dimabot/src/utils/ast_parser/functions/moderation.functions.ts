@@ -10,8 +10,9 @@ import { TemporaryModeratorSchema } from '../../../schemas/temporary_moderator.s
 import { getDragonflyClient } from '../../../utils/databases/dragonfly.database.js';
 import { grantPermit, parsePermitArgs, PERMIT_USAGE } from '../../../utils/moderation/permit.js';
 import { shouldRemoveModerator } from './moderation.helpers.js';
+import { TWITCH_BOT_ACCOUNT_ID } from '../../../utils/header.js';
 
-const BOT_ID = '698614112';
+const BOT_ID = TWITCH_BOT_ACCOUNT_ID;
 const MAX_TIMEOUT_SECONDS = 604800;
 const MAX_TEMP_ROLE_DAYS = 365;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -387,6 +388,28 @@ const banHandler: FunctionHandler = async (args, ctx) => {
     return result.error ? result.message : '';
 };
 
+const banSelfHandler: FunctionHandler = async (args, ctx) => {
+    // Only the live AI chat path supplies the verified EventSub chatter ID.
+    // Never accept a target name or an authored command as a substitute.
+    if (ctx.authorization?.origin !== 'llm' || ctx.enforceFunctionPermissions === false ||
+        !/^\d+$/.test(ctx.userId) || ctx.userId === ctx.broadcasterId || ctx.userId === BOT_ID ||
+        ctx.userLevel >= 7) {
+        return 'Error: self moderation requires a verified non-moderator chat message';
+    }
+    if (args.length > 1) return 'Usage: $(ban.self [seconds])';
+    const duration = parseTimeoutSeconds(args[0]);
+    if (Number.isNaN(duration)) return `Error: seconds must be an integer between 1 and ${MAX_TIMEOUT_SECONDS}`;
+
+    const result = await ModerationFunctions.ban(
+        ctx.broadcasterId,
+        ctx.userId,
+        BOT_ID,
+        duration,
+        'DimaBot AI channel rule violation'
+    );
+    return result.error ? `Error: ${result.message}` : '';
+};
+
 const banModHandler: FunctionHandler = async (args, ctx) => {
     const denied = denyIfBelowLevel('ban', ctx);
     if (denied) return denied;
@@ -673,6 +696,16 @@ export function registerModerationFunctions(): void {
         minUserLevel: 7,
         destructive: true,
         keywords: ['ban', 'timeout', 'temporal', 'banear', 'suspender', 'castigar', 'silenciar']
+    });
+    registerFunction('ban.self', banSelfHandler, {
+        description: 'AI chat only: bans or times out the verified chatter whose current message broke channel rules. Takes no username. Provide seconds for a timeout; omit for a permanent ban. Cannot affect anyone else.',
+        syntax: 'ban.self [seconds]',
+        category: 'moderation',
+        examples: ['ban.self 600', 'ban.self'],
+        minUserLevel: 1,
+        destructive: true,
+        surfaces: ['action'],
+        keywords: ['self moderation', 'timeout current chatter', 'ban current chatter', 'moderar usuario actual']
     });
     registerFunction('ban.mod', banModHandler, {
         description: 'Bans/times out a moderator: removes their mod status first, then applies the ban/timeout. With return_mod=true the mod status is restored after the timeout ends (requires a valid timeout). Seconds must be 1-604800. Level 8 applies to bot-driven (AST_PARSER) use; inside streamer-authored commands the command permission level controls who can trigger it.',

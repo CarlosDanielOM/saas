@@ -19,13 +19,14 @@ mock.module('../../functions/search/index.js', { namedExports: { searchCategorie
 const { isLive } = await import('../../functions/channels/is_live.channel.js');
 const { sendAnnouncement } = await import('../../functions/chats/announcement.chat.js');
 const { warnUser } = await import('../../functions/moderation/warn.moderation.js');
+const { ban } = await import('../../functions/moderation/ban.moderation.js');
 const { getTwitchUserByLogin } = await import('../../functions/users/get_user_by_login.users.js');
 const { getPrediction } = await import('../../functions/predictions/get.prediction.js');
 const { endPrediction } = await import('../../functions/predictions/end.prediction.js');
 const { getPoll } = await import('../../functions/polls/get.poll.js');
 mock.module('../../functions/channels/index.js', { namedExports: { isLive } });
 mock.module('../../functions/chats/index.js', { namedExports: { sendAnnouncement } });
-mock.module('../../functions/moderation/index.js', { namedExports: { warnUser } });
+mock.module('../../functions/moderation/index.js', { namedExports: { warnUser, ban } });
 mock.module('../../functions/users/index.js', { namedExports: { getTwitchUserByLogin } });
 mock.module('../../functions/predictions/index.js', { namedExports: { getPrediction, endPrediction, createPrediction: async () => ({}) } });
 mock.module('../../functions/polls/index.js', { namedExports: { getPoll, endPoll: async () => ({}), createPoll: async () => ({}) } });
@@ -56,6 +57,15 @@ async function run(source: string, level = 7, authored = false) {
     assert.equal(parsed.error, undefined);
     return (await evaluate(parsed.ast, createExecutionContext({ broadcasterId: 'channel-1',
         userLevel: level, enforceFunctionPermissions: !authored }))).value;
+}
+async function runSelf(source: string, overrides: Record<string, unknown> = {}) {
+    const parsed = parse(source);
+    assert.equal(parsed.error, undefined);
+    return (await evaluate(parsed.ast, createExecutionContext({
+        broadcasterId: '100', userId: '200', userLogin: 'viewer', userLevel: 1,
+        authorization: { origin: 'llm', identity: { level: 1, tags: [] } },
+        ...overrides
+    }))).value;
 }
 const prediction = (status: string) => ({ id: 'p1', title: 'Win?', status, outcomes: [{ id: 'yes', title: 'Yes' }, { id: 'no', title: 'No' }] });
 const poll = (status: string) => ({ id: 'poll1', title: 'Next game?', status, choices: [{ id: 'a', title: 'A', votes: 8 }, { id: 'b', title: 'B', votes: 3 }] });
@@ -125,6 +135,36 @@ test('warn rejects missing reasons and does not warn missing users', async () =>
     assert.equal(calls.length, 0);
     assert.match(String(await run('$(warn someuser No spoilers)')), /User not found/);
     assert.equal(calls.length, 1);
+});
+test('AI self moderation targets the verified chatter ID for timeout and ban', async () => {
+    setup(() => Response.json({ data: [{}] }));
+    assert.equal(await runSelf('$(ban.self 600)'), '');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url.pathname, '/helix/moderation/bans');
+    assert.equal(calls[0].url.searchParams.get('broadcaster_id'), '100');
+    assert.equal(calls[0].url.searchParams.get('moderator_id'), botId);
+    assert.deepEqual(calls[0].body, { data: { user_id: '200', duration: 600, reason: 'DimaBot AI channel rule violation' } });
+    assert.equal(await runSelf('$(ban.self)'), '');
+    assert.deepEqual(calls[1].body, { data: { user_id: '200', reason: 'DimaBot AI channel rule violation' } });
+});
+test('AI self moderation rejects missing identity, other targets, authored calls and bad durations', async () => {
+    setup(() => Response.json({ data: [{}] }));
+    assert.match(String(await runSelf('$(ban anotheruser 600)')), /permission denied/i);
+    for (const overrides of [
+        { userId: '' }, { userId: 'anotheruser' }, { userId: '100' },
+        { userId: botId }, { userLevel: 7 }, { authorization: { origin: 'chat' } },
+        { enforceFunctionPermissions: false }
+    ]) {
+        assert.match(String(await runSelf('$(ban.self 600)', overrides)), /self moderation requires/i);
+    }
+    for (const source of ['$(ban.self 0)', '$(ban.self 604801)', '$(ban.self abc)', '$(ban.self 600 otheruser)']) {
+        assert.match(String(await runSelf(source)), /Error:|Usage:/);
+    }
+    assert.equal(calls.length, 0);
+});
+test('AI self moderation surfaces Twitch failures', async () => {
+    setup(() => Response.json({ error: 'Forbidden', message: 'Fixture denied' }, { status: 403 }));
+    assert.match(String(await runSelf('$(ban.self 600)')), /^Error: Fixture denied$/);
 });
 test('moderator permission is checked before lookups or mutations, authored templates retain their outer gate', async () => {
     setup(() => new Response(null, { status: 204 }));

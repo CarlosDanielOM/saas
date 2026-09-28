@@ -28,6 +28,7 @@ export interface ASTParserToolContext {
     channelID: string;
     streamer: IStreamerData;
     username?: string;
+    userID?: string;
     tags?: Record<string, unknown>;
 }
 
@@ -127,7 +128,8 @@ export async function execute(
         // Build ExecutionContext for AST parser
         const execContext = {
             broadcasterId: channelID,
-            userId: context.username || 'AI',
+            userId: typeof context.userID === 'string' && context.userID === context.tags?.chatter_user_id
+                ? context.userID : '',
             userLogin: context.username || 'AI',
             userDisplayName: context.username || 'AI',
             userPlan: (streamerData?.plan_tier as 'free' | 'premium' | 'pro') || 'free',
@@ -166,7 +168,7 @@ export async function execute(
             // level - retrying with different syntax will never succeed, so
             // do not attach retry docs. The model should explain the refusal
             // to the user in its own personality instead.
-            if (isPermissionDenied(resultStr)) {
+            if (isPermissionDenied(resultStr) || /^\$?\(?ban\.self(?:\s|\))/i.test(command.trim())) {
                 return {
                     success: false,
                     error: resultStr

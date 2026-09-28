@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: e849a2896bd6
+# Catalog version: 653805480e15
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
