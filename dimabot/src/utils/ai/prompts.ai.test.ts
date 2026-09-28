@@ -49,3 +49,9 @@ test('configured personality is preserved as quoted text even with section delim
     assert.equal(JSON.parse(encoded).personality, personality);
     assert.doesNotMatch(encoded, /<identity>/);
 });
+
+test('chat replies rely on the Twitch reply target instead of tagging the current chatter', () => {
+    const messages = constructChatSystemMessages(null, null, { username: 'Alice' }, 'Hello');
+    assert.match(messages[0].content, /reply target identifies the chatter/i);
+    assert.doesNotMatch(messages[0].content, /tag @username/i);
+});

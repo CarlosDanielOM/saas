@@ -1,6 +1,17 @@
 const TWITCH_AI_RESPONSE_SPLIT_THRESHOLD = 500;
 const TWITCH_AI_RESPONSE_CHUNK_SIZE = 400;
 
+/** Remove the reply recipient's redundant tag without touching other chatters. */
+export function removeAiReplyRecipientTag(message: string, username: string): string {
+    if (!username) return message.trim();
+    const escapedUsername = username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const leadingMention = new RegExp(`^\\s*@${escapedUsername}(?=$|[\\s,:;.!?])(?:\\s*[:,;.!?])?\\s*`, 'i');
+    const recipientTag = new RegExp(`(^|[^\\p{L}\\p{N}_])@${escapedUsername}(?=$|[\\s,:;.!?])`, 'giu');
+    return message.replace(leadingMention, '')
+        .replace(recipientTag, (tag, prefix: string) => prefix + tag.slice(prefix.length + 1))
+        .trim();
+}
+
 /**
  * Splits long AI responses into Twitch-safe chat messages.
  *

@@ -40,7 +40,7 @@ import { recordStreamCommandEvent, recordStreamMessageEvent } from "../utils/str
 import { appendAssistantTurnToThread, resolveUserThreadForMessage } from "../utils/ai/threading/thread_router.js";
 import { endMessageHandlerMetric, recordRedisOpsEstimate, startMessageHandlerMetric } from "../utils/observability/bot_runtime_metrics.js";
 import { trackCommand } from "../utils/posthog_events.js";
-import { splitAiResponseForTwitch } from "../utils/twitch/chat_message_chunks.js";
+import { splitAiResponseForTwitch, removeAiReplyRecipientTag } from "../utils/twitch/chat_message_chunks.js";
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
 
 const modID = '698614112';
@@ -302,10 +302,14 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 });
                 
                 if (!aiResponse.error && aiResponse.message) {
-                    const aiResponseChunks = splitAiResponseForTwitch(aiResponse.message);
+                    const replyText = removeAiReplyRecipientTag(
+                        aiResponse.message,
+                        messageEventData.chatter_user_name || messageEventData.chatter_user_login || ''
+                    );
+                    const aiResponseChunks = splitAiResponseForTwitch(replyText);
                     const deliveryResults = [];
 
-                    // Reply-thread the first chunk to the user's mention so the
+                    // Reply-thread the first chunk to the user's message so the
                     // answer is visually tied to the right chatter in busy chats.
                     for (let chunkIndex = 0; chunkIndex < aiResponseChunks.length; chunkIndex++) {
                         const replyTo = chunkIndex === 0 ? messageEventData.message_id : null;
@@ -320,7 +324,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                             channelID,
                             chunks: aiResponseChunks.length,
                             failedChunks: deliveryResults.filter((result) => result.error).length,
-                            messageLength: Array.from(aiResponse.message).length
+                            messageLength: Array.from(replyText).length
                         }, { channelId: channelID, destination: 'both' });
                     }
 
@@ -328,7 +332,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                         void appendAssistantTurnToThread({
                             channelID,
                             threadID,
-                            message: aiResponse.message,
+                            message: replyText,
                             planTier,
                             sourceMessageId: messageEventData.message_id,
                             delivered
