@@ -105,6 +105,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   readonly canManage = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly pendingListInput = signal(false);
+  readonly mobileTab = signal<'status' | 'rules' | 'logs' | 'decisions'>('status');
+  private readonly ruleOpenState = signal<Record<string, boolean>>({});
 
   readonly logsPagination = signal<PaginationState>({ page: 1, limit: 10, total: 0 });
 
@@ -223,6 +225,27 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       { key: 'secondOffense', labelKey: 'moderation.rules.secondOffense', step: rule.secondOffense },
       { key: 'thirdOffense', labelKey: 'moderation.rules.thirdOffense', step: rule.thirdOffense }
     ];
+  }
+
+  ruleSummary(rule: ModerationRule): string {
+    return this.ladderRows(rule)
+      .map((row) => {
+        const label = this.actionLabel(row.step.action);
+        return row.step.action === 'timeout'
+          ? `${label} ${this.formatDuration(row.step.timeoutSeconds)}`
+          : label;
+      })
+      .join(' → ');
+  }
+
+  isRuleOpen(rule: ModerationRule, totalRules: number): boolean {
+    const overrides = this.ruleOpenState();
+    return rule.id in overrides ? overrides[rule.id] : totalRules === 1;
+  }
+
+  toggleRule(rule: ModerationRule, totalRules: number): void {
+    const next = !this.isRuleOpen(rule, totalRules);
+    this.ruleOpenState.update((state) => ({ ...state, [rule.id]: next }));
   }
 
   actionChipClass(action: ModerationAction): string {

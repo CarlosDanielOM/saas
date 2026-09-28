@@ -1078,6 +1078,13 @@
     "title": "Chat Moderation",
     "subtitle": "Stop spam, shouty messages, links, and words you do not want. You choose what happens the first time, the next time, and every time after that.",
     "backToModules": "Back to modules",
+    "tabs": {
+      "label": "Moderation sections",
+      "status": "Status",
+      "rules": "Rules",
+      "logs": "Recent Actions",
+      "decisions": "Decisions"
+    },
     "guide": {
       "label": "How a filter works",
       "on": "Turn the filter on. Nothing happens until you do.",

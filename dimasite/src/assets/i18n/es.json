@@ -1078,6 +1078,13 @@
     "title": "Moderación del Chat",
     "subtitle": "Frena el spam, los mensajes a gritos, los enlaces y las palabras que no quieres. Tú eliges qué pasa la primera vez, la siguiente y cada vez después.",
     "backToModules": "Volver a módulos",
+    "tabs": {
+      "label": "Secciones de moderación",
+      "status": "Estado",
+      "rules": "Reglas",
+      "logs": "Acciones recientes",
+      "decisions": "Decisiones"
+    },
     "guide": {
       "label": "Cómo funciona un filtro",
       "on": "Enciende el filtro. Hasta entonces no pasa nada.",

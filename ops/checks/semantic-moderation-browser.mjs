@@ -57,6 +57,8 @@ try {
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(`${base}/test/modules/moderation`);
         const feature = page.locator('app-moderation-page');
+        await feature.locator('.lf-tabs').waitFor({ state: 'visible', timeout: 20000 });
+        await feature.locator('.lf-tab', { hasText: language === 'es' ? 'Reglas' : 'Rules' }).click();
         const toggle = feature.getByRole('checkbox', { name: language === 'es' ? 'Revisar el contexto antes de actuar' : 'Review context before acting', exact: true });
         try { await toggle.waitFor({ state: 'attached', timeout: 15000 }); }
         catch (error) { console.log('DEBUG browser', page.url(), await page.locator('body').innerText(), errors); await page.screenshot({ path: `${artifacts}/failure.png`, fullPage: true }); throw error; }
@@ -88,6 +90,8 @@ try {
             await page.waitForFunction(() => !document.querySelector('.variation-progress'));
             assert.equal(saves.at(-1).rules[0].variations.overrides[0].source, 'f(?:u|a)ck');
             await page.reload();
+            await feature.locator('.lf-tabs').waitFor({ state: 'visible', timeout: 20000 });
+            await feature.locator('.lf-tab', { hasText: language === 'es' ? 'Reglas' : 'Rules' }).click();
             await feature.locator('.variation-mode').waitFor();
             await feature.locator('.manual-patterns summary').click();
             assert.equal(await generated.first().inputValue(), 'f(?:u|a)ck', 'edited common regex survives reload');
@@ -152,6 +156,8 @@ try {
             assert.equal(saves.at(-1).rules[0].semantic.onUncertain, 'allow_and_log');
             assert.equal(saves.at(-1).rules[0].semantic.thresholdPercent, 85.5);
             await page.reload();
+            await feature.locator('.lf-tabs').waitFor({ state: 'visible', timeout: 20000 });
+            await feature.locator('.lf-tab', { hasText: language === 'es' ? 'Reglas' : 'Rules' }).click();
             await threshold.waitFor();
             assert.equal(await threshold.inputValue(), '85.5', 'custom confidence survives reload');
             for (const value of ['0', '100']) {
@@ -169,8 +175,6 @@ try {
             await saveChanges();
             await page.waitForFunction(() => !document.querySelector('.variation-progress'));
         }
-        await feature.locator('.decision-message').waitFor();
-        assert.match(await feature.innerText(), /180/);
         for (const [width, height, theme] of [[320, 700, 'light'], [390, 844, 'dark'], [1280, 900, 'light']]) {
             await page.setViewportSize({ width, height });
             await page.evaluate(theme => { document.documentElement.classList.toggle('dark', theme === 'dark'); document.documentElement.setAttribute('data-theme', theme); }, theme);
@@ -178,6 +182,8 @@ try {
             await page.screenshot({ path: `${artifacts}/${tier}-${language}-${width}-${theme}.png`, fullPage: true });
             if (tier !== 'free') await feature.locator('.confidence-control').screenshot({ path: `${artifacts}/confidence-${tier}-${language}-${width}-${theme}.png` });
         }
+        await feature.locator('.lf-decision__message').first().waitFor();
+        assert.match(await feature.innerText(), /180/);
         const axe = await new AxeBuilder({ page }).include('app-moderation-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
         assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), [], 'moderation accessibility');
         assert.deepEqual(errors, [], 'browser runtime errors');
