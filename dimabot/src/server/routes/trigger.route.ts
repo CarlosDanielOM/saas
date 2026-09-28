@@ -20,6 +20,7 @@ import { error } from '../../utils/logger.js';
 import { cleanupRewardArtifacts, createRewardWithEventsub, patchTwitchReward } from '../services/reward_creation.service.js';
 import {
     buildMediaS3Key,
+    buildMediaAssetSearchPattern,
     buildMediaPlaybackUrl,
     buildStoredMediaFileName,
     getChannelQuotaUsageBytes,
@@ -312,7 +313,9 @@ router.get('/assets/public', authMiddleware as any, async (req: TriggerRequest, 
         const { id, q, mediaType, limit, skip } = req.query;
         const query: Record<string, unknown> = {
             scope: 'public',
-            marketplaceStatus: 'published',
+            // Older private-to-public promotions remained not_listed. Public
+            // visibility promises catalog access, while moderation states do not.
+            marketplaceStatus: { $in: ['published', 'not_listed'] },
             deletedAt: null
         };
 
@@ -325,20 +328,24 @@ router.get('/assets/public', authMiddleware as any, async (req: TriggerRequest, 
         }
 
         if (typeof q === 'string' && q.trim().length > 0) {
+            const searchPattern = buildMediaAssetSearchPattern(q);
             query.$or = [
-                { displayName: { $regex: q.trim(), $options: 'i' } },
-                { ownerChannelName: { $regex: q.trim(), $options: 'i' } }
+                { displayName: { $regex: searchPattern, $options: 'i' } },
+                { ownerChannelName: { $regex: searchPattern, $options: 'i' } }
             ];
         }
 
         const safeLimit = Math.min(Math.max(Number.parseInt(String(limit || '24'), 10) || 24, 1), 100);
         const safeSkip = Math.max(Number.parseInt(String(skip || '0'), 10) || 0, 0);
 
-        const assets = await MediaAssetSchema.find(query)
-            .sort({ createdAt: -1 })
-            .skip(safeSkip)
-            .limit(safeLimit)
-            .lean();
+        const [assets, total] = await Promise.all([
+            MediaAssetSchema.find(query)
+                .sort({ createdAt: -1, _id: -1 })
+                .skip(safeSkip)
+                .limit(safeLimit)
+                .lean(),
+            MediaAssetSchema.countDocuments(query)
+        ]);
 
         return res.status(200).json({
             error: false,
@@ -348,7 +355,7 @@ router.get('/assets/public', authMiddleware as any, async (req: TriggerRequest, 
                 ...asset,
                 playbackUrl: buildMediaPlaybackUrl(asset._id)
             })),
-            total: assets.length
+            total
         });
     } catch (err) {
         await error({
@@ -674,7 +681,7 @@ router.post('/library/:channelID/add-public/:assetID', authMiddleware as any, as
         const asset = await MediaAssetSchema.findOne({
             _id: assetIdStr,
             scope: 'public',
-            marketplaceStatus: 'published',
+            marketplaceStatus: { $in: ['published', 'not_listed'] },
             deletedAt: null
         });
         if (!asset) {
@@ -871,9 +878,7 @@ router.patch('/library/:channelID/:libraryItemID/scope', authMiddleware as any, 
 
         // Promote asset to public; user no longer owns it exclusively.
         asset.scope = 'public';
-        if (asset.marketplaceStatus === 'not_listed' || !asset.marketplaceStatus) {
-            asset.marketplaceStatus = 'not_listed';
-        }
+        asset.marketplaceStatus = 'published';
         await asset.save();
 
         // Update library item to reflect new scope and release quota charge.

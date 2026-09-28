@@ -130,6 +130,18 @@ export function getInitialMarketplaceStatus(scope: MediaAssetScope): MediaAssetM
     return scope === 'public' ? 'published' : 'not_listed';
 }
 
+export function buildMediaAssetSearchPattern(input: string): string {
+    const folded = input.trim().slice(0, 80).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const accentClasses: Record<string, string> = {
+        a: '[aáàâäãå]', e: '[eéèêë]', i: '[iíìîï]',
+        o: '[oóòôöõ]', u: '[uúùûü]', n: '[nñ]'
+    };
+
+    return folded.split(/[\s_]+/).filter(Boolean).map((word) =>
+        [...word].map((char) => accentClasses[char.toLowerCase()] || char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('')
+    ).join('[\\s_]+');
+}
+
 export async function getChannelQuotaUsageBytes(channelID: string): Promise<number> {
     const result = await UserMediaLibraryItemSchema.aggregate<{ total: number }>([
         {

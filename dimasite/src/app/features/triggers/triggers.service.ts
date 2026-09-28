@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { map, Observable, throwError } from 'rxjs';
+import { EMPTY, expand, map, Observable, reduce, throwError } from 'rxjs';
 
 import { LinksService } from '../../services/links.service';
 import {
@@ -78,9 +78,17 @@ export class TriggersService {
       params = params.set('mediaType', query.mediaType);
     }
 
-    return this.http
-      .get<ApiEnvelope<MediaAsset[]>>(`${this.linksService.getApiUrl()}/triggers/assets/public`, { params })
+    const pageSize = 100;
+    const getPage = (skip: number): Observable<MediaAsset[]> => this.http
+      .get<ApiEnvelope<MediaAsset[]>>(`${this.linksService.getApiUrl()}/triggers/assets/public`, {
+        params: params.set('limit', pageSize).set('skip', skip)
+      })
       .pipe(map((response) => (response.data || []).map((item) => this.normalizeAsset(item))));
+
+    return getPage(0).pipe(
+      expand((page, index) => page.length === pageSize ? getPage((index + 1) * pageSize) : EMPTY),
+      reduce((assets, page) => [...assets, ...page], [] as MediaAsset[])
+    );
   }
 
   uploadMedia(channelId: string, request: UploadMediaRequest): Observable<MediaLibraryItem> {
