@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule, X } from 'lucide-angular';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { ReferralCodeRecord, ReferralStatsData } from '../../models/referrals.model';
+import { ReferralCodeRecord, ReferralLedgerView, ReferralPerson, ReferralStatsData, ReferralTimelineEvent } from '../../models/referrals.model';
 import { LanguageService } from '../../services/language.service';
 import { ReferralsApiService } from '../../services/referrals-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -37,6 +37,9 @@ export class ReferralsPageComponent implements OnDestroy {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
+  });
+  private readonly dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
   });
   private readonly referralCodePattern = /^[a-z0-9_]{1,16}$/;
   private readonly streamerParam$ = this.route.paramMap.pipe(
@@ -105,6 +108,17 @@ export class ReferralsPageComponent implements OnDestroy {
     return 'free' as const;
   });
   readonly stats = signal<ReferralStatsData | null>(null);
+  readonly ledgerView = signal<ReferralLedgerView>('people');
+  readonly people = signal<ReferralPerson[]>([]);
+  readonly timeline = signal<ReferralTimelineEvent[]>([]);
+  readonly peoplePage = signal(-1);
+  readonly timelinePage = signal(-1);
+  readonly peopleHasMore = signal(false);
+  readonly timelineHasMore = signal(false);
+  readonly peopleLoading = signal(false);
+  readonly timelineLoading = signal(false);
+  readonly peopleError = signal<string | null>(null);
+  readonly timelineError = signal<string | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly draftCode = signal('');
@@ -142,6 +156,8 @@ export class ReferralsPageComponent implements OnDestroy {
   });
 
   private lastLoadedKey = '';
+  private statsRequestVersion = 0;
+  private ledgerRequestVersion = 0;
   private copiedResetHandle: number | null = null;
 
   constructor() {
@@ -149,10 +165,12 @@ export class ReferralsPageComponent implements OnDestroy {
       const resolution = this.channelResolution();
 
       if (resolution.status === 'idle') {
+        this.statsRequestVersion += 1;
         this.loading.set(false);
         this.stats.set(null);
         this.errorMessage.set(this.t('referrals.errors.channelNotResolved'));
         this.lastLoadedKey = '';
+        this.resetLedger();
         return;
       }
 
@@ -162,10 +180,12 @@ export class ReferralsPageComponent implements OnDestroy {
       }
 
       if (!resolution.channelID) {
+        this.statsRequestVersion += 1;
         this.loading.set(false);
         this.stats.set(null);
         this.errorMessage.set(this.t('referrals.errors.channelNotResolved'));
         this.lastLoadedKey = '';
+        this.resetLedger();
         return;
       }
 
@@ -355,6 +375,45 @@ export class ReferralsPageComponent implements OnDestroy {
     return this.dateFormatter.format(parsed);
   }
 
+  formatDateTime(value: string): string {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? this.t('common.notAvailable') : this.dateTimeFormatter.format(parsed);
+  }
+
+  tierLabel(tier: ReferralPerson['tier']): string {
+    return this.t(`referrals.plan.${tier}`);
+  }
+
+  selectLedgerView(view: ReferralLedgerView): void {
+    this.ledgerView.set(view);
+    const channelID = this.channelID();
+    if (!channelID) return;
+    if (view === 'people' && this.peoplePage() < 0 && !this.peopleLoading()) {
+      void this.loadPeople(channelID, 0);
+    }
+    if (view === 'timeline' && this.timelinePage() < 0 && !this.timelineLoading()) {
+      void this.loadTimeline(channelID, 0);
+    }
+  }
+
+  loadMoreLedger(): void {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    if (this.ledgerView() === 'people' && this.peopleHasMore()) {
+      void this.loadPeople(channelID, this.peoplePage() + 1);
+    }
+    if (this.ledgerView() === 'timeline' && this.timelineHasMore()) {
+      void this.loadTimeline(channelID, this.timelinePage() + 1);
+    }
+  }
+
+  retryLedger(): void {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    if (this.ledgerView() === 'people') void this.loadPeople(channelID, Math.max(0, this.peoplePage() + 1));
+    else void this.loadTimeline(channelID, Math.max(0, this.timelinePage() + 1));
+  }
+
   cardDisplayName(record: ReferralCodeRecord): string {
     return record.label.trim() || record.code.toUpperCase();
   }
@@ -400,6 +459,7 @@ export class ReferralsPageComponent implements OnDestroy {
   }
 
   private async loadStats(channelID: string): Promise<void> {
+    const version = ++this.statsRequestVersion;
     this.loading.set(true);
     this.errorMessage.set(null);
 
@@ -409,14 +469,79 @@ export class ReferralsPageComponent implements OnDestroy {
       if (response.error || !response.data) {
         throw new Error(response.message || this.t('referrals.errors.loadFailed'));
       }
+      if (version !== this.statsRequestVersion || channelID !== this.channelID()) return;
 
       this.stats.set(response.data);
       this.formError.set(null);
+      this.resetLedger();
+      if (this.ledgerView() === 'people') void this.loadPeople(channelID, 0);
+      else void this.loadTimeline(channelID, 0);
     } catch (error) {
+      if (version !== this.statsRequestVersion) return;
       this.stats.set(null);
       this.errorMessage.set(error instanceof Error ? error.message : this.t('referrals.errors.loadFailed'));
     } finally {
-      this.loading.set(false);
+      if (version === this.statsRequestVersion) this.loading.set(false);
+    }
+  }
+
+  private resetLedger(): void {
+    this.ledgerRequestVersion += 1;
+    this.people.set([]);
+    this.timeline.set([]);
+    this.peoplePage.set(-1);
+    this.timelinePage.set(-1);
+    this.peopleHasMore.set(false);
+    this.timelineHasMore.set(false);
+    this.peopleLoading.set(false);
+    this.timelineLoading.set(false);
+    this.peopleError.set(null);
+    this.timelineError.set(null);
+  }
+
+  private async loadPeople(channelID: string, page: number): Promise<void> {
+    if (this.peopleLoading()) return;
+    const version = this.ledgerRequestVersion;
+    this.peopleLoading.set(true);
+    this.peopleError.set(null);
+    try {
+      const response = await firstValueFrom(this.referralsApi.getPeople(channelID, page));
+      if (response.error || !response.data || response.data.view !== 'people') {
+        throw new Error(response.message || this.t('referrals.ledger.loadFailed'));
+      }
+      if (version !== this.ledgerRequestVersion) return;
+      this.people.update((items) => page === 0 ? response.data!.items : [...items, ...response.data!.items]);
+      this.peoplePage.set(response.data.page);
+      this.peopleHasMore.set(response.data.hasMore);
+    } catch (error) {
+      if (version === this.ledgerRequestVersion) {
+        this.peopleError.set(error instanceof Error ? error.message : this.t('referrals.ledger.loadFailed'));
+      }
+    } finally {
+      if (version === this.ledgerRequestVersion) this.peopleLoading.set(false);
+    }
+  }
+
+  private async loadTimeline(channelID: string, page: number): Promise<void> {
+    if (this.timelineLoading()) return;
+    const version = this.ledgerRequestVersion;
+    this.timelineLoading.set(true);
+    this.timelineError.set(null);
+    try {
+      const response = await firstValueFrom(this.referralsApi.getTimeline(channelID, page));
+      if (response.error || !response.data || response.data.view !== 'timeline') {
+        throw new Error(response.message || this.t('referrals.ledger.loadFailed'));
+      }
+      if (version !== this.ledgerRequestVersion) return;
+      this.timeline.update((items) => page === 0 ? response.data!.items : [...items, ...response.data!.items]);
+      this.timelinePage.set(response.data.page);
+      this.timelineHasMore.set(response.data.hasMore);
+    } catch (error) {
+      if (version === this.ledgerRequestVersion) {
+        this.timelineError.set(error instanceof Error ? error.message : this.t('referrals.ledger.loadFailed'));
+      }
+    } finally {
+      if (version === this.ledgerRequestVersion) this.timelineLoading.set(false);
     }
   }
 

@@ -5,6 +5,7 @@ import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.j
 import { AdminSchema } from '../../schemas/admin.schema.js';
 import UsersSchema, { type IUsers } from "../../schemas/users.schema.js";
 import { ReferralCodeSchema } from "../../schemas/referral_code.schema.js";
+import { getReferralPeoplePage, getReferralTimelinePage } from '../../utils/referral_ledger.js';
 import {
     createCampaignCode,
     getUserCodes,
@@ -169,6 +170,46 @@ router.get('/stats', authMiddleware as any, async (req: Request, res: Response) 
             });
         }
     });
+
+router.get('/ledger', authMiddleware as any, async (req: Request, res: Response) => {
+    const requesterID = getRequesterID(req);
+    const targetChannelID = getTargetChannelID(req);
+    const view = getSingleValue(req.query.view) || 'people';
+    const rawPage = getSingleValue(req.query.page);
+    const page = rawPage === '' ? 0 : Number(rawPage);
+    if ((view !== 'people' && view !== 'timeline') || !Number.isSafeInteger(page) || page < 0 || page > 100) {
+        return res.status(400).json({ error: true, message: 'Invalid referral ledger view or page', status: 400 });
+    }
+
+    try {
+        const accessContext = await getReferralAccessContext(requesterID, targetChannelID, 'view');
+        if (!accessContext.allowed) {
+            return res.status(403).json({
+                error: true, message: 'You do not have access to view referrals for this channel', status: 403
+            });
+        }
+        const user = targetChannelID === requesterID
+            ? await getAuthenticatedUser(req)
+            : await getUserByTwitchUserId(targetChannelID);
+        if (!user) {
+            return res.status(404).json({ error: true, message: 'User not found', status: 404 });
+        }
+
+        const result = view === 'people'
+            ? await getReferralPeoplePage(user._id, page)
+            : await getReferralTimelinePage(user._id, page);
+        return res.status(200).json({
+            error: false, message: 'Referral ledger fetched successfully', status: 200,
+            data: { view, ...result },
+        });
+    } catch (error) {
+        console.error('Error in GET /ledger:', {
+            channelID: targetChannelID,
+            error: error instanceof Error ? error.message : String(error),
+        });
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
 
 router.get('/codes', authMiddleware as any, async (req: Request, res: Response) => {
         try {

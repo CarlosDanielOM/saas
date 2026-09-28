@@ -38,3 +38,34 @@ export interface ReferralStatsData {
 
 export type ReferralStatsResponse = ApiEnvelope<ReferralStatsData>;
 export type ReferralCodeCreateResponse = ApiEnvelope<ReferralCodeRecord>;
+
+export type ReferralLedgerView = 'people' | 'timeline';
+
+export interface ReferralPerson {
+  id: string;
+  name: string;
+  code: string;
+  signedUpAt: string;
+  tier: 'free' | 'premium' | 'pro';
+  creditsEarned: number;
+}
+
+export interface ReferralTimelineEvent {
+  id: string;
+  kind: 'signup' | 'reward';
+  userId: string;
+  name: string;
+  code: string;
+  at: string;
+  credits: number;
+}
+
+export interface ReferralLedgerPage<T> {
+  view: ReferralLedgerView;
+  items: T[];
+  page: number;
+  hasMore: boolean;
+}
+
+export type ReferralPeopleResponse = ApiEnvelope<ReferralLedgerPage<ReferralPerson>>;
+export type ReferralTimelineResponse = ApiEnvelope<ReferralLedgerPage<ReferralTimelineEvent>>;

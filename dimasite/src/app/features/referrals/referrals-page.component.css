@@ -453,6 +453,161 @@
   font-weight: 500;
 }
 
+/* Referral people and reward history */
+.lf-ledger {
+  display: grid;
+  gap: 1rem;
+}
+
+.lf-ledger__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: var(--btn);
+}
+
+.lf-ledger__tab {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-ledger__tab--active {
+  background: var(--tile);
+  border-color: var(--line);
+  color: var(--fg);
+  box-shadow: 0 2px 8px rgba(15, 15, 20, 0.07);
+}
+
+.lf-ledger__tab:focus-visible,
+.lf-ledger__more:focus-visible,
+.lf-ledger__feedback .lf-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lf-ledger__panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.lf-ledger__status {
+  margin: 0;
+  padding: 1.75rem 0.5rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.lf-ledger__head { display: none; }
+.lf-ledger__people { display: grid; gap: 0.55rem; }
+
+.lf-ledger__person {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--fg) 2%, transparent);
+}
+
+.lf-ledger__identity {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.lf-ledger__identity strong {
+  overflow-wrap: anywhere;
+  font-size: 0.96rem;
+}
+
+.lf-ledger__identity span,
+.lf-ledger__event-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.lf-ledger__field { display: grid; align-content: start; gap: 0.25rem; min-width: 0; font-size: 0.86rem; }
+.lf-ledger__mobile-label { color: var(--muted); font-size: 0.72rem; font-weight: 650; }
+.lf-ledger__earned strong { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+.lf-ledger__tier {
+  width: fit-content;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  background: var(--btn);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.lf-ledger__tier[data-tier='premium'],
+.lf-ledger__tier[data-tier='pro'] { background: var(--gold-soft); color: var(--gold); }
+
+.lf-ledger__timeline {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.lf-ledger__event {
+  display: grid;
+  grid-template-columns: 0.85rem minmax(0, 1fr);
+  gap: 0.6rem;
+  position: relative;
+  padding: 0.35rem 0 1.2rem;
+}
+
+.lf-ledger__event:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: 1rem;
+  bottom: 0;
+  left: 0.36rem;
+  width: 1px;
+  background: var(--line);
+}
+
+.lf-ledger__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.22rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lf-ledger__event--reward .lf-ledger__dot { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.lf-ledger__event-body { display: grid; gap: 0.25rem; min-width: 0; }
+.lf-ledger__event-title { display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 0.87rem; }
+.lf-ledger__event-title strong { overflow-wrap: anywhere; }
+.lf-ledger__event-title span { color: var(--muted); }
+.lf-ledger__event-meta { display: flex; flex-wrap: wrap; column-gap: 0.6rem; row-gap: 0.2rem; }
+.lf-ledger__event-credit { grid-column: 2; width: fit-content; color: var(--gold); font-size: 0.8rem; font-weight: 750; }
+
+.lf-ledger__feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+
+.lf-ledger__more { justify-self: center; min-width: 9rem; }
+
 /* Create modal */
 .lf-modal-overlay {
   position: fixed;
@@ -637,4 +792,18 @@
   .lf-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .lf-ledger__tabs { width: fit-content; min-width: 21rem; }
+  .lf-ledger__head,
+  .lf-ledger__person {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.35fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+  }
+  .lf-ledger__head { padding: 0 0.9rem; color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+  .lf-ledger__identity { grid-column: auto; }
+  .lf-ledger__mobile-label { display: none; }
+  .lf-ledger__event { grid-template-columns: 0.85rem minmax(0, 1fr) auto; }
+  .lf-ledger__event-credit { grid-column: 3; }
 }

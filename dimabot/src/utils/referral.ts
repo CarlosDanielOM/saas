@@ -137,6 +137,18 @@ export interface ProcessBotSubscriptionRewardResult {
     externalReference: string;
 }
 
+export const COMPLETED_REFERRAL_REWARD_FILTER = [
+    { type: TRANSACTION_TYPES.REFERRAL_BONUS },
+    {
+        type: TRANSACTION_TYPES.SUBSCRIPTION_REWARD,
+        'metadata.rewardTargetType': 'referrer',
+        $or: [
+            { appliedAt: { $type: 'date' } },
+            { idempotencyKey: { $exists: false } }, // Legacy credited receipts.
+        ],
+    },
+];
+
 export async function processSubscriptionReward(
     payerPolarId: string,
     planId: string,
@@ -357,17 +369,6 @@ export async function getReferralStats(userId: Types.ObjectId): Promise<Referral
     const codeNames = codes.map(code => code.code);
     // Paid order receipts are created for every renewal. Group by the referred
     // account so that only its first completed purchase counts as a conversion.
-    const completedReferralReward = [
-        { type: TRANSACTION_TYPES.REFERRAL_BONUS },
-        {
-            type: TRANSACTION_TYPES.SUBSCRIPTION_REWARD,
-            'metadata.rewardTargetType': 'referrer',
-            $or: [
-                { appliedAt: { $type: 'date' } },
-                { idempotencyKey: { $exists: false } }, // Legacy credited receipts.
-            ],
-        },
-    ];
     const [signups, conversions, totalEarned] = await Promise.all([
         UsersSchema.aggregate([
             { $match: { referrerId: user._id, referralCodeUsed: { $in: codeNames } } },
@@ -379,7 +380,7 @@ export async function getReferralStats(userId: Types.ObjectId): Promise<Referral
                     user: user._id,
                     'metadata.referralCodeUsed': { $in: codeNames },
                     'metadata.referredUserId': { $type: 'objectId' },
-                    $or: completedReferralReward,
+                    $or: COMPLETED_REFERRAL_REWARD_FILTER,
                 },
             },
             {
@@ -393,7 +394,7 @@ export async function getReferralStats(userId: Types.ObjectId): Promise<Referral
             { $group: { _id: '$_id.code', total: { $sum: 1 } } },
         ]),
         CreditTransactionSchema.aggregate([
-            { $match: { user: user._id, $or: completedReferralReward } },
+            { $match: { user: user._id, $or: COMPLETED_REFERRAL_REWARD_FILTER } },
             { $group: { _id: null, total: { $sum: '$amount' } } },
         ]),
     ]);

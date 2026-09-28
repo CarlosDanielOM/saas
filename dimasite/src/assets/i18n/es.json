@@ -1573,6 +1573,29 @@
       "conversionHint": "Cada cuenta referida cuenta una vez cuando compra un plan por primera vez. Las renovaciones no suman conversiones.",
       "codesUsed": "Codigos usados"
     },
+    "ledger": {
+      "kicker": "Actividad de referidos",
+      "title": "Personas e historial",
+      "history": "Historial de recompensas",
+      "viewLabel": "Vista del registro de referidos",
+      "peopleTab": "Personas referidas",
+      "timelineTab": "Cronologia",
+      "peopleHint": "Las fechas de registro son las originales de cada cuenta. El plan actual puede incluir pruebas; los creditos ganados solo muestran recompensas completadas.",
+      "timelineHint": "Registros y creditos ganados por fecha. Una recompensa de renovacion no suma otra conversion de pago.",
+      "user": "Usuario",
+      "signedUp": "Registro",
+      "currentTier": "Plan actual",
+      "creditsEarned": "Creditos ganados",
+      "codeUsed": "Codigo",
+      "credits": "creditos",
+      "signupEvent": "se registro",
+      "rewardEvent": "genero una recompensa de referido",
+      "unknownUser": "Cuenta eliminada",
+      "emptyPeople": "Aun no hay personas referidas.",
+      "emptyTimeline": "Aun no hay actividad de referidos.",
+      "loadMore": "Cargar mas",
+      "loadFailed": "No pudimos cargar el historial de referidos en este momento."
+    },
     "readOnly": {
       "title": "Acceso solo lectura",
       "description": "Los admins pueden revisar el rendimiento de referidos aqui, pero solo el owner del canal puede crear o eliminar codigos."

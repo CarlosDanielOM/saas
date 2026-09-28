@@ -1573,6 +1573,29 @@
       "conversionHint": "Each referred account counts once when it first purchases a plan. Renewals do not add conversions.",
       "codesUsed": "Codes used"
     },
+    "ledger": {
+      "kicker": "Referral activity",
+      "title": "People & history",
+      "history": "Referral history",
+      "viewLabel": "Referral ledger view",
+      "peopleTab": "Referred people",
+      "timelineTab": "Timeline",
+      "peopleHint": "Signup dates are the original account dates. Current tiers can include trials; earned credits only reflect completed referral rewards.",
+      "timelineHint": "Signups and earned credit awards in date order. A renewal reward does not add another paid conversion.",
+      "user": "User",
+      "signedUp": "Signed up",
+      "currentTier": "Current tier",
+      "creditsEarned": "Credits earned",
+      "codeUsed": "Code",
+      "credits": "credits",
+      "signupEvent": "signed up",
+      "rewardEvent": "earned a referral reward",
+      "unknownUser": "Deleted account",
+      "emptyPeople": "No referred people yet.",
+      "emptyTimeline": "No referral activity yet.",
+      "loadMore": "Load more",
+      "loadFailed": "We could not load referral history right now."
+    },
     "readOnly": {
       "title": "View only access",
       "description": "Admins can inspect referral performance here, but only the channel owner can create or delete referral codes."

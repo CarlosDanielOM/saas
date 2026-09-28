@@ -170,6 +170,123 @@
         }
       </section>
 
+      <section class="lf-section" [attr.aria-label]="t('referrals.ledger.title')">
+        <div class="lf-section-head">
+          <div>
+            <p class="lf-kicker">{{ t('referrals.ledger.kicker') }}</p>
+            <h2 class="lf-h2">{{ t('referrals.ledger.title') }}</h2>
+          </div>
+          <span class="lf-chip">{{ t('referrals.ledger.history') }}</span>
+        </div>
+
+        <div class="lf-tile lf-ledger">
+          <div class="lf-ledger__tabs" role="group" [attr.aria-label]="t('referrals.ledger.viewLabel')">
+            <button type="button" class="lf-ledger__tab" [class.lf-ledger__tab--active]="ledgerView() === 'people'"
+              [attr.aria-pressed]="ledgerView() === 'people'" (click)="selectLedgerView('people')">
+              {{ t('referrals.ledger.peopleTab') }}
+            </button>
+            <button type="button" class="lf-ledger__tab" [class.lf-ledger__tab--active]="ledgerView() === 'timeline'"
+              [attr.aria-pressed]="ledgerView() === 'timeline'" (click)="selectLedgerView('timeline')">
+              {{ t('referrals.ledger.timelineTab') }}
+            </button>
+          </div>
+
+          @if (ledgerView() === 'people') {
+            <div class="lf-ledger__panel">
+              <p class="lf-note">{{ t('referrals.ledger.peopleHint') }}</p>
+              @if (people().length === 0 && peopleLoading()) {
+                <p class="lf-ledger__status" role="status">{{ t('common.loading') }}</p>
+              } @else if (people().length === 0 && !peopleError()) {
+                <p class="lf-ledger__status">{{ t('referrals.ledger.emptyPeople') }}</p>
+              }
+              @if (people().length > 0) {
+                <div class="lf-ledger__head" aria-hidden="true">
+                  <span>{{ t('referrals.ledger.user') }}</span>
+                  <span>{{ t('referrals.ledger.signedUp') }}</span>
+                  <span>{{ t('referrals.ledger.currentTier') }}</span>
+                  <span>{{ t('referrals.ledger.creditsEarned') }}</span>
+                </div>
+                <div class="lf-ledger__people">
+                  @for (person of people(); track person.id) {
+                    <article class="lf-ledger__person">
+                      <div class="lf-ledger__identity">
+                        <strong>{{ person.name }}</strong>
+                        <span>{{ t('referrals.ledger.codeUsed') }} · {{ person.code.toUpperCase() }}</span>
+                      </div>
+                      <div class="lf-ledger__field">
+                        <span class="lf-ledger__mobile-label">{{ t('referrals.ledger.signedUp') }}</span>
+                        <span>{{ formatDate(person.signedUpAt) }}</span>
+                      </div>
+                      <div class="lf-ledger__field">
+                        <span class="lf-ledger__mobile-label">{{ t('referrals.ledger.currentTier') }}</span>
+                        <span class="lf-ledger__tier" [attr.data-tier]="person.tier">{{ tierLabel(person.tier) }}</span>
+                      </div>
+                      <div class="lf-ledger__field lf-ledger__earned">
+                        <span class="lf-ledger__mobile-label">{{ t('referrals.ledger.creditsEarned') }}</span>
+                        <strong>{{ formatNumber(person.creditsEarned) }}</strong>
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
+              @if (peopleError()) {
+                <div class="lf-ledger__feedback" role="alert">
+                  <span>{{ peopleError() }}</span>
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="retryLedger()">{{ t('common.retry') }}</button>
+                </div>
+              }
+              @if (peopleHasMore()) {
+                <button type="button" class="lf-btn lf-ledger__more" [disabled]="peopleLoading()" (click)="loadMoreLedger()">
+                  {{ peopleLoading() ? t('common.loading') : t('referrals.ledger.loadMore') }}
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="lf-ledger__panel">
+              <p class="lf-note">{{ t('referrals.ledger.timelineHint') }}</p>
+              @if (timeline().length === 0 && timelineLoading()) {
+                <p class="lf-ledger__status" role="status">{{ t('common.loading') }}</p>
+              } @else if (timeline().length === 0 && !timelineError()) {
+                <p class="lf-ledger__status">{{ t('referrals.ledger.emptyTimeline') }}</p>
+              }
+              @if (timeline().length > 0) {
+                <ol class="lf-ledger__timeline">
+                  @for (event of timeline(); track event.id) {
+                    <li class="lf-ledger__event" [class.lf-ledger__event--reward]="event.kind === 'reward'">
+                      <span class="lf-ledger__dot" aria-hidden="true"></span>
+                      <div class="lf-ledger__event-body">
+                        <div class="lf-ledger__event-title">
+                          <strong>{{ event.name || t('referrals.ledger.unknownUser') }}</strong>
+                          <span>{{ event.kind === 'signup' ? t('referrals.ledger.signupEvent') : t('referrals.ledger.rewardEvent') }}</span>
+                        </div>
+                        <div class="lf-ledger__event-meta">
+                          <time [attr.datetime]="event.at">{{ formatDateTime(event.at) }}</time>
+                          @if (event.code) { <span>{{ t('referrals.ledger.codeUsed') }} · {{ event.code.toUpperCase() }}</span> }
+                        </div>
+                      </div>
+                      @if (event.kind === 'reward') {
+                        <span class="lf-ledger__event-credit">+{{ formatNumber(event.credits) }} {{ t('referrals.ledger.credits') }}</span>
+                      }
+                    </li>
+                  }
+                </ol>
+              }
+              @if (timelineError()) {
+                <div class="lf-ledger__feedback" role="alert">
+                  <span>{{ timelineError() }}</span>
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="retryLedger()">{{ t('common.retry') }}</button>
+                </div>
+              }
+              @if (timelineHasMore()) {
+                <button type="button" class="lf-btn lf-ledger__more" [disabled]="timelineLoading()" (click)="loadMoreLedger()">
+                  {{ timelineLoading() ? t('common.loading') : t('referrals.ledger.loadMore') }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
       @if (isOwnerView() && isCreateModalOpen()) {
         <div class="lf-modal-overlay" (click)="onCreateModalBackdropClick($event)">
           <div

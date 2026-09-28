@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 
-import { ReferralCodeCreateResponse, ReferralStatsResponse } from '../models/referrals.model';
+import { ReferralCodeCreateResponse, ReferralPeopleResponse, ReferralStatsResponse, ReferralTimelineResponse } from '../models/referrals.model';
 import { LinksService } from './links.service';
 
 @Injectable({
@@ -20,6 +20,18 @@ export class ReferralsApiService {
         `${this.linksService.getApiUrl()}/referrals/stats?channelID=${encodeURIComponent(normalizedChannelID)}`
       )
       .pipe(catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load referral stats'))));
+  }
+
+  getPeople(channelID: string, page: number) {
+    return this.http.get<ReferralPeopleResponse>(
+      `${this.linksService.getApiUrl()}/referrals/ledger?channelID=${encodeURIComponent(channelID.trim())}&view=people&page=${page}`
+    ).pipe(catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load referred users'))));
+  }
+
+  getTimeline(channelID: string, page: number) {
+    return this.http.get<ReferralTimelineResponse>(
+      `${this.linksService.getApiUrl()}/referrals/ledger?channelID=${encodeURIComponent(channelID.trim())}&view=timeline&page=${page}`
+    ).pipe(catchError((error) => throwError(() => this.toRequestError(error, 'Failed to load referral timeline'))));
   }
 
   createCode(channelID: string, request: { code: string; label?: string }) {
