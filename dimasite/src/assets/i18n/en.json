@@ -1561,7 +1561,9 @@
     "summary": {
       "currentBalance": "Current balance",
       "totalEarned": "Total earned",
-      "totalConversions": "Total conversions",
+      "totalSignups": "Referred signups",
+      "totalConversions": "Paid conversions",
+      "conversionHint": "Each referred account counts once when it first purchases a plan. Renewals do not add conversions.",
       "codesUsed": "Codes used"
     },
     "readOnly": {
@@ -1593,7 +1595,8 @@
       "countSuffix": "cards"
     },
     "card": {
-      "conversions": "Conversions",
+      "signups": "Signups",
+      "conversions": "Paid conversions",
       "created": "Created"
     },
     "empty": {

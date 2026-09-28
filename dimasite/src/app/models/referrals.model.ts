@@ -14,6 +14,7 @@ export interface ReferralCodeRecord {
   owner: string;
   label: string;
   stats: {
+    signups: number;
     conversions: number;
   };
   active: boolean;
@@ -27,6 +28,7 @@ export interface ReferralStatsData {
   codesUsed: number;
   codesRemaining: number;
   codes: ReferralCodeRecord[];
+  totalSignups: number;
   totalConversions: number;
   totalEarned: number;
   currentBalance: number;

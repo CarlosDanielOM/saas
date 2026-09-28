@@ -23,13 +23,15 @@ Los códigos inválidos y las solicitudes de validación fallidas no se asocian 
 
 ## Conversiones y recompensas
 
-El panel muestra los códigos activos, las conversiones, las ganancias totales por referidos, el saldo actual de tokens de la cuenta y el límite de códigos del plan del propietario. El saldo actual también puede incluir tokens obtenidos fuera del programa de referidos. Las conversiones y recompensas se procesan a partir de eventos de suscripción; un registro por sí solo no significa que se haya pagado una recompensa. El importe y el destinatario dependen del flujo de suscripción válido y del plan o la periodicidad; consulta el saldo y el historial de transacciones para ver el importe contabilizado.
+El módulo Referidos muestra los **registros referidos** y las **conversiones de pago** por separado, tanto en el resumen como en cada código activo. Un registro aparece cuando una cuenta nueva queda atribuida al código. Esa cuenta suma una sola conversión de pago después de su primera compra válida. Las renovaciones no suman conversiones, aunque cada pedido de pago válido puede seguir generando una recompensa. Los registros gratuitos no generan recompensas.
+
+El módulo también muestra las ganancias totales por referidos, el saldo actual de tokens de la cuenta y el límite de códigos del plan del propietario. El saldo actual puede incluir tokens obtenidos fuera del programa. El importe de la recompensa depende del plan comprado y de la periodicidad de pago; consulta el saldo y el historial de transacciones para ver el importe contabilizado.
 
 ## Solución de problemas
 
 - **El enlace indica que el código no es válido:** comprueba que esté bien escrito y que siga activo.
 - **El registro no quedó atribuido:** la persona debe cerrar sesión al abrir el enlace y crear una cuenta nueva con el flujo de registro de ese mismo navegador. Las cuentas existentes no pueden aplicar un código después.
 - **No puedo crear un código:** comprueba que estás viendo tu propio canal y que todavía tienes un espacio disponible. Solo el propietario del canal puede crear o eliminar códigos.
-- **Una conversión todavía no tiene una recompensa asociada:** las conversiones y los tokens dependen del procesamiento de suscripciones; un registro gratuito por sí solo no genera una recompensa.
+- **Un registro todavía no tiene una conversión de pago:** el registro gratuito se contabiliza, pero la conversión requiere el primer pedido de pago válido de esa cuenta. Las renovaciones no aumentan las conversiones.
 
 Consulta [Planes](/es/plans/) para ver los niveles de plan y [Módulos](/es/modules/) para obtener información sobre el acceso al panel.

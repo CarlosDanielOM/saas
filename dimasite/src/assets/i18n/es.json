@@ -1561,7 +1561,9 @@
     "summary": {
       "currentBalance": "Balance actual",
       "totalEarned": "Total ganado",
-      "totalConversions": "Conversiones totales",
+      "totalSignups": "Registros referidos",
+      "totalConversions": "Conversiones de pago",
+      "conversionHint": "Cada cuenta referida cuenta una vez cuando compra un plan por primera vez. Las renovaciones no suman conversiones.",
       "codesUsed": "Codigos usados"
     },
     "readOnly": {
@@ -1593,7 +1595,8 @@
       "countSuffix": "tarjetas"
     },
     "card": {
-      "conversions": "Conversiones",
+      "signups": "Registros",
+      "conversions": "Conversiones de pago",
       "created": "Creado"
     },
     "empty": {

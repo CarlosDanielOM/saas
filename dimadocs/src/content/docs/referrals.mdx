@@ -23,13 +23,15 @@ Invalid codes and failed validation requests are not attached to the account. A 
 
 ## Conversions and rewards
 
-The dashboard shows the active codes, conversions, total referral earnings, current account token balance, and the code allowance for the owner's plan. The current balance can include tokens earned outside the referral program. Conversion counts and rewards are processed by subscription events; a signup alone does not mean a reward has been paid. The reward amount and destination depend on the qualifying subscription flow and plan/cadence, so use the dashboard balance and transaction history for the posted amount.
+The Referrals module shows **referred signups** and **paid conversions** separately, both in the summary and on each active code. A signup appears when a new account is attributed to the code. That account becomes one paid conversion after its first qualifying paid purchase. Renewals do not add conversions, although each qualifying paid order can still earn a reward. Free signups do not earn a reward.
+
+The module also shows total referral earnings, the current account token balance, and the code allowance for the owner's plan. The current balance can include tokens earned outside the referral program. Reward amounts depend on the purchased plan and billing cadence, so use the balance and transaction history for the posted amount.
 
 ## Troubleshooting
 
 - **The link says invalid:** check spelling and make sure the code is still active.
 - **The signup was not attributed:** the recipient must be signed out when opening the link and must use that browser's signup flow to create a new account. Existing accounts cannot apply a code later.
 - **I cannot create a code:** check that you are viewing your own channel and still have a code slot. Only the channel owner can create or delete codes.
-- **A conversion has no matching reward yet:** conversion and token rewards are tied to subscription processing; a free signup alone does not pay a reward.
+- **A signup has no paid conversion yet:** a free signup is tracked, but a paid conversion needs that account's first qualifying paid order. Renewals do not increase the conversion count.
 
 See [Plans](/plans/) for plan tiers and [Modules](/modules/) for dashboard access information.

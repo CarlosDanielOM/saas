@@ -43,10 +43,15 @@
               <span class="lf-metric__label">{{ t('referrals.summary.totalEarned') }}</span>
             </div>
             <div class="lf-metric">
+              <span class="lf-metric__value">{{ formatNumber(s.totalSignups) }}</span>
+              <span class="lf-metric__label">{{ t('referrals.summary.totalSignups') }}</span>
+            </div>
+            <div class="lf-metric">
               <span class="lf-metric__value">{{ formatNumber(s.totalConversions) }}</span>
               <span class="lf-metric__label">{{ t('referrals.summary.totalConversions') }}</span>
             </div>
           </div>
+          <p class="lf-note">{{ t('referrals.summary.conversionHint') }}</p>
         }
       </article>
     </section>
@@ -99,10 +104,16 @@
               <article class="lf-tile lf-card" [style.--card-hue]="cardHue(code)">
                 <div class="lf-card__top">
                   <p class="lf-card__label" [title]="cardDisplayName(code)">{{ cardDisplayName(code) }}</p>
-                  <span class="lf-card__badge">
-                    <strong>{{ formatNumber(code.stats.conversions) }}</strong>
-                    {{ t('referrals.card.conversions') }}
-                  </span>
+                  <div class="lf-card__stats">
+                    <span class="lf-card__badge">
+                      <strong>{{ formatNumber(code.stats.signups) }}</strong>
+                      {{ t('referrals.card.signups') }}
+                    </span>
+                    <span class="lf-card__badge">
+                      <strong>{{ formatNumber(code.stats.conversions) }}</strong>
+                      {{ t('referrals.card.conversions') }}
+                    </span>
+                  </div>
                 </div>
 
                 <button

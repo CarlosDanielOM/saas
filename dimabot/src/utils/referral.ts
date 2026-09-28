@@ -335,7 +335,8 @@ export interface ReferralStats {
     codeLimit: number;
     codesUsed: number;
     codesRemaining: number;
-    codes: IReferralCode[];
+    codes: (IReferralCode & { stats: IReferralCode['stats'] & { signups: number } })[];
+    totalSignups: number;
     totalConversions: number;
     totalEarned: number;
     currentBalance: number;
@@ -350,27 +351,71 @@ export async function getReferralStats(userId: Types.ObjectId): Promise<Referral
     const planType = getUserPlanType(user);
     const limit = REFERRAL_CODE_LIMITS[planType];
 
-    const [codes, totalConversions, totalEarned] = await Promise.all([
-        ReferralCodeSchema.find({ owner: userId, active: true })
-            .sort({ createdAt: -1 })
-            .lean(),
-        ReferralCodeSchema.aggregate([
-            { $match: { owner: user._id, active: true } },
-            { $group: { _id: null, total: { $sum: '$stats.conversions' } } }
+    const codes = await ReferralCodeSchema.find({ owner: userId, active: true })
+        .sort({ createdAt: -1 })
+        .lean();
+    const codeNames = codes.map(code => code.code);
+    // Paid order receipts are created for every renewal. Group by the referred
+    // account so that only its first completed purchase counts as a conversion.
+    const completedReferralReward = [
+        { type: TRANSACTION_TYPES.REFERRAL_BONUS },
+        {
+            type: TRANSACTION_TYPES.SUBSCRIPTION_REWARD,
+            'metadata.rewardTargetType': 'referrer',
+            $or: [
+                { appliedAt: { $type: 'date' } },
+                { idempotencyKey: { $exists: false } }, // Legacy credited receipts.
+            ],
+        },
+    ];
+    const [signups, conversions, totalEarned] = await Promise.all([
+        UsersSchema.aggregate([
+            { $match: { referrerId: user._id, referralCodeUsed: { $in: codeNames } } },
+            { $group: { _id: '$referralCodeUsed', total: { $sum: 1 } } },
         ]),
         CreditTransactionSchema.aggregate([
-            { $match: { user: user._id, type: TRANSACTION_TYPES.REFERRAL_BONUS } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
-        ])
+            {
+                $match: {
+                    user: user._id,
+                    'metadata.referralCodeUsed': { $in: codeNames },
+                    'metadata.referredUserId': { $type: 'objectId' },
+                    $or: completedReferralReward,
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        code: '$metadata.referralCodeUsed',
+                        referredUserId: '$metadata.referredUserId',
+                    },
+                },
+            },
+            { $group: { _id: '$_id.code', total: { $sum: 1 } } },
+        ]),
+        CreditTransactionSchema.aggregate([
+            { $match: { user: user._id, $or: completedReferralReward } },
+            { $group: { _id: null, total: { $sum: '$amount' } } },
+        ]),
     ]);
+    const signupCounts = new Map(signups.map(row => [row._id as string, row.total as number]));
+    const conversionCounts = new Map(conversions.map(row => [row._id as string, row.total as number]));
+    const codeStats = codes.map(code => ({
+        ...code,
+        stats: {
+            ...code.stats,
+            signups: signupCounts.get(code.code) ?? 0,
+            conversions: conversionCounts.get(code.code) ?? 0,
+        },
+    }));
 
     return {
         planType,
         codeLimit: limit,
-        codesUsed: codes.length,
-        codesRemaining: limit - codes.length,
-        codes,
-        totalConversions: totalConversions[0]?.total || 0,
+        codesUsed: codeStats.length,
+        codesRemaining: limit - codeStats.length,
+        codes: codeStats,
+        totalSignups: codeStats.reduce((total, code) => total + code.stats.signups, 0),
+        totalConversions: codeStats.reduce((total, code) => total + code.stats.conversions, 0),
         totalEarned: totalEarned[0]?.total || 0,
         currentBalance: user.token_balance || 0
     };
