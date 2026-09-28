@@ -15,6 +15,7 @@ export interface PolarBillingPayload extends Record<string, unknown> {
     subscriptionId?: string;
     productId?: string;
     paid?: boolean;
+    totalAmount?: number;
     status?: string;
     cadence?: 'monthly' | 'yearly';
     periodEnd?: string | null;
@@ -94,6 +95,12 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
             type = 'billing.order.paid';
             billing.orderId = resourceId;
             billing.paid = true;
+            if (data.totalAmount !== undefined) {
+                if (!Number.isSafeInteger(data.totalAmount) || (data.totalAmount as number) < 0) {
+                    throw new DomainEventContractError('Polar order.paid requires a nonnegative totalAmount in cents');
+                }
+                billing.totalAmount = data.totalAmount as number;
+            }
             const productId = optionalString(data.productId, 'productId');
             const subscriptionId = optionalString(data.subscriptionId, 'subscriptionId');
             if (productId !== undefined) billing.productId = productId;

@@ -13,7 +13,7 @@ const periodEnd = new Date('2027-09-04T10:00:00Z');
 const externalId = '0123456789abcdef01234567';
 const order = {
     id: 'order-1', customerId: 'customer-1', productId: 'product-1',
-    subscriptionId: 'subscription-1', paid: true, status: 'paid'
+    subscriptionId: 'subscription-1', paid: true, status: 'paid', totalAmount: 600
 } satisfies Partial<Order>;
 const subscription = {
     id: 'subscription-1', customerId: 'customer-1', productId: 'product-1',
@@ -40,7 +40,7 @@ test('normalizes SDK camelCase paid order and nested Date without retaining PII 
         occurredAt: timestamp,
         payload: {
             customerId: 'customer-1', orderId: 'order-1', productId: 'product-1', subscriptionId: 'subscription-1',
-            paid: true, status: 'paid', cadence: 'yearly', periodEnd: periodEnd.toISOString()
+            paid: true, status: 'paid', totalAmount: 600, cadence: 'yearly', periodEnd: periodEnd.toISOString()
         },
         metadata: { originalEventType: 'order.paid', externalCustomerId: externalId }
     });
@@ -54,8 +54,21 @@ test('one-time orders omit absent subscription, product, and cadence instead of 
         ...order, subscriptionId: null, productId: null, subscription: null,
         product: { name: 'Yearly Pro' }, metadata: { twitch_id: 'twitch-1' }
     }));
-    assert.deepEqual(event.payload, { customerId: 'customer-1', orderId: 'order-1', paid: true, status: 'paid' });
+    assert.deepEqual(event.payload, { customerId: 'customer-1', orderId: 'order-1', paid: true, status: 'paid', totalAmount: 600 });
     assert.deepEqual(event.metadata, { originalEventType: 'order.paid' });
+});
+
+test('retains zero-dollar trial amount for reward eligibility', () => {
+    const event = normalizePolarDomainEvent(input('order.paid', { ...order, totalAmount: 0, subscription }));
+    assert.equal(event.payload.totalAmount, 0);
+});
+
+test('rejects malformed paid order amounts instead of treating them as charges', () => {
+    for (const totalAmount of [-1, 1.5, '600', NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+        assert.throws(() => normalizePolarDomainEvent(input('order.paid', {
+            ...order, totalAmount, subscription,
+        })), /totalAmount/);
+    }
 });
 
 test('retains the shipped legacy Twitch ownership hint without using it as an internal owner or channel', () => {

@@ -285,6 +285,9 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
     if (payload.cadence !== undefined) requireContract(payload.cadence === 'monthly' || payload.cadence === 'yearly', 'payload.cadence is invalid');
     if (payload.periodEnd !== undefined && payload.periodEnd !== null) date(payload.periodEnd, 'payload.periodEnd');
     if (payload.paid !== undefined) requireContract(typeof payload.paid === 'boolean', 'payload.paid must be boolean');
+    if (payload.totalAmount !== undefined) requireContract(typeof payload.totalAmount === 'number'
+        && Number.isSafeInteger(payload.totalAmount) && payload.totalAmount >= 0,
+    'payload.totalAmount must be nonnegative cents');
     if (original === 'order.paid') {
         text(payload.orderId, 'payload.orderId');
         text(payload.status, 'payload.status');

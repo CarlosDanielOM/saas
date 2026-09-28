@@ -29,7 +29,7 @@ function event(type: string, payload: Partial<PolarBillingPayload> = {}): Domain
         payload: {
             customerId: 'polar-customer', productId: PRODUCT_IDS.PREMIUM,
             orderId: 'order-1', subscriptionId: 'subscription-1', paid: true,
-            cadence: 'monthly', status: 'paid', periodEnd: '2026-10-04T10:00:00Z', meters,
+            totalAmount: 600, cadence: 'monthly', status: 'paid', periodEnd: '2026-10-04T10:00:00Z', meters,
             ...payload,
         },
     };
@@ -322,6 +322,19 @@ test('subscription status updates and other provider events never trigger reward
         for (const status of ['active', 'paid', 'canceled', 'past_due', 'unpaid', 'revoked']) {
             await applyPolarRewardDomainEvent(event(type, { status }), f.deps);
         }
+    }
+    f.assertNoEffects();
+});
+
+test('zero-dollar trials and one-time orders do not earn referral rewards', async t => {
+    const f = fixture(t);
+    for (const payload of [
+        { totalAmount: 0 },
+        { totalAmount: undefined },
+        { subscriptionId: undefined },
+        { subscriptionId: undefined, totalAmount: 600 },
+    ]) {
+        await applyPolarRewardDomainEvent(event('billing.order.paid', payload), f.deps);
     }
     f.assertNoEffects();
 });

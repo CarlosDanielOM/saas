@@ -277,6 +277,7 @@ test('malformed retained flat Polar contracts cannot reach billing through casts
     for (const mutate of [
         (input: JournalDomainEventInput) => { input.payload.customerId = 'other'; },
         (input: JournalDomainEventInput) => { input.payload.paid = 'true'; },
+        (input: JournalDomainEventInput) => { input.payload.totalAmount = -1; },
         (input: JournalDomainEventInput) => { delete input.payload.orderId; },
         (input: JournalDomainEventInput) => { input.payload.status = {}; },
         (input: JournalDomainEventInput) => { input.payload.periodEnd = '2026-02-30T12:00:00Z'; },

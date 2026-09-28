@@ -133,6 +133,9 @@ export async function applyPolarRewardDomainEvent(
     if (event.source !== 'polar-webhook' || event.type !== 'billing.order.paid') return;
     const payload = event.payload as PolarBillingPayload;
     if (payload.paid !== true || !payload.orderId) throw new Error('Polar rewards require a confirmed paid order');
+    // Polar also emits order.paid for $0 trial starts. One-time orders have no subscription.
+    // Older journal rows without an amount must fail closed on reward replay.
+    if (!payload.subscriptionId || !payload.totalAmount || payload.totalAmount <= 0) return;
     if (payload.productId !== PRODUCT_IDS.PREMIUM && payload.productId !== PRODUCT_IDS.PRO) return;
     if (!payload.cadence) throw new Error('Polar paid order is missing its billing cadence');
     const deps = { ...dependencies, ...injected };
