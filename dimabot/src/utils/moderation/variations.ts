@@ -4,7 +4,7 @@ import { escapeRegExp, foldText } from './normalize.js';
 import { findBlacklistMatches, type ModerationPattern } from './advanced.js';
 
 export type VariationMode = 'off' | 'common' | 'broad';
-export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string; allowSpaces?: boolean }
+export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string; allowSpaces?: boolean; symbolVersion?: string }
 export interface VariationOverride { term: string; source: string }
 export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[]; overrides?: VariationOverride[]; allowSpaces?: boolean }
 const MAX_VARIATION_SOURCE = 16000;
@@ -69,15 +69,44 @@ function stretched(text: string): string {
         return character === ' ' ? '\\s+' : escapeRegExp(character);
     }).join('');
 }
-/** Compile trusted literal spellings, never rewrite a user-authored expression.
- * Keep required phrase spaces and original message offsets. Spaces, tabs and
- * line breaks are accepted between characters.
- */
-export function withVariationSpacing(entry: GeneratedVariation, allowSpaces = false): GeneratedVariation {
-    if ((entry.allowSpaces ?? false) === allowSpaces) return entry;
+// Muse chooses close spellings; these bounded classes compose predictable
+// symbol evasions without requiring the model to enumerate every combination.
+const SYMBOL_VERSION = 'symbol-families-v1';
+const SYMBOLS: Record<string, string> = {
+    a: '[a4@]', b: '[b8]', e: '[e3]', g: '[g9]', i: '[i1!¡|]',
+    l: '[l1!¡|]', o: '[o0]', s: '[s5$]', t: '[t7+]', z: '[z2]'
+};
+function symbolPattern(text: string, allowSpaces: boolean): string {
+    let prior = '';
+    const tokens = Array.from(text).flatMap(character => {
+        if (/\p{L}/u.test(character)) {
+            if (character === prior) return [];
+            prior = character;
+            return [{ source: SYMBOLS[character] ?? escapeRegExp(character), repeat: true }];
+        }
+        prior = '';
+        return [{ source: character === ' ' ? '\\s+' : escapeRegExp(character), repeat: false }];
+    });
+    return tokens.map(({ source, repeat }, index) => {
+        if (!allowSpaces) return source + (repeat ? '+' : '');
+        if (!index) return repeat ? `${source}(?:\\s*${source})*` : source;
+        // Put spacing inside the repetition so mixed repeated symbols can be
+        // separated too, without consuming leading/trailing message whitespace.
+        return repeat ? `(?:\\s*${source})+` : `\\s*${source}`;
+    }).join('');
+}
+const compiledVariations = new Map<string, GeneratedVariation>();
+/** Recompile trusted spellings for the selected mode; never rewrite overrides. */
+export function withVariationSpacing(entry: GeneratedVariation, allowSpaces = false, mode: VariationMode = 'common'): GeneratedVariation {
+    const symbols = mode === 'broad' && Array.from(entry.term).length >= 3;
+    if ((entry.allowSpaces ?? false) === allowSpaces && (entry.symbolVersion === SYMBOL_VERSION) === symbols) return entry;
+    const key = JSON.stringify([entry, allowSpaces, symbols]);
+    const cached = compiledVariations.get(key);
+    if (cached) return cached;
     const gap = '\\s*';
     const short = Array.from(entry.term).length < 3;
     const sources = [...new Set(entry.spellings.map(text => {
+        if (symbols) return symbolPattern(text, allowSpaces);
         if (!allowSpaces) return short ? escapeRegExp(text) : stretched(text);
         let prior = '';
         return Array.from(text).flatMap(character => {
@@ -92,9 +121,17 @@ export function withVariationSpacing(entry: GeneratedVariation, allowSpaces = fa
         }).join(gap);
     }))];
     const source = `(?:${sources.join('|')})`;
-    // Spaced expressions need more room than their compact originals.
     if (source.length > MAX_VARIATION_SOURCE) throw new Error('Generated pattern is too long');
-    return { ...entry, allowSpaces, pattern: { ...entry.pattern, source } };
+    const result = { ...entry, allowSpaces, symbolVersion: symbols ? SYMBOL_VERSION : undefined, pattern: { ...entry.pattern, source } };
+    if (compiledVariations.size >= 1000) compiledVariations.delete(compiledVariations.keys().next().value!);
+    compiledVariations.set(key, result);
+    return result;
+}
+/** Resolve legacy artifacts on read, keeping UI, live matching and audits aligned. */
+export function compileRuleVariations<T extends { variations?: ModerationVariations }>(rule: T): T {
+    const variations = rule.variations;
+    if (!variations || variations.mode === 'off') return rule;
+    return { ...rule, variations: { ...variations, entries: variations.entries.map(entry => withVariationSpacing(entry, variations.allowSpaces, variations.mode)) } };
 }
 /** AI provides bounded literal spellings; only this compiler emits regex syntax. */
 export function buildVariation(term: string, suggestions: unknown = []): GeneratedVariation {
@@ -122,12 +159,12 @@ export function rulePatterns(rule: { patterns?: ModerationPattern[]; variations?
     // One compiled alternation per rule avoids compiling 200 Unicode boundary
     // expressions on the chat loop's first message after a settings change.
     const overrides = new Map(rule.variations?.overrides?.map(item => [item.term, item.source]));
-    const source = `(?:${entries.map(entry => `(?:${overrides.get(entry.term) ?? withVariationSpacing(entry, rule.variations?.allowSpaces).pattern.source})`).join('|')})`;
+    const source = `(?:${entries.map(entry => `(?:${overrides.get(entry.term) ?? withVariationSpacing(entry, rule.variations?.allowSpaces, rule.variations?.mode).pattern.source})`).join('|')})`;
     const id = 'auto-all-' + createHash('sha256').update(source).digest('hex').slice(0, 24);
     return [...(rule.patterns || []), { id, source, boundary: 'whole_word', ignoreCase: true }];
 }
-export function validateVariations(entries: GeneratedVariation[], allowSpaces = false): void {
-    if (entries.length && !findBlacklistMatches(entries.map(entry => entry.term).join(' '), [], rulePatterns({ variations: { mode: 'common', entries, allowSpaces } })).length) throw new Error('Generated pattern failed validation');
+export function validateVariations(entries: GeneratedVariation[], allowSpaces = false, mode: VariationMode = 'common'): void {
+    if (entries.length && !findBlacklistMatches(entries.map(entry => entry.term).join(' '), [], rulePatterns({ variations: { mode, entries, allowSpaces } })).length) throw new Error('Generated pattern failed validation');
 }
 
 export function museVariationRequest(terms: string[]) {
@@ -138,7 +175,8 @@ export function museVariationRequest(terms: string[]) {
             'Return each input term exactly once with at most 8 close spelling variants. Return literal text, NOT regex.',
             'Preserve meaning: no synonyms, translations, unrelated ordinary words, or new insults.',
             'Focus on omitted letters, common vowel substitutions, leetspeak and common suffixes; at most 2 character edits per variant, or a direct -ing/-ed suffix.',
-            'Do not expand terms shorter than 3 characters. Repeated letters are handled separately by code.',
+            'Do not expand terms shorter than 3 characters. Code handles repeated letters, optional spaces, and combinations of common symbol substitutions: a=4/@, b=8, e=3, g=9, i/l=1/!/¡/|, o=0, s=5/$, t=7/+, z=2.',
+            'Do not spend the limited spelling list enumerating those symbol combinations. Focus on close omitted-letter, vowel and suffix variations; code combines each spelling with symbol classes. For rinn, rin and ryn are useful; R ¡ N N and R | N N are already handled by code.',
             'For example fuck may have fck, fcky, facky, fucky, fucking. Nicknames may have small spelling variations.',
             'Use an empty spellings list when no safe close variants exist.'
         ].join('\n') }, { role: 'user', content: JSON.stringify({ terms }) }],

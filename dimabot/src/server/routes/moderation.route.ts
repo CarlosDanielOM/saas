@@ -1,4 +1,4 @@
-import { variationMode, variationTerms, variationOverrides, variationAllowSpaces, withVariationSpacing, buildVariation } from '../../utils/moderation/variations.js';
+import { variationMode, variationTerms, variationOverrides, variationAllowSpaces, withVariationSpacing, compileRuleVariations, buildVariation } from '../../utils/moderation/variations.js';
 import { requestVariationJob, resolveVariations, variationJobView, VariationError } from '../../utils/moderation/variation_jobs.js';
 import { ModerationVariationJob } from '../../schemas/moderation_variation.schema.js';
 import crypto from 'crypto';
@@ -205,7 +205,7 @@ router.get('/:channelID/settings', authMiddleware as any, async (req: Moderation
             error: false,
             message: 'Moderation settings',
             status: 200,
-            data: settings
+            data: { ...settings, rules: settings.rules.map(compileRuleVariations) }
         });
     } catch (err) {
         await logError({ function: 'moderationRoute.getSettings', error: err instanceof Error ? err.message : String(err) });
@@ -304,7 +304,7 @@ router.post('/:channelID/variations', authMiddleware as any, async (req: Moderat
         const prior = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
         const data = mode === 'broad' ? await requestVariationJob(channelID, terms, prior?.rules || [])
             : { id: '', state: 'completed', error: '', entries: mode === 'common' ? terms.map(term => buildVariation(term)) : [] };
-        return res.json({ error: false, status: 200, data: { ...data, entries: data.entries.map(entry => withVariationSpacing(entry, allowSpaces)) } });
+        return res.json({ error: false, status: 200, data: { ...data, entries: data.entries.map(entry => withVariationSpacing(entry, allowSpaces, mode)) } });
     } catch (error) {
         if (error instanceof VariationError) return res.status(error.status).json({ error: true, status: error.status, message: error.message });
         await logError({ function: 'moderationRoute.variations', error: error instanceof Error ? error.message : String(error) });
@@ -318,7 +318,7 @@ router.get('/:channelID/variations/:jobID', authMiddleware as any, async (req: M
         if (req.query.allowSpaces !== undefined && !['true', 'false'].includes(String(req.query.allowSpaces))) return res.status(400).json({ error: true, status: 400, message: 'Invalid spacing option' });
         const job = await ModerationVariationJob.findOne({ _id: getParam(req.params.jobID), channelID }).lean();
         if (!job) return res.status(404).json({ error: true, status: 404, message: 'Variation request not found' });
-        return res.json({ error: false, status: 200, data: { ...variationJobView(job), entries: variationJobView(job).entries.map(entry => withVariationSpacing(entry, req.query.allowSpaces === 'true')) } });
+        return res.json({ error: false, status: 200, data: { ...variationJobView(job), entries: variationJobView(job).entries.map(entry => withVariationSpacing(entry, req.query.allowSpaces === 'true', 'broad')) } });
     } catch {
         return res.status(503).json({ error: true, status: 503, message: 'Could not load word variations' });
     }

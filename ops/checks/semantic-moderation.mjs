@@ -187,6 +187,21 @@ try {
         assert.equal(audit.matches[0].text, 'R I N', 'training review keeps original spaced match');
         await seed(`spaces-off-${mode}`, { ...spacedRule, variations: { ...variations, allowSpaces: false } });
         assert.equal((await runChatModeration(`spaces-off-${mode}`, message(`space-off-${mode}`, 'R I N'), identity)).actionTaken, false);
+        if (mode === 'broad') {
+            for (const [index, text] of ['R ¡ N N', 'R | N N'].entries()) {
+                assert.equal((await runChatModeration('spaces-broad', message(`symbol-direct-${index}`, text), identity)).actionTaken, true);
+                const logged = await decision(`symbol-direct-${index}`);
+                assert.equal(logged.matches[0].text, text);
+                assert.equal(logged.rule.variations.entries[0].symbolVersion, 'symbol-families-v1');
+                assert.ok(findBlacklistMatches(text, [], [logged.rule.variations.entries[0].pattern]).length, 'audit records effective generated regex');
+            }
+            assert.equal(await count('spaces-broad', spacedRule), 5);
+            assert.equal((await runChatModeration('spaces-review-broad', message('symbol-allow', 'R | N N awesome'), identity)).actionTaken, false);
+            assert.equal(await count('spaces-review-broad', spacedRule), 1);
+            assert.equal((await runChatModeration('spaces-review-broad', message('symbol-flag', 'R ¡ N N this'), identity)).actionTaken, true);
+            assert.equal(await count('spaces-review-broad', spacedRule), 2);
+        }
+
     }
 
     const largeRule = { variations: { mode: 'common', entries: Array.from({ length: 200 }, (_, i) => buildVariation(`word${i}`)) } };
@@ -299,6 +314,11 @@ try {
                 assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [rule] })).status, 200);
                 const loaded = (await (await api('GET', 'semantic-paid/settings')).json()).data.rules[0];
                 assert.equal(loaded.variations.allowSpaces, allowSpaces);
+                for (const text of ['R ¡ N N', 'R | N N']) {
+                    assert.equal(findBlacklistMatches(text, [], [preview.data.entries[1].pattern]).length > 0, mode === 'broad' && allowSpaces);
+                    assert.equal(findBlacklistMatches(text, [], [loaded.variations.entries[1].pattern]).length > 0, mode === 'broad' && allowSpaces);
+                }
+
                 await invalidateModerationSettingsCache('semantic-paid');
                 assert.equal((await runChatModeration('semantic-paid', message(`space-api-${mode}-${allowSpaces}`, 'R I N', `space-api-${mode}`), identity)).actionTaken, allowSpaces);
             }
@@ -310,6 +330,13 @@ try {
             assert.equal((await api('POST', 'semantic-paid/variations', { terms: ['rinn'], mode: 'common', allowSpaces })).status, 400);
             assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [{ ...commonRule, variations: { mode: 'common', allowSpaces } }] })).status, 400);
         }
+
+        const legacy = { ...commonRule, variations: { mode: 'broad', allowSpaces: true, entries: [buildVariation('rinn')] } };
+        await Settings.updateOne({ channelID: 'semantic-paid' }, { $set: { rules: [legacy] } });
+        const legacyView = (await (await api('GET', 'semantic-paid/settings')).json()).data.rules[0];
+        assert.ok(findBlacklistMatches('R | N N', [], [legacyView.variations.entries[0].pattern]).length, 'settings GET displays upgraded legacy regex');
+        const untouched = await Settings.findOne({ channelID: 'semantic-paid' }).lean();
+        assert.equal(untouched.rules[0].variations.entries[0].symbolVersion, undefined, 'read upgrade never mutates saved data');
 
         const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });
         assert.equal(saved.status, 200);

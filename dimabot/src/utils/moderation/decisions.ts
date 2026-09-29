@@ -1,3 +1,4 @@
+import { compileRuleVariations } from './variations.js';
 import { createHash } from 'node:crypto';
 import { ModerationDecision, type IModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import { DECISION_POLICY_VERSION, MODERATION_RETENTION_DAYS, SEMANTIC_MODEL } from './advanced.js';
@@ -9,9 +10,10 @@ export async function createModerationDecision(input: Pick<IModerationDecision,
     'channelID' | 'userID' | 'username' | 'messageID' | 'messageText' | 'ruleID' | 'rule' | 'settingsVersion' | 'matches' | 'context' | 'mode' | 'deadline'>): Promise<IModerationDecision> {
     const id = moderationDecisionID(input.channelID, input.messageID, input.ruleID);
     const semantic = input.mode === 'semantic';
+    const rule = compileRuleVariations(input.rule);
     return await ModerationDecision.findOneAndUpdate({ _id: id }, { $setOnInsert: {
         ...input, _id: id,
-        rule: semantic ? { ...input.rule, semantic: { ...input.rule.semantic!, thresholdPercent: input.rule.semantic?.thresholdPercent ?? 85 } } : input.rule,
+        rule: semantic ? { ...rule, semantic: { ...rule.semantic!, thresholdPercent: rule.semantic?.thresholdPercent ?? 85 } } : rule,
         state: semantic ? 'pending' : 'completed', verdict: semantic ? 'uncertain' : 'violation',
         status: semantic ? 'pending' : 'matched', model: semantic ? SEMANTIC_MODEL : '',
         decisionPolicyVersion: DECISION_POLICY_VERSION,

@@ -90,3 +90,37 @@ test('optional spaces catch separated letters and substitutions without removing
     assert.equal(variationAllowSpaces(undefined), false);
     for (const raw of ['true', 1, null]) assert.throws(() => variationAllowSpaces(raw));
 });
+
+test('broader symbol families catch combined evasions even when Muse omitted the spelling', () => {
+    const entry = buildVariation('rinn', ['rin', 'r1nn', 'r!nn']);
+    const broad = (allowSpaces: boolean) => rulePatterns({ variations: { mode: 'broad', entries: [entry], allowSpaces } });
+    for (const text of ['r¡nn', 'r|nn', 'r1!¡|nn']) assert.ok(findBlacklistMatches(text, [], broad(false)).length, text);
+    for (const text of ['R ¡ N N', 'R | N N', 'r 1 ! ¡ | n n']) {
+        assert.ok(findBlacklistMatches(text, [], broad(true)).length, text);
+        assert.equal(findBlacklistMatches(text, [], broad(false)).length, 0, 'spacing stays optional');
+    }
+    for (const text of ['bring', 'string', 'spring', 'r | next', 'ár¡nn', 'r|nning']) assert.equal(findBlacklistMatches(text, [], broad(true)).length, 0, text);
+    const common = rulePatterns({ variations: { mode: 'common', entries: [buildVariation('rinn')], allowSpaces: true } });
+    assert.equal(findBlacklistMatches('R | N N', [], common).length, 0, 'common mode retains its narrower scope');
+    const custom = rulePatterns({ variations: { mode: 'broad', entries: [entry], allowSpaces: true, overrides: [{ term: 'rinn', source: 'rinn' }] } });
+    assert.equal(findBlacklistMatches('R | N N', [], custom).length, 0, 'custom expression is not expanded');
+    const text = '🎉 R ¡ N N!';
+    const [match] = findBlacklistMatches(text, [], broad(true));
+    assert.equal(text.slice(match.start, match.end), 'R ¡ N N');
+});
+
+test('broader compilation remains bounded and reversible for cached patterns', () => {
+    const entry = buildVariation('rinn');
+    const broad = withVariationSpacing(entry, true, 'broad');
+    assert.equal(withVariationSpacing(broad, true, 'broad'), broad);
+    assert.equal(withVariationSpacing(broad, false, 'common').pattern.source, entry.pattern.source);
+    for (const [term, text] of [['assist', '@55!5+'], ['hello', 'h3110'], ['café', 'c4f3']]) {
+        assert.ok(findBlacklistMatches(text, [], rulePatterns({ variations: { mode: 'broad', entries: [buildVariation(term)] } })).length, text);
+    }
+    const long = 'il'.repeat(50);
+    const maximal = withVariationSpacing(buildVariation(long, Array.from({ length: 8 }, (_, i) => long.slice(0, -1) + i)), true, 'broad');
+    assert.ok(maximal.pattern.source.length <= 16000);
+    assert.doesNotThrow(() => variationOverrides([{ term: long, source: maximal.pattern.source }], [long], 'broad'));
+    const many = rulePatterns({ variations: { mode: 'broad', allowSpaces: true, entries: Array.from({ length: 200 }, (_, i) => buildVariation(`word${i}`)) } });
+    assert.ok(findBlacklistMatches('w 0 r d 1 9 9', [], many).length);
+});

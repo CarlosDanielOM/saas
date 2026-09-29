@@ -9,5 +9,7 @@ assert.equal(result.entries.length, 4);
 const patterns = rulePatterns({ variations: { mode: 'broad', entries: result.entries } });
 for (const text of ['fuck', 'fuuuck', 'Riiinnnn', 'CAFE', 'bad word']) assert.ok(findBlacklistMatches(text, [], patterns).length, text);
 for (const text of ['bring', 'string', 'ordinary conversation']) assert.equal(findBlacklistMatches(text, [], patterns).length, 0, text);
+const spaced = rulePatterns({ variations: { mode: 'broad', allowSpaces: true, entries: result.entries } });
+for (const text of ['R ¡ N N', 'R | N N', 'r 1 ! ¡ | n n']) assert.ok(findBlacklistMatches(text, [], spaced).length, text);
 console.log(JSON.stringify({ model: result.model, entries: result.entries.map(({term, spellings}) => ({term, spellings})), providerCost: result.usage.cost }));
 console.log('PASS Muse generation: multiple terms, schema validation, safe regex compilation and boundaries; no user credit writes');

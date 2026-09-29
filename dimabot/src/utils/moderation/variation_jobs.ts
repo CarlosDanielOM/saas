@@ -27,8 +27,8 @@ export async function resolveVariations(channelID: string, terms: string[], mode
     const saved = await savedVariations(channelID, terms, priorRules);
     const entries = terms.map(term => saved.get(variationTerm(term)));
     if (entries.some(entry => !entry)) throw new VariationError(409, 'Prepare broader variations for the changed words before saving');
-    const compiled = (entries as GeneratedVariation[]).map(entry => withVariationSpacing(entry, allowSpaces));
-    validateVariations(compiled, allowSpaces);
+    const compiled = (entries as GeneratedVariation[]).map(entry => withVariationSpacing(entry, allowSpaces, mode));
+    validateVariations(compiled, allowSpaces, mode);
     return { mode, allowSpaces, entries: compiled };
 }
 export function variationJobView(job: Pick<VariationJob, '_id' | 'state' | 'entries' | 'error'>) {
