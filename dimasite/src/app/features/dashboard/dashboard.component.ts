@@ -299,6 +299,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly overviewChartOption = signal<EChartsOption>({});
 
+  /**
+   * Axis color guide shown under the chart on small screens, where the rotated
+   * y-axis names are hidden to keep the tick labels from colliding. Each chip
+   * lists the series colors that share that scale.
+   */
+  readonly chartAxisChips = computed<{ id: string; label: string; colors: string[] }[]>(() => [
+    {
+      id: 'engagement',
+      label: this.t('dashboard.charts.axes.engagement'),
+      colors: ['#22c55e', '#8b5cf6', '#a78bfa']
+    },
+    { id: 'hours', label: this.t('dashboard.charts.axes.hours'), colors: ['#7c3aed'] },
+    { id: 'bits', label: this.t('dashboard.charts.axes.bits'), colors: ['#f59e0b'] },
+    { id: 'donations', label: this.t('dashboard.charts.axes.donations'), colors: ['#ec4899'] }
+  ]);
+
   // Live stream status
   readonly isLive = computed(() => this.dashboardApi.liveStatus()?.data?.isLive ?? false);
   readonly liveStream = computed(() => this.dashboardApi.liveStatus()?.data?.stream ?? null);
@@ -699,6 +715,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const lineBase = this.chartConfig.getLineChartBase();
     const isDark = this.themeService.isDarkMode();
     const isMobile = this.isMobileViewport();
+    // On small screens the rotated y-axis names are dropped and replaced by the
+    // color chips under the chart, so neither the names nor the tick labels collide.
+    const gridLeft = isMobile ? 36 : 78;
+    const gridRight = isMobile ? 40 : 98;
+    const axisNameGap = 36;
+    const chartTop = isMobile ? 56 : 58;
+    const chartBottom = isMobile ? 40 : 44;
+    const innerAxisOffset = isMobile ? 34 : 58;
+    const primaryTickFont = isMobile ? 9 : 10;
+    const secondaryTickFont = isMobile ? 8 : 10;
     const lineAxis = lineBase.xAxis as Record<string, unknown>;
     const yAxis = lineBase.yAxis as Record<string, unknown>;
     const bitsLabel = this.t('dashboard.charts.series.bits');
@@ -752,21 +778,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ...lineBase,
       grid: {
         ...(lineBase.grid as Record<string, unknown>),
-        top: isMobile ? 74 : 60,
-        left: isMobile ? 30 : 64,
-        right: isMobile ? 30 : 84,
-        bottom: isMobile ? 26 : 44,
+        top: chartTop,
+        left: gridLeft,
+        right: gridRight,
+        bottom: chartBottom,
         containLabel: true
       },
       legend: {
         type: isMobile ? 'plain' : 'scroll',
-        top: isMobile ? 0 : 4,
+        top: 4,
         left: 0,
         right: 0,
         itemWidth: isMobile ? 8 : 11,
         itemHeight: isMobile ? 8 : 11,
         pageIconSize: isMobile ? 10 : 12,
-        itemGap: isMobile ? 7 : 18,
+        itemGap: isMobile ? 12 : 18,
         textStyle: {
           color: isDark ? '#d8ebff' : '#174069',
           fontSize: isMobile ? 9 : 11,
@@ -793,9 +819,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         axisLabel: {
           color: isDark ? '#8fb0d5' : '#325f89',
           fontSize: isMobile ? 10 : 11,
-          margin: isMobile ? 10 : 14
+          margin: isMobile ? 10 : 12,
+          hideOverlap: true
         },
-        boundaryGap: isMobile,
+        boundaryGap: false,
         axisLine: {
           lineStyle: {
             color: isDark ? 'rgba(90, 138, 184, 0.35)' : 'rgba(34, 84, 130, 0.25)'
@@ -810,19 +837,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
           position: 'left',
           scale: true,
           minInterval: 1,
-          name: isMobile ? engagementAxisLabel : engagementAxisLabel,
-          nameGap: isMobile ? 8 : 18,
+          name: isMobile ? '' : engagementAxisLabel,
+          nameGap: axisNameGap,
           nameRotate: 90,
           nameLocation: 'middle',
           nameTextStyle: {
             color: isDark ? '#8fb0d5' : '#325f89',
-            fontSize: isMobile ? 8 : 10,
-            fontWeight: 700,
-            padding: isMobile ? [0, 0, 0, 0] : [0, 0, 4, 0]
+            fontSize: 10,
+            fontWeight: 700
           },
           axisLabel: {
             color: isDark ? '#8fb0d5' : '#325f89',
-            fontSize: isMobile ? 8 : 10,
+            fontSize: primaryTickFont,
             formatter: (value: number) => this.formatCompactNumber(value)
           },
           splitLine: {
@@ -838,19 +864,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
           position: 'right',
           scale: true,
           minInterval: 1,
-          name: bitsAxisLabel,
-          nameGap: isMobile ? 8 : 18,
+          name: isMobile ? '' : bitsAxisLabel,
+          nameGap: axisNameGap,
           nameRotate: -90,
           nameLocation: 'middle',
           nameTextStyle: {
             color: '#ffd166',
-            fontSize: isMobile ? 8 : 10,
-            fontWeight: 700,
-            padding: isMobile ? [0, 0, 0, 0] : [0, 0, 4, 0]
+            fontSize: 10,
+            fontWeight: 700
           },
           axisLabel: {
             color: '#ffd166',
-            fontSize: isMobile ? 8 : 10,
+            fontSize: primaryTickFont,
             formatter: (value: number) => this.formatCompactNumber(value)
           },
           splitLine: { show: false }
@@ -859,21 +884,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
           ...yAxis,
           type: 'value',
           position: 'left',
-          offset: isMobile ? 22 : 56,
+          offset: innerAxisOffset,
           scale: true,
-          name: hoursAxisLabel,
-          nameGap: isMobile ? 5 : 18,
+          name: isMobile ? '' : hoursAxisLabel,
+          nameGap: axisNameGap,
           nameRotate: 90,
           nameLocation: 'middle',
           nameTextStyle: {
             color: '#7c3aed',
-            fontSize: isMobile ? 7 : 10,
-            fontWeight: 700,
-            padding: isMobile ? [0, 0, 0, 0] : [0, 0, 4, 0]
+            fontSize: 10,
+            fontWeight: 700
           },
           axisLabel: {
             color: '#7c3aed',
-            fontSize: isMobile ? 7 : 10,
+            fontSize: secondaryTickFont,
             formatter: (value: number) => this.formatHourAxisLabel(value)
           },
           splitLine: { show: false }
@@ -882,21 +906,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
           ...yAxis,
           type: 'value',
           position: 'right',
-          offset: isMobile ? 22 : 56,
+          offset: innerAxisOffset,
           scale: true,
-          name: donationsAxisLabel,
-          nameGap: isMobile ? 5 : 18,
+          name: isMobile ? '' : donationsAxisLabel,
+          nameGap: axisNameGap,
           nameRotate: -90,
           nameLocation: 'middle',
           nameTextStyle: {
             color: '#ff5cf2',
-            fontSize: isMobile ? 7 : 10,
-            fontWeight: 700,
-            padding: isMobile ? [0, 0, 0, 0] : [0, 0, 4, 0]
+            fontSize: 10,
+            fontWeight: 700
           },
           axisLabel: {
             color: '#ff5cf2',
-            fontSize: isMobile ? 7 : 10,
+            fontSize: secondaryTickFont,
             formatter: (value: number) => this.formatCompactCurrency(value)
           },
           splitLine: { show: false }

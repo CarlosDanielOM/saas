@@ -1025,6 +1025,37 @@
   font-size: 0.78rem;
 }
 
+/* Mobile axis guide: replaces the rotated y-axis names on small screens */
+.lf-axis-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lf-axis-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.lf-axis-chip__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lf-axis-chip__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
 .lf-error,
 .lf-empty {
   padding: 1.25rem;

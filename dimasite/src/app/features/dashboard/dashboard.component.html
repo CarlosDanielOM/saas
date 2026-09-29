@@ -345,6 +345,21 @@
             (chartInit)="onOverviewChartInit($event)"
           ></div>
 
+          @if (isMobileViewport()) {
+            <ul class="lf-axis-chips" [attr.aria-label]="t('dashboard.charts.axisLegendLabel')">
+              @for (chip of chartAxisChips(); track chip.id) {
+                <li class="lf-axis-chip">
+                  <span class="lf-axis-chip__dots" aria-hidden="true">
+                    @for (color of chip.colors; track color) {
+                      <span class="lf-axis-chip__dot" [style.backgroundColor]="color"></span>
+                    }
+                  </span>
+                  <span>{{ chip.label }}</span>
+                </li>
+              }
+            </ul>
+          }
+
           <div class="lf-chart__time" aria-live="polite">
             <span>{{ t('dashboard.charts.timeContext.note') }}</span>
             <span>{{ t('dashboard.charts.timeContext.server', { time: serverTimeDisplay() }) }}</span>
