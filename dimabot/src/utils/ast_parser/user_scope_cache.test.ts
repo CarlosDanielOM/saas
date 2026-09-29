@@ -29,6 +29,6 @@ test('selected user cache writes do not overwrite the caller', async () => {
     const result = await evaluate(ast, context);
 
     assert.equal(result.value, '3 7');
-    assert.equal(stored.get('twitch:channel:scope:command:command:score:id:caller-id'), '3');
-    assert.equal(stored.get('twitch:channel:scope:command:command:score:login:alice'), '7');
+    assert.equal(stored.get('twitch:channel:variable:score:id:caller-id'), '3');
+    assert.equal(stored.get('twitch:channel:variable:score:login:alice'), '7');
 });

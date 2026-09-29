@@ -196,6 +196,11 @@ function normalizeUserLogin(userLogin: string): string {
     return String(userLogin || '').trim().replace(/^@+/, '').toLowerCase();
 }
 
+// Persistent AST variables belong to a channel (and optionally a user),
+// regardless of which command, event, redemption, or timer executes the AST.
+const VARIABLE_SCOPE_TYPE = 'global';
+const VARIABLE_SCOPE_NAME = 'global';
+
 async function loadScopedVariable(
     channelID: string,
     scopeType: string,
@@ -219,13 +224,27 @@ async function loadScopedVariable(
         }
 
         const doc = await AstVariablesSchema.findOne(query).select({ variables: 1 }).exec();
-        const mapData = doc?.variables;
-        if (!mapData) {
-            return '';
+        if (doc?.variables?.has(variableName)) {
+            return doc.variables.get(variableName) ?? '';
         }
 
-        const value = mapData.get(variableName);
-        return value ?? '';
+        // Until legacy documents are copied, read the most recently updated
+        // trigger-local value. A global empty value is a deletion tombstone.
+        if (scopeType === VARIABLE_SCOPE_TYPE && scopeName === VARIABLE_SCOPE_NAME) {
+            const legacyQuery: FilterQuery<IAstVariables> = {
+                ...query,
+                scopeType: { $ne: VARIABLE_SCOPE_TYPE },
+                scopeName: { $exists: true },
+                [`variables.${variableName}`]: { $exists: true }
+            };
+            const legacy = await AstVariablesSchema.findOne(legacyQuery)
+                .sort({ updatedAt: -1, _id: -1 })
+                .select({ variables: 1 })
+                .exec();
+            return legacy?.variables?.get(variableName) ?? '';
+        }
+
+        return '';
     } catch (error) {
         console.error('Error loading AST scoped variable:', {
             channelID,
@@ -328,40 +347,6 @@ async function saveScopedVariable(
     }
 }
 
-async function deleteScopedVariable(
-    channelID: string,
-    scopeType: string,
-    scopeName: string,
-    variableName: string,
-    userId: string = '',
-    userLogin: string = ''
-): Promise<void> {
-    const normalizedLogin = normalizeUserLogin(userLogin);
-    const query: FilterQuery<IAstVariables> = {
-        channelID,
-        scopeType,
-        scopeName,
-        ...(normalizedLogin ? { userLogin: normalizedLogin } : { userId })
-    };
-
-    try {
-        await AstVariablesSchema.updateOne(query, {
-            $unset: { [`variables.${variableName}`]: '' }
-        }).exec();
-    } catch (error) {
-        console.error('Error deleting AST scoped variable:', {
-            channelID,
-            scopeType,
-            scopeName,
-            userId,
-            userLogin,
-            variableName,
-            error: error instanceof Error ? error.message : String(error),
-            timestamp: new Date().toISOString()
-        });
-    }
-}
-
 export async function createSpecialExecutionContext(
     context: ISpecialParserContext,
     literalVariables: Record<string, string> = {}
@@ -437,27 +422,13 @@ export async function createSpecialExecutionContext(
         commandName: resolvedScopeName,
         variables,
         saveChannelVariable: async (name: string, value: string) => {
-            await saveScopedVariable(context.channelID, resolvedScopeType, resolvedScopeName, name, value, '');
+            await saveScopedVariable(context.channelID, VARIABLE_SCOPE_TYPE, VARIABLE_SCOPE_NAME, name, value, '');
         },
         loadChannelVariable: async (name: string) => {
-            const value = await loadScopedVariable(context.channelID, resolvedScopeType, resolvedScopeName, name, '');
-            if (value !== '') {
-                return value;
-            }
-
-            for (const alias of resolvedScopeAliases) {
-                const aliasValue = await loadScopedVariable(context.channelID, resolvedScopeType, alias, name, '');
-                if (aliasValue !== '') {
-                    return aliasValue;
-                }
-            }
-
-            return '';
+            return loadScopedVariable(context.channelID, VARIABLE_SCOPE_TYPE, VARIABLE_SCOPE_NAME, name, '');
         },
         deleteChannelVariable: async (name: string) => {
-            for (const scopeName of [resolvedScopeName, ...resolvedScopeAliases]) {
-                await deleteScopedVariable(context.channelID, resolvedScopeType, scopeName, name);
-            }
+            await saveScopedVariable(context.channelID, VARIABLE_SCOPE_TYPE, VARIABLE_SCOPE_NAME, name, '');
         },
         saveUserVariable: async (name: string, value: string, targetUserLogin?: string) => {
             const userId = extracted.userID || '';
@@ -473,8 +444,8 @@ export async function createSpecialExecutionContext(
             const selectedUserId = isOtherUser ? `login:${normalizedTargetLogin}` : userId;
             await saveScopedVariable(
                 context.channelID,
-                resolvedScopeType,
-                resolvedScopeName,
+                VARIABLE_SCOPE_TYPE,
+                VARIABLE_SCOPE_NAME,
                 name,
                 value,
                 selectedUserId,
@@ -488,16 +459,15 @@ export async function createSpecialExecutionContext(
             if (!userId && !normalizedTargetLogin) {
                 return;
             }
-            for (const scopeName of [resolvedScopeName, ...resolvedScopeAliases]) {
-                await deleteScopedVariable(
-                    context.channelID,
-                    resolvedScopeType,
-                    scopeName,
-                    name,
-                    normalizedTargetLogin ? '' : userId,
-                    normalizedTargetLogin || userLogin
-                );
-            }
+            await saveScopedVariable(
+                context.channelID,
+                VARIABLE_SCOPE_TYPE,
+                VARIABLE_SCOPE_NAME,
+                name,
+                '',
+                normalizedTargetLogin ? '' : userId,
+                normalizedTargetLogin || userLogin
+            );
         },
         loadUserVariable: async (name: string, targetUserLogin?: string) => {
             const userId = extracted.userID || '';
@@ -507,8 +477,8 @@ export async function createSpecialExecutionContext(
             if (!userId && !normalizedTargetLogin) {
                 console.error('AST user-scoped variable read skipped: missing userId', {
                     channelID: context.channelID,
-                    scopeType: resolvedScopeType,
-                    scopeName: resolvedScopeName,
+                    scopeType: VARIABLE_SCOPE_TYPE,
+                    scopeName: VARIABLE_SCOPE_NAME,
                     variableName: name,
                     timestamp: new Date().toISOString()
                 });
@@ -519,32 +489,14 @@ export async function createSpecialExecutionContext(
             const preferredUserLogin = normalizedTargetLogin || userLogin;
             const value = await loadScopedVariable(
                 context.channelID,
-                resolvedScopeType,
-                resolvedScopeName,
+                VARIABLE_SCOPE_TYPE,
+                VARIABLE_SCOPE_NAME,
                 name,
                 preferredUserId,
                 preferredUserLogin
             );
 
-            if (value !== '') {
-                return value;
-            }
-
-            for (const alias of resolvedScopeAliases) {
-                const aliasValue = await loadScopedVariable(
-                    context.channelID,
-                    resolvedScopeType,
-                    alias,
-                    name,
-                    preferredUserId,
-                    preferredUserLogin
-                );
-                if (aliasValue !== '') {
-                    return aliasValue;
-                }
-            }
-
-            return '';
+            return value;
         }
     });
 }

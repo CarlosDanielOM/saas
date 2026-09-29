@@ -1,0 +1,8 @@
+{
+  "MONGO_URI": "mongodb://mongo:27017/saas_ast_global_test",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "SECRET_KEY": "isolated-ast-global-fixture-key",
+  "SAAS_AST_BOOT_KIND": "cron",
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/boot.mjs"
+}

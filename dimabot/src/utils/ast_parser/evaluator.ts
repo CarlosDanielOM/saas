@@ -134,18 +134,13 @@ function safeCompare(left: string, operator: InternalComparisonOperator, right: 
 function buildCacheKey(
     platform: string,
     channelId: string,
-    scopeType: string,
-    scopeName: string,
     varName: string,
     userScope?: string
 ): string {
-    const normalizedScopeName = String(scopeName || '').trim().replace(/\s+/g, '_') || 'default';
-    const normalizedScopeType = String(scopeType || '').trim() || 'command';
-
     if (userScope) {
-        return `${platform}:${channelId}:scope:${normalizedScopeType}:${normalizedScopeName}:${varName}:${userScope}`;
+        return `${platform}:${channelId}:variable:${varName}:${userScope}`;
     }
-    return `${platform}:${channelId}:scope:${normalizedScopeType}:${normalizedScopeName}:${varName}`;
+    return `${platform}:${channelId}:variable:${varName}`;
 }
 
 // Resolves an array index expression value against an array length.
@@ -159,8 +154,7 @@ function resolveArrayIndex(value: unknown, length: number): number {
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
-// Iterates every candidate cache key for a variable (scope aliases × user scopes),
-// stopping early when fn signals a hit by returning true.
+// Iterates the user identity keys for a channel variable, stopping on a hit.
 async function walkCacheKeys(
     name: string,
     storage: VariableStorage,
@@ -170,24 +164,14 @@ async function walkCacheKeys(
 ): Promise<boolean> {
     const redis = await getDragonflyClient();
     const strippedName = stripVarPrefix(name, storage);
-    const scopeCandidates = getScopeCandidates(context);
     const userScopeCandidates = storage === 'cacheUser'
         ? getCacheUserScopeCandidates(context, targetUserLogin)
         : [undefined];
 
-    for (const scopeName of scopeCandidates) {
-        for (const userScope of userScopeCandidates) {
-            const key = buildCacheKey(
-                context.platform,
-                context.broadcasterId,
-                context.scopeType,
-                scopeName,
-                strippedName,
-                userScope
-            );
-            const hit = await fn(key, redis);
-            if (hit === true) return true;
-        }
+    for (const userScope of userScopeCandidates) {
+        const key = buildCacheKey(context.platform, context.broadcasterId, strippedName, userScope);
+        const hit = await fn(key, redis);
+        if (hit === true) return true;
     }
 
     return false;
@@ -213,18 +197,6 @@ function getCacheUserScopeCandidates(context: ExecutionContext, targetUserLogin?
     }
 
     return candidates.length > 0 ? [...new Set(candidates)] : ['id:unknown'];
-}
-
-function getScopeCandidates(context: ExecutionContext): string[] {
-    const candidates = [context.scopeName, ...(context.scopeAliases || [])]
-        .map((scope) => String(scope || '').trim())
-        .filter((scope) => scope.length > 0);
-
-    if (candidates.length === 0) {
-        return ['default'];
-    }
-
-    return [...new Set(candidates)];
 }
 
 function getUserVariableCacheKey(name: string, context: ExecutionContext, targetUserLogin?: string): string {
@@ -507,8 +479,6 @@ async function saveValueToStorage(
                     const key = buildCacheKey(
                         context.platform,
                         context.broadcasterId,
-                        context.scopeType,
-                        context.scopeName,
                         strippedName,
                         userScope
                     );
@@ -519,8 +489,6 @@ async function saveValueToStorage(
                 const key = buildCacheKey(
                     context.platform,
                     context.broadcasterId,
-                    context.scopeType,
-                    context.scopeName,
                     strippedName
                 );
                 await redis.set(key, value);
