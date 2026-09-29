@@ -1148,3 +1148,34 @@ body.dimafx-busy .sheet-btn-buy {
   stroke: currentColor;
   stroke-width: 2;
 }
+
+/* Custom TTS message input (bottom sheet) */
+.tts-input-wrap {
+  margin: 10px 0 4px;
+}
+
+.tts-input-wrap textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.tts-input-wrap textarea:focus {
+  border-color: var(--accent-purple);
+}
+
+.tts-char-count {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--text-muted);
+}

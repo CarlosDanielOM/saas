@@ -112,7 +112,8 @@ router.post('/channels/:channelID/items/:itemID/purchase', async (req: TwitchExt
         ...extensionIdentityBody(req),
         sku: req.body?.sku,
         transactionID: req.body?.transactionID,
-        action: req.body?.action
+        action: req.body?.action,
+        ttsText: req.body?.ttsText
       }
     );
     return proxyResponse(res, payload);
@@ -133,7 +134,7 @@ router.post('/channels/:channelID/items/:itemID/use-credit', async (req: TwitchE
 
     const payload = await dimabotClient.post<Record<string, unknown>>(
       `/extensions/dimafx/internal/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(itemID)}/use-credit`,
-      { ...extensionIdentityBody(req), action: req.body?.action }
+      { ...extensionIdentityBody(req), action: req.body?.action, ttsText: req.body?.ttsText }
     );
     return proxyResponse(res, payload);
   } catch (error) {

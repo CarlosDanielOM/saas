@@ -1,0 +1,8 @@
+{
+  "PORT": "8080",
+  "DIMABOT_INTERNAL_API_URL": "http://127.0.0.1:4099",
+  "DIMABOT_PUBLIC_API_URL": "http://127.0.0.1:4099",
+  "DIMAFX_SERVICE_TOKEN": "fixture-service-token",
+  "TWITCH_EXTENSION_SECRET": "Zml4dHVyZS1leHRlbnNpb24tc2VjcmV0LWtleQ==",
+  "DIMAFX_ALLOW_UNVERIFIED_TWITCH_JWT": "false"
+}

@@ -90,6 +90,14 @@ async function initializeDimaFx(auth) {
       mediaUrl: item.mediaUrl || item.asset?.playbackUrl,
       mediaType: item.mediaType,
       durationMs: item.durationMs,
+      tts: item.tts
+        ? {
+            mode: item.tts.mode === "fixed" ? "fixed" : "custom",
+            text: item.tts.text || "",
+            voice: item.tts.voice || "",
+            language: item.tts.language || "en",
+          }
+        : null,
     }));
     updateBalanceBadge();
     renderLibrary();
@@ -118,7 +126,7 @@ if (window.Twitch) {
       if (!pendingBitsPurchase) return;
       const pending = pendingBitsPurchase;
       pendingBitsPurchase = null;
-      completeBitsPurchase(pending.item, pending.action, transaction);
+      completeBitsPurchase(pending.item, pending.action, transaction, pending.ttsText);
     });
   }
   if (Twitch.ext.bits?.onTransactionCancelled) {
@@ -291,14 +299,50 @@ function toggleShimmer(forceState = null) {
   toggleBtn?.classList.toggle("active", activate);
 }
 
+function isCustomTtsItem(item) {
+  return item?.category === "tts" && item?.tts?.mode === "custom";
+}
+
+function getTtsInputText() {
+  return (getEl("tts-text-input")?.value || "").trim();
+}
+
+function onTtsTextInput() {
+  const input = getEl("tts-text-input");
+  const counter = getEl("tts-char-count");
+  if (input && counter) {
+    counter.textContent = `${input.value.length} / ${input.maxLength || 280}`;
+  }
+  renderDrawerActions();
+}
+
+function syncTtsInput() {
+  const wrap = getEl("tts-input-wrap");
+  if (!wrap) return;
+  const show = isCustomTtsItem(selectedItem);
+  wrap.hidden = !show;
+  if (show) {
+    const input = getEl("tts-text-input");
+    if (input) input.value = "";
+    onTtsTextInput();
+  }
+}
+
 function openDrawer(item) {
   selectedItem = item;
-  selectedAction = inventory?.config?.quickPurchaseAction === "save" && identityShared ? "save" : "use_now";
+  // Custom-text TTS items cannot be saved: the text only exists at purchase time.
+  const wantsSave = inventory?.config?.quickPurchaseAction === "save" && identityShared;
+  selectedAction = wantsSave && !isCustomTtsItem(item) ? "save" : "use_now";
   resetPlayer();
   syncDrawerPreview();
   (getEl("drawer-title", "sheet-title") || {}).textContent = item.name;
   (getEl("drawer-subtitle", "sheet-category") || {}).textContent = item.categoryLabel;
-  (getEl("drawer-desc", "sheet-desc") || {}).textContent = item.description;
+  const descEl = getEl("drawer-desc", "sheet-desc");
+  if (descEl) {
+    const fixedText = item.category === "tts" && item.tts?.mode === "fixed" && item.tts.text ? `\n"${item.tts.text}"` : "";
+    descEl.textContent = `${item.description}${fixedText}`;
+  }
+  syncTtsInput();
   renderDrawerActions();
   getEl("preview-drawer", "bottom-sheet")?.classList.add("open");
   getEl("drawer-backdrop", "sheet-backdrop")?.classList.add("open");
@@ -308,30 +352,38 @@ function renderDrawerActions() {
   const actionContainer = document.querySelector(".drawer-actions") || getEl("sheet-buy-btn")?.parentElement;
   if (!actionContainer || !selectedItem) return;
   const isFree = Number(selectedItem.priceValue || 0) === 0;
+  const customTts = isCustomTtsItem(selectedItem);
+  const ttsMissing = customTts && !getTtsInputText();
   const freeLabel = selectedAction === "save" ? "Save for Free" : "Use for Free";
-  const saveDisabled = !identityShared;
+  // Custom-text TTS items must be used immediately — the viewer's text only
+  // exists in this purchase request.
+  const saveDisabled = !identityShared || customTts;
+  const bitsDisabled = ttsMissing ? "disabled" : "";
   actionContainer.innerHTML = `
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted);">
       <button class="category-btn ${selectedAction === "use_now" ? "active" : ""}" onclick="setDrawerAction('use_now')">Use now</button>
-      <button class="category-btn ${selectedAction === "save" ? "active" : ""}" ${saveDisabled ? "disabled" : ""} onclick="setDrawerAction('save')">Save</button>
+      ${customTts ? "" : `<button class="category-btn ${selectedAction === "save" ? "active" : ""}" ${saveDisabled ? "disabled" : ""} onclick="setDrawerAction('save')">Save</button>`}
     </div>
     ${isFree
-      ? `<button class="drawer-buy-btn free sheet-btn-buy" ${selectedAction === "save" && saveDisabled ? "disabled" : ""} onclick="triggerFreeItem(selectedItem, selectedAction)"><span>${freeLabel}</span></button>`
-      : `<button class="drawer-buy-btn bits sheet-btn-buy" onclick="buyWithBits(selectedItem, selectedAction)"><span>Buy with Bits • ${selectedItem.price}</span></button>
-         <button class="drawer-buy-btn credits sheet-btn-buy" ${identityShared && getBalance() >= selectedItem.priceValue ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>`
+      ? `<button class="drawer-buy-btn free sheet-btn-buy" ${(selectedAction === "save" && saveDisabled) || ttsMissing ? "disabled" : ""} onclick="triggerFreeItem(selectedItem, selectedAction)"><span>${freeLabel}</span></button>`
+      : `<button class="drawer-buy-btn bits sheet-btn-buy" ${bitsDisabled} onclick="buyWithBits(selectedItem, selectedAction)"><span>Buy with Bits • ${selectedItem.price}</span></button>
+         <button class="drawer-buy-btn credits sheet-btn-buy" ${identityShared && getBalance() >= selectedItem.priceValue && !ttsMissing ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>`
     }
+    ${ttsMissing ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Type a message above to enable purchase.</div>' : ''}
     ${!identityShared && !isFree ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save items and use credits.</div>' : ''}
-    ${isFree && !identityShared ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save this for later.</div>' : ''}`;
+    ${isFree && !identityShared && !customTts ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save this for later.</div>' : ''}`;
 }
 
 function setDrawerAction(action) {
-  selectedAction = action === "save" && identityShared ? "save" : "use_now";
+  selectedAction = action === "save" && identityShared && !isCustomTtsItem(selectedItem) ? "save" : "use_now";
   renderDrawerActions();
 }
 
 function closeDrawer() {
   getEl("preview-drawer", "bottom-sheet")?.classList.remove("open");
   getEl("drawer-backdrop", "sheet-backdrop")?.classList.remove("open");
+  const ttsWrap = getEl("tts-input-wrap");
+  if (ttsWrap) ttsWrap.hidden = true;
   resetPlayer();
 }
 const closeSheet = closeDrawer;
@@ -463,7 +515,10 @@ function togglePlayPreview() {
     if (!video?.src) return;
     previewPlayer = video;
   } else {
-    if (!selectedItem.mediaUrl) return;
+    if (!selectedItem.mediaUrl) {
+      showToast("Preview unavailable", selectedItem.category === "tts" ? "TTS items are synthesized on stream — no preview audio." : "No preview media for this item.", "info");
+      return;
+    }
     previewPlayer = new Audio(selectedItem.mediaUrl);
   }
   previewPlayer.volume = getPreviewVolume();
@@ -499,6 +554,11 @@ function resetPlayer() {
 function quickPurchase(itemId) {
   const item = products.find((candidate) => String(candidate.id) === String(itemId));
   if (!item) return;
+  // Custom-text TTS needs the drawer's message input — quick-buy can't collect it.
+  if (isCustomTtsItem(item)) {
+    openDrawer(item);
+    return;
+  }
   // Free items (0 bits) trigger immediately without bits/credits flow
   if (Number(item.priceValue || 0) === 0) {
     const config = inventory?.config || { quickPurchasePriority: "credits_first", quickPurchaseAction: "use_now" };
@@ -520,8 +580,13 @@ function buyWithBits(item, action) {
     showToast("Bits unavailable", "Bits purchases are only available inside Twitch.", "info");
     return;
   }
+  const ttsText = isCustomTtsItem(item) ? getTtsInputText() : undefined;
+  if (isCustomTtsItem(item) && !ttsText) {
+    showToast("Message required", "Type the message to speak on stream first.", "info");
+    return;
+  }
   if (!beginAction()) return;
-  pendingBitsPurchase = { item, action };
+  pendingBitsPurchase = { item, action, ttsText };
   try {
     Twitch.ext.bits.useBits(item.sku);
   } catch (error) {
@@ -534,13 +599,18 @@ function buyWithBits(item, action) {
 async function triggerFreeItem(item, action = "use_now") {
   // Free items are fulfilled server-side without ever touching the Twitch Bits API,
   // because Twitch rejects 0-cost SKUs in Twitch.ext.bits.useBits.
+  const ttsText = isCustomTtsItem(item) ? getTtsInputText() : undefined;
+  if (isCustomTtsItem(item) && !ttsText) {
+    showToast("Message required", "Type the message to speak on stream first.", "info");
+    return;
+  }
   if (!beginAction()) return;
-  const safeAction = action === "save" ? "save" : "use_now";
+  const safeAction = action === "save" && !isCustomTtsItem(item) ? "save" : "use_now";
   const transactionID = `free_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
-      body: JSON.stringify({ sku: item.sku, transactionID, action: safeAction }),
+      body: JSON.stringify({ sku: item.sku, transactionID, action: safeAction, ttsText }),
     });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();
@@ -558,11 +628,12 @@ async function triggerFreeItem(item, action = "use_now") {
   }
 }
 
-async function completeBitsPurchase(item, action, transaction) {
+async function completeBitsPurchase(item, action, transaction, pendingTtsText) {
+  const ttsText = isCustomTtsItem(item) ? pendingTtsText ?? getTtsInputText() : undefined;
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
-      body: JSON.stringify({ sku: item.sku, transactionID: transaction?.transactionId || transaction?.id || `${Date.now()}`, action }),
+      body: JSON.stringify({ sku: item.sku, transactionID: transaction?.transactionId || transaction?.id || `${Date.now()}`, action, ttsText }),
     });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();
@@ -577,16 +648,22 @@ async function completeBitsPurchase(item, action, transaction) {
 }
 
 async function buyWithCredits(item, action) {
+  const ttsText = isCustomTtsItem(item) ? getTtsInputText() : undefined;
+  if (isCustomTtsItem(item) && !ttsText) {
+    showToast("Message required", "Type the message to speak on stream first.", "info");
+    return;
+  }
   if (!beginAction()) return;
+  const safeAction = action === "save" && !isCustomTtsItem(item) ? "save" : "use_now";
   try {
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/use-credit`, {
       method: "POST",
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action: safeAction, ttsText }),
     });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();
     closeDrawer();
-    showToast(action === "save" ? "Saved with credits" : "Triggered with credits", item.name, "success");
+    showToast(safeAction === "save" ? "Saved with credits" : "Triggered with credits", item.name, "success");
   } catch (error) {
     showToast("Credit purchase failed", error.message || "Unable to use credits.", "error");
     await refreshMe().catch(() => undefined);

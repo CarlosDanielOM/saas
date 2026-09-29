@@ -13,7 +13,7 @@
     />
 
     <!-- External Modular Stylesheet (cache bust: v=36) -->
-    <link rel="stylesheet" href="panel.css?v=40" />
+    <link rel="stylesheet" href="panel.css?v=41" />
   </head>
   <body>
     <!-- Toast Notification -->
@@ -259,6 +259,17 @@
         This is a beautiful asset description detail showing what it does.
       </div>
 
+      <div id="tts-input-wrap" class="tts-input-wrap" hidden>
+        <textarea
+          id="tts-text-input"
+          maxlength="280"
+          rows="3"
+          placeholder="Type the message spoken on stream..."
+          oninput="onTtsTextInput()"
+        ></textarea>
+        <div id="tts-char-count" class="tts-char-count">0 / 280</div>
+      </div>
+
       <div class="drawer-actions">
         <button
           id="drawer-action-btn"
@@ -314,6 +325,6 @@
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
 
     <!-- External Modular Scripts -->
-    <script src="panel.js?v=40"></script>
+    <script src="panel.js?v=41"></script>
   </body>
 </html>
