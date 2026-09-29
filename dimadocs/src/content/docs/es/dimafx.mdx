@@ -13,15 +13,26 @@ DimaFX es una tienda de contenido multimedia para canales dentro de una extensi�
 2. Abre **Módulos → DimaFX**. El módulo está disponible en el plan Free, sujeto a los permisos de acceso al panel.
 3. Crea un elemento, elige un recurso público disponible o uno que pertenezca al canal, y configura el nombre, la descripción opcional, la categoría, el precio, el volumen y si está habilitado. El precio debe ser uno de los valores que ofrece el formulario (por defecto: 0, 5, 10, 25, 50 o 100 Bits). El servidor asigna esos precios a SKU de la extensión de Twitch; no se pueden guardar valores que no estén admitidos.
 4. En Twitch, añade o activa la extensión DimaFX para el canal y abre su vista de configuración. Esa página espera la autorización de Twitch y ofrece **Iniciar sesión con Twitch**; inicia sesión en DomDimaBot para volver al módulo DimaFX de ese canal.
-5. Mantén conectado el cliente de superposición de activadores del canal cuando quieras que el contenido aparezca en directo. Una compra puede guardarse en el inventario sin reproducirse de inmediato, pero **Usar ahora** requiere que haya un cliente de superposición conectado.
+5. Mantén conectada la superposición de activadores del canal cuando quieras que el contenido aparezca en directo. DimaFX reproduce a través de la fuente de navegador clásica de superposición de activadores o de una escena de Overlay Studio con un widget de activadores; el módulo muestra si hay una superposición conectada. Una compra puede guardarse en el inventario sin reproducirse de inmediato, pero **Usar ahora** requiere que haya una superposición conectada.
 
-El módulo muestra los elementos configurados y permite a las personas autorizadas crearlos, editarlos, habilitarlos o deshabilitarlos, previsualizarlos y eliminarlos. Normalmente, eliminar un elemento no altera el valor del inventario que ya se guardó. La opción independiente de reembolso elimina las cantidades guardadas y devuelve su valor registrado como créditos DimaFX; no reembolsa Bits de Twitch.
+El módulo muestra los elementos configurados y permite a las personas autorizadas crearlos, editarlos, habilitarlos o deshabilitarlos, previsualizarlos y eliminarlos. El botón **Probar en stream** pone un elemento en cola exactamente como lo haría una compra de espectador —sin cobrar Bits— para que el broadcaster verifique la conectividad de la superposición, el volumen y la reproducción antes de publicar. Normalmente, eliminar un elemento no altera el valor del inventario que ya se guardó. La opción independiente de reembolso elimina las cantidades guardadas y devuelve su valor registrado como créditos DimaFX; no reembolsa Bits de Twitch.
+
+### Elementos TTS
+
+Los elementos de la categoría **TTS** sintetizan voz al activarse en lugar de reproducir un recurso guardado, por lo que no necesitan un archivo de la biblioteca multimedia. Cada elemento TTS tiene un idioma y una voz (se usan los valores predeterminados de TTS del canal a menos que se elija una voz específica) y uno de dos modos:
+
+- **Mensaje fijo** — el broadcaster escribe el texto una vez; cada activación dice el mismo mensaje.
+- **El espectador escribe el mensaje** — los espectadores escriben su propio texto (hasta 280 caracteres) al canjear el elemento. Los enlaces se eliminan automáticamente. Los mensajes personalizados se reproducen de inmediato y no se pueden guardar en el inventario.
+
+## Cola de reproducción en el stream
+
+Los elementos activados se reproducen **de uno en uno, en orden de compra**. Si varios espectadores canjean elementos a la vez, la cola los retiene hasta que termine el elemento actual; si la superposición se desconecta brevemente, los elementos en espera se reanudan cuando vuelve a conectarse. Si no hay ninguna superposición conectada, la compra se rechaza desde el inicio y el valor en Bits del espectador identificado se devuelve como créditos DimaFX. Los reintentos de transacciones de Twitch son seguros: reenviar la misma transacción nunca reproduce ni cobra dos veces.
 
 ## Experiencia del espectador
 
 En el panel de la extensión de Twitch del canal, los espectadores pueden explorar los elementos habilitados, buscar o filtrar la biblioteca, previsualizar contenido y abrir un elemento para elegir una acción. Las compras con Bits solo están disponibles dentro de Twitch. Los elementos gratuitos usan directamente el flujo del servidor y no llaman a la API de compras con Bits de Twitch.
 
-Los espectadores pueden elegir **Usar ahora** para enviar el elemento a la superposición conectada, o **Guardar** para almacenar una copia en el inventario de ese canal. Guardar y usar créditos DimaFX requiere que el espectador comparta su identidad de Twitch con la extensión. Los espectadores anónimos pueden comprar con Bits y elegir **Usar ahora**, pero no pueden guardar elementos en el inventario ni gastar créditos.
+Los espectadores pueden elegir **Usar ahora** para enviar el elemento a la superposición conectada, o **Guardar** para almacenar una copia en el inventario de ese canal. Guardar y usar créditos DimaFX requiere que el espectador comparta su identidad de Twitch con la extensión. Los espectadores anónimos pueden comprar con Bits y elegir **Usar ahora**, pero no pueden guardar elementos en el inventario ni gastar créditos. En los elementos TTS con texto del espectador, el campo de texto aparece al abrir el elemento y la compra se reproduce de inmediato.
 
 Cada espectador identificado tiene un saldo de créditos DimaFX independiente por canal. Si la superposición no puede aceptar una solicitud de **Usar ahora**, el servidor informa del error y devuelve el valor como créditos a los espectadores identificados. Los elementos guardados se pueden activar más tarde desde el inventario; si la superposición no acepta la activación, se restaura la copia guardada.
 
@@ -30,7 +41,7 @@ Los ajustes del espectador solo controlan el acceso directo de las tarjetas de l
 ## Solución de problemas
 
 - Si la tienda está vacía, comprueba que los elementos estén habilitados y que los recursos del canal sigan disponibles.
-- Si un elemento no se activa, conecta el cliente de superposición de activadores del canal e inténtalo de nuevo. El valor de un uso inmediato fallido se devuelve como créditos al espectador identificado.
+- Si un elemento no se activa, conecta la superposición de activadores del canal (o una escena de Overlay Studio con un widget de activadores) e inténtalo de nuevo — el indicador de estado de la superposición del módulo muestra el estado actual y **Probar en stream** verifica la reproducción. El valor de un uso inmediato fallido se devuelve como créditos al espectador identificado.
 - Si no aparecen los créditos, el inventario o las preferencias guardadas, comparte tu identidad de Twitch en la extensión. Twitch también puede solicitar la autorización de identidad por separado de la autorización de la extensión.
 - Si no puedes pagar con Bits, abre la extensión dentro de Twitch; el flujo de Bits no funciona fuera de Twitch.
 

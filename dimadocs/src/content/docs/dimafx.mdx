@@ -13,15 +13,26 @@ DimaFX is a Twitch Extension storefront for channel media. A broadcaster or dash
 2. Open **Modules → DimaFX**. The module is available on the Free tier, subject to dashboard access permissions.
 3. Create an item, choose an available public asset or one belonging to the channel, and set its name, optional description, category, price, volume, and enabled state. The price must be one of the values offered by the form (by default 0, 5, 10, 25, 50, or 100 Bits). The server maps these prices to Twitch Extension SKUs; unsupported values cannot be saved.
 4. In Twitch, add/activate the DimaFX Extension for the channel and open its configuration view. The configuration page waits for Twitch authorization and offers **Sign in with Twitch**; sign in to DomDimaBot to return to that channel's DimaFX module.
-5. Keep the channel's trigger overlay client connected when viewers should trigger media on stream. A purchase can be saved to inventory without immediate playback, but **Use now** requires a connected overlay client.
+5. Keep the channel's trigger overlay connected when viewers should trigger media on stream. DimaFX plays through the classic trigger overlay browser source or an Overlay Studio scene with a trigger widget; the module shows whether an overlay is currently connected. A purchase can be saved to inventory without immediate playback, but **Use now** requires a connected overlay.
 
-The module lists configured items and lets permitted users create, edit, enable/disable, preview, and delete them. Deleting an item normally leaves already saved inventory value untouched. The separate refund option removes saved quantities and returns their recorded value as DimaFX credits; it does not refund Twitch Bits.
+The module lists configured items and lets permitted users create, edit, enable/disable, preview, and delete them. The **Test on stream** button queues an item exactly as a viewer purchase would — without charging Bits — so broadcasters can verify overlay connectivity, volume, and playback before publishing. Deleting an item normally leaves already saved inventory value untouched. The separate refund option removes saved quantities and returns their recorded value as DimaFX credits; it does not refund Twitch Bits.
+
+### TTS items
+
+Items in the **TTS** category synthesize speech when triggered instead of playing a stored asset, so they do not need a Media Library file. Each TTS item has a language and voice (the channel's TTS defaults are used unless a specific voice is chosen) and one of two modes:
+
+- **Fixed message** — the broadcaster writes the text once; every redemption speaks the same message.
+- **Viewer writes the message** — viewers type their own text (up to 280 characters) when they redeem the item. Links are stripped automatically. Custom messages are spoken immediately and cannot be saved to inventory.
+
+## On-stream playback queue
+
+Triggered items play **one at a time, in purchase order**. If several viewers redeem items at once, the queue holds them until the current item finishes; if the overlay briefly disconnects, waiting items resume when it reconnects. If no overlay is connected at all, the purchase is rejected up front and an identified viewer's Bits value is returned as DimaFX credits. Twitch transaction retries are safe: resubmitting the same transaction never plays or charges twice.
 
 ## Viewer flow
 
 Inside the channel's Twitch Extension panel, viewers can browse enabled items, search/filter the library, preview media, and open an item to choose an action. Twitch Bits purchases are available only inside Twitch. Free items use the server flow directly and do not call Twitch's Bits purchase API.
 
-Viewers can choose **Use now** to send the item to the connected overlay, or **Save** to put a copy in their channel-specific inventory. Saving and using DimaFX credits require the viewer to share their Twitch identity with the Extension. Anonymous viewers can still use a Bits purchase for **Use now**, but cannot save inventory items or spend credits.
+Viewers can choose **Use now** to send the item to the connected overlay, or **Save** to put a copy in their channel-specific inventory. Saving and using DimaFX credits require the viewer to share their Twitch identity with the Extension. Anonymous viewers can still use a Bits purchase for **Use now**, but cannot save inventory items or spend credits. For viewer-written TTS items, the text field appears when opening the item and the purchase plays immediately.
 
 Identified viewers have a per-channel DimaFX credit balance. When the overlay cannot accept a **Use now** request, the server reports the failure and returns the value as credits for an identified viewer. Saved items can be triggered later from the inventory; the saved copy is restored if the overlay cannot accept the trigger.
 
@@ -30,7 +41,7 @@ The Extension's viewer settings control only the storefront card shortcut: **Cre
 ## Troubleshooting
 
 - If the storefront is empty, check that items are enabled and the selected channel's assets are still available.
-- If an item will not trigger, connect the channel's trigger overlay client and try again. An identified viewer's failed immediate-use value is returned as credits.
+- If an item will not trigger, connect the channel's trigger overlay (or an Overlay Studio scene with a trigger widget) and try again — the module's overlay status indicator shows the current state and **Test on stream** verifies playback. An identified viewer's failed immediate-use value is returned as credits.
 - If credits, inventory, or saved preferences are unavailable, share Twitch identity in the Extension. Twitch may also present identity sharing separately from Extension authorization.
 - If Bits purchasing is unavailable, open the Extension inside Twitch; the Bits flow is not supported outside Twitch.
 
