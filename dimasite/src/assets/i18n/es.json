@@ -2059,7 +2059,15 @@
       "expires": "Caduca al renovar o cuando termina el plan",
       "expiresInDays": "Los créditos caducan en {{days}} días",
       "expiresInDay": "Los créditos caducan en 1 día",
-      "expiresToday": "Los créditos caducan hoy"
+      "expiresToday": "Los créditos caducan hoy",
+      "expiryAlertKicker": "Caducidad de la recarga",
+      "expiryAlertDays": "Quedan {{days}} días",
+      "expiryAlertDay": "Queda 1 día",
+      "expiryAlertToday": "Caduca hoy",
+      "expiryAlertNone": "Caduca al renovar",
+      "expiryAlertBody": "Los créditos de recarga no se acumulan, a diferencia de los paquetes de créditos permanentes.",
+      "expiryAlertDate": "El saldo sin usar se elimina el {{date}}, cuando se renueva tu plan.",
+      "expiryAlertRenewal": "El saldo sin usar se elimina cuando tu plan se renueva o termina."
     },
     "sizes": {
       "sample": "Paquete de muestra",

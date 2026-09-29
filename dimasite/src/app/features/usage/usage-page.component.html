@@ -159,6 +159,9 @@
                 <h3 id="usage-pack-title" class="lf-h3">{{ t('usage.recommendation.title') }}</h3>
                 <p class="lf-note">{{ t('usage.recommendation.body', { credits: formatCredits(pack.credits), price: formatPackPrice(pack) }) }}</p>
                 <p class="lf-note">{{ t(pack.kind === 'recharge' ? 'creditPacks.recharge.description' : 'creditPacks.credit.description') }}</p>
+                @if (rechargeExpiryNote(); as expiry) {
+                  <p class="lf-note lf-note--warn">{{ expiry }}</p>
+                }
                 <a class="lf-btn lf-btn--primary" [routerLink]="creditStoreLink()" [queryParams]="{ recommended: pack.id }">
                   {{ t(pack.kind === 'recharge' ? 'usage.recommendation.rechargeCta' : 'usage.recommendation.creditCta', { price: formatPackPrice(pack) }) }}
                 </a>

@@ -68,13 +68,20 @@ try {
     await store.getByText('Unused credits expire when the subscription renews or ends.', { exact: false }).waitFor();
 
     const rechargeButtons = store.locator('.lf-pack-card--recharge button');
+    const rechargeExpiryBadges = store.locator('.lf-pack-card__expiry');
+    const expiryAlert = store.locator('.lf-expiry-alert');
+    assert.equal(await rechargeExpiryBadges.count(), 3, 'each recharge card must show an expiry badge');
     if (tier === 'free') {
       assert.equal(await store.getByText('Premium or Pro only', { exact: true }).count(), 1);
       assert.equal(await rechargeButtons.evaluateAll(buttons => buttons.every(button => button.disabled)), true);
+      assert.equal(await expiryAlert.count(), 0, 'locked recharge section must not show the paid countdown');
     } else {
       assert.equal(await store.getByText('Unlocked for your plan', { exact: true }).count(), 1);
       assert.equal(await rechargeButtons.evaluateAll(buttons => buttons.every(button => !button.disabled)), true);
       assert.equal(await store.getByText('Credits expire in 7 days', { exact: true }).count(), 3);
+      assert.equal(await expiryAlert.count(), 1, 'paid recharge section must show a prominent expiry alert');
+      assert.equal(await expiryAlert.getByText('7 days left', { exact: true }).count(), 1, 'alert must lead with the day count');
+      assert.equal(await expiryAlert.getByText('Sep 26, 2026', { exact: false }).count(), 1, 'alert must name the renewal date');
     }
 
     const iconGeometry = await store.locator('app-lf-icon:visible').evaluateAll(icons => icons.map(icon => {
@@ -120,7 +127,7 @@ try {
     assert.deepEqual(errors, [], `${tier} store browser errors`);
     await context.close();
   }
-  console.log('PASS credit store distinction, recharge countdown, aligned icons, free/paid states, 320/390/1280 layouts, dark mode, accessibility, and browser runtime');
+  console.log('PASS credit store distinction, prominent recharge expiry countdown and renewal date, aligned icons, free/paid states, 320/390/1280 layouts, dark mode, accessibility, and browser runtime');
 } finally {
   await browser.close();
 }

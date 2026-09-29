@@ -2059,7 +2059,15 @@
       "expires": "Expires at renewal or when the plan ends",
       "expiresInDays": "Credits expire in {{days}} days",
       "expiresInDay": "Credits expire in 1 day",
-      "expiresToday": "Credits expire today"
+      "expiresToday": "Credits expire today",
+      "expiryAlertKicker": "Recharge expiration",
+      "expiryAlertDays": "{{days}} days left",
+      "expiryAlertDay": "1 day left",
+      "expiryAlertToday": "Expires today",
+      "expiryAlertNone": "Expires at renewal",
+      "expiryAlertBody": "Recharge credits don't roll over, unlike permanent credit packs.",
+      "expiryAlertDate": "Unused balance is removed on {{date}} when your plan renews.",
+      "expiryAlertRenewal": "Unused balance is removed when your plan renews or ends."
     },
     "sizes": {
       "sample": "Sample pack",

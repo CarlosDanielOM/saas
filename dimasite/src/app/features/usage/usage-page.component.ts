@@ -163,6 +163,16 @@ export class UsagePageComponent {
         && (pack.kind !== 'recharge' || catalog.hasActivePaidSubscription))
       .sort((a, b) => a.priceAmount - b.priceAmount || a.credits - b.credits)[0] ?? null;
   });
+  readonly rechargeExpiryNote = computed<string | null>(() => {
+    const catalog = this.packCatalog();
+    const pack = this.recommendedPack();
+    if (!catalog || !pack || pack.kind !== 'recharge') return null;
+    const days = catalog.rechargeExpiryDays;
+    if (days === null || days === undefined) return this.t('creditPacks.recharge.expires');
+    if (days <= 0) return this.t('creditPacks.recharge.expiresToday');
+    if (days === 1) return this.t('creditPacks.recharge.expiresInDay');
+    return this.t('creditPacks.recharge.expiresInDays', { days });
+  });
 
   readonly pacing = computed<AiUsagePacing | null>(() => this.summary()?.pacing ?? null);
   readonly billingPeriod = computed(() => this.summary()?.billingPeriod ?? null);

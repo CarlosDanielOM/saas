@@ -80,6 +80,34 @@ export class CreditPacksPageComponent {
     }
     return this.t('creditPacks.recharge.expiresInDays', { days });
   });
+  readonly rechargeExpiryAlert = computed<{ headline: string } | null>(() => {
+    const catalog = this.catalog();
+    if (!catalog?.hasActivePaidSubscription) {
+      return null;
+    }
+    const days = catalog.rechargeExpiryDays;
+    if (days === null || days === undefined) {
+      return { headline: this.t('creditPacks.recharge.expiryAlertNone') };
+    }
+    if (days <= 0) {
+      return { headline: this.t('creditPacks.recharge.expiryAlertToday') };
+    }
+    if (days === 1) {
+      return { headline: this.t('creditPacks.recharge.expiryAlertDay') };
+    }
+    return { headline: this.t('creditPacks.recharge.expiryAlertDays', { days }) };
+  });
+  readonly rechargeExpiryDate = computed<string | null>(() => {
+    const value = this.catalog()?.rechargeExpiresAt;
+    if (!value) {
+      return null;
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    return new Intl.DateTimeFormat(this.locale(), { dateStyle: 'medium' }).format(date);
+  });
 
   constructor() {
     if (this.purchaseCompleted()) {

@@ -184,6 +184,26 @@
           }
         </header>
 
+        @if (rechargeExpiryAlert(); as alert) {
+          <aside class="lf-expiry-alert" role="note">
+            <span class="lf-expiry-alert__icon" aria-hidden="true">
+              <app-lf-icon name="timer" [size]="24" />
+            </span>
+            <div class="lf-expiry-alert__copy">
+              <p class="lf-expiry-alert__kicker">{{ t('creditPacks.recharge.expiryAlertKicker') }}</p>
+              <p class="lf-expiry-alert__headline">{{ alert.headline }}</p>
+              <p class="lf-expiry-alert__body">
+                {{ t('creditPacks.recharge.expiryAlertBody') }}
+                @if (rechargeExpiryDate(); as date) {
+                  {{ t('creditPacks.recharge.expiryAlertDate', { date }) }}
+                } @else {
+                  {{ t('creditPacks.recharge.expiryAlertRenewal') }}
+                }
+              </p>
+            </div>
+          </aside>
+        }
+
         <div class="lf-card-grid">
           @for (pack of rechargePacks(); track pack.id) {
             <article
@@ -204,8 +224,11 @@
               </p>
               <ul class="lf-feature-list lf-feature-list--recharge">
                 <li><app-lf-icon name="zap" /> {{ t('creditPacks.recharge.moreValue') }}</li>
-                <li><app-lf-icon name="timer" /> {{ rechargeExpiryLabel() }}</li>
               </ul>
+              <p class="lf-pack-card__expiry">
+                <app-lf-icon name="timer" aria-hidden="true" />
+                <span>{{ rechargeExpiryLabel() }}</span>
+              </p>
               @if (canPurchase()) {
               <button
                 type="button"

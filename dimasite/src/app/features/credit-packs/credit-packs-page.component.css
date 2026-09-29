@@ -330,6 +330,57 @@
   background: var(--gold-soft);
 }
 
+.lf-expiry-alert {
+  display: grid;
+  grid-template-columns: 2.9rem minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 55%);
+  border-inline-start: 5px solid var(--gold);
+  border-radius: 1rem;
+  background: var(--tile);
+  box-shadow: 0 12px 32px rgba(15, 17, 21, 0.07);
+}
+
+.lf-expiry-alert__icon {
+  display: grid;
+  width: 2.9rem;
+  height: 2.9rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.lf-expiry-alert__kicker {
+  margin: 0;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lf-expiry-alert__headline {
+  margin: 0.2rem 0 0;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.5rem, 7vw, 2.1rem);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.lf-expiry-alert__body {
+  max-width: 68ch;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
 .lf-card-grid {
   display: grid;
   gap: 0.8rem;
@@ -429,6 +480,25 @@
 }
 
 .lf-feature-list--recharge app-lf-icon {
+  color: var(--gold);
+}
+
+.lf-pack-card__expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 1.2rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--gold), transparent 55%);
+  border-radius: 0.7rem;
+  color: var(--gold);
+  background: var(--gold-soft);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.lf-pack-card__expiry app-lf-icon {
   color: var(--gold);
 }
 
