@@ -1,0 +1,16 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_dimafx_test",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "QDRANT_HOST": "qdrant.test",
+  "QDRANT_PORT": "6333",
+  "QDRANT_API_KEY": "dummy",
+  "POLARSH_OAT": "dummy",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "DIMAFX_SERVICE_TOKEN": "fixture-service-token",
+  "PIPER_HTTP_URL": "http://piper.test",
+  "PUBLIC_API_URL": "http://127.0.0.1:3000",
+  "INTERNAL_API_URL": "http://127.0.0.1:3000",
+  "OTEL_SDK_DISABLED": "true"
+}

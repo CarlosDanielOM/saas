@@ -22,7 +22,7 @@ async function wavDurationSeconds(filePath: string): Promise<number> {
   }
 }
 
-export async function getTtsPlaybackTimeoutMs(filePath: string): Promise<number> {
+export async function getAudioFileDurationMs(filePath: string): Promise<number> {
   try {
     const extension = path.extname(filePath).toLowerCase();
     const duration = extension === '.mp3'
@@ -30,11 +30,16 @@ export async function getTtsPlaybackTimeoutMs(filePath: string): Promise<number>
       : extension === '.wav'
         ? await wavDurationSeconds(filePath)
         : 0;
-    if (!Number.isFinite(duration) || duration <= 0) return DEFAULT_TIMEOUT_MS;
-    // The overlay normally acknowledges playback. This is a recovery window
-    // for missing acknowledgements, with time for the browser to fetch audio.
-    return Math.max(60_000, Math.ceil(duration * 1000) + 30_000);
+    return Number.isFinite(duration) && duration > 0 ? Math.ceil(duration * 1000) : 0;
   } catch {
-    return DEFAULT_TIMEOUT_MS;
+    return 0;
   }
+}
+
+export async function getTtsPlaybackTimeoutMs(filePath: string): Promise<number> {
+  const durationMs = await getAudioFileDurationMs(filePath);
+  if (durationMs <= 0) return DEFAULT_TIMEOUT_MS;
+  // The overlay normally acknowledges playback. This is a recovery window
+  // for missing acknowledgements, with time for the browser to fetch audio.
+  return Math.max(60_000, durationMs + 30_000);
 }

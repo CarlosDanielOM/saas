@@ -30,25 +30,36 @@
 
         function renderTrigger(data) {
             triggerCount++;
-            const { mediaType, url, volume } = data || {};
+            const { mediaType, url, volume, triggerID } = data || {};
 
             if (!mediaType || !url) {
                 return;
             }
 
+            // Queued DimaFX triggers carry a triggerID; acknowledging playback
+            // lets the server-side queue start the next purchased item.
+            let acknowledged = false;
+            const onDone = () => {
+                if (acknowledged || !triggerID || !socket) {
+                    return;
+                }
+                acknowledged = true;
+                socket.emit('dimafx-ended', { triggerID });
+            };
+
             const triggerType = mediaType.split('/')[0];
             if (triggerType === 'image') {
-                triggerContainer.appendChild(createImagePlayer(url));
+                triggerContainer.appendChild(createImagePlayer(url, onDone));
                 return;
             }
 
             if (triggerType === 'video') {
-                triggerContainer.appendChild(createVideoPlayer(url, mediaType, volume));
+                triggerContainer.appendChild(createVideoPlayer(url, mediaType, volume, onDone));
                 return;
             }
 
             if (triggerType === 'audio') {
-                document.body.appendChild(createAudioPlayer(url, mediaType, volume));
+                document.body.appendChild(createAudioPlayer(url, mediaType, volume, onDone));
             }
         }
 
@@ -137,7 +148,7 @@
             renderTrigger(event.data.payload);
         });
 
-        function createImagePlayer(url) {
+        function createImagePlayer(url, onDone) {
             const imagePlayer = document.createElement('img');
             imagePlayer.style.position = 'fixed';
             imagePlayer.style.inset = '0';
@@ -147,18 +158,22 @@
             imagePlayer.setAttribute('id', String(triggerCount));
 
             imagePlayer.addEventListener('load', () => {
-                window.setTimeout(() => imagePlayer.remove(), 5000);
+                window.setTimeout(() => {
+                    imagePlayer.remove();
+                    if (onDone) onDone();
+                }, 5000);
             });
             imagePlayer.addEventListener('error', () => {
                 console.log('Error playing trigger image', { url });
                 imagePlayer.remove();
+                if (onDone) onDone();
             });
             imagePlayer.src = url;
 
             return imagePlayer;
         }
 
-        function createVideoPlayer(url, mediaType, volume) {
+        function createVideoPlayer(url, mediaType, volume, onDone) {
             const videoPlayer = document.createElement('video');
             videoPlayer.style.position = 'fixed';
             videoPlayer.style.top = '0px';
@@ -173,17 +188,19 @@
 
             videoPlayer.addEventListener('ended', () => {
                 videoPlayer.remove();
+                if (onDone) onDone();
             });
 
             videoPlayer.addEventListener('error', () => {
                 console.log('Error playing trigger video', { url, mediaType });
                 videoPlayer.remove();
+                if (onDone) onDone();
             });
 
             return videoPlayer;
         }
 
-        function createAudioPlayer(url, mediaType, volume) {
+        function createAudioPlayer(url, mediaType, volume, onDone) {
             const audioPlayer = document.createElement('audio');
             audioPlayer.setAttribute('autoplay', 'true');
             audioPlayer.setAttribute('id', String(triggerCount));
@@ -193,11 +210,13 @@
 
             audioPlayer.addEventListener('ended', () => {
                 audioPlayer.remove();
+                if (onDone) onDone();
             });
 
             audioPlayer.addEventListener('error', () => {
                 console.log('Error playing trigger audio', { url, mediaType });
                 audioPlayer.remove();
+                if (onDone) onDone();
             });
 
             return audioPlayer;

@@ -132,3 +132,67 @@ export function selectRedeemCandidate<
 
   return candidates[0] || null;
 }
+
+export const DIMAFX_TTS_FIXED_TEXT_MAX = 500;
+export const DIMAFX_TTS_VIEWER_TEXT_MAX = 280;
+
+// Piper voice IDs look like "en_US-ryan-medium". The pattern doubles as a
+// safety guard: the voice is passed to the Piper CLI/HTTP API, so reject
+// anything that could be parsed as a flag or path.
+const PIPER_VOICE_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,119}$/;
+
+export function isValidDimafxTtsVoice(value: unknown): value is string {
+  return typeof value === "string" && PIPER_VOICE_PATTERN.test(value.trim());
+}
+
+/**
+ * Normalizes the broadcaster-authored TTS config for a DimaFX item.
+ * Returns null when the incoming value is not an object (callers decide
+ * whether TTS config is required). Throws Error with a user-safe message
+ * when fields are invalid.
+ */
+export function normalizeDimafxTtsConfig(
+  value: unknown,
+): import("../../schemas/channel_extension_item.schema.js").ChannelExtensionItemTtsConfig | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== "object") {
+    throw new Error("Invalid TTS configuration");
+  }
+
+  const input = value as Record<string, unknown>;
+  const mode = input.mode === "fixed" ? "fixed" : "custom";
+  const language = input.language === "es" ? "es" : "en";
+
+  const text = typeof input.text === "string" ? input.text.trim().replace(/\s+/g, " ") : "";
+  if (mode === "fixed" && !text) {
+    throw new Error("Fixed TTS items require text");
+  }
+  if (text.length > DIMAFX_TTS_FIXED_TEXT_MAX) {
+    throw new Error(`TTS text must be ${DIMAFX_TTS_FIXED_TEXT_MAX} characters or fewer`);
+  }
+
+  const voice = typeof input.voice === "string" ? input.voice.trim() : "";
+  if (voice && !isValidDimafxTtsVoice(voice)) {
+    throw new Error("Invalid TTS voice");
+  }
+
+  return { mode, text, voice, language };
+}
+
+/**
+ * Sanitizes viewer-supplied TTS text at purchase time: trims, collapses
+ * whitespace, strips links, and enforces the length cap. Returns the cleaned
+ * text (possibly empty — callers decide whether empty is acceptable).
+ */
+export function sanitizeDimafxViewerTtsText(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value
+    .replace(/https?:\/\/\S+|www\.\S+/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, DIMAFX_TTS_VIEWER_TEXT_MAX);
+}

@@ -76,6 +76,10 @@ async function activateSources(peer: Peer): Promise<void> {
     await clipQueueHandler.subscribeToChannel(peer.channel);
   }
   if (accepts(peer, 'tts')) await ttsQueueHandler.resumeIfIdle(peer.channel);
+  if (accepts(peer, 'trigger')) {
+    const { dimafxQueueHandler } = await import('../handlers/dimafx_queue.handler.js');
+    await dimafxQueueHandler.resumeIfIdle(peer.channel);
+  }
 }
 export function registerStudio(io: Server): void {
   const pattern = /^\/overlay-studio\/[a-f0-9]{48}$/;

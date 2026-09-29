@@ -10,7 +10,6 @@ import {
     type IUserExtensionInventory
 } from '../../schemas/user_extension_inventory.schema.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
-import { getIO } from '../websocket.js';
 import { buildMediaPlaybackUrl } from '../services/media_library.service.js';
 import { scheduleThumbnailGeneration } from '../../utils/thumbnail_generator.js';
 import {
@@ -18,10 +17,13 @@ import {
     getDimafxSkuForBitsPrice,
     hasDimafxPermission,
     normalizeDimafxPurchaseAction,
+    normalizeDimafxTtsConfig,
     normalizeDimafxViewerConfig,
+    sanitizeDimafxViewerTtsText,
     selectRedeemCandidate,
     type DimafxPurchaseAction
 } from '../services/dimafx.service.js';
+import { dimafxQueueHandler, type DimafxQueueSource } from '../../handlers/dimafx_queue.handler.js';
 
 interface DimafxRequest extends Request {
     user?: {
@@ -44,6 +46,7 @@ interface ChannelExtensionItemPayload {
     volume?: number;
     isEnabled?: boolean;
     sortOrder?: number;
+    tts?: unknown;
 }
 
 interface ExtensionIdentityBody {
@@ -53,6 +56,7 @@ interface ExtensionIdentityBody {
     transactionID?: string;
     sku?: string;
     action?: DimafxPurchaseAction;
+    ttsText?: string;
 }
 
 const router = express.Router();
@@ -170,7 +174,15 @@ function mapChannelExtensionItem(item: IChannelExtensionItem, asset: IMediaAsset
             scope: asset.scope,
             marketplaceStatus: asset.marketplaceStatus
         } : null,
-        mediaUrl: asset ? buildMediaPlaybackUrl(asset._id) : null
+        mediaUrl: asset ? buildMediaPlaybackUrl(asset._id) : null,
+        tts: item.tts
+            ? {
+                mode: item.tts.mode,
+                text: item.tts.text,
+                voice: item.tts.voice,
+                language: item.tts.language
+            }
+            : null
     };
 }
 
@@ -198,8 +210,8 @@ function mapInventory(inventory: IUserExtensionInventory): Record<string, unknow
     };
 }
 
-async function getAssetMap(assetIDs: string[]): Promise<Map<string, IMediaAsset>> {
-    const uniqueIDs = Array.from(new Set(assetIDs.filter(Boolean)));
+async function getAssetMap(assetIDs: (string | Types.ObjectId | null | undefined)[]): Promise<Map<string, IMediaAsset>> {
+    const uniqueIDs = Array.from(new Set(assetIDs.filter((id): id is string | Types.ObjectId => Boolean(id)).map(String)));
     if (uniqueIDs.length === 0) return new Map();
 
     const assets = await MediaAssetSchema.find({ _id: { $in: uniqueIDs }, deletedAt: null }).lean();
@@ -249,7 +261,7 @@ function internalServiceAuth(req: Request, res: Response, next: NextFunction): v
     next();
 }
 
-async function getActiveChannelItem(channelID: string, itemID: string): Promise<{ item: IChannelExtensionItem; asset: IMediaAsset } | null> {
+async function getActiveChannelItem(channelID: string, itemID: string): Promise<{ item: IChannelExtensionItem; asset: IMediaAsset | null } | null> {
     if (!Types.ObjectId.isValid(itemID)) return null;
 
     const item = await ChannelExtensionItemSchema.findOne({
@@ -261,6 +273,12 @@ async function getActiveChannelItem(channelID: string, itemID: string): Promise<
 
     if (!item) return null;
 
+    // TTS items synthesize audio at playback time; they have no stored asset.
+    if (item.category === 'tts') {
+        return { item, asset: null };
+    }
+
+    if (!item.assetID) return null;
     const asset = await MediaAssetSchema.findOne({ _id: item.assetID, deletedAt: null }).lean();
     if (!asset) return null;
 
@@ -399,33 +417,216 @@ async function restoreSavedItem(
     await addInventoryItem(channelID, userID, itemID, savedItem.purchasePriceBits, savedItem.source);
 }
 
-async function emitChannelExtensionItem(channelID: string, item: IChannelExtensionItem, asset: IMediaAsset): Promise<Record<string, unknown>> {
-    const io = getIO();
-    if (!io) {
-        throw new Error('Websocket not initialized');
+class DimafxQueueError extends Error {
+    constructor(
+        message: string,
+        readonly status: number,
+        readonly noClients: boolean
+    ) {
+        super(message);
+        this.name = noClients ? 'NO_TRIGGER_CLIENTS' : 'DIMAFX_QUEUE_ERROR';
     }
+}
 
-    const namespacePath = `/overlays/triggers/${channelID}`;
-    const namespace = io.of(namespacePath);
-    const sockets = await namespace.fetchSockets();
-
-    if (sockets.length === 0) {
-        const noClientsError = new Error('No trigger overlay clients connected');
-        noClientsError.name = 'NO_TRIGGER_CLIENTS';
-        throw noClientsError;
-    }
-
-    namespace.emit('trigger', {
-        url: buildMediaPlaybackUrl(asset._id),
-        mediaType: asset.mimeType || item.mediaType,
-        volume: item.volume,
-        source: 'dimafx',
-        itemID: String(item._id),
-        assetID: String(asset._id),
-        name: item.name
+/**
+ * Enqueues a DimaFX trigger for sequential on-stream playback. Replaces the
+ * old fire-and-forget socket emit: items now play one at a time, survive
+ * brief overlay disconnects, and reach both the legacy trigger overlay and
+ * Overlay Studio sources.
+ */
+async function queueChannelExtensionItem(
+    channelID: string,
+    item: IChannelExtensionItem,
+    asset: IMediaAsset | null,
+    options: { viewerText?: string; refundOnFailure?: { userID: string; priceBits: number }; source: DimafxQueueSource }
+): Promise<Record<string, unknown>> {
+    const result = await dimafxQueueHandler.enqueue({
+        channelID,
+        item,
+        asset,
+        viewerText: options.viewerText,
+        refundOnFailure: options.refundOnFailure,
+        source: options.source
     });
 
-    return { activeConnections: sockets.length, namespace: namespacePath };
+    if (!result.ok) {
+        throw new DimafxQueueError(result.message, result.status, result.status === 409);
+    }
+
+    return {
+        queued: true,
+        queueLength: result.queueLength,
+        triggerID: result.triggerID,
+        activeConnections: result.activeConnections,
+        namespace: `/overlays/triggers/${channelID}`
+    };
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+    return Boolean(error) && typeof error === 'object' && (error as { code?: unknown }).code === 11000;
+}
+
+type PurchaseFulfillment = 'pending' | 'processing' | 'fulfilled' | 'refunded';
+
+async function markPurchaseFulfillment(ledgerID: Types.ObjectId, fulfillment: PurchaseFulfillment): Promise<void> {
+    await ExtensionWalletTransactionSchema.updateOne(
+        { _id: ledgerID },
+        { $set: { 'metadata.fulfillment': fulfillment } }
+    );
+}
+
+interface BitsPurchaseContext {
+    ledgerID: Types.ObjectId;
+    channelID: string;
+    itemData: { item: IChannelExtensionItem; asset: IMediaAsset | null };
+    userID?: string;
+    opaqueUserID?: string;
+    displayName?: string;
+    action: DimafxPurchaseAction;
+    viewerText?: string;
+}
+
+/**
+ * Shared fulfillment for fresh Bits purchases and idempotent retries. Callers
+ * must own the ledger row (fresh insert or successful pending→processing
+ * claim) before invoking this. On queue rejection the purchase ledger is
+ * marked refunded and the viewer is credited, so a later retry of the same
+ * Twitch transaction reports the refunded state instead of double-charging.
+ */
+async function fulfillBitsPurchase(ctx: BitsPurchaseContext): Promise<{ status: number; body: Record<string, unknown> }> {
+    const { item, asset } = ctx.itemData;
+
+    try {
+        if (ctx.userID) {
+            await getOrCreateInventory(ctx.channelID, ctx.userID, ctx.displayName);
+        }
+
+        if (ctx.action === 'save') {
+            const inventory = await addInventoryItem(ctx.channelID, ctx.userID!, String(item._id), item.bitsPrice, 'bits_purchase');
+            await markPurchaseFulfillment(ctx.ledgerID, 'fulfilled');
+            await ExtensionWalletTransactionSchema.create({
+                platform: 'twitch', userID: ctx.userID, channelID: ctx.channelID, type: 'save_item', amountBits: item.bitsPrice, balanceDelta: 0,
+                channelExtensionItemID: item._id, metadata: { source: 'bits_purchase' }
+            });
+            return {
+                status: 200,
+                body: { error: false, message: 'Item saved to inventory', status: 200, data: { inventory: mapInventory(inventory) } }
+            };
+        }
+
+        const queueResult = await queueChannelExtensionItem(ctx.channelID, item, asset, {
+            viewerText: ctx.viewerText,
+            source: 'bits_purchase',
+            refundOnFailure: ctx.userID ? { userID: ctx.userID, priceBits: item.bitsPrice } : undefined
+        });
+        await markPurchaseFulfillment(ctx.ledgerID, 'fulfilled');
+        await ExtensionWalletTransactionSchema.create({
+            platform: 'twitch', userID: ctx.userID || null, opaqueUserID: ctx.opaqueUserID || null, channelID: ctx.channelID, type: 'use_now', amountBits: item.bitsPrice, balanceDelta: 0,
+            channelExtensionItemID: item._id, metadata: { source: 'bits_purchase' }
+        });
+        return {
+            status: 200,
+            body: { error: false, message: 'DimaFX item queued for stream playback', status: 200, data: queueResult }
+        };
+    } catch (error) {
+        await markPurchaseFulfillment(ctx.ledgerID, 'refunded').catch(() => undefined);
+        if (ctx.userID) {
+            await creditViewerForFailedUse(ctx.channelID, ctx.userID, String(item._id), item.bitsPrice, error instanceof Error ? error.message : String(error));
+        }
+        const status = error instanceof DimafxQueueError ? error.status : 500;
+        return {
+            status,
+            body: {
+                error: true,
+                message: ctx.userID
+                    ? `${error instanceof Error ? error.message : 'DimaFX purchase failed'}. Your Bits were converted to credits.`
+                    : (error instanceof Error ? error.message : 'DimaFX purchase failed'),
+                status
+            }
+        };
+    }
+}
+
+/**
+ * Idempotent retry path for Bits purchases: Twitch (or the extension client)
+ * may resubmit the same transactionID. The unique ledger index blocks a
+ * second insert; this resolves the stored outcome or resumes a purchase that
+ * was interrupted after the ledger write but before fulfillment.
+ */
+async function resolveDuplicateBitsPurchase(res: Response, channelID: string, transactionID: string): Promise<Response> {
+    const existing = await ExtensionWalletTransactionSchema.findOne({ twitchTransactionID: transactionID }).lean();
+    if (!existing || existing.type !== 'bits_purchase') {
+        return res.status(409).json({ error: true, message: 'This Bits transaction was already submitted', status: 409 });
+    }
+
+    const fulfillment = (existing.metadata?.fulfillment as PurchaseFulfillment | undefined) || 'fulfilled';
+
+    if (fulfillment === 'refunded') {
+        return res.status(409).json({
+            error: true,
+            message: existing.userID
+                ? 'This purchase could not be fulfilled. Your Bits were converted to credits.'
+                : 'This purchase could not be fulfilled.',
+            status: 409
+        });
+    }
+
+    if (fulfillment === 'fulfilled') {
+        const inventory = existing.userID
+            ? await UserExtensionInventorySchema.findOne(inventoryIdentityFilter(channelID, existing.userID)).lean()
+            : null;
+        return res.status(200).json({
+            error: false,
+            message: 'DimaFX purchase already processed',
+            status: 200,
+            data: { duplicate: true, inventory: inventory ? mapInventory(inventory as IUserExtensionInventory) : null }
+        });
+    }
+
+    // pending/processing → try to claim and resume fulfillment. A fresh
+    // 'processing' state means another request is actively fulfilling right
+    // now; only a stale one (crashed request) may be reclaimed.
+    const staleThreshold = new Date(Date.now() - 30_000);
+    const claimed = await ExtensionWalletTransactionSchema.updateOne(
+        {
+            _id: existing._id,
+            $or: [
+                { 'metadata.fulfillment': 'pending' },
+                { 'metadata.fulfillment': 'processing', updatedAt: { $lt: staleThreshold } }
+            ]
+        },
+        { $set: { 'metadata.fulfillment': 'processing' } }
+    );
+    if (claimed.modifiedCount === 0) {
+        return res.status(200).json({
+            error: false,
+            message: 'DimaFX purchase is already being processed',
+            status: 200,
+            data: { duplicate: true }
+        });
+    }
+
+    const itemData = await getActiveChannelItem(channelID, String(existing.channelExtensionItemID || ''));
+    if (!itemData) {
+        await markPurchaseFulfillment(existing._id, 'refunded').catch(() => undefined);
+        if (existing.userID) {
+            await creditViewerForFailedUse(channelID, existing.userID, String(existing.channelExtensionItemID), Number(existing.amountBits || 0), 'item_unavailable_on_retry');
+        }
+        return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
+    }
+
+    const action = normalizeDimafxPurchaseAction(existing.metadata?.action);
+    const viewerText = typeof existing.metadata?.viewerText === 'string' ? existing.metadata.viewerText : undefined;
+    const result = await fulfillBitsPurchase({
+        ledgerID: existing._id,
+        channelID,
+        itemData,
+        userID: existing.userID || undefined,
+        opaqueUserID: existing.opaqueUserID || undefined,
+        action,
+        viewerText
+    });
+    return res.status(result.status).json(result.body);
 }
 
 async function creditViewerForFailedUse(channelID: string, userID: string, itemID: string, price: number, reason: string): Promise<void> {
@@ -449,7 +650,7 @@ router.get('/internal/channels/:channelID/items', internalServiceAuth, async (re
     try {
         const channelID = getParamValue(req.params.channelID);
         const items = await ChannelExtensionItemSchema.find({ channelID, isEnabled: true, deletedAt: null }).sort({ sortOrder: 1, createdAt: -1 }).lean();
-        const assetMap = await getAssetMap(items.map((item) => String(item.assetID)));
+        const assetMap = await getAssetMap(items.map((item) => item.assetID));
 
         return res.status(200).json({
             error: false,
@@ -563,50 +764,68 @@ router.post('/internal/channels/:channelID/items/:itemID/purchase', internalServ
             return res.status(403).json({ error: true, message: 'Anonymous viewers cannot save DimaFX items', status: 403 });
         }
 
-        await ExtensionWalletTransactionSchema.create({
-            platform: 'twitch',
-            userID: body.userID || null,
-            opaqueUserID: body.opaqueUserID || null,
-            channelID,
-            type: 'bits_purchase',
-            amountBits: itemData.item.bitsPrice,
-            balanceDelta: 0,
-            channelExtensionItemID: itemData.item._id,
-            twitchTransactionID: body.transactionID || null,
-            sku: body.sku,
-            metadata: { action }
-        });
-
-        if (body.userID) {
-            await getOrCreateInventory(channelID, body.userID, body.displayName);
+        // Custom-text TTS items must play immediately: the viewer's text only
+        // exists in this request, so saving them for later is not supported.
+        const isCustomTts = itemData.item.category === 'tts' && itemData.item.tts?.mode === 'custom';
+        if (action === 'save' && isCustomTts) {
+            return res.status(400).json({ error: true, message: 'Custom TTS items must be used immediately', status: 400 });
         }
 
-        if (action === 'save') {
-            const inventory = await addInventoryItem(channelID, body.userID!, itemID, itemData.item.bitsPrice, 'bits_purchase');
-            await ExtensionWalletTransactionSchema.create({
-                platform: 'twitch', userID: body.userID, channelID, type: 'save_item', amountBits: itemData.item.bitsPrice, balanceDelta: 0,
-                channelExtensionItemID: itemData.item._id, metadata: { source: 'bits_purchase' }
-            });
-            return res.status(200).json({ error: false, message: 'Item saved to inventory', status: 200, data: { inventory: mapInventory(inventory) } });
+        const viewerText = itemData.item.category === 'tts' && isCustomTts
+            ? sanitizeDimafxViewerTtsText(body.ttsText)
+            : undefined;
+        if (isCustomTts && !viewerText) {
+            return res.status(400).json({ error: true, message: 'TTS text is required for this item', status: 400 });
         }
 
+        let ledger;
         try {
-            const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
-            await ExtensionWalletTransactionSchema.create({
-                platform: 'twitch', userID: body.userID || null, opaqueUserID: body.opaqueUserID || null, channelID, type: 'use_now', amountBits: itemData.item.bitsPrice, balanceDelta: 0,
-                channelExtensionItemID: itemData.item._id, metadata: { source: 'bits_purchase' }
+            ledger = await ExtensionWalletTransactionSchema.create({
+                platform: 'twitch',
+                userID: body.userID || null,
+                opaqueUserID: body.opaqueUserID || null,
+                channelID,
+                type: 'bits_purchase',
+                amountBits: itemData.item.bitsPrice,
+                balanceDelta: 0,
+                channelExtensionItemID: itemData.item._id,
+                twitchTransactionID: body.transactionID || null,
+                sku: body.sku,
+                metadata: {
+                    action,
+                    fulfillment: 'pending',
+                    ...(viewerText ? { viewerText } : {})
+                }
             });
-            return res.status(200).json({ error: false, message: 'DimaFX item triggered', status: 200, data: emitResult });
-        } catch (emitError) {
-            if (body.userID) {
-                await creditViewerForFailedUse(channelID, body.userID, itemID, itemData.item.bitsPrice, emitError instanceof Error ? emitError.message : String(emitError));
+        } catch (createError) {
+            if (isDuplicateKeyError(createError) && body.transactionID) {
+                return await resolveDuplicateBitsPurchase(res, channelID, body.transactionID);
             }
-            return res.status(409).json({
-                error: true,
-                message: body.userID ? 'No trigger overlay clients connected. Your Bits were converted to credits.' : 'No trigger overlay clients connected',
-                status: 409
-            });
+            throw createError;
         }
+
+        // Claim the row before fulfilling so a concurrent duplicate of the same
+        // Twitch transaction reports the in-flight purchase instead of
+        // fulfilling twice.
+        const claimed = await ExtensionWalletTransactionSchema.updateOne(
+            { _id: ledger._id, 'metadata.fulfillment': 'pending' },
+            { $set: { 'metadata.fulfillment': 'processing' } }
+        );
+        if (claimed.modifiedCount === 0 && body.transactionID) {
+            return await resolveDuplicateBitsPurchase(res, channelID, body.transactionID);
+        }
+
+        const result = await fulfillBitsPurchase({
+            ledgerID: ledger._id,
+            channelID,
+            itemData,
+            userID: body.userID,
+            opaqueUserID: body.opaqueUserID,
+            displayName: body.displayName,
+            action,
+            viewerText
+        });
+        return res.status(result.status).json(result.body);
     } catch (error) {
         console.error('Error processing DimaFX purchase:', {
             channelID: req.params.channelID,
@@ -633,6 +852,18 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
         const itemData = await getActiveChannelItem(channelID, itemID);
         if (!itemData) {
             return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
+        }
+
+        const isCustomTts = itemData.item.category === 'tts' && itemData.item.tts?.mode === 'custom';
+        if (action === 'save' && isCustomTts) {
+            return res.status(400).json({ error: true, message: 'Custom TTS items must be used immediately', status: 400 });
+        }
+
+        const viewerText = itemData.item.category === 'tts' && isCustomTts
+            ? sanitizeDimafxViewerTtsText(body.ttsText)
+            : undefined;
+        if (isCustomTts && !viewerText) {
+            return res.status(400).json({ error: true, message: 'TTS text is required for this item', status: 400 });
         }
 
         const price = itemData.item.bitsPrice;
@@ -664,11 +895,20 @@ router.post('/internal/channels/:channelID/items/:itemID/use-credit', internalSe
             }
 
             try {
-                const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
-                return res.status(200).json({ error: false, message: 'DimaFX item triggered', status: 200, data: emitResult });
+                const queueResult = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, {
+                    viewerText,
+                    source: 'credit_purchase',
+                    refundOnFailure: { userID: body.userID!, priceBits: price }
+                });
+                return res.status(200).json({ error: false, message: 'DimaFX item queued for stream playback', status: 200, data: queueResult });
             } catch (emitError) {
                 await refundDebit(emitError instanceof Error ? emitError.message : String(emitError));
-                return res.status(409).json({ error: true, message: 'No trigger overlay clients connected. Your credits were returned.', status: 409 });
+                const status = emitError instanceof DimafxQueueError ? emitError.status : 409;
+                return res.status(status).json({
+                    error: true,
+                    message: `${emitError instanceof Error ? emitError.message : 'Unable to queue DimaFX item'}. Your credits were returned.`,
+                    status
+                });
             }
         } catch (error) {
             await refundDebit(error instanceof Error ? error.message : String(error));
@@ -729,7 +969,10 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
         }
 
         try {
-            const emitResult = await emitChannelExtensionItem(channelID, itemData.item, itemData.asset);
+            const queueResult = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, {
+                source: 'redeem_saved',
+                refundOnFailure: { userID: body.userID!, priceBits: savedItem.purchasePriceBits }
+            });
             try {
                 await ExtensionWalletTransactionSchema.create({
                     platform: 'twitch', userID: body.userID, channelID, type: 'redeem_saved', amountBits: savedItem.purchasePriceBits, balanceDelta: 0,
@@ -745,7 +988,7 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
                 });
             }
 
-            return res.status(200).json({ error: false, message: 'Saved DimaFX item redeemed', status: 200, data: { ...emitResult, inventory: mapInventory(decremented) } });
+            return res.status(200).json({ error: false, message: 'Saved DimaFX item queued for stream playback', status: 200, data: { ...queueResult, inventory: mapInventory(decremented) } });
         } catch (emitError) {
             try {
                 await restoreSavedItem(channelID, body.userID, itemID, savedItem);
@@ -759,17 +1002,89 @@ router.post('/internal/channels/:channelID/items/:itemID/redeem', internalServic
                 });
             }
 
-            const noClients = emitError instanceof Error && emitError.name === 'NO_TRIGGER_CLIENTS';
-            return res.status(noClients ? 409 : 500).json({
+            const noClients = emitError instanceof DimafxQueueError && emitError.noClients;
+            const status = emitError instanceof DimafxQueueError ? emitError.status : 500;
+            return res.status(status).json({
                 error: true,
                 message: noClients
                     ? 'No trigger overlay clients connected. Your saved copy was not used.'
-                    : 'Unable to trigger overlay. Your saved copy was not used.',
-                status: noClients ? 409 : 500
+                    : 'Unable to queue overlay playback. Your saved copy was not used.',
+                status
             });
         }
     } catch (error) {
         console.error('Error redeeming DimaFX item:', {
+            channelID: req.params.channelID,
+            itemID: req.params.itemID,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+router.get('/:channelID/overlay-status', authMiddleware as any, async (req: DimafxRequest, res: Response) => {
+    try {
+        const channelID = getParamValue(req.params.channelID);
+        if (!await ensureDimafxPermission(req, res, channelID, ['dimafx:view'])) return;
+
+        const connected = await dimafxQueueHandler.isOverlayConnected(channelID);
+        return res.status(200).json({
+            error: false,
+            message: 'DimaFX overlay status',
+            status: 200,
+            data: { connected }
+        });
+    } catch (error) {
+        console.error('Error in GET /extensions/dimafx/:channelID/overlay-status:', {
+            channelID: req.params.channelID,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: new Date().toISOString()
+        });
+        return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+    }
+});
+
+router.post('/:channelID/items/:itemID/test', authMiddleware as any, async (req: DimafxRequest, res: Response) => {
+    try {
+        const channelID = getParamValue(req.params.channelID);
+        const itemID = getParamValue(req.params.itemID);
+        if (!await ensureDimafxPermission(req, res, channelID, ['dimafx:edit'])) return;
+
+        const itemData = await getActiveChannelItem(channelID, itemID);
+        if (!itemData) {
+            return res.status(404).json({ error: true, message: 'DimaFX item not found', status: 404 });
+        }
+
+        // Custom-text TTS items need viewer text at purchase time; the test
+        // trigger uses a fixed sample so broadcasters can verify the voice.
+        const viewerText = itemData.item.category === 'tts' && itemData.item.tts?.mode === 'custom'
+            ? 'This is a DimaFX test trigger.'
+            : undefined;
+
+        const queueResult = await queueChannelExtensionItem(channelID, itemData.item, itemData.asset, {
+            viewerText,
+            source: 'test'
+        });
+
+        return res.status(200).json({
+            error: false,
+            message: 'DimaFX test trigger queued',
+            status: 200,
+            data: queueResult
+        });
+    } catch (error) {
+        if (error instanceof DimafxQueueError) {
+            return res.status(error.status).json({
+                error: true,
+                message: error.noClients
+                    ? 'No trigger overlay clients connected. Open your trigger overlay or Overlay Studio source first.'
+                    : error.message,
+                status: error.status
+            });
+        }
+        console.error('Error in POST /extensions/dimafx/:channelID/items/:itemID/test:', {
             channelID: req.params.channelID,
             itemID: req.params.itemID,
             error: error instanceof Error ? error.message : String(error),
@@ -786,7 +1101,7 @@ router.get('/:channelID/items', authMiddleware as any, async (req: DimafxRequest
         if (!await ensureDimafxPermission(req, res, channelID, ['dimafx:view'])) return;
 
         const items = await ChannelExtensionItemSchema.find({ channelID, deletedAt: null }).sort({ sortOrder: 1, createdAt: -1 }).lean();
-        const assetMap = await getAssetMap(items.map((item) => String(item.assetID)));
+        const assetMap = await getAssetMap(items.map((item) => item.assetID));
 
         return res.status(200).json({
             error: false,
@@ -812,6 +1127,48 @@ router.post('/:channelID/items', authMiddleware as any, async (req: DimafxReques
         if (!await ensureDimafxPermission(req, res, channelID, ['dimafx:edit'])) return;
 
         const body = (req.body || {}) as ChannelExtensionItemPayload;
+        const bitsPrice = normalizePositiveInteger(body.bitsPrice, 0);
+        const sku = getDimafxSkuForBitsPrice(bitsPrice);
+        if (!sku) {
+            return res.status(400).json({ error: true, message: 'Unsupported Bits price for DimaFX SKU map', status: 400, data: { allowedBitPrices: getAllowedDimafxBitPrices() } });
+        }
+
+        const baseFields = {
+            channelID,
+            channelName: typeof body.channelName === 'string' && body.channelName.trim() ? body.channelName.trim() : req.user?.login || channelID,
+            createdByUserID: req.user?.id || channelID,
+            name: '',
+            description: typeof body.description === 'string' ? body.description.trim() : '',
+            bitsPrice,
+            sku,
+            volume: normalizeVolume(body.volume),
+            isEnabled: typeof body.isEnabled === 'boolean' ? body.isEnabled : true,
+            sortOrder: normalizePositiveInteger(body.sortOrder, 0)
+        };
+
+        if (body.category === 'tts') {
+            let ttsConfig;
+            try {
+                ttsConfig = normalizeDimafxTtsConfig(body.tts) || { mode: 'custom' as const, text: '', voice: '', language: 'en' as const };
+            } catch (ttsError) {
+                return res.status(400).json({ error: true, message: ttsError instanceof Error ? ttsError.message : 'Invalid TTS configuration', status: 400 });
+            }
+
+            const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'TTS message';
+            const item = await ChannelExtensionItemSchema.create({
+                ...baseFields,
+                name,
+                assetID: null,
+                category: 'tts',
+                mediaType: 'audio',
+                thumbnailUrl: '',
+                durationMs: 0,
+                tts: ttsConfig
+            });
+
+            return res.status(201).json({ error: false, message: 'DimaFX item created', status: 201, data: mapChannelExtensionItem(item.toObject(), null) });
+        }
+
         if (!body.assetID || !Types.ObjectId.isValid(body.assetID)) {
             return res.status(400).json({ error: true, message: 'Valid assetID is required', status: 400 });
         }
@@ -826,31 +1183,17 @@ router.post('/:channelID/items', authMiddleware as any, async (req: DimafxReques
             return res.status(403).json({ error: true, message: 'This media asset is not available for this channel', status: 403 });
         }
 
-        const bitsPrice = normalizePositiveInteger(body.bitsPrice, 0);
-        const sku = getDimafxSkuForBitsPrice(bitsPrice);
-        if (!sku) {
-            return res.status(400).json({ error: true, message: 'Unsupported Bits price for DimaFX SKU map', status: 400, data: { allowedBitPrices: getAllowedDimafxBitPrices() } });
-        }
-
         const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : asset.displayName;
         const item = await ChannelExtensionItemSchema.create({
-            channelID,
-            channelName: typeof body.channelName === 'string' && body.channelName.trim() ? body.channelName.trim() : req.user?.login || channelID,
-            createdByUserID: req.user?.id || channelID,
-            assetID: asset._id,
+            ...baseFields,
             name,
-            description: typeof body.description === 'string' ? body.description.trim() : '',
+            assetID: asset._id,
             category: normalizeCategoryInput(body.category, defaultCategoryFromMediaType(asset.mediaType as string | undefined)),
             mediaType: asset.mediaType as MediaAssetType,
             // body.thumbnailUrl is intentionally ignored — thumbnails are auto-generated
             // server-side so they always resolve to https://api.domdimabot.com/media/{id}.
             thumbnailUrl: getFallbackThumbnail(asset),
-            durationMs: normalizePositiveInteger(body.durationMs, 0),
-            bitsPrice,
-            sku,
-            volume: normalizeVolume(body.volume),
-            isEnabled: typeof body.isEnabled === 'boolean' ? body.isEnabled : true,
-            sortOrder: normalizePositiveInteger(body.sortOrder, 0)
+            durationMs: normalizePositiveInteger(body.durationMs, 0)
         });
 
         return res.status(201).json({ error: false, message: 'DimaFX item created', status: 201, data: mapChannelExtensionItem(item.toObject(), asset) });
@@ -888,7 +1231,27 @@ router.patch('/:channelID/items/:itemID', authMiddleware as any, async (req: Dim
                     status: 400
                 });
             }
+            // TTS items have no media asset; switching between TTS and media
+            // categories would strand the assetID/tts fields. Recreate instead.
+            if ((body.category === 'tts') !== (existing.category === 'tts')) {
+                return res.status(400).json({
+                    error: true,
+                    message: 'Category cannot switch between TTS and media. Create a new item instead.',
+                    status: 400
+                });
+            }
             existing.category = body.category;
+        }
+        if (existing.category === 'tts' && body.tts !== undefined) {
+            try {
+                existing.tts = normalizeDimafxTtsConfig(body.tts);
+            } catch (ttsError) {
+                return res.status(400).json({
+                    error: true,
+                    message: ttsError instanceof Error ? ttsError.message : 'Invalid TTS configuration',
+                    status: 400
+                });
+            }
         }
         // body.thumbnailUrl is intentionally ignored — thumbnails are auto-generated
         // server-side. (Old persisted values remain on the row; the mapper below
