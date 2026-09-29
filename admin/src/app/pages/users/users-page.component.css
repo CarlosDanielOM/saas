@@ -121,6 +121,14 @@
 .user-card {
   overflow: hidden;
 }
+.user-card--live {
+  border-color: var(--live-border);
+  background: linear-gradient(90deg, var(--live-soft), var(--surface) 46%);
+  box-shadow: inset 3px 0 0 var(--live);
+}
+.user-card--live .user-avatar {
+  box-shadow: 0 0 0 2px var(--live);
+}
 .user-card__main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

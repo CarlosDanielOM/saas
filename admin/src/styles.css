@@ -14,6 +14,13 @@
   --danger: #ff9b98;
   --warning: #ebc783;
 
+  /* Live status stays a constant hot color across every theme so it always
+     reads as "live" instead of blending into the theme accent. */
+  --live: #ff5d5d;
+  --live-strong: #e5484d;
+  --live-soft: color-mix(in srgb, var(--live) 14%, var(--surface));
+  --live-border: color-mix(in srgb, var(--live) 42%, var(--border));
+
   --accent-ink: #182011;
   --accent-hover: color-mix(in srgb, var(--accent) 78%, white);
   --accent-border: color-mix(in srgb, var(--accent) 35%, var(--surface));
@@ -296,10 +303,18 @@ input::placeholder {
   box-shadow: inset 0 0 0 1px #695632;
 }
 .status-badge--active,
-.status-badge--ok,
-.live-badge {
+.status-badge--ok {
   color: var(--accent);
   background: var(--accent-soft);
+}
+.live-badge {
+  color: #fff;
+  background: var(--live-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--live) 55%, transparent),
+    0 0 14px -5px var(--live);
 }
 .status-badge--error {
   color: var(--danger);
@@ -310,10 +325,22 @@ input::placeholder {
   background: #352d20;
 }
 .live-badge__dot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: #fff;
+  animation: live-pulse 1.8s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, #fff 70%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 .pagination {
   display: flex;

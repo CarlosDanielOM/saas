@@ -113,7 +113,7 @@
   } @else {
     <section class="user-list" aria-label="Users">
       @for (user of displayedUsers(); track user.channelID) {
-        <article class="user-card panel">
+        <article class="user-card panel" [class.user-card--live]="user.isLive">
           <div class="user-card__main">
             <a [routerLink]="['/channels', user.channelID]" class="user-identity"
               ><span class="user-avatar">{{ user.channel.charAt(0).toUpperCase() }}</span
