@@ -8,6 +8,8 @@ import {
   ChannelExtensionItem,
   CreateChannelExtensionItemRequest,
   DimafxItemsResponse,
+  DimafxOverlayStatus,
+  DimafxTestTriggerResult,
   UpdateChannelExtensionItemRequest
 } from './dimafx.model';
 
@@ -51,6 +53,28 @@ export class DimafxService {
       );
   }
 
+  getOverlayStatus(channelId: string): Observable<DimafxOverlayStatus> {
+    return this.http
+      .get<ApiEnvelope<DimafxOverlayStatus>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/overlay-status`)
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || 'Failed to load overlay status');
+          return response.data;
+        })
+      );
+  }
+
+  testItem(channelId: string, itemId: string): Observable<DimafxTestTriggerResult> {
+    return this.http
+      .post<ApiEnvelope<DimafxTestTriggerResult>>(`${this.linksService.getApiUrl()}/extensions/dimafx/${channelId}/items/${itemId}/test`, {})
+      .pipe(
+        map((response) => {
+          if (response.error || !response.data) throw new Error(response.message || 'Failed to send test trigger');
+          return response.data;
+        })
+      );
+  }
+
   private requireItem(response: ApiEnvelope<ChannelExtensionItem>, fallbackMessage: string): ChannelExtensionItem {
     if (response.error || !response.data) {
       throw new Error(response.message || fallbackMessage);
@@ -63,11 +87,12 @@ export class DimafxService {
       ...item,
       _id: String(item._id || item.id),
       id: String(item.id || item._id),
-      assetID: String(item.assetID),
+      assetID: item.assetID ? String(item.assetID) : null,
       bitsPrice: Number(item.bitsPrice || 0),
       durationMs: Number(item.durationMs || 0),
       volume: Number(item.volume || 100),
       sortOrder: Number(item.sortOrder || 0),
+      tts: item.tts ?? null,
       thumbnailUrl: item.thumbnailUrl || item.asset?.playbackUrl || '',
       mediaUrl: item.mediaUrl || item.asset?.playbackUrl || null
     };

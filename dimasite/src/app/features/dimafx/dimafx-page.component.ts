@@ -9,7 +9,7 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { MediaAsset } from '../triggers/triggers.model';
 import { TriggersService } from '../triggers/triggers.service';
-import { ChannelExtensionItem, DimafxCategory } from './dimafx.model';
+import { ChannelExtensionItem, DimafxCategory, DimafxTtsLanguage, DimafxTtsMode } from './dimafx.model';
 import { DimafxService } from './dimafx.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
@@ -20,6 +20,11 @@ interface AssetOption {
   playbackUrl: string;
   source: 'library' | 'public';
 }
+
+const PIPER_VOICE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'en_US-ryan-medium', label: 'Ryan · US English' },
+  { value: 'es_MX-ald-medium', label: 'Ald · Mexican Spanish' }
+];
 
 @Component({
   selector: 'app-dimafx-page',
@@ -59,6 +64,12 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly volume = signal(100);
   readonly isEnabled = signal(true);
   readonly sortOrder = signal(0);
+  readonly ttsMode = signal<DimafxTtsMode>('custom');
+  readonly ttsText = signal('');
+  readonly ttsVoice = signal('');
+  readonly ttsLanguage = signal<DimafxTtsLanguage>('en');
+  readonly overlayConnected = signal<boolean | null>(null);
+  readonly testingItemId = signal<string | null>(null);
 
   readonly streamer = computed(() => getRouteParam(this.route, 'streamer') || this.sessionAuth.session()?.appUser.name || '');
   readonly channelID = signal('');
@@ -73,7 +84,24 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly canEdit = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().edit);
   readonly canDelete = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().delete);
   readonly isEditing = computed(() => Boolean(this.selectedItemId()));
-  readonly canSubmit = computed(() => Boolean(this.channelID() && this.selectedAssetID() && this.name().trim() && this.bitsPrice() >= 0));
+  readonly isTtsCategory = computed(() => this.category() === 'tts');
+  readonly canSubmit = computed(() => {
+    if (!this.channelID() || !this.name().trim() || this.bitsPrice() < 0) return false;
+    if (this.isTtsCategory()) {
+      // TTS items synthesize speech at playback time — no media asset needed.
+      // Fixed items need the broadcaster's text; custom items collect it from viewers.
+      return this.ttsMode() === 'custom' || Boolean(this.ttsText().trim());
+    }
+    return Boolean(this.selectedAssetID());
+  });
+  readonly ttsVoiceOptions = computed(() => {
+    const saved = this.ttsVoice();
+    const options = [...PIPER_VOICE_OPTIONS];
+    if (saved && !options.some((option) => option.value === saved)) {
+      options.push({ value: saved, label: saved });
+    }
+    return options;
+  });
   readonly enabledCount = computed(() => this.items().filter((item) => item.isEnabled).length);
   /** Image/GIF only — visibility length. Video/audio duration comes from media metadata. */
   readonly showVisibilityDuration = computed(() => {
@@ -286,16 +314,18 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [itemsResponse, library, publicAssets] = await Promise.all([
+      const [itemsResponse, library, publicAssets, overlayStatus] = await Promise.all([
         firstValueFrom(this.dimafxService.getItems(this.channelID())),
         firstValueFrom(this.triggersService.getLibrary(this.channelID())).catch(() => null),
-        firstValueFrom(this.triggersService.getPublicAssets())
+        firstValueFrom(this.triggersService.getPublicAssets()),
+        firstValueFrom(this.dimafxService.getOverlayStatus(this.channelID())).catch(() => null)
       ]);
       this.items.set(itemsResponse.items);
       this.allowedBitPrices.set(itemsResponse.allowedBitPrices);
       if (!itemsResponse.allowedBitPrices.includes(this.bitsPrice())) {
         this.bitsPrice.set(itemsResponse.allowedBitPrices[0] || 5);
       }
+      this.overlayConnected.set(overlayStatus?.connected ?? null);
       this.assetOptions.set(this.buildAssetOptions(
         (library?.items ?? []).map((item) => item.asset).filter((asset): asset is MediaAsset => Boolean(asset)),
         publicAssets
@@ -312,7 +342,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   selectItem(item: ChannelExtensionItem): void {
     if (!this.canEdit()) return;
     this.selectedItemId.set(item.id);
-    this.selectedAssetID.set(item.assetID);
+    this.selectedAssetID.set(item.assetID || '');
     this.name.set(item.name);
     this.description.set(item.description || '');
     this.category.set(item.category);
@@ -322,6 +352,10 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     this.volume.set(item.volume);
     this.isEnabled.set(item.isEnabled);
     this.sortOrder.set(item.sortOrder);
+    this.ttsMode.set(item.tts?.mode === 'fixed' ? 'fixed' : 'custom');
+    this.ttsText.set(item.tts?.text || '');
+    this.ttsVoice.set(item.tts?.voice || '');
+    this.ttsLanguage.set(item.tts?.language === 'es' ? 'es' : 'en');
   }
 
   resetForm(): void {
@@ -337,24 +371,39 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     this.volume.set(100);
     this.isEnabled.set(true);
     this.sortOrder.set(0);
+    this.ttsMode.set('custom');
+    this.ttsText.set('');
+    this.ttsVoice.set('');
+    this.ttsLanguage.set('en');
   }
 
   async save(): Promise<void> {
     if (!this.canEdit() || !this.canSubmit() || this.saving()) return;
     this.saving.set(true);
     try {
+      const isTts = this.isTtsCategory();
       const payload = {
-        assetID: this.selectedAssetID(),
+        ...(isTts ? {} : { assetID: this.selectedAssetID() }),
         channelName: this.streamer(),
         name: this.name().trim(),
         description: this.description().trim(),
         category: this.category(),
         thumbnailUrl: this.thumbnailUrl().trim(),
-        durationMs: Number(this.durationMs() || 0),
+        durationMs: isTts ? 0 : Number(this.durationMs() || 0),
         bitsPrice: Number(this.bitsPrice()),
         volume: Number(this.volume()),
         isEnabled: this.isEnabled(),
-        sortOrder: Number(this.sortOrder() || 0)
+        sortOrder: Number(this.sortOrder() || 0),
+        ...(isTts
+          ? {
+              tts: {
+                mode: this.ttsMode(),
+                text: this.ttsMode() === 'fixed' ? this.ttsText().trim() : '',
+                voice: this.ttsVoice(),
+                language: this.ttsLanguage()
+              }
+            }
+          : {})
       };
 
       if (this.selectedItemId()) {
@@ -373,6 +422,27 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
       this.toastService.error('Save failed', message);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  async testItem(item: ChannelExtensionItem): Promise<void> {
+    if (!this.canEdit() || this.testingItemId()) return;
+    this.testingItemId.set(item.id);
+    try {
+      const result = await firstValueFrom(this.dimafxService.testItem(this.channelID(), item.id));
+      this.overlayConnected.set(true);
+      this.toastService.success(
+        this.t('modules.dimafx.testQueued'),
+        this.t('modules.dimafx.testQueuedDesc', { name: item.name, position: result.queueLength })
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to send test trigger';
+      if (message.toLowerCase().includes('overlay')) {
+        this.overlayConnected.set(false);
+      }
+      this.toastService.error(this.t('modules.dimafx.testFailed'), message);
+    } finally {
+      this.testingItemId.set(null);
     }
   }
 
@@ -426,6 +496,10 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
   setVolume(value: number): void { this.volume.set(value); }
   setSortOrder(value: number): void { this.sortOrder.set(value); }
+  setTtsMode(value: string): void { this.ttsMode.set(value === 'fixed' ? 'fixed' : 'custom'); }
+  setTtsText(value: string): void { this.ttsText.set(value); }
+  setTtsVoice(value: string): void { this.ttsVoice.set(value); }
+  setTtsLanguage(value: string): void { this.ttsLanguage.set(value === 'es' ? 'es' : 'en'); }
 
   private async resolveChannel(): Promise<void> {
     const streamer = this.streamer();

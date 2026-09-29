@@ -1,6 +1,15 @@
 import { MediaAsset } from '../triggers/triggers.model';
 
 export type DimafxCategory = 'video' | 'gif' | 'audio' | 'tts';
+export type DimafxTtsMode = 'fixed' | 'custom';
+export type DimafxTtsLanguage = 'en' | 'es';
+
+export interface DimafxTtsConfig {
+  mode: DimafxTtsMode;
+  text: string;
+  voice: string;
+  language: DimafxTtsLanguage;
+}
 
 export interface ApiEnvelope<T> {
   error: boolean;
@@ -15,7 +24,7 @@ export interface ChannelExtensionItem {
   id: string;
   channelID: string;
   channelName: string;
-  assetID: string;
+  assetID: string | null;
   name: string;
   description: string;
   category: DimafxCategory;
@@ -27,6 +36,7 @@ export interface ChannelExtensionItem {
   volume: number;
   isEnabled: boolean;
   sortOrder: number;
+  tts: DimafxTtsConfig | null;
   mediaUrl: string | null;
   asset: MediaAsset | null;
   createdAt: string;
@@ -39,7 +49,7 @@ export interface DimafxItemsResponse {
 }
 
 export interface CreateChannelExtensionItemRequest {
-  assetID: string;
+  assetID?: string;
   channelName?: string;
   name: string;
   description?: string;
@@ -50,6 +60,17 @@ export interface CreateChannelExtensionItemRequest {
   volume?: number;
   isEnabled?: boolean;
   sortOrder?: number;
+  tts?: DimafxTtsConfig;
 }
 
 export type UpdateChannelExtensionItemRequest = Partial<CreateChannelExtensionItemRequest>;
+
+export interface DimafxOverlayStatus {
+  connected: boolean;
+}
+
+export interface DimafxTestTriggerResult {
+  queued: boolean;
+  queueLength: number;
+  triggerID: string;
+}

@@ -34,6 +34,17 @@
             <span class="lf-stats-strip__value">{{ items().length - enabledCount() }}</span>
           </div>
         </div>
+        @if (overlayConnected() !== null) {
+          <p class="lf-overlay-status">
+            <span
+              class="lf-chip lf-chip--compact"
+              [class.lf-chip--ok]="overlayConnected()"
+              [class.lf-chip--muted]="!overlayConnected()"
+            >
+              {{ overlayConnected() ? t('modules.dimafx.overlayConnected') : t('modules.dimafx.overlayDisconnected') }}
+            </span>
+          </p>
+        }
       </article>
     </section>
 
@@ -107,6 +118,14 @@
                     <button type="button" class="lf-btn lf-btn--xs" (click)="selectItem(item)">
                       {{ t('modules.dimafx.edit') }}
                     </button>
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--xs"
+                      [disabled]="testingItemId() === item.id"
+                      (click)="testItem(item)"
+                    >
+                      {{ testingItemId() === item.id ? t('modules.dimafx.testing') : t('modules.dimafx.testOnStream') }}
+                    </button>
                     }
                     @if (item.mediaUrl) {
                       <button
@@ -151,6 +170,7 @@
         </div>
 
         <form class="lf-form" (submit)="$event.preventDefault(); save()">
+          @if (!isTtsCategory()) {
           <div class="lf-field">
             <span>{{ t('modules.dimafx.mediaAsset') }}</span>
             @if (selectedAssetID()) {
@@ -179,6 +199,7 @@
               </button>
             }
           </div>
+          }
 
           <label class="lf-field">
             <span>{{ t('modules.dimafx.nameLabel') }}</span>
@@ -220,6 +241,53 @@
               </select>
             </label>
           </div>
+
+          @if (isTtsCategory()) {
+            <div class="lf-tts-section">
+              <div class="lf-form-row">
+                <label class="lf-field">
+                  <span>{{ t('modules.dimafx.ttsModeLabel') }}</span>
+                  <select [value]="ttsMode()" (change)="setTtsMode($any($event.target).value)">
+                    <option value="custom">{{ t('modules.dimafx.ttsModeCustom') }}</option>
+                    <option value="fixed">{{ t('modules.dimafx.ttsModeFixed') }}</option>
+                  </select>
+                </label>
+
+                <label class="lf-field">
+                  <span>{{ t('modules.dimafx.ttsLanguageLabel') }}</span>
+                  <select [value]="ttsLanguage()" (change)="setTtsLanguage($any($event.target).value)">
+                    <option value="en">{{ t('modules.dimafx.ttsLanguageEn') }}</option>
+                    <option value="es">{{ t('modules.dimafx.ttsLanguageEs') }}</option>
+                  </select>
+                </label>
+              </div>
+
+              @if (ttsMode() === 'fixed') {
+                <label class="lf-field">
+                  <span>{{ t('modules.dimafx.ttsTextLabel') }}</span>
+                  <textarea
+                    rows="3"
+                    maxlength="500"
+                    [value]="ttsText()"
+                    (input)="setTtsText($any($event.target).value)"
+                    [placeholder]="t('modules.dimafx.ttsTextPlaceholder')"
+                  ></textarea>
+                </label>
+              } @else {
+                <p class="lf-note">{{ t('modules.dimafx.ttsCustomHint') }}</p>
+              }
+
+              <label class="lf-field">
+                <span>{{ t('modules.dimafx.ttsVoiceLabel') }}</span>
+                <select [value]="ttsVoice()" (change)="setTtsVoice($any($event.target).value)">
+                  <option value="">{{ t('modules.dimafx.ttsVoiceDefault') }}</option>
+                  @for (voice of ttsVoiceOptions(); track voice.value) {
+                    <option [value]="voice.value">{{ voice.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          }
 
           <div class="lf-form-row" [class.lf-form-row--3]="showVisibilityDuration()">
             @if (showVisibilityDuration()) {
