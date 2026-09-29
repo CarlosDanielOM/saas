@@ -30,8 +30,8 @@ export interface ModerationRule {
 }
 
 export type VariationMode = 'off' | 'common' | 'broad';
-export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string }
-export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[]; overrides?: Array<{ term: string; source: string }> }
+export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string; allowSpaces?: boolean }
+export interface ModerationVariations { mode: VariationMode; allowSpaces?: boolean; entries: GeneratedVariation[]; overrides?: Array<{ term: string; source: string }> }
 export interface VariationJob { id: string; state: 'pending' | 'processing' | 'completed' | 'failed'; entries: GeneratedVariation[]; error: string }
 export type VariationResponse = ApiEnvelope<VariationJob>;
 

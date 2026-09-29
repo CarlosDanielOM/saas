@@ -28,7 +28,7 @@ try {
         const generations = [];
         let failGeneration = false;
         let jobPolls = 0;
-        const generatedEntries = terms => terms.map(term => ({ term, spellings: [term, term === 'fuck' ? 'fcky' : 'riiinn'], pattern: { id: 'auto-' + term, source: term, boundary: 'whole_word', ignoreCase: true }, version: 'spelling-variants-v1' }));
+        const generatedEntries = (terms, allowSpaces = false) => terms.map(term => ({ term, spellings: [term, term === 'fuck' ? 'fcky' : 'riiinn'], pattern: { id: 'auto-' + term, source: allowSpaces ? Array.from(term).join('\\s*') : term, boundary: 'whole_word', ignoreCase: true }, version: 'spelling-variants-v1', allowSpaces }));
         await context.route('**/*', async route => {
             const url = new URL(route.request().url());
             if (url.origin === new URL(base).origin) return route.continue();
@@ -38,13 +38,13 @@ try {
             else if (url.pathname.includes('/access')) data = { allowed: true, role: 'owner', planTier: tier };
             else if (url.pathname.endsWith('/variations')) {
                 const payload = route.request().postDataJSON(); generations.push(payload);
-                data = payload.mode === 'broad' ? { id: 'job1', state: 'pending', entries: [], error: '' } : { id: '', state: 'completed', entries: generatedEntries(payload.terms), error: '' };
+                data = payload.mode === 'broad' ? { id: 'job1', state: 'pending', entries: [], error: '' } : { id: '', state: 'completed', entries: generatedEntries(payload.terms, payload.allowSpaces), error: '' };
             } else if (url.pathname.endsWith('/variations/job1')) {
                 jobPolls++;
                 data = failGeneration ? { id: 'job1', state: 'failed', entries: [], error: 'invalid_generation' }
-                    : { id: 'job1', state: 'completed', entries: generatedEntries(generations.at(-1).terms), error: '' };
+                    : { id: 'job1', state: 'completed', entries: generatedEntries(generations.at(-1).terms, url.searchParams.get('allowSpaces') === 'true'), error: '' };
             } else if (url.pathname.endsWith('/settings')) {
-                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload, rules: payload.rules.map(rule => ({ ...rule, variations: rule.variations ? { ...rule.variations, entries: rule.variations.mode === 'off' ? [] : generatedEntries(rule.terms) } : undefined })) }; }
+                if (route.request().method() === 'PUT') { const payload = route.request().postDataJSON(); saves.push(payload); cfg = { ...cfg, ...payload, rules: payload.rules.map(rule => ({ ...rule, variations: rule.variations ? { ...rule.variations, entries: rule.variations.mode === 'off' ? [] : generatedEntries(rule.terms, rule.variations.allowSpaces) } : undefined })) }; }
                 data = cfg;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [], total: 0, limit: 10, skip: 0 };
             else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'decision1', username: 'viewer', messageText: 'That was fucking awesome',
@@ -57,7 +57,8 @@ try {
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(`${base}/test/modules/moderation`);
         const feature = page.locator('app-moderation-page');
-        await feature.locator('.lf-tabs').waitFor({ state: 'visible', timeout: 20000 });
+        try { await feature.locator('.lf-tabs').waitFor({ state: 'visible', timeout: 20000 }); }
+        catch (error) { console.log('Moderation load failure', tier, page.url(), await page.locator('body').innerText(), errors); throw error; }
         await feature.locator('.lf-tab', { hasText: language === 'es' ? 'Reglas' : 'Rules' }).click();
         const toggle = feature.getByRole('checkbox', { name: language === 'es' ? 'Revisar el contexto antes de actuar' : 'Review context before acting', exact: true });
         try { await toggle.waitFor({ state: 'attached', timeout: 15000 }); }
@@ -95,6 +96,19 @@ try {
             await feature.locator('.variation-mode').waitFor();
             await feature.locator('.manual-patterns summary').click();
             assert.equal(await generated.first().inputValue(), 'f(?:u|a)ck', 'edited common regex survives reload');
+            const spaces = feature.locator('.variation-spaces');
+            assert.equal(await spaces.isChecked(), false, 'spaces default off');
+            await spaces.check();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(await spaces.isChecked(), true);
+            assert.equal(await generated.first().inputValue(), 'f(?:u|a)ck', 'spacing preserves custom regex');
+            await page.waitForFunction(() => document.querySelectorAll('.generated-regex')[1]?.value.includes('\\s*'));
+            assert.match(await generated.nth(1).inputValue(), /\\s\*/);
+            await saveChanges();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(saves.at(-1).rules[0].variations.allowSpaces, true);
+            await spaces.uncheck();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
             await feature.locator('.reset-variation').click();
             await page.waitForFunction(() => document.querySelector('.generated-regex')?.value === 'fuck');
             assert.equal(await generated.first().inputValue(), 'fuck');
@@ -123,6 +137,19 @@ try {
             await saveChanges();
             await page.waitForFunction(() => !document.querySelector('.variation-progress'));
             assert.equal(saves.at(-1).rules[0].variations.overrides[0].source, 'f(?:u|a)?ck(?:ing|y)?');
+            failGeneration = true;
+            await spaces.check();
+            await feature.getByText(language === 'es' ? /No se pudieron preparar/ : /Could not prepare variations/).first().waitFor();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            assert.equal(await spaces.isChecked(), false, 'failed spacing preview restores prior toggle');
+            assert.equal(await generated.first().inputValue(), 'f(?:u|a)?ck(?:ing|y)?');
+            failGeneration = false;
+            await spaces.check();
+            await page.waitForFunction(() => !document.querySelector('.variation-progress'));
+            await page.waitForFunction(() => document.querySelectorAll('.generated-regex')[1]?.value.includes('\\s*'));
+            assert.match(await generated.nth(1).inputValue(), /\\s\*/);
+            assert.equal(await generated.first().inputValue(), 'f(?:u|a)?ck(?:ing|y)?');
+
             await feature.getByRole('button', { name: language === 'es' ? 'Añadir patrón regex' : 'Add regex pattern', exact: true }).click();
             await feature.getByLabel(language === 'es' ? 'Patrón regex' : 'Regex pattern', { exact: true }).fill('f(?:u|a)?ck(?:ing|y)?');
             // Regex-only is an intentional, saveable mode.
@@ -160,6 +187,7 @@ try {
             await feature.locator('.lf-tab', { hasText: language === 'es' ? 'Reglas' : 'Rules' }).click();
             await threshold.waitFor();
             assert.equal(await threshold.inputValue(), '85.5', 'custom confidence survives reload');
+            assert.equal(await spaces.isChecked(), true, 'spacing survives save and reload');
             for (const value of ['0', '100']) {
                 await threshold.fill(value);
                 await saveChanges();
@@ -175,11 +203,13 @@ try {
             await saveChanges();
             await page.waitForFunction(() => !document.querySelector('.variation-progress'));
         }
+        await page.locator('app-toast-3d-card').first().waitFor({ state: 'hidden', timeout: 10000 });
         for (const [width, height, theme] of [[320, 700, 'light'], [390, 844, 'dark'], [1280, 900, 'light']]) {
             await page.setViewportSize({ width, height });
             await page.evaluate(theme => { document.documentElement.classList.toggle('dark', theme === 'dark'); document.documentElement.setAttribute('data-theme', theme); }, theme);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow at ${width}`);
             await page.screenshot({ path: `${artifacts}/${tier}-${language}-${width}-${theme}.png`, fullPage: true });
+            if (tier !== 'free') await feature.locator('.variation-spacing').screenshot({ path: `${artifacts}/spacing-${tier}-${language}-${width}-${theme}.png` });
             if (tier !== 'free') await feature.locator('.confidence-control').screenshot({ path: `${artifacts}/confidence-${tier}-${language}-${width}-${theme}.png` });
         }
         await feature.locator('.lf-decision__message').first().waitFor();

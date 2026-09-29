@@ -39,12 +39,12 @@ export class ModerationApiService {
     );
   }
 
-  prepareVariations(channelID: string, terms: string[], mode: VariationMode): Observable<VariationResponse> {
-    return this.http.post<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations`, { terms, mode });
+  prepareVariations(channelID: string, terms: string[], mode: VariationMode, allowSpaces = false): Observable<VariationResponse> {
+    return this.http.post<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations`, { terms, mode, allowSpaces });
   }
 
-  getVariationJob(channelID: string, jobID: string): Observable<VariationResponse> {
-    return this.http.get<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations/${encodeURIComponent(jobID)}`);
+  getVariationJob(channelID: string, jobID: string, allowSpaces = false): Observable<VariationResponse> {
+    return this.http.get<VariationResponse>(`${this.getApiUrl()}/moderation/${encodeURIComponent(channelID)}/variations/${encodeURIComponent(jobID)}`, { params: { allowSpaces } });
   }
 
   getLogs(channelID: string, page = 1, limit = 20): Observable<ModerationLogsResponse> {

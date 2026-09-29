@@ -1194,6 +1194,8 @@
       "errorTitle": "Error"
     },
     "variations": {
+      "spaces": "Detectar espacios entre letras",
+      "spacesHint": "También detecta variantes separadas, como R I N, y r 1 n si r1n es una variante generada. Se aplica a cada palabra de esta regla. Los regex personalizados no cambian; restablece un patrón personalizado para aplicar esta opción. La revisión de contexto sigue aplicándose si está activada.",
       "regexHint": "Cada patrón amplía su palabra bloqueada. La coincidencia ignora mayúsculas y usa límites de palabra completa. Tus cambios reemplazan el patrón generado y se conservan al guardar o previsualizar. Cambiar el modo restablece los patrones.",
       "prepareHint": "Previsualiza las variaciones para ver y editar sus patrones.",
       "regexFor": "Regex de variaciones para",

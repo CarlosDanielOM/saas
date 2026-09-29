@@ -441,6 +441,19 @@
                           </label>
                           <p class="lf-note">{{ t('moderation.variations.' + (rule.variations?.mode ?? 'off') + 'Hint') }}</p>
                           @if (rule.variations && rule.variations.mode !== 'off') {
+                            <div class="lf-row-head variation-spacing">
+                              <div>
+                                <h3 class="lf-h3">{{ t('moderation.variations.spaces') }}</h3>
+                              </div>
+                              <label class="lf-switch">
+                                <input class="variation-spaces" type="checkbox" [checked]="rule.variations.allowSpaces ?? false"
+                                  (change)="previewVariations(rule.id, $any($event.target).checked)"
+                                  [disabled]="!canManage() || !hasPaidModeration()"
+                                  [attr.aria-label]="t('moderation.variations.spaces')" [attr.aria-describedby]="'spacing-hint-' + rule.id" />
+                                <span class="lf-switch__track" aria-hidden="true"></span>
+                              </label>
+                              <p class="lf-note" [id]="'spacing-hint-' + rule.id">{{ t('moderation.variations.spacesHint') }}</p>
+                            </div>
                             <p class="lf-note">{{ t('moderation.variations.free') }}</p>
                             @if (canManage() && hasPaidModeration()) {
                               <button type="button" class="lf-btn lf-btn--compact variation-preview" (click)="previewVariations(rule.id)" [disabled]="!rule.terms.length">{{ t('moderation.variations.preview') }}</button>
@@ -464,7 +477,7 @@
                                 <div class="generated-pattern-editor">
                                   <label class="lf-field">
                                     <span>{{ t('moderation.variations.regexFor') }} {{ entry.term }}</span>
-                                    <textarea class="lf-input generated-regex" rows="3" maxlength="2000" spellcheck="false"
+                                    <textarea class="lf-input generated-regex" rows="3" maxlength="16000" spellcheck="false"
                                       [value]="variationRegex(rule, entry)" (input)="editVariationRegex(rule, entry, $any($event.target).value)"
                                       [readOnly]="!canManage() || !hasPaidModeration()"></textarea>
                                   </label>

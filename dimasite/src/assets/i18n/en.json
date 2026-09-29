@@ -1194,6 +1194,8 @@
       "errorTitle": "Error"
     },
     "variations": {
+      "spaces": "Match spaces between letters",
+      "spacesHint": "Also catch spaced spellings, such as R I N, and r 1 n when r1n is a generated variation. Applies to every word in this rule. Custom regex edits stay unchanged; reset a custom pattern to apply this option. Contextual review still applies when enabled.",
       "regexHint": "Each pattern extends its blocked word. Matching ignores case and uses whole-word boundaries. Your edits replace the generated pattern and are kept when saving or previewing. Changing the matching mode resets edits.",
       "prepareHint": "Preview variations to see and edit their patterns.",
       "regexFor": "Variation regex for",

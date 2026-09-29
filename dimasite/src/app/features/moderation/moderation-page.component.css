@@ -885,3 +885,7 @@
     transition: none;
   }
 }
+
+.variation-spacing { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.variation-spacing > .lf-note { grid-column: 1 / -1; margin: 0; }
+.variation-spacing .lf-switch { min-height: 44px; }

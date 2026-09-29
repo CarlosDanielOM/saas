@@ -4,7 +4,7 @@ import { ModerationVariationCache as Cache, ModerationVariationJob as Jobs, type
 import type { IModerationRule } from '../../schemas/channel_moderation_settings.schema.js';
 import { getDragonflyClient } from '../databases/dragonfly.database.js';
 import { paidModeration, MODERATION_RETENTION_DAYS } from './advanced.js';
-import { buildVariation, validateVariations, generateMuseVariations, variationKey, variationTerm, VARIATION_MODEL, VARIATION_VERSION, type GeneratedVariation, type VariationMode } from './variations.js';
+import { buildVariation, withVariationSpacing, validateVariations, generateMuseVariations, variationKey, variationTerm, VARIATION_MODEL, VARIATION_VERSION, type GeneratedVariation, type VariationMode } from './variations.js';
 const lifetime = () => new Date(Date.now() + MODERATION_RETENTION_DAYS * 86400000);
 export class VariationError extends Error { constructor(public status: number, message: string) { super(message); } }
 
@@ -17,18 +17,19 @@ export async function savedVariations(channelID: string, terms: string[], priorR
     for (const item of cached) entries.set(item.entry.term, item.entry);
     return entries;
 }
-export async function resolveVariations(channelID: string, terms: string[], mode: VariationMode, priorRules: IModerationRule[]) {
-    if (mode === 'off') return { mode, entries: [] };
+export async function resolveVariations(channelID: string, terms: string[], mode: VariationMode, priorRules: IModerationRule[], allowSpaces = false) {
+    if (mode === 'off') return { mode, allowSpaces: false, entries: [] };
     if (mode === 'common') {
-        const entries = terms.map(term => buildVariation(term));
-        validateVariations(entries);
-        return { mode, entries };
+        const entries = terms.map(term => withVariationSpacing(buildVariation(term), allowSpaces));
+        validateVariations(entries, allowSpaces);
+        return { mode, allowSpaces, entries };
     }
     const saved = await savedVariations(channelID, terms, priorRules);
     const entries = terms.map(term => saved.get(variationTerm(term)));
     if (entries.some(entry => !entry)) throw new VariationError(409, 'Prepare broader variations for the changed words before saving');
-    validateVariations(entries as GeneratedVariation[]);
-    return { mode, entries: entries as GeneratedVariation[] };
+    const compiled = (entries as GeneratedVariation[]).map(entry => withVariationSpacing(entry, allowSpaces));
+    validateVariations(compiled, allowSpaces);
+    return { mode, allowSpaces, entries: compiled };
 }
 export function variationJobView(job: Pick<VariationJob, '_id' | 'state' | 'entries' | 'error'>) {
     return { id: job._id, state: job.state === 'reserved' ? 'pending' : job.state, entries: job.state === 'completed' ? job.entries : [], error: job.error };

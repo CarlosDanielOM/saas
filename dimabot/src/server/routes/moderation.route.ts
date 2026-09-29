@@ -1,4 +1,4 @@
-import { variationMode, variationTerms, variationOverrides, buildVariation } from '../../utils/moderation/variations.js';
+import { variationMode, variationTerms, variationOverrides, variationAllowSpaces, withVariationSpacing, buildVariation } from '../../utils/moderation/variations.js';
 import { requestVariationJob, resolveVariations, variationJobView, VariationError } from '../../utils/moderation/variation_jobs.js';
 import { ModerationVariationJob } from '../../schemas/moderation_variation.schema.js';
 import crypto from 'crypto';
@@ -128,8 +128,10 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
     catch (error) { return { error: `Rule ${index + 1}: ${error instanceof Error ? error.message : 'Invalid advanced rule'}` }; }
     let mode: ReturnType<typeof variationMode>;
     let overrides: ReturnType<typeof variationOverrides>;
+    let allowSpaces: boolean;
     try {
         mode = variationMode(input.variations);
+        allowSpaces = variationAllowSpaces((input.variations as { allowSpaces?: unknown } | undefined)?.allowSpaces);
         overrides = variationOverrides((input.variations as { overrides?: unknown } | undefined)?.overrides, normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100), mode);
     }
     catch (error) { return { error: error instanceof Error ? error.message : 'Invalid variations' }; }
@@ -174,7 +176,7 @@ function sanitizeRule(raw: unknown, index: number): { rule?: IModerationRule; er
         maxEmoteCount: clampInt(input.maxEmoteCount, 1, 100, MODERATION_RULE_DEFAULTS.maxEmoteCount),
         terms: normalizeStringList(input.terms, MAX_BLACKLIST_TERMS, 100),
         ...advanced,
-        variations: { mode, entries: [], overrides }
+        variations: { mode, allowSpaces: mode !== 'off' && allowSpaces, entries: [], overrides }
     };
 
     return { rule };
@@ -246,6 +248,7 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 // configuration while editing free rules, but cannot add paid features.
                 if (!prior || JSON.stringify(prior.patterns) !== JSON.stringify(rule.patterns) || JSON.stringify(parseAdvancedRule({ type: rule.type, semantic: prior.semantic }).semantic) !== JSON.stringify(rule.semantic)
                     || (prior.variations?.mode ?? 'off') !== rule.variations?.mode
+                    || (prior.variations?.allowSpaces ?? false) !== rule.variations?.allowSpaces
                     || JSON.stringify(prior.variations?.overrides ?? []) !== JSON.stringify(rule.variations?.overrides ?? [])
                     || (rule.variations?.mode !== 'off' && JSON.stringify(prior.terms) !== JSON.stringify(rule.terms))) {
                     return res.status(403).json({ error: true, message: 'Regex and contextual moderation require Premium or Pro', status: 403 });
@@ -254,7 +257,7 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
         }
 
         for (const rule of rules) rule.variations = {
-            ...await resolveVariations(channelID, rule.terms, rule.variations!.mode, current?.rules || []),
+            ...await resolveVariations(channelID, rule.terms, rule.variations!.mode, current?.rules || [], rule.variations!.allowSpaces),
             overrides: rule.variations!.overrides
         };
 
@@ -295,13 +298,13 @@ router.post('/:channelID/variations', authMiddleware as any, async (req: Moderat
         if (!await validateAccess(req, res, channelID, 'moderation:manage')) return;
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         if (!paidModeration(owner?.plan_tier)) return res.status(403).json({ error: true, message: 'Word variations require Premium or Pro', status: 403 });
-        let terms: string[], mode: ReturnType<typeof variationMode>;
-        try { terms = variationTerms(req.body?.terms); mode = variationMode({ mode: req.body?.mode }); }
+        let terms: string[], mode: ReturnType<typeof variationMode>, allowSpaces: boolean;
+        try { terms = variationTerms(req.body?.terms); mode = variationMode({ mode: req.body?.mode }); allowSpaces = variationAllowSpaces(req.body?.allowSpaces); }
         catch (error) { return res.status(400).json({ error: true, status: 400, message: error instanceof Error ? error.message : 'Invalid variation request' }); }
         const prior = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
         const data = mode === 'broad' ? await requestVariationJob(channelID, terms, prior?.rules || [])
             : { id: '', state: 'completed', error: '', entries: mode === 'common' ? terms.map(term => buildVariation(term)) : [] };
-        return res.json({ error: false, status: 200, data });
+        return res.json({ error: false, status: 200, data: { ...data, entries: data.entries.map(entry => withVariationSpacing(entry, allowSpaces)) } });
     } catch (error) {
         if (error instanceof VariationError) return res.status(error.status).json({ error: true, status: error.status, message: error.message });
         await logError({ function: 'moderationRoute.variations', error: error instanceof Error ? error.message : String(error) });
@@ -312,9 +315,10 @@ router.get('/:channelID/variations/:jobID', authMiddleware as any, async (req: M
     try {
         const channelID = getParam(req.params.channelID);
         if (!await validateAccess(req, res, channelID, 'moderation:manage')) return;
+        if (req.query.allowSpaces !== undefined && !['true', 'false'].includes(String(req.query.allowSpaces))) return res.status(400).json({ error: true, status: 400, message: 'Invalid spacing option' });
         const job = await ModerationVariationJob.findOne({ _id: getParam(req.params.jobID), channelID }).lean();
         if (!job) return res.status(404).json({ error: true, status: 404, message: 'Variation request not found' });
-        return res.json({ error: false, status: 200, data: variationJobView(job) });
+        return res.json({ error: false, status: 200, data: { ...variationJobView(job), entries: variationJobView(job).entries.map(entry => withVariationSpacing(entry, req.query.allowSpaces === 'true')) } });
     } catch {
         return res.status(503).json({ error: true, status: 503, message: 'Could not load word variations' });
     }

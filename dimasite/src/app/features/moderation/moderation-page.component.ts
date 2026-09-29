@@ -443,7 +443,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
           enabled: currentSettings.enabled,
           offenseWindowSeconds: currentSettings.offenseWindowSeconds,
           // Generated artifacts are resolved server-side; avoid echoing large previews.
-          rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, entries: [], overrides: this.activeVariationOverrides(rule) } : undefined }))
+          rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, allowSpaces: rule.variations.allowSpaces ?? false, entries: [], overrides: this.activeVariationOverrides(rule) } : undefined }))
         })
       );
       if (response.error || !response.data) {
@@ -493,7 +493,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   updateVariationMode(ruleID: string, mode: string): void {
     if (mode !== 'off' && mode !== 'common' && mode !== 'broad') return;
-    this.patchRule(ruleID, { variations: { mode, entries: [] } });
+    const prior = this.settings()?.rules.find(item => item.id === ruleID)?.variations;
+    this.patchRule(ruleID, { variations: { mode, allowSpaces: mode !== 'off' && (prior?.allowSpaces ?? false), entries: [] } });
   }
 
   variationExamples(rule: ModerationRule): GeneratedVariation[] {
@@ -523,26 +524,29 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   private async fetchVariations(channelID: string, rule: ModerationRule): Promise<GeneratedVariation[]> {
     const deadline = Date.now() + 310000;
-    let response = await firstValueFrom(this.moderationApi.prepareVariations(channelID, rule.terms, rule.variations?.mode ?? 'off'));
+    let response = await firstValueFrom(this.moderationApi.prepareVariations(channelID, rule.terms, rule.variations?.mode ?? 'off', rule.variations?.allowSpaces ?? false));
     while (!this.destroyed && response.data && ['pending', 'processing'].includes(response.data.state) && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       if (this.destroyed) break;
-      response = await firstValueFrom(this.moderationApi.getVariationJob(channelID, response.data.id));
+      response = await firstValueFrom(this.moderationApi.getVariationJob(channelID, response.data.id, rule.variations?.allowSpaces ?? false));
     }
     if (this.destroyed || response.error || response.data?.state !== 'completed') throw new Error(this.t('moderation.variations.failed'));
     return response.data.entries;
   }
 
-  async previewVariations(ruleID: string): Promise<void> {
+  async previewVariations(ruleID: string, allowSpaces?: boolean): Promise<void> {
     const channelID = this.channelID();
     const rule = this.settings()?.rules.find(item => item.id === ruleID);
     if (!channelID || !rule || !this.canManage() || !this.hasPaidModeration() || this.generatingRule() || this.savingSettings()) return;
     this.generatingRule.set(ruleID);
     this.errorMessage.set(null);
     try {
-      const entries = await this.fetchVariations(channelID, rule);
-      if (!this.destroyed) this.patchRule(ruleID, { variations: { mode: rule.variations?.mode ?? 'off', entries, overrides: this.activeVariationOverrides(rule) } });
+      const spacedRule = allowSpaces === undefined ? rule : { ...rule, variations: { ...rule.variations!, allowSpaces } };
+      if (allowSpaces !== undefined) this.patchRule(ruleID, { variations: spacedRule.variations });
+      const entries = await this.fetchVariations(channelID, spacedRule);
+      if (!this.destroyed) this.patchRule(ruleID, { variations: { allowSpaces: spacedRule.variations?.allowSpaces ?? false, mode: rule.variations?.mode ?? 'off', entries, overrides: this.activeVariationOverrides(rule) } });
     } catch (error) {
+      if (!this.destroyed && allowSpaces !== undefined) this.patchRule(ruleID, { variations: rule.variations });
       if (!this.destroyed) this.errorMessage.set(error instanceof HttpErrorResponse && typeof error.error?.message === 'string' ? error.error.message : this.t('moderation.variations.failed'));
     } finally { this.generatingRule.set(null); }
   }

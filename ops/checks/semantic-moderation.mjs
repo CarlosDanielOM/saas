@@ -167,6 +167,28 @@ try {
     await seed('auto-free', commonRule, 'free');
     assert.equal((await runChatModeration('auto-free', message('auto-free', 'fuuuck'), identity)).actionTaken, false);
 
+    for (const mode of ['common', 'broad']) {
+        const entries = ['rin', 'rinn'].map(term => buildVariation(term, ['r1n']));
+        const variations = { mode, entries, allowSpaces: true };
+        const spacedRule = { ...commonRule, terms: ['rin', 'rinn'], variations };
+        await seed(`spaces-${mode}`, spacedRule);
+        const beforeReviews = calls().filter(c => c.review).length;
+        for (const [index, text] of ['R I N', 'r 1 n', 'r i n n'].entries()) {
+            assert.equal((await runChatModeration(`spaces-${mode}`, message(`space-${mode}-${index}`, text), identity)).actionTaken, true);
+            assert.equal(await count(`spaces-${mode}`, spacedRule), index + 1);
+        }
+        assert.equal(calls().filter(c => c.review).length, beforeReviews, 'spaced regex-only uses ladder without AI');
+        await seed(`spaces-review-${mode}`, { ...spacedRule, semantic: semantic.semantic });
+        assert.equal((await runChatModeration(`spaces-review-${mode}`, message(`space-allow-${mode}`, 'R I N awesome'), identity)).actionTaken, false);
+        assert.equal(await count(`spaces-review-${mode}`, spacedRule), 0);
+        assert.equal((await runChatModeration(`spaces-review-${mode}`, message(`space-flag-${mode}`, 'R I N this'), identity)).actionTaken, true);
+        const audit = await decision(`space-flag-${mode}`);
+        assert.equal(audit.rule.variations.allowSpaces, true);
+        assert.equal(audit.matches[0].text, 'R I N', 'training review keeps original spaced match');
+        await seed(`spaces-off-${mode}`, { ...spacedRule, variations: { ...variations, allowSpaces: false } });
+        assert.equal((await runChatModeration(`spaces-off-${mode}`, message(`space-off-${mode}`, 'R I N'), identity)).actionTaken, false);
+    }
+
     const largeRule = { variations: { mode: 'common', entries: Array.from({ length: 200 }, (_, i) => buildVariation(`word${i}`)) } };
     assert.ok(findBlacklistMatches('wooord199', [], rulePatterns(largeRule)).length, '200 generated words run in native RE2');
     const timeoutJob = await VariationJobs.create({ _id: 'expired-generation', channelID: 'auto-common', terms: ['word'], entries: [], state: 'processing', deadline: new Date(Date.now() - 1000), expiresAt: new Date(Date.now() + 86400000) });
@@ -265,6 +287,28 @@ try {
             assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [reset] })).status, 200);
             await invalidateModerationSettingsCache('semantic-paid');
             assert.equal((await runChatModeration('semantic-paid', message(`reset-${mode}`, 'riiinn', `edit-${mode}`), identity)).actionTaken, true);
+        }
+
+        for (const mode of ['common', 'broad']) {
+            const generationCount = calls().filter(c => c.generation).length;
+            for (const allowSpaces of [true, false]) {
+                const preview = await (await api('POST', 'semantic-paid/variations', { terms: ['fuck', 'rinn'], mode, allowSpaces })).json();
+                assert.equal(preview.data.state, 'completed');
+                assert.equal(findBlacklistMatches('R I N', [], [preview.data.entries[1].pattern]).length > 0, allowSpaces);
+                const rule = { ...commonRule, variations: { mode, allowSpaces, entries: [] } };
+                assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [rule] })).status, 200);
+                const loaded = (await (await api('GET', 'semantic-paid/settings')).json()).data.rules[0];
+                assert.equal(loaded.variations.allowSpaces, allowSpaces);
+                await invalidateModerationSettingsCache('semantic-paid');
+                assert.equal((await runChatModeration('semantic-paid', message(`space-api-${mode}-${allowSpaces}`, 'R I N', `space-api-${mode}`), identity)).actionTaken, allowSpaces);
+            }
+            assert.equal(calls().filter(c => c.generation).length, generationCount, 'spacing reuses cached spellings without generation');
+        }
+        const polledSpaces = await (await api('GET', `semantic-paid/variations/${broadResponse.data.id}?allowSpaces=true`)).json();
+        assert.ok(findBlacklistMatches('R I N', [], [polledSpaces.data.entries[1].pattern]).length, 'async job view applies spacing');
+        for (const allowSpaces of ['true', 1, null]) {
+            assert.equal((await api('POST', 'semantic-paid/variations', { terms: ['rinn'], mode: 'common', allowSpaces })).status, 400);
+            assert.equal((await api('PUT', 'semantic-paid/settings', { rules: [{ ...commonRule, variations: { mode: 'common', allowSpaces } }] })).status, 400);
         }
 
         const saved = await api('PUT', 'semantic-paid/settings', { enabled: true, rules: [semantic] });

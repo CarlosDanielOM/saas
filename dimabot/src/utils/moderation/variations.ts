@@ -4,9 +4,15 @@ import { escapeRegExp, foldText } from './normalize.js';
 import { findBlacklistMatches, type ModerationPattern } from './advanced.js';
 
 export type VariationMode = 'off' | 'common' | 'broad';
-export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string }
+export interface GeneratedVariation { term: string; spellings: string[]; pattern: ModerationPattern; version: string; allowSpaces?: boolean }
 export interface VariationOverride { term: string; source: string }
-export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[]; overrides?: VariationOverride[] }
+export interface ModerationVariations { mode: VariationMode; entries: GeneratedVariation[]; overrides?: VariationOverride[]; allowSpaces?: boolean }
+const MAX_VARIATION_SOURCE = 16000;
+export function variationAllowSpaces(raw: unknown): boolean {
+    if (raw === undefined) return false;
+    if (typeof raw !== 'boolean') throw new Error('Match spaces must be true or false');
+    return raw;
+}
 export const VARIATION_VERSION = 'spelling-variants-v1';
 export const VARIATION_MODEL = 'meta/muse-spark-1.3-contributor';
 export const variationTerm = (term: string) => term.normalize('NFC').trim().replace(/\s+/gu, ' ').toLowerCase();
@@ -32,7 +38,7 @@ export function variationOverrides(raw: unknown, terms: string[], mode: Variatio
         const term = variationTerm(item.term);
         if (!allowed.has(term) || seen.has(term)) throw new Error('Each edited regex must belong to a different blocked word');
         seen.add(term);
-        if (!item.source.trim() || item.source.length > 2000) throw new Error('Edited variation regex must contain 1–2000 characters');
+        if (!item.source.trim() || item.source.length > MAX_VARIATION_SOURCE) throw new Error('Edited variation regex must contain 1–16000 characters');
         try {
             if (new RE2(item.source, 'iu').test('')) throw new Error('empty match');
         } catch { throw new Error('Invalid variation regex. Use RE2 without lookaround, backreferences, or empty matches.'); }
@@ -63,6 +69,33 @@ function stretched(text: string): string {
         return character === ' ' ? '\\s+' : escapeRegExp(character);
     }).join('');
 }
+/** Compile trusted literal spellings, never rewrite a user-authored expression.
+ * Keep required phrase spaces and original message offsets. Spaces, tabs and
+ * line breaks are accepted between characters.
+ */
+export function withVariationSpacing(entry: GeneratedVariation, allowSpaces = false): GeneratedVariation {
+    if ((entry.allowSpaces ?? false) === allowSpaces) return entry;
+    const gap = '\\s*';
+    const short = Array.from(entry.term).length < 3;
+    const sources = [...new Set(entry.spellings.map(text => {
+        if (!allowSpaces) return short ? escapeRegExp(text) : stretched(text);
+        let prior = '';
+        return Array.from(text).flatMap(character => {
+            const literal = escapeRegExp(character);
+            if (!short && /\p{L}/u.test(character)) {
+                if (character === prior) return [];
+                prior = character;
+                return [literal + `(?:${gap}${literal})*`];
+            }
+            prior = '';
+            return [character === ' ' ? '\\s+' : literal];
+        }).join(gap);
+    }))];
+    const source = `(?:${sources.join('|')})`;
+    // Spaced expressions need more room than their compact originals.
+    if (source.length > MAX_VARIATION_SOURCE) throw new Error('Generated pattern is too long');
+    return { ...entry, allowSpaces, pattern: { ...entry.pattern, source } };
+}
 /** AI provides bounded literal spellings; only this compiler emits regex syntax. */
 export function buildVariation(term: string, suggestions: unknown = []): GeneratedVariation {
     const normalized = variationTerm(term);
@@ -89,12 +122,12 @@ export function rulePatterns(rule: { patterns?: ModerationPattern[]; variations?
     // One compiled alternation per rule avoids compiling 200 Unicode boundary
     // expressions on the chat loop's first message after a settings change.
     const overrides = new Map(rule.variations?.overrides?.map(item => [item.term, item.source]));
-    const source = `(?:${entries.map(entry => `(?:${overrides.get(entry.term) ?? entry.pattern.source})`).join('|')})`;
+    const source = `(?:${entries.map(entry => `(?:${overrides.get(entry.term) ?? withVariationSpacing(entry, rule.variations?.allowSpaces).pattern.source})`).join('|')})`;
     const id = 'auto-all-' + createHash('sha256').update(source).digest('hex').slice(0, 24);
     return [...(rule.patterns || []), { id, source, boundary: 'whole_word', ignoreCase: true }];
 }
-export function validateVariations(entries: GeneratedVariation[]): void {
-    if (entries.length && !findBlacklistMatches(entries.map(entry => entry.term).join(' '), [], rulePatterns({ variations: { mode: 'common', entries } })).length) throw new Error('Generated pattern failed validation');
+export function validateVariations(entries: GeneratedVariation[], allowSpaces = false): void {
+    if (entries.length && !findBlacklistMatches(entries.map(entry => entry.term).join(' '), [], rulePatterns({ variations: { mode: 'common', entries, allowSpaces } })).length) throw new Error('Generated pattern failed validation');
 }
 
 export function museVariationRequest(terms: string[]) {
