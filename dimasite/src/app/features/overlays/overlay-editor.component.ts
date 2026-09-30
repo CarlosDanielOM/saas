@@ -7,6 +7,7 @@ import { OverlayLayerComponent } from './overlay-layer.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
 import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
 import { OverlayApi, StudioState } from './overlay-api.service';
+import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } from './overlay-draft-storage.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -21,10 +22,10 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent], providers: [OverlayTestMediaService],
+  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()' }
+  host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()' }
 })
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
@@ -32,12 +33,19 @@ export class OverlayEditorComponent {
   readonly pro = computed(() => this.auth.getPlanTierForStreamer(this.streamer) === 'pro');
   readonly owner = computed(() => this.auth.session()?.twitchUser.login.toLowerCase() === this.streamer.toLowerCase());
   readonly loading = signal(true);
+  readonly loaded = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
   readonly astError = signal('');
   readonly rendered = signal<Record<string, string>>({});
   readonly confirmRotate = signal(false);
   readonly confirmDelete = signal(false);
+  readonly recovery = signal<OverlayRecovery | null>(null);
+  readonly storageError = signal(false);
+  private readonly draftStorage = inject(OverlayDraftStorage);
+  private readonly savedDocument = signal<string | null>(null);
+  private readonly recovered = signal(false);
+  private consumedRecovery: OverlayRecovery | null = null;
   private revision = 0;
   channel = '';
   readonly assetPickerOpen = signal(false);
@@ -90,10 +98,27 @@ export class OverlayEditorComponent {
   readonly previewDesign = signal(false);
   readonly sampleUser = signal('Luna');
   readonly sampleAmount = signal('100');
+  readonly dirty = computed(() => {
+    if (!this.loaded()) return false;
+    if (this.recovered() || this.documentFingerprint() !== this.savedDocument()) return true;
+    const draft = this.designDraft();
+    return !!draft && this.designFingerprint(draft) !== this.designFingerprint(this.designs().find(d => d.id === draft.id));
+  });
 
   constructor() {
     this.seed();
     afterNextRender(() => void this.loadSaved());
+    effect(onCleanup => {
+      if (!this.loaded() || !this.channel || this.loading()) return;
+      // A pristine editor must leave the offered recovery copy intact until the user chooses.
+      const dirty = this.dirty(), offered = this.recovery();
+      const draft = dirty ? this.localDraft() : null;
+      const timer = setTimeout(() => {
+        if (draft) this.writeRecovery(draft);
+        else if (!offered) this.clearRecovery();
+      }, 250);
+      onCleanup(() => clearTimeout(timer));
+    });
     effect(onCleanup => {
       const ownTexts = this.widgets().filter(w => w.kind === 'text').map(w => w.text || '');
       const designTexts = this.designs().flatMap(d => Object.values(d.events).flatMap(e => e.widgets.filter(w => w.kind === 'text').map(w => w.text || '')));
@@ -109,7 +134,7 @@ export class OverlayEditorComponent {
       }, 200);
       onCleanup(() => { valid = false; clearTimeout(timer); });
     });
-    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.resetSimulation(); });
+    inject(DestroyRef).onDestroy(() => { this.flushRecovery(); this.disposed = true; this.resetSimulation(); });
   }
   t(key: string, params?: Record<string, string | number>): string {
     this.language.currentLanguage(); return this.language.translate(`overlayStudio.${key}`, params);
@@ -169,6 +194,7 @@ export class OverlayEditorComponent {
     if (canvas) { this.select(widget.id); this.pointer = { id: widget.id, action, startX: event.clientX, startY: event.clientY, original: { ...widget }, canvas }; }
   }
   onPointerMove(event: PointerEvent): void {
+    if (this.busy() || this.loading()) return;
     const s = this.pointer; if (!s) return;
     const dx = (event.clientX-s.startX)/s.canvas.width*this.canvasWidth(), dy = (event.clientY-s.startY)/s.canvas.height*this.canvasHeight();
     this.patch(s.id, s.action === 'move' ? { x: this.round(s.original.x+dx), y: this.round(s.original.y+dy) } : { width: Math.max(20,this.round(s.original.width+dx)), height: Math.max(20,this.round(s.original.height+dy)) });
@@ -216,6 +242,7 @@ export class OverlayEditorComponent {
     this.scenes.update(all=>[...all,scene]); this.sceneId.set(scene.id); this.selectedId.set(null); this.resetSimulation(); this.saved.set(false);
   }
   openDesign(id?: string): void {
+    if (this.designDraft() && this.dirty() && !window.confirm(this.t('discardDesign'))) return;
     this.resetSimulation();
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
     this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.libraryOpen.set(false); this.panel.set('canvas'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
@@ -361,21 +388,109 @@ export class OverlayEditorComponent {
     try { this.accept(await this.api.save(this.channel, { schemaVersion: 1, revision: this.revision, scenes: this.scenes(), designs: this.designs() })); return true; }
     catch (e) { this.report(e); return false; } finally { this.busy.set(false); }
   }
-  private accept(state: StudioState): void {
+  private accept(state: StudioState, preserveRecovery = false): void {
     if (this.disposed) return;
     this.revision = state.revision; this.scenes.set(state.scenes); this.designs.set(state.designs);
     if (!state.scenes.some(s => s.id === this.sceneId())) this.sceneId.set(state.scenes[0].id);
+    this.loaded.set(true);
+    this.savedDocument.set(this.documentFingerprint());
+    this.recovered.set(false);
+    if (!preserveRecovery) { this.recovery.set(null); this.clearRecovery(); }
     this.saved.set(true);
   }
   private report(e: unknown): void {
     const error = e as { status?: number; error?: { message?: string } };
     this.error.set(error.status === 409 ? this.t('conflict') : error.error?.message || this.t('saveFailed')); this.saved.set(false);
   }
-  async resetDraft(): Promise<void> { await this.loadSaved(); }
+  async resetDraft(): Promise<void> {
+    if (this.busy() || this.loading()) return;
+    if (this.dirty() && !window.confirm(this.t('discardReload'))) return;
+    await this.loadSaved();
+  }
   private async loadSaved(): Promise<void> {
-    this.loading.set(true); this.error.set(''); this.resetSimulation(); this.designDraft.set(null);
-    try { if (this.pro() && this.owner()) { this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || ''; if (!this.channel) throw new Error('Channel unavailable'); this.accept(await this.api.load(this.channel)); } }
-    catch (e) { this.report(e); } finally { this.loading.set(false); }
+    const initial = !this.loaded();
+    this.loading.set(true); this.error.set(''); this.stopPointer();
+    try {
+      if (this.pro() && this.owner()) {
+        this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || '';
+        if (!this.channel) throw new Error('Channel unavailable');
+        if (initial) this.findRecovery();
+        const state = await this.api.load(this.channel);
+        if (this.disposed) return;
+        // Replace local work only after the server has returned a complete saved draft.
+        this.resetSimulation(); this.designDraft.set(null);
+        this.accept(state, initial);
+        this.selectedId.set(this.widgets()[0]?.id ?? null);
+      }
+    } catch (e) { this.report(e); } finally { this.loading.set(false); }
+  }
+
+  canLeave(): boolean {
+    if (this.busy() || this.loading() && this.loaded()) return false;
+    this.flushRecovery();
+    return !this.dirty() || window.confirm(this.t('leaveUnsaved'));
+  }
+  protectDraft(event: BeforeUnloadEvent): void {
+    this.flushRecovery();
+    if (this.dirty()) { event.preventDefault(); event.returnValue = ''; }
+  }
+  private documentFingerprint(): string {
+    return JSON.stringify({ scenes: this.scenes().map(({ publicId: _publicId, published: _published, revision: _revision, ...draft }) => draft), designs: this.designs().map(({ revision: _revision, ...draft }) => draft) });
+  }
+  private designFingerprint(design?: AlertDesign): string {
+    if (!design) return '';
+    const { revision: _revision, ...draft } = design;
+    return JSON.stringify(draft);
+  }
+  private localDraft(): LocalOverlayDraft {
+    return { schemaVersion: 1, channelID: this.channel, updatedAt: Date.now(), revision: this.revision,
+      scenes: this.scenes().map(({ publicId: _publicId, published: _published, revision: _revision, ...draft }) => draft),
+      designs: this.designs(), designDraft: this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), selectedId: this.selectedId() };
+  }
+  private writeRecovery(draft: LocalOverlayDraft): void {
+    try { this.draftStorage.write(this.channel, draft); this.storageError.set(false); }
+    catch { this.storageError.set(true); }
+  }
+  saveLocalRecovery(): void { this.flushRecovery(); }
+  private flushRecovery(): void {
+    if (!this.channel || !this.loaded()) return;
+    if (this.dirty()) this.writeRecovery(this.localDraft());
+    else if (!this.recovery()) this.clearRecovery();
+  }
+  private clearRecovery(): void {
+    try {
+      // Loading a saved draft must not remove a recovery copy that hasn't been offered yet.
+      if (this.recovery()) return;
+      this.draftStorage.clear(this.channel);
+      if (this.consumedRecovery) this.draftStorage.discard(this.consumedRecovery);
+      this.consumedRecovery = null; this.storageError.set(false);
+    } catch { this.storageError.set(true); }
+  }
+  private findRecovery(): void {
+    try { this.recovery.set(this.draftStorage.find(this.channel)); }
+    catch { this.storageError.set(true); }
+  }
+  restoreRecovery(): void {
+    const recovery = this.recovery();
+    if (!recovery || this.busy() || this.loading()) return;
+    if (this.dirty() && !window.confirm(this.t('discardRestore'))) return;
+    const draft = clone(recovery.draft), remote = this.scenes(), currentRevision = this.revision;
+    this.resetSimulation(); this.stopPointer();
+    this.scenes.set(draft.scenes.map(scene => {
+      const saved = this.loaded() ? remote.find(s => s.id === scene.id) : undefined;
+      return { ...scene, publicId: saved?.publicId ?? '', revision: saved?.revision ?? 0, ...(saved?.published ? { published: saved.published } : {}) };
+    }));
+    this.designs.set(draft.designs); this.designDraft.set(draft.designDraft); this.sceneId.set(draft.sceneId);
+    this.designEvent.set(draft.designEvent); this.selectedId.set(draft.selectedId); this.revision = draft.revision;
+    this.loaded.set(true); this.recovered.set(true); this.saved.set(false);
+    this.consumedRecovery = recovery; this.recovery.set(null);
+    this.error.set(draft.revision !== currentRevision ? this.t('conflict') : ''); this.notice.set('draftRestored');
+    this.flushRecovery();
+  }
+  discardRecovery(): void {
+    const recovery = this.recovery(); if (!recovery) return;
+    try { this.draftStorage.discard(recovery); this.recovery.set(null); this.storageError.set(false); }
+    catch { this.storageError.set(true); }
   }
   async copyUrl(): Promise<void> { try { await navigator.clipboard.writeText(this.overlayUrl()); this.notice.set('urlCopied'); } catch { this.notice.set('copyFailed'); } }
   overlayUrl(): string { return `https://domdimabot.com/overlays/${this.scene().publicId}`; }

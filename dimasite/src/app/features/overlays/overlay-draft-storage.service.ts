@@ -1,0 +1,107 @@
+import { DOCUMENT } from '@angular/common';
+import { Injectable, inject } from '@angular/core';
+import { ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
+
+export type DraftScene = Omit<OverlayScene, 'publicId' | 'published' | 'revision'>;
+export interface LocalOverlayDraft {
+  schemaVersion: 1;
+  channelID: string;
+  updatedAt: number;
+  revision: number;
+  scenes: DraftScene[];
+  designs: AlertDesign[];
+  designDraft: AlertDesign | null;
+  sceneId: string;
+  designEvent: AlertEvent;
+  selectedId: string | null;
+}
+export interface OverlayRecovery { key: string; serialized: string; draft: LocalOverlayDraft }
+const PREFIX = 'domdimabot-overlay-draft:';
+const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+function validWidgets(value: unknown): value is OverlayWidget[] {
+  return Array.isArray(value) && value.length <= 1000 && value.every(w => record(w)
+    && typeof w['id'] === 'string' && typeof w['kind'] === 'string'
+    && ['tts', 'trigger', 'clip', 'alert', 'text', 'image', 'video', 'animation'].includes(w['kind'])
+    && ['x', 'y', 'width', 'height'].every(key => finite(w[key]))
+    && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
+    && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
+    && (w['fontSize'] === undefined || finite(w['fontSize']))
+    && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
+}
+function validDesign(value: unknown): value is AlertDesign {
+  if (!record(value) || typeof value['id'] !== 'string' || typeof value['name'] !== 'string'
+    || !finite(value['width']) || !finite(value['height']) || !finite(value['revision'])) return false;
+  const events = value['events'];
+  return record(events) && ALERT_EVENTS.every(kind => {
+    const layout = events[kind];
+    return record(layout) && finite(layout['duration']) && validWidgets(layout['widgets']);
+  });
+}
+function parseDraft(serialized: string, channel: string): LocalOverlayDraft | null {
+  try {
+    const value: unknown = JSON.parse(serialized);
+    if (!record(value) || value['schemaVersion'] !== 1 || value['channelID'] !== channel
+      || !finite(value['updatedAt']) || !Number.isInteger(value['revision']) || Number(value['revision']) < 0
+      || typeof value['sceneId'] !== 'string' || !ALERT_EVENTS.includes(value['designEvent'] as AlertEvent)
+      || !(value['selectedId'] === null || typeof value['selectedId'] === 'string')) return null;
+    const scenes = value['scenes'], designs = value['designs'];
+    if (!Array.isArray(scenes) || !scenes.length || scenes.length > 1000
+      || !scenes.every(s => record(s) && typeof s['id'] === 'string' && typeof s['name'] === 'string'
+        && finite(s['width']) && finite(s['height']) && validWidgets(s['widgets'])
+        && Array.isArray(s['waitFor']) && s['waitFor'].every(kind => EVENT_KINDS.includes(kind)))
+      || !Array.isArray(designs) || !designs.length || designs.length > 1000 || !designs.every(validDesign)
+      || !(value['designDraft'] === null || validDesign(value['designDraft']))) return null;
+    if (!scenes.some(s => s.id === value['sceneId']) || scenes.some(s => s.widgets.some((w: OverlayWidget) => w.kind === 'alert' && !designs.some(d => d.id === w.designId)))) return null;
+    return value as unknown as LocalOverlayDraft;
+  } catch { return null; }
+}
+
+/** Recovery copies belong to a channel and tab, and never contain account credentials or OBS URLs. */
+@Injectable()
+export class OverlayDraftStorage {
+  private readonly document = inject(DOCUMENT);
+  private tabId = '';
+  private previousTabId = '';
+  private get storage(): Storage {
+    const storage = this.document.defaultView?.localStorage;
+    if (!storage) throw new Error('Local storage unavailable');
+    return storage;
+  }
+  private key(channel: string): string {
+    if (!this.tabId) {
+      this.tabId = crypto.randomUUID();
+      try {
+        const session = this.document.defaultView?.sessionStorage;
+        const previous = session?.getItem('domdimabot-overlay-tab');
+        if (previous && /^[a-f0-9-]{36}$/.test(previous)) this.previousTabId = previous;
+        // A duplicated tab inherits sessionStorage. Give every editor instance its own
+        // writer ID, while retaining the previous ID solely to prefer its recovery copy.
+        session?.setItem('domdimabot-overlay-tab', this.tabId);
+      } catch { /* The in-memory tab identity still keeps other tabs' drafts separate. */ }
+    }
+    return `${PREFIX}${channel}:${this.tabId}`;
+  }
+  find(channel: string): OverlayRecovery | null {
+    const storage = this.storage, ownKey = this.key(channel);
+    const preferredKey = `${PREFIX}${channel}:${this.previousTabId}`;
+    let latest: OverlayRecovery | null = null;
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (!key?.startsWith(`${PREFIX}${channel}:`)) continue;
+      const serialized = storage.getItem(key);
+      const draft = serialized && parseDraft(serialized, channel);
+      if (!draft || !serialized) continue;
+      const recovery = { key, serialized, draft };
+      if (key === ownKey || key === preferredKey) return recovery;
+      if (!latest || draft.updatedAt > latest.draft.updatedAt) latest = recovery;
+    }
+    return latest;
+  }
+  write(channel: string, draft: LocalOverlayDraft): void { this.storage.setItem(this.key(channel), JSON.stringify(draft)); }
+  clear(channel: string): void { this.storage.removeItem(this.key(channel)); }
+  discard(recovery: OverlayRecovery): void {
+    // Another tab may have updated this copy since the recovery banner appeared.
+    if (this.storage.getItem(recovery.key) === recovery.serialized) this.storage.removeItem(recovery.key);
+  }
+}

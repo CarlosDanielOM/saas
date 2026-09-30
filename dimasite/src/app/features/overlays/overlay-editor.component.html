@@ -1,10 +1,20 @@
 <div class="editor">
 @if (!pro() || !owner()) {
   <main class="main"><p class="eyebrow">{{ t('prototype') }}</p><h1>{{ t('studio') }}</h1><p>{{ t(!pro() ? 'proRequired' : 'ownerRequired') }}</p><a [routerLink]="['/', streamer, 'modules']">{{ t('back') }}</a></main>
-} @else if (loading()) { <main class="main" role="status">{{ t('loading') }}</main> } @else {
+} @else if (loading() && !loaded()) { <main class="main" role="status">{{ t('loading') }}</main> } @else {
 @if(error()) { <p class="notice" role="alert">{{ error() }}</p> }
+@if(storageError()) { <p class="notice" role="alert">{{ t('localRecoveryFailed') }}</p> }
+@if(recovery()) {
+  <section class="recovery-banner" [attr.aria-label]="t('localRecovery')">
+    <div><h2>{{ t('localRecovery') }}</h2><p>{{ t('localRecoveryHint') }}</p></div>
+    <div class="recovery-actions"><button type="button" class="save-button" [disabled]="busy() || loading()" (click)="restoreRecovery()">{{ t('restoreDraft') }}</button><button type="button" class="toolbar-button" [disabled]="busy() || loading()" (click)="discardRecovery()">{{ t('discardRecovery') }}</button></div>
+  </section>
+}
+@if (!loaded()) {
+  <main class="main"><h1>{{ t('studio') }}</h1><p>{{ t('loadFailed') }}</p><button type="button" class="save-button" [disabled]="loading()" (click)="resetDraft()">{{ t('tryAgain') }}</button></main>
+} @else {
 @if(astError()) { <p class="notice" role="alert">{{ astError() }}</p> }
-<fieldset class="editor-fields" [disabled]="busy()" [attr.aria-label]="t('studio')">
+<fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
   <header class="topbar">
     <div class="topbar__brand">
       <a [routerLink]="['/', streamer, 'modules']" class="icon-button" [attr.aria-label]="t('back')"><lucide-icon [name]="icons.ArrowLeft" [size]="19" aria-hidden="true" /></a>
@@ -14,7 +24,7 @@
     <div class="topbar__actions">
       <button class="icon-button" type="button" (click)="toggleLanguage()" [attr.aria-label]="t('switchLanguage')">{{ language.currentLanguage() === 'en' ? 'ES' : 'EN' }}</button>
       <button class="icon-button" type="button" (click)="toggleTheme()" [attr.aria-label]="t('switchTheme')"><lucide-icon [name]="isDark() ? icons.Moon : icons.Sun" [size]="18" aria-hidden="true" /></button>
-      <button class="save-button" type="button" (click)="saveDraft()"><lucide-icon [name]="icons.Save" [size]="16" aria-hidden="true" />{{ saved() ? t('saved') : designDraft() ? t('saveDesign') : t('saveDraft') }}</button>
+      <button class="save-button" type="button" (click)="saveDraft()"><lucide-icon [name]="icons.Save" [size]="16" aria-hidden="true" />{{ saved() && !dirty() ? t('saved') : designDraft() ? t('saveDesign') : t('saveDraft') }}</button>
     </div>
   </header>
 
@@ -25,7 +35,7 @@
         <h1>{{ designDraft() ? t('designEditor') : t('title') }}</h1>
         <p class="intro__copy">{{ t('description') }}</p>
       </div>
-      <div class="intro__meta"><span>{{ canvasWidth() }} × {{ canvasHeight() }}</span><span class="meta-separator" aria-hidden="true">·</span><span>{{ busy() ? t('saving') : t('localOnly') }}</span></div>
+      <div class="intro__meta"><span>{{ canvasWidth() }} × {{ canvasHeight() }}</span><span class="meta-separator" aria-hidden="true">·</span><span aria-live="polite">{{ loading() ? t('loading') : busy() ? t('saving') : dirty() ? t('unsavedChanges') : t('localOnly') }}</span></div>
     </div>
 
 
@@ -63,9 +73,9 @@
       </section>
     }
     <div class="document-settings">
-      <label class="name-field"><span>{{ designDraft() ? t('designName') : t('overlayName') }}</span><input [value]="designDraft()?.name ?? scene().name" maxlength="80" (change)="rename($event)" /></label>
-      <label><span>{{ t('canvasWidth') }}</span><input type="number" min="100" max="7680" [value]="canvasWidth()" (change)="updateCanvas('width', $event)" /></label>
-      <label><span>{{ t('canvasHeight') }}</span><input type="number" min="100" max="7680" [value]="canvasHeight()" (change)="updateCanvas('height', $event)" /></label>
+      <label class="name-field"><span>{{ designDraft() ? t('designName') : t('overlayName') }}</span><input [value]="designDraft()?.name ?? scene().name" maxlength="80" (input)="rename($event)" /></label>
+      <label><span>{{ t('canvasWidth') }}</span><input type="number" min="100" max="7680" [value]="canvasWidth()" (input)="updateCanvas('width', $event)" /></label>
+      <label><span>{{ t('canvasHeight') }}</span><input type="number" min="100" max="7680" [value]="canvasHeight()" (input)="updateCanvas('height', $event)" /></label>
       <p>{{ t('canvasResizeHint') }}</p>
     </div>
     @if (designDraft()) {
@@ -177,7 +187,7 @@
           <div class="event-tester"><div><p class="panel-kicker">{{ t('testDesign') }}</p><p>{{ t('contextHint') }}</p></div>
             <label class="compact-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
             <label class="compact-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
-            <label class="compact-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="60" [value]="design.events[designEvent()].duration" (change)="updateDuration($event)" /></label>
+            <label class="compact-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="60" [value]="design.events[designEvent()].duration" (input)="updateDuration($event)" /></label>
             <button type="button" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="14" aria-hidden="true" />{{ t('testDesign') }}</button>
           </div>
         } @else {
@@ -203,7 +213,7 @@
         <div class="panel-heading"><div><p class="panel-kicker">03 / {{ t('fineTune') }}</p><h2>{{ t('properties') }}</h2></div><lucide-icon [name]="icons.Layers3" [size]="19" aria-hidden="true" /></div>
         @if (selected(); as item) {
           <div class="selected-card" [attr.data-kind]="item.kind"><span class="selected-card__icon"><lucide-icon [name]="widgetIcon(item.kind)" [size]="19" aria-hidden="true" /></span><div><strong>{{ t(item.kind + 'Name') }}</strong><small>{{ item.id }}</small></div></div>
-          <label class="property-field"><span>{{ t('layerName') }}</span><input [value]="widgetName(item)" maxlength="80" (change)="patchSelected({ name: value($event) })" /></label>
+          <label class="property-field"><span>{{ t('layerName') }}</span><input [value]="widgetName(item)" maxlength="80" (input)="patchSelected({ name: value($event) })" /></label>
           @if (item.kind === 'alert') {
             <div class="property-group alert-properties"><label class="property-field"><span>{{ t('savedDesign') }}</span><select [attr.aria-label]="t('savedDesign')" [value]="item.designId" (change)="patchSelected({ designId: value($event) })">@for (design of designs(); track design.id) { <option [value]="design.id" [selected]="design.id === item.designId">{{ design.name }}</option> }</select></label>
               <button type="button" class="toolbar-button" (click)="openDesign(item.designId)">{{ t('editDesign') }}</button>
@@ -216,12 +226,12 @@
           }
           @if (item.kind === 'image' || item.kind === 'video') { <p class="field-hint">{{ designDraft() ? t('eventAssetHint') : t('permanentAssetHint') }}</p> }
           <div class="property-group"><div class="property-group__heading"><h3>{{ t('position') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
-            <label><span>X</span><input type="number" [value]="item.x" min="-16000" max="16000" (change)="updateDimension('x', $event)" /></label>
-            <label><span>Y</span><input type="number" [value]="item.y" min="-16000" max="16000" (change)="updateDimension('y', $event)" /></label>
+            <label><span>X</span><input type="number" [value]="item.x" min="-16000" max="16000" (input)="updateDimension('x', $event)" /></label>
+            <label><span>Y</span><input type="number" [value]="item.y" min="-16000" max="16000" (input)="updateDimension('y', $event)" /></label>
           </div></div>
           <div class="property-group"><div class="property-group__heading"><h3>{{ t('size') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
-            <label><span>W</span><input type="number" [value]="item.width" min="20" max="16000" (change)="updateDimension('width', $event)" /></label>
-            <label><span>H</span><input type="number" [value]="item.height" min="20" max="16000" (change)="updateDimension('height', $event)" /></label>
+            <label><span>W</span><input type="number" [value]="item.width" min="20" max="16000" (input)="updateDimension('width', $event)" /></label>
+            <label><span>H</span><input type="number" [value]="item.height" min="20" max="16000" (input)="updateDimension('height', $event)" /></label>
           </div></div>
           <div class="property-group"><h3>{{ t('layerOptions') }}</h3><div class="option-row"><span>{{ t('visible') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('visible')" [attr.aria-pressed]="item.visible" (click)="toggleVisibility(item.id)"><lucide-icon [name]="item.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" />{{ item.visible ? t('on') : t('off') }}</button></div><div class="option-row"><span>{{ t('lockPosition') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('lockPosition')" [attr.aria-pressed]="item.locked" (click)="toggleLock(item.id)"><lucide-icon [name]="icons.LockKeyhole" [size]="15" aria-hidden="true" />{{ item.locked ? t('on') : t('off') }}</button></div></div>
           <div class="property-group"><h3>{{ t('stackOrder') }}</h3><div class="order-actions"><button type="button" (click)="moveLayer(1)">{{ t('bringForward') }}</button><button type="button" (click)="moveLayer(-1)">{{ t('sendBackward') }}</button></div></div>
@@ -231,11 +241,11 @@
               <p>{{ language.translate('assetLibrary.privateSelected') }}</p>
               <button type="button" class="toolbar-button" (click)="patchSelected({assetId:undefined})">{{ language.translate('assetLibrary.detach') }}</button>
             } @else {
-              <label class="property-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (change)="patchSelected({mediaUrl:value($event),assetId:undefined})" placeholder="https://" /></label>
+              <label class="property-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (input)="patchSelected({mediaUrl:value($event),assetId:undefined})" placeholder="https://" /></label>
             }
           }
           @if (item.kind === 'text' || item.kind === 'animation') { <label class="property-field"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({color:value($event)})" /></label> }
-          @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (change)="patchSelected({fontSize:+value($event)})" /></label> }
+          @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (input)="patchSelected({fontSize:+value($event)})" /></label> }
           <div class="danger-actions"><button type="button" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="16" aria-hidden="true" />{{ t('duplicate') }}</button><button type="button" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" />{{ t('delete') }}</button></div>
         } @else { <div class="empty-selection"><lucide-icon [name]="icons.Layers3" [size]="28" aria-hidden="true" /><p>{{ t('selectPrompt') }}</p></div> }
         <button type="button" class="reset-button" (click)="resetDraft()"><lucide-icon [name]="icons.RotateCcw" [size]="15" aria-hidden="true" />{{ t('reset') }}</button>
@@ -247,6 +257,7 @@
     <p class="mock-disclaimer">{{ t('disclaimer') }}</p>
   </main>
 </fieldset>
+}
 }
 </div>
 

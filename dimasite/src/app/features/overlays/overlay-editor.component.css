@@ -1,6 +1,12 @@
 :host { display:block; --bg:#f4f5f8; --tile:#fff; --fg:#14151a; --muted:#667085; --line:rgba(15,17,21,.09); --accent:#7c3aed; --accent-soft:rgba(124,58,237,.10); --btn:#eef0f5; --stage:#13161e; --shadow:0 14px 40px rgba(15,17,21,.055); font-family:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif; color:var(--fg) }
 :host-context(html.dark) { --bg:#0f1115; --tile:#171a21; --fg:#f5f7fb; --muted:#9aa3b5; --line:rgba(255,255,255,.09); --accent:#a78bfa; --accent-soft:rgba(139,92,246,.16); --btn:#252a35; --stage:#0a0c12; --shadow:0 14px 40px rgba(0,0,0,.28) }
 .editor { min-height:100dvh; background:radial-gradient(750px 300px at 48% -8%,var(--accent-soft),transparent 75%),var(--bg) }
+.recovery-banner { display:flex; flex-direction:column; gap:12px; margin:16px; padding:16px; border:1px solid var(--line); border-radius:16px; background:var(--tile); box-shadow:var(--shadow) }
+.recovery-banner h2 { margin:0 0 6px; font-size:16px; color:var(--fg) }
+.recovery-banner p { margin:0; font-size:13px; line-height:1.6; color:var(--muted) }
+.recovery-actions { display:flex; flex-wrap:wrap; gap:8px }
+.recovery-actions button { min-height:44px; white-space:normal }
+@media (min-width:640px) { .recovery-banner { flex-direction:row; align-items:center; justify-content:space-between } .recovery-actions { flex-shrink:0 } }
 .editor * { box-sizing:border-box }
 button, input { font:inherit }
 button { cursor:pointer }

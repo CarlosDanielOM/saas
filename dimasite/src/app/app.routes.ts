@@ -7,6 +7,7 @@ import { ForbiddenPageComponent } from './features/forbidden/forbidden-page.comp
 import { NotFoundPageComponent } from './features/not-found/not-found-page.component';
 import { channelOwnerGuard, permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
+import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 
 export const routes: Routes = [
   { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
@@ -777,7 +778,7 @@ export const routes: Routes = [
             title: 'Modules | DomDimaBot'
           },
           {
-            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
+            path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
           {
             path: 'roulette',
