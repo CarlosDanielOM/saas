@@ -127,6 +127,13 @@ const subMonthsHandler: FunctionHandler = async (_args, ctx) => {
     return String(months ?? 0);
 };
 
+const watchStreakHandler: FunctionHandler = async (_args, ctx) => {
+    const watchStreak = getEventData(ctx).watch_streak;
+    if (!watchStreak || typeof watchStreak !== 'object' || Array.isArray(watchStreak)) return '0';
+    const count = (watchStreak as Record<string, unknown>).streak_count;
+    return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0 ? String(count) : '0';
+};
+
 const giftedUserHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
     const giftedUser = getStringField(eventData, [
@@ -174,6 +181,14 @@ const rewardInputHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerEventsubFunctions(): void {
+    registerFunction('twitch.streak', watchStreakHandler, {
+        description: 'Watch streak count from the current chat notification (watch_streak.streak_count). Returns 0 when no valid watch streak is present.',
+        syntax: 'twitch.streak',
+        category: 'event-data',
+        examples: ['twitch.streak'],
+        keywords: ['watch streak', 'stream streak', 'consecutive broadcasts', 'racha', 'racha de streams'],
+        surfaces: ['authoring']
+    });
     registerFunction('raid.channel', raidChannelHandler, {
         description: 'Display name of the channel raiding us (raid event data).',
         syntax: 'raid.channel',

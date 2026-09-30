@@ -4,6 +4,7 @@ import { getAppToken } from './tokens.js';
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import EventsubSchema, { type IEventsub, type ICondition } from '../schemas/eventsub.schema.js';
 import { buildBitsEventsubConfig, type EventsubConfig } from './eventsub_bits_config.js';
+import { WATCH_STREAK_MESSAGES } from './chat_notification_defaults.js';
 
 export const CANONICAL_BITS_EVENT_TYPE = 'channel.bits.use';
 export const LEGACY_BITS_EVENT_TYPES = ['channel.cheer', 'channel.bit.use'] as const;
@@ -153,6 +154,9 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
         condition: {
             broadcaster_user_id: '698614112',
             user_id: MOD_ID
+        },
+        config: {
+            message: WATCH_STREAK_MESSAGES.en
         }
     },
     {

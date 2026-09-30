@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Types } from 'mongoose';
 import type { DomainEventEnvelope } from './domain_event.types.js';
+import { WATCH_STREAK_MESSAGES } from '../utils/chat_notification_defaults.js';
 import {
     applyAccountHealthNotificationDomainEvent,
     applyChatAnnouncementDomainEvent,
@@ -84,6 +85,58 @@ function createDependencies(calls: string[]): ChatAnnouncementDependencies {
         async hasNewerLifecycleEvent() { return false; }
     };
 }
+
+test('watch streak defaults follow the channel language with the original payload as AST context', async () => {
+    for (const language of ['en', 'es'] as const) {
+        for (const message of ['', WATCH_STREAK_MESSAGES.en, WATCH_STREAK_MESSAGES.es]) {
+            const calls: string[] = [];
+            const dependencies = createDependencies(calls);
+            dependencies.getLanguage = async () => language;
+            dependencies.getEventsubConfig = async () => ({ enabled: true, message, type: 'channel.chat.notification', cheerTiers: [] });
+            const event = createEvent('channel.chat.notification', 'channel.chat.notification', {
+                notice_type: 'watch_streak', chatter_user_name: 'Viewer', watch_streak: { streak_count: 5 }
+            });
+            dependencies.sendMessage = async (_channelID, template, context) => {
+                assert.equal(template, WATCH_STREAK_MESSAGES[language]);
+                assert.deepEqual(context?.eventData, event.payload.event);
+                calls.push('sent');
+                return { error: false };
+            };
+            await applyChatAnnouncementDomainEvent(event, dependencies);
+            assert.ok(calls.includes('sent'));
+        }
+    }
+});
+
+test('watch streaks preserve custom templates and honor announcement and chat switches', async () => {
+    const calls: string[] = [];
+    const dependencies = createDependencies(calls);
+    dependencies.getLanguage = async () => 'es';
+    const event = createEvent('channel.chat.notification', 'channel.chat.notification', { notice_type: 'watch_streak' });
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    assert.ok(calls.some(call => call.startsWith('send:channel-1:Configured message:')));
+    calls.length = 0;
+    dependencies.getEventsubConfig = async () => ({ enabled: false, message: '', type: 'channel.chat.notification', cheerTiers: [] });
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    assert.equal(calls.some(call => call.startsWith('send:')), false);
+    dependencies.getStreamer = async () => ({ chat_enabled: 'false' });
+    dependencies.getEventsubConfig = async () => ({ enabled: true, message: '', type: 'channel.chat.notification', cheerTiers: [] });
+    await applyChatAnnouncementDomainEvent(event, dependencies);
+    assert.equal(calls.some(call => call.startsWith('send:')), false);
+});
+
+test('chat notification announcement path ignores other notices and retries failed sends', async () => {
+    const calls: string[] = [];
+    const dependencies = createDependencies(calls);
+    for (const notice_type of ['resub', 'raid', 'sub_gift', 'announcement']) {
+        await applyChatAnnouncementDomainEvent(createEvent('channel.chat.notification', 'channel.chat.notification', { notice_type }), dependencies);
+    }
+    assert.deepEqual(calls, []);
+    dependencies.sendMessage = async () => ({ error: true, message: 'provider unavailable' });
+    await assert.rejects(applyChatAnnouncementDomainEvent(createEvent('channel.chat.notification', 'channel.chat.notification', {
+        notice_type: 'watch_streak'
+    }), dependencies), /provider unavailable/);
+});
 
 test('bits announcements use the original event config and matching tier', async () => {
     const calls: string[] = [];

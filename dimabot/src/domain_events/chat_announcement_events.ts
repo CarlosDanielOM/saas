@@ -1,4 +1,5 @@
 import type { DomainEventEnvelope } from './domain_event.types.js';
+import { resolveWatchStreakMessage } from '../utils/chat_notification_defaults.js';
 
 interface ChatEventsubConfig {
     enabled: boolean;
@@ -53,6 +54,7 @@ redis.call('SET', KEYS[2], tostring(count), 'EX', ARGV[1])
 return count
 `;
 const SUPPORTED_EVENT_TYPES = new Set([
+    'channel.chat.notification',
     'channel.bits.received',
     'channel.follow.received',
     'channel.subscription.received',
@@ -126,7 +128,7 @@ async function getDependencies(): Promise<ChatAnnouncementDependencies> {
         hasCommands: async (channelID) => Boolean(await CommandsSchema.exists({ channelID })),
         async getLanguage(channelID) {
             const user = await UsersSchema.findOne(
-                { 'accounts.id': channelID, 'accounts.type': 'twitch' },
+                { accounts: { $elemMatch: { id: channelID, type: 'twitch' } } },
                 { language: 1 }
             ).lean<{ language?: 'en' | 'es' | null }>();
             return user?.language === 'es' ? 'es' : 'en';
@@ -159,6 +161,7 @@ function originalEventType(event: DomainEventEnvelope): string {
     if (event.type === 'channel.subscription.received') return 'channel.subscribe';
     if (event.type === 'channel.subscription.gifted') return 'channel.subscription.gift';
     if (event.type === 'channel.subscription.ended') return 'channel.subscription.end';
+    if (event.type === 'channel.chat.notification') return 'channel.chat.notification';
     if (event.type === 'stream.started') return 'stream.online';
     return 'stream.offline';
 }
@@ -192,6 +195,8 @@ export async function applyChatAnnouncementDomainEvent(
         || event.metadata.durableChatHandled !== true
         || !SUPPORTED_EVENT_TYPES.has(event.type)) return;
     if (!event.channelID) throw new Error('Chat announcements require a channel identity');
+    const rawEvent = payloadEvent(event);
+    if (event.type === 'channel.chat.notification' && rawEvent.notice_type !== 'watch_streak') return;
 
     const dependencies = injectedDependencies || await getDependencies();
     if ((event.type === 'stream.started' || event.type === 'stream.ended')
@@ -207,11 +212,12 @@ export async function applyChatAnnouncementDomainEvent(
         || defaultConfig(originalType);
     if (!config.enabled) return;
 
-    const rawEvent = payloadEvent(event);
     let message = config.message || '';
     let variables: Record<string, string> | undefined;
 
-    if (event.type === 'channel.bits.received') {
+    if (event.type === 'channel.chat.notification') {
+        message = resolveWatchStreakMessage(message, await dependencies.getLanguage(event.channelID));
+    } else if (event.type === 'channel.bits.received') {
         message = cheerMessage(config, rawEvent);
         variables = {
             bits: String(rawEvent.bits ?? ''),

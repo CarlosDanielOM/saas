@@ -47,11 +47,14 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
         eventFilter: {
             source: twitchSources,
             'metadata.durableChatHandled': true,
-            type: { $in: [
-                'channel.bits.received', 'channel.follow.received',
-                'channel.subscription.received', 'channel.subscription.gifted', 'channel.subscription.ended',
-                'stream.started', 'stream.ended'
-            ] }
+            $or: [
+                { type: { $in: [
+                    'channel.bits.received', 'channel.follow.received',
+                    'channel.subscription.received', 'channel.subscription.gifted', 'channel.subscription.ended',
+                    'stream.started', 'stream.ended'
+                ] } },
+                { type: 'channel.chat.notification', 'payload.event.notice_type': 'watch_streak' }
+            ]
         },
         handler: async (event) => (await import('./chat_announcement_events.js')).applyChatAnnouncementDomainEvent(event)
     },

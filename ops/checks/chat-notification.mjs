@@ -14,6 +14,11 @@ import { reconcileEventsubs } from '/app/dist/utils/eventsub_reconciliation.js';
 import { generateTestPayload } from '/app/dist/utils/eventsub.test-data.js';
 import { validateDomainEventContract } from '/app/dist/domain_events/domain_event_contracts.js';
 import { createTwitchEventsubApp } from '/app/dist/bot/eventsub.twitch.js';
+import { parseSpecialCommands } from '/app/dist/handlers/special_parser.handler.js';
+import { getFunctionMetadata } from '/app/dist/utils/ast_parser/evaluator.js';
+import { findAstCatalogEntry } from '/app/dist/utils/ai/ast_catalog/index.js';
+import { applyChatAnnouncementDomainEvent } from '/app/dist/domain_events/chat_announcement_events.js';
+import { eventsubHandler } from '/app/dist/handlers/eventsub.handler.js';
 
 const channelID = '99003301';
 const target = process.env.SAAS_TARGET;
@@ -96,13 +101,37 @@ async function send(payload, receipt, { timestamp = new Date().toISOString(), re
         ...(retry ? { 'Twitch-Eventsub-Message-Retry': retry } : {})
     }, body });
 }
+async function completeAnnouncement(receipt) {
+    const event = await DomainEventSchema.findOne({ sourceEventId: receipt }).lean();
+    assert.ok(event);
+    if (target === 'cron') {
+        await until(async () => ['succeeded', 'skipped'].includes((await DomainEventDeliverySchema.findOne({
+            eventKey: event.eventKey, consumer: 'chat-announcements-v1'
+        }).lean())?.status), `chat delivery completed: ${receipt}`);
+    } else {
+        await applyChatAnnouncementDomainEvent(event);
+    }
+}
 const payload = generateTestPayload('channel.chat.notification', channelID);
 payload.subscription.id = storedSubscription.id;
+const renderStreak = async eventData => (await parseSpecialCommands('$(user) has watched $(twitch.streak) consecutive streams!',
+    { channelID, eventData, scopeType: 'event', scopeName: 'channel.chat.notification' })).parsedText;
+assert.equal(await renderStreak(payload.event), 'TestViewer has watched 5 consecutive streams!');
+assert.equal(getFunctionMetadata('twitch.streak')?.category, 'event-data');
+assert.equal(findAstCatalogEntry('twitch.streak')?.syntax, 'twitch.streak');
+assert.deepEqual(getFunctionMetadata('twitch.streak')?.surfaces, ['authoring']);
+assert.equal((await parseSpecialCommands('*($(twitch.streak) + 1)', { channelID, eventData: payload.event })).parsedText, '6');
+for (const eventData of [{}, { watch_streak: null }, { watch_streak: { streak_count: -1 } },
+    { watch_streak: { streak_count: '5' } }, { notice_type: 'resub', resub: { streak_months: 12 } }]) {
+    assert.equal((await parseSpecialCommands('$(twitch.streak)', { channelID, eventData })).parsedText, '0');
+}
 const challenge = await send({ subscription: payload.subscription, challenge: 'test-challenge' }, 'challenge', { messageType: 'webhook_callback_verification' });
 assert.equal(challenge.status, 200);
 assert.equal(await challenge.text(), 'test-challenge');
 assert.equal((await send(payload, 'watch-streak')).status, 204);
 assert.equal((await send(payload, 'watch-streak')).status, 204, 'duplicate delivery acknowledged');
+await completeAnnouncement('watch-streak');
+assert.deepEqual(calls().filter(call => call.chat).map(call => call.chat.message), ['TestViewer has a streak of 5 days!']);
 assert.equal(await DomainEventSchema.countDocuments({ sourceEventId: 'watch-streak' }), 1);
 const journaled = await DomainEventSchema.findOne({ sourceEventId: 'watch-streak' }).lean();
 assert.equal(journaled.type, 'channel.chat.notification');
@@ -137,10 +166,35 @@ if (target === 'cron') {
     await until(async () => (await DomainEventDeliverySchema.findOne({ eventKey: journaled.eventKey,
         consumer: 'stream-analytics-v1' }).lean())?.status === 'succeeded', 'real domain consumer accepts new event type');
     assert.equal(await DomainEventDeliverySchema.countDocuments({ eventKey: journaled.eventKey,
-        consumer: { $in: ['chat-announcements-v1', 'follow-defense-v1', 'stream-operations-v1'] } }), 0);
+        consumer: { $in: ['follow-defense-v1', 'stream-operations-v1'] } }), 0);
+    assert.equal(await DomainEventDeliverySchema.countDocuments({ consumer: 'chat-announcements-v1',
+        eventKey: { $in: (await DomainEventSchema.find({ sourceEventId: { $in: ['resub-notice', 'anonymous-notice'] } }).lean()).map(event => event.eventKey) } }), 0);
+    await completeAnnouncement('retried-notice');
 }
-assert.equal(calls().filter(call => call.chat).length, 0, 'chat notices do not send duplicate announcements');
-console.log(`PASS ${target}: subscription registration/reconciliation, webhook signatures/challenge, full payload journaling, dedupe, stale retry, malformed input, and no duplicate effects`);
+assert.equal(calls().filter(call => call.chat).length, 1, 'duplicate, non-streak and stale notices do not announce');
+await UsersSchema.updateOne({ _id: owner._id }, { $set: { language: 'es' } });
+assert.equal((await send(payload, 'spanish-streak')).status, 204);
+await completeAnnouncement('spanish-streak');
+assert.equal(calls().filter(call => call.chat).at(-1).chat.message, '¡TestViewer tiene una racha de 5 días!');
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { message: 'Custom $(user): $(twitch.streak)' } });
+assert.equal((await send(payload, 'custom-streak')).status, 204);
+await completeAnnouncement('custom-streak');
+assert.equal(calls().filter(call => call.chat).at(-1).chat.message, 'Custom TestViewer: 5');
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { enabled: false } });
+assert.equal((await send(payload, 'disabled-streak')).status, 204);
+await completeAnnouncement('disabled-streak');
+assert.equal(calls().filter(call => call.chat).length, 3, 'disabled announcement is silent');
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { enabled: true, message: '' } });
+await redis.hSet(`accounts:twitch:${channelID}:data`, 'chat_enabled', 'false');
+assert.equal((await send(payload, 'chat-disabled-streak')).status, 204);
+await completeAnnouncement('chat-disabled-streak');
+assert.equal(calls().filter(call => call.chat).length, 3, 'disabled channel chat is silent');
+await redis.hSet(`accounts:twitch:${channelID}:data`, 'chat_enabled', 'true');
+if (target === 'api') {
+    await eventsubHandler(payload.subscription, payload.event);
+    assert.equal(calls().filter(call => call.chat).at(-1).chat.message, '¡TestViewer tiene una racha de 5 días!', 'manual event test uses localized default');
+}
+console.log(`PASS ${target}: streak AST, EN/ES default announcements, custom templates, disabled settings, webhook signatures, journaling, dedupe, and other-notice/stale suppression`);
 if (server) await new Promise(resolve => server.close(resolve));
 await mongoose.disconnect();
 await redis.quit();

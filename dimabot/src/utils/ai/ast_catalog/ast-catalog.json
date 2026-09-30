@@ -1,9 +1,9 @@
 {
-  "version": "653805480e15",
-  "generatedAt": "2026-09-28T20:26:28.502Z",
+  "version": "a8d37d921ceb",
+  "generatedAt": "2026-09-30T20:27:56.369Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 91,
+  "functionCount": 92,
   "entries": [
     {
       "name": "enable.command",
@@ -1300,6 +1300,28 @@
       "destructive": false,
       "surfaces": [
         "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.streak",
+      "description": "Watch streak count from the current chat notification (watch_streak.streak_count). Returns 0 when no valid watch streak is present.",
+      "syntax": "twitch.streak",
+      "category": "event-data",
+      "examples": [
+        "twitch.streak"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "watch streak",
+        "stream streak",
+        "consecutive broadcasts",
+        "racha",
+        "racha de streams"
+      ],
+      "destructive": false,
+      "surfaces": [
         "authoring"
       ]
     },

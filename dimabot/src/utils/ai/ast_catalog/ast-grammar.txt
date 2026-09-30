@@ -18,6 +18,7 @@
 # %(##name)   - Per-user cache (Redis). Per-user selector: %(##name(username))
 # %(*name)    - Channel DB (persistent, per channel)
 # %(**name)   - Per-user DB (persistent). Per-user selector: %(**name(username))
+# #, ##, *, and ** share values across commands, events, redemptions, and timers in the same channel; ## and ** still separate users.
 
 # Arrays:
 # %([1,2,3])             - Array literal; accessors: [index], [random], [].length

@@ -2,6 +2,8 @@ import ChatHistory from "../classes/chat_history.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import type { IChatMessage, ITwitchEventData, ITwitchSubscriptionData, IRaidEventData, IBitUseEvent, IRedemptionEvent, IFollowEvent, IStreamOnlineEvent, IStreamOfflineEvent, IAdBreakEvent, IBanEvent } from "../interfaces/twitch/eventsub.interface.js";
 import EventsubSchema, { type IEventsub } from "../schemas/eventsub.schema.js";
+import UsersSchema from "../schemas/users.schema.js";
+import { resolveWatchStreakMessage } from "../utils/chat_notification_defaults.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { messageHandler } from "./message.handler.js";
 import { raidHandler } from "./raid.handler.js";
@@ -35,9 +37,10 @@ export const eventsubHandler = async (
     eventData: ITwitchEventData,
     options: EventsubHandlerOptions = {}
 ) => {
-    // Chat notices are journaled at ingress for future consumers. Existing
-    // subscription/raid events remain responsible for announcements and metrics.
-    if (subscriptionData.type === 'channel.chat.notification') return;
+    // Production notices announce through the durable consumer. Manual event
+    // tests use this immediate path; other chat notice types have no effects.
+    if (subscriptionData.type === 'channel.chat.notification'
+        && (options.durableChatHandled || (eventData as unknown as Record<string, unknown>).notice_type !== 'watch_streak')) return;
 
     const cache = await getDragonflyClient('Eventsub');
     let chatEnabled = true;
@@ -163,6 +166,16 @@ export const eventsubHandler = async (
     };
 
     switch(type) {
+        case 'channel.chat.notification': {
+            if (!chatEnabled) break;
+            const user = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: STREAMER.id } } })
+                .select('language').lean();
+            const message = resolveWatchStreakMessage(eventsubData.message || '', user?.language === 'es' ? 'es' : 'en');
+            await sendTwitchChatMessage(STREAMER.id, message, null, {
+                channelID: STREAMER.id, eventData, eventsubData
+            });
+            break;
+        }
         case 'channel.chat.message':
             messageHandler(STREAMER.id, eventData as IChatMessage);
             break;
