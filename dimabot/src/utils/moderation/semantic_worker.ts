@@ -5,6 +5,7 @@ import { getAiCredits, isAiCreditsExhausted } from '../billing.js';
 import { ingestPolarSHEvent } from '../polarsh.js';
 import { paidModeration } from './advanced.js';
 import { evaluateSemanticDecision, fallbackResult, semanticPrice } from './semantic.js';
+import { isSpamDecision, semanticPolicyActive } from './spam.js';
 
 /** One atomic claim per request. Expired work is never reclaimed for punishment. */
 export async function processNextSemanticDecision(): Promise<boolean> {
@@ -13,29 +14,34 @@ export async function processNextSemanticDecision(): Promise<boolean> {
     if (!decision) return false;
     const started = Date.now();
     try {
-        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id').lean();
+        const freeFirstMessage = isSpamDecision(decision) && decision.reviewSource === 'first_message';
+        const owner = freeFirstMessage ? null : await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id').lean();
         const settings = await ChannelModerationSettingsSchema.findOne({ channelID: decision.channelID }).lean();
         let result = fallbackResult('policy_changed');
         let customerID = '';
-        if (settings?.enabled && settings.settingsVersion === decision.settingsVersion && settings.rules.some(rule => rule.id === decision.ruleID && rule.enabled)) {
-            result = fallbackResult('plan_required');
-            if (owner && paidModeration(owner.plan_tier)) {
-                customerID = owner.polar_sh_customer_id || '';
-                result = fallbackResult('credits_unavailable');
-                if (await isAiCreditsExhausted(decision.channelID)) result = fallbackResult('quota_exhausted');
-                else {
-                    const credits = await getAiCredits(owner, decision.channelID);
-                    if (credits.status === 'exhausted') result = fallbackResult('quota_exhausted');
-                    else if (credits.available && credits.balance > 0) result = await evaluateSemanticDecision(decision);
+        if (semanticPolicyActive(settings, decision)) {
+            if (freeFirstMessage) {
+                result = await evaluateSemanticDecision(decision);
+            } else {
+                result = fallbackResult('plan_required');
+                if (owner && paidModeration(owner.plan_tier)) {
+                    customerID = owner.polar_sh_customer_id || '';
+                    result = fallbackResult('credits_unavailable');
+                    if (await isAiCreditsExhausted(decision.channelID)) result = fallbackResult('quota_exhausted');
+                    else {
+                        const credits = await getAiCredits(owner, decision.channelID);
+                        if (credits.status === 'exhausted') result = fallbackResult('quota_exhausted');
+                        else if (credits.available && credits.balance > 0) result = await evaluateSemanticDecision(decision);
+                    }
                 }
             }
         }
         const usable = result.verdict !== 'uncertain';
-        const price = semanticPrice(result.inputTokens);
-        const credits = usable ? price.credits : 0;
+        const price = semanticPrice(freeFirstMessage ? 0 : result.inputTokens);
+        const credits = usable && !freeFirstMessage ? price.credits : 0;
         const update = await ModerationDecision.updateOne({ _id: decision._id, state: 'processing', deadline: { $gt: new Date() } }, { $set: {
             ...result, state: 'completed', latencyMs: Date.now() - started,
-            charge: { ...price, billableCostUSD: usable ? price.billableCostUSD : 0, status: usable ? (credits > 0 ? 'pending' : 'recorded') : 'none', credits, externalID: `moderation:${decision._id}`, customerID }
+            charge: { ...price, billableCostUSD: usable && !freeFirstMessage ? price.billableCostUSD : 0, status: usable && !freeFirstMessage ? (credits > 0 ? 'pending' : 'recorded') : 'none', credits, externalID: `moderation:${decision._id}`, customerID }
         } });
         if (!update.modifiedCount) {
             // Retain late teacher scores for audit, but never change the effective

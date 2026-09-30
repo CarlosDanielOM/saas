@@ -207,7 +207,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     return this.languageService.translate(key, params);
   }
 
-  ruleTypeLabel(type: ModerationRuleType): string {
+  ruleTypeLabel(type: ModerationRuleType, ruleID?: string): string {
+    if (ruleID === 'builtin-spam-protection') return this.t('moderation.spam.title');
     return this.t(`moderation.types.${type}`);
   }
 
@@ -441,6 +442,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       const response = await firstValueFrom(
         this.moderationApi.updateSettings(channelID, {
           enabled: currentSettings.enabled,
+          spamProtection: { enabled: currentSettings.spamProtection?.enabled !== false, reviewAllMessages: currentSettings.spamProtection?.reviewAllMessages === true },
           offenseWindowSeconds: currentSettings.offenseWindowSeconds,
           // Generated artifacts are resolved server-side; avoid echoing large previews.
           rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, allowSpaces: rule.variations.allowSpaces ?? false, entries: [], overrides: this.activeVariationOverrides(rule) } : undefined }))
@@ -470,6 +472,15 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   updateEnabled(enabled: boolean): void {
     this.settings.update((s) => (s ? { ...s, enabled } : s));
+  }
+
+  updateSpamProtection(field: 'enabled' | 'reviewAllMessages', enabled: boolean): void {
+    if (!this.canManage() || (field === 'reviewAllMessages' && enabled && !this.hasPaidModeration())) return;
+    this.settings.update(settings => settings ? { ...settings, spamProtection: {
+      enabled: settings.spamProtection?.enabled !== false,
+      reviewAllMessages: settings.spamProtection?.reviewAllMessages === true,
+      [field]: enabled
+    } } : settings);
   }
 
   updateOffenseWindow(value: string): void {

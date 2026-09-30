@@ -29,6 +29,7 @@ import { error as logError } from '../../utils/logger.js';
 import Users from '../../schemas/users.schema.js';
 import { ModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import { parseAdvancedRule, paidModeration, MODERATION_VISIBLE_DAYS } from '../../utils/moderation/advanced.js';
+import { spamProtectionSettings, SPAM_RULE_ID } from '../../utils/moderation/spam.js';
 
 interface ModerationRequest extends Request {
     user?: {
@@ -205,7 +206,7 @@ router.get('/:channelID/settings', authMiddleware as any, async (req: Moderation
             error: false,
             message: 'Moderation settings',
             status: 200,
-            data: { ...settings, rules: settings.rules.map(compileRuleVariations) }
+            data: { ...settings, spamProtection: spamProtectionSettings(settings), rules: settings.rules.map(compileRuleVariations) }
         });
     } catch (err) {
         await logError({ function: 'moderationRoute.getSettings', error: err instanceof Error ? err.message : String(err) });
@@ -236,11 +237,27 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
         }
 
         const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+        if (rules.some(rule => rule.id === SPAM_RULE_ID)) {
+            return res.status(400).json({ error: true, message: 'Reserved moderation rule ID', status: 400 });
+        }
+        let spamProtection = spamProtectionSettings(current || {});
+        if (body.spamProtection !== undefined) {
+            const raw = body.spamProtection;
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)
+                || typeof (raw as Record<string, unknown>).enabled !== 'boolean'
+                || typeof (raw as Record<string, unknown>).reviewAllMessages !== 'boolean') {
+                return res.status(400).json({ error: true, message: 'Invalid spam protection settings', status: 400 });
+            }
+            spamProtection = { enabled: (raw as { enabled: boolean }).enabled, reviewAllMessages: (raw as { reviewAllMessages: boolean }).reviewAllMessages };
+        }
         if (new Set(rules.map(rule => rule.id)).size !== rules.length) {
             return res.status(400).json({ error: true, message: 'Rule IDs must be unique', status: 400 });
         }
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         if (!paidModeration(owner?.plan_tier)) {
+            if (spamProtection.reviewAllMessages && !current?.spamProtection?.reviewAllMessages) {
+                return res.status(403).json({ error: true, message: 'Continuous spam review requires Premium or Pro', status: 403 });
+            }
             for (const rule of rules) {
                 if (!rule.patterns?.length && !rule.semantic?.enabled && rule.variations?.mode === 'off') continue;
                 const prior = current?.rules.find(item => item.id === rule.id);
@@ -268,7 +285,8 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 channel: access.channelName,
                 enabled: typeof body.enabled === 'boolean' ? body.enabled : (current?.enabled ?? MODERATION_SETTINGS_DEFAULTS.enabled),
                 offenseWindowSeconds: clampInt(body.offenseWindowSeconds, MIN_OFFENSE_WINDOW_SECONDS, MAX_OFFENSE_WINDOW_SECONDS, current?.offenseWindowSeconds ?? MODERATION_SETTINGS_DEFAULTS.offenseWindowSeconds),
-                rules
+                rules,
+                spamProtection
             },
             $inc: { settingsVersion: 1 }
         }, {
@@ -359,7 +377,7 @@ router.get('/:channelID/decisions', authMiddleware as any, async (req: Moderatio
         const skip = Math.min(100000, Math.max(0, Math.floor(Number(req.query.skip) || 0)));
         const filter = { channelID, createdAt: { $gte: new Date(Date.now() - MODERATION_VISIBLE_DAYS * 86400000) } };
         const [decisions, total] = await Promise.all([
-            ModerationDecision.find(filter).select('_id username messageText ruleID mode verdict status scores consequence createdAt charge.credits')
+            ModerationDecision.find(filter).select('_id username messageText ruleID mode reviewSource verdict status scores consequence createdAt charge.credits')
                 .sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
             ModerationDecision.countDocuments(filter)
         ]);

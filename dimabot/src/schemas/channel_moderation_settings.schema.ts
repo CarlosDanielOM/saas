@@ -45,6 +45,7 @@ export interface IChannelModerationSettings {
     channelID: string;
     channel: string;
     enabled: boolean;
+    spamProtection?: { enabled: boolean; reviewAllMessages: boolean };
     offenseWindowSeconds: number;
     rules: IModerationRule[];
     settingsVersion: number;
@@ -151,6 +152,10 @@ const channelModerationSettingsSchema = new Schema<IChannelModerationSettings>({
     channelID: { type: String, required: true, unique: true, index: true },
     channel: { type: String, default: '' },
     enabled: { type: Boolean, default: MODERATION_SETTINGS_DEFAULTS.enabled },
+    spamProtection: { type: new Schema({
+        enabled: { type: Boolean, default: true },
+        reviewAllMessages: { type: Boolean, default: false }
+    }, { _id: false }), default: () => ({ enabled: true, reviewAllMessages: false }) },
     offenseWindowSeconds: { type: Number, default: MODERATION_SETTINGS_DEFAULTS.offenseWindowSeconds, min: MIN_OFFENSE_WINDOW_SECONDS, max: MAX_OFFENSE_WINDOW_SECONDS },
     rules: { type: [moderationRuleSchema], default: [] },
     settingsVersion: { type: Number, default: MODERATION_SETTINGS_DEFAULTS.settingsVersion }

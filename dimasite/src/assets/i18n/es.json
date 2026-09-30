@@ -1092,6 +1092,17 @@
     }
   },
   "moderation": {
+    "spam": {
+      "title": "Protección contra anuncios y autopromoción",
+      "free": "Primer mensaje · Gratis en todos los planes",
+      "description": "Revisa el primer mensaje que Dima observa de cada usuario en este canal para detectar anuncios y autopromoción no solicitados. Las revisiones del primer mensaje nunca consumen créditos de IA. El registro se conserva tras reiniciar el bot.",
+      "action": "La publicidad claramente no solicitada provoca un baneo inmediato. Se permiten las citas de anuncios, los avisos de estafas y la promoción invitada. Las revisiones dudosas se permiten y se registran. La protección funciona mientras el filtro del chat esté activado; se aplican límites de revisión.",
+      "continuous": "Revisar los mensajes posteriores",
+      "paid": "Premium · Pro",
+      "continuousDescription": "Revisa también los mensajes posteriores para detectar publicidad y autopromoción. Disponible en Premium y Pro, con consumo de créditos de IA. Las revisiones del primer mensaje siguen siendo gratuitas.",
+      "firstDecision": "Protección del primer mensaje · Gratis",
+      "continuousDecision": "Protección continua contra anuncios"
+    },
     "badge": "Filtro de chat",
     "title": "Moderación del Chat",
     "subtitle": "Frena el spam, los mensajes a gritos, los enlaces y las palabras que no quieres. Tú eliges qué pasa la primera vez, la siguiente y cada vez después.",

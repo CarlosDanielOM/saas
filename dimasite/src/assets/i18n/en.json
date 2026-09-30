@@ -1092,6 +1092,17 @@
     }
   },
   "moderation": {
+    "spam": {
+      "title": "Ad and self-promotion protection",
+      "free": "First message · Free on every plan",
+      "description": "Reviews each chatter’s first message Dima observes in this channel for unsolicited ads and self-promotion. First-message reviews never use AI credits. Tracking continues across bot restarts.",
+      "action": "Clear unsolicited advertising results in an immediate ban. Quoted ads, scam reports and invited promotion are allowed. Uncertain reviews are allowed and logged. Protection runs while the chat filter is enabled; review limits apply.",
+      "continuous": "Review subsequent messages",
+      "paid": "Premium · Pro",
+      "continuousDescription": "Also review later messages for advertising and self-promotion. Available on Premium and Pro, using AI credits. First-message reviews stay free.",
+      "firstDecision": "First-message protection · Free",
+      "continuousDecision": "Continuous ad protection"
+    },
     "badge": "Chat filter",
     "title": "Chat Moderation",
     "subtitle": "Stop spam, shouty messages, links, and words you do not want. You choose what happens the first time, the next time, and every time after that.",

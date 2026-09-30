@@ -7,7 +7,7 @@ export function moderationDecisionID(channelID: string, messageID: string, ruleI
     return createHash('sha256').update(JSON.stringify([channelID, messageID, ruleID])).digest('hex');
 }
 export async function createModerationDecision(input: Pick<IModerationDecision,
-    'channelID' | 'userID' | 'username' | 'messageID' | 'messageText' | 'ruleID' | 'rule' | 'settingsVersion' | 'matches' | 'context' | 'mode' | 'deadline'>): Promise<IModerationDecision> {
+    'channelID' | 'userID' | 'username' | 'messageID' | 'messageText' | 'ruleID' | 'rule' | 'settingsVersion' | 'matches' | 'context' | 'mode' | 'deadline' | 'reviewSource'>): Promise<IModerationDecision> {
     const id = moderationDecisionID(input.channelID, input.messageID, input.ruleID);
     const semantic = input.mode === 'semantic';
     const rule = compileRuleVariations(input.rule);

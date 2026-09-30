@@ -55,6 +55,7 @@ export interface ModerationDecisionEntry {
   username: string;
   messageText: string;
   ruleID: string;
+  reviewSource?: 'rule' | 'first_message' | 'spam_continuous';
   mode: 'literal' | 'regex' | 'semantic';
   verdict: 'allow' | 'violation' | 'uncertain';
   status: string;
@@ -69,6 +70,7 @@ export interface ModerationSettings {
   channelID: string;
   channel: string;
   enabled: boolean;
+  spamProtection?: { enabled: boolean; reviewAllMessages: boolean };
   offenseWindowSeconds: number;
   rules: ModerationRule[];
   settingsVersion: number;
@@ -111,6 +113,7 @@ export type ModerationLogsResponse = ApiEnvelope<{
 
 export interface ModerationSettingsPayload {
   enabled: boolean;
+  spamProtection?: { enabled: boolean; reviewAllMessages: boolean };
   offenseWindowSeconds: number;
   rules: ModerationRule[];
 }

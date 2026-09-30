@@ -32,7 +32,7 @@ const count = async (channel, rule, user = 'viewer') => Number(await redis.get(o
 const decision = (id) => Decisions.findOne({ messageID: id }).lean();
 const baseRule = () => ({ ...buildDefaultModerationRules()[3], id: 'words', enabled: true, terms: ['fuck'], ...parseAdvancedRule({ type: 'blacklist', patterns: [{ id: 'variants', source: 'f(?:u|a)?ck(?:ing|y)?' }] }) });
 async function seed(channel, rule, tier = 'premium') {
-    await Settings.create({ channelID: channel, channel, enabled: true, rules: [rule], settingsVersion: 2 });
+    await Settings.create({ channelID: channel, channel, enabled: true, spamProtection: { enabled: false, reviewAllMessages: false }, rules: [rule], settingsVersion: 2 });
     await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: channel }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
     await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: tier });
     await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));

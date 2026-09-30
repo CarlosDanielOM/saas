@@ -129,6 +129,37 @@
             </label>
           </div>
 
+          <div class="lf-tile lf-spam-protection" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
+            <div class="lf-row-head">
+              <div>
+                <h2 class="lf-h2">{{ t('moderation.spam.title') }}</h2>
+                <span class="lf-chip lf-chip--ok">{{ t('moderation.spam.free') }}</span>
+              </div>
+              <label class="lf-switch">
+                <input type="checkbox" [checked]="cfg.spamProtection?.enabled !== false"
+                  (change)="updateSpamProtection('enabled', $any($event.target).checked)"
+                  [disabled]="!canManage()" [attr.aria-label]="t('moderation.spam.title')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p class="lf-copy">{{ t('moderation.spam.description') }}</p>
+            <p class="lf-note">{{ t('moderation.spam.action') }}</p>
+            <div class="lf-row-head">
+              <div>
+                <h3 class="lf-h3">{{ t('moderation.spam.continuous') }}</h3>
+                <span class="lf-chip lf-chip--gold">{{ t('moderation.spam.paid') }}</span>
+              </div>
+              <label class="lf-switch">
+                <input type="checkbox" [checked]="hasPaidModeration() && cfg.spamProtection?.reviewAllMessages === true"
+                  (change)="updateSpamProtection('reviewAllMessages', $any($event.target).checked)"
+                  [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false"
+                  [attr.aria-label]="t('moderation.spam.continuous')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+            <p class="lf-note">{{ t('moderation.spam.continuousDescription') }}</p>
+          </div>
+
           <div class="lf-tile">
             <p class="lf-kicker">{{ t('moderation.guide.label') }}</p>
             <ol class="lf-guide">
@@ -621,7 +652,7 @@
                   <li class="lf-log">
                     <span class="lf-log__user">{{ log.username || log.userID }}</span>
                     <span class="lf-log__meta">
-                      {{ ruleTypeLabel(log.ruleType) }} · #{{ log.offenseNumber }} · {{ formatTimestamp(log.createdAt) }}
+                      {{ ruleTypeLabel(log.ruleType, log.ruleID) }} · #{{ log.offenseNumber }} · {{ formatTimestamp(log.createdAt) }}
                     </span>
                     <span class="lf-log__side">
                       <span [class]="actionChipClass(log.action)">{{ actionLabel(log.action) }}</span>
@@ -695,6 +726,9 @@
                       </span>
                     </div>
                     <p class="lf-decision__message">{{ decision.messageText }}</p>
+                    @if (decision.reviewSource === 'first_message' || decision.reviewSource === 'spam_continuous') {
+                      <p class="lf-note">{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</p>
+                    }
                     <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
                     @if (decision.scores?.violation !== undefined) {
                       <p class="lf-note">{{ t('moderation.advanced.modelScore') }}: {{ ((decision.scores?.violation ?? 0) * 100).toFixed(1) }}%</p>

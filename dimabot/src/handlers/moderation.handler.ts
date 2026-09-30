@@ -15,6 +15,7 @@ import ChatHistory from '../classes/chat_history.js';
 import { ModerationDecision, type ModerationContextMessage } from '../schemas/moderation_decision.schema.js';
 import { findBlacklistMatches, paidModeration, SEMANTIC_DEADLINE_MS, type ModerationMatch } from '../utils/moderation/advanced.js';
 import { createModerationDecision, awaitSemanticDecision } from '../utils/moderation/decisions.js';
+import { claimFirstObservedMessage, claimSpamReviewBudget, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive } from '../utils/moderation/spam.js';
 
 const SETTINGS_CACHE_TTL_SECONDS = 300;
 export const NO_SETTINGS_SENTINEL = '{"none":true}';
@@ -95,6 +96,64 @@ export interface ChatModerationResult {
     actionTaken: boolean;
 }
 
+async function reviewPromotionalSpam(channelID: string, message: IChatMessage, identity: UserIdentity, settings: IChannelModerationSettings, receivedAt: number): Promise<boolean> {
+    if (!spamProtectionSettings(settings).enabled || ruleExempt(spamRule, identity) || !message.message_id) return false;
+    const first = await claimFirstObservedMessage(channelID, message.chatter_user_id!);
+    let tier: unknown;
+    if (!first && spamProtectionSettings(settings).reviewAllMessages) {
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+        tier = owner?.plan_tier;
+    }
+    const reviewSource = spamReviewSource(first, settings, tier);
+    if (!reviewSource || !await claimSpamReviewBudget(channelID)) return false;
+    const history = await ChatHistory.getRecentMessages(channelID, 30);
+    const context = history.filter((item: ModerationContextMessage) => item.messageID !== message.message_id
+        && item.timestamp <= receivedAt && item.timestamp >= receivedAt - 60_000)
+        .slice(0, 7).reverse().map((item: ModerationContextMessage & { badges?: string[] }) => ({
+            messageID: item.messageID || '', username: String(item.username).slice(0, 100),
+            message: String(item.message).slice(0, 500), timestamp: item.timestamp,
+            isBroadcaster: Array.isArray(item.badges) && item.badges.includes('[STREAMER]')
+        }));
+    let decision = await createModerationDecision({
+        channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
+        messageID: message.message_id, messageText: message.message.text || '',
+        ruleID: spamRule.id, rule: spamRuleForContext(context), settingsVersion: settings.settingsVersion,
+        matches: [], context, mode: 'semantic', reviewSource,
+        deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
+    });
+    decision = await awaitSemanticDecision(decision);
+    if (decision.verdict !== 'violation') {
+        await ModerationDecision.updateOne({ _id: decision._id }, { $set: {
+            'consequence.status': decision.verdict === 'allow' ? 'allowed' : 'allowed_fallback'
+        } });
+        return false;
+    }
+    const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
+    let stillPaid = true;
+    if (reviewSource === 'spam_continuous') {
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
+        stillPaid = paidModeration(owner?.plan_tier);
+    }
+    if (Date.now() >= decision.deadline.getTime() || !semanticPolicyActive(current, decision) || !stillPaid
+        || await hasActivePermit(channelID, message.chatter_user_login || '')) {
+        await ModerationDecision.updateOne({ _id: decision._id }, { $set: {
+            'consequence.status': 'cancelled', 'charge.status': 'none', 'charge.credits': 0, 'charge.billableCostUSD': 0
+        } });
+        return false;
+    }
+    const claimed = await ModerationDecision.updateOne({ _id: decision._id, 'consequence.status': 'none' }, { $set: {
+        consequence: { status: 'scheduled', action: 'ban', offenseNumber: 1 }
+    } });
+    if (!claimed.modifiedCount) return false;
+    // Advertising bans bypass the normal escalation ladder entirely.
+    void executeModerationAction({
+        channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
+        messageID: message.message_id, messageText: message.message.text || '', rule: spamRule,
+        step: spamRule.firstOffense, offenseNumber: 1, decisionID: decision._id
+    }).catch(() => undefined);
+    return true;
+}
+
 /**
  * The moderation gate. Runs inline in the message pipeline after the identity
  * is resolved and before AI/command processing. Detection uses cached settings and pure evaluators. Contextual candidates
@@ -115,7 +174,7 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
         }
 
         const settings = await loadSettings(channelID);
-        if (!settings || !settings.enabled || !settings.rules || settings.rules.length === 0) {
+        if (!settings || !settings.enabled) {
             return { actionTaken: false };
         }
 
@@ -132,6 +191,10 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
             if (!receipt) return { actionTaken: true };
         }
 
+        if (await reviewPromotionalSpam(channelID, messageEventData, identity, settings, receivedAt)) {
+            return { actionTaken: true };
+        }
+
         const fragments = messageEventData.message.fragments || [];
         const emoteFragments = fragments.filter(fragment => fragment.type === 'emote');
         const input: ModerationRuleInput = {
@@ -142,7 +205,7 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
                 .filter((text): text is string => typeof text === 'string')
         };
 
-        for (const rule of settings.rules) {
+        for (const rule of settings.rules || []) {
             if (!rule.enabled) continue;
 
             // Exemption mode: numeric fallback, tag expression, or fail
