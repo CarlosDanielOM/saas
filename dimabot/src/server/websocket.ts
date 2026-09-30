@@ -7,7 +7,7 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { clipQueueHandler } from "../handlers/clip_queue.handler.js";
 import { ttsQueueHandler } from "../handlers/tts_queue.handler.js";
-import { dimafxQueueHandler } from "../handlers/dimafx_queue.handler.js";
+import { registerDimafxOverlay } from './services/dimafx-overlay.service.js';
 import { registerFishPreview } from './services/tts/fish_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
 import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
@@ -44,6 +44,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
         registerFishPreview(io);
         registerRouletteOverlay(io);
+        registerDimafxOverlay(io);
         registerStudio(io);
 
         //? Clip Namespace with heartbeat mechanism
@@ -239,16 +240,6 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
             socket.on('ping', async () => {
                 await cacheClient!.set(`twitch:${channelID}:triggers:last_activity`, Date.now());
-            });
-
-            // DimaFX playback queue: overlays acknowledge queued triggers so
-            // the next purchase only starts after the current one finished.
-            socket.on('dimafx-ended', (data: { triggerID?: string }) => {
-                dimafxQueueHandler.handleTriggerEnded(channelID, data?.triggerID);
-            });
-
-            void dimafxQueueHandler.resumeIfIdle(channelID).catch((error) => {
-                console.error('DimaFX queue resume failed on trigger connect', { channelID, error });
             });
 
             socket.on('disconnect', () => {

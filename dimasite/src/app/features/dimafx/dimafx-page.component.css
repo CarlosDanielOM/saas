@@ -1155,6 +1155,10 @@
   justify-content: flex-start;
 }
 
+.lf-dimafx-overlay { min-width: 0; margin-top: 1rem; }
+.lf-dimafx-overlay input { min-width: 0; width: 100%; box-sizing: border-box; }
+.lf-dimafx-overlay .lf-actions { flex-wrap: wrap; }
+
 .lf-tts-section {
   display: flex;
   flex-direction: column;

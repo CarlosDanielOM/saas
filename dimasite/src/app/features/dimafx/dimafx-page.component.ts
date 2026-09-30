@@ -69,6 +69,9 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly ttsVoice = signal('');
   readonly ttsLanguage = signal<DimafxTtsLanguage>('en');
   readonly overlayConnected = signal<boolean | null>(null);
+  readonly overlayUrl = signal('');
+  private overlayStatusTimer?: ReturnType<typeof setInterval>;
+  private destroyed = false;
   readonly testingItemId = signal<string | null>(null);
 
   readonly streamer = computed(() => getRouteParam(this.route, 'streamer') || this.sessionAuth.session()?.appUser.name || '');
@@ -243,6 +246,8 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
+    clearInterval(this.overlayStatusTimer);
     this.stopPreview();
   }
 
@@ -303,6 +308,27 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     await this.resolveChannel();
     await this.load();
+    if (!this.destroyed) this.overlayStatusTimer = setInterval(() => { void this.refreshOverlayStatus(); }, 5000);
+  }
+
+  private async refreshOverlayStatus(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    try {
+      const status = await firstValueFrom(this.dimafxService.getOverlayStatus(channelID));
+      if (this.destroyed || channelID !== this.channelID()) return;
+      this.overlayConnected.set(status.connected);
+      this.overlayUrl.set(status.overlayUrl);
+    } catch { if (!this.destroyed) this.overlayConnected.set(null); }
+  }
+
+  async copyOverlayUrl(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.overlayUrl());
+      this.toastService.success(this.t('modules.dimafx.overlayLinkCopied'), '');
+    } catch {
+      this.toastService.error(this.t('modules.dimafx.overlayCopyFailed'), '');
+    }
   }
 
   protected t(key: string, params?: Record<string, string | number>): string {
@@ -326,6 +352,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
         this.bitsPrice.set(itemsResponse.allowedBitPrices[0] || 5);
       }
       this.overlayConnected.set(overlayStatus?.connected ?? null);
+      this.overlayUrl.set(overlayStatus?.overlayUrl ?? '');
       this.assetOptions.set(this.buildAssetOptions(
         (library?.items ?? []).map((item) => item.asset).filter((asset): asset is MediaAsset => Boolean(asset)),
         publicAssets

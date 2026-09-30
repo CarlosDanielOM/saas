@@ -22,6 +22,19 @@ function proxyResponse<T>(res: Response, payload: { error: boolean; status?: num
 
 router.use(twitchExtensionAuth);
 
+router.get('/channels/:channelID/overlay-status', async (req: TwitchExtensionRequest, res: Response) => {
+  const channelID = getParamValue(req.params.channelID);
+  if (!ensureChannelMatches(req, res, channelID)) return;
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    return proxyResponse(res, await dimabotClient.get<{ connected: boolean }>(
+      `/extensions/dimafx/internal/channels/${encodeURIComponent(channelID)}/overlay-status`
+    ));
+  } catch {
+    return res.status(503).json({ error: true, status: 503, message: 'DimaFX connection status unavailable' });
+  }
+});
+
 router.get('/me', async (req: TwitchExtensionRequest, res: Response) => {
   try {
     if (!req.extension) {

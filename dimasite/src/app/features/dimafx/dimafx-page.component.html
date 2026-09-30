@@ -45,6 +45,19 @@
             </span>
           </p>
         }
+        @if (overlayUrl()) {
+          <div class="lf-dimafx-overlay">
+            <label class="lf-field">
+              <span>{{ t('modules.dimafx.overlayLinkLabel') }}</span>
+              <input readonly [value]="overlayUrl()" (focus)="$any($event.target).select()" />
+            </label>
+            <p class="lf-note">{{ t('modules.dimafx.overlayLinkHint') }}</p>
+            <div class="lf-actions">
+              <button type="button" class="lf-btn" (click)="copyOverlayUrl()">{{ t('modules.dimafx.copyOverlayLink') }}</button>
+              <a class="lf-btn" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{ t('modules.dimafx.openOverlay') }}</a>
+            </div>
+          </div>
+        }
       </article>
     </section>
 

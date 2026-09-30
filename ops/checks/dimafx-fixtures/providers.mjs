@@ -3,6 +3,18 @@
 // Polar billing, and Twitch. Loopback API traffic passes through untouched.
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+const require = createRequire('/app/package.json');
+const mongoose = require('mongoose');
+const originalUpdateOne = mongoose.Model.updateOne;
+mongoose.Model.updateOne = function (filter, update, ...args) {
+  const fault = '/tmp/saas-fixtures/fail-finalization-once';
+  if (this.modelName === 'ExtensionWalletTransaction' && update?.$set?.['metadata.fulfillment'] === 'fulfilled' && fs.existsSync(fault)) {
+    fs.unlinkSync(fault);
+    throw new Error('Fixture: process interrupted before ledger finalization');
+  }
+  return originalUpdateOne.call(this, filter, update, ...args);
+};
 
 if (!fs.existsSync('/tmp/saas-fixtures/sample.wav')) {
   execFileSync('ffmpeg', ['-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.3', '-y', '/tmp/saas-fixtures/sample.wav', '-loglevel', 'error']);
@@ -15,7 +27,7 @@ const json = (data, status = 200) =>
 
 globalThis.fetch = async (input, options = {}) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
-  if (url.hostname === '127.0.0.1' && url.port === '3000') return originalFetch(input, options);
+  if (url.hostname === '127.0.0.1' && ['3000', '4001'].includes(url.port)) return originalFetch(input, options);
 
   if (url.hostname === 'piper.test') {
     if (url.pathname === '/voices') return json({ 'en_US-ryan-medium': {}, 'es_MX-ald-medium': {} });
@@ -23,6 +35,7 @@ globalThis.fetch = async (input, options = {}) => {
       const payload = JSON.parse(options.body || '{}');
       fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload }) + '\n');
       if (!payload.text || !String(payload.text).trim()) return json({ error: 'empty text' }, 400);
+      if (String(payload.text).includes('RESTART_PENDING')) await new Promise(resolve => setTimeout(resolve, 5000));
       return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.wav'), { headers: { 'Content-Type': 'audio/wav' } });
     }
   }

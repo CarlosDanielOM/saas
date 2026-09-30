@@ -67,6 +67,7 @@ export type UpdateChannelExtensionItemRequest = Partial<CreateChannelExtensionIt
 
 export interface DimafxOverlayStatus {
   connected: boolean;
+  overlayUrl: string;
 }
 
 export interface DimafxTestTriggerResult {

@@ -2,9 +2,25 @@ import express, { type Request, type Response } from "express";
 import path from "path";
 import { getIO } from "../websocket.js";
 import { getDirname } from "../../utils/pollyfills.js";
+import { authorizeDimafxOverlay } from '../services/dimafx-overlay.service.js';
 
 const router = express.Router();
 const __dirname = getDirname(import.meta.url);
+
+router.get('/overlays/dimafx-player.js', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(__dirname, 'public', 'dimafx-player.js'));
+});
+
+router.get('/overlays/dimafx/:channelID', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    if (!authorizeDimafxOverlay(String(req.params.channelID), req.query.token)) {
+        res.status(403).send('Invalid DimaFX overlay link');
+        return;
+    }
+    res.sendFile(path.join(__dirname, 'public', 'dimafx.html'));
+});
 
     // GET /overlays/triggers/:channelID - Serve trigger.html
 router.get('/overlays/triggers/:channelID', async (req: Request, res: Response) => {

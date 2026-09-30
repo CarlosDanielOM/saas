@@ -27,7 +27,7 @@ const stub = http.createServer((req, res) => {
   req.on('end', () => {
     received.push({ method: req.method, url: req.url, body: body ? JSON.parse(body) : null, serviceToken: req.headers['x-dimafx-service-token'] });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: false, status: 200, data: { ok: true } }));
+    res.end(JSON.stringify({ error: false, status: 200, data: req.url.endsWith('/overlay-status') ? { connected: false } : { ok: true } }));
   });
 });
 await new Promise((resolve) => stub.listen(4099, '127.0.0.1', resolve));
@@ -42,6 +42,14 @@ const post = (path, token, body) =>
 try {
   const health = await fetch(`${root}/health`).then((r) => r.json());
   assert.equal(health.data.ok, true, 'health endpoint');
+
+  const statusResponse = await fetch(`${root}/v1/channels/555777/overlay-status`, { headers: { Authorization: `Bearer ${validJwt()}` } });
+  assert.equal(statusResponse.status, 200);
+  assert.equal(statusResponse.headers.get('cache-control'), 'no-store');
+  assert.equal((await statusResponse.json()).data.connected, false);
+  assert.ok(received.some(r => r.url === '/extensions/dimafx/internal/channels/555777/overlay-status' && r.serviceToken === 'fixture-service-token'));
+  const statusMismatch = await fetch(`${root}/v1/channels/999000/overlay-status`, { headers: { Authorization: `Bearer ${validJwt()}` } });
+  assert.equal(statusMismatch.status, 403);
 
   // Purchase: TTS text and identity are proxied to dimabot.
   const purchase = await post('/v1/channels/555777/items/item-1/purchase', validJwt(), {

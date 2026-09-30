@@ -1,23 +1,18 @@
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
-import { Types } from "mongoose";
-import type { RedisClientType } from "redis";
 
 import type { IChannelExtensionItem } from "../schemas/channel_extension_item.schema.js";
 import type { IMediaAsset } from "../schemas/media_asset.schema.js";
-import { ExtensionWalletTransactionSchema } from "../schemas/extension_wallet_transaction.schema.js";
-import { UserExtensionInventorySchema } from "../schemas/user_extension_inventory.schema.js";
+import { DimafxPlaybackSchema, type IDimafxPlayback } from "../schemas/dimafx_playback.schema.js";
+import { refundDimafxOnce } from "../server/services/dimafx-fulfillment.service.js";
 import { getChannelTtsSettings } from "../schemas/channel_tts_settings.schema.js";
 import { getIO } from "../server/websocket.js";
-import { studioHasSource, publishStudioTrigger } from "../overlays/bridge.js";
 import { buildMediaPlaybackUrl } from "../server/services/media_library.service.js";
 import { piperTtsService } from "../server/services/tts/piper_tts.service.js";
 import { getAudioFileDurationMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
-import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 
-const PROCESSING_LOCK_TTL_SECONDS = 150;
-const QUEUE_DATA_TTL_SECONDS = 3600;
+const LEASE_MS = 15_000;
 const MAX_QUEUE_ITEMS = 25;
 const TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
 const MIN_PLAYBACK_WAIT_MS = 2_000;
@@ -35,6 +30,8 @@ export type DimafxQueueSource =
 
 export interface DimafxEnqueueInput {
   channelID: string;
+  /** Stable ID for a purchase; retries return the original durable job. */
+  triggerID?: string;
   item: IChannelExtensionItem;
   asset: IMediaAsset | null;
   /** Sanitized viewer text for custom TTS items. */
@@ -64,192 +61,124 @@ export type DimafxEnqueueResult =
   | { ok: true; triggerID: string; queueLength: number; activeConnections: number }
   | { ok: false; status: number; message: string };
 
-/**
- * Durable per-channel playback queue for DimaFX storefront triggers.
- *
- * Mirrors the TTS queue pattern: purchases enqueue into Redis, one item per
- * channel dispatches at a time, and playback completes on the overlay ack
- * (`dimafx-ended`) or a duration-based timeout, whichever comes first.
- * Waiting items survive brief overlay disconnects and API restarts.
- */
-class DimafxQueueHandler {
-  private cache: RedisClientType | null = null;
-  private initialized = false;
+/** Persist before dispatch; claim without removing; finish only after playback. */
+export class DimafxQueueHandler {
   private processingChannels = new Set<string>();
   private dispatchedTriggerIds = new Map<string, string>();
   private completionWaiters = new Map<string, () => void>();
   private ttsFiles = new Map<string, string>();
-
-  async init(): Promise<void> {
-    if (this.initialized) return;
-    this.cache = await getDragonflyClient("DimafxQueueHandler:init");
-    this.initialized = true;
-  }
-
-  private queueKey(channelID: string): string {
-    return `twitch:${channelID}:dimafx:queue`;
-  }
-
-  private dataKey(channelID: string, triggerID: string): string {
-    return `twitch:${channelID}:dimafx:queue:data:${triggerID}`;
-  }
-
-  private lockKey(channelID: string): string {
-    return `twitch:${channelID}:dimafx:processing`;
-  }
+  private readonly owner = randomUUID();
 
   async isOverlayConnected(channelID: string): Promise<boolean> {
-    if (studioHasSource(channelID, "trigger")) return true;
-    const namespace = getIO()?.of(`/overlays/triggers/${channelID}`);
-    if (!namespace) return false;
-    const sockets = await namespace.fetchSockets();
-    return sockets.length > 0;
+    return this.readySockets(channelID).length > 0;
+  }
+
+  private readySockets(channelID: string) {
+    const sockets = getIO()?.of(`/overlays/dimafx/${channelID}`).sockets;
+    return sockets ? [...sockets.values()].filter(socket => socket.connected && socket.data.dimafxReady) : [];
+  }
+
+  async existing(channelID: string, triggerID: string): Promise<DimafxEnqueueResult | null> {
+    const job = await DimafxPlaybackSchema.findOne({ _id: triggerID, channelID }).lean();
+    if (!job) return null;
+    // Even refunded/completed jobs are receipts: never create the purchase again.
+    return { ok: true, triggerID, queueLength: await this.queueLength(channelID), activeConnections: this.readySockets(channelID).length };
+  }
+
+  private queueLength(channelID: string): Promise<number> {
+    return DimafxPlaybackSchema.countDocuments({ channelID, state: { $nin: ['completed', 'refunded'] } }).exec();
   }
 
   async enqueue(input: DimafxEnqueueInput): Promise<DimafxEnqueueResult> {
-    if (!this.cache) await this.init();
-
     const { channelID, item, asset } = input;
-    const isTts = item.category === "tts";
-
-    if (!isTts && !asset) {
-      return { ok: false, status: 500, message: "DimaFX item has no playable media" };
-    }
-
-    if (!(await this.isOverlayConnected(channelID))) {
-      return { ok: false, status: 409, message: "No trigger overlay clients connected" };
-    }
-
-    const queueLength = await this.cache!.zCard(this.queueKey(channelID));
-    const processingActive = this.processingChannels.has(channelID);
-    if (queueLength + (processingActive ? 1 : 0) >= MAX_QUEUE_ITEMS) {
-      return { ok: false, status: 429, message: "DimaFX queue is full for this channel" };
-    }
-
-    let tts: DimafxQueueItem["tts"];
+    const triggerID = input.triggerID || randomUUID();
+    const existing = await this.existing(channelID, triggerID);
+    if (existing) return existing;
+    const isTts = item.category === 'tts';
+    if (!isTts && !asset) return { ok: false, status: 500, message: 'DimaFX item has no playable media' };
+    if (!await this.isOverlayConnected(channelID)) return { ok: false, status: 409, message: 'DimaFX overlay is disconnected' };
+    if (await this.queueLength(channelID) >= MAX_QUEUE_ITEMS) return { ok: false, status: 429, message: 'DimaFX queue is full for this channel' };
+    let tts: DimafxQueueItem['tts'];
     if (isTts) {
       const config = item.tts;
-      const text = config?.mode === "fixed" ? config.text : (input.viewerText || "");
-      if (!text.trim()) {
-        return { ok: false, status: 400, message: "TTS text is required for this item" };
-      }
-      const language = config?.language === "es" ? "es" : "en";
-      let voice = config?.voice || "";
-      if (!voice) {
-        const settings = await getChannelTtsSettings(channelID, item.channelName || "");
-        voice = settings.voices[language];
-      }
+      const text = config?.mode === 'fixed' ? config.text : (input.viewerText || '');
+      if (!text.trim()) return { ok: false, status: 400, message: 'TTS text is required for this item' };
+      const language = config?.language === 'es' ? 'es' : 'en';
+      const voice = config?.voice || (await getChannelTtsSettings(channelID, item.channelName || '')).voices[language];
       tts = { text: text.trim(), voice, language };
     }
-
-    const triggerID = randomUUID();
-    const queueItem: DimafxQueueItem = {
-      triggerID,
-      channelID,
-      itemID: String(item._id),
-      name: item.name,
-      category: item.category,
+    const payload: DimafxQueueItem = {
+      triggerID, channelID, itemID: String(item._id), name: item.name, category: item.category,
       mediaUrl: asset ? buildMediaPlaybackUrl(asset._id) : undefined,
-      mediaType: isTts ? "audio/wav" : asset?.mimeType || item.mediaType,
+      mediaType: isTts ? 'audio/wav' : asset?.mimeType || item.mediaType,
       volume: Math.max(0, Math.min(100, Number(item.volume ?? 100))),
       durationMs: Math.max(0, Number(item.durationMs || 0)),
       ...(tts ? { tts } : {}),
       ...(input.refundOnFailure ? { refundOnFailure: input.refundOnFailure } : {}),
-      source: input.source,
-      enqueuedAt: Date.now(),
+      source: input.source, enqueuedAt: Date.now(),
     };
-
-    await this.cache!.set(this.dataKey(channelID, triggerID), JSON.stringify(queueItem), {
-      EX: QUEUE_DATA_TTL_SECONDS,
-    });
-    await this.cache!.zAdd(this.queueKey(channelID), { score: queueItem.enqueuedAt, value: triggerID });
-
-    if (!processingActive) {
-      await this.cache!.set(this.lockKey(channelID), "pending", { EX: PROCESSING_LOCK_TTL_SECONDS });
-      void this.processNext(channelID);
+    // _id is a built-in unique index. Upsert is safe even before custom indexes exist.
+    try {
+      await DimafxPlaybackSchema.updateOne({ _id: triggerID }, { $setOnInsert: { channelID, payload, state: 'queued', leaseOwner: '', leaseUntil: new Date(0) } }, { upsert: true });
+    } catch (error) {
+      if ((error as { code?: number }).code !== 11000) throw error;
     }
-
-    const namespace = getIO()?.of(`/overlays/triggers/${channelID}`);
-    const activeConnections = namespace ? (await namespace.fetchSockets()).length : 0;
-
-    return { ok: true, triggerID, queueLength: queueLength + 1, activeConnections };
+    void this.processNext(channelID);
+    return { ok: true, triggerID, queueLength: await this.queueLength(channelID), activeConnections: this.readySockets(channelID).length };
   }
 
   async processNext(channelID: string): Promise<void> {
-    if (!this.cache) await this.init();
     if (this.processingChannels.has(channelID)) return;
     this.processingChannels.add(channelID);
-
     try {
-      while (true) {
-        if (!(await this.isOverlayConnected(channelID))) {
-          // Preserve waiting items until an overlay reconnects; the reconnect
-          // path (websocket namespace / overlay studio) calls resumeIfIdle.
-          this.processingChannels.delete(channelID);
-          return;
-        }
-
-        const next = await this.cache!.zPopMin(this.queueKey(channelID));
-        if (!next?.value) {
-          await this.cache!.del(this.lockKey(channelID));
-          this.processingChannels.delete(channelID);
-          if ((await this.cache!.zCard(this.queueKey(channelID))) > 0) {
-            void this.processNext(channelID);
+      while (await this.isOverlayConnected(channelID)) {
+        const first = await DimafxPlaybackSchema.findOne({ channelID, state: { $nin: ['completed', 'refunded'] } }).sort({ createdAt: 1, _id: 1 }).lean();
+        if (!first) return;
+        const job = await DimafxPlaybackSchema.findOneAndUpdate(
+          { _id: first._id, state: { $nin: ['completed', 'refunded'] }, $or: [{ leaseUntil: { $lte: new Date() } }, { leaseOwner: this.owner }] },
+          { $set: { leaseOwner: this.owner, leaseUntil: new Date(Date.now() + LEASE_MS) } }, { new: true },
+        ).lean();
+        // The previous process may still be alive. The connection poll retries
+        // after its lease expires; never steal an active producer's work.
+        if (!job) return;
+        const heartbeat = setInterval(() => {
+          void DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { leaseUntil: new Date(Date.now() + LEASE_MS) } }).catch(error => console.error('DimaFX lease renewal failed', error));
+        }, LEASE_MS / 3);
+        try {
+          if (job.state === 'refunding') {
+            await this.refundViewer(job);
+            continue;
           }
-          return;
+          await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { state: 'playing' } });
+          this.dispatchedTriggerIds.set(channelID, job._id);
+          try {
+            await this.dispatch(channelID, job.payload);
+          } catch (error) {
+            if (!await this.isOverlayConnected(channelID)) return;
+            const failure = error instanceof Error ? error.message : String(error);
+            await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner, state: 'playing' }, { $set: { state: 'refunding', failure } });
+            await this.refundViewer(job);
+            continue;
+          }
+          // A disconnect cannot turn an unacknowledged purchase into success.
+          // Keep its stable ID so the player can acknowledge/redeliver on reconnect.
+          if (!await this.isOverlayConnected(channelID)) return;
+          await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner, state: 'playing' }, { $set: { state: 'completed' } });
+        } finally {
+          clearInterval(heartbeat);
+          this.dispatchedTriggerIds.delete(channelID);
+          await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { leaseOwner: '', leaseUntil: new Date(0) } });
         }
-
-        const triggerID = next.value;
-        const rawData = await this.cache!.get(this.dataKey(channelID, triggerID));
-        if (!rawData) continue;
-
-        let queueItem: DimafxQueueItem;
-        try {
-          queueItem = JSON.parse(rawData) as DimafxQueueItem;
-        } catch {
-          await this.cache!.del(this.dataKey(channelID, triggerID));
-          continue;
-        }
-
-        await this.cache!.set(this.lockKey(channelID), triggerID, { EX: PROCESSING_LOCK_TTL_SECONDS });
-        this.dispatchedTriggerIds.set(channelID, triggerID);
-
-        try {
-          await this.dispatch(channelID, queueItem);
-        } catch (error) {
-          console.error("DimaFX trigger dispatch failed:", {
-            channelID,
-            triggerID,
-            itemID: queueItem.itemID,
-            error: error instanceof Error ? error.message : String(error),
-            timestamp: new Date().toISOString(),
-          });
-          await this.refundViewer(queueItem, error instanceof Error ? error.message : String(error));
-        }
-
-        this.dispatchedTriggerIds.delete(channelID);
-        await this.cache!.del(this.dataKey(channelID, triggerID));
       }
     } catch (error) {
-      console.error("DimaFX queue processing failed:", {
-        channelID,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      });
+      // A storage failure leaves the durable job recoverable; it must not be
+      // mistaken for a playback failure and refunded while still playing.
+      console.error('DimaFX queue processing failed', { channelID, error });
+    } finally {
       this.processingChannels.delete(channelID);
-      this.dispatchedTriggerIds.delete(channelID);
-      try {
-        await this.cache!.del(this.lockKey(channelID));
-      } catch {
-        // Drop the in-memory lock even when Redis is unavailable.
-      }
     }
   }
 
-  /**
-   * Dispatches one queued item to every connected overlay and resolves when
-   * playback finishes (overlay ack or duration timeout).
-   */
   private async dispatch(channelID: string, queueItem: DimafxQueueItem): Promise<void> {
     let mediaUrl = queueItem.mediaUrl;
     let mediaType = queueItem.mediaType || "video/mp4";
@@ -291,7 +220,7 @@ class DimafxQueueHandler {
     // The overlay may have disconnected while TTS synthesis was running.
     if (!(await this.isOverlayConnected(channelID))) {
       this.scheduleTtsFileCleanup(channelID, queueItem.triggerID);
-      throw new Error("Trigger overlay disconnected before dispatch");
+      throw new Error("DimaFX overlay disconnected before dispatch");
     }
 
     const body = {
@@ -306,8 +235,12 @@ class DimafxQueueHandler {
     };
 
     try {
-      getIO()?.of(`/overlays/triggers/${channelID}`).emit("trigger", body);
-      publishStudioTrigger(channelID, body);
+      const done = this.waitForCompletion(channelID, queueItem.triggerID, waitMs);
+      const deliver = () => { for (const socket of this.readySockets(channelID)) socket.emit('dimafx-play', body); };
+      deliver();
+      // Stable IDs let the OBS player reject duplicate deliveries, including
+      // a lost acknowledgement or API restart during playback.
+      const redelivery = setInterval(deliver, 5_000);
       console.log("DimaFX trigger dispatched", {
         channelID,
         triggerID: queueItem.triggerID,
@@ -316,7 +249,7 @@ class DimafxQueueHandler {
         queuedMs: Date.now() - queueItem.enqueuedAt,
       });
 
-      await this.waitForCompletion(channelID, queueItem.triggerID, waitMs);
+      try { await done; } finally { clearInterval(redelivery); }
     } finally {
       this.scheduleTtsFileCleanup(channelID, queueItem.triggerID);
     }
@@ -351,67 +284,27 @@ class DimafxQueueHandler {
     });
   }
 
-  /** Overlay ack hook — invoked from the `/overlays/triggers/` namespace. */
-  handleTriggerEnded(channelID: string, triggerID?: string): void {
-    if (!triggerID) return;
-    if (this.dispatchedTriggerIds.get(channelID) !== triggerID) return;
-    const waiter = this.completionWaiters.get(`${channelID}:${triggerID}`);
-    if (waiter) {
-      this.completionWaiters.delete(`${channelID}:${triggerID}`);
-      console.log("DimaFX trigger finished", { channelID, triggerID });
-      waiter();
-    }
+  /** Only authenticated, ready DimaFX sockets can complete their channel's job. */
+  async handleTriggerEnded(channelID: string, triggerID?: string): Promise<void> {
+    if (!triggerID || this.dispatchedTriggerIds.get(channelID) !== triggerID) return;
+    await DimafxPlaybackSchema.updateOne(
+      { _id: triggerID, channelID, leaseOwner: this.owner, state: 'playing' },
+      { $set: { state: 'completed' } },
+    );
+    const key = `${channelID}:${triggerID}`;
+    const waiter = this.completionWaiters.get(key);
+    this.completionWaiters.delete(key);
+    waiter?.();
   }
 
-  /** Called when a trigger overlay (legacy namespace or studio) connects. */
   async resumeIfIdle(channelID: string): Promise<void> {
-    if (!this.cache) await this.init();
-    if (this.processingChannels.has(channelID)) return;
-
-    const staleLock = await this.cache!.get(this.lockKey(channelID));
-    if (staleLock) {
-      await this.cache!.del(this.lockKey(channelID));
-    }
-    if (this.processingChannels.has(channelID)) return;
-
-    if ((await this.cache!.zCard(this.queueKey(channelID))) > 0) {
-      void this.processNext(channelID);
-    }
+    await this.processNext(channelID);
   }
 
-  private async refundViewer(queueItem: DimafxQueueItem, reason: string): Promise<void> {
-    const refund = queueItem.refundOnFailure;
-    if (!refund || refund.priceBits <= 0) return;
-    try {
-      await UserExtensionInventorySchema.updateOne(
-        { platform: "twitch", userID: refund.userID, channelID: queueItem.channelID },
-        { $inc: { balance: refund.priceBits } },
-      );
-      await ExtensionWalletTransactionSchema.create({
-        platform: "twitch",
-        userID: refund.userID,
-        channelID: queueItem.channelID,
-        type: "refund_credit",
-        amountBits: refund.priceBits,
-        balanceDelta: refund.priceBits,
-        channelExtensionItemID: new Types.ObjectId(queueItem.itemID),
-        metadata: { reason: `queue_dispatch_failed: ${reason}` },
-      });
-      console.warn("DimaFX viewer refunded after queue dispatch failure", {
-        channelID: queueItem.channelID,
-        userID: refund.userID,
-        triggerID: queueItem.triggerID,
-        priceBits: refund.priceBits,
-      });
-    } catch (error) {
-      console.error("DimaFX queue refund failed:", {
-        channelID: queueItem.channelID,
-        userID: refund.userID,
-        triggerID: queueItem.triggerID,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      });
-    }
+  private async refundViewer(job: IDimafxPlayback): Promise<void> {
+    const refund = job.payload.refundOnFailure;
+    if (refund) await refundDimafxOnce(job.channelID, refund.userID, refund.priceBits, `refund:${job._id}`);
+    await DimafxPlaybackSchema.updateOne({ _id: job._id, leaseOwner: this.owner }, { $set: { state: 'refunded' } });
   }
 
   private scheduleTtsFileCleanup(channelID: string, triggerID: string): void {

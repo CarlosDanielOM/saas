@@ -12,6 +12,9 @@ let actionInFlight = false;
 let isPlaying = false;
 let previewPlayer = null;
 let playInterval = null;
+let overlayConnected = false;
+let overlayStatusTimer = null;
+let overlayStatusRequest = null;
 
 const API_BASE = `${window.location.origin}/api/v1`;
 
@@ -64,9 +67,41 @@ async function apiFetch(path, options = {}) {
   return payload.data;
 }
 
+async function refreshOverlayStatus() {
+  if (!authToken || !channelID) return false;
+  if (overlayStatusRequest) return overlayStatusRequest;
+  overlayStatusRequest = (async () => {
+    let connected = false;
+    try {
+      const status = await apiFetch(`/channels/${encodeURIComponent(channelID)}/overlay-status`, { cache: "no-store" });
+      connected = status?.connected === true;
+    } catch { /* Fail closed when connection status cannot be verified. */ }
+    if (overlayConnected !== connected) {
+      overlayConnected = connected;
+      renderLibrary();
+      renderInventory();
+      renderDrawerActions();
+    }
+    const statusEl = getEl("dimafx-connection-status");
+    if (statusEl) {
+      statusEl.hidden = connected;
+      statusEl.textContent = "Purchases unavailable — the streamer's DimaFX overlay is offline.";
+    }
+    return connected;
+  })();
+  try { return await overlayStatusRequest; } finally { overlayStatusRequest = null; }
+}
+
+async function requireOverlayConnected() {
+  if (!await refreshOverlayStatus()) throw new Error("Purchases are unavailable while the DimaFX overlay is disconnected.");
+}
+
 async function initializeDimaFx(auth) {
   authToken = auth.token;
   channelID = auth.channelId;
+  if (overlayStatusTimer) clearInterval(overlayStatusTimer);
+  overlayStatusTimer = setInterval(() => { void refreshOverlayStatus(); }, 5000);
+  void refreshOverlayStatus();
   toggleShimmer(true);
   try {
     const [me, items] = await Promise.all([
@@ -213,7 +248,7 @@ function renderLibrary() {
         <div class="card-desc">${escapeHtml(item.description)}</div>
       </div>
       <div class="card-footer">
-        <button class="price-btn ${priceClass}" onclick="event.stopPropagation(); quickPurchase('${escapeHtml(item.id)}')">
+        <button class="price-btn ${priceClass}" ${overlayConnected ? "" : "disabled"} onclick="event.stopPropagation(); quickPurchase('${escapeHtml(item.id)}')">
           <svg viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"></polygon></svg>
           <span>${quickActionLabel(item)}</span>
         </button>
@@ -223,6 +258,7 @@ function renderLibrary() {
 }
 
 function quickActionLabel(item) {
+  if (!overlayConnected) return "Overlay offline";
   const config = inventory?.config || { quickPurchasePriority: "credits_first", quickPurchaseAction: "use_now" };
   const action = config.quickPurchaseAction === "save" && identityShared ? "Save" : "Use";
   if (Number(item.priceValue || 0) === 0) {
@@ -273,7 +309,7 @@ function renderInventory() {
         <div class="inv-title">${escapeHtml(item.name)}</div>
         <div class="inv-meta">${escapeHtml(item.categoryLabel)} • ${getInventoryQuantity(item.id)} saved</div>
       </div>
-      <button class="btn-use-item" onclick="redeemSaved('${escapeHtml(item.id)}')">Trigger</button>`;
+      <button class="btn-use-item" ${overlayConnected ? "" : "disabled"} onclick="redeemSaved('${escapeHtml(item.id)}')">Trigger</button>`;
     list.appendChild(invCard);
   });
 }
@@ -358,16 +394,16 @@ function renderDrawerActions() {
   // Custom-text TTS items must be used immediately — the viewer's text only
   // exists in this purchase request.
   const saveDisabled = !identityShared || customTts;
-  const bitsDisabled = ttsMissing ? "disabled" : "";
+  const bitsDisabled = ttsMissing || !overlayConnected ? "disabled" : "";
   actionContainer.innerHTML = `
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted);">
       <button class="category-btn ${selectedAction === "use_now" ? "active" : ""}" onclick="setDrawerAction('use_now')">Use now</button>
       ${customTts ? "" : `<button class="category-btn ${selectedAction === "save" ? "active" : ""}" ${saveDisabled ? "disabled" : ""} onclick="setDrawerAction('save')">Save</button>`}
     </div>
     ${isFree
-      ? `<button class="drawer-buy-btn free sheet-btn-buy" ${(selectedAction === "save" && saveDisabled) || ttsMissing ? "disabled" : ""} onclick="triggerFreeItem(selectedItem, selectedAction)"><span>${freeLabel}</span></button>`
+      ? `<button class="drawer-buy-btn free sheet-btn-buy" ${(selectedAction === "save" && saveDisabled) || ttsMissing || !overlayConnected ? "disabled" : ""} onclick="triggerFreeItem(selectedItem, selectedAction)"><span>${freeLabel}</span></button>`
       : `<button class="drawer-buy-btn bits sheet-btn-buy" ${bitsDisabled} onclick="buyWithBits(selectedItem, selectedAction)"><span>Buy with Bits • ${selectedItem.price}</span></button>
-         <button class="drawer-buy-btn credits sheet-btn-buy" ${identityShared && getBalance() >= selectedItem.priceValue && !ttsMissing ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>`
+         <button class="drawer-buy-btn credits sheet-btn-buy" ${overlayConnected && identityShared && getBalance() >= selectedItem.priceValue && !ttsMissing ? "" : "disabled"} onclick="buyWithCredits(selectedItem, selectedAction)"><span>Buy with Credits • ${selectedItem.priceValue}</span></button>`
     }
     ${ttsMissing ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Type a message above to enable purchase.</div>' : ''}
     ${!identityShared && !isFree ? '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px;">Share identity to save items and use credits.</div>' : ''}
@@ -575,7 +611,7 @@ function quickPurchase(itemId) {
   buyWithBits(item, action);
 }
 
-function buyWithBits(item, action) {
+async function buyWithBits(item, action) {
   if (!window.Twitch?.ext?.bits?.useBits) {
     showToast("Bits unavailable", "Bits purchases are only available inside Twitch.", "info");
     return;
@@ -586,8 +622,9 @@ function buyWithBits(item, action) {
     return;
   }
   if (!beginAction()) return;
-  pendingBitsPurchase = { item, action, ttsText };
   try {
+    await requireOverlayConnected();
+    pendingBitsPurchase = { item, action, ttsText };
     Twitch.ext.bits.useBits(item.sku);
   } catch (error) {
     pendingBitsPurchase = null;
@@ -608,6 +645,7 @@ async function triggerFreeItem(item, action = "use_now") {
   const safeAction = action === "save" && !isCustomTtsItem(item) ? "save" : "use_now";
   const transactionID = `free_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
   try {
+    await requireOverlayConnected();
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/purchase`, {
       method: "POST",
       body: JSON.stringify({ sku: item.sku, transactionID, action: safeAction, ttsText }),
@@ -656,6 +694,7 @@ async function buyWithCredits(item, action) {
   if (!beginAction()) return;
   const safeAction = action === "save" && !isCustomTtsItem(item) ? "save" : "use_now";
   try {
+    await requireOverlayConnected();
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/use-credit`, {
       method: "POST",
       body: JSON.stringify({ action: safeAction, ttsText }),
@@ -677,6 +716,7 @@ async function redeemSaved(itemId) {
   if (!item) return;
   if (!beginAction()) return;
   try {
+    await requireOverlayConnected();
     const data = await apiFetch(`/channels/${encodeURIComponent(channelID)}/items/${encodeURIComponent(item.id)}/redeem`, { method: "POST", body: "{}" });
     if (data?.inventory) inventory = data.inventory;
     await refreshMe();

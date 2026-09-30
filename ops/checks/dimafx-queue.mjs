@@ -6,6 +6,8 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
+import { createHmac } from 'node:crypto';
+import { spawn } from 'node:child_process';
 
 const require = createRequire('/app/package.json');
 const { createClient } = require('redis');
@@ -22,32 +24,44 @@ await mongoose.connect('mongodb://mongo:27017/saas_ops_dimafx_test');
 const db = mongoose.connection.db;
 
 const sockets = [];
+const children = [];
 const wait = async (condition, description) => {
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + 40000;
   while (!(await condition())) {
     assert.ok(Date.now() < deadline, description);
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 };
 
-const connectOverlay = async () => {
-  const namespace = `/overlays/triggers/${channel}`;
+const overlayStatus = () => fetch(`${root}/extensions/dimafx/internal/channels/${channel}/overlay-status`, { headers: serviceHeaders }).then(r => r.json());
+const connectOverlay = async ({ port = 3000, id = channel, legacy = false, ready = true, token } = {}) => {
+  const namespace = `/overlays/${legacy ? 'triggers' : 'dimafx'}/${id}`;
   const triggers = [];
-  const ws = new WebSocket(`ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket`);
+  const deliveries = [];
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/socket.io/?EIO=4&transport=websocket`);
+  const authToken = token ?? createHmac('sha256', process.env.SECRET_KEY).update(`dimafx-overlay:${id}`).digest('hex');
+  let connected = false, rejected = false;
   sockets.push(ws);
   ws.addEventListener('message', (event) => {
     const data = String(event.data);
     if (data === '2') ws.send('3');
-    else if (data.startsWith('0')) ws.send(`40${namespace},{}`);
+    else if (data.startsWith('0')) ws.send(`40${namespace},${JSON.stringify({ token: authToken })}`);
+    else if (data.startsWith(`40${namespace},`)) {
+      connected = true;
+      if (ready && !legacy) ws.send(`42${namespace},["dimafx-ready"]`);
+    } else if (data.startsWith(`44${namespace},`)) rejected = true;
     else if (data.startsWith(`42${namespace},`)) {
       const [name, payload] = JSON.parse(data.slice(`42${namespace},`.length));
-      if (name === 'trigger') triggers.push(payload);
+      if (name === 'dimafx-play' || name === 'trigger') {
+        deliveries.push(payload);
+        if (!triggers.some(t => t.triggerID === payload.triggerID)) triggers.push(payload);
+      }
     }
   });
-  await wait(() => redis.exists(`twitch:${channel}:triggers:connected`), 'trigger overlay connected');
+  await wait(() => connected || rejected, 'overlay handshake');
   return {
-    ws,
-    triggers,
+    ws, triggers, deliveries, rejected,
+    ready() { ws.send(`42${namespace},["dimafx-ready"]`); },
     ack(id) { ws.send(`42${namespace},${JSON.stringify(['dimafx-ended', { triggerID: id }])}`); },
   };
 };
@@ -89,7 +103,16 @@ try {
   const statusBefore = await fetch(`${root}/extensions/dimafx/${channel}/overlay-status`, { headers: authHeaders }).then((r) => r.json());
   assert.equal(statusBefore.data.connected, false, 'overlay reported disconnected before connect');
 
-  let overlay = await connectOverlay();
+  assert.equal((await fetch(`${root}/overlays/dimafx/${channel}`)).status, 403, 'OBS page requires its token');
+  assert.equal((await fetch(statusBefore.data.overlayUrl)).status, 200, 'dashboard supplies the working OBS link');
+  const legacy = await connectOverlay({ legacy: true });
+  assert.equal((await overlayStatus()).data.connected, false, 'legacy trigger socket cannot enable purchases');
+  const invalid = await connectOverlay({ token: '0'.repeat(64) });
+  assert.equal(invalid.rejected, true, 'unsigned viewer cannot register as an OBS player');
+  let overlay = await connectOverlay({ ready: false });
+  assert.equal((await overlayStatus()).data.connected, false, 'socket without player ready cannot enable purchases');
+  overlay.ready();
+  await wait(async () => (await overlayStatus()).data.connected, 'DimaFX player ready');
   const statusAfter = await fetch(`${root}/extensions/dimafx/${channel}/overlay-status`, { headers: authHeaders }).then((r) => r.json());
   assert.equal(statusAfter.data.connected, true, 'overlay reported connected after connect');
 
@@ -164,7 +187,7 @@ try {
   overlay.ack(overlay.triggers[4].triggerID);
   overlay.ws.close();
   await new Promise((resolve) => overlay.ws.addEventListener('close', resolve, { once: true }));
-  await wait(async () => !(await redis.exists(`twitch:${channel}:triggers:connected`)), 'overlay disconnected');
+  await wait(async () => !(await overlayStatus()).data.connected, 'overlay disconnected');
   const offline = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-6', action: 'use_now', userID: 'viewer-1', displayName: 'Viewer One' });
   assert.equal(offline.status, 409, JSON.stringify(offline));
   const refundedInventory = await db.collection('userextensioninventories').findOne({ platform: 'twitch', userID: 'viewer-1', channelID: channel });
@@ -179,15 +202,103 @@ try {
 
   // 11) Reconnect resumes playback for new purchases.
   overlay = await connectOverlay();
+  await wait(async () => (await overlayStatus()).data.connected, 'reconnected ready player');
   const resumed = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-7', action: 'use_now' });
   assert.equal(resumed.status, 200, JSON.stringify(resumed));
   await wait(() => overlay.triggers.length === 1, 'trigger dispatched after reconnect');
   overlay.ack(overlay.triggers[0].triggerID);
-  await wait(async () => (await redis.zCard(`twitch:${channel}:dimafx:queue`)) === 0 && !(await redis.exists(`twitch:${channel}:dimafx:processing`)), 'queue drains');
+  await wait(async () => (await db.collection('dimafxplaybacks').countDocuments({ channelID: channel, state: { $nin: ['completed', 'refunded'] } })) === 0, 'queue drains');
+  assert.equal(legacy.triggers.length, 0, 'DimaFX purchases never reach legacy trigger sockets');
 
-  console.log('PASS: sequential queue + acks, duration-timeout fallback, transaction idempotency (duplicate/refunded), custom TTS synthesis with sanitization, test trigger, overlay status, offline refund, reconnect resume');
+  // Failure after durable enqueue, before purchase-ledger finalization.
+  fs.writeFileSync('/tmp/saas-fixtures/fail-finalization-once', '1');
+  const interrupted = await purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-interrupted', action: 'use_now' });
+  assert.equal(interrupted.status, 500, 'injected interrupted finalization');
+  const interruptedLedger = await db.collection('extensionwallettransactions').findOne({ twitchTransactionID: 'tx-interrupted' });
+  const stableID = `bits-${interruptedLedger._id}`;
+  await wait(() => overlay.triggers.some(t => t.triggerID === stableID), 'interrupted purchase reached durable queue');
+  overlay.ack(stableID);
+  await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: stableID })).state === 'completed', 'job completion persisted');
+  await db.collection('extensionwallettransactions').updateOne({ _id: interruptedLedger._id }, { $set: { updatedAt: new Date(Date.now() - 31000) } });
+  const retries = await Promise.all(Array.from({ length: 5 }, () => purchase(String(videoItem), { sku: 'dimafx_bits_5', transactionID: 'tx-interrupted', action: 'use_now' })));
+  assert.ok(retries.every(r => r.status === 200), JSON.stringify(retries));
+  assert.equal(await db.collection('dimafxplaybacks').countDocuments({ _id: stableID }), 1, 'one durable job for concurrent retries');
+  assert.equal((await db.collection('dimafxplaybacks').findOne({ _id: stableID })).state, 'completed', 'retry does not reset terminal job');
+
+  // Saving is also idempotent if finalization is interrupted.
+  fs.writeFileSync('/tmp/saas-fixtures/fail-finalization-once', '1');
+  const saveBody = { sku: 'dimafx_bits_5', transactionID: 'tx-save-interrupted', action: 'save', userID: 'saved-viewer' };
+  assert.equal((await purchase(String(videoItem), saveBody)).status, 500);
+  await db.collection('extensionwallettransactions').updateOne({ twitchTransactionID: saveBody.transactionID }, { $set: { updatedAt: new Date(Date.now() - 31000) } });
+  assert.equal((await purchase(String(videoItem), saveBody)).status, 200);
+  const saved = await db.collection('userextensioninventories').findOne({ channelID: channel, userID: 'saved-viewer' });
+  assert.equal(saved.items.reduce((sum, row) => sum + row.quantity, 0), 1, 'saved item not duplicated');
+
+  // Interrupted job survives >1h offline and a stale producer lease.
+  const recoverID = 'fixture-recovered-job';
+  await db.collection('dimafxplaybacks').insertOne({
+    _id: recoverID, channelID: channel, state: 'playing', leaseOwner: 'dead-process', leaseUntil: new Date(0),
+    createdAt: new Date(Date.now() - 7200000), updatedAt: new Date(),
+    payload: { triggerID: recoverID, channelID: channel, itemID: String(videoItem), name: 'Recovered', category: 'video', mediaUrl: 'https://api.domdimabot.com/media/fixture', mediaType: 'video/mp4', volume: 80, durationMs: 2000, source: 'bits_purchase', enqueuedAt: Date.now() - 7200000 },
+  });
+  await wait(() => overlay.triggers.some(t => t.triggerID === recoverID), 'stale claimed job recovered');
+  overlay.ack(recoverID);
+  await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: recoverID })).state === 'completed', 'recovered job completes');
+
+  // A real API child is killed during synthesis, then restarted against the
+  // same disposable data. This does not restart the candidate or any live service.
+  const childChannel = '999982';
+  await redis.hSet(`accounts:twitch:${childChannel}:data`, { id: childChannel, name: 'dimafx-restart', plan_tier: 'premium' });
+  const childItem = new mongoose.Types.ObjectId();
+  await db.collection('channelextensionitems').insertOne({ ...baseItem, _id: childItem, channelID: childChannel, assetID: null, name: 'Restart TTS', category: 'tts', mediaType: 'audio', durationMs: 0, bitsPrice: 0, sku: 'free', tts: { mode: 'custom', text: '', voice: 'en_US-ryan-medium', language: 'en' } });
+  const childSource = `
+    await import('/app/dist/utils/databases/mongodb.database.js').then(m => m.getMongoDBConnection('fixture-child'));
+    const { server } = await import('/app/dist/server/server.js');
+    const { websocket } = await import('/app/dist/server/websocket.js');
+    const http = await websocket(await server()); http.listen(4001, '127.0.0.1');
+  `;
+  const startChild = async () => {
+    const child = spawn(process.execPath, ['--input-type=module', '--eval', childSource], { env: process.env, stdio: ['ignore', fs.openSync('/tmp/saas-fixtures/child-api.log', 'a'), fs.openSync('/tmp/saas-fixtures/child-api.log', 'a')] });
+    children.push(child);
+    await wait(async () => { try { return (await fetch('http://127.0.0.1:4001/extensions/dimafx/internal/channels/999982/overlay-status', { headers: serviceHeaders })).ok; } catch { return false; } }, 'child API startup');
+    return child;
+  };
+  const child = await startChild();
+  const childOverlay = await connectOverlay({ port: 4001, id: childChannel });
+  await wait(async () => (await fetch(`http://127.0.0.1:4001/extensions/dimafx/internal/channels/${childChannel}/overlay-status`, { headers: serviceHeaders }).then(r => r.json())).data.connected, 'child overlay ready');
+  const childPurchase = await fetch(`http://127.0.0.1:4001/extensions/dimafx/internal/channels/${childChannel}/items/${childItem}/purchase`, {
+    method: 'POST', headers: serviceHeaders, body: JSON.stringify({ sku: 'free', transactionID: 'tx-restart', action: 'use_now', ttsText: 'RESTART_PENDING speech' }),
+  }).then(r => r.json());
+  assert.equal(childPurchase.error, false, JSON.stringify(childPurchase));
+  const childTriggerID = childPurchase.data.triggerID;
+  await wait(() => fs.readFileSync('/tmp/saas-fixtures/provider-calls.jsonl', 'utf8').includes('RESTART_PENDING'), 'synthesis began before crash');
+  assert.equal(childOverlay.triggers.length, 0, 'kill before any playback dispatch');
+  child.kill('SIGKILL');
+  await new Promise(resolve => child.once('exit', resolve));
+  await startChild();
+  const replacement = await connectOverlay({ port: 4001, id: childChannel });
+  await wait(() => replacement.triggers.some(t => t.triggerID === childTriggerID), 'accepted purchase recovered after actual process restart');
+  replacement.ack(childTriggerID);
+  await wait(async () => (await db.collection('dimafxplaybacks').findOne({ _id: childTriggerID })).state === 'completed', 'restarted playback completed');
+  assert.equal(await db.collection('dimafxplaybacks').countDocuments({ _id: childTriggerID }), 1);
+
+  // Offline credit/save/redeem attempts have no inventory side effects.
+  overlay.ws.close();
+  await wait(async () => !(await overlayStatus()).data.connected, 'offline purchase gating');
+  for (const action of ['use_now', 'save']) {
+    const credit = await fetch(`${root}/extensions/dimafx/internal/channels/${channel}/items/${videoItem}/use-credit`, { method: 'POST', headers: serviceHeaders, body: JSON.stringify({ userID: 'viewer-1', action }) });
+    assert.equal(credit.status, 409);
+  }
+  const redeem = await fetch(`${root}/extensions/dimafx/internal/channels/${channel}/items/${videoItem}/redeem`, { method: 'POST', headers: serviceHeaders, body: JSON.stringify({ userID: 'saved-viewer' }) });
+  assert.equal(redeem.status, 409);
+  assert.equal((await db.collection('userextensioninventories').findOne({ channelID: channel, userID: 'viewer-1' })).balance, 5);
+  assert.equal((await db.collection('userextensioninventories').findOne({ channelID: channel, userID: 'saved-viewer' })).items[0].quantity, 1);
+
+  console.log('PASS: isolated DimaFX socket/auth/ready gating, queue/acks/TTS, actual process restart during synthesis, interrupted fulfillment + concurrent retries, saved-item idempotency, durable stale-job recovery, offline inventory protection');
 } finally {
+  if (fs.existsSync('/tmp/saas-fixtures/child-api.log')) console.log(fs.readFileSync('/tmp/saas-fixtures/child-api.log', 'utf8').slice(-3000));
   for (const ws of sockets) ws.close();
+  for (const child of children) if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await new Promise(resolve => child.once('exit', resolve)); }
   await redis.quit();
   await mongoose.disconnect();
 }

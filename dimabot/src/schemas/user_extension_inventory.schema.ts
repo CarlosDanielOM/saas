@@ -27,6 +27,7 @@ export interface IUserExtensionInventory {
     balance: number;
     config: IUserExtensionInventoryConfig;
     items: IUserExtensionInventoryItem[];
+    dimafxReceipts: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -59,7 +60,9 @@ const userExtensionInventorySchema = new Schema<IUserExtensionInventory>({
         quickPurchasePriority: { type: String, enum: ['credits_first', 'bits_first'], default: DEFAULT_EXTENSION_INVENTORY_CONFIG.quickPurchasePriority },
         quickPurchaseAction: { type: String, enum: ['use_now', 'save'], default: DEFAULT_EXTENSION_INVENTORY_CONFIG.quickPurchaseAction }
     },
-    items: { type: [inventoryItemSchema], default: [] }
+    items: { type: [inventoryItemSchema], default: [] },
+    // Durable receipts protect saved purchases and refunds from request/process retries.
+    dimafxReceipts: { type: [String], default: [] }
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
 });
