@@ -32,11 +32,16 @@ assert.match(publicId, /^[a-f0-9]{48}$/);
 let diagnostics=await request('GET', channel+'/connections');
 assert.equal(diagnostics.scenes[0].published,false);assert.deepEqual(diagnostics.scenes[0].sources,[]);
 await request('GET', `public/${publicId}`, undefined, 404, '');
+state.scenes[0].widgets.find(w=>w.kind==='clip').clipDesign='slash';
 const original = structuredClone(state.scenes[0].widgets);
 state.scenes[0].name = 'Stream test'; state.scenes[0].width = 800;
 state.designs[0].events.bits.widgets[1].text = '$(user) sent $(cheer.amount) bits';
 state = await request('PUT', channel, state); assert.deepEqual(state.scenes[0].widgets, original);
 await request('PUT', channel, { ...state, revision: 0 }, 409);
+for(const clipDesign of ['classic','third','tile','cinema','orbit','pill','hud','slash']) { const candidate=structuredClone(state);candidate.scenes[0].widgets.find(w=>w.kind==='clip').clipDesign=clipDesign;state=await request('PUT',channel,candidate);assert.equal(state.scenes[0].widgets.find(w=>w.kind==='clip').clipDesign,clipDesign); }
+for(const invalid of ['unknown',12,null]) {const candidate=structuredClone(state);candidate.scenes[0].widgets.find(w=>w.kind==='clip').clipDesign=invalid;await request('PUT',channel,candidate,400);}
+const misplaced=structuredClone(state);misplaced.scenes[0].widgets.find(w=>w.kind==='tts').clipDesign='classic';await request('PUT',channel,misplaced,400);
+
 const malicious = structuredClone(state); malicious.designs[0].events.follow.widgets[1].text = '$(upper $(ban someone))';
 await request('PUT', channel, malicious, 400);
 assert.equal(await ast.renderTemplate('$(user): $(cheer.amount) / $(upper hello)', channel, { user_name: '<img onerror=bad>', bits: 250 }), '<img onerror=bad> : 250 / HELLO');
@@ -45,7 +50,9 @@ for (const text of ['$(amount)', '$(tts hello)', '$(ban someone)', '$(set #count
 assert.deepEqual(await request('POST', channel + '/preview', { texts: ['$(user) / $(cheer.amount)'], kind: 'bits', user: 'Luna', amount: 150 }), ['Luna / 150']);
 state = await request('POST', `${channel}/scenes/${id}/publish`, { revision: state.revision });
 let published = await request('GET', `public/${publicId}`, undefined, 200, ''); assert.equal(published.channel, undefined); assert.equal(published.snapshot.width, 800);
+assert.equal(published.snapshot.widgets.find(w=>w.kind==='clip').clipDesign,'slash');
 const frozen = structuredClone(published.snapshot);
+state.scenes[0].widgets.find(w=>w.kind==='clip').clipDesign='third';
 state.designs[0].events.bits.widgets[1].text = 'New $(user) / $(cheer.amount)'; state.scenes[0].width = 1920;
 state = await request('PUT', channel, state);
 assert.deepEqual((await request('GET', `public/${publicId}`, undefined, 200, '')).snapshot, frozen);
@@ -172,15 +179,15 @@ await new Promise(r=>setTimeout(r,100));assert.equal(await redis.get(`twitch:${c
 // Stub only the external downloader process; the real clip queue, bridge and serving path execute.
 const child=require('node:child_process'),originalExec=child.exec;const {syncBuiltinESMExports}=await import('node:module');const {EventEmitter}=await import('node:events');
 let downloads=0;child.exec=(command)=>{downloads++;assert(command.includes('https://fixture.invalid/clip'));const proc=new EventEmitter();proc.stdout=new EventEmitter();proc.stderr=new EventEmitter();proc.kill=()=>{};setImmediate(async()=>{const file=command.match(/-o "([^"]+)"/)[1];await writeFile(file,'clip-fixture-bytes');proc.emit('exit',0);});return proc;};syncBuiltinESMExports();
-try {await pubSubManager.publishClipRequest(channel,{clipID:'clip-producer-fixture',clipUrl:'https://fixture.invalid/clip',duration:2,title:'Producer fixture',streamerLogin:'fixture'});await c.wait(m=>m.includes('Producer fixture'));await new Promise(r=>setTimeout(r,100));assert.equal(downloads,1,'multiple clients and publications must not duplicate clip subscriptions');}
+try {await pubSubManager.publishClipRequest(channel,{clipID:'clip-producer-fixture',clipUrl:'https://fixture.invalid/clip',duration:2,title:'Producer fixture',streamerLogin:'fixture',streamer:'Fixture streamer',game:'Fixture game',description:'Fixture caption',profileImage:'https://fixture.invalid/avatar.png',streamerColor:'#22c55e'});await c.wait(m=>m.includes('Producer fixture'));await new Promise(r=>setTimeout(r,100));assert.equal(downloads,1,'multiple clients and publications must not duplicate clip subscriptions');}
 finally{child.exec=originalExec;syncBuiltinESMExports();}
 await c.wait(m=>m.includes('Producer fixture'));
 const produced=c.events().find(e=>e[0]==='overlay-event'&&e[1].media?.title==='Producer fixture')[1];
-const producedMedia=await request('GET',`public/${nextId}/events/${produced.id}`,undefined,200,'');assert.equal(await(await fetch(base+producedMedia.media.url)).text(),'clip-fixture-bytes');
+const producedMedia=await request('GET',`public/${nextId}/events/${produced.id}`,undefined,200,'');assert.deepEqual(producedMedia.media.clip,{streamer:'Fixture streamer',game:'Fixture game',description:'Fixture caption',profileImage:'https://fixture.invalid/avatar.png',streamerColor:'#22c55e'});assert.equal(await(await fetch(base+producedMedia.media.url)).text(),'clip-fixture-bytes');
 await clipQueueHandler.handleClipEnded(channel,'clip-producer-fixture');assert.equal(await redis.get(`twitch:${channel}:clip:processing`),null);
 await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:'free'}});
 await request('GET',channel+'/connections',undefined,403);
 await request('GET',channel,undefined,403);await request('GET',`public/${nextId}`,undefined,403,'');await c.wait(m=>m.includes('overlay-revoked'));
 c.ws.close();reconnect.ws.close();io.close();await unlink('/tmp/source-media-fixture');
-console.log('PASS Overlay Studio API: actual entrypoint, owner/Pro gates, CAS, strict schema/AST, canvas preservation, immutable publish, live journal alerts, independent clients, connection diagnostics, per-client media retention, reconnect, URL rotation and downgrade.');
+console.log('PASS Overlay Studio API: actual entrypoint, owner/Pro gates, CAS, strict schema/AST, canvas preservation, immutable publish, live journal alerts, independent clients, connection diagnostics, clip designs/metadata, per-client media retention, reconnect, URL rotation and downgrade.');
 process.exit(0);

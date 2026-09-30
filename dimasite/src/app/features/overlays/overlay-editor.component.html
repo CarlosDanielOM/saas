@@ -162,15 +162,19 @@
                           <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
                         }
                         @case ('clip') {
-                          <span class="clip-play"><lucide-icon [name]="icons.Play" [size]="22" aria-hidden="true" /></span>
-                          <div class="clip-caption"><small>{{ t('clipPreviewLabel') }}</small><strong>{{ t('clipPreviewText') }}</strong></div>
+                          <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" />
                         }
                       }
                     </div>
                     @for (event of mediaEvents(widget); track event.id) {
                       @if (event.media; as media) {
+                        @if (event.kind === 'clip') {
+                          <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [media]="media" [muted]="mediaMuted(event, widget.id)"
+                            (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
+                        } @else {
                         <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [playLabel]="t('tapToPlay')"
                           (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
+                        }
                       }
                     }
                     @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
@@ -219,6 +223,11 @@
               <button type="button" class="toolbar-button" (click)="openDesign(item.designId)">{{ t('editDesign') }}</button>
               <h3>{{ t('receiveEvents') }}</h3><div class="event-checks">@for (event of alertEvents; track event) { <label><input type="checkbox" [checked]="item.events?.includes(event)" (change)="toggleEvent(event)" />{{ t(event + 'Name') }}</label> }</div><p class="field-hint">{{ t('instanceHint') }}</p>
             </div>
+          }
+          @if (item.kind === 'clip') {
+            <label class="property-field"><span>{{ t('clipDesign') }}</span><select [attr.aria-label]="t('clipDesign')" [value]="item.clipDesign ?? 'classic'" (change)="selectClipDesign($event)">
+              @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }
+            </select></label><p class="field-hint">{{ t('clipDesignHint') }}</p>
           }
           @if (item.kind === 'text') {
             <label class="property-field"><span>{{ t('textTemplate') }}</span><textarea [value]="item.text" (input)="patchSelected({ text: value($event) })"></textarea></label>

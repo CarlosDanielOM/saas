@@ -3816,6 +3816,8 @@
     }
   },
   "overlayStudio": {
+    "clipDesign": "Clip design",
+    "clipDesignHint": "Choose the same designs as the Clips module. Classic and Third are free; paying users have all eight. Save your draft, then publish to update OBS.",
     "connectionsTitle": "OBS connection diagnostics",
     "connectionsScope": "Live browser sources for this overlay, including OBS and browser tabs. Updates every 5 seconds.",
     "connectionsRefresh": "Refresh status",

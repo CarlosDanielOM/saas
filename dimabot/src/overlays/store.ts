@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
 import { parseTemplate } from './ast.js';
 
 export class OverlayError extends Error { constructor(message: string, readonly status = 400) { super(message); } }
@@ -28,6 +28,10 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (!(nested ? ['text', 'image', 'video', 'animation'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video']).includes(kind)) throw new OverlayError('Invalid layer type');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
     if (w.name !== undefined) item.name = typeof w.name === 'string' && w.name.length <= 80 ? w.name : string(w.name, 80);
+    if (w.clipDesign !== undefined) {
+      if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');
+      item.clipDesign = w.clipDesign as OverlayWidget['clipDesign'];
+    }
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
     if (w.assetId) {

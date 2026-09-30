@@ -1,3 +1,4 @@
+import type { ClipMetadata } from '../../clips/clips.model';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subscription, map, of, switchMap, timeout } from 'rxjs';
@@ -9,6 +10,7 @@ import { ApiEnvelope, TriggerRecord } from '../../triggers/triggers.model';
 
 export interface TestChannel { id: string; login: string }
 export interface TestMedia {
+  clip?: ClipMetadata;
   url: string;
   type: 'video' | 'audio' | 'image';
   title: string;
@@ -88,14 +90,14 @@ export class OverlayTestMediaService {
     socket.on('connect_error', fail);
     socket.on('error', fail);
     socket.on('disconnect', fail);
-    socket.on('play-clip', (data: { clipID?: string; streamerLogin?: string; title?: string; duration?: number }) => {
+    socket.on('play-clip', (data: { clipID?: string; streamerLogin?: string; title?: string; duration?: number; streamer?: string; game?: string; description?: string; profileImage?: string; streamerColor?: string }) => {
       if (stopped || !requested || clipID || typeof data?.clipID !== 'string') return;
       if (data.streamerLogin?.toLowerCase() !== channel.login.toLowerCase()) return;
       clipID = data.clipID;
       timers.forEach(timer => clearTimeout(timer));
       timers.clear();
       ready({ url: `${base}/video/clip/${encodeURIComponent(channel.id)}?t=${Date.now()}`, type: 'video',
-        title: data.title || channel.login, volume: 1, duration: Math.min(30, Math.max(1, Number(data.duration) || 30)) });
+        title: data.title || channel.login, volume: 1, clip: { streamer: data.streamer || data.streamerLogin || channel.login, game: data.game || '', description: data.description || '', profileImage: data.profileImage, streamerColor: data.streamerColor }, duration: Math.min(30, Math.max(1, Number(data.duration) || 30)) });
     });
     later(fail, 120000);
     socket.connect();

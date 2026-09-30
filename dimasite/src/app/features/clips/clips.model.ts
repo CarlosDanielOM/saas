@@ -1,15 +1,9 @@
 export type ClipDesignStatus = 'stable' | 'beta' | 'alpha' | 'coming_soon';
 export type PlanTier = 'free' | 'premium' | 'pro';
 
-export type ClipDesignVariant =
-  | 'classic'
-  | 'third'
-  | 'tile'
-  | 'cinema'
-  | 'orbit'
-  | 'pill'
-  | 'hud'
-  | 'slash';
+export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'] as const;
+export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
+export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 
 export interface ClipDesign {
   id: string;

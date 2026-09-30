@@ -211,7 +211,9 @@ class ClipQueueHandler {
                 streamerColor: clipData.streamerColor
             };
 
-            await publishStudioMedia(channelID, 'clip', { type: 'video', title: clipData.title || '', volume: 1, duration: Math.min(30, Number(clipData.duration) || 30) }, `${downloadDir}/${channelID}-clip.mp4`, 'video/mp4');
+            await publishStudioMedia(channelID, 'clip', { type: 'video', title: clipData.title || '', volume: 1, duration: Math.min(30, Number(clipData.duration) || 30),
+                clip: { streamer: clipData.streamer || clipData.streamerLogin || '', game: clipData.game || '', description: clipData.description || '',
+                    profileImage: clipData.profileImage, streamerColor: clipData.streamerColor } }, `${downloadDir}/${channelID}-clip.mp4`, 'video/mp4');
             io.of(`/clip/${channelID}`).emit('play-clip', clipPayload);
             if (!io.of(`/clip/${channelID}`).sockets.size) await this.handleClipEnded(channelID, clipData.clipID);
             

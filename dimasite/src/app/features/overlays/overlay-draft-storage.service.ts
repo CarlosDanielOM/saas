@@ -1,3 +1,4 @@
+import { CLIP_DESIGN_VARIANTS } from '../clips/clips.model';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 import { ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
@@ -26,6 +27,7 @@ function validWidgets(value: unknown): value is OverlayWidget[] {
     && ['x', 'y', 'width', 'height'].every(key => finite(w[key]))
     && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
     && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
+    && (w['clipDesign'] === undefined || w['kind'] === 'clip' && CLIP_DESIGN_VARIANTS.includes(w['clipDesign'] as never))
     && (w['fontSize'] === undefined || finite(w['fontSize']))
     && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
 }

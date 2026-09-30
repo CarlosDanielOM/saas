@@ -1,18 +1,19 @@
+import type { ClipMetadata } from '../clips/clips.model';
 import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, effect, input, output, signal, viewChild } from '@angular/core';
-export interface TestMedia { url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
+export interface TestMedia { clip?: ClipMetadata; url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
 
 @Component({
   selector: 'app-overlay-media',
   template: `
     @if (media().type === 'image') {
-      <img [src]="media().url" [alt]="media().title" (load)="started.emit(undefined)" (error)="failed.emit()" />
+      <img [src]="media().url" [style.object-fit]="fit()" [alt]="media().title" (load)="started.emit(undefined)" (error)="failed.emit()" />
     } @else {
-      <video #player [src]="media().url" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
+      <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
         (canplay)="play()" (playing)="onPlaying()" (ended)="ended.emit()" (error)="failed.emit()"></video>
       @if (blocked()) { <button type="button" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation(); play()">{{ playLabel() }}</button> }
       @if (media().type === 'audio') { <span class="audio-label">{{ media().title }}</span> }
     }
-    <span class="media-title">{{ media().title }}</span>
+    @if (showTitle()) { <span class="media-title">{{ media().title }}</span> }
   `,
   styles: `
     :host { position:absolute; inset:0; display:block; overflow:hidden; border-radius:inherit; background:transparent }
@@ -27,6 +28,8 @@ export interface TestMedia { url: string; type: 'video' | 'audio' | 'image'; tit
 export class OverlayMediaComponent {
   readonly media = input.required<TestMedia>();
   readonly muted = input(false);
+  readonly showTitle = input(true);
+  readonly fit = input<'contain' | 'cover'>('contain');
   readonly playLabel = input.required<string>();
   readonly ended = output<void>();
   readonly failed = output<void>();

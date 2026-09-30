@@ -3816,6 +3816,8 @@
     }
   },
   "overlayStudio": {
+    "clipDesign": "Diseño de clips",
+    "clipDesignHint": "Elige los mismos diseños del módulo Clips. Classic y Third son gratuitos; los usuarios de pago tienen los ocho. Guarda el borrador y publícalo para actualizar OBS.",
     "connectionsTitle": "Diagnóstico de conexión con OBS",
     "connectionsScope": "Fuentes de navegador en vivo de este overlay, incluidas OBS y las pestañas del navegador. Se actualiza cada 5 segundos.",
     "connectionsRefresh": "Actualizar estado",

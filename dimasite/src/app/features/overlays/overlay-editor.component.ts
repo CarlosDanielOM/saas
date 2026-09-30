@@ -2,6 +2,9 @@ import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, comput
 import { Subscription } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, TestChannel, TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
+import { OverlayClipComponent } from './overlay-clip.component';
+import { ClipsService } from '../clips/clips.service';
+import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.model';
 import { OverlayMediaComponent } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
@@ -23,7 +26,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()' }
@@ -55,6 +58,8 @@ export class OverlayEditorComponent {
   readonly language = inject(LanguageService);
   private readonly theme = inject(ThemeService);
   readonly auth = inject(SessionAuthService);
+  private readonly clips = inject(ClipsService);
+  readonly clipDesigns = computed(() => this.clips.getDesigns({ channelID: this.channel, login: this.streamer, planTier: this.auth.getPlanTierForStreamer(this.streamer) }));
   private readonly testMedia = inject(OverlayTestMediaService);
   private readonly jobs = new Map<number, MediaJob>();
   private readonly channelChoice = signal('');
@@ -166,6 +171,11 @@ export class OverlayEditorComponent {
     this.scenes.update(all => all.map(s => s.id === this.sceneId() ? { ...s, ...changes } : s)); this.saved.set(false);
   }
   private patch(id: string, changes: Partial<OverlayWidget>): void { this.updateWidgets(all => all.map(w => w.id === id ? { ...w, ...changes } : w)); }
+  selectClipDesign(event: Event): void {
+    const design = this.value(event) as ClipDesignVariant;
+    if (this.selected()?.kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(design) || this.clipDesigns().find(d => d.variant === design)?.isLocked !== false) return;
+    this.patchSelected({ clipDesign: design });
+  }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
   useAsset(asset: DesignAsset): void {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });

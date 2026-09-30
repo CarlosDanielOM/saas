@@ -1,0 +1,11 @@
+:host { display:block; position:absolute; inset:0; overflow:hidden; font-family:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif; font-size:16px }
+.clip-frame { position:relative; width:100%; height:100%; overflow:hidden; background:transparent }
+.clip-design { position:absolute; left:50%; top:50%; width:800px; height:225px; transform-origin:center; color:white }
+.skin__video { position:relative; background:transparent }
+.skin__avatar { container-type:size }
+.skin__avatar img,.skin__initials { display:block; width:100%; height:100%; object-fit:cover; border-radius:inherit }
+.skin__initials { display:grid; place-items:center; color:white; background:color-mix(in srgb,var(--clip-accent) 65%,#14151a); font-size:42cqmin; font-weight:800; line-height:1 }
+.clip-placeholder { display:block; width:100%; height:100%; background:radial-gradient(ellipse at 25% 25%,color-mix(in srgb,var(--clip-accent) 50%,transparent),transparent 60%),#14151a }
+.skin__kicker,.skin__name,.skin__copy,.skin__title { margin:0; overflow-wrap:anywhere; line-height:1.3 }
+.skin__meta { overflow:hidden }
+.skin__kicker { color:#e9d5ff!important }

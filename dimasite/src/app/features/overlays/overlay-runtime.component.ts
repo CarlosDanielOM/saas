@@ -3,6 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { OverlayApi, Snapshot } from './overlay-api.service';
+import { OverlayClipComponent } from './overlay-clip.component';
 import { OverlayMediaComponent, TestMedia } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
@@ -10,7 +11,7 @@ import type { AlertEvent, AlertLayout, EventKind, OverlayWidget } from './overla
 interface Event { id: string; kind: EventKind; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
-  selector: 'app-overlay-runtime', imports: [OverlayMediaComponent, OverlayLayerComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-overlay-runtime', imports: [OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text'].includes(w.kind)) {
@@ -20,7 +21,12 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
         @for (w of job.widgets; track w.id) {
           <div class="placement" [attr.data-event]="job.event.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
             @if (job.event.media; as media) {
+              @if (job.event.kind === 'clip') {
+                <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="job.widgets[0].id !== w.id"
+                  (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
+              } @else {
               <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
+              }
               @if (job.event.kind === 'tts') { <div class="speech-text">{{ job.event.text }}</div> }
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {

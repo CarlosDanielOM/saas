@@ -11,7 +11,8 @@ import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { EVENT_KINDS, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
 
-export interface LiveMedia { type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
+export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
+export interface LiveMedia { clip?: ClipMetadata; type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
 export interface LiveEvent { id: string; kind: EventKind; media?: LiveMedia; text?: string }
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';

@@ -1,3 +1,5 @@
+export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'] as const;
+export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
 export type WidgetKind = 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation';
@@ -6,7 +8,7 @@ export interface OverlayWidget {
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
-  designId?: string; events?: AlertEvent[]; text?: string;
+  clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
 }
 export interface AlertLayout { duration: number; widgets: OverlayWidget[] }
 export interface AlertDesign {
