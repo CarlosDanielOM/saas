@@ -12,6 +12,7 @@ import { runChatModeration, invalidateModerationSettingsCache } from '/app/dist/
 import { grantPermit } from '/app/dist/utils/moderation/permit.js';
 import { chatterMarkerID, claimFirstObservedMessage, claimSpamReviewBudget, SPAM_RULE_ID } from '/app/dist/utils/moderation/spam.js';
 import ChatHistory from '/app/dist/classes/chat_history.js';
+import { DEFAULT_SPAM_CATEGORIES } from '/app/dist/utils/moderation/spam_categories.js';
 
 const mongo = await getMongoDBConnection('spam-protection-check');
 const redis = await getDragonflyClient('spam-protection-check');
@@ -160,7 +161,7 @@ try {
         await until(async () => (await api('GET', 'spam-free/settings')).status === 200, 'API ready');
         assert.equal((await api('GET', 'spam-free/settings', null, null)).status, 401);
         const settings = await (await api('GET', 'spam-free/settings')).json();
-        assert.deepEqual(settings.data.spamProtection, { enabled: true, reviewAllMessages: false });
+        assert.deepEqual(settings.data.spamProtection, { enabled: true, reviewAllMessages: false, categories: DEFAULT_SPAM_CATEGORIES, thresholdPercent: 90 });
         assert.equal((await api('PUT', 'spam-free/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: true } })).status, 403);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { enabled: 'yes', reviewAllMessages: false } })).status, 400);
         assert.equal((await api('PUT', 'spam-free/settings', { enabled: true, rules: [], spamProtection: { enabled: false, reviewAllMessages: false } })).status, 200);
@@ -171,7 +172,57 @@ try {
         assert.ok(view.data.decisions.some(row => row.reviewSource === 'first_message' && row.charge.credits === 0));
         assert.equal((await api('GET', 'spam-free/settings', null, 'paid-owner')).status, 403);
         assert.equal((await api('PUT', 'spam-premium/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: true } }, 'paid-owner')).status, 200);
+        const protection = { enabled: true, reviewAllMessages: false, categories: ['ads'], thresholdPercent: 90 };
+        for (const invalid of [{ categories: ['unknown'] }, { categories: ['ads', 'ads'] }, { categories: null }, { thresholdPercent: 79 }, { thresholdPercent: 101 }, { thresholdPercent: '90' }]) {
+            assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, ...invalid } })).status, 400);
+        }
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, thresholdPercent: 85 } })).status, 403);
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: protection })).status, 200);
+        assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.categories, ['ads']);
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { enabled: true, reviewAllMessages: false } })).status, 200);
+        assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.categories, ['ads'], 'legacy client preserves selected categories');
+        assert.equal((await api('PUT', 'spam-premium/settings', { rules: [], spamProtection: { ...protection, categories: ['profanity', 'insults'], thresholdPercent: 85 } }, 'paid-owner')).status, 200);
+        const paidSettings = (await (await api('GET', 'spam-premium/settings', null, 'paid-owner')).json()).data.spamProtection;
+        assert.deepEqual(paidSettings.categories, ['profanity', 'insults']);
+        assert.equal(paidSettings.thresholdPercent, 85);
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, categories: [] } })).status, 200);
+
     }
+
+    // Score each category separately and enforce only the channel's selected set.
+    await seed('spam-selected', 'free', { enabled: true, reviewAllMessages: false, categories: ['ads'] });
+    assert.equal((await review('spam-selected', 'disabled-selfpromo', 'Follow my channel at twitch.tv/mine', 'promo')).actionTaken, false);
+    assert.equal((await decision('disabled-selfpromo')).scores.self_promotion, undefined);
+    assert.equal((await review('spam-selected', 'disabled-profanity', 'What a damn game', 'swear')).actionTaken, false);
+    assert.equal((await decision('disabled-profanity')).scores.profanity, undefined);
+    assert.equal((await review('spam-selected', 'selected-ad', 'Buy my service now!', 'seller')).actionTaken, true);
+    await until(async () => (await decision('selected-ad'))?.consequence.status === 'executed', 'selected category ban');
+    for (const [category, text] of [['spam', 'SCAM SPAM claim a fake prize'], ['self_promotion', 'Follow my channel'], ['profanity', 'What a damn game'], ['insults', 'You are a worthless idiot']]) {
+        await seed(`only-${category}`, 'free', { enabled: true, reviewAllMessages: false, categories: [category] });
+        assert.equal((await review(`only-${category}`, `only-${category}`, text, category)).actionTaken, true, category);
+        assert.equal((await decision(`only-${category}`)).scores[category], 0.995);
+        assert.equal(Object.keys((await decision(`only-${category}`)).scores).length, 3);
+    }
+    await seed('spam-none', 'free', { enabled: true, reviewAllMessages: true, categories: [] });
+    assert.equal((await review('spam-none', 'none-ad', 'Want to buy viewers?', 'not-consumed')).actionTaken, false);
+    assert.equal(await decision('none-ad'), null);
+    assert.equal(await Chatters.findById(chatterMarkerID('spam-none', 'not-consumed')), null, 'no categories does not consume first review');
+    await seed('spam-safe');
+    assert.equal((await review('spam-safe', 'safe-wins', 'Want to buy viewers? SAFE-WINS')).actionTaken, false);
+    assert.equal((await decision('safe-wins')).verdict, 'allow');
+    assert.equal((await decision('safe-wins')).scores.safe, 0.99);
+    assert.equal((await review('spam-safe', 'tied', 'Want to buy viewers? TIED', 'tied')).actionTaken, false);
+    assert.equal((await decision('tied')).verdict, 'uncertain');
+    await seed('spam-threshold', 'premium', { enabled: true, reviewAllMessages: true, categories: ['ads'], thresholdPercent: 85 });
+    assert.equal((await review('spam-threshold', 'custom-first', 'Want to buy viewers? BORDERLINE')).actionTaken, true);
+    assert.equal((await decision('custom-first')).charge.credits, 0, 'paid first review remains free with custom threshold');
+    await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'spam-threshold' }, { $set: { plan_tier: 'free' } });
+    assert.equal((await review('spam-threshold', 'downgraded-threshold', 'Want to buy viewers? BORDERLINE', 'another')).actionTaken, false);
+    assert.equal((await decision('downgraded-threshold')).rule.semantic.thresholdPercent, 90, 'free downgrade uses default threshold');
+    // Existing channels with no new fields acquire enabled defaults without migration.
+    await seed('spam-old-settings');
+    await Settings.updateOne({ channelID: 'spam-old-settings' }, { $unset: { spamProtection: '' } });
+    assert.equal((await review('spam-old-settings', 'old-settings-ad', 'Want to buy viewers?')).actionTaken, true);
 
     for (let i = 0; i < 30; i++) assert.equal(await claimSpamReviewBudget('budget-channel'), true);
     assert.equal(await claimSpamReviewBudget('budget-channel'), false);
@@ -184,7 +235,7 @@ try {
     assert.equal(await decision('budget-skipped'), null, 'budget blocks queue admission');
     assert.equal(await Decisions.countDocuments({ reviewSource: 'first_message', 'charge.status': { $ne: 'none' } }), 0);
     assert.equal(await Actions.countDocuments({ ruleID: SPAM_RULE_ID, action: { $ne: 'ban' } }), 0);
-    console.log('PASS free first-message reviews, zero credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
+    console.log('PASS free first-message reviews, zero credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }

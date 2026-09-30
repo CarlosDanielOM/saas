@@ -1,3 +1,5 @@
+export type SpamCategory = 'spam' | 'ads' | 'self_promotion' | 'profanity' | 'insults';
+export interface SpamProtection { enabled: boolean; reviewAllMessages: boolean; categories?: SpamCategory[]; thresholdPercent?: number }
 export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';
 export type ModerationAction = 'off' | 'warn' | 'delete' | 'timeout' | 'ban';
 export type CapsThresholdMode = 'count' | 'percentage';
@@ -59,7 +61,7 @@ export interface ModerationDecisionEntry {
   mode: 'literal' | 'regex' | 'semantic';
   verdict: 'allow' | 'violation' | 'uncertain';
   status: string;
-  scores: { violation?: number } | null;
+  scores: Partial<Record<SpamCategory | 'safe' | 'violation', number>> | null;
   consequence: { status: string; action?: ModerationAction; offenseNumber?: number; success?: boolean };
   charge: { credits: number };
   createdAt: string;
@@ -70,7 +72,7 @@ export interface ModerationSettings {
   channelID: string;
   channel: string;
   enabled: boolean;
-  spamProtection?: { enabled: boolean; reviewAllMessages: boolean };
+  spamProtection?: SpamProtection;
   offenseWindowSeconds: number;
   rules: ModerationRule[];
   settingsVersion: number;
@@ -113,7 +115,7 @@ export type ModerationLogsResponse = ApiEnvelope<{
 
 export interface ModerationSettingsPayload {
   enabled: boolean;
-  spamProtection?: { enabled: boolean; reviewAllMessages: boolean };
+  spamProtection?: SpamProtection;
   offenseWindowSeconds: number;
   rules: ModerationRule[];
 }

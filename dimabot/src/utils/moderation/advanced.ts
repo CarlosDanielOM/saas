@@ -1,3 +1,4 @@
+import type { SpamCategory } from './spam_categories.js';
 import { randomUUID } from 'node:crypto';
 import RE2 from 're2';
 import { compileBlacklistPattern } from './rules/blacklist.rule.js';
@@ -10,6 +11,8 @@ export interface ModerationPattern {
     ignoreCase: boolean;
 }
 export interface SemanticPolicy {
+    categories?: SpamCategory[];
+    broadcasterInvitation?: boolean;
     enabled: boolean;
     thresholdPercent?: number;
     policy: string;

@@ -11,6 +11,7 @@ export function semanticPrice(inputTokens: number) {
 
 import { ALLOW_THRESHOLD, SEMANTIC_MODEL } from './advanced.js';
 import { SPAM_RULE_ID } from './spam.js';
+import { categoryQuestions, type SpamCategory } from './spam_categories.js';
 
 export interface SemanticResult {
     verdict: 'allow' | 'violation' | 'uncertain';
@@ -46,11 +47,35 @@ export function parseSemanticResponse(raw: unknown, thresholdPercent = 85): Sema
     };
 }
 
-export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>) {
+export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thresholdPercent = 90): SemanticResult {
+    if (!raw || typeof raw !== 'object' || !categories.length) return fallbackResult('invalid_response');
+    const data = raw as Record<string, any>;
+    const scores: Record<string, number> = {};
+    for (const name of [...categories, 'unsafe']) {
+        const answer = data.answers?.[name];
+        if (answer?.type !== 'noul' || typeof answer.noul !== 'number' || !Number.isFinite(answer.noul) || answer.noul < 0 || answer.noul > 1) return fallbackResult('invalid_response');
+        scores[name] = answer.noul;
+    }
+    // P(none selected) is the complement of the model's P(any selected).
+    // Asking the positive behavior avoids an unreliable negated classifier prompt.
+    scores.safe = 1 - scores.unsafe;
+    delete scores.unsafe;
+    const highest = Math.max(...categories.map(category => scores[category]));
+    const result = parseSemanticResponse({ ...data, answers: { violation: { type: 'noul', noul: highest } } }, thresholdPercent);
+    if (result.status === 'invalid_response' || result.status === 'invalid_configuration') return result;
+    // These are independent behavior probabilities, not an exclusive distribution.
+    // Safe winning vetoes enforcement; ties and low confidence never cause bans.
+    const verdict = scores.safe > highest ? 'allow'
+        : scores.safe < highest && highest >= thresholdPercent / 100 ? 'violation' : 'uncertain';
+    return { ...result, verdict, status: verdict === 'uncertain' ? 'uncertain' : 'completed', scores: { ...scores, violation: highest } };
+}
+
+export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: string } {
     const semantic = decision.rule.semantic!;
     return {
         model: SEMANTIC_MODEL,
-        questions: {
+        questions: decision.rule.id === SPAM_RULE_ID && semantic.categories
+            ? categoryQuestions(semantic.categories, semantic.broadcasterInvitation === true) : {
             violation: {
                 type: 'noul',
                 instructions: 'Does the final message exhibit the described behavior?'
@@ -81,7 +106,11 @@ export async function evaluateSemanticDecision(decision: IModerationDecision): P
             signal: AbortSignal.timeout(remaining)
         });
         if (!response.ok) return fallbackResult(response.status === 429 ? 'rate_limited' : 'unavailable');
-        return parseSemanticResponse(await response.json(), decision.rule.semantic?.thresholdPercent ?? 85);
+        const raw = await response.json();
+        const semantic = decision.rule.semantic;
+        return decision.rule.id === SPAM_RULE_ID && semantic?.categories
+            ? parseSpamResponse(raw, semantic.categories, semantic.thresholdPercent ?? 90)
+            : parseSemanticResponse(raw, semantic?.thresholdPercent ?? 85);
     } catch (error) {
         return fallbackResult(Date.now() >= decision.deadline.getTime() || (error instanceof Error && error.name === 'TimeoutError') ? 'timeout' : 'unavailable');
     }

@@ -1,3 +1,4 @@
+import { DEFAULT_SPAM_THRESHOLD } from '../utils/moderation/spam_categories.js';
 import { rulePatterns } from '../utils/moderation/variations.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { ChannelModerationSettingsSchema, type IChannelModerationSettings, type IModerationRule } from '../schemas/channel_moderation_settings.schema.js';
@@ -97,10 +98,11 @@ export interface ChatModerationResult {
 }
 
 async function reviewPromotionalSpam(channelID: string, message: IChatMessage, identity: UserIdentity, settings: IChannelModerationSettings, receivedAt: number): Promise<boolean> {
-    if (!spamProtectionSettings(settings).enabled || ruleExempt(spamRule, identity) || !message.message_id) return false;
+    const protection = spamProtectionSettings(settings);
+    if (!protection.enabled || !protection.categories.length || ruleExempt(spamRule, identity) || !message.message_id) return false;
     const first = await claimFirstObservedMessage(channelID, message.chatter_user_id!);
     let tier: unknown;
-    if (!first && spamProtectionSettings(settings).reviewAllMessages) {
+    if ((!first && protection.reviewAllMessages) || protection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         tier = owner?.plan_tier;
     }
@@ -117,7 +119,7 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     let decision = await createModerationDecision({
         channelID, userID: message.chatter_user_id!, username: message.chatter_user_name || message.chatter_user_login || '',
         messageID: message.message_id, messageText: message.message.text || '',
-        ruleID: spamRule.id, rule: spamRuleForContext(context), settingsVersion: settings.settingsVersion,
+        ruleID: spamRule.id, rule: spamRuleForContext(context, { spamProtection: { ...protection, thresholdPercent: paidModeration(tier) ? protection.thresholdPercent : DEFAULT_SPAM_THRESHOLD } }), settingsVersion: settings.settingsVersion,
         matches: [], context, mode: 'semantic', reviewSource,
         deadline: new Date(receivedAt + SEMANTIC_DEADLINE_MS)
     });
@@ -130,7 +132,7 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     }
     const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
     let stillPaid = true;
-    if (reviewSource === 'spam_continuous') {
+    if (reviewSource === 'spam_continuous' || decision.rule.semantic?.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         stillPaid = paidModeration(owner?.plan_tier);
     }

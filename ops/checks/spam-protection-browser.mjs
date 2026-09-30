@@ -37,7 +37,7 @@ try {
                 }
                 data = settings;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [{ username: 'adbot', ruleID: 'builtin-spam-protection', ruleType: 'blacklist', action: 'ban', offenseNumber: 1, messageExcerpt: 'Buy viewers!', reason: 'Unsolicited ads', success: true, createdAt: new Date().toISOString() }], total: 1, limit: 10, skip: 0 };
-            else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'first', username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'violation', status: 'completed', scores: { violation: 0.995 }, consequence: { action: 'ban', offenseNumber: 1, success: true }, charge: { credits: 0 }, createdAt: new Date().toISOString() }] };
+            else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'first', username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'violation', status: 'completed', scores: { violation: 0.995, spam: 0.995, ads: 0.96, self_promotion: 0.01, safe: 0.01 }, consequence: { action: 'ban', offenseNumber: 1, success: true }, charge: { credits: 0 }, createdAt: new Date().toISOString() }] };
             return route.fulfill({ status: 200, json: { error: false, status: 200, data } });
         });
         if (context.routeWebSocket) await context.routeWebSocket('**/*', socket => socket.close());
@@ -48,29 +48,41 @@ try {
         const host = page.locator('app-moderation-page');
         const tile = host.locator('.lf-spam-protection');
         await tile.waitFor({ timeout: 60000 });
-        const first = tile.locator('input').nth(0);
-        const continuous = tile.locator('input').nth(1);
+        const first = tile.locator('[data-spam-toggle=enabled]');
+        const continuous = tile.locator('[data-spam-toggle=continuous]');
         assert.equal(await first.isChecked(), true);
         assert.equal(await first.isEnabled(), true, 'free protection editable on every tier');
+        for (const category of ['spam', 'ads', 'self_promotion']) assert.equal(await tile.locator(`[data-spam-category=${category}]`).isChecked(), true);
+        for (const category of ['profanity', 'insults']) assert.equal(await tile.locator(`[data-spam-category=${category}]`).isChecked(), false);
         assert.equal(await continuous.isChecked(), false);
         assert.equal(await continuous.isDisabled(), tier === 'free', 'continuous review tier gate');
         assert.match(await tile.innerText(), language === 'en' ? /never use AI credits/ : /nunca consumen créditos/);
         const save = host.locator('.lf-save-bar button');
         await first.uncheck();
-        await page.waitForFunction(() => document.querySelector('.lf-spam-protection input:nth-of-type(1)')
-            && document.querySelectorAll('.lf-spam-protection input')[1]?.disabled);
+        await page.waitForFunction(() => document.querySelector('[data-spam-toggle=continuous]')?.disabled);
         await save.click();
         await page.waitForFunction(() => document.querySelector('app-moderation-page .lf-save-bar button')?.disabled);
-        assert.deepEqual(saves.at(-1).spamProtection, { enabled: false, reviewAllMessages: false });
+        assert.deepEqual(saves.at(-1).spamProtection, { enabled: false, reviewAllMessages: false, categories: ['spam', 'ads', 'self_promotion'], thresholdPercent: 90 });
         await first.check();
-        if (tier !== 'free') await continuous.check();
+        await tile.locator('[data-spam-category=spam]').uncheck();
+        await tile.locator('[data-spam-category=self_promotion]').uncheck();
+        await tile.locator('[data-spam-category=insults]').check();
+        const threshold = tile.locator('[data-spam-threshold]');
+        assert.equal(await threshold.isDisabled(), tier === 'free');
+        if (tier !== 'free') {
+            await continuous.check();
+            await threshold.fill('85');
+        }
         await save.click();
         await page.waitForFunction(() => document.querySelector('app-moderation-page .lf-save-bar button')?.disabled);
-        assert.deepEqual(saves.at(-1).spamProtection, { enabled: true, reviewAllMessages: tier !== 'free' });
+        assert.deepEqual(saves.at(-1).spamProtection, { enabled: true, reviewAllMessages: tier !== 'free', categories: ['ads', 'insults'], thresholdPercent: tier === 'free' ? 90 : 85 });
         await page.reload();
         await tile.waitFor();
         assert.equal(await first.isChecked(), true);
         assert.equal(await continuous.isChecked(), tier !== 'free', 'saved setting survives reload');
+        assert.equal(await tile.locator('[data-spam-category=insults]').isChecked(), true);
+        assert.equal(await tile.locator('[data-spam-category=self_promotion]').isChecked(), false);
+        assert.equal(await threshold.inputValue(), tier === 'free' ? '90' : '85');
         for (const width of [320, 390, 1280]) {
             await page.setViewportSize({ width, height: width === 1280 ? 900 : 844 });
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false, `${tier}/${language} overflow ${width}`);
@@ -79,8 +91,10 @@ try {
         const axe = await new AxeBuilder({ page }).include('app-moderation-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
         assert.deepEqual(axe.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) })), []);
         assert.match(await host.innerText(), language === 'en' ? /First-message protection · Free/ : /Protección del primer mensaje · Gratis/);
+        assert.match(await host.locator('.lf-spam-score').allTextContents().then(items => items.join(' ')), /99.5%/);
+        assert.equal(await host.locator('.lf-spam-score').count(), 4);
         assert.deepEqual(errors, []);
         await context.close();
     }
-    console.log('PASS first-message controls, free/Premium/Pro gates, legacy defaults, save/reload, decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
+    console.log('PASS first-message controls, free/Premium/Pro gates, legacy defaults, category defaults/selection, paid thresholds, save/reload, category scores/decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
 } finally { await browser.close(); }

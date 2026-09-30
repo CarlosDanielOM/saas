@@ -1093,15 +1093,29 @@
   },
   "moderation": {
     "spam": {
-      "title": "Protección contra anuncios y autopromoción",
+      "title": "Protección del chat",
       "free": "Primer mensaje · Gratis en todos los planes",
-      "description": "Revisa el primer mensaje que Dima observa de cada usuario en este canal para detectar anuncios y autopromoción no solicitados. Las revisiones del primer mensaje nunca consumen créditos de IA. El registro se conserva tras reiniciar el bot.",
-      "action": "La publicidad claramente no solicitada provoca un baneo inmediato. Se permiten las citas de anuncios, los avisos de estafas y la promoción invitada. Las revisiones dudosas se permiten y se registran. La protección funciona mientras el filtro del chat esté activado; se aplican límites de revisión.",
+      "description": "Revisa el primer mensaje que Dima observa de cada usuario en este canal para detectar las conductas seleccionadas. Las revisiones del primer mensaje nunca consumen créditos de IA. El registro se conserva tras reiniciar el bot.",
+      "action": "Una conducta seleccionada que supere el umbral provoca un baneo inmediato solo si su puntuación supera la de contenido seguro. Las revisiones dudosas se permiten y se registran. La protección funciona mientras el filtro del chat esté activado; se aplican límites de revisión.",
       "continuous": "Revisar los mensajes posteriores",
       "paid": "Premium · Pro",
-      "continuousDescription": "Revisa también los mensajes posteriores para detectar publicidad y autopromoción. Disponible en Premium y Pro, con consumo de créditos de IA. Las revisiones del primer mensaje siguen siendo gratuitas.",
+      "continuousDescription": "Revisa también los mensajes posteriores para detectar las conductas seleccionadas. Disponible en Premium y Pro, con consumo de créditos de IA. Las revisiones del primer mensaje siguen siendo gratuitas.",
       "firstDecision": "Protección del primer mensaje · Gratis",
-      "continuousDecision": "Protección continua contra anuncios"
+      "continuousDecision": "Protección continua del chat",
+      "categoriesTitle": "Qué detectar",
+      "categoriesHint": "El spam, los anuncios y la autopromoción están seleccionados por defecto. Las palabrotas y los insultos son opcionales. Si no seleccionas ninguna categoría, estas revisiones se detienen. Tus otras reglas de moderación siguen vigentes.",
+      "threshold": "Confianza para banear (%)",
+      "thresholdHint": "Por defecto: 90 %. Premium y Pro pueden elegir entre 80 y 100 %. Los valores altos reducen los baneos automáticos. Una puntuación segura superior siempre impide el baneo. Los planes gratis usan el 90 %.",
+      "thresholdInvalid": "La confianza para banear debe ser un número entre 80 y 100.",
+      "scoresHint": "Son probabilidades independientes; no suman el 100 %. Seguro significa que no aparece ninguna de las conductas seleccionadas.",
+      "categories": {
+        "spam": "Spam / estafas",
+        "ads": "Anuncios / ventas",
+        "self_promotion": "Autopromoción",
+        "profanity": "Palabrotas",
+        "insults": "Insultos",
+        "safe": "Seguro para las categorías seleccionadas"
+      }
     },
     "badge": "Filtro de chat",
     "title": "Moderación del Chat",

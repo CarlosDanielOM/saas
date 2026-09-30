@@ -24,6 +24,8 @@ import {
 } from 'rxjs';
 
 import type {
+  SpamCategory,
+  SpamProtection,
   VariationMode,
   GeneratedVariation,
   ModerationAction,
@@ -428,6 +430,9 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.errorMessage.set(null);
 
     try {
+      if (!Number.isFinite(this.spamOptions(currentSettings).thresholdPercent) || this.spamOptions(currentSettings).thresholdPercent! < 80 || this.spamOptions(currentSettings).thresholdPercent! > 100) {
+        throw new Error(this.t('moderation.spam.thresholdInvalid'));
+      }
       if (currentSettings.rules.some(rule => rule.semantic?.enabled && !this.validSemanticThreshold(rule.semantic.thresholdPercent ?? 85))) {
         throw new Error(this.t('moderation.advanced.thresholdInvalid'));
       }
@@ -442,7 +447,7 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
       const response = await firstValueFrom(
         this.moderationApi.updateSettings(channelID, {
           enabled: currentSettings.enabled,
-          spamProtection: { enabled: currentSettings.spamProtection?.enabled !== false, reviewAllMessages: currentSettings.spamProtection?.reviewAllMessages === true },
+          spamProtection: this.spamOptions(currentSettings),
           offenseWindowSeconds: currentSettings.offenseWindowSeconds,
           // Generated artifacts are resolved server-side; avoid echoing large previews.
           rules: currentSettings.rules.map(rule => ({ ...rule, variations: rule.variations ? { mode: rule.variations.mode, allowSpaces: rule.variations.allowSpaces ?? false, entries: [], overrides: this.activeVariationOverrides(rule) } : undefined }))
@@ -474,11 +479,47 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
     this.settings.update((s) => (s ? { ...s, enabled } : s));
   }
 
+  readonly spamCategories: SpamCategory[] = ['spam', 'ads', 'self_promotion', 'profanity', 'insults'];
+
+  spamOptions(settings: ModerationSettings): SpamProtection {
+    return { enabled: settings.spamProtection?.enabled !== false, reviewAllMessages: settings.spamProtection?.reviewAllMessages === true,
+      categories: settings.spamProtection?.categories ?? ['spam', 'ads', 'self_promotion'],
+      thresholdPercent: settings.spamProtection?.thresholdPercent ?? 90 };
+  }
+
+  spamCategoryEnabled(category: SpamCategory): boolean {
+    const settings = this.settings();
+    return !!settings && this.spamOptions(settings).categories!.includes(category);
+  }
+
+  updateSpamCategory(category: SpamCategory, enabled: boolean): void {
+    if (!this.canManage()) return;
+    this.settings.update(settings => {
+      if (!settings) return settings;
+      const options = this.spamOptions(settings);
+      const selected = new Set(options.categories);
+      if (enabled) selected.add(category); else selected.delete(category);
+      return { ...settings, spamProtection: { ...options, categories: this.spamCategories.filter(item => selected.has(item)) } };
+    });
+  }
+
+  updateSpamThreshold(value: string): void {
+    if (!this.canManage() || !this.hasPaidModeration()) return;
+    this.settings.update(settings => settings ? { ...settings, spamProtection: {
+      ...this.spamOptions(settings), thresholdPercent: value.trim() ? Number(value) : Number.NaN
+    } } : settings);
+  }
+
+  spamScores(decision: ModerationDecisionEntry): Array<{ category: SpamCategory | 'safe'; score: number }> {
+    const categories: Array<SpamCategory | 'safe'> = [...this.spamCategories, 'safe'];
+    return categories.flatMap(category => typeof decision.scores?.[category] === 'number'
+      ? [{ category, score: decision.scores[category]! }] : []);
+  }
+
   updateSpamProtection(field: 'enabled' | 'reviewAllMessages', enabled: boolean): void {
     if (!this.canManage() || (field === 'reviewAllMessages' && enabled && !this.hasPaidModeration())) return;
     this.settings.update(settings => settings ? { ...settings, spamProtection: {
-      enabled: settings.spamProtection?.enabled !== false,
-      reviewAllMessages: settings.spamProtection?.reviewAllMessages === true,
+      ...this.spamOptions(settings),
       [field]: enabled
     } } : settings);
   }

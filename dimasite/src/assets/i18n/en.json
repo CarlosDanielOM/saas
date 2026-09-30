@@ -1093,15 +1093,29 @@
   },
   "moderation": {
     "spam": {
-      "title": "Ad and self-promotion protection",
+      "title": "Chat protection",
       "free": "First message · Free on every plan",
-      "description": "Reviews each chatter’s first message Dima observes in this channel for unsolicited ads and self-promotion. First-message reviews never use AI credits. Tracking continues across bot restarts.",
-      "action": "Clear unsolicited advertising results in an immediate ban. Quoted ads, scam reports and invited promotion are allowed. Uncertain reviews are allowed and logged. Protection runs while the chat filter is enabled; review limits apply.",
+      "description": "Reviews each chatter’s first message Dima observes in this channel for your selected behaviors. First-message reviews never use AI credits. Tracking continues across bot restarts.",
+      "action": "A selected behavior above the ban threshold results in an immediate ban only when its score exceeds the safe score. Uncertain reviews are allowed and logged. Protection runs while the chat filter is enabled; review limits apply.",
       "continuous": "Review subsequent messages",
       "paid": "Premium · Pro",
-      "continuousDescription": "Also review later messages for advertising and self-promotion. Available on Premium and Pro, using AI credits. First-message reviews stay free.",
+      "continuousDescription": "Also review later messages for your selected behaviors. Available on Premium and Pro, using AI credits. First-message reviews stay free.",
       "firstDecision": "First-message protection · Free",
-      "continuousDecision": "Continuous ad protection"
+      "continuousDecision": "Continuous chat protection",
+      "categoriesTitle": "What to detect",
+      "categoriesHint": "Spam, ads and self-promotion are selected by default. Profanity and insults are optional. Selecting none stops these reviews. Your separate moderation rules still apply.",
+      "threshold": "Ban confidence (%)",
+      "thresholdHint": "Default: 90%. Premium and Pro can choose 80–100%. Higher values reduce automatic bans. A higher safe score always prevents a ban. Free plans use 90%.",
+      "thresholdInvalid": "Ban confidence must be a number from 80 to 100.",
+      "scoresHint": "These are independent behavior probabilities; they do not add up to 100%. Safe means none of your selected behaviors.",
+      "categories": {
+        "spam": "Spam / scams",
+        "ads": "Ads / sales",
+        "self_promotion": "Self-promotion",
+        "profanity": "Profanity",
+        "insults": "Insults",
+        "safe": "Safe for selected categories"
+      }
     },
     "badge": "Chat filter",
     "title": "Chat Moderation",

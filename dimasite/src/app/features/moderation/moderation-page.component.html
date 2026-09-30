@@ -136,7 +136,7 @@
                 <span class="lf-chip lf-chip--ok">{{ t('moderation.spam.free') }}</span>
               </div>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="cfg.spamProtection?.enabled !== false"
+                <input type="checkbox" data-spam-toggle="enabled" [checked]="cfg.spamProtection?.enabled !== false"
                   (change)="updateSpamProtection('enabled', $any($event.target).checked)"
                   [disabled]="!canManage()" [attr.aria-label]="t('moderation.spam.title')" />
                 <span class="lf-switch__track" aria-hidden="true"></span>
@@ -144,13 +144,32 @@
             </div>
             <p class="lf-copy">{{ t('moderation.spam.description') }}</p>
             <p class="lf-note">{{ t('moderation.spam.action') }}</p>
+            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
+              <legend>{{ t('moderation.spam.categoriesTitle') }}</legend>
+              @for (category of spamCategories; track category) {
+                <label class="check-option">
+                  <input type="checkbox" [attr.data-spam-category]="category" [checked]="spamCategoryEnabled(category)"
+                    (change)="updateSpamCategory(category, $any($event.target).checked)" />
+                  <span>{{ t('moderation.spam.categories.' + category) }}</span>
+                </label>
+              }
+            </fieldset>
+            <p class="lf-note">{{ t('moderation.spam.categoriesHint') }}</p>
+            <label class="lf-field lf-field--narrow">
+              <span>{{ t('moderation.spam.threshold') }} · {{ t('moderation.spam.paid') }}</span>
+              <input type="number" data-spam-threshold min="80" max="100" step="any"
+                [value]="hasPaidModeration() ? (cfg.spamProtection?.thresholdPercent ?? 90) : 90"
+                (input)="updateSpamThreshold($any($event.target).value)"
+                [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false" />
+            </label>
+            <p class="lf-note">{{ t('moderation.spam.thresholdHint') }}</p>
             <div class="lf-row-head">
               <div>
                 <h3 class="lf-h3">{{ t('moderation.spam.continuous') }}</h3>
                 <span class="lf-chip lf-chip--gold">{{ t('moderation.spam.paid') }}</span>
               </div>
               <label class="lf-switch">
-                <input type="checkbox" [checked]="hasPaidModeration() && cfg.spamProtection?.reviewAllMessages === true"
+                <input type="checkbox" data-spam-toggle="continuous" [checked]="hasPaidModeration() && cfg.spamProtection?.reviewAllMessages === true"
                   (change)="updateSpamProtection('reviewAllMessages', $any($event.target).checked)"
                   [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false"
                   [attr.aria-label]="t('moderation.spam.continuous')" />
@@ -730,7 +749,13 @@
                       <p class="lf-note">{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</p>
                     }
                     <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
-                    @if (decision.scores?.violation !== undefined) {
+                    @for (score of spamScores(decision); track score.category) {
+                      <p class="lf-note lf-spam-score">{{ t('moderation.spam.categories.' + score.category) }}: {{ (score.score * 100).toFixed(1) }}%</p>
+                    }
+                    @if (spamScores(decision).length) {
+                      <p class="lf-note">{{ t('moderation.spam.scoresHint') }}</p>
+                    }
+                    @if (!spamScores(decision).length && decision.scores?.violation !== undefined) {
                       <p class="lf-note">{{ t('moderation.advanced.modelScore') }}: {{ ((decision.scores?.violation ?? 0) * 100).toFixed(1) }}%</p>
                     }
                     @if (decision.consequence.action) {

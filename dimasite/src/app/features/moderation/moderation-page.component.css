@@ -889,3 +889,17 @@
 .variation-spacing { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .variation-spacing > .lf-note { grid-column: 1 / -1; margin: 0; }
 .variation-spacing .lf-switch { min-height: 44px; }
+
+.lf-spam-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  border: 0;
+  padding: 0;
+  margin: 1rem 0 0.5rem;
+  min-width: 0;
+}
+.lf-spam-categories legend { color: var(--fg); font-weight: 650; margin-bottom: 0.5rem; }
+.lf-spam-categories .check-option { min-height: 44px; cursor: pointer; }
+.lf-spam-categories input { accent-color: var(--accent); }
+.lf-spam-categories:disabled { opacity: 0.55; }

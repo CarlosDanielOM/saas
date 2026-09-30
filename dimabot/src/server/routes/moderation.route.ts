@@ -30,6 +30,7 @@ import Users from '../../schemas/users.schema.js';
 import { ModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import { parseAdvancedRule, paidModeration, MODERATION_VISIBLE_DAYS } from '../../utils/moderation/advanced.js';
 import { spamProtectionSettings, SPAM_RULE_ID } from '../../utils/moderation/spam.js';
+import { SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, type SpamCategory } from '../../utils/moderation/spam_categories.js';
 
 interface ModerationRequest extends Request {
     user?: {
@@ -248,13 +249,28 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 || typeof (raw as Record<string, unknown>).reviewAllMessages !== 'boolean') {
                 return res.status(400).json({ error: true, message: 'Invalid spam protection settings', status: 400 });
             }
-            spamProtection = { enabled: (raw as { enabled: boolean }).enabled, reviewAllMessages: (raw as { reviewAllMessages: boolean }).reviewAllMessages };
+            const options = raw as Record<string, unknown>;
+            if (options.categories !== undefined && (!Array.isArray(options.categories)
+                || options.categories.some(category => !SPAM_CATEGORIES.includes(category as SpamCategory))
+                || new Set(options.categories).size !== options.categories.length)) {
+                return res.status(400).json({ error: true, message: 'Invalid protection categories', status: 400 });
+            }
+            if (options.thresholdPercent !== undefined && (typeof options.thresholdPercent !== 'number'
+                || !Number.isFinite(options.thresholdPercent) || options.thresholdPercent < 80 || options.thresholdPercent > 100)) {
+                return res.status(400).json({ error: true, message: 'Protection confidence must be from 80 to 100 percent', status: 400 });
+            }
+            spamProtection = { ...spamProtection, enabled: options.enabled as boolean, reviewAllMessages: options.reviewAllMessages as boolean,
+                categories: options.categories === undefined ? spamProtection.categories : options.categories as SpamCategory[],
+                thresholdPercent: options.thresholdPercent === undefined ? spamProtection.thresholdPercent : options.thresholdPercent as number };
         }
         if (new Set(rules.map(rule => rule.id)).size !== rules.length) {
             return res.status(400).json({ error: true, message: 'Rule IDs must be unique', status: 400 });
         }
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         if (!paidModeration(owner?.plan_tier)) {
+            if (spamProtection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD && spamProtection.thresholdPercent !== current?.spamProtection?.thresholdPercent) {
+                return res.status(403).json({ error: true, message: 'Custom protection confidence requires Premium or Pro', status: 403 });
+            }
             if (spamProtection.reviewAllMessages && !current?.spamProtection?.reviewAllMessages) {
                 return res.status(403).json({ error: true, message: 'Continuous spam review requires Premium or Pro', status: 403 });
             }
