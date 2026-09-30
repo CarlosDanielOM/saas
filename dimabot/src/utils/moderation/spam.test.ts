@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { broadcasterInvitedPromotion, spamRuleForContext, spamReviewSource, spamRule } from './spam.js';
+import { broadcasterInvitedPromotion, spamRuleForContext, spamReviewSource, spamRule, semanticPolicyActive } from './spam.js';
+import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import type { IChannelModerationSettings, IModerationRule } from '../../schemas/channel_moderation_settings.schema.js';
 import { semanticRequest, parseSpamResponse } from './semantic.js';
+import { ruleExempt, createUserIdentity } from '../permissions/index.js';
 
 test('only a verified broadcaster invitation permits channel promotion; negated invitations never grant permission', () => {
     const context = (message: string, isBroadcaster: boolean) => [{ messageID: 'prior', username: 'speaker', message, timestamp: 1, isBroadcaster }];
@@ -26,8 +28,15 @@ test('first-message scope is free on all tiers while subsequent scope requires p
     assert.equal(spamReviewSource(false, settings, 'free'), null);
     assert.equal(spamReviewSource(false, settings, 'premium'), 'spam_continuous');
     assert.equal(spamReviewSource(false, { ...settings, spamProtection: { enabled: true, reviewAllMessages: false } }, 'pro'), null);
-    assert.equal(spamReviewSource(true, { ...settings, enabled: false }, 'free'), null);
+    assert.equal(spamReviewSource(true, { ...settings, enabled: false }, 'free'), 'first_message');
     assert.equal(spamReviewSource(true, { ...settings, spamProtection: { enabled: false, reviewAllMessages: true } }, 'pro'), null);
+});
+
+test('unsaved channels have active first-message protection and saves cancel pending defaults', () => {
+    const decision = { ruleID: spamRule.id, reviewSource: 'first_message', settingsVersion: 0 } as IModerationDecision;
+    assert.equal(semanticPolicyActive(null, decision), true);
+    assert.equal(semanticPolicyActive({ enabled: false, settingsVersion: 1, rules: [] } as unknown as IChannelModerationSettings, decision), false);
+    assert.equal(semanticPolicyActive(null, { ...decision, ruleID: 'custom', reviewSource: 'rule' }), false);
 });
 
 test('spam requests define chat as evidence and preserve context-specific policy in the decision snapshot', () => {
@@ -45,8 +54,24 @@ test('category scoring bans any confident selected behavior, while safe winning 
     assert.equal(parseSpamResponse(response({ spam: 0.02, ads: 0.95, safe: 0.03 }), ['spam', 'ads']).verdict, 'violation');
     assert.equal(parseSpamResponse(response({ spam: 0.95, safe: 0.96 }), ['spam']).verdict, 'allow');
     assert.equal(parseSpamResponse(response({ spam: 0.95, safe: 0.95 }), ['spam']).verdict, 'uncertain');
-    assert.equal(parseSpamResponse(response({ spam: 0.89, safe: 0.01 }), ['spam']).verdict, 'uncertain');
+    assert.equal(parseSpamResponse(response({ spam: 0.84, safe: 0.01 }), ['spam']).verdict, 'uncertain');
+    assert.equal(parseSpamResponse(response({ spam: 0.85, safe: 0.01 }), ['spam']).verdict, 'violation');
+    assert.equal(parseSpamResponse(response({ spam: 0.89, safe: 0.01 }), ['spam'], 90).verdict, 'uncertain');
     assert.equal(parseSpamResponse(response({ spam: 0.89, safe: 0.01 }), ['spam'], 85).verdict, 'violation');
+});
+
+test('protection exemptions use additive role tags, including explicit empty selection', () => {
+    const vip = createUserIdentity(5, ['vip']);
+    const mod = createUserIdentity(7, ['mod']);
+    assert.equal(ruleExempt(spamRuleForContext([]), mod), true);
+    assert.equal(ruleExempt(spamRuleForContext([]), vip), false);
+    const vipOnly = spamRuleForContext([], { spamProtection: { enabled: true, reviewAllMessages: false, exemptTags: ['vip'] } });
+    assert.equal(ruleExempt(vipOnly, vip), true);
+    assert.equal(ruleExempt(vipOnly, mod), false, 'unselected moderator tag is reviewed');
+    assert.equal(ruleExempt(vipOnly, createUserIdentity(7, ['mod', 'vip'])), true, 'any selected role exempts');
+    const nobody = spamRuleForContext([], { spamProtection: { enabled: true, reviewAllMessages: false, exemptTags: [] } });
+    assert.equal(ruleExempt(nobody, mod), false);
+    assert.equal(ruleExempt(nobody, vip), false);
 });
 test('disabled categories cannot trigger bans; missing, non-finite or malformed scores fail open', () => {
     const result = parseSpamResponse(response({ spam: 0.01, profanity: 0.999, safe: 0.99 }), ['spam']);

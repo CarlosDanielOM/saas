@@ -16,7 +16,7 @@ import ChatHistory from '../classes/chat_history.js';
 import { ModerationDecision, type ModerationContextMessage } from '../schemas/moderation_decision.schema.js';
 import { findBlacklistMatches, paidModeration, SEMANTIC_DEADLINE_MS, type ModerationMatch } from '../utils/moderation/advanced.js';
 import { createModerationDecision, awaitSemanticDecision } from '../utils/moderation/decisions.js';
-import { claimFirstObservedMessage, claimSpamReviewBudget, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive } from '../utils/moderation/spam.js';
+import { claimFirstObservedMessage, claimSpamReviewBudget, spamRule, spamRuleForContext, spamProtectionSettings, spamReviewSource, semanticPolicyActive, defaultSpamModerationSettings } from '../utils/moderation/spam.js';
 
 const SETTINGS_CACHE_TTL_SECONDS = 300;
 export const NO_SETTINGS_SENTINEL = '{"none":true}';
@@ -42,12 +42,12 @@ export async function primeModerationSettingsCache(channelID: string, settings: 
     await cache.set(moderationSettingsCacheKey(channelID), JSON.stringify(settings), { EX: SETTINGS_CACHE_TTL_SECONDS });
 }
 
-async function loadSettings(channelID: string): Promise<IChannelModerationSettings | null> {
+async function loadSettings(channelID: string): Promise<IChannelModerationSettings> {
     const cache = await getDragonflyClient('moderation.loadSettings');
     const cached = await cache.get(moderationSettingsCacheKey(channelID));
 
     if (cached) {
-        if (cached === NO_SETTINGS_SENTINEL) return null;
+        if (cached === NO_SETTINGS_SENTINEL) return defaultSpamModerationSettings(channelID);
         try {
             return JSON.parse(cached) as IChannelModerationSettings;
         } catch {
@@ -72,7 +72,7 @@ async function loadSettings(channelID: string): Promise<IChannelModerationSettin
                 }
             }
         }
-        return null;
+        return defaultSpamModerationSettings(channelID);
     }
 
     await cache.set(moderationSettingsCacheKey(channelID), JSON.stringify(doc), { EX: SETTINGS_CACHE_TTL_SECONDS });
@@ -99,7 +99,7 @@ export interface ChatModerationResult {
 
 async function reviewPromotionalSpam(channelID: string, message: IChatMessage, identity: UserIdentity, settings: IChannelModerationSettings, receivedAt: number): Promise<boolean> {
     const protection = spamProtectionSettings(settings);
-    if (!protection.enabled || !protection.categories.length || ruleExempt(spamRule, identity) || !message.message_id) return false;
+    if (!protection.enabled || !protection.categories.length || ruleExempt(spamRuleForContext([], settings), identity) || !message.message_id) return false;
     const first = await claimFirstObservedMessage(channelID, message.chatter_user_id!);
     let tier: unknown;
     if ((!first && protection.reviewAllMessages) || protection.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
@@ -176,7 +176,8 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
         }
 
         const settings = await loadSettings(channelID);
-        if (!settings || !settings.enabled) {
+        const protection = spamProtectionSettings(settings);
+        if (!settings.enabled && (!protection.enabled || !protection.categories.length)) {
             return { actionTaken: false };
         }
 
@@ -196,6 +197,8 @@ async function moderateMessage(channelID: string, messageEventData: IChatMessage
         if (await reviewPromotionalSpam(channelID, messageEventData, identity, settings, receivedAt)) {
             return { actionTaken: true };
         }
+
+        if (!settings.enabled) return { actionTaken: false };
 
         const fragments = messageEventData.message.fragments || [];
         const emoteFragments = fragments.filter(fragment => fragment.type === 'emote');

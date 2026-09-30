@@ -10,7 +10,7 @@
             <span class="lf-head__stream">{{ streamer() || '—' }}</span>
           </div>
         </div>
-        @if (settings()?.enabled) {
+        @if (moderationActive()) {
           <span class="lf-chip lf-chip--ok">{{ t('moderation.status.enabledChip') }}</span>
         } @else {
           <span class="lf-chip lf-chip--muted">{{ t('moderation.status.disabledChip') }}</span>
@@ -155,10 +155,21 @@
               }
             </fieldset>
             <p class="lf-note">{{ t('moderation.spam.categoriesHint') }}</p>
+            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
+              <legend>{{ t('moderation.spam.exemptionsTitle') }}</legend>
+              @for (tag of spamExemptTags; track tag) {
+                <label class="check-option">
+                  <input type="checkbox" [attr.data-spam-exempt]="tag" [checked]="spamTagExempt(tag)"
+                    (change)="updateSpamExemption(tag, $any($event.target).checked)" />
+                  <span>{{ t('moderation.spam.exemptions.' + tag) }}</span>
+                </label>
+              }
+            </fieldset>
+            <p class="lf-note">{{ t('moderation.spam.exemptionsHint') }}</p>
             <label class="lf-field lf-field--narrow">
               <span>{{ t('moderation.spam.threshold') }} · {{ t('moderation.spam.paid') }}</span>
               <input type="number" data-spam-threshold min="80" max="100" step="any"
-                [value]="hasPaidModeration() ? (cfg.spamProtection?.thresholdPercent ?? 90) : 90"
+                [value]="hasPaidModeration() ? (cfg.spamProtection?.thresholdPercent ?? 85) : 85"
                 (input)="updateSpamThreshold($any($event.target).value)"
                 [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false" />
             </label>

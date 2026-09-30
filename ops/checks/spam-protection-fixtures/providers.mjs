@@ -19,8 +19,8 @@ globalThis.fetch = async (input, options = {}) => {
     if (text.includes('INVALID')) return json({ answers: { violation: { type: 'noul', noul: 'yes' } } });
     const invited = state.precedingMessages.some(message => message.isBroadcaster && message.message.includes('share your channel'));
     const scores = {
-        spam: /buy.*viewers|SCAM SPAM/.test(text) && !/Someone posted|Do not buy/.test(text) ? 0.995 : 0.01,
-        ads: /buy.*viewers|Buy my service/.test(text) && !/Someone posted|Do not buy/.test(text) ? 0.995 : 0.01,
+        spam: /buy.*viewers|Compra viewers en viewerstobuydotcom|SCAM SPAM/.test(text) && !/Someone posted|Do not buy/.test(text) ? 0.995 : 0.01,
+        ads: /buy.*viewers|Compra viewers en viewerstobuydotcom|Buy my service/.test(text) && !/Someone posted|Do not buy/.test(text) ? 0.995 : 0.01,
         self_promotion: /Follow my channel/.test(text) && !invited ? 0.995 : 0.01,
         profanity: /damn|fuck/i.test(text) ? 0.995 : 0.01,
         insults: /You are a worthless idiot/.test(text) ? 0.995 : 0.01
@@ -28,7 +28,8 @@ globalThis.fetch = async (input, options = {}) => {
     const answers = Object.fromEntries(Object.keys(request.questions).filter(key => key !== 'unsafe').map(key => {
         let score = scores[key];
         if (text.includes('UNCERTAIN')) score = 0.5;
-        if (text.includes('BORDERLINE')) score = 0.89;
+        if (text.includes('BORDERLINE')) score = 0.83;
+        if (text.includes('DEFAULT85')) score = 0.87;
         if (text.includes('SAFE-WINS') || text.includes('TIED')) score = 0.95;
         return [key, { type: 'noul', noul: score }];
     }));

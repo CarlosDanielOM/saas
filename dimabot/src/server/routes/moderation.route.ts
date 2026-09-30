@@ -30,7 +30,7 @@ import Users from '../../schemas/users.schema.js';
 import { ModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import { parseAdvancedRule, paidModeration, MODERATION_VISIBLE_DAYS } from '../../utils/moderation/advanced.js';
 import { spamProtectionSettings, SPAM_RULE_ID } from '../../utils/moderation/spam.js';
-import { SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, type SpamCategory } from '../../utils/moderation/spam_categories.js';
+import { SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, SPAM_EXEMPT_TAGS, type SpamCategory, type SpamExemptTag } from '../../utils/moderation/spam_categories.js';
 
 interface ModerationRequest extends Request {
     user?: {
@@ -250,6 +250,11 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 return res.status(400).json({ error: true, message: 'Invalid spam protection settings', status: 400 });
             }
             const options = raw as Record<string, unknown>;
+            if (options.exemptTags !== undefined && (!Array.isArray(options.exemptTags)
+                || options.exemptTags.some(tag => !SPAM_EXEMPT_TAGS.includes(tag as SpamExemptTag))
+                || new Set(options.exemptTags).size !== options.exemptTags.length)) {
+                return res.status(400).json({ error: true, message: 'Invalid protection exemption tags', status: 400 });
+            }
             if (options.categories !== undefined && (!Array.isArray(options.categories)
                 || options.categories.some(category => !SPAM_CATEGORIES.includes(category as SpamCategory))
                 || new Set(options.categories).size !== options.categories.length)) {
@@ -260,6 +265,7 @@ router.put('/:channelID/settings', authMiddleware as any, async (req: Moderation
                 return res.status(400).json({ error: true, message: 'Protection confidence must be from 80 to 100 percent', status: 400 });
             }
             spamProtection = { ...spamProtection, enabled: options.enabled as boolean, reviewAllMessages: options.reviewAllMessages as boolean,
+                exemptTags: options.exemptTags === undefined ? spamProtection.exemptTags : options.exemptTags as SpamExemptTag[],
                 categories: options.categories === undefined ? spamProtection.categories : options.categories as SpamCategory[],
                 thresholdPercent: options.thresholdPercent === undefined ? spamProtection.thresholdPercent : options.thresholdPercent as number };
         }

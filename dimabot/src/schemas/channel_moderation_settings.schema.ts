@@ -1,4 +1,4 @@
-import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, SPAM_CATEGORIES, type SpamProtection } from '../utils/moderation/spam_categories.js';
+import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, SPAM_CATEGORIES, SPAM_EXEMPT_TAGS, DEFAULT_SPAM_EXEMPT_TAGS, type SpamProtection } from '../utils/moderation/spam_categories.js';
 import type { ModerationVariations } from '../utils/moderation/variations.js';
 import crypto from 'crypto';
 import { Schema, model } from 'mongoose';
@@ -157,6 +157,7 @@ const channelModerationSettingsSchema = new Schema<IChannelModerationSettings>({
         enabled: { type: Boolean, default: true },
         reviewAllMessages: { type: Boolean, default: false },
         categories: { type: [{ type: String, enum: SPAM_CATEGORIES }], default: () => [...DEFAULT_SPAM_CATEGORIES] },
+        exemptTags: { type: [{ type: String, enum: SPAM_EXEMPT_TAGS }], default: () => [...DEFAULT_SPAM_EXEMPT_TAGS] },
         thresholdPercent: { type: Number, default: DEFAULT_SPAM_THRESHOLD, min: 80, max: 100 }
     }, { _id: false }), default: () => ({ enabled: true, reviewAllMessages: false }) },
     offenseWindowSeconds: { type: Number, default: MODERATION_SETTINGS_DEFAULTS.offenseWindowSeconds, min: MIN_OFFENSE_WINDOW_SECONDS, max: MAX_OFFENSE_WINDOW_SECONDS },

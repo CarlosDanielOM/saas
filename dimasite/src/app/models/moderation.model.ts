@@ -1,5 +1,6 @@
 export type SpamCategory = 'spam' | 'ads' | 'self_promotion' | 'profanity' | 'insults';
-export interface SpamProtection { enabled: boolean; reviewAllMessages: boolean; categories?: SpamCategory[]; thresholdPercent?: number }
+export type SpamExemptTag = 'vip' | 'mod' | 'sub' | 'founder' | 'editor' | 'admin';
+export interface SpamProtection { enabled: boolean; reviewAllMessages: boolean; categories?: SpamCategory[]; thresholdPercent?: number; exemptTags?: SpamExemptTag[] }
 export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';
 export type ModerationAction = 'off' | 'warn' | 'delete' | 'timeout' | 'ban';
 export type CapsThresholdMode = 'count' | 'percentage';

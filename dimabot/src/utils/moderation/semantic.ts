@@ -1,4 +1,5 @@
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
+import { DEFAULT_SPAM_THRESHOLD } from './spam_categories.js';
 export const SEMANTIC_USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export const SEMANTIC_PRICING_VERSION = 'span-lite-jev-equivalent-v1';
 
@@ -47,7 +48,7 @@ export function parseSemanticResponse(raw: unknown, thresholdPercent = 85): Sema
     };
 }
 
-export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thresholdPercent = 90): SemanticResult {
+export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thresholdPercent = DEFAULT_SPAM_THRESHOLD): SemanticResult {
     if (!raw || typeof raw !== 'object' || !categories.length) return fallbackResult('invalid_response');
     const data = raw as Record<string, any>;
     const scores: Record<string, number> = {};
@@ -109,7 +110,7 @@ export async function evaluateSemanticDecision(decision: IModerationDecision): P
         const raw = await response.json();
         const semantic = decision.rule.semantic;
         return decision.rule.id === SPAM_RULE_ID && semantic?.categories
-            ? parseSpamResponse(raw, semantic.categories, semantic.thresholdPercent ?? 90)
+            ? parseSpamResponse(raw, semantic.categories, semantic.thresholdPercent ?? DEFAULT_SPAM_THRESHOLD)
             : parseSemanticResponse(raw, semantic?.thresholdPercent ?? 85);
     } catch (error) {
         return fallbackResult(Date.now() >= decision.deadline.getTime() || (error instanceof Error && error.name === 'TimeoutError') ? 'timeout' : 'unavailable');

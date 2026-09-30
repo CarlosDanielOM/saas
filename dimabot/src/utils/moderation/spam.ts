@@ -1,7 +1,8 @@
-import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD } from './spam_categories.js';
+import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_THRESHOLD, DEFAULT_SPAM_EXEMPT_TAGS } from './spam_categories.js';
 import { createHash } from 'node:crypto';
 import { ModerationChatter } from '../../schemas/moderation_chatter.schema.js';
-import { buildDefaultModerationRules, type IChannelModerationSettings } from '../../schemas/channel_moderation_settings.schema.js';
+import { buildDefaultModerationRules, MODERATION_SETTINGS_DEFAULTS, type IChannelModerationSettings } from '../../schemas/channel_moderation_settings.schema.js';
+import type { PermissionExpression } from '../permissions/index.js';
 import type { IModerationDecision, ModerationContextMessage } from '../../schemas/moderation_decision.schema.js';
 import { getDragonflyClient } from '../databases/dragonfly.database.js';
 import { paidModeration } from './advanced.js';
@@ -43,7 +44,10 @@ export function broadcasterInvitedPromotion(context: ModerationContextMessage[])
 export function spamRuleForContext(context: ModerationContextMessage[], settings: Pick<IChannelModerationSettings, 'spamProtection'> = {}) {
     const protection = spamProtectionSettings(settings);
     const invitation = broadcasterInvitedPromotion(context);
-    return { ...spamRule, semantic: { ...spamRule.semantic,
+    const exemptExpression: PermissionExpression = protection.exemptTags.length
+        ? { or: protection.exemptTags.map(role => ({ role })) }
+        : { not: { role: 'everyone' } };
+    return { ...spamRule, exemptExpression, semantic: { ...spamRule.semantic,
         categories: protection.categories, thresholdPercent: protection.thresholdPercent,
         broadcasterInvitation: invitation,
         policy: invitation ? 'Channel and social promotion is explicitly permitted by the verified broadcaster. Other selected unwanted behaviors remain prohibited.' : spamRule.semantic.policy
@@ -53,12 +57,20 @@ export function spamRuleForContext(context: ModerationContextMessage[], settings
 export function spamProtectionSettings(settings: Pick<IChannelModerationSettings, 'spamProtection'>) {
     return { enabled: settings.spamProtection?.enabled !== false, reviewAllMessages: settings.spamProtection?.reviewAllMessages === true,
         categories: [...(settings.spamProtection?.categories ?? DEFAULT_SPAM_CATEGORIES)],
-        thresholdPercent: settings.spamProtection?.thresholdPercent ?? DEFAULT_SPAM_THRESHOLD };
+        thresholdPercent: settings.spamProtection?.thresholdPercent ?? DEFAULT_SPAM_THRESHOLD,
+        exemptTags: [...(settings.spamProtection?.exemptTags ?? DEFAULT_SPAM_EXEMPT_TAGS)] };
+}
+
+// Version zero represents unsaved defaults. Any settings save starts at one,
+// so a save during a default review cancels that review before a consequence.
+export function defaultSpamModerationSettings(channelID: string): IChannelModerationSettings {
+    return { ...MODERATION_SETTINGS_DEFAULTS, channelID, channel: '', rules: [], settingsVersion: 0,
+        spamProtection: spamProtectionSettings({}), createdAt: new Date(0), updatedAt: new Date(0) };
 }
 
 export function spamReviewSource(firstMessage: boolean, settings: IChannelModerationSettings, tier: unknown): IModerationDecision['reviewSource'] | null {
     const protection = spamProtectionSettings(settings);
-    if (!settings.enabled || !protection.enabled || !protection.categories.length) return null;
+    if (!protection.enabled || !protection.categories.length) return null;
     if (firstMessage) return 'first_message';
     return protection.reviewAllMessages && paidModeration(tier) ? 'spam_continuous' : null;
 }
@@ -68,12 +80,12 @@ export function isSpamDecision(decision: Pick<IModerationDecision, 'ruleID' | 'r
 }
 
 export function semanticPolicyActive(settings: IChannelModerationSettings | null | undefined, decision: IModerationDecision): boolean {
-    if (!settings?.enabled || settings.settingsVersion !== decision.settingsVersion) return false;
+    if ((settings?.settingsVersion ?? 0) !== decision.settingsVersion) return false;
     if (isSpamDecision(decision)) {
-        const protection = spamProtectionSettings(settings);
+        const protection = spamProtectionSettings(settings || {});
         return protection.enabled && protection.categories.length > 0 && (decision.reviewSource === 'first_message' || protection.reviewAllMessages);
     }
-    return settings.rules.some(rule => rule.id === decision.ruleID && rule.enabled);
+    return !!settings?.enabled && settings.rules.some(rule => rule.id === decision.ruleID && rule.enabled);
 }
 
 export function chatterMarkerID(channelID: string, userID: string): string {

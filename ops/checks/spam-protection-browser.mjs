@@ -20,7 +20,7 @@ try {
                 expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: twitch, appUser: app, permissions: {} }));
         }, { twitch, app, language });
         // Deliberately omit spamProtection initially to test old settings responses.
-        let settings = { channelID: twitch.id, channel: 'test', enabled: true, offenseWindowSeconds: 3600, settingsVersion: 1, rules: [] };
+        let settings = { channelID: twitch.id, channel: 'test', enabled: false, offenseWindowSeconds: 3600, settingsVersion: 1, rules: [] };
         const saves = [];
         await context.route('**/*', async route => {
             const url = new URL(route.request().url());
@@ -50,6 +50,9 @@ try {
         await tile.waitFor({ timeout: 60000 });
         const first = tile.locator('[data-spam-toggle=enabled]');
         const continuous = tile.locator('[data-spam-toggle=continuous]');
+        const ruleToggle = host.getByRole('checkbox', { name: language === 'en' ? 'Rule filter' : 'Filtro de reglas', exact: true });
+        assert.equal(await ruleToggle.isChecked(), false);
+        assert.equal(await host.locator('.lf-head .lf-chip--ok').count(), 1, 'protection active while rules are off');
         assert.equal(await first.isChecked(), true);
         assert.equal(await first.isEnabled(), true, 'free protection editable on every tier');
         for (const category of ['spam', 'ads', 'self_promotion']) assert.equal(await tile.locator(`[data-spam-category=${category}]`).isChecked(), true);
@@ -58,12 +61,18 @@ try {
         assert.equal(await continuous.isDisabled(), tier === 'free', 'continuous review tier gate');
         assert.match(await tile.innerText(), language === 'en' ? /never use AI credits/ : /nunca consumen créditos/);
         const save = host.locator('.lf-save-bar button');
+        for (const tag of ['mod', 'editor', 'admin']) assert.equal(await tile.locator(`[data-spam-exempt=${tag}]`).isChecked(), true);
+        for (const tag of ['vip', 'sub', 'founder']) assert.equal(await tile.locator(`[data-spam-exempt=${tag}]`).isChecked(), false);
         await first.uncheck();
+        await host.locator('.lf-head .lf-chip--muted').waitFor();
         await page.waitForFunction(() => document.querySelector('[data-spam-toggle=continuous]')?.disabled);
         await save.click();
         await page.waitForFunction(() => document.querySelector('app-moderation-page .lf-save-bar button')?.disabled);
-        assert.deepEqual(saves.at(-1).spamProtection, { enabled: false, reviewAllMessages: false, categories: ['spam', 'ads', 'self_promotion'], thresholdPercent: 90 });
+        assert.deepEqual(saves.at(-1).spamProtection, { enabled: false, reviewAllMessages: false, categories: ['spam', 'ads', 'self_promotion'], thresholdPercent: 85, exemptTags: ['mod', 'editor', 'admin'] });
+        assert.equal(saves.at(-1).enabled, false, 'saving opt-out preserves disabled ordinary rules');
         await first.check();
+        await tile.locator('[data-spam-exempt=vip]').check();
+        assert.equal(await tile.locator('[data-spam-exempt=mod]').isEnabled(), true, 'role exemptions editable on every plan');
         await tile.locator('[data-spam-category=spam]').uncheck();
         await tile.locator('[data-spam-category=self_promotion]').uncheck();
         await tile.locator('[data-spam-category=insults]').check();
@@ -71,18 +80,20 @@ try {
         assert.equal(await threshold.isDisabled(), tier === 'free');
         if (tier !== 'free') {
             await continuous.check();
-            await threshold.fill('85');
+            await threshold.fill('80');
         }
         await save.click();
         await page.waitForFunction(() => document.querySelector('app-moderation-page .lf-save-bar button')?.disabled);
-        assert.deepEqual(saves.at(-1).spamProtection, { enabled: true, reviewAllMessages: tier !== 'free', categories: ['ads', 'insults'], thresholdPercent: tier === 'free' ? 90 : 85 });
+        assert.deepEqual(saves.at(-1).spamProtection, { enabled: true, reviewAllMessages: tier !== 'free', categories: ['ads', 'insults'], thresholdPercent: tier === 'free' ? 85 : 80, exemptTags: ['vip', 'mod', 'editor', 'admin'] });
         await page.reload();
         await tile.waitFor();
         assert.equal(await first.isChecked(), true);
         assert.equal(await continuous.isChecked(), tier !== 'free', 'saved setting survives reload');
+        assert.equal(await tile.locator('[data-spam-exempt=vip]').isChecked(), true, 'saved role exemptions survive reload');
+        assert.equal(await ruleToggle.isChecked(), false);
         assert.equal(await tile.locator('[data-spam-category=insults]').isChecked(), true);
         assert.equal(await tile.locator('[data-spam-category=self_promotion]').isChecked(), false);
-        assert.equal(await threshold.inputValue(), tier === 'free' ? '90' : '85');
+        assert.equal(await threshold.inputValue(), tier === 'free' ? '85' : '80');
         for (const width of [320, 390, 1280]) {
             await page.setViewportSize({ width, height: width === 1280 ? 900 : 844 });
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1), false, `${tier}/${language} overflow ${width}`);
@@ -96,5 +107,5 @@ try {
         assert.deepEqual(errors, []);
         await context.close();
     }
-    console.log('PASS first-message controls, free/Premium/Pro gates, legacy defaults, category defaults/selection, paid thresholds, save/reload, category scores/decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
+    console.log('PASS independent protection/rule switches, role exemption defaults/selection/save/reload, 85% default, first-message controls, free/Premium/Pro gates, legacy defaults, category defaults/selection, paid thresholds, save/reload, category scores/decisions and ad logs, EN/ES, 320/390/1280px and accessibility');
 } finally { await browser.close(); }

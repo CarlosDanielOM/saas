@@ -25,6 +25,7 @@ import {
 
 import type {
   SpamCategory,
+  SpamExemptTag,
   SpamProtection,
   VariationMode,
   GeneratedVariation,
@@ -480,11 +481,35 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
   }
 
   readonly spamCategories: SpamCategory[] = ['spam', 'ads', 'self_promotion', 'profanity', 'insults'];
+  readonly spamExemptTags: SpamExemptTag[] = ['vip', 'mod', 'sub', 'founder', 'editor', 'admin'];
+  readonly moderationActive = computed(() => {
+    const settings = this.settings();
+    if (!settings) return false;
+    const protection = this.spamOptions(settings);
+    return settings.enabled || (protection.enabled && !!protection.categories?.length);
+  });
 
   spamOptions(settings: ModerationSettings): SpamProtection {
     return { enabled: settings.spamProtection?.enabled !== false, reviewAllMessages: settings.spamProtection?.reviewAllMessages === true,
       categories: settings.spamProtection?.categories ?? ['spam', 'ads', 'self_promotion'],
-      thresholdPercent: settings.spamProtection?.thresholdPercent ?? 90 };
+      thresholdPercent: settings.spamProtection?.thresholdPercent ?? 85,
+      exemptTags: settings.spamProtection?.exemptTags ?? ['mod', 'editor', 'admin'] };
+  }
+
+  spamTagExempt(tag: SpamExemptTag): boolean {
+    const settings = this.settings();
+    return !!settings && this.spamOptions(settings).exemptTags!.includes(tag);
+  }
+
+  updateSpamExemption(tag: SpamExemptTag, enabled: boolean): void {
+    if (!this.canManage()) return;
+    this.settings.update(settings => {
+      if (!settings) return settings;
+      const options = this.spamOptions(settings);
+      const selected = new Set(options.exemptTags);
+      if (enabled) selected.add(tag); else selected.delete(tag);
+      return { ...settings, spamProtection: { ...options, exemptTags: this.spamExemptTags.filter(item => selected.has(item)) } };
+    });
   }
 
   spamCategoryEnabled(category: SpamCategory): boolean {

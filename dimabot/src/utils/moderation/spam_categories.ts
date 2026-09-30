@@ -1,12 +1,16 @@
 export const SPAM_CATEGORIES = ['spam', 'ads', 'self_promotion', 'profanity', 'insults'] as const;
 export type SpamCategory = typeof SPAM_CATEGORIES[number];
 export const DEFAULT_SPAM_CATEGORIES: SpamCategory[] = ['spam', 'ads', 'self_promotion'];
-export const DEFAULT_SPAM_THRESHOLD = 90;
+export const DEFAULT_SPAM_THRESHOLD = 85;
+export const SPAM_EXEMPT_TAGS = ['vip', 'mod', 'sub', 'founder', 'editor', 'admin'] as const;
+export type SpamExemptTag = typeof SPAM_EXEMPT_TAGS[number];
+export const DEFAULT_SPAM_EXEMPT_TAGS: SpamExemptTag[] = ['mod', 'editor', 'admin'];
 export interface SpamProtection {
     enabled: boolean;
     reviewAllMessages: boolean;
     categories?: SpamCategory[];
     thresholdPercent?: number;
+    exemptTags?: SpamExemptTag[];
 }
 
 export const SPAM_CATEGORY_POLICIES: Record<SpamCategory, string> = {

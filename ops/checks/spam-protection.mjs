@@ -12,7 +12,7 @@ import { runChatModeration, invalidateModerationSettingsCache } from '/app/dist/
 import { grantPermit } from '/app/dist/utils/moderation/permit.js';
 import { chatterMarkerID, claimFirstObservedMessage, claimSpamReviewBudget, SPAM_RULE_ID } from '/app/dist/utils/moderation/spam.js';
 import ChatHistory from '/app/dist/classes/chat_history.js';
-import { DEFAULT_SPAM_CATEGORIES } from '/app/dist/utils/moderation/spam_categories.js';
+import { DEFAULT_SPAM_CATEGORIES, DEFAULT_SPAM_EXEMPT_TAGS } from '/app/dist/utils/moderation/spam_categories.js';
 
 const mongo = await getMongoDBConnection('spam-protection-check');
 const redis = await getDragonflyClient('spam-protection-check');
@@ -71,6 +71,35 @@ try {
     assert.equal(await decision('second-ad'), null);
     assert.equal(reviews().length, beforeSecond, 'free later message is not reviewed');
 
+    // Reproduce the production miss: VIP in a channel without any settings,
+    // including its existing negative-cache sentinel. No settings are seeded.
+    await redis.set('moderation:unsaved-channel:settings', '{"none":true}');
+    const vip = { level: 5, tags: new Set(['everyone', 'vip']) };
+    assert.equal((await runChatModeration('unsaved-channel', msg('spanish-vip', 'Compra viewers en viewerstobuydotcom', 'vip-viewer'), vip)).actionTaken, true);
+    await until(async () => (await decision('spanish-vip'))?.consequence.status === 'executed', 'unsaved-channel VIP ban');
+    assert.equal((await decision('spanish-vip')).settingsVersion, 0);
+    assert.equal((await decision('spanish-vip')).rule.semantic.thresholdPercent, 85);
+    assert.equal((await decision('spanish-vip')).charge.credits, 0);
+    assert.equal(await Settings.findOne({ channelID: 'unsaved-channel' }), null, 'runtime defaults never create settings');
+    assert.equal((await review('unsaved-channel', 'unsaved-second', 'Want to buy viewers?', 'vip-viewer')).actionTaken, false);
+    assert.equal((await review('unsaved-85-channel', 'default-85', 'Want to buy viewers? DEFAULT85')).actionTaken, true);
+    assert.equal((await decision('default-85')).scores.ads, 0.87, '85% default catches scores below the former 90% cutoff');
+
+    await seed('spam-role-exceptions', 'free', { enabled: true, reviewAllMessages: false, exemptTags: ['vip'] });
+    assert.equal((await runChatModeration('spam-role-exceptions', msg('vip-exempt', 'Want to buy viewers?', 'exempt-vip'), vip)).actionTaken, false);
+    assert.equal(await decision('vip-exempt'), null);
+    assert.equal(await Chatters.findById(chatterMarkerID('spam-role-exceptions', 'exempt-vip')), null, 'exempt roles do not consume their first check');
+    assert.equal((await runChatModeration('spam-role-exceptions', msg('mod-selected-in', 'Want to buy viewers?', 'selected-mod'), { level: 7, tags: new Set(['everyone', 'mod']) })).actionTaken, true, 'unselected mod exemption allows review');
+    await Settings.updateOne({ channelID: 'spam-role-exceptions' }, { $set: { 'spamProtection.exemptTags': [] }, $inc: { settingsVersion: 1 } });
+    await invalidateModerationSettingsCache('spam-role-exceptions');
+    assert.equal((await runChatModeration('spam-role-exceptions', msg('vip-no-longer-exempt', 'Want to buy viewers?', 'exempt-vip'), vip)).actionTaken, true);
+
+    const unsavedPending = review('unsaved-race', 'unsaved-policy-change', 'Want to buy viewers? SLOW');
+    await until(() => reviews().some(call => call.spamReview.includes('SLOW')), 'default review started');
+    await seed('unsaved-race', 'free', { enabled: false, reviewAllMessages: false });
+    assert.equal((await unsavedPending).actionTaken, false);
+    assert.equal((await decision('unsaved-policy-change')).consequence.status, 'cancelled', 'saving disables a pending unsaved review');
+
     // The durable marker survives cache loss and is channel-specific.
     const marker = chatterMarkerID('spam-free', 'hello');
     await redis.del(`moderation:seen:${marker}`);
@@ -124,27 +153,37 @@ try {
     await runChatModeration('spam-permit', msg('broadcaster', 'Want to buy viewers?', 'spam-permit'), identity);
     assert.equal(reviews().length, prior, 'permits, moderators and broadcaster bypass');
     const pendingPermit = review('spam-permit', 'late-permit', 'Want to buy viewers? SLOW', 'late');
-    await until(() => reviews().some(call => call.spamReview.includes('SLOW')), 'review in progress');
+    await until(() => reviews().filter(call => call.spamReview.includes('SLOW')).length === 2, 'review in progress');
     await grantPermit('spam-permit', 60, 'late');
     assert.equal((await pendingPermit).actionTaken, false);
     assert.equal((await decision('late-permit')).consequence.status, 'cancelled');
 
     await seed('spam-disabled');
     await Settings.updateOne({ channelID: 'spam-disabled' }, { $set: { enabled: false } });
-    assert.equal((await review('spam-disabled', 'master-off', 'Want to buy viewers?')).actionTaken, false);
-    assert.equal(await decision('master-off'), null);
+    assert.equal((await review('spam-disabled', 'master-off', 'Want to buy viewers?')).actionTaken, true);
+    assert.equal((await decision('master-off')).reviewSource, 'first_message');
     await seed('spam-setting-off', 'free', { enabled: false, reviewAllMessages: false });
     assert.equal((await review('spam-setting-off', 'spam-off', 'Want to buy viewers?')).actionTaken, false);
     assert.equal(await decision('spam-off'), null);
+    await Settings.updateOne({ channelID: 'spam-setting-off' }, { $set: { enabled: false } });
+    await invalidateModerationSettingsCache('spam-setting-off');
+    assert.equal((await review('spam-setting-off', 'both-off', 'Want to buy viewers?', 'both-off')).actionTaken, false);
+    assert.equal(await decision('both-off'), null);
+    await Settings.updateOne({ channelID: 'spam-setting-off' }, { $set: { enabled: true } });
+    await invalidateModerationSettingsCache('spam-setting-off');
     await seed('spam-policy-change');
     const pendingPolicy = review('spam-policy-change', 'policy-change', 'Want to buy viewers? SLOW');
-    await until(() => reviews().filter(call => call.spamReview.includes('SLOW')).length === 2, 'policy review in progress');
+    await until(() => reviews().filter(call => call.spamReview.includes('SLOW')).length === 3, 'policy review in progress');
     await Settings.updateOne({ channelID: 'spam-policy-change' }, { $inc: { settingsVersion: 1 } });
     assert.equal((await pendingPolicy).actionTaken, false);
     assert.equal((await decision('policy-change')).consequence.status, 'cancelled');
 
     // Old moderation remains available when ad protection is disabled.
     const caps = buildDefaultModerationRules()[0];
+    await Settings.updateOne({ channelID: 'spam-disabled' }, { $set: { rules: [caps] } });
+    await invalidateModerationSettingsCache('spam-disabled');
+    assert.equal((await review('spam-disabled', 'master-off-caps', 'THIS IS A LONG SHOUT', 'caps-viewer')).actionTaken, false, 'ordinary rules stay off');
+    assert.equal((await decision('master-off-caps')).reviewSource, 'first_message');
     await Settings.updateOne({ channelID: 'spam-setting-off' }, { $set: { rules: [caps] } });
     await invalidateModerationSettingsCache('spam-setting-off');
     assert.equal((await review('spam-setting-off', 'caps-legacy', 'THIS IS A LONG SHOUT')).actionTaken, true);
@@ -161,7 +200,7 @@ try {
         await until(async () => (await api('GET', 'spam-free/settings')).status === 200, 'API ready');
         assert.equal((await api('GET', 'spam-free/settings', null, null)).status, 401);
         const settings = await (await api('GET', 'spam-free/settings')).json();
-        assert.deepEqual(settings.data.spamProtection, { enabled: true, reviewAllMessages: false, categories: DEFAULT_SPAM_CATEGORIES, thresholdPercent: 90 });
+        assert.deepEqual(settings.data.spamProtection, { enabled: true, reviewAllMessages: false, categories: DEFAULT_SPAM_CATEGORIES, thresholdPercent: 85, exemptTags: DEFAULT_SPAM_EXEMPT_TAGS });
         assert.equal((await api('PUT', 'spam-free/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: true } })).status, 403);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { enabled: 'yes', reviewAllMessages: false } })).status, 400);
         assert.equal((await api('PUT', 'spam-free/settings', { enabled: true, rules: [], spamProtection: { enabled: false, reviewAllMessages: false } })).status, 200);
@@ -172,19 +211,27 @@ try {
         assert.ok(view.data.decisions.some(row => row.reviewSource === 'first_message' && row.charge.credits === 0));
         assert.equal((await api('GET', 'spam-free/settings', null, 'paid-owner')).status, 403);
         assert.equal((await api('PUT', 'spam-premium/settings', { enabled: true, rules: [], spamProtection: { enabled: true, reviewAllMessages: true } }, 'paid-owner')).status, 200);
-        const protection = { enabled: true, reviewAllMessages: false, categories: ['ads'], thresholdPercent: 90 };
+        const protection = { enabled: true, reviewAllMessages: false, categories: ['ads'], thresholdPercent: 85 };
         for (const invalid of [{ categories: ['unknown'] }, { categories: ['ads', 'ads'] }, { categories: null }, { thresholdPercent: 79 }, { thresholdPercent: 101 }, { thresholdPercent: '90' }]) {
             assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, ...invalid } })).status, 400);
         }
-        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, thresholdPercent: 85 } })).status, 403);
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, thresholdPercent: 80 } })).status, 403);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: protection })).status, 200);
+        for (const exemptTags of [null, 'vip', ['unknown'], ['vip', 'vip'], ['everyone']]) {
+            assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, exemptTags } })).status, 400);
+        }
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, exemptTags: ['vip', 'mod'] } })).status, 200);
+        assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.exemptTags, ['vip', 'mod']);
         assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.categories, ['ads']);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { enabled: true, reviewAllMessages: false } })).status, 200);
         assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.categories, ['ads'], 'legacy client preserves selected categories');
-        assert.equal((await api('PUT', 'spam-premium/settings', { rules: [], spamProtection: { ...protection, categories: ['profanity', 'insults'], thresholdPercent: 85 } }, 'paid-owner')).status, 200);
+        assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.exemptTags, ['vip', 'mod'], 'legacy client preserves selected exemptions');
+        assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, exemptTags: [] } })).status, 200);
+        assert.deepEqual((await (await api('GET', 'spam-free/settings')).json()).data.spamProtection.exemptTags, []);
+        assert.equal((await api('PUT', 'spam-premium/settings', { rules: [], spamProtection: { ...protection, categories: ['profanity', 'insults'], thresholdPercent: 80 } }, 'paid-owner')).status, 200);
         const paidSettings = (await (await api('GET', 'spam-premium/settings', null, 'paid-owner')).json()).data.spamProtection;
         assert.deepEqual(paidSettings.categories, ['profanity', 'insults']);
-        assert.equal(paidSettings.thresholdPercent, 85);
+        assert.equal(paidSettings.thresholdPercent, 80);
         assert.equal((await api('PUT', 'spam-free/settings', { rules: [], spamProtection: { ...protection, categories: [] } })).status, 200);
 
     }
@@ -213,12 +260,12 @@ try {
     assert.equal((await decision('safe-wins')).scores.safe, 0.99);
     assert.equal((await review('spam-safe', 'tied', 'Want to buy viewers? TIED', 'tied')).actionTaken, false);
     assert.equal((await decision('tied')).verdict, 'uncertain');
-    await seed('spam-threshold', 'premium', { enabled: true, reviewAllMessages: true, categories: ['ads'], thresholdPercent: 85 });
+    await seed('spam-threshold', 'premium', { enabled: true, reviewAllMessages: true, categories: ['ads'], thresholdPercent: 80 });
     assert.equal((await review('spam-threshold', 'custom-first', 'Want to buy viewers? BORDERLINE')).actionTaken, true);
     assert.equal((await decision('custom-first')).charge.credits, 0, 'paid first review remains free with custom threshold');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'spam-threshold' }, { $set: { plan_tier: 'free' } });
     assert.equal((await review('spam-threshold', 'downgraded-threshold', 'Want to buy viewers? BORDERLINE', 'another')).actionTaken, false);
-    assert.equal((await decision('downgraded-threshold')).rule.semantic.thresholdPercent, 90, 'free downgrade uses default threshold');
+    assert.equal((await decision('downgraded-threshold')).rule.semantic.thresholdPercent, 85, 'free downgrade uses default threshold');
     // Existing channels with no new fields acquire enabled defaults without migration.
     await seed('spam-old-settings');
     await Settings.updateOne({ channelID: 'spam-old-settings' }, { $unset: { spamProtection: '' } });
@@ -235,7 +282,7 @@ try {
     assert.equal(await decision('budget-skipped'), null, 'budget blocks queue admission');
     assert.equal(await Decisions.countDocuments({ reviewSource: 'first_message', 'charge.status': { $ne: 'none' } }), 0);
     assert.equal(await Actions.countDocuments({ ruleID: SPAM_RULE_ID, action: { $ne: 'ban' } }), 0);
-    console.log('PASS free first-message reviews, zero credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
+    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, free first-message reviews, zero credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }
