@@ -35,6 +35,10 @@ export const eventsubHandler = async (
     eventData: ITwitchEventData,
     options: EventsubHandlerOptions = {}
 ) => {
+    // Chat notices are journaled at ingress for future consumers. Existing
+    // subscription/raid events remain responsible for announcements and metrics.
+    if (subscriptionData.type === 'channel.chat.notification') return;
+
     const cache = await getDragonflyClient('Eventsub');
     let chatEnabled = true;
     let STREAMER = await TwitchStreamers.getTwitchAccountById(eventData?.broadcaster_user_id ?? '');

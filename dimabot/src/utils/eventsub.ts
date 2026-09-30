@@ -148,6 +148,14 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
         }
     },
     {
+        type: 'channel.chat.notification',
+        version: '1',
+        condition: {
+            broadcaster_user_id: '698614112',
+            user_id: MOD_ID
+        }
+    },
+    {
         type: 'channel.follow',
         version: '2',
         condition: {

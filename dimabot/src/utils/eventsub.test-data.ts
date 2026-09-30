@@ -49,6 +49,7 @@ export function generateTestPayload(
 function getVersionForType(type: string): string {
   const versions: Record<string, string> = {
     "channel.chat.message": "1",
+    "channel.chat.notification": "1",
     "channel.follow": "2",
     "stream.online": "1",
     "stream.offline": "1",
@@ -82,6 +83,7 @@ function buildCondition(
 
   switch (type) {
     case "channel.chat.message":
+    case "channel.chat.notification":
       return {
         broadcaster_user_id: channelID,
         user_id: MOD_ID,
@@ -170,6 +172,25 @@ function buildEventData(
         badges: [],
         cheer: { bits: 0 },
         color: "#FF0000",
+        ...base,
+      };
+
+    case "channel.chat.notification":
+      return {
+        broadcaster_user_id: channelID,
+        broadcaster_user_login: "teststreamer",
+        broadcaster_user_name: "TestStreamer",
+        chatter_user_id: randomUserId,
+        chatter_user_login: "testviewer",
+        chatter_user_name: "TestViewer",
+        chatter_is_anonymous: false,
+        color: "",
+        badges: [],
+        system_message: "TestViewer is on a 5 stream watch streak!",
+        message_id: `test_notice_${Date.now()}`,
+        message: { text: "", fragments: [] },
+        notice_type: "watch_streak",
+        watch_streak: { streak_count: 5, channel_points_awarded: 450 },
         ...base,
       };
 
@@ -383,6 +404,7 @@ function buildEventData(
 export function getTestableEventTypes(): string[] {
   return [
     "channel.chat.message",
+    "channel.chat.notification",
     "channel.follow",
     "stream.online",
     "stream.offline",

@@ -99,6 +99,19 @@ interface IEventPowerUp {
     message_effect_id?: string;
 }
 
+/** Provider notices are retained verbatim; future notice types may add fields. */
+export interface IChatNotification extends ITwitchBroadcaster, ITwitchChatter {
+    chatter_is_anonymous: boolean;
+    color: string;
+    badges: IBadge[];
+    system_message: string;
+    message_id: string;
+    message: IEventMessage;
+    notice_type: string;
+    watch_streak: { streak_count: number; channel_points_awarded: number } | null;
+    [key: string]: unknown;
+}
+
 export interface IBitUseEvent extends ITwitchEventBase {
     bits: number;
     type: 'cheer' | 'power_up';
@@ -208,6 +221,7 @@ export interface IBanEvent {
 export type ITwitchEventData =
     | IBitUseEvent
     | IChatMessage
+    | IChatNotification
     | IRaidEventData
     | IRedemptionEvent
     | IFollowEvent

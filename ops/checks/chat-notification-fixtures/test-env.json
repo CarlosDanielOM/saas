@@ -1,0 +1,18 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_chat_notification_test",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "QDRANT_HOST": "qdrant.test",
+  "QDRANT_PORT": "6333",
+  "QDRANT_API_KEY": "dummy",
+  "POLARSH_OAT": "dummy",
+  "OTEL_SDK_DISABLED": "true",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "TWITCH_EVENTSUB_SECRET": "chat-notification-test-secret",
+  "CLIENT_ID": "chat-notification-test-client",
+  "CLIENT_SECRET": "dummy",
+  "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false",
+  "DOMAIN_EVENTS_POLL_INTERVAL_MS": "250",
+  "EVENTSUB_RECONCILIATION_REQUEST_DELAY_MS": "0"
+}

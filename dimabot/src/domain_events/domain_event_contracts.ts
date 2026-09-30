@@ -1,3 +1,4 @@
+import type { IChatNotification } from '../interfaces/twitch/eventsub.interface.js';
 import type { JournalDomainEventInput } from './domain_event.types.js';
 import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
 import type { PolarBillingPayload } from './polar_events.js';
@@ -17,6 +18,7 @@ export const TWITCH_DOMAIN_EVENT_TYPES = {
     'channel.bit.use': 'channel.bits.received',
     'channel.follow': 'channel.follow.received',
     'channel.raid': 'channel.raid.received',
+    'channel.chat.notification': 'channel.chat.notification',
     'channel.subscribe': 'channel.subscription.received',
     'channel.subscription.message': 'channel.subscription.received',
     'channel.subscription.gift': 'channel.subscription.gifted',
@@ -29,7 +31,8 @@ export type TwitchEventsubPayload = {
     [Type in keyof typeof TWITCH_DOMAIN_EVENT_TYPES]: {
         subscription: Record<string, unknown> & { type: Type; id?: string; version?: string };
         event: Record<string, unknown> & (
-            Type extends 'channel.raid' ? { to_broadcaster_user_id: string; from_broadcaster_user_id: string; viewers: number }
+            Type extends 'channel.chat.notification' ? IChatNotification
+                : Type extends 'channel.raid' ? { to_broadcaster_user_id: string; from_broadcaster_user_id: string; viewers: number }
                 : { broadcaster_user_id: string } & (
                     Type extends 'stream.online' ? { id: string; started_at?: string }
                         : Type extends 'channel.follow' | 'channel.subscribe' | 'channel.subscription.message' | 'channel.subscription.end'
@@ -216,6 +219,22 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
         text(event[channelField], `event.${channelField}`);
         requireContract(event[channelField] === input.channelID, 'Twitch payload/channelID mismatch');
         if (event.broadcaster_user_id !== undefined) requireContract(event.broadcaster_user_id === input.channelID, 'Twitch broadcaster/channelID mismatch');
+        if (original === 'channel.chat.notification') {
+            text(event.notice_type, 'event.notice_type');
+            text(event.message_id, 'event.message_id');
+            requireContract(typeof event.chatter_is_anonymous === 'boolean', 'event.chatter_is_anonymous must be boolean');
+            for (const field of ['chatter_user_id', 'chatter_user_login', 'chatter_user_name', 'system_message']) {
+                requireContract(typeof event[field] === 'string', `event.${field} must be a string`);
+            }
+            if (!event.chatter_is_anonymous) text(event.chatter_user_id, 'event.chatter_user_id');
+            record(event.message, 'event.message');
+            requireContract(typeof event.message.text === 'string' && Array.isArray(event.message.fragments), 'event.message must contain text and fragments');
+            if (event.notice_type === 'watch_streak') {
+                record(event.watch_streak, 'event.watch_streak');
+                count(event.watch_streak.streak_count, 'event.watch_streak.streak_count', 1);
+                count(event.watch_streak.channel_points_awarded, 'event.watch_streak.channel_points_awarded');
+            }
+        }
         if (original === 'channel.raid') {
             text(event.from_broadcaster_user_id, 'event.from_broadcaster_user_id');
             count(event.viewers, 'event.viewers');
