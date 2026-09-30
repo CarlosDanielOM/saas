@@ -32,7 +32,8 @@ try {
     else if (url.pathname.endsWith('/preview')) {
       const body = request.postDataJSON();
       data = body.texts.map(text => text.replaceAll('$(user)', body.user));
-    } else if (url.pathname === `/overlay-studio/${user.id}`) {
+    } else if (url.pathname === `/overlay-studio/${user.id}/connections`) data = { checkedAt: Date.now(), pollingFailed: false, scenes: state.scenes.map(s => ({ id: s.id, published: !!s.published, revision: s.revision, width: s.published?.width ?? s.width, height: s.published?.height ?? s.height, receives: [], sources: [] })) };
+    else if (url.pathname === `/overlay-studio/${user.id}`) {
       if (request.method() === 'GET') {
         reads++;
         if (loadFailure) return route.fulfill({ status: 503, json: { error: true, message: 'Fixture load failure' } });

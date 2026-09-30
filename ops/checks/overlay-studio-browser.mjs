@@ -21,6 +21,7 @@ await context.route('**/*',async route=>{
  else if(url.pathname.endsWith('/access'))data={allowed:true,role:'owner',planTier:app.plan_tier};
  else if(url.pathname.startsWith('/auth/access/'))data={allowed:true};
  else if(url.pathname.endsWith('/preview')){templates.push(body);data=body.texts.map(t=>t==='$(user)'?body.user:t.replace('$(user)',body.user).replace('$(cheer.amount)',body.amount));}
+ else if(url.pathname===`/overlay-studio/${user.id}/connections`)data={ checkedAt: Date.now(), pollingFailed: false, scenes: state.scenes.map(s => ({ id: s.id, published: !!s.published, revision: s.revision, width: s.published?.width ?? s.width, height: s.published?.height ?? s.height, receives: [], sources: [] })) };
  else if(url.pathname===`/overlay-studio/${user.id}`){
   if(req.method()==='PUT'){writes++;if(conflict)return route.fulfill({status:409,json:{error:true,message:'Conflict'}});state=structuredClone(body);state.revision++;state.scenes.forEach(s=>{if(!s.publicId)s.publicId='b'.repeat(48);});}
   data=structuredClone(state);

@@ -31,6 +31,7 @@ export class OverlayMediaComponent {
   readonly ended = output<void>();
   readonly failed = output<void>();
   readonly started = output<number | undefined>();
+  readonly playbackBlocked = output<void>();
   readonly blocked = signal(false);
   private readonly player = viewChild<ElementRef<HTMLVideoElement>>('player');
   private startedOnce = false;
@@ -48,7 +49,7 @@ export class OverlayMediaComponent {
     if (!element || this.attempting || !element.paused) return;
     this.attempting = true;
     void element.play().then(() => this.blocked.set(false)).catch((error: unknown) => {
-      if (error instanceof DOMException && error.name === 'NotAllowedError') this.blocked.set(true);
+      if (error instanceof DOMException && error.name === 'NotAllowedError') { this.blocked.set(true); this.playbackBlocked.emit(); }
       else if (!(error instanceof DOMException && error.name === 'AbortError')) this.failed.emit();
     }).finally(() => { this.attempting = false; });
   }

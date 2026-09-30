@@ -21,11 +21,16 @@ async function request(method, path, body, status = 200, token = ownerToken) {
   const data = await res.json(); assert.equal(res.status, status, JSON.stringify(data)); return data.data;
 }
 await request('GET', channel, undefined, 401, '');
+await request('GET', channel+'/connections', undefined, 401, '');
+await request('GET', channel+'/connections', undefined, 403, 'overlay-other-fixture');
+await request('GET', '990092/connections', undefined, 403, 'overlay-other-fixture');
 await request('GET', channel, undefined, 403, 'overlay-other-fixture');
 await request('GET', '990092', undefined, 403, 'overlay-other-fixture');
 let state = await request('GET', channel);
 const id = state.scenes[0].id, publicId = state.scenes[0].publicId;
 assert.match(publicId, /^[a-f0-9]{48}$/);
+let diagnostics=await request('GET', channel+'/connections');
+assert.equal(diagnostics.scenes[0].published,false);assert.deepEqual(diagnostics.scenes[0].sources,[]);
 await request('GET', `public/${publicId}`, undefined, 404, '');
 const original = structuredClone(state.scenes[0].widgets);
 state.scenes[0].name = 'Stream test'; state.scenes[0].width = 800;
@@ -49,11 +54,28 @@ async function connect(publicId, clientId = crypto.randomUUID()) {
   ws.addEventListener('message', event => { const m = String(event.data); if (m.startsWith('0')) ws.send(`40${ns},${JSON.stringify({ clientId })}`); else if (m === '2') ws.send('3'); else messages.push(m); });
   const wait = async predicate => { for (let i=0;i<120;i++) { const found = messages.find(predicate); if(found)return found; await new Promise(r=>setTimeout(r,50)); } throw new Error('Socket timeout: '+JSON.stringify(messages)); };
   const events = () => messages.filter(m=>m.startsWith(`42${ns},`)).map(m=>JSON.parse(m.slice(m.indexOf(',')+1)));
-  return { ws, wait, events, clientId, ack: id=>ws.send(`42${ns},${JSON.stringify(['overlay-ended',id])}`) };
+  return { ws, wait, events, clientId, health: body=>ws.send(`42${ns},${JSON.stringify(['overlay-health',body])}`), ack: id=>ws.send(`42${ns},${JSON.stringify(['overlay-ended',id])}`) };
 }
 const a = await connect(publicId), b = await connect(publicId);
 await a.wait(m=>m.includes('overlay-state')); await b.wait(m=>m.includes('overlay-state'));
+async function waitDiagnostics(predicate) { for(let i=0;i<140;i++){const result=await request('GET',channel+'/connections');if(predicate(result))return result;await new Promise(r=>setTimeout(r,50));}throw new Error('Diagnostic state timeout'); }
+const sources=result=>result.scenes.find(s=>s.id===id).sources;
+diagnostics=await waitDiagnostics(d=>sources(d).length===2);assert(sources(diagnostics).every(s=>s.connected&&s.status==='loading'));
+a.health({revision:state.scenes[0].revision,issue:null});b.health({revision:state.scenes[0].revision,issue:null});
+diagnostics=await waitDiagnostics(d=>sources(d).every(s=>s.status==='ready'));
+assert.deepEqual(diagnostics.scenes[0].receives,['tts','trigger','clip','sub','bits']);
+assert(!JSON.stringify(diagnostics).includes(publicId));assert(!JSON.stringify(diagnostics).includes(a.clientId));
+a.health({revision:state.scenes[0].revision,issue:'media'});
+await waitDiagnostics(d=>sources(d).some(s=>s.issue==='media'));
+a.health({revision:state.scenes[0].revision+100,issue:null});a.health({revision:0,issue:['media']});
+await new Promise(r=>setTimeout(r,100));assert.equal(sources(await request('GET',channel+'/connections'))[0].issue,'media','invalid reports cannot replace health');
+a.health({revision:state.scenes[0].revision,issue:null});await waitDiagnostics(d=>sources(d).every(s=>s.issue===null));
+console.log('PASS owner-only diagnostics: unpublished state, independent sources, valid health reports, issue clearing and no URL/client-ID disclosure.');
+
 state = await request('POST', `${channel}/scenes/${id}/publish`, { revision: state.revision }); await a.wait(m=>m.includes('overlay-updated'));
+await waitDiagnostics(d=>sources(d).every(s=>s.status==='updating'));
+a.health({revision:state.scenes[0].revision,issue:null});b.health({revision:state.scenes[0].revision,issue:null});await waitDiagnostics(d=>sources(d).every(s=>s.status==='ready'));
+
 await request('POST', channel+'/test-alert', { kind:'bits' });
 await a.wait(m=>m.includes('overlay-event')); await b.wait(m=>m.includes('overlay-event'));
 const eventId = a.events().find(e=>e[0]==='overlay-event')[1].id;
@@ -70,7 +92,8 @@ const journalId=a.events().filter(e=>e[0]==='overlay-event').at(-1)[1].id;
 const journal = await request('GET',`public/${publicId}/events/${journalId}`,undefined,200,''); assert.equal(journal.layouts.starter.widgets[1].text,'New Journal viewer / 321');
 // URL rotation immediately revokes old HTTP and socket access, including recovery.
 state = await request('POST',`${channel}/scenes/${id}/rotate`,{revision:state.revision});
-await request('GET',`public/${publicId}`,undefined,404,''); await a.wait(m=>m.includes('overlay-revoked')); a.ws.close();b.ws.close();
+await request('GET',`public/${publicId}`,undefined,404,'');
+assert.deepEqual(sources(await request('GET',channel+'/connections')),[],'rotated URLs vanish from owner diagnostics immediately'); await a.wait(m=>m.includes('overlay-revoked')); a.ws.close();b.ws.close();
 const invalid=await connect(publicId);await invalid.wait(m=>m.startsWith('44'));invalid.ws.close();
 // Media leasing uses the same route/socket implementation in an isolated in-process host.
 const express = require('express'); const app=express();app.use(express.json());
@@ -92,10 +115,33 @@ const subscribe=clipQueueHandler.subscribeToChannel.bind(clipQueueHandler),resum
 clipQueueHandler.subscribeToChannel=async(...args)=>{clipActivations++;return subscribe(...args);};
 ttsQueueHandler.resumeIfIdle=async(...args)=>{ttsActivations++;return resume(...args);};
 const nextId=state.scenes[0].publicId; const c=await connect(nextId),d=await connect(nextId);await c.wait(m=>m.includes('overlay-state'));await d.wait(m=>m.includes('overlay-state'));
+c.health({revision:state.scenes[0].revision,issue:null});d.health({revision:state.scenes[0].revision,issue:null});
+await waitDiagnostics(d=>sources(d).every(s=>s.status==='ready'));
+const realNow=Date.now;try{Date.now=()=>realNow()+46000;assert(live.studioConnections(channel,state.scenes).scenes[0].sources.every(s=>s.status==='unresponsive'));}finally{Date.now=realNow;}
+// Reports are scoped by the subscribed scene and channel, even if another owner can query their own diagnostics.
+await Users.collection.insertOne({accounts:[{type:'twitch',id:'990093'}],plan_tier:'pro'});
+await redis.hSet('token:overlay-isolation-fixture',{id:'990093',login:'separate',display_name:'Separate'});
+const separate=await request('GET','990093/connections',undefined,200,'overlay-isolation-fixture');assert(separate.scenes.every(s=>s.sources.length===0));
+// Recoverable database/journal failures become diagnostic warnings without revoking active sources.
+const findOne=store.Studio.findOne;store.Studio.findOne=function(...args){if(args[0]?.['scenes.publicId'])throw new Error('Disposable state outage');return findOne.apply(this,args);};
+try{await waitDiagnostics(d=>sources(d).every(s=>s.stateFailed));}finally{store.Studio.findOne=findOne;}
+await waitDiagnostics(d=>sources(d).every(s=>!s.stateFailed));
+const journalFind=DomainEventSchema.find;DomainEventSchema.find=()=>{throw new Error('Disposable journal outage');};
+try{await waitDiagnostics(d=>d.pollingFailed);}finally{DomainEventSchema.find=journalFind;}
+await waitDiagnostics(d=>!d.pollingFailed);
+let failActivation=true;
+ttsQueueHandler.resumeIfIdle=async(...args)=>{ttsActivations++;if(failActivation)throw new Error('Disposable activation outage');return resume(...args);};
+
 await new Promise(r=>setTimeout(r,100));assert.equal(clipActivations,0);assert.equal(ttsActivations,0);
 state.scenes[0].widgets=sourceWidgets;state=await request('PUT',channel,state);
 state=await request('POST',`${channel}/scenes/${id}/publish`,{revision:state.revision});
 await c.wait(m=>m.includes('overlay-updated'));
+await waitDiagnostics(d=>sources(d).some(s=>s.activationFailed));failActivation=false;
+await waitDiagnostics(d=>sources(d).every(s=>!s.activationFailed));
+c.health({revision:state.scenes[0].revision,issue:null});d.health({revision:state.scenes[0].revision,issue:'autoplay'});
+await waitDiagnostics(d=>sources(d).some(s=>s.issue==='autoplay'));d.health({revision:state.scenes[0].revision,issue:null});
+console.log('PASS diagnostics: updated layouts, stale reports, channel isolation and automatic producer recovery.');
+
 for(let i=0;i<60&&(!clipActivations||!ttsActivations);i++)await new Promise(r=>setTimeout(r,50));
 assert(clipActivations>0,'publishing a new clip placement subscribes its producer without reconnecting');
 assert(ttsActivations>0,'publishing TTS resumes its producer without reconnecting');
@@ -106,7 +152,12 @@ await writeFile('/tmp/source-media-fixture','overwritten');
 const mediaPath=`public/${nextId}/media/${mediaId}`;
 assert.equal(await (await fetch(base+'/overlay-studio/'+mediaPath)).text(),'original');
 c.ack(mediaId);await new Promise(r=>setTimeout(r,50));assert.equal((await fetch(base+'/overlay-studio/'+mediaPath)).status,200);
-const clientId=d.clientId;d.ws.close();await new Promise(r=>setTimeout(r,100));const reconnect=await connect(nextId,clientId);await reconnect.wait(m=>m.includes(mediaId));
+const clientId=d.clientId;d.ws.close();
+await waitDiagnostics(d=>sources(d).some(s=>s.status==='reconnecting'&&!s.connected&&s.disconnectedAt));
+const reconnect=await connect(nextId,clientId);await reconnect.wait(m=>m.includes(mediaId));
+reconnect.health({revision:state.scenes[0].revision,issue:null});
+await waitDiagnostics(d=>sources(d).length===2&&sources(d).every(s=>s.connected&&s.status==='ready'));
+
 reconnect.ack(mediaId);await new Promise(r=>setTimeout(r,50));assert.equal((await fetch(base+'/overlay-studio/'+mediaPath)).status,404);
 // Exercise actual TTS producer -> private retained media -> per-client release.
 process.env.PIPER_HTTP_URL=base+'/piper-fixture';
@@ -128,7 +179,8 @@ const produced=c.events().find(e=>e[0]==='overlay-event'&&e[1].media?.title==='P
 const producedMedia=await request('GET',`public/${nextId}/events/${produced.id}`,undefined,200,'');assert.equal(await(await fetch(base+producedMedia.media.url)).text(),'clip-fixture-bytes');
 await clipQueueHandler.handleClipEnded(channel,'clip-producer-fixture');assert.equal(await redis.get(`twitch:${channel}:clip:processing`),null);
 await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:'free'}});
+await request('GET',channel+'/connections',undefined,403);
 await request('GET',channel,undefined,403);await request('GET',`public/${nextId}`,undefined,403,'');await c.wait(m=>m.includes('overlay-revoked'));
 c.ws.close();reconnect.ws.close();io.close();await unlink('/tmp/source-media-fixture');
-console.log('PASS Overlay Studio API: actual entrypoint, owner/Pro gates, CAS, strict schema/AST, canvas preservation, immutable publish, live journal alerts, independent clients, per-client media retention, reconnect, URL rotation and downgrade.');
+console.log('PASS Overlay Studio API: actual entrypoint, owner/Pro gates, CAS, strict schema/AST, canvas preservation, immutable publish, live journal alerts, independent clients, connection diagnostics, per-client media retention, reconnect, URL rotation and downgrade.');
 process.exit(0);

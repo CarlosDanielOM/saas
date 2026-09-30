@@ -6,6 +6,7 @@ import { OverlayMediaComponent } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
 import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
+import { OverlayConnectionsComponent } from './overlay-connections.component';
 import { OverlayApi, StudioState } from './overlay-api.service';
 import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } from './overlay-draft-storage.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -22,7 +23,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()' }

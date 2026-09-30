@@ -14,18 +14,18 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text'].includes(w.kind)) {
-        <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" /></div>
+        <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
       } }
       @for (job of playing(); track job.event.id) {
         @for (w of job.widgets; track w.id) {
           <div class="placement" [attr.data-event]="job.event.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
             @if (job.event.media; as media) {
-              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (ended)="finishPlacement(job.event.id,w.id)" (failed)="finishPlacement(job.event.id,w.id)" />
+              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
               @if (job.event.kind === 'tts') { <div class="speech-text">{{ job.event.text }}</div> }
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" (failed)="finishPlacement(job.event.id,w.id)" /></div>
+                  <div class="placement" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" (failed)="failedPlacement(job.event.id,w.id)" /></div>
                 } }
               }
             }
@@ -51,25 +51,32 @@ export class OverlayRuntimeComponent {
   private disposed = false;
   private revision = -1;
   private generation = 0;
+  private issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null = null;
   constructor() {
     const doc = inject(DOCUMENT); const oldBody = doc.body.style.background, oldRoot = doc.documentElement.style.background;
     doc.body.style.background = 'transparent'; doc.documentElement.style.background = 'transparent';
     const referrer = doc.createElement('meta'); referrer.name = 'referrer'; referrer.content = 'no-referrer'; doc.head.append(referrer);
-    this.socket.on('overlay-state', state => { if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); } });
+    this.socket.on('overlay-state', state => { if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); if (this.issue === 'snapshot') this.issue = null; this.reportHealth(); } });
     this.socket.on('overlay-updated', () => void this.refresh());
     this.socket.on('overlay-event', (event: Event) => this.enqueue(event));
     this.socket.on('overlay-revoked', () => this.clear());
     this.socket.on('disconnect', reason => { if (reason === 'io server disconnect') this.clear(); });
+    const healthTimer = setInterval(() => this.reportHealth(), 15000);
     if (/^[a-f0-9]{48}$/.test(this.publicId)) this.socket.connect();
-    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
+    inject(DestroyRef).onDestroy(() => { this.disposed = true; clearInterval(healthTimer); this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
   }
+  private reportHealth(): void {
+    if (this.socket.connected && this.revision >= 0) this.socket.emit('overlay-health', { revision: this.revision, issue: this.issue });
+  }
+  reportIssue(issue: 'snapshot' | 'event' | 'media' | 'autoplay'): void { this.issue = issue; this.reportHealth(); }
+  failedPlacement(id: string, widget: string): void { this.reportIssue('media'); this.finishPlacement(id, widget); }
   playLabel() { return this.language.translate('overlayStudio.tapToPlay'); }
   indexOfId(id: string) { return (w: OverlayWidget) => w.id === id; }
   designWidth(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.width || 800; }
   designHeight(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.height || 240; }
   private async refresh() {
-    try { const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`); if (!this.disposed && state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); } }
-    catch { /* Keep the last published version on fetch failure. */ }
+    try { const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`); if (!this.disposed && state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); if (this.issue === 'snapshot') this.issue = null; this.reportHealth(); } }
+    catch { if (!this.disposed) this.reportIssue('snapshot'); /* Keep the last published version on fetch failure. */ }
   }
   private enqueue(event: Event) {
     if (this.seen.has(event.id)) { if (this.completed.has(event.id)) this.socket.emit('overlay-ended', event.id); return; } this.seen.add(event.id);
@@ -81,6 +88,7 @@ export class OverlayRuntimeComponent {
     try {
       const full = await this.api.request<Event>('GET', `public/${this.publicId}/events/${event.id}`);
       if (this.disposed || generation !== this.generation) return;
+      if (this.issue === 'event') { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
       const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)));
       if (!widgets.length) { this.finish(event.id); return; }
@@ -91,10 +99,11 @@ export class OverlayRuntimeComponent {
         const seconds = full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
         job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), seconds * 1000));
       }
-    } catch { if (generation === this.generation) this.finish(event.id); }
+    } catch { if (!this.disposed && generation === this.generation) { this.reportIssue('event'); this.finish(event.id); } }
   }
   started(id: string, widget: string, duration?: number) {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
+    if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); }
     clearTimeout(job.timers.get(widget));
     const seconds = job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
     job.timers.set(widget, setTimeout(() => this.finishPlacement(id, widget), seconds * 1000));

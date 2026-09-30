@@ -9,20 +9,38 @@ import { publicState, type StudioState } from './store.js';
 import { renderLayout } from './ast.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import type { AlertEvent, EventKind } from './model.js';
+import { EVENT_KINDS, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
 
 export interface LiveMedia { type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
 export interface LiveEvent { id: string; kind: EventKind; media?: LiveMedia; text?: string }
 type Public = Awaited<ReturnType<typeof publicState>>;
-interface Peer { key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
+interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
+interface Peer { connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { event: LiveEvent; channel: string; recipients: Set<string>; file?: string; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
+let pollingFailed = false;
 const pending = new Map<string, Pending>();
 const channels = new Map<string, { after: Types.ObjectId; busy: boolean }>();
 const directory = path.join(tmpdir(), 'domdimabot-overlay-media');
 const types: Record<string, AlertEvent> = { 'channel.follow.received': 'follow', 'channel.bits.received': 'bits', 'channel.subscription.received': 'sub', 'channel.subscription.gifted': 'sub', 'channel.raid.received': 'raid' };
 const accepts = (peer: Peer, kind: EventKind) => peer.state.snapshot.widgets.some(w => w.visible && (w.kind === kind || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
 export function studioHasSource(channel: string, kind: EventKind): boolean { return [...peers.values()].some(p => p.channel === channel && p.socket?.connected && accepts(p, kind)); }
+/** Owner-only diagnostics. Browser sources include OBS and ordinary browser tabs. */
+export function studioConnections(channel: string, scenes: OverlayScene[]) {
+  const now = Date.now();
+  return { checkedAt: now, pollingFailed, scenes: scenes.map(scene => ({
+    id: scene.id, published: !!scene.published, revision: scene.revision, width: scene.published?.width ?? scene.width, height: scene.published?.height ?? scene.height,
+    receives: EVENT_KINDS.filter(kind => scene.published?.widgets.some(w => w.visible && (w.kind === kind || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)))),
+    sources: [...peers.values()].filter(p => p.channel === channel && p.publicId === scene.publicId).map(p => ({
+      connected: !!p.socket?.connected, connectedAt: p.connectedAt, disconnectedAt: p.disconnectedAt ?? null,
+      lastReportAt: p.health?.reportedAt ?? null, revision: p.health?.revision ?? null,
+      status: !p.socket?.connected ? 'reconnecting' : !p.health ? 'loading' : now - p.health.reportedAt > 45000 ? 'unresponsive' : p.health.revision !== scene.revision ? 'updating' : 'ready',
+      issue: p.health?.issue ?? null, issueAt: p.health?.issueAt ?? null,
+      activationFailed: !!p.activationFailed, stateFailed: !!p.stateFailed
+    }))
+  })) };
+}
 async function discard(id: string) { const item = pending.get(id); if (!item) return; pending.delete(id); if (item.file) await unlink(item.file).catch(() => {}); }
 async function dropPeer(key: string) {
   const peer = peers.get(key); peers.delete(key); peer?.socket?.disconnect(true);
@@ -77,6 +95,10 @@ async function activateSources(peer: Peer): Promise<void> {
   }
   if (accepts(peer, 'tts')) await ttsQueueHandler.resumeIfIdle(peer.channel);
 }
+async function ensureSources(peer: Peer): Promise<void> {
+  try { await activateSources(peer); peer.activationFailed = false; }
+  catch { peer.activationFailed = true; peer.activationRetryAt = Date.now() + 5000; }
+}
 export function registerStudio(io: Server): void {
   const pattern = /^\/overlay-studio\/[a-f0-9]{48}$/;
   io.on('new_namespace', child => { if (pattern.test(child.name)) child.adapter.persistSession = () => {}; });
@@ -92,17 +114,25 @@ export function registerStudio(io: Server): void {
   namespace.on('connection', socket => {
     const state = socket.data.studioState as Public; const key = `${state.publicId}:${socket.handshake.auth.clientId}`;
     const previous = peers.get(key); previous?.socket?.disconnect(true);
-    const peer: Peer = { key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
+    const peer: Peer = { connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
     peers.set(key, peer);
     if (!channels.has(peer.channel)) channels.set(peer.channel, { after: Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000)), busy: false });
     socket.emit('overlay-state', { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot });
     for (const item of pending.values()) if (item.recipients.has(key)) socket.emit('overlay-event', item.event);
+    socket.on('overlay-health', (raw: unknown) => {
+      if (peers.get(key) !== peer || !raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+      const { revision, issue } = raw as Record<string, unknown>;
+      if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0 || revision > peer.state.revision) return;
+      if (issue !== null && (typeof issue !== 'string' || !['snapshot', 'event', 'media', 'autoplay'].includes(issue))) return;
+      const now = Date.now();
+      peer.health = { revision, issue: issue as RuntimeIssue | null, reportedAt: now, issueAt: issue === null ? null : peer.health && peer.health.issue === issue ? peer.health.issueAt : now };
+    });
     socket.on('overlay-ended', (id: unknown) => {
       if (typeof id !== 'string') return; const item = pending.get(id); if (!item) return;
       item.recipients.delete(key); if (!item.recipients.size) void discard(id);
     });
     socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) { peer.socket = undefined; peer.disconnectedAt = Date.now(); } });
-    void activateSources(peer).catch(() => socket.emit('overlay-warning', 'Connections are recovering'));
+    void ensureSources(peer);
   });
   let busy = false;
   const timer = setInterval(() => { void (async () => {
@@ -113,12 +143,14 @@ export function registerStudio(io: Server): void {
         if (!peer.socket && Date.now() - (peer.disconnectedAt ?? 0) > 120000) { await dropPeer(key); continue; }
         try {
           let state = states.get(peer.publicId); if (!state) { state = await publicState(peer.publicId); states.set(peer.publicId, state); }
+          peer.stateFailed = false;
           if (peer.state.revision !== state.revision) {
             peer.state = state; peer.socket?.emit('overlay-updated', { revision: state.revision });
-            if (peer.socket?.connected) await activateSources(peer);
-          }
+            if (peer.socket?.connected) await ensureSources(peer);
+          } else if (peer.socket?.connected && peer.activationFailed && Date.now() >= (peer.activationRetryAt ?? 0)) await ensureSources(peer);
         } catch (e) {
           if ([403, 404].includes((e as { status?: number }).status ?? 0)) { peer.socket?.emit('overlay-revoked'); await dropPeer(key); }
+          else peer.stateFailed = true;
           // A transient database failure keeps the current version and queue.
         }
       }
@@ -134,10 +166,11 @@ export function registerStudio(io: Server): void {
           }
         } finally { cursor.busy = false; }
       }
-    } catch { /* Retry polling; active events and retained files remain intact. */ }
+      pollingFailed = false;
+    } catch { pollingFailed = true; /* Retry polling; active events and retained files remain intact. */ }
     finally { busy = false; }
   })(); }, 1000);
-  io.on('close', () => { clearInterval(timer); for (const id of pending.keys()) void discard(id); peers.clear(); channels.clear(); });
+  io.on('close', () => { clearInterval(timer); for (const id of pending.keys()) void discard(id); peers.clear(); channels.clear(); pollingFailed = false; });
 }
 
 registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger });

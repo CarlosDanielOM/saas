@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { change, load, publicState, validateState, object, string, token, OverlayError, requirePro } from '../../overlays/store.js';
-import { eventFor, fileFor, publishStudioAlert } from '../../overlays/live.js';
+import { eventFor, fileFor, publishStudioAlert, studioConnections } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, type AlertEvent } from '../../overlays/model.js';
 import { AssetError, withAssetLibrary } from '../../assets/library.js';
@@ -28,6 +28,10 @@ overlayStudioRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   void requirePro(param(req, 'channelID')).then(() => next(), next);
 });
 overlayStudioRoute.get('/:channelID', wrap(async (req, res) => ok(res, await load(param(req, 'channelID')))));
+overlayStudioRoute.get('/:channelID/connections', wrap(async (req, res) => {
+  const channel = param(req, 'channelID'), state = await load(channel);
+  return ok(res, studioConnections(channel, state.scenes));
+}));
 overlayStudioRoute.put('/:channelID', wrap(async (req, res) => ok(res, await withAssetLibrary(param(req, 'channelID'), () => change(param(req, 'channelID'), req.body.revision, async state => {
   const validated = validateState(req.body, state);
   await validateAssets(param(req, 'channelID'), validated);
