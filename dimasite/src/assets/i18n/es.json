@@ -2874,6 +2874,13 @@
     "saveChanges": "Guardar Cambios",
     "deleteEvent": "Eliminar Evento",
     "upgrade": "Mejorar plan",
+    "watchStreak": {
+      "name": "Racha de visualización",
+      "defaultMessage": "¡$(user) tiene una racha de $(twitch.streak) días!",
+      "variables": "Usa $(user) para el espectador y $(twitch.streak) para el número de su racha.",
+      "defaultHelp": "Deja el mensaje vacío para usar el predeterminado en el idioma de tu canal. Desactiva este evento para detener los anuncios de rachas.",
+      "restoreDefault": "Restaurar mensaje predeterminado"
+    },
     "configuration": "Configuracion",
     "pending": {
       "saving": "Guardando...",

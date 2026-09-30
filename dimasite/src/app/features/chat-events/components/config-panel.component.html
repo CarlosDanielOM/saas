@@ -19,9 +19,21 @@
                 [id]="'control-' + control.id"
                 [(ngModel)]="control.value"
                 [disabled]="isBusy() || !canManage()"
-                [placeholder]="control.placeholder || ''"
+                [placeholder]="getControlPlaceholder(control)"
+                [attr.aria-describedby]="isWatchStreakMessage(control) ? 'watch-streak-help' : null"
                 class="lf-config__input"
               />
+              @if (isWatchStreakMessage(control)) {
+                <div id="watch-streak-help" class="lf-config__help">
+                  <p>{{ t('chatEvents.watchStreak.variables') }}</p>
+                  <p>{{ t('chatEvents.watchStreak.defaultHelp') }}</p>
+                </div>
+                @if (canManage()) {
+                  <button type="button" class="lf-btn lf-config__reset" [disabled]="isBusy()" (click)="restoreDefault(control)">
+                    {{ t('chatEvents.watchStreak.restoreDefault') }}
+                  </button>
+                }
+              }
             }
             @case ('number') {
               <input

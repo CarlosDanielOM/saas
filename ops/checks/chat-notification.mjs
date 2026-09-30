@@ -6,6 +6,8 @@ import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import UsersSchema from '/app/dist/schemas/users.schema.js';
 import EventsubSchema from '/app/dist/schemas/eventsub.schema.js';
+import { EventSchema } from '/app/dist/schemas/event.schema.js';
+import { WATCH_STREAK_EVENT } from '/app/dist/utils/chat_event_catalog.js';
 import { DomainEventSchema } from '/app/dist/schemas/domain_event.schema.js';
 import { DomainEventDeliverySchema } from '/app/dist/schemas/domain_event_delivery.schema.js';
 import { SUBSCRIPTION_TYPES } from '/app/dist/utils/eventsub.js';
@@ -72,6 +74,34 @@ if (target === 'api') {
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.data.standardTypes.filter(type => type.type === 'channel.chat.notification').length, 1);
+    const headers = { Authorization: 'Bearer fixture-catalog-token', 'Content-Type': 'application/json' };
+    await redis.hSet('token:fixture-catalog-token', { id: channelID, login: 'noticefixture', display_name: 'Notice Fixture' });
+    const catalogResponse = await fetch('http://127.0.0.1:3000/site/events', { headers });
+    assert.equal(catalogResponse.status, 200);
+    const catalog = (await catalogResponse.json()).data;
+    assert.equal(catalog.filter(event => event.type === WATCH_STREAK_EVENT.type).length, 1);
+    const card = catalog.find(event => event.type === WATCH_STREAK_EVENT.type);
+    assert.equal(card.plan_tier, 'free');
+    assert.equal(card.enabled, false, 'channels without a subscription must opt in');
+    assert.deepEqual(card.condition, { broadcaster_user_id: 'user', user_id: 'moderator' });
+    assert.equal(card.config[0].id, 'message');
+    assert.equal(card.config[0].canDisable, true);
+    const single = await fetch('http://127.0.0.1:3000/site/events/channel.chat.notification', { headers });
+    assert.equal(single.status, 200);
+    assert.equal((await single.json()).data.type, WATCH_STREAK_EVENT.type);
+    assert.equal(await EventSchema.countDocuments(), 0, 'discovery does not mutate the catalog');
+    await EventSchema.create({ ...WATCH_STREAK_EVENT, name: 'Catalog Override' });
+    const overridden = (await (await fetch('http://127.0.0.1:3000/site/events', { headers })).json()).data;
+    assert.equal(overridden.filter(event => event.type === WATCH_STREAK_EVENT.type).length, 1);
+    assert.equal(overridden.find(event => event.type === WATCH_STREAK_EVENT.type).name, 'Catalog Override');
+    for (const update of [{ message: 'Custom $(user): $(twitch.streak)' }, { enabled: false }, { enabled: true }, { message: '' }]) {
+        const saved = await fetch(`http://127.0.0.1:3000/eventsubs/${channelID}/${storedSubscription._id}`, {
+            method: 'PATCH', headers, body: JSON.stringify(update)
+        });
+        assert.equal(saved.status, 200, await saved.text());
+        const stored = await EventsubSchema.findById(storedSubscription._id).lean();
+        for (const [key, value] of Object.entries(update)) assert.equal(stored[key], value);
+    }
 }
 if (target === 'cron') {
     await until(() => calls().some(call => call.worker?.endsWith('/domain_events.worker.js'))

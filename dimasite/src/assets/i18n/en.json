@@ -2874,6 +2874,13 @@
     "saveChanges": "Save Changes",
     "deleteEvent": "Delete Event",
     "upgrade": "Upgrade",
+    "watchStreak": {
+      "name": "Watch Streak",
+      "defaultMessage": "$(user) has a streak of $(twitch.streak) days!",
+      "variables": "Use $(user) for the viewer and $(twitch.streak) for their streak number.",
+      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Disable this event to stop streak announcements.",
+      "restoreDefault": "Restore default message"
+    },
     "configuration": "Configuration",
     "pending": {
       "saving": "Saving...",

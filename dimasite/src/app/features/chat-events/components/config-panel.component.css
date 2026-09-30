@@ -91,6 +91,22 @@
   opacity: 0.55;
 }
 
+.lf-config__help {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.lf-config__help p {
+  margin: 0;
+}
+
+.lf-config__reset {
+  justify-self: start;
+  min-height: 44px;
+}
+
 .lf-config__input--number {
   max-width: 10rem;
 }

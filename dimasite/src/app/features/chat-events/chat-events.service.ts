@@ -14,7 +14,7 @@ import {
 } from './chat-events.model';
 import { LinksService } from '../../services/links.service';
 import { ToastService } from '../../services/toast.service';
-import { getConfigPersistenceKey, normalizeCheerTierArray, serializeConfigControlValue } from './chat-events.contract';
+import { getConfigPersistenceKey, normalizeCheerTierArray, normalizeWatchStreakMessage, serializeConfigControlValue } from './chat-events.contract';
 
 interface EventsApiResponse {
   error: boolean;
@@ -86,7 +86,7 @@ export class ChatEventsService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
   private readonly toastService = inject(ToastService);
-  private readonly cacheKeyPrefix = 'eventsCache:v3';
+  private readonly cacheKeyPrefix = 'eventsCache:v4';
 
   private readonly eventsCacheByChannel = new Map<string, Observable<ChatEvent[]>>();
 
@@ -155,7 +155,8 @@ export class ChatEventsService {
 
               const userValue = matchingUserControl?.value;
               if (userValue !== undefined) {
-                const mergedControl = { ...defaultControl, value: userValue };
+                const mergedControl = { ...defaultControl, value: mergedEvent.type === 'channel.chat.notification'
+                  ? normalizeWatchStreakMessage(userValue) : userValue };
                 if (userValue === '' && typeof defaultControl.value === 'string' && defaultControl.value) {
                   mergedControl.placeholder = defaultControl.value;
                 }
@@ -557,10 +558,15 @@ export class ChatEventsService {
   private normalizeChatEvent(event: unknown): ChatEvent {
     const source = event && typeof event === 'object' ? (event as Record<string, unknown>) : {};
     const planTier = typeof source['plan_tier'] === 'string' ? source['plan_tier'] : 'free';
+    const type = canonicalizeEventType(this.asString(source['type']));
+    const config = this.normalizeConfigControls(source['config'])?.map(control =>
+      type === 'channel.chat.notification' && getConfigPersistenceKey(control) === 'message'
+        ? { ...control, value: normalizeWatchStreakMessage(control.value) } : control
+    );
 
     return {
       name: this.asString(source['name']),
-      type: canonicalizeEventType(this.asString(source['type'])),
+      type,
       version: this.asString(source['version'], '1'),
       condition: this.asCondition(source['condition']),
       description: this.normalizeLocalizedText(source['description']),
@@ -569,9 +575,11 @@ export class ChatEventsService {
       textColor: this.asString(source['textColor']),
       releaseStage: this.asReleaseStage(source['releaseStage']),
       enabled: this.asBoolean(source['enabled']) ?? false,
-      premium: planTier === 'premium' || planTier === 'pro',
-      pro: planTier === 'pro',
-      config: this.normalizeConfigControls(source['config']),
+      isSubscribed: this.asBoolean(source['isSubscribed']),
+      subscriptionId: this.asOptionalString(source['subscriptionId']),
+      premium: this.asBoolean(source['premium']) ?? (planTier === 'premium' || planTier === 'pro'),
+      pro: this.asBoolean(source['pro']) ?? (planTier === 'pro'),
+      config,
       tierLimits: this.normalizeTierLimits(source['tierLimits'])
     };
   }

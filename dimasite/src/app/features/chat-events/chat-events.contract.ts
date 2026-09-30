@@ -1,4 +1,11 @@
 import type { CheerTier, ConfigControl } from './chat-events.model';
+import enDictionary from '../../../assets/i18n/en.json';
+import esDictionary from '../../../assets/i18n/es.json';
+
+export function normalizeWatchStreakMessage(value: ConfigControl['value']): ConfigControl['value'] {
+  return value === enDictionary.chatEvents.watchStreak.defaultMessage
+    || value === esDictionary.chatEvents.watchStreak.defaultMessage ? '' : value;
+}
 
 const CONTROL_KEY_FALLBACKS: Record<string, string> = {
   adBeginMessage: 'message',

@@ -43,6 +43,24 @@ export class ConfigPanelComponent {
   readonly isDeleting = computed(() => this.pendingAction() === 'deleting');
   readonly isBusy = computed(() => this.isSaving() || this.isDeleting());
 
+  readonly isWatchStreak = computed(() => this.event()?.type === 'channel.chat.notification');
+
+  isWatchStreakMessage(control: ConfigControl): boolean {
+    return this.isWatchStreak() && (control.dbId || control.id) === 'message';
+  }
+
+  getControlPlaceholder(control: ConfigControl): string {
+    return this.isWatchStreakMessage(control)
+      ? this.t('chatEvents.watchStreak.defaultMessage')
+      : control.placeholder || '';
+  }
+
+  restoreDefault(control: ConfigControl): void {
+    if (!this.canManage() || this.isBusy()) return;
+    // Empty means the default in the channel's language, including future changes.
+    control.value = '';
+  }
+
   t(key: string): string {
     return this.languageService.translate(key);
   }

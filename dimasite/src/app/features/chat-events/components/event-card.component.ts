@@ -198,6 +198,12 @@ export class EventCardComponent {
     return this.languageService.translate(key);
   }
 
+  getEventName(): string {
+    return this.event().type === 'channel.chat.notification'
+      ? this.t('chatEvents.watchStreak.name')
+      : this.event().name;
+  }
+
   getEventDescription(description: { en: string; es: string }): string {
     if (!description || typeof description !== 'object') {
       return 'Invalid description';
