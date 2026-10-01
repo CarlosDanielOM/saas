@@ -200,7 +200,7 @@ export class EventCardComponent {
 
   getEventName(): string {
     return this.event().type === 'channel.chat.notification'
-      ? this.t('chatEvents.watchStreak.name')
+      ? this.t('chatEvents.notificationsName')
       : this.event().name;
   }
 

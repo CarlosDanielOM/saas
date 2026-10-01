@@ -1,9 +1,9 @@
 {
-  "version": "a8d37d921ceb",
-  "generatedAt": "2026-09-30T20:27:56.369Z",
+  "version": "72599d0d9398",
+  "generatedAt": "2026-10-01T01:23:51.536Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 92,
+  "functionCount": 93,
   "entries": [
     {
       "name": "enable.command",
@@ -1300,6 +1300,28 @@
       "destructive": false,
       "surfaces": [
         "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "twitch.modiversary",
+      "description": "Number of months the viewer has been a moderator, from modiversary.months. Returns 0 when no valid moderator anniversary is present.",
+      "syntax": "twitch.modiversary",
+      "category": "event-data",
+      "examples": [
+        "twitch.modiversary"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "modiversary",
+        "moderator anniversary",
+        "moderator months",
+        "aniversario de moderación",
+        "meses de moderador"
+      ],
+      "destructive": false,
+      "surfaces": [
         "authoring"
       ]
     },

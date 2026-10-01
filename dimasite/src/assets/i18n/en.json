@@ -2880,11 +2880,17 @@
     "saveChanges": "Save Changes",
     "deleteEvent": "Delete Event",
     "upgrade": "Upgrade",
+    "notificationsName": "Chat Notifications",
+    "modiversary": {
+      "defaultMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!",
+      "variables": "Use $(user) for the moderator and $(twitch.modiversary) for their months as a moderator.",
+      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Uncheck moderator anniversary announcements to silence them."
+    },
     "watchStreak": {
       "name": "Watch Streak",
       "defaultMessage": "$(user) has a streak of $(twitch.streak) days!",
       "variables": "Use $(user) for the viewer and $(twitch.streak) for their streak number.",
-      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Disable this event to stop streak announcements.",
+      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Uncheck watch streak announcements to silence them.",
       "restoreDefault": "Restore default message"
     },
     "configuration": "Configuration",

@@ -36,3 +36,14 @@ test('twitch.streak metadata identifies the event field, fallback and authoring 
     assert.match(metadata?.description ?? '', /watch_streak.streak_count/);
     assert.match(metadata?.description ?? '', /Returns 0/);
 });
+
+test('twitch.modiversary reads moderator months without using subscription months', async () => {
+    const eventData = { notice_type: 'modiversary', modiversary: { months: 24 } };
+    assert.equal(await render('$(twitch.modiversary)', eventData), '24');
+    assert.equal(await render('*($(twitch.modiversary) / 12)', eventData), '2');
+    for (const eventData of [{}, { modiversary: null }, { modiversary: [] }, { resub: { cumulative_months: 24 } },
+        ...['24', -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1].map(months => ({ modiversary: { months } }))]) {
+        assert.equal(await render('$(twitch.modiversary)', eventData), '0');
+    }
+    assert.deepEqual(getFunctionMetadata('twitch.modiversary')?.surfaces, ['authoring']);
+});

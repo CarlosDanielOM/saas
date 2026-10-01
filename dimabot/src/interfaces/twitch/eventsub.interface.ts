@@ -109,6 +109,7 @@ export interface IChatNotification extends ITwitchBroadcaster, ITwitchChatter {
     message: IEventMessage;
     notice_type: string;
     watch_streak: { streak_count: number; channel_points_awarded: number } | null;
+    modiversary?: { months: number } | null;
     [key: string]: unknown;
 }
 

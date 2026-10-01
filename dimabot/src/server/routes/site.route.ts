@@ -5,7 +5,7 @@ import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js'
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { error } from '../../utils/logger.js';
 import { canonicalizeEventsubType, getEquivalentEventsubTypes } from '../../utils/eventsub.js';
-import { WATCH_STREAK_EVENT, withBuiltinChatEvents } from '../../utils/chat_event_catalog.js';
+import { CHAT_NOTIFICATION_EVENT, withBuiltinChatEvents } from '../../utils/chat_event_catalog.js';
 
 const router = express.Router();
 
@@ -193,7 +193,7 @@ router.get('/events/:type', authMiddleware as any, async (req: Request, res: Res
         const typeStr = canonicalizeEventsubType(Array.isArray(type) ? type[0] : type);
         const events = await EventSchema.find({ type: { $in: getEquivalentEventsubTypes(typeStr) } }).lean();
         const event = events.find((candidate) => candidate.type === typeStr) || events[0]
-            || (typeStr === WATCH_STREAK_EVENT.type ? WATCH_STREAK_EVENT : undefined);
+            || (typeStr === CHAT_NOTIFICATION_EVENT.type ? CHAT_NOTIFICATION_EVENT : undefined);
 
         if (!event) {
             return res.status(404).json({

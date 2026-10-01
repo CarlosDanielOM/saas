@@ -2,9 +2,11 @@ import type { CheerTier, ConfigControl } from './chat-events.model';
 import enDictionary from '../../../assets/i18n/en.json';
 import esDictionary from '../../../assets/i18n/es.json';
 
-export function normalizeWatchStreakMessage(value: ConfigControl['value']): ConfigControl['value'] {
-  return value === enDictionary.chatEvents.watchStreak.defaultMessage
-    || value === esDictionary.chatEvents.watchStreak.defaultMessage ? '' : value;
+export function normalizeChatNotificationMessage(value: ConfigControl['value'], key = 'message'): ConfigControl['value'] {
+  const defaults = key === 'modiversaryMessage'
+    ? [enDictionary.chatEvents.modiversary.defaultMessage, esDictionary.chatEvents.modiversary.defaultMessage]
+    : [enDictionary.chatEvents.watchStreak.defaultMessage, esDictionary.chatEvents.watchStreak.defaultMessage];
+  return typeof value === 'string' && defaults.includes(value) ? '' : value;
 }
 
 const CONTROL_KEY_FALLBACKS: Record<string, string> = {

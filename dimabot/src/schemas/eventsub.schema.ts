@@ -34,6 +34,9 @@ export interface IEventsub {
     channelID: string;
     enabled: boolean;
     message: string;
+    watchStreakEnabled?: boolean;
+    modiversaryMessage?: string;
+    modiversaryEnabled?: boolean;
     endMessage: string;
     endEnabled: boolean;
     minViewers: number;
@@ -58,6 +61,9 @@ const eventsubSchema = new Schema<IEventsub>({
     channelID: { type: String, required: true },
     enabled: { type: Boolean, default: true },
     message: { type: String, default: '' },
+    watchStreakEnabled: { type: Boolean, default: true },
+    modiversaryMessage: { type: String, default: '' },
+    modiversaryEnabled: { type: Boolean, default: true },
     endMessage: { type: String, default: '' },
     endEnabled: { type: Boolean, default: false },
     minViewers: { type: Number, default: 2 },

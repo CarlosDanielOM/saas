@@ -404,3 +404,39 @@ test('durable bits tiers receive structured and legacy viewer text as parser arg
         assert.equal(sent, true);
     }
 });
+
+test('moderator anniversaries use their own localized default and custom message', async () => {
+    const { MODIVERSARY_MESSAGES } = await import('../utils/chat_notification_defaults.js');
+    const event = createEvent('channel.chat.notification', 'channel.chat.notification', {
+        notice_type: 'modiversary', modiversary: { months: 24 }, chatter_user_name: 'Moderator'
+    });
+    for (const language of ['en', 'es'] as const) {
+        for (const modiversaryMessage of [undefined, '', MODIVERSARY_MESSAGES.en, MODIVERSARY_MESSAGES.es, 'Custom $(twitch.modiversary)']) {
+            const calls: string[] = [];
+            const dependencies = createDependencies(calls);
+            dependencies.getLanguage = async () => language;
+            dependencies.getEventsubConfig = async () => ({ enabled: true, type: 'channel.chat.notification', cheerTiers: [],
+                message: 'Existing custom streak', watchStreakEnabled: false, modiversaryMessage });
+            await applyChatAnnouncementDomainEvent(event, dependencies);
+            assert.ok(calls.some(call => call.startsWith(`send:channel-1:${modiversaryMessage?.startsWith('Custom') ? modiversaryMessage : MODIVERSARY_MESSAGES[language]}:`)));
+        }
+    }
+});
+
+test('chat notification controls silence each notice independently and respect the global switch', async () => {
+    for (const notice_type of ['watch_streak', 'modiversary']) {
+        const calls: string[] = [];
+        const dependencies = createDependencies(calls);
+        for (const globalEnabled of [true, false]) {
+            dependencies.getEventsubConfig = async () => ({ enabled: globalEnabled, message: '', type: 'channel.chat.notification', cheerTiers: [],
+                watchStreakEnabled: notice_type !== 'watch_streak', modiversaryEnabled: notice_type !== 'modiversary' });
+            await applyChatAnnouncementDomainEvent(createEvent('channel.chat.notification', 'channel.chat.notification', { notice_type }), dependencies);
+        }
+        assert.equal(calls.some(call => call.startsWith('send:')), false);
+    }
+    const calls: string[] = [];
+    await applyChatAnnouncementDomainEvent(createEvent('channel.chat.notification', 'channel.chat.notification', {
+        notice_type: 'shared_chat_modiversary', shared_chat_modiversary: { months: 24 }
+    }), createDependencies(calls));
+    assert.deepEqual(calls, [], 'anniversaries from another broadcaster are ignored');
+});

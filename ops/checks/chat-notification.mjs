@@ -7,7 +7,7 @@ import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database
 import UsersSchema from '/app/dist/schemas/users.schema.js';
 import EventsubSchema from '/app/dist/schemas/eventsub.schema.js';
 import { EventSchema } from '/app/dist/schemas/event.schema.js';
-import { WATCH_STREAK_EVENT } from '/app/dist/utils/chat_event_catalog.js';
+import { CHAT_NOTIFICATION_EVENT } from '/app/dist/utils/chat_event_catalog.js';
 import { DomainEventSchema } from '/app/dist/schemas/domain_event.schema.js';
 import { DomainEventDeliverySchema } from '/app/dist/schemas/domain_event_delivery.schema.js';
 import { SUBSCRIPTION_TYPES } from '/app/dist/utils/eventsub.js';
@@ -79,21 +79,21 @@ if (target === 'api') {
     const catalogResponse = await fetch('http://127.0.0.1:3000/site/events', { headers });
     assert.equal(catalogResponse.status, 200);
     const catalog = (await catalogResponse.json()).data;
-    assert.equal(catalog.filter(event => event.type === WATCH_STREAK_EVENT.type).length, 1);
-    const card = catalog.find(event => event.type === WATCH_STREAK_EVENT.type);
+    assert.equal(catalog.filter(event => event.type === CHAT_NOTIFICATION_EVENT.type).length, 1);
+    const card = catalog.find(event => event.type === CHAT_NOTIFICATION_EVENT.type);
     assert.equal(card.plan_tier, 'free');
     assert.equal(card.enabled, false, 'channels without a subscription must opt in');
     assert.deepEqual(card.condition, { broadcaster_user_id: 'user', user_id: 'moderator' });
-    assert.equal(card.config[0].id, 'message');
-    assert.equal(card.config[0].canDisable, true);
+    assert.equal(card.config.find(control => control.id === 'message').id, 'message');
+    assert.equal(card.config.find(control => control.id === 'message').canDisable, true);
     const single = await fetch('http://127.0.0.1:3000/site/events/channel.chat.notification', { headers });
     assert.equal(single.status, 200);
-    assert.equal((await single.json()).data.type, WATCH_STREAK_EVENT.type);
+    assert.equal((await single.json()).data.type, CHAT_NOTIFICATION_EVENT.type);
     assert.equal(await EventSchema.countDocuments(), 0, 'discovery does not mutate the catalog');
-    await EventSchema.create({ ...WATCH_STREAK_EVENT, name: 'Catalog Override' });
+    await EventSchema.create({ ...CHAT_NOTIFICATION_EVENT, name: 'Catalog Override' });
     const overridden = (await (await fetch('http://127.0.0.1:3000/site/events', { headers })).json()).data;
-    assert.equal(overridden.filter(event => event.type === WATCH_STREAK_EVENT.type).length, 1);
-    assert.equal(overridden.find(event => event.type === WATCH_STREAK_EVENT.type).name, 'Catalog Override');
+    assert.equal(overridden.filter(event => event.type === CHAT_NOTIFICATION_EVENT.type).length, 1);
+    assert.equal(overridden.find(event => event.type === CHAT_NOTIFICATION_EVENT.type).name, 'Catalog Override');
     for (const update of [{ message: 'Custom $(user): $(twitch.streak)' }, { enabled: false }, { enabled: true }, { message: '' }]) {
         const saved = await fetch(`http://127.0.0.1:3000/eventsubs/${channelID}/${storedSubscription._id}`, {
             method: 'PATCH', headers, body: JSON.stringify(update)
@@ -224,7 +224,62 @@ if (target === 'api') {
     await eventsubHandler(payload.subscription, payload.event);
     assert.equal(calls().filter(call => call.chat).at(-1).chat.message, '¡TestViewer tiene una racha de 5 días!', 'manual event test uses localized default');
 }
-console.log(`PASS ${target}: streak AST, EN/ES default announcements, custom templates, disabled settings, webhook signatures, journaling, dedupe, and other-notice/stale suppression`);
+
+// Moderator anniversaries arrive on the same subscription and must not reuse
+// the channel's custom watch-streak message.
+const modiversary = structuredClone(payload);
+Object.assign(modiversary.event, { notice_type: 'modiversary', watch_streak: null, modiversary: { months: 24 } });
+assert.equal((await parseSpecialCommands('$(twitch.modiversary)', { channelID, eventData: modiversary.event })).parsedText, '24');
+assert.equal(findAstCatalogEntry('twitch.modiversary')?.syntax, 'twitch.modiversary');
+for (const language of ['en', 'es']) {
+    await UsersSchema.updateOne({ _id: owner._id }, { $set: { language } });
+    await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { message: 'Existing custom streak' } });
+    const receipt = `modiversary-${language}`;
+    const before = calls().filter(call => call.chat).length;
+    assert.equal((await send(modiversary, receipt)).status, 204);
+    assert.equal((await send(modiversary, receipt)).status, 204);
+    await completeAnnouncement(receipt);
+    assert.equal(calls().filter(call => call.chat).length, before + 1);
+    assert.equal(calls().filter(call => call.chat).at(-1).chat.message, language === 'en'
+        ? 'Happy mod anniversary, TestViewer! Thank you for 24 months of moderating!'
+        : '¡Feliz aniversario de moderación, TestViewer! ¡Gracias por tus 24 meses como moderador!');
+}
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { modiversaryMessage: 'Custom mod $(user): $(twitch.modiversary)' } });
+assert.equal((await send(modiversary, 'modiversary-custom')).status, 204);
+await completeAnnouncement('modiversary-custom');
+assert.equal(calls().filter(call => call.chat).at(-1).chat.message, 'Custom mod TestViewer: 24');
+const beforeMuted = calls().filter(call => call.chat).length;
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { modiversaryEnabled: false } });
+assert.equal((await send(modiversary, 'modiversary-disabled')).status, 204);
+await completeAnnouncement('modiversary-disabled');
+assert.equal(calls().filter(call => call.chat).length, beforeMuted);
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { watchStreakEnabled: false } });
+assert.equal((await send(payload, 'watch-streak-muted')).status, 204);
+await completeAnnouncement('watch-streak-muted');
+assert.equal(calls().filter(call => call.chat).length, beforeMuted);
+await EventsubSchema.updateOne({ _id: storedSubscription._id }, { $set: { modiversaryEnabled: true, modiversaryMessage: '' } });
+assert.equal((await send(modiversary, 'modiversary-independent')).status, 204);
+await completeAnnouncement('modiversary-independent');
+assert.equal(calls().filter(call => call.chat).length, beforeMuted + 1, 'streak toggle does not silence mod anniversaries');
+const badModiversary = structuredClone(modiversary);
+badModiversary.event.modiversary.months = -1;
+assert.equal((await send(badModiversary, 'malformed-modiversary')).status, 503);
+assert.equal(await DomainEventSchema.countDocuments({ sourceEventId: 'malformed-modiversary' }), 0);
+if (target === 'api') {
+    await eventsubHandler(modiversary.subscription, modiversary.event);
+    assert.equal(calls().filter(call => call.chat).at(-1).chat.message,
+        '¡Feliz aniversario de moderación, TestViewer! ¡Gracias por tus 24 meses como moderador!');
+    const headers = { Authorization: 'Bearer fixture-catalog-token', 'Content-Type': 'application/json' };
+    const saved = await fetch(`http://127.0.0.1:3000/eventsubs/${channelID}/${storedSubscription._id}`, {
+        method: 'PATCH', headers, body: JSON.stringify({ modiversaryMessage: 'Saved mod message', modiversaryEnabled: false, watchStreakEnabled: true })
+    });
+    assert.equal(saved.status, 200);
+    const stored = await EventsubSchema.findById(storedSubscription._id).lean();
+    assert.equal(stored.modiversaryMessage, 'Saved mod message');
+    assert.equal(stored.modiversaryEnabled, false);
+    assert.equal(stored.watchStreakEnabled, true);
+}
+console.log(`PASS ${target}: streak/modiversary AST, EN/ES default announcements, custom templates, disabled settings, webhook signatures, journaling, dedupe, and other-notice/stale suppression`);
 if (server) await new Promise(resolve => server.close(resolve));
 await mongoose.disconnect();
 await redis.quit();

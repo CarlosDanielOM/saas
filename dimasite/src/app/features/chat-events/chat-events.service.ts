@@ -14,7 +14,7 @@ import {
 } from './chat-events.model';
 import { LinksService } from '../../services/links.service';
 import { ToastService } from '../../services/toast.service';
-import { getConfigPersistenceKey, normalizeCheerTierArray, normalizeWatchStreakMessage, serializeConfigControlValue } from './chat-events.contract';
+import { getConfigPersistenceKey, normalizeCheerTierArray, normalizeChatNotificationMessage, serializeConfigControlValue } from './chat-events.contract';
 
 interface EventsApiResponse {
   error: boolean;
@@ -86,7 +86,7 @@ export class ChatEventsService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
   private readonly toastService = inject(ToastService);
-  private readonly cacheKeyPrefix = 'eventsCache:v4';
+  private readonly cacheKeyPrefix = 'eventsCache:v5';
 
   private readonly eventsCacheByChannel = new Map<string, Observable<ChatEvent[]>>();
 
@@ -156,7 +156,7 @@ export class ChatEventsService {
               const userValue = matchingUserControl?.value;
               if (userValue !== undefined) {
                 const mergedControl = { ...defaultControl, value: mergedEvent.type === 'channel.chat.notification'
-                  ? normalizeWatchStreakMessage(userValue) : userValue };
+                  ? normalizeChatNotificationMessage(userValue, getConfigPersistenceKey(defaultControl)) : userValue };
                 if (userValue === '' && typeof defaultControl.value === 'string' && defaultControl.value) {
                   mergedControl.placeholder = defaultControl.value;
                 }
@@ -434,6 +434,14 @@ export class ChatEventsService {
                 });
               }
             }
+            if (normalizedSubscriptionType === 'channel.chat.notification') {
+              for (const control of eventDef?.config || []) {
+                const key = getConfigPersistenceKey(control);
+                if (!['watchStreakEnabled', 'modiversaryEnabled', 'modiversaryMessage'].includes(key)) continue;
+                const value = this.asPrimitiveValue(subscription[key]);
+                if (value !== undefined) userConfigControls.push({ id: control.id, value });
+              }
+            }
             const clipEnabled = this.asBoolean(subscription['clipEnabled']);
             if (clipEnabled !== undefined) {
               userConfigControls.push({
@@ -560,8 +568,8 @@ export class ChatEventsService {
     const planTier = typeof source['plan_tier'] === 'string' ? source['plan_tier'] : 'free';
     const type = canonicalizeEventType(this.asString(source['type']));
     const config = this.normalizeConfigControls(source['config'])?.map(control =>
-      type === 'channel.chat.notification' && getConfigPersistenceKey(control) === 'message'
-        ? { ...control, value: normalizeWatchStreakMessage(control.value) } : control
+      type === 'channel.chat.notification' && ['message', 'modiversaryMessage'].includes(getConfigPersistenceKey(control))
+        ? { ...control, value: normalizeChatNotificationMessage(control.value, getConfigPersistenceKey(control)) } : control
     );
 
     return {

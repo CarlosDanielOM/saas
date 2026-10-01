@@ -43,15 +43,23 @@ export class ConfigPanelComponent {
   readonly isDeleting = computed(() => this.pendingAction() === 'deleting');
   readonly isBusy = computed(() => this.isSaving() || this.isDeleting());
 
-  readonly isWatchStreak = computed(() => this.event()?.type === 'channel.chat.notification');
+  readonly isChatNotification = computed(() => this.event()?.type === 'channel.chat.notification');
 
   isWatchStreakMessage(control: ConfigControl): boolean {
-    return this.isWatchStreak() && (control.dbId || control.id) === 'message';
+    return this.isChatNotification() && (control.dbId || control.id) === 'message';
+  }
+
+  isModiversaryMessage(control: ConfigControl): boolean {
+    return this.isChatNotification() && (control.dbId || control.id) === 'modiversaryMessage';
+  }
+
+  getNotificationHelpKey(control: ConfigControl): string {
+    return this.isModiversaryMessage(control) ? 'chatEvents.modiversary' : 'chatEvents.watchStreak';
   }
 
   getControlPlaceholder(control: ConfigControl): string {
-    return this.isWatchStreakMessage(control)
-      ? this.t('chatEvents.watchStreak.defaultMessage')
+    return this.isWatchStreakMessage(control) || this.isModiversaryMessage(control)
+      ? this.t(this.getNotificationHelpKey(control) + '.defaultMessage')
       : control.placeholder || '';
   }
 

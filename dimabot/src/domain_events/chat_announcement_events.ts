@@ -1,5 +1,5 @@
 import type { DomainEventEnvelope } from './domain_event.types.js';
-import { resolveWatchStreakMessage } from '../utils/chat_notification_defaults.js';
+import { isSupportedChatNotice, resolveChatNotificationMessage } from '../utils/chat_notification_defaults.js';
 import { getBitsMessageText } from '../utils/bits_message.js';
 
 interface ChatEventsubConfig {
@@ -197,7 +197,7 @@ export async function applyChatAnnouncementDomainEvent(
         || !SUPPORTED_EVENT_TYPES.has(event.type)) return;
     if (!event.channelID) throw new Error('Chat announcements require a channel identity');
     const rawEvent = payloadEvent(event);
-    if (event.type === 'channel.chat.notification' && rawEvent.notice_type !== 'watch_streak') return;
+    if (event.type === 'channel.chat.notification' && !isSupportedChatNotice(rawEvent.notice_type)) return;
 
     const dependencies = injectedDependencies || await getDependencies();
     if ((event.type === 'stream.started' || event.type === 'stream.ended')
@@ -218,7 +218,7 @@ export async function applyChatAnnouncementDomainEvent(
     let argument: string | undefined;
 
     if (event.type === 'channel.chat.notification') {
-        message = resolveWatchStreakMessage(message, await dependencies.getLanguage(event.channelID));
+        message = resolveChatNotificationMessage(rawEvent.notice_type, config, await dependencies.getLanguage(event.channelID));
     } else if (event.type === 'channel.bits.received') {
         message = cheerMessage(config, rawEvent);
         argument = getBitsMessageText(rawEvent.message);

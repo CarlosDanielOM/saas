@@ -234,6 +234,10 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
                 count(event.watch_streak.streak_count, 'event.watch_streak.streak_count', 1);
                 count(event.watch_streak.channel_points_awarded, 'event.watch_streak.channel_points_awarded');
             }
+            if (event.notice_type === 'modiversary') {
+                record(event.modiversary, 'event.modiversary');
+                count(event.modiversary.months, 'event.modiversary.months', 1);
+            }
         }
         if (original === 'channel.raid') {
             text(event.from_broadcaster_user_id, 'event.from_broadcaster_user_id');

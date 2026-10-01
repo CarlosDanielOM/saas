@@ -134,6 +134,13 @@ const watchStreakHandler: FunctionHandler = async (_args, ctx) => {
     return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0 ? String(count) : '0';
 };
 
+const modiversaryHandler: FunctionHandler = async (_args, ctx) => {
+    const modiversary = getEventData(ctx).modiversary;
+    if (!modiversary || typeof modiversary !== 'object' || Array.isArray(modiversary)) return '0';
+    const months = (modiversary as Record<string, unknown>).months;
+    return typeof months === 'number' && Number.isSafeInteger(months) && months >= 0 ? String(months) : '0';
+};
+
 const giftedUserHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
     const giftedUser = getStringField(eventData, [
@@ -181,6 +188,14 @@ const rewardInputHandler: FunctionHandler = async (_args, ctx) => {
 };
 
 export function registerEventsubFunctions(): void {
+    registerFunction('twitch.modiversary', modiversaryHandler, {
+        description: 'Number of months the viewer has been a moderator, from modiversary.months. Returns 0 when no valid moderator anniversary is present.',
+        syntax: 'twitch.modiversary',
+        category: 'event-data',
+        examples: ['twitch.modiversary'],
+        keywords: ['modiversary', 'moderator anniversary', 'moderator months', 'aniversario de moderación', 'meses de moderador'],
+        surfaces: ['authoring']
+    });
     registerFunction('twitch.streak', watchStreakHandler, {
         description: 'Watch streak count from the current chat notification (watch_streak.streak_count). Returns 0 when no valid watch streak is present.',
         syntax: 'twitch.streak',
