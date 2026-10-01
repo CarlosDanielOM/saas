@@ -26,7 +26,7 @@ export const availabilityAdapters: AvailabilityAdapter[] = [
     {
         name: 'command', model: CommandsSchema, enabledField: 'enabled',
         async resolve(channelID, name) {
-            const matches = await CommandsSchema.find({ channelID, cmd: exact(name.replace(/^!/, '')) }).select(selection).limit(2).lean();
+            const matches = await CommandsSchema.find({ channelID, activation: { $ne: 'keyword' }, cmd: exact(name.replace(/^!/, '')) }).select(selection).limit(2).lean();
             if (matches.length !== 1) throw new Error(matches.length ? 'Command name is ambiguous' : 'Command not found');
             return matches[0];
         },

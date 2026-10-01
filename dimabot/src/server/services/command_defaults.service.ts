@@ -103,6 +103,7 @@ export async function ensureReservedCommands(channelID: string, channelName: str
 
         const exists = await CommandsSchema.exists({
             func: commandData.func,
+            activation: { $ne: 'keyword' },
             channelID
         });
 

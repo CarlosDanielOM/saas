@@ -1,4 +1,32 @@
 {
+  "keywords": {
+    "heading": "Keywords",
+    "navigation": "Commands and keywords",
+    "subtitle": "Respond to words and phrases in chat using the same AST functions and settings as commands.",
+    "add": "Add Keyword",
+    "search": "Search keywords",
+    "trigger": "Keyword or phrase",
+    "triggerHint": "Use whole words without !. Matching ignores capitalization.",
+    "matchLabel": "Match position",
+    "match": {
+      "start": "Beginning of message",
+      "anywhere": "Anywhere in message",
+      "exact": "Entire message"
+    },
+    "matchHint": "Whole words only. Each keyword runs once per message, even when repeated.",
+    "cooldownHint": "Matches during cooldown are skipped, including all AST functions.",
+    "createTitle": "Create keyword",
+    "editTitle": "Edit keyword",
+    "createButton": "Create Keyword",
+    "deleteTitle": "Delete keyword",
+    "deleteMessage": "Delete “{{name}}”? This cannot be undone.",
+    "empty": "No keywords found.",
+    "guide": {
+      "add": "Choose a word or phrase and write its response. All command AST functions are available.",
+      "match": "Choose where it must appear: at the beginning, anywhere, or as the entire message.",
+      "cooldown": "Set who can activate it and its cooldown. Messages during cooldown do nothing."
+    }
+  },
   "rouletteAstra": {
     "cardSize": "Card size and board capacity",
     "cardSizes": {

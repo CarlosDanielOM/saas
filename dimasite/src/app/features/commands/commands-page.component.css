@@ -96,6 +96,9 @@
   min-width: 0;
 }
 
+.lf-activation-tabs { display: flex; gap: .5rem; flex-wrap: wrap; }
+.lf-keyword-match { display: block; margin-top: .35rem; color: var(--muted); }
+
 .lf-tile {
   min-width: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%),

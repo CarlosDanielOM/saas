@@ -12,6 +12,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import {
   Command,
+  KeywordMatchMode,
   CreateCommandRequest,
   USER_LEVELS,
   USER_LEVEL_NAMES,
@@ -47,11 +48,13 @@ export class CommandModalComponent {
 
   readonly isOpen = input.required<boolean>();
   readonly command = input<Command | null>(null);
+  readonly activation = input<'command' | 'keyword'>('command');
+  readonly isKeyword = computed(() => (this.command()?.activation ?? this.activation()) === 'keyword');
   readonly planTier = input<PlanTier>('free');
   readonly commands = input<Command[]>([]);
   readonly allowTimer = input(true);
-  readonly zeroCooldownAvailable = computed(() => this.command()?.reserved ? this.command()?.cooldown === 0 : !this.commands().some(item =>
-    !item.reserved && item.cooldown === 0 && (item._id || item.id) !== (this.command()?._id || this.command()?.id)));
+  readonly zeroCooldownAvailable = computed(() => !this.isKeyword() && (this.command()?.reserved ? this.command()?.cooldown === 0 : !this.commands().some(item =>
+    !item.reserved && item.cooldown === 0 && (item._id || item.id) !== (this.command()?._id || this.command()?.id))));
   readonly isSpeech = computed(() => ['speach', 'speech'].includes(this.command()?.func || ''));
   /** Existing timer interval for this command (minutes), if linked. */
   readonly existingTimerMinutes = input<number | null>(null);
@@ -75,6 +78,7 @@ export class CommandModalComponent {
     cooldown: [10, [Validators.required, Validators.min(5), Validators.max(60)]],
     userLevel: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
     enabled: [true],
+    matchMode: ['start' as KeywordMatchMode, Validators.required],
     timerEnabled: [false],
     timerMinutes: [15 as number | null]
   });
@@ -102,6 +106,13 @@ export class CommandModalComponent {
   });
 
   constructor() {
+    effect(() => {
+      const trigger = this.commandForm.controls.cmd;
+      trigger.setValidators(this.isKeyword()
+        ? [Validators.required, Validators.maxLength(60), Validators.pattern(/^[\p{L}\p{N}\p{M}_]+(?:\s+[\p{L}\p{N}\p{M}_]+)*$/u)]
+        : [Validators.required]);
+      trigger.updateValueAndValidity({ emitEvent: false });
+    });
     effect(() => {
       const cooldown = this.commandForm.controls.cooldown;
       const minimum = this.minCooldown();
@@ -166,7 +177,7 @@ export class CommandModalComponent {
     }
 
     const formValue = this.commandForm.getRawValue();
-    const timerEnabled = Boolean(formValue.timerEnabled) && !this.isReserved() && this.allowTimer();
+    const timerEnabled = Boolean(formValue.timerEnabled) && !this.isReserved() && this.allowTimer() && !this.isKeyword();
     const timerMinutes = Number(formValue.timerMinutes);
 
     if (timerEnabled) {
@@ -181,10 +192,10 @@ export class CommandModalComponent {
     this.formError.set(null);
 
     const request: CreateCommandRequest = {
+      ...(this.isKeyword() ? { activation: 'keyword', keywordSettings: { matchMode: formValue.matchMode ?? 'start' } } : {}),
       name: String(formValue.name || '').trim(),
-      cmd: String(formValue.cmd || '')
-        .trim()
-        .replace(/^!/, ''),
+      cmd: this.isKeyword() ? String(formValue.cmd || '').normalize('NFC').trim().toLowerCase().replace(/\s+/gu, ' ')
+        : String(formValue.cmd || '').trim().replace(/^!/, ''),
       func: this.command()?.func || String(formValue.cmd || '')
         .trim()
         .replace(/^!/, ''),
@@ -225,6 +236,7 @@ export class CommandModalComponent {
         cooldown: cmd.cooldown,
         userLevel: cmd.userLevel || 1,
         enabled: cmd.enabled,
+        matchMode: cmd.keywordSettings?.matchMode ?? 'start',
         timerEnabled: hasTimer && !cmd.reserved,
         timerMinutes: hasTimer ? existingMinutes : this.defaultTimerMinutes()
       });
@@ -249,6 +261,7 @@ export class CommandModalComponent {
         cooldown: 10,
         userLevel: 1,
         enabled: true,
+        matchMode: 'start',
         timerEnabled: false,
         timerMinutes: this.defaultTimerMinutes()
       });

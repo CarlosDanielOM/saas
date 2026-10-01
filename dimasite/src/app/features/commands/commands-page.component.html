@@ -1,27 +1,31 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
+    <nav class="lf-activation-tabs" [attr.aria-label]="t('keywords.navigation')">
+      <button type="button" class="lf-btn" [class.lf-btn--primary]="activation() === 'command'" [attr.aria-pressed]="activation() === 'command'" (click)="setActivation('command')">{{ t('commands.heading') }}</button>
+      <button type="button" class="lf-btn" [class.lf-btn--primary]="activation() === 'keyword'" [attr.aria-pressed]="activation() === 'keyword'" (click)="setActivation('keyword')">{{ t('keywords.heading') }}</button>
+    </nav>
     <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('commands.heading')">
       <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">{{ t('commands.heading') }}</p>
-        <h1 class="lf-title">{{ t('commands.heading') }}</h1>
+        <p class="lf-kicker">{{ t(activation() === 'keyword' ? 'keywords.heading' : 'commands.heading') }}</p>
+        <h1 class="lf-title">{{ t(activation() === 'keyword' ? 'keywords.heading' : 'commands.heading') }}</h1>
 
         <div class="lf-hero__chips">
           <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
           <span class="lf-chip lf-chip--soft">{{ streamerLabel() }}</span>
         </div>
 
-        <p class="lf-copy">{{ t('commands.subtitle') }}</p>
+        <p class="lf-copy">{{ t(activation() === 'keyword' ? 'keywords.subtitle' : 'commands.subtitle') }}</p>
 
         <ol class="plain-guide" [attr.aria-label]="t('commands.guide.label')">
-          <li><span>1</span><p>{{ t('commands.guide.add') }}</p></li>
-          <li><span>2</span><p>{{ t('commands.guide.who') }}</p></li>
-          <li><span>3</span><p>{{ t('commands.guide.off') }}</p></li>
+          <li><span>1</span><p>{{ t(activation() === 'keyword' ? 'keywords.guide.add' : 'commands.guide.add') }}</p></li>
+          <li><span>2</span><p>{{ t(activation() === 'keyword' ? 'keywords.guide.match' : 'commands.guide.who') }}</p></li>
+          <li><span>3</span><p>{{ t(activation() === 'keyword' ? 'keywords.guide.cooldown' : 'commands.guide.off') }}</p></li>
         </ol>
 
         <div class="lf-actions">
           @if (canManage()) {
             <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-              {{ t('commands.addCommand') }}
+              {{ t(activation() === 'keyword' ? 'keywords.add' : 'commands.addCommand') }}
             </button>
           }
           <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="loading()">
@@ -44,6 +48,7 @@
           </div>
         </div>
 
+        @if (activation() === 'command') {
         <div class="lf-type-chips">
           <span class="lf-type-chip">
             <i class="lf-legend__swatch lf-legend__swatch--reserved" aria-hidden="true"></i>
@@ -56,16 +61,17 @@
             {{ t('commands.metrics.timer') }}
           </span>
         </div>
+        }
       </article>
     </section>
 
     <section class="lf-section" [attr.aria-label]="t('commands.heading')">
       <div class="lf-toolbar">
         <label class="lf-search">
-          <span class="visually-hidden">{{ t('commands.search.placeholder') }}</span>
+          <span class="visually-hidden">{{ t(activation() === 'keyword' ? 'keywords.search' : 'commands.search.placeholder') }}</span>
           <input
             type="search"
-            [placeholder]="t('commands.search.placeholder')"
+            [placeholder]="t(activation() === 'keyword' ? 'keywords.search' : 'commands.search.placeholder')"
             [value]="searchInput()"
             (input)="onSearchInput($any($event.target).value)"
             (keyup.enter)="onSearchSubmit()"
@@ -133,7 +139,7 @@
 
             @if (paginatedCommands().length === 0) {
               <div class="lf-matrix__row lf-matrix__row--cmds">
-                <span class="lf-empty-inline">{{ t('commands.placeholder.noCommandsFound') }}</span>
+                <span class="lf-empty-inline">{{ t(activation() === 'keyword' ? 'keywords.empty' : 'commands.placeholder.noCommandsFound') }}</span>
               </div>
             }
 
@@ -167,7 +173,8 @@
                 </span>
 
                 <span>
-                  <code class="lf-code">!{{ command.cmd }}</code>
+                  <code class="lf-code">{{ activationLabel(command) }}</code>
+                  @if (command.activation === 'keyword') { <small class="lf-keyword-match">{{ matchModeLabel(command) }}</small> }
                 </span>
 
                 <span class="lf-clip">
@@ -274,7 +281,7 @@
         </div>
       } @else {
         @if (paginatedCommands().length === 0) {
-          <div class="lf-tile lf-empty">{{ t('commands.placeholder.noCommandsFound') }}</div>
+          <div class="lf-tile lf-empty">{{ t(activation() === 'keyword' ? 'keywords.empty' : 'commands.placeholder.noCommandsFound') }}</div>
         } @else {
           <div class="lf-cmd-grid">
             @for (command of paginatedCommands(); track commandTrackId(command)) {
@@ -288,7 +295,7 @@
                 [class.lf-cmd--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
               >
                 <div class="lf-cmd__top">
-                  <code class="lf-code">!{{ command.cmd }}</code>
+                  <code class="lf-code">{{ activationLabel(command) }}</code>
                   <span
                     class="lf-chip lf-chip--status"
                     [class.lf-chip--live]="command.enabled !== false"
@@ -306,6 +313,7 @@
                     <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
                   }
                 </h3>
+                @if (command.activation === 'keyword') { <p class="lf-copy lf-copy--tight">{{ matchModeLabel(command) }}</p> }
 
                 <p class="lf-cmd__desc">
                   @if (command.reserved) {
@@ -395,8 +403,8 @@
 
   <app-confirmation-modal
     [isOpen]="showDeleteModal()"
-    [title]="t('commands.deleteTitle')"
-    [message]="t('commands.deleteMessage', { name: commandToDelete()?.name || '' })"
+    [title]="t(commandToDelete()?.activation === 'keyword' ? 'keywords.deleteTitle' : 'commands.deleteTitle')"
+    [message]="t(commandToDelete()?.activation === 'keyword' ? 'keywords.deleteMessage' : 'commands.deleteMessage', { name: commandToDelete()?.name || '' })"
     [confirmText]="t('common.delete')"
     [cancelText]="t('common.cancel')"
     variant="danger"
@@ -407,6 +415,8 @@
   <app-command-modal
     [isOpen]="showCommandModal()"
     [command]="editingCommand()"
+    [activation]="activation()"
+    [allowTimer]="activation() !== 'keyword'"
     [planTier]="planTier()"
     [commands]="commands()"
     [existingTimerMinutes]="editingTimerMinutes()"

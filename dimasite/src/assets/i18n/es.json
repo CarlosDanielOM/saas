@@ -1,4 +1,32 @@
 {
+  "keywords": {
+    "heading": "Palabras clave",
+    "navigation": "Comandos y palabras clave",
+    "subtitle": "Responde a palabras y frases del chat con las mismas funciones AST y ajustes que los comandos.",
+    "add": "Añadir palabra clave",
+    "search": "Buscar palabras clave",
+    "trigger": "Palabra clave o frase",
+    "triggerHint": "Usa palabras completas sin !. No se distinguen mayúsculas de minúsculas.",
+    "matchLabel": "Posición de coincidencia",
+    "match": {
+      "start": "Al inicio del mensaje",
+      "anywhere": "En cualquier parte del mensaje",
+      "exact": "Mensaje completo"
+    },
+    "matchHint": "Solo palabras completas. Cada palabra clave se ejecuta una vez por mensaje, aunque se repita.",
+    "cooldownHint": "Las coincidencias durante el cooldown se omiten, incluidas todas las funciones AST.",
+    "createTitle": "Crear palabra clave",
+    "editTitle": "Editar palabra clave",
+    "createButton": "Crear palabra clave",
+    "deleteTitle": "Eliminar palabra clave",
+    "deleteMessage": "¿Eliminar «{{name}}»? Esta acción no se puede deshacer.",
+    "empty": "No se encontraron palabras clave.",
+    "guide": {
+      "add": "Elige una palabra o frase y escribe su respuesta. Puedes usar todas las funciones AST de los comandos.",
+      "match": "Elige dónde debe aparecer: al inicio, en cualquier parte o como mensaje completo.",
+      "cooldown": "Configura quién puede activarla y su cooldown. Los mensajes durante el cooldown no hacen nada."
+    }
+  },
   "rouletteAstra": {
     "cardSize": "Tamaño de tarjeta y capacidad",
     "cardSizes": {

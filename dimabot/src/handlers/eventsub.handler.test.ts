@@ -7,6 +7,10 @@ let effects: string[];
 let enabled = true;
 let minViewers = 0;
 mock.module('../classes/chat_history.js', { defaultExport: {} });
+mock.module('../utils/keyword_cache.js', { namedExports: { keywordIndexCache: {
+    get: async () => { effects.push('keyword-preload'); },
+    invalidate: () => { effects.push('keyword-release'); }
+} } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
     getTwitchAccountById: async () => ({ id: 'channel', chat_enabled: 'true' })
 } });
@@ -52,6 +56,17 @@ const raid = {
 } as IRaidEventData;
 const config = { enabled: true, minViewers: 0, message: 'configured', clipEnabled: false } as IEventsub;
 beforeEach(() => { effects = []; enabled = true; minViewers = 0; });
+
+test('stream keyword cache lifecycle runs even when announcements are disabled or durably handled', async () => {
+    enabled = false;
+    await eventsubHandler({ type: 'stream.online' } as ITwitchSubscriptionData,
+        { broadcaster_user_id: 'channel' } as ITwitchEventData, { durableChatHandled: true });
+    assert.deepEqual(effects, ['keyword-preload']);
+    effects = [];
+    await eventsubHandler({ type: 'stream.offline' } as ITwitchSubscriptionData,
+        { broadcaster_user_id: 'channel' } as ITwitchEventData, { durableChatHandled: true });
+    assert.deepEqual(effects, ['keyword-release']);
+});
 
 test('legacy follow enqueue is suppressed only by defense ownership, independently of chat', async () => {
     await followHandler(follow, config, false);

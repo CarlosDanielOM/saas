@@ -6,6 +6,14 @@ import { getMinimumCommandCooldown } from './command_cooldown.js';
 
 export class CommandCooldownError extends Error {}
 
+/** Keywords always obey their owner's tier minimum and have no zero-CD exception. */
+export async function validateKeywordCooldown(channelID: string, cooldown: unknown): Promise<void> {
+    const minimum = getMinimumCommandCooldown((await TwitchStreamers.getTwitchAccountById(channelID))?.plan_tier);
+    if (typeof cooldown !== 'number' || !Number.isFinite(cooldown) || cooldown < minimum) {
+        throw new CommandCooldownError(`Keyword cooldown must be at least ${minimum} seconds`);
+    }
+}
+
 /** Serialize API and chat writes competing for the channel's one editable zero-CD command. */
 export async function writeCommandWithCooldown<T>(channelID: string, cooldown: unknown,
     current: { _id?: unknown; cooldown?: number; reserved?: boolean } | null,

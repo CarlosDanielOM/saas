@@ -2,6 +2,7 @@ import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import ChatHistory from "../classes/chat_history.js";
 import { commandHandler } from "./commands.handler.js";
+import { handleKeywords } from './keywords.handler.js';
 import { runChatModeration } from "./moderation.handler.js";
 import { promo } from "../functions/promo/chat.promo.js";
 import { chat as aiChat, getChannelPersonality } from "../utils/ai/openrouter/ai.js";
@@ -102,6 +103,11 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         if (moderationResult.actionTaken) {
             return;
         }
+
+        await handleKeywords(channelID, messageEventData, identity).catch(async error => {
+            await logError({ function: 'messageHandler.keywords', channelID,
+                error: error instanceof Error ? error.message : String(error) }, { channelId: channelID, destination: 'both' });
+        });
 
         let on_cooldown = false;
         if(!CHANNEL_INSTANCES.has(channelID)) {

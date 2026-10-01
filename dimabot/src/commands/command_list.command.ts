@@ -29,7 +29,7 @@ export function visibleCommandNames(commands: VisibleCommandRow[], identity: Use
 
 export async function commandListCommand(channelID: string, identity: UserIdentity = createDefaultIdentity(), type: string = 'all'): Promise<CommandListResponse> {
     try {
-        const commands = await CommandsSchema.find({ channelID, enabled: true });
+        const commands = await CommandsSchema.find({ channelID, enabled: true, activation: { $ne: 'keyword' } });
 
         if (!commands) {
             return {

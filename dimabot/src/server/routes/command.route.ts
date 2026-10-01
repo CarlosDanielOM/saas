@@ -7,7 +7,9 @@ import UsersSchema from "../../schemas/users.schema.js";
 import { ensureReservedCommands, getLocalizedReservedCommandDescription } from "../services/command_defaults.service.js";
 import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissions/index.js";
 
-import { writeCommandWithCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
+import { writeCommandWithCooldown, validateKeywordCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
+import { normalizeKeyword, validateKeyword } from '../../utils/keywords.js';
+import { refreshKeywordIndex } from '../../utils/keyword_cache.js';
 
 const router = express.Router();
 
@@ -20,13 +22,20 @@ function isValidUserLevel(value: unknown): value is number {
     return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 10;
 }
 
+// Default remains commands for existing clients and the public !command list.
+function activationFilter(value: unknown): Record<string, unknown> {
+    if (value === 'all') return {};
+    if (value === 'keyword') return { activation: 'keyword' };
+    return { activation: { $ne: 'keyword' } };
+}
+
 router.get('/', async (req: Request, res: Response) => {
         try {
             const query = req.query;
             const limit = parseInt((query.limit as string) || '100');
             const skip = parseInt((query.skip as string) || '0');
 
-            const commands = await CommandsSchema.find().skip(skip).limit(limit).lean();
+            const commands = await CommandsSchema.find(activationFilter(query.activation)).skip(skip).limit(limit).lean();
 
             const commandsWithMode = commands.map((command) => ({
                 ...command,
@@ -65,13 +74,13 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             const skip = parseInt((query.skip as string) || '0');
             const language = typeof query.language === 'string' ? query.language : undefined;
 
-            let commands = await CommandsSchema.find({ channelID: channelIdStr })
+            let commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
                 .sort({ reserved: -1, name: 1 })
                 .skip(skip)
                 .limit(limit)
                 .lean();
 
-            if (commands.length === 0) {
+            if (commands.length === 0 && query.activation !== 'keyword') {
                 const user = await UsersSchema.findOne({
                     accounts: {
                         $elemMatch: {
@@ -88,7 +97,7 @@ router.get('/:channelID', async (req: Request, res: Response) => {
                     const createdCount = await ensureReservedCommands(channelIdStr, twitchAccount.name || channelIdStr);
 
                     if (createdCount > 0) {
-                        commands = await CommandsSchema.find({ channelID: channelIdStr })
+                        commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
                             .sort({ reserved: -1, name: 1 })
                             .skip(skip)
                             .limit(limit)
@@ -160,6 +169,20 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 });
             }
 
+            if (body.activation !== undefined && !['command', 'keyword'].includes(body.activation)) {
+                return res.status(400).send({ error: true, message: 'Invalid activation type', status: 400 });
+            }
+            const isKeyword = body.activation === 'keyword';
+            let keywordSettings;
+            if (isKeyword) {
+                try { keywordSettings = validateKeyword(body.cmd, body.keywordSettings); }
+                catch (error) { return res.status(400).send({ error: true, message: (error as Error).message, status: 400 }); }
+                body.cmd = normalizeKeyword(body.cmd);
+                await validateKeywordCooldown(channelIdStr, body.cooldown ?? 10);
+            } else if (body.keywordSettings !== undefined) {
+                return res.status(400).send({ error: true, message: 'Keyword settings require keyword activation', status: 400 });
+            }
+
             // Permission mode validation: missing/null creates level mode; a
             // non-null expression must validate (tag mode cannot be empty —
             // universal access is {role:'everyone'}).
@@ -190,6 +213,7 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
 
             const existingCommand = await CommandsSchema.findOne({
                 channelID: channelIdStr,
+                ...activationFilter(isKeyword ? 'keyword' : 'command'),
                 cmd: body.cmd
             });
 
@@ -205,7 +229,9 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             const newCommand = new CommandsSchema({
                 name: body.name,
                 cmd: body.cmd,
-                func: body.func,
+                activation: isKeyword ? 'keyword' : 'command',
+                keywordSettings,
+                func: isKeyword ? 'custom' : body.func,
                 message: body.message,
                 responses: body.responses ?? [],
                 type: body.type ?? 'command',
@@ -220,11 +246,15 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 channel: body.channel,
             });
 
-            await writeCommandWithCooldown(channelIdStr, newCommand.cooldown, null, () => newCommand.save());
+            if (isKeyword) await newCommand.save();
+            else await writeCommandWithCooldown(channelIdStr, newCommand.cooldown, null, () => newCommand.save());
 
             const cacheClient = await getDragonflyClient();
-            await cacheClient.del(`${channelIdStr}:commands:${body.cmd}`);
-            await cacheClient.del(`${channelIdStr}:commands:${body.name}`);
+            if (isKeyword) await refreshKeywordIndex(channelIdStr, String(newCommand._id));
+            else {
+                await cacheClient.del(`${channelIdStr}:commands:${body.cmd}`);
+                await cacheClient.del(`${channelIdStr}:commands:${body.name}`);
+            }
 
             res.send({
                 error: false,
@@ -290,6 +320,27 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
+            const isKeyword = command.activation === 'keyword';
+            if (body.activation !== undefined && body.activation !== (command.activation ?? 'command')) {
+                return res.status(400).send({ error: true, message: 'Activation type cannot be changed', status: 400 });
+            }
+            if (isKeyword) {
+                try {
+                    updatePayload.keywordSettings = validateKeyword(body.cmd ?? command.cmd, body.keywordSettings ?? command.keywordSettings);
+                } catch (error) { return res.status(400).send({ error: true, message: (error as Error).message, status: 400 }); }
+                if ('cmd' in body) updatePayload.cmd = normalizeKeyword(body.cmd);
+                updatePayload.func = 'custom';
+                if (body.cooldown !== undefined) await validateKeywordCooldown(channelIdStr, body.cooldown);
+            } else if (body.keywordSettings !== undefined) {
+                return res.status(400).send({ error: true, message: 'Keyword settings require keyword activation', status: 400 });
+            }
+            if ('cmd' in updatePayload && updatePayload.cmd !== command.cmd) {
+                const conflict = await CommandsSchema.exists({ channelID: channelIdStr,
+                    _id: { $ne: commandIdStr }, cmd: updatePayload.cmd,
+                    ...activationFilter(isKeyword ? 'keyword' : 'command') });
+                if (conflict) return res.status(409).send({ error: true, message: 'Activation already exists', status: 409 });
+            }
+
             if (command.reserved && 'message' in updatePayload) {
                 delete updatePayload.message;
             }
@@ -345,11 +396,13 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 }
             }
 
-            const updatedCommand = await writeCommandWithCooldown(channelIdStr, updatePayload.cooldown, command, () => CommandsSchema.findOneAndUpdate(
+            const writeUpdate = () => CommandsSchema.findOneAndUpdate(
                 { channelID: channelIdStr, _id: commandIdStr },
                 updatePayload,
                 { new: true }
-            ).exec());
+            ).exec();
+            const updatedCommand = isKeyword ? await writeUpdate()
+                : await writeCommandWithCooldown(channelIdStr, updatePayload.cooldown, command, writeUpdate);
 
             if (!updatedCommand) {
                 return res.status(404).send({
@@ -362,8 +415,11 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
             // Invalidate both the previous and current command-name cache
             // keys — even when equal — so a rename can never leave the old
             // name executable through a stale one-hour cache entry.
-            await cacheClient.del(`${channelIdStr}:commands:${command.cmd}`);
-            await cacheClient.del(`${channelIdStr}:commands:${updatedCommand.cmd}`);
+            if (isKeyword) await refreshKeywordIndex(channelIdStr, commandIdStr);
+            else {
+                await cacheClient.del(`${channelIdStr}:commands:${command.cmd}`);
+                await cacheClient.del(`${channelIdStr}:commands:${updatedCommand.cmd}`);
+            }
 
             const commandResponse: Record<string, unknown> = { ...updatedCommand.toObject() };
             commandResponse.permissionMode = permissionModeFor(updatedCommand);
@@ -451,7 +507,8 @@ router.delete('/:channelID/:commandID', authMiddleware as any, async (req: Reque
                 });
             }
 
-            await cacheClient.del(`${channelIdStr}:commands:${deletedCommand.cmd}`);
+            if (deletedCommand.activation === 'keyword') await refreshKeywordIndex(channelIdStr, commandIdStr);
+            else await cacheClient.del(`${channelIdStr}:commands:${deletedCommand.cmd}`);
 
             res.send({
                 error: false,

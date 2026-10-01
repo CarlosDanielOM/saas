@@ -2,6 +2,10 @@ import type { CommandReferenceState, CommandReferenceRequest } from '../utils/as
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { ITwitchEventData } from '../interfaces/twitch/eventsub.interface.js';
 import Commands from '../classes/command.class.js';
+import { CommandsSchema, type ICommands } from '../schemas/commands.schema.js';
+import TwitchStreamers from '../classes/twitch_streamers.class.js';
+import { getMinimumCommandCooldown } from '../utils/command_cooldown.js';
+import { saveKeywordCount } from '../utils/keyword_cache.js';
 import { parseSpecialCommands } from './special_parser.handler.js';
 import { BROADCASTER_USER_LEVEL, commandAllowed, type UserIdentity } from '../utils/permissions/index.js';
 
@@ -101,6 +105,23 @@ async function commandHandler(
         };
     }
 
+    return executeCustomCommand(channelID, messageEventData, cmdDB.command, command, argument, authorization, referenceState);
+}
+
+/** Shared authored AST execution; activation matching belongs to the caller. */
+export async function executeCustomCommand(
+    channelID: string,
+    messageEventData: ITwitchEventData | Record<string, unknown>,
+    storedCommand: ICommands,
+    command: string,
+    argument?: string,
+    authorization?: CommandExecutionAuthorization,
+    referenceState?: CommandReferenceState
+): Promise<ICommandResponse> {
+    const isKeyword = storedCommand.activation === 'keyword';
+    const executionName = isKeyword ? `keyword:${storedCommand._id}` : command.toLowerCase();
+    const cmdDB = { command: storedCommand };
+
     const commandData: ICommandData = {
         enabled: cmdDB.command.enabled,
         name: cmdDB.command.name,
@@ -132,15 +153,27 @@ async function commandHandler(
     }
 
     // Shared by direct chat and references (including API/cron invocations).
-    const cooldown = Number(cmdDB.command.cooldown ?? 0);
+    const configuredCooldown = Number(cmdDB.command.cooldown ?? 0);
+    const cooldown = isKeyword ? Math.max(
+        Number.isFinite(configuredCooldown) ? configuredCooldown : 0,
+        getMinimumCommandCooldown((await TwitchStreamers.getTwitchAccountById(channelID))?.plan_tier)
+    ) : configuredCooldown;
     if (Number.isFinite(cooldown) && cooldown > 0) {
         const cache = await getDragonflyClient('CommandCooldown');
-        const acquired = await cache.set(`command:execution:cooldown:${channelID}:${command.toLowerCase()}`, '1',
+        const acquired = await cache.set(`command:execution:cooldown:${channelID}:${executionName}`, '1',
             { NX: true, PX: Math.ceil(cooldown * 1000) });
         if (!acquired) return { error: true, message: 'Command is on cooldown', status: 429, type: 'command_cooldown' };
     }
+    if (isKeyword) {
+        // Body/index caches contain configuration; mutable counter state is read
+        // only after this message wins the cooldown gate.
+        const current = await CommandsSchema.findOne({ channelID, _id: storedCommand._id, activation: 'keyword' })
+            .select('count enabled').lean();
+        if (!current?.enabled) return { error: true, message: 'Keyword is disabled or deleted', status: 400, type: 'command_disabled' };
+        commandData.count = current.count ?? 0;
+    }
     const state: CommandReferenceState = referenceState ?? {
-        visitedCommands: new Set([`${channelID}:${command.toLowerCase()}`]),
+        visitedCommands: new Set([`${channelID}:${executionName}`]),
         commandRefDepth: 0,
         commandRefBudget: { remaining: 50 }
     };
@@ -152,7 +185,7 @@ async function commandHandler(
         channelID,
         commandReferenceState: state,
         scopeType: 'command',
-        scopeName: commandData.cmd || command,
+        scopeName: isKeyword ? executionName : commandData.cmd || command,
         scopeAliases: commandData.name ? [commandData.name] : [],
         eventData: messageEventData,
         argument: argument || '',
@@ -162,7 +195,8 @@ async function commandHandler(
     });
 
     if (specialRes.countModified) {
-        await Commands.updateCommandInDB(channelID, command, { count: specialRes.count });
+        if (isKeyword) await saveKeywordCount(channelID, String(storedCommand._id), specialRes.count);
+        else await Commands.updateCommandInDB(channelID, command, { count: specialRes.count });
     }
     commandData.message = specialRes.parsedText;
 

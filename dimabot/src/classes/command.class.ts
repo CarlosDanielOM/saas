@@ -38,7 +38,7 @@ class Commands {
 
     async createCommand(channelID: string, command: Partial<ICommands>): Promise<ICommandCreateResponse> {
         try {
-            const exists = await CommandsSchema.findOne({ channelID, cmd: command.cmd });
+            const exists = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: command.cmd });
             if (exists) {
                 return {
                     error: true,
@@ -86,7 +86,7 @@ class Commands {
 
     async deleteCommand(channelID: string, command: string): Promise<ICommandDeleteResponse> {
         try {
-            const deleted = await CommandsSchema.findOne({ channelID, cmd: command });
+            const deleted = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: command });
             if (!deleted) {
                 return {
                     error: true,
@@ -134,7 +134,7 @@ class Commands {
                 };
             }
 
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD });
             if (!command) {
                 return {
                     error: true,
@@ -180,7 +180,7 @@ class Commands {
                 };
             }
 
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD, reserved: true });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD, reserved: true });
             if (!command) {
                 return {
                     error: true,
@@ -226,7 +226,7 @@ class Commands {
                 };
             }
 
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD });
             if (!command) {
                 return {
                     error: true,
@@ -272,7 +272,7 @@ class Commands {
                 };
             }
 
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD, reserved: true });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD, reserved: true });
             if (!command) {
                 return {
                     error: true,
@@ -304,7 +304,7 @@ class Commands {
 
     async updateCommandInDB(channelID: string, commandCMD: string, updateData: Partial<ICommands>): Promise<ICommandUpdateResponse> {
         try {
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD });
             if (!command) {
                 return {
                     error: true,
@@ -337,7 +337,7 @@ class Commands {
 
     async updateCountableCommandInDB(channelID: string, commandCMD: string, countData: number): Promise<ICommandUpdateResponse> {
         try {
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD });
             if (!command) {
                 return {
                     error: true,
@@ -369,7 +369,7 @@ class Commands {
 
     async updateCommandAvailability(channelID: string, commandCMD: string, availability: boolean): Promise<ICommandUpdateResponse> {
         try {
-            const command = await CommandsSchema.findOne({ channelID, cmd: commandCMD });
+            const command = await CommandsSchema.findOne({ channelID, activation: { $ne: 'keyword' }, cmd: commandCMD });
             if (!command) {
                 return {
                     error: true,

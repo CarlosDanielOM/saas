@@ -1,9 +1,14 @@
+export type KeywordMatchMode = 'start' | 'anywhere' | 'exact';
+export interface KeywordSettings { matchMode: KeywordMatchMode }
+
 export interface Command {
   id: string;
   _id?: string;
   channel: string;
   channelID: string;
   cmd: string;
+  activation?: 'command' | 'keyword';
+  keywordSettings?: KeywordSettings;
   func: string;
   cooldown: number;
   count?: number;
@@ -28,6 +33,8 @@ export interface Command {
 }
 
 export interface CreateCommandRequest {
+  activation?: 'command' | 'keyword';
+  keywordSettings?: KeywordSettings;
   name: string;
   cmd: string;
   func: string;
@@ -41,6 +48,7 @@ export interface CreateCommandRequest {
 }
 
 export interface UpdateCommandRequest {
+  keywordSettings?: KeywordSettings;
   name?: string;
   cmd?: string;
   func?: string;

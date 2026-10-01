@@ -1,11 +1,14 @@
 import { addAvailabilityFields } from '../utils/availability/schema.js';
 import { Schema, model, Types } from 'mongoose';
 import type { PermissionExpression } from '../utils/permissions/expression.js';
+import type { KeywordSettings } from '../utils/keywords.js';
 
 export interface ICommands {
     _id?: Types.ObjectId;
     name: string;
     cmd: string;
+    activation?: 'command' | 'keyword';
+    keywordSettings?: KeywordSettings;
     func: string;
     message: string;
     responses: string[];
@@ -43,6 +46,10 @@ export interface ICommands {
 const commandsSchema = new Schema({
     name: String,
     cmd: String,
+    activation: { type: String, enum: ['command', 'keyword'], default: 'command' },
+    keywordSettings: { type: new Schema({
+        matchMode: { type: String, enum: ['start', 'anywhere', 'exact'], default: 'start' }
+    }, { _id: false }), default: undefined },
     func: String,
     message: { type: String, default: '' },
     responses: { type: Array, default: [] },

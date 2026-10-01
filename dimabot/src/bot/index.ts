@@ -6,6 +6,7 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getQdrantConnection } from '../utils/databases/qdrant.database.js';
 import { pubSubManager } from '../classes/pubsub_manager.class.js';
+import { startKeywordCacheSubscription } from '../utils/keyword_cache.js';
 import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import { twitchEventsub } from './eventsub.twitch.js';
 import ChatHistory from '../classes/chat_history.js';
@@ -36,6 +37,7 @@ startBotRuntimeMetricsLoop();
 
 // Initialize PubSub for clip queue
 await pubSubManager.init();
+await startKeywordCacheSubscription();
 
 await TwitchStreamers.getTwitchAccountsFromDB();
 

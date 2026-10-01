@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
+import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
+import { CommandsSchema } from '/app/dist/schemas/commands.schema.js';
+import Commands from '/app/dist/classes/command.class.js';
+import { commandHandler } from '/app/dist/handlers/commands.handler.js';
+import { createBroadcasterIdentity } from '/app/dist/utils/permissions/index.js';
+import { getAvailabilityAdapter } from '/app/dist/utils/availability/service.js';
+import { parseSpecialCommands } from '/app/dist/handlers/special_parser.handler.js';
+import { renderTimerMessage } from '/app/dist/utils/timer_runtime.js';
+import { deliverAstMessage } from '/app/dist/utils/ast_command_delivery.js';
+await getMongoDBConnection('keywords-cron-check');
+const redis = await getDragonflyClient('keywords-cron-check');
+const channel = 'keywords-cron';
+await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: 'pro' });
+await redis.set('app:twitch:token', 'dummy');
+await CommandsSchema.create({ channelID: channel, channel, cmd: 'hormiga', name: 'Keyword', activation: 'keyword',
+  keywordSettings: { matchMode: 'anywhere' }, message: 'Keyword must not run', cooldown: 1, userLevel: 1 });
+const command = await CommandsSchema.create({ channelID: channel, channel, cmd: 'hormiga', name: 'Normal',
+  message: 'Normal $(upper hello)', cooldown: 0, userLevel: 1 });
+assert.equal((await Commands.getCommandFromDB(channel, 'hormiga')).command.name, 'Normal');
+assert.equal(String((await getAvailabilityAdapter('command').resolve(channel, 'hormiga'))._id), String(command._id));
+const result = await commandHandler(channel, {}, 'hormiga', '', { origin: 'authored', identity: createBroadcasterIdentity() });
+assert.equal(result.message, 'Normal HELLO');
+const rendered = await renderTimerMessage({ channelID: channel, streamerName: channel, timerName: 'timer-test', message: 'Scheduled #(hormiga)', planTier: 'pro', parse: parseSpecialCommands });
+await deliverAstMessage(channel, rendered);
+const messages = (await redis.lRange('keywords:test:messages', 0, -1)).map(JSON.parse).map(body => body.message);
+assert.deepEqual(messages, ['Scheduled', 'Normal HELLO']);
+console.log('PASS: supervisor startup with mocked workers; shared timer/reference AST execution and availability resolve normal command independently of keyword');
+process.exit(0);

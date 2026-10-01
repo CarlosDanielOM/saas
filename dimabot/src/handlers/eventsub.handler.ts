@@ -6,6 +6,7 @@ import UsersSchema from "../schemas/users.schema.js";
 import { isSupportedChatNotice, resolveChatNotificationMessage } from "../utils/chat_notification_defaults.js";
 import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import { messageHandler } from "./message.handler.js";
+import { keywordIndexCache } from '../utils/keyword_cache.js';
 import { raidHandler } from "./raid.handler.js";
 import { cheerHandler } from "./cheer.handler.js";
 import { sendTwitchChatMessage } from "../functions/chats/send_message.chat.js";
@@ -57,6 +58,9 @@ export const eventsubHandler = async (
     const immediateChatEnabled = chatEnabled && !options.durableChatHandled;
 
     const {type} = subscriptionData;
+    // Cache lifecycle is independent of announcement settings and durable chat ownership.
+    if (type === 'stream.online' && chatEnabled) await keywordIndexCache.get(STREAMER.id);
+    if (type === 'stream.offline') keywordIndexCache.invalidate(STREAMER.id);
     const canonicalType = canonicalizeEventsubType(type);
     const equivalentTypes = getEquivalentEventsubTypes(type);
 

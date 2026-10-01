@@ -95,6 +95,23 @@ export class CommandsPageComponent {
 
   // Data signals
   readonly commands = signal<CommandListItem[]>([]);
+  readonly activation = signal<'command' | 'keyword'>('command');
+  readonly visibleCommands = computed(() => this.commands().filter(command =>
+    (command.activation === 'keyword' ? 'keyword' : 'command') === this.activation()));
+
+  setActivation(activation: 'command' | 'keyword'): void {
+    this.activation.set(activation);
+    this.searchInput.set('');
+    this.currentPage.set(1);
+  }
+
+  activationLabel(command: Command): string {
+    return command.activation === 'keyword' ? command.cmd : `!${command.cmd}`;
+  }
+
+  matchModeLabel(command: Command): string {
+    return this.t(`keywords.match.${command.keywordSettings?.matchMode ?? 'start'}`);
+  }
   readonly loading = computed(() => this.commandsApi.listLoading());
   readonly error = computed(() => this.commandsApi.listError());
   readonly showInitialLoading = computed(() => this.loading() && this.commands().length === 0);
@@ -167,12 +184,12 @@ export class CommandsPageComponent {
       '';
     return fromRoute || this.sessionAuth.session()?.twitchUser.login || '—';
   });
-  readonly totalCommands = computed(() => this.commands().length);
+  readonly totalCommands = computed(() => this.visibleCommands().length);
   readonly enabledCommands = computed(
-    () => this.commands().filter((command) => command.enabled !== false).length
+    () => this.visibleCommands().filter((command) => command.enabled !== false).length
   );
   readonly disabledCommands = computed(
-    () => this.commands().filter((command) => command.enabled === false).length
+    () => this.visibleCommands().filter((command) => command.enabled === false).length
   );
   readonly reservedCommands = computed(
     () => this.commands().filter((command) => Boolean(command.reserved)).length
@@ -187,7 +204,7 @@ export class CommandsPageComponent {
 
   readonly filteredCommands = computed(() => {
     const query = this.searchInput().trim().toLowerCase();
-    const commands = this.commands();
+    const commands = this.visibleCommands();
 
     const matched = query
       ? commands.filter(
@@ -305,7 +322,7 @@ export class CommandsPageComponent {
   // ========== Loading Commands ==========
 
   loadCommands(channelID: string, options: { skipCache?: boolean } = {}): void {
-    this.commandsApi.getCommands(channelID, { skipCache: options.skipCache }).subscribe({
+    this.commandsApi.getCommands(channelID, { skipCache: options.skipCache, activation: 'all', limit: 1000 }).subscribe({
       next: (cmds) => {
         this.commands.set(this.normalizeCommands(cmds));
         this.syncCurrentPage();
@@ -432,8 +449,8 @@ export class CommandsPageComponent {
     }
   }
 
-  isTimerLinked(command: Pick<Command, 'cmd' | 'name' | 'reserved'>): boolean {
-    if (command.reserved) {
+  isTimerLinked(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): boolean {
+    if (command.reserved || command.activation === 'keyword') {
       return false;
     }
     const names = this.timerNames();
@@ -445,7 +462,7 @@ export class CommandsPageComponent {
     return (cmd !== '' && names.has(cmd)) || (name !== '' && names.has(name));
   }
 
-  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved'>): 'reserved' | 'timer' | 'normal' {
+  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): 'reserved' | 'timer' | 'normal' {
     if (command.reserved) {
       return 'reserved';
     }
@@ -498,6 +515,7 @@ export class CommandsPageComponent {
     if (editingCmd) {
       const commandId = this.getCommandId(editingCmd);
       const updates: UpdateCommandRequest = {
+        ...(request.keywordSettings ? { keywordSettings: request.keywordSettings } : {}),
         name: request.name,
         cmd: request.cmd,
         message: request.message,
@@ -519,7 +537,7 @@ export class CommandsPageComponent {
           this.clearCommandSnapshot(commandId);
           this.setCommandFeedbackState(this.getCommandId(updated), 'success');
           this.toastService.success(this.t('commands.toast.savedTitle'), this.t('commands.toast.savedMessage'));
-          this.syncCommandTimer(channelID, updated.cmd || request.cmd, previousTimerName, request.message, payload.timer);
+          if (updated.activation !== 'keyword') this.syncCommandTimer(channelID, updated.cmd || request.cmd, previousTimerName, request.message, payload.timer);
         } else {
           this.restoreCommandSnapshot(commandId);
           this.setCommandFeedbackState(commandId, 'error');
@@ -544,7 +562,7 @@ export class CommandsPageComponent {
           this.replaceCommandItem(tempId, created);
           this.setCommandFeedbackState(this.getCommandId(created), 'success');
           this.toastService.success(this.t('commands.toast.createdTitle'), this.t('commands.toast.createdMessage'));
-          this.syncCommandTimer(channelID, created.cmd || request.cmd, null, request.message, payload.timer);
+          if (created.activation !== 'keyword') this.syncCommandTimer(channelID, created.cmd || request.cmd, null, request.message, payload.timer);
         } else {
           this.setCommandFeedbackState(tempId, 'error');
           window.setTimeout(() => {
@@ -563,6 +581,8 @@ export class CommandsPageComponent {
       channel: command.channel,
       channelID,
       cmd: command.cmd,
+      activation: command.activation,
+      keywordSettings: command.keywordSettings,
       func: command.func,
       cooldown: command.cooldown,
       createdAt: new Date().toISOString(),

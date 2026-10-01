@@ -112,10 +112,10 @@ export class CommandsApiService {
    * Get commands for a channel with pagination support.
    * By default loads up to 100 commands for client-side filtering.
    */
-  getCommands(channelID: string, options: { limit?: number; skip?: number; skipCache?: boolean } = {}) {
-    const { limit = 100, skip = 0, skipCache = false } = options;
+  getCommands(channelID: string, options: { limit?: number; skip?: number; skipCache?: boolean; activation?: 'command' | 'keyword' | 'all' } = {}) {
+    const { limit = 100, skip = 0, skipCache = false, activation = 'command' } = options;
     const language = this.languageService.getCurrentLanguage();
-    const cacheKey = `${this.getCacheKey(channelID, language)}:${skip}:${limit}`;
+    const cacheKey = `${this.getCacheKey(channelID, language)}:${activation}:${skip}:${limit}`;
 
     if (!skipCache) {
       const cached = this.getFromCache<Command[]>(cacheKey);
@@ -129,7 +129,7 @@ export class CommandsApiService {
 
     return this.http
       .get<ApiEnvelope<CommandsListResponse> & LegacyCommandsResponse>(
-        `${this.linksService.getApiUrl()}/commands/${channelID}?language=${encodeURIComponent(language)}&limit=${limit}&skip=${skip}`
+        `${this.linksService.getApiUrl()}/commands/${channelID}?language=${encodeURIComponent(language)}&limit=${limit}&skip=${skip}&activation=${activation}`
       )
       .pipe(
         map((response) => this.extractCommands(response)),
@@ -154,7 +154,8 @@ export class CommandsApiService {
       .pipe(
         map((response) => this.extractCommand(response, 'Failed to create command')),
         tap((createdCommand) => {
-          this.updateCachedCommands(channelID, (commands) => [...commands, createdCommand]);
+          // A new keyword must not enter cached public !command lists.
+          this.clearAllCache();
         }),
         catchError(() => of(null))
       );
