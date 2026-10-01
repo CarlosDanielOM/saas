@@ -134,7 +134,7 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Third',
       badge: 'Free',
       premium: false,
-      note: 'Broadcast lower-third. Video fades, bar slides up, then eases back down.'
+      note: 'Broadcast split. Full 16:9 clip beside a lower-third panel.'
     },
     {
       id: 'tile',
@@ -148,7 +148,7 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Cinema',
       badge: 'Premium',
       premium: true,
-      note: 'Full-bleed clip. Scrim and meta rise after the picture fades up.'
+      note: 'Wide clip. Info panel rises after the picture fades up.'
     },
     {
       id: 'orbit',
@@ -162,21 +162,21 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Pill',
       badge: 'Premium',
       premium: true,
-      note: 'Floating capsule over full video. Capsule slides in after the picture.'
+      note: 'Floating capsule beside the clip. Capsule slides in after the picture.'
     },
     {
       id: 'hud',
       label: 'HUD',
       badge: 'Premium',
       premium: true,
-      note: 'Corner chips only. Game, name, and title stagger in around the clip.'
+      note: 'Corner chips only. Game, name, and title stagger in beside the clip.'
     },
     {
       id: 'slash',
       label: 'Slash',
       badge: 'Premium',
       premium: true,
-      note: 'Diagonal reveal. Video wipes open, type sits in the cut, avatar on the seam.'
+      note: 'Diagonal panel. Type sits in the cut, avatar on the seam.'
     }
   ];
 

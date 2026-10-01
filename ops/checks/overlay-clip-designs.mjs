@@ -48,9 +48,17 @@ try {
   const geometry = [];
   for (const variant of variants) {
     await select.selectOption(variant); await page.waitForFunction(v => document.querySelector('.widget app-overlay-clip .clip-design').dataset.variant === v, variant);
-    geometry.push(await page.locator('.widget app-overlay-clip').evaluate(element => { const frame = element.getBoundingClientRect(), video = element.querySelector('.skin__video').getBoundingClientRect(), meta = element.querySelector('.skin__meta').getBoundingClientRect(); return [Math.round(video.width), Math.round(video.height), Math.round(meta.x - frame.x), Math.round(meta.y - frame.y), Math.round(meta.width), Math.round(meta.height), getComputedStyle(element.querySelector('.skin__video')).clipPath].join(':'); }));
+    geometry.push(await page.locator('.widget app-overlay-clip').evaluate(element => {
+      const frame = element.getBoundingClientRect();
+      const video = element.querySelector('.skin__video');
+      const meta = element.querySelector('.skin__meta');
+      const avatar = element.querySelector('.skin__avatar');
+      const vrect = video.getBoundingClientRect(), mrect = meta.getBoundingClientRect(), arect = avatar.getBoundingClientRect(), ast = getComputedStyle(avatar);
+      return [Math.round(vrect.width), Math.round(vrect.height), Math.round(mrect.x - frame.x), Math.round(mrect.y - frame.y), Math.round(mrect.width), Math.round(mrect.height), getComputedStyle(video).clipPath, ast.display, ast.left, ast.top, ast.right, ast.bottom, Math.round(arect.width), Math.round(arect.height)].join(':');
+    }));
   }
   assert.equal(new Set(geometry).size, 8, 'all designs must have different layout geometry');
+  for (const entry of geometry) { const [width, height] = entry.split(':').map(Number); assert.ok(Math.abs(width / height - 16 / 9) < 0.03, `every design must give the clip a 16:9 slot, got ${width}x${height}`); }
   await select.selectOption('pill');
   await page.waitForFunction(() => Object.keys(localStorage).some(k => k.startsWith('domdimabot-overlay-draft:') && JSON.parse(localStorage.getItem(k)).scenes[0].widgets[0].clipDesign === 'pill'));
   page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click(); await select.waitFor(); await page.waitForFunction(() => document.querySelector('[aria-label="Clip design"]').value === 'pill').catch(async e=>{console.log('Restored variant', await page.locator('.widget .clip-design').getAttribute('data-variant'));throw e;}); assert.equal(await select.inputValue(), 'pill');
@@ -96,7 +104,7 @@ try {
     events.set(id, { id, kind: 'clip', snapshot: structuredClone(snapshot), revision, media: { type: 'video', url: api + '/clip-fixture.mp4', title: 'Fixture title', volume: 1, clip: metadata } }); send('overlay-event', { id, kind: 'clip' });
     await source.waitForFunction(() => document.querySelectorAll('app-overlay-clip video').length === 2);
     assert.deepEqual(await source.locator('app-overlay-clip .clip-design').evaluateAll(elements => elements.map(e => e.dataset.variant)), [variant, 'slash']);
-    assert.deepEqual(await source.locator('app-overlay-clip video').evaluateAll(videos => videos.map(v => [v.muted,getComputedStyle(v).objectFit])), [[false,'cover'], [true,'cover']]);
+    assert.deepEqual(await source.locator('app-overlay-clip video').evaluateAll(videos => videos.map(v => [v.muted,getComputedStyle(v).objectFit])), [[false,'contain'], [true,'contain']]);
     assert.equal(await source.locator('.skin__meta img').count(), 0, 'caption uses plain text');
     assert.equal(await source.locator('.skin__name').first().textContent(), 'Fixture streamer');
     if (variant === 'classic') { snapshot.widgets[0].clipDesign = 'hud'; revision++; send('overlay-updated', { revision }); await until(() => health.some(h => h.revision === revision), 'publish refresh acknowledgement'); assert.equal(await source.locator('app-overlay-clip .clip-design').first().getAttribute('data-variant'), 'classic', 'publishing preserves the active event design'); }

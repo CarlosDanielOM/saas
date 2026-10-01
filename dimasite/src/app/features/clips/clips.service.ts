@@ -59,7 +59,7 @@ export class ClipsService {
       {
         id: 'third',
         name: 'Third',
-        description: 'Broadcast lower-third. Video fades up, then a bar slides in with game, name, and line.',
+        description: 'Broadcast split. Full 16:9 clip beside a lower-third panel with game, name, and line.',
         previewUrl: `${baseUrl}/clip/${channelID}?design=third`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 2,
@@ -67,7 +67,7 @@ export class ClipsService {
         premium: false,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Lower-third bar', 'Full-bleed video', 'Accent top edge', 'Beta v1'],
+        features: ['Lower-third panel', 'Full 16:9 clip', 'Accent edge', 'Beta v1'],
         accentColor: '#7c3aed'
       },
       {
@@ -87,7 +87,7 @@ export class ClipsService {
       {
         id: 'cinema',
         name: 'Cinema',
-        description: 'Full-bleed clip with a rising glass strip for name and line.',
+        description: 'Wide clip with a rising info panel for name and line.',
         previewUrl: `${baseUrl}/clip/${channelID}?design=cinema`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 4,
@@ -95,7 +95,7 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Full-bleed video', 'Bottom scrim', 'Compact meta', 'Beta v1'],
+        features: ['Full 16:9 clip', 'Rising panel', 'Compact meta', 'Beta v1'],
         accentColor: '#eab308'
       },
       {
@@ -115,7 +115,7 @@ export class ClipsService {
       {
         id: 'pill',
         name: 'Pill',
-        description: 'Floating capsule over full video. Capsule slides in after the picture.',
+        description: 'Floating capsule beside the clip. Capsule slides in after the picture.',
         previewUrl: `${baseUrl}/clip/${channelID}?design=pill`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 6,
@@ -123,13 +123,13 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Full video', 'Capsule chip', 'Minimal chrome', 'Beta v1'],
+        features: ['Full 16:9 clip', 'Capsule chip', 'Minimal chrome', 'Beta v1'],
         accentColor: '#22d3ee'
       },
       {
         id: 'hud',
         name: 'HUD',
-        description: 'Corner chips only. Game, name, and title stagger in around the clip.',
+        description: 'Corner chips only. Game, name, and title stagger in beside the clip.',
         previewUrl: `${baseUrl}/clip/${channelID}?design=hud`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 7,
@@ -143,7 +143,7 @@ export class ClipsService {
       {
         id: 'slash',
         name: 'Slash',
-        description: 'Diagonal reveal. Video wipes open, type sits in the cut, avatar on the seam.',
+        description: 'Diagonal panel. Type sits in the cut, avatar on the seam.',
         previewUrl: `${baseUrl}/clip/${channelID}?design=slash`,
         thumbnailUrl: '/assets/clips/design-1-thumb.jpg',
         designNumber: 8,
@@ -151,7 +151,7 @@ export class ClipsService {
         premium: true,
         premiumPlus: false,
         status: 'beta' as const,
-        features: ['Diagonal wipe', 'Accent panel', 'Seam avatar', 'Beta v1'],
+        features: ['Diagonal panel', 'Accent panel', 'Seam avatar', 'Beta v1'],
         accentColor: '#ec4899'
       }
     ];

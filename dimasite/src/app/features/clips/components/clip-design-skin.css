@@ -1,4 +1,8 @@
-/* Shared clip skins for catalog previews and Overlay Studio playback. */
+/* Shared clip skins for catalog previews and Overlay Studio playback.
+   Geometry: the 800×225 banner always gives the clip a 16:9 (400×225) slot so the
+   whole frame is shown; the remaining 400×225 is the design's info chrome.
+   Clips are 16:9, so a full-bleed slot would crop the top and bottom. */
+
 /* ——— Classic (prod Design 1) ——— */
 .clip-design[data-variant='classic'] .skin {
   width: 800px;
@@ -10,7 +14,7 @@
 
 .clip-design[data-variant='classic'] .skin__video {
   width: 400px;
-  height: 100%;
+  height: 225px;
   position: absolute;
   inset: 0 auto auto 0;
   overflow: hidden;
@@ -89,14 +93,17 @@
 
 .clip-design[data-variant='third'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
   border-radius: 0.85rem;
 }
 
 .clip-design[data-variant='third'] .skin__avatar {
   position: absolute;
-  left: 16px;
+  left: 416px;
   bottom: 18px;
   width: 52px;
   height: 52px;
@@ -108,16 +115,18 @@
 
 .clip-design[data-variant='third'] .skin__meta {
   position: absolute;
-  left: 0;
+  top: 0;
   right: 0;
   bottom: 0;
+  left: 400px;
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 64px 1fr;
+  align-content: end;
   align-items: center;
-  min-height: 72px;
-  padding: 0.65rem 1rem 0.65rem 0.85rem;
-  background: linear-gradient(90deg, rgba(10, 10, 14, 0.92), rgba(10, 10, 14, 0.78));
-  border-top: 3px solid var(--clip-accent, #8b5cf6);
+  padding: 0.9rem 1rem 0.9rem 0.85rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(10, 10, 14, 0.4), rgba(10, 10, 14, 0.92));
+  border-left: 3px solid var(--clip-accent, #8b5cf6);
   color: #fff;
 }
 
@@ -148,20 +157,19 @@
 
 /* ——— Tile ——— */
 .clip-design[data-variant='tile'] .skin {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  grid-template-areas: 'video meta';
-  gap: 0.7rem;
-  padding: 0.7rem;
+  position: relative;
   height: 100%;
-  box-sizing: border-box;
   font-family: var(--font);
 }
 
 .clip-design[data-variant='tile'] .skin__video {
-  grid-area: video;
-  border-radius: 1rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
+  border-radius: 1rem;
 }
 
 .clip-design[data-variant='tile'] .skin__avatar {
@@ -169,7 +177,11 @@
 }
 
 .clip-design[data-variant='tile'] .skin__meta {
-  grid-area: meta;
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  left: 412px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -218,7 +230,12 @@
 
 .clip-design[data-variant='cinema'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 225px;
+  overflow: hidden;
+  border-radius: 0.9rem;
 }
 
 .clip-design[data-variant='cinema'] .skin__avatar {
@@ -234,15 +251,18 @@
 
 .clip-design[data-variant='cinema'] .skin__meta {
   position: absolute;
+  top: 0;
   left: 0;
-  right: 0;
   bottom: 0;
+  right: 400px;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
+  align-content: flex-end;
   gap: 0.35rem 0.7rem;
-  padding: 2.4rem 1rem 0.85rem 68px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.78));
+  padding: 1rem 1.15rem 1rem 68px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.85));
   color: #fff;
 }
 
@@ -271,7 +291,7 @@
 /* ——— Orbit ——— */
 .clip-design[data-variant='orbit'] .skin {
   display: grid;
-  grid-template-columns: auto 1.2fr 1fr;
+  grid-template-columns: auto auto 1fr;
   grid-template-areas: 'avatar video meta';
   align-items: center;
   gap: 0.85rem;
@@ -306,6 +326,7 @@
 .clip-design[data-variant='orbit'] .skin__video {
   grid-area: video;
   height: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 1rem;
   overflow: hidden;
 }
@@ -354,7 +375,10 @@
 
 .clip-design[data-variant='pill'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
   border-radius: 1rem;
 }
@@ -365,14 +389,15 @@
 
 .clip-design[data-variant='pill'] .skin__meta {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: 16px;
+  right: 416px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.65rem;
-  max-width: 72%;
-  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 999px;
   background: rgba(15, 17, 21, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -405,14 +430,17 @@
 
 .clip-design[data-variant='hud'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
   border-radius: 0.85rem;
 }
 
 .clip-design[data-variant='hud'] .skin__avatar {
   position: absolute;
-  left: 12px;
+  right: 12px;
   bottom: 12px;
   width: 40px;
   height: 40px;
@@ -423,7 +451,10 @@
 
 .clip-design[data-variant='hud'] .skin__meta {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 400px;
+  right: 0;
+  bottom: 0;
   color: #fff;
   pointer-events: none;
 }
@@ -448,15 +479,16 @@
 }
 
 .clip-design[data-variant='hud'] .skin__name {
-  left: 60px;
+  left: 12px;
   bottom: 16px;
+  max-width: 62%;
   font-size: 1rem;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
 .clip-design[data-variant='hud'] .skin__title {
+  top: 12px;
   right: 12px;
-  bottom: 16px;
   max-width: 42%;
   text-align: right;
   font-size: 0.74rem;
@@ -478,14 +510,17 @@
 
 .clip-design[data-variant='slash'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
-  clip-path: polygon(0 0, 78% 0, 62% 100%, 0 100%);
+  border-radius: 0.85rem;
 }
 
 .clip-design[data-variant='slash'] .skin__avatar {
   position: absolute;
-  left: 64%;
+  left: 400px;
   bottom: 14px;
   width: 64px;
   height: 64px;
@@ -502,18 +537,19 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 44%;
+  width: 52%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   z-index: 3;
-  padding: 1rem 1.15rem 4.25rem 3.5rem;
+  padding: 1rem 1.15rem 1rem 3.2rem;
   box-sizing: border-box;
   color: #fff;
+  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   background: linear-gradient(
     105deg,
     transparent 0%,
-    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
+    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 40%
   );
 }
 
@@ -541,4 +577,3 @@
 .clip-design[data-variant='slash'] .skin__title {
   display: none;
 }
-

@@ -15,7 +15,7 @@ import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.mod
         <div class="skin">
           <div class="skin__video">
             @if (media(); as value) {
-              <app-overlay-media [media]="value" [muted]="muted()" [showTitle]="false" fit="cover" [playLabel]="language.translate('overlayStudio.tapToPlay')"
+              <app-overlay-media [media]="value" [muted]="muted()" [showTitle]="false" fit="contain" [playLabel]="language.translate('overlayStudio.tapToPlay')"
                 (started)="started.emit($event)" (ended)="ended.emit()" (failed)="failed.emit()" (playbackBlocked)="playbackBlocked.emit()" />
             } @else { <span class="clip-placeholder" aria-hidden="true"></span> }
           </div>

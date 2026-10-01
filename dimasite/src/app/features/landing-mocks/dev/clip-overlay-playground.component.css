@@ -270,7 +270,7 @@ h1 {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .skin__kicker,
@@ -291,7 +291,7 @@ h1 {
 
 .overlay[data-variant='classic'] .skin__video {
   width: 400px;
-  height: 100%;
+  height: 225px;
   position: absolute;
   inset: 0 auto auto 0;
   overflow: hidden;
@@ -356,6 +356,7 @@ h1 {
 
 .overlay[data-variant='classic'] .skin__name {
   font-size: 1.8em;
+  order: 1;
 }
 
 .overlay[data-variant='classic'] .skin__copy {
@@ -369,10 +370,6 @@ h1 {
 
 .overlay[data-variant='classic'] .skin__copy + .skin__title {
   display: none;
-}
-
-.overlay[data-variant='classic'] .skin__name {
-  order: 1;
 }
 
 .overlay[data-variant='classic'].is-in .skin video,
@@ -398,22 +395,121 @@ h1 {
   margin-bottom: 10px;
 }
 
+/* ——— Third ——— */
+.overlay[data-variant='third'] .skin {
+  position: relative;
+  height: 100%;
+  font-family: var(--font);
+}
+
+.overlay[data-variant='third'] .skin__video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
+  overflow: hidden;
+  border-radius: 0.85rem;
+}
+
+.overlay[data-variant='third'] .skin video {
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__avatar {
+  position: absolute;
+  left: 416px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 3;
+  border: 2px solid #fff;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay[data-variant='third'] .skin__meta {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 400px;
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  align-content: end;
+  align-items: center;
+  padding: 0.9rem 1rem 0.9rem 0.85rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(10, 10, 14, 0.4), rgba(10, 10, 14, 0.92));
+  border-left: 3px solid var(--clip-accent, #8b5cf6);
+  color: #fff;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__kicker {
+  grid-column: 2;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+}
+
+.overlay[data-variant='third'] .skin__name {
+  grid-column: 2;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.overlay[data-variant='third'] .skin__copy {
+  grid-column: 2;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+}
+
+.overlay[data-variant='third'] .skin__title {
+  display: none;
+}
+
+.overlay[data-variant='third'].is-in .skin video,
+.overlay[data-variant='third'].is-in .skin__avatar,
+.overlay[data-variant='third'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.overlay[data-variant='third'].is-in .skin__avatar,
+.overlay[data-variant='third'].is-in .skin__meta {
+  transition-delay: 0.12s;
+}
+
 /* ——— Tile ——— */
 .overlay[data-variant='tile'] .skin {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  grid-template-areas: 'video meta';
-  gap: 0.7rem;
-  padding: 0.7rem;
+  position: relative;
   height: 100%;
-  box-sizing: border-box;
   font-family: var(--font);
 }
 
 .overlay[data-variant='tile'] .skin__video {
-  grid-area: video;
-  border-radius: 1rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
+  border-radius: 1rem;
 }
 
 .overlay[data-variant='tile'] .skin video,
@@ -431,7 +527,11 @@ h1 {
 }
 
 .overlay[data-variant='tile'] .skin__meta {
-  grid-area: meta;
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  left: 412px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -480,101 +580,6 @@ h1 {
   transition-delay: 0.14s;
 }
 
-/* ——— Third ——— */
-.overlay[data-variant='third'] .skin {
-  position: relative;
-  height: 100%;
-  font-family: var(--font);
-}
-
-.overlay[data-variant='third'] .skin__video {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: 0.85rem;
-}
-
-.overlay[data-variant='third'] .skin video {
-  opacity: 0;
-  transition: opacity 1.2s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__avatar {
-  position: absolute;
-  left: 16px;
-  bottom: 18px;
-  width: 52px;
-  height: 52px;
-  border-radius: 999px;
-  overflow: hidden;
-  z-index: 3;
-  border: 2px solid #fff;
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.overlay[data-variant='third'] .skin__meta {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: 76px 1fr;
-  align-items: center;
-  min-height: 72px;
-  padding: 0.65rem 1rem 0.65rem 0.85rem;
-  background: linear-gradient(90deg, rgba(10, 10, 14, 0.92), rgba(10, 10, 14, 0.78));
-  border-top: 3px solid var(--clip-accent, #8b5cf6);
-  color: #fff;
-  opacity: 0;
-  transform: translateY(100%);
-  transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__kicker {
-  grid-column: 2;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--clip-accent, #c4b5fd);
-}
-
-.overlay[data-variant='third'] .skin__name {
-  grid-column: 2;
-  font-size: 1.2rem;
-  letter-spacing: -0.03em;
-}
-
-.overlay[data-variant='third'] .skin__copy {
-  grid-column: 2;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.82rem;
-}
-
-.overlay[data-variant='third'] .skin__title {
-  display: none;
-}
-
-.overlay[data-variant='third'].is-in .skin video,
-.overlay[data-variant='third'].is-in .skin__avatar,
-.overlay[data-variant='third'].is-in .skin__meta {
-  opacity: 1;
-  transform: none;
-}
-
-.overlay[data-variant='third'].is-in .skin__avatar,
-.overlay[data-variant='third'].is-in .skin__meta {
-  transition-delay: 0.12s;
-}
-
 /* ——— Cinema ——— */
 .overlay[data-variant='cinema'] .skin {
   position: relative;
@@ -586,7 +591,12 @@ h1 {
 
 .overlay[data-variant='cinema'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 225px;
+  overflow: hidden;
+  border-radius: 0.9rem;
 }
 
 .overlay[data-variant='cinema'] .skin video {
@@ -616,15 +626,18 @@ h1 {
 
 .overlay[data-variant='cinema'] .skin__meta {
   position: absolute;
+  top: 0;
   left: 0;
-  right: 0;
   bottom: 0;
+  right: 400px;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-end;
+  align-content: flex-end;
   gap: 0.35rem 0.7rem;
-  padding: 2.4rem 1rem 0.85rem 68px;
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.78));
+  padding: 1rem 1.15rem 1rem 68px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.85));
   color: #fff;
   opacity: 0;
   transform: translateY(18px);
@@ -668,7 +681,7 @@ h1 {
 /* ——— Orbit ——— */
 .overlay[data-variant='orbit'] .skin {
   display: grid;
-  grid-template-columns: auto 1.2fr 1fr;
+  grid-template-columns: auto auto 1fr;
   grid-template-areas: 'avatar video meta';
   align-items: center;
   gap: 0.85rem;
@@ -710,6 +723,7 @@ h1 {
 .overlay[data-variant='orbit'] .skin__video {
   grid-area: video;
   height: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 1rem;
   overflow: hidden;
 }
@@ -784,7 +798,10 @@ h1 {
 
 .overlay[data-variant='pill'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
   border-radius: 1rem;
 }
@@ -801,20 +818,20 @@ h1 {
 
 .overlay[data-variant='pill'] .skin__meta {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: 16px;
+  right: 416px;
+  top: 50%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.65rem;
-  max-width: 72%;
-  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 999px;
   background: rgba(15, 17, 21, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f5f7fb;
   opacity: 0;
-  transform: translateX(-28px);
+  transform: translateY(-50%) translateX(-28px);
   transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
 }
 
@@ -835,13 +852,14 @@ h1 {
   display: none;
 }
 
-.overlay[data-variant='pill'].is-in .skin video,
-.overlay[data-variant='pill'].is-in .skin__meta {
+.overlay[data-variant='pill'].is-in .skin video {
   opacity: 1;
   transform: none;
 }
 
 .overlay[data-variant='pill'].is-in .skin__meta {
+  opacity: 1;
+  transform: translateY(-50%);
   transition-delay: 0.18s;
 }
 
@@ -854,7 +872,10 @@ h1 {
 
 .overlay[data-variant='hud'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
   border-radius: 0.85rem;
 }
@@ -866,7 +887,7 @@ h1 {
 
 .overlay[data-variant='hud'] .skin__avatar {
   position: absolute;
-  left: 12px;
+  right: 12px;
   bottom: 12px;
   width: 40px;
   height: 40px;
@@ -886,7 +907,10 @@ h1 {
 
 .overlay[data-variant='hud'] .skin__meta {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 400px;
+  right: 0;
+  bottom: 0;
   color: #fff;
   pointer-events: none;
 }
@@ -914,16 +938,17 @@ h1 {
 }
 
 .overlay[data-variant='hud'] .skin__name {
-  left: 60px;
+  left: 12px;
   bottom: 16px;
+  max-width: 62%;
   font-size: 1rem;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
   transform: translateX(-12px);
 }
 
 .overlay[data-variant='hud'] .skin__title {
+  top: 12px;
   right: 12px;
-  bottom: 16px;
   max-width: 42%;
   text-align: right;
   font-size: 0.74rem;
@@ -968,10 +993,12 @@ h1 {
 
 .overlay[data-variant='slash'] .skin__video {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 225px;
   overflow: hidden;
-  clip-path: polygon(0 0, 8% 0, 0 100%, 0 100%);
-  transition: clip-path 1.2s ease-in-out;
+  border-radius: 0.85rem;
 }
 
 .overlay[data-variant='slash'] .skin video {
@@ -981,7 +1008,7 @@ h1 {
 
 .overlay[data-variant='slash'] .skin__avatar {
   position: absolute;
-  left: 64%;
+  left: 400px;
   bottom: 14px;
   width: 64px;
   height: 64px;
@@ -1006,18 +1033,19 @@ h1 {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 44%;
+  width: 52%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   z-index: 3;
-  padding: 1rem 1.15rem 4.25rem 3.5rem;
+  padding: 1rem 1.15rem 1rem 3.2rem;
   box-sizing: border-box;
   color: #fff;
+  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   background: linear-gradient(
     105deg,
     transparent 0%,
-    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
+    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 40%
   );
   opacity: 0;
   transform: translateX(28px);
@@ -1047,10 +1075,6 @@ h1 {
 
 .overlay[data-variant='slash'] .skin__title {
   display: none;
-}
-
-.overlay[data-variant='slash'].is-in .skin__video {
-  clip-path: polygon(0 0, 78% 0, 62% 100%, 0 100%);
 }
 
 .overlay[data-variant='slash'].is-in .skin video,
