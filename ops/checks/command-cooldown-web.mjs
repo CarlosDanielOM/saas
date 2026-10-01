@@ -47,14 +47,14 @@ try {
     const page = await context.newPage();
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + '/test/commands');
-    await page.getByRole('button', { name: /add command/i }).first().click();
+    await page.getByRole('button', { name: /create new/i }).first().click();
     const modal = page.locator('app-command-modal');
     const cooldown = modal.locator('[formControlName="cooldown"]');
     await modal.locator('[formControlName="name"]').fill('Boundary');
     await modal.locator('[formControlName="cmd"]').fill('boundary');
     await modal.locator('[formControlName="message"]').fill('Hello');
     assert.equal(await cooldown.getAttribute('min'), '0');
-    await modal.getByText(`Minimum for your plan: ${min}s.`, { exact: true }).waitFor();
+    await modal.getByText(`The shortest wait on your plan is ${min} seconds.`, { exact: true }).waitFor();
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width < 640 ? 667 : 900 });
       const body = modal.locator('.lf-form__body');
@@ -62,8 +62,13 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.equal(await body.evaluate(el => el.scrollWidth > el.clientWidth), false);
       const cooldownBox = await cooldown.boundingBox();
-      const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
-      assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'cooldown and user level share a row');
+      if (width >= 640) {
+        const levelBox = await modal.locator('[formControlName="userLevel"]').boundingBox();
+        assert.ok(Math.abs(cooldownBox.y - levelBox.y) < 3, 'desktop cooldown and user level share a row');
+      } else {
+        const accessBox = await modal.locator('.lf-mobile-access-trigger').boundingBox();
+        assert.ok(accessBox.y > cooldownBox.y, 'mobile access editor follows cooldown');
+      }
       const submit = modal.locator('button[type="submit"]');
       const before = await submit.boundingBox();
       assert.ok(before.y >= 0 && before.y + before.height <= page.viewportSize().height, 'actions visible without scrolling');

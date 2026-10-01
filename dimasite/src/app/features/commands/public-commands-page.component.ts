@@ -163,6 +163,10 @@ export class PublicCommandsPageComponent {
   }
 
   getUserLevelLabel(command: Command): string {
+    if (command.permissionMode === 'invalid') return this.t('commands.access.advancedRule');
+    if (command.permissionExpression != null || command.permissionMode === 'tags') {
+      return this.t('commands.access.customAccess');
+    }
     return whoCanUsePhrase(command.userLevel, (key, params) => this.t(key, params));
   }
 

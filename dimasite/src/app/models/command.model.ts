@@ -1,5 +1,6 @@
 export type KeywordMatchMode = 'start' | 'anywhere' | 'exact';
 export interface KeywordSettings { matchMode: KeywordMatchMode }
+import type { PermissionExpression } from './permission-expression.model';
 
 export interface Command {
   id: string;
@@ -30,6 +31,9 @@ export interface Command {
   type?: string;
   userLevel: number;
   userLevelName: string;
+  /** Stored commands can contain an invalid historical tree; inspect before editing. */
+  permissionExpression?: unknown;
+  permissionMode?: 'level' | 'tags' | 'invalid';
 }
 
 export interface CreateCommandRequest {
@@ -45,6 +49,7 @@ export interface CreateCommandRequest {
   userLevelName: string;
   enabled: boolean;
   channel: string;
+  permissionExpression?: PermissionExpression | null;
 }
 
 export interface UpdateCommandRequest {
@@ -58,6 +63,7 @@ export interface UpdateCommandRequest {
   userLevel?: number;
   userLevelName?: string;
   enabled?: boolean;
+  permissionExpression?: PermissionExpression | null;
 }
 
 /** Canonical names. The number is what the bot checks: 5 is VIP, 6 is founder, 10 is the channel. */

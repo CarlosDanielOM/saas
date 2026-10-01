@@ -196,7 +196,7 @@
 
                 <span>{{ command.cooldown }}s</span>
 
-                <span class="lf-matrix__who">{{ whoCanUse(command.userLevel) }}</span>
+                <span class="lf-matrix__who">{{ commandAccessLabel(command) }}</span>
 
                 <span class="lf-status-cell">
                   <span
@@ -344,7 +344,7 @@
                   </span>
                   <span class="lf-meta-pill">
                     <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
-                    <span class="lf-meta-pill__value">{{ whoCanUse(command.userLevel) }}</span>
+                    <span class="lf-meta-pill__value">{{ commandAccessLabel(command) }}</span>
                   </span>
                 </div>
 

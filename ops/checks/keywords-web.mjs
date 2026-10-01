@@ -83,7 +83,7 @@ try {
           assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
         }
         await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({ path: `/tmp/commands-unified-${tier}-${width}-${view}.png`, fullPage: true });
+        if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/commands-unified-${tier}-${width}-${view}.png`, fullPage: true });
       }
     }
     await createButton.click();
@@ -127,11 +127,11 @@ try {
       assert.equal(await modal.locator('.lf-form__body').evaluate(el => el.scrollWidth > el.clientWidth), false);
       const box = await modal.locator('button[type="submit"]').boundingBox();
       assert.ok(box.y >= 0 && box.y + box.height <= page.viewportSize().height);
-      assert.equal(await modal.locator('.lf-modal__close').evaluate(el => {
+      assert.equal(await modal.locator('.lf-modal__primary .lf-modal__close').evaluate(el => {
         const box = el.getBoundingClientRect();
         return el.contains(document.elementFromPoint(box.x + box.width/2, box.y + box.height/2));
       }), true, 'modal close button stays above navigation at every viewport');
-      await page.screenshot({ path: `/tmp/keywords-${tier}-${width}.png` });
+      if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/keywords-${tier}-${width}.png` });
     }
     const axe = await new AxeBuilder({ page }).include('app-command-modal').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
@@ -149,9 +149,15 @@ try {
     assert.equal(await modal.locator('[formControlName="matchMode"]').inputValue(), 'anywhere');
     await modal.locator('[formControlName="matchMode"]').selectOption('exact');
     await modal.locator('[formControlName="cmd"]').fill('repeats');
+    await modal.locator('.lf-access-desktop .lf-access-mode button').nth(1).click();
+    const tags = modal.locator('.lf-access-desktop .lf-access-tag');
+    await tags.nth(0).click();
+    await tags.nth(0).click();
+    await tags.nth(2).click();
     await modal.locator('button[type="submit"]').click();
     await modal.getByRole('dialog').waitFor({ state: 'hidden' });
     assert.equal(writes.at(-1).keywordSettings.matchMode, 'exact');
+    assert.deepEqual(writes.at(-1).permissionExpression, { and: [{ role: 'vip' }, { not: { role: 'everyone' } }] }, 'keyword edit persists independent VIP tag access');
     await keywordRow.getByRole('button', { name: language === 'es' ? 'Deshabilitar' : 'Disable', exact: true }).click();
     await keywordRow.getByRole('button', { name: language === 'es' ? 'Habilitar' : 'Enable', exact: true }).click();
     await keywordRow.getByRole('button', { name: language === 'es' ? 'Eliminar' : 'Delete', exact: true }).click();

@@ -616,6 +616,182 @@
 }
 
 /* Offense ladder */
+.lf-rule-access {
+  margin-top: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--input-bg);
+  min-width: 0;
+}
+
+.lf-rule-access > summary,
+.lf-rule-access__accounts > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lf-rule-access > summary small,
+.lf-rule-access__accounts > summary small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.lf-rule-access__body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 0.85rem 0.85rem;
+  min-width: 0;
+}
+
+.lf-rule-access__body > .lf-note,
+.lf-rule-access__accounts > .lf-note {
+  margin: 0;
+}
+
+.lf-rule-access__modes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+
+.lf-rule-access__modes button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-rule-access__modes button.is-selected {
+  color: var(--fg);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.lf-rule-access__tags,
+.lf-rule-access__account-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.lf-rule-access__tag {
+  min-height: 44px;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--btn);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-rule-access__tag.is-allowed {
+  color: var(--fg);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.lf-rule-access__tag.is-excluded {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.lf-rule-access__tag span { margin-right: 0.2rem; }
+.lf-rule-access button:disabled { cursor: not-allowed; opacity: 0.6; }
+.lf-rule-access button:focus-visible,
+.lf-rule-access summary:focus-visible,
+.lf-rule-access input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.lf-rule-access__accounts {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  min-width: 0;
+}
+
+.lf-rule-access__accounts[open] { padding-bottom: 0.75rem; }
+.lf-rule-access__accounts > :not(summary) { margin-left: 0.75rem; margin-right: 0.75rem; }
+.lf-rule-access__account-group { margin-top: 0.75rem; }
+.lf-rule-access__account-group > strong { width: 100%; color: var(--fg); font-size: 0.8rem; }
+
+.lf-rule-access__user {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 0.3rem;
+  padding-left: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--fg);
+  font-size: 0.78rem;
+}
+
+.lf-rule-access__user button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.lf-rule-access__add { display: flex; width: 100%; gap: 0.4rem; min-width: 0; }
+.lf-rule-access__add input {
+  min-width: 0;
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  padding: 0 0.65rem;
+  background: var(--tile);
+  color: var(--fg);
+  font: inherit;
+}
+.lf-rule-access__add button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 0.7rem;
+  background: var(--accent-soft);
+  color: var(--fg);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.lf-rule-access__error { margin: 0; color: var(--danger); font-size: 0.82rem; }
+.lf-rule-access__warning { display: grid; gap: 0.5rem; color: var(--muted); font-size: 0.82rem; }
+.lf-rule-access__warning button {
+  justify-self: start;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--kicker);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
 .lf-ladder {
   display: grid;
   gap: 0.45rem;

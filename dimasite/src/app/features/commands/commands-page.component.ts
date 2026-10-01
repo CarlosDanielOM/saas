@@ -521,12 +521,22 @@ export class CommandsPageComponent {
         cooldown: request.cooldown,
         userLevel: request.userLevel,
         userLevelName: USER_LEVELS[request.userLevel],
-        enabled: request.enabled
+        enabled: request.enabled,
+        ...(request.permissionExpression !== undefined
+          ? { permissionExpression: request.permissionExpression }
+          : {})
       };
 
       this.recordRequest();
       this.commandSnapshots.set(commandId, { ...editingCmd });
-      this.updateCommandItem(commandId, (cmd) => ({ ...cmd, ...updates, pendingOperation: 'update' }));
+      this.updateCommandItem(commandId, (cmd) => ({
+        ...cmd,
+        ...updates,
+        permissionMode: updates.permissionExpression === undefined
+          ? cmd.permissionMode
+          : updates.permissionExpression === null ? 'level' : 'tags',
+        pendingOperation: 'update'
+      }));
       this.closeModal();
 
       this.commandsApi.updateCommand(channelID, commandId, updates).subscribe((updated) => {
@@ -591,6 +601,8 @@ export class CommandsPageComponent {
       reserved: false,
       userLevel: command.userLevel,
       userLevelName: command.userLevelName,
+      permissionExpression: command.permissionExpression ?? null,
+      permissionMode: command.permissionExpression ? 'tags' : 'level',
       pendingOperation: 'create',
       optimistic: true
     };
@@ -858,6 +870,14 @@ export class CommandsPageComponent {
 
   whoCanUse(level: number): string {
     return whoCanUsePhrase(level, (key, params) => this.t(key, params));
+  }
+
+  commandAccessLabel(command: Command): string {
+    if (command.permissionMode === 'invalid') return this.t('commands.access.advancedRule');
+    if (command.permissionExpression != null || command.permissionMode === 'tags') {
+      return this.t('commands.access.customAccess');
+    }
+    return this.whoCanUse(command.userLevel);
   }
 
   private initializeFromURL(): void {
