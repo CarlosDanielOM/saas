@@ -14,6 +14,7 @@ export interface SendMessageContext {
     eventData?: ITwitchEventData | any;
     eventsubData?: IEventsub | any;
     argument?: string;
+    literalArguments?: boolean;
     variables?: Record<string, string>;
     userPlan?: 'free' | 'premium' | 'pro';
     userLevel?: number;

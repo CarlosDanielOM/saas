@@ -3,6 +3,7 @@ import type { IEventsub } from "../schemas/eventsub.schema.js";
 import type { IBitUseEvent } from "../interfaces/twitch/eventsub.interface.js";
 import type { ICheerTiers } from "../schemas/eventsub.schema.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
+import { getBitsMessageText } from '../utils/bits_message.js';
 
 interface CheerHandlerResponse {
     error: boolean;
@@ -88,6 +89,8 @@ export async function cheerHandler(
             channelID: channelID,
             eventData: eventData,
             eventsubData: eventsubData,
+            argument: getBitsMessageText(eventData.message),
+            literalArguments: true,
             variables: {
                 bits: String(eventData.bits),
                 user: eventData.user_name ?? '',

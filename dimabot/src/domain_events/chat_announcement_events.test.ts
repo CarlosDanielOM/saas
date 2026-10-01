@@ -382,3 +382,25 @@ test('suppression receives the stable event identity only for an enabled nonempt
     await applyChatAnnouncementDomainEvent(event, dependencies);
     assert.equal(decisions.length, 1, 'empty/disabled alerts are not counted as defense suppression');
 });
+
+
+test('durable bits tiers receive structured and legacy viewer text as parser arguments', async () => {
+    for (const message of [{ text: 'Hello from bits', fragments: [] }, 'Hello from bits', undefined]) {
+        const dependencies = createDependencies([]);
+        dependencies.getEventsubConfig = async () => ({
+            enabled: true, type: 'channel.bits.use', message: 'Default &t',
+            cheerTiers: [{ name: 'Rias', message: '$(tts.fish rias_gremory &t)', min_amount: 5, max_amount: 10000 }]
+        });
+        let sent = false;
+        dependencies.sendMessage = async (_channelID, template, context) => {
+            sent = true;
+            assert.equal(template, '$(tts.fish rias_gremory &t)');
+            assert.equal(context?.argument, message === undefined ? '' : 'Hello from bits');
+            return { error: false };
+        };
+        await applyChatAnnouncementDomainEvent(createEvent('channel.bits.received', 'channel.bits.use', {
+            bits: 5, user_name: 'Viewer', user_login: 'viewer', message
+        }), dependencies);
+        assert.equal(sent, true);
+    }
+});

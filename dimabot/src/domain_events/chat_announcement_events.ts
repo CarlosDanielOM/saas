@@ -1,5 +1,6 @@
 import type { DomainEventEnvelope } from './domain_event.types.js';
 import { resolveWatchStreakMessage } from '../utils/chat_notification_defaults.js';
+import { getBitsMessageText } from '../utils/bits_message.js';
 
 interface ChatEventsubConfig {
     enabled: boolean;
@@ -214,11 +215,13 @@ export async function applyChatAnnouncementDomainEvent(
 
     let message = config.message || '';
     let variables: Record<string, string> | undefined;
+    let argument: string | undefined;
 
     if (event.type === 'channel.chat.notification') {
         message = resolveWatchStreakMessage(message, await dependencies.getLanguage(event.channelID));
     } else if (event.type === 'channel.bits.received') {
         message = cheerMessage(config, rawEvent);
+        argument = getBitsMessageText(rawEvent.message);
         variables = {
             bits: String(rawEvent.bits ?? ''),
             user: String(rawEvent.user_name || ''),
@@ -240,6 +243,7 @@ export async function applyChatAnnouncementDomainEvent(
         channelID: event.channelID,
         eventData: rawEvent,
         eventsubData: config,
+        ...(argument !== undefined ? { argument, literalArguments: true } : {}),
         variables
     });
     if (result.error) {
