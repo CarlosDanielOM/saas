@@ -1,10 +1,310 @@
 {
-  "version": "72599d0d9398",
-  "generatedAt": "2026-10-01T01:23:51.536Z",
+  "version": "1004477c6f48",
+  "generatedAt": "2026-10-01T02:25:21.012Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 93,
+  "functionCount": 105,
   "entries": [
+    {
+      "name": "overlay.skip",
+      "description": "Stops current event playback and advances the queue. Applies to all event origins across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.skip",
+      "category": "overlay",
+      "examples": [
+        "overlay.skip"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "skip",
+        "all",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.skip.twitch",
+      "description": "Stops current event playback and advances the queue. Applies to twitch events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.skip.twitch",
+      "category": "overlay",
+      "examples": [
+        "overlay.skip.twitch"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "skip",
+        "twitch",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.skip.kick",
+      "description": "Stops current event playback and advances the queue. Applies to kick events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.skip.kick",
+      "category": "overlay",
+      "examples": [
+        "overlay.skip.kick"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "skip",
+        "kick",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.pause",
+      "description": "Holds new playback while the current event finishes. Applies to all event origins across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.pause",
+      "category": "overlay",
+      "examples": [
+        "overlay.pause"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "pause",
+        "all",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.pause.twitch",
+      "description": "Holds new playback while the current event finishes. Applies to twitch events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.pause.twitch",
+      "category": "overlay",
+      "examples": [
+        "overlay.pause.twitch"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "pause",
+        "twitch",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.pause.kick",
+      "description": "Holds new playback while the current event finishes. Applies to kick events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.pause.kick",
+      "category": "overlay",
+      "examples": [
+        "overlay.pause.kick"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "pause",
+        "kick",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.resume",
+      "description": "Continues held playback. Applies to all event origins across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.resume",
+      "category": "overlay",
+      "examples": [
+        "overlay.resume"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "resume",
+        "all",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.resume.twitch",
+      "description": "Continues held playback. Applies to twitch events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.resume.twitch",
+      "category": "overlay",
+      "examples": [
+        "overlay.resume.twitch"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "resume",
+        "twitch",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.resume.kick",
+      "description": "Continues held playback. Applies to kick events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.resume.kick",
+      "category": "overlay",
+      "examples": [
+        "overlay.resume.kick"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "resume",
+        "kick",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.clear",
+      "description": "Removes pending events while current playback continues. Applies to all event origins across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.clear",
+      "category": "overlay",
+      "examples": [
+        "overlay.clear"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "clear",
+        "all",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.clear.twitch",
+      "description": "Removes pending events while current playback continues. Applies to twitch events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.clear.twitch",
+      "category": "overlay",
+      "examples": [
+        "overlay.clear.twitch"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "clear",
+        "twitch",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
+    {
+      "name": "overlay.clear.kick",
+      "description": "Removes pending events while current playback continues. Applies to kick events only across this owner’s Global Overlay scenes.",
+      "syntax": "overlay.clear.kick",
+      "category": "overlay",
+      "examples": [
+        "overlay.clear.kick"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "overlay",
+        "clear",
+        "kick",
+        "queue",
+        "superposición",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ],
+      "planTier": "pro"
+    },
     {
       "name": "enable.command",
       "description": "Enables a command in this channel. Quote names containing spaces. Optional 1-604800 seconds restores the previous state after the duration, including after restarts. Repeating the same timed change extends it; omitting duration cancels any pending restoration.",

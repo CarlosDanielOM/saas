@@ -264,6 +264,7 @@
       </aside>
     </div>
     @if (!designDraft()) {
+      <app-overlay-queue [channel]="channel" />
       <app-overlay-connections [channel]="channel" [scene]="scene()" />
       <details class="publish-settings"><summary>{{ t('browserSource') }}</summary><p>{{ t('urlHint') }}</p><div class="url-row"><code>{{ scene().publicId ? overlayUrl() : t('saveFirst') }}</code><button type="button" [disabled]="!scene().publicId" (click)="copyUrl()">{{ t('copyUrl') }}</button><a [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{ t('openOverlay') }}</a><button type="button" class="toolbar-button" [disabled]="!scene().publicId" (click)="regenerateUrl()">{{ confirmRotate() ? t('confirmRotate') : t('regenerateUrl') }}</button></div><p>{{ t('publishHint') }}</p><label class="property-field"><span>{{ t('testLiveEvent') }}</span><select [value]="designEvent()" (change)="selectAlertKind($event)">@for(kind of alertEvents; track kind) { <option [value]="kind">{{ t(kind + 'Name') }}</option> }</select></label><button type="button" (click)="testLiveAlert()">{{ t('testLiveAlert') }}</button><button type="button" [disabled]="scenes().length < 2" (click)="deleteScene()">{{ t(confirmDelete() ? 'confirmDelete' : 'deleteOverlay') }}</button></details>
     }

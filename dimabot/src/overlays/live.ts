@@ -1,3 +1,4 @@
+import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
 import { registerStudioBridge } from './bridge.js';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, unlink } from 'node:fs/promises';
@@ -5,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Types } from 'mongoose';
 import type { Server, Socket } from 'socket.io';
-import { publicState, type StudioState } from './store.js';
+import { publicState, load, Studio, OverlayError } from './store.js';
 import { renderLayout } from './ast.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
@@ -13,11 +14,11 @@ import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type Over
 
 export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 export interface LiveMedia { clip?: ClipMetadata; type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
-export interface LiveEvent { id: string; kind: EventKind; triggerId?: string; media?: LiveMedia; text?: string }
+export interface LiveEvent { platform: OverlayPlatform; id: string; kind: EventKind; triggerId?: string; media?: LiveMedia; text?: string }
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { event: LiveEvent; channel: string; recipients: Set<string>; file?: string; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 let pollingFailed = false;
@@ -51,25 +52,25 @@ async function dropPeer(key: string) {
 function recipients(channel: string, kind: EventKind): Peer[] { return [...peers.values()].filter(p => p.channel === channel && p.socket?.connected && accepts(p, kind)); }
 function deliver(item: Pending, selected: Peer[]) { pending.set(item.event.id, item); for (const peer of selected) peer.socket?.emit('overlay-event', item.event); }
 /** Copy generated media BEFORE releasing its producer. Files live until every subscriber finishes. */
-export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string): Promise<void> {
+export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform: OverlayPlatform = 'twitch'): Promise<void> {
   const selected = recipients(channel, kind); if (!selected.length) return;
   const id = randomUUID(); await mkdir(directory, { recursive: true }); const retained = path.join(directory, id);
   await copyFile(file, retained);
-  deliver({ channel, event: { id, kind, media, text }, file: retained, mime, recipients: new Set(selected.map(p => p.key)) }, selected);
+  deliver({ channel, event: { id, kind, media, text, platform }, file: retained, mime, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
-export function publishStudioTrigger(channel: string, body: Record<string, unknown>): void {
+export function publishStudioTrigger(channel: string, body: Record<string, unknown>, platform: OverlayPlatform = 'twitch'): void {
   const triggerId = typeof body.triggerId === 'string' && /^[a-f0-9]{24}$/.test(body.triggerId) ? body.triggerId : undefined;
   const selected = recipients(channel, 'trigger').filter(peer => peer.state.snapshot.widgets.some(w => w.visible && w.kind === 'trigger' && matchesTrigger(w, triggerId))); if (!selected.length) return;
   const mime = String(body.mediaType || ''); const type = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : 'image';
   const url = String(body.url || ''); if (!/^https?:\/\//i.test(url)) return;
   const id = randomUUID(); const volume = Number(body.volume ?? 100);
-  deliver({ channel, event: { id, kind: 'trigger', triggerId, media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
+  deliver({ channel, event: { id, platform, kind: 'trigger', triggerId, media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
-export function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now()): number {
+export function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now(), platform: OverlayPlatform = 'twitch'): number {
   const selected = recipients(channel, kind).filter(p => p.since <= since); if (!selected.length) return 0;
   // Provider receipt IDs protect clients against duplicate poll delivery.
   const id = `alert-${sourceId}`; if (pending.has(id)) return 0;
-  deliver({ channel, event: { id, kind }, raw, recipients: new Set(selected.map(p => p.key)) }, selected);
+  deliver({ channel, event: { id, kind, platform }, raw, recipients: new Set(selected.map(p => p.key)) }, selected);
   return selected.length;
 }
 export async function eventFor(publicId: string, eventId: string) {
@@ -101,6 +102,46 @@ async function ensureSources(peer: Peer): Promise<void> {
   try { await activateSources(peer); peer.activationFailed = false; }
   catch { peer.activationFailed = true; peer.activationRetryAt = Date.now() + 5000; }
 }
+export async function queueStatus(channel: string) {
+  await load(channel);
+  const stored = await Studio.findById(channel).lean();
+  const sources = [...peers.values()].filter(peer => peer.channel === channel && peer.socket?.connected);
+  const active = new Set(sources.flatMap(peer => peer.playback?.active ?? []));
+  const queued = new Set(sources.flatMap(peer => peer.playback?.queued ?? []));
+  const events = [...new Set([...active, ...queued])].flatMap(id => {
+    const item = pending.get(id);
+    return item?.channel === channel ? [{ id, kind: item.event.kind, platform: item.event.platform, status: active.has(id) ? 'playing' : 'queued' }] : [];
+  });
+  return { state: { ...initialQueueState(), ...stored?.controls }, events, connected: sources.length, needsRefresh: sources.filter(peer => !peer.playback).length };
+}
+
+export async function controlStudio(channel: string, rawAction: unknown, rawPlatform: unknown) {
+  if (!OVERLAY_ACTIONS.includes(rawAction as OverlayAction) || !['all', ...OVERLAY_PLATFORMS].includes(rawPlatform as OverlayScope)) throw new OverlayError('Invalid overlay control');
+  const action = rawAction as OverlayAction, platform = rawPlatform as OverlayScope;
+  await load(channel);
+  const selected = [...peers.values()].filter(peer => peer.channel === channel);
+  if (action === 'pause' || action === 'resume') {
+    const paused = action === 'pause';
+    const fields = platform === 'all' ? { 'controls.all': paused, 'controls.platforms': {} } : { [`controls.platforms.${platform}`]: paused };
+    const stored = await Studio.findByIdAndUpdate(channel, { $set: fields, $inc: { 'controls.revision': 1 } }, { new: true }).lean();
+    const state = { ...initialQueueState(), ...stored!.controls };
+    for (const peer of selected) {
+      peer.state.controls = state;
+      peer.socket?.emit('overlay-queue-state', state);
+    }
+  } else {
+    // Capture IDs at request time: replayed controls cannot affect later arrivals.
+    const deliveries = selected.map(peer => ({ peer, eventIds: [...pending.values()].filter(item => item.recipients.has(peer.key) && platformMatches(platform, item.event.platform)).map(item => item.event.id) })).filter(delivery => delivery.eventIds.length);
+    if (deliveries.some(({ peer }) => peer.commands.length >= 256)) throw new OverlayError('A browser source must reconnect before accepting more controls', 409);
+    for (const { peer, eventIds } of deliveries) {
+      const command: QueueCommand = { id: randomUUID(), action, platform, eventIds };
+      peer.commands.push(command);
+      peer.socket?.emit('overlay-control', command);
+    }
+  }
+  return queueStatus(channel);
+}
+
 export function registerStudio(io: Server): void {
   const pattern = /^\/overlay-studio\/[a-f0-9]{48}$/;
   io.on('new_namespace', child => { if (pattern.test(child.name)) child.adapter.persistSession = () => {}; });
@@ -116,11 +157,20 @@ export function registerStudio(io: Server): void {
   namespace.on('connection', socket => {
     const state = socket.data.studioState as Public; const key = `${state.publicId}:${socket.handshake.auth.clientId}`;
     const previous = peers.get(key); previous?.socket?.disconnect(true);
-    const peer: Peer = { connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
+    const peer: Peer = { commands: previous?.commands ?? [], playback: previous?.playback, connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
     peers.set(key, peer);
     if (!channels.has(peer.channel)) channels.set(peer.channel, { after: Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000)), busy: false });
-    socket.emit('overlay-state', { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot });
+    socket.emit('overlay-state', { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands });
     for (const item of pending.values()) if (item.recipients.has(key)) socket.emit('overlay-event', item.event);
+    socket.on('overlay-control-ack', (id: unknown) => {
+      if (peers.get(key) === peer && typeof id === 'string') peer.commands = peer.commands.filter(command => command.id !== id);
+    });
+    socket.on('overlay-playback', (raw: unknown) => {
+      if (peers.get(key) !== peer || !raw || typeof raw !== 'object') return;
+      const report = raw as { active?: unknown; queued?: unknown };
+      const valid = (ids: unknown): ids is string[] => Array.isArray(ids) && ids.length <= 5000 && ids.every(id => typeof id === 'string' && pending.get(id)?.recipients.has(key));
+      if (valid(report.active) && valid(report.queued)) peer.playback = { active: report.active, queued: report.queued };
+    });
     socket.on('overlay-health', (raw: unknown) => {
       if (peers.get(key) !== peer || !raw || typeof raw !== 'object' || Array.isArray(raw)) return;
       const { revision, issue } = raw as Record<string, unknown>;
@@ -146,6 +196,7 @@ export function registerStudio(io: Server): void {
         try {
           let state = states.get(peer.publicId); if (!state) { state = await publicState(peer.publicId); states.set(peer.publicId, state); }
           peer.stateFailed = false;
+          if (state.controls.revision !== peer.state.controls.revision) { peer.socket?.emit('overlay-queue-state', state.controls); peer.state.controls = state.controls; }
           if (peer.state.revision !== state.revision) {
             peer.state = state; peer.socket?.emit('overlay-updated', { revision: state.revision });
             if (peer.socket?.connected) await ensureSources(peer);

@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 72599d0d9398
+# Catalog version: 1004477c6f48
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -190,6 +190,32 @@
 #   Example: $(unvip someuser)
 # $(warn username reason) - Issues an official Twitch warning to a user with a required reason (1-500 characters).
 #   Example: $(warn someuser Please stop posting spoilers)
+#
+# --- overlay ---
+# $(overlay.clear) - Removes pending events while current playback continues. Applies to all event origins across this owner’s Global Overlay scenes.
+#   Example: $(overlay.clear)
+# $(overlay.clear.kick) - Removes pending events while current playback continues. Applies to kick events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.clear.kick)
+# $(overlay.clear.twitch) - Removes pending events while current playback continues. Applies to twitch events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.clear.twitch)
+# $(overlay.pause) - Holds new playback while the current event finishes. Applies to all event origins across this owner’s Global Overlay scenes.
+#   Example: $(overlay.pause)
+# $(overlay.pause.kick) - Holds new playback while the current event finishes. Applies to kick events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.pause.kick)
+# $(overlay.pause.twitch) - Holds new playback while the current event finishes. Applies to twitch events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.pause.twitch)
+# $(overlay.resume) - Continues held playback. Applies to all event origins across this owner’s Global Overlay scenes.
+#   Example: $(overlay.resume)
+# $(overlay.resume.kick) - Continues held playback. Applies to kick events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.resume.kick)
+# $(overlay.resume.twitch) - Continues held playback. Applies to twitch events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.resume.twitch)
+# $(overlay.skip) - Stops current event playback and advances the queue. Applies to all event origins across this owner’s Global Overlay scenes.
+#   Example: $(overlay.skip)
+# $(overlay.skip.kick) - Stops current event playback and advances the queue. Applies to kick events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.skip.kick)
+# $(overlay.skip.twitch) - Stops current event playback and advances the queue. Applies to twitch events only across this owner’s Global Overlay scenes.
+#   Example: $(overlay.skip.twitch)
 #
 # --- pin ---
 # $(pin.create [duration] message) - Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument. (aliases: pin)

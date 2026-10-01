@@ -1,3 +1,4 @@
+import type { QueueStatus, OverlayAction, OverlayScope } from './overlay-queue.model';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, timeout } from 'rxjs';
@@ -23,6 +24,8 @@ export class OverlayApi {
   }
   load(channel: string) { return this.request<StudioState>('GET', channel); }
   connections(channel: string) { return this.request<OverlayConnections>('GET', `${channel}/connections`); }
+  queue(channel: string) { return this.request<QueueStatus>('GET', `${channel}/queue`); }
+  control(channel: string, action: OverlayAction, platform: OverlayScope) { return this.request<QueueStatus>('POST', `${channel}/queue`, { action, platform }); }
   save(channel: string, state: StudioState) { return this.request<StudioState>('PUT', channel, state); }
   action(channel: string, scene: string, revision: number, action: 'publish' | 'rotate') { return this.request<StudioState>('POST', `${channel}/scenes/${scene}/${action}`, { revision }); }
   render(channel: string, texts: string[], kind: AlertEvent, user: string, amount: string) { return this.request<string[]>('POST', `${channel}/preview`, { texts, kind, user, amount }); }

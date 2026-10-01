@@ -230,6 +230,14 @@ try {
   await until(()=>ended.includes('reduced'),'reduced motion completion'); assert.ok(Date.now()-reducedEnd<600);
   await source.emulateMedia({reducedMotion:'no-preference'});
 
+  // Live skip releases native media immediately, including audio and animation timers.
+  events.set('control-skip', {id:'control-skip',kind:'clip',snapshot:structuredClone(snapshot),media:{type:'video',url:api+'/clip-fixture.mp4',title:'Skipped',volume:1,duration:30}});
+  send('overlay-event',{id:'control-skip',kind:'clip'}); await source.locator('.clip-design.is-in').waitFor();
+  await source.locator('app-overlay-clip video').evaluate(video=>{window.skippedVideo=video;});
+  send('overlay-control',{id:'skip-native',action:'skip',platform:'twitch',eventIds:['control-skip']});
+  await until(()=>ended.includes('control-skip'),'live skip releases clip completion');
+  await source.waitForFunction(()=>window.skippedVideo.paused && !window.skippedVideo.isConnected && !window.skippedVideo.getAttribute('src'));
+
   // Simulate RAF suspension after playback starts, as in an OBS background tab.
   events.set('suspended', {id:'suspended',kind:'clip',snapshot:structuredClone(snapshot),media:{type:'video',url:api+'/clip-fixture.mp4',title:'Suspended',volume:1,duration:30}});
   send('overlay-event',{id:'suspended',kind:'clip'});

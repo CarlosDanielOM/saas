@@ -3,12 +3,13 @@ import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { CLIP_DESIGN_VARIANTS, ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 
 export class OverlayError extends Error { constructor(message: string, readonly status = 400) { super(message); } }
 export interface StudioState { schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[] }
-interface Stored extends StudioState { _id: string }
-const schema = new Schema<Stored>({ _id: String, schemaVersion: Number, revision: Number, scenes: [Schema.Types.Mixed], designs: [Schema.Types.Mixed] }, { versionKey: false, collection: 'overlay_studios' });
+interface Stored extends StudioState { _id: string; controls?: QueueState }
+const schema = new Schema<Stored>({ _id: String, schemaVersion: Number, revision: Number, scenes: [Schema.Types.Mixed], designs: [Schema.Types.Mixed], controls: Schema.Types.Mixed }, { versionKey: false, collection: 'overlay_studios' });
 schema.index({ 'scenes.publicId': 1 }, { unique: true });
 export const Studio = model<Stored>('OverlayStudio', schema);
 export const token = () => randomBytes(24).toString('hex');
@@ -97,5 +98,5 @@ export async function publicState(publicId: string) {
   await requirePro(state._id);
   const scene = state.scenes.find(s => s.publicId === publicId)!;
   if (!scene.published) throw new OverlayError('This overlay has not been published', 404);
-  return { channel: state._id, publicId, revision: scene.revision, snapshot: scene.published };
+  return { channel: state._id, publicId, revision: scene.revision, snapshot: scene.published, controls: { ...initialQueueState(), ...state.controls } };
 }

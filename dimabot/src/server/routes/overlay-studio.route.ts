@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { change, load, publicState, validateState, object, string, token, OverlayError, requirePro } from '../../overlays/store.js';
-import { eventFor, fileFor, publishStudioAlert, studioConnections } from '../../overlays/live.js';
+import { eventFor, fileFor, publishStudioAlert, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, type AlertEvent } from '../../overlays/model.js';
 import { AssetError, withAssetLibrary } from '../../assets/library.js';
@@ -13,7 +13,7 @@ const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Re
 const param = (req: Request, key: string) => string(req.params[key]);
 const ok = (res: Response, data: unknown) => res.json({ error: false, status: 200, message: 'OK', data });
 overlayStudioRoute.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); next(); });
-overlayStudioRoute.get('/public/:publicId', wrap(async (req, res) => { const state = await publicState(param(req, 'publicId')); return ok(res, { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot }); }));
+overlayStudioRoute.get('/public/:publicId', wrap(async (req, res) => { const state = await publicState(param(req, 'publicId')); return ok(res, { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls }); }));
 overlayStudioRoute.get('/public/:publicId/assets/:assetId', wrap(async (req, res) => {
   const state = await publicState(param(req, 'publicId'));
   const id = param(req, 'assetId');
@@ -28,6 +28,8 @@ overlayStudioRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   void requirePro(param(req, 'channelID')).then(() => next(), next);
 });
 overlayStudioRoute.get('/:channelID', wrap(async (req, res) => ok(res, await load(param(req, 'channelID')))));
+overlayStudioRoute.get('/:channelID/queue', wrap(async (req, res) => ok(res, await queueStatus(param(req, 'channelID')))));
+overlayStudioRoute.post('/:channelID/queue', wrap(async (req, res) => ok(res, await controlStudio(param(req, 'channelID'), req.body?.action, req.body?.platform))));
 overlayStudioRoute.get('/:channelID/connections', wrap(async (req, res) => {
   const channel = param(req, 'channelID'), state = await load(channel);
   return ok(res, studioConnections(channel, state.scenes));
@@ -54,7 +56,7 @@ overlayStudioRoute.post('/:channelID/preview', wrap(async (req, res) => {
 }));
 overlayStudioRoute.post('/:channelID/test-alert', wrap(async (req, res) => {
   const kind = req.body.kind as AlertEvent; if (!ALERT_EVENTS.includes(kind)) throw new OverlayError('Invalid alert event');
-  const count = publishStudioAlert(param(req, 'channelID'), kind, sampleEvent(kind));
+  const count = publishStudioAlert(param(req, 'channelID'), kind, sampleEvent(kind), undefined, undefined, 'other');
   if (!count) throw new OverlayError('Open a published browser source with this alert enabled first', 409);
   return ok(res, { sent: true, clients: count });
 }));
