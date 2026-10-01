@@ -3,6 +3,8 @@ import { getApiUrl } from "../../utils/dev.js";
 import { error as logError } from "../../utils/logger.js";
 
 interface TriggerData {
+    triggerId?: string;
+    name?: string;
     url: string;
     mediaType: string;
     volume: number;

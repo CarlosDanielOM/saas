@@ -12,8 +12,8 @@ const mongo = await getMongoDBConnection('trigger-send-auth-check');
 const redis = await getDragonflyClient('trigger-send-auth-check');
 
 // Readiness of the actual bot entrypoint, without delivering chat messages.
-let ready = false;
-for (let i = 0; i < 60; i++) {
+let ready = process.env.SAAS_TRIGGER_RUNTIME === 'cron';
+for (let i = 0; !ready && i < 60; i++) {
   try { ready = (await fetch('http://127.0.0.1:3333/eventsub', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status === 403; } catch {}
   if (ready) break;
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -68,7 +68,7 @@ const asset = await MediaAssetSchema.create({
   storageUrl: 'https://cdn.example.com/alert.mp3', scope: 'private'
 });
 await TriggerSchema.create({ name: 'airhorn', channel: 'revoked', channelID: '998001', file: 'alert.mp3', mediaType: 'audio', isEnabled: true, volume: 50, assetID: asset._id });
-await TriggerSchema.create({ name: 'airhorn', channel: 'valid', channelID: '998003', file: 'alert.mp3', mediaType: 'audio', isEnabled: true, volume: 50, assetID: asset._id });
+const validTrigger = await TriggerSchema.create({ name: 'airhorn', channel: 'valid', channelID: '998003', file: 'alert.mp3', mediaType: 'audio', isEnabled: true, volume: 50, assetID: asset._id });
 
 const { registerTriggerFunctions } = await import('/app/dist/utils/ast_parser/functions/trigger.functions.js');
 const { getFunctionHandler, createExecutionContext } = await import('/app/dist/utils/ast_parser/evaluator.js');
@@ -82,8 +82,20 @@ const validReply = await handler(['airhorn'], createExecutionContext({ broadcast
 assert.equal(validReply, '', 'successful trigger.send stays silent in chat');
 assert.equal(apiCalls.length, 2, 'AST path emitted the trigger to the API');
 assert.ok(apiCalls[1].url.endsWith('/triggers/998003/send'), apiCalls[1].url);
+assert.equal(JSON.parse(apiCalls[1].init.body).triggerId, String(validTrigger._id));
+assert.equal(JSON.parse(apiCalls[1].init.body).name, 'airhorn');
+await TriggerSchema.updateOne({ _id: validTrigger._id }, { $set: { name: 'renamed horn' } });
+assert.equal(await handler(['renamed', 'horn'], createExecutionContext({ broadcasterId: '998003', userId: '998003', userLogin: 'valid' })), '');
+assert.equal(JSON.parse(apiCalls.at(-1).init.body).triggerId, String(validTrigger._id));
+assert.equal(JSON.parse(apiCalls.at(-1).init.body).name, 'renamed horn');
+// Scheduled commands use the same producer from the cron timer worker.
+const { renderTimerMessage } = await import('/app/dist/utils/timer_runtime.js');
+const { parseSpecialCommands } = await import('/app/dist/handlers/special_parser.handler.js');
+const timerResult = await renderTimerMessage({ channelID: '998003', streamerName: 'valid', timerName: 'fixture', message: '$(trigger.send renamed horn)', planTier: 'pro', parse: parseSpecialCommands });
+assert.equal(timerResult.parsedText, '');
+assert.equal(JSON.parse(apiCalls.at(-1).init.body).triggerId, String(validTrigger._id));
 
 await mongo.connection.close();
 await redis.quit();
-console.log('PASS: bot readiness, revoked permissions reauthenticate message, transient renew message, success path, AST trigger.send end-to-end for revoked and valid accounts');
+console.log('PASS: runtime readiness, stable trigger IDs through AST commands, renames and scheduled timer rendering, revoked permissions reauthenticate message, transient renew message, success path, AST trigger.send end-to-end for revoked and valid accounts');
 process.exit(0);

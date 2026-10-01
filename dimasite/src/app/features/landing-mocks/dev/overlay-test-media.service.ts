@@ -10,6 +10,7 @@ import { ApiEnvelope, TriggerRecord } from '../../triggers/triggers.model';
 
 export interface TestChannel { id: string; login: string }
 export interface TestMedia {
+  triggerId?: string;
   clip?: ClipMetadata;
   url: string;
   type: 'video' | 'audio' | 'image';
@@ -25,12 +26,21 @@ export class OverlayTestMediaService {
   private readonly clips = inject(ClipsService);
   private readonly triggers = inject(TriggersService);
 
-  randomTrigger(channel: TestChannel): Observable<TestMedia | null> {
-    return this.http.get<ApiEnvelope<TriggerRecord[]>>(`${this.links.getApiUrl()}/triggers/${channel.id}`).pipe(
-      switchMap(response => {
+  getTriggers(channelId: string): Observable<TriggerRecord[]> {
+    return this.http.get<ApiEnvelope<TriggerRecord[]>>(`${this.links.getApiUrl()}/triggers/${channelId}`).pipe(
+      map(response => {
         if (response.error || !Array.isArray(response.data)) throw new Error('Unable to load triggers');
-        if (!response.data.length) return of(null);
-        const trigger = response.data[Math.floor(Math.random() * response.data.length)];
+        return response.data;
+      }), timeout(20000)
+    );
+  }
+
+  randomTrigger(channel: TestChannel, triggerIds?: readonly string[]): Observable<TestMedia | null> {
+    return this.getTriggers(channel.id).pipe(
+      switchMap(triggers => {
+        const eligible = triggers.filter(trigger => triggerIds === undefined || triggerIds.includes(trigger._id));
+        if (!eligible.length) return of(null);
+        const trigger = eligible[Math.floor(Math.random() * eligible.length)];
         return this.triggers.getLibrary(channel.id).pipe(map(library => {
           const asset = (library.items.find(item => item._id === trigger.libraryItemID)
             ?? library.items.find(item => item.assetID === trigger.assetID))?.asset;
@@ -40,7 +50,7 @@ export class OverlayTestMediaService {
           const type: TestMedia['type'] | null = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio'
             : mime.startsWith('image') || mime === 'gif' ? 'image' : null;
           if (!type) throw new Error('Unsupported trigger media');
-          return { url, type, title: trigger.name, volume: Math.max(0, Math.min(1, Number(trigger.volume ?? 100) / 100)) };
+          return { triggerId: trigger._id, url, type, title: trigger.name, volume: Math.max(0, Math.min(1, Number(trigger.volume ?? 100) / 100)) };
         }));
       }),
       timeout(20000)

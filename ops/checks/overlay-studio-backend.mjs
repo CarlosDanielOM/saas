@@ -9,7 +9,7 @@ const { default: Users } = await import('/app/dist/schemas/users.schema.js');
 const store = await import('/app/dist/overlays/store.js');
 const ast = await import('/app/dist/overlays/ast.js');
 const live = await import('/app/dist/overlays/live.js');
-const channel = '990091', ownerToken = 'overlay-owner-fixture';
+let channel = '990091'; const ownerToken = 'overlay-owner-fixture';
 await store.Studio.init();
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: '990092' }], plan_tier: 'free' });
@@ -114,6 +114,13 @@ const wave=Buffer.alloc(44+16000);wave.write('RIFF',0);wave.writeUInt32LE(wave.l
 app.post('/piper-fixture/synthesize',(_req,res)=>res.type('audio/wav').send(wave));
 const server=await websocket(app);const io=getIO();
 await new Promise(r=>server.listen(3210,'127.0.0.1',r));base='http://127.0.0.1:3210';
+// The actual API and this controlled in-process host have independent clip
+// subscribers. Use a separate channel so their downloader/file cleanup cannot
+// compete for a shared fixture path or PubSub request.
+channel = '990194';
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
+await redis.hSet(`token:${ownerToken}`, { id: channel, login: 'fixture', display_name: 'Fixture' });
+state = await request('GET', channel);
 const sourceWidgets=structuredClone(state.scenes[0].widgets);
 state.scenes[0].widgets=sourceWidgets.filter(w=>!['tts','clip'].includes(w.kind));
 state=await request('PUT',channel,state);state=await request('POST',`${channel}/scenes/${id}/publish`,{revision:state.revision});

@@ -229,6 +229,9 @@
               @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }
             </select></label><p class="field-hint">{{ t('clipDesignHint') }}</p>
           }
+          @if (item.kind === 'trigger') {
+            <app-overlay-trigger-filter [channel]="channel" [ids]="item.triggerIds" (changed)="patchSelected({ triggerIds: $event })" />
+          }
           @if (item.kind === 'text') {
             <label class="property-field"><span>{{ t('textTemplate') }}</span><textarea [value]="item.text" (input)="patchSelected({ text: value($event) })"></textarea></label>
             <p class="field-hint">{{ t('tokensHint') }}</p>

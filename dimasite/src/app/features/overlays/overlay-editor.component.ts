@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, TestChannel, TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
 import { OverlayClipComponent } from './overlay-clip.component';
+import { OverlayTriggerFilterComponent } from './overlay-trigger-filter.component';
 import { ClipsService } from '../clips/clips.service';
 import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.model';
 import { OverlayMediaComponent } from './overlay-media.component';
@@ -18,7 +19,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ArrowLeft, Bell, Clapperboard, Copy, Eye, EyeOff, Grip, Image, Layers3, LockKeyhole, Moon, Play, Plus, RotateCcw, Save, Sparkles, Sun, Trash2, Type, Volume2, Zap, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { ThemeService } from '../../services/theme.service';
-import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene } from './overlay.model';
+import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
@@ -26,7 +27,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()' }
@@ -282,7 +283,7 @@ export class OverlayEditorComponent {
     return playing?.kind as AlertEvent ?? widget.events?.[0] ?? 'follow';
   }
   isPlaying(widget: OverlayWidget): boolean {
-    return this.designDraft()?this.previewDesign():[this.active(),...this.parallel()].some(e=>e&&(widget.kind===e.kind || widget.kind==='alert'&&widget.events?.includes(e.kind as AlertEvent)));
+    return this.designDraft()?this.previewDesign():[this.active(),...this.parallel()].some(e=>e&&(widget.kind===e.kind && (!e.targets || e.targets.includes(widget.id)) || widget.kind==='alert'&&widget.events?.includes(e.kind as AlertEvent)));
   }
   changeTestChannel(event: Event): void { this.resetSimulation(); this.channelChoice.set(this.value(event)); }
   testBusy(kind: EventKind): boolean {
@@ -325,11 +326,13 @@ export class OverlayEditorComponent {
         if (this.jobs.has(event.id)) { this.notice.set('clipTestError'); this.finishEvent(event.id); }
       });
     } else {
-      const request: Subscription = this.testMedia.randomTrigger(event.channel).subscribe({
+      const widgets = this.widgets().filter(w => targets.includes(w.id));
+      const triggerIds = widgets.some(w => w.triggerIds === undefined) ? undefined : [...new Set(widgets.flatMap(w => w.triggerIds ?? []))];
+      const request: Subscription = this.testMedia.randomTrigger(event.channel, triggerIds).subscribe({
         next: media => {
           if (!this.jobs.has(event.id)) return;
           if (media) this.showMedia(event.id, media);
-          else { this.notice.set('noTriggers'); job.timer = this.later(() => this.finishEvent(event.id), 2500); }
+          else { this.notice.set(triggerIds === undefined ? 'noTriggers' : 'noMatchingTriggers'); job.timer = this.later(() => this.finishEvent(event.id), 2500); }
         },
         error: () => { if (this.jobs.has(event.id)) { this.notice.set('triggerTestError'); this.finishEvent(event.id); } }
       });
@@ -338,7 +341,11 @@ export class OverlayEditorComponent {
   }
   private showMedia(id: number, media: TestMedia): void {
     const job = this.jobs.get(id); if (!job) return;
-    const patch = (e: MockEvent) => e.id === id ? { ...e, media } : e;
+    const event = [this.active(), ...this.parallel()].find(e => e?.id === id);
+    const targets = event?.kind === 'trigger' ? event.targets?.filter(target => this.widgets().some(w => w.id === target && matchesTrigger(w, media.triggerId))) : event?.targets;
+    if (!targets?.length) { this.notice.set('noMatchingTriggers'); this.finishEvent(id); return; }
+    job.pending = new Set(targets);
+    const patch = (e: MockEvent) => e.id === id ? { ...e, targets, media } : e;
     this.active.update(e => e ? patch(e) : e); this.parallel.update(all => all.map(patch));
     this.notice.set('mediaReady');
     // Loading/autoplay failures must not hold the scheduler forever.

@@ -8,8 +8,10 @@ export interface OverlayWidget {
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
-  clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
+  triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
 }
+/** An omitted selection receives all triggers; an empty selection receives none. */
+export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 export interface AlertLayout { duration: number; widgets: OverlayWidget[] }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;

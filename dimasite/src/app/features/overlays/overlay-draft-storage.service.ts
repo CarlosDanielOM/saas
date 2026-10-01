@@ -28,6 +28,7 @@ function validWidgets(value: unknown): value is OverlayWidget[] {
     && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
     && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
     && (w['clipDesign'] === undefined || w['kind'] === 'clip' && CLIP_DESIGN_VARIANTS.includes(w['clipDesign'] as never))
+    && (w['triggerIds'] === undefined || w['kind'] === 'trigger' && Array.isArray(w['triggerIds']) && w['triggerIds'].length <= 1000 && new Set(w['triggerIds']).size === w['triggerIds'].length && w['triggerIds'].every(value => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value)))
     && (w['fontSize'] === undefined || finite(w['fontSize']))
     && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
 }

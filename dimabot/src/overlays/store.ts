@@ -32,6 +32,14 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
       if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');
       item.clipDesign = w.clipDesign as OverlayWidget['clipDesign'];
     }
+    if (w.triggerIds !== undefined) {
+      if (kind !== 'trigger') throw new OverlayError('Trigger filters require a trigger widget');
+      item.triggerIds = list(w.triggerIds, 1000).map(value => {
+        if (typeof value !== 'string' || !/^[a-f0-9]{24}$/.test(value)) throw new OverlayError('Invalid trigger selection');
+        return value;
+      });
+      if (new Set(item.triggerIds).size !== item.triggerIds.length) throw new OverlayError('Duplicate trigger selection');
+    }
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
     if (w.assetId) {

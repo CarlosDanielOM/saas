@@ -886,6 +886,8 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     }
 
     const payload: TriggerTestPayload = {
+      triggerId: trigger._id,
+      name: trigger.name,
       url: asset.playbackUrl,
       mediaType: asset.mimeType,
       volume: trigger.volume

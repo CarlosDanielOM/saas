@@ -1,6 +1,6 @@
 import type { ClipMetadata } from '../clips/clips.model';
 import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, effect, input, output, signal, viewChild } from '@angular/core';
-export interface TestMedia { clip?: ClipMetadata; url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
+export interface TestMedia { triggerId?: string; clip?: ClipMetadata; url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
 
 @Component({
   selector: 'app-overlay-media',

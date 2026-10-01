@@ -7,8 +7,8 @@ import { OverlayClipComponent } from './overlay-clip.component';
 import { OverlayMediaComponent, TestMedia } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
-import type { AlertEvent, AlertLayout, EventKind, OverlayWidget } from './overlay.model';
-interface Event { id: string; kind: EventKind; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
+import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
+interface Event { id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
   selector: 'app-overlay-runtime', imports: [OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
@@ -96,7 +96,7 @@ export class OverlayRuntimeComponent {
       if (this.disposed || generation !== this.generation) return;
       if (this.issue === 'event') { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
-      const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)));
+      const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)));
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
       const job: Playing = { event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };

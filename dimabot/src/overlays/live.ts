@@ -9,11 +9,11 @@ import { publicState, type StudioState } from './store.js';
 import { renderLayout } from './ast.js';
 import { DomainEventSchema } from '../schemas/domain_event.schema.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
-import { EVENT_KINDS, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
+import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type OverlayScene } from './model.js';
 
 export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 export interface LiveMedia { clip?: ClipMetadata; type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
-export interface LiveEvent { id: string; kind: EventKind; media?: LiveMedia; text?: string }
+export interface LiveEvent { id: string; kind: EventKind; triggerId?: string; media?: LiveMedia; text?: string }
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
@@ -25,14 +25,14 @@ const pending = new Map<string, Pending>();
 const channels = new Map<string, { after: Types.ObjectId; busy: boolean }>();
 const directory = path.join(tmpdir(), 'domdimabot-overlay-media');
 const types: Record<string, AlertEvent> = { 'channel.follow.received': 'follow', 'channel.bits.received': 'bits', 'channel.subscription.received': 'sub', 'channel.subscription.gifted': 'sub', 'channel.raid.received': 'raid' };
-const accepts = (peer: Peer, kind: EventKind) => peer.state.snapshot.widgets.some(w => w.visible && (w.kind === kind || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
+const accepts = (peer: Peer, kind: EventKind) => peer.state.snapshot.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
 export function studioHasSource(channel: string, kind: EventKind): boolean { return [...peers.values()].some(p => p.channel === channel && p.socket?.connected && accepts(p, kind)); }
 /** Owner-only diagnostics. Browser sources include OBS and ordinary browser tabs. */
 export function studioConnections(channel: string, scenes: OverlayScene[]) {
   const now = Date.now();
   return { checkedAt: now, pollingFailed, scenes: scenes.map(scene => ({
     id: scene.id, published: !!scene.published, revision: scene.revision, width: scene.published?.width ?? scene.width, height: scene.published?.height ?? scene.height,
-    receives: EVENT_KINDS.filter(kind => scene.published?.widgets.some(w => w.visible && (w.kind === kind || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)))),
+    receives: EVENT_KINDS.filter(kind => scene.published?.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)))),
     sources: [...peers.values()].filter(p => p.channel === channel && p.publicId === scene.publicId).map(p => ({
       connected: !!p.socket?.connected, connectedAt: p.connectedAt, disconnectedAt: p.disconnectedAt ?? null,
       lastReportAt: p.health?.reportedAt ?? null, revision: p.health?.revision ?? null,
@@ -58,11 +58,12 @@ export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', 
   deliver({ channel, event: { id, kind, media, text }, file: retained, mime, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
 export function publishStudioTrigger(channel: string, body: Record<string, unknown>): void {
-  const selected = recipients(channel, 'trigger'); if (!selected.length) return;
+  const triggerId = typeof body.triggerId === 'string' && /^[a-f0-9]{24}$/.test(body.triggerId) ? body.triggerId : undefined;
+  const selected = recipients(channel, 'trigger').filter(peer => peer.state.snapshot.widgets.some(w => w.visible && w.kind === 'trigger' && matchesTrigger(w, triggerId))); if (!selected.length) return;
   const mime = String(body.mediaType || ''); const type = mime.startsWith('video') ? 'video' : mime.startsWith('audio') ? 'audio' : 'image';
   const url = String(body.url || ''); if (!/^https?:\/\//i.test(url)) return;
   const id = randomUUID(); const volume = Number(body.volume ?? 100);
-  deliver({ channel, event: { id, kind: 'trigger', media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
+  deliver({ channel, event: { id, kind: 'trigger', triggerId, media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
 export function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now()): number {
   const selected = recipients(channel, kind).filter(p => p.since <= since); if (!selected.length) return 0;

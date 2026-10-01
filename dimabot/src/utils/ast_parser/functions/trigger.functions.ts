@@ -101,6 +101,8 @@ const triggerSendHandler: FunctionHandler = async (args, ctx) => {
     }
 
     const result = await sendTrigger(ctx.broadcasterId, {
+        triggerId: String(trigger._id),
+        name: trigger.name,
         url: file.fileUrl,
         mediaType: file.fileType,
         volume: trigger.volume

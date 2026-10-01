@@ -1604,6 +1604,17 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
             return;
         }
 
+        // Stable channel-scoped identity keeps Studio filters valid after a rename.
+        let studioBody = body;
+        if (body.triggerId !== undefined) {
+            if (typeof body.triggerId !== 'string' || !/^[a-f0-9]{24}$/.test(body.triggerId)) {
+                return res.status(400).json({ error: true, message: 'Invalid trigger ID', status: 400 });
+            }
+            const trigger = await TriggerSchema.findOne({ _id: body.triggerId, channelID: channelIdStr }).select('_id name').lean();
+            if (!trigger) return res.status(404).json({ error: true, message: 'Trigger not found', status: 404 });
+            studioBody = { ...body, triggerId: String(trigger._id), name: trigger.name };
+        }
+
         if (!io) {
             return res.status(500).json({
                 error: true,
@@ -1638,7 +1649,7 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
 
         try {
             namespace.emit('trigger', body);
-            publishStudioTrigger(channelIdStr, body);
+            publishStudioTrigger(channelIdStr, studioBody);
         } catch (emitError) {
             await error({
                 error: 'Internal Server Error',

@@ -138,6 +138,8 @@ export interface UploadMediaRequest {
 }
 
 export interface TriggerTestPayload {
+  triggerId?: string;
+  name?: string;
   url: string;
   mediaType: string;
   volume: number;
