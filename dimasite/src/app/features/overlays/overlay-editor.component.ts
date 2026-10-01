@@ -8,6 +8,7 @@ import { ClipsService } from '../clips/clips.service';
 import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.model';
 import { OverlayMediaComponent } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
+import { clipPlaybackLimit } from './overlay-clip-motion';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
 import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
 import { OverlayConnectionsComponent } from './overlay-connections.component';
@@ -357,7 +358,8 @@ export class OverlayEditorComponent {
     if (job.started.size !== 1) return;
     if (job.timer) { clearTimeout(job.timer); this.timers.delete(job.timer); }
     const event = [this.active(), ...this.parallel()].find(e => e?.id === id);
-    const duration = event?.media?.type === 'image' ? 5 : event?.media?.duration ?? (Number.isFinite(actualDuration) && actualDuration! > 0 ? actualDuration! + 15 : undefined);
+    const duration = event?.kind === 'clip' ? clipPlaybackLimit(event.media, actualDuration) + 4
+      : event?.media?.type === 'image' ? 5 : event?.media?.duration ?? (Number.isFinite(actualDuration) && actualDuration! > 0 ? actualDuration! + 15 : undefined);
     // Clips use the clip module's 30s maximum; other media finishes on ended/error.
     job.timer = this.later(() => this.finishEvent(id), duration ? duration * 1000 : 300000);
   }

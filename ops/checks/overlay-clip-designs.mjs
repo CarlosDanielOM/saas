@@ -19,7 +19,7 @@ const shots = process.env.SAAS_SCREENSHOT_DIR;
 async function session(context, tier = 'pro') {
   await context.addInitScript(({ user, app }) => { localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} })); localStorage.setItem('dimasite.language', 'en'); }, { user, app: { ...app, plan_tier: tier } });
 }
-async function until(predicate, message) { for (let i = 0; i < 160; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error(message); }
+async function until(predicate, message) { for (let i = 0; i < 240; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error(message); }
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } }); await session(context);
   let legacySocket; const editorEnded = [];
@@ -102,8 +102,11 @@ try {
   await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.pause()));
   assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'Orbit has one text layer per placement during playback');
   assert.equal(await page.locator('.widget [data-variant="orbit"] .skin__name').textContent(), 'Fixture streamer');
+  await page.waitForFunction(() => [...document.querySelectorAll('.widget app-overlay-clip .clip-design')].every(e => e.classList.contains('is-in') && e.getAnimations({ subtree: true }).every(a => a.playState === 'finished')));
   if (shots) await page.locator('.widget[data-kind="clip"]').last().screenshot({ path: `${shots}/editor-orbit-playing.png` });
   await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.dispatchEvent(new Event('ended'))));
+  await page.locator('.widget .clip-design.is-out').first().waitFor();
+  assert.equal(editorEnded.length, 1, 'Studio holds its producer until the exit is finished');
   await until(() => editorEnded.length === 2, 'Orbit completion restores its sample card');
   await select.selectOption('slash');
   await page.locator('.widget[data-kind="clip"]').last().click();
@@ -137,19 +140,111 @@ try {
   await runtime.routeWebSocket('**/*', ws => { if (!ws.url().includes('/socket.io/')) return ws.close(); socket = ws; ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}'); ws.onMessage(message => { const m = String(message); if (m.startsWith('40/overlay-studio/')) { ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`); send('overlay-state', { revision, snapshot }); } else if (m.includes('overlay-ended')) ended.push(JSON.parse(m.slice(m.indexOf(',') + 1))[1]); else if (m.includes('overlay-health')) health.push(JSON.parse(m.slice(m.indexOf(',') + 1))[1]); }); });
   await runtime.route('**/*', route => { const url = new URL(route.request().url()); if (url.pathname === '/clip-fixture.mp4') return route.fulfill({ contentType: 'video/mp4', body: mp4 }); if (url.href === metadata.profileImage) return route.fulfill({ contentType: 'image/svg+xml', body: svg }); if (url.pathname === '/broken.mp4') return route.fulfill({ status: 404, body: '' }); if (url.origin === new URL(base).origin) return route.continue(); if (url.pathname.includes('/events/')) return route.fulfill({ json: { data: events.get(url.pathname.split('/').at(-1)) } }); if (url.pathname.startsWith('/overlay-studio/public/')) return route.fulfill({ json: { data: { revision, snapshot } } }); return route.abort(); });
   const source = await runtime.newPage(); source.on('pageerror', e => errors.push(e.message)); await source.goto(base + '/overlays/' + publicId); await source.locator('.canvas').waitFor();
+  // Keep native playback alive while checking the original transitions, then
+  // dispatch ended deliberately to exercise duplicate notifications and FIFO.
+  const fetches = [];
+  await runtime.route('**/events/*', route => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-1); fetches.push(id);
+    return route.fulfill({ json: { data: events.get(id) } });
+  });
   for (const variant of variants) {
     snapshot.widgets[0].clipDesign = variant; const id = 'clip-' + variant;
-    events.set(id, { id, kind: 'clip', snapshot: structuredClone(snapshot), revision, media: { type: 'video', url: api + '/clip-fixture.mp4', title: 'Fixture title', volume: 1, clip: metadata } }); send('overlay-event', { id, kind: 'clip' });
-    await source.waitForFunction(() => document.querySelectorAll('app-overlay-clip video').length === 2);
+    events.set(id, { id, kind: 'clip', snapshot: structuredClone(snapshot), revision, media: { type: 'video', url: api + '/clip-fixture.mp4', title: 'Fixture title', volume: 1, duration: 30, clip: metadata } }); send('overlay-event', { id, kind: 'clip' });
+    await source.waitForFunction(() => document.querySelectorAll('app-overlay-clip video').length === 2 && [...document.querySelectorAll('app-overlay-clip video')].every(v => v.readyState >= 2 && !v.paused));
+    await source.locator('app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.pause()));
+    await source.waitForFunction(() => document.querySelectorAll('.clip-design.is-in').length === 2);
     assert.deepEqual(await source.locator('app-overlay-clip .clip-design').evaluateAll(elements => elements.map(e => e.dataset.variant)), [variant, 'slash']);
     assert.deepEqual(await source.locator('app-overlay-clip video').evaluateAll(videos => videos.map(v => [v.muted,getComputedStyle(v).objectFit])), [[false,'contain'], [true,'contain']]);
+    const motion = await source.locator('.clip-design').first().evaluate(e => ({
+      videoDuration: getComputedStyle(e.querySelector('app-overlay-media')).transitionDuration,
+      animated: e.getAnimations({ subtree: true }).some(a => a.playState === 'running'),
+      opacity: Number(getComputedStyle(e.querySelector('app-overlay-media')).opacity),
+      stagger: getComputedStyle(e.querySelector(e.dataset.variant==='hud' ? '.skin__title' : '.skin__meta')).transitionDelay
+    }));
+    assert.ok(motion.stagger.split(', ').every(delay => delay === { classic:'0s',third:'0.12s',tile:'0.14s',cinema:'0.16s',orbit:'0.18s',pill:'0.18s',hud:'0.24s',slash:'0.12s' }[variant]), variant + ' preserves original stagger');
+    assert.ok(motion.animated, variant + ' runs entrance transitions');
+    assert.ok(motion.opacity < 1, variant + ' fades the native media host, including across Angular child boundaries');
+    assert.ok(motion.videoDuration.split(', ').every(duration => duration === (variant === 'classic' ? '1.5s' : ['third','slash'].includes(variant) ? '1.2s' : ['cinema','pill','hud'].includes(variant) ? '1.15s' : '1.1s')), variant + ' retains original media transition timing');
     assert.equal(await source.locator('.skin__meta img').count(), 0, 'caption uses plain text');
     assert.equal(await source.locator('.skin__name').first().textContent(), 'Fixture streamer');
     if (variant === 'classic') { snapshot.widgets[0].clipDesign = 'hud'; revision++; send('overlay-updated', { revision }); await until(() => health.some(h => h.revision === revision), 'publish refresh acknowledgement'); assert.equal(await source.locator('app-overlay-clip .clip-design').first().getAttribute('data-variant'), 'classic', 'publishing preserves the active event design'); }
+    await source.waitForFunction(() => [...document.querySelectorAll('.clip-design')].every(e => e.getAnimations({ subtree: true }).every(a => a.playState === 'finished') && getComputedStyle(e.querySelector('app-overlay-media')).opacity === '1'));
     if (shots) { await mkdir(shots, { recursive: true }); await source.locator('[data-event="clip"]').first().screenshot({ path: `${shots}/runtime-${variant}.png` }); }
-    await until(() => ended.includes(id), 'native clip completion for ' + variant); assert.equal(ended.filter(e => e === id).length, 1);
+    const nextId = id + '-queued';
+    if (variant === 'classic') {
+      events.set(nextId, { id: nextId, kind:'clip', media: { type:'video', url: api+'/broken.mp4', title:'', volume:1 } });
+      send('overlay-event', { id: nextId, kind:'clip' });
+    }
+    await source.locator('app-overlay-clip video').evaluateAll(videos => videos.forEach(v => { v.dispatchEvent(new Event('ended')); v.dispatchEvent(new Event('ended')); }));
+    await source.waitForFunction(() => document.querySelectorAll('.clip-design.is-out').length === 2);
+    await source.waitForTimeout(180);
+    assert.equal(ended.includes(id), false, variant + ' keeps its queue slot throughout exit');
+    assert.equal(await source.locator('.clip-design.is-out').count(), 2, 'both placements remain mounted during exit');
+    const fade = await source.locator('.clip-design.is-out').first().evaluate(e => Number(getComputedStyle(e.querySelector('app-overlay-media')).opacity));
+    assert.ok(fade > 0 && fade < 1, variant + ' animates its exit');
+    if (variant === 'classic') assert.equal(fetches.includes(nextId), false, 'queued event is not fetched during any placement exit');
+    await until(() => ended.includes(id), 'animated clip completion for ' + variant); assert.equal(ended.filter(e => e === id).length, 1);
+    if (variant === 'classic') { await until(() => ended.includes(nextId), 'FIFO advances only after completed exit'); }
   }
+  console.log('PASS motion: all eight entrance/exit fades, design timings, native media, independent placements, Studio completion, immutable active design, single audio and FIFO after exit.');
+
+  // A short native clip must finish its entrance before its exit starts.
+  snapshot.widgets = [{ ...widget, clipDesign:'classic' }];
+  events.set('short', { id:'short', kind:'clip', snapshot:structuredClone(snapshot), media:{ type:'video', url:api+'/clip-fixture.mp4', title:'Short', volume:1, duration:.1 } });
+  const shortStart = Date.now(); send('overlay-event', { id:'short', kind:'clip' });
+  await source.locator('.clip-design.is-in').waitFor();
+  await source.locator('.clip-design.is-out').waitFor();
+  assert.ok(Date.now()-shortStart >= 1800, 'very short clips retain entrance plus readable dwell');
+  await until(() => ended.includes('short'), 'short clip finishes gracefully');
+
+  // Producer limit wins if the player stalls; no parent timer may cut off exit.
+  events.set('limited', { id:'limited', kind:'clip', snapshot:structuredClone(snapshot), media:{ type:'video', url:api+'/clip-fixture.mp4', title:'Limited', volume:1, duration:3 } });
+  send('overlay-event', { id:'limited', kind:'clip' });
+  await source.waitForFunction(() => { const v=document.querySelector('app-overlay-clip video'); return v && !v.paused && v.readyState>=2; });
+  await source.locator('app-overlay-clip video').evaluate(v=>v.pause());
+  await source.locator('.clip-design.is-out').waitFor();
+  assert.equal(ended.includes('limited'),false);
+  await until(() => ended.includes('limited'), 'stalled clip releases at configured limit after exit');
+
+  // Autoplay controls stay visible while the initial animation state is hidden.
+  await source.evaluate(() => { window.nativePlay=HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play=function(){ return Promise.reject(new DOMException('fixture','NotAllowedError')); }; });
+  events.set('blocked', { id:'blocked', kind:'clip', snapshot:structuredClone(snapshot), media:{ type:'video', url:api+'/clip-fixture.mp4', title:'Blocked', volume:1, duration:30 } });
+  send('overlay-event', { id:'blocked', kind:'clip' });
+  await source.getByRole('button',{name:'Play media'}).waitFor();
+  await source.waitForFunction(()=>getComputedStyle(document.querySelector('app-overlay-media')).opacity==='1');
+  assert.equal(await source.locator('app-overlay-media').evaluate(e=>getComputedStyle(e).opacity),'1', 'autoplay button is visible through media host');
+  assert.ok(health.some(h=>h.issue==='autoplay'));
+  await source.evaluate(()=>{HTMLMediaElement.prototype.play=window.nativePlay;});
+  await source.getByRole('button',{name:'Play media'}).click();
+  await source.locator('.clip-design.is-in').waitFor();
+  await source.locator('app-overlay-clip video').evaluate(v=>v.dispatchEvent(new Event('ended')));
+  await until(()=>ended.includes('blocked'),'manual autoplay recovery finishes motion');
+
+  // Reduced motion removes the transition without delaying queue release.
+  await source.emulateMedia({reducedMotion:'reduce'});
+  events.set('reduced', {id:'reduced',kind:'clip',snapshot:structuredClone(snapshot),media:{type:'video',url:api+'/clip-fixture.mp4',title:'Reduced',volume:1,duration:30}});
+  send('overlay-event',{id:'reduced',kind:'clip'});
+  await source.locator('.clip-design.is-in').waitFor();
+  assert.equal(await source.locator('app-overlay-media').evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
+  const reducedEnd=Date.now(); await source.locator('app-overlay-clip video').evaluate(v=>v.dispatchEvent(new Event('ended')));
+  await until(()=>ended.includes('reduced'),'reduced motion completion'); assert.ok(Date.now()-reducedEnd<600);
+  await source.emulateMedia({reducedMotion:'no-preference'});
+
+  // Simulate RAF suspension after playback starts, as in an OBS background tab.
+  events.set('suspended', {id:'suspended',kind:'clip',snapshot:structuredClone(snapshot),media:{type:'video',url:api+'/clip-fixture.mp4',title:'Suspended',volume:1,duration:30}});
+  send('overlay-event',{id:'suspended',kind:'clip'});
+  await source.locator('.clip-design.is-in').waitFor();
+  await source.locator('app-overlay-clip video').evaluate(v=>v.pause());
+  await source.evaluate(()=>{ window.nativeRaf=requestAnimationFrame; window.requestAnimationFrame=()=>2147483647; document.querySelector('app-overlay-clip video').dispatchEvent(new Event('ended')); });
+  await until(()=>ended.includes('suspended'),'bounded exit fallback releases a source with RAF suspended');
+  await source.evaluate(()=>{window.requestAnimationFrame=window.nativeRaf;});
+
   events.set('broken', { id: 'broken', kind: 'clip', media: { type: 'video', url: api + '/broken.mp4', title: '', volume: 1 } }); send('overlay-event', { id: 'broken', kind: 'clip' }); await until(() => ended.includes('broken') && health.some(h => h.issue === 'media'), 'clip error releases event and reports health');
+  events.set('revoked', {id:'revoked',kind:'clip',snapshot:structuredClone(snapshot),media:{type:'video',url:api+'/clip-fixture.mp4',title:'Revoked',volume:1,duration:30}});
+  send('overlay-event',{id:'revoked',kind:'clip'}); await source.locator('.clip-design.is-in').waitFor();
+  send('overlay-revoked',{}); await source.waitForFunction(()=>!document.querySelector('app-overlay-clip'));
+  await source.waitForTimeout(1800); assert.equal(ended.includes('revoked'),false,'destroy cancels motion callbacks');
+  console.log('PASS lifecycle: short clips, duration limit, autoplay recovery, reduced motion, errors and revocation cleanup.');
   assert.equal(await source.evaluate(() => document.body.style.background), 'transparent'); assert.deepEqual(errors, []); await runtime.close();
   console.log('PASS OBS runtime: all eight skins render real H.264 clips, metadata and independent published choices; active design survives publish, duplicate players use one audio copy, errors release and report diagnostics, transparent output.');
   const playground = await browser.newContext({ viewport: { width: 1280, height: 1000 } });

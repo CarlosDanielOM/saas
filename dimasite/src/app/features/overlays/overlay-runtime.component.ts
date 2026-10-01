@@ -8,6 +8,7 @@ import { OverlayMediaComponent, TestMedia } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
 import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
+import { clipPlaybackLimit } from './overlay-clip-motion';
 interface Event { id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
@@ -111,7 +112,8 @@ export class OverlayRuntimeComponent {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
     if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); }
     clearTimeout(job.timers.get(widget));
-    const seconds = job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
+    const seconds = job.event.kind === 'clip' ? clipPlaybackLimit(job.event.media, duration) + 4
+      : job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
     job.timers.set(widget, setTimeout(() => this.finishPlacement(id, widget), seconds * 1000));
   }
   finishPlacement(id: string, widget: string) {

@@ -1,0 +1,267 @@
+/* Motion from dimabot/src/server/routes/public/clip.html, scoped to active media.
+   Animate the media host because its native video lives in a child component. */
+
+.clip-design.has-media[data-variant='classic'] .skin app-overlay-media {
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='classic'] .skin__avatar {
+  transform: scale(0);
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out, transform 1.5s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='classic'] .skin__meta {
+  opacity: 0;
+  transform: translateX(0);
+  transition: transform 1s ease-in-out, opacity 1.5s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='classic'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='classic'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='classic'].is-in .skin__meta {
+  opacity: 1;
+}
+
+.clip-design.has-media[data-variant='classic'].is-in .skin__avatar {
+  transform: scale(1);
+}
+
+.clip-design.has-media[data-variant='classic'].is-in .skin__meta {
+  transform: translateX(400px);
+}
+
+.clip-design.has-media[data-variant='tile'] .skin app-overlay-media,
+.clip-design.has-media[data-variant='tile'] .skin__meta {
+  opacity: 0;
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='tile'] .skin app-overlay-media {
+  transform: translateY(8px);
+}
+
+.clip-design.has-media[data-variant='tile'] .skin__meta {
+  transform: translateX(16px);
+}
+
+.clip-design.has-media[data-variant='tile'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='tile'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='tile'].is-in .skin__meta {
+  transition-delay: 0.14s;
+}
+
+.clip-design.has-media[data-variant='third'] .skin app-overlay-media {
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='third'] .skin__avatar {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='third'] .skin__meta {
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='third'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='third'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='third'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='third'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='third'].is-in .skin__meta {
+  transition-delay: 0.12s;
+}
+
+.clip-design.has-media[data-variant='cinema'] .skin app-overlay-media {
+  opacity: 0;
+  transition: opacity 1.15s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='cinema'] .skin__avatar {
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='cinema'] .skin__meta {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='cinema'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='cinema'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='cinema'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='cinema'].is-in .skin__meta,
+.clip-design.has-media[data-variant='cinema'].is-in .skin__avatar {
+  transition-delay: 0.16s;
+}
+
+.clip-design.has-media[data-variant='orbit'] .skin__avatar {
+  opacity: 0;
+  transform: scale(0.62);
+  transition: opacity 1.15s ease-in-out, transform 1.15s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='orbit'] .skin app-overlay-media,
+.clip-design.has-media[data-variant='orbit'] .skin__meta {
+  opacity: 0;
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='orbit'] .skin app-overlay-media {
+  transform: scale(0.98);
+}
+
+.clip-design.has-media[data-variant='orbit'] .skin__meta {
+  transform: translateX(12px);
+}
+
+.clip-design.has-media[data-variant='orbit'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='orbit'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='orbit'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='orbit'].is-in .skin app-overlay-media {
+  transition-delay: 0.1s;
+}
+
+.clip-design.has-media[data-variant='orbit'].is-in .skin__meta {
+  transition-delay: 0.18s;
+}
+
+.clip-design.has-media[data-variant='pill'] .skin app-overlay-media {
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 1.15s ease-in-out, transform 1.15s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='pill'] .skin__meta {
+  opacity: 0;
+  transform: translateX(-28px);
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='pill'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='pill'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='pill'].is-in .skin__meta {
+  transition-delay: 0.18s;
+}
+
+.clip-design.has-media[data-variant='hud'] .skin app-overlay-media {
+  opacity: 0;
+  transition: opacity 1.15s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='hud'] .skin__avatar {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='hud'] .skin__kicker,
+.clip-design.has-media[data-variant='hud'] .skin__name,
+.clip-design.has-media[data-variant='hud'] .skin__title {
+  opacity: 0;
+  transition: opacity 1s ease-in-out, transform 1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='hud'] .skin__kicker {
+  transform: translateY(-10px);
+}
+
+.clip-design.has-media[data-variant='hud'] .skin__name {
+  transform: translateX(-12px);
+}
+
+.clip-design.has-media[data-variant='hud'] .skin__title {
+  transform: translateX(12px);
+}
+
+.clip-design.has-media[data-variant='hud'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='hud'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='hud'].is-in .skin__kicker,
+.clip-design.has-media[data-variant='hud'].is-in .skin__name,
+.clip-design.has-media[data-variant='hud'].is-in .skin__title {
+  opacity: 1;
+  transform: none;
+}
+
+.clip-design.has-media[data-variant='hud'].is-in .skin__kicker {
+  transition-delay: 0.08s;
+}
+
+.clip-design.has-media[data-variant='hud'].is-in .skin__avatar,
+.clip-design.has-media[data-variant='hud'].is-in .skin__name {
+  transition-delay: 0.16s;
+}
+
+.clip-design.has-media[data-variant='hud'].is-in .skin__title {
+  transition-delay: 0.24s;
+}
+
+.clip-design.has-media[data-variant='slash'] .skin app-overlay-media {
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='slash'] .skin__avatar {
+  transform: translate(-50%, 8px) scale(0.7);
+  opacity: 0;
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='slash'] .skin__meta {
+  opacity: 0;
+  transform: translateX(28px);
+  transition: opacity 1.15s ease-in-out, transform 1.15s ease-in-out;
+}
+
+.clip-design.has-media[data-variant='slash'].is-in .skin app-overlay-media,
+.clip-design.has-media[data-variant='slash'].is-in .skin__meta {
+  opacity: 1;
+}
+
+.clip-design.has-media[data-variant='slash'].is-in .skin__avatar {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.clip-design.has-media[data-variant='slash'].is-in .skin__meta {
+  transform: none;
+  transition-delay: 0.12s;
+}
+
+.clip-design.has-media[data-variant].is-blocked .skin app-overlay-media {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clip-design.has-media :is(app-overlay-media, .skin__avatar, .skin__meta, .skin__kicker, .skin__name, .skin__title) {
+    transition: none !important;
+  }
+}
