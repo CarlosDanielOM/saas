@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import mongoose from '/app/node_modules/mongoose/index.js';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
@@ -12,9 +13,20 @@ import { createTwitchEventsubApp } from '/app/dist/bot/eventsub.twitch.js';
 import { applyChatAnnouncementDomainEvent } from '/app/dist/domain_events/chat_announcement_events.js';
 import { cheerHandler } from '/app/dist/handlers/cheer.handler.js';
 import { getBitsMessageText } from '/app/dist/utils/bits_message.js';
+import { RedemptionRewardSchema } from '/app/dist/schemas/redemption_reward.schema.js';
+import { redemptionHandler } from '/app/dist/handlers/redemption.handler.js';
+import { parseSpecialCommands } from '/app/dist/handlers/special_parser.handler.js';
+
+execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test', '--test-force-exit',
+    '/app/dist/functions/chats/speech.chat.test.js', '/app/dist/handlers/cheer.handler.test.js',
+    '/app/dist/domain_events/chat_announcement_events.test.js', '/app/dist/utils/ast_parser/tts_settings.test.js',
+    '/app/dist/utils/tts/normalize_tts_message.util.test.js'], { stdio: 'inherit', timeout: 60000 });
 
 const target = process.env.SAAS_TARGET;
 assert.ok(['api', 'bot', 'cron'].includes(target));
+assert.equal(process.env.INTERNAL_API_URL, undefined, 'exercise the production worker without an API override');
+assert.equal(process.env.ENVIRONMENT, undefined, 'exercise the missing legacy production flag');
+assert.equal(process.env.NODE_ENV, 'production');
 const channelID = '99004401';
 const calls = () => fs.existsSync('/tmp/saas-fixtures/calls.jsonl')
     ? fs.readFileSync('/tmp/saas-fixtures/calls.jsonl', 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
@@ -46,7 +58,23 @@ const config = await EventsubSchema.create({ channelID, type: 'channel.bits.use'
     message: template, cheerTiers: [{ name: 'Rias', message: template, min_amount: 5, max_amount: 10000 }] });
 const event = { broadcaster_user_id: channelID, broadcaster_user_login: 'bitsfixture', broadcaster_user_name: 'Bits Fixture',
     user_id: '99004402', user_login: 'viewer', user_name: 'Viewer', bits: 5, type: 'cheer', is_anonymous: false };
-const text = 'Hello Rias! This is the whole viewer message.';
+const text = 'Hello Rias! This is the whole viewer message';
+
+// Existing redemption and command callers still reach the same speech API.
+await RedemptionRewardSchema.create({ channelID, channel: 'bitsfixture', eventsubID: 'test',
+    rewardID: 'tts-reward', title: 'TTS', originalCost: 100, cost: 100, message: '$(tts &t)' });
+assert.equal((await redemptionHandler({ ...event, id: 'redemption-test', user_input: text,
+    status: 'unfulfilled', redeemed_at: new Date().toISOString(),
+    reward: { id: 'tts-reward', title: 'TTS', prompt: '', cost: 100 }
+}, true)).error, false);
+assert.equal(speech().at(-1).speech.text, text);
+assert.equal(speech().at(-1).url, `http://dima-server:3000/speech/${channelID}`);
+const parsed = await parseSpecialCommands('$(tts &t)', { channelID, argument: text, literalArguments: true,
+    eventData: { ...event, chatter_user_id: event.user_id, chatter_user_login: event.user_login,
+        chatter_user_name: event.user_name, message: { text: `!tts ${text}`, fragments: [] } } });
+assert.equal(parsed.parsedText, '');
+assert.equal(speech().at(-1).speech.text, text);
+assert.equal(speech().at(-1).url, `http://dima-server:3000/speech/${channelID}`);
 
 // Immediate/manual path, legacy payloads, default templates and positional text.
 for (const message of [{ text, fragments: [] }, text]) {
@@ -60,7 +88,18 @@ for (const message of [{ text, fragments: [] }, text]) {
     }
 }
 assert.equal(chat().length, 0, 'successful TTS-only templates do not post usage errors');
-const literal = 'Hello $(user) %[one,two] %(injected 1) &t';
+for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
+    const before = speech().length;
+    const message = `$(${name} ${['tts.clone', 'tts.fish'].includes(name) ? 'rias_gremory ' : ''}&t)`;
+    await cheerHandler({ ...event, message: { text, fragments: [] } }, {
+        ...config.toObject(), cheerTiers: [], message
+    }, true);
+    assert.equal(speech().length, before + 1, name);
+    assert.equal(speech().at(-1).speech.text, text, name);
+    assert.equal(speech().at(-1).url, `http://dima-server:3000/speech/${channelID}`, name);
+}
+assert.equal(chat().length, 0, 'all cheer TTS variants reach the internal API without chat errors');
+const literal = 'Hello $(user) %(injected 1) &t';
 await cheerHandler({ ...event, message: { text: literal, fragments: [] } }, config, true);
 assert.equal(speech().at(-1).speech.text, literal, 'viewer syntax stays literal');
 const positional = { ...config.toObject(), cheerTiers: [{ name: 'voice', min_amount: 5, max_amount: 5,
@@ -114,7 +153,7 @@ for (const [index, message] of [{ text: literal, fragments: [] }, text].entries(
     assert.equal((await fetch(webhookURL, { method: 'POST', headers, body })).status, 204);
     assert.equal(speech().length, before + 1, 'duplicate webhook does not queue again');
 }
-console.log(`PASS ${target}: whole bits text, structured/legacy events, Rias tier/default, literal syntax, positional arguments, missing text, invalid voice, disabled chat, signed webhook and durable delivery`);
+console.log(`PASS ${target}: production API fallback without overrides, all cheer TTS variants, whole bits text, structured/legacy events, Rias tier/default, literal syntax, positional arguments, missing text, invalid voice, disabled chat, signed webhook and durable delivery`);
 if (server) await new Promise(resolve => server.close(resolve));
 await mongoose.disconnect();
 await redis.quit();

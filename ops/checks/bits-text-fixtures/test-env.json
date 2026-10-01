@@ -9,7 +9,6 @@
   "POLARSH_OAT": "dummy",
   "OTEL_SDK_DISABLED": "true",
   "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "INTERNAL_API_URL": "http://tts.test:3000",
   "TWITCH_EVENTSUB_SECRET": "bits-text-test-secret",
   "CLIENT_ID": "bits-text-test-client",
   "CLIENT_SECRET": "dummy",

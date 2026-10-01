@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 const mocks = {
+    '/utils/tts/emote_names.util.js': 'export const getTtsEmoteNames = async()=>[];',
     '/utils/logger.js': 'export const trace = async()=>{}, debug = trace, info = trace, warn = trace, error = trace, fatal = trace;',
     '/utils/tokens.js': 'export const getAppToken = async()=>"fixture", getBotToken = getAppToken, refreshAllTokens = async()=>{}, refreshTwitchToken = async()=>{}, getNewTwitchAppToken = getAppToken;',
     '/utils/posthog_events.js': 'export const trackTts = ()=>{}, identifyStreamer = trackTts, trackCommand = trackTts, trackAiUsageRecorded = trackTts, trackAiOperation = trackTts, shutdownPosthog = async()=>{};'
@@ -17,10 +18,12 @@ registerHooks({
         return resolved;
     }
 });
-process.env.INTERNAL_API_URL = 'http://tts.mock';
+delete process.env.INTERNAL_API_URL;
+delete process.env.ENVIRONMENT;
+assert.equal(process.env.NODE_ENV, 'production');
 const requests = [];
 globalThis.fetch = async (input, options) => {
-    assert.match(String(input), /^http:\/\/tts\.mock\/speech\//, 'all other network requests are blocked');
+    assert.match(String(input), /^http:\/\/dima-server:3000\/speech\//, 'production fallback uses the internal API; all effects are mocked');
     requests.push(JSON.parse(options.body));
     return new Response(JSON.stringify({ error: false, data: { speechID: 'mock' } }), {
         headers: { 'Content-Type': 'application/json' }
@@ -55,5 +58,13 @@ for (const message of [{ text: 'Five bits: Hello $(user)!', fragments: [] }, 'Fi
     assert.equal(requests.at(-1).cloneName, 'rias_gremory');
 }
 assert.equal(requests.length, 4);
-console.log('PASS deployed code: five-bit Rias tier forwards whole structured/legacy viewer text literally through immediate and durable AST paths; all effects mocked');
+for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
+    const eventData = { broadcaster_user_id: 'fixture', user_id: 'viewer', user_login: 'viewer', user_name: 'Viewer',
+        bits: 5, message: { text: 'Hello from cheers', fragments: [] } };
+    const message = `$(${name} ${['tts.clone', 'tts.fish'].includes(name) ? 'rias_gremory ' : ''}&t)`;
+    assert.equal((await cheerHandler(eventData, { ...config, message, cheerTiers: [] }, true)).error, false);
+    assert.equal(requests.at(-1).text, 'Hello from cheers');
+}
+assert.equal(requests.length, 9);
+console.log('PASS deployed code: internal API fallback without override or legacy environment flag, all cheer TTS variants, five-bit Rias tier and literal structured/legacy text through immediate and durable AST paths; all effects mocked');
 process.exit(0);

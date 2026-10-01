@@ -33,7 +33,10 @@ export interface TtsRequestBody {
 
 export async function requestTts(channelID: string, payload: TtsRequestBody): Promise<SpeechResponse> {
     try {
-        const internalApiUrl = process.env.INTERNAL_API_URL || getUrl();
+        // Cron event consumers share the API's Docker network, but have no
+        // HTTP server on their own loopback interface or legacy ENVIRONMENT.
+        const internalApiUrl = process.env.INTERNAL_API_URL
+            || (process.env.NODE_ENV === 'production' ? 'http://dima-server:3000' : getUrl());
         const response = await fetch(`${internalApiUrl}/speech/${channelID}`, {
             method: 'POST',
             headers: {

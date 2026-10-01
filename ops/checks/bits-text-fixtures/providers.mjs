@@ -14,11 +14,11 @@ globalThis.fetch = async (input, options = {}) => {
     if (url.hostname === '127.0.0.1') return originalFetch(input, options);
     if (url.hostname === 'qdrant.test') return json(url.pathname === '/' ? { version: '1.18.0' }
         : { status: 'ok', time: 0, result: url.pathname.endsWith('/exists') ? { exists: true } : { collections: [] } });
-    if (url.hostname === 'tts.test' && url.pathname.startsWith('/speech/')) {
+    if (url.hostname === 'dima-server' && url.port === '3000' && url.pathname.startsWith('/speech/')) {
         const speech = JSON.parse(options.body);
-        log({ speech, channelID: url.pathname.split('/').at(-1) });
+        log({ speech, url: url.href, channelID: url.pathname.split('/').at(-1) });
         const { FISH_VOICES } = await import('/app/dist/server/services/tts/fish_tts.service.js');
-        if (!Object.hasOwn(FISH_VOICES, speech.cloneName)) return json({ error: true, message: 'Invalid Fish voice' }, 400);
+        if (speech.cloneName && !Object.hasOwn(FISH_VOICES, speech.cloneName)) return json({ error: true, message: 'Invalid Fish voice' }, 400);
         if (!speech.text.trim()) return json({ error: true, message: 'Missing speech text' }, 400);
         return json({ error: false, data: { speechID: 'mock-speech' } });
     }
