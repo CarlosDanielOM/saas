@@ -152,7 +152,7 @@ export function registerStudio(io: Server): void {
       if (typeof client !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(client)) throw new Error('Invalid client identity');
       socket.data.studioState = await publicState(socket.nsp.name.split('/').at(-1)!);
       next();
-    } catch { next(new Error('Overlay unavailable or Pro access required')); }
+    } catch { next(new Error('Overlay unavailable')); }
   });
   namespace.on('connection', socket => {
     const state = socket.data.studioState as Public; const key = `${state.publicId}:${socket.handshake.auth.clientId}`;

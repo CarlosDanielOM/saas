@@ -128,8 +128,8 @@ const sidebar = [
         slug: 'roulette',
       },
       {
-        label: 'Overlay Studio (Alpha · Pro)',
-        translations: { es: 'Estudio de overlays (Alfa · Pro)' },
+        label: 'Overlay Studio (Alpha · Free)',
+        translations: { es: 'Estudio de overlays (Alfa · Free)' },
         slug: 'overlay-studio',
       },
     ],
@@ -193,7 +193,7 @@ export default defineConfig({
     starlight({
       title: 'DomDimaBot Docs',
       description:
-        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, and Pro Alpha Roulette and Overlay Studio.',
+        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, Pro Alpha Roulette, and Free Alpha Overlay Studio.',
       defaultLocale: 'root',
       locales: {
         root: {

@@ -1,7 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
-import { change, load, publicState, validateState, object, string, token, OverlayError, requirePro } from '../../overlays/store.js';
+import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount } from '../../overlays/store.js';
 import { eventFor, fileFor, publishStudioAlert, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, type AlertEvent } from '../../overlays/model.js';
@@ -25,7 +25,7 @@ overlayStudioRoute.get('/public/:publicId/media/:eventId', wrap(async (req, res)
 overlayStudioRoute.use(authMiddleware);
 overlayStudioRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, message: 'Channel owner required', status: 403 }); return; }
-  void requirePro(param(req, 'channelID')).then(() => next(), next);
+  void requireOverlayAccount(param(req, 'channelID')).then(() => next(), next);
 });
 overlayStudioRoute.get('/:channelID', wrap(async (req, res) => ok(res, await load(param(req, 'channelID')))));
 overlayStudioRoute.get('/:channelID/queue', wrap(async (req, res) => ok(res, await queueStatus(param(req, 'channelID')))));

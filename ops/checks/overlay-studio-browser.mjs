@@ -36,7 +36,7 @@ const page=await context.newPage();page.setDefaultTimeout(12000);page.on('pageer
 await page.goto(base+'/fixture/modules/overlays');await page.locator('app-overlay-editor .stage').waitFor().catch(async e=>{console.log(page.url(),await page.locator('body').innerText(),errors);throw e;});
 const click=name=>page.locator('app-overlay-editor').getByRole('button',{name,exact:true}).click();
 const field=async(name,value)=>{const input=page.getByLabel(name,{exact:true});await input.fill(String(value));await input.blur();};
-assert(await page.getByText('Alpha · Pro',{exact:true}).isVisible());
+assert(await page.locator('.mock-chip').getByText('Alpha',{exact:true}).isVisible());
 if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alpha-desktop.png',fullPage:true});}
 const before=structuredClone(state.scenes[0].widgets);await field('Canvas width',800);await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.deepEqual(state.scenes[0].widgets,before);
 await field('Canvas width',1920);await page.getByRole('button',{name:/Publish live/}).click();await page.getByText('Published. Connected browser sources are updating.',{exact:true}).waitFor();
@@ -59,9 +59,9 @@ await page.setViewportSize({width:375,height:1000});await page.locator('.mobile-
 assert((await page.getByRole('button',{name:'Send test alert to OBS',exact:true}).boundingBox()).height >= 44);
 if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alpha-mobile.png',fullPage:true});}
 await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});const axe=await page.evaluate(()=>window.axe.run(document.querySelector('app-overlay-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);
-app.plan_tier='free';await page.reload();await page.getByText('Overlay Studio Alpha is available to Pro streamers.',{exact:true}).waitFor();assert.equal(await page.locator('app-overlay-editor .stage').count(),0);
+app.plan_tier='free';await page.reload();await page.locator('app-overlay-editor .stage').waitFor();assert(await page.locator('.mock-chip').getByText('Alpha',{exact:true}).isVisible());
 await context.close();
-console.log('PASS editor: authenticated owner/Pro gate, durable save API, conflict preservation, canvas dimensions, server AST preview, linked design reuse, immutable publish, URL confirmation, assets, mobile and axe.');
+console.log('PASS editor: authenticated owner access on Pro and Free, Alpha label, durable save API, conflict preservation, canvas dimensions, server AST preview, linked design reuse, immutable publish, URL confirmation, assets, mobile and axe.');
 // Public source renderer: transparent, isolated FIFO, parallel categories, live publish, failures and native media.
 const runtime=await browser.newContext({viewport:{width:1920,height:1080}});let socket;const ended=[];let snapshot=structuredClone(frozen);snapshot.widgets[3].events=['bits','follow'];snapshot.waitFor=['bits','tts'];
 const runtimeEvents=new Map();let currentRevision=1;

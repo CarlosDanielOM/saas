@@ -25,7 +25,7 @@ async function request(method,path,body,status=200,token='control-'+channel) {
 for(const method of ['GET','POST']) {
  await request(method,channel+'/queue',method==='POST'?{action:'clear',platform:'all'}:undefined,401,'');
  await request(method,channel+'/queue',method==='POST'?{action:'clear',platform:'all'}:undefined,403,'control-'+other);
- await request(method,free+'/queue',method==='POST'?{action:'pause',platform:'all'}:undefined,403,'control-'+free);
+ await request(method,free+'/queue',method==='POST'?{action:'pause',platform:'all'}:undefined,200,'control-'+free);
 }
 for(const body of [{action:'delete',platform:'all'},{action:'clear',platform:'youtube'},{action:'pause'},{action:['skip'],platform:'twitch'},{}]) await request('POST',channel+'/queue',body,400);
 let status=await request('GET',channel+'/queue');assert.equal(status.state.all,false);
@@ -41,7 +41,8 @@ const run=async(text,extra={})=>(await evaluate(parse(text).ast,ctx(extra))).val
 for(const action of ['pause','resume','skip','clear']) for(const suffix of ['','.twitch','.kick']) assert.equal(await run(`$(overlay.${action}${suffix})`),'');
 assert.match(String(await run('$(overlay.clear)',{userLevel:1})),/permission/i);
 assert.match(String(await run('$(overlay.clear 990082)')),/Usage/);
-assert.match(String(await run('$(overlay.clear)',{broadcasterId:free})),/Pro/);
+assert.equal(await run('$(overlay.clear)',{broadcasterId:free,userPlan:'free'}),'','Free owner can use AST controls');
+assert.equal(await run('$(overlay.pause.kick)',{platform:'kick',broadcasterId:'kick-'+free,userPlan:'free'}),'','Free linked Kick owner resolves its own Studio');
 assert.equal(await run('$(overlay.pause.kick)',{platform:'kick',broadcasterId:'kick-'+channel}),'','linked Kick context resolves its own Studio');
 assert.match(String(await run('$(overlay.clear)',{platform:'kick',broadcasterId:'not-linked'})),/Error/);
 assert.equal(getAllRegisteredFunctions().filter(entry=>entry.name.startsWith('overlay.')).length,12);

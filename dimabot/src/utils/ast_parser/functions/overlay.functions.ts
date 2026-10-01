@@ -17,7 +17,7 @@ export function registerOverlayFunctions(): void {
         // Resolve through one linked account element; provider IDs are not global user IDs.
         await getMongoDBConnection('overlay-control');
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: ctx.platform, id: ctx.broadcasterId } } }).lean();
-        if (!owner || owner.plan_tier !== 'pro') return 'Error: Overlay Studio requires the channel owner’s Pro plan';
+        if (!owner) return 'Error: Overlay owner account unavailable';
         const channel = ctx.platform === 'twitch' ? ctx.broadcasterId : owner.accounts?.find(account => account.type === 'twitch')?.id;
         if (!channel) return 'Error: No linked Global Overlay Studio account';
         const token = await TwitchStreamers.getAccountTokenById(channel, 'twitch');
@@ -32,7 +32,7 @@ export function registerOverlayFunctions(): void {
       } catch { return 'Error: Overlay controls are temporarily unavailable'; }
     }, {
       description: `${behavior}. Applies to ${platform === 'all' ? 'all event origins' : platform + ' events only'} across this owner’s Global Overlay scenes.`,
-      syntax: name, category: 'overlay', examples: [name], minUserLevel: 7, planTier: 'pro',
+      syntax: name, category: 'overlay', examples: [name], minUserLevel: 7, planTier: 'free',
       destructive: action === 'skip' || action === 'clear', keywords: ['overlay', action, platform, 'queue', 'superposición', 'cola']
     });
   }

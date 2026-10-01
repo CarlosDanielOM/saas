@@ -11,7 +11,7 @@ const ast = await import('/app/dist/overlays/ast.js');
 const live = await import('/app/dist/overlays/live.js');
 let channel = '990091'; const ownerToken = 'overlay-owner-fixture';
 await store.Studio.init();
-await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'free' });
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: '990092' }], plan_tier: 'free' });
 await redis.hSet(`token:${ownerToken}`, { id: channel, login: 'fixture', display_name: 'Fixture' });
 await redis.hSet('token:overlay-other-fixture', { id: '990092', login: 'other', display_name: 'Other' });
@@ -23,9 +23,9 @@ async function request(method, path, body, status = 200, token = ownerToken) {
 await request('GET', channel, undefined, 401, '');
 await request('GET', channel+'/connections', undefined, 401, '');
 await request('GET', channel+'/connections', undefined, 403, 'overlay-other-fixture');
-await request('GET', '990092/connections', undefined, 403, 'overlay-other-fixture');
+await request('GET', '990092/connections', undefined, 200, 'overlay-other-fixture');
 await request('GET', channel, undefined, 403, 'overlay-other-fixture');
-await request('GET', '990092', undefined, 403, 'overlay-other-fixture');
+await request('GET', '990092', undefined, 200, 'overlay-other-fixture');
 let state = await request('GET', channel);
 const id = state.scenes[0].id, publicId = state.scenes[0].publicId;
 assert.match(publicId, /^[a-f0-9]{48}$/);
@@ -192,9 +192,15 @@ await c.wait(m=>m.includes('Producer fixture'));
 const produced=c.events().find(e=>e[0]==='overlay-event'&&e[1].media?.title==='Producer fixture')[1];
 const producedMedia=await request('GET',`public/${nextId}/events/${produced.id}`,undefined,200,'');assert.deepEqual(producedMedia.media.clip,{streamer:'Fixture streamer',game:'Fixture game',description:'Fixture caption',profileImage:'https://fixture.invalid/avatar.png',streamerColor:'#22c55e'});assert.equal(await(await fetch(base+producedMedia.media.url)).text(),'clip-fixture-bytes');
 await clipQueueHandler.handleClipEnded(channel,'clip-producer-fixture');assert.equal(await redis.get(`twitch:${channel}:clip:processing`),null);
-await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:'free'}});
+for (const tier of ['premium', 'pro', 'free']) {
+  await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:tier}});
+  await request('GET',channel+'/connections');
+  await request('GET',channel); await request('GET',`public/${nextId}`,undefined,200,'');
+}
+assert(!c.events().some(event=>event[0]==='overlay-revoked'),'moving between plans preserves the published overlay');
+await Users.deleteOne({'accounts.id':channel});
 await request('GET',channel+'/connections',undefined,403);
 await request('GET',channel,undefined,403);await request('GET',`public/${nextId}`,undefined,403,'');await c.wait(m=>m.includes('overlay-revoked'));
 c.ws.close();reconnect.ws.close();io.close();await unlink('/tmp/source-media-fixture');
-console.log('PASS Overlay Studio API: actual entrypoint, owner/Pro gates, CAS, strict schema/AST, canvas preservation, immutable publish, live journal alerts, independent clients, connection diagnostics, clip designs/metadata, per-client media retention, reconnect, URL rotation and downgrade.');
+console.log('PASS Overlay Studio API: Free owner editing/publication/playback, owner isolation, CAS, strict schema/AST, immutable publish, live journal alerts, independent clients, diagnostics, media retention, reconnect, URL rotation, all plans/downgrade and missing-account rejection.');
 process.exit(0);

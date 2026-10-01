@@ -1,6 +1,6 @@
 {
-  "version": "1004477c6f48",
-  "generatedAt": "2026-10-01T02:25:21.012Z",
+  "version": "f9b25389fb63",
+  "generatedAt": "2026-10-01T03:09:36.181Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
   "functionCount": 105,
@@ -28,7 +28,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.skip.twitch",
@@ -53,7 +53,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.skip.kick",
@@ -78,7 +78,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.pause",
@@ -103,7 +103,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.pause.twitch",
@@ -128,7 +128,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.pause.kick",
@@ -153,7 +153,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.resume",
@@ -178,7 +178,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.resume.twitch",
@@ -203,7 +203,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.resume.kick",
@@ -228,7 +228,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.clear",
@@ -253,7 +253,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.clear.twitch",
@@ -278,7 +278,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "overlay.clear.kick",
@@ -303,7 +303,7 @@
         "action",
         "authoring"
       ],
-      "planTier": "pro"
+      "planTier": "free"
     },
     {
       "name": "enable.command",

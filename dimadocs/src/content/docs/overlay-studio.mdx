@@ -3,7 +3,7 @@ title: Overlay Studio Alpha
 description: Design reusable stream overlays, publish OBS browser sources, and connect alerts, clips, triggers, and TTS.
 ---
 
-Overlay Studio Alpha lets a channel owner compose browser-source layouts from live event and media layers. It requires **Pro**, and during Alpha only the channel owner can edit the channel's overlays. The editor is at **Modules → Overlay Studio** in the channel dashboard.
+Overlay Studio Alpha is available starting with **Free**. It lets a channel owner compose browser-source layouts from live event and media layers. During Alpha, only the channel owner can edit the channel's overlays. The editor is at **Modules → Overlay Studio** in the channel dashboard.
 
 ## Create an overlay
 
@@ -46,9 +46,9 @@ The source listens for new follow, Bits, subscription/gift, and raid events whil
 
 ## Limits and troubleshooting
 
-- **Editor access is blocked:** confirm the channel has Pro and you are signed in as its owner. The server checks both for management and for published sources.
+- **Editor access is blocked:** sign in as the channel owner; only the signed-in owner can edit overlays. Published overlays continue working across plan changes as long as the linked Twitch account exists.
 - **An edit is missing from OBS:** save the draft, publish the overlay, then refresh or reopen the browser source.
-- **The source stopped after a URL change or plan downgrade:** use the current URL and confirm Pro is active. Regenerating a link revokes the old one.
+- **The source stopped after a URL change:** use the current URL. Regenerating a link revokes the old one.
 - **An alert or media layer is silent:** check that the source is connected, the layer is visible, the event is selected for that alert layer, and its category is not waiting behind another queued event.
 - **An asset cannot be selected or deleted:** check the file format and size, available plan storage, and whether the asset is still referenced by an overlay or design.
 

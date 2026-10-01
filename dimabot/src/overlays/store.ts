@@ -13,8 +13,10 @@ const schema = new Schema<Stored>({ _id: String, schemaVersion: Number, revision
 schema.index({ 'scenes.publicId': 1 }, { unique: true });
 export const Studio = model<Stored>('OverlayStudio', schema);
 export const token = () => randomBytes(24).toString('hex');
-export async function hasPro(channel: string) { await getMongoDBConnection('overlay-studio'); return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id: channel } }, plan_tier: 'pro' }); }
-export async function requirePro(channel: string) { if (!await hasPro(channel)) throw new OverlayError('Overlay Studio Alpha requires Pro', 403); }
+export async function requireOverlayAccount(channel: string) {
+  await getMongoDBConnection('overlay-studio');
+  if (!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id: channel } } })) throw new OverlayError('Overlay account unavailable', 403);
+}
 export function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new OverlayError('Expected an object'); return value as Record<string, unknown>; }
 export function string(value: unknown, max = 100): string { if (typeof value !== 'string' || !value.trim() || value.length > max) throw new OverlayError('Invalid text'); return value; }
 function id(value: unknown) { const result = string(value); if (!/^[a-zA-Z0-9_-]+$/.test(result)) throw new OverlayError('Invalid ID'); return result; }
@@ -73,7 +75,7 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
   return { scenes, designs };
 }
 export async function load(channel: string): Promise<StudioState> {
-  await requirePro(channel); let stored = await Studio.findById(channel).lean();
+  await requireOverlayAccount(channel); let stored = await Studio.findById(channel).lean();
   if (!stored) {
     const design = makeDesign('starter', 'My alerts'); design.events.bits.widgets[1].text = '$(user) sent $(cheer.amount) bits';
     design.events.raid.widgets[1].text = '$(raid.channel) arrived with $(raid.viewers) viewers';
@@ -95,7 +97,7 @@ export async function publicState(publicId: string) {
   await getMongoDBConnection('overlay-public');
   const state = await Studio.findOne({ 'scenes.publicId': publicId }).lean();
   if (!state) throw new OverlayError('Overlay not found', 404);
-  await requirePro(state._id);
+  await requireOverlayAccount(state._id);
   const scene = state.scenes.find(s => s.publicId === publicId)!;
   if (!scene.published) throw new OverlayError('This overlay has not been published', 404);
   return { channel: state._id, publicId, revision: scene.revision, snapshot: scene.published, controls: { ...initialQueueState(), ...state.controls } };

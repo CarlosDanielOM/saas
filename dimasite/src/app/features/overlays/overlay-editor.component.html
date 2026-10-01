@@ -1,6 +1,6 @@
 <div class="editor">
-@if (!pro() || !owner()) {
-  <main class="main"><p class="eyebrow">{{ t('prototype') }}</p><h1>{{ t('studio') }}</h1><p>{{ t(!pro() ? 'proRequired' : 'ownerRequired') }}</p><a [routerLink]="['/', streamer, 'modules']">{{ t('back') }}</a></main>
+@if (!owner()) {
+  <main class="main"><p class="eyebrow">{{ t('prototype') }}</p><h1>{{ t('studio') }}</h1><p>{{ t('ownerRequired') }}</p><a [routerLink]="['/', streamer, 'modules']">{{ t('back') }}</a></main>
 } @else if (loading() && !loaded()) { <main class="main" role="status">{{ t('loading') }}</main> } @else {
 @if(error()) { <p class="notice" role="alert">{{ error() }}</p> }
 @if(storageError()) { <p class="notice" role="alert">{{ t('localRecoveryFailed') }}</p> }

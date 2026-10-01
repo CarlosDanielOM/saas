@@ -38,7 +38,6 @@ interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>;
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
-  readonly pro = computed(() => this.auth.getPlanTierForStreamer(this.streamer) === 'pro');
   readonly owner = computed(() => this.auth.session()?.twitchUser.login.toLowerCase() === this.streamer.toLowerCase());
   readonly loading = signal(true);
   readonly loaded = signal(false);
@@ -447,7 +446,7 @@ export class OverlayEditorComponent {
     const initial = !this.loaded();
     this.loading.set(true); this.error.set(''); this.stopPointer();
     try {
-      if (this.pro() && this.owner()) {
+      if (this.owner()) {
         this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || '';
         if (!this.channel) throw new Error('Channel unavailable');
         if (initial) this.findRecovery();
