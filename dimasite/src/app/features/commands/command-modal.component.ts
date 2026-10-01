@@ -48,8 +48,9 @@ export class CommandModalComponent {
 
   readonly isOpen = input.required<boolean>();
   readonly command = input<Command | null>(null);
-  readonly activation = input<'command' | 'keyword'>('command');
-  readonly isKeyword = computed(() => (this.command()?.activation ?? this.activation()) === 'keyword');
+  readonly selectedActivation = signal<'command' | 'keyword'>('command');
+  readonly isKeyword = computed(() => (this.command()
+    ? this.command()?.activation ?? 'command' : this.selectedActivation()) === 'keyword');
   readonly planTier = input<PlanTier>('free');
   readonly commands = input<Command[]>([]);
   readonly allowTimer = input(true);
@@ -154,6 +155,22 @@ export class CommandModalComponent {
     this.cancel.emit();
   }
 
+  selectActivation(activation: 'command' | 'keyword'): void {
+    if (this.isEditMode()) return;
+    this.selectedActivation.set(activation);
+    this.formError.set(null);
+  }
+
+  onTypeTabKeydown(event: KeyboardEvent, activation: 'command' | 'keyword'): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 'command' : event.key === 'End' ? 'keyword'
+      : activation === 'command' ? 'keyword' : 'command';
+    this.selectActivation(next);
+    const list = (event.currentTarget as HTMLElement).parentElement;
+    list?.querySelector<HTMLButtonElement>(`#${next}-type-tab`)?.focus();
+  }
+
   setTimerEnabled(enabled: boolean): void {
     this.commandForm.patchValue({ timerEnabled: enabled });
     if (enabled && !this.commandForm.value.timerMinutes) {
@@ -253,6 +270,7 @@ export class CommandModalComponent {
         this.commandForm.get('timerMinutes')?.enable({ emitEvent: false });
       }
     } else {
+      this.selectedActivation.set('command');
       this.commandForm.reset({
         name: '',
         cmd: '',

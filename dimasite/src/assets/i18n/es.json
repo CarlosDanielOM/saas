@@ -2296,11 +2296,14 @@
   },
   "commands": {
     "title": "Comandos",
-    "subtitle": "Estos son los !comandos que la gente escribe en tu chat. Añade uno, elige quién puede usarlo o apágalo.",
+    "subtitle": "Administra !comandos y palabras clave juntos. Elige cómo responden, quién puede usarlos o cuándo se repiten.",
     "heading": "Comandos",
+    "createNew": "Crear nuevo",
+    "entriesPerPage": "Filas por página",
+    "types": { "command": "Comando", "keyword": "Palabra clave" },
     "guide": {
       "label": "Cómo añadir un comando",
-      "add": "Pulsa Agregar comando. Escribe la palabra después del ! y luego la respuesta que verá el chat.",
+      "add": "Pulsa Crear nuevo. Elige Comando para un !comando o Palabra clave para palabras del chat y escribe la respuesta.",
       "who": "Elige quién puede usarlo. “Cualquiera en el chat” es lo habitual.",
       "off": "Apaga un comando si quizá lo quieres después. Bórralo solo cuando estés seguro."
     },
@@ -2435,7 +2438,7 @@
       "zeroCooldownUsed": "Otro comando ya usa tu espacio de cooldown de 0s."
     },
     "search": {
-      "placeholder": "Buscar por nombre o comando...",
+      "placeholder": "Buscar comandos y palabras clave...",
       "searchButton": "Buscar",
       "notFoundHint": "Nada coincidió. Pulsa Enter para buscar otra vez.",
       "noResultsInCache": "Todavía no hay coincidencias. Pulsa Enter para buscar otra vez."

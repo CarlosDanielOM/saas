@@ -7,7 +7,10 @@
   --muted: #667085;
   --line: rgba(15, 17, 21, 0.08);
   --accent: #7c3aed;
+  --primary: #7c3aed;
   --accent-soft: rgba(124, 58, 237, 0.12);
+  --keyword: #1d4ed8;
+  --keyword-soft: rgba(37, 99, 235, 0.12);
   --live: #ef4444;
   --live-soft: rgba(239, 68, 68, 0.12);
   --ok: #15803d;
@@ -33,6 +36,8 @@
   --line: rgba(255, 255, 255, 0.07);
   --accent: #8b5cf6;
   --accent-soft: rgba(139, 92, 246, 0.16);
+  --keyword: #93c5fd;
+  --keyword-soft: rgba(59, 130, 246, 0.16);
   --live: #ef4444;
   --live-soft: rgba(239, 68, 68, 0.14);
   --ok: #86efac;
@@ -96,7 +101,6 @@
   min-width: 0;
 }
 
-.lf-activation-tabs { display: flex; gap: .5rem; flex-wrap: wrap; }
 .lf-keyword-match { display: block; margin-top: .35rem; color: var(--muted); }
 
 .lf-tile {
@@ -191,6 +195,10 @@
   background: var(--accent);
 }
 
+.lf-legend__swatch--keyword {
+  background: var(--keyword);
+}
+
 .lf-legend__swatch--reserved {
   background: var(--gold);
 }
@@ -279,9 +287,15 @@
 }
 
 .lf-chip--timer {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  color: var(--accent);
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  color: var(--ok);
+}
+
+.lf-chip--keyword {
+  color: var(--keyword);
+  background: var(--keyword-soft);
+  border-color: color-mix(in srgb, var(--keyword) 30%, transparent);
 }
 
 /* Buttons */
@@ -308,8 +322,8 @@
 }
 
 .lf-btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
 }
 
@@ -469,6 +483,14 @@
   box-shadow: inset 3px 0 0 var(--ok);
 }
 
+.lf-matrix__row--normal {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.lf-matrix__row--keyword {
+  box-shadow: inset 3px 0 0 var(--keyword);
+}
+
 .lf-matrix__row--pending {
   opacity: 0.7;
 }
@@ -539,16 +561,30 @@
   background: var(--ok);
 }
 
+.lf-kind-dot--keyword {
+  background: var(--keyword);
+}
+
 .lf-code {
   display: inline-block;
   padding: 0.2rem 0.5rem;
   border-radius: 0.5rem;
-  background: color-mix(in srgb, var(--fg) 4%, transparent);
-  color: var(--fg);
+  background: var(--accent-soft);
+  color: var(--kicker);
   font-family: var(--font);
   font-size: 0.82rem;
   font-weight: 750;
   letter-spacing: 0.01em;
+}
+
+.lf-code--keyword {
+  background: var(--keyword-soft);
+  color: var(--keyword);
+}
+
+.lf-code--timer {
+  background: var(--ok-soft);
+  color: var(--ok);
 }
 
 .lf-clip {
@@ -618,8 +654,8 @@
 }
 
 .lf-pager__btn--active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
 }
 
@@ -656,6 +692,14 @@
 
 .lf-cmd--timer {
   border-left: 3px solid var(--ok);
+}
+
+.lf-cmd--normal {
+  border-left: 3px solid var(--accent);
+}
+
+.lf-cmd--keyword {
+  border-left: 3px solid var(--keyword);
 }
 
 .lf-cmd--pending {

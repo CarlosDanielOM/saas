@@ -10,6 +10,8 @@
   --accent-soft: rgba(124, 58, 237, 0.12);
   --live: #ef4444;
   --kicker: #6d28d9;
+  --keyword: #1d4ed8;
+  --keyword-soft: rgba(37, 99, 235, 0.12);
   --btn: #eef0f5;
   --btn-border: rgba(15, 17, 21, 0.1);
   --shadow: 0 18px 48px rgba(15, 15, 20, 0.18);
@@ -30,6 +32,8 @@
   --accent: #8b5cf6;
   --accent-soft: rgba(139, 92, 246, 0.16);
   --kicker: #c4b5fd;
+  --keyword: #93c5fd;
+  --keyword-soft: rgba(59, 130, 246, 0.16);
   --btn: #1d2230;
   --btn-border: rgba(255, 255, 255, 0.07);
   --shadow: 0 22px 56px rgba(0, 0, 0, 0.5);
@@ -112,6 +116,43 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.lf-type-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.lf-type-tabs button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid var(--btn-border);
+  border-radius: 0.75rem;
+  background: var(--btn);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-type-tabs button[aria-selected="true"] {
+  color: var(--kicker);
+  background: var(--accent-soft);
+  border-color: var(--kicker);
+}
+
+.lf-type-tabs #keyword-type-tab[aria-selected="true"] {
+  color: var(--keyword);
+  background: var(--keyword-soft);
+  border-color: var(--keyword);
+}
+
+.lf-type-tabs button:focus-visible {
+  outline: 2px solid var(--kicker);
+  outline-offset: 2px;
 }
 
 .lf-form__body {

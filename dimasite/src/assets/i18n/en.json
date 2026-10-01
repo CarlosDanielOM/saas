@@ -2296,11 +2296,14 @@
   },
   "commands": {
     "title": "Commands",
-    "subtitle": "These are the !commands people type in your chat. Add one, choose who can use it, or turn it off.",
+    "subtitle": "Manage !commands and keywords together. Choose how they respond, who can use them, or when they repeat.",
     "heading": "Commands",
+    "createNew": "Create new",
+    "entriesPerPage": "Entries per page",
+    "types": { "command": "Command", "keyword": "Keyword" },
     "guide": {
       "label": "How to add a command",
-      "add": "Press Add command. Type the word after the !, then the reply chat should see.",
+      "add": "Press Create new. Choose Command for a !trigger or Keyword for words in chat, then write the reply.",
       "who": "Choose who can use it. “Anyone in chat” is the usual choice.",
       "off": "Turn a command off if you might want it later. Delete it only when you are sure."
     },
@@ -2435,7 +2438,7 @@
       "zeroCooldownUsed": "Another command uses your 0s cooldown slot."
     },
     "search": {
-      "placeholder": "Search by name or command...",
+      "placeholder": "Search commands and keywords...",
       "searchButton": "Search",
       "notFoundHint": "Nothing matched. Press Enter to look again.",
       "noResultsInCache": "Nothing matched yet. Press Enter to look again."

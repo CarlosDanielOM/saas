@@ -95,16 +95,6 @@ export class CommandsPageComponent {
 
   // Data signals
   readonly commands = signal<CommandListItem[]>([]);
-  readonly activation = signal<'command' | 'keyword'>('command');
-  readonly visibleCommands = computed(() => this.commands().filter(command =>
-    (command.activation === 'keyword' ? 'keyword' : 'command') === this.activation()));
-
-  setActivation(activation: 'command' | 'keyword'): void {
-    this.activation.set(activation);
-    this.searchInput.set('');
-    this.currentPage.set(1);
-  }
-
   activationLabel(command: Command): string {
     return command.activation === 'keyword' ? command.cmd : `!${command.cmd}`;
   }
@@ -184,12 +174,12 @@ export class CommandsPageComponent {
       '';
     return fromRoute || this.sessionAuth.session()?.twitchUser.login || '—';
   });
-  readonly totalCommands = computed(() => this.visibleCommands().length);
+  readonly totalCommands = computed(() => this.commands().length);
   readonly enabledCommands = computed(
-    () => this.visibleCommands().filter((command) => command.enabled !== false).length
+    () => this.commands().filter((command) => command.enabled !== false).length
   );
   readonly disabledCommands = computed(
-    () => this.visibleCommands().filter((command) => command.enabled === false).length
+    () => this.commands().filter((command) => command.enabled === false).length
   );
   readonly reservedCommands = computed(
     () => this.commands().filter((command) => Boolean(command.reserved)).length
@@ -197,6 +187,8 @@ export class CommandsPageComponent {
   readonly timerLinkedCommands = computed(
     () => this.commands().filter((command) => this.isTimerLinked(command)).length
   );
+  readonly keywordCount = computed(() => this.commands().filter(command => command.activation === 'keyword').length);
+  readonly normalCommandCount = computed(() => this.commands().filter(command => this.commandKind(command) === 'normal').length);
 
   readonly totalPages = computed(() =>
     Math.max(1, Math.ceil(this.filteredCommands().length / this.itemsPerPage()) || 1)
@@ -204,7 +196,7 @@ export class CommandsPageComponent {
 
   readonly filteredCommands = computed(() => {
     const query = this.searchInput().trim().toLowerCase();
-    const commands = this.visibleCommands();
+    const commands = this.commands();
 
     const matched = query
       ? commands.filter(
@@ -462,7 +454,8 @@ export class CommandsPageComponent {
     return (cmd !== '' && names.has(cmd)) || (name !== '' && names.has(name));
   }
 
-  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): 'reserved' | 'timer' | 'normal' {
+  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): 'reserved' | 'timer' | 'normal' | 'keyword' {
+    if (command.activation === 'keyword') return 'keyword';
     if (command.reserved) {
       return 'reserved';
     }
@@ -923,7 +916,8 @@ export class CommandsPageComponent {
     });
   }
 
-  private getTimerMinutesForCommand(command: Pick<Command, 'cmd' | 'name'>): number | null {
+  private getTimerMinutesForCommand(command: Pick<Command, 'cmd' | 'name' | 'activation'>): number | null {
+    if (command.activation === 'keyword') return null;
     const map = this.timerMinutesByName();
     const cmd = (command.cmd || '').trim().toLowerCase().replace(/^!/, '');
     const name = (command.name || '').trim().toLowerCase();
@@ -936,7 +930,8 @@ export class CommandsPageComponent {
     return null;
   }
 
-  private resolveTimerName(command: Pick<Command, 'cmd' | 'name'>): string | null {
+  private resolveTimerName(command: Pick<Command, 'cmd' | 'name' | 'activation'>): string | null {
+    if (command.activation === 'keyword') return null;
     const names = this.timerNames();
     const cmd = (command.cmd || '').trim().toLowerCase().replace(/^!/, '');
     const name = (command.name || '').trim().toLowerCase();
