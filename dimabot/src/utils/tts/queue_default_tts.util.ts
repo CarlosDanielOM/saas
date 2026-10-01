@@ -1,8 +1,10 @@
 import { requestTts, type TtsRequestBody } from '../../functions/chats/speech.chat.js';
-import { getChannelTtsSettings, type TtsProvider } from '../../schemas/channel_tts_settings.schema.js';
+import { getTtsEmoteNames } from './emote_names.util.js';
+import { getChannelTtsSettings, type ChannelTtsSettingsData, type TtsProvider } from '../../schemas/channel_tts_settings.schema.js';
 import {
     buildSpokenUserMessage,
     extractEmoteNames,
+    filterExpressiveTtsTags,
     normalizeTtsMessage
 } from './normalize_tts_message.util.js';
 
@@ -10,7 +12,8 @@ interface QueueDefaultTtsInput {
     channelID: string;
     rawMessage: string;
     source: 'chat-command' | 'ast' | 'redemption';
-    preferredMode?: 'default' | 'speak';
+    preferredMode?: 'default' | 'speak' | 'clone';
+    cloneName?: string;
     userID?: string;
     userLogin?: string;
     userName?: string;
@@ -32,9 +35,12 @@ function resolveDisplayName(input: QueueDefaultTtsInput): string {
     return String(input.userName || input.userLogin || '').trim();
 }
 
-async function resolveTtsMode(input: QueueDefaultTtsInput): Promise<{ mode: 'speak' | 'clone'; provider: TtsProvider }> {
-    const settings = await getChannelTtsSettings(input.channelID);
+function resolveTtsMode(input: QueueDefaultTtsInput, settings: ChannelTtsSettingsData): { mode: 'speak' | 'clone'; provider: TtsProvider } {
     const preferredMode = input.preferredMode || 'default';
+
+    if (preferredMode === 'clone') {
+        return { mode: 'clone', provider: 'fish' };
+    }
 
     if (preferredMode === 'speak' || settings.provider !== 'fish') {
         return { mode: 'speak', provider: 'piper' };
@@ -64,8 +70,16 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
         };
     }
 
-    const emoteNames = input.emoteNames || extractEmoteNames(rawMessage, input.emotes);
-    const normalized = normalizeTtsMessage(rawMessage, {
+    const emoteNames = input.emoteNames ?? (input.emotes
+        ? extractEmoteNames(rawMessage, input.emotes)
+        : settings.filters.skipEmotes ? await getTtsEmoteNames(input.channelID) : []);
+    const resolvedMode = resolveTtsMode(input, settings);
+    // Remove disabled cues before truncation so a partial tag cannot be spoken.
+    const filteredMessage = filterExpressiveTtsTags(rawMessage, {
+        provider: resolvedMode.provider,
+        enabledTags: settings.filters.expressiveTags
+    });
+    const normalized = normalizeTtsMessage(filteredMessage, {
         skipEmotes: settings.filters.skipEmotes,
         stripLinks: settings.filters.stripLinks,
         normalizeWhitespace: settings.filters.normalizeWhitespace,
@@ -87,11 +101,10 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
 
     if (!spokenMessage.trim()) return { error: true, message: 'No message provided', status: 400, type: 'error' };
 
-    const resolvedMode = await resolveTtsMode(input);
-
     const payload: TtsRequestBody = {
         mode: resolvedMode.mode,
         provider: resolvedMode.provider,
+        ...(input.cloneName ? { cloneName: input.cloneName } : {}),
         text: spokenMessage,
         language,
         requestedBy: {

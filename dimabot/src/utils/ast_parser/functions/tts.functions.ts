@@ -1,5 +1,3 @@
-import { getChannelTtsSettings } from '../../../schemas/channel_tts_settings.schema.js';
-import { requestTts } from '../../../functions/chats/speech.chat.js';
 import { queueDefaultTts } from '../../../utils/tts/queue_default_tts.util.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import { trackTts } from '../../../utils/posthog_events.js';
@@ -62,66 +60,26 @@ async function queueTts(
     ctx: Parameters<FunctionHandler>[1],
     cloneName?: string
 ): Promise<QueueTtsResult> {
-    if (mode === 'default' || mode === 'speak') {
-        const result = await queueDefaultTts({
-            channelID: ctx.broadcasterId,
-            rawMessage: message,
-            source: 'ast',
-            preferredMode: mode,
-            userID: ctx.userId,
-            userLogin: ctx.userLogin,
-            userName: ctx.userDisplayName,
-            userLevel: ctx.userLevel,
-            emoteNames: ((ctx.eventData?.message as { fragments?: { type?: string; text?: string }[] } | undefined)?.fragments || [])
-                .filter(fragment => fragment.type === 'emote' && typeof fragment.text === 'string')
-                .map(fragment => fragment.text!)
-        });
-
-        return {
-            output: result.error ? result.message : '',
-            success: !result.error,
-            mode: 'speak',
-            provider: 'piper',
-            errorMessage: result.error ? result.message : undefined
-        };
-    }
-
-    const settings = await getChannelTtsSettings(ctx.broadcasterId);
-
-    if (!settings.enabled) {
-        return {
-            output: 'TTS is disabled for this channel',
-            success: false,
-            mode: 'clone',
-            errorMessage: 'TTS is disabled for this channel'
-        };
-    }
-
-    const result = await requestTts(ctx.broadcasterId, {
-        mode: 'clone',
-        provider: 'fish',
-        text: message,
-        language: settings.defaultLanguage,
+    const fragments = (ctx.eventData?.message as { fragments?: { type?: string; text?: string }[] } | undefined)?.fragments;
+    const result = await queueDefaultTts({
+        channelID: ctx.broadcasterId,
+        rawMessage: message,
+        source: 'ast',
+        preferredMode: mode,
         cloneName,
-        requestedBy: {
-            userID: ctx.userId,
-            userLogin: ctx.userLogin,
-            userName: ctx.userDisplayName,
-            userLevel: ctx.userLevel
-        },
-        meta: {
-            source: 'ast',
-            originalText: message,
-            skipEmotes: settings.filters.skipEmotes,
-            stripLinks: settings.filters.stripLinks
-        }
+        userID: ctx.userId,
+        userLogin: ctx.userLogin,
+        userName: ctx.userDisplayName,
+        userLevel: ctx.userLevel,
+        emoteNames: fragments?.filter(fragment => fragment.type === 'emote' && typeof fragment.text === 'string')
+            .map(fragment => fragment.text!)
     });
 
     return {
         output: result.error ? result.message : '',
         success: !result.error,
-        mode: 'clone',
-        provider: 'fish',
+        mode: mode === 'clone' ? 'clone' : 'speak',
+        provider: mode === 'clone' ? 'fish' : 'piper',
         errorMessage: result.error ? result.message : undefined
     };
 }
