@@ -4,7 +4,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -262,13 +263,17 @@ export class CommandsPageComponent {
     const channelID = this.channelID();
     this.languageService.currentLanguage();
 
-    if (channelID) {
-      this.loadCommands(channelID);
-      this.loadTimerNames(channelID);
-    } else {
-      this.timerNames.set(new Set());
-      this.timerMinutesByName.set(new Map());
-    }
+    // Cached command responses emit synchronously. Pagination reads and the
+    // auth interceptor's session reads must not become fetch dependencies.
+    untracked(() => {
+      if (channelID) {
+        this.loadCommands(channelID);
+        this.loadTimerNames(channelID);
+      } else {
+        this.timerNames.set(new Set());
+        this.timerMinutesByName.set(new Map());
+      }
+    });
   });
 
   private readonly persistViewModeEffect = effect(() => {
