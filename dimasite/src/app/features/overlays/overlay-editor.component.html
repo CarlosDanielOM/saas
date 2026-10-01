@@ -129,10 +129,10 @@
               <div class="stage__crosshair" aria-hidden="true"></div>
               <div class="stage__label">{{ t('streamPreview') }}</div>
               <div class="stage__safe" aria-hidden="true"></div>
-              @for (widget of widgets(); track widget.id) {
+              @for (widget of widgets(); track widget.id; let layerIndex = $index) {
                 @if (widget.visible) {
                   <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
-                    [style.left.%]="widget.x / canvasWidth() * 100" [style.top.%]="widget.y / canvasHeight() * 100" [style.width.%]="widget.width / canvasWidth() * 100" [style.height.%]="widget.height / canvasHeight() * 100"
+                    [style.left.%]="widget.x / canvasWidth() * 100" [style.top.%]="widget.y / canvasHeight() * 100" [style.width.%]="widget.width / canvasWidth() * 100" [style.height.%]="widget.height / canvasHeight() * 100" [style.z-index]="layerIndex"
                     (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
                     <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
                       @switch (widget.kind) {
