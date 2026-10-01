@@ -3853,6 +3853,14 @@
     }
   },
   "overlayStudio": {
+    "editHistory": "Historial de edición",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "undoShortcut": "Deshacer (Ctrl/⌘ Z)",
+    "redoShortcut": "Rehacer (Ctrl/⌘ Mayús Z o Ctrl Y)",
+    "historyHint": "Deshaz cambios del borrador realizados durante esta visita.",
+    "undone": "Cambio del borrador deshecho.",
+    "redone": "Cambio del borrador restaurado.",
     "triggerFilter": "Recibir triggers",
     "allTriggers": "Todos los triggers",
     "selectedTriggers": "Triggers seleccionados",

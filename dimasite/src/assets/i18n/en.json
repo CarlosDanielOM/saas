@@ -3853,6 +3853,14 @@
     }
   },
   "overlayStudio": {
+    "editHistory": "Edit history",
+    "undo": "Undo",
+    "redo": "Redo",
+    "undoShortcut": "Undo (Ctrl/⌘ Z)",
+    "redoShortcut": "Redo (Ctrl/⌘ Shift Z or Ctrl Y)",
+    "historyHint": "Undo draft edits made during this visit.",
+    "undone": "Draft edit undone.",
+    "redone": "Draft edit restored.",
     "triggerFilter": "Receive triggers",
     "allTriggers": "All triggers",
     "selectedTriggers": "Selected triggers",

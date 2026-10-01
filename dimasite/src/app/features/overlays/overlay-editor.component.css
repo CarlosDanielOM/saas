@@ -145,6 +145,10 @@ select:focus-visible,textarea:focus-visible { outline:3px solid var(--accent); o
 .scene-picker select,.document-settings input,.property-field input,.property-field select,.property-field textarea,.compact-field input { width:100%; min-width:0; border:1px solid var(--line); background:var(--tile); color:var(--fg); border-radius:10px; padding:10px; min-height:44px; font-size:12px }
 .document-settings { display:grid; grid-template-columns:1fr 1fr; gap:12px; border:1px solid var(--line); background:var(--tile); border-radius:16px; padding:16px; margin-bottom:16px }
 .document-settings .name-field { grid-column:1/-1 }
+.history-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:12px }
+.history-toolbar .toolbar-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding-inline:12px }
+.history-toolbar span { flex:1 1 100%; color:var(--muted); font-size:11px; line-height:1.5 }
+@media (min-width:640px) { .history-toolbar span { flex-basis:auto; margin-left:4px } }
 .document-settings p { grid-column:1/-1; margin:0; color:var(--muted); font-size:11px; line-height:1.5 }
 .notice { color:var(--fg); padding:12px 16px; background:var(--accent-soft); border-radius:12px; font-size:12px; line-height:1.5 }
 .shared-badge { color:var(--accent); background:var(--accent-soft); font-size:11px; padding:13px; border-radius:12px }

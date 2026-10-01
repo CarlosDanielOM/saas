@@ -72,6 +72,11 @@
         </div>
       </section>
     }
+    <div class="history-toolbar" role="group" [attr.aria-label]="t('editHistory')">
+      <button type="button" class="toolbar-button" [disabled]="!canUndo()" (click)="undo()" [title]="t('undoShortcut')" aria-keyshortcuts="Control+z Meta+z"><lucide-icon [name]="icons.Undo2" [size]="16" aria-hidden="true" />{{ t('undo') }}</button>
+      <button type="button" class="toolbar-button" [disabled]="!canRedo()" (click)="redo()" [title]="t('redoShortcut')" aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y"><lucide-icon [name]="icons.Redo2" [size]="16" aria-hidden="true" />{{ t('redo') }}</button>
+      <span>{{ t('historyHint') }}</span>
+    </div>
     <div class="document-settings">
       <label class="name-field"><span>{{ designDraft() ? t('designName') : t('overlayName') }}</span><input [value]="designDraft()?.name ?? scene().name" maxlength="80" (input)="rename($event)" /></label>
       <label><span>{{ t('canvasWidth') }}</span><input type="number" min="100" max="7680" [value]="canvasWidth()" (input)="updateCanvas('width', $event)" /></label>
