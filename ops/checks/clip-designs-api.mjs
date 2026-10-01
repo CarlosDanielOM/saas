@@ -11,8 +11,10 @@ for (const design of ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hu
   assert.match(html, /\.skin video\s*\{[^}]*object-fit:\s*contain/s, 'show the complete source frame');
   assert.match(html, /window.innerHeight \/ overlay.offsetHeight/, 'responsive scale must use the selected canvas height');
   assert.match(html, /overlay.dataset.variant = variant;\s*applyResponsiveScale\(\)/, 'recalculate after selecting a design');
-  assert.match(html, /\[data-variant='third'\].*\[data-variant='cinema'\].*\[data-variant='pill'\].*\[data-variant='hud'\].*height: 450px/, 'video-led compositions have their own canvas');
+  assert.match(html, /\[data-variant='third'\].*\[data-variant='cinema'\].*\[data-variant='pill'\].*\[data-variant='hud'\].*\[data-variant='slash'\].*height: 450px/, 'video-led compositions have their own canvas');
   const slash = html.match(/\.overlay\[data-variant='slash'\] \.skin__video\s*\{([^}]*)\}/)[1];
   assert.doesNotMatch(slash, /clip-path:/, 'Slash decor must not mask the visible video');
+  assert.match(slash, /inset:\s*0/, 'Slash video fills the canvas behind its decorative overlay');
+  assert.match(html, /repeating-linear-gradient/, 'Slash includes a transparent mesh');
 }
 console.log('PASS API: all eight designs serve the candidate, preserve full frames, and scale their distinct canvases.');

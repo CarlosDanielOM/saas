@@ -162,7 +162,7 @@
                           <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
                         }
                         @case ('clip') {
-                          <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" />
+                          @if (!mediaEvents(widget).length) { <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" /> }
                         }
                       }
                     </div>

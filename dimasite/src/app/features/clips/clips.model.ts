@@ -5,7 +5,7 @@ export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbi
 export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
 /** Natural canvas size: video-led compositions differ from the wide banners. */
 export function clipDesignHeight(variant: ClipDesignVariant): number {
-  return ['third', 'cinema', 'pill', 'hud'].includes(variant) ? 450 : 225;
+  return ['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant) ? 450 : 225;
 }
 export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 

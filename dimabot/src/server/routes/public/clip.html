@@ -115,7 +115,7 @@
 
 /* Video-led designs retain a full 16:9 canvas; banner designs remain 800x225.
    Masks belong to decorative chrome, never to the visible video frame. */
-.overlay:is([data-variant='third'], [data-variant='cinema'], [data-variant='pill'], [data-variant='hud']) { height: 450px; }
+.overlay:is([data-variant='third'], [data-variant='cinema'], [data-variant='pill'], [data-variant='hud'], [data-variant='slash']) { height: 450px; }
 .overlay .skin { isolation: isolate; }
 .overlay .skin__meta { min-width: 0; box-sizing: border-box; }
 .overlay :is(.skin__kicker, .skin__name, .skin__copy, .skin__title) { overflow-wrap: anywhere; }
@@ -815,7 +815,7 @@
 
 .overlay[data-variant='slash'] .skin__video {
   position: absolute;
-  top: 0; left: 0; width: 400px; height: 225px;
+  inset: 0;
   overflow: hidden; border-radius: .85rem;
 }
 
@@ -826,8 +826,8 @@
 
 .overlay[data-variant='slash'] .skin__avatar {
   position: absolute;
-  left: 54%;
-  bottom: 14px;
+  left: 63%;
+  bottom: 24px;
   width: 64px;
   height: 64px;
   border-radius: 999px;
@@ -851,20 +851,20 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 50%;
+  width: 46%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   z-index: 3;
-  padding: 1rem 1.15rem 4.25rem 4.5rem;
-  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
+  padding: 1.5rem 1.5rem 5.5rem 5rem;
+  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
   box-sizing: border-box;
   color: #fff;
-  background: linear-gradient(
-    105deg,
-    transparent 0%,
-    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
-  );
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(105deg, transparent 0%, color-mix(in srgb, var(--clip-accent, #8b5cf6) 68%, transparent) 45%, color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 90%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 12px);
   opacity: 0;
   transform: translateX(28px);
   transition: opacity 1.15s ease-in-out, transform 1.15s ease-in-out;

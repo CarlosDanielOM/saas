@@ -33,7 +33,7 @@ try {
     if (url.pathname === '/auth/session') data = { twitch: user, app };
     else if (url.pathname.endsWith('/access') || url.pathname.startsWith('/auth/access/')) data = { allowed: true, role: 'owner', planTier: 'pro' };
     else if (url.pathname.endsWith('/preview')) data = req.postDataJSON().texts.map(t => t.replaceAll('$(user)', 'Luna'));
-    else if (url.pathname === '/clip/test') { legacySocket.send(`42/clip/${user.id},${JSON.stringify(['play-clip', { clipID: 'fixture-clip', streamerLogin: 'fixture', title: 'Fixture title', duration: 1, ...metadata }])}`); }
+    else if (url.pathname === '/clip/test') { legacySocket.send(`42/clip/${user.id},${JSON.stringify(['play-clip', { clipID: 'fixture-clip', streamerLogin: 'fixture', title: 'Fixture title', duration: 30, ...metadata }])}`); }
     else if (url.pathname.endsWith('/connections')) data = { checkedAt: Date.now(), pollingFailed: false, scenes: [] };
     else if (url.pathname === `/overlay-studio/${user.id}`) { if (req.method() === 'PUT') { state = structuredClone(req.postDataJSON()); state.revision++; } data = state; }
     else if (url.pathname.includes('/scenes/')) { const s = state.scenes[0]; s.revision++; s.published = structuredClone({ width: s.width, height: s.height, widgets: s.widgets, waitFor: s.waitFor, designs: state.designs }); state.revision++; data = state; }
@@ -53,13 +53,20 @@ try {
       const c = canvas.getBoundingClientRect(), v = video.getBoundingClientRect(), m = meta.getBoundingClientRect();
       return { aspect: c.width / c.height, videoWidth: v.width / c.width, metaWidth: m.width / c.width, metaTop: (m.top - c.top) / c.height, videoMask: getComputedStyle(video).clipPath };
     });
-    if (['third', 'cinema', 'pill', 'hud'].includes(variant)) {
+    if (['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant)) {
       assert.ok(Math.abs(composition.aspect - 16 / 9) < .01, `${variant} must use its own 16:9 composition, not the Classic banner`);
       assert.ok(composition.videoWidth > .99, `${variant} keeps a full-canvas clip`);
     }
     if (['third', 'cinema'].includes(variant)) { assert.ok(composition.metaWidth > .99); assert.ok(composition.metaTop > .5, `${variant} has bottom chrome, not a side panel`); }
     if (variant === 'pill') assert.ok(composition.metaTop > .75, 'Pill floats at the bottom');
-    if (variant === 'slash') assert.equal(composition.videoMask, 'none', 'the decorative Slash mask must not cut the video');
+    if (variant === 'slash') {
+      assert.equal(composition.videoMask, 'none', 'the decorative Slash mask must not cut the video');
+      assert.ok(composition.videoWidth > .99, 'Slash overlays its mesh on the full video');
+      const meta = await page.locator('.widget app-overlay-clip .skin__meta').evaluate(e => ({ background: getComputedStyle(e).backgroundImage, mask: getComputedStyle(e).clipPath }));
+      assert.match(meta.background, /repeating-linear-gradient/, 'Slash has a mesh');
+      assert.match(meta.background, /rgba\([^)]*, 0\)/, 'Slash fades from transparent');
+      assert.match(meta.mask, /polygon/, 'Slash decor has a diagonal edge');
+    }
     geometry.push(await page.locator('.widget app-overlay-clip').evaluate(element => {
       const frame = element.getBoundingClientRect();
       const video = element.querySelector('.skin__video');
@@ -83,9 +90,22 @@ try {
   assert.deepEqual(state.scenes[0].published.widgets.map(w => w.clipDesign), ['hud', 'slash']);
   await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('.widget app-overlay-clip video').length === 2);
+  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'each playing widget has one renderer; sample metadata must be removed');
   assert.deepEqual(await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.map(v => v.muted)), [false, true]);
   assert.equal(await page.locator('.widget app-overlay-clip .skin__name').getByText('Fixture streamer', { exact: true }).count(), 2);
   await until(() => editorEnded.length === 1, 'editor clip test must release the producer once after both players finish');
+  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'sample cards return after completion');
+  await select.selectOption('orbit');
+  await page.locator('.event-tester__actions').getByRole('button', { name: 'Clips', exact: true }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.widget app-overlay-clip video').length === 2);
+  await page.waitForFunction(() => [...document.querySelectorAll('.widget app-overlay-clip video')].every(v => v.readyState >= 2 && !v.paused));
+  await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.pause()));
+  assert.equal(await page.locator('.widget app-overlay-clip').count(), 2, 'Orbit has one text layer per placement during playback');
+  assert.equal(await page.locator('.widget [data-variant="orbit"] .skin__name').textContent(), 'Fixture streamer');
+  if (shots) await page.locator('.widget[data-kind="clip"]').last().screenshot({ path: `${shots}/editor-orbit-playing.png` });
+  await page.locator('.widget app-overlay-clip video').evaluateAll(videos => videos.forEach(v => v.dispatchEvent(new Event('ended'))));
+  await until(() => editorEnded.length === 2, 'Orbit completion restores its sample card');
+  await select.selectOption('slash');
   await page.locator('.widget[data-kind="clip"]').last().click();
   for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); if (width < 780) await page.locator('.mobile-tabs').getByRole('button', { name: 'Properties', exact: true }).click(); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
   await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
@@ -105,7 +125,7 @@ try {
     for (const width of [320, 1440]) {
       await p.setViewportSize({ width, height: 1000 });
       const canvases = await p.locator('app-clip-design-mock .clip-design').evaluateAll(elements => elements.map(e => ({ variant: e.dataset.variant, width: e.offsetWidth, height: e.offsetHeight })));
-      assert.deepEqual(canvases, variants.map(variant => ({ variant, width: 800, height: ['third', 'cinema', 'pill', 'hud'].includes(variant) ? 450 : 225 })), 'catalog canvases must not flex-shrink before scaling');
+      assert.deepEqual(canvases, variants.map(variant => ({ variant, width: 800, height: ['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant) ? 450 : 225 })), 'catalog canvases must not flex-shrink before scaling');
     }
     await c.close();
   }
@@ -146,7 +166,7 @@ try {
     });
     await demo.waitForFunction(() => document.querySelector('.overlay').getAnimations({ subtree: true }).every(a => a.playState === 'finished'));
     const size = await demo.locator('.overlay').evaluate(e => ({ width: e.offsetWidth, height: e.offsetHeight }));
-    assert.deepEqual(size, { width: 800, height: ['third', 'cinema', 'pill', 'hud'].includes(variant) ? 450 : 225 });
+    assert.deepEqual(size, { width: 800, height: ['third', 'cinema', 'pill', 'hud', 'slash'].includes(variant) ? 450 : 225 });
   }
   await demo.setViewportSize({ width: 375, height: 900 });
   await demo.waitForFunction(() => document.querySelector('.overlay').getBoundingClientRect().width <= document.querySelector('.stage').clientWidth);

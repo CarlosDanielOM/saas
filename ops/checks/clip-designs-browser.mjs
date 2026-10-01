@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const variants = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'];
-const tall = v => ['third', 'cinema', 'pill', 'hud'].includes(v);
+const tall = v => ['third', 'cinema', 'pill', 'hud', 'slash'].includes(v);
 const source = process.env.SAAS_CLIP_HTML ? await readFile(process.env.SAAS_CLIP_HTML, 'utf8') : null;
 const base = process.env.SAAS_CLIP_URL || 'https://clip.fixture.invalid/clip/990191';
 assert.ok(source || process.env.SAAS_CLIP_URL, 'Choose an isolated HTML snapshot or deployed clip URL');
