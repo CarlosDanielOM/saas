@@ -31,6 +31,7 @@
 }
 
 .clip-design {
+  flex: none;
   width: 800px;
   height: 225px;
   position: relative;
@@ -121,7 +122,7 @@
 
 @media (max-width: 639px) {
   .mock {
-    aspect-ratio: 800 / 225;
+    aspect-ratio: 800 / var(--clip-canvas-height, 225);
     min-height: 0;
   }
 }

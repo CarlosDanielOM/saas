@@ -1,7 +1,12 @@
-/* Shared clip skins for catalog previews and Overlay Studio playback.
-   Geometry: the 800×225 banner always gives the clip a 16:9 (400×225) slot so the
-   whole frame is shown; the remaining 400×225 is the design's info chrome.
-   Clips are 16:9, so a full-bleed slot would crop the top and bottom. */
+/* Shared clip skins for catalog previews and Overlay Studio playback. */
+/* Video-led designs retain a full 16:9 canvas; banner designs remain 800x225.
+   Masks belong to decorative chrome, never to the visible video frame. */
+.clip-design:is([data-variant='third'], [data-variant='cinema'], [data-variant='pill'], [data-variant='hud']) { height: 450px; }
+.clip-design .skin { isolation: isolate; }
+.clip-design .skin__meta { min-width: 0; box-sizing: border-box; }
+.clip-design :is(.skin__kicker, .skin__name, .skin__copy, .skin__title) { overflow-wrap: anywhere; }
+.clip-design :is(.skin__kicker, .skin__name, .skin__title) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.clip-design .skin__copy { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* ——— Classic (prod Design 1) ——— */
 .clip-design[data-variant='classic'] .skin {
@@ -14,7 +19,7 @@
 
 .clip-design[data-variant='classic'] .skin__video {
   width: 400px;
-  height: 225px;
+  height: 100%;
   position: absolute;
   inset: 0 auto auto 0;
   overflow: hidden;
@@ -88,22 +93,19 @@
 .clip-design[data-variant='third'] .skin {
   position: relative;
   height: 100%;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='third'] .skin__video {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
+  inset: 0;
   overflow: hidden;
   border-radius: 0.85rem;
 }
 
 .clip-design[data-variant='third'] .skin__avatar {
   position: absolute;
-  left: 416px;
+  left: 16px;
   bottom: 18px;
   width: 52px;
   height: 52px;
@@ -115,18 +117,16 @@
 
 .clip-design[data-variant='third'] .skin__meta {
   position: absolute;
-  top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  left: 400px;
   display: grid;
-  grid-template-columns: 64px 1fr;
-  align-content: end;
+  grid-template-columns: 76px 1fr;
   align-items: center;
-  padding: 0.9rem 1rem 0.9rem 0.85rem;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(10, 10, 14, 0.4), rgba(10, 10, 14, 0.92));
-  border-left: 3px solid var(--clip-accent, #8b5cf6);
+  min-height: 72px;
+  padding: 0.65rem 1rem 0.65rem 0.85rem;
+  background: linear-gradient(90deg, rgba(10, 10, 14, 0.92), rgba(10, 10, 14, 0.78));
+  border-top: 3px solid var(--clip-accent, #8b5cf6);
   color: #fff;
 }
 
@@ -157,19 +157,23 @@
 
 /* ——— Tile ——— */
 .clip-design[data-variant='tile'] .skin {
-  position: relative;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-areas: 'video meta';
+  gap: 0.7rem;
+  padding: 0.7rem;
   height: 100%;
-  font-family: var(--font);
+  box-sizing: border-box;
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='tile'] .skin__video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
+  grid-area: video;
+  width: 360px;
+  aspect-ratio: 16 / 9;
+  align-self: center;
   border-radius: 1rem;
+  overflow: hidden;
 }
 
 .clip-design[data-variant='tile'] .skin__avatar {
@@ -177,11 +181,7 @@
 }
 
 .clip-design[data-variant='tile'] .skin__meta {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
-  bottom: 0.7rem;
-  left: 412px;
+  grid-area: meta;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -225,17 +225,12 @@
   height: 100%;
   overflow: hidden;
   border-radius: 0.9rem;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='cinema'] .skin__video {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
-  border-radius: 0.9rem;
+  inset: 0;
 }
 
 .clip-design[data-variant='cinema'] .skin__avatar {
@@ -251,18 +246,15 @@
 
 .clip-design[data-variant='cinema'] .skin__meta {
   position: absolute;
-  top: 0;
   left: 0;
+  right: 0;
   bottom: 0;
-  right: 400px;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  align-content: flex-end;
+  align-items: baseline;
   gap: 0.35rem 0.7rem;
-  padding: 1rem 1.15rem 1rem 68px;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.85));
+  padding: 2.4rem 1rem 0.85rem 68px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.78));
   color: #fff;
 }
 
@@ -291,14 +283,14 @@
 /* ——— Orbit ——— */
 .clip-design[data-variant='orbit'] .skin {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto auto minmax(0, 1fr);
   grid-template-areas: 'avatar video meta';
   align-items: center;
   gap: 0.85rem;
   height: 100%;
   padding: 0.7rem 0.85rem;
   box-sizing: border-box;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='orbit'] .skin__avatar {
@@ -370,15 +362,12 @@
 .clip-design[data-variant='pill'] .skin {
   position: relative;
   height: 100%;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='pill'] .skin__video {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 225px;
+  inset: 0;
   overflow: hidden;
   border-radius: 1rem;
 }
@@ -389,15 +378,14 @@
 
 .clip-design[data-variant='pill'] .skin__meta {
   position: absolute;
-  left: 16px;
-  right: 416px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 14px;
+  bottom: 14px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.65rem;
-  padding: 0.7rem 1.1rem;
+  max-width: 72%;
+  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
   border-radius: 999px;
   background: rgba(15, 17, 21, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -425,22 +413,19 @@
 .clip-design[data-variant='hud'] .skin {
   position: relative;
   height: 100%;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='hud'] .skin__video {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
+  inset: 0;
   overflow: hidden;
   border-radius: 0.85rem;
 }
 
 .clip-design[data-variant='hud'] .skin__avatar {
   position: absolute;
-  right: 12px;
+  left: 12px;
   bottom: 12px;
   width: 40px;
   height: 40px;
@@ -451,10 +436,7 @@
 
 .clip-design[data-variant='hud'] .skin__meta {
   position: absolute;
-  top: 0;
-  left: 400px;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   color: #fff;
   pointer-events: none;
 }
@@ -479,16 +461,16 @@
 }
 
 .clip-design[data-variant='hud'] .skin__name {
-  left: 12px;
+  left: 60px;
   bottom: 16px;
-  max-width: 62%;
+  max-width: 55%;
   font-size: 1rem;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
 .clip-design[data-variant='hud'] .skin__title {
-  top: 12px;
   right: 12px;
+  top: 12px;
   max-width: 42%;
   text-align: right;
   font-size: 0.74rem;
@@ -505,22 +487,18 @@
   position: relative;
   height: 100%;
   overflow: hidden;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .clip-design[data-variant='slash'] .skin__video {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
-  border-radius: 0.85rem;
+  top: 0; left: 0; width: 400px; height: 225px;
+  overflow: hidden; border-radius: .85rem;
 }
 
 .clip-design[data-variant='slash'] .skin__avatar {
   position: absolute;
-  left: 400px;
+  left: 54%;
   bottom: 14px;
   width: 64px;
   height: 64px;
@@ -537,19 +515,19 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 52%;
+  width: 50%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   z-index: 3;
-  padding: 1rem 1.15rem 1rem 3.2rem;
+  padding: 1rem 1.15rem 4.25rem 4.5rem;
+  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   box-sizing: border-box;
   color: #fff;
-  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   background: linear-gradient(
     105deg,
     transparent 0%,
-    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 40%
+    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
   );
 }
 

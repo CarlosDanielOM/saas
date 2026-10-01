@@ -48,6 +48,18 @@ try {
   const geometry = [];
   for (const variant of variants) {
     await select.selectOption(variant); await page.waitForFunction(v => document.querySelector('.widget app-overlay-clip .clip-design').dataset.variant === v, variant);
+    const composition = await page.locator('.widget app-overlay-clip').evaluate(element => {
+      const canvas = element.querySelector('.clip-design'), video = element.querySelector('.skin__video'), meta = element.querySelector('.skin__meta');
+      const c = canvas.getBoundingClientRect(), v = video.getBoundingClientRect(), m = meta.getBoundingClientRect();
+      return { aspect: c.width / c.height, videoWidth: v.width / c.width, metaWidth: m.width / c.width, metaTop: (m.top - c.top) / c.height, videoMask: getComputedStyle(video).clipPath };
+    });
+    if (['third', 'cinema', 'pill', 'hud'].includes(variant)) {
+      assert.ok(Math.abs(composition.aspect - 16 / 9) < .01, `${variant} must use its own 16:9 composition, not the Classic banner`);
+      assert.ok(composition.videoWidth > .99, `${variant} keeps a full-canvas clip`);
+    }
+    if (['third', 'cinema'].includes(variant)) { assert.ok(composition.metaWidth > .99); assert.ok(composition.metaTop > .5, `${variant} has bottom chrome, not a side panel`); }
+    if (variant === 'pill') assert.ok(composition.metaTop > .75, 'Pill floats at the bottom');
+    if (variant === 'slash') assert.equal(composition.videoMask, 'none', 'the decorative Slash mask must not cut the video');
     geometry.push(await page.locator('.widget app-overlay-clip').evaluate(element => {
       const frame = element.getBoundingClientRect();
       const video = element.querySelector('.skin__video');
@@ -89,7 +101,13 @@ try {
     const p = await c.newPage(); await p.goto(base + '/fixture/modules/clips'); await p.locator('.lf-slide').first().waitFor();
     assert.equal(await p.locator('.lf-slide').count(), 8);
     assert.equal(await p.locator('.lf-slide__actions a').count(), tier === 'free' ? 2 : 8);
-    assert.equal(await p.locator('app-clip-design-mock .clip-design').count(), 8); await c.close();
+    assert.equal(await p.locator('app-clip-design-mock .clip-design').count(), 8);
+    for (const width of [320, 1440]) {
+      await p.setViewportSize({ width, height: 1000 });
+      const canvases = await p.locator('app-clip-design-mock .clip-design').evaluateAll(elements => elements.map(e => ({ variant: e.dataset.variant, width: e.offsetWidth, height: e.offsetHeight })));
+      assert.deepEqual(canvases, variants.map(variant => ({ variant, width: 800, height: ['third', 'cinema', 'pill', 'hud'].includes(variant) ? 450 : 225 })), 'catalog canvases must not flex-shrink before scaling');
+    }
+    await c.close();
   }
   console.log('PASS shared catalog: Free retains Classic/Third; Premium and Pro retain all eight designs.');
 
@@ -114,4 +132,25 @@ try {
   events.set('broken', { id: 'broken', kind: 'clip', media: { type: 'video', url: api + '/broken.mp4', title: '', volume: 1 } }); send('overlay-event', { id: 'broken', kind: 'clip' }); await until(() => ended.includes('broken') && health.some(h => h.issue === 'media'), 'clip error releases event and reports health');
   assert.equal(await source.evaluate(() => document.body.style.background), 'transparent'); assert.deepEqual(errors, []); await runtime.close();
   console.log('PASS OBS runtime: all eight skins render real H.264 clips, metadata and independent published choices; active design survives publish, duplicate players use one audio copy, errors release and report diagnostics, transparent output.');
+  const playground = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+  await playground.routeWebSocket('**/*', ws => ws.close());
+  await playground.route('**/*', route => new URL(route.request().url()).origin === new URL(base).origin ? route.continue() : route.abort());
+  const demo = await playground.newPage(); await demo.goto(base + '/mocks/dev/clips');
+  await demo.getByText('Hold at peak', { exact: true }).click();
+  for (const variant of variants) {
+    await demo.getByRole('tab').filter({ hasText: new RegExp(variant, 'i') }).click();
+    await demo.getByRole('button', { name: 'Test', exact: true }).click();
+    await demo.waitForFunction(() => {
+      const e = document.querySelector('.overlay.is-in');
+      return e && e.getBoundingClientRect().width > 100 && getComputedStyle(e.querySelector('video')).opacity === '1';
+    });
+    await demo.waitForFunction(() => document.querySelector('.overlay').getAnimations({ subtree: true }).every(a => a.playState === 'finished'));
+    const size = await demo.locator('.overlay').evaluate(e => ({ width: e.offsetWidth, height: e.offsetHeight }));
+    assert.deepEqual(size, { width: 800, height: ['third', 'cinema', 'pill', 'hud'].includes(variant) ? 450 : 225 });
+  }
+  await demo.setViewportSize({ width: 375, height: 900 });
+  await demo.waitForFunction(() => document.querySelector('.overlay').getBoundingClientRect().width <= document.querySelector('.stage').clientWidth);
+  assert.equal(await demo.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await playground.close();
+  console.log('PASS playground: eight visible moving clip compositions, design switching, and mobile scaling.');
 } finally { await browser.close(); }

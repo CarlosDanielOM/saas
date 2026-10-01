@@ -3,13 +3,14 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  afterNextRender,
+  effect,
   computed,
   inject,
   signal,
   viewChild
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { clipDesignHeight } from '../../clips/clips.model';
 
 export type ClipOverlayVariant =
   | 'classic'
@@ -134,7 +135,7 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Third',
       badge: 'Free',
       premium: false,
-      note: 'Broadcast split. Full 16:9 clip beside a lower-third panel.'
+      note: 'Broadcast lower-third. Video fades, bar slides up, then eases back down.'
     },
     {
       id: 'tile',
@@ -148,7 +149,7 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Cinema',
       badge: 'Premium',
       premium: true,
-      note: 'Wide clip. Info panel rises after the picture fades up.'
+      note: 'Full-bleed clip. Scrim and meta rise after the picture fades up.'
     },
     {
       id: 'orbit',
@@ -162,21 +163,21 @@ export class ClipOverlayPlaygroundComponent {
       label: 'Pill',
       badge: 'Premium',
       premium: true,
-      note: 'Floating capsule beside the clip. Capsule slides in after the picture.'
+      note: 'Floating capsule over full video. Capsule slides in after the picture.'
     },
     {
       id: 'hud',
       label: 'HUD',
       badge: 'Premium',
       premium: true,
-      note: 'Corner chips only. Game, name, and title stagger in beside the clip.'
+      note: 'Corner chips only. Game, name, and title stagger in around the clip.'
     },
     {
       id: 'slash',
       label: 'Slash',
       badge: 'Premium',
       premium: true,
-      note: 'Diagonal panel. Type sits in the cut, avatar on the seam.'
+      note: 'Diagonal reveal. Video wipes open, type sits in the cut, avatar on the seam.'
     }
   ];
 
@@ -189,7 +190,8 @@ export class ClipOverlayPlaygroundComponent {
   readonly selectedLogin = signal<string | 'random'>('random');
   readonly phase = signal<ClipPlayPhase>('idle');
   readonly clip = signal<ClipPlayPayload | null>(null);
-  readonly scale = signal(1);
+  private readonly available = signal({ width: 800, height: 450 });
+  readonly scale = computed(() => Math.max(0, Math.min(this.available().width / 800, this.available().height / clipDesignHeight(this.variant()), 1)));
   readonly lastError = signal('');
 
   readonly activeVariant = computed(
@@ -230,15 +232,23 @@ export class ClipOverlayPlaygroundComponent {
   private endTimer: ReturnType<typeof setTimeout> | null = null;
   private enterFrame = 0;
   private raf = 0;
-  private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
-    afterNextRender(() => this.bindStageScale());
+    effect((onCleanup) => {
+      const stage = this.stageRef()?.nativeElement;
+      if (!stage || typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry.contentRect.width > 32 && entry.contentRect.height > 32) {
+          this.available.set({ width: entry.contentRect.width - 32, height: entry.contentRect.height - 32 });
+        }
+      });
+      observer.observe(stage);
+      onCleanup(() => observer.disconnect());
+    });
 
     this.destroyRef.onDestroy(() => {
       this.clearTimers();
       this.stopCanvas();
-      this.resizeObserver?.disconnect();
     });
   }
 
@@ -334,20 +344,6 @@ export class ClipOverlayPlaygroundComponent {
       return FIXTURES.find((item) => item.streamerLogin === login) ?? FIXTURES[0];
     }
     return FIXTURES[Math.floor(Math.random() * FIXTURES.length)];
-  }
-
-  private bindStageScale(): void {
-    const stage = this.stageRef()?.nativeElement;
-    if (!stage || typeof ResizeObserver === 'undefined') return;
-    const update = () => {
-      const width = stage.clientWidth - 32;
-      const height = stage.clientHeight - 32;
-      const next = Math.min(width / 800, height / 225, 1);
-      this.scale.set(Math.max(next, 0.28));
-    };
-    this.resizeObserver = new ResizeObserver(update);
-    this.resizeObserver.observe(stage);
-    update();
   }
 
   private startCanvasClip(payload: ClipPlayPayload): MediaStream {

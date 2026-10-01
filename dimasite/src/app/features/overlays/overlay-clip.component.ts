@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
 import { OverlayMediaComponent, type TestMedia } from './overlay-media.component';
-import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.model';
+import { CLIP_DESIGN_VARIANTS, clipDesignHeight, type ClipDesignVariant } from '../clips/clips.model';
 
 /** The same eight clip skins used by the Clips catalog, fitted to a canvas placement. */
 @Component({
@@ -43,7 +43,8 @@ export class OverlayClipComponent {
   readonly playbackBlocked = output<void>();
   readonly language = inject(LanguageService);
   private readonly frame = viewChild<ElementRef<HTMLElement>>('frame');
-  readonly scale = signal(0);
+  private readonly available = signal({ width: 0, height: 0 });
+  readonly scale = computed(() => Math.max(0, Math.min(this.available().width / 800, this.available().height / clipDesignHeight(this.variant()))));
   readonly avatarFailed = signal(false);
   readonly variant = computed(() => CLIP_DESIGN_VARIANTS.includes(this.design()) ? this.design() : 'classic');
   readonly name = computed(() => this.media()?.clip?.streamer || this.streamer() || (this.media() ? '' : this.language.translate('clips.mock.streamer')));
@@ -64,7 +65,7 @@ export class OverlayClipComponent {
     afterNextRender(() => {
       const element = this.frame()?.nativeElement;
       if (!element) return;
-      const resize = () => this.scale.set(Math.max(0, Math.min(element.clientWidth / 800, element.clientHeight / 225)));
+      const resize = () => this.available.set({ width: element.clientWidth, height: element.clientHeight });
       resize(); observer = new ResizeObserver(resize); observer.observe(element);
     });
     destroy.onDestroy(() => observer?.disconnect());

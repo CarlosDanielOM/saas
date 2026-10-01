@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   ElementRef,
   afterNextRender,
@@ -10,7 +11,7 @@ import {
   viewChild
 } from '@angular/core';
 
-import type { ClipDesignVariant } from '../clips.model';
+import { clipDesignHeight, type ClipDesignVariant } from '../clips.model';
 
 @Component({
   selector: 'app-clip-design-mock',
@@ -29,7 +30,9 @@ export class ClipDesignMockComponent {
   readonly title = input<string>('Your clip title');
   readonly caption = input<string>('Your caption appears here');
 
-  readonly scale = signal(0.42);
+  private readonly available = signal({ width: 336, height: 189 });
+  readonly canvasHeight = computed(() => clipDesignHeight(this.variant()));
+  readonly scale = computed(() => Math.max(0, Math.min(this.available().width / 800, this.available().height / this.canvasHeight())));
 
   private resizeObserver: ResizeObserver | null = null;
   private frameHandle = 0;
@@ -63,8 +66,7 @@ export class ClipDesignMockComponent {
       if (width <= 0 || height <= 0) {
         return;
       }
-      const next = Math.min(width / 800, height / 225);
-      this.scale.set(Math.max(next, 0.2));
+      this.available.set({ width, height });
     };
 
     this.resizeObserver = new ResizeObserver(update);

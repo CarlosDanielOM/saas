@@ -79,6 +79,7 @@
         .overlay[data-variant='3'].is-in .skin__avatar { transform: scale(1); }
 
 .overlay {
+  flex: none;
   width: 800px;
   height: 225px;
   transform-origin: center center;
@@ -112,6 +113,15 @@
   margin: 0;
 }
 
+/* Video-led designs retain a full 16:9 canvas; banner designs remain 800x225.
+   Masks belong to decorative chrome, never to the visible video frame. */
+.overlay:is([data-variant='third'], [data-variant='cinema'], [data-variant='pill'], [data-variant='hud']) { height: 450px; }
+.overlay .skin { isolation: isolate; }
+.overlay .skin__meta { min-width: 0; box-sizing: border-box; }
+.overlay :is(.skin__kicker, .skin__name, .skin__copy, .skin__title) { overflow-wrap: anywhere; }
+.overlay :is(.skin__kicker, .skin__name, .skin__title) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.overlay .skin__copy { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
 /* ——— Classic (prod Design 1) ——— */
 .overlay[data-variant='classic'] .skin {
   width: 800px;
@@ -123,7 +133,7 @@
 
 .overlay[data-variant='classic'] .skin__video {
   width: 400px;
-  height: 225px;
+  height: 100%;
   position: absolute;
   inset: 0 auto auto 0;
   overflow: hidden;
@@ -188,7 +198,6 @@
 
 .overlay[data-variant='classic'] .skin__name {
   font-size: 1.8em;
-  order: 1;
 }
 
 .overlay[data-variant='classic'] .skin__copy {
@@ -202,6 +211,10 @@
 
 .overlay[data-variant='classic'] .skin__copy + .skin__title {
   display: none;
+}
+
+.overlay[data-variant='classic'] .skin__name {
+  order: 1;
 }
 
 .overlay[data-variant='classic'].is-in .skin video,
@@ -227,121 +240,25 @@
   margin-bottom: 10px;
 }
 
-/* ——— Third ——— */
-.overlay[data-variant='third'] .skin {
-  position: relative;
-  height: 100%;
-  font-family: var(--font);
-}
-
-.overlay[data-variant='third'] .skin__video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
-  border-radius: 0.85rem;
-}
-
-.overlay[data-variant='third'] .skin video {
-  opacity: 0;
-  transition: opacity 1.2s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__avatar {
-  position: absolute;
-  left: 416px;
-  bottom: 18px;
-  width: 52px;
-  height: 52px;
-  border-radius: 999px;
-  overflow: hidden;
-  z-index: 3;
-  border: 2px solid #fff;
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.overlay[data-variant='third'] .skin__meta {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 400px;
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  align-content: end;
-  align-items: center;
-  padding: 0.9rem 1rem 0.9rem 0.85rem;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(10, 10, 14, 0.4), rgba(10, 10, 14, 0.92));
-  border-left: 3px solid var(--clip-accent, #8b5cf6);
-  color: #fff;
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
-}
-
-.overlay[data-variant='third'] .skin__kicker {
-  grid-column: 2;
-  font-size: 0.66rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--clip-accent, #c4b5fd);
-}
-
-.overlay[data-variant='third'] .skin__name {
-  grid-column: 2;
-  font-size: 1.2rem;
-  letter-spacing: -0.03em;
-}
-
-.overlay[data-variant='third'] .skin__copy {
-  grid-column: 2;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.82rem;
-}
-
-.overlay[data-variant='third'] .skin__title {
-  display: none;
-}
-
-.overlay[data-variant='third'].is-in .skin video,
-.overlay[data-variant='third'].is-in .skin__avatar,
-.overlay[data-variant='third'].is-in .skin__meta {
-  opacity: 1;
-  transform: none;
-}
-
-.overlay[data-variant='third'].is-in .skin__avatar,
-.overlay[data-variant='third'].is-in .skin__meta {
-  transition-delay: 0.12s;
-}
-
 /* ——— Tile ——— */
 .overlay[data-variant='tile'] .skin {
-  position: relative;
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-areas: 'video meta';
+  gap: 0.7rem;
+  padding: 0.7rem;
   height: 100%;
-  font-family: var(--font);
+  box-sizing: border-box;
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='tile'] .skin__video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
+  grid-area: video;
+  width: 360px;
+  aspect-ratio: 16 / 9;
+  align-self: center;
   border-radius: 1rem;
+  overflow: hidden;
 }
 
 .overlay[data-variant='tile'] .skin video,
@@ -359,11 +276,7 @@
 }
 
 .overlay[data-variant='tile'] .skin__meta {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
-  bottom: 0.7rem;
-  left: 412px;
+  grid-area: meta;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -412,23 +325,113 @@
   transition-delay: 0.14s;
 }
 
+/* ——— Third ——— */
+.overlay[data-variant='third'] .skin {
+  position: relative;
+  height: 100%;
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
+}
+
+.overlay[data-variant='third'] .skin__video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0.85rem;
+}
+
+.overlay[data-variant='third'] .skin video {
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__avatar {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 3;
+  border: 2px solid #fff;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay[data-variant='third'] .skin__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  min-height: 72px;
+  padding: 0.65rem 1rem 0.65rem 0.85rem;
+  background: linear-gradient(90deg, rgba(10, 10, 14, 0.92), rgba(10, 10, 14, 0.78));
+  border-top: 3px solid var(--clip-accent, #8b5cf6);
+  color: #fff;
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+}
+
+.overlay[data-variant='third'] .skin__kicker {
+  grid-column: 2;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clip-accent, #c4b5fd);
+}
+
+.overlay[data-variant='third'] .skin__name {
+  grid-column: 2;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.overlay[data-variant='third'] .skin__copy {
+  grid-column: 2;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+}
+
+.overlay[data-variant='third'] .skin__title {
+  display: none;
+}
+
+.overlay[data-variant='third'].is-in .skin video,
+.overlay[data-variant='third'].is-in .skin__avatar,
+.overlay[data-variant='third'].is-in .skin__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.overlay[data-variant='third'].is-in .skin__avatar,
+.overlay[data-variant='third'].is-in .skin__meta {
+  transition-delay: 0.12s;
+}
+
 /* ——— Cinema ——— */
 .overlay[data-variant='cinema'] .skin {
   position: relative;
   height: 100%;
   overflow: hidden;
   border-radius: 0.9rem;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='cinema'] .skin__video {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
-  border-radius: 0.9rem;
+  inset: 0;
 }
 
 .overlay[data-variant='cinema'] .skin video {
@@ -458,18 +461,15 @@
 
 .overlay[data-variant='cinema'] .skin__meta {
   position: absolute;
-  top: 0;
   left: 0;
+  right: 0;
   bottom: 0;
-  right: 400px;
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  align-content: flex-end;
+  align-items: baseline;
   gap: 0.35rem 0.7rem;
-  padding: 1rem 1.15rem 1rem 68px;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.85));
+  padding: 2.4rem 1rem 0.85rem 68px;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.78));
   color: #fff;
   opacity: 0;
   transform: translateY(18px);
@@ -513,14 +513,14 @@
 /* ——— Orbit ——— */
 .overlay[data-variant='orbit'] .skin {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto auto minmax(0, 1fr);
   grid-template-areas: 'avatar video meta';
   align-items: center;
   gap: 0.85rem;
   height: 100%;
   padding: 0.7rem 0.85rem;
   box-sizing: border-box;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='orbit'] .skin__avatar {
@@ -625,15 +625,12 @@
 .overlay[data-variant='pill'] .skin {
   position: relative;
   height: 100%;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='pill'] .skin__video {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: 400px;
-  height: 225px;
+  inset: 0;
   overflow: hidden;
   border-radius: 1rem;
 }
@@ -650,20 +647,20 @@
 
 .overlay[data-variant='pill'] .skin__meta {
   position: absolute;
-  left: 16px;
-  right: 416px;
-  top: 50%;
+  left: 14px;
+  bottom: 14px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.65rem;
-  padding: 0.7rem 1.1rem;
+  max-width: 72%;
+  padding: 0.55rem 0.9rem 0.55rem 0.7rem;
   border-radius: 999px;
   background: rgba(15, 17, 21, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f5f7fb;
   opacity: 0;
-  transform: translateY(-50%) translateX(-28px);
+  transform: translateX(-28px);
   transition: opacity 1.1s ease-in-out, transform 1.1s ease-in-out;
 }
 
@@ -684,14 +681,13 @@
   display: none;
 }
 
-.overlay[data-variant='pill'].is-in .skin video {
+.overlay[data-variant='pill'].is-in .skin video,
+.overlay[data-variant='pill'].is-in .skin__meta {
   opacity: 1;
   transform: none;
 }
 
 .overlay[data-variant='pill'].is-in .skin__meta {
-  opacity: 1;
-  transform: translateY(-50%);
   transition-delay: 0.18s;
 }
 
@@ -699,15 +695,12 @@
 .overlay[data-variant='hud'] .skin {
   position: relative;
   height: 100%;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='hud'] .skin__video {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
+  inset: 0;
   overflow: hidden;
   border-radius: 0.85rem;
 }
@@ -719,7 +712,7 @@
 
 .overlay[data-variant='hud'] .skin__avatar {
   position: absolute;
-  right: 12px;
+  left: 12px;
   bottom: 12px;
   width: 40px;
   height: 40px;
@@ -739,10 +732,7 @@
 
 .overlay[data-variant='hud'] .skin__meta {
   position: absolute;
-  top: 0;
-  left: 400px;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   color: #fff;
   pointer-events: none;
 }
@@ -770,17 +760,17 @@
 }
 
 .overlay[data-variant='hud'] .skin__name {
-  left: 12px;
+  left: 60px;
   bottom: 16px;
-  max-width: 62%;
+  max-width: 55%;
   font-size: 1rem;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
   transform: translateX(-12px);
 }
 
 .overlay[data-variant='hud'] .skin__title {
-  top: 12px;
   right: 12px;
+  top: 12px;
   max-width: 42%;
   text-align: right;
   font-size: 0.74rem;
@@ -820,17 +810,13 @@
   position: relative;
   height: 100%;
   overflow: hidden;
-  font-family: var(--font);
+  font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', sans-serif);
 }
 
 .overlay[data-variant='slash'] .skin__video {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 225px;
-  overflow: hidden;
-  border-radius: 0.85rem;
+  top: 0; left: 0; width: 400px; height: 225px;
+  overflow: hidden; border-radius: .85rem;
 }
 
 .overlay[data-variant='slash'] .skin video {
@@ -840,7 +826,7 @@
 
 .overlay[data-variant='slash'] .skin__avatar {
   position: absolute;
-  left: 400px;
+  left: 54%;
   bottom: 14px;
   width: 64px;
   height: 64px;
@@ -865,19 +851,19 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 52%;
+  width: 50%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   z-index: 3;
-  padding: 1rem 1.15rem 1rem 3.2rem;
+  padding: 1rem 1.15rem 4.25rem 4.5rem;
+  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   box-sizing: border-box;
   color: #fff;
-  clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
   background: linear-gradient(
     105deg,
     transparent 0%,
-    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 40%
+    color-mix(in srgb, var(--clip-accent, #8b5cf6) 55%, #0f1115) 32%
   );
   opacity: 0;
   transform: translateX(28px);
@@ -907,6 +893,10 @@
 
 .overlay[data-variant='slash'] .skin__title {
   display: none;
+}
+
+.overlay[data-variant='slash'].is-in .skin__video {
+  clip-path: none;
 }
 
 .overlay[data-variant='slash'].is-in .skin video,
@@ -969,7 +959,7 @@
         const copyEl = document.getElementById('copy');
         const titleEl = document.getElementById('title');
         const BASE_WIDTH = 800;
-        const BASE_HEIGHT = 225;
+        // Read the selected design height so a 16:9 composition is never cropped.
         const KNOWN = {
             '1': 'classic', classic: 'classic',
             third: 'third', tile: 'tile', cinema: 'cinema',
@@ -978,8 +968,8 @@
         };
 
         function applyResponsiveScale() {
-            const scale = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / BASE_HEIGHT);
-            overlay.style.transform = 'scale(' + Math.max(scale, 0.25) + ')';
+            const scale = Math.min(window.innerWidth / BASE_WIDTH, window.innerHeight / overlay.offsetHeight);
+            overlay.style.transform = 'scale(' + Math.max(scale, 0) + ')';
         }
         applyResponsiveScale();
         window.addEventListener('resize', applyResponsiveScale);
@@ -999,6 +989,7 @@
             variant = 'classic';
         }
         overlay.dataset.variant = variant;
+        applyResponsiveScale();
 
         const channelID = window.location.pathname.split('/')[2];
         const socket = io('/clip/' + channelID, { reconnection: true });
