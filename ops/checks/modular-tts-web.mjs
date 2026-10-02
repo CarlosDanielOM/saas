@@ -70,13 +70,13 @@ try {
   await message.fill('$(tts Listen to $(user): &t)');
   await modal.locator('button[type="submit"]').click();
   await modal.getByRole('dialog').waitFor({state:'hidden'});
-  await page.getByRole('button',{name:/add command/i}).first().click();
+  await page.getByRole('button',{name:'Create new',exact:true}).click();
   await modal.locator('[formControlName="name"]').fill('Second');await modal.locator('[formControlName="cmd"]').fill('second');await message.fill('Hello');
   await cooldown.fill('0');assert.equal(await modal.locator('button[type="submit"]').isDisabled(),true,'second zero blocked');
   await cooldown.fill(String(minimum));assert.equal(await modal.locator('button[type="submit"]').isEnabled(),true);
   await modal.getByRole('button',{name:'Cancel',exact:true}).click();
   await page.getByRole('button',{name:'Edit',exact:true}).first().click();await cooldown.fill(String(minimum));await modal.locator('button[type="submit"]').click();await modal.getByRole('dialog').waitFor({state:'hidden'});
-  await page.getByRole('button',{name:/add command/i}).first().click();
+  await page.getByRole('button',{name:'Create new',exact:true}).click();
   await modal.locator('[formControlName="name"]').fill('Second');await modal.locator('[formControlName="cmd"]').fill('second');await message.fill('Hello');await cooldown.fill('0');
   await modal.locator('button[type="submit"]').click();await modal.getByRole('dialog').waitFor({state:'hidden'});
   assert.equal(writes.at(-1).cooldown,0,'create preserves zero');
