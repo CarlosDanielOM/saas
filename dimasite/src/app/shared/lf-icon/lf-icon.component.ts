@@ -6,15 +6,19 @@ import {
   ArrowUp,
   Check,
   ChevronsUpDown,
+  Copy,
   Eye,
   FlaskConical,
+  Gem,
   Image as ImageIcon,
   LayoutGrid,
   List,
   Lock,
   LucideAngularModule,
   MessageSquare,
+  MonitorPlay,
   Music,
+  Pause,
   Play,
   Plus,
   RefreshCw,
@@ -22,6 +26,7 @@ import {
   Settings,
   Star,
   Timer,
+  Trash2,
   TrendingUp,
   TriangleAlert,
   Users,
@@ -58,7 +63,12 @@ export type LfIconName =
   | 'search'
   | 'chat'
   | 'trend'
-  | 'alert';
+  | 'alert'
+  | 'pause'
+  | 'trash'
+  | 'copy'
+  | 'bits'
+  | 'monitor';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -87,7 +97,12 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   search: Search,
   chat: MessageSquare,
   trend: TrendingUp,
-  alert: TriangleAlert
+  alert: TriangleAlert,
+  pause: Pause,
+  trash: Trash2,
+  copy: Copy,
+  bits: Gem,
+  monitor: MonitorPlay
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */

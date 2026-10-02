@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
@@ -9,6 +10,7 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { MediaAsset } from '../triggers/triggers.model';
 import { TriggersService } from '../triggers/triggers.service';
+import { LazyVideoFrameDirective } from '../triggers/lazy-video-frame.directive';
 import { ChannelExtensionItem, DimafxCategory, DimafxTtsLanguage, DimafxTtsMode } from './dimafx.model';
 import { DimafxService } from './dimafx.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
@@ -19,19 +21,33 @@ interface AssetOption {
   mediaType: string;
   playbackUrl: string;
   source: 'library' | 'public';
+  owner: string;
 }
+
+type ItemKind = 'media' | 'tts';
+type MediaFilter = 'all' | 'audio' | 'video' | 'image';
 
 const PIPER_VOICE_OPTIONS: { value: string; label: string }[] = [
   { value: 'en_US-ryan-medium', label: 'Ryan · US English' },
   { value: 'es_MX-ald-medium', label: 'Ald · Mexican Spanish' }
 ];
 
+/** The extension panel filters and renders thumbnails by category, so it follows the media type. */
+function categoryForMedia(mediaType: string): DimafxCategory {
+  if (mediaType === 'audio') return 'audio';
+  if (mediaType === 'video') return 'video';
+  return 'gif';
+}
+
 @Component({
   selector: 'app-dimafx-page',
-  imports: [RouterLink, LfIconComponent],
+  imports: [RouterLink, LfIconComponent, LazyVideoFrameDirective, NgTemplateOutlet],
   templateUrl: './dimafx-page.component.html',
   styleUrl: './dimafx-page.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'handleEscape()'
+  }
 })
 export class DimafxPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -41,24 +57,26 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly languageService = inject(LanguageService);
 
-  readonly modalViewMode = signal<'grid' | 'list'>('grid');
-
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly items = signal<ChannelExtensionItem[]>([]);
   readonly allowedBitPrices = signal<number[]>([5, 10, 25, 50, 100]);
   readonly assetOptions = signal<AssetOption[]>([]);
+
+  // Editor dialog
+  readonly editorOpen = signal(false);
   readonly selectedItemId = signal<string | null>(null);
-  readonly isMediaModalOpen = signal(false);
+  readonly submitAttempted = signal(false);
+  readonly kind = signal<ItemKind>('media');
   readonly mediaSearchQuery = signal('');
-  readonly mediaFilter = signal<string>('all');
+  readonly mediaFilter = signal<MediaFilter>('all');
+  readonly filterOptions: MediaFilter[] = ['all', 'audio', 'video', 'image'];
 
   readonly selectedAssetID = signal('');
   readonly name = signal('');
   readonly description = signal('');
   readonly category = signal<DimafxCategory>('video');
-  readonly thumbnailUrl = signal('');
   readonly durationMs = signal(0);
   readonly bitsPrice = signal(5);
   readonly volume = signal(100);
@@ -68,11 +86,19 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly ttsText = signal('');
   readonly ttsVoice = signal('');
   readonly ttsLanguage = signal<DimafxTtsLanguage>('en');
+  private autoName = '';
+
+  // Delete dialog
+  readonly pendingDelete = signal<ChannelExtensionItem | null>(null);
+  readonly deleting = signal(false);
+
   readonly overlayConnected = signal<boolean | null>(null);
   readonly overlayUrl = signal('');
+  readonly overlayCopied = signal(false);
   private overlayStatusTimer?: ReturnType<typeof setInterval>;
   private destroyed = false;
   readonly testingItemId = signal<string | null>(null);
+  readonly togglingItemId = signal<string | null>(null);
 
   readonly streamer = computed(() => getRouteParam(this.route, 'streamer') || this.sessionAuth.session()?.appUser.name || '');
   readonly channelID = signal('');
@@ -87,16 +113,22 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   readonly canEdit = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().edit);
   readonly canDelete = computed(() => Boolean(this.channelID()) && this.mutationAccess().channelID === this.channelID() && this.mutationAccess().delete);
   readonly isEditing = computed(() => Boolean(this.selectedItemId()));
-  readonly isTtsCategory = computed(() => this.category() === 'tts');
+  readonly isTtsCategory = computed(() => this.kind() === 'tts');
+  readonly enabledCount = computed(() => this.items().filter((item) => item.isEnabled).length);
+
+  readonly selectedAsset = computed(() => this.assetOptions().find((asset) => asset.id === this.selectedAssetID()) ?? null);
+  readonly editingItem = computed(() => this.items().find((item) => item.id === this.selectedItemId()) ?? null);
+
+  readonly formErrors = computed(() => ({
+    name: !this.name().trim(),
+    media: !this.isTtsCategory() && !this.selectedAssetID(),
+    ttsText: this.isTtsCategory() && this.ttsMode() === 'fixed' && !this.ttsText().trim()
+  }));
   readonly canSubmit = computed(() => {
-    if (!this.channelID() || !this.name().trim() || this.bitsPrice() < 0) return false;
-    if (this.isTtsCategory()) {
-      // TTS items synthesize speech at playback time — no media asset needed.
-      // Fixed items need the broadcaster's text; custom items collect it from viewers.
-      return this.ttsMode() === 'custom' || Boolean(this.ttsText().trim());
-    }
-    return Boolean(this.selectedAssetID());
+    const errors = this.formErrors();
+    return Boolean(this.channelID()) && this.bitsPrice() >= 0 && !errors.name && !errors.media && !errors.ttsText;
   });
+
   readonly ttsVoiceOptions = computed(() => {
     const saved = this.ttsVoice();
     const options = [...PIPER_VOICE_OPTIONS];
@@ -105,13 +137,13 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     }
     return options;
   });
-  readonly enabledCount = computed(() => this.items().filter((item) => item.isEnabled).length);
-  /** Image/GIF only — visibility length. Video/audio duration comes from media metadata. */
+
+  /** Image/GIF only — how long it stays on screen. Video/audio length comes from the file. */
   readonly showVisibilityDuration = computed(() => {
-    const mediaType = this.getSelectedAssetMediaType();
-    if (mediaType === 'image') return true;
+    if (this.isTtsCategory()) return false;
+    const mediaType = this.selectedAsset()?.mediaType ?? this.editingItem()?.mediaType ?? '';
+    if (mediaType === 'image' || mediaType === 'gif') return true;
     if (mediaType === 'video' || mediaType === 'audio') return false;
-    // Fallback when editing without asset list match: category gif
     return this.category() === 'gif';
   });
 
@@ -119,197 +151,81 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     const query = this.mediaSearchQuery().toLowerCase().trim();
     const filter = this.mediaFilter();
     return this.assetOptions().filter((asset) => {
-      const matchesSearch = asset.label.toLowerCase().includes(query);
-      const matchesFilter = filter === 'all' || asset.mediaType === filter;
+      const matchesSearch = !query || asset.label.toLowerCase().includes(query) || asset.owner.toLowerCase().includes(query);
+      const matchesFilter = filter === 'all' || asset.mediaType === filter || (filter === 'image' && asset.mediaType === 'gif');
       return matchesSearch && matchesFilter;
     });
   });
 
   readonly playingAssetId = signal<string | null>(null);
   private audioPlayer: HTMLAudioElement | null = null;
-
-  readonly activePreviewAsset = signal<AssetOption | null>(null);
-  readonly isAudioPlaying = signal(false);
-  private previewAudio: HTMLAudioElement | null = null;
-
-  openMediaModal(): void {
-    if (!this.canEdit()) return;
-    this.mediaSearchQuery.set('');
-    this.mediaFilter.set('all');
-    this.isMediaModalOpen.set(true);
-  }
-
-  closeMediaModal(): void {
-    this.stopPreview();
-    this.isMediaModalOpen.set(false);
-  }
-
-  togglePreview(event: MouseEvent, asset: AssetOption): void {
-    event.stopPropagation();
-    if (this.playingAssetId() === asset.id) {
-      this.stopPreview();
-      return;
-    }
-    this.stopPreview();
-    if (!asset.playbackUrl) {
-      this.toastService.error('Preview error', 'No playback URL available for this asset.');
-      return;
-    }
-    try {
-      this.audioPlayer = new Audio(asset.playbackUrl);
-      this.audioPlayer.volume = 0.5;
-      this.audioPlayer.addEventListener('ended', () => {
-        this.playingAssetId.set(null);
-      });
-      this.audioPlayer.addEventListener('error', () => {
-        this.playingAssetId.set(null);
-        this.toastService.error('Preview error', 'Failed to play audio asset.');
-      });
-      this.playingAssetId.set(asset.id);
-      this.audioPlayer.play();
-    } catch (err) {
-      this.playingAssetId.set(null);
-      this.toastService.error('Preview error', 'Failed to play audio asset.');
-    }
-  }
-
-  openPreviewModal(event: MouseEvent, asset: { label: string; mediaType: string; playbackUrl: string; source?: string }): void {
-    event.stopPropagation();
-    this.stopPreview();
-    const option: AssetOption = {
-      id: 'preview',
-      label: asset.label,
-      mediaType: asset.mediaType,
-      playbackUrl: asset.playbackUrl,
-      source: (asset.source as any) || 'item'
-    };
-    this.activePreviewAsset.set(option);
-    if (asset.mediaType === 'audio' && asset.playbackUrl) {
-      this.playAudioPreview(asset.playbackUrl);
-    }
-  }
-
-  closePreviewModal(): void {
-    this.stopPreview();
-    this.activePreviewAsset.set(null);
-  }
-
-  private playAudioPreview(url: string): void {
-    try {
-      this.previewAudio = new Audio(url);
-      this.previewAudio.volume = 0.5;
-      this.previewAudio.addEventListener('play', () => this.isAudioPlaying.set(true));
-      this.previewAudio.addEventListener('pause', () => this.isAudioPlaying.set(false));
-      this.previewAudio.addEventListener('ended', () => {
-        this.isAudioPlaying.set(false);
-        this.previewAudio = null;
-      });
-      this.previewAudio.addEventListener('error', () => {
-        this.isAudioPlaying.set(false);
-        this.previewAudio = null;
-        this.toastService.error('Preview error', 'Failed to play audio asset.');
-      });
-      this.previewAudio.play();
-    } catch (err) {
-      this.isAudioPlaying.set(false);
-      this.toastService.error('Preview error', 'Failed to play audio asset.');
-    }
-  }
-
-  toggleAudioPlayPause(): void {
-    if (!this.previewAudio) {
-      const asset = this.activePreviewAsset();
-      if (asset && asset.playbackUrl) {
-        this.playAudioPreview(asset.playbackUrl);
-      }
-      return;
-    }
-    if (this.previewAudio.paused) {
-      this.previewAudio.play();
-    } else {
-      this.previewAudio.pause();
-    }
-  }
-
-  stopPreview(): void {
-    if (this.audioPlayer) {
-      this.audioPlayer.pause();
-      this.audioPlayer = null;
-    }
-    this.playingAssetId.set(null);
-
-    if (this.previewAudio) {
-      this.previewAudio.pause();
-      this.previewAudio = null;
-    }
-    this.isAudioPlaying.set(false);
-  }
-
-  ngOnDestroy(): void {
-    this.destroyed = true;
-    clearInterval(this.overlayStatusTimer);
-    this.stopPreview();
-  }
-
-  selectAssetFromModal(asset: AssetOption): void {
-    if (!this.canEdit()) return;
-    this.selectedAssetID.set(asset.id);
-    if (!this.name().trim()) {
-      this.name.set(asset.label);
-    }
-    
-    // Auto populate duration based on media type
-    if (asset.mediaType === 'audio') {
-      try {
-        const audio = new Audio(asset.playbackUrl);
-        audio.addEventListener('loadedmetadata', () => {
-          if (audio.duration && !isNaN(audio.duration)) {
-            this.durationMs.set(Math.round(audio.duration * 1000));
-          }
-        });
-      } catch (err) {
-        console.warn('Failed to load audio duration metadata', err);
-      }
-    } else if (asset.mediaType === 'video') {
-      try {
-        const video = document.createElement('video');
-        video.src = asset.playbackUrl;
-        video.addEventListener('loadedmetadata', () => {
-          if (video.duration && !isNaN(video.duration)) {
-            this.durationMs.set(Math.round(video.duration * 1000));
-          }
-        });
-      } catch (err) {
-        console.warn('Failed to load video duration metadata', err);
-      }
-    } else {
-      // image / gif - default to 3s (3000ms)
-      this.durationMs.set(3000);
-    }
-
-    this.isMediaModalOpen.set(false);
-  }
-
-  getSelectedAssetLabel(): string {
-    const asset = this.assetOptions().find(a => a.id === this.selectedAssetID());
-    return asset ? asset.label : '';
-  }
-
-  getSelectedAssetMediaType(): string {
-    const asset = this.assetOptions().find(a => a.id === this.selectedAssetID());
-    return asset ? asset.mediaType : '';
-  }
-
-  getSelectedAssetSource(): string {
-    const asset = this.assetOptions().find(a => a.id === this.selectedAssetID());
-    return asset ? asset.source : '';
-  }
+  readonly activePreviewAsset = signal<{ label: string; mediaType: string; playbackUrl: string } | null>(null);
 
   async ngOnInit(): Promise<void> {
     await this.resolveChannel();
     await this.load();
     if (!this.destroyed) this.overlayStatusTimer = setInterval(() => { void this.refreshOverlayStatus(); }, 5000);
   }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    clearInterval(this.overlayStatusTimer);
+    this.stopAudio();
+  }
+
+  protected t(key: string, params?: Record<string, string | number>): string {
+    return this.languageService.translate(key, params);
+  }
+
+  handleEscape(): void {
+    if (this.activePreviewAsset()) return this.closePreviewModal();
+    if (this.pendingDelete()) return this.closeDelete();
+    if (this.editorOpen()) this.closeEditor();
+  }
+
+  // ---- Media previews -----------------------------------------------------
+
+  /** Audio plays inline (tap again to stop); video and images open the preview dialog. */
+  previewMedia(event: MouseEvent, id: string, media: { label: string; mediaType: string; playbackUrl: string | null }): void {
+    event.stopPropagation();
+    if (!media.playbackUrl) return;
+    if (media.mediaType !== 'audio') {
+      this.stopAudio();
+      this.activePreviewAsset.set({ label: media.label, mediaType: media.mediaType, playbackUrl: media.playbackUrl });
+      return;
+    }
+    const wasPlaying = this.playingAssetId() === id;
+    this.stopAudio();
+    if (wasPlaying) return;
+    const audio = new Audio(media.playbackUrl);
+    audio.volume = 0.5;
+    const stop = () => {
+      if (this.audioPlayer === audio) {
+        this.audioPlayer = null;
+        this.playingAssetId.set(null);
+      }
+    };
+    audio.addEventListener('ended', stop);
+    audio.addEventListener('error', () => {
+      stop();
+      this.toastService.error(this.t('modules.dimafx.toasts.playErrorTitle'), this.t('modules.dimafx.toasts.playError'));
+    });
+    this.audioPlayer = audio;
+    this.playingAssetId.set(id);
+    audio.play().catch(stop);
+  }
+
+  closePreviewModal(): void {
+    this.activePreviewAsset.set(null);
+  }
+
+  private stopAudio(): void {
+    this.audioPlayer?.pause();
+    this.audioPlayer = null;
+    this.playingAssetId.set(null);
+  }
+
+  // ---- Overlay ------------------------------------------------------------
 
   private async refreshOverlayStatus(): Promise<void> {
     const channelID = this.channelID();
@@ -325,15 +241,15 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   async copyOverlayUrl(): Promise<void> {
     try {
       await navigator.clipboard.writeText(this.overlayUrl());
+      this.overlayCopied.set(true);
+      setTimeout(() => this.overlayCopied.set(false), 1800);
       this.toastService.success(this.t('modules.dimafx.overlayLinkCopied'), '');
     } catch {
       this.toastService.error(this.t('modules.dimafx.overlayCopyFailed'), '');
     }
   }
 
-  protected t(key: string, params?: Record<string, string | number>): string {
-    return this.languageService.translate(key, params);
-  }
+  // ---- Loading ------------------------------------------------------------
 
   async load(): Promise<void> {
     if (!this.channelID()) return;
@@ -349,7 +265,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
       this.items.set(itemsResponse.items);
       this.allowedBitPrices.set(itemsResponse.allowedBitPrices);
       if (!itemsResponse.allowedBitPrices.includes(this.bitsPrice())) {
-        this.bitsPrice.set(itemsResponse.allowedBitPrices[0] || 5);
+        this.bitsPrice.set(this.defaultPrice());
       }
       this.overlayConnected.set(overlayStatus?.connected ?? null);
       this.overlayUrl.set(overlayStatus?.overlayUrl ?? '');
@@ -358,22 +274,46 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
         publicAssets
       ));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to load DimaFX settings';
+      const message = error instanceof Error ? error.message : this.t('modules.dimafx.toasts.loadFailed');
       this.error.set(message);
-      this.toastService.error('DimaFX load failed', message);
+      this.toastService.error(this.t('modules.dimafx.toasts.loadFailedTitle'), message);
     } finally {
       this.loading.set(false);
     }
   }
 
+  // ---- Editor -------------------------------------------------------------
+
+  openCreate(): void {
+    if (!this.canEdit()) return;
+    this.selectedItemId.set(null);
+    this.kind.set('media');
+    this.selectedAssetID.set('');
+    this.name.set('');
+    this.autoName = '';
+    this.description.set('');
+    this.category.set('video');
+    this.durationMs.set(0);
+    this.bitsPrice.set(this.defaultPrice());
+    this.volume.set(100);
+    this.isEnabled.set(true);
+    this.sortOrder.set(this.items().reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1);
+    this.ttsMode.set('custom');
+    this.ttsText.set('');
+    this.ttsVoice.set('');
+    this.ttsLanguage.set('en');
+    this.openEditor();
+  }
+
   selectItem(item: ChannelExtensionItem): void {
     if (!this.canEdit()) return;
     this.selectedItemId.set(item.id);
+    this.kind.set(item.category === 'tts' ? 'tts' : 'media');
     this.selectedAssetID.set(item.assetID || '');
     this.name.set(item.name);
+    this.autoName = '';
     this.description.set(item.description || '');
     this.category.set(item.category);
-    this.thumbnailUrl.set(item.thumbnailUrl || '');
     this.durationMs.set(item.durationMs || 0);
     this.bitsPrice.set(item.bitsPrice);
     this.volume.set(item.volume);
@@ -383,29 +323,58 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     this.ttsText.set(item.tts?.text || '');
     this.ttsVoice.set(item.tts?.voice || '');
     this.ttsLanguage.set(item.tts?.language === 'es' ? 'es' : 'en');
+    this.openEditor();
   }
 
-  resetForm(): void {
-    if (!this.canEdit()) return;
+  private openEditor(): void {
+    this.submitAttempted.set(false);
+    this.mediaSearchQuery.set('');
+    this.mediaFilter.set('all');
+    this.editorOpen.set(true);
+  }
+
+  closeEditor(): void {
+    if (this.saving()) return;
+    this.stopAudio();
+    this.editorOpen.set(false);
     this.selectedItemId.set(null);
-    this.selectedAssetID.set('');
-    this.name.set('');
-    this.description.set('');
-    this.category.set('video');
-    this.thumbnailUrl.set('');
-    this.durationMs.set(0);
-    this.bitsPrice.set(this.allowedBitPrices()[0] || 5);
-    this.volume.set(100);
-    this.isEnabled.set(true);
-    this.sortOrder.set(0);
-    this.ttsMode.set('custom');
-    this.ttsText.set('');
-    this.ttsVoice.set('');
-    this.ttsLanguage.set('en');
+  }
+
+  setKind(kind: ItemKind): void {
+    // The server can't switch an existing item between TTS and media.
+    if (this.isEditing()) return;
+    this.kind.set(kind);
+    this.category.set(kind === 'tts' ? 'tts' : categoryForMedia(this.selectedAsset()?.mediaType ?? 'video'));
+  }
+
+  selectAsset(asset: AssetOption): void {
+    if (!this.canEdit() || this.isEditing()) return;
+    this.selectedAssetID.set(asset.id);
+    this.category.set(categoryForMedia(asset.mediaType));
+    // The name follows the picked media until the streamer types their own.
+    if (!this.name().trim() || this.name() === this.autoName) {
+      this.autoName = asset.label;
+      this.name.set(asset.label);
+    }
+    this.durationMs.set(asset.mediaType === 'image' || asset.mediaType === 'gif' ? 3000 : 0);
+    if (asset.mediaType === 'audio' || asset.mediaType === 'video') this.readMediaDuration(asset);
+  }
+
+  private readMediaDuration(asset: AssetOption): void {
+    const element = asset.mediaType === 'audio' ? new Audio() : document.createElement('video');
+    element.preload = 'metadata';
+    element.addEventListener('loadedmetadata', () => {
+      if (this.selectedAssetID() === asset.id && Number.isFinite(element.duration) && element.duration > 0) {
+        this.durationMs.set(Math.round(element.duration * 1000));
+      }
+    });
+    element.src = asset.playbackUrl;
   }
 
   async save(): Promise<void> {
-    if (!this.canEdit() || !this.canSubmit() || this.saving()) return;
+    if (!this.canEdit() || this.saving()) return;
+    this.submitAttempted.set(true);
+    if (!this.canSubmit()) return;
     this.saving.set(true);
     try {
       const isTts = this.isTtsCategory();
@@ -415,7 +384,6 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
         name: this.name().trim(),
         description: this.description().trim(),
         category: this.category(),
-        thumbnailUrl: this.thumbnailUrl().trim(),
         durationMs: isTts ? 0 : Number(this.durationMs() || 0),
         bitsPrice: Number(this.bitsPrice()),
         volume: Number(this.volume()),
@@ -435,20 +403,39 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
 
       if (this.selectedItemId()) {
         const updated = await firstValueFrom(this.dimafxService.updateItem(this.channelID(), this.selectedItemId()!, payload));
-        this.items.update((items) => items.map((item) => (item.id === updated.id ? updated : item)));
-        this.toastService.success('DimaFX item updated', updated.name);
+        this.items.update((items) => this.sortItems(items.map((item) => (item.id === updated.id ? updated : item))));
+        this.toastService.success(this.t('modules.dimafx.toasts.updated'), updated.name);
       } else {
         const created = await firstValueFrom(this.dimafxService.createItem(this.channelID(), payload));
-        this.items.update((items) => [created, ...items]);
-        this.toastService.success('DimaFX item created', created.name);
+        this.items.update((items) => this.sortItems([...items, created]));
+        this.toastService.success(this.t('modules.dimafx.toasts.created'), created.name);
       }
-
-      this.resetForm();
+      this.saving.set(false);
+      this.closeEditor();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to save DimaFX item';
-      this.toastService.error('Save failed', message);
+      const message = error instanceof Error ? error.message : this.t('modules.dimafx.toasts.saveFailed');
+      this.toastService.error(this.t('modules.dimafx.toasts.saveFailedTitle'), message);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  // ---- Row actions --------------------------------------------------------
+
+  async toggleEnabled(item: ChannelExtensionItem): Promise<void> {
+    if (!this.canEdit() || this.togglingItemId()) return;
+    const next = !item.isEnabled;
+    this.togglingItemId.set(item.id);
+    this.items.update((items) => items.map((entry) => entry.id === item.id ? { ...entry, isEnabled: next } : entry));
+    try {
+      const updated = await firstValueFrom(this.dimafxService.updateItem(this.channelID(), item.id, { isEnabled: next }));
+      this.items.update((items) => items.map((entry) => entry.id === item.id ? updated : entry));
+    } catch (error) {
+      this.items.update((items) => items.map((entry) => entry.id === item.id ? { ...entry, isEnabled: item.isEnabled } : entry));
+      const message = error instanceof Error ? error.message : this.t('modules.dimafx.toasts.saveFailed');
+      this.toastService.error(this.t('modules.dimafx.toasts.saveFailedTitle'), message);
+    } finally {
+      this.togglingItemId.set(null);
     }
   }
 
@@ -463,7 +450,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
         this.t('modules.dimafx.testQueuedDesc', { name: item.name, position: result.queueLength })
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to send test trigger';
+      const message = error instanceof Error ? error.message : this.t('modules.dimafx.testFailed');
       if (message.toLowerCase().includes('overlay')) {
         this.overlayConnected.set(false);
       }
@@ -473,47 +460,50 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  async deleteItem(item: ChannelExtensionItem, refundSaved: boolean): Promise<void> {
-    if (!this.canDelete()) return;
+  askDelete(item: ChannelExtensionItem): void {
+    if (this.canDelete()) this.pendingDelete.set(item);
+  }
+
+  closeDelete(): void {
+    if (!this.deleting()) this.pendingDelete.set(null);
+  }
+
+  async confirmDelete(refundSaved: boolean): Promise<void> {
+    const item = this.pendingDelete();
+    if (!item || !this.canDelete() || this.deleting()) return;
+    this.deleting.set(true);
     try {
       await firstValueFrom(this.dimafxService.deleteItem(this.channelID(), item.id, refundSaved));
       this.items.update((items) => items.filter((candidate) => candidate.id !== item.id));
-      this.toastService.success('DimaFX item removed', refundSaved ? 'Saved copies were refunded as credits.' : item.name);
-      if (this.selectedItemId() === item.id) this.resetForm();
+      this.toastService.success(
+        this.t('modules.dimafx.toasts.deleted'),
+        refundSaved ? this.t('modules.dimafx.toasts.deletedRefunded') : item.name
+      );
+      this.deleting.set(false);
+      this.pendingDelete.set(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to delete DimaFX item';
-      this.toastService.error('Delete failed', message);
+      const message = error instanceof Error ? error.message : this.t('modules.dimafx.toasts.deleteFailed');
+      this.toastService.error(this.t('modules.dimafx.toasts.deleteFailedTitle'), message);
+    } finally {
+      this.deleting.set(false);
     }
   }
 
-  onAssetChange(value: string): void {
-    this.selectedAssetID.set(value);
-    const asset = this.assetOptions().find((option) => option.id === value);
-    if (asset && !this.name().trim()) {
-      this.name.set(asset.label);
-    }
-  }
-
-  onNumberInput(target: EventTarget | null, setter: (value: number) => void): void {
-    const input = target as HTMLInputElement | null;
-    setter(Number(input?.value || 0));
-  }
-
-  onTextInput(target: EventTarget | null, setter: (value: string) => void): void {
-    const input = target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
-    setter(input?.value || '');
-  }
-
-  onCategoryInput(target: EventTarget | null): void {
-    const input = target as HTMLSelectElement | null;
-    this.category.set((input?.value as DimafxCategory) || 'video');
-  }
+  // ---- Form setters -------------------------------------------------------
 
   setName(value: string): void { this.name.set(value); }
   setDescription(value: string): void { this.description.set(value); }
-  setThumbnailUrl(value: string): void { this.thumbnailUrl.set(value); }
   setDurationMs(value: number): void { this.durationMs.set(value); }
   setBitsPrice(value: number): void { this.bitsPrice.set(value); }
+  setVolume(value: number): void { this.volume.set(Math.max(0, Math.min(100, value))); }
+  setSortOrder(value: number): void { this.sortOrder.set(value); }
+  setCategory(value: string): void {
+    if (value === 'video' || value === 'gif' || value === 'audio') this.category.set(value);
+  }
+  setTtsMode(value: string): void { this.ttsMode.set(value === 'fixed' ? 'fixed' : 'custom'); }
+  setTtsText(value: string): void { this.ttsText.set(value); }
+  setTtsVoice(value: string): void { this.ttsVoice.set(value); }
+  setTtsLanguage(value: string): void { this.ttsLanguage.set(value === 'es' ? 'es' : 'en'); }
 
   formatBitsPrice(price: number): string {
     if (Number(price) === 0) {
@@ -521,12 +511,26 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
     }
     return this.t('modules.dimafx.bitsPriceBits', { price });
   }
-  setVolume(value: number): void { this.volume.set(value); }
-  setSortOrder(value: number): void { this.sortOrder.set(value); }
-  setTtsMode(value: string): void { this.ttsMode.set(value === 'fixed' ? 'fixed' : 'custom'); }
-  setTtsText(value: string): void { this.ttsText.set(value); }
-  setTtsVoice(value: string): void { this.ttsVoice.set(value); }
-  setTtsLanguage(value: string): void { this.ttsLanguage.set(value === 'es' ? 'es' : 'en'); }
+
+  categoryLabel(category: string): string {
+    return this.t(`modules.dimafx.categories.${category}`);
+  }
+
+  itemSummary(item: ChannelExtensionItem): string {
+    if (item.category === 'tts') {
+      return item.tts?.mode === 'fixed' ? `“${item.tts.text}”` : this.t('modules.dimafx.ttsModeCustom');
+    }
+    return item.description || '';
+  }
+
+  private defaultPrice(): number {
+    const prices = this.allowedBitPrices();
+    return prices.find((price) => price > 0) ?? prices[0] ?? 5;
+  }
+
+  private sortItems(items: ChannelExtensionItem[]): ChannelExtensionItem[] {
+    return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+  }
 
   private async resolveChannel(): Promise<void> {
     const streamer = this.streamer();
@@ -539,6 +543,7 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
   }
 
   private buildAssetOptions(libraryAssets: MediaAsset[], publicAssets: MediaAsset[]): AssetOption[] {
+    const libraryIds = new Set(libraryAssets.map((asset) => asset._id));
     const seen = new Set<string>();
     const options: AssetOption[] = [];
     for (const asset of [...libraryAssets, ...publicAssets]) {
@@ -546,12 +551,14 @@ export class DimafxPageComponent implements OnInit, OnDestroy {
       seen.add(asset._id);
       options.push({
         id: asset._id,
-        label: asset.displayName,
+        label: (asset.displayName || asset.fileName || '').replace(/_+/g, ' ').trim(),
         mediaType: asset.mediaType,
         playbackUrl: asset.playbackUrl,
-        source: libraryAssets.some((candidate) => candidate._id === asset._id) ? 'library' : 'public'
+        source: libraryIds.has(asset._id) ? 'library' : 'public',
+        owner: asset.ownerChannelName || ''
       });
     }
-    return options.sort((a, b) => a.label.localeCompare(b.label));
+    // Your own media first, then the public library.
+    return options.sort((a, b) => (a.source === b.source ? a.label.localeCompare(b.label) : a.source === 'library' ? -1 : 1));
   }
 }

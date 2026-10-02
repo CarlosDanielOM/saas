@@ -1,65 +1,59 @@
 <div class="lf">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.dimafx.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('modules.dimafx.heroBadge') }}</p>
-        <h1 class="lf-title">{{ t('modules.dimafx.title') }} <span>DimaFX</span></h1>
-        <p class="lf-copy">{{ t('modules.dimafx.subtitle') }}</p>
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" [disabled]="loading()" (click)="load()">
-            <span [class.lf-spin]="loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
-            {{ t('common.refresh') }}
-          </button>
-          @if (canEdit()) {
-          <button type="button" class="lf-btn lf-btn--primary" (click)="resetForm()">
-            + {{ t('modules.dimafx.newItem') }}
-          </button>
-          }
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer(), 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.dimafx.backToModules') }}</a>
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">DimaFX</h1>
+          <p class="lf-copy">{{ t('modules.dimafx.subtitle') }}</p>
         </div>
-      </article>
+        @if (canEdit()) {
+          <div class="lf-head__actions">
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate()">
+              <app-lf-icon name="plus"></app-lf-icon> {{ t('modules.dimafx.newItem') }}
+            </button>
+          </div>
+        }
+      </div>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span>{{ t('modules.dimafx.onSaleCount', { on: enabledCount(), total: items().length }) }}</span>
+        <button type="button" class="lf-chip lf-chip--button" [disabled]="loading()" (click)="load()"
+          [attr.aria-label]="t('common.refresh')">
+          <span [class.lf-spin]="loading()"><app-lf-icon name="refresh" [size]="13"></app-lf-icon></span>
+          {{ t('common.refresh') }}
+        </button>
+      </div>
+    </header>
 
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <h2 class="lf-h2">{{ t('modules.dimafx.storefrontItems') }}</h2>
-          <span class="lf-chip lf-chip--accent">{{ t('modules.dimafx.configured', { count: items().length }) }}</span>
+    <!-- One-time OBS setup + live connection status -->
+    @if (overlayUrl() || overlayConnected() !== null) {
+      <section class="lf-tile lf-setup" [class.lf-setup--off]="overlayConnected() === false" aria-labelledby="dimafx-setup-title">
+        <span class="lf-setup__icon" aria-hidden="true"><app-lf-icon name="monitor"></app-lf-icon></span>
+        <div class="lf-setup__copy">
+          <h2 class="lf-h3" id="dimafx-setup-title">
+            {{ t('modules.dimafx.setupTitle') }}
+            @if (overlayConnected() !== null) {
+              <span class="lf-chip lf-chip--xs" [class.lf-chip--ok]="overlayConnected()" [class.lf-chip--warn]="!overlayConnected()" role="status">
+                <span class="lf-dot" aria-hidden="true"></span>
+                {{ overlayConnected() ? t('modules.dimafx.overlayConnected') : t('modules.dimafx.overlayDisconnected') }}
+              </span>
+            }
+          </h2>
+          <p class="lf-note">{{ overlayConnected() === false ? t('modules.dimafx.setupHintOff') : t('modules.dimafx.overlayLinkHint') }}</p>
         </div>
-        <div class="lf-stats-strip lf-stats-strip--2">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.dimafx.active') }}</span>
-            <span class="lf-stats-strip__value">{{ enabledCount() }}</span>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.dimafx.disabled') }}</span>
-            <span class="lf-stats-strip__value">{{ items().length - enabledCount() }}</span>
-          </div>
-        </div>
-        @if (overlayConnected() !== null) {
-          <p class="lf-overlay-status">
-            <span
-              class="lf-chip lf-chip--compact"
-              [class.lf-chip--ok]="overlayConnected()"
-              [class.lf-chip--muted]="!overlayConnected()"
-            >
-              {{ overlayConnected() ? t('modules.dimafx.overlayConnected') : t('modules.dimafx.overlayDisconnected') }}
-            </span>
-          </p>
-        }
         @if (overlayUrl()) {
-          <div class="lf-dimafx-overlay">
-            <label class="lf-field">
-              <span>{{ t('modules.dimafx.overlayLinkLabel') }}</span>
-              <input readonly [value]="overlayUrl()" (focus)="$any($event.target).select()" />
-            </label>
-            <p class="lf-note">{{ t('modules.dimafx.overlayLinkHint') }}</p>
-            <div class="lf-actions">
-              <button type="button" class="lf-btn" (click)="copyOverlayUrl()">{{ t('modules.dimafx.copyOverlayLink') }}</button>
-              <a class="lf-btn" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{ t('modules.dimafx.openOverlay') }}</a>
-            </div>
+          <div class="lf-setup__url">
+            <input id="dimafx-overlay-url" class="lf-url-input" type="text" readonly [value]="overlayUrl()"
+              [attr.aria-label]="t('modules.dimafx.overlayLinkLabel')" (focus)="$any($event.target).select()" />
+            <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--ok]="overlayCopied()" (click)="copyOverlayUrl()">
+              <app-lf-icon [name]="overlayCopied() ? 'check' : 'copy'" [size]="14"></app-lf-icon>
+              {{ t('modules.dimafx.copyOverlayLink') }}
+            </button>
+            <a class="lf-btn lf-btn--compact" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{ t('modules.dimafx.openOverlay') }}</a>
           </div>
         }
-      </article>
-    </section>
+      </section>
+    }
 
     @if (error()) {
       <section class="lf-banner lf-banner--error" role="alert">
@@ -68,485 +62,365 @@
       </section>
     }
 
-    <section class="lf-bento lf-bento--workspace" [class.lf-bento--readonly]="!canEdit()">
-      <!-- Storefront items -->
-      <div class="lf-tile lf-tile--list">
-        <div class="lf-section-head">
-          <div>
-            <p class="lf-kicker">{{ t('modules.dimafx.heroBadge') }}</p>
-            <h2 class="lf-h2">{{ t('modules.dimafx.storefrontItems') }}</h2>
-          </div>
-          <span class="lf-chip">{{ items().length }}</span>
+    <section class="lf-tile lf-panel" aria-labelledby="dimafx-items-title">
+      <div class="lf-panel__head">
+        <div>
+          <h2 class="lf-h2" id="dimafx-items-title">{{ t('modules.dimafx.storefrontItems') }} <span class="lf-count">{{ items().length }}</span></h2>
+          <p class="lf-note">{{ t('modules.dimafx.listHint') }}</p>
         </div>
-
-        @if (loading() && !items().length) {
-          <div class="lf-skeleton-grid">
-            @for (placeholder of [1, 2, 3, 4]; track placeholder) {
-              <div class="lf-skeleton"></div>
-            }
-          </div>
-        } @else {
-          <div class="lf-item-grid">
-            @for (item of items(); track item.id) {
-              <article class="lf-item-card" [class.lf-item-card--selected]="selectedItemId() === item.id">
-                <div class="lf-item-card__thumb" [title]="item.name">
-                  @if (item.mediaType === 'video' && item.mediaUrl) {
-                    <video [src]="item.mediaUrl" muted preload="metadata" class="lf-item-card__media"></video>
-                  } @else if (item.mediaType === 'audio') {
-                    <div class="lf-item-card__audio">
-                      <span class="lf-item-card__audio-icon"><app-lf-icon name="audio"></app-lf-icon></span>
-                    </div>
-                  } @else {
-                    <img
-                      class="lf-item-card__media"
-                      [src]="item.thumbnailUrl || item.mediaUrl || '/assets/brand/mark-on-dark.png'"
-                      [alt]="item.name"
-                    />
-                  }
-                </div>
-
-                <div class="lf-item-card__body">
-                  <div class="lf-item-card__head">
-                    <h3 class="lf-item-card__title" [title]="item.name">{{ item.name }}</h3>
-                    <span
-                      class="lf-chip"
-                      [class.lf-chip--bits]="item.bitsPrice > 0"
-                      [class.lf-chip--ok]="item.bitsPrice === 0"
-                    >{{ formatBitsPrice(item.bitsPrice) }}</span>
-                  </div>
-                  <div class="lf-item-card__meta">
-                    <span
-                      class="lf-chip lf-chip--compact"
-                      [class.lf-chip--ok]="item.isEnabled"
-                      [class.lf-chip--muted]="!item.isEnabled"
-                    >
-                      {{ item.isEnabled ? t('modules.dimafx.active') : t('modules.dimafx.disabled') }}
-                    </span>
-                    <span class="lf-meta-text">{{ item.category }}</span>
-                    <span class="lf-meta-text">{{ item.mediaType }}</span>
-                    <span class="lf-meta-text">{{ item.volume }}%</span>
-                  </div>
-                  <div class="lf-item-card__actions">
-                    @if (canEdit()) {
-                    <button type="button" class="lf-btn lf-btn--xs" (click)="selectItem(item)">
-                      {{ t('modules.dimafx.edit') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--xs"
-                      [disabled]="testingItemId() === item.id"
-                      (click)="testItem(item)"
-                    >
-                      {{ testingItemId() === item.id ? t('modules.dimafx.testing') : t('modules.dimafx.testOnStream') }}
-                    </button>
-                    }
-                    @if (item.mediaUrl) {
-                      <button
-                        type="button"
-                        class="lf-btn lf-btn--xs"
-                        (click)="openPreviewModal($event, { label: item.name, mediaType: item.mediaType, playbackUrl: item.mediaUrl })"
-                      >
-                        {{ t('modules.dimafx.preview') }}
-                      </button>
-                    }
-                    @if (canDelete()) {
-                    <button type="button" class="lf-btn lf-btn--xs lf-btn--danger" (click)="deleteItem(item, false)">
-                      {{ t('modules.dimafx.delete') }}
-                    </button>
-                    <button type="button" class="lf-btn lf-btn--xs lf-btn--warn" (click)="deleteItem(item, true)">
-                      {{ t('modules.dimafx.refundDelete') }}
-                    </button>
-                    }
-                  </div>
-                </div>
-              </article>
-            } @empty {
-              <div class="lf-empty">
-                <h3 class="lf-h3">{{ t('modules.dimafx.noItemsTitle') }}</h3>
-                <p>{{ t('modules.dimafx.noItemsDesc') }}</p>
-              </div>
-            }
-          </div>
-        }
       </div>
 
-      <!-- Create / Edit form -->
-      @if (canEdit()) {
-      <aside class="lf-tile lf-tile--form">
-        <div class="lf-section-head">
-          <h2 class="lf-h2">{{ isEditing() ? t('modules.dimafx.editTitle') : t('modules.dimafx.createTitle') }}</h2>
-          @if (isEditing()) {
-            <button type="button" class="lf-link-btn" (click)="resetForm()">
-              {{ t('modules.dimafx.newItem') }}
-            </button>
-          }
+      @if (loading() && !items().length) {
+        <div class="lf-skeleton-list" aria-hidden="true">
+          @for (placeholder of [1, 2, 3]; track placeholder) { <div class="lf-skeleton"></div> }
         </div>
-
-        <form class="lf-form" (submit)="$event.preventDefault(); save()">
-          @if (!isTtsCategory()) {
-          <div class="lf-field">
-            <span>{{ t('modules.dimafx.mediaAsset') }}</span>
-            @if (selectedAssetID()) {
-              <div class="lf-asset-box">
-                <div class="lf-asset-box__icon">
-                  @if (getSelectedAssetMediaType() === 'audio') {
-                    <app-lf-icon name="audio"></app-lf-icon>
-                  } @else if (getSelectedAssetMediaType() === 'image') {
-                    <app-lf-icon name="image"></app-lf-icon>
-                  } @else {
-                    <app-lf-icon name="video"></app-lf-icon>
-                  }
-                </div>
-                <div class="lf-asset-box__details">
-                  <strong [title]="getSelectedAssetLabel()">{{ getSelectedAssetLabel() }}</strong>
-                  <span>{{ getSelectedAssetMediaType() }} · {{ getSelectedAssetSource() }}</span>
-                </div>
-                <button type="button" class="lf-btn lf-btn--compact" (click)="openMediaModal()">
-                  {{ t('modules.dimafx.change') }}
-                </button>
-              </div>
-            } @else {
-              <button type="button" class="lf-media-picker" (click)="openMediaModal()">
-                <span class="lf-media-picker__plus">+</span>
-                <span>{{ t('modules.dimafx.selectMedia') }}</span>
-              </button>
-            }
-          </div>
-          }
-
-          <label class="lf-field">
-            <span>{{ t('modules.dimafx.nameLabel') }}</span>
-            <input
-              [value]="name()"
-              (input)="setName($any($event.target).value)"
-              [placeholder]="t('modules.dimafx.namePlaceholder')"
-              required
-            />
-          </label>
-
-          <label class="lf-field">
-            <span>{{ t('modules.dimafx.descriptionLabel') }}</span>
-            <textarea
-              rows="3"
-              [value]="description()"
-              (input)="setDescription($any($event.target).value)"
-              [placeholder]="t('modules.dimafx.descriptionPlaceholder')"
-            ></textarea>
-          </label>
-
-          <div class="lf-form-row">
-            <label class="lf-field">
-              <span>{{ t('modules.dimafx.categoryLabel') }}</span>
-              <select [value]="category()" (change)="onCategoryInput($event.target)">
-                <option value="video">Video</option>
-                <option value="gif">Gifs</option>
-                <option value="audio">Audio</option>
-                <option value="tts">TTS</option>
-              </select>
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('modules.dimafx.bitsPriceLabel') }}</span>
-              <select [value]="bitsPrice()" (change)="setBitsPrice(+$any($event.target).value)">
-                @for (price of allowedBitPrices(); track price) {
-                  <option [value]="price">{{ formatBitsPrice(price) }}</option>
-                }
-              </select>
-            </label>
-          </div>
-
-          @if (isTtsCategory()) {
-            <div class="lf-tts-section">
-              <div class="lf-form-row">
-                <label class="lf-field">
-                  <span>{{ t('modules.dimafx.ttsModeLabel') }}</span>
-                  <select [value]="ttsMode()" (change)="setTtsMode($any($event.target).value)">
-                    <option value="custom">{{ t('modules.dimafx.ttsModeCustom') }}</option>
-                    <option value="fixed">{{ t('modules.dimafx.ttsModeFixed') }}</option>
-                  </select>
-                </label>
-
-                <label class="lf-field">
-                  <span>{{ t('modules.dimafx.ttsLanguageLabel') }}</span>
-                  <select [value]="ttsLanguage()" (change)="setTtsLanguage($any($event.target).value)">
-                    <option value="en">{{ t('modules.dimafx.ttsLanguageEn') }}</option>
-                    <option value="es">{{ t('modules.dimafx.ttsLanguageEs') }}</option>
-                  </select>
-                </label>
-              </div>
-
-              @if (ttsMode() === 'fixed') {
-                <label class="lf-field">
-                  <span>{{ t('modules.dimafx.ttsTextLabel') }}</span>
-                  <textarea
-                    rows="3"
-                    maxlength="500"
-                    [value]="ttsText()"
-                    (input)="setTtsText($any($event.target).value)"
-                    [placeholder]="t('modules.dimafx.ttsTextPlaceholder')"
-                  ></textarea>
-                </label>
+      } @else {
+        <ul class="lf-item-list">
+          @for (item of items(); track item.id) {
+            <li class="lf-item" [class.lf-item--off]="!item.isEnabled" [class.lf-item--playing]="playingAssetId() === item.id">
+              @if (item.category === 'tts') {
+                <span class="lf-thumb" data-type="tts" aria-hidden="true"><span class="lf-thumb__icon"><app-lf-icon name="chat"></app-lf-icon></span></span>
               } @else {
-                <p class="lf-note">{{ t('modules.dimafx.ttsCustomHint') }}</p>
+                <button type="button" class="lf-thumb" [attr.data-type]="item.mediaType" [disabled]="!item.mediaUrl"
+                  [attr.aria-label]="t(playingAssetId() === item.id ? 'modules.dimafx.stopNamed' : 'modules.dimafx.previewNamed', { name: item.name })"
+                  (click)="previewMedia($event, item.id, { label: item.name, mediaType: item.mediaType, playbackUrl: item.mediaUrl })">
+                  <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: item.mediaType, url: item.mediaUrl || item.thumbnailUrl, playing: playingAssetId() === item.id }"></ng-container>
+                </button>
               }
-
-              <label class="lf-field">
-                <span>{{ t('modules.dimafx.ttsVoiceLabel') }}</span>
-                <select [value]="ttsVoice()" (change)="setTtsVoice($any($event.target).value)">
-                  <option value="">{{ t('modules.dimafx.ttsVoiceDefault') }}</option>
-                  @for (voice of ttsVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value">{{ voice.label }}</option>
+              <div class="lf-item__body">
+                <div class="lf-item__name">
+                  <h3 [title]="item.name">{{ item.name }}</h3>
+                  <span class="lf-price" [class.lf-price--free]="item.bitsPrice === 0">
+                    @if (item.bitsPrice > 0) { <app-lf-icon name="bits" [size]="12"></app-lf-icon> }
+                    {{ formatBitsPrice(item.bitsPrice) }}
+                  </span>
+                  @if (!item.isEnabled) { <span class="lf-chip lf-chip--xs">{{ t('modules.dimafx.notOnSale') }}</span> }
+                </div>
+                <p class="lf-item__meta">
+                  <span class="lf-item__tag">{{ categoryLabel(item.category) }}</span>
+                  @if (itemSummary(item); as summary) {
+                    <span class="lf-item__desc" [title]="summary">{{ summary }}</span>
                   }
-                </select>
-              </label>
-            </div>
+                </p>
+              </div>
+              <div class="lf-item__actions">
+                @if (canEdit()) {
+                  <button type="button" class="lf-btn lf-btn--compact" [disabled]="testingItemId() === item.id" (click)="testItem(item)"
+                    [attr.aria-label]="t('modules.dimafx.testNamed', { name: item.name })">
+                    <app-lf-icon name="video" [size]="13"></app-lf-icon>
+                    <span>{{ testingItemId() === item.id ? t('modules.dimafx.testing') : t('modules.dimafx.testOnStream') }}</span>
+                  </button>
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="selectItem(item)"
+                    [attr.aria-label]="t('modules.dimafx.editNamed', { name: item.name })">{{ t('modules.dimafx.edit') }}</button>
+                  <label class="lf-switch" [title]="t('modules.dimafx.onSaleToggle')">
+                    <input type="checkbox" [checked]="item.isEnabled" [disabled]="togglingItemId() === item.id" (change)="toggleEnabled(item)"
+                      [attr.aria-label]="t('modules.dimafx.onSaleNamed', { name: item.name })" />
+                    <span class="lf-switch__track"></span>
+                  </label>
+                }
+                @if (canDelete()) {
+                  <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="askDelete(item)"
+                    [attr.aria-label]="t('modules.dimafx.deleteNamed', { name: item.name })">
+                    <app-lf-icon name="trash" [size]="15"></app-lf-icon>
+                  </button>
+                }
+              </div>
+            </li>
+          } @empty {
+            <li class="lf-empty">
+              <span class="lf-empty__icon" aria-hidden="true"><app-lf-icon name="bits"></app-lf-icon></span>
+              <h3 class="lf-h3">{{ t('modules.dimafx.noItemsTitle') }}</h3>
+              <p>{{ t('modules.dimafx.noItemsDesc') }}</p>
+              @if (canEdit()) {
+                <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate()">{{ t('modules.dimafx.createFirst') }}</button>
+              }
+            </li>
           }
-
-          <div class="lf-form-row" [class.lf-form-row--3]="showVisibilityDuration()">
-            @if (showVisibilityDuration()) {
-              <label class="lf-field">
-                <span>{{ t('modules.dimafx.duration') }}</span>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  [value]="durationMs() / 1000"
-                  (input)="setDurationMs(+$any($event.target).value * 1000)"
-                />
-              </label>
-            }
-            <label class="lf-field">
-              <span>{{ t('modules.dimafx.volume') }}</span>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                [value]="volume()"
-                (input)="setVolume(+$any($event.target).value)"
-              />
-            </label>
-            <label class="lf-field">
-              <span>{{ t('modules.dimafx.sortOrder') }}</span>
-              <input
-                type="number"
-                [value]="sortOrder()"
-                (input)="setSortOrder(+$any($event.target).value)"
-              />
-            </label>
-          </div>
-
-          <label class="lf-check">
-            <input
-              type="checkbox"
-              [checked]="isEnabled()"
-              (change)="isEnabled.set($any($event.target).checked)"
-            />
-            <span>{{ t('modules.dimafx.enabledInExtension') }}</span>
-          </label>
-
-          <button type="submit" class="lf-btn lf-btn--primary lf-btn--block" [disabled]="saving() || !canSubmit()">
-            {{ saving() ? t('modules.dimafx.saving') : isEditing() ? t('modules.dimafx.saveItem') : t('modules.dimafx.createItem') }}
-          </button>
-        </form>
-      </aside>
+        </ul>
       }
     </section>
   </main>
 </div>
 
-<!-- Media browser modal -->
-@if (isMediaModalOpen()) {
-  <div class="lf-modal-overlay" (click)="closeMediaModal()">
-    <div class="lf-modal lf-modal--wide" (click)="$event.stopPropagation()">
-      <div class="lf-modal__head">
-        <div>
-          <p class="lf-kicker">{{ t('modules.dimafx.heroBadge') }}</p>
-          <h2 class="lf-modal__title">{{ t('modules.dimafx.modal.title') }}</h2>
-          <p class="lf-note">{{ t('modules.dimafx.modal.subtitle') }}</p>
-        </div>
-        <button type="button" class="lf-modal__close" (click)="closeMediaModal()" [attr.aria-label]="t('common.close')">
+<!-- Create / edit dialog -->
+@if (editorOpen()) {
+  <div class="lf-modal-overlay" (click)="closeEditor()">
+    <section class="lf-modal lf-modal--form" role="dialog" aria-modal="true" aria-labelledby="dimafx-editor-title" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="dimafx-editor-title">{{ isEditing() ? t('modules.dimafx.editTitle') : t('modules.dimafx.createTitle') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeEditor()" [attr.aria-label]="t('common.close')">
           <app-lf-icon name="close"></app-lf-icon>
         </button>
-      </div>
+      </header>
 
-      <div class="lf-modal__toolbar">
-        <input
-          type="search"
-          class="lf-search"
-          [placeholder]="t('modules.dimafx.modal.searchPlaceholder')"
-          [value]="mediaSearchQuery()"
-          (input)="mediaSearchQuery.set($any($event.target).value)"
-        />
-
-        <div class="lf-modal__filters">
-          <div class="lf-filter-tabs">
-            @for (filterOpt of ['all', 'audio', 'image', 'video']; track filterOpt) {
-              <button
-                type="button"
-                class="lf-filter-tab"
-                [class.lf-filter-tab--active]="mediaFilter() === filterOpt"
-                (click)="mediaFilter.set(filterOpt)"
-              >
-                {{ filterOpt }}
-              </button>
-            }
+      <form class="lf-modal__body" id="dimafx-editor-form" (submit)="$event.preventDefault(); save()">
+        <!-- 1. What it does -->
+        <section class="lf-step" aria-labelledby="dimafx-step-kind">
+          <h3 class="lf-step__title" id="dimafx-step-kind"><span class="lf-step__num" aria-hidden="true">1</span>{{ t('modules.dimafx.kindTitle') }}</h3>
+          <div class="lf-choice" role="radiogroup" [attr.aria-labelledby]="'dimafx-step-kind'">
+            <label class="lf-choice__opt" [class.is-on]="kind() === 'media'" [class.is-locked]="isEditing() && kind() !== 'media'">
+              <input type="radio" name="dimafx-kind" [checked]="kind() === 'media'" [disabled]="isEditing()" (change)="setKind('media')" />
+              <span><strong>{{ t('modules.dimafx.kindMedia') }}</strong> {{ t('modules.dimafx.kindMediaHint') }}</span>
+            </label>
+            <label class="lf-choice__opt" [class.is-on]="kind() === 'tts'" [class.is-locked]="isEditing() && kind() !== 'tts'">
+              <input type="radio" name="dimafx-kind" [checked]="kind() === 'tts'" [disabled]="isEditing()" (change)="setKind('tts')" />
+              <span><strong>{{ t('modules.dimafx.kindTts') }}</strong> {{ t('modules.dimafx.kindTtsHint') }}</span>
+            </label>
           </div>
+          @if (isEditing()) {
+            <p class="lf-note">{{ t('modules.dimafx.kindLocked') }}</p>
+          }
+        </section>
 
-          <div class="lf-view-toggle">
-            <button
-              type="button"
-              class="lf-view-btn"
-              [class.lf-view-btn--active]="modalViewMode() === 'grid'"
-              (click)="modalViewMode.set('grid')"
-              title="Grid"
-            >
-              <app-lf-icon name="grid"></app-lf-icon>
-            </button>
-            <button
-              type="button"
-              class="lf-view-btn"
-              [class.lf-view-btn--active]="modalViewMode() === 'list'"
-              (click)="modalViewMode.set('list')"
-              title="List"
-            >
-              <app-lf-icon name="list"></app-lf-icon>
-            </button>
-          </div>
-        </div>
-      </div>
+        <!-- 2. Media or message -->
+        <section class="lf-step" aria-labelledby="dimafx-step-content">
+          <h3 class="lf-step__title" id="dimafx-step-content">
+            <span class="lf-step__num" aria-hidden="true">2</span>{{ isTtsCategory() ? t('modules.dimafx.messageTitle') : t('modules.dimafx.mediaAsset') }}
+          </h3>
 
-      <div class="lf-modal__body">
-        @if (filteredAssetOptions().length === 0) {
-          <div class="lf-empty">
-            <h3 class="lf-h3">{{ t('modules.dimafx.modal.noAssets') }}</h3>
-            <p>{{ t('modules.dimafx.modal.noAssetsDesc') }}</p>
-          </div>
-        } @else if (modalViewMode() === 'grid') {
-          <div class="lf-asset-grid">
-            @for (asset of filteredAssetOptions(); track asset.id) {
-              <div
-                class="lf-asset-card"
-                [class.lf-asset-card--selected]="selectedAssetID() === asset.id"
-                (click)="selectAssetFromModal(asset)"
-              >
-                <div class="lf-asset-card__preview">
-                  @if (asset.mediaType === 'image') {
-                    <img [src]="asset.playbackUrl" class="lf-asset-card__media" loading="lazy" alt="" />
-                  }
-                  @if (asset.mediaType === 'video') {
-                    <video [src]="asset.playbackUrl" muted preload="metadata" class="lf-asset-card__media"></video>
-                  }
-                  @if (asset.mediaType === 'audio') {
-                    <div class="lf-asset-card__audio">
-                      <div class="lf-wave">
-                        <span></span><span></span><span></span><span></span>
-                      </div>
-                      <span><app-lf-icon name="audio"></app-lf-icon></span>
-                    </div>
-                  }
-
-                  @if (asset.playbackUrl) {
-                    <button
-                      type="button"
-                      class="lf-asset-card__preview-btn"
-                      (click)="openPreviewModal($event, asset)"
-                      title="Preview"
-                    >
-                      <app-lf-icon name="preview"></app-lf-icon>
+          @if (!isTtsCategory()) {
+            @if (isEditing()) {
+              <div class="lf-pick is-selected lf-pick--locked">
+                <span class="lf-pick__select">
+                  <span class="lf-thumb lf-thumb--sm" [attr.data-type]="editingItem()?.mediaType || 'none'" aria-hidden="true">
+                    <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: editingItem()?.mediaType, url: editingItem()?.mediaUrl || editingItem()?.thumbnailUrl, playing: false }"></ng-container>
+                  </span>
+                  <span class="lf-pick__info">
+                    <strong>{{ selectedAsset()?.label || editingItem()?.name }}</strong>
+                    <span>{{ t('modules.dimafx.mediaLocked') }}</span>
+                  </span>
+                </span>
+              </div>
+            } @else {
+              <p class="lf-note">{{ t('modules.dimafx.modal.subtitle') }}</p>
+              <div class="lf-picker-tools">
+                <input type="search" class="lf-search" [placeholder]="t('modules.dimafx.modal.searchPlaceholder')"
+                  [attr.aria-label]="t('modules.dimafx.modal.searchPlaceholder')"
+                  [value]="mediaSearchQuery()" (input)="mediaSearchQuery.set($any($event.target).value)" />
+                <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('modules.dimafx.modal.typeLabel')">
+                  @for (filterOpt of filterOptions; track filterOpt) {
+                    <button type="button" class="lf-filter-tab" [class.lf-filter-tab--active]="mediaFilter() === filterOpt"
+                      [attr.aria-pressed]="mediaFilter() === filterOpt" (click)="mediaFilter.set(filterOpt)">
+                      {{ t('modules.dimafx.filters.' + filterOpt) }}
                     </button>
                   }
                 </div>
-                <div class="lf-asset-card__info">
-                  <strong [title]="asset.label">{{ asset.label }}</strong>
-                  <span
-                    class="lf-chip lf-chip--compact"
-                    [class.lf-chip--accent]="asset.source === 'library'"
-                    [class.lf-chip--muted]="asset.source === 'public'"
-                  >
-                    {{ asset.source }}
-                  </span>
-                </div>
               </div>
-            }
-          </div>
-        } @else {
-          <div class="lf-asset-list">
-            @for (asset of filteredAssetOptions(); track asset.id) {
-              <div
-                class="lf-asset-row"
-                [class.lf-asset-row--selected]="selectedAssetID() === asset.id"
-                (click)="selectAssetFromModal(asset)"
-              >
-                <span class="lf-asset-row__icon">
-                  @if (asset.mediaType === 'audio') {
-                    <app-lf-icon name="audio"></app-lf-icon>
-                  } @else if (asset.mediaType === 'image') {
-                    <app-lf-icon name="image"></app-lf-icon>
-                  } @else {
-                    <app-lf-icon name="video"></app-lf-icon>
-                  }
-                </span>
-                <span class="lf-asset-row__details">
-                  <strong [title]="asset.label">{{ asset.label }}</strong>
-                  <span class="lf-asset-row__meta">
-                    <span class="lf-chip lf-chip--compact">{{ asset.source }}</span>
-                    <span>{{ asset.mediaType }}</span>
-                  </span>
-                </span>
-                @if (asset.playbackUrl) {
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--compact"
-                    (click)="openPreviewModal($event, asset)"
-                    title="Preview"
-                  >
-                    {{ t('modules.dimafx.preview') }}
-                  </button>
+              <div class="lf-picker" role="group" [attr.aria-label]="t('modules.dimafx.mediaAsset')">
+                @for (asset of filteredAssetOptions(); track asset.id) {
+                  <div class="lf-pick" [class.is-selected]="selectedAssetID() === asset.id" [class.is-playing]="playingAssetId() === asset.id">
+                    <button type="button" class="lf-pick__select" [attr.aria-pressed]="selectedAssetID() === asset.id" (click)="selectAsset(asset)">
+                      <span class="lf-thumb lf-thumb--sm" [attr.data-type]="asset.mediaType" aria-hidden="true">
+                        <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: asset.mediaType, url: asset.playbackUrl, playing: playingAssetId() === asset.id }"></ng-container>
+                      </span>
+                      <span class="lf-pick__info">
+                        <strong>{{ asset.label }}</strong>
+                        <span>
+                          {{ t('modules.dimafx.filters.' + (asset.mediaType === 'gif' ? 'image' : asset.mediaType)) }} ·
+                          {{ asset.source === 'library' ? t('modules.dimafx.sourceLibrary') : t('modules.dimafx.sourcePublic', { name: asset.owner }) }}
+                        </span>
+                      </span>
+                      <span class="lf-pick__check" aria-hidden="true"><app-lf-icon name="check" [size]="13"></app-lf-icon></span>
+                    </button>
+                    @if (asset.playbackUrl) {
+                      <button type="button" class="lf-icon-btn" (click)="previewMedia($event, asset.id, asset)"
+                        [attr.aria-label]="t(playingAssetId() === asset.id ? 'modules.dimafx.stopNamed' : 'modules.dimafx.previewNamed', { name: asset.label })">
+                        <app-lf-icon [name]="playingAssetId() === asset.id ? 'pause' : 'video'" [size]="14"></app-lf-icon>
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <div class="lf-empty lf-empty--compact">
+                    <h4 class="lf-h3">{{ t('modules.dimafx.modal.noAssets') }}</h4>
+                    <p>{{ t('modules.dimafx.modal.noAssetsDesc') }}</p>
+                  </div>
                 }
               </div>
+              @if (submitAttempted() && formErrors().media) {
+                <p class="lf-error" role="alert">{{ t('modules.dimafx.mediaRequired') }}</p>
+              }
+            }
+          } @else {
+            <div class="lf-choice lf-choice--row" role="radiogroup" [attr.aria-label]="t('modules.dimafx.ttsModeLabel')">
+              <label class="lf-choice__opt" [class.is-on]="ttsMode() === 'custom'">
+                <input type="radio" name="dimafx-tts-mode" value="custom" [checked]="ttsMode() === 'custom'" (change)="setTtsMode('custom')" />
+                <span><strong>{{ t('modules.dimafx.ttsModeCustom') }}</strong></span>
+              </label>
+              <label class="lf-choice__opt" [class.is-on]="ttsMode() === 'fixed'">
+                <input type="radio" name="dimafx-tts-mode" value="fixed" [checked]="ttsMode() === 'fixed'" (change)="setTtsMode('fixed')" />
+                <span><strong>{{ t('modules.dimafx.ttsModeFixed') }}</strong></span>
+              </label>
+            </div>
+            @if (ttsMode() === 'fixed') {
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.dimafx.ttsTextLabel') }}</span>
+                <textarea rows="3" maxlength="500" [value]="ttsText()" (input)="setTtsText($any($event.target).value)"
+                  [placeholder]="t('modules.dimafx.ttsTextPlaceholder')" [attr.aria-invalid]="submitAttempted() && formErrors().ttsText"></textarea>
+              </label>
+              @if (submitAttempted() && formErrors().ttsText) {
+                <p class="lf-error" role="alert">{{ t('modules.dimafx.ttsTextRequired') }}</p>
+              }
+            } @else {
+              <p class="lf-note">{{ t('modules.dimafx.ttsCustomHint') }}</p>
+            }
+            <div class="lf-form-grid">
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.dimafx.ttsLanguageLabel') }}</span>
+                <select class="lf-select" [value]="ttsLanguage()" (change)="setTtsLanguage($any($event.target).value)">
+                  <option value="en" [selected]="ttsLanguage() === 'en'">{{ t('modules.dimafx.ttsLanguageEn') }}</option>
+                  <option value="es" [selected]="ttsLanguage() === 'es'">{{ t('modules.dimafx.ttsLanguageEs') }}</option>
+                </select>
+              </label>
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.dimafx.ttsVoiceLabel') }}</span>
+                <select class="lf-select" [value]="ttsVoice()" (change)="setTtsVoice($any($event.target).value)">
+                  <option value="" [selected]="!ttsVoice()">{{ t('modules.dimafx.ttsVoiceDefault') }}</option>
+                  @for (voice of ttsVoiceOptions(); track voice.value) {
+                    <option [value]="voice.value" [selected]="voice.value === ttsVoice()">{{ voice.label }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          }
+        </section>
+
+        <!-- 3. Storefront listing -->
+        <section class="lf-step" aria-labelledby="dimafx-step-listing">
+          <h3 class="lf-step__title" id="dimafx-step-listing"><span class="lf-step__num" aria-hidden="true">3</span>{{ t('modules.dimafx.listingTitle') }}</h3>
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span class="lf-label">{{ t('modules.dimafx.nameLabel') }}</span>
+              <input [value]="name()" (input)="setName($any($event.target).value)" maxlength="60"
+                [placeholder]="t('modules.dimafx.namePlaceholder')" [attr.aria-invalid]="submitAttempted() && formErrors().name" />
+            </label>
+            <label class="lf-field">
+              <span class="lf-label">{{ t('modules.dimafx.bitsPriceLabel') }}</span>
+              <select class="lf-select" [value]="bitsPrice()" (change)="setBitsPrice(+$any($event.target).value)">
+                @for (price of allowedBitPrices(); track price) {
+                  <option [value]="price" [selected]="price === bitsPrice()">{{ formatBitsPrice(price) }}</option>
+                }
+              </select>
+            </label>
+            <label class="lf-field lf-field--full">
+              <span class="lf-label">{{ t('modules.dimafx.descriptionLabel') }}</span>
+              <textarea rows="2" maxlength="200" [value]="description()" (input)="setDescription($any($event.target).value)"
+                [placeholder]="t('modules.dimafx.descriptionPlaceholder')"></textarea>
+            </label>
+          </div>
+          @if (submitAttempted() && formErrors().name) {
+            <p class="lf-error" role="alert">{{ t('modules.dimafx.nameRequired') }}</p>
+          }
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span class="lf-label">{{ t('modules.dimafx.volume') }} <strong class="lf-label__value">{{ volume() }}%</strong></span>
+              <input type="range" class="lf-range" min="0" max="100" [value]="volume()" [style.--pct]="volume() / 100"
+                [attr.aria-valuetext]="volume() + '%'" (input)="setVolume(+$any($event.target).value)" />
+            </label>
+            @if (showVisibilityDuration()) {
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.dimafx.duration') }}</span>
+                <input type="number" min="0.5" step="0.5" inputmode="decimal" [value]="durationMs() / 1000"
+                  (input)="setDurationMs(+$any($event.target).value * 1000)" />
+              </label>
             }
           </div>
-        }
-      </div>
+          <label class="lf-check">
+            <input type="checkbox" [checked]="isEnabled()" (change)="isEnabled.set($any($event.target).checked)" />
+            <span>{{ t('modules.dimafx.enabledInExtension') }}</span>
+          </label>
 
-      <div class="lf-modal__footer">
-        <button type="button" class="lf-btn" (click)="closeMediaModal()">
-          {{ t('modules.dimafx.modal.cancel') }}
+          <details class="lf-more">
+            <summary>{{ t('modules.dimafx.moreOptions') }}</summary>
+            <div class="lf-more__body lf-form-grid">
+              @if (!isTtsCategory()) {
+                <label class="lf-field">
+                  <span class="lf-label">{{ t('modules.dimafx.categoryLabel') }}</span>
+                  <select class="lf-select" [value]="category()" (change)="setCategory($any($event.target).value)" aria-describedby="dimafx-category-hint">
+                    <option value="video" [selected]="category() === 'video'">{{ categoryLabel('video') }}</option>
+                    <option value="gif" [selected]="category() === 'gif'">{{ categoryLabel('gif') }}</option>
+                    <option value="audio" [selected]="category() === 'audio'">{{ categoryLabel('audio') }}</option>
+                  </select>
+                  <span class="lf-note" id="dimafx-category-hint">{{ t('modules.dimafx.categoryHint') }}</span>
+                </label>
+              }
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.dimafx.sortOrder') }}</span>
+                <input type="number" min="0" inputmode="numeric" [value]="sortOrder()" (input)="setSortOrder(+$any($event.target).value)"
+                  aria-describedby="dimafx-sort-hint" />
+                <span class="lf-note" id="dimafx-sort-hint">{{ t('modules.dimafx.sortOrderHint') }}</span>
+              </label>
+            </div>
+          </details>
+        </section>
+      </form>
+
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="closeEditor()">{{ t('modules.dimafx.modal.cancel') }}</button>
+        <button type="submit" form="dimafx-editor-form" class="lf-btn lf-btn--primary" [disabled]="saving()">
+          {{ saving() ? t('modules.dimafx.saving') : isEditing() ? t('modules.dimafx.saveItem') : t('modules.dimafx.createItem') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+<!-- Delete: choose whether viewers' saved copies are refunded -->
+@if (pendingDelete(); as item) {
+  <div class="lf-modal-overlay" (click)="closeDelete()">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="dimafx-delete-title" aria-describedby="dimafx-delete-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="dimafx-delete-title">{{ t('modules.dimafx.deleteTitle', { name: item.name }) }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeDelete()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close"></app-lf-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-delete-copy" id="dimafx-delete-desc">{{ t('modules.dimafx.deleteDesc') }}</p>
+        <button type="button" class="lf-delete-opt lf-delete-opt--primary" [disabled]="deleting()" (click)="confirmDelete(true)">
+          <strong>{{ t('modules.dimafx.refundDelete') }}</strong>
+          <span>{{ t('modules.dimafx.refundDeleteHint') }}</span>
+        </button>
+        <button type="button" class="lf-delete-opt" [disabled]="deleting()" (click)="confirmDelete(false)">
+          <strong>{{ t('modules.dimafx.delete') }}</strong>
+          <span>{{ t('modules.dimafx.deleteHint') }}</span>
         </button>
       </div>
-    </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="closeDelete()">{{ t('modules.dimafx.modal.cancel') }}</button>
+      </footer>
+    </section>
   </div>
 }
 
-<!-- Preview modal -->
+<!-- Video / image preview -->
 @if (activePreviewAsset(); as previewAsset) {
   <div class="lf-preview-overlay" (click)="closePreviewModal()">
-    <div class="lf-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()"><app-lf-icon name="close"></app-lf-icon></button>
-      <h3 class="lf-h3">{{ previewAsset.label }}</h3>
-      <p class="lf-note">{{ previewAsset.mediaType }} · {{ previewAsset.source }}</p>
-
+    <section class="lf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="dimafx-preview-title" (click)="$event.stopPropagation()">
+      <button type="button" class="lf-modal__close lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
+        <app-lf-icon name="close"></app-lf-icon>
+      </button>
+      <h3 class="lf-h3" id="dimafx-preview-title">{{ previewAsset.label }}</h3>
       <div class="lf-preview-modal__content">
-        @if (previewAsset.mediaType === 'audio') {
-          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()">
-            @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]; track bar) {
-              <span class="lf-waveform__bar" [style.animation-delay.ms]="bar * 40"></span>
-            }
-          </div>
-          <p class="lf-note">{{ isAudioPlaying() ? 'Playing…' : 'Paused' }}</p>
-          <button type="button" class="lf-btn lf-btn--primary" (click)="toggleAudioPlayPause()">
-            {{ isAudioPlaying() ? 'Pause' : 'Play' }}
-          </button>
-        }
-
         @if (previewAsset.mediaType === 'video') {
-          <video class="lf-preview-video" [src]="previewAsset.playbackUrl" controls autoplay></video>
-        }
-
-        @if (previewAsset.mediaType === 'image') {
-          <img class="lf-preview-image" [src]="previewAsset.playbackUrl" [alt]="previewAsset.label" />
+          <video class="lf-preview-media" [src]="previewAsset.playbackUrl" controls autoplay></video>
+        } @else {
+          <img class="lf-preview-media" [src]="previewAsset.playbackUrl" [alt]="previewAsset.label" />
         }
       </div>
-    </div>
+    </section>
   </div>
 }
+
+<!-- Thumbnail contents: image, first video frame, or a media-type icon -->
+<ng-template #thumbMedia let-type let-url="url" let-playing="playing">
+  @if (url && (type === 'image' || type === 'gif')) {
+    <img [src]="url" alt="" loading="lazy" />
+  } @else if (url && type === 'video') {
+    <video [appLazyVideoFrame]="url"></video>
+  }
+  @if (type !== 'image' && type !== 'gif') {
+    <span class="lf-thumb__icon">
+      <app-lf-icon [name]="playing ? 'pause' : type === 'audio' ? 'audio' : 'video'"></app-lf-icon>
+    </span>
+  }
+</ng-template>
