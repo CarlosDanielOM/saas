@@ -3,7 +3,6 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -11,6 +10,7 @@ import {
   untracked,
   viewChild
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, startWith, switchMap } from 'rxjs';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -22,21 +22,21 @@ import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
 import { ClipDesignMockComponent } from './components/clip-design-mock.component';
-import { ClipDesign, ClipDesignStatus, UserClipSettings } from './clips.model';
+import { ClipDesign, ClipDesignStatus, UserClipSettings, clipDesignHeight } from './clips.model';
 import { ClipsService } from './clips.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
 type ClipTestState = 'idle' | 'connecting' | 'sending' | 'playing' | 'error';
 
+const STORAGE_PREFIX = 'dimasite.clips.';
+const MAX_TIMEOUT_SECONDS = 30;
+
 @Component({
   selector: 'app-clips-page',
-  imports: [RouterLink, ClipDesignMockComponent, LfIconComponent],
+  imports: [NgTemplateOutlet, RouterLink, ClipDesignMockComponent, LfIconComponent],
   styleUrl: './clips-page.component.css',
   templateUrl: './clips-page.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    '(window:resize)': 'onViewportResize()'
-  }
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ClipsPageComponent {
   private readonly languageService = inject(LanguageService);
@@ -47,11 +47,11 @@ export class ClipsPageComponent {
   private readonly clipsService = inject(ClipsService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly trackRef = viewChild<ElementRef<HTMLElement>>('track');
+  private readonly stageRef = viewChild<ElementRef<HTMLElement>>('stage');
 
-  readonly config = signal({ timeoutSeconds: 30 });
+  readonly config = signal({ timeoutSeconds: MAX_TIMEOUT_SECONDS });
 
-  readonly activeIndex = signal(0);
+  readonly selectedId = signal<string | null>(null);
   readonly urlCopied = signal(false);
   readonly testingDesignId = signal<string | null>(null);
   readonly liveFrameUrl = signal<SafeResourceUrl | null>(null);
@@ -94,20 +94,20 @@ export class ClipsPageComponent {
 
   readonly designs = computed(() => this.clipsService.getDesigns(this.userSettings()));
 
-  readonly premiumDesignCount = computed(
-    () => this.designs().filter((design) => design.premium || design.premiumPlus).length
+  readonly freeDesigns = computed(() =>
+    this.designs().filter((design) => !design.premium && !design.premiumPlus)
   );
 
-  readonly selectedIndex = computed(() =>
-    Math.min(this.activeIndex(), Math.max(this.designs().length - 1, 0))
-  );
+  readonly selectedDesign = computed<ClipDesign | null>(() => {
+    const designs = this.designs();
+    return designs.find((design) => design.id === this.selectedId()) ?? designs[0] ?? null;
+  });
 
-  readonly selectedDesign = computed<ClipDesign | null>(
-    () => this.designs()[this.selectedIndex()] ?? null
-  );
-
-  readonly isFirstDesign = computed(() => this.selectedIndex() === 0);
-  readonly isLastDesign = computed(() => this.selectedIndex() >= this.designs().length - 1);
+  /** OBS browser-source size for the selected design. */
+  readonly sourceSize = computed(() => {
+    const design = this.selectedDesign();
+    return { width: 800, height: design ? clipDesignHeight(design.variant) : 225 };
+  });
 
   readonly previewUrl = computed(() => {
     const design = this.selectedDesign();
@@ -126,20 +126,19 @@ export class ClipsPageComponent {
     () => this.canManage() && Boolean(this.selectedDesign()) && Boolean(this.userSettings().channelID)
   );
 
-  private resizeObserver: ResizeObserver | null = null;
   private testSendHandle: number | null = null;
   private testAttempts = 0;
 
   constructor() {
+    // Each channel remembers the design and duration it was last set up with.
     effect(() => {
-      this.streamer();
-      untracked(() => this.stopLivePreview());
+      const streamer = this.streamer();
+      untracked(() => {
+        this.stopLivePreview();
+        this.restorePreferences(streamer);
+      });
     });
-    afterNextRender(() => this.bindTrackResize());
-    this.destroyRef.onDestroy(() => {
-      this.resizeObserver?.disconnect();
-      this.clearTestSendHandle();
-    });
+    this.destroyRef.onDestroy(() => this.clearTestSendHandle());
   }
 
   livePreviewUrl(design: ClipDesign): SafeResourceUrl | null {
@@ -150,8 +149,8 @@ export class ClipsPageComponent {
     return this.testingDesignId() === design.id;
   }
 
-  t(key: string): string {
-    return this.languageService.translate(key);
+  t(key: string, params?: Record<string, string | number>): string {
+    return this.languageService.translate(key, params);
   }
 
   planTierLabel(): string {
@@ -180,63 +179,23 @@ export class ClipsPageComponent {
     return this.clipsService.isDesignLocked(design, this.userSettings().planTier);
   }
 
-  goTo(index: number, behavior: ScrollBehavior = 'smooth'): void {
-    const lastIndex = Math.max(this.designs().length - 1, 0);
-    const clamped = Math.max(0, Math.min(index, lastIndex));
-    const track = this.trackRef()?.nativeElement;
-    if (clamped !== this.selectedIndex()) {
-      this.stopLivePreview();
-    }
-    this.activeIndex.set(clamped);
+  isSelected(design: ClipDesign): boolean {
+    return this.selectedDesign()?.id === design.id;
+  }
 
-    if (!track) {
+  selectDesign(design: ClipDesign): void {
+    if (this.isSelected(design)) {
       return;
     }
+    this.stopLivePreview();
+    this.selectedId.set(design.id);
+    this.savePreference('design', design.id);
 
-    if (this.prefersReducedMotion()) {
-      behavior = 'auto';
+    // On narrow screens the stage sits above the gallery; bring it back into view.
+    const stage = this.stageRef()?.nativeElement;
+    if (stage && stage.getBoundingClientRect().top < 0) {
+      stage.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     }
-
-    track.scrollTo({ left: this.slideOffset(clamped), behavior });
-  }
-
-  prev(): void {
-    this.goTo(this.selectedIndex() - 1);
-  }
-
-  next(): void {
-    this.goTo(this.selectedIndex() + 1);
-  }
-
-  onTrackScroll(): void {
-    const track = this.trackRef()?.nativeElement;
-    if (!track) {
-      return;
-    }
-    const slides = Array.from(track.children) as HTMLElement[];
-    let closest = 0;
-    let minDistance = Number.POSITIVE_INFINITY;
-
-    slides.forEach((slide, index) => {
-      const distance = Math.abs(slide.offsetLeft - track.scrollLeft);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = index;
-      }
-    });
-
-    if (closest !== this.activeIndex()) {
-      this.stopLivePreview();
-      this.activeIndex.set(closest);
-    }
-  }
-
-  onViewportResize(): void {
-    const track = this.trackRef()?.nativeElement;
-    if (!track) {
-      return;
-    }
-    track.scrollTo({ left: this.slideOffset(this.selectedIndex()), behavior: 'auto' });
   }
 
   openUpgrade(): void {
@@ -246,10 +205,9 @@ export class ClipsPageComponent {
 
   updateTimeout(event: Event): void {
     const value = parseInt((event.target as HTMLInputElement).value, 10);
-    this.config.update((cfg) => ({
-      ...cfg,
-      timeoutSeconds: Math.max(1, Math.min(30, value || 1))
-    }));
+    const timeoutSeconds = Math.max(1, Math.min(MAX_TIMEOUT_SECONDS, value || 1));
+    this.config.update((cfg) => ({ ...cfg, timeoutSeconds }));
+    this.savePreference('timeout', String(timeoutSeconds));
   }
 
   async copyUrl(): Promise<void> {
@@ -381,22 +339,33 @@ export class ClipsPageComponent {
     }
   }
 
-  private bindTrackResize(): void {
-    const track = this.trackRef()?.nativeElement;
-    if (!track || typeof ResizeObserver === 'undefined') {
-      return;
-    }
-    this.resizeObserver = new ResizeObserver(() => this.onViewportResize());
-    this.resizeObserver.observe(track);
+  private restorePreferences(streamer: string | null | undefined): void {
+    const designId = this.readPreference(streamer, 'design');
+    this.selectedId.set(designId && this.designs().some((design) => design.id === designId) ? designId : null);
+    const timeout = parseInt(this.readPreference(streamer, 'timeout') ?? '', 10);
+    this.config.update((cfg) => ({
+      ...cfg,
+      timeoutSeconds: timeout >= 1 && timeout <= MAX_TIMEOUT_SECONDS ? timeout : MAX_TIMEOUT_SECONDS
+    }));
   }
 
-  private slideOffset(index: number): number {
-    const track = this.trackRef()?.nativeElement;
-    if (!track) {
-      return 0;
+  private readPreference(streamer: string | null | undefined, key: string): string | null {
+    if (!streamer || typeof localStorage === 'undefined') return null;
+    try {
+      return localStorage.getItem(`${STORAGE_PREFIX}${key}.${streamer.toLowerCase()}`);
+    } catch {
+      return null;
     }
-    const slide = track.children.item(index) as HTMLElement | null;
-    return slide ? slide.offsetLeft : index * track.clientWidth;
+  }
+
+  private savePreference(key: string, value: string): void {
+    const streamer = this.streamer();
+    if (!streamer || typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}${key}.${streamer.toLowerCase()}`, value);
+    } catch {
+      // Private mode or full storage: the page still works without remembering.
+    }
   }
 
   private prefersReducedMotion(): boolean {

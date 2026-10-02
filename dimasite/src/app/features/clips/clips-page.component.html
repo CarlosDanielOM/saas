@@ -1,291 +1,226 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('clips.title')">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          <app-lf-icon name="back"></app-lf-icon> {{ t('clips.backToModules') }}
-        </a>
-        <p class="lf-kicker">{{ t('clips.headerBadge') }}</p>
-        <h1 class="lf-title">
-          {{ t('clips.title') }}
-          <span>{{ planTierLabel() }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('clips.description') }}</p>
-        <p class="lf-feed">{{ streamer() || '—' }} · {{ designs().length }} {{ t('clips.metrics.designs') }}</p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
-            {{ planTierLabel() }}
-          </span>
-          <span class="lf-spotlight__count">{{ t('clips.chooseDesign') }}</span>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
+        <app-lf-icon name="back"></app-lf-icon> {{ t('clips.backToModules') }}
+      </a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('clips.title') }}</h1>
+          <p class="lf-copy">{{ t('clips.subtitle') }}</p>
         </div>
-        <div class="lf-stats-strip">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clips.metrics.designs') }}</span>
-            <strong class="lf-stats-strip__value">{{ designs().length }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clips.metrics.premiumDesigns') }}</span>
-            <strong class="lf-stats-strip__value">{{ premiumDesignCount() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clips.timeoutLabel') }}</span>
-            <strong class="lf-stats-strip__value">{{ config().timeoutSeconds }}s</strong>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section class="lf-section" [attr.aria-label]="t('clips.chooseDesign')">
-      <div class="lf-section__head lf-section__head--carousel">
-        <div>
-          <p class="lf-kicker">{{ t('clips.chooseDesign') }}</p>
-          <h2 class="lf-h2">{{ t('clips.chooseDesign') }}</h2>
-        </div>
-
-        <div class="lf-carousel-nav">
-          <span class="lf-carousel-count" aria-hidden="true">
-            {{ selectedIndex() + 1 }} / {{ designs().length }}
-          </span>
-          <button
-            type="button"
-            class="lf-carousel-btn"
-            [disabled]="isFirstDesign()"
-            [attr.aria-label]="t('clips.carousel.prev')"
-            (click)="prev()"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            class="lf-carousel-btn"
-            [disabled]="isLastDesign()"
-            [attr.aria-label]="t('clips.carousel.next')"
-            (click)="next()"
-          >
-            ›
-          </button>
-        </div>
+        <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTierLabel() }}</span>
       </div>
 
-      <div
-        class="lf-carousel"
-        #track
-        role="group"
-        tabindex="0"
-        [attr.aria-roledescription]="t('clips.carousel.role')"
-        [attr.aria-label]="t('clips.chooseDesign')"
-        (scroll)="onTrackScroll()"
-      >
-        @for (design of designs(); track design.id; let i = $index) {
-          <article
-            class="lf-slide"
-            [attr.data-active]="selectedIndex() === i"
-            [attr.aria-label]="design.name"
-            [attr.inert]="selectedIndex() === i ? null : ''"
-          >
-            <div class="lf-slide__grid">
-              <div class="lf-slide__info">
-                <div class="lf-slide__top">
-                  <span
-                    class="lf-slide__num"
-                    [style.--design-accent]="design.accentColor"
-                    aria-hidden="true"
-                  >
-                    {{ design.designNumber }}
-                  </span>
-                  <div class="lf-slide__badges">
-                    <span
-                      class="lf-chip lf-chip--status"
-                      [class.lf-chip--ok]="design.status === 'stable'"
-                      [class.lf-chip--beta]="design.status === 'beta'"
-                      [class.lf-chip--muted]="design.status === 'coming_soon' || design.status === 'alpha'"
-                    >
-                      {{ statusLabel(design.status) }}
-                    </span>
-                    @if (design.premium || design.premiumPlus) {
-                      <span class="lf-chip lf-chip--gold">Premium</span>
-                    }
-                    @if (isDesignLocked(design)) {
-                      <span class="lf-chip lf-chip--muted">{{ t('clips.locked') }}</span>
-                    }
+      <ol class="lf-steps">
+        <li><span class="lf-steps__num">1</span> {{ t('clips.steps.pick') }}</li>
+        <li><span class="lf-steps__num">2</span> {{ t('clips.steps.obs') }}</li>
+        <li><span class="lf-steps__num">3</span> {{ t('clips.steps.play') }}</li>
+      </ol>
+    </header>
+
+    @if (selectedDesign(); as design) {
+      <section class="lf-tile lf-stage" #stage aria-labelledby="clip-stage-title">
+        <div class="lf-stage__preview">
+          @if (isLivePreview(design)) {
+            <div class="lf-live-stage" [style.aspect-ratio]="sourceSize().width + ' / ' + sourceSize().height">
+              <iframe
+                class="lf-live-stage__frame"
+                [src]="livePreviewUrl(design)"
+                [title]="design.name"
+                allow="autoplay"
+                (load)="onLiveFrameLoad()"
+              ></iframe>
+
+              @switch (testState()) {
+                @case ('connecting') {
+                  <div class="lf-live-status" role="status">
+                    <span class="lf-spinner" aria-hidden="true"></span>
+                    <p class="lf-live-status__title">{{ t('clips.test.connectingTitle') }}</p>
+                    <p class="lf-live-status__copy">{{ t('clips.test.connectingCopy') }}</p>
                   </div>
-                </div>
-
-                <h3 class="lf-slide__name">{{ design.name }}</h3>
-                <p class="lf-slide__desc">{{ design.description }}</p>
-
-                <div class="lf-slide__features">
-                  @for (feature of design.features; track feature) {
-                    <span class="lf-feature">{{ feature }}</span>
-                  }
-                </div>
-
-                <label class="lf-field">
-                  <span>{{ t('clips.timeoutLabel') }}</span>
-                  <div class="lf-range-row">
-                    <input
-                      type="range"
-                      class="lf-range"
-                      min="1"
-                      max="30"
-                      [value]="config().timeoutSeconds"
-                      (input)="updateTimeout($event)"
-                    />
-                    <strong class="lf-range-value">
-                      {{ config().timeoutSeconds }}
-                      <span>{{ t('clips.seconds') }}</span>
-                    </strong>
-                  </div>
-                </label>
-
-                <div class="lf-slide__actions">
-                  @if (isDesignLocked(design)) {
-                    @if (isOwnerView()) {
-                    <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
-                      {{ t('clips.upgradeToAccess') }}
-                    </button>
-                    }
-                  } @else {
-                    <button type="button" class="lf-btn lf-btn--primary" (click)="copyUrl()">
-                      {{ urlCopied() ? t('clips.copied') : t('clips.copyUrl') }}
-                    </button>
-                    <a
-                      class="lf-btn"
-                      [href]="previewUrl()"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {{ t('clips.openInNewTab') }}
-                    </a>
-                  }
-
-                  @if (canManage()) {
-                  <button
-                    type="button"
-                    class="lf-btn"
-                    [disabled]="
-                      !canTest() || testState() === 'connecting' || testState() === 'sending'
-                    "
-                    (click)="startTest(design)"
-                  >
-                    {{
-                      isLivePreview(design) && testState() === 'playing'
-                        ? t('clips.test.testAgain')
-                        : t('clips.testDesign')
-                    }}
-                  </button>
-                  }
-                </div>
-
-                @if (canManage() && !canTest()) {
-                  <p class="lf-note">{{ t('clips.testWarning') }}</p>
                 }
-              </div>
-
-              <div class="lf-slide__preview">
-                <div class="lf-slide__preview-head">
-                  <p class="lf-kicker">
-                    {{ isLivePreview(design) ? t('clips.preview') : t('clips.mockPreview') }}
-                  </p>
-                  @if (isLivePreview(design)) {
-                    <span class="lf-chip lf-chip--live">{{ t('clips.liveBadge') }}</span>
-                  } @else {
-                    <span class="lf-chip">{{ t('clips.noLiveData') }}</span>
-                  }
-                </div>
-
-                @if (isLivePreview(design)) {
-                  <div class="lf-live-stage">
-                    <iframe
-                      class="lf-live-stage__frame"
-                      [src]="livePreviewUrl(design)"
-                      [title]="design.name"
-                      allow="autoplay"
-                      (load)="onLiveFrameLoad()"
-                    ></iframe>
-
-                    @switch (testState()) {
-                      @case ('connecting') {
-                        <div class="lf-live-status">
-                          <span class="lf-spinner" aria-hidden="true"></span>
-                          <p class="lf-live-status__title">{{ t('clips.test.connectingTitle') }}</p>
-                          <p class="lf-live-status__copy">{{ t('clips.test.connectingCopy') }}</p>
-                        </div>
-                      }
-                      @case ('sending') {
-                        <div class="lf-live-status">
-                          <span class="lf-spinner" aria-hidden="true"></span>
-                          <p class="lf-live-status__title">{{ t('clips.test.sendingTitle') }}</p>
-                          <p class="lf-live-status__copy">{{ t('clips.test.sendingCopy') }}</p>
-                        </div>
-                      }
-                      @case ('playing') {
-                        <span class="lf-live-badge">{{ t('clips.test.playingTitle') }}</span>
-                      }
-                      @case ('error') {
-                        <div class="lf-live-status lf-live-status--error">
-                          <p class="lf-live-status__title">{{ t('clips.test.errorTitle') }}</p>
-                          <p class="lf-live-status__copy">{{ testError() }}</p>
-                          <div class="lf-live-status__actions">
-                            <button
-                              type="button"
-                              class="lf-btn lf-btn--sm"
-                              (click)="stopLivePreview()"
-                            >
-                              {{ t('clips.test.stop') }}
-                            </button>
-                            <button
-                              type="button"
-                              class="lf-btn lf-btn--primary lf-btn--sm"
-                              (click)="retryTest()"
-                            >
-                              {{ t('clips.test.retry') }}
-                            </button>
-                          </div>
-                        </div>
-                      }
-                    }
-
-                    <button
-                      type="button"
-                      class="lf-live-stop"
-                      (click)="stopLivePreview()"
-                      [attr.aria-label]="t('clips.test.stop')"
-                    >
-                      <app-lf-icon name="close"></app-lf-icon>
-                    </button>
+                @case ('sending') {
+                  <div class="lf-live-status" role="status">
+                    <span class="lf-spinner" aria-hidden="true"></span>
+                    <p class="lf-live-status__title">{{ t('clips.test.sendingTitle') }}</p>
+                    <p class="lf-live-status__copy">{{ t('clips.test.sendingCopy') }}</p>
                   </div>
-                } @else {
-                  <app-clip-design-mock
-                    [variant]="design.variant"
-                    [accent]="design.accentColor"
-                    [streamer]="t('clips.mock.streamer')"
-                    [game]="t('clips.mock.game')"
-                    [title]="t('clips.mock.title')"
-                    [caption]="t('clips.mock.caption')"
-                  />
                 }
-              </div>
+                @case ('playing') {
+                  <span class="lf-live-badge" role="status">{{ t('clips.test.playingTitle') }}</span>
+                }
+                @case ('error') {
+                  <div class="lf-live-status lf-live-status--error" role="alert">
+                    <p class="lf-live-status__title">{{ t('clips.test.errorTitle') }}</p>
+                    <p class="lf-live-status__copy">{{ testError() }}</p>
+                    <div class="lf-live-status__actions">
+                      <button type="button" class="lf-btn lf-btn--sm" (click)="stopLivePreview()">{{ t('clips.test.stop') }}</button>
+                      <button type="button" class="lf-btn lf-btn--primary lf-btn--sm" (click)="retryTest()">{{ t('clips.test.retry') }}</button>
+                    </div>
+                  </div>
+                }
+              }
+
+              <button type="button" class="lf-live-stop" [attr.aria-label]="t('clips.test.stop')" (click)="stopLivePreview()">
+                <app-lf-icon name="close"></app-lf-icon>
+              </button>
             </div>
-          </article>
-        }
-      </div>
+          } @else {
+            <app-clip-design-mock
+              [variant]="design.variant"
+              [accent]="design.accentColor"
+              [streamer]="t('clips.mock.streamer')"
+              [game]="t('clips.mock.game')"
+              [title]="t('clips.mock.title')"
+              [caption]="t('clips.mock.caption')"
+            />
+          }
+          <span class="lf-stage__tag">{{ isLivePreview(design) ? t('clips.liveBadge') : t('clips.noLiveData') }}</span>
+        </div>
 
-      <div class="lf-carousel-dots" role="group" [attr.aria-label]="t('clips.chooseDesign')">
-        @for (design of designs(); track design.id; let i = $index) {
+        <div class="lf-stage__body">
+          <div class="lf-stage__title">
+            <h2 id="clip-stage-title" class="lf-h2">{{ design.name }}</h2>
+            <ng-container *ngTemplateOutlet="chips; context: { $implicit: design }"></ng-container>
+          </div>
+          <p class="lf-stage__desc">{{ design.description }}</p>
+          <ul class="lf-features">
+            @for (feature of design.features; track feature) {
+              <li>{{ feature }}</li>
+            }
+          </ul>
+
+          @if (isDesignLocked(design)) {
+            <div class="lf-locked">
+              <span class="lf-locked__icon" aria-hidden="true"><app-lf-icon name="lock"></app-lf-icon></span>
+              <div>
+                <p class="lf-locked__title">{{ t('clips.lockedTitle') }}</p>
+                <p class="lf-note">{{ t('clips.lockedBody') }}</p>
+              </div>
+              @if (isOwnerView()) {
+                <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
+                  <app-lf-icon name="star"></app-lf-icon> {{ t('clips.upgradeCta') }}
+                </button>
+              }
+            </div>
+          } @else {
+            <label class="lf-field">
+              <span class="lf-field__label">
+                {{ t('clips.timeoutLabel') }}
+                <strong>{{ t('clips.secondsValue', { seconds: config().timeoutSeconds }) }}</strong>
+              </span>
+              <input
+                type="range"
+                class="lf-range"
+                min="1"
+                max="30"
+                [value]="config().timeoutSeconds"
+                [attr.aria-valuetext]="t('clips.secondsValue', { seconds: config().timeoutSeconds })"
+                (input)="updateTimeout($event)"
+              />
+            </label>
+
+            <div class="lf-source">
+              <div class="lf-source__head">
+                <span class="lf-field__label">{{ t('clips.sourceUrl') }}</span>
+                <span class="lf-source__size">{{ t('clips.sourceSize', { width: sourceSize().width, height: sourceSize().height }) }}</span>
+              </div>
+              <div class="lf-source__row">
+                <input
+                  class="lf-source__url"
+                  type="text"
+                  readonly
+                  [value]="previewUrl()"
+                  [attr.aria-label]="t('clips.sourceUrl')"
+                  (focus)="$any($event.target).select()"
+                />
+                <button type="button" class="lf-btn lf-btn--primary" (click)="copyUrl()">
+                  @if (urlCopied()) {
+                    <app-lf-icon name="check"></app-lf-icon>
+                  }
+                  {{ urlCopied() ? t('clips.copied') : t('clips.copy') }}
+                </button>
+              </div>
+              <a class="lf-link" [href]="previewUrl()" target="_blank" rel="noopener noreferrer">
+                {{ t('clips.openInNewTab') }} <app-lf-icon name="forward" [size]="14"></app-lf-icon>
+              </a>
+            </div>
+          }
+
+          @if (canManage()) {
+            <div class="lf-test">
+              <button
+                type="button"
+                class="lf-btn"
+                [disabled]="!canTest() || testState() === 'connecting' || testState() === 'sending'"
+                (click)="startTest(design)"
+              >
+                <app-lf-icon name="video"></app-lf-icon>
+                {{ isLivePreview(design) && testState() === 'playing' ? t('clips.test.testAgain') : t('clips.testDesign') }}
+              </button>
+              <p class="lf-note">{{ canTest() ? t('clips.testHint') : t('clips.testWarning') }}</p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <section class="lf-section" aria-labelledby="clip-gallery-title">
+      <div class="lf-section__head">
+        <h2 id="clip-gallery-title" class="lf-h2">{{ t('clips.galleryTitle') }}</h2>
+        <p class="lf-section__hint">{{ t('clips.galleryHint', { free: freeDesigns().length, total: designs().length }) }}</p>
+      </div>
+      <div class="lf-gallery">
+        @for (design of designs(); track design.id) {
           <button
             type="button"
-            class="lf-carousel-dot"
-            [class.lf-carousel-dot--active]="selectedIndex() === i"
-            [attr.aria-current]="selectedIndex() === i ? 'true' : null"
-            [attr.aria-label]="design.name"
-            (click)="goTo(i)"
-          ></button>
+            class="lf-card"
+            [class.lf-card--selected]="isSelected(design)"
+            [class.lf-card--locked]="isDesignLocked(design)"
+            [attr.aria-pressed]="isSelected(design)"
+            (click)="selectDesign(design)"
+          >
+            <app-clip-design-mock
+              [compact]="true"
+              [variant]="design.variant"
+              [accent]="design.accentColor"
+              [streamer]="t('clips.mock.streamer')"
+              [game]="t('clips.mock.game')"
+              [title]="t('clips.mock.title')"
+              [caption]="t('clips.mock.caption')"
+              aria-hidden="true"
+            />
+            <span class="lf-card__body">
+              <span class="lf-card__name">
+                {{ design.name }}
+                @if (isSelected(design)) {
+                  <app-lf-icon class="lf-card__check" name="check" [size]="16"></app-lf-icon>
+                }
+              </span>
+              <ng-container *ngTemplateOutlet="chips; context: { $implicit: design }"></ng-container>
+            </span>
+          </button>
         }
       </div>
     </section>
   </main>
 </div>
+
+<ng-template #chips let-design>
+  <span class="lf-chips">
+    @if (design.premium || design.premiumPlus) {
+      <span class="lf-chip lf-chip--xs lf-chip--gold">
+        @if (isDesignLocked(design)) {
+          <app-lf-icon name="lock" [size]="12"></app-lf-icon>
+        }
+        {{ design.premiumPlus ? 'Pro' : 'Premium' }}
+      </span>
+    } @else {
+      <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('clips.free') }}</span>
+    }
+    @if (design.status !== 'stable') {
+      <span class="lf-chip lf-chip--xs" [attr.data-tone]="design.status">{{ statusLabel(design.status) }}</span>
+    }
+  </span>
+</ng-template>

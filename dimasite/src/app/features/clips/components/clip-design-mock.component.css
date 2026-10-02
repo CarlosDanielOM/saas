@@ -30,6 +30,11 @@
   font-family: var(--font, 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif);
 }
 
+.mock--compact {
+  min-height: 0;
+  border-radius: 0.7rem;
+}
+
 .clip-design {
   flex: none;
   width: 800px;
@@ -132,4 +137,9 @@
   .skin__media::after {
     animation: none;
   }
+}
+
+/* Gallery thumbnails share one frame so every card lines up. */
+.mock.mock--compact {
+  aspect-ratio: 16 / 9;
 }

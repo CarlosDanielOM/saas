@@ -29,6 +29,8 @@ export class ClipDesignMockComponent {
   readonly game = input<string>('Just Chatting');
   readonly title = input<string>('Your clip title');
   readonly caption = input<string>('Your caption appears here');
+  /** Thumbnails drop the stage's minimum height and inner padding. */
+  readonly compact = input(false);
 
   private readonly available = signal({ width: 336, height: 189 });
   readonly canvasHeight = computed(() => clipDesignHeight(this.variant()));
@@ -61,8 +63,9 @@ export class ClipDesignMockComponent {
     }
 
     const update = () => {
-      const width = frame.clientWidth - 28;
-      const height = frame.clientHeight - 28;
+      const inset = this.compact() ? 12 : 28;
+      const width = frame.clientWidth - inset;
+      const height = frame.clientHeight - inset;
       if (width <= 0 || height <= 0) {
         return;
       }
