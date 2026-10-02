@@ -1,42 +1,27 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules', 'analytics']">
-          <app-lf-icon name="back"></app-lf-icon> {{ t('analytics.follows.backToAnalytics') }}
-        </a>
-        <p class="lf-kicker">{{ t('analytics.follows.activeOnly') }} · Beta</p>
-        <h1 class="lf-title">{{ t('analytics.follows.title') }} <span>{{ channelName() || streamer() }}</span></h1>
-        <p class="lf-copy">{{ t('analytics.follows.subtitle') }}</p>
-        <div class="lf-chip-row">
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer(), 'modules', 'analytics']">
+        <app-lf-icon name="back"></app-lf-icon> {{ t('analytics.follows.backToAnalytics') }}
+      </a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">
+            {{ t('analytics.follows.title') }}
+            <span class="lf-chip lf-chip--accent">Beta</span>
+          </h1>
+          <p class="lf-copy">{{ t('analytics.follows.subtitle') }}</p>
+        </div>
+        <div class="lf-head__chips">
           @if (getRoleLabel()) {
-            <span class="lf-chip lf-chip--accent">{{ getRoleLabel() }}</span>
+            <span class="lf-chip">{{ getRoleLabel() }}</span>
           }
           <span class="lf-chip" [class.lf-chip--gold]="hasPaidAccess()">
             {{ hasPaidAccess() ? t('navbar.plan' + (planTier() === 'pro' ? 'Pro' : planTier() === 'premium' ? 'Premium' : 'Free')) : t('analytics.follows.lockedCta') }}
           </span>
         </div>
-      </article>
-
-      @if (hasPaidAccess()) {
-        <article class="lf-tile lf-tile--spotlight">
-          <div class="lf-stats-strip lf-stats-strip--3">
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('analytics.follows.activeTotal') }}</span>
-              <span class="lf-stats-strip__value">{{ summary().activeCount }}</span>
-            </div>
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('analytics.follows.mutualTotal') }}</span>
-              <span class="lf-stats-strip__value">{{ summary().mutualCount }}</span>
-            </div>
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('analytics.follows.nonMutualTotal') }}</span>
-              <span class="lf-stats-strip__value">{{ summary().nonMutualCount }}</span>
-            </div>
-          </div>
-        </article>
-      }
-    </section>
+      </div>
+    </header>
 
     @if (!hasPaidAccess()) {
       <section class="lf-tile lf-locked">
@@ -44,12 +29,48 @@
         <h2 class="lf-h2">{{ t('analytics.follows.lockedTitle') }}</h2>
         <p class="lf-copy lf-copy--tight">{{ t('analytics.follows.lockedDescription') }}</p>
         @if (isOwnerView()) {
-        <button type="button" class="lf-btn lf-btn--primary" (click)="showUpgradeNotice()">
-          {{ t('analytics.follows.lockedCta') }}
-        </button>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="showUpgradeNotice()">
+            {{ t('analytics.follows.lockedCta') }}
+          </button>
         }
       </section>
     } @else {
+      <section class="lf-stats" [attr.aria-label]="t('analytics.follows.filters')">
+        <button
+          type="button"
+          class="lf-stat"
+          [class.lf-stat--active]="mutualFilter() === 'all'"
+          [attr.aria-pressed]="mutualFilter() === 'all'"
+          (click)="setMutualFilter('all')"
+        >
+          <span class="lf-stat__label"><app-lf-icon name="users" [size]="14"></app-lf-icon> {{ t('analytics.follows.activeTotal') }}</span>
+          <span class="lf-stat__value">{{ summary().activeCount }}</span>
+          <span class="lf-stat__bar" aria-hidden="true"><span [style.width.%]="mutualShare()"></span></span>
+        </button>
+        <button
+          type="button"
+          class="lf-stat lf-stat--gold"
+          [class.lf-stat--active]="mutualFilter() === 'mutual'"
+          [attr.aria-pressed]="mutualFilter() === 'mutual'"
+          (click)="setMutualFilter('mutual')"
+        >
+          <span class="lf-stat__label"><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('analytics.follows.mutualTotal') }}</span>
+          <span class="lf-stat__value">{{ summary().mutualCount }}</span>
+          <span class="lf-stat__meta">{{ t('analytics.follows.shareOfFollowers', { percent: mutualShare() }) }}</span>
+        </button>
+        <button
+          type="button"
+          class="lf-stat"
+          [class.lf-stat--active]="mutualFilter() === 'non-mutual'"
+          [attr.aria-pressed]="mutualFilter() === 'non-mutual'"
+          (click)="setMutualFilter('non-mutual')"
+        >
+          <span class="lf-stat__label"><app-lf-icon name="forward" [size]="14"></app-lf-icon> {{ t('analytics.follows.nonMutualTotal') }}</span>
+          <span class="lf-stat__value">{{ summary().nonMutualCount }}</span>
+          <span class="lf-stat__meta">{{ t('analytics.follows.shareOfFollowers', { percent: 100 - mutualShare() }) }}</span>
+        </button>
+      </section>
+
       @if (errorMessage()) {
         <section class="lf-banner lf-banner--error" role="alert">
           <div>
@@ -62,164 +83,149 @@
         </section>
       }
 
-      <section class="lf-tile lf-controls" [attr.aria-label]="t('analytics.follows.filters')">
-        <label class="lf-search-wrap" [attr.aria-label]="t('analytics.follows.searchLabel')">
-          <input
-            type="search"
-            class="lf-search"
-            [value]="searchInput()"
-            [placeholder]="t('analytics.follows.searchPlaceholder')"
-            (input)="onSearchInput($event)"
-          />
-          @if (searchInput()) {
-            <button
-              type="button"
-              class="lf-search-clear"
-              [attr.aria-label]="t('analytics.follows.clearSearchAriaLabel')"
-              (click)="clearSearch()"
-            >
-              <app-lf-icon name="close"></app-lf-icon>
-            </button>
-          }
-        </label>
+      <section class="lf-tile lf-results" aria-live="polite">
+        <div class="lf-toolbar">
+          <label class="lf-search-wrap">
+            <span class="lf-sr-only">{{ t('analytics.follows.searchLabel') }}</span>
+            <app-lf-icon class="lf-search-icon" name="search" [size]="16"></app-lf-icon>
+            <input
+              type="search"
+              class="lf-search"
+              [value]="searchInput()"
+              [placeholder]="t('analytics.follows.searchPlaceholder')"
+              (input)="onSearchInput($event)"
+            />
+            @if (searchInput()) {
+              <button
+                type="button"
+                class="lf-search-clear"
+                [attr.aria-label]="t('analytics.follows.clearSearchAriaLabel')"
+                (click)="clearSearch()"
+              >
+                <app-lf-icon name="close"></app-lf-icon>
+              </button>
+            }
+          </label>
 
-        <div class="lf-controls__row">
-          <div class="lf-filter-tabs" [attr.aria-label]="t('analytics.follows.filters')">
+          <div class="lf-toolbar__actions">
+            <div class="lf-segment" role="group" [attr.aria-label]="t('analytics.follows.sort')">
+              <button
+                type="button"
+                class="lf-segment__btn"
+                [class.lf-segment__btn--active]="sortOrder() === 'desc'"
+                [attr.aria-pressed]="sortOrder() === 'desc'"
+                (click)="setSortOrder('desc')"
+              >
+                {{ t('analytics.follows.newest') }}
+              </button>
+              <button
+                type="button"
+                class="lf-segment__btn"
+                [class.lf-segment__btn--active]="sortOrder() === 'asc'"
+                [attr.aria-pressed]="sortOrder() === 'asc'"
+                (click)="setSortOrder('asc')"
+              >
+                {{ t('analytics.follows.oldest') }}
+              </button>
+            </div>
             <button
               type="button"
-              class="lf-filter-tab"
-              [class.lf-filter-tab--active]="mutualFilter() === 'all'"
-              (click)="setMutualFilter('all')"
+              class="lf-icon-btn"
+              [disabled]="loading() || refreshing()"
+              [attr.aria-label]="t('common.refresh')"
+              [attr.title]="t('common.refresh')"
+              (click)="retryLoad()"
             >
-              {{ t('analytics.follows.all') }}
-            </button>
-            <button
-              type="button"
-              class="lf-filter-tab"
-              [class.lf-filter-tab--active]="mutualFilter() === 'mutual'"
-              (click)="setMutualFilter('mutual')"
-            >
-              {{ t('analytics.follows.mutuals') }}
-            </button>
-            <button
-              type="button"
-              class="lf-filter-tab"
-              [class.lf-filter-tab--active]="mutualFilter() === 'non-mutual'"
-              (click)="setMutualFilter('non-mutual')"
-            >
-              {{ t('analytics.follows.nonMutuals') }}
-            </button>
-          </div>
-
-          <div class="lf-filter-tabs lf-filter-tabs--ghost" [attr.aria-label]="t('analytics.follows.sort')">
-            <button
-              type="button"
-              class="lf-filter-tab"
-              [class.lf-filter-tab--active]="sortOrder() === 'desc'"
-              (click)="setSortOrder('desc')"
-            >
-              {{ t('analytics.follows.newest') }}
-            </button>
-            <button
-              type="button"
-              class="lf-filter-tab"
-              [class.lf-filter-tab--active]="sortOrder() === 'asc'"
-              (click)="setSortOrder('asc')"
-            >
-              {{ t('analytics.follows.oldest') }}
+              <span class="lf-icon-btn__glyph" [class.lf-spin]="refreshing() || loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
             </button>
           </div>
         </div>
-      </section>
 
-      @if (showInitialLoading()) {
-        <section class="lf-tile lf-empty" aria-live="polite">
-          <p>{{ t('analytics.follows.loading') }}</p>
-        </section>
-      } @else {
-        <section class="lf-tile" aria-live="polite">
-          <div class="lf-results-head">
-            <div>
-              <p class="lf-kicker">{{ t('analytics.follows.resultsTitle') }}</p>
-              <p class="lf-note">{{ t('analytics.follows.showingResults', resultRange()) }}</p>
-            </div>
-            <div class="lf-results-actions">
-              @if (refreshing()) {
-                <span class="lf-note">{{ t('analytics.follows.refreshing') }}</span>
-              }
-              <button
-                type="button"
-                class="lf-btn lf-btn--compact"
-                [disabled]="loading() || refreshing()"
-                (click)="retryLoad()"
-              >
-                <span [class.lf-spin]="refreshing() || loading()"><app-lf-icon name="refresh"></app-lf-icon></span>
-                {{ t('common.refresh') }}
-              </button>
-            </div>
+        <div class="lf-results-head">
+          <p class="lf-note">
+            @if (showInitialLoading()) {
+              {{ t('analytics.follows.loading') }}
+            } @else {
+              {{ t('analytics.follows.showingResults', resultRange()) }}
+            }
+          </p>
+          @if (refreshing()) {
+            <span class="lf-note">{{ t('analytics.follows.refreshing') }}</span>
+          }
+        </div>
+
+        @if (showInitialLoading()) {
+          <ul class="lf-list" aria-hidden="true">
+            @for (placeholder of skeletonRows; track placeholder) {
+              <li class="lf-row lf-row--skeleton">
+                <span class="lf-avatar"></span>
+                <span class="lf-skel"></span>
+              </li>
+            }
+          </ul>
+        } @else if (showEmptyState()) {
+          <div class="lf-empty">
+            <h2 class="lf-h3">
+              {{ searchQuery() ? t('analytics.follows.searchNoResults', { query: searchQuery() }) : t('analytics.follows.empty') }}
+            </h2>
+            <p>{{ t('analytics.follows.emptyHint') }}</p>
           </div>
-
-          @if (showEmptyState()) {
-            <div class="lf-empty">
-              <h2 class="lf-h3">
-                {{ searchQuery() ? t('analytics.follows.searchNoResults', { query: searchQuery() }) : t('analytics.follows.empty') }}
-              </h2>
-              <p>{{ t('analytics.follows.emptyHint') }}</p>
-            </div>
-          } @else {
-            <div class="lf-follower-grid">
-              @for (row of rows(); track trackFollower(row)) {
-                <article class="lf-follower" [class.lf-follower--mutual]="row.mutual">
-                  <div class="lf-follower__head">
-                    <div class="lf-follower__identity">
-                      <p class="lf-follower__name">{{ row.follower_name || row.follower_login || row.follower_id }}</p>
-                      <p class="lf-follower__login">{{ row.follower_login || row.follower_id }}</p>
-                    </div>
+        } @else {
+          <ul class="lf-list" [class.lf-list--busy]="refreshing()">
+            @for (row of rows(); track trackFollower(row)) {
+              <li class="lf-row" [class.lf-row--mutual]="row.mutual">
+                <span class="lf-avatar" [style.--hue]="avatarHue(row)" aria-hidden="true">{{ avatarInitial(row) }}</span>
+                <div class="lf-row__identity">
+                  <p class="lf-row__name">
+                    <span class="lf-row__name-text">{{ row.follower_name || row.follower_login || row.follower_id }}</span>
                     @if (row.mutual) {
-                      <span class="lf-chip lf-chip--gold">{{ t('analytics.follows.mutualBadge') }}</span>
+                      <span class="lf-chip lf-chip--gold lf-chip--xs">{{ t('analytics.follows.mutualBadge') }}</span>
                     }
-                  </div>
-                  <dl class="lf-follower__meta">
-                    <div>
-                      <dt>{{ t('analytics.follows.followedAt') }}</dt>
-                      <dd>{{ formatFollowedAt(row.followed_at) }}</dd>
-                    </div>
-                    <div>
-                      <dt>{{ t('analytics.follows.followAge') }}</dt>
-                      <dd>{{ formatFollowAge(row.followed_at) }}</dd>
-                    </div>
-                  </dl>
-                </article>
-              }
-            </div>
-
-            @if (pagination().totalPages > 1) {
-              <div class="lf-pagination">
-                <div class="lf-pagination__info">
-                  <span>{{ t('common.show') }}</span>
-                  <select class="lf-select" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
-                    @for (option of itemsPerPageOptions; track option) {
-                      <option [value]="option" [attr.selected]="itemsPerPage() === option ? '' : null">{{ option }}</option>
-                    }
-                  </select>
-                  <span>{{ t('common.entries') }}</span>
+                  </p>
+                  @if (showLogin(row)) {
+                    <p class="lf-row__login">{{ row.follower_login }}</p>
+                  }
                 </div>
+                <div class="lf-row__when" [attr.title]="formatFollowedAt(row.followed_at)">
+                  <span class="lf-row__age" [attr.aria-label]="t('analytics.follows.followAge') + ': ' + formatFollowAge(row.followed_at)">
+                    {{ formatFollowAgeShort(row.followed_at) }}
+                  </span>
+                  <span class="lf-row__date">{{ formatFollowedDate(row.followed_at) }}</span>
+                </div>
+              </li>
+            }
+          </ul>
 
+          @if (pagination().totalPages > 1 || pagination().total > itemsPerPageOptions[1]) {
+            <div class="lf-pagination">
+              <label class="lf-pagination__info">
+                <span>{{ t('common.show') }}</span>
+                <select class="lf-select" [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
+                  @for (option of itemsPerPageOptions; track option) {
+                    <option [value]="option" [attr.selected]="itemsPerPage() === option ? '' : null">{{ option }}</option>
+                  }
+                </select>
+                <span>{{ t('common.entries') }}</span>
+              </label>
+
+              @if (pagination().totalPages > 1) {
                 <nav class="lf-pagination__nav" [attr.aria-label]="t('analytics.follows.pagination')">
                   <button
                     type="button"
-                    class="lf-btn lf-btn--xs"
+                    class="lf-page lf-page--nav"
                     [disabled]="currentPage() === 1"
+                    [attr.aria-label]="t('common.previous')"
                     (click)="changePage(currentPage() - 1)"
                   >
-                    {{ t('common.previous') }}
+                    <app-lf-icon name="back"></app-lf-icon>
                   </button>
 
                   @for (page of pages(); track page) {
                     <button
                       type="button"
-                      class="lf-btn lf-btn--xs"
-                      [class.lf-btn--primary]="currentPage() === page"
+                      class="lf-page"
+                      [class.lf-page--active]="currentPage() === page"
+                      [attr.aria-current]="currentPage() === page ? 'page' : null"
                       (click)="changePage(page)"
                     >
                       {{ page }}
@@ -228,18 +234,19 @@
 
                   <button
                     type="button"
-                    class="lf-btn lf-btn--xs"
+                    class="lf-page lf-page--nav"
                     [disabled]="currentPage() === pagination().totalPages"
+                    [attr.aria-label]="t('common.next')"
                     (click)="changePage(currentPage() + 1)"
                   >
-                    {{ t('common.next') }}
+                    <app-lf-icon name="forward"></app-lf-icon>
                   </button>
                 </nav>
-              </div>
-            }
+              }
+            </div>
           }
-        </section>
-      }
+        }
+      </section>
     }
   </main>
 </div>

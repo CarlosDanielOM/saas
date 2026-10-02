@@ -1420,7 +1420,7 @@
   "analytics": {
     "follows": {
       "title": "Registro de Seguidores",
-      "subtitle": "Busca a quienes te siguen ahora, filtra mutuos, ordena por fecha de follow y ve la antigüedad. Beta — solo followers actuales (no unfollows históricos).",
+      "subtitle": "Todas las personas que te siguen ahora. Toca un total para filtrar, busca por nombre y ordena por fecha de follow.",
       "backToAnalytics": "Volver a analiticas",
       "activeOnly": "Seguidores actuales",
       "filters": "Filtros",
@@ -1458,7 +1458,11 @@
       "durationMonths": "{{count}} mes(es)",
       "durationDays": "{{count}} dia(s)",
       "durationPair": "{{first}} y {{second}}",
-      "durationUnknown": "Desconocido"
+      "durationUnknown": "Desconocido",
+      "durationShortYears": "{{count}} a",
+      "durationShortMonths": "{{count}} m",
+      "durationShortDays": "{{count}} d",
+      "shareOfFollowers": "{{percent}}% de seguidores"
     }
   },
   "clipRecommendations": {

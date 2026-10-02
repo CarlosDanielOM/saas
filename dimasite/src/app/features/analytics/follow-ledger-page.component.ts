@@ -63,6 +63,7 @@ export class FollowLedgerPageComponent {
   readonly currentPage = signal(1);
   readonly itemsPerPage = signal(24);
   readonly itemsPerPageOptions = [24, 12, 48];
+  readonly skeletonRows = [1, 2, 3, 4, 5, 6];
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -113,6 +114,10 @@ export class FollowLedgerPageComponent {
   readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly hasPaidAccess = computed(() => this.planTier() !== 'free');
   readonly showInitialLoading = computed(() => this.loading() && this.rows().length === 0);
+  readonly mutualShare = computed(() => {
+    const { activeCount, mutualCount } = this.summary();
+    return activeCount > 0 ? Math.round((mutualCount / activeCount) * 100) : 0;
+  });
   readonly showEmptyState = computed(() => !this.loading() && !this.errorMessage() && this.rows().length === 0);
   readonly pages = computed(() => {
     const total = this.pagination().totalPages;
@@ -325,29 +330,20 @@ export class FollowLedgerPageComponent {
     }).format(date);
   }
 
-  formatFollowAge(value: string): string {
-    this.languageService.currentLanguage();
-
-    const followedAt = new Date(value);
-    if (Number.isNaN(followedAt.getTime())) {
+  formatFollowedDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
       return this.t('analytics.follows.durationUnknown');
     }
 
-    const elapsedMs = Math.max(0, Date.now() - followedAt.getTime());
-    const totalDays = Math.max(0, Math.floor(elapsedMs / 86400000));
-    const years = Math.floor(totalDays / 365);
-    const months = Math.floor((totalDays % 365) / 30);
-    const days = totalDays - years * 365 - months * 30;
-    const parts: string[] = [];
+    const locale = this.languageService.currentLanguage() === 'es' ? 'es-ES' : 'en-US';
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date);
+  }
 
-    if (years > 0) {
-      parts.push(this.t('analytics.follows.durationYears', { count: years }));
-    }
-    if (months > 0) {
-      parts.push(this.t('analytics.follows.durationMonths', { count: months }));
-    }
-    if (days > 0 || parts.length === 0) {
-      parts.push(this.t('analytics.follows.durationDays', { count: days }));
+  formatFollowAge(value: string): string {
+    const parts = this.followAgeParts(value, false);
+    if (!parts) {
+      return this.t('analytics.follows.durationUnknown');
     }
 
     if (parts.length === 1) {
@@ -360,6 +356,27 @@ export class FollowLedgerPageComponent {
     });
   }
 
+  formatFollowAgeShort(value: string): string {
+    return this.followAgeParts(value, true)?.join(' ') ?? this.t('analytics.follows.durationUnknown');
+  }
+
+  avatarInitial(row: FollowLedgerRow): string {
+    const name = row.follower_name || row.follower_login || '?';
+    return name.charAt(0).toUpperCase();
+  }
+
+  avatarHue(row: FollowLedgerRow): number {
+    let hash = 0;
+    for (const char of row.follower_id) {
+      hash = (hash * 31 + char.charCodeAt(0)) % 360;
+    }
+    return hash;
+  }
+
+  showLogin(row: FollowLedgerRow): boolean {
+    return Boolean(row.follower_login && row.follower_name && row.follower_login.toLowerCase() !== row.follower_name.toLowerCase());
+  }
+
   getRoleLabel(): string {
     const role = this.viewerRole();
     if (role === 'owner') {
@@ -369,6 +386,35 @@ export class FollowLedgerPageComponent {
       return this.t('analytics.follows.adminView');
     }
     return '';
+  }
+
+  private followAgeParts(value: string, short: boolean): string[] | null {
+    this.languageService.currentLanguage();
+
+    const followedAt = new Date(value);
+    if (Number.isNaN(followedAt.getTime())) {
+      return null;
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - followedAt.getTime());
+    const totalDays = Math.max(0, Math.floor(elapsedMs / 86400000));
+    const years = Math.floor(totalDays / 365);
+    const months = Math.floor((totalDays % 365) / 30);
+    const days = totalDays - years * 365 - months * 30;
+    const prefix = short ? 'analytics.follows.durationShort' : 'analytics.follows.duration';
+    const parts: string[] = [];
+
+    if (years > 0) {
+      parts.push(this.t(`${prefix}Years`, { count: years }));
+    }
+    if (months > 0) {
+      parts.push(this.t(`${prefix}Months`, { count: months }));
+    }
+    if (days > 0 || parts.length === 0) {
+      parts.push(this.t(`${prefix}Days`, { count: days }));
+    }
+
+    return parts.slice(0, 2);
   }
 
   private async loadLedger(channelID: string, forcedRefresh = false): Promise<void> {

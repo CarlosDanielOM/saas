@@ -1420,7 +1420,7 @@
   "analytics": {
     "follows": {
       "title": "Follow Ledger",
-      "subtitle": "Search people currently following you, filter mutuals, sort by follow date, and see how long each follow has lasted. Beta — current followers only (not historical unfollows).",
+      "subtitle": "Everyone following you right now. Tap a total to filter, search by name, and sort by follow date.",
       "backToAnalytics": "Back to analytics",
       "activeOnly": "Current followers",
       "filters": "Filters",
@@ -1458,7 +1458,11 @@
       "durationMonths": "{{count}} month(s)",
       "durationDays": "{{count}} day(s)",
       "durationPair": "{{first}} and {{second}}",
-      "durationUnknown": "Unknown"
+      "durationUnknown": "Unknown",
+      "durationShortYears": "{{count}}y",
+      "durationShortMonths": "{{count}}mo",
+      "durationShortDays": "{{count}}d",
+      "shareOfFollowers": "{{percent}}% of followers"
     }
   },
   "clipRecommendations": {
