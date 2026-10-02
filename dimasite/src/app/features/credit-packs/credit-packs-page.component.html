@@ -1,75 +1,46 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="usageLink()">
-          <app-lf-icon name="back" />
-          {{ t('creditPacks.backToUsage') }}
-        </a>
-
-        <div class="lf-chip-row">
-          <span class="lf-chip lf-chip--accent">{{ t('creditPacks.secureCheckout') }}</span>
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
-            {{ t('creditPacks.plan', { plan: t('usage.plans.' + planTier()) }) }}
-          </span>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="usageLink()">
+        <app-lf-icon name="back" />
+        {{ t('creditPacks.backToUsage') }}
+      </a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('creditPacks.title') }}</h1>
+          <p class="lf-copy">{{ t('creditPacks.subtitle') }}</p>
         </div>
 
-        <p class="lf-kicker">{{ t('creditPacks.kicker') }}</p>
-        <h1 class="lf-title">
-          {{ t('creditPacks.titleLead') }}
-          <span>{{ t('creditPacks.titleAccent') }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('creditPacks.subtitle') }}</p>
-      </article>
-
-      <article class="lf-tile lf-compare" aria-labelledby="pack-difference-title">
-        <p class="lf-kicker">{{ t('creditPacks.comparison.kicker') }}</p>
-        <h2 id="pack-difference-title" class="lf-h3">{{ t('creditPacks.comparison.title') }}</h2>
-
-        <div class="lf-compare__row lf-compare__row--credit">
-          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="star" [size]="20" /></span>
-          <div>
-            <strong>{{ t('creditPacks.credit.title') }}</strong>
-            <p>{{ t('creditPacks.comparison.credit') }}</p>
+        @if (balance() !== null) {
+          <div class="lf-balance" [class.lf-balance--warn]="balanceNote()?.warn">
+            <span class="lf-balance__label">{{ t('creditPacks.balance.label') }}</span>
+            <span class="lf-balance__value">
+              {{ formatCredits(balance()!) }} <span>{{ t('creditPacks.creditsLabel') }}</span>
+            </span>
+            @if (balanceNote(); as note) {
+              <span class="lf-balance__note"><app-lf-icon name="timer" [size]="14" /> {{ note.text }}</span>
+            }
           </div>
-        </div>
-        <div class="lf-compare__row lf-compare__row--recharge">
-          <span class="lf-compare__icon" aria-hidden="true"><app-lf-icon name="zap" [size]="20" /></span>
-          <div>
-            <strong>{{ t('creditPacks.recharge.title') }}</strong>
-            <p>{{ t('creditPacks.comparison.recharge') }}</p>
-          </div>
-        </div>
-      </article>
-    </section>
+        }
+      </div>
 
-    @if (purchaserLogin(); as account) {
-      <aside
-        class="lf-account-notice"
-        [class.lf-account-notice--managed]="isManagingDifferentAccount()"
-        aria-labelledby="credit-recipient-title"
-      >
-        <span class="lf-account-notice__icon" aria-hidden="true">
-          <app-lf-icon name="users" [size]="20" />
-        </span>
-        <div>
-          <p class="lf-kicker">{{ t('creditPacks.recipient.kicker') }}</p>
-          <h2 id="credit-recipient-title" class="lf-h3">
-            {{ t('creditPacks.recipient.account', { account }) }}
-          </h2>
-          @if (isManagingDifferentAccount()) {
-            <p>
+      @if (purchaserLogin(); as account) {
+        @if (isManagingDifferentAccount()) {
+          <p class="lf-note lf-note--warn">
+            <app-lf-icon name="users" [size]="16" />
+            <span>
+              <strong>{{ t('creditPacks.recipient.account', { account }) }}</strong>
               {{ t('creditPacks.recipient.managedChannel', { streamer: streamer() }) }}
-            </p>
-          } @else {
-            <p>{{ t('creditPacks.recipient.owner') }}</p>
-          }
-        </div>
-      </aside>
-    }
+            </span>
+          </p>
+        } @else {
+          <p class="lf-note"><app-lf-icon name="users" [size]="16" /> {{ t('creditPacks.recipient.account', { account }) }}</p>
+        }
+      }
+    </header>
 
     @if (purchaseCompleted()) {
-      <div class="lf-success" role="status">
+      <div class="lf-banner lf-banner--ok" role="status">
         <app-lf-icon name="check" />
         <div>
           <strong>{{ t('creditPacks.success.title') }}</strong>
@@ -79,7 +50,7 @@
     }
 
     @if (errorMessage() && !loading()) {
-      <div class="lf-error" role="alert">
+      <div class="lf-banner lf-banner--error" role="alert">
         <div>
           <strong>{{ t('creditPacks.errors.title') }}</strong>
           <p>{{ errorMessage() }}</p>
@@ -94,170 +65,189 @@
     }
 
     @if (loading()) {
-      <section class="lf-section" aria-busy="true" [attr.aria-label]="t('creditPacks.loading')">
-        <div class="lf-card-grid">
+      <section class="lf-store" aria-busy="true" [attr.aria-label]="t('creditPacks.loading')">
+        <div class="lf-kinds lf-skel" aria-hidden="true"></div>
+        <div class="lf-grid">
           @for (item of [1, 2, 3]; track item) {
-            <article class="lf-tile lf-pack-card lf-skeleton" aria-hidden="true">
-              <span class="lf-skeleton__line lf-skeleton__line--short"></span>
-              <span class="lf-skeleton__line lf-skeleton__line--lg"></span>
-              <span class="lf-skeleton__line"></span>
-            </article>
+            <div class="lf-pack lf-pack--skeleton" aria-hidden="true">
+              <span class="lf-skel lf-skel--short"></span>
+              <span class="lf-skel lf-skel--lg"></span>
+              <span class="lf-skel"></span>
+            </div>
           }
         </div>
       </section>
     } @else if (catalog()) {
-      <section class="lf-section" aria-labelledby="credit-pack-title">
-        <header class="lf-section__head">
-          <div>
-            <p class="lf-kicker">{{ t('creditPacks.credit.kicker') }}</p>
-            <h2 id="credit-pack-title" class="lf-h2">{{ t('creditPacks.credit.title') }}</h2>
-          </div>
-          <span class="lf-chip lf-chip--ok">
-            <app-lf-icon name="check" />
-            {{ t('creditPacks.credit.available') }}
-          </span>
-          <p class="lf-copy lf-copy--tight">{{ t('creditPacks.credit.description') }}</p>
-        </header>
-
-        <div class="lf-card-grid">
-          @for (pack of creditPacks(); track pack.id) {
-            <article class="lf-tile lf-pack-card lf-pack-card--credit">
-              <div class="lf-pack-card__head">
-                <span class="lf-pack-card__type">{{ t('creditPacks.credit.badge') }}</span>
-                <span class="lf-pack-card__price">{{ formatPrice(pack) }}</span>
-              </div>
-              @if (pack.id === recommendedId && pack.eligible) {
-                <span class="lf-chip lf-chip--ok">{{ t('usage.recommendation.title') }}</span>
-              }
-              <h3>{{ packName(pack) }}</h3>
-              <p class="lf-pack-card__credits">
-                {{ formatCredits(pack.credits) }}
-                <span>{{ t('creditPacks.creditsLabel') }}</span>
-              </p>
-              <ul class="lf-feature-list">
-                <li><app-lf-icon name="check" /> {{ t('creditPacks.credit.rollover') }}</li>
-                <li><app-lf-icon name="check" /> {{ t('creditPacks.credit.noExpiration') }}</li>
-              </ul>
-              @if (canPurchase()) {
-              <button
-                type="button"
-                class="lf-btn lf-btn--primary lf-pack-card__cta"
-                [disabled]="checkingOutId() !== null"
-                (click)="startCheckout(pack)"
-              >
-                @if (checkingOutId() === pack.id) {
-                  <span class="lf-spinner" aria-hidden="true"></span>
-                  {{ t('creditPacks.openingCheckout') }}
-                } @else {
-                  {{ t('creditPacks.buy') }}
-                  <app-lf-icon name="forward" />
-                }
-              </button>
-              }
-            </article>
-          }
-        </div>
-      </section>
-
-      <section class="lf-section" aria-labelledby="recharge-pack-title">
-        <header class="lf-section__head lf-section__head--recharge">
-          <div>
-            <p class="lf-kicker">{{ t('creditPacks.recharge.kicker') }}</p>
-            <h2 id="recharge-pack-title" class="lf-h2">{{ t('creditPacks.recharge.title') }}</h2>
-          </div>
-          <span class="lf-chip" [class.lf-chip--gold]="hasActivePaidSubscription()">
-            @if (hasActivePaidSubscription()) {
-              <app-lf-icon name="check" />
-              {{ t('creditPacks.recharge.unlocked') }}
-            } @else {
-              <app-lf-icon name="lock" />
-              {{ t('creditPacks.recharge.paidOnly') }}
-            }
-          </span>
-          <p class="lf-copy lf-copy--tight">{{ t('creditPacks.recharge.description') }}</p>
-
-          @if (canPurchase() && !hasActivePaidSubscription()) {
-            <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
-              <app-lf-icon name="star" />
-              {{ t('creditPacks.recharge.upgrade') }}
-            </button>
-          }
-        </header>
-
-        @if (rechargeExpiryAlert(); as alert) {
-          <aside class="lf-expiry-alert" role="note">
-            <span class="lf-expiry-alert__icon" aria-hidden="true">
-              <app-lf-icon name="timer" [size]="24" />
+      <section class="lf-store" aria-labelledby="credit-store-kinds">
+        <h2 id="credit-store-kinds" class="visually-hidden">{{ t('creditPacks.kinds.label') }}</h2>
+        <div class="lf-kinds" role="tablist" [attr.aria-label]="t('creditPacks.kinds.label')">
+          <button
+            type="button"
+            role="tab"
+            id="credit-tab-credits"
+            class="lf-kind"
+            aria-controls="credit-panel"
+            [attr.aria-selected]="selectedKind() === 'credits'"
+            [class.lf-kind--active]="selectedKind() === 'credits'"
+            (click)="selectKind('credits')"
+          >
+            <span class="lf-kind__icon" aria-hidden="true"><app-lf-icon name="star" [size]="18" /></span>
+            <span class="lf-kind__text">
+              <span class="lf-kind__name">{{ t('creditPacks.kinds.credits') }}</span>
+              <span class="lf-kind__hint">{{ t('creditPacks.kinds.creditsHint') }}</span>
             </span>
-            <div class="lf-expiry-alert__copy">
-              <p class="lf-expiry-alert__kicker">{{ t('creditPacks.recharge.expiryAlertKicker') }}</p>
-              <p class="lf-expiry-alert__headline">{{ alert.headline }}</p>
-              <p class="lf-expiry-alert__body">
-                {{ t('creditPacks.recharge.expiryAlertBody') }}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="credit-tab-recharge"
+            class="lf-kind lf-kind--recharge"
+            aria-controls="credit-panel"
+            [attr.aria-selected]="selectedKind() === 'recharge'"
+            [class.lf-kind--active]="selectedKind() === 'recharge'"
+            (click)="selectKind('recharge')"
+          >
+            <span class="lf-kind__icon" aria-hidden="true">
+              <app-lf-icon [name]="hasActivePaidSubscription() ? 'zap' : 'lock'" [size]="18" />
+            </span>
+            <span class="lf-kind__text">
+              <span class="lf-kind__name">
+                {{ t('creditPacks.kinds.recharge') }}
+                @if (rechargeAdvantage() > 0) {
+                  <span class="lf-pill lf-pill--gold">{{ t('creditPacks.kinds.moreCredits', { percent: rechargeAdvantage() }) }}</span>
+                }
+              </span>
+              <span class="lf-kind__hint">
+                {{ hasActivePaidSubscription() ? t('creditPacks.kinds.rechargeHint') : t('creditPacks.recharge.paidOnly') }}
+              </span>
+            </span>
+          </button>
+        </div>
+
+        <div
+          id="credit-panel"
+          role="tabpanel"
+          class="lf-panel"
+          [attr.aria-labelledby]="selectedKind() === 'credits' ? 'credit-tab-credits' : 'credit-tab-recharge'"
+        >
+          @if (selectedKind() === 'credits') {
+            <div class="lf-strip">
+              <span class="lf-strip__icon" aria-hidden="true"><app-lf-icon name="check" [size]="18" /></span>
+              <p class="lf-strip__copy">{{ t('creditPacks.credit.strip') }}</p>
+              @if (hasActivePaidSubscription() && rechargeAdvantage() > 0) {
+                <button type="button" class="lf-link" (click)="selectKind('recharge')">
+                  {{ t('creditPacks.credit.rechargeNudge', { percent: rechargeAdvantage() }) }}
+                  <app-lf-icon name="forward" [size]="14" />
+                </button>
+              }
+            </div>
+          } @else if (hasActivePaidSubscription()) {
+            <div class="lf-strip lf-strip--expiry" [class.lf-strip--urgent]="rechargeExpiresSoon()" role="note">
+              <span class="lf-strip__icon" aria-hidden="true"><app-lf-icon name="timer" [size]="18" /></span>
+              <p class="lf-strip__copy">
+                <strong>{{ rechargeExpiryHeadline() }}</strong>
                 @if (rechargeExpiryDate(); as date) {
                   {{ t('creditPacks.recharge.expiryAlertDate', { date }) }}
                 } @else {
                   {{ t('creditPacks.recharge.expiryAlertRenewal') }}
                 }
               </p>
+              <button type="button" class="lf-link" (click)="selectKind('credits')">
+                {{ t('creditPacks.recharge.permanentNudge') }}
+                <app-lf-icon name="forward" [size]="14" />
+              </button>
             </div>
-          </aside>
-        }
-
-        <div class="lf-card-grid">
-          @for (pack of rechargePacks(); track pack.id) {
-            <article
-              class="lf-tile lf-pack-card lf-pack-card--recharge"
-              [class.lf-pack-card--locked]="!pack.eligible"
-            >
-              <div class="lf-pack-card__head">
-                <span class="lf-pack-card__type">{{ t('creditPacks.recharge.badge') }}</span>
-                <span class="lf-pack-card__price">{{ formatPrice(pack) }}</span>
-              </div>
-              @if (pack.id === recommendedId && pack.eligible) {
-                <span class="lf-chip lf-chip--ok">{{ t('usage.recommendation.title') }}</span>
-              }
-              <h3>{{ packName(pack) }}</h3>
-              <p class="lf-pack-card__credits">
-                {{ formatCredits(pack.credits) }}
-                <span>{{ t('creditPacks.creditsLabel') }}</span>
-              </p>
-              <ul class="lf-feature-list lf-feature-list--recharge">
-                <li><app-lf-icon name="zap" /> {{ t('creditPacks.recharge.moreValue') }}</li>
-              </ul>
-              <p class="lf-pack-card__expiry">
-                <app-lf-icon name="timer" aria-hidden="true" />
-                <span>{{ rechargeExpiryLabel() }}</span>
+          } @else {
+            <div class="lf-strip lf-strip--upsell">
+              <span class="lf-strip__icon" aria-hidden="true"><app-lf-icon name="star" [size]="18" /></span>
+              <p class="lf-strip__copy">
+                <strong>{{ t('creditPacks.recharge.upsellTitle') }}</strong>
+                {{ t('creditPacks.recharge.upsellBody', { percent: rechargeAdvantage() }) }}
               </p>
               @if (canPurchase()) {
-              <button
-                type="button"
-                class="lf-btn lf-btn--primary lf-pack-card__cta"
-                [class.lf-btn--gold]="pack.eligible"
-                [disabled]="checkingOutId() !== null || !pack.eligible"
-                (click)="startCheckout(pack)"
-              >
-                @if (!pack.eligible) {
-                  <app-lf-icon name="lock" />
-                  {{ t('creditPacks.recharge.requiresPaid') }}
-                } @else if (checkingOutId() === pack.id) {
-                  <span class="lf-spinner" aria-hidden="true"></span>
-                  {{ t('creditPacks.openingCheckout') }}
-                } @else {
-                  {{ t('creditPacks.buy') }}
-                  <app-lf-icon name="forward" />
-                }
-              </button>
+                <button type="button" class="lf-btn lf-btn--gold" (click)="openUpgrade()">
+                  {{ t('creditPacks.recharge.upgrade') }}
+                </button>
               }
-            </article>
+            </div>
           }
-        </div>
-      </section>
 
-      <p class="lf-checkout-note">
-        <app-lf-icon name="lock" />
-        {{ t('creditPacks.checkoutNote') }}
-      </p>
+          <div class="lf-grid">
+            @for (pack of visiblePacks(); track pack.id) {
+              <article
+                class="lf-pack"
+                [class.lf-pack--recharge]="pack.kind === 'recharge'"
+                [class.lf-pack--featured]="pack.id === featuredId()"
+                [class.lf-pack--locked]="!pack.eligible"
+              >
+                @if (pack.id === recommendedPackId()) {
+                  <span class="lf-pack__ribbon">{{ t('creditPacks.badges.recommended') }}</span>
+                } @else if (pack.id === bestValueId()) {
+                  <span class="lf-pack__ribbon">{{ t('creditPacks.badges.best') }}</span>
+                }
+
+                <h3 class="lf-pack__name">{{ packName(pack) }}</h3>
+                <p class="lf-pack__credits">
+                  {{ formatCredits(pack.credits) }}
+                  <span>{{ t('creditPacks.creditsLabel') }}</span>
+                </p>
+
+                <div class="lf-pack__price">
+                  <span class="lf-pack__amount">{{ formatPrice(pack) }}</span>
+                  @if (bonusPercent(pack) > 0) {
+                    <span class="lf-pill lf-pill--ok">{{ t('creditPacks.bonus', { percent: bonusPercent(pack) }) }}</span>
+                  }
+                </div>
+
+                <ul class="lf-pack__facts">
+                  <li><app-lf-icon name="trend" [size]="14" /> {{ perUnitLabel(pack) }}</li>
+                  @if (paceDays(pack); as days) {
+                    <li><app-lf-icon name="zap" [size]="14" /> {{ t('creditPacks.lasts', { days }) }}</li>
+                  }
+                  @if (pack.kind === 'recharge') {
+                    <li class="lf-pack__expiry" [class.lf-pack__expiry--urgent]="rechargeExpiresSoon()">
+                      <app-lf-icon name="timer" [size]="14" /> {{ rechargeExpiryLabel() }}
+                    </li>
+                  } @else {
+                    <li><app-lf-icon name="check" [size]="14" /> {{ t('creditPacks.credit.neverExpires') }}</li>
+                  }
+                </ul>
+
+                @if (canPurchase()) {
+                  @if (!pack.eligible) {
+                    <button type="button" class="lf-btn lf-pack__cta" (click)="openUpgrade()">
+                      <app-lf-icon name="lock" />
+                      {{ t('creditPacks.recharge.requiresPaid') }}
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      class="lf-btn lf-pack__cta"
+                      [class.lf-btn--primary]="pack.id === featuredId()"
+                      [disabled]="checkingOutId() !== null"
+                      (click)="startCheckout(pack)"
+                    >
+                      @if (checkingOutId() === pack.id) {
+                        <span class="lf-spinner" aria-hidden="true"></span>
+                        {{ t('creditPacks.openingCheckout') }}
+                      } @else {
+                        {{ t('creditPacks.buyFor', { price: formatPrice(pack) }) }}
+                        <app-lf-icon name="forward" />
+                      }
+                    </button>
+                  }
+                }
+              </article>
+            }
+          </div>
+        </div>
+
+        <ul class="lf-trust">
+          <li><app-lf-icon name="lock" [size]="16" /> {{ t('creditPacks.trust.secure') }}</li>
+          <li><app-lf-icon name="zap" [size]="16" /> {{ t('creditPacks.trust.instant') }}</li>
+          <li><app-lf-icon name="check" [size]="16" /> {{ t('creditPacks.trust.oneTime') }}</li>
+        </ul>
+      </section>
     }
   </main>
 </div>

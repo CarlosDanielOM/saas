@@ -1,18 +1,26 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
+import type { AiUsageSummaryData } from '../../models/usage.model';
 import {
   BillingService,
   type CreditPackCatalogData,
+  type CreditPackKind,
   type CreditPackOffer
 } from '../../services/billing.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { UpgradeService } from '../../services/upgrade.service';
+import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+
+/** Credits per smallest currency unit, the basis for every value comparison on this page. */
+function packRate(pack: CreditPackOffer): number {
+  return pack.priceAmount > 0 ? pack.credits / pack.priceAmount : 0;
+}
 
 @Component({
   selector: 'app-credit-packs-page',
@@ -29,13 +37,16 @@ export class CreditPacksPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
+  private readonly usageApi = inject(UsageApiService);
 
   readonly recommendedId = this.route.snapshot.queryParamMap.get('recommended');
 
   readonly catalog = signal<CreditPackCatalogData | null>(null);
+  readonly usage = signal<AiUsageSummaryData | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly checkingOutId = signal<string | null>(null);
+  readonly selectedKind = signal<CreditPackKind>('credits');
   readonly purchaseCompleted = signal(
     this.route.snapshot.queryParamMap.get('credits') === 'success'
   );
@@ -58,15 +69,78 @@ export class CreditPacksPageComponent {
     this.catalog()?.planTier
     ?? this.sessionAuth.getPlanTierForStreamer(this.streamer())
   );
-  readonly creditPacks = computed(() =>
-    this.catalog()?.offers.filter((offer) => offer.kind === 'credits') ?? []
-  );
-  readonly rechargePacks = computed(() =>
-    this.catalog()?.offers.filter((offer) => offer.kind === 'recharge') ?? []
-  );
   readonly hasActivePaidSubscription = computed(
     () => this.catalog()?.hasActivePaidSubscription ?? false
   );
+  readonly visiblePacks = computed(() =>
+    this.catalog()?.offers.filter((offer) => offer.kind === this.selectedKind()) ?? []
+  );
+
+  /** How many more credits a recharge gives than a permanent pack at the same price. */
+  readonly rechargeAdvantage = computed(() => {
+    const offers = this.catalog()?.offers ?? [];
+    const permanent = offers.filter((offer) => offer.kind === 'credits');
+    let best = 0;
+    for (const recharge of offers.filter((offer) => offer.kind === 'recharge')) {
+      const match = permanent.find((offer) =>
+        offer.priceAmount === recharge.priceAmount && offer.priceCurrency === recharge.priceCurrency
+      );
+      if (match && match.credits > 0) {
+        best = Math.max(best, Math.round((recharge.credits / match.credits - 1) * 100));
+      }
+    }
+    return best;
+  });
+
+  readonly bestValueId = computed(() => {
+    const packs = this.visiblePacks();
+    if (packs.length < 2) return null;
+    return packs.reduce((best, pack) => (packRate(pack) > packRate(best) ? pack : best)).id;
+  });
+
+  /** Cheapest eligible pack that covers the shortfall projected for this billing period. */
+  readonly pacedRecommendationId = computed(() => {
+    const overage = this.usage()?.pacing?.projectedOverageCredits ?? 0;
+    const catalog = this.catalog();
+    if (!catalog || !Number.isFinite(overage) || overage <= 0) return null;
+    return catalog.offers
+      .filter((pack) => pack.eligible && pack.credits >= overage)
+      .sort((a, b) => a.priceAmount - b.priceAmount || a.credits - b.credits)[0]?.id ?? null;
+  });
+  readonly recommendedPackId = computed(() => {
+    const offers = this.catalog()?.offers ?? [];
+    const fromLink = offers.find((pack) => pack.id === this.recommendedId && pack.eligible);
+    return fromLink?.id ?? this.pacedRecommendationId();
+  });
+  readonly featuredId = computed(() => {
+    const recommended = this.recommendedPackId();
+    if (recommended && this.visiblePacks().some((pack) => pack.id === recommended)) {
+      return recommended;
+    }
+    return this.bestValueId();
+  });
+
+  readonly balance = computed(() => {
+    const credits = this.usage()?.credits;
+    return credits?.available ? Math.max(0, credits.balance) : null;
+  });
+  readonly balanceNote = computed<{ text: string; warn: boolean } | null>(() => {
+    const summary = this.usage();
+    if (!summary) return null;
+    if (summary.credits.status === 'exhausted' || (summary.credits.available && summary.credits.balance <= 0)) {
+      return { text: this.t('creditPacks.balance.empty'), warn: true };
+    }
+    const days = summary.pacing?.estimatedDaysUntilExhaustion;
+    if (days === null || days === undefined || !Number.isFinite(days)) return null;
+    const rounded = Math.max(0, Math.floor(days));
+    return {
+      text: rounded <= 1
+        ? this.t('creditPacks.balance.dayLeft')
+        : this.t('creditPacks.balance.daysLeft', { days: rounded }),
+      warn: rounded <= 7
+    };
+  });
+
   readonly rechargeExpiryLabel = computed(() => {
     const days = this.catalog()?.rechargeExpiryDays;
     if (days === null || days === undefined) {
@@ -80,22 +154,18 @@ export class CreditPacksPageComponent {
     }
     return this.t('creditPacks.recharge.expiresInDays', { days });
   });
-  readonly rechargeExpiryAlert = computed<{ headline: string } | null>(() => {
-    const catalog = this.catalog();
-    if (!catalog?.hasActivePaidSubscription) {
-      return null;
-    }
-    const days = catalog.rechargeExpiryDays;
+  readonly rechargeExpiryHeadline = computed(() => {
+    const days = this.catalog()?.rechargeExpiryDays;
     if (days === null || days === undefined) {
-      return { headline: this.t('creditPacks.recharge.expiryAlertNone') };
+      return this.t('creditPacks.recharge.expiryAlertNone');
     }
     if (days <= 0) {
-      return { headline: this.t('creditPacks.recharge.expiryAlertToday') };
+      return this.t('creditPacks.recharge.expiryAlertToday');
     }
     if (days === 1) {
-      return { headline: this.t('creditPacks.recharge.expiryAlertDay') };
+      return this.t('creditPacks.recharge.expiryAlertDay');
     }
-    return { headline: this.t('creditPacks.recharge.expiryAlertDays', { days }) };
+    return this.t('creditPacks.recharge.expiryAlertDays', { days });
   });
   readonly rechargeExpiryDate = computed<string | null>(() => {
     const value = this.catalog()?.rechargeExpiresAt;
@@ -108,6 +178,12 @@ export class CreditPacksPageComponent {
     }
     return new Intl.DateTimeFormat(this.locale(), { dateStyle: 'medium' }).format(date);
   });
+  readonly rechargeExpiresSoon = computed(() => {
+    const days = this.catalog()?.rechargeExpiryDays;
+    return days !== null && days !== undefined && days <= 7;
+  });
+
+  private usageRequested = false;
 
   constructor() {
     if (this.purchaseCompleted()) {
@@ -119,6 +195,14 @@ export class CreditPacksPageComponent {
       });
     }
     void this.loadCatalog();
+
+    // Purchases always land on the signed-in account, so show that account's balance.
+    effect(() => {
+      const channelID = this.sessionAuth.session()?.appUser.twitch_user_id;
+      if (!channelID || !this.canPurchase() || this.usageRequested) return;
+      this.usageRequested = true;
+      void this.loadUsage(channelID);
+    });
   }
 
   t(key: string, params?: Record<string, string | number>): string {
@@ -129,6 +213,10 @@ export class CreditPacksPageComponent {
     return ['/', this.streamer(), 'usage'];
   }
 
+  selectKind(kind: CreditPackKind): void {
+    this.selectedKind.set(kind);
+  }
+
   formatCredits(value: number): string {
     return new Intl.NumberFormat(this.locale(), {
       notation: 'compact',
@@ -137,16 +225,36 @@ export class CreditPacksPageComponent {
   }
 
   formatPrice(pack: CreditPackOffer): string {
-    return new Intl.NumberFormat(this.locale(), {
-      style: 'currency',
-      currency: pack.priceCurrency.toUpperCase(),
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(pack.priceAmount / 100);
+    return this.formatMoney(pack.priceAmount, pack.priceCurrency);
   }
 
   packName(pack: CreditPackOffer): string {
     return this.t(`creditPacks.sizes.${pack.size}`);
+  }
+
+  /** Extra credits per dollar compared with the smallest pack of the same type. */
+  bonusPercent(pack: CreditPackOffer): number {
+    const rates = (this.catalog()?.offers ?? [])
+      .filter((offer) => offer.kind === pack.kind)
+      .map(packRate)
+      .filter((rate) => rate > 0);
+    if (!rates.length) return 0;
+    return Math.max(0, Math.round((packRate(pack) / Math.min(...rates) - 1) * 100));
+  }
+
+  perUnitLabel(pack: CreditPackOffer): string {
+    return this.t('creditPacks.perUnit', {
+      credits: this.formatCredits(packRate(pack) * 100),
+      unit: this.formatMoney(100, pack.priceCurrency)
+    });
+  }
+
+  /** Days this pack would last at the purchaser's recent average spend. */
+  paceDays(pack: CreditPackOffer): number | null {
+    const average = this.usage()?.pacing?.averageDailyCredits ?? 0;
+    if (!Number.isFinite(average) || average <= 0) return null;
+    const days = Math.floor(pack.credits / average);
+    return days >= 1 ? days : null;
   }
 
   async startCheckout(pack: CreditPackOffer): Promise<void> {
@@ -200,6 +308,7 @@ export class CreditPacksPageComponent {
         throw new Error(response.message || this.t('creditPacks.errors.load'));
       }
       this.catalog.set(response.data);
+      this.selectedKind.set(this.initialKind(response.data));
     } catch (error) {
       this.catalog.set(null);
       this.errorMessage.set(
@@ -208,6 +317,32 @@ export class CreditPacksPageComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private async loadUsage(channelID: string): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.usageApi.getSummary(channelID));
+      if (!response.error && response.data) {
+        this.usage.set(response.data);
+      }
+    } catch {
+      // The balance is a convenience; the store works without it.
+    }
+  }
+
+  private initialKind(catalog: CreditPackCatalogData): CreditPackKind {
+    const linked = catalog.offers.find((offer) => offer.id === this.recommendedId);
+    if (linked) return linked.kind;
+    return catalog.hasActivePaidSubscription ? 'recharge' : 'credits';
+  }
+
+  private formatMoney(amount: number, currency: string): string {
+    return new Intl.NumberFormat(this.locale(), {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount / 100);
   }
 
   private locale(): string {

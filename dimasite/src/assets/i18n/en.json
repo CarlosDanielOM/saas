@@ -2134,61 +2134,67 @@
     }
   },
   "creditPacks": {
-    "kicker": "Credit store",
-    "titleLead": "More room to create.",
-    "titleAccent": "Choose how long it lasts.",
-    "subtitle": "Pick permanent credits you can keep, or a lower-cost recharge tied to your current paid-plan cycle.",
+    "title": "Credit Store",
+    "subtitle": "Top up the AI credits behind TTS, AI chat and clip picks. Bigger packs give you more credits per dollar.",
     "backToUsage": "Back to credit usage",
-    "secureCheckout": "Secure Polar checkout",
-    "plan": "{{plan}} plan",
     "creditsLabel": "AI credits",
-    "buy": "Continue to checkout",
+    "buyFor": "Buy for {{price}}",
     "openingCheckout": "Opening checkout…",
     "loading": "Loading credit packs",
-    "checkoutNote": "Checkout and payment are securely handled by Polar.",
+    "bonus": "+{{percent}}% bonus",
+    "perUnit": "{{credits}} credits per {{unit}}",
+    "lasts": "≈ {{days}} days at your pace",
+    "balance": {
+      "label": "Your balance",
+      "daysLeft": "≈ {{days}} days left at your pace",
+      "dayLeft": "Runs out in about a day",
+      "empty": "You're out of credits"
+    },
     "recipient": {
-      "kicker": "Purchase recipient",
-      "account": "Credits will be added to @{{account}}",
-      "owner": "Every pack purchased on this page is added to your signed-in Twitch account.",
+      "account": "Credits go to @{{account}}",
       "managedChannel": "You are viewing @{{streamer}} as an admin. This purchase will not add credits to that channel."
     },
-    "comparison": {
-      "kicker": "Two ways to top up",
-      "title": "What is the difference?",
-      "credit": "Available on every plan. Unused credits roll over and do not expire.",
-      "recharge": "More credits per dollar for Premium and Pro. Unused credits expire when the subscription renews or ends."
+    "kinds": {
+      "label": "Pack type",
+      "credits": "Permanent",
+      "creditsHint": "Never expire",
+      "recharge": "Recharge",
+      "rechargeHint": "Most credits per dollar",
+      "moreCredits": "+{{percent}}% more"
+    },
+    "badges": {
+      "best": "Best value",
+      "recommended": "Recommended for you"
+    },
+    "trust": {
+      "secure": "Secure checkout by Polar",
+      "instant": "Credits added right after payment",
+      "oneTime": "One-time payment, no subscription"
     },
     "credit": {
-      "kicker": "Keep them until you use them",
-      "title": "Credit packs",
       "description": "A flexible balance for every plan. Buy once, use it at your own pace, and keep anything left over.",
-      "available": "Available to everyone",
-      "badge": "Permanent credits",
-      "rollover": "Unused credits roll over",
-      "noExpiration": "No subscription-cycle expiration"
+      "strip": "Permanent credits never expire. Whatever you don't use stays in your balance.",
+      "neverExpires": "Never expires",
+      "rechargeNudge": "Recharge packs give up to {{percent}}% more credits"
     },
     "recharge": {
-      "kicker": "More value within your plan cycle",
-      "title": "Recharge packs",
       "description": "Lower-cost credits reserved for active Premium and Pro members. Polar expires any unused recharge balance when the subscription renews or ends.",
-      "badge": "Plan recharge",
-      "unlocked": "Unlocked for your plan",
       "paidOnly": "Premium or Pro only",
       "upgrade": "Upgrade to unlock recharges",
-      "requiresPaid": "Paid plan required",
-      "moreValue": "More credits per dollar",
+      "requiresPaid": "Unlock with a paid plan",
+      "upsellTitle": "Recharge packs are for Premium and Pro",
+      "upsellBody": "Up to {{percent}}% more credits than permanent packs for the same price. Unused recharge credits expire when your plan renews.",
+      "permanentNudge": "Need credits that never expire?",
       "expires": "Expires at renewal or when the plan ends",
       "expiresInDays": "Credits expire in {{days}} days",
       "expiresInDay": "Credits expire in 1 day",
       "expiresToday": "Credits expire today",
-      "expiryAlertKicker": "Recharge expiration",
-      "expiryAlertDays": "{{days}} days left",
-      "expiryAlertDay": "1 day left",
-      "expiryAlertToday": "Expires today",
-      "expiryAlertNone": "Expires at renewal",
-      "expiryAlertBody": "Recharge credits don't roll over, unlike permanent credit packs.",
-      "expiryAlertDate": "Unused balance is removed on {{date}} when your plan renews.",
-      "expiryAlertRenewal": "Unused balance is removed when your plan renews or ends."
+      "expiryAlertDays": "Recharge credits expire in {{days}} days",
+      "expiryAlertDay": "Recharge credits expire in 1 day",
+      "expiryAlertToday": "Recharge credits expire today",
+      "expiryAlertNone": "Recharge credits expire at renewal",
+      "expiryAlertDate": "Unused recharge balance is removed on {{date}}, when your plan renews.",
+      "expiryAlertRenewal": "Unused recharge balance is removed when your plan renews or ends."
     },
     "sizes": {
       "sample": "Sample pack",

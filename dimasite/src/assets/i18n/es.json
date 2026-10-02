@@ -2134,61 +2134,67 @@
     }
   },
   "creditPacks": {
-    "kicker": "Tienda de créditos",
-    "titleLead": "Más espacio para crear.",
-    "titleAccent": "Elige cuánto duran.",
-    "subtitle": "Elige créditos permanentes que puedes conservar o una recarga más económica ligada al ciclo actual de tu plan de pago.",
+    "title": "Tienda de créditos",
+    "subtitle": "Recarga los créditos de IA que usan el TTS, el chat con IA y las sugerencias de clips. Los paquetes más grandes dan más créditos por dólar.",
     "backToUsage": "Volver al uso de créditos",
-    "secureCheckout": "Pago seguro con Polar",
-    "plan": "Plan {{plan}}",
     "creditsLabel": "créditos de IA",
-    "buy": "Continuar al pago",
+    "buyFor": "Comprar por {{price}}",
     "openingCheckout": "Abriendo el pago…",
     "loading": "Cargando paquetes de créditos",
-    "checkoutNote": "Polar gestiona el proceso de pago de forma segura.",
+    "bonus": "+{{percent}} % extra",
+    "perUnit": "{{credits}} créditos por {{unit}}",
+    "lasts": "≈ {{days}} días a tu ritmo",
+    "balance": {
+      "label": "Tu saldo",
+      "daysLeft": "≈ {{days}} días restantes a tu ritmo",
+      "dayLeft": "Se agota en aproximadamente un día",
+      "empty": "Te has quedado sin créditos"
+    },
     "recipient": {
-      "kicker": "Cuenta que recibe la compra",
-      "account": "Los créditos se añadirán a @{{account}}",
-      "owner": "Cada paquete comprado en esta página se añade a tu cuenta de Twitch conectada.",
+      "account": "Los créditos van a @{{account}}",
       "managedChannel": "Estás viendo a @{{streamer}} como administrador. Esta compra no añadirá créditos a ese canal."
     },
-    "comparison": {
-      "kicker": "Dos formas de recargar",
-      "title": "¿Cuál es la diferencia?",
-      "credit": "Disponibles en todos los planes. Los créditos sin usar se acumulan y no caducan.",
-      "recharge": "Más créditos por dólar para Premium y Pro. Los créditos sin usar caducan cuando la suscripción se renueva o termina."
+    "kinds": {
+      "label": "Tipo de paquete",
+      "credits": "Permanentes",
+      "creditsHint": "No caducan",
+      "recharge": "Recarga",
+      "rechargeHint": "Más créditos por dólar",
+      "moreCredits": "+{{percent}} % más"
+    },
+    "badges": {
+      "best": "Mejor valor",
+      "recommended": "Recomendado para ti"
+    },
+    "trust": {
+      "secure": "Pago seguro con Polar",
+      "instant": "Créditos añadidos justo después del pago",
+      "oneTime": "Pago único, sin suscripción"
     },
     "credit": {
-      "kicker": "Consérvalos hasta usarlos",
-      "title": "Paquetes de créditos",
       "description": "Un saldo flexible para todos los planes. Compra una vez, úsalo a tu ritmo y conserva lo que sobre.",
-      "available": "Disponibles para todos",
-      "badge": "Créditos permanentes",
-      "rollover": "Los créditos sin usar se acumulan",
-      "noExpiration": "Sin caducidad por ciclo de suscripción"
+      "strip": "Los créditos permanentes no caducan. Lo que no uses se queda en tu saldo.",
+      "neverExpires": "No caduca",
+      "rechargeNudge": "Los paquetes de recarga dan hasta un {{percent}} % más de créditos"
     },
     "recharge": {
-      "kicker": "Más valor dentro del ciclo de tu plan",
-      "title": "Paquetes de recarga",
       "description": "Créditos más económicos reservados para miembros Premium y Pro activos. Polar hace caducar el saldo de recarga sin usar cuando la suscripción se renueva o termina.",
-      "badge": "Recarga del plan",
-      "unlocked": "Desbloqueado para tu plan",
       "paidOnly": "Solo Premium o Pro",
       "upgrade": "Mejora tu plan para desbloquear recargas",
-      "requiresPaid": "Requiere un plan de pago",
-      "moreValue": "Más créditos por dólar",
+      "requiresPaid": "Desbloquear con un plan de pago",
+      "upsellTitle": "Los paquetes de recarga son para Premium y Pro",
+      "upsellBody": "Hasta un {{percent}} % más de créditos que los paquetes permanentes por el mismo precio. Los créditos de recarga sin usar caducan cuando se renueva tu plan.",
+      "permanentNudge": "¿Necesitas créditos que no caduquen?",
       "expires": "Caduca al renovar o cuando termina el plan",
       "expiresInDays": "Los créditos caducan en {{days}} días",
       "expiresInDay": "Los créditos caducan en 1 día",
       "expiresToday": "Los créditos caducan hoy",
-      "expiryAlertKicker": "Caducidad de la recarga",
-      "expiryAlertDays": "Quedan {{days}} días",
-      "expiryAlertDay": "Queda 1 día",
-      "expiryAlertToday": "Caduca hoy",
-      "expiryAlertNone": "Caduca al renovar",
-      "expiryAlertBody": "Los créditos de recarga no se acumulan, a diferencia de los paquetes de créditos permanentes.",
-      "expiryAlertDate": "El saldo sin usar se elimina el {{date}}, cuando se renueva tu plan.",
-      "expiryAlertRenewal": "El saldo sin usar se elimina cuando tu plan se renueva o termina."
+      "expiryAlertDays": "Los créditos de recarga caducan en {{days}} días",
+      "expiryAlertDay": "Los créditos de recarga caducan en 1 día",
+      "expiryAlertToday": "Los créditos de recarga caducan hoy",
+      "expiryAlertNone": "Los créditos de recarga caducan al renovar",
+      "expiryAlertDate": "El saldo de recarga sin usar se elimina el {{date}}, cuando se renueva tu plan.",
+      "expiryAlertRenewal": "El saldo de recarga sin usar se elimina cuando tu plan se renueva o termina."
     },
     "sizes": {
       "sample": "Paquete de muestra",
