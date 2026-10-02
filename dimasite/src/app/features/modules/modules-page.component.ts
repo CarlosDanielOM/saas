@@ -1,20 +1,29 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import {
   Bot,
   Brain,
+  ArrowRight,
   ChartColumn,
+  Dices,
+  Clock,
   FileText,
   FolderOpen,
   Gift,
   Hammer,
+  Layers,
   Lightbulb,
+  Lock,
+  Search,
   LucideAngularModule,
   MessagesSquare,
+  MonitorPlay,
   Scissors,
+  Shield,
   ShieldAlert,
-  Sparkles,
+  Store,
   Users,
   Volume2,
   X,
@@ -34,11 +43,15 @@ import {
   isModuleAccessible
 } from './module-tier.model';
 
-type Category = 'all' | 'engagement' | 'automation' | 'content';
+/** Groups modules by what the streamer is trying to do, not by implementation area. */
+type Goal = 'stream' | 'chat' | 'safety' | 'insights';
+type GoalFilter = 'all' | Goal;
 
-interface ModuleCategoryOption {
-  id: Category;
+interface GoalOption {
+  id: Goal;
   labelKey: string;
+  descriptionKey: string;
+  icon: LucideIconData;
 }
 
 interface ModuleDisplay {
@@ -46,7 +59,8 @@ interface ModuleDisplay {
   name: string;
   description: string;
   path: string | null;
-  category: Exclude<Category, 'all'>;
+  tagline: string;
+  goal: Goal;
   status: ModuleStatus;
   minTier: PlanTier;
   isLocked: boolean;
@@ -56,7 +70,7 @@ interface ModuleDisplay {
 }
 
 interface ModuleGroup {
-  labelKey: string | null;
+  goal: GoalOption;
   modules: ModuleDisplay[];
 }
 
@@ -73,6 +87,37 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
   'triggers',
   'tts'
 ];
+
+const MODULE_GOALS: Readonly<Record<ModuleId, Goal>> = {
+  overlays: 'stream',
+  roulette: 'stream',
+  clips: 'stream',
+  triggers: 'stream',
+  dimafx: 'stream',
+  tts: 'stream',
+  library: 'stream',
+  'chat-events': 'chat',
+  redemptions: 'chat',
+  referrals: 'chat',
+  'ai-personality': 'chat',
+  memories: 'chat',
+  moderation: 'safety',
+  'follow-defense': 'safety',
+  analytics: 'insights',
+  'analytics.follows': 'insights',
+  'stream-summaries': 'insights',
+  'clip-recommendations': 'insights'
+};
+
+const GOALS: readonly GoalOption[] = [
+  { id: 'stream', labelKey: 'modules.goals.stream', descriptionKey: 'modules.goals.streamHint', icon: MonitorPlay },
+  { id: 'chat', labelKey: 'modules.goals.chat', descriptionKey: 'modules.goals.chatHint', icon: MessagesSquare },
+  { id: 'safety', labelKey: 'modules.goals.safety', descriptionKey: 'modules.goals.safetyHint', icon: Shield },
+  { id: 'insights', labelKey: 'modules.goals.insights', descriptionKey: 'modules.goals.insightsHint', icon: ChartColumn }
+];
+
+const RECENT_LIMIT = 4;
+const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 
 /** Matches the page guards. Overlay Studio and Roulette are broadcaster-only. */
 const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
@@ -97,12 +142,12 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
 };
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
-  roulette: Sparkles,
-  overlays: Sparkles,
+  roulette: Dices,
+  overlays: Layers,
   'chat-events': MessagesSquare,
   moderation: Hammer,
   clips: Scissors,
-  dimafx: Sparkles,
+  dimafx: Store,
   redemptions: Gift,
   triggers: Zap,
   tts: Volume2,
@@ -119,7 +164,7 @@ const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
 
 @Component({
   selector: 'app-modules-page',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, NgTemplateOutlet, RouterLink],
   templateUrl: './modules-page.component.html',
   styleUrl: './modules-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -129,7 +174,6 @@ export class ModulesPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
 
   readonly userPlanTier = computed<PlanTier>(() => {
     return this.sessionAuth.getPlanTierForStreamer(this.streamer());
@@ -154,15 +198,14 @@ export class ModulesPageComponent {
   });
 
   readonly searchQuery = signal('');
-  readonly selectedCategory = signal<Category>('all');
+  readonly selectedGoal = signal<GoalFilter>('all');
+  readonly recentIds = signal<ModuleId[]>([]);
   readonly closeIcon = X;
-
-  readonly categories: ModuleCategoryOption[] = [
-    { id: 'all', labelKey: 'modules.categories.all' },
-    { id: 'engagement', labelKey: 'modules.categories.engagement' },
-    { id: 'automation', labelKey: 'modules.categories.automation' },
-    { id: 'content', labelKey: 'modules.categories.content' }
-  ];
+  readonly searchIcon = Search;
+  readonly arrowIcon = ArrowRight;
+  readonly lockIcon = Lock;
+  readonly recentIcon = Clock;
+  readonly goals = GOALS;
 
   readonly modules = computed<ModuleDisplay[]>(() => {
     this.languageService.currentLanguage();
@@ -269,6 +312,11 @@ export class ModulesPageComponent {
   });
 
   constructor() {
+    effect(() => {
+      const streamer = this.streamer();
+      this.recentIds.set(untracked(() => this.loadRecent(streamer)));
+    });
+
     effect((onCleanup) => {
       this.accessIdentity();
       const streamer = this.streamer();
@@ -302,29 +350,24 @@ export class ModulesPageComponent {
     });
   }
 
-  /** Grouped by importance on the default view; a flat list when searching or filtering. */
+  /** Default view: essentials as tiles, everything else as rows grouped by goal. */
+  readonly isBrowsing = computed(() => this.selectedGoal() === 'all' && !this.searchQuery().trim());
+
+  readonly essentials = computed(() => this.modules().filter((module) => module.featured));
+
   readonly moduleGroups = computed<ModuleGroup[]>(() => {
-    const filtered = this.filteredModules();
-    const grouped = this.selectedCategory() === 'all' && !this.searchQuery().trim();
-
-    if (!grouped) {
-      return [{ labelKey: null, modules: filtered }];
-    }
-
-    const featured = filtered.filter((module) => module.featured);
-    const rest = filtered.filter((module) => !module.featured);
-
-    return [
-      { labelKey: 'modules.core', modules: featured },
-      { labelKey: 'modules.more', modules: rest }
-    ].filter((group) => group.modules.length > 0);
+    const rest = this.modules().filter((module) => !module.featured);
+    return GOALS.map((goal) => ({ goal, modules: rest.filter((module) => module.goal === goal.id) })).filter(
+      (group) => group.modules.length > 0
+    );
   });
 
   readonly filteredModules = computed(() => {
     let filtered = this.modules();
+    const goal = this.selectedGoal();
 
-    if (this.selectedCategory() !== 'all') {
-      filtered = filtered.filter((module) => module.category === this.selectedCategory());
+    if (goal !== 'all') {
+      filtered = filtered.filter((module) => module.goal === goal);
     }
 
     const query = this.searchQuery().toLowerCase().trim();
@@ -332,6 +375,7 @@ export class ModulesPageComponent {
       filtered = filtered.filter(
         (module) =>
           module.name.toLowerCase().includes(query) ||
+          module.tagline.toLowerCase().includes(query) ||
           module.description.toLowerCase().includes(query)
       );
     }
@@ -339,10 +383,23 @@ export class ModulesPageComponent {
     return filtered;
   });
 
-  readonly availableCount = computed(
-    () => this.modules().filter((module) => !module.isLocked && Boolean(module.path)).length
-  );
-  readonly lockedCount = computed(() => this.modules().filter((module) => module.isLocked).length);
+  readonly goalCounts = computed(() => {
+    const counts: Record<GoalFilter, number> = { all: 0, stream: 0, chat: 0, safety: 0, insights: 0 };
+    for (const module of this.modules()) {
+      counts.all += 1;
+      counts[module.goal] += 1;
+    }
+    return counts;
+  });
+
+  readonly selectedGoalOption = computed(() => GOALS.find((goal) => goal.id === this.selectedGoal()) ?? null);
+
+  readonly recentModules = computed(() => {
+    const byId = new Map(this.modules().map((module) => [module.id, module]));
+    return this.recentIds()
+      .map((id) => byId.get(id))
+      .filter((module): module is ModuleDisplay => Boolean(module && this.isOpenable(module)));
+  });
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
@@ -411,8 +468,8 @@ export class ModulesPageComponent {
     return Boolean(module.path) && module.status !== 'coming_soon' && module.isLocked && !this.isManagedChannel();
   }
 
-  onCategoryChange(category: Category): void {
-    this.selectedCategory.set(category);
+  onGoalChange(goal: GoalFilter): void {
+    this.selectedGoal.set(goal);
   }
 
   onSearchChange(event: Event): void {
@@ -424,26 +481,25 @@ export class ModulesPageComponent {
     this.searchQuery.set('');
   }
 
-  openModule(module: ModuleDisplay): void {
-    if (!this.isOpenable(module) || !module.path) {
-      return;
-    }
-    void this.router.navigateByUrl(module.path);
-  }
+  recordVisit(module: ModuleDisplay): void {
+    const streamer = this.streamer();
+    if (!streamer || typeof localStorage === 'undefined') return;
 
-  onModuleCardClick(module: ModuleDisplay): void {
-    if (this.isOpenable(module)) {
-      this.openModule(module);
-      return;
-    }
-
-    if (this.isUpgradeable(module)) {
-      this.onUpgradeClick(module);
+    const next = [module.id, ...this.recentIds().filter((id) => id !== module.id)].slice(0, RECENT_LIMIT);
+    this.recentIds.set(next);
+    try {
+      localStorage.setItem(RECENT_STORAGE_PREFIX + streamer, JSON.stringify(next));
+    } catch {
+      // Storage can be unavailable (private mode, quota); recents are best-effort.
     }
   }
 
-  isActionable(module: ModuleDisplay): boolean {
-    return this.isOpenable(module) || this.isUpgradeable(module);
+  isPaidModule(module: ModuleDisplay): boolean {
+    return module.minTier !== 'free';
+  }
+
+  showStatus(module: ModuleDisplay): boolean {
+    return module.status !== 'stable';
   }
 
   onUpgradeClick(module: ModuleDisplay): void {
@@ -456,7 +512,19 @@ export class ModulesPageComponent {
 
   resetFilters(): void {
     this.searchQuery.set('');
-    this.selectedCategory.set('all');
+    this.selectedGoal.set('all');
+  }
+
+  private loadRecent(streamer: string): ModuleId[] {
+    if (!streamer || typeof localStorage === 'undefined') return [];
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(RECENT_STORAGE_PREFIX + streamer) ?? '[]');
+      return Array.isArray(parsed)
+        ? parsed.filter((id): id is ModuleId => typeof id === 'string' && id in MODULE_GOALS).slice(0, RECENT_LIMIT)
+        : [];
+    } catch {
+      return [];
+    }
   }
 
   private buildModule(
@@ -471,8 +539,9 @@ export class ModulesPageComponent {
       id,
       name,
       description: this.t(descriptionKey),
+      tagline: this.t(`modules.taglines.${id}`),
       path: streamerName ? `/${streamerName}/modules/${id}` : null,
-      category: req.category,
+      goal: MODULE_GOALS[id],
       status: req.defaultStatus,
       minTier: req.minTier,
       isLocked: !isModuleAccessible(req, userPlanTier),

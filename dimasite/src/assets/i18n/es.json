@@ -235,22 +235,8 @@
   },
   "modules": {
     "title": "Modulos",
-    "subtitle": "Descubre modulos potentes para mejorar tu experiencia de streaming. Desde automatizacion de chat hasta gestion de clips, todo lo que necesitas en un solo lugar.",
-    "hero": {
-      "badge": "Potencia tu Stream"
-    },
-    "searchPlaceholder": "Buscar modulos...",
-    "categories": {
-      "all": "Todos los Modulos",
-      "engagement": "Interaccion",
-      "automation": "Automatizacion",
-      "content": "Contenido"
-    },
-    "featured": "Modulo Destacado",
-    "allModules": "Todos los Modulos",
-    "core": "Herramientas principales",
-    "more": "Mas modulos",
-    "moduleCount": "modulos",
+    "subtitle": "Todo lo que DomDimaBot puede hacer en tu canal, agrupado según lo que quieres lograr.",
+    "searchPlaceholder": "Busca módulos (ej. alertas, TTS, clips)",
     "clips": {
       "description": "Selecciona un diseno de visualizador de clips y ajusta la configuracion para tus overlays de stream."
     },
@@ -931,10 +917,6 @@
     "streamSummaries": {
       "description": "Accede a las métricas de tus transmisiones pasadas, lee resúmenes de IA y revisa actualizaciones de memoria propuestas por IA."
     },
-    "stats": {
-      "available": "Disponibles",
-      "locked": "Bloqueados"
-    },
     "status": {
       "stable": "Estable",
       "beta": "Beta",
@@ -942,6 +924,43 @@
       "comingSoon": "Pronto",
       "underConstruction": "En construcción",
       "maintenance": "Mantenimiento"
+    },
+    "essentials": "Esenciales",
+    "essentialsHint": "Las herramientas que la mayoría de canales configura primero.",
+    "recent": "Continúa donde quedaste",
+    "results": "Resultados de búsqueda",
+    "resultsFor": "{{count}} resultado(s) para \"{{query}}\"",
+    "goals": {
+      "label": "Filtrar módulos por objetivo",
+      "all": "Todos",
+      "stream": "En stream y alertas",
+      "streamHint": "Lo que tus espectadores ven y oyen: overlays, alertas, sonidos y clips.",
+      "chat": "Chat y comunidad",
+      "chatHint": "Mensajes del chat, recompensas, referidos y cómo habla tu bot.",
+      "safety": "Seguridad",
+      "safetyHint": "Mantén fuera el spam, los hate raids y los bots de follows.",
+      "insights": "Análisis e IA",
+      "insightsHint": "Conoce a tu audiencia y revisa lo que pasó en el stream."
+    },
+    "taglines": {
+      "overlays": "Diseña tu escena de OBS y las alertas",
+      "roulette": "Gira una ruleta de premios en vivo",
+      "clips": "Muestra clips en stream con el visor que elijas",
+      "chat-events": "Mensajes en el chat para follows, subs, bits y raids",
+      "triggers": "Reproduce media cuando canjean o usan un comando",
+      "dimafx": "Vende efectos con Bits en tu extensión",
+      "tts": "Lee mensajes del chat en voz alta con voces propias",
+      "referrals": "Códigos y campañas de referidos para crecer",
+      "redemptions": "Recompensas de puntos de canal para tus espectadores",
+      "ai-personality": "Define cómo habla y se comporta tu bot de IA",
+      "memories": "Revisa lo que el bot recuerda de tu chat",
+      "analytics": "Datos de seguidores, empezando por el Registro",
+      "analytics.follows": "Busca y filtra a tus seguidores actuales",
+      "follow-defense": "Frena oleadas de follows y hate raids automáticamente",
+      "moderation": "Filtra spam, enlaces, mayúsculas y palabras bloqueadas",
+      "stream-summaries": "Resúmenes con IA y métricas de streams pasados",
+      "clip-recommendations": "La IA encuentra momentos clipeables en tus VODs",
+      "library": "Sube y gestiona la media que usan tus herramientas"
     }
   },
   "streamSummaries": {

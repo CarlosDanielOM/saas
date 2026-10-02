@@ -235,22 +235,8 @@
   },
   "modules": {
     "title": "Modules",
-    "subtitle": "Discover powerful modules to enhance your streaming experience. From chat automation to clip management, everything you need in one place.",
-    "hero": {
-      "badge": "Power Your Stream"
-    },
-    "searchPlaceholder": "Search modules...",
-    "categories": {
-      "all": "All Modules",
-      "engagement": "Engagement",
-      "automation": "Automation",
-      "content": "Content"
-    },
-    "featured": "Featured Module",
-    "allModules": "All Modules",
-    "core": "Core tools",
-    "more": "More modules",
-    "moduleCount": "modules",
+    "subtitle": "Everything DomDimaBot can do on your channel, grouped by what you want to get done.",
+    "searchPlaceholder": "Search modules (e.g. alerts, TTS, clips)",
     "clips": {
       "description": "Select a clip viewer design and adjust settings for your stream overlays."
     },
@@ -931,10 +917,6 @@
     "streamSummaries": {
       "description": "Access past stream session metrics, read AI-generated summaries, and review AI proposed memory updates."
     },
-    "stats": {
-      "available": "Available",
-      "locked": "Locked"
-    },
     "status": {
       "stable": "Stable",
       "beta": "Beta",
@@ -942,6 +924,43 @@
       "comingSoon": "Coming Soon",
       "underConstruction": "Building",
       "maintenance": "Maintenance"
+    },
+    "essentials": "Essentials",
+    "essentialsHint": "The tools most channels set up first.",
+    "recent": "Jump back in",
+    "results": "Search results",
+    "resultsFor": "{{count}} result(s) for \"{{query}}\"",
+    "goals": {
+      "label": "Filter modules by goal",
+      "all": "All",
+      "stream": "On stream & alerts",
+      "streamHint": "What viewers see and hear: overlays, alerts, sounds and clips.",
+      "chat": "Chat & community",
+      "chatHint": "Chat messages, rewards, referrals and how your bot talks.",
+      "safety": "Safety",
+      "safetyHint": "Keep spam, hate raids and follow bots out of your channel.",
+      "insights": "Insights & AI",
+      "insightsHint": "Understand your audience and review what happened on stream."
+    },
+    "taglines": {
+      "overlays": "Design your OBS scene and alert layouts",
+      "roulette": "Spin a prize wheel live on stream",
+      "clips": "Show clips on stream with your chosen viewer",
+      "chat-events": "Chat messages for follows, subs, bits and raids",
+      "triggers": "Play media when viewers redeem or type a command",
+      "dimafx": "Sell effects to viewers with Bits in your extension",
+      "tts": "Read chat messages aloud with custom voices",
+      "referrals": "Referral codes and campaigns that grow your channel",
+      "redemptions": "Channel point rewards viewers can redeem",
+      "ai-personality": "Set how your AI bot talks and behaves",
+      "memories": "Review what the bot remembers about your chat",
+      "analytics": "Follower insights, starting with Follow Ledger",
+      "analytics.follows": "Search and filter your current followers",
+      "follow-defense": "Stop follow floods and hate raids automatically",
+      "moderation": "Filter spam, links, caps and blocked words",
+      "stream-summaries": "AI recaps and metrics for past streams",
+      "clip-recommendations": "AI finds clip-worthy moments in your VODs",
+      "library": "Upload and manage the media your tools use"
     }
   },
   "streamSummaries": {
