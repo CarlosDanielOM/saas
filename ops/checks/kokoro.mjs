@@ -34,13 +34,22 @@ const usage = await trackTtsUsage({ channelID:channel,streamer:{polar_sh_custome
 assert.equal(usage.creditsConsumed,2);
 assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance,9998);
 assert.equal(await redis.hGet(`${channel}:tts:usage`,'kokoro_credits'),'2');
+await credits(0);
+const piperUsage=await trackTtsUsage({channelID:channel,streamer:{polar_sh_customer_id:customer},provider:'piper',characters:51,text:'a'.repeat(51),usage:{entryId:'piper-overdraft-test'}});
+assert.equal(piperUsage.creditsConsumed,2);
+assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance,-2);
+assert.equal(await redis.exists(`twitch:${channel}:ai:exhaust`),1);
+assert.equal(await redis.exists(`${channel}:ai:exhaust`),1);
+await trackTtsUsage({channelID:channel,streamer:{polar_sh_customer_id:customer},provider:'piper',characters:51,text:'a'.repeat(51),usage:{entryId:'piper-overdraft-test'}});
+assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance,-2,'durable billing deduplicates the same Piper event');
+await credits(10000);
 for (const [characters,cost] of [[1,1],[15,1],[16,2],[30,2],[31,3],[45,3],[46,4]]) {
   assert.equal(calculateTtsUsage('kokoro',characters).creditsConsumed,cost);
 }
 fs.mkdirSync('/dimasite/src/app/models',{recursive:true});
 fs.copyFileSync('/tmp/saas-fixtures/tts-settings.model.ts','/dimasite/src/app/models/tts-settings.model.ts');
 const unitFiles = ['server/services/tts/kokoro_tts.test.js','server/services/tts/fish_tts_backend.test.js',
-  'utils/tts_usage.test.js','utils/ast_parser/tts_settings.test.js','handlers/tts_credit_fallback.test.js',
+  'utils/tts_usage.test.js','utils/ai_credit_status.test.js','utils/polarsh_accounting.test.js','utils/ast_parser/tts_settings.test.js','handlers/tts_credit_fallback.test.js',
   'handlers/tts_queue_credits.test.js','utils/tts/expressive_tts_tags.test.js'];
 // Direct test-file execution also emits individual subtest results on Node 26.
 for (const file of unitFiles) execFileSync(process.execPath,['--experimental-test-module-mocks',`/app/dist/${file}`],{
@@ -110,7 +119,7 @@ if (process.env.SAAS_TARGET === 'api') {
     assert.equal(newCalls.length,scenario==='exhausted'?0:1);
     if(newCalls.length)assert.deepEqual(newCalls[0].kokoro.provider,{only:['deepinfra'],order:['deepinfra'],allow_fallbacks:false});
     const balance=JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance;
-    assert.equal(balance,scenario==='success'?9998:scenario==='unicode'?9999:scenario==='exhausted'?0:10000,'only successful Kokoro consumes credits');
+    assert.equal(balance,scenario==='success'?9998:scenario==='unicode'?9999:scenario==='exhausted'?-1:9999,'successful synthesis bills only its actual provider, including Piper past zero');
     ws.send(`42/speech/${channel},${JSON.stringify(['speech-ended',{speechID:payload.speechID}])}`);
     await new Promise(r=>setTimeout(r,100));
   }

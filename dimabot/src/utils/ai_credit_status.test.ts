@@ -41,6 +41,17 @@ test('meter snapshot is exhausted when Polar usage already equals the limit', ()
     assert.equal(snapshot.status, 'exhausted');
 });
 
+test('Piper consumption can exceed the available balance and stays exhausted', () => {
+    const before = buildAiCreditsDataFromMeter({ consumed_units: 25_000, balance: -25_000 }, 'free');
+    const after = applyAiCreditUsageToSnapshot(before, 2);
+    assert.equal(after.balance, -2);
+    assert.equal(after.used, 25_002);
+    assert.equal(after.status, 'exhausted');
+    const refreshed = buildAiCreditsDataFromMeter({ consumed_units: 25_002, balance: -25_002 }, 'free');
+    assert.equal(refreshed.balance, -2);
+    assert.equal(refreshed.status, 'exhausted');
+});
+
 test('exhausted chat uses the dedicated exhausted model', () => {
     assert.equal(selectChatModel({ plan_tier: 'pro' }, true), MODELS.exhausted);
     assert.notEqual(MODELS.exhausted, MODELS.pro);

@@ -490,6 +490,7 @@
 .lf-field,
 .lf-voice-picker {
   display: grid;
+  align-content: start;
   gap: 0.3rem;
   min-width: 0;
 }

@@ -80,10 +80,13 @@ export interface FishVoiceFilters {
   license: string;
   page: number;
 }
-export interface FishPreview {
+export interface VoicePreview {
+  provider?: TtsProvider;
   voiceId: string;
   text: string;
   credits: number;
   mimeType: string;
   audio: string;
 }
+
+export type FishPreview = VoicePreview;

@@ -515,6 +515,12 @@
         "copiedTitle": "URL copiada",
         "copiedMessage": "URL de API de voz copiada al portapapeles."
       },
+      "preview": {
+        "piperCost": "1 crédito / 50 caracteres",
+        "kokoroCost": "1 crédito / 15 caracteres",
+        "piperHint": "Cada prueba usa los créditos de tu canal, redondeados hacia arriba. Piper sigue disponible con créditos en cero o negativos. Repetir el audio es gratis.",
+        "kokoroHint": "Cada prueba usa los créditos de IA de tu canal, redondeados hacia arriba. La frase corta usa tu idioma TTS por defecto. Repetir el audio es gratis."
+      },
       "browser": {
         "title": "Encuentra una voz",
         "cap": "Hasta 150 créditos por prueba",
@@ -558,7 +564,7 @@
           "insufficient_credits": "Tu saldo disponible es insuficiente o no se pudo verificar. No se generó la prueba.",
           "preview_busy": "Hay una prueba en curso o recién solicitada. Espera unos segundos antes de reintentar.",
           "voice_unavailable": "Esta voz ya no está disponible. Elige otra.",
-          "synthesis_failed": "Fish no pudo generar esta prueba de voz. Prueba otra voz.",
+          "synthesis_failed": "No se pudo generar esta prueba de voz. Prueba otra voz.",
           "preview_unavailable": "No se pudo completar la prueba de voz. Inténtalo de nuevo.",
           "preview_timeout": "La prueba está tardando demasiado. Aún podría completarse y usar créditos. Espera antes de reintentar."
         },
@@ -619,11 +625,11 @@
         "kokoroCopy": "Voces predefinidas. Los créditos se redondean hacia arriba; Piper toma el relevo si se agotan o falla la síntesis.",
         "kokoroVoiceLabel": "Voz predefinida de Kokoro",
         "kokoroSyntax": "AST: $(tts.kokoro nombre_de_voz texto)",
-        "piperTag": "Gratis",
-        "piperCopy": "Voz sencilla que nunca usa créditos.",
+        "piperTag": "1 crédito / 50 caracteres",
+        "piperCopy": "Voz sencilla que sigue disponible con créditos en cero o negativos.",
         "fishTag": "Usa créditos",
         "fishCopy": "Voces de personajes como Gojo, y miles más que puedes buscar.",
-        "piperSummary": "Piper · voz gratis"
+        "piperSummary": "Piper · disponible al agotar los créditos"
       },
       "rules": {
         "title": "Límites de mensajes",
@@ -642,15 +648,15 @@
         "title": "Úsalo en comandos",
         "default": "Lee con la voz elegida arriba.",
         "kokoro": "Una voz predefinida de Kokoro. Prueba ef_dora para español.",
-        "piper": "Siempre la voz gratis de Piper.",
+        "piper": "Siempre la voz de Piper, incluso después de agotar los créditos.",
         "fish": "Una voz de Fish o el apodo de una favorita.",
         "tags": "Los espectadores añaden etiquetas así para cambiar la entonación (solo Fish)."
       },
       "credits": {
         "title": "Créditos",
         "kokoro": "usa 1 crédito por cada 15 caracteres, redondeando hacia arriba (16–30 = 2 créditos).",
-        "piper": "siempre es gratis.",
-        "fish": "usa créditos de IA por cada mensaje que lee.",
+        "piper": "usa 1 crédito por cada 50 caracteres, redondeando hacia arriba. Sigue disponible al agotar los créditos y puede dejar tu saldo en negativo.",
+        "fish": "usa 1,5 créditos por carácter, redondeando hacia arriba.",
         "fallback": "¿Sin créditos o falla la síntesis? TTS cambia a Piper automáticamente. Tu voz seleccionada sigue guardada.",
         "usageLink": "Ver uso de créditos"
       }

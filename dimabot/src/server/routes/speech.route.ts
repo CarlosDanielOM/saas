@@ -21,7 +21,7 @@ import {
 import { KOKORO_VOICES, resolveKokoroVoice } from '../../utils/tts/kokoro_voices.util.js';
 import { FISH_VOICES } from '../services/tts/fish_tts.service.js';
 import { resolveFishVoice, getFishVoice, searchFishVoices, parseVoiceSearch, VoiceRequestError } from '../services/tts/fish_voice_catalog.service.js';
-import { createPreviewTicket } from '../services/tts/fish_preview.service.js';
+import { createPreviewTicket } from '../services/tts/voice_preview.service.js';
 import type { RuntimeTtsProvider } from '../services/tts/tts_provider.interface.js';
 import { getDirname } from '../../utils/pollyfills.js';
 import { filterExpressiveTtsTags, normalizeTtsMessage } from '../../utils/tts/normalize_tts_message.util.js';

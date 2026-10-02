@@ -81,7 +81,9 @@ interface Classification {
 function classifyLegacyReason(reason: string): Classification {
     switch (reason) {
         case 'tts_fish':
-            return { entryKind: 'usage', category: 'tts', operation: 'synthesize', source: 'tts_queue', provider: 'fish' };
+        case 'tts_kokoro':
+        case 'tts_piper':
+            return { entryKind: 'usage', category: 'tts', operation: 'synthesize', source: 'tts_queue', provider: reason.slice(4) };
         case 'messages':
             return { entryKind: 'usage', category: 'ai_chat', operation: 'message', source: 'chat', provider: 'openrouter' };
         case 'harness_tools':

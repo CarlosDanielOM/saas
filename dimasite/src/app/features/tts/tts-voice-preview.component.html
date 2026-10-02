@@ -1,0 +1,20 @@
+<div class="preview-controls">
+  <button type="button" [disabled]="readOnly() || preparing()" (click)="testVoice()"
+    [attr.aria-label]="t('browser.testNamed', { name: voice() })">
+    {{ t('browser.test') }}
+  </button>
+  <span>{{ t(provider() === 'piper' ? 'preview.piperCost' : 'preview.kokoroCost') }}</span>
+</div>
+<p class="preview-hint">{{ t(provider() === 'piper' ? 'preview.piperHint' : 'preview.kokoroHint') }}</p>
+<div role="status" aria-live="polite">
+  @if (preparing()) { <p>{{ t('browser.preparing', { name: voice() }) }}</p> }
+</div>
+@if (error()) { <p role="alert" class="preview-error">{{ t('browser.errors.' + error()) }}</p> }
+@if (preview(); as sample) {
+  <div class="preview-player">
+    <p aria-live="polite">{{ voice() }} · {{ t('browser.spent', { credits: sample.credits }) }}</p>
+    <audio #player controls [src]="audioUrl()" [attr.aria-label]="t('browser.audioLabel', { name: voice() })"></audio>
+    <details><summary>{{ t('browser.phrase') }}</summary><p>{{ sample.text }}</p></details>
+    @if (playbackBlocked()) { <p>{{ t('browser.pressPlay') }}</p> }
+  </div>
+}

@@ -1,0 +1,12 @@
+:host { display: block; min-width: 0; color: var(--fg); font-size: 0.8rem; }
+.preview-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+button { min-height: 44px; padding: 0.5rem 0.8rem; border: 1px solid var(--btn-border); border-radius: 0.7rem; background: var(--btn); color: var(--fg); font: inherit; font-weight: 700; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.preview-controls span, .preview-hint { color: var(--muted); }
+p { margin: 0.4rem 0; overflow-wrap: anywhere; }
+.preview-error { color: var(--danger); }
+.preview-player { margin-top: 0.6rem; padding: 0.7rem; border: 1px solid var(--line); border-radius: 0.7rem; background: var(--input-bg); }
+audio { display: block; width: 100%; min-width: 0; max-width: 100%; margin: 0.5rem 0; }
+summary { cursor: pointer; }

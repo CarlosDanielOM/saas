@@ -1958,7 +1958,7 @@
     },
     {
       "name": "tts.speak",
-      "description": "Speaks a message using the free Piper voice.",
+      "description": "Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion.",
       "syntax": "tts.speak message",
       "category": "tts",
       "examples": [

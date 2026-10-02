@@ -5,6 +5,10 @@ import { getDragonflyClient } from '../../../utils/databases/dragonfly.database.
 import TwitchStreamers from '../../../classes/twitch_streamers.class.js';
 import { getAiCredits } from '../../../utils/billing.js';
 import { calculateTtsUsage, trackTtsUsage } from '../../../utils/tts_usage.js';
+import { getChannelTtsSettings, DEFAULT_TTS_SETTINGS, type TtsProvider } from '../../../schemas/channel_tts_settings.schema.js';
+import { resolveKokoroVoice } from '../../../utils/tts/kokoro_voices.util.js';
+import { kokoroTtsService } from './kokoro_tts.service.js';
+import { piperTtsService } from './piper_tts.service.js';
 import { fishTtsService } from './fish_tts.service.js';
 import { getFishVoice, VoiceRequestError } from './fish_voice_catalog.service.js';
 
@@ -25,25 +29,26 @@ export const PREVIEW_PHRASES = {
         'Gracias por venir. Tu próximo momento favorito está a punto de llegar.'
     ]
 } as const;
-export function choosePreviewPhrase(language: 'en' | 'es') {
+export function choosePreviewPhrase(language: 'en' | 'es', provider: TtsProvider = 'fish') {
     const text = PREVIEW_PHRASES[language][randomInt(5)];
-    const credits = calculateTtsUsage('fish', text.length).creditsConsumed;
+    const usage = calculateTtsUsage(provider, provider === 'fish' ? text.length : Array.from(text).length);
+    const credits = usage.creditsConsumed;
     if (credits > PREVIEW_MAX_CREDITS) throw new VoiceRequestError(503, 'preview_unavailable', 'Preview exceeds credit limit');
     return { text, credits };
 }
 export async function createPreviewTicket(channelID: string) {
     const ticket = randomBytes(32).toString('hex');
-    const cache = await getDragonflyClient('FishPreview');
+    const cache = await getDragonflyClient('VoicePreview');
     await cache.set(`tts:preview:ticket:${ticket}`, channelID, { EX: 30 });
     return ticket;
 }
-export function registerFishPreview(io: Server) {
+export function registerVoicePreview(io: Server) {
     const namespace = io.of(/^\/speech-preview\/\d+$/);
     namespace.use(async (socket, next) => {
         try {
             const ticket = socket.handshake.auth?.ticket;
             if (typeof ticket !== 'string' || !/^[a-f\d]{64}$/.test(ticket)) return next(new Error('Unauthorized preview'));
-            const cache = await getDragonflyClient('FishPreview');
+            const cache = await getDragonflyClient('VoicePreview');
             const channelID = await cache.getDel(`tts:preview:ticket:${ticket}`);
             if (channelID !== socket.nsp.name.split('/')[2]) return next(new Error('Unauthorized preview'));
             next();
@@ -67,11 +72,24 @@ export function registerFishPreview(io: Server) {
             let cache: Awaited<ReturnType<typeof getDragonflyClient>> | undefined;
             try {
                 if (!body || typeof body !== 'object') throw new VoiceRequestError(400, 'invalid_voice', 'Invalid preview');
-                const { voiceId, language } = body as Record<string, unknown>;
-                if (typeof voiceId !== 'string' || !/^[a-f\d]{32}$/i.test(voiceId) || !['en', 'es'].includes(String(language))) {
+                const { voiceId, language, provider = 'fish' } = body as Record<string, unknown>;
+                if (typeof voiceId !== 'string' || !voiceId || (language !== 'en' && language !== 'es') ||
+                    (provider !== 'piper' && provider !== 'kokoro' && provider !== 'fish')) {
                     throw new VoiceRequestError(400, 'invalid_voice', 'Invalid voice or language');
                 }
-                cache = await getDragonflyClient('FishPreview');
+                if (provider === 'kokoro' && !resolveKokoroVoice(voiceId)) {
+                    throw new VoiceRequestError(400, 'invalid_voice', 'Invalid Kokoro preset');
+                }
+                if (provider === 'fish' && !/^[a-f\d]{32}$/i.test(voiceId)) {
+                    throw new VoiceRequestError(400, 'invalid_voice', 'Invalid Fish voice');
+                }
+                if (provider === 'piper') {
+                    const settings = await getChannelTtsSettings(channelID);
+                    if (voiceId !== DEFAULT_TTS_SETTINGS.voices[language] && voiceId !== settings.voices[language]) {
+                        throw new VoiceRequestError(400, 'invalid_voice', 'Invalid Piper voice');
+                    }
+                }
+                cache = await getDragonflyClient('VoicePreview');
                 locked = await cache.set(lockKey, lockId, { NX: true, EX: 120 }) === 'OK';
                 if (!locked) throw new VoiceRequestError(429, 'preview_busy', 'A preview is already running');
                 renewal = setInterval(() => {
@@ -81,20 +99,24 @@ export function registerFishPreview(io: Server) {
                 renewal.unref();
                 const cooldown = await cache.set(`tts:preview:cooldown:${channelID}`, '1', { NX: true, EX: 8 });
                 if (!cooldown) throw new VoiceRequestError(429, 'preview_busy', 'Please wait before another preview');
-                await getFishVoice(voiceId);
+                if (provider === 'fish') await getFishVoice(voiceId);
                 const streamer = await TwitchStreamers.getTwitchAccountById(channelID);
                 if (!streamer) throw new VoiceRequestError(404, 'preview_unavailable', 'Account not found');
-                const { text, credits } = choosePreviewPhrase(language as 'en' | 'es');
-                const balance = await getAiCredits(streamer, channelID);
-                if (!balance.available || balance.status !== 'available' || balance.balance < credits) {
-                    throw new VoiceRequestError(402, 'insufficient_credits', 'Not enough available credits for this preview');
+                const { text, credits } = choosePreviewPhrase(language, provider);
+                // Piper can continue consuming credits past zero, just like regular Piper speech.
+                if (provider !== 'piper') {
+                    const balance = await getAiCredits(streamer, channelID, { requireVerified: true });
+                    if (!balance.available || balance.status !== 'available' || balance.balance < credits) {
+                        throw new VoiceRequestError(402, 'insufficient_credits', 'Not enough available credits for this preview');
+                    }
                 }
                 if (!socket.connected) return;
                 const speechID = `preview-${randomUUID()}`;
                 const usageRequestID = randomUUID();
-                const result = await fishTtsService.synthesize({
-                    channelID, speechID, provider: 'fish', mode: 'clone',
-                    language: language as 'en' | 'es', text, voice: voiceId, outputPath: ''
+                const service = provider === 'kokoro' ? kokoroTtsService : provider === 'piper' ? piperTtsService : fishTtsService;
+                const result = await service.synthesize({
+                    channelID, speechID, provider, mode: provider === 'fish' ? 'clone' : 'speak',
+                    language, text, voice: voiceId, outputPath: ''
                 });
                 outputPath = result.outputPath;
                 if (result.error || !outputPath) throw new VoiceRequestError(502, 'synthesis_failed', 'This voice could not be previewed');
@@ -104,8 +126,8 @@ export function registerFishPreview(io: Server) {
                 await trackTtsUsage({
                     channelID,
                     streamer,
-                    provider: 'fish',
-                    characters: text.length,
+                    provider,
+                    characters: provider === 'fish' ? text.length : Array.from(text).length,
                     text,
                     usage: {
                         entryId: randomUUID(),
@@ -115,7 +137,7 @@ export function registerFishPreview(io: Server) {
                         resourceId: speechID
                     }
                 });
-                ack({ error: false, data: { voiceId, text, credits, mimeType: 'audio/mpeg', audio: audio.toString('base64') } });
+                ack({ error: false, data: { provider, voiceId, text, credits, mimeType: result.mimeType ?? (provider === 'piper' ? 'audio/wav' : 'audio/mpeg'), audio: audio.toString('base64') } });
             } catch (error) {
                 ack({ error: true, code: error instanceof VoiceRequestError ? error.code : 'preview_unavailable' });
             } finally {

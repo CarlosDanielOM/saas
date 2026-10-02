@@ -200,7 +200,7 @@ export function buildAiCreditsDataFromMeter(
         0,
         Math.round(Math.max(planLimit, polarLimit, creditedUnits, remainingFromPolar))
     );
-    const remaining = Math.max(0, limit - roundedUsed, remainingFromPolar);
+    const remaining = balanceValue > 0 ? Math.max(limit - roundedUsed, remainingFromPolar) : limit - roundedUsed;
 
     return {
         version: AI_CREDITS_CACHE_SCHEMA_VERSION,
@@ -222,7 +222,7 @@ export function applyAiCreditUsageToSnapshot(
     const consumed = Math.max(0, Math.ceil(toFiniteNumber(credits, 0)));
     if (!snapshot.available || consumed === 0) return { ...snapshot };
 
-    const balance = Math.max(0, snapshot.balance - consumed);
+    const balance = snapshot.balance - consumed;
     return {
         ...snapshot,
         version: AI_CREDITS_CACHE_SCHEMA_VERSION,
@@ -245,7 +245,7 @@ if not ok or tonumber(data.version) ~= tonumber(ARGV[3]) or data.available == fa
 local consumed = math.max(0, math.ceil(tonumber(ARGV[1]) or 0))
 if consumed == 0 then return 0 end
 data.used = math.max(0, (tonumber(data.used) or 0) + consumed)
-data.balance = math.max(0, (tonumber(data.balance) or 0) - consumed)
+data.balance = (tonumber(data.balance) or 0) - consumed
 data.updatedAt = ARGV[2]
 data.status = data.balance <= 0 and 'exhausted' or 'available'
 redis.call('SET', KEYS[1], cjson.encode(data), 'EX', ARGV[4])

@@ -11,17 +11,27 @@ mock.module('./polarsh.js', { namedExports: { ingestPolarSHEvent: ingest } });
 mock.module('./logger.js', { namedExports: { error: async () => {} } });
 const { trackTtsUsage } = await import('./tts_usage.js');
 
-test('Piper speech does not consume credits or submit a paid billing event', async () => {
+test('Piper speech rounds up at 50 characters per credit and submits durable billing', async () => {
+  const { calculateTtsUsage } = await import('./tts_usage.js');
+  for (const [characters, expected] of [[0, 0], [1, 1], [50, 1], [51, 2], [100, 2], [101, 3]]) {
+    assert.equal(calculateTtsUsage('piper', characters).creditsConsumed, expected);
+  }
   const usage = await trackTtsUsage({
     channelID: 'test', streamer: { polar_sh_customer_id: 'customer' },
     provider: 'piper', characters: 100, text: 'Hello',
   });
-  assert.equal(usage.creditsConsumed, 0);
-  assert.equal(usage.costUsd, 0);
-  assert.equal(ingest.mock.callCount(), 0);
+  assert.equal(usage.creditsConsumed, 2);
+  assert.equal(usage.costUsd, 0.00002);
+  assert.equal(ingest.mock.callCount(), 1);
+  const event = ingest.mock.calls[0].arguments[0] as { reason: string; _cost: number; cost: number; mode: string };
+  assert.equal(event.reason, 'tts_piper');
+  assert.equal(event._cost, 0.002);
+  assert.equal(event.cost, 0.00002);
+  assert.equal(event.mode, 'batch');
 });
 
 test('Fish speech retains its credit rate and queues durable billing before returning', async () => {
+  ingest.mock.resetCalls();
   const usage = await trackTtsUsage({
     channelID: 'test', streamer: { polar_sh_customer_id: 'customer' },
     provider: 'fish', characters: 100, text: 'Hello',

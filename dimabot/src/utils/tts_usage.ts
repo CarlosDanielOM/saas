@@ -9,7 +9,7 @@ import type { AiUsageResourceType } from "./ai_usage_event.js";
  * One credit is approximate to 0.001 cent of USD so 0.00001 USD per AI token
  */
 const TTS_CREDITS_PER_CHARACTER: Record<string, number> = {
-  piper: 0, // Local free voice, including fallback after credit exhaustion
+  piper: 50, // One credit per 50 characters; available even after exhaustion
   kokoro: 15, // One credit per 15 characters, rounded up
   fish: 1.5, // 1.5 credits per character
 };

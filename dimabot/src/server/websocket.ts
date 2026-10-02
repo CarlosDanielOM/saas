@@ -8,7 +8,7 @@ import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { clipQueueHandler } from "../handlers/clip_queue.handler.js";
 import { ttsQueueHandler } from "../handlers/tts_queue.handler.js";
 import { registerDimafxOverlay } from './services/dimafx-overlay.service.js';
-import { registerFishPreview } from './services/tts/fish_preview.service.js';
+import { registerVoicePreview } from './services/tts/voice_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
 import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
 
@@ -42,7 +42,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             connectionStateRecovery: {}
         });
 
-        registerFishPreview(io);
+        registerVoicePreview(io);
         registerRouletteOverlay(io);
         registerDimafxOverlay(io);
         registerStudio(io);

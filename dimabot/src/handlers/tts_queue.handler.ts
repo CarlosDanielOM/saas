@@ -438,8 +438,8 @@ class TtsQueueHandler {
               plan_tier: streamer?.plan_tier,
             },
             provider: queueItem.provider,
-            // Kokoro bills Unicode characters, so a surrogate pair counts once.
-            characters: queueItem.provider === 'kokoro' ? Array.from(queueItem.text).length : queueItem.text.length,
+            // Kokoro and Piper count Unicode characters, including surrogate pairs once.
+            characters: queueItem.provider === 'fish' ? queueItem.text.length : Array.from(queueItem.text).length,
             text: queueItem.text,
             usage: {
               entryId: usageEntryID,

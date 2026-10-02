@@ -67,18 +67,18 @@
 
             <fieldset class="lf-engines" [disabled]="ttsReadOnly() || ttsSaving()">
               <legend class="lf-label">{{ t('modules.tts.voice.engineLabel') }}</legend>
-              <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'kokoro'">
-                <input type="radio" name="tts-provider" value="kokoro" [checked]="tts.provider === 'kokoro'" (change)="updateTtsProvider('kokoro')" />
-                <span class="lf-engine__body">
-                  <span class="lf-engine__name">Kokoro <span class="lf-chip lf-chip--xs">{{ t('modules.tts.voice.kokoroTag') }}</span></span>
-                  <span class="lf-engine__copy">{{ t('modules.tts.voice.kokoroCopy') }}</span>
-                </span>
-              </label>
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'piper'">
                 <input type="radio" name="tts-provider" value="piper" [checked]="tts.provider === 'piper'" (change)="updateTtsProvider('piper')" />
                 <span class="lf-engine__body">
                   <span class="lf-engine__name">Piper <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('modules.tts.voice.piperTag') }}</span></span>
                   <span class="lf-engine__copy">{{ t('modules.tts.voice.piperCopy') }}</span>
+                </span>
+              </label>
+              <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'kokoro'">
+                <input type="radio" name="tts-provider" value="kokoro" [checked]="tts.provider === 'kokoro'" (change)="updateTtsProvider('kokoro')" />
+                <span class="lf-engine__body">
+                  <span class="lf-engine__name">Kokoro <span class="lf-chip lf-chip--xs">{{ t('modules.tts.voice.kokoroTag') }}</span></span>
+                  <span class="lf-engine__copy">{{ t('modules.tts.voice.kokoroCopy') }}</span>
                 </span>
               </label>
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'fish'">
@@ -92,8 +92,8 @@
 
             <div class="lf-form-grid lf-form-grid--2">
               @if (tts.provider === 'kokoro') {
-                <label class="lf-field" for="kokoro-default-voice">
-                  <span class="lf-label">{{ t('modules.tts.voice.kokoroVoiceLabel') }}</span>
+                <div class="lf-field">
+                  <label class="lf-label" for="kokoro-default-voice">{{ t('modules.tts.voice.kokoroVoiceLabel') }}</label>
                   <select id="kokoro-default-voice" class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()"
                     (change)="updateTtsKokoroVoice($any($event.target).value)">
                     @for (voice of kokoroVoiceOptions(); track voice) {
@@ -101,7 +101,10 @@
                     }
                   </select>
                   <span class="lf-note">{{ t('modules.tts.voice.kokoroSyntax') }}</span>
-                </label>
+                  <app-tts-voice-preview [channelID]="channelID()!" provider="kokoro"
+                    [voice]="tts.voices.kokoroDefault || 'ef_dora'" [language]="tts.defaultLanguage"
+                    [readOnly]="ttsReadOnly() || ttsSaving()" />
+                </div>
               } @else if (showCloneSettings()) {
                 <div class="lf-voice-picker">
                   <label class="lf-label" for="fish-default-voice">{{ t('modules.tts.fields.cloneVoiceLabel') }}</label>
@@ -115,22 +118,26 @@
                   </div>
                 </div>
               } @else {
-                <label class="lf-field">
-                  <span class="lf-label">{{ t('modules.tts.fields.englishVoiceLabel') }}</span>
-                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" (change)="updateTtsVoice('en', $any($event.target).value)">
+                <div class="lf-field">
+                  <label class="lf-label" for="piper-en-voice">{{ t('modules.tts.fields.englishVoiceLabel') }}</label>
+                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" id="piper-en-voice" (change)="updateTtsVoice('en', $any($event.target).value)">
                     @for (voice of englishVoiceOptions(); track voice.value) {
                       <option [value]="voice.value" [selected]="voice.value === tts.voices.en">{{ voice.label }}</option>
                     }
                   </select>
-                </label>
-                <label class="lf-field">
-                  <span class="lf-label">{{ t('modules.tts.fields.spanishVoiceLabel') }}</span>
-                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" (change)="updateTtsVoice('es', $any($event.target).value)">
+                  <app-tts-voice-preview [channelID]="channelID()!" provider="piper" [voice]="tts.voices.en" language="en"
+                    [readOnly]="ttsReadOnly() || ttsSaving()" />
+                </div>
+                <div class="lf-field">
+                  <label class="lf-label" for="piper-es-voice">{{ t('modules.tts.fields.spanishVoiceLabel') }}</label>
+                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" id="piper-es-voice" (change)="updateTtsVoice('es', $any($event.target).value)">
                     @for (voice of spanishVoiceOptions(); track voice.value) {
                       <option [value]="voice.value" [selected]="voice.value === tts.voices.es">{{ voice.label }}</option>
                     }
                   </select>
-                </label>
+                  <app-tts-voice-preview [channelID]="channelID()!" provider="piper" [voice]="tts.voices.es" language="es"
+                    [readOnly]="ttsReadOnly() || ttsSaving()" />
+                </div>
               }
               <label class="lf-field">
                 <span class="lf-label">{{ t('modules.tts.fields.defaultLanguageLabel') }}</span>

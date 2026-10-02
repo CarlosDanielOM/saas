@@ -218,8 +218,8 @@ export function registerTtsFunctions(): void {
         keywords: ['tts', 'speak', 'text to speech', 'hablar', 'voz', 'di esto']
     };
     registerFunction('tts', ttsSpeakHandler, ttsMetadata);
-    registerFunction('tts.speak', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using the free Piper voice.', syntax: 'tts.speak message' });
-    registerFunction('tts.piper', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using the free Piper voice.', syntax: 'tts.piper message', aliasOf: 'tts.speak' });
+    registerFunction('tts.speak', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion.', syntax: 'tts.speak message' });
+    registerFunction('tts.piper', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion.', syntax: 'tts.piper message', aliasOf: 'tts.speak' });
     registerFunction('tts.ai', ttsAiHandler, { ...ttsMetadata, aliasOf: 'tts' });
     const cloneMetadata = {
         description: 'Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message.',

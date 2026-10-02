@@ -11,7 +11,7 @@ const root = 'http://127.0.0.1:3000';
 const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 await redis.hSet(`token:${token}`, { id: channel, login: 'test', display_name: 'Test' });
 await redis.hSet(`token:${token}-other`, { id: '999992', login: 'other', display_name: 'Other' });
-await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'test', polar_sh_customer_id: 'test-customer', plan_tier: 'premium' });
+await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'test', polar_sh_customer_id: '11111111-1111-4111-8111-111111111111', plan_tier: 'premium' });
 const setCredits = async balance => redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: balance, balance, available: true, status: balance > 0 ? 'available' : 'exhausted' }));
 await setCredits(10000);
 const request = async (path, method = 'GET', body, auth = headers) => {
@@ -123,7 +123,7 @@ fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 const overlay = await connect(undefined, channel, 'speech');
 while (!await redis.exists(`twitch:${channel}:tts:connected`)) await new Promise(r => setTimeout(r, 10));
 const finishSpeech = async expected => {
-  const event = await overlay.wait(`42/speech/${channel},`);
+  const event = await overlay.wait(`42/speech/${channel},["speech",`);
   const [, payload] = JSON.parse(event.slice(`42/speech/${channel},`.length));
   const lastSynthesis = calls().filter(c => c.synthesis).at(-1);
   assert.equal(lastSynthesis.synthesis.reference_id, expected);
@@ -169,7 +169,7 @@ await finishSpeech('a'.repeat(32));
 assert.equal((await request(favoritesUrl + '/' + 'a'.repeat(32), 'DELETE')).status, 200);
 assert.deepEqual((await request(favoritesUrl)).body.data, []);
 assert.equal((await request('/speech/' + channel, 'POST', { mode: 'clone', text: 'Removed alias', cloneName: 'test_voice' })).status, 400);
-const { PREVIEW_PHRASES, choosePreviewPhrase } = await import('/app/dist/server/services/tts/fish_preview.service.js');
+const { PREVIEW_PHRASES, choosePreviewPhrase } = await import('/app/dist/server/services/tts/voice_preview.service.js');
 for (const language of ['en', 'es']) {
   assert.equal(PREVIEW_PHRASES[language].length, 5);
   for (const text of PREVIEW_PHRASES[language]) assert.ok(Math.ceil(text.length * 1.5) <= 150);
@@ -179,7 +179,111 @@ const { resolveFishVoice } = await import('/app/dist/server/services/tts/fish_vo
 assert.equal(resolveFishVoice('gojo'), '7b5626abdaa044babfc3829ec15acf31');
 assert.equal(resolveFishVoice('b'.repeat(32)), 'b'.repeat(32));
 assert.equal(resolveFishVoice('constructor'), null);
+// The same private session supports all providers, while old Fish clients omit provider.
+const previewCredits = async (balance, available = true) => {
+  await redis.del([`twitch:${channel}:ai:exhaust`, `${channel}:ai:exhaust`]);
+  await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({
+    version: 3, used: 0, limit: 10000, balance, available,
+    status: available ? balance > 0 ? 'available' : 'exhausted' : 'unavailable'
+  }));
+};
+const previewCalls = () => calls().filter(call => call.kokoro || call.piper);
+const currentBalance = async () => JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance;
+for (const body of [
+  { provider: 'kokoro', voiceId: 'gojo', language: 'en' },
+  { provider: 'piper', voiceId: '../private', language: 'en' },
+  { provider: 'other', voiceId: 'af_heart', language: 'en' },
+  { provider: 'kokoro', language: 'en' },
+  { provider: 'kokoro', voiceId: 'af_heart', language: ['en'] }
+]) {
+  await cooldown();
+  const before = previewCalls().length;
+  assert.equal((await socket.send(body)).code, 'invalid_voice');
+  assert.equal(previewCalls().length, before, 'invalid requests never reach providers');
+}
+for (const [balance, available] of [[-10, true], [0, true], [1, true], [10000, false]]) {
+  await cooldown(); await previewCredits(balance, available);
+  const before = previewCalls().length;
+  assert.equal((await socket.send({ provider: 'kokoro', voiceId: 'af_heart', language: 'en' })).code, 'insufficient_credits');
+  assert.equal(previewCalls().length, before, 'no synthesis without sufficient verified credits');
+  assert.equal(await currentBalance(), balance);
+}
+for (const [provider, voiceId, language] of [
+  ['kokoro', 'af_heart', 'en'], ['kokoro', 'ef_dora', 'es'],
+  ['piper', 'en_US-ryan-medium', 'en'], ['piper', 'es_MX-ald-medium', 'es']
+]) {
+  await cooldown(); await previewCredits(provider === 'piper' ? 0 : 10000);
+  fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
+  const before = previewCalls().length;
+  result = await socket.send({ provider, voiceId, language, text: 'This user text must be ignored.' });
+  assert.equal(result.error, false, JSON.stringify(result));
+  assert.equal(result.data.provider, provider);
+  assert.equal(result.data.voiceId, voiceId);
+  assert.ok(PREVIEW_PHRASES[language].includes(result.data.text));
+  assert.equal(result.data.credits, Math.ceil(Array.from(result.data.text).length / (provider === 'piper' ? 50 : 15)));
+  assert.equal(result.data.mimeType, provider === 'piper' ? 'audio/wav' : 'audio/mpeg');
+  const audio = Buffer.from(result.data.audio, 'base64');
+  assert.ok(audio.length > 100);
+  if (provider === 'piper') assert.equal(audio.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(previewCalls().length, before + 1, 'one successful generation per click');
+  assert.equal(await currentBalance(), (provider === 'piper' ? 0 : 10000) - result.data.credits);
+  if (provider === 'piper') {
+    assert.equal(await redis.exists(`twitch:${channel}:ai:exhaust`), 1);
+    assert.equal(await redis.exists(`${channel}:ai:exhaust`), 1);
+  }
+  if (provider === 'kokoro') {
+    assert.deepEqual(previewCalls().at(-1).kokoro.provider, { only: ['deepinfra'], order: ['deepinfra'], allow_fallbacks: false });
+    assert.equal(previewCalls().at(-1).kokoro.voice, voiceId);
+  } else assert.equal(previewCalls().at(-1).piper.voice, voiceId);
+  await cooldown();
+  const directory = '/app/dist/server/routes/public/speech/' + channel;
+  assert.equal(fs.readdirSync(directory).some(name => name.startsWith('preview-')), false, 'preview files are deleted');
+}
+// Piper keeps charging below zero and the durable Polar event carries the same usage.
+await cooldown(); await previewCredits(-10);
+result = await socket.send({ provider: 'piper', voiceId: 'en_US-ryan-medium', language: 'en' });
+assert.equal(result.error, false);
+assert.equal(await currentBalance(), -10 - result.data.credits);
+const piperEvents = calls().flatMap(call => call.body?.events || []).filter(event => event.metadata?.reason === 'tts_piper');
+assert.ok(piperEvents.length >= 3, JSON.stringify(calls().filter(call=>call.billing)));
+const lastPiperEvent = piperEvents.at(-1);
+assert.equal(lastPiperEvent.metadata.credits, result.data.credits);
+assert.equal(lastPiperEvent.metadata.category, 'tts');
+assert.equal(lastPiperEvent.metadata.provider, 'piper');
+assert.equal(lastPiperEvent.metadata.quantity, Array.from(result.data.text).length);
+assert.equal(lastPiperEvent.metadata.usage_source, 'voice_preview');
+// Piper also bypasses unavailable balances, and supports an existing saved custom model.
+const savedSettings = (await request(settingsUrl)).body.data.settings;
+savedSettings.voices.en = 'custom_english';
+assert.equal((await request(settingsUrl, 'PUT', savedSettings)).status, 200);
+await cooldown(); await previewCredits(0, false);
+result = await socket.send({ provider: 'piper', voiceId: 'custom_english', language: 'en' });
+assert.equal(result.error, false);
+assert.equal(result.data.credits, Math.ceil(Array.from(result.data.text).length / 50));
+assert.equal(await currentBalance(), 0);
+assert.equal(previewCalls().at(-1).piper.voice, 'custom_english');
+// Paid failure never falls back to Piper and never charges for unavailable audio.
+for (const [provider, voiceId, state] of [
+  ['kokoro', 'af_heart', { fail: true }], ['piper', 'en_US-ryan-medium', { piperFail: true }]
+]) {
+  await cooldown(); await previewCredits(10000);
+  fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify(state));
+  const before = previewCalls().length;
+  assert.equal((await socket.send({ provider, voiceId, language: 'en' })).code, 'synthesis_failed');
+  assert.equal(previewCalls().length, before + 1, 'preview must use only the requested provider');
+  assert.equal(await currentBalance(), 10000);
+}
+await cooldown(); await previewCredits(10000);
+fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ slow: true }));
+const kokoroPending = socket.send({ provider: 'kokoro', voiceId: 'af_heart', language: 'en' });
+await new Promise(resolve => setTimeout(resolve, 50));
+assert.equal((await other.send({ provider: 'piper', voiceId: 'en_US-ryan-medium', language: 'en' })).code, 'preview_busy', 'lock applies across providers');
+assert.equal((await kokoroPending).error, false);
+await cooldown();
+assert.equal((await request(settingsUrl)).body.data.settings.provider, 'fish', 'previews never change saved provider');
+assert.equal(await redis.exists(`twitch:${channel}:tts:processing`), 0);
+assert.equal(await redis.exists(`twitch:${channel}:tts:queue`), 0);
 for (const ws of sockets) ws.close();
 await redis.quit();
-console.log('Fish API: search filters, favorite persistence/permissions/alias resolution, saved defaults, explicit tts.fish aliases/IDs, preview websocket, billing/cap, concurrency, provider failure and isolation passed.');
+console.log('PASS TTS previews: Fish compatibility/catalog/AST, Kokoro rounded credits and DeepInfra routing, metered Piper at exhausted/negative/unavailable balances, authentication, validation, shared concurrency, failures, saved choices and file cleanup.');
 process.exit(0);

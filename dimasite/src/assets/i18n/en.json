@@ -515,6 +515,12 @@
         "copiedTitle": "URL copied",
         "copiedMessage": "Speech API URL copied to clipboard."
       },
+      "preview": {
+        "piperCost": "1 credit / 50 characters",
+        "kokoroCost": "1 credit / 15 characters",
+        "piperHint": "Each test uses your channel’s credits, rounded up. Piper remains available at zero or negative credits. Replaying is free.",
+        "kokoroHint": "Each test uses your channel’s AI credits, rounded up. The short phrase uses your default TTS language. Replaying the audio is free."
+      },
       "browser": {
         "title": "Find a voice",
         "cap": "Up to 150 credits per test",
@@ -558,7 +564,7 @@
           "insufficient_credits": "Your available credit balance is too low, or could not be verified. No preview was generated.",
           "preview_busy": "A preview is running or was just requested. Wait a few seconds before trying again.",
           "voice_unavailable": "This voice is no longer available. Please choose another.",
-          "synthesis_failed": "Fish could not generate this voice preview. Try another voice.",
+          "synthesis_failed": "This voice preview could not be generated. Try another voice.",
           "preview_unavailable": "The voice preview could not be completed. Please try again.",
           "preview_timeout": "The preview is taking too long. It may still complete and use credits. Wait before trying again."
         },
@@ -619,11 +625,11 @@
         "kokoroCopy": "Preset voices. Credits round up; Piper takes over if credits run out or synthesis fails.",
         "kokoroVoiceLabel": "Kokoro preset voice",
         "kokoroSyntax": "AST: $(tts.kokoro voice_name text)",
-        "piperTag": "Free",
-        "piperCopy": "Simple voice that never uses credits.",
+        "piperTag": "1 credit / 50 characters",
+        "piperCopy": "Simple voice that remains available at zero or negative credits.",
         "fishTag": "Uses credits",
         "fishCopy": "Character voices like Gojo, plus thousands you can search.",
-        "piperSummary": "Piper · free voice"
+        "piperSummary": "Piper · available after credit exhaustion"
       },
       "rules": {
         "title": "Message limits",
@@ -642,15 +648,15 @@
         "title": "Use in commands",
         "default": "Reads with the voice chosen above.",
         "kokoro": "A Kokoro preset voice. Try ef_dora for Spanish.",
-        "piper": "Always the free Piper voice.",
+        "piper": "Always the Piper voice, including after credit exhaustion.",
         "fish": "A Fish voice or a favorite nickname.",
         "tags": "Viewers add tags like this to change the delivery (Fish only)."
       },
       "credits": {
         "title": "Credits",
         "kokoro": "uses 1 credit per 15 characters, rounded up (16–30 = 2 credits).",
-        "piper": "is always free.",
-        "fish": "uses AI credits for every message it reads.",
+        "piper": "uses 1 credit per 50 characters, rounded up. It remains available when credits run out and can make your balance negative.",
+        "fish": "uses 1.5 credits per character, rounded up.",
         "fallback": "Out of credits or synthesis unavailable? TTS switches to Piper automatically. Your selected voice stays saved.",
         "usageLink": "See credit usage"
       }

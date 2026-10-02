@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 if (!fs.existsSync('/tmp/saas-fixtures/sample.mp3')) execFileSync('ffmpeg', ['-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.2', '-codec:a', 'libmp3lame', '-y', '/tmp/saas-fixtures/sample.mp3', '-loglevel', 'error']);
+if (!fs.existsSync('/tmp/saas-fixtures/sample.wav')) execFileSync('ffmpeg', ['-f', 'lavfi', '-i', 'sine=frequency=440:duration=0.2', '-y', '/tmp/saas-fixtures/sample.wav', '-loglevel', 'error']);
 import { createRequire } from 'node:module';
 const require = createRequire('/app/package.json');
 const { decode } = require('@msgpack/msgpack');
@@ -45,8 +46,20 @@ globalThis.fetch = async (input, options = {}) => {
       return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
     }
   }
+  if (url.hostname === 'openrouter.ai' && url.pathname === '/api/v1/audio/speech') {
+    fs.appendFileSync(logPath, JSON.stringify({ kokoro: JSON.parse(options.body) }) + '\n');
+    if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
+    if (state.fail) return json({ error: 'Provider unavailable' }, 503);
+    return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
+  }
+  if (url.hostname === 'piper.test') {
+    fs.appendFileSync(logPath, JSON.stringify({ piper: JSON.parse(options.body) }) + '\n');
+    if (state.piperFail) return json({ error: 'Voice unavailable' }, 503);
+    return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.wav'), { headers: { 'Content-Type': 'audio/wav' } });
+  }
   if (url.hostname === 'api.polar.sh') {
-    fs.appendFileSync(logPath, JSON.stringify({ billing: url.pathname }) + '\n');
+    const body = options.body ? JSON.parse(String(options.body)) : input instanceof Request ? await input.clone().json() : undefined;
+    fs.appendFileSync(logPath, JSON.stringify({ billing: url.pathname, body }) + '\n');
     return json({ events: [], inserted: 1, duplicates: 0 });
   }
   throw new Error(`Unmocked external request blocked: ${url.origin}${url.pathname}`);

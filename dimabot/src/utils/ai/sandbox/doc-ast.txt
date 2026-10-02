@@ -288,7 +288,7 @@
 # $(tts.kokoro voice_name text) - Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.
 #   Example: $(tts.kokoro af_heart Hello chat!)
 #   Example: $(tts.kokoro ef_dora Hola chat!)
-# $(tts.speak message) - Speaks a message using the free Piper voice. (aliases: tts.piper)
+# $(tts.speak message) - Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion. (aliases: tts.piper)
 #   Example: $(tts Hello chat!)
 #
 # --- twitch-data ---

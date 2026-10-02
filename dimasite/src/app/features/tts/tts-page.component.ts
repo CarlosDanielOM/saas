@@ -21,6 +21,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { TtsSettingsApiService } from '../../services/tts-settings-api.service';
+import { TtsVoicePreviewComponent } from './tts-voice-preview.component';
 import { FishVoiceBrowserComponent } from './fish-voice-browser.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
@@ -66,7 +67,7 @@ function mergeCurrentOption(options: VoiceOption[], currentValue: string | null 
 
 @Component({
   selector: 'app-tts-page',
-  imports: [CommandModalComponent, RouterLink, ReactiveFormsModule, FishVoiceBrowserComponent, LfIconComponent],
+  imports: [CommandModalComponent, RouterLink, ReactiveFormsModule, FishVoiceBrowserComponent, TtsVoicePreviewComponent, LfIconComponent],
   templateUrl: './tts-page.component.html',
   styleUrl: './tts-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

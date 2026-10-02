@@ -10,5 +10,7 @@
   "FISH_AUDIO_API_KEY": "dummy",
   "OTEL_SDK_DISABLED": "true",
   "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "INTERNAL_API_URL": "http://127.0.0.1:3000"
+  "INTERNAL_API_URL": "http://127.0.0.1:3000",
+  "OPENROUTER_API_KEY": "dummy",
+  "PIPER_HTTP_URL": "http://piper.test"
 }
