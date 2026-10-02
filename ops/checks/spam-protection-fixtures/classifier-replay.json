@@ -1,0 +1,157 @@
+{
+  "description": "Synthetic Jev responses captured from the live provider on 2026-10-02. Replay tests exercise enforcement; spam-protection-provider.mjs verifies actual classifier quality.",
+  "cases": [
+    {
+      "label": "reported-short-ad",
+      "messageText": "Ai vIewers streamboo . Com",
+      "expectedBan": true,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.88,
+        "ads": 0.87,
+        "self_promotion": 0.65,
+        "safe": 0.09999999999999998,
+        "violation": 0.88
+      },
+      "inputTokens": 1207,
+      "cost": 0.000050694
+    },
+    {
+      "label": "short-ad-other-domain",
+      "messageText": "AI viewers audienceboost . net",
+      "expectedBan": true,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.87,
+        "ads": 0.89,
+        "self_promotion": 0.45,
+        "safe": 0.07999999999999996,
+        "violation": 0.89
+      },
+      "inputTokens": 1206,
+      "cost": 0.000050652
+    },
+    {
+      "label": "short-ad-spanish",
+      "messageText": "Seguidores baratos crecestream . com",
+      "expectedBan": true,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.89,
+        "ads": 0.92,
+        "self_promotion": 0.46,
+        "safe": 0.06999999999999995,
+        "violation": 0.92
+      },
+      "inputTokens": 1206,
+      "cost": 0.000050652
+    },
+    {
+      "label": "reported-short-quote",
+      "messageText": "Someone posted \"Ai vIewers streamboo . Com\". Is that a scam?",
+      "expectedBan": false,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.11,
+        "ads": 0.12,
+        "self_promotion": 0.08,
+        "safe": 0.86,
+        "violation": 0.12
+      },
+      "inputTokens": 1216,
+      "cost": 0.000051072
+    },
+    {
+      "label": "reported-short-warning",
+      "messageText": "Do not use streamboo . Com for AI viewers; it is a scam.",
+      "expectedBan": false,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.06,
+        "ads": 0.06,
+        "self_promotion": 0.04,
+        "safe": 0.91,
+        "violation": 0.06
+      },
+      "inputTokens": 1214,
+      "cost": 0.000050988
+    },
+    {
+      "label": "quoted-short-context",
+      "messageText": "Ai vIewers streamboo . Com",
+      "expectedBan": false,
+      "context": [
+        {
+          "username": "streamer",
+          "message": "What exactly did that spam message say? Please quote it.",
+          "messageID": "quote-question",
+          "timestamp": 1,
+          "isBroadcaster": true
+        }
+      ],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.82,
+        "ads": 0.8,
+        "self_promotion": 0.52,
+        "safe": 0.18000000000000005,
+        "violation": 0.82
+      },
+      "inputTokens": 1262,
+      "cost": 0.000053004
+    },
+    {
+      "label": "bare-domain",
+      "messageText": "streamboo . Com",
+      "expectedBan": false,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.32,
+        "ads": 0.29,
+        "self_promotion": 0.51,
+        "safe": 0.6699999999999999,
+        "violation": 0.51
+      },
+      "inputTokens": 1202,
+      "cost": 0.000050484
+    },
+    {
+      "label": "viewer-milestone",
+      "messageText": "We reached 100 viewers today!",
+      "expectedBan": false,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.06,
+        "ads": 0.03,
+        "self_promotion": 0.05,
+        "safe": 0.9299999999999999,
+        "violation": 0.06
+      },
+      "inputTokens": 1206,
+      "cost": 0.000050652
+    },
+    {
+      "label": "ordinary-recommendation",
+      "messageText": "OBS is free, you can download it from obsproject . com",
+      "expectedBan": false,
+      "context": [],
+      "model": "typesafe/jev-1.13-20260917",
+      "scores": {
+        "spam": 0.05,
+        "ads": 0.05,
+        "self_promotion": 0.04,
+        "safe": 0.91,
+        "violation": 0.05
+      },
+      "inputTokens": 1211,
+      "cost": 0.000050862
+    }
+  ]
+}

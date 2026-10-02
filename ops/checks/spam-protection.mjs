@@ -51,6 +51,7 @@ try {
     assert.equal(first.charge.status, 'none');
     assert.equal(first.charge.credits, 0);
     assert.equal(first.charge.billableCostUSD, 0);
+    assert.ok(first.cost > 0, 'service absorbs provider cost for first-message protection');
     assert.equal(await redis.get('twitch:spam-free:ai:credits'), exhausted);
     assert.equal(await redis.get(`moderation:spam-free:offenses:${SPAM_RULE_ID}:advertiser`), null, 'ban never touches ladder');
     const bans = calls().filter(call => call.ban === 'advertiser');
@@ -271,6 +272,31 @@ try {
     await Settings.updateOne({ channelID: 'spam-old-settings' }, { $unset: { spamProtection: '' } });
     assert.equal((await review('spam-old-settings', 'old-settings-ad', 'Want to buy viewers?')).actionTaken, true);
 
+    // Replay real classifier scores through the actual handler/worker and mocked
+    // Twitch boundary, including a quote whose meaning depends on preceding chat.
+    const replayCases = JSON.parse(fs.readFileSync('/tmp/saas-fixtures/classifier-replay.json', 'utf8')).cases;
+    for (const fixture of replayCases) {
+        const channel = `classifier-${fixture.label}`;
+        await seed(channel);
+        for (const prior of fixture.context) {
+            await ChatHistory.addMessage(channel, prior.username, prior.message, prior.isBroadcaster ? ['[STREAMER]'] : [], 'twitch', prior.messageID, Date.now() - 100);
+        }
+        const id = `classifier-${fixture.label}`;
+        const user = `viewer-${fixture.label}`;
+        assert.equal((await review(channel, id, fixture.messageText, user)).actionTaken, fixture.expectedBan, fixture.label);
+        const row = await decision(id);
+        assert.equal(row.model, fixture.model, fixture.label);
+        assert.deepEqual(row.scores, fixture.scores, fixture.label);
+        assert.equal(row.charge.status, 'none', fixture.label);
+        assert.equal(row.charge.credits, 0, fixture.label);
+        if (fixture.expectedBan) {
+            await until(async () => (await decision(id))?.consequence.status === 'executed', id);
+            assert.equal(calls().filter(call => call.ban === user).length, 1, fixture.label);
+        } else {
+            assert.equal(calls().some(call => call.ban === user), false, fixture.label);
+            assert.equal(await Actions.countDocuments({ channelID: channel }), 0, fixture.label);
+        }
+    }
     for (let i = 0; i < 30; i++) assert.equal(await claimSpamReviewBudget('budget-channel'), true);
     assert.equal(await claimSpamReviewBudget('budget-channel'), false);
     const window = Math.floor(Number(await redis.eval("return redis.call('TIME')[1]", { keys: [], arguments: [] })) / 60);

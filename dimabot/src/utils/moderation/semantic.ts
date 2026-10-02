@@ -1,5 +1,5 @@
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
-import { DEFAULT_SPAM_THRESHOLD } from './spam_categories.js';
+import { DEFAULT_SPAM_THRESHOLD, SPAM_CLASSIFIER_MODEL } from './spam_categories.js';
 export const SEMANTIC_USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export const SEMANTIC_PRICING_VERSION = 'span-lite-jev-equivalent-v1';
 
@@ -24,8 +24,8 @@ export interface SemanticResult {
     inputTokens: number;
     cost: number;
 }
-export function fallbackResult(status: string): SemanticResult {
-    return { verdict: 'uncertain', status, scores: null, model: SEMANTIC_MODEL, provider: 'openrouter', providerRequestID: '', inputTokens: 0, cost: 0 };
+export function fallbackResult(status: string, model = SEMANTIC_MODEL): SemanticResult {
+    return { verdict: 'uncertain', status, scores: null, model, provider: 'openrouter', providerRequestID: '', inputTokens: 0, cost: 0 };
 }
 export function parseSemanticResponse(raw: unknown, thresholdPercent = 85): SemanticResult {
     if (!Number.isFinite(thresholdPercent) || thresholdPercent < 0 || thresholdPercent > 100) return fallbackResult('invalid_configuration');
@@ -71,10 +71,12 @@ export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thre
     return { ...result, verdict, status: verdict === 'uncertain' ? 'uncertain' : 'completed', scores: { ...scores, violation: highest } };
 }
 
-export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: string } {
+type SemanticState = string | { input: Array<{ role: 'user'; content: string }>; output: { role: 'assistant'; content: string } };
+
+export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: SemanticState } {
     const semantic = decision.rule.semantic!;
     return {
-        model: SEMANTIC_MODEL,
+        model: decision.rule.id === SPAM_RULE_ID && semantic.categories ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL,
         questions: decision.rule.id === SPAM_RULE_ID && semantic.categories
             ? categoryQuestions(semantic.categories, semantic.broadcasterInvitation === true) : {
             violation: {
@@ -90,29 +92,35 @@ export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'me
                 }
             }
         },
-        // Respan accepts a string or its constrained span shape, not arbitrary state objects.
-        state: JSON.stringify({ targetMessage: { author: decision.username, text: decision.messageText }, matchedSpans: decision.matches, precedingMessages: decision.context })
+        // Keep preceding context separate from the evaluated output turn.
+        // The assistant role is the decision API's target-turn slot, not a chat role.
+        state: decision.rule.id === SPAM_RULE_ID && semantic.categories ? {
+            input: decision.context.map(message => ({ role: 'user', content: JSON.stringify(message) })),
+            output: { role: 'assistant', content: decision.messageText }
+        } : JSON.stringify({ targetMessage: { author: decision.username, text: decision.messageText }, matchedSpans: decision.matches, precedingMessages: decision.context })
     };
 }
 
 export async function evaluateSemanticDecision(decision: IModerationDecision): Promise<SemanticResult> {
+    const request = semanticRequest(decision);
     const remaining = decision.deadline.getTime() - Date.now();
-    if (remaining <= 0) return fallbackResult('timeout');
-    if (!process.env.OPENROUTER_API_KEY) return fallbackResult('unavailable');
+    if (remaining <= 0) return fallbackResult('timeout', request.model);
+    if (!process.env.OPENROUTER_API_KEY) return fallbackResult('unavailable', request.model);
     try {
         const response = await fetch('https://openrouter.ai/api/alpha/decisions', {
             method: 'POST',
             headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(semanticRequest(decision)),
+            body: JSON.stringify(request),
             signal: AbortSignal.timeout(remaining)
         });
-        if (!response.ok) return fallbackResult(response.status === 429 ? 'rate_limited' : 'unavailable');
+        if (!response.ok) return fallbackResult(response.status === 429 ? 'rate_limited' : 'unavailable', request.model);
         const raw = await response.json();
         const semantic = decision.rule.semantic;
-        return decision.rule.id === SPAM_RULE_ID && semantic?.categories
+        const result = decision.rule.id === SPAM_RULE_ID && semantic?.categories
             ? parseSpamResponse(raw, semantic.categories, semantic.thresholdPercent ?? DEFAULT_SPAM_THRESHOLD)
             : parseSemanticResponse(raw, semantic?.thresholdPercent ?? 85);
+        return { ...result, model: result.providerRequestID ? result.model : request.model };
     } catch (error) {
-        return fallbackResult(Date.now() >= decision.deadline.getTime() || (error instanceof Error && error.name === 'TimeoutError') ? 'timeout' : 'unavailable');
+        return fallbackResult(Date.now() >= decision.deadline.getTime() || (error instanceof Error && error.name === 'TimeoutError') ? 'timeout' : 'unavailable', request.model);
     }
 }
