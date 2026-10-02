@@ -112,15 +112,7 @@
                     [disabled]="!getTriggerAsset(trigger)?.playbackUrl"
                     [attr.aria-label]="t('triggers.page.previewNamed', { name: trigger.name })"
                     (click)="previewTrigger($event, trigger)">
-                    @if (getTriggerAsset(trigger); as asset) {
-                      @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
-                        <img [src]="asset.playbackUrl" alt="" loading="lazy" />
-                      } @else {
-                        <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
-                      }
-                    } @else {
-                      <lucide-icon class="lf-icon" [name]="zapIcon" aria-hidden="true"></lucide-icon>
-                    }
+                    <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: getTriggerAsset(trigger) }"></ng-container>
                   </button>
                   <div class="lf-trigger__body">
                     <div class="lf-trigger__name">
@@ -219,11 +211,7 @@
                     [disabled]="!item.asset?.playbackUrl"
                     [attr.aria-label]="t('triggers.page.previewNamed', { name: itemName(item) })"
                     (click)="item.asset ? openPreviewModal($event, item.asset) : null">
-                    @if (item.asset && (item.asset.mediaType === 'image' || item.asset.mediaType === 'gif')) {
-                      <img [src]="item.asset.playbackUrl" alt="" loading="lazy" />
-                    } @else {
-                      <lucide-icon class="lf-icon" [name]="mediaIcon(item.asset?.mediaType || 'video')" aria-hidden="true"></lucide-icon>
-                    }
+                    <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: item.asset }"></ng-container>
                   </button>
                   <div class="lf-media-row__body">
                     <strong [title]="itemName(item)">{{ itemName(item) }}</strong>
@@ -300,7 +288,7 @@
                     <button type="button" class="lf-pick__select" [attr.aria-pressed]="triggerForm().libraryItemID === item._id"
                       (click)="selectTriggerMedia(item)">
                       <span class="lf-thumb lf-thumb--sm" [attr.data-type]="item.asset?.mediaType || 'none'" aria-hidden="true">
-                        <lucide-icon class="lf-icon" [name]="mediaIcon(item.asset?.mediaType || 'audio')"></lucide-icon>
+                        <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: item.asset }"></ng-container>
                       </span>
                       <span class="lf-pick__info">
                         <strong>{{ itemName(item) }}</strong>
@@ -338,7 +326,7 @@
             <div class="lf-pick is-selected lf-pick--locked">
               <span class="lf-pick__select">
                 <span class="lf-thumb lf-thumb--sm" [attr.data-type]="lockedItem.asset?.mediaType || 'none'" aria-hidden="true">
-                  <lucide-icon class="lf-icon" [name]="mediaIcon(lockedItem.asset?.mediaType || 'audio')"></lucide-icon>
+                  <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: lockedItem.asset }"></ng-container>
                 </span>
                 <span class="lf-pick__info">
                   <strong>{{ itemName(lockedItem) }}</strong>
@@ -639,3 +627,17 @@
     </section>
   </div>
 }
+
+<!-- Thumbnail contents: image, first video frame, or a media-type icon -->
+<ng-template #thumbMedia let-asset>
+  @if (asset?.playbackUrl && (asset.mediaType === 'image' || asset.mediaType === 'gif')) {
+    <img [src]="asset.playbackUrl" alt="" loading="lazy" />
+  } @else if (asset?.playbackUrl && asset.mediaType === 'video') {
+    <video [appLazyVideoFrame]="asset.playbackUrl"></video>
+  }
+  @if (asset?.mediaType !== 'image' && asset?.mediaType !== 'gif') {
+    <span class="lf-thumb__icon">
+      <lucide-icon class="lf-icon" [name]="asset ? mediaIcon(asset.mediaType) : zapIcon" aria-hidden="true"></lucide-icon>
+    </span>
+  }
+</ng-template>

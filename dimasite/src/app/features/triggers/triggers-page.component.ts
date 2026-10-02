@@ -9,6 +9,7 @@ import {
   type OnDestroy,
   type OnInit
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
@@ -43,6 +44,7 @@ import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { PublicLibraryModalComponent } from './components/public-library-modal.component';
+import { LazyVideoFrameDirective } from './lazy-video-frame.directive';
 import {
   CreateTriggerRequest,
   TriggerRewardDraft,
@@ -114,7 +116,9 @@ const SAFE_NAME_MAX_LENGTH = 60;
     DisplayNamePipe,
     ConfirmationModalComponent,
     PublicLibraryModalComponent,
-    LucideAngularModule
+    LucideAngularModule,
+    LazyVideoFrameDirective,
+    NgTemplateOutlet
   ],
   styleUrl: './triggers-page.component.css',
   templateUrl: './triggers-page.component.html',

@@ -18,6 +18,7 @@ import {
   MediaType
 } from '../triggers.model';
 import { TriggersService } from '../triggers.service';
+import { LazyVideoFrameDirective } from '../lazy-video-frame.directive';
 import {
   Check,
   Image as ImageIcon,
@@ -37,7 +38,7 @@ type MediaFilter = 'all' | MediaType;
 
 @Component({
   selector: 'app-public-library-modal',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, LazyVideoFrameDirective],
   styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
