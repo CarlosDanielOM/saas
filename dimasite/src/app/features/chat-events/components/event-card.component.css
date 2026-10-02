@@ -17,6 +17,9 @@
   --warn-soft: rgba(180, 83, 9, 0.12);
   --info: #2563eb;
   --info-soft: rgba(37, 99, 235, 0.12);
+  --alpha: #be185d;
+  --alpha-soft: rgba(190, 24, 93, 0.1);
+  --kicker: #6d28d9;
   --btn: #eef0f5;
   --btn-border: rgba(15, 17, 21, 0.1);
   --radius: 1.15rem;
@@ -41,197 +44,266 @@
   --warn-soft: rgba(251, 191, 36, 0.14);
   --info: #93c5fd;
   --info-soft: rgba(59, 130, 246, 0.16);
+  --alpha: #f9a8d4;
+  --alpha-soft: rgba(236, 72, 153, 0.14);
+  --kicker: #c4b5fd;
   --btn: #1d2230;
   --btn-border: rgba(255, 255, 255, 0.07);
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
 }
 
-.lf-card {
-  min-width: 0;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%),
-    var(--tile);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 0.95rem;
-  font-family: var(--font);
+.lf-ev {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 0.75rem;
+  border-radius: 1rem;
   color: var(--fg);
+  font-family: var(--font);
+  transition: background-color 0.15s ease;
+}
+
+.lf-ev--open {
+  background: color-mix(in srgb, var(--fg) 3.5%, transparent);
+}
+
+.lf-ev__row {
   display: grid;
-  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'icon info'
+    'icon actions';
+  align-items: center;
+  gap: 0.55rem 0.85rem;
 }
 
-.lf-card--open {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow);
-}
-
-.lf-card--premium {
-  border-color: color-mix(in srgb, var(--gold) 28%, transparent);
-}
-
-.lf-card--pro {
-  border-color: color-mix(in srgb, var(--gold) 42%, transparent);
-}
-
-.lf-card__head {
-  display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
-  gap: 0.7rem;
-  align-items: start;
-}
-
-.lf-card__icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.85rem;
+.lf-ev__icon {
+  grid-area: icon;
+  align-self: start;
   display: grid;
   place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 1.1rem;
-  font-weight: 750;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.lf-card__info {
+.lf-ev--on .lf-ev__icon {
+  background: var(--accent-soft);
+  color: var(--kicker);
+}
+
+.lf-ev__info {
+  grid-area: info;
+  display: grid;
+  gap: 0.15rem;
   min-width: 0;
 }
 
-.lf-card__name {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 750;
-  letter-spacing: -0.02em;
+.lf-ev__name {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
-.lf-card__desc {
-  margin: 0.35rem 0 0;
+.lf-ev__desc {
+  margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
-  line-height: 1.45;
-  font-weight: 500;
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
+.lf-ev__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0.15rem 0 0;
+  color: var(--warn);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.lf-ev__actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.lf-ev__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.lf-ev__state--on {
+  color: var(--ok);
+}
+
+.lf-ev__pending {
+  margin: 0;
+  padding-left: 3.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* Chips */
 .lf-chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.45rem;
+  padding: 0.1rem 0.42rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
-  background: var(--gold-soft);
-  color: var(--gold);
-  font-size: 0.68rem;
-  font-weight: 750;
-}
-
-.lf-card__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.55rem;
-}
-
-.lf-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
-  font-size: 0.78rem;
-  font-weight: 650;
+  border: 1px solid var(--line);
   color: var(--muted);
-}
-
-.lf-status__glyph {
-  flex-shrink: 0;
-}
-
-.lf-status__text {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.lf-status[data-tone='ok'] {
-  color: var(--ok);
-}
-.lf-status[data-tone='danger'] {
-  color: var(--danger);
-}
-.lf-status[data-tone='warn'] {
-  color: var(--warn);
-}
-.lf-status[data-tone='info'],
-.lf-status[data-tone='beta'] {
+.lf-chip[data-tone='beta'] {
+  background: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 35%, transparent);
   color: var(--info);
 }
-.lf-status[data-tone='alpha'] {
-  color: var(--accent);
-}
-.lf-status[data-tone='muted'] {
-  color: var(--muted);
+
+.lf-chip[data-tone='alpha'] {
+  background: var(--alpha-soft);
+  border-color: color-mix(in srgb, var(--alpha) 35%, transparent);
+  color: var(--alpha);
 }
 
-.lf-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+.lf-chip[data-tone='gold'] {
+  background: var(--gold-soft);
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  color: var(--gold);
 }
 
+/* Buttons */
 .lf-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  padding: 0.35rem 0.7rem;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  padding: 0 0.9rem;
   border: 1px solid var(--btn-border);
   border-radius: 999px;
   background: var(--btn);
   color: var(--fg);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 650;
   cursor: pointer;
 }
 
 .lf-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.lf-btn--xs {
-  min-height: 30px;
-  padding: 0.28rem 0.6rem;
-  font-size: 0.74rem;
-}
-
-.lf-btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  opacity: 0.55;
+  cursor: default;
 }
 
 .lf-btn--active {
+  border-color: var(--accent);
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--accent);
-}
-
-.lf-btn--warn {
-  background: var(--warn-soft);
-  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
-  color: var(--warn);
+  color: var(--fg);
 }
 
 .lf-btn--gold {
   background: var(--gold-soft);
-  border-color: color-mix(in srgb, var(--gold) 35%, transparent);
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
   color: var(--gold);
 }
 
-.lf-btn--locked {
-  opacity: 0.72;
+/* Switch */
+.lf-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 3.1rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 14%, transparent);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Keep a 44px tap target around the visual track. */
+.lf-switch::before {
+  content: '';
+  position: absolute;
+  inset: -0.4rem -0.2rem;
+}
+
+.lf-switch__thumb {
+  position: absolute;
+  top: 50%;
+  left: 0.2rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%);
+  transition: transform 0.2s ease;
+}
+
+.lf-switch[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.lf-switch[aria-checked='true'] .lf-switch__thumb {
+  transform: translate(1.25rem, -50%);
+}
+
+.lf-switch--busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.lf-switch:focus-visible,
+.lf-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) {
+  .lf-ev {
+    padding: 0.85rem 1rem;
+  }
+
+  .lf-ev__row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'icon info actions';
+    gap: 0.85rem 1rem;
+  }
+
+  .lf-ev__icon {
+    align-self: center;
+  }
+
+  .lf-ev__pending {
+    padding-left: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-ev,
+  .lf-ev__icon,
+  .lf-switch,
+  .lf-switch__thumb {
+    transition: none;
+  }
 }

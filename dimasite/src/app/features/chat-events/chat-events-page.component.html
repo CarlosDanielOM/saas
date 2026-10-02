@@ -1,55 +1,57 @@
 <div class="lf" [attr.data-plan]="userPlan() === 'premium_plus' ? 'pro' : userPlan() === 'premium' ? 'premium' : 'free'">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('chatEvents.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('chatEvents.heroBadge') }}</p>
-        <h1 class="lf-title">{{ t('chatEvents.title') }} <span>Events</span></h1>
-        <p class="lf-copy">{{ t('chatEvents.subtitle') }}</p>
-        @if (permissionLoaded() && !canManage()) {
-          <p class="lf-note lf-note--warn">{{ t('chatEvents.permission.readOnly') }}</p>
-        }
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-stats-strip lf-stats-strip--3">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('chatEvents.title') }}</span>
-            <span class="lf-stats-strip__value">{{ events().length }}</span>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('chatEvents.enabled') }}</span>
-            <span class="lf-stats-strip__value">{{ enabledCount() }}</span>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">Premium / Pro</span>
-            <span class="lf-stats-strip__value">{{ premiumCount() }}</span>
-          </div>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('chatEvents.backToModules') }}</a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('chatEvents.title') }}</h1>
+          <p class="lf-copy">{{ t('chatEvents.subtitle') }}</p>
         </div>
-      </article>
-    </section>
+        @if (!isLoading() && cards().length) {
+          <span class="lf-chip" [class.lf-chip--ok]="enabledCount() > 0">
+            {{ t('chatEvents.summary', { on: enabledCount(), total: cards().length }) }}
+          </span>
+        }
+      </div>
+      @if (permissionLoaded() && !canManage()) {
+        <p class="lf-note lf-note--warn"><app-lf-icon name="lock"></app-lf-icon> {{ t('chatEvents.permission.readOnly') }}</p>
+      }
+    </header>
 
     @if (isLoading()) {
-      <section class="lf-tile lf-empty">
-        <p>{{ t('chatEvents.loading') }}</p>
+      <section class="lf-section" aria-busy="true">
+        <div class="lf-tile lf-list">
+          @for (placeholder of [1, 2, 3, 4]; track placeholder) {
+            <div class="lf-skel-row" aria-hidden="true"><span class="lf-skel lf-skel--icon"></span><span class="lf-skel"></span></div>
+          }
+        </div>
+        <p class="visually-hidden" role="status">{{ t('chatEvents.loading') }}</p>
       </section>
     } @else {
-      <section class="lf-event-grid">
-        @for (event of events(); track event.type) {
-          <app-event-card
-            [event]="event"
-            [userPlan]="userPlan()"
-            [userAccess]="getUserAccess(event)"
-            [canManage]="canManage()"
-            [pendingAction]="getPendingAction(event.type)"
-            (configure)="toggleConfigure(event)"
-            (toggle)="toggleFeature(event)"
-            (save)="saveConfiguration(event)"
-            (delete)="deleteEvent(event)"
-            (upgrade)="onUpgrade()"
-          />
-        }
-      </section>
+      @for (group of groups(); track group.id) {
+        <section class="lf-section" [attr.aria-labelledby]="'chat-events-' + group.id">
+          <div class="lf-section__head">
+            <h2 class="lf-h2" [id]="'chat-events-' + group.id">{{ t('chatEvents.groups.' + group.id) }}</h2>
+            <p class="lf-section__hint">{{ t('chatEvents.groups.' + group.id + 'Hint') }}</p>
+          </div>
+          <div class="lf-tile lf-list">
+            @for (event of group.events; track cardKey(event)) {
+              <app-event-card
+                [event]="event"
+                [userPlan]="userPlan()"
+                [userAccess]="getUserAccess(event)"
+                [canManage]="canManage()"
+                [pendingAction]="getPendingAction(event.type)"
+                (configure)="toggleConfigure(event)"
+                (toggle)="toggleFeature(event)"
+                (save)="saveConfiguration(event)"
+                (delete)="deleteEvent(event)"
+                (upgrade)="onUpgrade()"
+              />
+            }
+          </div>
+        </section>
+      }
     }
   </main>
 </div>

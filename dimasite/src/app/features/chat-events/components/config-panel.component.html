@@ -74,6 +74,8 @@
 
   @if (canManage()) {
   <div class="lf-config__actions">
+    <!-- Notice cards share one subscription; deleting it would remove the other notice too. -->
+    @if (!event()?.notice) {
     <button
       type="button"
       class="lf-btn lf-btn--danger"
@@ -84,6 +86,7 @@
     >
       {{ isDeleting() ? t('chatEvents.pending.deleting') : t('chatEvents.deleteEvent') }}
     </button>
+    }
 
     <button type="button" class="lf-btn lf-btn--primary" [disabled]="isBusy()" (click)="onSave()">
       {{ isSaving() ? t('chatEvents.pending.saving') : t('chatEvents.saveChanges') }}

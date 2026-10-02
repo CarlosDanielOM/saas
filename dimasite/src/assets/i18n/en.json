@@ -2996,7 +2996,14 @@
   },
   "chatEvents": {
     "title": "Chat Events",
-    "subtitle": "Manage your channel's automated chat responses for follows, subscriptions, bits, and more.",
+    "subtitle": "Choose what the bot says in chat when something happens on your channel. Turn each event on or off on its own.",
+    "summary": "{{on}} of {{total}} on",
+    "groups": {
+      "community": "Community moments",
+      "communityHint": "Thank and celebrate the people in your chat.",
+      "stream": "Your stream",
+      "streamHint": "Messages tied to your broadcast starting, ending and ad breaks."
+    },
     "permission": { "readOnly": "You can view chat events, but need Manage permission for events to change them." },
     "heroBadge": "Engagement Automation",
     "backToModules": "Back to Modules",
@@ -3010,15 +3017,18 @@
     "upgrade": "Upgrade",
     "notificationsName": "Chat Notifications",
     "modiversary": {
+      "name": "Mod anniversaries",
+      "description": "Thank moderators who share their mod anniversary in chat.",
       "defaultMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!",
       "variables": "Use $(user) for the moderator and $(twitch.modiversary) for their months as a moderator.",
-      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Uncheck moderator anniversary announcements to silence them."
+      "defaultHelp": "Leave the message empty to use the default in your channel’s language."
     },
     "watchStreak": {
-      "name": "Watch Streak",
+      "name": "Watch streaks",
+      "description": "Celebrate viewers who share a watch streak in chat.",
       "defaultMessage": "$(user) has a streak of $(twitch.streak) days!",
       "variables": "Use $(user) for the viewer and $(twitch.streak) for their streak number.",
-      "defaultHelp": "Leave the message empty to use the default in your channel’s language. Uncheck watch streak announcements to silence them.",
+      "defaultHelp": "Leave the message empty to use the default in your channel’s language.",
       "restoreDefault": "Restore default message"
     },
     "configuration": "Configuration",
@@ -3038,6 +3048,9 @@
     "newTier": "New Tier",
     "tierRemoveAria": "Remove tier {{name}}",
     "status": {
+      "on": "On",
+      "alwaysOn": "Always on",
+      "off": "Off",
       "notCreated": "Not Created",
       "enabled": "Enabled",
       "disabled": "Disabled",

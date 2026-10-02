@@ -1,77 +1,77 @@
-<article
-  class="lf-card"
-  [class.lf-card--open]="event().isConfiguring"
-  [class.lf-card--premium]="event().premium && !event().pro"
-  [class.lf-card--pro]="event().pro"
->
-  <div class="lf-card__head">
-    <div class="lf-card__icon" aria-hidden="true"><lucide-icon class="lf-icon" [name]="eventIcon(event().icon)"></lucide-icon></div>
-    <div class="lf-card__info">
-      <h3 class="lf-card__name">
+<article class="lf-ev" [class.lf-ev--open]="event().isConfiguring" [class.lf-ev--on]="event().enabled">
+  <div class="lf-ev__row">
+    <div class="lf-ev__icon" aria-hidden="true"><lucide-icon [name]="eventIcon(event().icon)" [size]="18"></lucide-icon></div>
+
+    <div class="lf-ev__info">
+      <h3 class="lf-ev__name">
         {{ getEventName() }}
+        @if (releaseChip(); as stage) {
+          <span class="lf-chip" [attr.data-tone]="stage">{{ stage === 'alpha' ? 'Alpha' : 'Beta' }}</span>
+        }
         @if (event().pro) {
-          <span class="lf-chip lf-chip--gold"><app-lf-icon name="star"></app-lf-icon>+</span>
+          <span class="lf-chip" data-tone="gold">Pro</span>
         } @else if (event().premium) {
-          <span class="lf-chip lf-chip--gold"><app-lf-icon name="star"></app-lf-icon></span>
+          <span class="lf-chip" data-tone="gold">Premium</span>
         }
       </h3>
-      <p class="lf-card__desc">{{ getEventDescription(event().description) }}</p>
-    </div>
-  </div>
-
-  <div class="lf-card__bar">
-    <div class="lf-status" [attr.data-tone]="displayStatus().tone">
-      <span class="lf-status__glyph"><app-lf-icon [name]="displayStatus().icon"></app-lf-icon></span>
-      <span class="lf-status__text">{{ displayStatus().text }}</span>
+      <p class="lf-ev__desc">{{ getEventDescription(event().description) }}</p>
+      @if (statusNote(); as note) {
+        <p class="lf-ev__note">
+          <app-lf-icon [name]="displayStatus().icon"></app-lf-icon> {{ note }}
+        </p>
+      }
     </div>
 
-    <div class="lf-card__actions">
+    <div class="lf-ev__actions">
       @if (userAccess().canAccess) {
-        @if (event().enabled) {
-          @if (event().config) {
-            <button
-              type="button"
-              class="lf-btn lf-btn--xs"
-              [class.lf-btn--active]="event().isConfiguring"
-              [disabled]="isBusy()"
-              (click)="toggleConfigure()"
-            >
-              {{ configureButtonLabel() }}
-            </button>
-          }
-          @if (canManage()) {
+        @if (event().enabled && event().config?.length) {
           <button
             type="button"
-            class="lf-btn lf-btn--xs lf-btn--warn"
-            [class.lf-btn--locked]="!canDisable()"
+            class="lf-btn"
+            [class.lf-btn--active]="event().isConfiguring"
+            [attr.aria-expanded]="event().isConfiguring"
             [disabled]="isBusy()"
-            [title]="!canDisable() ? t('chatEvents.tooltips.disableNotAllowed') : ''"
-            (click)="toggleFeature()"
+            (click)="toggleConfigure()"
           >
-            {{ isDisabling() ? t('chatEvents.pending.disabling') : t('chatEvents.disable') }}
-          </button>
-          }
-        } @else if (canManage() && event().releaseStage !== 'coming_soon' && event().releaseStage !== 'maintenance') {
-          <button
-            type="button"
-            class="lf-btn lf-btn--xs lf-btn--primary"
-            [disabled]="isBusy()"
-            (click)="toggleFeature()"
-          >
-            {{ isEnabling() ? t('chatEvents.pending.enabling') : t('chatEvents.enable') }}
-          </button>
-        } @else {
-          <button type="button" class="lf-btn lf-btn--xs" disabled>
-            {{ t('chatEvents.configure') }}
+            <app-lf-icon name="settings"></app-lf-icon>
+            <span class="lf-btn__label">{{ configureButtonLabel() }}</span>
           </button>
         }
+        @if (alwaysOn()) {
+          <span class="lf-ev__state lf-ev__state--on" [attr.title]="t('chatEvents.tooltips.disableNotAllowed')">
+            <app-lf-icon name="lock"></app-lf-icon> {{ t('chatEvents.status.alwaysOn') }}
+          </span>
+        } @else if (canManage() && canToggle()) {
+          <button
+            type="button"
+            role="switch"
+            class="lf-switch"
+            [class.lf-switch--busy]="isBusy()"
+            [attr.aria-checked]="event().enabled"
+            [attr.aria-label]="getEventName()"
+            [disabled]="isBusy()"
+            (click)="toggleFeature()"
+          >
+            <span class="lf-switch__thumb"></span>
+          </button>
+        } @else if (!canManage()) {
+          <span class="lf-ev__state" [class.lf-ev__state--on]="event().enabled">
+            {{ event().enabled ? t('chatEvents.status.on') : t('chatEvents.status.off') }}
+          </span>
+        }
       } @else if (canManage()) {
-        <button type="button" class="lf-btn lf-btn--xs lf-btn--gold" (click)="onUpgradeClick()">
-          {{ t('chatEvents.upgrade') }}
+        <button type="button" class="lf-btn lf-btn--gold" (click)="onUpgradeClick()">
+          <app-lf-icon name="lock"></app-lf-icon> {{ t('chatEvents.upgrade') }}
         </button>
       }
     </div>
   </div>
+
+  @if (isEnabling() || isDisabling()) {
+    <p class="lf-ev__pending" role="status">
+      {{ isEnabling() ? t('chatEvents.pending.enabling') : t('chatEvents.pending.disabling') }}
+    </p>
+  }
 
   @if (event().isConfiguring && event().config) {
     <app-config-panel

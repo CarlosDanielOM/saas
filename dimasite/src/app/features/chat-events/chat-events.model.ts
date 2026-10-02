@@ -4,6 +4,9 @@ export type ReleaseStage = 'stable' | 'beta' | 'alpha' | 'coming_soon' | 'mainte
 
 export type PlanTier = 'none' | 'premium' | 'premium_plus';
 
+/** Twitch `channel.chat.notification` notices that are presented as separate chat events. */
+export type ChatNotice = 'watch_streak' | 'modiversary';
+
 export type ChatEventPendingAction = 'none' | 'enabling' | 'disabling' | 'saving' | 'deleting';
 
 export interface CheerTier {
@@ -48,6 +51,8 @@ export interface ChatEvent {
   subscriptionId?: string;
   config?: ConfigControl[];
   tierLimits?: TierLimits;
+  /** Set on cards derived from the shared chat notification subscription. */
+  notice?: ChatNotice;
 }
 
 export interface UserEventConfig {

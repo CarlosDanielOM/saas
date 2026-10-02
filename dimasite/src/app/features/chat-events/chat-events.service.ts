@@ -222,7 +222,18 @@ export class ChatEventsService {
     );
   }
 
-  updateEventStatus(channelId: string, eventType: string, enabled: boolean): Observable<SubscriptionResponse<BackendSubscription | null>> {
+  /**
+   * `fields` are written alongside the status change (or into the initial config when the
+   * subscription is created); `label` replaces the raw event type in toasts.
+   */
+  updateEventStatus(
+    channelId: string,
+    eventType: string,
+    enabled: boolean,
+    options: { fields?: Record<string, unknown>; label?: string } = {}
+  ): Observable<SubscriptionResponse<BackendSubscription | null>> {
+    const fields = options.fields ?? {};
+    const label = options.label || eventType;
     const normalizedChannelId = channelId.trim();
     if (!normalizedChannelId) {
       return throwError(() => new Error('No channel ID found'));
@@ -241,10 +252,10 @@ export class ChatEventsService {
           if (subscriptionId) {
             return this.http.patch<SubscriptionResponse<BackendSubscription>>(
               `${this.linksService.getApiUrl()}/eventsubs/${normalizedChannelId}/${subscriptionId}`,
-              { enabled: true }
+              { ...fields, enabled: true }
             ).pipe(
               tap(() => {
-                this.toastService.success('Status Updated', `${eventType} has been enabled.`);
+                this.toastService.success('Status Updated', `${label} has been enabled.`);
               }),
               catchError((error: unknown) => {
                 const err = error as { status?: number; error?: { message?: string }; message?: string };
@@ -307,13 +318,17 @@ export class ChatEventsService {
                   }
                 }
 
+                if (Object.keys(fields).length > 0) {
+                  body['config'] = { ...(body['config'] as Record<string, unknown> | undefined), ...fields };
+                }
+
                 return this.http.post<SubscriptionResponse<BackendSubscription>>(
                   `${this.linksService.getApiUrl()}/eventsubs/${normalizedChannelId}`,
                   body
                 ).pipe(
                   tap(() => {
                     this.clearCache(normalizedChannelId);
-                    this.toastService.success('Status Updated', `${eventType} has been enabled.`);
+                    this.toastService.success('Status Updated', `${label} has been enabled.`);
                   }),
                   catchError((error: unknown) => {
                     const err = error as { status?: number; error?: { message?: string }; message?: string };
@@ -343,10 +358,10 @@ export class ChatEventsService {
           
           return this.http.patch<SubscriptionResponse<BackendSubscription>>(
             `${this.linksService.getApiUrl()}/eventsubs/${normalizedChannelId}/${subscriptionId}`,
-            { enabled: false }
+            { ...fields, enabled: false }
           ).pipe(
             tap(() => {
-              this.toastService.success('Status Updated', `${eventType} has been disabled.`);
+              this.toastService.success('Status Updated', `${label} has been disabled.`);
             }),
             catchError((error: unknown) => {
               const err = error as { status?: number; error?: { message?: string }; message?: string };

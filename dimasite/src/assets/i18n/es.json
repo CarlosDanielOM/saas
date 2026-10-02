@@ -2996,7 +2996,14 @@
   },
   "chatEvents": {
     "title": "Eventos de Chat",
-    "subtitle": "Gestiona las respuestas automaticas de tu canal para follows, suscripciones, bits y mas.",
+    "subtitle": "Elige qué dice el bot en el chat cuando pasa algo en tu canal. Activa o desactiva cada evento por separado.",
+    "summary": "{{on}} de {{total}} activos",
+    "groups": {
+      "community": "Momentos de la comunidad",
+      "communityHint": "Agradece y celebra a la gente de tu chat.",
+      "stream": "Tu stream",
+      "streamHint": "Mensajes al iniciar o terminar tu transmisión y en pausas publicitarias."
+    },
     "permission": { "readOnly": "Puedes ver los eventos del chat, pero necesitas permiso de Gestión de eventos para cambiarlos." },
     "heroBadge": "Automatizacion de Interaccion",
     "backToModules": "Volver a Modulos",
@@ -3010,15 +3017,18 @@
     "upgrade": "Mejorar plan",
     "notificationsName": "Notificaciones del chat",
     "modiversary": {
+      "name": "Aniversarios de moderación",
+      "description": "Agradece a tus moderadores cuando comparten su aniversario en el chat.",
       "defaultMessage": "¡Feliz aniversario de moderación, $(user)! ¡Gracias por tus $(twitch.modiversary) meses como moderador!",
       "variables": "Usa $(user) para el moderador y $(twitch.modiversary) para sus meses de moderación.",
-      "defaultHelp": "Deja el mensaje vacío para usar el predeterminado en el idioma de tu canal. Desmarca los anuncios de aniversarios de moderación para silenciarlos."
+      "defaultHelp": "Deja el mensaje vacío para usar el predeterminado en el idioma de tu canal."
     },
     "watchStreak": {
-      "name": "Racha de visualización",
+      "name": "Rachas de visualización",
+      "description": "Celebra a quienes comparten su racha de visualización en el chat.",
       "defaultMessage": "¡$(user) tiene una racha de $(twitch.streak) días!",
       "variables": "Usa $(user) para el espectador y $(twitch.streak) para el número de su racha.",
-      "defaultHelp": "Deja el mensaje vacío para usar el predeterminado en el idioma de tu canal. Desmarca los anuncios de rachas de visualización para silenciarlos.",
+      "defaultHelp": "Deja el mensaje vacío para usar el predeterminado en el idioma de tu canal.",
       "restoreDefault": "Restaurar mensaje predeterminado"
     },
     "configuration": "Configuracion",
@@ -3038,6 +3048,9 @@
     "newTier": "Nuevo Tier",
     "tierRemoveAria": "Eliminar tier {{name}}",
     "status": {
+      "on": "Activo",
+      "alwaysOn": "Siempre activo",
+      "off": "Inactivo",
       "notCreated": "No Creado",
       "enabled": "Activado",
       "disabled": "Desactivado",

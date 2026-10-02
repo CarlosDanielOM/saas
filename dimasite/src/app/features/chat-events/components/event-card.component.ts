@@ -5,6 +5,7 @@ import {
   Circle,
   Clock,
   Crown,
+  Flame,
   FlaskConical,
   Gamepad2,
   Heart,
@@ -12,11 +13,14 @@ import {
   LucideAngularModule,
   MessageCircle,
   Play,
+  Radio,
   PlusCircle,
   Settings2,
+  Square,
   Star,
   Terminal,
   Trophy,
+  Tv,
   UserPlus,
   Users,
   VolumeX,
@@ -83,7 +87,15 @@ export class EventCardComponent {
     Lock,
     PlusCircle,
     Play,
-    Settings2
+    Settings2,
+    Flame
+  };
+
+  /** The catalog uses the same Play glyph for every stream event; tell them apart here. */
+  private readonly typeIcons: Record<string, LucideIconData> = {
+    'stream.online': Radio,
+    'stream.offline': Square,
+    'channel.ad_break.begin': Tv
   };
 
 
@@ -198,8 +210,32 @@ export class EventCardComponent {
     return this.languageService.translate(key);
   }
 
+  readonly releaseChip = computed(() => {
+    const stage = this.event().releaseStage;
+    return stage === 'alpha' || stage === 'beta' ? stage : null;
+  });
+
+  /** Locked plans, maintenance and similar states still need a visible explanation. */
+  readonly statusNote = computed(() => {
+    const event = this.event();
+    if (!this.userAccess().canAccess) return this.displayStatus().text;
+    if (event.releaseStage === 'coming_soon' || event.releaseStage === 'maintenance'
+      || event.releaseStage === 'unavailable' || event.releaseStage === 'deprecated') {
+      return this.displayStatus().text;
+    }
+    return null;
+  });
+
+  readonly canToggle = computed(() => {
+    const stage = this.event().releaseStage;
+    return this.userAccess().canAccess && stage !== 'coming_soon' && stage !== 'maintenance'
+      && stage !== 'unavailable' && stage !== 'deprecated';
+  });
+
+  readonly alwaysOn = computed(() => this.event().enabled && !this.canDisable());
+
   getEventName(): string {
-    return this.event().type === 'channel.chat.notification'
+    return this.event().type === 'channel.chat.notification' && !this.event().notice
       ? this.t('chatEvents.notificationsName')
       : this.event().name;
   }
@@ -213,7 +249,7 @@ export class EventCardComponent {
   }
 
   eventIcon(iconName: string): LucideIconData {
-    return this.iconData[iconName] ?? Circle;
+    return this.typeIcons[this.event().type] ?? this.iconData[iconName] ?? Circle;
   }
 
   toggleConfigure(): void {

@@ -18,6 +18,7 @@ import { getConfigPersistenceKey, serializeConfigControlValue } from './chat-eve
 import {
   ChatEvent,
   ChatEventPendingAction,
+  ChatNotice,
   ConfigControl,
   PlanTier,
   UserAccess
@@ -25,6 +26,33 @@ import {
 import { ChatEventsService } from './chat-events.service';
 import { EventCardComponent } from './components/event-card.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+
+const CHAT_NOTIFICATION_TYPE = 'channel.chat.notification';
+
+/** Each notice has its own on/off flag and message on the shared subscription. */
+const NOTICE_FIELDS: Readonly<Record<ChatNotice, { flag: string; message: string; i18n: string; icon: string }>> = {
+  watch_streak: { flag: 'watchStreakEnabled', message: 'message', i18n: 'chatEvents.watchStreak', icon: 'Flame' },
+  modiversary: { flag: 'modiversaryEnabled', message: 'modiversaryMessage', i18n: 'chatEvents.modiversary', icon: 'Award' }
+};
+
+type EventGroupId = 'community' | 'stream';
+
+const STREAM_EVENT_TYPES: readonly string[] = ['stream.online', 'stream.offline', 'channel.ad_break.begin'];
+const EVENT_ORDER: readonly string[] = [
+  'channel.follow',
+  'channel.raid',
+  'channel.bits.use',
+  `${CHAT_NOTIFICATION_TYPE}:watch_streak`,
+  `${CHAT_NOTIFICATION_TYPE}:modiversary`,
+  'stream.online',
+  'stream.offline',
+  'channel.ad_break.begin'
+];
+
+interface EventGroup {
+  id: EventGroupId;
+  events: ChatEvent[];
+}
 
 @Component({
   selector: 'app-chat-events-page',
@@ -59,8 +87,31 @@ export class ChatEventsPageComponent implements OnInit {
     return tier === 'free' ? 'none' : tier === 'pro' ? 'premium_plus' : 'premium';
   });
 
-  readonly enabledCount = computed(() => this.events().filter((e) => e.enabled).length);
-  readonly premiumCount = computed(() => this.events().filter((e) => e.premium || e.pro).length);
+  /** Events as shown to the streamer: chat notifications become one card per notice. */
+  readonly cards = computed<ChatEvent[]>(() => {
+    this.languageService.currentLanguage();
+    const configuring = this.configuringEvent();
+    return this.events()
+      .flatMap((event) =>
+        event.type === CHAT_NOTIFICATION_TYPE
+          ? (Object.keys(NOTICE_FIELDS) as ChatNotice[]).map((notice) => this.buildNoticeCard(event, notice))
+          : [event]
+      )
+      .map((event) => ({ ...event, isConfiguring: this.cardKey(event) === configuring }))
+      .sort((a, b) => this.orderOf(a) - this.orderOf(b));
+  });
+
+  readonly groups = computed<EventGroup[]>(() => {
+    const cards = this.cards();
+    return (['community', 'stream'] as const)
+      .map((id) => ({
+        id,
+        events: cards.filter((event) => (STREAM_EVENT_TYPES.includes(event.type) ? 'stream' : 'community') === id)
+      }))
+      .filter((group) => group.events.length > 0);
+  });
+
+  readonly enabledCount = computed(() => this.cards().filter((e) => e.enabled).length);
 
   async ngOnInit(): Promise<void> {
     const routeStreamer = this.streamer() ?? '';
@@ -103,13 +154,7 @@ export class ChatEventsPageComponent implements OnInit {
 
     this.chatEventsService.getEvents(channelId).subscribe({
       next: (events) => {
-        const configuringName = this.configuringEvent();
-        this.events.set(
-          events.map((event) => ({
-            ...event,
-            isConfiguring: event.name === configuringName
-          }))
-        );
+        this.events.set(events);
         this.isLoading.set(false);
       },
       error: () => {
@@ -145,20 +190,16 @@ export class ChatEventsPageComponent implements OnInit {
       return;
     }
 
-    const currentlyConfiguring = this.configuringEvent();
+    const key = this.cardKey(event);
+    this.configuringEvent.update((current) => (current === key ? null : key));
+  }
 
-    if (currentlyConfiguring === event.name) {
-      this.configuringEvent.set(null);
-    } else {
-      this.configuringEvent.set(event.name);
-    }
+  cardKey(event: ChatEvent): string {
+    return event.notice ? `${event.type}:${event.notice}` : event.type;
+  }
 
-    this.events.update((events) =>
-      events.map((e) => ({
-        ...e,
-        isConfiguring: e.name === this.configuringEvent()
-      }))
-    );
+  eventLabel(event: ChatEvent): string {
+    return event.type === CHAT_NOTIFICATION_TYPE && !event.notice ? this.t('chatEvents.notificationsName') : event.name;
   }
 
   toggleFeature(event: ChatEvent): void {
@@ -172,10 +213,15 @@ export class ChatEventsPageComponent implements OnInit {
       return;
     }
 
+    if (event.notice) {
+      this.toggleNotice(channelId, event, event.notice);
+      return;
+    }
+
     const newStatus = !event.enabled;
     this.setPendingAction(event.type, newStatus ? 'enabling' : 'disabling');
 
-    this.chatEventsService.updateEventStatus(channelId, event.type, newStatus).subscribe({
+    this.chatEventsService.updateEventStatus(channelId, event.type, newStatus, { label: this.eventLabel(event) }).subscribe({
       next: (response) => {
         this.chatEventsService.clearCache(channelId);
         const nextSubscriptionId = response.data?._id ?? event.subscriptionId;
@@ -187,18 +233,107 @@ export class ChatEventsPageComponent implements OnInit {
                   ...e,
                   enabled: newStatus,
                   isSubscribed: newStatus ? true : e.isSubscribed,
-                  subscriptionId: nextSubscriptionId,
-                  isConfiguring: newStatus ? e.isConfiguring : false
+                  subscriptionId: nextSubscriptionId
                 }
               : e
           )
         );
+        if (!newStatus) {
+          this.configuringEvent.update((current) => (current === this.cardKey(event) ? null : current));
+        }
         this.clearPendingAction(event.type);
       },
       error: () => {
         this.clearPendingAction(event.type);
       }
     });
+  }
+
+  /**
+   * Watch streaks and mod anniversaries share one Twitch subscription. Each card flips only its
+   * own flag; the subscription itself is enabled while either notice is on.
+   */
+  private toggleNotice(channelId: string, card: ChatEvent, notice: ChatNotice): void {
+    const base = this.events().find((e) => e.type === CHAT_NOTIFICATION_TYPE);
+    if (!base) return;
+
+    const other: ChatNotice = notice === 'watch_streak' ? 'modiversary' : 'watch_streak';
+    const flag = NOTICE_FIELDS[notice].flag;
+    const otherFlag = NOTICE_FIELDS[other].flag;
+    const otherOn = Boolean(base.enabled && this.noticeFlag(base, other));
+    const turningOn = !card.enabled;
+    const label = card.name;
+
+    this.setPendingAction(card.type, turningOn ? 'enabling' : 'disabling');
+
+    const request = turningOn
+      ? this.chatEventsService.updateEventStatus(channelId, CHAT_NOTIFICATION_TYPE, true, {
+          fields: { [flag]: true, [otherFlag]: otherOn },
+          label
+        })
+      : otherOn
+        ? this.chatEventsService.saveEventConfiguration(channelId, CHAT_NOTIFICATION_TYPE, { [flag]: false })
+        : this.chatEventsService.updateEventStatus(channelId, CHAT_NOTIFICATION_TYPE, false, {
+            fields: { [flag]: false },
+            label
+          });
+
+    request.subscribe({
+      next: (response) => {
+        this.chatEventsService.clearCache(channelId);
+        const subscriptionId = response.data?._id ?? base.subscriptionId;
+        this.events.update((events) =>
+          events.map((e) =>
+            e.type === CHAT_NOTIFICATION_TYPE
+              ? {
+                  ...e,
+                  enabled: turningOn || otherOn,
+                  isSubscribed: turningOn ? true : e.isSubscribed,
+                  subscriptionId,
+                  config: e.config?.map((control) => {
+                    const key = getConfigPersistenceKey(control);
+                    if (key === flag) return { ...control, value: turningOn };
+                    if (key === otherFlag && turningOn) return { ...control, value: otherOn };
+                    return control;
+                  })
+                }
+              : e
+          )
+        );
+        if (!turningOn) {
+          this.configuringEvent.update((current) => (current === this.cardKey(card) ? null : current));
+        }
+        this.clearPendingAction(card.type);
+      },
+      error: () => {
+        this.clearPendingAction(card.type);
+      }
+    });
+  }
+
+  private buildNoticeCard(base: ChatEvent, notice: ChatNotice): ChatEvent {
+    const fields = NOTICE_FIELDS[notice];
+    const name = this.t(`${fields.i18n}.name`);
+    const description = this.t(`${fields.i18n}.description`);
+    return {
+      ...base,
+      notice,
+      name,
+      icon: fields.icon,
+      description: { en: description, es: description },
+      enabled: Boolean(base.enabled && this.noticeFlag(base, notice)),
+      config: base.config?.filter((control) => getConfigPersistenceKey(control) === fields.message)
+    };
+  }
+
+  private noticeFlag(base: ChatEvent, notice: ChatNotice): boolean {
+    const control = base.config?.find((c) => getConfigPersistenceKey(c) === NOTICE_FIELDS[notice].flag);
+    return control?.value !== false;
+  }
+
+  private orderOf(event: ChatEvent): number {
+    const index = EVENT_ORDER.indexOf(this.cardKey(event));
+    return index === -1 ? EVENT_ORDER.length : index;
   }
 
   saveConfiguration(event: ChatEvent): void {
@@ -247,7 +382,7 @@ export class ChatEventsPageComponent implements OnInit {
     }
 
     const confirmed = confirm(
-      `${this.t('chatEvents.deleteConfirmation.areYouSure')} "${event.name}"?\n\n${this.t('chatEvents.deleteConfirmation.warning')}`
+      `${this.t('chatEvents.deleteConfirmation.areYouSure')} "${this.eventLabel(event)}"?\n\n${this.t('chatEvents.deleteConfirmation.warning')}`
     );
 
     if (!confirmed) {
@@ -259,7 +394,7 @@ export class ChatEventsPageComponent implements OnInit {
     this.chatEventsService.deleteEvent(channelId, event.type).subscribe({
       next: () => {
         this.chatEventsService.clearCache(channelId);
-        this.configuringEvent.update((current) => (current === event.name ? null : current));
+        this.configuringEvent.update((current) => (current === this.cardKey(event) ? null : current));
         this.events.update((events) =>
           events.map((e) =>
             e.type === event.type
@@ -267,15 +402,14 @@ export class ChatEventsPageComponent implements OnInit {
                   ...e,
                   enabled: false,
                   isSubscribed: false,
-                  subscriptionId: undefined,
-                  isConfiguring: false
+                  subscriptionId: undefined
                 }
               : e
           )
         );
         this.toastService.success(
           this.t('chatEvents.toasts.eventUnsubscribedTitle'),
-          this.t('chatEvents.toasts.eventUnsubscribedMsg', { eventName: event.name })
+          this.t('chatEvents.toasts.eventUnsubscribedMsg', { eventName: this.eventLabel(event) })
         );
         this.clearPendingAction(event.type);
       },
