@@ -1,5 +1,5 @@
-// Verifies the modules hub groups Triggers and Text to Speech under "Core tools"
-// while keeping them out of "More modules". SAAS_BROWSER_TOOLS must contain Playwright.
+// Verifies the modules hub lists the core modules (incl. Triggers and Text to Speech) under
+// "Essentials" and keeps them out of the goal sections below it. SAAS_BROWSER_TOOLS must contain Playwright.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(`${process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser'}/package.json`);
@@ -8,8 +8,7 @@ const { chromium } = require('playwright');
 const base = process.env.SAAS_PREVIEW_URL;
 assert.ok(base, 'SAAS_PREVIEW_URL is required');
 
-const CORE_LABEL = 'Core tools';
-const MORE_LABEL = 'More modules';
+const CORE_LABEL = 'Essentials';
 const CORE_MODULES = ['Chat Events', 'Chat Moderation', 'Clips', 'DimaFX', 'Triggers', 'Text to Speech'];
 const MOVED_MODULES = ['Triggers', 'Text to Speech'];
 
@@ -56,30 +55,25 @@ try {
     await page.goto(`${base}/viewer/modules`);
     await page.locator('app-modules-page .lf[data-plan]').waitFor();
 
-    const core = page.locator(`section.lf-section[aria-label="${CORE_LABEL}"]`);
-    const more = page.locator(`section.lf-section[aria-label="${MORE_LABEL}"]`);
+    const core = page.getByRole('region', { name: CORE_LABEL, exact: true });
     await core.waitFor();
-    await more.waitFor();
+    // Goal sections (Stream, Chat, Safety, Insights) hold every non-core module.
+    const goalSections = page.locator('section.lf-section[aria-labelledby^="modules-goal-"]');
+    await goalSections.first().waitFor();
+    const moduleNames = (scope) => scope.locator('.lf-mod__name').evaluateAll((els) =>
+      els.map((el) => [...el.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join('').trim()));
 
+    const coreNames = await moduleNames(core);
+    assert.deepEqual([...coreNames].sort(), [...CORE_MODULES].sort(), `Essentials lists exactly the core modules at ${width}px`);
+
+    const goalNames = await moduleNames(goalSections);
     for (const name of CORE_MODULES) {
-      assert.equal(
-        await core.getByRole('heading', { level: 3, name, exact: true }).count(),
-        1,
-        `${name} should be listed under Core tools at ${width}px`
-      );
+      assert.equal(goalNames.includes(name), false, `${name} should not be repeated in a goal section at ${width}px`);
     }
-    assert.equal(await core.locator('article.lf-mod').count(), CORE_MODULES.length, `Core tools has ${CORE_MODULES.length} modules at ${width}px`);
-
-    for (const name of MOVED_MODULES) {
-      assert.equal(
-        await more.getByRole('heading', { level: 3, name, exact: true }).count(),
-        0,
-        `${name} should not be under More modules at ${width}px`
-      );
-    }
+    assert.ok(goalNames.length > 0, `goal sections list the remaining modules at ${width}px`);
 
     assert.deepEqual(errors, [], `no browser runtime errors at ${width}px`);
-    console.log(`PASS ${width}px: Core tools includes ${MOVED_MODULES.join(', ')}`);
+    console.log(`PASS ${width}px: Essentials includes ${MOVED_MODULES.join(', ')} and the other core modules, none repeated below`);
     await context.close();
   }
 } finally {
