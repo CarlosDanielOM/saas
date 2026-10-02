@@ -1381,39 +1381,40 @@
   "analyticsHub": {
     "badge": "Beta",
     "title": "Analytics Hub",
-    "subtitle": "Channel analytics tools in one place. Right now this hub ships Follow Ledger (beta): a searchable list of people currently following you, with mutuals and follow age.",
+    "subtitle": "Channel analytics tools in one place. Open a tool to dig into your audience.",
     "backToModules": "Back to Modules",
     "chips": {
       "activeFollowers": "Current followers only",
       "mutualHighlights": "Mutual filter"
     },
-    "metrics": {
-      "ariaLabel": "Analytics overview metrics",
-      "modules": "Tools available",
-      "modulesMeta": "Follow Ledger is live in beta",
-      "plan": "Your plan",
-      "planMeta": "Premium or Pro unlocks Follow Ledger",
-      "tracking": "What it tracks",
-      "trackingMeta": "Who follows you now — not historical unfollowers"
-    },
     "panel": {
-      "kicker": "Premium · Beta",
-      "title": "Follow Ledger",
-      "description": "Browse and search your current follower list. Filter mutuals vs one-way follows, sort by newest or oldest, and see how long someone has been following. Needs Premium or Pro.",
       "paidPlan": "Unlocked on your plan",
       "freePlan": "Premium or Pro required"
     },
     "followLedger": {
-      "activeOnly": "Current followers",
       "eyebrow": "Available now · beta",
       "title": "Follow Ledger",
-      "description": "Search by name or login, filter mutuals, sort by follow date, and page through your full current audience. Data refreshes from Twitch — great for spotting mutuals and long-time fans.",
+      "description": "Your full current follower list, refreshed from Twitch. Spot mutuals and long-time fans in seconds.",
       "tierLabel": "Premium · Pro",
       "open": "Open Follow Ledger",
       "lockedCta": "Upgrade to unlock"
     },
     "future": {
-      "teaser": "More analytics tools (chat activity, stream retention, and similar) are planned. This hub will grow as each tool leaves beta."
+      "heading": "Planned analytics tools",
+      "soon": "Planned",
+      "chatTitle": "Chat activity",
+      "chatCopy": "Who talks most and when your chat peaks.",
+      "retentionTitle": "Stream retention",
+      "retentionCopy": "How viewers stick around across a stream.",
+      "teaser": "New tools appear here as they leave beta."
+    },
+    "tools": {
+      "heading": "Tools",
+      "count": "1 available"
+    },
+    "features": {
+      "search": "Search by name or login",
+      "sort": "Sort by follow date"
     }
   },
   "analytics": {

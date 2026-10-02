@@ -13,13 +13,16 @@ import {
   List,
   Lock,
   LucideAngularModule,
+  MessageSquare,
   Music,
   Play,
   Plus,
   RefreshCw,
+  Search,
   Settings,
   Star,
   Timer,
+  TrendingUp,
   Users,
   Wrench,
   X,
@@ -50,7 +53,10 @@ export type LfIconName =
   | 'users'
   | 'sort-asc'
   | 'sort-desc'
-  | 'sort';
+  | 'sort'
+  | 'search'
+  | 'chat'
+  | 'trend';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -75,7 +81,10 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   users: Users,
   'sort-asc': ArrowUp,
   'sort-desc': ArrowDown,
-  sort: ChevronsUpDown
+  sort: ChevronsUpDown,
+  search: Search,
+  chat: MessageSquare,
+  trend: TrendingUp
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */

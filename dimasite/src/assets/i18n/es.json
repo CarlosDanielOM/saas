@@ -1381,39 +1381,40 @@
   "analyticsHub": {
     "badge": "Beta",
     "title": "Hub de Analíticas",
-    "subtitle": "Herramientas de analíticas del canal en un solo lugar. Por ahora incluye el Registro de Seguidores (beta): lista buscable de quienes te siguen ahora, con mutuos y antigüedad del follow.",
+    "subtitle": "Herramientas de analíticas del canal en un solo lugar. Abre una herramienta para explorar tu audiencia.",
     "backToModules": "Volver a Módulos",
     "chips": {
       "activeFollowers": "Solo seguidores actuales",
       "mutualHighlights": "Filtro de mutuos"
     },
-    "metrics": {
-      "ariaLabel": "Resumen de analíticas",
-      "modules": "Herramientas disponibles",
-      "modulesMeta": "Registro de Seguidores en beta",
-      "plan": "Tu plan",
-      "planMeta": "Premium o Pro desbloquea el Registro",
-      "tracking": "Qué rastrea",
-      "trackingMeta": "Quién te sigue ahora — no unfollows históricos"
-    },
     "panel": {
-      "kicker": "Premium · Beta",
-      "title": "Registro de Seguidores",
-      "description": "Explora y busca tu lista actual de followers. Filtra mutuos vs follows de un solo lado, ordena por más nuevos o antiguos y ve cuánto tiempo llevan siguiéndote. Requiere Premium o Pro.",
       "paidPlan": "Desbloqueado en tu plan",
       "freePlan": "Requiere Premium o Pro"
     },
     "followLedger": {
-      "activeOnly": "Seguidores actuales",
       "eyebrow": "Disponible ahora · beta",
       "title": "Registro de Seguidores",
-      "description": "Busca por nombre o login, filtra mutuos, ordena por fecha de follow y pagina toda tu audiencia actual. Los datos se actualizan desde Twitch — útil para encontrar mutuos y fans de larga data.",
+      "description": "Tu lista completa de seguidores actuales, actualizada desde Twitch. Encuentra mutuos y fans de larga data en segundos.",
       "tierLabel": "Premium · Pro",
       "open": "Abrir Registro de Seguidores",
       "lockedCta": "Mejorar plan para desbloquear"
     },
     "future": {
-      "teaser": "Se planean más herramientas (actividad en chat, retención de stream y similares). Este hub crecerá a medida que cada una salga de beta."
+      "heading": "Herramientas de analíticas planeadas",
+      "soon": "Planeado",
+      "chatTitle": "Actividad en chat",
+      "chatCopy": "Quién habla más y cuándo tu chat está en su pico.",
+      "retentionTitle": "Retención de stream",
+      "retentionCopy": "Cuánto se quedan los espectadores durante el stream.",
+      "teaser": "Las nuevas herramientas aparecerán aquí al salir de beta."
+    },
+    "tools": {
+      "heading": "Herramientas",
+      "count": "1 disponible"
+    },
+    "features": {
+      "search": "Busca por nombre o login",
+      "sort": "Ordena por fecha de follow"
     }
   },
   "analytics": {
