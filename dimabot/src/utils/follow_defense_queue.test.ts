@@ -265,7 +265,24 @@ test('session attack requires the observed active session and cannot resurrect n
         burstStartedAt: NOW, expiresAt: NOW + 60000, triggeredBy: 'manual' as const, lastTransitionReason: '', lastUpdatedAt: NOW,
         raidSessionID: 'A', raidStartedAt: NOW, raidRequestID: 'request-A' };
     assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state })).changed, false);
-    await projectFollowDefenseState('channel', { type: 'raid', state: { ...state, mode: 'protection', raidSessionID: 'B' } });
+    await projectFollowDefenseState('channel', { type: 'transition', state: { ...state, mode: 'protection', raidSessionID: 'B' } });
     assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state })).changed, false);
     assert.equal((await projectFollowDefenseState('channel', { type: 'session_attack', state: { ...state, raidSessionID: 'B' } })).state?.mode, 'attack');
+});
+
+test('raids cannot activate protection from missing, normal, silent or expired state', async () => {
+    for (const initial of [null, state('normal'), state('silent'), { ...state(), expiresAt: NOW - 1 }]) {
+        values.clear(); sorted.clear();
+        if (initial) values.set(keys.state, JSON.stringify(initial));
+        sorted.set(keys.tracked, new Map([['previous-follow', NOW - 1000]]));
+        const incoming = { ...state(), raidSessionID: 'raid', raidStartedAt: NOW };
+        const result = await projectFollowDefenseState('channel', { type: 'raid', state: incoming });
+        assert.equal(result.changed, false);
+        assert.deepEqual(result.state, initial);
+        assert.deepEqual([...sorted.get(keys.tracked)!], [['previous-follow', NOW - 1000]]);
+        assert.equal(values.get(keys.raidProjection), String(NOW));
+        // The ignored event is fenced even if protection starts before a retry.
+        values.set(keys.state, JSON.stringify(state()));
+        assert.equal((await projectFollowDefenseState('channel', { type: 'raid', state: incoming })).changed, false);
+    }
 });

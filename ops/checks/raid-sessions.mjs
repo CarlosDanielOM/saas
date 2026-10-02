@@ -27,6 +27,14 @@ const setTier = tier => mongo.connection.db.collection('users').updateOne({'acco
 const marker = (id, at = Date.now(), viewers = 8000) => ({ eventID: id, channelID: channel, channelLogin: 'fixture', channelName: 'Fixture', raiderChannelID: id, raiderChannelLogin: id, raiderChannelName: id, raidViewers: viewers, createdAt: at, expiresAt: at + 300000 });
 const follow = (id, at = Date.now()) => ({ eventID: `event-${id}`, channelID: channel, channelLogin: 'fixture', channelName: 'Fixture', followerID: String(id), followerLogin: `viewer${id}`, followerName: `Viewer${id}`, followedAt: new Date(at).toISOString(), receivedAt: Date.now() });
 async function resetData() { await Promise.all([Sessions.deleteMany({}), Followers.deleteMany({}), Requests.deleteMany({}), Actions.deleteMany({}), Controls.deleteMany({})]); await redis.del([keys.state, keys.raid, keys.raidProjection, keys.recent, keys.tracked, keys.settings]); }
+async function activateProtection() {
+    const now = Date.now();
+    await projectFollowDefenseState(channel, { type: 'transition', state: {
+        mode: 'protection', channelID: channel, channelLogin: 'fixture', channelName: 'Fixture',
+        modeStartedAt: now - 5000, burstStartedAt: now - 5000, expiresAt: now + 60000,
+        triggeredBy: 'threshold', lastTransitionReason: 'fixture_threshold', lastUpdatedAt: now
+    } });
+}
 
 if (process.env.SAAS_TARGET === 'api') {
     await redis.hSet('token:raid-owner', { id: channel, login: 'fixture', display_name: 'Fixture' });
@@ -34,6 +42,7 @@ if (process.env.SAAS_TARGET === 'api') {
         method: body === undefined ? 'GET' : method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) })
     });
     const a = marker('A', Date.now()-1000);
+    await activateProtection();
     await applyRaidSessionMarker(a);
     const session = await findRaidSession(channel, Date.now());
     for (let i=0;i<55;i++) await recordRaidFollow(follow(1000+i));
@@ -87,6 +96,7 @@ if (process.env.SAAS_TARGET === 'api') {
 
 if (process.env.SAAS_TARGET === 'bot') {
     const { setFollowDefenseRaidMarker } = await import('/app/dist/utils/follow_defense_queue.js');
+    await activateProtection();
     await setFollowDefenseRaidMarker(marker('legacy'));
     const session = await findRaidSession(channel, Date.now()); assert.ok(session);
     await recordRaidFollow(follow(9001));
@@ -122,6 +132,7 @@ console.log(`PASS: A=3000 / B=2000, no automatic bans, duplicate/late raid stabl
 await resetData();
 
 // Active A includes new A follows, but B defaults to protection and cannot inherit A's request.
+await activateProtection();
 await applyRaidSessionMarker(marker('activeA',Date.now()-3000)); const activeA=await findRaidSession(channel,Date.now());
 await recordRaidFollow(follow(1)); await sleep(5);
 const reqA=await requestRaidBans(channel,activeA._id,channel,randomUUID(),'',true,'live'); assert.equal(reqA.includeFuture,true);
@@ -153,6 +164,7 @@ await resetData();
 
 // Explicit carryover setting authorizes a separate B request and survives duplicate delivery.
 await Settings.updateOne({channelID:channel},{$set:{resetAttackOnNewRaid:false}});
+await activateProtection();
 await applyRaidSessionMarker(marker('carryA',Date.now()-3000)); const carryA=await findRaidSession(channel,Date.now());
 await recordRaidFollow(follow(6)); await requestRaidBans(channel,carryA._id,channel,randomUUID(),'',true);
 const carryMarker=marker('carryB',Date.now()); await applyRaidSessionMarker(carryMarker);
@@ -219,6 +231,7 @@ assert.ok(widened.captureUntil.getTime()>=originalCapture);
 await resetData();
 // Crash recovery admits only requests whose live state was actually published.
 await setTier('free');
+await activateProtection();
 await applyRaidSessionMarker(marker('recover',Date.now()-1000)); const recovery=await findRaidSession(channel,Date.now());
 await recordRaidFollow(follow(79));
 const recovering=await requestRaidBans(channel,recovery._id,channel,randomUUID(),'',true,'live');

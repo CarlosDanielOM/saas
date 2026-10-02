@@ -162,6 +162,9 @@ if ARGV[2] == 'raid' then
     if lastRaid >= (incoming.raidStartedAt or 0) then return unchanged() end
     redis.call('SET', KEYS[4], tostring(incoming.raidStartedAt), 'EX', 259200)
     if current and (current.raidStartedAt or 0) >= (incoming.raidStartedAt or 0) then return unchanged() end
+    -- A raid may reset/carry an existing defense, but cannot activate one.
+    -- Fence ignored raids too, so a retry cannot affect a later wave.
+    if not active or (current.mode ~= 'protection' and current.mode ~= 'attack') then return unchanged() end
     redis.call('DEL', KEYS[3])
 elseif ARGV[2] == 'transition' then
     local rank = {normal = 0, silent = 1, protection = 2, attack = 3}
