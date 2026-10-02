@@ -14,12 +14,20 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   ArrowLeft,
   Check,
-  Eye,
+  Copy,
+  Gift,
+  Globe,
   Image as ImageIcon,
   LucideAngularModule,
+  MonitorPlay,
   Music,
+  Pause,
   Play,
+  Plus,
   RefreshCw,
+  Trash2,
+  Upload,
+  Volume2,
   X,
   Zap,
   type LucideIconData
@@ -208,7 +216,6 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
     return Math.max(0, Math.min(100, Math.round((meta.quotaBytesUsed / meta.quotaBytesLimit) * 100)));
   });
-  readonly planTierLabel = computed(() => this.planTier().toUpperCase());
   readonly libraryCount = computed(() => this.libraryItems().length);
   readonly libraryAssetIds = computed(() => this.libraryItems().map((item) => item.assetID));
   readonly triggerCapableLibraryItems = computed(() =>
@@ -263,6 +270,36 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
   readonly filterOptions: MediaFilter[] = ['all', 'video', 'audio', 'image', 'gif'];
   readonly editingTrigger = computed(() => this.triggers().find((item) => item._id === this.editingTriggerId()) || null);
   readonly hasLinkedRewardInEditor = computed(() => Boolean(this.editingTrigger()?.reward?.rewardID));
+  readonly triggerSearch = signal('');
+  readonly pickerSearch = signal('');
+  readonly submitAttempted = signal(false);
+  private readonly autoName = signal('');
+  readonly enabledCount = computed(() => this.triggers().filter((trigger) => trigger.isEnabled).length);
+  readonly displayedTriggers = computed(() => {
+    const query = this.triggerSearch().trim().toLowerCase();
+    if (!query) return this.triggers();
+    return this.triggers().filter((trigger) =>
+      [trigger.name, trigger.reward?.title].filter(Boolean).join(' ').toLowerCase().includes(query));
+  });
+  private readonly libraryUsage = computed(() => {
+    const usage = new Map<string, number>();
+    for (const trigger of this.triggers()) {
+      const item = this.libraryItems().find((entry) => entry._id === trigger.libraryItemID)
+        || this.libraryItems().find((entry) => entry.assetID === trigger.assetID);
+      if (item) usage.set(item._id, (usage.get(item._id) ?? 0) + 1);
+    }
+    return usage;
+  });
+  readonly pickerItems = computed(() => {
+    const query = this.pickerSearch().trim().toLowerCase();
+    const items = this.triggerCapableLibraryItems();
+    return query ? items.filter((item) => this.itemName(item).toLowerCase().includes(query)) : items;
+  });
+  readonly showNameError = computed(() => {
+    const errors = this.triggerFormErrors();
+    return errors.invalidName || (this.submitAttempted() && errors.name);
+  });
+  readonly waveformBars = Array.from({ length: 16 }, (_, index) => index + 1);
 
   async ngOnInit(): Promise<void> {
     const routeStreamer = this.streamer()?.trim() || '';
@@ -436,18 +473,59 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     this.fallbackCopy(url, onSuccess);
   }
 
-  openCreateModal(): void {
+  openCreateModal(preselected?: MediaLibraryItem): void {
     if (!this.canAttach()) return;
-    const firstLibraryItem = this.triggerCapableLibraryItems()[0];
+    const firstLibraryItem = preselected ?? this.triggerCapableLibraryItems()[0];
     this.triggerFormMode.set('create');
     this.editingTriggerId.set(null);
+    this.submitAttempted.set(false);
+    this.pickerSearch.set('');
+    this.autoName.set('');
     this.triggerForm.set({
       ...this.createDefaultTriggerForm(),
-      libraryItemID: firstLibraryItem?._id || '',
+      libraryItemID: '',
       reward: this.createDefaultRewardForm('')
     });
+    if (firstLibraryItem) this.selectTriggerMedia(firstLibraryItem);
     this.isRewardPanelOpen.set(false);
     this.isTriggerModalOpen.set(true);
+  }
+
+  openCreateModalFor(item: MediaLibraryItem): void {
+    this.openCreateModal(item);
+  }
+
+  selectTriggerMedia(item: MediaLibraryItem): void {
+    const suggested = this.sanitizeSafeName(item.localAlias || item.asset?.displayName || '');
+    const current = this.triggerForm().name;
+    this.updateTriggerForm('libraryItemID', item._id);
+    // Name follows the picked media until the streamer types their own.
+    if (this.triggerFormMode() === 'create' && suggested && (!current || current === this.autoName())) {
+      this.updateTriggerForm('name', suggested);
+      this.autoName.set(suggested);
+    }
+  }
+
+  switchToUpload(): void {
+    this.closeTriggerModal();
+    this.openUploadModal();
+  }
+
+  previewTrigger(event: MouseEvent, trigger: TriggerRecord): void {
+    const asset = this.getTriggerAsset(trigger);
+    if (asset?.playbackUrl) this.openPreviewModal(event, asset);
+  }
+
+  usageFor(libraryItemId: string): number {
+    return this.libraryUsage().get(libraryItemId) ?? 0;
+  }
+
+  itemName(item: MediaLibraryItem): string {
+    return (item.localAlias || item.asset?.displayName || item.asset?.fileName || '').replace(/_+/g, ' ').trim();
+  }
+
+  commandFor(name: string): string {
+    return `$(trigger.send ${name.trim()})`;
   }
 
   openEditModal(trigger: TriggerRecord): void {
@@ -476,6 +554,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
         : this.createDefaultRewardForm(trigger.name)
     });
     this.isRewardPanelOpen.set(Boolean(trigger.reward));
+    this.submitAttempted.set(false);
     this.isTriggerModalOpen.set(true);
   }
 
@@ -491,9 +570,6 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     this.isRewardPanelOpen.set(false);
   }
 
-  toggleRewardPanel(): void {
-    this.isRewardPanelOpen.update((isOpen) => !isOpen);
-  }
 
   updateTriggerForm(field: keyof TriggerFormState, value: string): void {
     this.triggerForm.update((state) => {
@@ -539,6 +615,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       reward: {
         ...state.reward,
         enabled,
+        title: state.reward.title || state.name.replace(/_+/g, ' ').trim(),
         message: state.reward.message || this.buildTriggerCommand(state.name)
       }
     }));
@@ -551,6 +628,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.submitAttempted.set(true);
     const errors = this.triggerFormErrors();
     if (errors.name || errors.invalidName || errors.libraryItemID || errors.volume || errors.rewardTitle || errors.rewardCost || errors.rewardCooldown || errors.rewardDuration || errors.rewardCostChange) {
       this.toastService.warning(
@@ -921,10 +999,19 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
   readonly backIcon = ArrowLeft;
   readonly refreshIcon = RefreshCw;
-  readonly previewIcon = Eye;
   readonly closeIcon = X;
   readonly checkIcon = Check;
   readonly zapIcon = Zap;
+  readonly copyIcon = Copy;
+  readonly giftIcon = Gift;
+  readonly globeIcon = Globe;
+  readonly monitorIcon = MonitorPlay;
+  readonly pauseIcon = Pause;
+  readonly playIcon = Play;
+  readonly plusIcon = Plus;
+  readonly trashIcon = Trash2;
+  readonly uploadIcon = Upload;
+  readonly volumeIcon = Volume2;
 
   private readonly mediaIcons: Record<string, LucideIconData> = {
     audio: Music,
@@ -948,13 +1035,6 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
   }
 
-  formatDate(value: string): string {
-    return new Intl.DateTimeFormat(this.languageService.getCurrentLanguage() === 'es' ? 'es-ES' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(value));
-  }
 
   getDeleteMessage(): string {
     const pending = this.pendingDelete();

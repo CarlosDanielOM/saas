@@ -1,81 +1,73 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">
-          <lucide-icon class="lf-icon" [name]="backIcon" aria-hidden="true"></lucide-icon>
-          {{ t('triggers.backToModules') }}
-        </a>
-        <p class="lf-kicker">{{ t('triggers.heroBadge') }}</p>
-        <h1 class="lf-title">{{ t('triggers.title') }} <span>{{ t('triggers.triggersEyebrow') }}</span></h1>
-        <p class="lf-copy">{{ t('triggers.subtitle') }}</p>
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" (click)="copyObsLink()">
-            {{ copiedObsLink() ? t('triggers.obsCopiedCta') : t('triggers.copyObsLink') }}
-          </button>
-          <button type="button" class="lf-btn" [disabled]="refreshCooldown() > 0" (click)="refreshAll()">
-            <lucide-icon
-              class="lf-icon"
-              [class.lf-spin]="isLoadingTriggers() || isLoadingLibrary()"
-              [name]="refreshIcon"
-              aria-hidden="true"
-            ></lucide-icon>
-            @if (refreshCooldown() > 0) {
-              {{ t('triggers.refreshCooldown', { seconds: refreshCooldown() }) }}
-            } @else {
-              {{ t('common.refresh') }}
-            }
-          </button>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']">
+        <lucide-icon class="lf-icon" [name]="backIcon" aria-hidden="true"></lucide-icon>
+        {{ t('triggers.backToModules') }}
+      </a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('triggers.title') }}</h1>
+          <p class="lf-copy">{{ t('triggers.subtitle') }}</p>
+        </div>
+        <div class="lf-head__actions">
           @if (canUpload()) {
-          <button type="button" class="lf-btn" (click)="openUploadModal()">
-            {{ t('triggers.uploadMedia') }}
-          </button>
+            <button type="button" class="lf-btn" (click)="openUploadModal()">
+              <lucide-icon class="lf-icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
+              {{ t('triggers.uploadMedia') }}
+            </button>
           }
           @if (canAttach()) {
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-            + {{ t('triggers.createTrigger') }}
-          </button>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
+              <lucide-icon class="lf-icon" [name]="plusIcon" aria-hidden="true"></lucide-icon>
+              {{ t('triggers.createTrigger') }}
+            </button>
           }
         </div>
-      </article>
+      </div>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--ok">
+          <span class="lf-dot" aria-hidden="true"></span>
+          {{ t('triggers.page.onCount', { on: enabledCount(), total: triggers().length }) }}
+        </span>
+        @if (planTier() === 'free') {
+          <span class="lf-chip">{{ t('triggers.page.freeStorage', { size: uploadLimitLabel() }) }}</span>
+        } @else {
+          <span class="lf-chip lf-chip--gold lf-chip--meter">
+            {{ t('triggers.page.storage', { used: formatBytes(libraryMeta().quotaBytesUsed), total: formatBytes(libraryMeta().quotaBytesLimit) }) }}
+            <span class="lf-mini-bar" aria-hidden="true"><span [style.width.%]="quotaPercent()"></span></span>
+          </span>
+        }
+        <button
+          type="button"
+          class="lf-chip lf-chip--button"
+          [disabled]="refreshCooldown() > 0"
+          [attr.aria-label]="refreshCooldown() > 0 ? t('triggers.refreshCooldown', { seconds: refreshCooldown() }) : t('common.refresh')"
+          (click)="refreshAll()"
+        >
+          <lucide-icon class="lf-icon" [class.lf-spin]="isLoadingTriggers() || isLoadingLibrary()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
+          @if (refreshCooldown() > 0) { {{ refreshCooldown() }}s } @else { {{ t('common.refresh') }} }
+        </button>
+      </div>
+    </header>
 
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-stats-strip lf-stats-strip--3">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('triggers.stats.activeTriggers') }}</span>
-            <span class="lf-stats-strip__value">{{ triggers().length }}</span>
-            <span class="lf-stats-strip__meta">{{ t('triggers.stats.liveAutomation') }}</span>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('triggers.stats.libraryItems') }}</span>
-            <span class="lf-stats-strip__value">{{ libraryCount() }}</span>
-            <span class="lf-stats-strip__meta">{{ t('triggers.stats.readyAssets') }}</span>
-          </div>
-          <div class="lf-stats-strip__item lf-stats-strip__item--quota">
-            @if (planTier() === 'free') {
-              <div class="lf-quota-head">
-                <span class="lf-stats-strip__label">{{ t('triggers.stats.publicUploads') }}</span>
-                <span class="lf-chip lf-chip--accent">{{ planTierLabel() }}</span>
-              </div>
-              <span class="lf-stats-strip__value lf-stats-strip__value--sm">{{ t('triggers.stats.fairUse') }}</span>
-              <span class="lf-stats-strip__meta">{{ t('triggers.stats.publicUploadHint', { size: uploadLimitLabel() }) }}</span>
-            } @else {
-              <div class="lf-quota-head">
-                <span class="lf-stats-strip__label">{{ t('triggers.stats.privateStorage') }}</span>
-                <span class="lf-chip lf-chip--gold">{{ planTierLabel() }}</span>
-              </div>
-              <span class="lf-stats-strip__value lf-stats-strip__value--sm">
-                {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-                <span class="lf-muted">{{ t('triggers.stats.of') }} {{ formatBytes(libraryMeta().quotaBytesLimit) }}</span>
-              </span>
-              <div class="lf-bar" aria-hidden="true">
-                <div class="lf-bar__fill" [style.width.%]="quotaPercent()"></div>
-              </div>
-              <span class="lf-stats-strip__meta">{{ t('triggers.stats.perUploadLimit', { size: uploadLimitLabel() }) }}</span>
-            }
-          </div>
-        </div>
-      </article>
+    <!-- One-time OBS setup -->
+    <section class="lf-tile lf-setup" aria-labelledby="trigger-setup-title">
+      <span class="lf-setup__icon" aria-hidden="true">
+        <lucide-icon class="lf-icon" [name]="monitorIcon"></lucide-icon>
+      </span>
+      <div class="lf-setup__copy">
+        <h2 class="lf-h3" id="trigger-setup-title">{{ t('triggers.page.setupTitle') }}</h2>
+        <p class="lf-note">{{ t('triggers.page.setupHint') }}</p>
+      </div>
+      <div class="lf-setup__url">
+        <input class="lf-url-input" type="text" readonly [value]="obsOverlayUrl()"
+          [attr.aria-label]="t('triggers.page.setupTitle')" (focus)="$any($event.target).select()" />
+        <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--ok]="copiedObsLink()" (click)="copyObsLink()">
+          <lucide-icon class="lf-icon" [name]="copiedObsLink() ? checkIcon : copyIcon" aria-hidden="true"></lucide-icon>
+          {{ copiedObsLink() ? t('triggers.page.copied') : t('triggers.page.copy') }}
+        </button>
+      </div>
     </section>
 
     @if (pageError() && !triggers().length && !libraryItems().length && !isLoadingTriggers() && !isLoadingLibrary()) {
@@ -87,19 +79,17 @@
         <button type="button" class="lf-btn lf-btn--compact" (click)="refreshAll()">{{ t('common.retry') }}</button>
       </section>
     } @else {
-      <section class="lf-bento lf-bento--workspace">
-        <!-- Trigger board -->
-        <div class="lf-tile lf-tile--list">
-          <div class="lf-section-head">
+      <div class="lf-panels">
+        <!-- Triggers -->
+        <section class="lf-tile lf-panel" aria-labelledby="trigger-list-title">
+          <div class="lf-panel__head">
             <div>
-              <p class="lf-kicker">{{ t('triggers.triggersEyebrow') }}</p>
-              <h2 class="lf-h2">{{ t('triggers.activeSectionTitle') }}</h2>
-              <p class="lf-note">{{ t('triggers.activeSectionCaption') }}</p>
+              <h2 class="lf-h2" id="trigger-list-title">{{ t('triggers.page.listTitle') }}</h2>
+              <p class="lf-note">{{ t('triggers.page.listHint') }}</p>
             </div>
-            @if (canAttach()) {
-            <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openCreateModal()">
-              + {{ t('triggers.createTrigger') }}
-            </button>
+            @if (triggers().length > 6) {
+              <input type="search" class="lf-search lf-search--sm" [placeholder]="t('triggers.page.searchTriggers')"
+                [attr.aria-label]="t('triggers.page.searchTriggers')" [value]="triggerSearch()" (input)="triggerSearch.set($any($event.target).value)" />
             }
           </div>
 
@@ -107,202 +97,175 @@
             <div class="lf-empty"><p>{{ t('triggers.loading') }}</p></div>
           } @else if (!triggers().length) {
             <div class="lf-empty">
+              <span class="lf-empty__icon" aria-hidden="true"><lucide-icon class="lf-icon" [name]="zapIcon"></lucide-icon></span>
               <h3 class="lf-h3">{{ t('triggers.emptyTitle') }}</h3>
               <p>{{ t('triggers.emptyMessage') }}</p>
               @if (canAttach()) {
-              <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-                {{ t('triggers.createFirstTrigger') }}
-              </button>
+                <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">{{ t('triggers.createFirstTrigger') }}</button>
               }
             </div>
           } @else {
-            <div class="lf-item-grid">
-              @for (trigger of triggers(); track trigger._id) {
-                <article class="lf-item-card" [class.lf-item-card--off]="!trigger.isEnabled">
-                  <div class="lf-item-card__thumb">
+            <ul class="lf-trigger-list">
+              @for (trigger of displayedTriggers(); track trigger._id) {
+                <li class="lf-trigger" [class.lf-trigger--off]="!trigger.isEnabled">
+                  <button type="button" class="lf-thumb" [attr.data-type]="getTriggerAsset(trigger)?.mediaType || 'none'"
+                    [disabled]="!getTriggerAsset(trigger)?.playbackUrl"
+                    [attr.aria-label]="t('triggers.page.previewNamed', { name: trigger.name })"
+                    (click)="previewTrigger($event, trigger)">
                     @if (getTriggerAsset(trigger); as asset) {
                       @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
-                        <img [src]="asset.playbackUrl" class="lf-item-card__media" loading="lazy" [alt]="trigger.name" />
-                      } @else if (asset.mediaType === 'video') {
-                        <video [src]="asset.playbackUrl" muted preload="metadata" class="lf-item-card__media"></video>
+                        <img [src]="asset.playbackUrl" alt="" loading="lazy" />
                       } @else {
-                        <div class="lf-item-card__audio">
-                          <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
-                        </div>
-                      }
-                      @if (asset.playbackUrl) {
-                        <button
-                          type="button"
-                          class="lf-item-card__preview-btn"
-                          (click)="openPreviewModal($event, asset)"
-                          title="Preview"
-                        >
-                          <lucide-icon class="lf-icon" [name]="previewIcon" aria-hidden="true"></lucide-icon>
-                        </button>
+                        <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
                       }
                     } @else {
-                      <div class="lf-item-card__audio">
-                        <lucide-icon class="lf-icon" [name]="zapIcon" aria-hidden="true"></lucide-icon>
-                      </div>
+                      <lucide-icon class="lf-icon" [name]="zapIcon" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="lf-trigger__body">
+                    <div class="lf-trigger__name">
+                      <h3 [title]="trigger.name">{{ trigger.name }}</h3>
+                      @if (!trigger.isEnabled) {
+                        <span class="lf-chip lf-chip--xs">{{ t('triggers.page.off') }}</span>
+                      }
+                    </div>
+                    <p class="lf-trigger__meta">
+                      @if (trigger.reward) {
+                        <span class="lf-reward-tag">
+                          <lucide-icon class="lf-icon" [name]="giftIcon" aria-hidden="true"></lucide-icon>
+                          {{ trigger.reward.title }} · {{ t('triggers.page.points', { cost: trigger.reward.cost }) }}
+                        </span>
+                      } @else {
+                        <code>{{ commandFor(trigger.name) }}</code>
+                      }
+                      <span class="lf-trigger__vol">
+                        <lucide-icon class="lf-icon" [name]="volumeIcon" aria-hidden="true"></lucide-icon>
+                        {{ trigger.volume }}%
+                      </span>
+                    </p>
+                  </div>
+                  <div class="lf-trigger__actions">
+                    @if (canTest()) {
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="openTestModal(trigger)"
+                        [attr.aria-label]="t('triggers.page.testNamed', { name: trigger.name })">
+                        <lucide-icon class="lf-icon" [name]="playIcon" aria-hidden="true"></lucide-icon>
+                        <span>{{ t('triggers.testAction') }}</span>
+                      </button>
+                    }
+                    @if (canEdit()) {
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(trigger)"
+                        [attr.aria-label]="t('triggers.page.editNamed', { name: trigger.name })">{{ t('common.edit') }}</button>
+                      <label class="lf-switch" [title]="trigger.isEnabled ? t('common.disable') : t('common.enable')">
+                        <input type="checkbox" [checked]="trigger.isEnabled" (change)="toggleTrigger(trigger)"
+                          [attr.aria-label]="t('triggers.page.toggleNamed', { name: trigger.name })" />
+                        <span class="lf-switch__track"></span>
+                      </label>
+                    }
+                    @if (canDelete()) {
+                      <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="openDeleteTrigger(trigger)"
+                        [attr.aria-label]="t('triggers.page.deleteNamed', { name: trigger.name })">
+                        <lucide-icon class="lf-icon" [name]="trashIcon" aria-hidden="true"></lucide-icon>
+                      </button>
                     }
                   </div>
-
-                  <div class="lf-item-card__body">
-                    <div class="lf-item-card__head">
-                      <h3 class="lf-item-card__title" [title]="trigger.name">{{ trigger.name }}</h3>
-                      <span
-                        class="lf-chip lf-chip--compact"
-                        [class.lf-chip--ok]="trigger.isEnabled"
-                        [class.lf-chip--muted]="!trigger.isEnabled"
-                      >
-                        {{ trigger.isEnabled ? t('common.enabled') : t('common.disabled') }}
-                      </span>
-                    </div>
-                    <p class="lf-item-card__sub">
-                      @if (trigger.reward) {
-                        {{ t('triggers.linkedRewardSummary', { title: trigger.reward.title }) }}
-                      } @else {
-                        {{ t('triggers.rewardless') }} · {{ trigger.volume }}%
-                      }
-                    </p>
-                    <div class="lf-item-card__actions">
-                      @if (canTest()) {
-                      <button type="button" class="lf-btn lf-btn--xs" (click)="openTestModal(trigger)">
-                        {{ t('triggers.testAction') }}
-                      </button>
-                      }
-                      @if (canEdit()) {
-                      <button type="button" class="lf-btn lf-btn--xs" (click)="openEditModal(trigger)">
-                        {{ t('common.edit') }}
-                      </button>
-                      <button type="button" class="lf-btn lf-btn--xs" (click)="toggleTrigger(trigger)">
-                        {{ trigger.isEnabled ? t('common.disable') : t('common.enable') }}
-                      </button>
-                      }
-                      @if (canDelete()) {
-                      <button type="button" class="lf-btn lf-btn--xs lf-btn--danger" (click)="openDeleteTrigger(trigger)">
-                        {{ t('common.delete') }}
-                      </button>
-                      }
-                    </div>
-                  </div>
-                </article>
+                </li>
+              } @empty {
+                <li class="lf-empty lf-empty--compact"><p>{{ t('triggers.page.noMatches') }}</p></li>
               }
-            </div>
+            </ul>
           }
-        </div>
+        </section>
 
-        <!-- Library rail -->
-        <aside class="lf-tile lf-tile--rail">
-          <div class="lf-section-head">
+        <!-- Library -->
+        <section class="lf-tile lf-panel lf-panel--library" aria-labelledby="trigger-library-title">
+          <div class="lf-panel__head">
             <div>
-              <p class="lf-kicker">{{ t('triggers.myLibrary') }}</p>
-              <h2 class="lf-h2">{{ t('triggers.myLibrary') }}</h2>
+              <h2 class="lf-h2" id="trigger-library-title">
+                {{ t('triggers.myLibrary') }}
+                <span class="lf-count">{{ libraryCount() }}</span>
+              </h2>
               <p class="lf-note">{{ t('triggers.libraryDescription') }}</p>
             </div>
-          </div>
-
-          <div class="lf-rail-actions">
             @if (canAttach()) {
-            <button type="button" class="lf-btn lf-btn--compact" (click)="openPublicLibraryModal()">
-              {{ t('triggers.browsePublicLibrary') }}
-            </button>
-            }
-            @if (canUpload()) {
-            <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="openUploadModal()">
-              {{ t('triggers.uploadMedia') }}
-            </button>
-            }
-          </div>
-
-          <label class="lf-search-wrap">
-            <input
-              type="search"
-              class="lf-search"
-              [placeholder]="t('triggers.searchLibrary')"
-              [value]="librarySearch()"
-              (input)="updateLibrarySearch($event)"
-            />
-          </label>
-
-          <div class="lf-filter-tabs">
-            @for (filter of filterOptions; track filter) {
-              <button
-                type="button"
-                class="lf-filter-tab"
-                [class.lf-filter-tab--active]="mediaFilter() === filter"
-                (click)="setMediaFilter(filter)"
-              >
-                {{ t('triggers.filters.' + filter) }}
+              <button type="button" class="lf-btn lf-btn--compact" (click)="openPublicLibraryModal()">
+                <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+                {{ t('triggers.browsePublicLibrary') }}
               </button>
             }
           </div>
+
+          @if (libraryItems().length) {
+            <div class="lf-library-tools">
+              <input type="search" class="lf-search lf-search--sm" [placeholder]="t('triggers.searchLibrary')"
+                [attr.aria-label]="t('triggers.searchLibrary')" [value]="librarySearch()" (input)="updateLibrarySearch($event)" />
+              <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('triggers.libraryTabs')">
+                @for (filter of filterOptions; track filter) {
+                  <button type="button" class="lf-filter-tab" [class.lf-filter-tab--active]="mediaFilter() === filter"
+                    [attr.aria-pressed]="mediaFilter() === filter" (click)="setMediaFilter(filter)">
+                    {{ t('triggers.filters.' + filter) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
 
           @if (isLoadingLibrary() && !libraryItems().length) {
             <div class="lf-empty lf-empty--compact"><p>{{ t('triggers.loadingLibrary') }}</p></div>
           } @else {
-            <div class="lf-media-list">
+            <ul class="lf-media-list">
               @for (item of displayedLibraryItems(); track item._id) {
-                <article class="lf-media-row" [class.lf-media-row--muted]="!canAttachItem(item)">
-                  <button
-                    type="button"
-                    class="lf-media-row__thumb"
-                    (click)="item.asset ? openPreviewModal($event, item.asset) : null"
-                  >
+                <li class="lf-media-row">
+                  <button type="button" class="lf-thumb lf-thumb--sm" [attr.data-type]="item.asset?.mediaType || 'none'"
+                    [disabled]="!item.asset?.playbackUrl"
+                    [attr.aria-label]="t('triggers.page.previewNamed', { name: itemName(item) })"
+                    (click)="item.asset ? openPreviewModal($event, item.asset) : null">
                     @if (item.asset && (item.asset.mediaType === 'image' || item.asset.mediaType === 'gif')) {
-                      <img [src]="item.asset.playbackUrl" alt="" />
+                      <img [src]="item.asset.playbackUrl" alt="" loading="lazy" />
                     } @else {
-                      <lucide-icon
-                        class="lf-icon"
-                        [name]="mediaIcon(item.asset?.mediaType || 'video')"
-                        aria-hidden="true"
-                      ></lucide-icon>
+                      <lucide-icon class="lf-icon" [name]="mediaIcon(item.asset?.mediaType || 'video')" aria-hidden="true"></lucide-icon>
                     }
                   </button>
                   <div class="lf-media-row__body">
-                    <div class="lf-media-row__head">
-                      <strong [title]="(item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName">
-                        {{ (item.localAlias || item.asset?.displayName || item.asset?.fileName) | displayName }}
-                      </strong>
-                      <span
-                        class="lf-chip lf-chip--compact"
-                        [class.lf-chip--accent]="item.assetScope === 'public'"
-                      >
-                        {{ t('triggers.scope.' + item.assetScope) }}
-                      </span>
-                    </div>
-                    <p class="lf-media-row__meta">
-                      {{ item.asset?.ownerChannelName }} · {{ formatBytes(item.asset?.bytes || 0) }}
-                    </p>
-                    <p class="lf-media-row__meta">
-                      {{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }}
-                      · {{ formatDate(item.createdAt) }}
-                      @if (!canAttachItem(item)) {
-                        · {{ t('triggers.mediaComingSoon') }}
+                    <strong [title]="itemName(item)">{{ itemName(item) }}</strong>
+                    <span class="lf-media-row__meta">
+                      {{ t('triggers.filters.' + (item.asset?.mediaType || 'video')) }} · {{ formatBytes(item.asset?.bytes || 0) }}
+                      @if (item.assetScope === 'public') {
+                        · {{ item.asset?.ownerChannelName === streamer() ? t('triggers.scope.public') : t('triggers.page.byCreator', { name: item.asset?.ownerChannelName || '' }) }}
                       }
-                    </p>
+                    </span>
                   </div>
-                  @if (canDelete()) {
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--xs lf-btn--danger"
-                    (click)="openDeleteLibraryItem(item)"
-                    [attr.aria-label]="t('common.delete')"
-                  >
-                    <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
-                  </button>
+                  @if (!canAttachItem(item)) {
+                    <span class="lf-chip lf-chip--xs" [title]="t('triggers.mediaComingSoon')">{{ t('triggers.page.notTriggerReady') }}</span>
+                  } @else if (usageFor(item._id); as uses) {
+                    <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t(uses === 1 ? 'triggers.page.usedOne' : 'triggers.page.usedMany', { count: uses }) }}</span>
+                  } @else if (canAttach()) {
+                    <button type="button" class="lf-btn lf-btn--xs" (click)="openCreateModalFor(item)"
+                      [attr.aria-label]="t('triggers.page.useNamed', { name: itemName(item) })">
+                      <lucide-icon class="lf-icon" [name]="plusIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('triggers.page.use') }}
+                    </button>
                   }
-                </article>
+                  @if (canDelete()) {
+                    <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="openDeleteLibraryItem(item)"
+                      [attr.aria-label]="t('triggers.page.removeNamed', { name: itemName(item) })">
+                      <lucide-icon class="lf-icon" [name]="trashIcon" aria-hidden="true"></lucide-icon>
+                    </button>
+                  }
+                </li>
               } @empty {
-                <div class="lf-empty lf-empty--compact">
-                  <h3 class="lf-h3">{{ t('triggers.libraryEmptyTitle') }}</h3>
-                  <p>{{ t('triggers.libraryEmptyMessage') }}</p>
-                </div>
+                <li class="lf-empty lf-empty--compact">
+                  @if (libraryItems().length) {
+                    <p>{{ t('triggers.page.noMatches') }}</p>
+                  } @else {
+                    <h3 class="lf-h3">{{ t('triggers.libraryEmptyTitle') }}</h3>
+                    <p>{{ t('triggers.libraryEmptyMessage') }}</p>
+                  }
+                </li>
               }
-            </div>
+            </ul>
           }
-        </aside>
-      </section>
+        </section>
+      </div>
     }
   </main>
 </div>
@@ -310,232 +273,210 @@
 <!-- Create / Edit trigger modal -->
 @if (isTriggerModalOpen()) {
   <div class="lf-modal-overlay" (click)="closeTriggerModal()">
-    <section class="lf-modal lf-modal--wide lf-modal--form" (click)="$event.stopPropagation()">
+    <section class="lf-modal lf-modal--form" role="dialog" aria-modal="true" aria-labelledby="trigger-modal-title" (click)="$event.stopPropagation()">
       <header class="lf-modal__head">
-        <div>
-          <p class="lf-kicker">
-            {{ triggerFormMode() === 'create' ? t('triggers.modalCreateEyebrow') : t('triggers.modalEditEyebrow') }}
-          </p>
-          <h2 class="lf-modal__title">
-            {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('triggers.editTrigger') }}
-          </h2>
-        </div>
+        <h2 class="lf-modal__title" id="trigger-modal-title">
+          {{ triggerFormMode() === 'create' ? t('triggers.editor.createTitle') : t('triggers.editor.editTitle') }}
+        </h2>
         <button type="button" class="lf-modal__close" (click)="closeTriggerModal()" [attr.aria-label]="t('common.close')">
           <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
         </button>
       </header>
 
-      <div class="lf-modal__body lf-modal__body--form">
-        <section class="lf-form-section">
-          <h3 class="lf-form-section__title">{{ t('triggers.form.sectionDetails') }}</h3>
-          <div class="lf-form-grid">
-            <label class="lf-field">
-              <span>{{ t('triggers.form.nameLabel') }}</span>
-              <input
-                type="text"
-                [value]="triggerForm().name"
-                (input)="updateTriggerForm('name', $any($event.target).value)"
-                [placeholder]="t('triggers.form.namePlaceholder')"
-                pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
-                maxlength="60"
-                autocapitalize="off"
-                autocomplete="off"
-                spellcheck="false"
-              />
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('triggers.volume') }}</span>
-              <div class="lf-volume">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  [value]="triggerForm().volume"
-                  [attr.aria-label]="t('triggers.volume')"
-                  (input)="updateTriggerForm('volume', $any($event.target).value)"
-                />
-                <span class="lf-volume__value">{{ triggerForm().volume }}%</span>
-              </div>
-            </label>
-          </div>
-        </section>
-
-        <section class="lf-form-section">
-          <div class="lf-form-section__head">
-            <h3 class="lf-form-section__title">{{ t('triggers.form.mediaLabel') }}</h3>
-            <p class="lf-note">{{ t('triggers.form.mediaHint') }}</p>
-          </div>
-
+      <div class="lf-modal__body">
+        <!-- 1. Media -->
+        <section class="lf-step" aria-labelledby="trigger-step-media">
+          <h3 class="lf-step__title" id="trigger-step-media"><span class="lf-step__num" aria-hidden="true">1</span>{{ t('triggers.editor.mediaTitle') }}</h3>
           @if (triggerFormMode() === 'create') {
-            <div class="lf-media-picker" role="group" [attr.aria-label]="t('triggers.form.mediaLabel')">
-              @for (item of triggerCapableLibraryItems(); track item._id) {
-                <button
-                  type="button"
-                  class="lf-media-picker__item"
-                  [class.lf-media-picker__item--selected]="triggerForm().libraryItemID === item._id"
-                  [attr.aria-pressed]="triggerForm().libraryItemID === item._id"
-                  (click)="updateTriggerForm('libraryItemID', item._id)"
-                >
-                  <span class="lf-media-picker__thumb">
-                    @if (item.asset?.mediaType === 'video') {
-                      <video [src]="item.asset?.playbackUrl" muted preload="metadata" playsinline></video>
-                    } @else {
-                      <span class="lf-media-picker__audio">
-                        <lucide-icon class="lf-icon" [name]="mediaIcon(item.asset?.mediaType || 'audio')" aria-hidden="true"></lucide-icon>
-                      </span>
-                    }
-                    <span class="lf-media-picker__type">{{ t('triggers.filters.' + (item.asset?.mediaType || 'audio')) }}</span>
-                  </span>
-                  <span class="lf-media-picker__info">
-                    <strong [title]="(item.localAlias || item.asset?.displayName) | displayName">
-                      {{ (item.localAlias || item.asset?.displayName) | displayName }}
-                    </strong>
-                    <span class="lf-media-picker__meta">{{ t('triggers.scope.' + item.assetScope) }} · {{ formatBytes(item.asset?.bytes || 0) }}</span>
-                  </span>
-                  <span class="lf-media-picker__check" aria-hidden="true">
-                    <lucide-icon class="lf-icon" [name]="checkIcon"></lucide-icon>
-                  </span>
-                </button>
-              } @empty {
-                <div class="lf-empty lf-empty--compact lf-media-picker__empty">
-                  <h3 class="lf-h3">{{ t('triggers.form.noMediaTitle') }}</h3>
-                  <p>{{ t('triggers.form.noMediaMessage') }}</p>
-                </div>
+            @if (triggerCapableLibraryItems().length) {
+              <p class="lf-note">{{ t('triggers.editor.mediaHint') }}</p>
+              @if (triggerCapableLibraryItems().length > 6) {
+                <input type="search" class="lf-search lf-search--sm" [placeholder]="t('triggers.searchLibrary')"
+                  [attr.aria-label]="t('triggers.searchLibrary')" [value]="pickerSearch()" (input)="pickerSearch.set($any($event.target).value)" />
               }
-            </div>
-          } @else if (selectedTriggerFormItem(); as lockedItem) {
-            <div class="lf-locked-media">
-              <span class="lf-locked-media__thumb">
-                @if (lockedItem.asset?.mediaType === 'video') {
-                  <video [src]="lockedItem.asset?.playbackUrl" muted preload="metadata" playsinline></video>
-                } @else {
-                  <span class="lf-media-picker__audio">
-                    <lucide-icon class="lf-icon" [name]="mediaIcon(lockedItem.asset?.mediaType || 'audio')" aria-hidden="true"></lucide-icon>
-                  </span>
+              <div class="lf-picker" role="group" [attr.aria-label]="t('triggers.editor.mediaTitle')">
+                @for (item of pickerItems(); track item._id) {
+                  <div class="lf-pick" [class.is-selected]="triggerForm().libraryItemID === item._id">
+                    <button type="button" class="lf-pick__select" [attr.aria-pressed]="triggerForm().libraryItemID === item._id"
+                      (click)="selectTriggerMedia(item)">
+                      <span class="lf-thumb lf-thumb--sm" [attr.data-type]="item.asset?.mediaType || 'none'" aria-hidden="true">
+                        <lucide-icon class="lf-icon" [name]="mediaIcon(item.asset?.mediaType || 'audio')"></lucide-icon>
+                      </span>
+                      <span class="lf-pick__info">
+                        <strong>{{ itemName(item) }}</strong>
+                        <span>{{ t('triggers.filters.' + (item.asset?.mediaType || 'audio')) }} · {{ formatBytes(item.asset?.bytes || 0) }} · {{ t('triggers.scope.' + item.assetScope) }}</span>
+                      </span>
+                      <span class="lf-pick__check" aria-hidden="true"><lucide-icon class="lf-icon" [name]="checkIcon"></lucide-icon></span>
+                    </button>
+                    @if (item.asset?.playbackUrl) {
+                      <button type="button" class="lf-icon-btn" (click)="openPreviewModal($event, item.asset!)"
+                        [attr.aria-label]="t('triggers.page.previewNamed', { name: itemName(item) })">
+                        <lucide-icon class="lf-icon" [name]="playIcon" aria-hidden="true"></lucide-icon>
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <p class="lf-note">{{ t('triggers.page.noMatches') }}</p>
                 }
-              </span>
-              <div class="lf-locked-media__body">
-                <strong>{{ (lockedItem.localAlias || lockedItem.asset?.displayName) | displayName }}</strong>
-                <p class="lf-note">{{ t('triggers.form.mediaLockedMessage') }}</p>
               </div>
+              @if (submitAttempted() && triggerFormErrors().libraryItemID) {
+                <p class="lf-error" role="alert">{{ t('triggers.editor.mediaRequired') }}</p>
+              }
+            } @else {
+              <div class="lf-empty lf-empty--compact lf-empty--boxed">
+                <h4 class="lf-h3">{{ t('triggers.form.noMediaTitle') }}</h4>
+                <p>{{ t('triggers.form.noMediaMessage') }}</p>
+                @if (canUpload()) {
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="switchToUpload()">
+                    <lucide-icon class="lf-icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
+                    {{ t('triggers.uploadMedia') }}
+                  </button>
+                }
+              </div>
+            }
+          } @else if (selectedTriggerFormItem(); as lockedItem) {
+            <div class="lf-pick is-selected lf-pick--locked">
+              <span class="lf-pick__select">
+                <span class="lf-thumb lf-thumb--sm" [attr.data-type]="lockedItem.asset?.mediaType || 'none'" aria-hidden="true">
+                  <lucide-icon class="lf-icon" [name]="mediaIcon(lockedItem.asset?.mediaType || 'audio')"></lucide-icon>
+                </span>
+                <span class="lf-pick__info">
+                  <strong>{{ itemName(lockedItem) }}</strong>
+                  <span>{{ t('triggers.form.mediaLockedMessage') }}</span>
+                </span>
+              </span>
+              @if (lockedItem.asset?.playbackUrl) {
+                <button type="button" class="lf-icon-btn" (click)="openPreviewModal($event, lockedItem.asset!)"
+                  [attr.aria-label]="t('triggers.page.previewNamed', { name: itemName(lockedItem) })">
+                  <lucide-icon class="lf-icon" [name]="playIcon" aria-hidden="true"></lucide-icon>
+                </button>
+              }
             </div>
           }
         </section>
 
-        <section class="lf-form-section lf-form-section--reward">
-          <button
-            type="button"
-            class="lf-form-section__toggle"
-            [attr.aria-expanded]="isRewardPanelOpen()"
-            (click)="toggleRewardPanel()"
-          >
-            <span class="lf-form-section__toggle-text">
-              <span class="lf-form-section__title">{{ t('triggers.rewardBuilderTitle') }}</span>
-              <span class="lf-chip lf-chip--compact" [class.lf-chip--accent]="triggerForm().reward.enabled">
-                {{ triggerForm().reward.enabled ? t('triggers.rewardLinked') : t('triggers.rewardless') }}
-              </span>
-            </span>
-            <span
-              class="lf-form-section__chevron"
-              [class.lf-form-section__chevron--open]="isRewardPanelOpen()"
-              aria-hidden="true"
-            >▾</span>
-          </button>
+        <!-- 2. Name & volume -->
+        <section class="lf-step" aria-labelledby="trigger-step-name">
+          <h3 class="lf-step__title" id="trigger-step-name"><span class="lf-step__num" aria-hidden="true">2</span>{{ t('triggers.editor.nameTitle') }}</h3>
+          <div class="lf-form-grid">
+            <label class="lf-field">
+              <span class="lf-label">{{ t('triggers.form.nameLabel') }}</span>
+              <input type="text" [value]="triggerForm().name" (input)="updateTriggerForm('name', $any($event.target).value)"
+                [placeholder]="t('triggers.form.namePlaceholder')" maxlength="60"
+                autocapitalize="off" autocomplete="off" spellcheck="false"
+                aria-describedby="trigger-name-help" [attr.aria-invalid]="showNameError()" />
+            </label>
+            <label class="lf-field">
+              <span class="lf-label">{{ t('triggers.volume') }} <strong class="lf-label__value">{{ triggerForm().volume }}%</strong></span>
+              <input type="range" class="lf-range" min="0" max="100" [value]="triggerForm().volume"
+                [attr.aria-valuetext]="triggerForm().volume + '%'"
+                (input)="updateTriggerForm('volume', $any($event.target).value)" />
+            </label>
+          </div>
+          @if (showNameError()) {
+            <p class="lf-error" role="alert">{{ triggerFormErrors().invalidName ? t('triggers.validationNameMessage') : t('triggers.editor.nameRequired') }}</p>
+          }
+          <p class="lf-command-hint" id="trigger-name-help">
+            {{ t('triggers.editor.commandHint') }}
+            <code>{{ commandFor(triggerForm().name || t('triggers.editor.namePlaceholderShort')) }}</code>
+          </p>
+        </section>
 
-          @if (isRewardPanelOpen()) {
-            <div class="lf-reward">
-              <p class="lf-note">
-                @if (hasLinkedRewardInEditor()) {
-                  {{ t('triggers.rewardBuilderLinkedHint') }}
-                } @else {
-                  {{ t('triggers.rewardBuilderHint') }}
-                }
-              </p>
+        <!-- 3. Reward -->
+        <section class="lf-step" aria-labelledby="trigger-step-reward">
+          <div class="lf-step__row">
+            <h3 class="lf-step__title" id="trigger-step-reward"><span class="lf-step__num" aria-hidden="true">3</span>{{ t('triggers.editor.rewardTitle') }}</h3>
+            <label class="lf-switch">
+              <input type="checkbox" [checked]="triggerForm().reward.enabled" [disabled]="hasLinkedRewardInEditor()"
+                [attr.aria-label]="t('triggers.editor.rewardToggle')" (change)="toggleRewardSection($any($event.target).checked)" />
+              <span class="lf-switch__track"></span>
+            </label>
+          </div>
+          <p class="lf-note">
+            {{ hasLinkedRewardInEditor() ? t('triggers.rewardBuilderLinkedHint') : triggerForm().reward.enabled ? t('triggers.editor.rewardOnHint') : t('triggers.editor.rewardOffHint') }}
+          </p>
 
-              @if (!hasLinkedRewardInEditor()) {
-                <div class="lf-segment">
-                  <button
-                    type="button"
-                    class="lf-segment__btn"
-                    [class.lf-segment__btn--active]="!triggerForm().reward.enabled"
-                    (click)="toggleRewardSection(false)"
-                  >
-                    {{ t('triggers.rewardless') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="lf-segment__btn"
-                    [class.lf-segment__btn--active]="triggerForm().reward.enabled"
-                    (click)="toggleRewardSection(true)"
-                  >
-                    {{ t('triggers.rewardLinked') }}
-                  </button>
-                </div>
-              }
-
-              @if (triggerForm().reward.enabled) {
-                <div class="lf-form-grid lf-form-grid--reward">
-                  <label class="lf-field">
-                    <span>{{ t('triggers.rewardFields.title') }}</span>
-                    <input type="text" [value]="triggerForm().reward.title" (input)="updateRewardForm('title', $any($event.target).value)" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('common.cost') }}</span>
-                    <input type="number" min="1" [value]="triggerForm().reward.cost" (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('common.cooldown') }}</span>
-                    <input type="number" min="0" [value]="triggerForm().reward.cooldown" (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('triggers.rewardFields.duration') }}</span>
-                    <input type="number" min="0" [value]="triggerForm().reward.duration" (input)="updateRewardForm('duration', parseNumberInput($any($event.target).value))" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('triggers.rewardFields.costChange') }}</span>
-                    <input type="number" [value]="triggerForm().reward.costChange" (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('triggers.rewardFields.background') }}</span>
-                    <input type="text" [value]="triggerForm().reward.backgroundColor" (input)="updateRewardForm('backgroundColor', $any($event.target).value)" placeholder="#2563eb" />
-                  </label>
-                  <label class="lf-field lf-field--full">
-                    <span>{{ t('triggers.rewardFields.prompt') }}</span>
-                    <textarea rows="3" [value]="triggerForm().reward.prompt" (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
-                  </label>
-                  <label class="lf-field lf-field--full">
-                    <span>{{ t('triggers.rewardFields.message') }}</span>
-                    <textarea rows="3" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
-                  </label>
-                </div>
-                <div class="lf-check-row">
-                  <label class="lf-check">
-                    <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)" />
-                    <span>{{ t('triggers.rewardFields.userInput') }}</span>
-                  </label>
-                  <label class="lf-check">
-                    <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)" />
-                    <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
-                  </label>
-                  <label class="lf-check">
-                    <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)" />
-                    <span>{{ t('triggers.rewardFields.resetCost') }}</span>
-                  </label>
-                </div>
-              }
+          @if (triggerForm().reward.enabled) {
+            <div class="lf-form-grid lf-form-grid--3">
+              <label class="lf-field lf-field--span">
+                <span class="lf-label">{{ t('triggers.rewardFields.title') }}</span>
+                <input type="text" maxlength="45" [value]="triggerForm().reward.title" [attr.aria-invalid]="submitAttempted() && triggerFormErrors().rewardTitle"
+                  (input)="updateRewardForm('title', $any($event.target).value)" />
+              </label>
+              <label class="lf-field">
+                <span class="lf-label">{{ t('triggers.editor.costLabel') }}</span>
+                <input type="number" min="1" inputmode="numeric" [value]="triggerForm().reward.cost"
+                  (input)="updateRewardForm('cost', parseNumberInput($any($event.target).value))" />
+              </label>
+              <label class="lf-field">
+                <span class="lf-label">{{ t('triggers.editor.cooldownLabel') }}</span>
+                <input type="number" min="0" inputmode="numeric" [value]="triggerForm().reward.cooldown"
+                  (input)="updateRewardForm('cooldown', parseNumberInput($any($event.target).value))" />
+              </label>
+              <label class="lf-field lf-field--full">
+                <span class="lf-label">{{ t('triggers.editor.promptLabel') }}</span>
+                <textarea rows="2" maxlength="200" [value]="triggerForm().reward.prompt" [placeholder]="t('triggers.editor.promptPlaceholder')"
+                  (input)="updateRewardForm('prompt', $any($event.target).value)"></textarea>
+              </label>
             </div>
+            @if (submitAttempted() && (triggerFormErrors().rewardTitle || triggerFormErrors().rewardCost || triggerFormErrors().rewardCooldown)) {
+              <p class="lf-error" role="alert">{{ t('triggers.editor.rewardInvalid') }}</p>
+            }
+            <label class="lf-check">
+              <input type="checkbox" [checked]="triggerForm().reward.userInput" (change)="updateRewardForm('userInput', $any($event.target).checked)" />
+              <span>{{ t('triggers.rewardFields.userInput') }}</span>
+            </label>
+
+            <details class="lf-more">
+              <summary>{{ t('triggers.editor.moreOptions') }}</summary>
+              <div class="lf-more__body">
+                <label class="lf-check">
+                  <input type="checkbox" [checked]="triggerForm().reward.skipQueue" (change)="updateRewardForm('skipQueue', $any($event.target).checked)" />
+                  <span>{{ t('triggers.rewardFields.skipQueue') }}</span>
+                </label>
+                <div class="lf-form-grid">
+                  <label class="lf-field">
+                    <span class="lf-label">{{ t('triggers.editor.costChangeLabel') }}</span>
+                    <input type="number" min="0" inputmode="numeric" [value]="triggerForm().reward.costChange"
+                      aria-describedby="trigger-cost-change-hint"
+                      (input)="updateRewardForm('costChange', parseNumberInput($any($event.target).value))" />
+                  </label>
+                  <div class="lf-field">
+                    <span class="lf-label" id="trigger-reward-color">{{ t('triggers.rewardFields.background') }}</span>
+                    <span class="lf-color">
+                      <input type="color" [value]="triggerForm().reward.backgroundColor || '#7c3aed'" aria-labelledby="trigger-reward-color"
+                        (input)="updateRewardForm('backgroundColor', $any($event.target).value)" />
+                      <input type="text" [value]="triggerForm().reward.backgroundColor" placeholder="#7c3aed" aria-labelledby="trigger-reward-color"
+                        (input)="updateRewardForm('backgroundColor', $any($event.target).value)" />
+                    </span>
+                  </div>
+                </div>
+                <p class="lf-note" id="trigger-cost-change-hint">{{ t('triggers.editor.costChangeHint') }}</p>
+                <label class="lf-check">
+                  <input type="checkbox" [checked]="triggerForm().reward.returnToOriginalCost" (change)="updateRewardForm('returnToOriginalCost', $any($event.target).checked)" />
+                  <span>{{ t('triggers.rewardFields.resetCost') }}</span>
+                  @if (planTier() === 'free') {
+                    <span class="lf-chip lf-chip--xs lf-chip--gold">Premium</span>
+                  }
+                </label>
+                <label class="lf-field">
+                  <span class="lf-label">{{ t('triggers.editor.messageLabel') }}</span>
+                  <textarea rows="2" class="lf-mono" [value]="triggerForm().reward.message" (input)="updateRewardForm('message', $any($event.target).value)"></textarea>
+                  <span class="lf-note">{{ t('triggers.editor.messageHint') }}</span>
+                </label>
+              </div>
+            </details>
           }
         </section>
       </div>
 
-      <footer class="lf-modal__footer lf-modal__footer--form">
+      <footer class="lf-modal__footer">
         <button type="button" class="lf-btn" (click)="closeTriggerModal()">{{ t('common.cancel') }}</button>
         <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSubmittingTrigger()" (click)="submitTriggerForm()">
           @if (isSubmittingTrigger()) {
             {{ t('triggers.saving') }}
           } @else {
-            {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('common.save') }}
+            {{ triggerFormMode() === 'create' ? t('triggers.createTrigger') : t('triggers.editor.saveChanges') }}
           }
         </button>
       </footer>
@@ -546,132 +487,103 @@
 <!-- Upload modal -->
 @if (isUploadModalOpen()) {
   <div class="lf-modal-overlay" (click)="closeUploadModal()">
-    <div class="lf-modal" (click)="$event.stopPropagation()">
-      <div class="lf-modal__head">
-        <div>
-          <p class="lf-kicker">{{ t('triggers.upload.kicker') }}</p>
-          <h2 class="lf-modal__title">{{ t('triggers.uploadMedia') }}</h2>
-        </div>
+    <section class="lf-modal lf-modal--narrow" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="upload-modal-title">{{ t('triggers.uploadMedia') }}</h2>
         <button type="button" class="lf-modal__close" (click)="closeUploadModal()" [attr.aria-label]="t('common.close')">
           <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
         </button>
-      </div>
+      </header>
 
       <div class="lf-modal__body">
-        <div class="lf-help">
-          <strong>{{ t('triggers.upload.limitTitle') }}</strong>
-          <p>{{ t('triggers.upload.limitMessage', { size: uploadLimitLabel() }) }}</p>
-        </div>
-
-        @if (planTier() === 'free') {
-          <div class="lf-help lf-help--gold">
-            <strong>{{ t('triggers.upload.freePlanTitle') }}</strong>
-            <p>{{ t('triggers.upload.freePlanMessage') }}</p>
-          </div>
-        } @else {
-          <div class="lf-segment">
-            <button
-              type="button"
-              class="lf-segment__btn"
-              [class.lf-segment__btn--active]="uploadForm().scope === 'private'"
-              (click)="updateUploadScope('private')"
-            >
-              {{ t('triggers.scope.private') }}
-            </button>
-            <button
-              type="button"
-              class="lf-segment__btn"
-              [class.lf-segment__btn--active]="uploadForm().scope === 'public'"
-              (click)="updateUploadScope('public')"
-            >
-              {{ t('triggers.scope.public') }}
-            </button>
-          </div>
-        }
-
-        <label class="lf-field">
-          <span>{{ t('triggers.upload.nameLabel') }}</span>
-          <input
-            type="text"
-            [value]="uploadForm().name"
-            (input)="updateUploadName($event)"
-            [placeholder]="t('triggers.upload.namePlaceholder')"
-            pattern="[A-Za-z][A-Za-z0-9_]*[A-Za-z0-9]"
-            maxlength="60"
-            autocapitalize="off"
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </label>
-
         <label
           class="lf-drop"
           [class.lf-drop--dragging]="isDraggingUpload()"
+          [class.lf-drop--filled]="!!uploadForm().file"
           (dragover)="handleUploadDragOver($event)"
           (dragleave)="handleUploadDragLeave($event)"
           (drop)="handleUploadDrop($event)"
         >
           <input #uploadFileInput type="file" class="lf-drop__input" accept="video/*,audio/*" (change)="onUploadFileChange($event)" />
+          <lucide-icon class="lf-icon lf-drop__icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
           <strong>{{ uploadForm().file?.name || t('triggers.upload.pickFile') }}</strong>
           <span>
             @if (isDraggingUpload() && !uploadForm().file) {
               {{ t('triggers.upload.dropNow') }}
+            } @else if (uploadForm().file) {
+              {{ formatBytes(uploadForm().file?.size || 0) }}
             } @else {
-              {{ uploadForm().file ? formatBytes(uploadForm().file?.size || 0) : t('triggers.upload.fileHint') }}
+              {{ t('triggers.upload.fileHint', { size: uploadLimitLabel() }) }}
             }
           </span>
         </label>
+
+        <label class="lf-field">
+          <span class="lf-label">{{ t('triggers.upload.nameLabel') }}</span>
+          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)" [placeholder]="t('triggers.upload.namePlaceholder')"
+            maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false" />
+        </label>
+
+        @if (planTier() === 'free') {
+          <p class="lf-note lf-note--gold">{{ t('triggers.upload.freePlanMessage') }}</p>
+        } @else {
+          <fieldset class="lf-choice">
+            <legend class="lf-label">{{ t('triggers.upload.visibility') }}</legend>
+            <label class="lf-choice__opt" [class.is-on]="uploadForm().scope === 'private'">
+              <input type="radio" name="upload-scope" [checked]="uploadForm().scope === 'private'" (change)="updateUploadScope('private')" />
+              <span><strong>{{ t('triggers.scope.private') }}</strong> {{ t('triggers.upload.privateHint') }}</span>
+            </label>
+            <label class="lf-choice__opt" [class.is-on]="uploadForm().scope === 'public'">
+              <input type="radio" name="upload-scope" [checked]="uploadForm().scope === 'public'" (change)="updateUploadScope('public')" />
+              <span><strong>{{ t('triggers.scope.public') }}</strong> {{ t('triggers.upload.publicHint') }}</span>
+            </label>
+          </fieldset>
+        }
       </div>
 
-      <div class="lf-modal__footer">
+      <footer class="lf-modal__footer">
         <button type="button" class="lf-btn" (click)="closeUploadModal()">{{ t('common.cancel') }}</button>
-        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isUploadingMedia()" (click)="submitUpload()">
-          @if (isUploadingMedia()) {
-            {{ t('triggers.upload.uploading') }}
-          } @else {
-            {{ t('triggers.upload.submit') }}
-          }
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isUploadingMedia() || !uploadForm().file" (click)="submitUpload()">
+          {{ isUploadingMedia() ? t('triggers.upload.uploading') : t('triggers.upload.submit') }}
         </button>
-      </div>
-    </div>
+      </footer>
+    </section>
   </div>
 }
 
 <!-- Test modal -->
 @if (isTestModalOpen()) {
   <div class="lf-modal-overlay" (click)="closeTestModal()">
-    <div class="lf-modal lf-modal--test" (click)="$event.stopPropagation()">
-      <div class="lf-modal__head">
+    <section class="lf-modal lf-modal--test" role="dialog" aria-modal="true" aria-labelledby="test-modal-title" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
         <div>
-          <p class="lf-kicker">{{ t('triggers.test.kicker') }}</p>
-          <h2 class="lf-modal__title">{{ testingTrigger()?.name }}</h2>
+          <p class="lf-label">{{ t('triggers.test.kicker') }}</p>
+          <h2 class="lf-modal__title" id="test-modal-title">{{ testingTrigger()?.name }}</h2>
         </div>
         <button type="button" class="lf-modal__close" (click)="closeTestModal()" [attr.aria-label]="t('common.close')">
           <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
         </button>
-      </div>
+      </header>
       <div class="lf-test-frame">
         @if (testPreviewOverlayUrl()) {
           <iframe
             #testPreviewFrame
             [src]="testPreviewOverlayUrl() | safeUrl"
+            [title]="t('triggers.test.kicker')"
             (load)="handleTestPreviewLoad()"
             allow="autoplay"
             class="lf-test-frame__iframe"
           ></iframe>
         }
       </div>
-      <div class="lf-modal__footer lf-modal__footer--split">
+      <footer class="lf-modal__footer lf-modal__footer--split">
         <p class="lf-note">{{ t('triggers.test.description') }}</p>
         <button type="button" class="lf-btn lf-btn--primary" [disabled]="isSendingTest()" (click)="fireTriggerTest()">
-          @if (isSendingTest()) {
-            {{ t('triggers.test.sending') }}
-          } @else {
-            {{ t('triggers.test.sendAgain') }}
-          }
+          <lucide-icon class="lf-icon" [name]="playIcon" aria-hidden="true"></lucide-icon>
+          {{ isSendingTest() ? t('triggers.test.sending') : t('triggers.test.sendAgain') }}
         </button>
-      </div>
-    </div>
+      </footer>
+    </section>
   </div>
 }
 
@@ -698,22 +610,22 @@
 
 @if (activePreviewAsset(); as previewAsset) {
   <div class="lf-preview-overlay" (click)="closePreviewModal()">
-    <div class="lf-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
+    <section class="lf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title" (click)="$event.stopPropagation()">
+      <button type="button" class="lf-modal__close lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
         <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
       </button>
-      <h3 class="lf-h3">{{ previewAsset.displayName | displayName }}</h3>
+      <h3 class="lf-h3" id="preview-modal-title">{{ previewAsset.displayName | displayName }}</h3>
       <p class="lf-note">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
       <div class="lf-preview-modal__content">
         @if (previewAsset.mediaType === 'audio') {
-          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()">
-            @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]; track bar) {
+          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()" aria-hidden="true">
+            @for (bar of waveformBars; track bar) {
               <span class="lf-waveform__bar" [style.animation-delay.ms]="bar * 40"></span>
             }
           </div>
-          <p class="lf-note">{{ isAudioPlaying() ? 'Playing…' : 'Paused' }}</p>
           <button type="button" class="lf-btn lf-btn--primary" (click)="toggleAudioPlayPause()">
-            {{ isAudioPlaying() ? 'Pause' : 'Play' }}
+            <lucide-icon class="lf-icon" [name]="isAudioPlaying() ? pauseIcon : playIcon" aria-hidden="true"></lucide-icon>
+            {{ isAudioPlaying() ? t('triggers.page.pause') : t('triggers.page.play') }}
           </button>
         }
         @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
@@ -723,6 +635,6 @@
           <video class="lf-preview-video" [src]="previewAsset.playbackUrl" autoplay controls></video>
         }
       </div>
-    </div>
+    </section>
   </div>
 }
