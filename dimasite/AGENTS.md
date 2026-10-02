@@ -89,7 +89,7 @@ Large existing component stylesheets (triggers, dimafx, follow-defense, etc.) ma
 
 **Canonical design language for all new and migrated dimasite surfaces.**
 
-- Skill (read first for any UI work): `.opencode/skills/live-first/SKILL.md` (also `.claude/skills/live-first/SKILL.md`)
+- Skill (read first for any UI work): `live-first` — `.claude/skills/live-first/SKILL.md` (source of truth; Codex loads it via the `.agents/skills/live-first` symlink, OpenCode via the identical `.opencode/skills/live-first/SKILL.md` copy)
 - Origin mock: `/mocks/grok/oc3c` (OC3c · Live First)
 - Product reference mocks: `/mocks/dev/prod-dashboard`, `/mocks/dev/prod-commands`
 - Production examples: landing `/`, tip `/tip/:streamer`, dashboard `/:streamer/dashboard`, auth shell `AuthenticatedLayoutComponent`

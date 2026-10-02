@@ -96,7 +96,7 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 
 **Frontend (dimasite)**:
 - Pages/components/services: `dimasite/src/app/**`
-- **Design system: Live First (OC3c)** — agents must read `.opencode/skills/live-first/SKILL.md` (or `.claude/skills/live-first/SKILL.md`) before any dimasite UI work
+- **Design system: Live First (OC3c)** — agents must read the `live-first` skill before any dimasite UI work. It is registered for each harness: Claude Code `.claude/skills/live-first/SKILL.md` (source of truth), Codex `.agents/skills/live-first` (symlink to the Claude copy), OpenCode `.opencode/skills/live-first/SKILL.md` (copy — keep identical when editing)
 - Production references: landing `/`, tip `/tip/:streamer`, dashboard `/:streamer/dashboard`, auth layout
 - Global design tokens + shared utilities: `dimasite/src/styles.css`
 - Component-scoped styles: `*.component.css` (encouraged for page-level or reusable blocks)
