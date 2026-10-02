@@ -252,72 +252,137 @@
     "library": {
       "description": "Sube y gestiona contenido multimedia público compartido. Los canales Free solo usan contenido público; Premium incluye 250 MB privados y Pro incluye 1 GB.",
       "backToModules": "Volver a módulos",
-      "heroBadge": "Almacenamiento",
-      "eyebrow": "Biblioteca Multimedia",
-      "title": "Tu Biblioteca Multimedia",
-      "subtitle": "Sube contenido público para triggers y extensiones. Los planes de pago también pueden mantener contenido privado.",
-      "quota": {
-        "label": "Almacenamiento Privado Usado",
-        "hint": "Solo los assets privados cuentan contra tu cuota del plan. Los assets públicos son gratuitos.",
-        "freeLabel": "Subidas de contenido público",
-        "freeValue": "Uso razonable",
-        "freeHint": "Las subidas Free son públicas y nunca usan almacenamiento privado."
+      "title": "Biblioteca multimedia",
+      "subtitle": "Los videos, sonidos e imágenes que reproducen tus triggers y DimaFX.",
+      "chips": {
+        "files": "{{count}} archivos",
+        "oneFile": "1 archivo",
+        "storage": "{{used}} de {{total}} privados",
+        "freeUploads": "Plan Free · subidas públicas de hasta {{size}}"
+      },
+      "storage": {
+        "almostFullTitle": "Solo quedan {{left}} de almacenamiento privado",
+        "almostFullHint": "Los archivos públicos no usan almacenamiento. Haz públicos algunos o borra los que no uses.",
+        "freeNote": "En el plan Free todo lo que subes es público: otros streamers pueden encontrarlo y usarlo. Premium y Pro pueden guardar archivos privados."
       },
       "scope": {
         "private": "Privado",
         "public": "Público"
       },
-      "card": {
-        "chargesQuota": "Cuenta contra tu cuota",
-        "freeQuota": "Público · No usa cuota"
-      },
       "actions": {
-        "upload": "Subir Media",
-        "makePublic": "Hacer Público"
+        "upload": "Subir",
+        "browsePublic": "Explorar biblioteca pública",
+        "makePublic": "Hacer público"
       },
-      "upload": {
-        "kicker": "Añadir media",
-        "title": "Subir a la Biblioteca",
-        "limitTitle": "Subidas según tu plan",
-        "limitMessage": "El límite por archivo es {{size}}. Las subidas públicas no usan cuota bajo uso razonable.",
-        "privateInfo": "Los archivos privados cuentan contra tu cuota de almacenamiento de {{quota}}. Puedes eliminarlos cuando quieras.",
-        "publicInfo": "Los archivos públicos no cuentan contra tu cuota, pero el cambio es irreversible. Solo CDOM Labs puede eliminarlos o deshabilitarlos — contacta a soporte si es necesario.",
-        "nameLabel": "Nombre del media",
-        "namePlaceholder": "Solo letras, números y guiones bajos",
-        "pickFile": "Elige un archivo",
-        "dropNow": "Suelta el archivo aquí",
-        "fileHint": "Se admiten video, audio, imágenes y GIFs.",
-        "submit": "Subir a la Biblioteca",
-        "uploading": "Subiendo...",
-        "fileTooLarge": "El archivo supera el límite por archivo de {{size}}.",
-        "quotaExceeded": "La subida excedería tu cuota privada de {{quota}}. Hazlo público o elimina algo primero.",
-        "successTitle": "Media subido",
-        "successMessage": "El nuevo asset ya está disponible en tu biblioteca.",
-        "errorTitle": "Subida fallida",
-        "errorMessage": "No pudimos subir ese archivo multimedia.",
-        "validationMessage": "Elige un archivo y asígnale un nombre válido (solo letras, números y guiones bajos)."
+      "filters": {
+        "search": "Busca en tu multimedia",
+        "type": "Tipo de archivo",
+        "visibility": "Visibilidad",
+        "all": "Todo",
+        "video": "Video",
+        "audio": "Audio",
+        "image": "Imagen",
+        "gif": "GIF",
+        "scope": {
+          "all": "Todo",
+          "private": "Privados",
+          "public": "Públicos"
+        },
+        "clear": "Quitar filtros"
       },
-      "makePublic": {
-        "confirmTitle": "¿Hacer público este asset?",
-        "confirmMessage": "\"{{name}}\" se hará público. Tu cuota privada se liberará inmediatamente. Este cambio es de una sola vía: solo CDOM Labs puede eliminar o deshabilitar el asset después. Contacta a soporte si es necesario.",
-        "successTitle": "El asset ahora es público",
-        "successMessage": "Se liberó la cuota y el asset es visible en el marketplace público.",
-        "errorTitle": "No se pudo promover el asset",
-        "errorMessage": "Error al promover el asset a público."
+      "row": {
+        "previewNamed": "Ver {{name}}",
+        "private": "Privado",
+        "publicYours": "Público · subido por ti",
+        "publicBy": "Público · de {{name}}",
+        "oneTrigger": "En 1 trigger",
+        "triggers": "En {{count}} triggers",
+        "oneFx": "En 1 ítem de DimaFX",
+        "fx": "En {{count}} ítems de DimaFX",
+        "unused": "Sin usar",
+        "makePublicNamed": "Hacer público {{name}}",
+        "renameNamed": "Renombrar {{name}}",
+        "deleteNamed": "Borrar {{name}}"
       },
       "states": {
-        "loading": "Cargando tu biblioteca multimedia...",
-        "empty": "Sin media aún. Sube tu primer archivo para comenzar."
+        "loading": "Cargando tu multimedia…",
+        "emptyTitle": "Tu biblioteca está vacía",
+        "emptyHint": "Sube un clip o un sonido, o toma uno de la biblioteca pública. Tus triggers y DimaFX pueden usar todo lo que haya aquí.",
+        "noMatches": "Nada coincide con estos filtros."
       },
-      "confirm": {
-        "delete": "¿Eliminar este elemento? Esta acción no se puede deshacer."
+      "upload": {
+        "title": "Subir multimedia",
+        "pickFile": "Elige un archivo o suéltalo aquí",
+        "dropNow": "Suéltalo aquí",
+        "change": "toca para cambiar",
+        "fileHint": "Video, audio, imagen o GIF · hasta {{size}}",
+        "nameLabel": "Nombre",
+        "namePlaceholder": "ej. Gran_Risa",
+        "nameHint": "Letras, números y guiones bajos. Los espacios se vuelven guiones bajos.",
+        "nameRequired": "Ponle un nombre.",
+        "nameInvalid": "Empieza con una letra y usa solo letras, números y guiones bajos sueltos.",
+        "fileRequired": "Elige un archivo para subir.",
+        "fileTooLarge": "Este archivo supera el límite de {{size}} de tu plan.",
+        "quotaExceeded": "No hay suficiente almacenamiento privado (quedan {{left}}). Súbelo como público o borra algo antes.",
+        "visibility": "Quién puede usarlo",
+        "privateHint": "Solo tu canal. Usa tu almacenamiento (quedan {{left}}).",
+        "publicHint": "Cualquiera puede encontrarlo y usarlo, y no usa almacenamiento. Los archivos públicos no pueden volver a ser privados.",
+        "freeHint": "En el plan Free lo que subes es público: otros streamers pueden encontrarlo y usarlo, y solo soporte puede retirarlo.",
+        "submit": "Subir",
+        "uploading": "Subiendo…",
+        "successTitle": "Subido",
+        "successMessage": "{{name}} ya está en tu biblioteca.",
+        "errorTitle": "No se pudo subir",
+        "errorMessage": "No pudimos subir ese archivo. Inténtalo de nuevo."
       },
-      "toasts": {
-        "deleted": "Elemento eliminado"
+      "rename": {
+        "title": "Renombrar",
+        "hint": "Solo cambia el nombre en tu biblioteca. Los nombres de triggers y de DimaFX no cambian.",
+        "save": "Guardar nombre",
+        "saving": "Guardando…",
+        "successTitle": "Renombrado",
+        "successMessage": "Ahora se llama {{name}}.",
+        "errorTitle": "No se pudo renombrar",
+        "errorMessage": "No pudimos guardar ese nombre. Inténtalo de nuevo."
+      },
+      "makePublic": {
+        "title": "¿Hacer público {{name}}?",
+        "factVisible": "Otros streamers podrán encontrarlo en la biblioteca pública y usarlo.",
+        "factStorage": "Libera {{size}} de tu almacenamiento privado.",
+        "factOneWay": "No se puede deshacer. No podrá volver a ser privado y solo soporte puede retirarlo.",
+        "keepPrivate": "Dejarlo privado",
+        "saving": "Haciéndolo público…",
+        "successTitle": "Ahora es público",
+        "successMessage": "Está en la biblioteca pública y ya no usa tu almacenamiento.",
+        "errorTitle": "No se pudo hacer público",
+        "errorMessage": "Algo salió mal. Sigue siendo privado."
+      },
+      "delete": {
+        "title": "¿Borrar {{name}}?",
+        "inUseTitle": "{{name}} todavía está en uso",
+        "inUseHint": "Quítalo primero de estos y luego podrás borrarlo:",
+        "trigger": "Trigger",
+        "openTriggers": "Abrir triggers",
+        "openFx": "Abrir DimaFX",
+        "privateHint": "El archivo se borra para siempre. No se puede deshacer.",
+        "publicOwnHint": "Sale de tu biblioteca, pero sigue en la biblioteca pública. Solo soporte puede retirar archivos públicos.",
+        "publicAddedHint": "Sale de tu biblioteca. Puedes volver a agregarlo desde la biblioteca pública cuando quieras.",
+        "confirm": "Borrar",
+        "deleting": "Borrando…",
+        "successTitle": "Borrado",
+        "successMessage": "{{name}} ya no está en tu biblioteca.",
+        "errorTitle": "No se pudo borrar",
+        "errorMessage": "Algo salió mal. No se borró nada."
+      },
+      "preview": {
+        "play": "Reproducir",
+        "pause": "Pausa",
+        "errorTitle": "No se puede reproducir",
+        "errorMessage": "El archivo de audio no cargó."
       },
       "errors": {
-        "loadFailed": "Error al cargar la biblioteca",
-        "deleteFailed": "Error al eliminar el elemento"
+        "loadTitle": "No se pudo cargar tu biblioteca",
+        "loadFailed": "Revisa tu conexión e inténtalo de nuevo."
       }
     },
     "dimafx": {

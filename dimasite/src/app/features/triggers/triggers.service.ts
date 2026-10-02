@@ -111,7 +111,7 @@ export class TriggersService {
       .pipe(
         map((response) => ({
           item: this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to add public asset'),
-          meta: this.normalizeLibraryMeta(response.meta)
+          meta: response.meta ? this.normalizeLibraryMeta(response.meta) : null
         }))
       );
   }
@@ -122,6 +122,15 @@ export class TriggersService {
       .pipe(map((response) => this.requireNoError(response, 'Failed to remove media item')));
   }
 
+  renameLibraryItem(channelId: string, libraryItemId: string, localAlias: string): Observable<MediaLibraryItem> {
+    return this.http
+      .patch<ApiEnvelope<MediaLibraryItem>>(
+        `${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}`,
+        { localAlias }
+      )
+      .pipe(map((response) => this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to rename media item')));
+  }
+
   changeLibraryItemScope(
     channelId: string,
     libraryItemId: string,
@@ -129,15 +138,20 @@ export class TriggersService {
     planTier: PlanTier
   ): Observable<MediaLibraryMutationResult> {
     return this.http
-      .patch<ApiEnvelope<MediaLibraryItem>>(
+      .patch<ApiEnvelope<{ item: MediaLibraryItem; meta?: Record<string, unknown> }>>(
         `${this.linksService.getApiUrl()}/triggers/library/${channelId}/${libraryItemId}/scope`,
         { scope, planTier }
       )
       .pipe(
-        map((response) => ({
-          item: this.requireData(response, (item) => this.normalizeLibraryItem(item), 'Failed to change media scope'),
-          meta: this.normalizeLibraryMeta(response.meta)
-        }))
+        // The API nests both the item and the recalculated quota under `data`.
+        map((response) => {
+          const data = this.requireData(response, (value) => value, 'Failed to change media scope');
+          if (!data?.item) throw new Error(response.message || 'Failed to change media scope');
+          return {
+            item: this.normalizeLibraryItem(data.item),
+            meta: data.meta ? this.normalizeLibraryMeta(data.meta) : null
+          };
+        })
       );
   }
 

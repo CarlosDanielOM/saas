@@ -1,291 +1,472 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.library.title')">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          <app-lf-icon name="back"></app-lf-icon> {{ t('modules.library.backToModules') }}
-        </a>
-        <p class="lf-kicker">{{ t('modules.library.eyebrow') }}</p>
-        <h1 class="lf-title">
-          {{ t('modules.library.title') }}
-          <span>{{ planTierLabel() }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('modules.library.subtitle') }}</p>
-
-        <div class="lf-actions">
-          @if (canUpload()) {
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
-            {{ t('modules.library.actions.upload') }}
-          </button>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
+        <app-lf-icon name="back"></app-lf-icon>
+        {{ t('modules.library.backToModules') }}
+      </a>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('modules.library.title') }}</h1>
+          <p class="lf-copy">{{ t('modules.library.subtitle') }}</p>
+        </div>
+        <div class="lf-head__actions">
+          @if (canAttach()) {
+            <button type="button" class="lf-btn" (click)="openPublicLibrary()">
+              <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+              {{ t('modules.library.actions.browsePublic') }}
+            </button>
           }
-          <button type="button" class="lf-btn" (click)="refresh()" [disabled]="loading()">
-            {{ t('common.refresh') }}
-          </button>
+          @if (canUpload()) {
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
+              <lucide-icon class="lf-icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
+              {{ t('modules.library.actions.upload') }}
+            </button>
+          }
         </div>
-
-        <p class="lf-feed">
-          {{ streamer() || '—' }}
-          · {{ items().length }}
-        </p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
-            {{ planTierLabel() }}
-          </span>
-          <span class="lf-spotlight__count">{{ t('modules.library.heroBadge') }}</span>
-        </div>
-
-        @if (planTier() === 'free') {
-          <p class="lf-quota-label">{{ t('modules.library.quota.freeLabel') }}</p>
-          <p class="lf-quota-value">{{ t('modules.library.quota.freeValue') }}</p>
-          <p class="lf-note">{{ t('modules.library.quota.freeHint') }}</p>
-        } @else {
-          <p class="lf-quota-label">{{ t('modules.library.quota.label') }}</p>
-          <p class="lf-quota-value">
-            {{ formatBytes(libraryMeta().quotaBytesUsed) }}
-            /
-            {{ formatBytes(libraryMeta().quotaBytesLimit) }}
-          </p>
-
-          <div class="lf-bar" role="progressbar" [attr.aria-valuenow]="quotaPercent()" aria-valuemin="0" aria-valuemax="100">
-            <span class="lf-bar__fill" [style.width.%]="quotaPercent()"></span>
-          </div>
-          <p class="lf-note">{{ t('modules.library.quota.hint') }} · {{ quotaPercent() }}%</p>
-        }
-
-        <div class="lf-stats-strip lf-stats-strip--2">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.library.scope.private') }}</span>
-            <strong class="lf-stats-strip__value">{{ privateCount() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.library.scope.public') }}</span>
-            <strong class="lf-stats-strip__value">{{ publicCount() }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <section class="lf-section" [attr.aria-label]="t('modules.library.title')">
-      <div class="lf-section__head">
-        <div>
-          <p class="lf-kicker">{{ t('modules.library.eyebrow') }}</p>
-          <h2 class="lf-h2">{{ t('modules.library.title') }}</h2>
-        </div>
-        @if (canUpload()) {
-        <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="openUploadModal()">
-          {{ t('modules.library.actions.upload') }}
-        </button>
-        }
       </div>
+      <div class="lf-head__chips">
+        <span class="lf-chip">{{ t(items().length === 1 ? 'modules.library.chips.oneFile' : 'modules.library.chips.files', { count: items().length }) }}</span>
+        @if (canKeepPrivate()) {
+          <span class="lf-chip lf-chip--meter" [attr.data-tone]="quotaTone()">
+            <lucide-icon class="lf-icon" [name]="lockIcon" aria-hidden="true"></lucide-icon>
+            {{ t('modules.library.chips.storage', { used: formatBytes(libraryMeta().quotaBytesUsed), total: formatBytes(libraryMeta().quotaBytesLimit) }) }}
+            <span class="lf-mini-bar" aria-hidden="true"><span [style.width.%]="quotaPercent()"></span></span>
+          </span>
+        } @else {
+          <span class="lf-chip">{{ t('modules.library.chips.freeUploads', { size: uploadLimitLabel() }) }}</span>
+        }
+        <button type="button" class="lf-chip lf-chip--button" [disabled]="loading()" (click)="loadAll()">
+          <lucide-icon class="lf-icon" [class.lf-spin]="loading()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
+          {{ t('common.refresh') }}
+        </button>
+      </div>
+    </header>
 
-      @if (loading()) {
-        <div class="lf-tile lf-empty">{{ t('modules.library.states.loading') }}</div>
-      } @else if (items().length === 0) {
-        <div class="lf-tile lf-empty" role="status">
-          <h3 class="lf-empty__title">{{ t('modules.library.states.empty') }}</h3>
-          @if (canUpload()) {
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
-            {{ t('modules.library.actions.upload') }}
-          </button>
-          }
+    @if (canKeepPrivate() && quotaTone() !== 'ok' && !loading()) {
+      <section class="lf-banner" [class.lf-banner--danger]="quotaTone() === 'danger'" role="status">
+        <div>
+          <p class="lf-banner__title">{{ t('modules.library.storage.almostFullTitle', { left: formatBytes(quotaLeftBytes()) }) }}</p>
+          <p class="lf-note">{{ t('modules.library.storage.almostFullHint') }}</p>
         </div>
-      } @else {
-        <div class="lf-bento lf-bento--media">
-          @for (item of items(); track item._id) {
-            <article
-              class="lf-tile lf-media"
-              [class.lf-media--public]="item.assetScope === 'public'"
-            >
-              <div class="lf-media__top">
-                <span
-                  class="lf-chip"
-                  [class.lf-chip--public]="item.assetScope === 'public'"
-                  [class.lf-chip--soft]="item.assetScope === 'private'"
-                >
-                  {{ t('modules.library.scope.' + item.assetScope) }}
-                </span>
-                <span class="lf-chip lf-chip--type">{{ item.mediaType }}</span>
-              </div>
+      </section>
+    } @else if (!canKeepPrivate()) {
+      <p class="lf-plan-note">
+        <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+        <span>{{ t('modules.library.storage.freeNote') }}</span>
+      </p>
+    }
 
-              <h3 class="lf-media__name">
-                {{ (item.localAlias || item.asset?.displayName) | displayName }}
-              </h3>
-              <p class="lf-media__meta">
-                @if (item.assetScope === 'private' && canEdit()) {
-                  {{ formatBytes(item.quotaBytesCharged) }} · {{ t('modules.library.card.chargesQuota') }}
-                } @else {
-                  {{ t('modules.library.card.freeQuota') }}
-                }
-              </p>
-
-              <div class="lf-media__actions">
-                @if (item.assetScope === 'private') {
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--compact"
-                    (click)="confirmMakePublic(item)"
-                  >
-                    {{ t('modules.library.actions.makePublic') }}
+    @if (loadError() && !items().length) {
+      <section class="lf-banner lf-banner--danger" role="alert">
+        <div>
+          <p class="lf-banner__title">{{ t('modules.library.errors.loadTitle') }}</p>
+          <p class="lf-note">{{ t('modules.library.errors.loadFailed') }}</p>
+        </div>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="loadAll()">{{ t('common.retry') }}</button>
+      </section>
+    } @else {
+      <section class="lf-tile lf-panel" [attr.aria-label]="t('modules.library.title')">
+        @if (items().length) {
+          <div class="lf-tools">
+            <label class="lf-search">
+              <lucide-icon class="lf-icon" [name]="searchIcon" aria-hidden="true"></lucide-icon>
+              <input type="search" [placeholder]="t('modules.library.filters.search')" [attr.aria-label]="t('modules.library.filters.search')"
+                [value]="search()" (input)="updateSearch($event)" />
+            </label>
+            <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('modules.library.filters.type')">
+              @for (filter of visibleTypeFilters(); track filter) {
+                <button type="button" class="lf-filter-tab" [class.lf-filter-tab--active]="typeFilter() === filter"
+                  [attr.aria-pressed]="typeFilter() === filter" (click)="setTypeFilter(filter)">
+                  {{ t('modules.library.filters.' + filter) }}
+                  <span class="lf-filter-tab__count">{{ typeCounts()[filter] || 0 }}</span>
+                </button>
+              }
+            </div>
+            @if (showScopeFilter()) {
+              <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('modules.library.filters.visibility')">
+                @for (filter of scopeFilters; track filter) {
+                  <button type="button" class="lf-filter-tab" [class.lf-filter-tab--active]="scopeFilter() === filter"
+                    [attr.aria-pressed]="scopeFilter() === filter" (click)="setScopeFilter(filter)">
+                    {{ t('modules.library.filters.scope.' + filter) }}
                   </button>
                 }
-                @if (canDelete()) {
-                <button
-                  type="button"
-                  class="lf-btn lf-btn--danger lf-btn--compact"
-                  (click)="deleteItem(item)"
-                >
-                  {{ t('common.delete') }}
-                </button>
-                }
               </div>
-            </article>
-          }
-        </div>
-      }
-    </section>
-  </main>
-
-  @if (isUploadModalOpen()) {
-    <div class="lf-modal-overlay" (click)="onUploadBackdropClick($event)">
-      <div
-        class="lf-modal"
-        role="dialog"
-        aria-modal="true"
-        [attr.aria-label]="t('modules.library.upload.title')"
-        (click)="$event.stopPropagation()"
-      >
-        <div class="lf-modal__head">
-          <div>
-            <p class="lf-kicker">{{ t('modules.library.upload.kicker') }}</p>
-            <h2 class="lf-modal__title">{{ t('modules.library.upload.title') }}</h2>
-          </div>
-          <button
-            type="button"
-            class="lf-modal__close"
-            [attr.aria-label]="t('common.close')"
-            (click)="closeUploadModal()"
-          >
-            <app-lf-icon name="close"></app-lf-icon>
-          </button>
-        </div>
-
-        <div class="lf-modal__note">
-          <strong>{{ t('modules.library.upload.limitTitle') }}</strong>
-          <p>{{ t('modules.library.upload.limitMessage', { size: uploadLimitLabel() }) }}</p>
-        </div>
-
-        @if (planTier() !== 'free') {
-          <div class="lf-scope" role="group" [attr.aria-label]="t('modules.library.scope.private')">
-            <button
-              type="button"
-              class="lf-scope__btn"
-              [class.lf-scope__btn--active]="uploadForm().scope === 'private'"
-              (click)="updateUploadScope('private')"
-            >
-              {{ t('modules.library.scope.private') }}
-            </button>
-            <button
-              type="button"
-              class="lf-scope__btn"
-              [class.lf-scope__btn--active]="uploadForm().scope === 'public'"
-              (click)="updateUploadScope('public')"
-            >
-              {{ t('modules.library.scope.public') }}
-            </button>
+            }
           </div>
         }
 
-        <p class="lf-note" [class.lf-note--warn]="uploadForm().scope === 'public'">
-          @if (uploadForm().scope === 'private') {
-            {{ t('modules.library.upload.privateInfo', { quota: formatBytes(libraryMeta().quotaBytesLimit) }) }}
-          } @else {
-            {{ t('modules.library.upload.publicInfo') }}
-          }
-        </p>
+        @if (loading() && !items().length) {
+          <ul class="lf-lib-list" aria-hidden="true">
+            @for (row of [1, 2, 3]; track row) {
+              <li class="lf-lib-row lf-lib-row--skeleton"><span class="lf-thumb"></span><span class="lf-skel"></span></li>
+            }
+          </ul>
+          <p class="lf-sr-only" role="status">{{ t('modules.library.states.loading') }}</p>
+        } @else {
+          <ul class="lf-lib-list">
+            @for (item of filteredItems(); track item._id) {
+              <li class="lf-lib-row">
+                <button type="button" class="lf-thumb" [attr.data-type]="itemType(item)"
+                  [disabled]="!item.asset?.playbackUrl"
+                  [attr.aria-label]="t('modules.library.row.previewNamed', { name: itemName(item) })"
+                  (click)="openPreview(item)">
+                  <ng-container *ngTemplateOutlet="thumbMedia; context: { $implicit: item.asset, type: itemType(item) }"></ng-container>
+                </button>
 
-        <div class="lf-form">
-          <label class="lf-field">
-            <span>{{ t('modules.library.upload.nameLabel') }}</span>
-            <input
-              type="text"
-              [value]="uploadForm().name"
-              (input)="updateUploadName($event)"
-              [placeholder]="t('modules.library.upload.namePlaceholder')"
-              maxlength="60"
-              autocapitalize="off"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </label>
+                <div class="lf-lib-row__body">
+                  <strong class="lf-lib-row__name" [title]="itemName(item)">{{ itemName(item) }}</strong>
+                  <span class="lf-lib-row__meta">
+                    {{ t('modules.library.filters.' + itemType(item)) }} · {{ formatBytes(item.asset?.bytes || item.quotaBytesCharged) }}
+                  </span>
+                </div>
 
-          <label
-            class="lf-drop"
-            [class.lf-drop--dragging]="isDraggingUpload()"
-            [class.lf-drop--has-file]="!!uploadForm().file"
-            (dragover)="handleUploadDragOver($event)"
-            (dragleave)="handleUploadDragLeave($event)"
-            (drop)="handleUploadDrop($event)"
-          >
-            <input
-              #uploadFileInput
-              type="file"
-              class="lf-drop__input"
-              accept="video/*,audio/*,image/*,image/gif"
-              (change)="onUploadFileChange($event)"
-            />
-            <span class="lf-drop__title">
-              {{ uploadForm().file?.name || t('modules.library.upload.pickFile') }}
-            </span>
-            <span class="lf-drop__hint">
-              @if (isDraggingUpload() && !uploadForm().file) {
-                {{ t('modules.library.upload.dropNow') }}
-              } @else if (uploadForm().file) {
-                {{ formatBytes(uploadForm().file?.size || 0) }}
-              } @else {
-                {{ t('modules.library.upload.fileHint') }}
-              }
-            </span>
-          </label>
+                <span class="lf-lib-row__tags">
+                  @if (item.assetScope === 'private') {
+                    <span class="lf-tag lf-tag--private">
+                      <lucide-icon class="lf-icon" [name]="lockIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('modules.library.row.private') }}
+                    </span>
+                  } @else if (isOwnUpload(item)) {
+                    <span class="lf-tag">
+                      <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('modules.library.row.publicYours') }}
+                    </span>
+                  } @else {
+                    <span class="lf-tag">
+                      <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('modules.library.row.publicBy', { name: item.asset?.ownerChannelName || '—' }) }}
+                    </span>
+                  }
+                  @if (usageKnown()) {
+                    @for (tag of usageTags(item); track tag) {
+                      <span class="lf-tag lf-tag--ok">{{ tag }}</span>
+                    } @empty {
+                      <span class="lf-tag lf-tag--muted">{{ t('modules.library.row.unused') }}</span>
+                    }
+                  }
+                </span>
 
-          @if (uploadValidationError(); as err) {
-            <p class="lf-form-error" role="alert">{{ err }}</p>
-          }
-
-          <div class="lf-form__actions">
-            <button type="button" class="lf-btn" (click)="closeUploadModal()" [disabled]="isUploadingMedia()">
-              {{ t('common.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="lf-btn lf-btn--primary"
-              [disabled]="isUploadingMedia() || !!uploadValidationError()"
-              (click)="submitUpload()"
-            >
-              @if (isUploadingMedia()) {
-                {{ t('modules.library.upload.uploading') }}
-              } @else {
-                {{ t('modules.library.upload.submit') }}
-              }
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  }
-
-  @if (makePublicConfirm(); as item) {
-    <app-confirmation-modal
-      [isOpen]="true"
-      variant="warning"
-      [title]="t('modules.library.makePublic.confirmTitle')"
-      [message]="t('modules.library.makePublic.confirmMessage', { name: makePublicDisplayName() })"
-      [confirmText]="t('modules.library.actions.makePublic')"
-      [cancelText]="t('common.cancel')"
-      (confirm)="commitMakePublic(item)"
-      (cancel)="cancelMakePublic()"
-    />
-  }
+                <div class="lf-lib-row__actions">
+                  @if (item.assetScope === 'private' && canEdit()) {
+                    <button type="button" class="lf-btn lf-btn--xs" (click)="openMakePublic(item)"
+                      [attr.aria-label]="t('modules.library.row.makePublicNamed', { name: itemName(item) })">
+                      <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+                      <span class="lf-hide-xs">{{ t('modules.library.actions.makePublic') }}</span>
+                    </button>
+                  }
+                  @if (canEdit()) {
+                    <button type="button" class="lf-icon-btn" (click)="openRename(item)"
+                      [attr.aria-label]="t('modules.library.row.renameNamed', { name: itemName(item) })">
+                      <lucide-icon class="lf-icon" [name]="pencilIcon" aria-hidden="true"></lucide-icon>
+                    </button>
+                  }
+                  @if (canDelete()) {
+                    <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="openDelete(item)"
+                      [attr.aria-label]="t('modules.library.row.deleteNamed', { name: itemName(item) })">
+                      <lucide-icon class="lf-icon" [name]="trashIcon" aria-hidden="true"></lucide-icon>
+                    </button>
+                  }
+                </div>
+              </li>
+            } @empty {
+              <li class="lf-empty">
+                @if (items().length && hasActiveFilters()) {
+                  <p>{{ t('modules.library.states.noMatches') }}</p>
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="clearFilters()">{{ t('modules.library.filters.clear') }}</button>
+                } @else {
+                  <h2 class="lf-h3">{{ t('modules.library.states.emptyTitle') }}</h2>
+                  <p>{{ t('modules.library.states.emptyHint') }}</p>
+                  <div class="lf-empty__actions">
+                    @if (canUpload()) {
+                      <button type="button" class="lf-btn lf-btn--primary" (click)="openUploadModal()">
+                        <lucide-icon class="lf-icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
+                        {{ t('modules.library.actions.upload') }}
+                      </button>
+                    }
+                    @if (canAttach()) {
+                      <button type="button" class="lf-btn" (click)="openPublicLibrary()">
+                        <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+                        {{ t('modules.library.actions.browsePublic') }}
+                      </button>
+                    }
+                  </div>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </main>
 </div>
+
+<!-- Upload -->
+@if (isUploadModalOpen()) {
+  <div class="lf-modal-overlay" (click)="closeUploadModal()">
+    <section class="lf-modal lf-modal--narrow" role="dialog" aria-modal="true" aria-labelledby="library-upload-title" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="library-upload-title">{{ t('modules.library.upload.title') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeUploadModal()" [attr.aria-label]="t('common.close')">
+          <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
+        </button>
+      </header>
+
+      <div class="lf-modal__body">
+        <label
+          class="lf-drop"
+          [class.lf-drop--dragging]="isDraggingUpload()"
+          [class.lf-drop--filled]="!!uploadForm().file"
+          [class.lf-drop--invalid]="!!uploadFileError()"
+          (dragover)="handleUploadDragOver($event)"
+          (dragleave)="handleUploadDragLeave($event)"
+          (drop)="handleUploadDrop($event)"
+        >
+          <input #uploadFileInput type="file" class="lf-drop__input" accept="video/*,audio/*,image/*"
+            [attr.aria-describedby]="uploadFileError() ? 'library-upload-file-error' : null"
+            (change)="onUploadFileChange($event)" />
+          @if (uploadForm().file) {
+            <span class="lf-thumb lf-drop__preview" [attr.data-type]="uploadFileType() || 'video'" aria-hidden="true">
+              @if (uploadPreviewUrl(); as url) {
+                @if (uploadFileType() === 'video') {
+                  <video [src]="url + '#t=0.1'" muted playsinline preload="metadata"></video>
+                } @else {
+                  <img [src]="url" alt="" />
+                }
+              } @else {
+                <span class="lf-thumb__icon"><lucide-icon class="lf-icon" [name]="mediaIcon(uploadFileType() || 'audio')"></lucide-icon></span>
+              }
+            </span>
+          } @else {
+            <lucide-icon class="lf-icon lf-drop__icon" [name]="uploadIcon" aria-hidden="true"></lucide-icon>
+          }
+          <strong>{{ uploadForm().file?.name || t('modules.library.upload.pickFile') }}</strong>
+          <span>
+            @if (isDraggingUpload() && !uploadForm().file) {
+              {{ t('modules.library.upload.dropNow') }}
+            } @else if (uploadForm().file) {
+              {{ formatBytes(uploadForm().file?.size || 0) }} · {{ t('modules.library.upload.change') }}
+            } @else {
+              {{ t('modules.library.upload.fileHint', { size: uploadLimitLabel() }) }}
+            }
+          </span>
+        </label>
+        @if (uploadFileError(); as err) {
+          <p class="lf-error" id="library-upload-file-error" role="alert">{{ err }}</p>
+        }
+
+        <label class="lf-field">
+          <span class="lf-label">{{ t('modules.library.upload.nameLabel') }}</span>
+          <input type="text" [value]="uploadForm().name" (input)="updateUploadName($event)"
+            [placeholder]="t('modules.library.upload.namePlaceholder')"
+            [attr.aria-invalid]="!!uploadNameError()"
+            [attr.aria-describedby]="uploadNameError() ? 'library-upload-name-error' : 'library-upload-name-hint'"
+            maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false" />
+          @if (uploadNameError(); as err) {
+            <span class="lf-error" id="library-upload-name-error">{{ err }}</span>
+          } @else {
+            <span class="lf-hint" id="library-upload-name-hint">{{ t('modules.library.upload.nameHint') }}</span>
+          }
+        </label>
+
+        @if (canKeepPrivate()) {
+          <fieldset class="lf-choice">
+            <legend class="lf-label">{{ t('modules.library.upload.visibility') }}</legend>
+            <label class="lf-choice__opt" [class.is-on]="uploadForm().scope === 'private'">
+              <input type="radio" name="library-upload-scope" [checked]="uploadForm().scope === 'private'" (change)="updateUploadScope('private')" />
+              <span>
+                <strong>{{ t('modules.library.scope.private') }}</strong>
+                {{ t('modules.library.upload.privateHint', { left: formatBytes(quotaLeftBytes()) }) }}
+              </span>
+            </label>
+            <label class="lf-choice__opt" [class.is-on]="uploadForm().scope === 'public'">
+              <input type="radio" name="library-upload-scope" [checked]="uploadForm().scope === 'public'" (change)="updateUploadScope('public')" />
+              <span>
+                <strong>{{ t('modules.library.scope.public') }}</strong>
+                {{ t('modules.library.upload.publicHint') }}
+              </span>
+            </label>
+          </fieldset>
+        } @else {
+          <p class="lf-plan-note lf-plan-note--inline">
+            <lucide-icon class="lf-icon" [name]="globeIcon" aria-hidden="true"></lucide-icon>
+            <span>{{ t('modules.library.upload.freeHint') }}</span>
+          </p>
+        }
+      </div>
+
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" [disabled]="isUploadingMedia()" (click)="closeUploadModal()">{{ t('common.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="isUploadingMedia()" (click)="submitUpload()">
+          {{ isUploadingMedia() ? t('modules.library.upload.uploading') : t('modules.library.upload.submit') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+<!-- Rename -->
+@if (renameTarget(); as item) {
+  <div class="lf-modal-overlay" (click)="closeRename()">
+    <form class="lf-modal lf-modal--narrow" role="dialog" aria-modal="true" aria-labelledby="library-rename-title"
+      (click)="$event.stopPropagation()" (submit)="$event.preventDefault(); submitRename()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="library-rename-title">{{ t('modules.library.rename.title') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeRename()" [attr.aria-label]="t('common.close')">
+          <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body">
+        <label class="lf-field">
+          <span class="lf-label">{{ t('modules.library.upload.nameLabel') }}</span>
+          <input type="text" [value]="renameDraft()" (input)="updateRenameDraft($event)"
+            [attr.aria-invalid]="!!renameError()"
+            [attr.aria-describedby]="renameError() ? 'library-rename-error' : 'library-rename-hint'"
+            maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false" />
+          @if (renameError(); as err) {
+            <span class="lf-error" id="library-rename-error">{{ err }}</span>
+          } @else {
+            <span class="lf-hint" id="library-rename-hint">{{ t('modules.library.upload.nameHint') }}</span>
+          }
+        </label>
+        <p class="lf-note">{{ t('modules.library.rename.hint') }}</p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" [disabled]="renameSaving()" (click)="closeRename()">{{ t('common.cancel') }}</button>
+        <button type="submit" class="lf-btn lf-btn--primary" [disabled]="renameSaving()">
+          {{ renameSaving() ? t('modules.library.rename.saving') : t('modules.library.rename.save') }}
+        </button>
+      </footer>
+    </form>
+  </div>
+}
+
+<!-- Make public (one-way) -->
+@if (publicTarget(); as item) {
+  <div class="lf-modal-overlay" (click)="closeMakePublic()">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true"
+      aria-labelledby="library-public-title" aria-describedby="library-public-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="library-public-title">{{ t('modules.library.makePublic.title', { name: itemName(item) }) }}</h2>
+      </header>
+      <div class="lf-modal__body" id="library-public-desc">
+        <ul class="lf-facts">
+          <li>{{ t('modules.library.makePublic.factVisible') }}</li>
+          <li>{{ t('modules.library.makePublic.factStorage', { size: formatBytes(item.quotaBytesCharged || item.asset?.bytes || 0) }) }}</li>
+          <li class="lf-facts__warn">{{ t('modules.library.makePublic.factOneWay') }}</li>
+        </ul>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" [disabled]="publicSaving()" (click)="closeMakePublic()">{{ t('modules.library.makePublic.keepPrivate') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="publicSaving()" (click)="confirmMakePublic()">
+          {{ publicSaving() ? t('modules.library.makePublic.saving') : t('modules.library.actions.makePublic') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+<!-- Delete -->
+@if (deleteTarget(); as item) {
+  <div class="lf-modal-overlay" (click)="closeDelete()">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true"
+      aria-labelledby="library-delete-title" aria-describedby="library-delete-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="library-delete-title">
+          {{ deleteBlocked() ? t('modules.library.delete.inUseTitle', { name: itemName(item) }) : t('modules.library.delete.title', { name: itemName(item) }) }}
+        </h2>
+      </header>
+      <div class="lf-modal__body" id="library-delete-desc">
+        @if (deleteBlocked()) {
+          <p class="lf-note">{{ t('modules.library.delete.inUseHint') }}</p>
+          <ul class="lf-usage-list">
+            @for (name of deleteUsage().triggers; track $index) {
+              <li><span class="lf-tag">{{ t('modules.library.delete.trigger') }}</span> {{ name }}</li>
+            }
+            @for (name of deleteUsage().fx; track $index) {
+              <li><span class="lf-tag">DimaFX</span> {{ name }}</li>
+            }
+          </ul>
+        } @else if (item.assetScope === 'private') {
+          <p class="lf-note">{{ t('modules.library.delete.privateHint') }}</p>
+        } @else if (isOwnUpload(item)) {
+          <p class="lf-note">{{ t('modules.library.delete.publicOwnHint') }}</p>
+        } @else {
+          <p class="lf-note">{{ t('modules.library.delete.publicAddedHint') }}</p>
+        }
+      </div>
+      <footer class="lf-modal__footer">
+        @if (deleteBlocked()) {
+          @if (deleteUsage().triggers.length) {
+            <a class="lf-btn" [routerLink]="['/', streamer(), 'modules', 'triggers']">{{ t('modules.library.delete.openTriggers') }}</a>
+          }
+          @if (deleteUsage().fx.length) {
+            <a class="lf-btn" [routerLink]="['/', streamer(), 'modules', 'dimafx']">{{ t('modules.library.delete.openFx') }}</a>
+          }
+          <button type="button" class="lf-btn lf-btn--primary" (click)="closeDelete()">{{ t('common.close') }}</button>
+        } @else {
+          <button type="button" class="lf-btn" [disabled]="deleting()" (click)="closeDelete()">{{ t('common.cancel') }}</button>
+          <button type="button" class="lf-btn lf-btn--danger" [disabled]="deleting()" (click)="confirmDelete()">
+            {{ deleting() ? t('modules.library.delete.deleting') : t('modules.library.delete.confirm') }}
+          </button>
+        }
+      </footer>
+    </section>
+  </div>
+}
+
+@if (isPublicLibraryOpen() && channelID()) {
+  <app-public-library-modal
+    [channelId]="channelID()!"
+    [ownedAssetIds]="libraryAssetIds()"
+    [canAttach]="canAttach()"
+    [offerCreateTrigger]="false"
+    (close)="closePublicLibrary()"
+    (assetAdded)="handlePublicAssetAdded($event)"
+  />
+}
+
+@if (activePreviewAsset(); as previewAsset) {
+  <div class="lf-preview-overlay" (click)="closePreviewModal()">
+    <section class="lf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="library-preview-title" (click)="$event.stopPropagation()">
+      <button type="button" class="lf-modal__close lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
+        <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
+      </button>
+      <h2 class="lf-h3" id="library-preview-title">{{ assetName(previewAsset) }}</h2>
+      <p class="lf-note">{{ t('modules.library.filters.' + previewAsset.mediaType) }} · {{ formatBytes(previewAsset.bytes) }}</p>
+      <div class="lf-preview-modal__content">
+        @if (previewAsset.mediaType === 'audio') {
+          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()" aria-hidden="true">
+            @for (bar of waveformBars; track bar) {
+              <span class="lf-waveform__bar" [style.animation-delay.ms]="bar * 40"></span>
+            }
+          </div>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="toggleAudioPlayPause()">
+            <lucide-icon class="lf-icon" [name]="isAudioPlaying() ? pauseIcon : playIcon" aria-hidden="true"></lucide-icon>
+            {{ isAudioPlaying() ? t('modules.library.preview.pause') : t('modules.library.preview.play') }}
+          </button>
+        }
+        @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
+          <img class="lf-preview-image" [src]="previewAsset.playbackUrl" [alt]="previewAsset.displayName" />
+        }
+        @if (previewAsset.mediaType === 'video') {
+          <video class="lf-preview-video" [src]="previewAsset.playbackUrl" autoplay controls playsinline></video>
+        }
+      </div>
+    </section>
+  </div>
+}
+
+<!-- Thumbnail contents: image, first video frame, or a media-type icon -->
+<ng-template #thumbMedia let-asset let-type="type">
+  @if (asset?.playbackUrl && (type === 'image' || type === 'gif')) {
+    <img [src]="asset.playbackUrl" alt="" loading="lazy" />
+  } @else if (asset?.playbackUrl && type === 'video') {
+    <video [appLazyVideoFrame]="asset.playbackUrl"></video>
+  }
+  @if (type !== 'image' && type !== 'gif') {
+    <span class="lf-thumb__icon">
+      <lucide-icon class="lf-icon" [name]="mediaIcon(type)" aria-hidden="true"></lucide-icon>
+    </span>
+  }
+</ng-template>

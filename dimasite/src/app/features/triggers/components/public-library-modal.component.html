@@ -91,7 +91,7 @@
               </div>
               <div class="lf-asset-card__action">
                 @if (isAssetAdded(asset._id)) {
-                  @if (canAttach() && isTriggerReady(asset)) {
+                  @if (canAttach() && offerCreateTrigger() && isTriggerReady(asset)) {
                     <button type="button" class="lf-btn lf-btn--xs lf-btn--ok" (click)="createTrigger.emit(asset._id)"
                       [attr.aria-label]="t('triggers.marketplace.createNamed', { name: displayName(asset) })">
                       <lucide-icon class="lf-icon" [name]="zapIcon" aria-hidden="true"></lucide-icon>

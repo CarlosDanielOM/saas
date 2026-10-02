@@ -51,6 +51,7 @@ import {
   MediaAsset,
   MediaLibraryItem,
   MediaLibraryMeta,
+  MediaLibraryMutationResult,
   MediaScope,
   MediaType,
   PlanTier,
@@ -909,7 +910,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
     this.isPublicLibraryModalOpen.set(false);
   }
 
-  handlePublicLibraryAssetAdded(result: { item: MediaLibraryItem; meta: MediaLibraryMeta }): void {
+  handlePublicLibraryAssetAdded(result: MediaLibraryMutationResult): void {
     if (!this.canAttach()) return;
     this.libraryItems.update((items) => {
       if (items.some((item) => item._id === result.item._id || item.assetID === result.item.assetID)) {
@@ -918,7 +919,7 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
 
       return [result.item, ...items];
     });
-    this.libraryMeta.set(result.meta);
+    if (result.meta) this.libraryMeta.set(result.meta);
   }
 
   createTriggerFromPublicAsset(assetId: string): void {

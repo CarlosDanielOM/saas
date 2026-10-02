@@ -57,6 +57,8 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   readonly channelId = input.required<string>();
   readonly ownedAssetIds = input.required<string[]>();
   readonly canAttach = input(false);
+  /** Hide "Create trigger" where there is no trigger editor to hand off to. */
+  readonly offerCreateTrigger = input(true);
 
   readonly close = output<void>();
   readonly assetAdded = output<MediaLibraryMutationResult>();

@@ -97,7 +97,8 @@ export interface MediaLibraryResponse {
 
 export interface MediaLibraryMutationResult {
   item: MediaLibraryItem;
-  meta: MediaLibraryMeta;
+  /** null when the API response carries no quota info (e.g. the item already existed). */
+  meta: MediaLibraryMeta | null;
 }
 
 export interface CreateTriggerRequest {

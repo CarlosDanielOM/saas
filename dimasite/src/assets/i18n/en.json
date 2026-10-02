@@ -252,72 +252,137 @@
     "library": {
       "description": "Upload and manage shared public media. Free channels are public-only; Premium includes 250 MB of private storage and Pro includes 1 GB.",
       "backToModules": "Back to modules",
-      "heroBadge": "Media Storage",
-      "eyebrow": "Media Library",
-      "title": "Your Media Library",
-      "subtitle": "Upload public media for triggers and extensions. Paid plans can also keep media private.",
-      "quota": {
-        "label": "Private Storage Used",
-        "hint": "Only private assets count against your plan quota. Public assets are quota-free.",
-        "freeLabel": "Public media uploads",
-        "freeValue": "Fair use",
-        "freeHint": "Free uploads are public and never use private storage."
+      "title": "Media library",
+      "subtitle": "The videos, sounds and images your triggers and DimaFX play.",
+      "chips": {
+        "files": "{{count}} files",
+        "oneFile": "1 file",
+        "storage": "{{used}} of {{total}} private",
+        "freeUploads": "Free plan · public uploads up to {{size}}"
+      },
+      "storage": {
+        "almostFullTitle": "Only {{left}} of private storage left",
+        "almostFullHint": "Public files don't use storage. Make some public, or delete ones you don't use.",
+        "freeNote": "On the Free plan every upload is public: other streamers can find and use it. Premium and Pro can keep files private."
       },
       "scope": {
         "private": "Private",
         "public": "Public"
       },
-      "card": {
-        "chargesQuota": "Counts toward your quota",
-        "freeQuota": "Public · No quota used"
-      },
       "actions": {
-        "upload": "Upload Media",
-        "makePublic": "Make Public"
+        "upload": "Upload",
+        "browsePublic": "Browse public library",
+        "makePublic": "Make public"
       },
-      "upload": {
-        "kicker": "Add media",
-        "title": "Upload to Library",
-        "limitTitle": "Plan-aware uploads",
-        "limitMessage": "Per-file upload limit is {{size}}. Public uploads are quota-free under fair use.",
-        "privateInfo": "Private files count against your {{quota}} storage quota. You can delete them anytime.",
-        "publicInfo": "Public files do not count against your quota, but the change is irreversible. Only CDOM Labs can delete or disable them — contact support if needed.",
-        "nameLabel": "Media name",
-        "namePlaceholder": "Only letters, numbers, and underscores",
-        "pickFile": "Choose a media file",
-        "dropNow": "Drop the file here",
-        "fileHint": "Video, audio, images, and GIFs are all supported.",
-        "submit": "Upload to Library",
-        "uploading": "Uploading...",
-        "fileTooLarge": "File is larger than the {{size}} per-file limit.",
-        "quotaExceeded": "Upload would exceed your {{quota}} private quota. Make it public or delete something first.",
-        "successTitle": "Media uploaded",
-        "successMessage": "The new asset is now available in your library.",
-        "errorTitle": "Upload failed",
-        "errorMessage": "We could not upload that media file.",
-        "validationMessage": "Pick a file and give it a valid name (letters, numbers, underscores only)."
+      "filters": {
+        "search": "Search your media",
+        "type": "Media type",
+        "visibility": "Visibility",
+        "all": "All",
+        "video": "Video",
+        "audio": "Audio",
+        "image": "Image",
+        "gif": "GIF",
+        "scope": {
+          "all": "Everything",
+          "private": "Private",
+          "public": "Public"
+        },
+        "clear": "Clear filters"
       },
-      "makePublic": {
-        "confirmTitle": "Make this asset public?",
-        "confirmMessage": "\"{{name}}\" will become public. Your private quota will be released immediately. This change is one-way: only CDOM Labs can delete or disable the asset afterwards. Contact support if needed.",
-        "successTitle": "Asset is now public",
-        "successMessage": "Quota has been released and the asset is visible in the public marketplace.",
-        "errorTitle": "Could not promote asset",
-        "errorMessage": "Failed to promote the asset to public."
+      "row": {
+        "previewNamed": "Preview {{name}}",
+        "private": "Private",
+        "publicYours": "Public · your upload",
+        "publicBy": "Public · by {{name}}",
+        "oneTrigger": "In 1 trigger",
+        "triggers": "In {{count}} triggers",
+        "oneFx": "In 1 DimaFX item",
+        "fx": "In {{count}} DimaFX items",
+        "unused": "Not used yet",
+        "makePublicNamed": "Make {{name}} public",
+        "renameNamed": "Rename {{name}}",
+        "deleteNamed": "Delete {{name}}"
       },
       "states": {
-        "loading": "Loading your media library...",
-        "empty": "No media yet. Upload your first file to get started."
+        "loading": "Loading your media…",
+        "emptyTitle": "Your library is empty",
+        "emptyHint": "Upload a clip or sound, or grab one from the public library. Your triggers and DimaFX can use anything in here.",
+        "noMatches": "No media matches these filters."
       },
-      "confirm": {
-        "delete": "Delete this media item? This cannot be undone."
+      "upload": {
+        "title": "Upload media",
+        "pickFile": "Choose a file or drop it here",
+        "dropNow": "Drop it here",
+        "change": "tap to change",
+        "fileHint": "Video, audio, image or GIF · up to {{size}}",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g. Big_Laugh",
+        "nameHint": "Letters, numbers and underscores. Spaces become underscores.",
+        "nameRequired": "Give it a name.",
+        "nameInvalid": "Start with a letter, and use only letters, numbers and single underscores.",
+        "fileRequired": "Choose a file to upload.",
+        "fileTooLarge": "This file is over the {{size}} limit for your plan.",
+        "quotaExceeded": "Not enough private storage ({{left}} left). Upload it as public, or delete something first.",
+        "visibility": "Who can use it",
+        "privateHint": "Only your channel. Uses your storage ({{left}} left).",
+        "publicHint": "Anyone can find and use it, and it doesn't use storage. Public files can't be made private again.",
+        "freeHint": "Free plan uploads are public: other streamers can find and use them, and only support can take them down.",
+        "submit": "Upload",
+        "uploading": "Uploading…",
+        "successTitle": "Uploaded",
+        "successMessage": "{{name}} is in your library.",
+        "errorTitle": "Upload failed",
+        "errorMessage": "We couldn't upload that file. Try again."
       },
-      "toasts": {
-        "deleted": "Media item removed"
+      "rename": {
+        "title": "Rename media",
+        "hint": "This only changes the name in your library. Trigger and DimaFX names stay the same.",
+        "save": "Save name",
+        "saving": "Saving…",
+        "successTitle": "Renamed",
+        "successMessage": "Now called {{name}}.",
+        "errorTitle": "Couldn't rename",
+        "errorMessage": "We couldn't save that name. Try again."
+      },
+      "makePublic": {
+        "title": "Make {{name}} public?",
+        "factVisible": "Other streamers can find it in the public library and use it.",
+        "factStorage": "Frees {{size}} of your private storage.",
+        "factOneWay": "This can't be undone. It can't be made private again, and only support can take it down.",
+        "keepPrivate": "Keep private",
+        "saving": "Making public…",
+        "successTitle": "Now public",
+        "successMessage": "It's in the public library and no longer uses your storage.",
+        "errorTitle": "Couldn't make it public",
+        "errorMessage": "Something went wrong. It's still private."
+      },
+      "delete": {
+        "title": "Delete {{name}}?",
+        "inUseTitle": "{{name}} is still in use",
+        "inUseHint": "Remove it from these first, then you can delete it:",
+        "trigger": "Trigger",
+        "openTriggers": "Open triggers",
+        "openFx": "Open DimaFX",
+        "privateHint": "The file is deleted for good. This can't be undone.",
+        "publicOwnHint": "It leaves your library but stays in the public library. Only support can take public files down.",
+        "publicAddedHint": "It leaves your library. You can add it back from the public library anytime.",
+        "confirm": "Delete",
+        "deleting": "Deleting…",
+        "successTitle": "Deleted",
+        "successMessage": "{{name}} is gone from your library.",
+        "errorTitle": "Couldn't delete",
+        "errorMessage": "Something went wrong. Nothing was deleted."
+      },
+      "preview": {
+        "play": "Play",
+        "pause": "Pause",
+        "errorTitle": "Can't play this",
+        "errorMessage": "The audio file didn't load."
       },
       "errors": {
-        "loadFailed": "Failed to load media library",
-        "deleteFailed": "Failed to delete media item"
+        "loadTitle": "Couldn't load your library",
+        "loadFailed": "Check your connection and try again."
       }
     },
     "dimafx": {
