@@ -15,7 +15,6 @@ import {
   AiUsageCategoryBreakdown,
   AiUsagePacing,
   AiUsagePacingStatus,
-  AiUsagePeriodSource,
   AiUsagePlanTier,
   AiUsageReceiptCategory,
   AiUsageSummaryData,
@@ -26,7 +25,7 @@ import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { UsageApiService } from '../../services/usage-api.service';
-import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { LfIconComponent, type LfIconName } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 
 interface ChannelResolutionState {
@@ -38,6 +37,17 @@ interface ChannelResolutionState {
 type UsageTier = 'premium' | 'pro';
 
 const TRANSACTION_PAGE_SIZE = 25;
+
+const CATEGORY_ICONS: Record<AiUsageReceiptCategory, LfIconName> = {
+  tts: 'audio',
+  ai_chat: 'chat',
+  ai_agent: 'zap',
+  memory: 'list',
+  clip_recommendation: 'video',
+  credit_adjustment: 'plus',
+  other: 'grid',
+  uncategorized: 'grid'
+};
 
 const TRANSACTION_CATEGORIES: AiUsageReceiptCategory[] = [
   'tts',
@@ -64,7 +74,6 @@ export class UsagePageComponent {
   private readonly usageApi = inject(UsageApiService);
   private readonly billingService = inject(BillingService);
   private readonly upgradeService = inject(UpgradeService);
-  private readonly numberFormatter = new Intl.NumberFormat();
   private readonly formatterCache = new Map<string, Intl.DateTimeFormat>();
   private readonly timeZone = this.resolveTimeZone();
   private readonly streamerParam$ = this.route.paramMap.pipe(
@@ -178,8 +187,6 @@ export class UsagePageComponent {
   readonly billingPeriod = computed(() => this.summary()?.billingPeriod ?? null);
   readonly analytics = computed(() => this.summary()?.analytics ?? null);
   readonly dailySpend = computed(() => this.analytics()?.daily ?? []);
-  readonly dailySpendRows = computed(() => [...this.dailySpend()].reverse());
-  readonly dailyMax = computed(() => Math.max(1, ...this.dailySpend().map((point) => point.credits)));
   readonly categories = computed<AiUsageCategoryBreakdown[]>(() => this.analytics()?.categories ?? []);
 
   readonly periodElapsedPercent = computed(() => {
@@ -188,6 +195,76 @@ export class UsagePageComponent {
       return 0;
     }
     return Math.min(100, Math.max(0, Math.round((period.elapsedDayCount / period.totalDayCount) * 100)));
+  });
+
+  readonly resetDate = computed(() => {
+    const period = this.billingPeriod();
+    return period ? this.formatShortDate(period.endsAt) : null;
+  });
+
+  /** One plain-language answer to "will my credits last?". */
+  readonly forecast = computed<{ tone: 'ok' | 'warn' | 'live' | 'muted'; text: string } | null>(() => {
+    const pace = this.pacing();
+    const date = this.resetDate();
+    if (!pace || !date) return null;
+    const daily = this.formatCredits(pace.averageDailyCredits);
+    if (pace.status === 'exhausted' || this.creditsExhausted()) {
+      return { tone: 'live', text: this.t('usage.forecast.exhausted', { date }) };
+    }
+    if (pace.status === 'no_usage') {
+      return { tone: 'muted', text: this.t('usage.forecast.noUsage', { date }) };
+    }
+    const runout = pace.estimatedDaysUntilExhaustion;
+    if (pace.expectedToExhaustWithinPeriod && runout !== null) {
+      const gap = Math.max(1, Math.round(pace.remainingPeriodDays - runout));
+      return runout < 1
+        ? { tone: 'live', text: this.t('usage.forecast.runOutSoon', { daily, gap, date }) }
+        : { tone: 'warn', text: this.t('usage.forecast.runOut', { daily, days: Math.floor(runout), gap, date }) };
+    }
+    return { tone: 'ok', text: this.t('usage.forecast.onTrack', { daily, date }) };
+  });
+
+  /** Column chart geometry: bars and the even-pace line share one scale. */
+  readonly dailyChart = computed(() => {
+    const points = this.dailySpend();
+    // Even pace: included credits spread evenly across the period.
+    const limit = this.creditsLimit();
+    const days = this.billingPeriod()?.totalDayCount ?? 0;
+    const budget = limit > 0 && days > 0 ? limit / days : 0;
+    const max = Math.max(1, budget, ...points.map((point) => point.credits));
+    return {
+      bars: points.map((point) => ({
+        ...point,
+        label: this.formatDayLabel(point.date),
+        height: point.credits > 0 ? Math.max(2, (point.credits / max) * 100) : 0,
+        over: budget > 0 && point.credits > budget
+      })),
+      budget: budget > 0 ? (budget / max) * 100 : null,
+      budgetLabel: this.formatCredits(budget)
+    };
+  });
+
+  /** Transactions grouped under Today / Yesterday / date headers. */
+  readonly transactionGroups = computed(() => {
+    const groups: { key: string; label: string; items: AiUsageTransaction[] }[] = [];
+    const today = this.localDayKey(new Date());
+    const yesterday = this.localDayKey(new Date(Date.now() - 86_400_000));
+    for (const transaction of this.transactions()) {
+      const date = new Date(transaction.occurredAt);
+      const key = Number.isNaN(date.getTime()) ? transaction.occurredAt : this.localDayKey(date);
+      let group = groups[groups.length - 1];
+      if (!group || group.key !== key) {
+        const label = key === today
+          ? this.t('usage.transactions.today')
+          : key === yesterday
+            ? this.t('usage.transactions.yesterday')
+            : this.formatShortDate(transaction.occurredAt);
+        group = { key, label, items: [] };
+        groups.push(group);
+      }
+      group.items.push(transaction);
+    }
+    return groups;
   });
 
   readonly loadingMore = computed(() => this.transactionsLoading() && this.transactions().length > 0);
@@ -256,12 +333,10 @@ export class UsagePageComponent {
   }
 
   formatCredits(value: number): string {
-    const safe = Math.max(0, Math.round(value));
-    if (safe < 1000) {
-      return this.numberFormatter.format(safe);
-    }
-    const k = safe / 1000;
-    return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
+    return new Intl.NumberFormat(this.getLocale(), {
+      notation: 'compact',
+      maximumFractionDigits: 1
+    }).format(Math.max(0, Math.round(value)));
   }
 
   formatNumber(value: number, maximumFractionDigits = 0): string {
@@ -307,20 +382,16 @@ export class UsagePageComponent {
     return this.t(`usage.pacing.status.${status}`);
   }
 
-  periodSourceLabel(source: AiUsagePeriodSource): string {
-    return this.t(`usage.period.source.${source}`);
-  }
-
   categoryLabel(category: AiUsageReceiptCategory): string {
     return this.t(`usage.categories.${category}`);
   }
 
-  categoryBarWidth(category: AiUsageCategoryBreakdown): number {
-    return Math.min(100, Math.max(0, category.percentage));
+  categoryIcon(category: AiUsageReceiptCategory): LfIconName {
+    return CATEGORY_ICONS[category] ?? 'grid';
   }
 
-  dailyBarWidth(point: { credits: number }): number {
-    return this.dailyMax() > 0 ? Math.max(0, Math.round((point.credits / this.dailyMax()) * 100)) : 0;
+  categoryBarWidth(category: AiUsageCategoryBreakdown): number {
+    return Math.min(100, Math.max(0, category.percentage));
   }
 
   isAdjustment(transaction: AiUsageTransaction): boolean {
@@ -467,6 +538,29 @@ export class UsagePageComponent {
       categoryBreakdown: planTier === 'premium' || planTier === 'pro',
       transactions: planTier === 'pro'
     };
+  }
+
+  formatTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return this.dateFormatter({ hour: 'numeric', minute: '2-digit' }).format(date);
+  }
+
+  private formatShortDate(value: string): string {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return this.formatDayLabel(value);
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return this.dateFormatter({ month: 'short', day: 'numeric' }).format(date);
+  }
+
+  private localDayKey(date: Date): string {
+    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   }
 
   private getLocale(): string {

@@ -204,6 +204,12 @@
                   @if (paceDays(pack); as days) {
                     <li><app-lf-icon name="zap" [size]="14" /> {{ t('creditPacks.lasts', { days }) }}</li>
                   }
+                  @if (unusedBeforeExpiry(pack); as unused) {
+                    <li class="lf-pack__warn">
+                      <app-lf-icon name="alert" [size]="14" />
+                      {{ t('creditPacks.recharge.unusedWarning', { credits: formatCredits(unused) }) }}
+                    </li>
+                  }
                   @if (pack.kind === 'recharge') {
                     <li class="lf-pack__expiry" [class.lf-pack__expiry--urgent]="rechargeExpiresSoon()">
                       <app-lf-icon name="timer" [size]="14" /> {{ rechargeExpiryLabel() }}

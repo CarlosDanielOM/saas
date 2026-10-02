@@ -542,6 +542,20 @@
   color: var(--gold);
 }
 
+.lf-pack__facts .lf-pack__warn {
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.7rem;
+  color: var(--fg);
+  background: var(--gold-soft);
+  line-height: 1.4;
+}
+
+.lf-pack__facts .lf-pack__warn app-lf-icon {
+  margin-top: 0.1rem;
+  color: var(--gold);
+}
+
 .lf-pack__expiry {
   color: var(--fg) !important;
   font-weight: 700 !important;

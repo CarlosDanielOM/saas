@@ -2022,14 +2022,9 @@
       "rechargeCta": "View {{price}} recharge",
       "creditCta": "View {{price}} credit pack"
     },
-    "kicker": "AI Usage",
     "title": "Credit usage",
-    "subtitle": "Track how your AI credits are consumed across chat, memory, TTS, and clip features.",
+    "subtitle": "See what's left, whether it will last, and which AI features use your credits.",
     "backToDashboard": "Back to dashboard",
-    "status": {
-      "active": "Credits active",
-      "exhausted": "Out of credits"
-    },
     "plans": {
       "free": "Free",
       "premium": "Premium",
@@ -2039,55 +2034,27 @@
       "kicker": "Credit balance",
       "refresh": "Refresh credit usage",
       "remaining": "Remaining",
-      "used": "Used",
-      "limit": "Included",
-      "percentUsed": "{{percent}}% of your included credits used this period.",
-      "exhaustedNote": "No credits remaining. Upgrade or wait for the next refill to keep using AI features.",
       "buyCredits": "Buy more credits",
       "unavailable": "AI credits are not available for this account."
     },
     "pacing": {
-      "kicker": "Forecast",
       "title": "Usage pacing",
-      "unavailable": "Pacing appears once your account has an active credit period.",
-      "projected": "Projected period spend",
+      "projected": "Projected this period",
       "averageDaily": "Average / day",
       "dailyBudget": "Daily budget",
       "daysRemaining": "Credits last",
       "daysValue": "~{{days}} days",
-      "noRunout": "Through the period",
-      "overage": "Projected overage of {{credits}} credits if usage continues at this pace.",
+      "noRunout": "Until reset",
       "status": {
         "no_usage": "No usage yet",
         "within_pace": "Within pace",
         "over_pace": "Over pace",
         "exhausted": "Exhausted"
-      },
-      "basis": {
-        "current_billing_period": "Forecast from your current billing period.",
-        "current_free_credit_period": "Forecast from your current monthly free-credit period."
-      }
-    },
-    "period": {
-      "kicker": "Billing period",
-      "range": "{{from}} – {{to}}",
-      "elapsed": "Day {{elapsed}} of {{total}}",
-      "source": {
-        "subscription": "Subscription period",
-        "free_monthly": "Monthly free credits",
-        "rolling_30_day": "Rolling 30 days",
-        "custom": "Custom range"
       }
     },
     "analytics": {
-      "kicker": "Itemized analytics",
       "title": "Where your credits go",
-      "subtitle": "Daily spend, totals, and a breakdown by feature.",
       "empty": "No AI usage recorded in this period yet.",
-      "totalSpent": "Total spent",
-      "averageDaily": "Average / day",
-      "transactions": "Transactions",
-      "netConsumed": "Net consumed",
       "dailyTitle": "Daily spend",
       "dailyEmpty": "No daily spend in this period.",
       "categoriesTitle": "By feature",
@@ -2098,8 +2065,7 @@
       "lockedCta": "Upgrade to {{tier}}"
     },
     "transactions": {
-      "kicker": "Ledger",
-      "title": "Usage transactions",
+      "title": "Activity",
       "subtitle": "Every credit movement, newest first.",
       "filterLabel": "Filter by feature",
       "all": "All",
@@ -2110,7 +2076,9 @@
       "quantity": "{{quantity}} {{unit}}",
       "lockedTitle": "Unlock the full ledger",
       "lockedBody": "Itemized transactions are available on the Pro plan.",
-      "lockedCta": "Upgrade to {{tier}}"
+      "lockedCta": "Upgrade to {{tier}}",
+      "today": "Today",
+      "yesterday": "Yesterday"
     },
     "units": {
       "characters": "characters",
@@ -2131,6 +2099,34 @@
       "channelNotResolved": "We couldn't resolve this channel.",
       "loadFailed": "Unable to load credit usage right now.",
       "retry": "Try again"
+    },
+    "hero": {
+      "creditsUnit": "credits",
+      "today": "Today",
+      "usedOf": "{{used}} of {{limit}} included used ({{percent}}%)",
+      "dayOf": "Day {{elapsed}} of {{total}}",
+      "resets": "resets {{date}}"
+    },
+    "forecast": {
+      "exhausted": "You're out of credits. AI features pause until your credits reset on {{date}}, or until you top up.",
+      "runOut": "At about {{daily}} a day, you'll run out in ~{{days}} days, {{gap}} days before your credits reset on {{date}}.",
+      "runOutSoon": "At about {{daily}} a day, you'll run out within a day, {{gap}} days before your credits reset on {{date}}.",
+      "onTrack": "At about {{daily}} a day, your credits will last until they reset on {{date}}.",
+      "noUsage": "No AI usage yet this period. Your credits reset on {{date}}."
+    },
+    "topUp": {
+      "label": "Need more room?",
+      "body": "Credit packs add to your balance right away. Bigger packs give more credits per dollar.",
+      "allPacks": "See all packs"
+    },
+    "stats": {
+      "budgetHint": "to last until reset",
+      "overBy": "{{credits}} over your included credits"
+    },
+    "chart": {
+      "budgetLine": "Even pace ({{credits}}/day)",
+      "overBudget": "Above even pace",
+      "summary": "{{spent}} spent · {{count}} transactions this period"
     }
   },
   "creditPacks": {
@@ -2189,6 +2185,7 @@
       "expiresInDays": "Credits expire in {{days}} days",
       "expiresInDay": "Credits expire in 1 day",
       "expiresToday": "Credits expire today",
+      "unusedWarning": "At your pace, ≈ {{credits}} may still be unused when they expire",
       "expiryAlertDays": "Recharge credits expire in {{days}} days",
       "expiryAlertDay": "Recharge credits expire in 1 day",
       "expiryAlertToday": "Recharge credits expire today",

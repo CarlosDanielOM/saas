@@ -23,6 +23,7 @@ import {
   Star,
   Timer,
   TrendingUp,
+  TriangleAlert,
   Users,
   Wrench,
   X,
@@ -56,7 +57,8 @@ export type LfIconName =
   | 'sort'
   | 'search'
   | 'chat'
-  | 'trend';
+  | 'trend'
+  | 'alert';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -84,7 +86,8 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   sort: ChevronsUpDown,
   search: Search,
   chat: MessageSquare,
-  trend: TrendingUp
+  trend: TrendingUp,
+  alert: TriangleAlert
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */

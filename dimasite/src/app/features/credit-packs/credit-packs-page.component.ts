@@ -257,6 +257,20 @@ export class CreditPacksPageComponent {
     return days >= 1 ? days : null;
   }
 
+  /**
+   * Recharge credits the purchaser would not get through before they expire,
+   * at their recent average spend. Null when everything should get used.
+   */
+  unusedBeforeExpiry(pack: CreditPackOffer): number | null {
+    const catalog = this.catalog();
+    const average = this.usage()?.pacing?.averageDailyCredits ?? 0;
+    const days = catalog?.rechargeExpiryDays;
+    if (pack.kind !== 'recharge' || !catalog?.hasActivePaidSubscription) return null;
+    if (days === null || days === undefined || !Number.isFinite(average) || average <= 0) return null;
+    const unused = Math.round(pack.credits - average * Math.max(0, days));
+    return unused > 0 ? unused : null;
+  }
+
   async startCheckout(pack: CreditPackOffer): Promise<void> {
     if (!this.canPurchase()) return;
     if (!pack.eligible) {
