@@ -65,7 +65,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { whoCanUsePhrase } from '../../models/command.model';
 import { getRouteParam } from '../../shared/utils/route-param.util';
-import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { LfIconComponent, type LfIconName } from '../../shared/lf-icon/lf-icon.component';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -189,6 +189,8 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
 
   readonly canAddRule = computed(() => this.totalRuleCount() < this.maxRules);
 
+  readonly hasSpamScores = computed(() => this.decisions().some((decision) => this.spamScores(decision).length > 0));
+
   private lastLoadedChannelID = '';
 
   ngOnInit(): void {
@@ -283,6 +285,55 @@ export class ModerationPageComponent implements OnInit, OnDestroy {
         return 'lf-chip lf-chip--warn';
       default:
         return 'lf-chip lf-chip--muted';
+    }
+  }
+
+  /** Short "12 min ago" style label; the full timestamp stays in the title. */
+  relativeTime(value: string): string {
+    const time = new Date(value).getTime();
+    if (!value || Number.isNaN(time)) return '—';
+    const minutes = Math.max(0, Math.round((Date.now() - time) / 60_000));
+    if (minutes < 1) return this.t('moderation.time.now');
+    if (minutes < 60) return this.t('moderation.time.minutes', { n: minutes });
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return this.t('moderation.time.hours', { n: hours });
+    return new Date(value).toLocaleDateString(this.languageService.currentLanguage() === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric' });
+  }
+
+  /** One line under the rule name: what this rule is watching for. */
+  ruleDetail(rule: ModerationRule): string {
+    switch (rule.type) {
+      case 'links':
+        return rule.allowlistDomains.length
+          ? this.t('moderation.ruleDetail.linksAllowed', { n: rule.allowlistDomains.length })
+          : this.t('moderation.ruleDetail.linksAll');
+      case 'blacklist': {
+        const words = this.t('moderation.ruleDetail.words', { n: rule.terms.length });
+        return rule.semantic?.enabled ? `${words} · ${this.t('moderation.ruleDetail.ai')}` : words;
+      }
+      case 'caps':
+        return rule.capsThresholdMode === 'percentage'
+          ? this.t('moderation.ruleDetail.capsPercent', { n: rule.maxCapsPercentage })
+          : this.t('moderation.ruleDetail.capsCount', { n: rule.minCapsCount });
+      case 'emote_spam':
+        return this.t('moderation.ruleDetail.emotes', { n: rule.maxEmoteCount });
+      default:
+        return '';
+    }
+  }
+
+  actionIcon(action: ModerationAction): LfIconName {
+    switch (action) {
+      case 'ban':
+        return 'lock';
+      case 'timeout':
+        return 'timer';
+      case 'delete':
+        return 'close';
+      case 'warn':
+        return 'alert';
+      default:
+        return 'check';
     }
   }
 

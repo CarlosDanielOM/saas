@@ -1147,18 +1147,18 @@
   "moderation": {
     "spam": {
       "title": "Chat protection",
-      "free": "First message · Every plan",
-      "description": "Reviews each chatter’s first message Dima observes in this channel for your selected behaviors. Tracking continues across bot restarts.",
-      "action": "A selected behavior above the ban threshold results in an immediate ban only when its score exceeds the safe score. Uncertain reviews are allowed and logged. Protection is on by default and has its own switch, independent of the rule filter. Review limits apply.",
+      "free": "Every plan",
+      "description": "Checks each chatter's first message for the behaviors you pick, and bans clear spammers and scam bots right away.",
+      "action": "Bans only when a behavior scores above your ban confidence and above the safe score. Unsure cases are allowed and logged. Runs separately from your rules. Review limits apply.",
       "continuous": "Review subsequent messages",
       "paid": "Premium · Pro",
-      "continuousDescription": "Also review later messages for your selected behaviors. Available on Premium and Pro. Reviews continue with Span-1 Lite if AI credits run out.",
+      "continuousDescription": "Check every message, not just the first one. Falls back to Span-1 Lite if AI credits run out.",
       "firstDecision": "First-message protection",
       "continuousDecision": "Continuous chat protection",
       "categoriesTitle": "What to detect",
-      "categoriesHint": "Spam, ads and self-promotion are selected by default. Profanity and insults are optional. Selecting none stops these reviews. Your separate moderation rules still apply.",
+      "categoriesHint": "Spam, ads and self-promotion are on by default. Pick none to pause these checks; your rules still apply.",
       "exemptionsTitle": "Exempt roles",
-      "exemptionsHint": "Skip protection reviews for anyone with a selected role, on any plan. Applies to first and subsequent messages. Moderators, editors and channel admins are exempt by default. The broadcaster and bot are always excluded.",
+      "exemptionsHint": "People with these roles are never checked. Moderators, editors and channel admins are skipped by default; the broadcaster and the bot always are.",
       "exemptions": {
         "vip": "VIPs",
         "mod": "Moderators",
@@ -1167,8 +1167,8 @@
         "editor": "Editors",
         "admin": "Channel admins"
       },
-      "threshold": "Ban confidence (%)",
-      "thresholdHint": "Default: 85%. Premium and Pro can choose 80–100%. Higher values reduce automatic bans. A higher safe score always prevents a ban. Free plans use 85%.",
+      "threshold": "Ban confidence",
+      "thresholdHint": "Higher means fewer automatic bans. Default 85%; Premium and Pro can choose 80–100%.",
       "thresholdInvalid": "Ban confidence must be a number from 80 to 100.",
       "scoresHint": "These are independent behavior probabilities; they do not add up to 100%. Safe means none of your selected behaviors.",
       "categories": {
@@ -1179,44 +1179,33 @@
         "insults": "Insults",
         "safe": "Safe for selected categories"
       },
-      "modelHint": "Free accounts use Span-1 without AI credits. Premium and Pro use Jev for higher accuracy; each completed review uses credits, including first messages and uncertain verdicts. When credits run out or cannot be verified, paid accounts continue with Span-1 Lite, which can be less accurate on complex or ambiguous text.",
+      "modelHint": "Free uses Span-1 with no AI credits. Premium and Pro use the more accurate Jev, which uses AI credits for each review; if credits run out, it falls back to Span-1 Lite, which can be less accurate on complex or ambiguous text.",
       "reviewCredits": "AI credits used: {{credits}}",
       "noReviewCredits": "No AI credits used."
     },
-    "badge": "Chat filter",
     "title": "Chat Moderation",
-    "subtitle": "Stop spam, shouty messages, links, and words you do not want. You choose what happens the first time, the next time, and every time after that.",
+    "subtitle": "Keep spam, scams and unwanted messages out of your chat. Chat protection works on its own; add rules for anything else.",
     "backToModules": "Back to modules",
     "tabs": {
       "label": "Moderation sections",
-      "status": "Status",
+      "status": "Protection",
       "rules": "Rules",
       "logs": "Recent Actions",
       "decisions": "Decisions"
     },
-    "guide": {
-      "label": "How a filter works",
-      "on": "Turn the rule filter on to apply your configured rules. Chat protection has its own switch.",
-      "rule": "Add one rule, such as Links or Blocked words.",
-      "steps": "Set the first time, the second time, and what keeps happening after that. One hour is a good memory."
-    },
     "enabled": "Rule filter",
-    "enabledDescription": "Controls your configured moderation rules. Chat protection runs independently with its own switch.",
     "enabledDisabledNote": "Your configured rules are off. Chat protection follows its own switch.",
     "offenseWindow": "Forget warnings after",
     "offenseWindowUnit": "minutes",
     "status": {
-      "currentStatus": "Right now",
       "enabledChip": "On",
       "disabledChip": "Off",
-      "rulesCount": "Rules turned on",
-      "totalRules": "Rules you have",
-      "window": "Memory",
-      "windowHint": "If someone stays out of trouble this long, the bot starts them over at the first step. 60 minutes is a good start."
+      "windowHint": "If someone behaves for this long, their next offense counts as the first again. 60 minutes is a good start.",
+      "summary": "{{on}} of {{total}} rules on"
     },
     "rules": {
       "title": "Your rules",
-      "subtitle": "Each rule has three steps. The third step is what happens every time after that.",
+      "subtitle": "Your own filters. Each rule has three steps: the first time, the second time, and every time after.",
       "empty": "No rules yet. Add one to start filtering chat.",
       "addRule": "Add {{type}}",
       "remove": "Remove",
@@ -1231,7 +1220,9 @@
       "thirdOffenseHint": "This step repeats.",
       "timeoutSeconds": "How long they can't type",
       "action": "Action",
-      "maxReached": "You have reached the maximum of {{max}} rules."
+      "maxReached": "You have reached the maximum of {{max}} rules.",
+      "addTitle": "Add a rule",
+      "manage": "Manage rules ({{count}})"
     },
     "access": {
       "title": "Who skips this rule",
@@ -1247,7 +1238,11 @@
       "legacyWarning": "This older rule combines user level with tags. Choose user level or reset the tag rules before saving.",
       "chooseMethod": "Choose one exemption method for every legacy combined rule before saving.",
       "finishUsername": "Add or clear the typed Twitch username before saving.",
-      "state": { "neutral": "No rule", "allow": "Exempt", "exclude": "Rule applies" }
+      "state": {
+        "neutral": "No rule",
+        "allow": "Exempt",
+        "exclude": "Rule applies"
+      }
     },
     "types": {
       "caps": "Caps",
@@ -1285,7 +1280,7 @@
     },
     "logs": {
       "title": "Recent Actions",
-      "subtitle": "Moderation actions from the last 30 days.",
+      "subtitle": "What the bot did in the last 30 days.",
       "empty": "No moderation actions recorded yet.",
       "success": "Applied",
       "failed": "Failed",
@@ -1300,7 +1295,9 @@
     },
     "save": {
       "save": "Save Settings",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "unsaved": "Unsaved changes",
+      "allSaved": "All changes saved"
     },
     "states": {
       "loading": "Loading moderation settings..."
@@ -1375,7 +1372,7 @@
     },
     "decisions": {
       "title": "Moderation decisions",
-      "subtitle": "Matches, contextual decisions, and outcomes from the last 30 days. Records are retained internally for 180 days to improve moderation.",
+      "subtitle": "Matches and AI verdicts from the last 30 days. Kept internally for 180 days to improve moderation.",
       "refresh": "Refresh decisions",
       "empty": "No matching messages have been reviewed yet.",
       "error": "Could not load decisions. Try refreshing.",
@@ -1405,6 +1402,20 @@
         "plan_required": "Paid plan required",
         "policy_changed": "Rule changed during review"
       }
+    },
+    "time": {
+      "now": "just now",
+      "minutes": "{{n}} min ago",
+      "hours": "{{n}} h ago"
+    },
+    "ruleDetail": {
+      "linksAll": "Blocks every link",
+      "linksAllowed": "Allowed sites: {{n}}",
+      "words": "Words and phrases: {{n}}",
+      "ai": "AI review",
+      "capsCount": "{{n}}+ capital letters",
+      "capsPercent": "Over {{n}}% capitals",
+      "emotes": "More than {{n}} emotes"
     }
   },
   "analyticsHub": {

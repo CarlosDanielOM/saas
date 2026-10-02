@@ -1147,18 +1147,18 @@
   "moderation": {
     "spam": {
       "title": "Protección del chat",
-      "free": "Primer mensaje · Todos los planes",
-      "description": "Revisa el primer mensaje que Dima observa de cada participante en este canal para detectar las conductas seleccionadas. El seguimiento continúa tras reiniciar el bot.",
-      "action": "Una conducta seleccionada que supere el umbral provoca un baneo inmediato solo si su puntuación supera la de contenido seguro. Las revisiones dudosas se permiten y se registran. La protección está activada por defecto y tiene su propio interruptor, independiente del filtro de reglas. Se aplican límites de revisión.",
+      "free": "Todos los planes",
+      "description": "Revisa el primer mensaje de cada participante para detectar las conductas que elijas y banea al momento a los spammers y bots de estafas evidentes.",
+      "action": "Solo banea cuando una conducta supera tu confianza para banear y la puntuación de contenido seguro. Los casos dudosos se permiten y se registran. Funciona aparte de tus reglas. Se aplican límites de revisión.",
       "continuous": "Revisar los mensajes posteriores",
       "paid": "Premium · Pro",
-      "continuousDescription": "Revisa también los mensajes posteriores para detectar las conductas seleccionadas. Disponible en Premium y Pro. Las revisiones continúan con Span-1 Lite si se agotan los créditos de IA.",
+      "continuousDescription": "Revisa todos los mensajes, no solo el primero. Pasa a Span-1 Lite si se agotan los créditos de IA.",
       "firstDecision": "Protección del primer mensaje",
       "continuousDecision": "Protección continua del chat",
       "categoriesTitle": "Qué detectar",
-      "categoriesHint": "El spam, los anuncios y la autopromoción están seleccionados por defecto. Las palabrotas y los insultos son opcionales. Si no seleccionas ninguna categoría, estas revisiones se detienen. Tus otras reglas de moderación siguen vigentes.",
+      "categoriesHint": "El spam, los anuncios y la autopromoción están activados por defecto. Si no eliges ninguna, estas revisiones se pausan; tus reglas siguen vigentes.",
       "exemptionsTitle": "Roles exentos",
-      "exemptionsHint": "Omite las revisiones de protección para quienes tengan un rol seleccionado, en cualquier plan. Se aplica al primer mensaje y a los posteriores. Moderadores, editores y administradores del canal están exentos por defecto. El streamer y el bot siempre están excluidos.",
+      "exemptionsHint": "Las personas con estos roles nunca se revisan. Moderadores, editores y administradores del canal se omiten por defecto; el streamer y el bot, siempre.",
       "exemptions": {
         "vip": "VIPs",
         "mod": "Moderadores",
@@ -1167,8 +1167,8 @@
         "editor": "Editores",
         "admin": "Administradores del canal"
       },
-      "threshold": "Confianza para banear (%)",
-      "thresholdHint": "Por defecto: 85 %. Premium y Pro pueden elegir entre 80 y 100 %. Los valores altos reducen los baneos automáticos. Una puntuación segura superior siempre impide el baneo. Los planes gratis usan el 85 %.",
+      "threshold": "Confianza para banear",
+      "thresholdHint": "Más alto significa menos baneos automáticos. Por defecto 85 %; Premium y Pro pueden elegir entre 80 y 100 %.",
       "thresholdInvalid": "La confianza para banear debe ser un número entre 80 y 100.",
       "scoresHint": "Son probabilidades independientes; no suman el 100 %. Seguro significa que no aparece ninguna de las conductas seleccionadas.",
       "categories": {
@@ -1179,44 +1179,33 @@
         "insults": "Insultos",
         "safe": "Seguro para las categorías seleccionadas"
       },
-      "modelHint": "Las cuentas gratuitas usan Span-1 sin consumir créditos de IA. Premium y Pro usan Jev para mayor precisión; cada revisión completada consume créditos, incluidos los primeros mensajes y los resultados inciertos. Si los créditos se agotan o no se pueden verificar, las cuentas de pago continúan con Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
+      "modelHint": "El plan gratis usa Span-1 sin créditos de IA. Premium y Pro usan Jev, más preciso, que consume créditos de IA en cada revisión; si se agotan, pasa a Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
       "reviewCredits": "Créditos de IA consumidos: {{credits}}",
       "noReviewCredits": "Sin consumo de créditos de IA."
     },
-    "badge": "Filtro de chat",
     "title": "Moderación del Chat",
-    "subtitle": "Frena el spam, los mensajes a gritos, los enlaces y las palabras que no quieres. Tú eliges qué pasa la primera vez, la siguiente y cada vez después.",
+    "subtitle": "Mantén el spam, las estafas y los mensajes no deseados fuera de tu chat. La protección del chat funciona sola; añade reglas para todo lo demás.",
     "backToModules": "Volver a módulos",
     "tabs": {
       "label": "Secciones de moderación",
-      "status": "Estado",
+      "status": "Protección",
       "rules": "Reglas",
       "logs": "Acciones recientes",
       "decisions": "Decisiones"
     },
-    "guide": {
-      "label": "Cómo funciona un filtro",
-      "on": "Enciende el filtro de reglas para aplicar tus reglas configuradas. La protección del chat tiene su propio interruptor.",
-      "rule": "Añade una regla, como Enlaces o Palabras bloqueadas.",
-      "steps": "Elige la primera vez, la segunda y qué sigue pasando después. Una hora de memoria es un buen comienzo."
-    },
     "enabled": "Filtro de reglas",
-    "enabledDescription": "Controla tus reglas de moderación configuradas. La protección del chat funciona de forma independiente con su propio interruptor.",
     "enabledDisabledNote": "Tus reglas configuradas están apagadas. La protección del chat sigue su propio interruptor.",
     "offenseWindow": "Olvidar avisos después de",
     "offenseWindowUnit": "minutos",
     "status": {
-      "currentStatus": "Ahora",
       "enabledChip": "Encendido",
       "disabledChip": "Apagado",
-      "rulesCount": "Reglas encendidas",
-      "totalRules": "Reglas que tienes",
-      "window": "Memoria",
-      "windowHint": "Si alguien se porta bien durante este tiempo, el bot lo empieza de nuevo en el primer paso. 60 minutos es un buen comienzo."
+      "windowHint": "Si alguien se porta bien durante este tiempo, su siguiente infracción vuelve a contar como la primera. 60 minutos es un buen punto de partida.",
+      "summary": "{{on}} de {{total}} reglas activas"
     },
     "rules": {
       "title": "Tus reglas",
-      "subtitle": "Cada regla tiene tres pasos. El tercero es lo que pasa cada vez después.",
+      "subtitle": "Tus propios filtros. Cada regla tiene tres pasos: la primera vez, la segunda y cada vez después.",
       "empty": "Aún no hay reglas. Añade una para empezar a filtrar el chat.",
       "addRule": "Añadir {{type}}",
       "remove": "Quitar",
@@ -1231,7 +1220,9 @@
       "thirdOffenseHint": "Este paso se repite.",
       "timeoutSeconds": "Cuánto tiempo no pueden escribir",
       "action": "Acción",
-      "maxReached": "Has alcanzado el máximo de {{max}} reglas."
+      "maxReached": "Has alcanzado el máximo de {{max}} reglas.",
+      "addTitle": "Añadir una regla",
+      "manage": "Gestionar reglas ({{count}})"
     },
     "access": {
       "title": "Quién omite esta regla",
@@ -1247,7 +1238,11 @@
       "legacyWarning": "Esta regla antigua combina el nivel de usuario con etiquetas. Elige el nivel o restablece las etiquetas antes de guardar.",
       "chooseMethod": "Elige un método de exención para cada regla antigua combinada antes de guardar.",
       "finishUsername": "Añade o borra el usuario de Twitch escrito antes de guardar.",
-      "state": { "neutral": "Sin regla", "allow": "Exento", "exclude": "Se aplica la regla" }
+      "state": {
+        "neutral": "Sin regla",
+        "allow": "Exento",
+        "exclude": "Se aplica la regla"
+      }
     },
     "types": {
       "caps": "Mayúsculas",
@@ -1285,7 +1280,7 @@
     },
     "logs": {
       "title": "Acciones Recientes",
-      "subtitle": "Acciones de moderación de los últimos 30 días.",
+      "subtitle": "Lo que hizo el bot en los últimos 30 días.",
       "empty": "Aún no se han registrado acciones de moderación.",
       "success": "Aplicada",
       "failed": "Fallida",
@@ -1300,7 +1295,9 @@
     },
     "save": {
       "save": "Guardar Ajustes",
-      "saving": "Guardando..."
+      "saving": "Guardando...",
+      "unsaved": "Cambios sin guardar",
+      "allSaved": "Todo guardado"
     },
     "states": {
       "loading": "Cargando ajustes de moderación..."
@@ -1375,7 +1372,7 @@
     },
     "decisions": {
       "title": "Decisiones de moderación",
-      "subtitle": "Coincidencias, decisiones contextuales y resultados de los últimos 30 días. Los registros se conservan internamente durante 180 días para mejorar la moderación.",
+      "subtitle": "Coincidencias y veredictos de la IA de los últimos 30 días. Se conservan internamente durante 180 días para mejorar la moderación.",
       "refresh": "Actualizar decisiones",
       "empty": "Todavía no se han revisado mensajes coincidentes.",
       "error": "No se pudieron cargar las decisiones. Intenta actualizar.",
@@ -1405,6 +1402,20 @@
         "plan_required": "Requiere un plan de pago",
         "policy_changed": "La regla cambió durante la revisión"
       }
+    },
+    "time": {
+      "now": "ahora mismo",
+      "minutes": "hace {{n}} min",
+      "hours": "hace {{n}} h"
+    },
+    "ruleDetail": {
+      "linksAll": "Bloquea todos los enlaces",
+      "linksAllowed": "Sitios permitidos: {{n}}",
+      "words": "Palabras y frases: {{n}}",
+      "ai": "Revisión con IA",
+      "capsCount": "{{n}}+ mayúsculas",
+      "capsPercent": "Más del {{n}} % en mayúsculas",
+      "emotes": "Más de {{n}} emotes"
     }
   },
   "analyticsHub": {

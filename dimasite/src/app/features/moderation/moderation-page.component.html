@@ -1,38 +1,24 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <header class="lf-tile lf-head">
+    <header class="lf-head">
       <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('moderation.backToModules') }}</a>
-      <div class="lf-head__top">
-        <div class="lf-head__id">
-          <p class="lf-kicker">{{ t('moderation.badge') }}</p>
-          <div class="lf-head__title">
-            <h1 class="lf-title">{{ t('moderation.title') }}</h1>
-            <span class="lf-head__stream">{{ streamer() || '—' }}</span>
-          </div>
+      <div class="lf-head__row">
+        <div class="lf-head__copy">
+          <h1 class="lf-title">{{ t('moderation.title') }}</h1>
+          <p class="lf-copy">{{ t('moderation.subtitle') }}</p>
         </div>
-        @if (moderationActive()) {
-          <span class="lf-chip lf-chip--ok">{{ t('moderation.status.enabledChip') }}</span>
-        } @else {
-          <span class="lf-chip lf-chip--muted">{{ t('moderation.status.disabledChip') }}</span>
-        }
+        <div class="lf-head__chips">
+          @if (moderationActive()) {
+            <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span>{{ t('moderation.status.enabledChip') }}</span>
+          } @else {
+            <span class="lf-chip lf-chip--muted">{{ t('moderation.status.disabledChip') }}</span>
+          }
+          @if (settings()) {
+            <span class="lf-chip">{{ t('moderation.status.summary', { on: activeRuleCount(), total: totalRuleCount() }) }}</span>
+          }
+        </div>
       </div>
-      <p class="lf-copy lf-copy--tight">{{ t('moderation.subtitle') }}</p>
     </header>
-
-    <section class="lf-stats" [attr.aria-label]="t('moderation.status.currentStatus')">
-      <div class="lf-stat">
-        <strong>{{ activeRuleCount() }}</strong>
-        <span>{{ t('moderation.status.rulesCount') }}</span>
-      </div>
-      <div class="lf-stat">
-        <strong>{{ totalRuleCount() }}</strong>
-        <span>{{ t('moderation.status.totalRules') }}</span>
-      </div>
-      <div class="lf-stat">
-        <strong>{{ settings() ? formatDuration(settings()!.offenseWindowSeconds) : '—' }}</strong>
-        <span>{{ t('moderation.status.window') }}</span>
-      </div>
-    </section>
 
     @if (errorMessage()) {
       <div class="lf-banner lf-banner--error" role="alert">
@@ -93,16 +79,101 @@
       </nav>
 
       <div class="lf-panels">
-        <!-- Status -->
-        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'status'" [attr.aria-label]="t('moderation.tabs.status')">
-          <div class="lf-tile" [class.lf-tile--dim]="!cfg.enabled" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
-            <div class="lf-row-head">
-              <div>
-                <h2 class="lf-h2">{{ t('moderation.enabled') }}</h2>
-                <p class="lf-copy lf-copy--tight">{{ t('moderation.enabledDescription') }}</p>
-                @if (!cfg.enabled) {
-                  <p class="lf-note lf-note--warn">{{ t('moderation.enabledDisabledNote') }}</p>
+        <div class="lf-col lf-col--main">
+        <!-- Protection -->
+        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'status'" aria-labelledby="moderation-protection-title">
+          <div class="lf-tile lf-spam-protection" [class.lf-tile--dim]="cfg.spamProtection?.enabled === false" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="zap" [size]="20"></app-lf-icon></span>
+              <div class="lf-card-head__copy">
+                <h2 class="lf-h2" id="moderation-protection-title">
+                  {{ t('moderation.spam.title') }}
+                  <span class="lf-chip lf-chip--ok lf-chip--xs">{{ t('moderation.spam.free') }}</span>
+                </h2>
+                <p class="lf-copy lf-copy--tight">{{ t('moderation.spam.description') }}</p>
+              </div>
+              <label class="lf-switch">
+                <input type="checkbox" data-spam-toggle="enabled" [checked]="cfg.spamProtection?.enabled !== false"
+                  (change)="updateSpamProtection('enabled', $any($event.target).checked)"
+                  [disabled]="!canManage()" [attr.aria-label]="t('moderation.spam.title')" />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+
+            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
+              <legend>{{ t('moderation.spam.categoriesTitle') }}</legend>
+              <div class="lf-pills">
+                @for (category of spamCategories; track category) {
+                  <label class="lf-pill-check">
+                    <input type="checkbox" [attr.data-spam-category]="category" [checked]="spamCategoryEnabled(category)"
+                      (change)="updateSpamCategory(category, $any($event.target).checked)" />
+                    <span>{{ t('moderation.spam.categories.' + category) }}</span>
+                  </label>
                 }
+              </div>
+              <p class="lf-note">{{ t('moderation.spam.categoriesHint') }}</p>
+            </fieldset>
+
+            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
+              <legend>{{ t('moderation.spam.exemptionsTitle') }}</legend>
+              <div class="lf-pills">
+                @for (tag of spamExemptTags; track tag) {
+                  <label class="lf-pill-check">
+                    <input type="checkbox" [attr.data-spam-exempt]="tag" [checked]="spamTagExempt(tag)"
+                      (change)="updateSpamExemption(tag, $any($event.target).checked)" />
+                    <span>{{ t('moderation.spam.exemptions.' + tag) }}</span>
+                  </label>
+                }
+              </div>
+              <p class="lf-note">{{ t('moderation.spam.exemptionsHint') }}</p>
+            </fieldset>
+
+            <div class="lf-paid" [class.lf-paid--locked]="!hasPaidModeration()">
+              <span class="lf-chip lf-chip--gold lf-chip--xs lf-paid__tag">
+                @if (!hasPaidModeration()) {
+                  <app-lf-icon name="lock" [size]="12"></app-lf-icon>
+                }
+                {{ t('moderation.spam.paid') }}
+              </span>
+              <div class="lf-paid__row">
+                <div class="lf-paid__text">
+                  <h3 class="lf-h3">{{ t('moderation.spam.continuous') }}</h3>
+                  <p class="lf-note">{{ t('moderation.spam.continuousDescription') }}</p>
+                </div>
+                <label class="lf-switch">
+                  <input type="checkbox" data-spam-toggle="continuous" [checked]="hasPaidModeration() && cfg.spamProtection?.reviewAllMessages === true"
+                    (change)="updateSpamProtection('reviewAllMessages', $any($event.target).checked)"
+                    [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false"
+                    [attr.aria-label]="t('moderation.spam.continuous')" />
+                  <span class="lf-switch__track" aria-hidden="true"></span>
+                </label>
+              </div>
+              <div class="lf-paid__row">
+                <div class="lf-paid__text">
+                  <label class="lf-h3" for="moderation-spam-threshold">{{ t('moderation.spam.threshold') }}</label>
+                  <p class="lf-note">{{ t('moderation.spam.thresholdHint') }}</p>
+                </div>
+                <span class="lf-number">
+                  <input id="moderation-spam-threshold" type="number" data-spam-threshold min="80" max="100" step="any"
+                    [value]="hasPaidModeration() ? (cfg.spamProtection?.thresholdPercent ?? 85) : 85"
+                    (input)="updateSpamThreshold($any($event.target).value)"
+                    [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false" />
+                  <span aria-hidden="true">%</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="lf-howto">
+              <p class="lf-note"><app-lf-icon name="check" [size]="14"></app-lf-icon> <span>{{ t('moderation.spam.action') }}</span></p>
+              <p class="lf-note" data-moderation-model-note><app-lf-icon name="zap" [size]="14"></app-lf-icon> <span>{{ t('moderation.spam.modelHint') }}</span></p>
+            </div>
+          </div>
+          <div class="lf-tile lf-rules-head" [class.lf-tile--dim]="!cfg.enabled">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon lf-card-head__icon--rules" aria-hidden="true"><app-lf-icon name="list" [size]="20"></app-lf-icon></span>
+              <div class="lf-card-head__copy">
+                <h2 class="lf-h2">{{ t('moderation.rules.title') }}</h2>
+                <p class="lf-copy lf-copy--tight">{{ t('moderation.rules.subtitle') }}</p>
               </div>
               <label class="lf-switch">
                 <input
@@ -115,90 +186,30 @@
                 <span class="lf-switch__track" aria-hidden="true"></span>
               </label>
             </div>
-            <label class="lf-field lf-field--narrow">
-              <span>{{ t('moderation.offenseWindow') }}</span>
-              <input
-                type="number"
-                min="1"
-                max="1440"
-                [value]="offenseWindowMinutes(cfg.offenseWindowSeconds)"
-                (change)="updateOffenseWindowMinutes($any($event.target).value)"
-                [disabled]="!canManage()"
-              />
-              <small>{{ t('moderation.offenseWindowUnit') }}. {{ t('moderation.status.windowHint') }}</small>
-            </label>
+            @if (!cfg.enabled) {
+              <p class="lf-note lf-note--warn">{{ t('moderation.enabledDisabledNote') }}</p>
+            }
+            <div class="lf-memory">
+              <label for="moderation-offense-window">{{ t('moderation.offenseWindow') }}</label>
+              <span class="lf-number">
+                <input
+                  id="moderation-offense-window"
+                  type="number"
+                  min="1"
+                  max="1440"
+                  [value]="offenseWindowMinutes(cfg.offenseWindowSeconds)"
+                  (change)="updateOffenseWindowMinutes($any($event.target).value)"
+                  [disabled]="!canManage()"
+                />
+                <span aria-hidden="true">{{ t('moderation.offenseWindowUnit') }}</span>
+              </span>
+              <p class="lf-note">{{ t('moderation.status.windowHint') }}</p>
+            </div>
+            <button type="button" class="lf-btn lf-btn--compact lf-rules-head__manage" (click)="mobileTab.set('rules')">
+              {{ t('moderation.rules.manage', { count: totalRuleCount() }) }} <app-lf-icon name="forward" [size]="14"></app-lf-icon>
+            </button>
           </div>
 
-          <div class="lf-tile lf-spam-protection" [attr.inert]="savingSettings() || generatingRule() ? '' : null">
-            <div class="lf-row-head">
-              <div>
-                <h2 class="lf-h2">{{ t('moderation.spam.title') }}</h2>
-                <span class="lf-chip lf-chip--ok">{{ t('moderation.spam.free') }}</span>
-              </div>
-              <label class="lf-switch">
-                <input type="checkbox" data-spam-toggle="enabled" [checked]="cfg.spamProtection?.enabled !== false"
-                  (change)="updateSpamProtection('enabled', $any($event.target).checked)"
-                  [disabled]="!canManage()" [attr.aria-label]="t('moderation.spam.title')" />
-                <span class="lf-switch__track" aria-hidden="true"></span>
-              </label>
-            </div>
-            <p class="lf-copy">{{ t('moderation.spam.description') }}</p>
-            <p class="lf-note">{{ t('moderation.spam.action') }}</p>
-            <p class="lf-note" data-moderation-model-note>{{ t('moderation.spam.modelHint') }}</p>
-            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
-              <legend>{{ t('moderation.spam.categoriesTitle') }}</legend>
-              @for (category of spamCategories; track category) {
-                <label class="check-option">
-                  <input type="checkbox" [attr.data-spam-category]="category" [checked]="spamCategoryEnabled(category)"
-                    (change)="updateSpamCategory(category, $any($event.target).checked)" />
-                  <span>{{ t('moderation.spam.categories.' + category) }}</span>
-                </label>
-              }
-            </fieldset>
-            <p class="lf-note">{{ t('moderation.spam.categoriesHint') }}</p>
-            <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
-              <legend>{{ t('moderation.spam.exemptionsTitle') }}</legend>
-              @for (tag of spamExemptTags; track tag) {
-                <label class="check-option">
-                  <input type="checkbox" [attr.data-spam-exempt]="tag" [checked]="spamTagExempt(tag)"
-                    (change)="updateSpamExemption(tag, $any($event.target).checked)" />
-                  <span>{{ t('moderation.spam.exemptions.' + tag) }}</span>
-                </label>
-              }
-            </fieldset>
-            <p class="lf-note">{{ t('moderation.spam.exemptionsHint') }}</p>
-            <label class="lf-field lf-field--narrow">
-              <span>{{ t('moderation.spam.threshold') }} · {{ t('moderation.spam.paid') }}</span>
-              <input type="number" data-spam-threshold min="80" max="100" step="any"
-                [value]="hasPaidModeration() ? (cfg.spamProtection?.thresholdPercent ?? 85) : 85"
-                (input)="updateSpamThreshold($any($event.target).value)"
-                [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false" />
-            </label>
-            <p class="lf-note">{{ t('moderation.spam.thresholdHint') }}</p>
-            <div class="lf-row-head">
-              <div>
-                <h3 class="lf-h3">{{ t('moderation.spam.continuous') }}</h3>
-                <span class="lf-chip lf-chip--gold">{{ t('moderation.spam.paid') }}</span>
-              </div>
-              <label class="lf-switch">
-                <input type="checkbox" data-spam-toggle="continuous" [checked]="hasPaidModeration() && cfg.spamProtection?.reviewAllMessages === true"
-                  (change)="updateSpamProtection('reviewAllMessages', $any($event.target).checked)"
-                  [disabled]="!canManage() || !hasPaidModeration() || cfg.spamProtection?.enabled === false"
-                  [attr.aria-label]="t('moderation.spam.continuous')" />
-                <span class="lf-switch__track" aria-hidden="true"></span>
-              </label>
-            </div>
-            <p class="lf-note">{{ t('moderation.spam.continuousDescription') }}</p>
-          </div>
-
-          <div class="lf-tile">
-            <p class="lf-kicker">{{ t('moderation.guide.label') }}</p>
-            <ol class="lf-guide">
-              <li><span>1</span><p>{{ t('moderation.guide.on') }}</p></li>
-              <li><span>2</span><p>{{ t('moderation.guide.rule') }}</p></li>
-              <li><span>3</span><p>{{ t('moderation.guide.steps') }}</p></li>
-            </ol>
-          </div>
         </section>
 
         <!-- Rules -->
@@ -208,22 +219,12 @@
           [attr.aria-label]="t('moderation.rules.title')"
           [attr.inert]="savingSettings() || generatingRule() ? '' : null"
         >
-          <div class="lf-section__head">
-            <h2 class="lf-h2">{{ t('moderation.rules.title') }}</h2>
-            <p class="lf-copy lf-copy--tight">{{ t('moderation.rules.subtitle') }}</p>
+          <div class="lf-rules-intro">
+            <p class="lf-section__hint">{{ t('moderation.rules.subtitle') }}</p>
+            @if (!cfg.enabled) {
+              <p class="lf-note lf-note--warn">{{ t('moderation.enabledDisabledNote') }}</p>
+            }
           </div>
-
-          @if (canManage() && canAddRule()) {
-            <div class="lf-add-row">
-              @for (type of ruleTypes; track type) {
-                <button type="button" class="lf-btn lf-btn--compact" (click)="addRule(type)">
-                  + {{ t('moderation.rules.addRule', { type: ruleTypeLabel(type) }) }}
-                </button>
-              }
-            </div>
-          } @else if (canManage()) {
-            <p class="lf-note">{{ t('moderation.rules.maxReached', { max: maxRules }) }}</p>
-          }
 
           @if (cfg.rules.length === 0) {
             <div class="lf-tile lf-empty">{{ t('moderation.rules.empty') }}</div>
@@ -243,7 +244,10 @@
                       [attr.aria-controls]="'rule-body-' + rule.id"
                       (click)="toggleRule(rule, cfg.rules.length)"
                     >
-                      <span class="lf-chip lf-chip--accent">{{ ruleTypeLabel(rule.type) }}</span>
+                      <span class="lf-rule__title">
+                        <span class="lf-rule__name">{{ ruleTypeLabel(rule.type) }}</span>
+                        <span class="lf-rule__detail">{{ ruleDetail(rule) }}</span>
+                      </span>
                       <span class="lf-rule__flow">{{ ruleSummary(rule) }}</span>
                       <span class="lf-rule__chev" aria-hidden="true">▾</span>
                     </button>
@@ -738,15 +742,31 @@
               }
             </div>
           }
+          @if (canManage() && canAddRule()) {
+            <div class="lf-add">
+              <p class="lf-add__label">{{ t('moderation.rules.addTitle') }}</p>
+              <div class="lf-add-row">
+                @for (type of ruleTypes; track type) {
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="addRule(type)">
+                    <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ ruleTypeLabel(type) }}
+                  </button>
+                }
+              </div>
+            </div>
+          } @else if (canManage()) {
+            <p class="lf-note">{{ t('moderation.rules.maxReached', { max: maxRules }) }}</p>
+          }
         </section>
+        </div>
 
+        <div class="lf-col lf-col--side">
         <!-- Logs -->
-        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'logs'" [attr.aria-label]="t('moderation.logs.title')">
+        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'logs'" aria-labelledby="moderation-logs-title">
           <div class="lf-section__head">
-            <h2 class="lf-h2">{{ t('moderation.logs.title') }}</h2>
-            <p class="lf-copy lf-copy--tight">{{ t('moderation.logs.subtitle') }}</p>
+            <h2 class="lf-h2" id="moderation-logs-title">{{ t('moderation.logs.title') }}</h2>
+            <p class="lf-section__hint">{{ t('moderation.logs.subtitle') }}</p>
           </div>
-          <div class="lf-tile">
+          <div class="lf-tile lf-feed">
             @if (logsLoading() && logs().length === 0) {
               <div class="lf-empty">{{ t('common.loading') }}</div>
             } @else if (logs().length === 0) {
@@ -754,18 +774,20 @@
             } @else {
               <ul class="lf-list">
                 @for (log of logs(); track log._id ?? (log.createdAt + log.userID)) {
-                  <li class="lf-log">
-                    <span class="lf-log__user">{{ log.username || log.userID }}</span>
-                    <span class="lf-log__meta">
-                      {{ ruleTypeLabel(log.ruleType, log.ruleID) }} · #{{ log.offenseNumber }} · {{ formatTimestamp(log.createdAt) }}
+                  <li class="lf-log" [class.lf-log--failed]="!log.success">
+                    <span class="lf-log__icon" [attr.data-action]="log.action" aria-hidden="true"><app-lf-icon [name]="actionIcon(log.action)" [size]="15"></app-lf-icon></span>
+                    <span class="lf-log__main">
+                      <span class="lf-log__user">{{ log.username || log.userID }}</span>
+                      <span class="lf-log__meta">
+                        {{ ruleTypeLabel(log.ruleType, log.ruleID) }} · #{{ log.offenseNumber }} ·
+                        <time [attr.datetime]="log.createdAt" [attr.title]="formatTimestamp(log.createdAt)">{{ relativeTime(log.createdAt) }}</time>
+                      </span>
                     </span>
                     <span class="lf-log__side">
                       <span [class]="actionChipClass(log.action)">{{ actionLabel(log.action) }}</span>
-                      @if (log.success) {
-                        <span class="lf-chip lf-chip--ok">{{ t('moderation.logs.success') }}</span>
-                      } @else {
-                        <span class="lf-chip lf-chip--danger">{{ t('moderation.logs.failed') }}</span>
-                      }
+                      <span class="lf-log__result" [class.lf-log__result--failed]="!log.success">
+                        {{ log.success ? t('moderation.logs.success') : t('moderation.logs.failed') }}
+                      </span>
                     </span>
                   </li>
                 }
@@ -776,15 +798,17 @@
                     type="button"
                     class="lf-btn lf-btn--compact"
                     [disabled]="logsPagination().page <= 1"
+                    [attr.aria-label]="t('common.previous')"
                     (click)="goToLogsPage(logsPagination().page - 1)"
                   >
-                    {{ t('common.previous') }}
+                    <app-lf-icon name="back" [size]="14"></app-lf-icon>
                   </button>
                   @for (page of getLogsPageNumbers(); track page) {
                     <button
                       type="button"
                       class="lf-btn lf-btn--compact"
                       [class.lf-btn--active]="page === logsPagination().page"
+                      [attr.aria-current]="page === logsPagination().page ? 'page' : null"
                       (click)="goToLogsPage(page)"
                     >
                       {{ page }}
@@ -794,9 +818,10 @@
                     type="button"
                     class="lf-btn lf-btn--compact"
                     [disabled]="logsPagination().page >= totalLogsPages()"
+                    [attr.aria-label]="t('common.next')"
                     (click)="goToLogsPage(logsPagination().page + 1)"
                   >
-                    {{ t('common.next') }}
+                    <app-lf-icon name="forward" [size]="14"></app-lf-icon>
                   </button>
                 </div>
               }
@@ -805,64 +830,80 @@
         </section>
 
         <!-- Decisions -->
-        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'decisions'" [attr.aria-label]="t('moderation.decisions.title')">
+        <section class="lf-panel" [class.lf-panel--active]="mobileTab() === 'decisions'" aria-labelledby="moderation-decisions-title">
           <div class="lf-section__head lf-section__head--row">
             <div>
-              <h2 class="lf-h2">{{ t('moderation.decisions.title') }}</h2>
-              <p class="lf-copy lf-copy--tight">{{ t('moderation.decisions.subtitle') }}</p>
+              <h2 class="lf-h2" id="moderation-decisions-title">{{ t('moderation.decisions.title') }}</h2>
+              <p class="lf-section__hint">{{ t('moderation.decisions.subtitle') }}</p>
             </div>
-            <button type="button" class="lf-btn lf-btn--compact" (click)="loadDecisions()" [disabled]="decisionsLoading()">{{ t('moderation.decisions.refresh') }}</button>
+            <button type="button" class="lf-icon-btn" (click)="loadDecisions()" [disabled]="decisionsLoading()"
+              [attr.aria-label]="t('moderation.decisions.refresh')" [attr.title]="t('moderation.decisions.refresh')">
+              <app-lf-icon name="refresh" [size]="16"></app-lf-icon>
+            </button>
           </div>
-          <div class="lf-tile">
+          <div class="lf-tile lf-feed">
             @if (decisionsError()) {
               <p role="alert" class="lf-note lf-note--warn">{{ t('moderation.decisions.error') }}</p>
             } @else if (decisionsLoading()) {
-              <p class="lf-note" role="status">{{ t('common.loading') }}</p>
+              <p class="lf-empty" role="status">{{ t('common.loading') }}</p>
             } @else if (!decisions().length) {
-              <p class="lf-note">{{ t('moderation.decisions.empty') }}</p>
+              <p class="lf-empty">{{ t('moderation.decisions.empty') }}</p>
             } @else {
               <div class="lf-list">
                 @for (decision of decisions(); track decision._id) {
-                  <article class="lf-decision">
-                    <div class="lf-row-head">
-                      <strong>{{ decision.username }}</strong>
-                      <span class="lf-chip" [class.lf-chip--danger]="decision.verdict === 'violation'" [class.lf-chip--ok]="decision.verdict === 'allow'">
+                  <article class="lf-decision" [attr.data-verdict]="decision.verdict">
+                    <div class="lf-decision__head">
+                      <strong class="lf-decision__user">{{ decision.username }}</strong>
+                      <time class="lf-decision__time" [attr.datetime]="decision.createdAt" [attr.title]="formatTimestamp(decision.createdAt)">{{ relativeTime(decision.createdAt) }}</time>
+                      <span class="lf-chip lf-chip--xs" [class.lf-chip--danger]="decision.verdict === 'violation'" [class.lf-chip--ok]="decision.verdict === 'allow'">
                         {{ t('moderation.decisions.verdicts.' + decision.verdict) }}
                       </span>
                     </div>
                     <p class="lf-decision__message">{{ decision.messageText }}</p>
-                    @if (decision.reviewSource === 'first_message' || decision.reviewSource === 'spam_continuous') {
-                      <p class="lf-note">{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</p>
-                    }
-                    <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
-                    @if (decision.mode === 'semantic') {
-                      <p class="lf-note" data-moderation-credits>{{ decision.charge.credits ? t('moderation.spam.reviewCredits', { credits: decision.charge.credits }) : t('moderation.spam.noReviewCredits') }}</p>
-                    }
-                    @for (score of spamScores(decision); track score.category) {
-                      <p class="lf-note lf-spam-score">{{ t('moderation.spam.categories.' + score.category) }}: {{ (score.score * 100).toFixed(1) }}%</p>
-                    }
                     @if (spamScores(decision).length) {
-                      <p class="lf-note">{{ t('moderation.spam.scoresHint') }}</p>
+                      <ul class="lf-scores">
+                        @for (score of spamScores(decision); track score.category) {
+                          <li class="lf-spam-score" [class.lf-spam-score--safe]="score.category === 'safe'">
+                            <span class="lf-spam-score__label">{{ t('moderation.spam.categories.' + score.category) }}</span>
+                            <span class="lf-spam-score__bar" aria-hidden="true"><span [style.width.%]="score.score * 100"></span></span>
+                            <span class="lf-spam-score__value">{{ (score.score * 100).toFixed(1) }}%</span>
+                          </li>
+                        }
+                      </ul>
+                    } @else if (decision.scores?.violation !== undefined) {
+                      <p class="lf-note">{{ t('moderation.advanced.modelScore') }}: <strong>{{ ((decision.scores?.violation ?? 0) * 100).toFixed(1) }}%</strong></p>
                     }
-                    @if (!spamScores(decision).length && decision.scores?.violation !== undefined) {
-                      <p class="lf-note">{{ t('moderation.advanced.modelScore') }}: {{ ((decision.scores?.violation ?? 0) * 100).toFixed(1) }}%</p>
-                    }
-                    @if (decision.consequence.action) {
-                      <p class="lf-note">{{ actionLabel(decision.consequence.action) }} · #{{ decision.consequence.offenseNumber }} · {{ t(decision.consequence.success === undefined ? 'moderation.decisions.pendingAction' : decision.consequence.success ? 'moderation.logs.success' : 'moderation.logs.failed') }}</p>
-                    } @else {
-                      <p class="lf-note">{{ t('moderation.decisions.noOffense') }}</p>
-                    }
+                    <p class="lf-decision__meta">
+                      @if (decision.reviewSource === 'first_message' || decision.reviewSource === 'spam_continuous') {
+                        <span>{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</span>
+                      } @else {
+                        <span>{{ t('moderation.decisions.modes.' + decision.mode) }}</span>
+                      }
+                      @if (decision.consequence.action) {
+                        <span class="lf-decision__outcome">{{ actionLabel(decision.consequence.action) }} · #{{ decision.consequence.offenseNumber }} · {{ t(decision.consequence.success === undefined ? 'moderation.decisions.pendingAction' : decision.consequence.success ? 'moderation.logs.success' : 'moderation.logs.failed') }}</span>
+                      } @else {
+                        <span>{{ t('moderation.decisions.noOffense') }}</span>
+                      }
+                      @if (decision.mode === 'semantic') {
+                        <span data-moderation-credits>{{ decision.charge.credits ? t('moderation.spam.reviewCredits', { credits: decision.charge.credits }) : t('moderation.spam.noReviewCredits') }}</span>
+                      }
+                      <span>{{ decisionStatus(decision.status) }}</span>
+                    </p>
                   </article>
                 }
               </div>
+              @if (hasSpamScores()) {
+                <p class="lf-note lf-feed__foot">{{ t('moderation.spam.scoresHint') }}</p>
+              }
               <div class="lf-pager">
-                <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page <= 1" (click)="goToDecisionsPage(decisionsPagination().page - 1)">{{ t('common.previous') }}</button>
-                <span>{{ decisionsPagination().page }}</span>
-                <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page * decisionsPagination().limit >= decisionsPagination().total" (click)="goToDecisionsPage(decisionsPagination().page + 1)">{{ t('common.next') }}</button>
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page <= 1" [attr.aria-label]="t('common.previous')" (click)="goToDecisionsPage(decisionsPagination().page - 1)"><app-lf-icon name="back" [size]="14"></app-lf-icon></button>
+                <span class="lf-pager__page">{{ decisionsPagination().page }}</span>
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="decisionsPagination().page * decisionsPagination().limit >= decisionsPagination().total" [attr.aria-label]="t('common.next')" (click)="goToDecisionsPage(decisionsPagination().page + 1)"><app-lf-icon name="forward" [size]="14"></app-lf-icon></button>
               </div>
             }
           </div>
         </section>
+        </div>
       </div>
 
       @if (generatingRule()) {
@@ -870,7 +911,18 @@
       }
 
       @if (canManage()) {
-        <div class="lf-save-bar">
+        <div class="lf-save-bar" [class.lf-save-bar--dirty]="settingsDirty()">
+          <p class="lf-save-bar__status" role="status">
+            @if (generatingRule()) {
+              {{ t('moderation.variations.generating') }}
+            } @else if (savingSettings()) {
+              {{ t('moderation.save.saving') }}
+            } @else if (settingsDirty()) {
+              <span class="lf-dot lf-dot--warn" aria-hidden="true"></span> {{ t('moderation.save.unsaved') }}
+            } @else {
+              <app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('moderation.save.allSaved') }}
+            }
+          </p>
           <button
             type="button"
             class="lf-btn lf-btn--primary"

@@ -165,7 +165,7 @@ try {
     assert.equal(await visibleCount(host.locator('.lf-panel')), 1, 'one panel at a time on mobile');
 
     const active = host.locator('.lf-panel--active');
-    assert.match(await active.innerText(), /Filter chat/, 'status panel first');
+    assert.match(await active.innerText(), /Chat protection/, 'status panel first');
     const save = host.locator('.lf-save-bar button');
     assert.equal(await save.isDisabled(), true, 'save disabled before edits');
     await active.locator('.lf-switch input').first().click();
