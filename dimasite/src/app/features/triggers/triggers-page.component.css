@@ -395,7 +395,7 @@ code,
 
 .lf-url-input,
 .lf-search,
-.lf-field input,
+.lf-field input:not([type='range']),
 .lf-field textarea {
   min-width: 0;
   min-height: 42px;
@@ -417,7 +417,7 @@ code,
 
 .lf-url-input:focus,
 .lf-search:focus,
-.lf-field input:focus,
+.lf-field input:not([type='range']):focus,
 .lf-field textarea:focus {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -1053,9 +1053,74 @@ button.lf-thumb:not(:disabled):hover {
 }
 
 .lf-range {
+  --pct: 0;
+  --thumb: 1.4rem;
   width: 100%;
-  min-height: 42px;
-  accent-color: #7c3aed;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Fill ends at the thumb centre, so 0% and 100% sit flush with the ends. */
+.lf-range::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c3aed 0 calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--pct)),
+    color-mix(in srgb, var(--fg) 16%, transparent) 0);
+}
+
+.lf-range::-webkit-slider-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc((0.5rem - var(--thumb)) / 2);
+  border: 3px solid #7c3aed;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.lf-range::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.lf-range::-moz-range-progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #7c3aed;
+}
+
+.lf-range::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  box-sizing: border-box;
+  border: 3px solid #7c3aed;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.lf-range:focus-visible {
+  outline: none;
+}
+
+.lf-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 6px var(--accent);
+}
+
+.lf-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 0 6px var(--accent);
+}
+
+.lf-range:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .lf-command-hint {

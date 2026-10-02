@@ -368,7 +368,7 @@
             </label>
             <label class="lf-field">
               <span class="lf-label">{{ t('triggers.volume') }} <strong class="lf-label__value">{{ triggerForm().volume }}%</strong></span>
-              <input type="range" class="lf-range" min="0" max="100" [value]="triggerForm().volume"
+              <input type="range" class="lf-range" min="0" max="100" [value]="triggerForm().volume" [style.--pct]="triggerForm().volume / 100"
                 [attr.aria-valuetext]="triggerForm().volume + '%'"
                 (input)="updateTriggerForm('volume', $any($event.target).value)" />
             </label>
