@@ -18,17 +18,18 @@ import {
   MediaType
 } from '../triggers.model';
 import { TriggersService } from '../triggers.service';
-import { DisplayNamePipe } from '../../../pipes/display-name.pipe';
 import {
-  Eye,
+  Check,
   Image as ImageIcon,
-  LayoutGrid,
-  List,
   LucideAngularModule,
   Music,
+  Pause,
   Play,
+  Plus,
   RefreshCw,
+  Search,
   X,
+  Zap,
   type LucideIconData
 } from 'lucide-angular';
 
@@ -36,7 +37,7 @@ type MediaFilter = 'all' | MediaType;
 
 @Component({
   selector: 'app-public-library-modal',
-  imports: [DisplayNamePipe, LucideAngularModule],
+  imports: [LucideAngularModule],
   styleUrl: './public-library-modal.component.css',
   templateUrl: './public-library-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,6 +59,8 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   readonly close = output<void>();
   readonly assetAdded = output<MediaLibraryMutationResult>();
+  /** Asset ID of an added, trigger-ready asset the streamer wants to turn into a trigger. */
+  readonly createTrigger = output<string>();
 
   readonly assets = signal<MediaAsset[]>([]);
   readonly isLoading = signal(true);
@@ -65,9 +68,8 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   readonly searchQuery = signal('');
   readonly mediaFilter = signal<MediaFilter>('all');
   readonly addingAssetIds = signal<string[]>([]);
-  readonly modalViewMode = signal<'grid' | 'list'>('grid');
   readonly activePreviewAsset = signal<MediaAsset | null>(null);
-  readonly isAudioPlaying = signal(false);
+  readonly playingId = signal<string | null>(null);
   private previewAudio: HTMLAudioElement | null = null;
 
   readonly filterOptions: MediaFilter[] = ['all', 'video', 'audio', 'image', 'gif'];
@@ -90,36 +92,31 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
   }
 
   requestClose(): void {
+    // Escape closes the media preview first, then the library.
+    if (this.activePreviewAsset()) {
+      this.closePreviewModal();
+      return;
+    }
     this.close.emit();
   }
 
-  openPreviewModal(event: MouseEvent, asset: MediaAsset): void {
+  /** Audio plays inline in its row; video and images open the preview dialog. */
+  previewAsset(event: MouseEvent, asset: MediaAsset): void {
     event.stopPropagation();
+    if (asset.mediaType !== 'audio') {
+      this.stopPreview();
+      this.activePreviewAsset.set(asset);
+      return;
+    }
+    const wasPlaying = this.playingId() === asset._id;
     this.stopPreview();
-    this.activePreviewAsset.set(asset);
-    if (asset.mediaType === 'audio' && asset.playbackUrl) {
-      this.playAudioPreview(asset.playbackUrl);
+    if (!wasPlaying && asset.playbackUrl) {
+      this.playAudioPreview(asset);
     }
   }
 
   closePreviewModal(): void {
-    this.stopPreview();
     this.activePreviewAsset.set(null);
-  }
-
-  toggleAudioPlayPause(): void {
-    if (!this.previewAudio) {
-      const asset = this.activePreviewAsset();
-      if (asset && asset.playbackUrl) {
-        this.playAudioPreview(asset.playbackUrl);
-      }
-      return;
-    }
-    if (this.previewAudio.paused) {
-      this.previewAudio.play();
-    } else {
-      this.previewAudio.pause();
-    }
   }
 
   stopPreview(): void {
@@ -127,29 +124,34 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
       this.previewAudio.pause();
       this.previewAudio = null;
     }
-    this.isAudioPlaying.set(false);
+    this.playingId.set(null);
   }
 
-  private playAudioPreview(url: string): void {
-    try {
-      this.previewAudio = new Audio(url);
-      this.previewAudio.volume = 0.5;
-      this.previewAudio.addEventListener('play', () => this.isAudioPlaying.set(true));
-      this.previewAudio.addEventListener('pause', () => this.isAudioPlaying.set(false));
-      this.previewAudio.addEventListener('ended', () => {
-        this.isAudioPlaying.set(false);
+  private playAudioPreview(asset: MediaAsset): void {
+    const audio = new Audio(asset.playbackUrl);
+    audio.volume = 0.5;
+    const stop = () => {
+      if (this.previewAudio === audio) {
         this.previewAudio = null;
-      });
-      this.previewAudio.addEventListener('error', () => {
-        this.isAudioPlaying.set(false);
-        this.previewAudio = null;
-        this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
-      });
-      this.previewAudio.play();
-    } catch {
-      this.isAudioPlaying.set(false);
-      this.toastService.error(this.t('triggers.marketplace.errorTitle'), 'Failed to play audio asset.');
-    }
+        this.playingId.set(null);
+      }
+    };
+    audio.addEventListener('ended', stop);
+    audio.addEventListener('error', () => {
+      stop();
+      this.toastService.error(this.t('triggers.marketplace.errorTitle'), this.t('triggers.marketplace.playError'));
+    });
+    this.previewAudio = audio;
+    this.playingId.set(asset._id);
+    audio.play().catch(() => stop());
+  }
+
+  displayName(asset: MediaAsset): string {
+    return (asset.displayName || asset.fileName || '').replace(/_+/g, ' ').trim();
+  }
+
+  isTriggerReady(asset: MediaAsset): boolean {
+    return asset.mediaType === 'audio' || asset.mediaType === 'video';
   }
 
   refreshAssets(): void {
@@ -204,9 +206,11 @@ export class PublicLibraryModalComponent implements OnInit, OnDestroy {
 
   readonly closeIcon = X;
   readonly refreshIcon = RefreshCw;
-  readonly previewIcon = Eye;
-  readonly gridIcon = LayoutGrid;
-  readonly listIcon = List;
+  readonly checkIcon = Check;
+  readonly pauseIcon = Pause;
+  readonly plusIcon = Plus;
+  readonly searchIcon = Search;
+  readonly zapIcon = Zap;
 
   private readonly mediaIcons: Record<string, LucideIconData> = {
     audio: Music,

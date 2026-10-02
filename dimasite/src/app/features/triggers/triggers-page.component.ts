@@ -414,8 +414,8 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // The public library handles its own Escape (preview first, then the dialog).
     if (this.isPublicLibraryModalOpen()) {
-      this.closePublicLibraryModal();
       return;
     }
 
@@ -915,6 +915,13 @@ export class TriggersPageComponent implements OnInit, OnDestroy {
       return [result.item, ...items];
     });
     this.libraryMeta.set(result.meta);
+  }
+
+  createTriggerFromPublicAsset(assetId: string): void {
+    const item = this.libraryItems().find((entry) => entry.assetID === assetId);
+    if (!item) return;
+    this.closePublicLibraryModal();
+    this.openCreateModal(item);
   }
 
   openTestModal(trigger: TriggerRecord): void {

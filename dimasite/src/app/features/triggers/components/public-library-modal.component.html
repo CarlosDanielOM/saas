@@ -1,187 +1,128 @@
 <div class="lf-modal-overlay" (click)="requestClose()">
   <section
-    class="lf-modal lf-modal--wide"
+    class="lf-modal"
     role="dialog"
     aria-modal="true"
     aria-labelledby="public-library-title"
+    aria-describedby="public-library-hint"
     (click)="$event.stopPropagation()"
   >
-    <div class="lf-modal__head">
-      <div>
-        <p class="lf-kicker">{{ t('triggers.marketplace.kicker') }}</p>
+    <header class="lf-modal__head">
+      <div class="lf-modal__heading">
         <h2 id="public-library-title" class="lf-modal__title">{{ t('triggers.publicLibrary') }}</h2>
+        <p id="public-library-hint" class="lf-note">{{ t('triggers.marketplace.description') }}</p>
       </div>
       <button type="button" class="lf-modal__close" (click)="requestClose()" [attr.aria-label]="t('common.close')">
         <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
       </button>
-    </div>
+    </header>
 
-    <div class="lf-modal__hero">
-      <div>
-        <span class="lf-chip lf-chip--accent">{{ t('triggers.marketplace.storeBadge') }}</span>
-        <h3 class="lf-h3">{{ t('triggers.marketplace.title') }}</h3>
-        <p class="lf-note">{{ t('triggers.marketplace.description') }}</p>
-      </div>
-      <div class="lf-quota">
-        <div class="lf-quota__head">
-          <span>{{ t('triggers.marketplace.publicAccessTitle') }}</span>
-        </div>
-        <strong>{{ t('triggers.marketplace.quotaFree') }}</strong>
-        <p class="lf-note">{{ t('triggers.marketplace.publicAccessHint') }}</p>
-      </div>
-    </div>
-
-    <div class="lf-modal__toolbar">
-      <input
-        type="search"
-        class="lf-search"
-        [placeholder]="t('triggers.searchMarketplace')"
-        [value]="searchQuery()"
-        (input)="updateSearchQuery($event)"
-      />
-      <div class="lf-modal__toolbar-row">
-        <div class="lf-filter-tabs">
+    <div class="lf-toolbar">
+      <label class="lf-search">
+        <lucide-icon class="lf-icon" [name]="searchIcon" aria-hidden="true"></lucide-icon>
+        <input
+          type="search"
+          [placeholder]="t('triggers.searchMarketplace')"
+          [attr.aria-label]="t('triggers.searchMarketplace')"
+          [value]="searchQuery()"
+          (input)="updateSearchQuery($event)"
+        />
+      </label>
+      <div class="lf-toolbar__row">
+        <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('triggers.marketplace.typeLabel')">
           @for (filter of filterOptions; track filter) {
             <button
               type="button"
               class="lf-filter-tab"
               [class.lf-filter-tab--active]="mediaFilter() === filter"
+              [attr.aria-pressed]="mediaFilter() === filter"
               (click)="setMediaFilter(filter)"
             >
               {{ t('triggers.filters.' + filter) }}
             </button>
           }
         </div>
-        <div class="lf-toolbar-end">
-          <div class="lf-view-toggle">
-            <button
-              type="button"
-              class="lf-view-btn"
-              [class.lf-view-btn--active]="modalViewMode() === 'grid'"
-              (click)="modalViewMode.set('grid')"
-              [attr.aria-label]="t('commands.viewCard')"
-              title="Grid"
-            >
-              <lucide-icon class="lf-icon" [name]="gridIcon" aria-hidden="true"></lucide-icon>
-            </button>
-            <button
-              type="button"
-              class="lf-view-btn"
-              [class.lf-view-btn--active]="modalViewMode() === 'list'"
-              (click)="modalViewMode.set('list')"
-              [attr.aria-label]="t('commands.viewTable')"
-              title="List"
-            >
-              <lucide-icon class="lf-icon" [name]="listIcon" aria-hidden="true"></lucide-icon>
-            </button>
-          </div>
-          <button type="button" class="lf-btn lf-btn--compact" (click)="refreshAssets()">
-            <lucide-icon class="lf-icon" [class.lf-spin]="isLoading()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
-            {{ t('common.refresh') }}
-          </button>
-        </div>
+        <span class="lf-results" aria-live="polite">
+          @if (isLoading()) {
+            <lucide-icon class="lf-icon lf-spin" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
+          } @else {
+            {{ t(assets().length === 1 ? 'triggers.marketplace.resultOne' : 'triggers.marketplace.results', { count: assets().length }) }}
+          }
+        </span>
       </div>
     </div>
 
     <div class="lf-modal__body">
       @if (errorMessage() && !assets().length && !isLoading()) {
-        <div class="lf-empty">
+        <div class="lf-empty" role="alert">
           <h3 class="lf-h3">{{ t('triggers.marketplace.errorTitle') }}</h3>
           <p>{{ errorMessage() }}</p>
           <button type="button" class="lf-btn lf-btn--primary" (click)="refreshAssets()">{{ t('common.retry') }}</button>
         </div>
       } @else if (isLoading() && !assets().length) {
         <div class="lf-empty"><p>{{ t('triggers.loadingMarketplace') }}</p></div>
-      } @else if (modalViewMode() === 'grid') {
-        <div class="lf-asset-grid">
-          @for (asset of assets(); track asset._id) {
-            <article class="lf-asset-card" [class.lf-asset-card--owned]="isAssetAdded(asset._id)">
-              <div class="lf-asset-card__preview">
-                @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
-                  <img [src]="asset.playbackUrl" class="lf-asset-card__media" loading="lazy" alt="" />
-                } @else if (asset.mediaType === 'video') {
-                  <video [src]="asset.playbackUrl" muted preload="metadata" class="lf-asset-card__media"></video>
-                } @else {
-                  <div class="lf-asset-card__audio">
-                    <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
-                  </div>
-                }
-                @if (asset.playbackUrl) {
-                  <button type="button" class="lf-asset-card__preview-btn" (click)="openPreviewModal($event, asset)" title="Preview">
-                    <lucide-icon class="lf-icon" [name]="previewIcon" aria-hidden="true"></lucide-icon>
-                  </button>
-                }
-              </div>
-              <div class="lf-asset-card__info">
-                <strong [title]="asset.displayName | displayName">{{ asset.displayName | displayName }}</strong>
-                <span class="lf-asset-card__meta">{{ asset.ownerChannelName }} · {{ formatBytes(asset.bytes) }}</span>
-                <button
-                  type="button"
-                  class="lf-btn lf-btn--xs lf-btn--block"
-                  [class.lf-btn--primary]="!isAssetAdded(asset._id)"
-                  [disabled]="!canAttach() || isAssetAdded(asset._id) || isAddingAsset(asset._id)"
-                  (click)="addAsset(asset)"
-                >
-                  @if (isAddingAsset(asset._id)) {
-                    {{ t('triggers.marketplace.adding') }}
-                  } @else if (isAssetAdded(asset._id)) {
-                    {{ t('triggers.marketplace.added') }}
-                  } @else {
-                    + {{ t('triggers.marketplace.add') }}
-                  }
-                </button>
-              </div>
-            </article>
-          } @empty {
-            <div class="lf-empty lf-empty--span">
-              <h3 class="lf-h3">{{ t('triggers.marketplace.emptyTitle') }}</h3>
-              <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
-            </div>
-          }
-        </div>
       } @else {
-        <div class="lf-asset-list">
+        <ul class="lf-asset-list">
           @for (asset of assets(); track asset._id) {
-            <article class="lf-asset-row">
-              <button type="button" class="lf-asset-row__thumb" (click)="openPreviewModal($event, asset)">
-                @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
-                  <img [src]="asset.playbackUrl" alt="" />
-                } @else {
-                  <lucide-icon class="lf-icon" [name]="mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
-                }
-              </button>
-              <div class="lf-asset-row__body">
-                <div class="lf-asset-row__head">
-                  <strong [title]="asset.displayName | displayName">{{ asset.displayName | displayName }}</strong>
-                  <span class="lf-chip lf-chip--compact lf-chip--accent">{{ t('triggers.marketplace.publicTag') }}</span>
-                </div>
-                <p class="lf-asset-row__meta">
-                  {{ asset.ownerChannelName }} · {{ t('triggers.filters.' + asset.mediaType) }} · {{ formatBytes(asset.bytes) }}
-                </p>
-              </div>
+            <li class="lf-asset-card" [class.lf-asset-card--owned]="isAssetAdded(asset._id)" [class.lf-asset-card--playing]="playingId() === asset._id">
               <button
                 type="button"
-                class="lf-btn lf-btn--xs"
-                [class.lf-btn--primary]="!isAssetAdded(asset._id)"
-                [disabled]="!canAttach() || isAssetAdded(asset._id) || isAddingAsset(asset._id)"
-                (click)="addAsset(asset)"
+                class="lf-thumb"
+                [attr.data-type]="asset.mediaType"
+                [disabled]="!asset.playbackUrl"
+                [attr.aria-label]="t(playingId() === asset._id ? 'triggers.marketplace.stopNamed' : 'triggers.marketplace.previewNamed', { name: displayName(asset) })"
+                [attr.aria-pressed]="asset.mediaType === 'audio' ? playingId() === asset._id : null"
+                (click)="previewAsset($event, asset)"
               >
-                @if (isAddingAsset(asset._id)) {
-                  {{ t('triggers.marketplace.adding') }}
-                } @else if (isAssetAdded(asset._id)) {
-                  {{ t('triggers.marketplace.added') }}
-                } @else {
-                  + {{ t('triggers.marketplace.add') }}
+                @if (asset.mediaType === 'image' || asset.mediaType === 'gif') {
+                  <img [src]="asset.playbackUrl" alt="" loading="lazy" />
                 }
+                <span class="lf-thumb__icon">
+                  <lucide-icon class="lf-icon" [name]="playingId() === asset._id ? pauseIcon : mediaIcon(asset.mediaType)" aria-hidden="true"></lucide-icon>
+                </span>
               </button>
-            </article>
+              <div class="lf-asset-card__info">
+                <strong [title]="displayName(asset)">{{ displayName(asset) }}</strong>
+                <span class="lf-asset-card__meta">
+                  {{ t('triggers.marketplace.byCreator', { name: asset.ownerChannelName }) }} · {{ t('triggers.filters.' + asset.mediaType) }} · {{ formatBytes(asset.bytes) }}
+                </span>
+              </div>
+              <div class="lf-asset-card__action">
+                @if (isAssetAdded(asset._id)) {
+                  @if (canAttach() && isTriggerReady(asset)) {
+                    <button type="button" class="lf-btn lf-btn--xs lf-btn--ok" (click)="createTrigger.emit(asset._id)"
+                      [attr.aria-label]="t('triggers.marketplace.createNamed', { name: displayName(asset) })">
+                      <lucide-icon class="lf-icon" [name]="zapIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('triggers.marketplace.createTrigger') }}
+                    </button>
+                  } @else {
+                    <span class="lf-owned"><lucide-icon class="lf-icon" [name]="checkIcon" aria-hidden="true"></lucide-icon> {{ t('triggers.marketplace.added') }}</span>
+                  }
+                } @else if (canAttach()) {
+                  <button type="button" class="lf-btn lf-btn--xs lf-btn--primary"
+                    [disabled]="isAddingAsset(asset._id)"
+                    [attr.aria-label]="t('triggers.marketplace.addNamed', { name: displayName(asset) })"
+                    (click)="addAsset(asset)">
+                    @if (isAddingAsset(asset._id)) {
+                      {{ t('triggers.marketplace.adding') }}
+                    } @else {
+                      <lucide-icon class="lf-icon" [name]="plusIcon" aria-hidden="true"></lucide-icon>
+                      {{ t('triggers.marketplace.add') }}
+                    }
+                  </button>
+                }
+                @if (!isTriggerReady(asset)) {
+                  <span class="lf-asset-card__note">{{ t('triggers.page.notTriggerReady') }}</span>
+                }
+              </div>
+            </li>
           } @empty {
-            <div class="lf-empty">
+            <li class="lf-empty">
               <h3 class="lf-h3">{{ t('triggers.marketplace.emptyTitle') }}</h3>
               <p>{{ t('triggers.marketplace.emptyMessage') }}</p>
-            </div>
+            </li>
           }
-        </div>
+        </ul>
       }
     </div>
   </section>
@@ -189,31 +130,19 @@
 
 @if (activePreviewAsset(); as previewAsset) {
   <div class="lf-preview-overlay" (click)="closePreviewModal()">
-    <div class="lf-preview-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
+    <section class="lf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="public-preview-title" (click)="$event.stopPropagation()">
+      <button type="button" class="lf-modal__close lf-preview-modal__close" (click)="closePreviewModal()" [attr.aria-label]="t('common.close')">
         <lucide-icon class="lf-icon" [name]="closeIcon" aria-hidden="true"></lucide-icon>
       </button>
-      <h3 class="lf-h3">{{ previewAsset.displayName | displayName }}</h3>
-      <p class="lf-note">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ previewAsset.ownerChannelName }}</p>
+      <h3 class="lf-h3" id="public-preview-title">{{ displayName(previewAsset) }}</h3>
+      <p class="lf-note">{{ t('triggers.filters.' + previewAsset.mediaType) }} · {{ t('triggers.marketplace.byCreator', { name: previewAsset.ownerChannelName }) }}</p>
       <div class="lf-preview-modal__content">
-        @if (previewAsset.mediaType === 'audio') {
-          <div class="lf-waveform" [class.lf-waveform--playing]="isAudioPlaying()">
-            @for (bar of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]; track bar) {
-              <span class="lf-waveform__bar" [style.animation-delay.ms]="bar * 40"></span>
-            }
-          </div>
-          <p class="lf-note">{{ isAudioPlaying() ? 'Playing…' : 'Paused' }}</p>
-          <button type="button" class="lf-btn lf-btn--primary" (click)="toggleAudioPlayPause()">
-            {{ isAudioPlaying() ? 'Pause' : 'Play' }}
-          </button>
-        }
         @if (previewAsset.mediaType === 'image' || previewAsset.mediaType === 'gif') {
-          <img class="lf-preview-image" [src]="previewAsset.playbackUrl" [alt]="previewAsset.displayName" />
-        }
-        @if (previewAsset.mediaType === 'video') {
-          <video class="lf-preview-video" [src]="previewAsset.playbackUrl" autoplay controls></video>
+          <img class="lf-preview-media" [src]="previewAsset.playbackUrl" [alt]="displayName(previewAsset)" />
+        } @else {
+          <video class="lf-preview-media" [src]="previewAsset.playbackUrl" autoplay controls></video>
         }
       </div>
-    </div>
+    </section>
   </div>
 }
