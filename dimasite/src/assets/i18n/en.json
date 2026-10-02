@@ -394,114 +394,59 @@
     },
     "tts": {
       "description": "Configure text-to-speech settings for your channel. Enable TTS, set voice preferences, and control message filters.",
-      "eyebrow": "Text to Speech",
-      "title": "TTS Settings",
-      "subtitle": "Configure voice output settings for your stream. Enable TTS, choose voices, and set message filters.",
+      "title": "Text to Speech",
+      "subtitle": "Chat messages read aloud on stream. Pick a voice, set limits, and save.",
       "backToModules": "Back to modules",
-      "heroBadge": "Voice synthesis",
-      "providerPill": "Piper on this VPS",
       "readOnlyPill": "Read only",
       "copySpeechUrl": "Copy URL",
       "copiedCta": "Copied!",
       "urlSection": {
-        "label": "Speech API endpoint",
-        "hint": "Use this URL to send TTS requests via OBS browser source or Streamer.bot"
-      },
-      "metrics": {
-        "status": "Status",
-        "statusActive": "Active",
-        "statusDisabled": "Disabled",
-        "statusMeta": "TTS queue enabled",
-        "engine": "Default engine",
-        "engineMeta": "Current runtime provider",
-        "language": "Language",
-        "languageMeta": "Default spoken language",
-        "queue": "Queue limit",
-        "queueMeta": "Pending speeches allowed",
-        "maxLength": "Max length",
-        "maxLengthMeta": "Characters per message"
-      },
-      "cards": {
-        "behaviorKicker": "Speech rules",
-        "behaviorTitle": "Queue and cleanup defaults",
-        "voiceKicker": "Voice map",
-        "voiceTitle": "Current live voices",
-        "aiKicker": "Premium routing",
-        "aiTitle": "AI provider defaults",
-        "filtersKicker": "Normalization",
-        "filtersTitle": "Message cleanup rules"
+        "label": "Speech URL",
+        "hint": "For OBS browser sources or Streamer.bot."
       },
       "fields": {
         "enabledLabel": "Enable channel TTS",
         "enabledHint": "When disabled, `!s` and `$(tts ...)` requests are rejected for this channel.",
-        "defaultLanguageLabel": "Default spoken language",
-        "defaultProviderLabel": "Default TTS engine for !s and $(tts)",
-        "providerPiper": "Piper (local free voice)",
-        "providerFish": "Fish Audio (cloned voices)",
-        "cloneVoiceLabel": "Clone voice",
+        "defaultLanguageLabel": "Default language",
+        "cloneVoiceLabel": "Fish voice",
         "languageSpanish": "Spanish",
         "languageEnglish": "English",
-        "maxLengthLabel": "Max normalized length",
-        "queueMaxItemsLabel": "Max pending queue items",
-        "queueMaxItemsHint": "Limits how many speech requests can wait in line at once.",
-        "skipEmotesLabel": "Skip emotes by default",
+        "maxLengthLabel": "Maximum characters per message",
+        "queueMaxItemsLabel": "Maximum messages waiting",
+        "skipEmotesLabel": "Skip emotes",
         "skipEmotesHint": "Emote tokens are removed before the message reaches Piper.",
-        "stripLinksLabel": "Replace links",
+        "stripLinksLabel": "Links become [link]",
         "stripLinksHint": "URLs become `[link]` so the stream does not get link spam.",
-        "normalizeWhitespaceLabel": "Normalize whitespace",
+        "normalizeWhitespaceLabel": "Tidy extra spaces",
         "normalizeWhitespaceHint": "Collapses repeated spaces and trims noisy input.",
         "englishVoiceLabel": "English voice",
         "spanishVoiceLabel": "Spanish voice",
-        "aiEnglishVoiceLabel": "AI English voice · {{provider}}",
-        "aiSpanishVoiceLabel": "AI Spanish voice · {{provider}}",
         "savedValueOption": "Saved on server · {{value}}"
       },
-      "filters": {
-        "title": "Message filters"
-      },
       "expressive": {
-        "kicker": "Fish Audio speech tags",
-        "title": "Expressive voice controls",
-        "subtitle": "Choose which emotions and voice cues viewers and automations can use. Disabled and unsupported tags are removed before synthesis.",
-        "toggleHint": "Click a pill to enable or disable it, then save. Use [happy], [whisper], or [singing] in a message. [anger] follows the [angry] setting.",
-        "summary": "tags enabled",
-        "providerTitle": "Credits and free fallback",
-        "providerCopy": "Fish Audio uses these cues while credits are available. When credits run out or cannot be checked, TTS switches to free Piper and removes the cues. Your saved Fish voice and tag choices are kept.",
-        "inlineTitle": "Inline tags",
-        "inlineCopy": "Add cues such as [laugh] or [pause] inside a message.",
-        "wrappingTitle": "Wrapping tags",
-        "wrappingCopy": "Wrapping tags change how the text inside them is delivered. When disabled, the wrapper is removed but the inner text is still spoken.",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
+        "title": "Voice tags",
+        "subtitle": "Tags like [happy] or [whisper] change how Fish voices sound. Turned-off tags are removed before reading.",
+        "toggleHint": "Tap a tag to turn it on or off, then save. [anger] follows the [angry] setting.",
+        "summary": "{{on}} of {{total}} on",
         "categories": {
           "emotions": "Emotions",
           "delivery": "Voice & delivery",
           "sounds": "Vocal sounds",
-          "effects": "Pauses & effects",
-          "pauses": "Pauses",
-          "laughterCry": "Laughter & crying",
-          "mouthSounds": "Mouth sounds",
-          "breathing": "Breathing",
-          "volumeIntensity": "Volume & intensity",
-          "pitchSpeed": "Pitch & speed",
-          "vocalStyle": "Vocal style"
-        }
-      },
-      "future": {
-        "title": "Uses AI credits",
-        "copy": "Every TTS provider is available on all plans. Usage is billed from your monthly AI credits."
-      },
-      "defaultMode": {
-        "title": "How the default voice works",
-        "copy": "`!s` and `$(tts ...)` use the default engine selected above. Use `$(tts.speak ...)` to force Piper, or `$(tts.fish ...)` / `$(tts.clone ...)` for Fish Audio voices."
+          "effects": "Pauses & effects"
+        },
+        "piperNote": "Tags only work with Fish Audio. Piper removes them and reads the rest.",
+        "offList": "Off: {{tags}}",
+        "allOn": "All on",
+        "turnAllOn": "Turn all on",
+        "turnAllOff": "Turn all off"
       },
       "footer": {
-        "owner": "You can change these TTS defaults with tts:manage.",
         "readOnly": "You can view the live TTS setup, but need tts:manage to change it."
       },
       "actions": {
         "save": "Save TTS settings",
-        "saving": "Saving..."
+        "saving": "Saving...",
+        "saveShort": "Save"
       },
       "states": {
         "loading": "Loading TTS settings...",
@@ -519,22 +464,6 @@
         "errorTitle": "TTS update failed",
         "copiedTitle": "URL copied",
         "copiedMessage": "Speech API URL copied to clipboard."
-      },
-      "upgrade": {
-        "title": "Unlock AI Voices",
-        "description": "Take your TTS to the next level with natural-sounding AI voices. Premium and Pro plans include access to advanced speech synthesis.",
-        "features": {
-          "aiVoices": "Natural AI voices (Eve, Ara, Rex, and more)",
-          "expressiveTags": "Expressive tags like [laugh], <whisper>, and <sing-song>",
-          "openRouter": "OpenRouter support with OpenAI and Kokoro models"
-        },
-        "cta": "Upgrade to Premium",
-        "currentPlan": "Your current plan"
-      },
-      "badges": {
-        "premium": "Premium",
-        "pro": "Pro",
-        "locked": "Locked"
       },
       "browser": {
         "title": "Find a voice",
@@ -601,7 +530,7 @@
       },
       "favorites": {
         "title": "Favorite Fish voices",
-        "hint": "Star voices in Find voice to save them here. Edit a nickname to use it in $(set.voice nickname) or $(tts.fish nickname Hello chat).",
+        "hint": "Star voices in Find voice to keep them here. Give one a nickname to use it in $(tts.fish nickname Hello chat) or $(set.voice nickname).",
         "empty": "No favorites yet.",
         "edit": "Edit nickname",
         "editNamed": "Edit nickname for {{name}}",
@@ -619,10 +548,55 @@
       },
       "command": {
         "title": "TTS command",
-        "hint": "Edit the same command here or on the Commands page.",
         "templateHint": "AST command: $(tts $(user) says: &t). $(user) is the viewer; &t is their message.",
         "edit": "Edit TTS command",
-        "openCommands": "Open commands"
+        "openCommands": "Open commands",
+        "cooldown": "{{seconds}}s cooldown",
+        "disabled": "Command off",
+        "says": "Reads out:",
+        "missing": "No TTS command found on this channel."
+      },
+      "status": {
+        "on": "TTS on",
+        "off": "TTS off"
+      },
+      "voice": {
+        "title": "Voice",
+        "onHint": "Chat can use !s and $(tts …) right now.",
+        "offHint": "Off: !s and $(tts …) requests are rejected.",
+        "engineLabel": "Engine",
+        "piperTag": "Free",
+        "piperCopy": "Simple voice that never uses credits.",
+        "fishTag": "Uses credits",
+        "fishCopy": "Character voices like Gojo, plus thousands you can search.",
+        "piperSummary": "Piper · free voice"
+      },
+      "rules": {
+        "title": "Message limits",
+        "subtitle": "Keep TTS short and clean before it reaches your stream.",
+        "maxLengthBefore": "Read up to",
+        "maxLengthAfter": "characters per message",
+        "queueBefore": "Keep up to",
+        "queueAfter": "messages waiting in line",
+        "cleanupLabel": "Clean up before reading"
+      },
+      "save": {
+        "unsaved": "Unsaved changes",
+        "allSaved": "All changes saved"
+      },
+      "cheats": {
+        "title": "Use in commands",
+        "default": "Reads with the voice chosen above.",
+        "piper": "Always the free Piper voice.",
+        "fish": "A Fish voice or a favorite nickname.",
+        "tags": "Viewers add tags like this to change the delivery (Fish only)."
+      },
+      "credits": {
+        "title": "Credits",
+        "piper": "is always free.",
+        "fish": "uses AI credits for every message it reads.",
+        "fallback": "Out of credits? TTS switches to Piper automatically and drops voice tags. Your Fish voice stays saved.",
+        "usageLink": "See credit usage"
       }
     },
     "referrals": {

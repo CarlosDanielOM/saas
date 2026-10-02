@@ -394,114 +394,59 @@
     },
     "tts": {
       "description": "Configura los ajustes de texto a voz para tu canal. Habilita TTS, establece preferencias de voz y controla los filtros de mensajes.",
-      "eyebrow": "Texto a Voz",
-      "title": "Configuracion TTS",
-      "subtitle": "Configura los ajustes de salida de voz para tu stream. Habilita TTS, elige voces y establece filtros de mensajes.",
-      "backToModules": "Volver a modulos",
-      "heroBadge": "Sintesis de voz",
-      "providerPill": "Piper en este VPS",
+      "title": "Texto a voz",
+      "subtitle": "Los mensajes del chat se leen en voz alta en tu stream. Elige una voz, pon límites y guarda.",
+      "backToModules": "Volver a módulos",
       "readOnlyPill": "Solo lectura",
       "copySpeechUrl": "Copiar URL",
-      "copiedCta": "Copiado!",
+      "copiedCta": "¡Copiado!",
       "urlSection": {
-        "label": "Endpoint de API de voz",
-        "hint": "Usa esta URL para enviar solicitudes TTS via OBS browser source o Streamer.bot"
-      },
-      "metrics": {
-        "status": "Estado",
-        "statusActive": "Activo",
-        "statusDisabled": "Deshabilitado",
-        "statusMeta": "Cola TTS habilitada",
-        "engine": "Motor por defecto",
-        "engineMeta": "Provider actual en runtime",
-        "language": "Idioma",
-        "languageMeta": "Idioma hablado por defecto",
-        "queue": "Limite de cola",
-        "queueMeta": "Voces pendientes permitidas",
-        "maxLength": "Longitud max",
-        "maxLengthMeta": "Caracteres por mensaje"
-      },
-      "cards": {
-        "behaviorKicker": "Reglas de voz",
-        "behaviorTitle": "Cola y limpieza por defecto",
-        "voiceKicker": "Mapa de voces",
-        "voiceTitle": "Voces en vivo actuales",
-        "aiKicker": "Routing premium",
-        "aiTitle": "Valores por defecto IA",
-        "filtersKicker": "Normalizacion",
-        "filtersTitle": "Reglas de limpieza del mensaje"
+        "label": "URL de voz",
+        "hint": "Para fuentes de navegador de OBS o Streamer.bot."
       },
       "fields": {
         "enabledLabel": "Habilitar TTS del canal",
         "enabledHint": "Cuando esta deshabilitado, las solicitudes `!s` y `$(tts ...)` son rechazadas para este canal.",
-        "defaultLanguageLabel": "Idioma hablado por defecto",
-        "defaultProviderLabel": "Motor TTS por defecto para !s y $(tts)",
-        "providerPiper": "Piper (voz local gratis)",
-        "providerFish": "Fish Audio (voces clonadas)",
-        "cloneVoiceLabel": "Voz clonada",
-        "languageSpanish": "Espanol",
-        "languageEnglish": "Ingles",
-        "maxLengthLabel": "Longitud maxima normalizada",
-        "queueMaxItemsLabel": "Maximo de items pendientes",
-        "queueMaxItemsHint": "Limita cuantas solicitudes de voz pueden esperar al mismo tiempo.",
-        "skipEmotesLabel": "Omitir emotes por defecto",
+        "defaultLanguageLabel": "Idioma por defecto",
+        "cloneVoiceLabel": "Voz de Fish",
+        "languageSpanish": "Español",
+        "languageEnglish": "Inglés",
+        "maxLengthLabel": "Máximo de caracteres por mensaje",
+        "queueMaxItemsLabel": "Máximo de mensajes en espera",
+        "skipEmotesLabel": "Omitir emotes",
         "skipEmotesHint": "Los tokens de emotes se eliminan antes de que el mensaje llegue a Piper.",
-        "stripLinksLabel": "Reemplazar enlaces",
+        "stripLinksLabel": "Enlaces como [link]",
         "stripLinksHint": "Las URLs se convierten en `[link]` para que el stream no tenga spam de enlaces.",
-        "normalizeWhitespaceLabel": "Normalizar espacios",
+        "normalizeWhitespaceLabel": "Quitar espacios extra",
         "normalizeWhitespaceHint": "Colapsa espacios repetidos y recorta el ruido de entrada.",
-        "englishVoiceLabel": "Voz en Ingles",
-        "spanishVoiceLabel": "Voz en Espanol",
-        "aiEnglishVoiceLabel": "Voz IA en Ingles · {{provider}}",
-        "aiSpanishVoiceLabel": "Voz IA en Espanol · {{provider}}",
+        "englishVoiceLabel": "Voz en inglés",
+        "spanishVoiceLabel": "Voz en español",
         "savedValueOption": "Guardado en servidor · {{value}}"
       },
-      "filters": {
-        "title": "Filtros de mensajes"
-      },
       "expressive": {
-        "kicker": "Etiquetas de Fish Audio",
-        "title": "Controles de voz expresiva",
-        "subtitle": "Elige qué emociones y estilos de voz pueden usar los espectadores y las automatizaciones. Las etiquetas desactivadas o no admitidas se eliminan antes de generar la voz.",
-        "toggleHint": "Pulsa una etiqueta para activarla o desactivarla y guarda los cambios. Usa [happy], [whisper] o [singing] en un mensaje. [anger] usa la configuración de [angry].",
-        "summary": "etiquetas activas",
-        "providerTitle": "Créditos y alternativa gratuita",
-        "providerCopy": "Fish Audio usa estas etiquetas mientras haya créditos. Si se agotan o no se pueden comprobar, TTS cambia a Piper gratis y elimina las etiquetas. Se conservan tu voz de Fish y tus preferencias.",
-        "inlineTitle": "Etiquetas en el texto",
-        "inlineCopy": "Añade etiquetas como [laugh] o [pause] dentro de un mensaje.",
-        "wrappingTitle": "Tags wrapping",
-        "wrappingCopy": "Los tags wrapping cambian como se entrega el texto que encierran. Cuando estan deshabilitados, se elimina el wrapper pero el texto interno se sigue leyendo.",
-        "enabled": "Activo",
-        "disabled": "Desactivado",
+        "title": "Etiquetas de voz",
+        "subtitle": "Etiquetas como [happy] o [whisper] cambian cómo suenan las voces de Fish. Las desactivadas se quitan antes de leer.",
+        "toggleHint": "Toca una etiqueta para activarla o desactivarla y guarda. [anger] usa la configuración de [angry].",
+        "summary": "{{on}} de {{total}} activas",
         "categories": {
           "emotions": "Emociones",
           "delivery": "Voz y expresión",
           "sounds": "Sonidos vocales",
-          "effects": "Pausas y efectos",
-          "pauses": "Pausas",
-          "laughterCry": "Risa y llanto",
-          "mouthSounds": "Sonidos de boca",
-          "breathing": "Respiracion",
-          "volumeIntensity": "Volumen e intensidad",
-          "pitchSpeed": "Tono y velocidad",
-          "vocalStyle": "Estilo vocal"
-        }
-      },
-      "future": {
-        "title": "Usa creditos de IA",
-        "copy": "Todos los proveedores de TTS estan disponibles en todos los planes. El uso se cobra de tus creditos mensuales de IA."
-      },
-      "defaultMode": {
-        "title": "Como funciona la voz por defecto",
-        "copy": "`!s` y `$(tts ...)` usan el motor por defecto seleccionado arriba. Usa `$(tts.speak ...)` para forzar Piper, o `$(tts.fish ...)` / `$(tts.clone ...)` para voces de Fish Audio."
+          "effects": "Pausas y efectos"
+        },
+        "piperNote": "Las etiquetas solo funcionan con Fish Audio. Piper las quita y lee el resto.",
+        "offList": "Apagadas: {{tags}}",
+        "allOn": "Todas activas",
+        "turnAllOn": "Activar todas",
+        "turnAllOff": "Desactivar todas"
       },
       "footer": {
-        "owner": "Puedes cambiar estos valores de TTS con el permiso tts:manage.",
         "readOnly": "Puedes ver la configuración de TTS, pero necesitas el permiso tts:manage para cambiarla."
       },
       "actions": {
         "save": "Guardar configuracion TTS",
-        "saving": "Guardando..."
+        "saving": "Guardando...",
+        "saveShort": "Guardar"
       },
       "states": {
         "loading": "Cargando configuracion TTS...",
@@ -519,22 +464,6 @@
         "errorTitle": "Error al actualizar TTS",
         "copiedTitle": "URL copiada",
         "copiedMessage": "URL de API de voz copiada al portapapeles."
-      },
-      "upgrade": {
-        "title": "Desbloquea Voces IA",
-        "description": "Lleva tu TTS al siguiente nivel con voces IA naturales. Los planes Premium y Pro incluyen acceso a sintesis de voz avanzada.",
-        "features": {
-          "aiVoices": "Voces IA naturales (Eve, Ara, Rex y mas)",
-          "expressiveTags": "Etiquetas expresivas como [laugh], <whisper> y <sing-song>",
-          "openRouter": "Soporte OpenRouter con modelos OpenAI y Kokoro"
-        },
-        "cta": "Mejorar a Premium",
-        "currentPlan": "Tu plan actual"
-      },
-      "badges": {
-        "premium": "Premium",
-        "pro": "Pro",
-        "locked": "Bloqueado"
       },
       "browser": {
         "title": "Encuentra una voz",
@@ -601,7 +530,7 @@
       },
       "favorites": {
         "title": "Voces favoritas de Fish",
-        "hint": "Marca voces con la estrella en Buscar voz para guardarlas aquí. Edita el apodo para usarlo en $(set.voice apodo) o $(tts.fish apodo Hola chat).",
+        "hint": "Marca voces con la estrella en Buscar voz para tenerlas aquí. Ponle un apodo para usarla en $(tts.fish apodo Hola chat) o $(set.voice apodo).",
         "empty": "Todavía no hay favoritas.",
         "edit": "Editar apodo",
         "editNamed": "Editar apodo de {{name}}",
@@ -619,10 +548,55 @@
       },
       "command": {
         "title": "Comando TTS",
-        "hint": "Edita el mismo comando aquí o en la página de Comandos.",
         "templateHint": "Comando AST: $(tts $(user) dice: &t). $(user) es el usuario; &t es su mensaje.",
         "edit": "Editar comando TTS",
-        "openCommands": "Abrir comandos"
+        "openCommands": "Abrir comandos",
+        "cooldown": "{{seconds}}s de espera",
+        "disabled": "Comando apagado",
+        "says": "Lee en voz alta:",
+        "missing": "No hay comando TTS en este canal."
+      },
+      "status": {
+        "on": "TTS activo",
+        "off": "TTS apagado"
+      },
+      "voice": {
+        "title": "Voz",
+        "onHint": "El chat puede usar !s y $(tts …) ahora mismo.",
+        "offHint": "Apagado: se rechazan las solicitudes de !s y $(tts …).",
+        "engineLabel": "Motor",
+        "piperTag": "Gratis",
+        "piperCopy": "Voz sencilla que nunca usa créditos.",
+        "fishTag": "Usa créditos",
+        "fishCopy": "Voces de personajes como Gojo, y miles más que puedes buscar.",
+        "piperSummary": "Piper · voz gratis"
+      },
+      "rules": {
+        "title": "Límites de mensajes",
+        "subtitle": "Mantén el TTS corto y limpio antes de que llegue a tu stream.",
+        "maxLengthBefore": "Leer hasta",
+        "maxLengthAfter": "caracteres por mensaje",
+        "queueBefore": "Hasta",
+        "queueAfter": "mensajes esperando en la cola",
+        "cleanupLabel": "Limpiar antes de leer"
+      },
+      "save": {
+        "unsaved": "Cambios sin guardar",
+        "allSaved": "Todo guardado"
+      },
+      "cheats": {
+        "title": "Úsalo en comandos",
+        "default": "Lee con la voz elegida arriba.",
+        "piper": "Siempre la voz gratis de Piper.",
+        "fish": "Una voz de Fish o el apodo de una favorita.",
+        "tags": "Los espectadores añaden etiquetas así para cambiar la entonación (solo Fish)."
+      },
+      "credits": {
+        "title": "Créditos",
+        "piper": "siempre es gratis.",
+        "fish": "usa créditos de IA por cada mensaje que lee.",
+        "fallback": "¿Sin créditos? TTS cambia a Piper automáticamente y quita las etiquetas de voz. Tu voz de Fish sigue guardada.",
+        "usageLink": "Ver uso de créditos"
       }
     },
     "referrals": {

@@ -135,7 +135,7 @@ export class TtsPageComponent {
   });
   private readonly discoveredVoiceNames = signal<Record<string, string>>({});
   readonly expressiveTags = EXPRESSIVE_TTS_TAGS;
-  readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags }));
+  readonly expressiveTagGroups = Object.entries(EXPRESSIVE_TTS_TAG_GROUPS).map(([key, tags]) => ({ key, tags: tags as readonly ExpressiveTtsTag[] }));
   readonly expressiveTagsEnabledCount = computed(() =>
     this.expressiveTags.filter(tag => this.ttsSettings()?.filters.expressiveTags[tag]).length
   );
@@ -229,10 +229,6 @@ export class TtsPageComponent {
     return planTier === 'pro';
   });
 
-  readonly defaultProviderOptions = computed<VoiceOption[]>(() => [
-    { value: 'piper', label: this.t('modules.tts.fields.providerPiper') },
-    { value: 'fish', label: this.t('modules.tts.fields.providerFish') }
-  ]);
 
   readonly englishVoiceOptions = computed(() =>
     mergeCurrentOption(
@@ -264,7 +260,17 @@ export class TtsPageComponent {
     const favorite = this.fishFavorites().find(item => item.id === voiceName || item.alias === voiceName);
     return found?.label ?? favorite?.name ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
   });
-  readonly currentDefaultProviderLabel = computed(() => this.getProviderLabel(this.ttsSettings()?.provider ?? 'piper'));
+  readonly voiceSummary = computed(() => this.ttsSettings()?.provider === 'fish'
+    ? `${this.currentCloneDefaultVoiceLabel()} · Fish Audio`
+    : this.t('modules.tts.voice.piperSummary'));
+  readonly tagGroupStats = computed(() => {
+    const enabled = this.ttsSettings()?.filters.expressiveTags;
+    return this.expressiveTagGroups.map(group => {
+      const off = group.tags.filter(tag => !enabled?.[tag]);
+      return { ...group, off, on: group.tags.length - off.length };
+    });
+  });
+  readonly usagePath = computed(() => ['/', this.streamer(), 'usage']);
 
   private lastLoadedChannelID = '';
 
@@ -467,6 +473,16 @@ export class TtsPageComponent {
     }));
   }
 
+  setTagGroup(tags: readonly ExpressiveTtsTag[], enabled: boolean): void {
+    this.patchTtsSettings(settings => ({
+      ...settings,
+      filters: {
+        ...settings.filters,
+        expressiveTags: { ...settings.filters.expressiveTags, ...Object.fromEntries(tags.map(tag => [tag, enabled])) }
+      }
+    }));
+  }
+
   private normalizeExpressiveTags(input?: Partial<Record<ExpressiveTtsTag, boolean>>): Record<ExpressiveTtsTag, boolean> {
     return Object.fromEntries(this.expressiveTags.map(tag => [tag, input?.[tag] !== false])) as Record<ExpressiveTtsTag, boolean>;
   }
@@ -507,14 +523,6 @@ export class TtsPageComponent {
     }));
   }
 
-  getCurrentPlanLabel(): string {
-    const planTier = this.planTier();
-    return planTier === 'pro'
-      ? this.t('navbar.planPro')
-      : planTier === 'premium'
-        ? this.t('navbar.planPremium')
-        : this.t('navbar.planFree');
-  }
 
   async saveTtsSettings(): Promise<void> {
     const channelID = this.channelID();
@@ -601,11 +609,6 @@ export class TtsPageComponent {
     this.lastLoadedChannelID = '';
   }
 
-  private getProviderLabel(provider: TtsProvider): string {
-    return provider === 'fish'
-      ? this.t('modules.tts.fields.providerFish')
-      : this.t('modules.tts.fields.providerPiper');
-  }
 
   private normalizeTtsSettings(settings: TtsSettings): TtsSettings {
     const defaults = this.createDefaultTtsSettings(settings.channelID, settings.channel);

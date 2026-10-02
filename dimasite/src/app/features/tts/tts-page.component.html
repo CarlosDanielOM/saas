@@ -3,59 +3,33 @@
   [attr.data-plan]="isPro() ? 'pro' : isPremiumOrPro() ? 'premium' : 'free'"
 >
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.tts.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('modules.tts.heroBadge') }}</p>
-        <h1 class="lf-title">{{ t('modules.tts.title') }} <span>{{ t('modules.tts.eyebrow') }}</span></h1>
-        <p class="lf-copy">{{ t('modules.tts.subtitle') }}</p>
-        <div class="lf-actions">
-          @if (hasTtsSettings()) {
-            <button type="button" class="lf-btn" (click)="scrollToFishFavorites()">{{ t('modules.tts.favorites.title') }}</button>
-          }
-          @if (speechApiUrl()) {
-            <button type="button" class="lf-btn" (click)="copySpeechUrl()">
-              {{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}
-            </button>
-          }
-        </div>
-        <div class="lf-chip-row">
-          <span class="lf-chip">{{ t('modules.tts.providerPill') }}</span>
-          <span class="lf-chip" [class.lf-chip--gold]="!ttsReadOnly()" [class.lf-chip--muted]="ttsReadOnly()">
-            {{ ttsReadOnly() ? t('modules.tts.readOnlyPill') : getCurrentPlanLabel() }}
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.tts.backToModules') }}</a>
+      <h1 class="lf-title">{{ t('modules.tts.title') }}</h1>
+      <p class="lf-copy">{{ t('modules.tts.subtitle') }}</p>
+      @if (ttsSettings(); as tts) {
+        <div class="lf-head__chips">
+          <span class="lf-chip" [class.lf-chip--ok]="tts.enabled" [class.lf-chip--muted]="!tts.enabled">
+            <span class="lf-dot" aria-hidden="true"></span>
+            {{ tts.enabled ? t('modules.tts.status.on') : t('modules.tts.status.off') }}
           </span>
-        </div>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <h2 class="lf-h2">{{ t('modules.tts.metrics.status') }}</h2>
-          @if (ttsSettings(); as tts) {
-            <span class="lf-chip" [class.lf-chip--ok]="tts.enabled" [class.lf-chip--muted]="!tts.enabled">
-              {{ tts.enabled ? t('modules.tts.metrics.statusActive') : t('modules.tts.metrics.statusDisabled') }}
-            </span>
+          <span class="lf-chip lf-chip--accent">
+            <app-lf-icon name="audio" [size]="13"></app-lf-icon>
+            {{ voiceSummary() }}
+          </span>
+          @if (ttsReadOnly()) {
+            <span class="lf-chip"><app-lf-icon name="lock" [size]="12"></app-lf-icon> {{ t('modules.tts.readOnlyPill') }}</span>
           }
+          <button type="button" class="lf-chip lf-chip--link" (click)="scrollToFishFavorites()">
+            <app-lf-icon name="star" [size]="13"></app-lf-icon>
+            {{ t('modules.tts.favorites.title') }} ({{ fishFavorites().length }})
+          </button>
         </div>
-        @if (ttsSettings(); as tts) {
-          <div class="lf-stats-strip lf-stats-strip--3">
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('modules.tts.metrics.engine') }}</span>
-              <span class="lf-stats-strip__value lf-stats-strip__value--sm">{{ currentDefaultProviderLabel() }}</span>
-            </div>
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('modules.tts.metrics.queue') }}</span>
-              <span class="lf-stats-strip__value">{{ tts.queue.maxItems }}</span>
-            </div>
-            <div class="lf-stats-strip__item">
-              <span class="lf-stats-strip__label">{{ t('modules.tts.metrics.maxLength') }}</span>
-              <span class="lf-stats-strip__value">{{ tts.filters.maxLength }}</span>
-            </div>
-          </div>
-        } @else {
-          <p class="lf-note">{{ t('modules.tts.states.loading') }}</p>
-        }
-      </article>
-    </section>
+      }
+      @if (ttsReadOnly() && hasTtsSettings()) {
+        <p class="lf-note lf-note--info">{{ t('modules.tts.footer.readOnly') }}</p>
+      }
+    </header>
 
     @if (ttsErrorMessage()) {
       <section class="lf-banner lf-banner--error" role="alert">
@@ -69,252 +43,299 @@
         <p>{{ t('modules.tts.states.loading') }}</p>
       </section>
     } @else if (ttsSettings(); as tts) {
-      @if (speechApiUrl()) {
-        <section class="lf-tile lf-endpoint">
-          <div class="lf-endpoint__copy">
-            <p class="lf-kicker">{{ t('modules.tts.urlSection.label') }}</p>
-            <code class="lf-endpoint__url">{{ speechApiUrl() }}</code>
-            <p class="lf-note">{{ t('modules.tts.urlSection.hint') }}</p>
-          </div>
-          <button
-            type="button"
-            class="lf-btn"
-            [class.lf-btn--ok]="urlCopied()"
-            (click)="copySpeechUrl()"
-          >
-            {{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}
-          </button>
-        </section>
-      }
-
-      <section class="lf-tile lf-endpoint" data-testid="tts-command">
-        <div class="lf-endpoint__copy">
-          <h2 class="lf-h2">{{ t('modules.tts.command.title') }}</h2>
-          <p class="lf-note">{{ t('modules.tts.command.hint') }}</p>
-          @if (speechCommand(); as command) {
-            <code>!{{ command.cmd }} · {{ command.cooldown }}s</code>
-            <p class="lf-note">{{ command.message }}</p>
-          }
-        </div>
-        @if (speechCommand() && canManageSpeechCommand()) {
-          <button type="button" class="lf-btn" [disabled]="commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
-        } @else if (canViewSpeechCommand()) {
-          <a class="lf-btn" [routerLink]="commandsPath()">{{ t('modules.tts.command.openCommands') }}</a>
-        }
-      </section>
-
-      <section class="lf-bento lf-bento--settings">
-        <!-- Behavior -->
-        <article class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.tts.cards.behaviorKicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.tts.cards.behaviorTitle') }}</h2>
-
-          <div class="lf-toggle-row">
-            <div>
-              <p class="lf-toggle-row__label">{{ t('modules.tts.fields.enabledLabel') }}</p>
-              <p class="lf-toggle-row__hint">{{ t('modules.tts.fields.enabledHint') }}</p>
-            </div>
-            <label class="lf-switch">
-              <input
-                type="checkbox"
-                [checked]="tts.enabled"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsEnabled($any($event.target).checked)"
-              />
-              <span class="lf-switch__track"></span>
-            </label>
-          </div>
-
-          <div class="lf-form-grid">
-            <label class="lf-field">
-              <span>{{ t('modules.tts.fields.defaultLanguageLabel') }}</span>
-              <select
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsDefaultLanguage($any($event.target).value)"
-              >
-                <option value="es" [selected]="tts.defaultLanguage === 'es'">{{ t('modules.tts.fields.languageSpanish') }}</option>
-                <option value="en" [selected]="tts.defaultLanguage === 'en'">{{ t('modules.tts.fields.languageEnglish') }}</option>
-              </select>
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('modules.tts.fields.defaultProviderLabel') }}</span>
-              <select
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsProvider($any($event.target).value)"
-              >
-                @for (provider of defaultProviderOptions(); track provider.value) {
-                  <option [value]="provider.value" [selected]="provider.value === tts.provider">{{ provider.label }}</option>
-                }
-              </select>
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('modules.tts.fields.maxLengthLabel') }}</span>
-              <input
-                type="number"
-                min="30"
-                max="500"
-                [value]="tts.filters.maxLength"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (input)="updateTtsMaxLength($event)"
-              />
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('modules.tts.fields.queueMaxItemsLabel') }}</span>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                [value]="tts.queue.maxItems"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (input)="updateQueueMaxItems($event)"
-              />
-              <span class="lf-field__hint">{{ t('modules.tts.fields.queueMaxItemsHint') }}</span>
-            </label>
-          </div>
-
-          <div class="lf-help">
-            <strong>{{ t('modules.tts.defaultMode.title') }}</strong>
-            <p>{{ t('modules.tts.defaultMode.copy') }}</p>
-          </div>
-        </article>
-
-        <!-- Voice map -->
-        <article class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.tts.cards.voiceKicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.tts.cards.voiceTitle') }}</h2>
-
-          @if (showCloneSettings()) {
-            <div class="lf-voice-picker">
-              <label class="lf-field" for="fish-default-voice">
-                <span>{{ t('modules.tts.fields.cloneVoiceLabel') }}</span>
+      <div class="lf-panels">
+        <div class="lf-col lf-col--main">
+          <!-- Voice -->
+          <section class="lf-tile lf-card" aria-labelledby="tts-voice-title">
+            <div class="lf-toggle-row">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="audio"></app-lf-icon></span>
+              <div class="lf-toggle-row__copy">
+                <h2 class="lf-h2" id="tts-voice-title">{{ t('modules.tts.voice.title') }}</h2>
+                <p class="lf-toggle-row__hint">{{ tts.enabled ? t('modules.tts.voice.onHint') : t('modules.tts.voice.offHint') }}</p>
+              </div>
+              <label class="lf-switch">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="t('modules.tts.fields.enabledLabel')"
+                  [checked]="tts.enabled"
+                  [disabled]="ttsReadOnly() || ttsSaving()"
+                  (change)="updateTtsEnabled($any($event.target).checked)"
+                />
+                <span class="lf-switch__track"></span>
               </label>
-              <div class="lf-voice-picker__controls">
-                <select id="fish-default-voice" [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsCloneDefault($any($event.target).value)">
-                  @for (voice of cloneDefaultVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value" [selected]="voice.value === (tts.voices.cloneDefault || 'gojo')">{{ voice.label }}</option>
-                  }
+            </div>
+
+            <fieldset class="lf-engines" [disabled]="ttsReadOnly() || ttsSaving()">
+              <legend class="lf-label">{{ t('modules.tts.voice.engineLabel') }}</legend>
+              <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'piper'">
+                <input type="radio" name="tts-provider" value="piper" [checked]="tts.provider === 'piper'" (change)="updateTtsProvider('piper')" />
+                <span class="lf-engine__body">
+                  <span class="lf-engine__name">Piper <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('modules.tts.voice.piperTag') }}</span></span>
+                  <span class="lf-engine__copy">{{ t('modules.tts.voice.piperCopy') }}</span>
+                </span>
+              </label>
+              <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'fish'">
+                <input type="radio" name="tts-provider" value="fish" [checked]="tts.provider === 'fish'" (change)="updateTtsProvider('fish')" />
+                <span class="lf-engine__body">
+                  <span class="lf-engine__name">Fish Audio <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('modules.tts.voice.fishTag') }}</span></span>
+                  <span class="lf-engine__copy">{{ t('modules.tts.voice.fishCopy') }}</span>
+                </span>
+              </label>
+            </fieldset>
+
+            <div class="lf-form-grid lf-form-grid--2">
+              @if (showCloneSettings()) {
+                <div class="lf-voice-picker">
+                  <label class="lf-label" for="fish-default-voice">{{ t('modules.tts.fields.cloneVoiceLabel') }}</label>
+                  <div class="lf-voice-picker__controls">
+                    <select id="fish-default-voice" class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()"
+                      (change)="updateTtsCloneDefault($any($event.target).value)">
+                      @for (voice of cloneDefaultVoiceOptions(); track voice.value) {
+                        <option [value]="voice.value" [selected]="voice.value === (tts.voices.cloneDefault || 'gojo')">{{ voice.label }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+              } @else {
+                <label class="lf-field">
+                  <span class="lf-label">{{ t('modules.tts.fields.englishVoiceLabel') }}</span>
+                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" (change)="updateTtsVoice('en', $any($event.target).value)">
+                    @for (voice of englishVoiceOptions(); track voice.value) {
+                      <option [value]="voice.value" [selected]="voice.value === tts.voices.en">{{ voice.label }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="lf-field">
+                  <span class="lf-label">{{ t('modules.tts.fields.spanishVoiceLabel') }}</span>
+                  <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" (change)="updateTtsVoice('es', $any($event.target).value)">
+                    @for (voice of spanishVoiceOptions(); track voice.value) {
+                      <option [value]="voice.value" [selected]="voice.value === tts.voices.es">{{ voice.label }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              <label class="lf-field">
+                <span class="lf-label">{{ t('modules.tts.fields.defaultLanguageLabel') }}</span>
+                <select class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()" (change)="updateTtsDefaultLanguage($any($event.target).value)">
+                  <option value="es" [selected]="tts.defaultLanguage === 'es'">{{ t('modules.tts.fields.languageSpanish') }}</option>
+                  <option value="en" [selected]="tts.defaultLanguage === 'en'">{{ t('modules.tts.fields.languageEnglish') }}</option>
                 </select>
+              </label>
+            </div>
+
+            <div id="fish-voice-favorites" class="lf-favorites" aria-live="polite" tabindex="-1">
+              <div class="lf-favorites__head">
+                <div>
+                  <h3 class="lf-h3">{{ t('modules.tts.favorites.title') }}</h3>
+                  <p class="lf-note">{{ t('modules.tts.favorites.hint') }}</p>
+                </div>
+                <button type="button" class="lf-btn lf-btn--compact" aria-haspopup="dialog" [disabled]="ttsSaving()"
+                  (click)="voiceBrowserOpen.set(true)"><app-lf-icon name="search" [size]="15"></app-lf-icon> {{ t('modules.tts.browser.findVoice') }}</button>
+              </div>
+              @if (fishFavorites().length) {
+                <ul>
+                  @for (favorite of fishFavorites(); track favorite.id) {
+                    <li [class.is-default]="tts.provider === 'fish' && (tts.voices.cloneDefault === favorite.id || tts.voices.cloneDefault === favorite.alias)">
+                      <div class="lf-favorites__row">
+                        <span class="lf-favorites__name"><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
+                        @if (!ttsReadOnly()) {
+                          <div class="lf-favorites__actions">
+                            <button type="button" class="lf-btn lf-btn--compact" [disabled]="!!favoriteSavingId() || ttsSaving()"
+                              (click)="editFavoriteAlias(favorite)"
+                              [attr.aria-label]="t('modules.tts.favorites.editNamed', { name: favorite.name })">{{ t('modules.tts.favorites.edit') }}</button>
+                            <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" [disabled]="!!favoriteSavingId() || ttsSaving()"
+                              (click)="removeFishFavorite(favorite)"
+                              [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
+                          </div>
+                        }
+                      </div>
+                      @if (editingFavoriteId() === favorite.id) {
+                        <form class="lf-favorites__edit" (submit)="$event.preventDefault(); saveFavoriteAlias(favorite)">
+                          <label [for]="'favorite-alias-' + favorite.id">{{ t('modules.tts.favorites.nicknameLabel') }}</label>
+                          <div class="lf-favorites__edit-controls">
+                            <input [id]="'favorite-alias-' + favorite.id" type="text" [formControl]="favoriteAliasControl"
+                              maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false"
+                              [attr.aria-describedby]="'favorite-alias-hint-' + favorite.id"
+                              [attr.aria-invalid]="!!favoriteAliasError()" [disabled]="!!favoriteSavingId()" />
+                            <button type="submit" class="lf-btn lf-btn--primary lf-btn--compact" [disabled]="!!favoriteSavingId()">{{ t('modules.tts.favorites.saveNickname') }}</button>
+                            <button type="button" class="lf-btn lf-btn--compact" [disabled]="!!favoriteSavingId()"
+                              (click)="cancelFavoriteAliasEdit()">{{ t('modules.tts.favorites.cancel') }}</button>
+                          </div>
+                          <p [id]="'favorite-alias-hint-' + favorite.id">{{ t('modules.tts.favorites.nicknameHint') }}</p>
+                          @if (favoriteAliasError(); as error) { <p class="lf-favorites__error" role="alert">{{ error }}</p> }
+                        </form>
+                      }
+                    </li>
+                  }
+                </ul>
+              } @else { <p class="lf-favorites__empty">{{ t('modules.tts.favorites.empty') }}</p> }
+            </div>
+          </section>
+
+          <!-- Message rules -->
+          <section class="lf-tile lf-card" aria-labelledby="tts-rules-title">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="settings"></app-lf-icon></span>
+              <div>
+                <h2 class="lf-h2" id="tts-rules-title">{{ t('modules.tts.rules.title') }}</h2>
+                <p class="lf-toggle-row__hint">{{ t('modules.tts.rules.subtitle') }}</p>
               </div>
             </div>
-          } @else {
-            <div class="lf-form-grid">
-              <label class="lf-field">
-                <span>{{ t('modules.tts.fields.englishVoiceLabel') }}</span>
-                <select
-                  [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsVoice('en', $any($event.target).value)"
-                >
-                  @for (voice of englishVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value" [selected]="voice.value === tts.voices.en">{{ voice.label }}</option>
-                  }
-                </select>
-              </label>
 
-              <label class="lf-field">
-                <span>{{ t('modules.tts.fields.spanishVoiceLabel') }}</span>
-                <select
-                  [disabled]="ttsReadOnly() || ttsSaving()"
-                  (change)="updateTtsVoice('es', $any($event.target).value)"
-                >
-                  @for (voice of spanishVoiceOptions(); track voice.value) {
-                    <option [value]="voice.value" [selected]="voice.value === tts.voices.es">{{ voice.label }}</option>
-                  }
-                </select>
+            <div class="lf-limits">
+              <label class="lf-limit">
+                <span class="lf-limit__text">{{ t('modules.tts.rules.maxLengthBefore') }}</span>
+                <input type="number" min="30" max="500" inputmode="numeric"
+                  [attr.aria-label]="t('modules.tts.fields.maxLengthLabel')"
+                  [value]="tts.filters.maxLength" [disabled]="ttsReadOnly() || ttsSaving()" (input)="updateTtsMaxLength($event)" />
+                <span class="lf-limit__text">{{ t('modules.tts.rules.maxLengthAfter') }}</span>
+              </label>
+              <label class="lf-limit">
+                <span class="lf-limit__text">{{ t('modules.tts.rules.queueBefore') }}</span>
+                <input type="number" min="1" max="20" inputmode="numeric"
+                  [attr.aria-label]="t('modules.tts.fields.queueMaxItemsLabel')"
+                  [value]="tts.queue.maxItems" [disabled]="ttsReadOnly() || ttsSaving()" (input)="updateQueueMaxItems($event)" />
+                <span class="lf-limit__text">{{ t('modules.tts.rules.queueAfter') }}</span>
               </label>
             </div>
-          }
-          <div id="fish-voice-favorites" class="lf-favorites" aria-live="polite" tabindex="-1">
-            <div class="lf-favorites__head">
-              <strong>{{ t('modules.tts.favorites.title') }}</strong>
-              <button type="button" class="lf-btn" aria-haspopup="dialog" [disabled]="ttsSaving()"
-                (click)="voiceBrowserOpen.set(true)">{{ t('modules.tts.browser.findVoice') }}</button>
+
+            <fieldset class="lf-cleanup" [disabled]="ttsReadOnly() || ttsSaving()">
+              <legend class="lf-label">{{ t('modules.tts.rules.cleanupLabel') }}</legend>
+              <div class="lf-pills">
+                <label class="lf-pill-check" [title]="t('modules.tts.fields.skipEmotesHint')">
+                  <input type="checkbox" [checked]="tts.filters.skipEmotes" (change)="updateTtsFilter('skipEmotes', $any($event.target).checked)" />
+                  <span>{{ t('modules.tts.fields.skipEmotesLabel') }}</span>
+                </label>
+                <label class="lf-pill-check" [title]="t('modules.tts.fields.stripLinksHint')">
+                  <input type="checkbox" [checked]="tts.filters.stripLinks" (change)="updateTtsFilter('stripLinks', $any($event.target).checked)" />
+                  <span>{{ t('modules.tts.fields.stripLinksLabel') }}</span>
+                </label>
+                <label class="lf-pill-check" [title]="t('modules.tts.fields.normalizeWhitespaceHint')">
+                  <input type="checkbox" [checked]="tts.filters.normalizeWhitespace" (change)="updateTtsFilter('normalizeWhitespace', $any($event.target).checked)" />
+                  <span>{{ t('modules.tts.fields.normalizeWhitespaceLabel') }}</span>
+                </label>
+              </div>
+            </fieldset>
+          </section>
+
+          <!-- Voice tags -->
+          <section class="lf-tile lf-card" aria-labelledby="expressive-tags-title">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="chat"></app-lf-icon></span>
+              <div>
+                <h2 class="lf-h2" id="expressive-tags-title">{{ t('modules.tts.expressive.title') }}</h2>
+                <p class="lf-toggle-row__hint">{{ t('modules.tts.expressive.subtitle') }}</p>
+              </div>
+              <span class="lf-chip" aria-live="polite">{{ t('modules.tts.expressive.summary', { on: expressiveTagsEnabledCount(), total: expressiveTags.length }) }}</span>
             </div>
-            <p>{{ t('modules.tts.favorites.hint') }}</p>
-            @if (fishFavorites().length) {
-              <ul>
-                @for (favorite of fishFavorites(); track favorite.id) {
-                  <li>
-                    <div class="lf-favorites__row">
-                      <span><b>{{ favorite.name }}</b> <code>{{ favorite.alias }}</code></span>
-                      @if (!ttsReadOnly()) {
-                        <div class="lf-favorites__actions">
-                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId() || ttsSaving()"
-                            (click)="editFavoriteAlias(favorite)"
-                            [attr.aria-label]="t('modules.tts.favorites.editNamed', { name: favorite.name })">{{ t('modules.tts.favorites.edit') }}</button>
-                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId() || ttsSaving()"
-                            (click)="removeFishFavorite(favorite)"
-                            [attr.aria-label]="t('modules.tts.favorites.removeNamed', { name: favorite.name })">{{ t('modules.tts.favorites.remove') }}</button>
-                        </div>
+            @if (tts.provider !== 'fish') {
+              <p class="lf-note lf-note--info">{{ t('modules.tts.expressive.piperNote') }}</p>
+            }
+            <div class="lf-tag-groups">
+              @for (group of tagGroupStats(); track group.key) {
+                <details class="lf-tag-group">
+                  <summary>
+                    <span class="lf-tag-group__name">{{ t('modules.tts.expressive.categories.' + group.key) }}</span>
+                    <span class="lf-tag-group__count" [class.is-partial]="group.on < group.tags.length">{{ group.on }}/{{ group.tags.length }}</span>
+                    <span class="lf-tag-group__off">
+                      @if (group.off.length) {
+                        {{ t('modules.tts.expressive.offList', { tags: group.off.join(', ') }) }}
+                      } @else {
+                        {{ t('modules.tts.expressive.allOn') }}
+                      }
+                    </span>
+                    <app-lf-icon class="lf-tag-group__chev" name="forward" [size]="16"></app-lf-icon>
+                  </summary>
+                  <div class="lf-tag-group__body">
+                    @if (!ttsReadOnly()) {
+                      <div class="lf-tag-group__bulk">
+                        <button type="button" class="lf-btn lf-btn--compact" [disabled]="ttsSaving() || !group.off.length" (click)="setTagGroup(group.tags, true)">{{ t('modules.tts.expressive.turnAllOn') }}</button>
+                        <button type="button" class="lf-btn lf-btn--compact" [disabled]="ttsSaving() || !group.on" (click)="setTagGroup(group.tags, false)">{{ t('modules.tts.expressive.turnAllOff') }}</button>
+                      </div>
+                    }
+                    <div class="lf-tag-pills" role="group" [attr.aria-label]="t('modules.tts.expressive.categories.' + group.key)">
+                      @for (tag of group.tags; track tag) {
+                        <button type="button" class="lf-tag-pill"
+                          [class.lf-tag-pill--on]="tts.filters.expressiveTags[tag]"
+                          [class.lf-tag-pill--off]="!tts.filters.expressiveTags[tag]"
+                          [attr.aria-pressed]="tts.filters.expressiveTags[tag]"
+                          [disabled]="ttsReadOnly() || ttsSaving()"
+                          (click)="toggleExpressiveTag(tag)">[{{ tag }}]</button>
                       }
                     </div>
-                    @if (editingFavoriteId() === favorite.id) {
-                      <form class="lf-favorites__edit" (submit)="$event.preventDefault(); saveFavoriteAlias(favorite)">
-                        <label [for]="'favorite-alias-' + favorite.id">{{ t('modules.tts.favorites.nicknameLabel') }}</label>
-                        <div class="lf-favorites__edit-controls">
-                          <input [id]="'favorite-alias-' + favorite.id" type="text" [formControl]="favoriteAliasControl"
-                            maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false"
-                            [attr.aria-describedby]="'favorite-alias-hint-' + favorite.id"
-                            [attr.aria-invalid]="!!favoriteAliasError()" [disabled]="!!favoriteSavingId()" />
-                          <button type="submit" class="lf-btn lf-btn--primary" [disabled]="!!favoriteSavingId()">{{ t('modules.tts.favorites.saveNickname') }}</button>
-                          <button type="button" class="lf-btn" [disabled]="!!favoriteSavingId()"
-                            (click)="cancelFavoriteAliasEdit()">{{ t('modules.tts.favorites.cancel') }}</button>
-                        </div>
-                        <p [id]="'favorite-alias-hint-' + favorite.id">{{ t('modules.tts.favorites.nicknameHint') }}</p>
-                        @if (favoriteAliasError(); as error) { <p class="lf-favorites__error" role="alert">{{ error }}</p> }
-                      </form>
-                    }
-                  </li>
+                  </div>
+                </details>
+              }
+            </div>
+            <p class="lf-note">{{ t('modules.tts.expressive.toggleHint') }}</p>
+          </section>
+        </div>
+
+        <div class="lf-col lf-col--side">
+          <!-- Chat usage -->
+          <section class="lf-tile lf-card" data-testid="tts-command" aria-labelledby="tts-command-title">
+            <div class="lf-row-head">
+              <h2 class="lf-h2" id="tts-command-title">{{ t('modules.tts.command.title') }}</h2>
+              @if (speechCommand() && canManageSpeechCommand()) {
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="commandSaving()" (click)="openCommandEditor()">{{ t('modules.tts.command.edit') }}</button>
+              } @else if (canViewSpeechCommand()) {
+                <a class="lf-btn lf-btn--compact" [routerLink]="commandsPath()">{{ t('modules.tts.command.openCommands') }}</a>
+              }
+            </div>
+            @if (speechCommand(); as command) {
+              <div class="lf-command">
+                <span class="lf-command__cmd">!{{ command.cmd }}</span>
+                <span class="lf-chip lf-chip--xs">
+                  <app-lf-icon name="timer" [size]="12"></app-lf-icon>
+                  {{ t('modules.tts.command.cooldown', { seconds: command.cooldown }) }}
+                </span>
+                @if (!command.enabled) {
+                  <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('modules.tts.command.disabled') }}</span>
                 }
-              </ul>
-            } @else { <p>{{ t('modules.tts.favorites.empty') }}</p> }
-          </div>
-        </article>
+              </div>
+              <p class="lf-note lf-note--tight">{{ t('modules.tts.command.says') }}</p>
+              <code class="lf-code">{{ command.message }}</code>
+            } @else {
+              <p class="lf-note">{{ t('modules.tts.command.missing') }}</p>
+            }
 
-        <!-- Filters -->
-        <article class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.tts.cards.filtersKicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.tts.cards.filtersTitle') }}</h2>
+            <h3 class="lf-h3 lf-cheats__title">{{ t('modules.tts.cheats.title') }}</h3>
+            <dl class="lf-cheats">
+              <div><dt><code>$(tts …)</code></dt><dd>{{ t('modules.tts.cheats.default') }}</dd></div>
+              <div><dt><code>$(tts.speak …)</code></dt><dd>{{ t('modules.tts.cheats.piper') }}</dd></div>
+              <div><dt><code>$(tts.fish voice …)</code></dt><dd>{{ t('modules.tts.cheats.fish') }}</dd></div>
+              <div><dt><code>[whisper]</code></dt><dd>{{ t('modules.tts.cheats.tags') }}</dd></div>
+            </dl>
+          </section>
 
-          <div class="lf-check-grid">
-            <label class="lf-check-card" [class.lf-check-card--on]="tts.filters.skipEmotes">
-              <input
-                type="checkbox"
-                [checked]="tts.filters.skipEmotes"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsFilter('skipEmotes', $any($event.target).checked)"
-              />
-              <span class="lf-check-card__title">{{ t('modules.tts.fields.skipEmotesLabel') }}</span>
-              <span class="lf-check-card__copy">{{ t('modules.tts.fields.skipEmotesHint') }}</span>
-            </label>
+          @if (speechApiUrl()) {
+            <section class="lf-tile lf-card" aria-labelledby="tts-url-title">
+              <h2 class="lf-h3" id="tts-url-title">{{ t('modules.tts.urlSection.label') }}</h2>
+              <p class="lf-note lf-note--tight">{{ t('modules.tts.urlSection.hint') }}</p>
+              <div class="lf-url">
+                <input class="lf-url__input" type="text" readonly [value]="speechApiUrl()"
+                  [attr.aria-label]="t('modules.tts.urlSection.label')" (focus)="$any($event.target).select()" />
+                <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--ok]="urlCopied()" (click)="copySpeechUrl()">
+                  @if (urlCopied()) { <app-lf-icon name="check" [size]="14"></app-lf-icon> }
+                  {{ urlCopied() ? t('modules.tts.copiedCta') : t('modules.tts.copySpeechUrl') }}
+                </button>
+              </div>
+            </section>
+          }
 
-            <label class="lf-check-card" [class.lf-check-card--on]="tts.filters.stripLinks">
-              <input
-                type="checkbox"
-                [checked]="tts.filters.stripLinks"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsFilter('stripLinks', $any($event.target).checked)"
-              />
-              <span class="lf-check-card__title">{{ t('modules.tts.fields.stripLinksLabel') }}</span>
-              <span class="lf-check-card__copy">{{ t('modules.tts.fields.stripLinksHint') }}</span>
-            </label>
-
-            <label class="lf-check-card" [class.lf-check-card--on]="tts.filters.normalizeWhitespace">
-              <input
-                type="checkbox"
-                [checked]="tts.filters.normalizeWhitespace"
-                [disabled]="ttsReadOnly() || ttsSaving()"
-                (change)="updateTtsFilter('normalizeWhitespace', $any($event.target).checked)"
-              />
-              <span class="lf-check-card__title">{{ t('modules.tts.fields.normalizeWhitespaceLabel') }}</span>
-              <span class="lf-check-card__copy">{{ t('modules.tts.fields.normalizeWhitespaceHint') }}</span>
-            </label>
-          </div>
-        </article>
-      </section>
+          <section class="lf-tile lf-card lf-credits" aria-labelledby="tts-credits-title">
+            <h2 class="lf-h3" id="tts-credits-title"><app-lf-icon name="zap" [size]="15"></app-lf-icon> {{ t('modules.tts.credits.title') }}</h2>
+            <ul class="lf-credits__list">
+              <li><strong>Piper</strong> {{ t('modules.tts.credits.piper') }}</li>
+              <li><strong>Fish Audio</strong> {{ t('modules.tts.credits.fish') }}</li>
+            </ul>
+            <p class="lf-note lf-note--tight">{{ t('modules.tts.credits.fallback') }}</p>
+            @if (isOwnerView()) {
+              <a class="lf-link" [routerLink]="usagePath()">{{ t('modules.tts.credits.usageLink') }} <app-lf-icon name="forward" [size]="14"></app-lf-icon></a>
+            }
+          </section>
+        </div>
+      </div>
 
       @if (voiceBrowserOpen() && channelID(); as id) {
         <app-fish-voice-browser [channelID]="id" [selectedId]="tts.voices.cloneDefault || ''"
@@ -323,57 +344,23 @@
           (selectVoice)="chooseFishVoice($event)" (toggleFavorite)="toggleFishFavorite($event)" (dismiss)="voiceBrowserOpen.set(false)" />
       }
 
-      <section class="lf-tile" aria-labelledby="expressive-tags-title">
-        <div class="lf-section-head">
-          <div>
-            <p class="lf-kicker">{{ t('modules.tts.expressive.kicker') }}</p>
-            <h2 class="lf-h2" id="expressive-tags-title">{{ t('modules.tts.expressive.title') }}</h2>
-            <p class="lf-copy lf-copy--tight">{{ t('modules.tts.expressive.subtitle') }}</p>
-          </div>
-          <div class="lf-pill-summary" aria-live="polite">
-            <strong>{{ expressiveTagsEnabledCount() }}/{{ expressiveTags.length }}</strong>
-            <span>{{ t('modules.tts.expressive.summary') }}</span>
-          </div>
-        </div>
-        <p class="lf-note">{{ t('modules.tts.expressive.toggleHint') }}</p>
-        <div class="lf-tag-groups">
-          @for (group of expressiveTagGroups; track group.key) {
-            <section class="lf-tag-group" [attr.aria-labelledby]="'tts-tags-' + group.key">
-              <h3 class="lf-h3" [id]="'tts-tags-' + group.key">{{ t('modules.tts.expressive.categories.' + group.key) }}</h3>
-              <div class="lf-tag-pills" role="group" [attr.aria-labelledby]="'tts-tags-' + group.key">
-                @for (tag of group.tags; track tag) {
-                  <button type="button" class="lf-tag-pill"
-                    [class.lf-tag-pill--on]="tts.filters.expressiveTags[tag]"
-                    [class.lf-tag-pill--off]="!tts.filters.expressiveTags[tag]"
-                    [attr.aria-pressed]="tts.filters.expressiveTags[tag]"
-                    [disabled]="ttsReadOnly() || ttsSaving()"
-                    (click)="toggleExpressiveTag(tag)">
-                    [{{ tag }}]
-                  </button>
-                }
-              </div>
-            </section>
-          }
-        </div>
-        <div class="lf-help lf-help--subtle">
-          <strong>{{ t('modules.tts.expressive.providerTitle') }}</strong>
-          <p>{{ t('modules.tts.expressive.providerCopy') }}</p>
-        </div>
-      </section>
-
-      <p class="lf-footer-note">
-        {{ t(ttsReadOnly() ? 'modules.tts.footer.readOnly' : 'modules.tts.footer.owner') }}
-      </p>
-
       @if (!ttsReadOnly()) {
-        <div class="lf-save-bar">
+        <div class="lf-save-bar" [class.lf-save-bar--dirty]="ttsDirty()">
+          <p class="lf-save-bar__status" aria-live="polite">
+            @if (ttsDirty()) {
+              <span class="lf-dot lf-dot--warn" aria-hidden="true"></span> {{ t('modules.tts.save.unsaved') }}
+            } @else {
+              <app-lf-icon name="check" [size]="15"></app-lf-icon> {{ t('modules.tts.save.allSaved') }}
+            }
+          </p>
           <button
             type="button"
             class="lf-btn lf-btn--primary"
+            [attr.aria-label]="t('modules.tts.actions.save')"
             [disabled]="ttsSaving() || !ttsDirty()"
             (click)="saveTtsSettings()"
           >
-            {{ ttsSaving() ? t('modules.tts.actions.saving') : t('modules.tts.actions.save') }}
+            {{ ttsSaving() ? t('modules.tts.actions.saving') : t('modules.tts.actions.saveShort') }}
           </button>
         </div>
       }
