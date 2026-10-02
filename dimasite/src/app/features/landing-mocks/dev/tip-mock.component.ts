@@ -20,6 +20,7 @@ import {
   LucideAngularModule,
   Moon,
   RotateCcw,
+  Sparkles,
   Sun,
   Target,
   Volume2,
@@ -48,7 +49,18 @@ interface Supporter {
 }
 
 interface Perk {
-  id: 'alert' | 'tts' | 'big';
+  id: 'alert' | 'tts' | 'hype' | 'legendary';
+  min: number;
+}
+
+type AlertTierId = 'basic' | 'hype' | 'legendary';
+
+/**
+ * Invented alert variants by tip amount. Swap for the streamer's real alert
+ * config once the tip system exists; the template switches on `id`.
+ */
+interface AlertTier {
+  id: AlertTierId;
   min: number;
 }
 
@@ -58,10 +70,17 @@ const MIN_TIP = 1;
 const MAX_TIP = 1000;
 const MESSAGE_LIMIT = 300;
 const GOAL = { raised: 725, target: 1000 };
+const ALERT_TIERS: AlertTier[] = [
+  { id: 'basic', min: 1 },
+  { id: 'hype', min: 10 },
+  { id: 'legendary', min: 50 }
+];
+const TTS_MIN = 3;
 const PERKS: Perk[] = [
   { id: 'alert', min: 1 },
-  { id: 'tts', min: 3 },
-  { id: 'big', min: 50 }
+  { id: 'tts', min: TTS_MIN },
+  { id: 'hype', min: 10 },
+  { id: 'legendary', min: 50 }
 ];
 const PROFILE_API = 'https://api.domdimabot.com';
 
@@ -74,7 +93,6 @@ const COPY: Record<Lang, Record<string, string>> = {
     liveNow: 'Live now',
     watching: '{n} watching',
     lastLive: 'Last live 2 days ago',
-    category: 'Just Chatting',
     streamerNote: 'Every tip pops up on stream and gets read out loud. Thank you for keeping the lights on.',
     amountTitle: 'Choose an amount',
     amountLabel: 'Tip amount',
@@ -84,7 +102,19 @@ const COPY: Record<Lang, Record<string, string>> = {
     unlocks: 'Your tip unlocks',
     perk_alert: 'On-screen alert',
     perk_tts: 'Read aloud (TTS)',
-    perk_big: 'Big alert',
+    perk_hype: 'Hype alert',
+    perk_legendary: 'Legendary alert',
+    tier_basic: 'Basic',
+    tier_hype: 'Hype',
+    tier_legendary: 'Legendary',
+    tierRange: '{from}–{to}',
+    tierFrom: '{from}+',
+    tiersLabel: 'Alert tiers',
+    tierPick: 'Set amount to {v}',
+    previewCaption: 'The alert style changes with the amount.',
+    hypeKicker: 'Hype tip',
+    legendaryKicker: 'Legendary tip',
+    from_name: 'from {name}',
     from: 'from {v}',
     nameLabel: 'Name on stream',
     namePlaceholder: 'Your nickname',
@@ -126,7 +156,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     themeLight: 'Switch to light mode',
     themeDark: 'Switch to dark mode',
     lang: 'Cambiar a español',
-    streamPreview: 'Stream preview',
+    streamPreview: 'Alert preview',
     offlineAlert: 'Your alert plays when {streamer} goes live'
   },
   es: {
@@ -137,7 +167,6 @@ const COPY: Record<Lang, Record<string, string>> = {
     liveNow: 'En vivo',
     watching: '{n} viendo',
     lastLive: 'En vivo hace 2 días',
-    category: 'Just Chatting',
     streamerNote: 'Cada propina aparece en el stream y se lee en voz alta. Gracias por mantener las luces encendidas.',
     amountTitle: 'Elige un monto',
     amountLabel: 'Monto de la propina',
@@ -147,7 +176,19 @@ const COPY: Record<Lang, Record<string, string>> = {
     unlocks: 'Tu propina desbloquea',
     perk_alert: 'Alerta en pantalla',
     perk_tts: 'Lectura en voz (TTS)',
-    perk_big: 'Alerta grande',
+    perk_hype: 'Alerta Hype',
+    perk_legendary: 'Alerta Legendaria',
+    tier_basic: 'Básica',
+    tier_hype: 'Hype',
+    tier_legendary: 'Legendaria',
+    tierRange: '{from}–{to}',
+    tierFrom: '{from}+',
+    tiersLabel: 'Niveles de alerta',
+    tierPick: 'Poner monto en {v}',
+    previewCaption: 'El estilo de la alerta cambia según el monto.',
+    hypeKicker: 'Propina Hype',
+    legendaryKicker: 'Propina legendaria',
+    from_name: 'de {name}',
     from: 'desde {v}',
     nameLabel: 'Nombre en el stream',
     namePlaceholder: 'Tu apodo',
@@ -189,7 +230,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     themeLight: 'Cambiar a modo claro',
     themeDark: 'Cambiar a modo oscuro',
     lang: 'Switch to English',
-    streamPreview: 'Vista previa del stream',
+    streamPreview: 'Vista previa de la alerta',
     offlineAlert: 'Tu alerta se mostrará cuando {streamer} esté en vivo'
   }
 };
@@ -228,10 +269,11 @@ export class TipMockComponent {
     Check,
     ChevronDown,
     Crown,
-      Lock,
+    Lock,
     Moon,
     RotateCcw,
-      Sun,
+    Sparkles,
+    Sun,
     Target,
     Volume2,
     X
@@ -240,6 +282,8 @@ export class TipMockComponent {
   readonly presets = PRESETS;
   readonly currencies = CURRENCIES;
   readonly perks = PERKS;
+  readonly tiers = ALERT_TIERS;
+  readonly confetti = Array.from({ length: 14 }, (_, i) => i);
   readonly messageLimit = MESSAGE_LIMIT;
 
   readonly login = toSignal(
@@ -287,6 +331,13 @@ export class TipMockComponent {
       .find((p) => p.type === 'currency');
     return part?.value ?? '$';
   });
+
+  readonly alertTier = computed<AlertTierId>(() => {
+    const amount = this.canPay() ? this.amount() : MIN_TIP;
+    return [...ALERT_TIERS].reverse().find((tier) => amount >= tier.min)?.id ?? 'basic';
+  });
+
+  readonly showTts = computed(() => !!this.message().trim() && this.canPay() && this.amount() >= TTS_MIN);
 
   readonly remaining = computed(() => MESSAGE_LIMIT - this.message().length);
 
@@ -338,6 +389,20 @@ export class TipMockComponent {
     let h = 0;
     for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
     return h;
+  }
+
+  tierRange(index: number): string {
+    const tier = ALERT_TIERS[index];
+    const next = ALERT_TIERS[index + 1];
+    const from = this.money(tier.min, { compact: true });
+    return next
+      ? this.t('tierRange', { from, to: this.money(next.min - 1, { compact: true }) })
+      : this.t('tierFrom', { from });
+  }
+
+  selectTier(tier: AlertTier): void {
+    this.amountRaw.set(String(tier.min));
+    this.replayAlert();
   }
 
   perkUnlocked(perk: Perk): boolean {

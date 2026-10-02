@@ -219,65 +219,118 @@
       </div>
     </section>
 
-    <!-- On-stream preview -->
+    <!-- Alert preview: invented tier designs until the real tip alerts exist -->
     <section class="tp-tile tp-preview" aria-labelledby="tp-preview-title">
       <div class="tp-tile__head">
-        <h2 id="tp-preview-title" class="tp-h2">{{ t('previewTitle') }}</h2>
+        <div>
+          <h2 id="tp-preview-title" class="tp-h2">{{ t('previewTitle') }}</h2>
+          <p class="tp-preview__caption">{{ t('previewCaption') }}</p>
+        </div>
         <button type="button" class="tp-ghost-btn" (click)="replayAlert()">
           <lucide-icon [name]="icons.RotateCcw" [size]="14" aria-hidden="true" />
           {{ t('replay') }}
         </button>
       </div>
 
-      <div class="tp-stage" [class.tp-stage--off]="!isLive()" role="img" [attr.aria-label]="t('streamPreview')">
-        <div class="tp-stage__scene" aria-hidden="true">
-          <span class="tp-stage__light tp-stage__light--a"></span>
-          <span class="tp-stage__light tp-stage__light--b"></span>
-          <span class="tp-stage__desk"></span>
-          <span class="tp-stage__cam">
-            @if (avatarUrl() && !avatarBroken()) {
-              <img [src]="avatarUrl()!" alt="" />
-            }
-          </span>
-        </div>
-
-        <div class="tp-stage__hud" aria-hidden="true">
-          @if (isLive()) {
-            <span class="tp-stage__badge"><span class="tp-dot tp-dot--light"></span>{{ t('live') }}</span>
-            <span class="tp-stage__viewers">1.2k</span>
-            <span class="tp-stage__viewers">{{ t('category') }}</span>
-          } @else {
-            <span class="tp-stage__badge tp-stage__badge--off">{{ t('offline') }}</span>
-          }
-        </div>
-
+      <div class="tp-stage" [attr.data-tier]="alertTier()" role="img" [attr.aria-label]="t('streamPreview')">
         @for (k of [alertKey()]; track k) {
-          <div class="tp-alert" [class.tp-alert--big]="amount() >= 50 && canPay()" aria-hidden="true">
-            <div class="tp-alert__avatar">{{ alertName().charAt(0).toUpperCase() }}</div>
-            <div class="tp-alert__body">
-              <p class="tp-alert__line">
-                <strong>{{ alertName() }}</strong>
-                @if (hideAmount()) {
-                  {{ t('sentTip') }}
-                } @else {
-                  {{ t('tipped') }} <strong class="tp-alert__amount">{{ money(canPay() ? amount() : 0) }}</strong>
+          @switch (alertTier()) {
+            @case ('basic') {
+              <div class="tp-alert tp-alert--basic" aria-hidden="true">
+                <div class="tp-alert__avatar">{{ alertName().charAt(0).toUpperCase() }}</div>
+                <div class="tp-alert__body">
+                  <p class="tp-alert__line">
+                    <strong>{{ alertName() }}</strong>
+                    @if (hideAmount()) {
+                      {{ t('sentTip') }}
+                    } @else {
+                      {{ t('tipped') }} <strong class="tp-alert__amount">{{ money(canPay() ? amount() : 0) }}</strong>
+                    }
+                  </p>
+                  @if (message().trim()) {
+                    <p class="tp-alert__msg">{{ message() }}</p>
+                  }
+                </div>
+                @if (showTts()) {
+                  <span class="tp-alert__tts">
+                    <lucide-icon [name]="icons.Volume2" [size]="12" />
+                    <span class="tp-wave"><i></i><i></i><i></i><i></i></span>
+                  </span>
                 }
-              </p>
-              @if (message().trim()) {
-                <p class="tp-alert__msg">{{ message() }}</p>
-              }
-            </div>
-            @if (message().trim() && amount() >= 3) {
-              <span class="tp-alert__tts">
-                <lucide-icon [name]="icons.Volume2" [size]="12" />
-                <span class="tp-wave"><i></i><i></i><i></i><i></i></span>
-              </span>
+              </div>
             }
-          </div>
+            @case ('hype') {
+              <div class="tp-alert tp-alert--hype" aria-hidden="true">
+                <span class="tp-alert__ring"></span>
+                <p class="tp-alert__kicker">
+                  <lucide-icon [name]="icons.Sparkles" [size]="12" />
+                  {{ t('hypeKicker') }}
+                </p>
+                @if (hideAmount()) {
+                  <p class="tp-alert__big tp-alert__big--name">{{ alertName() }}</p>
+                } @else {
+                  <p class="tp-alert__big">{{ money(amount()) }}</p>
+                  <p class="tp-alert__from">{{ t('from_name', { name: alertName() }) }}</p>
+                }
+                @if (message().trim()) {
+                  <p class="tp-alert__msg">{{ message() }}</p>
+                }
+                @if (showTts()) {
+                  <span class="tp-alert__tts">
+                    <lucide-icon [name]="icons.Volume2" [size]="12" />
+                    <span class="tp-wave"><i></i><i></i><i></i><i></i></span>
+                  </span>
+                }
+              </div>
+            }
+            @case ('legendary') {
+              <div class="tp-alert tp-alert--legendary" aria-hidden="true">
+                <span class="tp-confetti">
+                  @for (c of confetti; track c) {
+                    <i [style.--i]="c"></i>
+                  }
+                </span>
+                <span class="tp-alert__crown"><lucide-icon [name]="icons.Crown" [size]="18" /></span>
+                <p class="tp-alert__kicker">{{ t('legendaryKicker') }}</p>
+                @if (hideAmount()) {
+                  <p class="tp-alert__big tp-alert__big--name">{{ alertName() }}</p>
+                } @else {
+                  <p class="tp-alert__big">{{ money(amount()) }}</p>
+                  <p class="tp-alert__from">{{ t('from_name', { name: alertName() }) }}</p>
+                }
+                @if (message().trim()) {
+                  <p class="tp-alert__msg">{{ message() }}</p>
+                }
+                @if (showTts()) {
+                  <span class="tp-alert__tts">
+                    <lucide-icon [name]="icons.Volume2" [size]="12" />
+                    <span class="tp-wave"><i></i><i></i><i></i><i></i></span>
+                  </span>
+                }
+              </div>
+            }
+          }
         }
 
         @if (!isLive()) {
           <p class="tp-stage__offline">{{ t('offlineAlert', { streamer: streamer() }) }}</p>
+        }
+      </div>
+
+      <div class="tp-tiers" role="group" [attr.aria-label]="t('tiersLabel')">
+        @for (tier of tiers; track tier.id; let i = $index) {
+          <button
+            type="button"
+            class="tp-tier"
+            [attr.data-tier]="tier.id"
+            [attr.aria-pressed]="alertTier() === tier.id"
+            [attr.aria-label]="t('tier_' + tier.id) + ', ' + t('tierPick', { v: money(tier.min, { compact: true }) })"
+            (click)="selectTier(tier)"
+          >
+            <span class="tp-tier__dot" aria-hidden="true"></span>
+            <span class="tp-tier__name">{{ t('tier_' + tier.id) }}</span>
+            <span class="tp-tier__range">{{ tierRange(i) }}</span>
+          </button>
         }
       </div>
     </section>
