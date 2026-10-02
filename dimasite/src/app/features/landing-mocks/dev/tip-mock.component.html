@@ -1,0 +1,405 @@
+<div class="tp" [class.tp--live]="isLive()">
+  <div class="tp-mockbar">
+    <span class="tp-mockbar__label">{{ t('mockBanner') }}</span>
+    <div class="tp-seg tp-seg--mini" role="group" aria-label="Stream state">
+      <button type="button" class="tp-seg__btn" [attr.aria-pressed]="isLive()" (click)="isLive.set(true)">
+        {{ t('live') }}
+      </button>
+      <button type="button" class="tp-seg__btn" [attr.aria-pressed]="!isLive()" (click)="isLive.set(false)">
+        {{ t('offline') }}
+      </button>
+    </div>
+  </div>
+
+  <header class="tp-nav">
+    <a class="tp-nav__brand" routerLink="/" aria-label="DomDimaBot">
+      <app-brand-logo [compact]="true" />
+    </a>
+    <div class="tp-nav__tools">
+      <button type="button" class="tp-icon-btn" (click)="toggleLanguage()" [attr.aria-label]="t('lang')">
+        {{ lang() === 'en' ? 'EN' : 'ES' }}
+      </button>
+      <button
+        type="button"
+        class="tp-icon-btn"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDark() ? t('themeLight') : t('themeDark')"
+      >
+        <lucide-icon [name]="isDark() ? icons.Sun : icons.Moon" [size]="16" aria-hidden="true" />
+      </button>
+      <button type="button" class="tp-link-btn">{{ t('login') }}</button>
+    </div>
+  </header>
+
+  <main class="tp-main">
+    <!-- Streamer identity -->
+    <section class="tp-tile tp-hero" aria-labelledby="tp-streamer-name">
+      <div class="tp-hero__banner" aria-hidden="true">
+        @if (avatarUrl() && !avatarBroken()) {
+          <img class="tp-hero__banner-img" [src]="avatarUrl()!" alt="" />
+        }
+      </div>
+      <div class="tp-hero__body">
+        <div class="tp-hero__avatar" [class.tp-hero__avatar--live]="isLive()">
+          @if (avatarUrl() && !avatarBroken()) {
+            <img [src]="avatarUrl()!" [alt]="streamer()" width="72" height="72" (error)="onAvatarError()" />
+          } @else {
+            <span aria-hidden="true">{{ avatarLetter() }}</span>
+          }
+          @if (isLive()) {
+            <span class="tp-hero__avatar-tag">{{ t('live') }}</span>
+          }
+        </div>
+
+        <div class="tp-hero__id">
+          <h1 id="tp-streamer-name" class="tp-hero__name">{{ streamer() }}</h1>
+          <p class="tp-hero__meta">
+            @if (isLive()) {
+              <span class="tp-dot" aria-hidden="true"></span>
+              <span class="tp-hero__live">{{ t('liveNow') }}</span>
+              <span class="tp-sep" aria-hidden="true">·</span>
+              <span>{{ t('watching', { n: '1.2k' }) }}</span>
+            } @else {
+              <span class="tp-dot tp-dot--off" aria-hidden="true"></span>
+              <span>{{ t('lastLive') }}</span>
+            }
+          </p>
+        </div>
+
+        <p class="tp-hero__note">{{ t('streamerNote') }}</p>
+      </div>
+    </section>
+
+    <!-- Checkout -->
+    <section class="tp-tile tp-checkout" aria-labelledby="tp-amount-title">
+      <div class="tp-checkout__head">
+        <h2 id="tp-amount-title" class="tp-h2">{{ t('amountTitle') }}</h2>
+        <label class="tp-currency">
+          <span class="sr-only">{{ t('currencyLabel') }}</span>
+          <select [value]="currency()" (change)="onCurrency($event)">
+            @for (c of currencies; track c) {
+              <option [value]="c">{{ c }}</option>
+            }
+          </select>
+          <lucide-icon [name]="icons.ChevronDown" [size]="14" aria-hidden="true" />
+        </label>
+      </div>
+
+      <label class="tp-amount" [class.tp-amount--error]="amountError()">
+        <span class="sr-only">{{ t('amountLabel') }}</span>
+        <span class="tp-amount__symbol" aria-hidden="true">{{ currencySymbol() }}</span>
+        <input
+          class="tp-amount__input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="0"
+          [value]="amountRaw()"
+          [style.--chars]="amountRaw().length || 1"
+          [attr.aria-invalid]="!!amountError()"
+          aria-describedby="tp-amount-error"
+          (input)="onAmountInput($event)"
+          (change)="replayAlert()"
+        />
+      </label>
+      <p id="tp-amount-error" class="tp-amount__error" aria-live="polite">{{ amountError() }}</p>
+
+      <div class="tp-presets" role="group" [attr.aria-label]="t('amountTitle')">
+        @for (p of presets; track p) {
+          <button
+            type="button"
+            class="tp-preset"
+            [attr.aria-pressed]="isPreset(p)"
+            (click)="selectPreset(p)"
+          >
+            {{ money(p, { compact: true }) }}
+          </button>
+        }
+      </div>
+
+      <div class="tp-perks">
+        <p class="tp-kicker">{{ t('unlocks') }}</p>
+        <ul class="tp-perks__list">
+          @for (perk of perks; track perk.id) {
+            <li class="tp-perk" [class.tp-perk--on]="perkUnlocked(perk)">
+              <span class="tp-perk__icon" aria-hidden="true">
+                <lucide-icon [name]="perkUnlocked(perk) ? icons.Check : icons.Lock" [size]="12" />
+              </span>
+              <span class="tp-perk__name">{{ t('perk_' + perk.id) }}</span>
+              @if (!perkUnlocked(perk)) {
+                <span class="tp-perk__min">{{ t('from', { v: money(perk.min, { compact: true }) }) }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+
+      <hr class="tp-rule" />
+
+      <div class="tp-field">
+        <div class="tp-field__row">
+          <label class="tp-label" for="tp-name">{{ t('nameLabel') }}</label>
+          <button type="button" class="tp-inline-link" (click)="useTwitchName()">{{ t('useTwitch') }}</button>
+        </div>
+        <input
+          id="tp-name"
+          class="tp-input"
+          type="text"
+          autocomplete="nickname"
+          maxlength="25"
+          [placeholder]="t('namePlaceholder')"
+          [value]="donorName()"
+          [disabled]="anonymous()"
+          (input)="onName($event)"
+          (change)="replayAlert()"
+        />
+      </div>
+
+      <div class="tp-field">
+        <div class="tp-field__row">
+          <label class="tp-label" for="tp-message">
+            {{ t('messageLabel') }} <span class="tp-label__opt">{{ t('optional') }}</span>
+          </label>
+          <span class="tp-counter" [class.tp-counter--low]="remaining() <= 30" aria-live="polite">
+            {{ t('left', { n: remaining() }) }}
+          </span>
+        </div>
+        <textarea
+          id="tp-message"
+          class="tp-input tp-input--area"
+          rows="3"
+          [attr.maxlength]="messageLimit"
+          [placeholder]="t('messagePlaceholder')"
+          [value]="message()"
+          (input)="onMessage($event)"
+          (change)="replayAlert()"
+        ></textarea>
+      </div>
+
+      <div class="tp-switches">
+        <button type="button" class="tp-switch" role="switch" [attr.aria-checked]="anonymous()" (click)="toggleAnonymous()">
+          <span class="tp-switch__text">
+            <span class="tp-switch__title">{{ t('anonymous') }}</span>
+            <span class="tp-switch__hint">{{ t('anonymousHint') }}</span>
+          </span>
+          <span class="tp-switch__track" aria-hidden="true"><span class="tp-switch__thumb"></span></span>
+        </button>
+        <button type="button" class="tp-switch" role="switch" [attr.aria-checked]="hideAmount()" (click)="toggleHideAmount()">
+          <span class="tp-switch__text">
+            <span class="tp-switch__title">{{ t('hideAmount') }}</span>
+            <span class="tp-switch__hint">{{ t('hideAmountHint', { streamer: streamer() }) }}</span>
+          </span>
+          <span class="tp-switch__track" aria-hidden="true"><span class="tp-switch__thumb"></span></span>
+        </button>
+      </div>
+
+      <div class="tp-checkout__pay">
+        <div class="tp-total">
+          <span>{{ t('total') }}</span>
+          <strong>{{ canPay() ? money(amount()) : '—' }} <small>{{ currency() }}</small></strong>
+        </div>
+        <button
+          type="button"
+          class="tp-pay"
+          [disabled]="!canPay() || payState() === 'processing'"
+          (click)="pay()"
+        >
+          @if (payState() === 'processing') {
+            <span class="tp-spinner" aria-hidden="true"></span>
+            {{ t('processing') }}
+          } @else {
+            {{ t('payWith') }}
+            <lucide-icon [name]="icons.ArrowRight" [size]="16" aria-hidden="true" />
+          }
+        </button>
+        <p class="tp-secure">
+          <lucide-icon [name]="icons.Lock" [size]="12" aria-hidden="true" />
+          {{ t('secure') }}
+        </p>
+      </div>
+    </section>
+
+    <!-- On-stream preview -->
+    <section class="tp-tile tp-preview" aria-labelledby="tp-preview-title">
+      <div class="tp-tile__head">
+        <h2 id="tp-preview-title" class="tp-h2">{{ t('previewTitle') }}</h2>
+        <button type="button" class="tp-ghost-btn" (click)="replayAlert()">
+          <lucide-icon [name]="icons.RotateCcw" [size]="14" aria-hidden="true" />
+          {{ t('replay') }}
+        </button>
+      </div>
+
+      <div class="tp-stage" [class.tp-stage--off]="!isLive()" role="img" [attr.aria-label]="t('streamPreview')">
+        <div class="tp-stage__scene" aria-hidden="true">
+          <span class="tp-stage__light tp-stage__light--a"></span>
+          <span class="tp-stage__light tp-stage__light--b"></span>
+          <span class="tp-stage__desk"></span>
+          <span class="tp-stage__cam">
+            @if (avatarUrl() && !avatarBroken()) {
+              <img [src]="avatarUrl()!" alt="" />
+            }
+          </span>
+        </div>
+
+        <div class="tp-stage__hud" aria-hidden="true">
+          @if (isLive()) {
+            <span class="tp-stage__badge"><span class="tp-dot tp-dot--light"></span>{{ t('live') }}</span>
+            <span class="tp-stage__viewers">1.2k</span>
+            <span class="tp-stage__viewers">{{ t('category') }}</span>
+          } @else {
+            <span class="tp-stage__badge tp-stage__badge--off">{{ t('offline') }}</span>
+          }
+        </div>
+
+        @for (k of [alertKey()]; track k) {
+          <div class="tp-alert" [class.tp-alert--big]="amount() >= 50 && canPay()" aria-hidden="true">
+            <div class="tp-alert__avatar">{{ alertName().charAt(0).toUpperCase() }}</div>
+            <div class="tp-alert__body">
+              <p class="tp-alert__line">
+                <strong>{{ alertName() }}</strong>
+                @if (hideAmount()) {
+                  {{ t('sentTip') }}
+                } @else {
+                  {{ t('tipped') }} <strong class="tp-alert__amount">{{ money(canPay() ? amount() : 0) }}</strong>
+                }
+              </p>
+              @if (message().trim()) {
+                <p class="tp-alert__msg">{{ message() }}</p>
+              }
+            </div>
+            @if (message().trim() && amount() >= 3) {
+              <span class="tp-alert__tts">
+                <lucide-icon [name]="icons.Volume2" [size]="12" />
+                <span class="tp-wave"><i></i><i></i><i></i><i></i></span>
+              </span>
+            }
+          </div>
+        }
+
+        @if (!isLive()) {
+          <p class="tp-stage__offline">{{ t('offlineAlert', { streamer: streamer() }) }}</p>
+        }
+      </div>
+    </section>
+
+    <!-- Goal -->
+    <section class="tp-tile tp-goal" aria-labelledby="tp-goal-title">
+      <p class="tp-kicker">
+        <lucide-icon [name]="icons.Target" [size]="13" aria-hidden="true" />
+        {{ t('goalKicker') }}
+      </p>
+      <div class="tp-goal__row">
+        <h2 id="tp-goal-title" class="tp-h2">{{ t('goalTitle') }}</h2>
+        <span class="tp-goal__pct">{{ goalPct() }}%</span>
+      </div>
+      <div
+        class="tp-goal__bar"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="goalPct()"
+        [attr.aria-labelledby]="'tp-goal-title'"
+      >
+        <span class="tp-goal__fill tp-goal__fill--you" [style.width.%]="goalProjectedPct()"></span>
+        <span class="tp-goal__fill" [style.width.%]="goalPct()"></span>
+      </div>
+      <div class="tp-goal__foot">
+        <span>
+          <strong>{{ money(goalRaised, { compact: true }) }}</strong>
+          {{ t('goalOf', { v: money(goalTarget, { compact: true }) }) }}
+        </span>
+        @if (canPay()) {
+          <span class="tp-goal__you">
+            {{ t('goalProjection', { amount: money(amount()), pct: goalProjectedPct() }) }}
+          </span>
+        }
+      </div>
+    </section>
+
+    <!-- Supporters -->
+    <section class="tp-tile tp-board" aria-labelledby="tp-board-title">
+      <div class="tp-tile__head tp-tile__head--wrap">
+        <div>
+          <p class="tp-kicker">{{ t('supportersKicker') }}</p>
+          <h2 id="tp-board-title" class="tp-h2">{{ t('supportersTitle') }}</h2>
+        </div>
+        <div class="tp-seg" role="group" [attr.aria-label]="t('supportersTitle')">
+          <button type="button" class="tp-seg__btn" [attr.aria-pressed]="boardTab() === 'top'" (click)="boardTab.set('top')">
+            {{ t('tabTop') }}
+          </button>
+          <button type="button" class="tp-seg__btn" [attr.aria-pressed]="boardTab() === 'recent'" (click)="boardTab.set('recent')">
+            {{ t('tabRecent') }}
+          </button>
+        </div>
+      </div>
+
+      <ol class="tp-board__list" [class.tp-board__list--ranked]="boardTab() === 'top'">
+        @for (s of supporters(); track s.name + s.minutesAgo; let i = $index) {
+          <li class="tp-row" [class.tp-row--first]="boardTab() === 'top' && i === 0">
+            @if (boardTab() === 'top') {
+              <span class="tp-row__rank" [attr.data-rank]="i + 1">
+                @if (i === 0) {
+                  <lucide-icon [name]="icons.Crown" [size]="14" aria-hidden="true" />
+                } @else {
+                  {{ i + 1 }}
+                }
+              </span>
+            }
+            <span class="tp-row__avatar" [style.--h]="hue(s.name)" aria-hidden="true">{{ s.name.charAt(0).toUpperCase() }}</span>
+            <span class="tp-row__main">
+              <span class="tp-row__name">{{ s.name }}</span>
+              @if (s.note) {
+                <span class="tp-row__note">{{ s.note }}</span>
+              }
+            </span>
+            <span class="tp-row__side">
+              <span class="tp-row__amount">{{ money(s.amount, { compact: true }) }}</span>
+              @if (boardTab() === 'recent') {
+                <span class="tp-row__time">{{ ago(s.minutesAgo) }}</span>
+              }
+            </span>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <footer class="tp-footer">{{ t('footer', { streamer: streamer() }) }}</footer>
+  </main>
+
+  <!-- Mobile pay bar -->
+  <div class="tp-paybar">
+    <div class="tp-paybar__total">
+      <span>{{ t('total') }}</span>
+      <strong>{{ canPay() ? money(amount()) : '—' }}</strong>
+    </div>
+    <button
+      type="button"
+      class="tp-pay tp-pay--bar"
+      [disabled]="!canPay() || payState() === 'processing'"
+      (click)="pay()"
+    >
+      @if (payState() === 'processing') {
+        <span class="tp-spinner" aria-hidden="true"></span>
+        {{ t('processing') }}
+      } @else {
+        {{ t('payWith') }}
+        <lucide-icon [name]="icons.ArrowRight" [size]="16" aria-hidden="true" />
+      }
+    </button>
+  </div>
+
+  @if (payState() === 'done') {
+    <div class="tp-sheet-backdrop" (click)="resetPay()"></div>
+    <div class="tp-sheet" role="dialog" aria-modal="true" aria-labelledby="tp-done-title">
+      <button type="button" class="tp-sheet__close" (click)="resetPay()" [attr.aria-label]="t('close')">
+        <lucide-icon [name]="icons.X" [size]="18" aria-hidden="true" />
+      </button>
+      <div class="tp-sheet__check" aria-hidden="true">
+        <lucide-icon [name]="icons.Check" [size]="28" />
+      </div>
+      <h2 id="tp-done-title" class="tp-sheet__title">{{ t('doneTitle') }}</h2>
+      <p class="tp-sheet__copy">{{ t('doneCopy', { v: money(amount()) }) }}</p>
+      <button type="button" class="tp-pay" #doneBtn (click)="resetPay()">{{ t('doneAgain') }}</button>
+    </div>
+  }
+</div>

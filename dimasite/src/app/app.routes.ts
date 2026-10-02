@@ -348,6 +348,12 @@ export const routes: Routes = [
         title: 'LF 503 Mock | DomDimaBot'
       },
       {
+        path: 'tip',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/tip-mock.component').then((m) => m.TipMockComponent),
+        title: 'Tip Page Mock | DomDimaBot'
+      },
+      {
         path: '',
         loadComponent: () =>
           import('./features/landing-mocks/dev/dev-mock-shell.component').then(

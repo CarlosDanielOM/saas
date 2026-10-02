@@ -148,6 +148,13 @@ export class DevMockIndexComponent {
 
   readonly mocks: DevMockCard[] = [
     {
+      id: 'tip',
+      title: 'Tip page · Mobile-first',
+      badge: 'Design mock',
+      description:
+        'Donation page redesign: amount-first checkout, perks, on-stream alert preview, goal projection and sticky mobile pay bar. No payments.'
+    },
+    {
       id: 'roulette-astra',
       title: 'Roulette · Astra concepts',
       badge: 'Wheel + card grid',
