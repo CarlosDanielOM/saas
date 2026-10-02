@@ -18,6 +18,8 @@ export class TtsVoicePreviewComponent {
   readonly voice = input.required<string>();
   readonly language = input.required<'en' | 'es'>();
   readonly readOnly = input(false);
+  /** Show the cost line and hint; off for a second preview in the same card. */
+  readonly hint = input(true);
   readonly preparing = signal(false);
   readonly error = signal('');
   readonly preview = signal<VoicePreview | null>(null);

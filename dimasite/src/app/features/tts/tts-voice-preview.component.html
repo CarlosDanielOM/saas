@@ -3,9 +3,13 @@
     [attr.aria-label]="t('browser.testNamed', { name: voice() })">
     {{ t('browser.test') }}
   </button>
-  <span>{{ t(provider() === 'piper' ? 'preview.piperCost' : 'preview.kokoroCost') }}</span>
+  @if (hint()) {
+    <span>{{ t(provider() === 'piper' ? 'preview.piperCost' : 'preview.kokoroCost') }}</span>
+  }
 </div>
-<p class="preview-hint">{{ t(provider() === 'piper' ? 'preview.piperHint' : 'preview.kokoroHint') }}</p>
+@if (hint()) {
+  <p class="preview-hint">{{ t(provider() === 'piper' ? 'preview.piperHint' : 'preview.kokoroHint') }}</p>
+}
 <div role="status" aria-live="polite">
   @if (preparing()) { <p>{{ t('browser.preparing', { name: voice() }) }}</p> }
 </div>

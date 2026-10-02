@@ -623,13 +623,15 @@
         "engineLabel": "Engine",
         "kokoroTag": "1 credit / 15 characters",
         "kokoroCopy": "Preset voices. Credits round up; Piper takes over if credits run out or synthesis fails.",
-        "kokoroVoiceLabel": "Kokoro preset voice",
+        "kokoroVoiceLabel": "Kokoro voice",
         "kokoroSyntax": "AST: $(tts.kokoro voice_name text)",
         "piperTag": "1 credit / 50 characters",
         "piperCopy": "Simple voice that remains available at zero or negative credits.",
         "fishTag": "Uses credits",
         "fishCopy": "Character voices like Gojo, plus thousands you can search.",
-        "piperSummary": "Piper · available after credit exhaustion"
+        "piperSummary": "Piper",
+        "comingSoon": "Coming soon",
+        "dimaCopy": "Our own natural-sounding voices, hosted by DomDimaBot."
       },
       "rules": {
         "title": "Message limits",
@@ -659,6 +661,24 @@
         "fish": "uses 1.5 credits per character, rounded up.",
         "fallback": "Out of credits or synthesis unavailable? TTS switches to Piper automatically. Your selected voice stays saved.",
         "usageLink": "See credit usage"
+      },
+      "kokoro": {
+        "languages": {
+          "a": "English (US)",
+          "b": "English (UK)",
+          "e": "Spanish",
+          "f": "French",
+          "i": "Italian",
+          "p": "Portuguese (Brazil)",
+          "h": "Hindi",
+          "j": "Japanese",
+          "z": "Chinese (Mandarin)",
+          "?": "Other"
+        },
+        "genders": {
+          "f": "female",
+          "m": "male"
+        }
       }
     },
     "referrals": {

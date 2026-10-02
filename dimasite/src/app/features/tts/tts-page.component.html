@@ -77,10 +77,18 @@
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'kokoro'">
                 <input type="radio" name="tts-provider" value="kokoro" [checked]="tts.provider === 'kokoro'" (change)="updateTtsProvider('kokoro')" />
                 <span class="lf-engine__body">
-                  <span class="lf-engine__name">Kokoro <span class="lf-chip lf-chip--xs">{{ t('modules.tts.voice.kokoroTag') }}</span></span>
+                  <span class="lf-engine__name">Kokoro <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('modules.tts.voice.kokoroTag') }}</span></span>
                   <span class="lf-engine__copy">{{ t('modules.tts.voice.kokoroCopy') }}</span>
                 </span>
               </label>
+              <!-- Self-hosted engine, not available yet: no input so it can't be chosen or saved. -->
+              <div class="lf-engine lf-engine--soon" aria-disabled="true">
+                <span class="lf-engine__radio" aria-hidden="true"></span>
+                <span class="lf-engine__body">
+                  <span class="lf-engine__name">Dima Voice <span class="lf-chip lf-chip--xs">{{ t('modules.tts.voice.comingSoon') }}</span></span>
+                  <span class="lf-engine__copy">{{ t('modules.tts.voice.dimaCopy') }}</span>
+                </span>
+              </div>
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'fish'">
                 <input type="radio" name="tts-provider" value="fish" [checked]="tts.provider === 'fish'" (change)="updateTtsProvider('fish')" />
                 <span class="lf-engine__body">
@@ -96,11 +104,14 @@
                   <label class="lf-label" for="kokoro-default-voice">{{ t('modules.tts.voice.kokoroVoiceLabel') }}</label>
                   <select id="kokoro-default-voice" class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()"
                     (change)="updateTtsKokoroVoice($any($event.target).value)">
-                    @for (voice of kokoroVoiceOptions(); track voice) {
-                      <option [value]="voice" [selected]="voice === (tts.voices.kokoroDefault || 'ef_dora')">{{ voice }}</option>
+                    @for (group of kokoroVoiceGroups(); track group.code) {
+                      <optgroup [label]="group.label">
+                        @for (voice of group.voices; track voice.id) {
+                          <option [value]="voice.id" [selected]="voice.id === (tts.voices.kokoroDefault || 'ef_dora')">{{ voice.label }}</option>
+                        }
+                      </optgroup>
                     }
                   </select>
-                  <span class="lf-note">{{ t('modules.tts.voice.kokoroSyntax') }}</span>
                   <app-tts-voice-preview [channelID]="channelID()!" provider="kokoro"
                     [voice]="tts.voices.kokoroDefault || 'ef_dora'" [language]="tts.defaultLanguage"
                     [readOnly]="ttsReadOnly() || ttsSaving()" />
@@ -136,7 +147,7 @@
                     }
                   </select>
                   <app-tts-voice-preview [channelID]="channelID()!" provider="piper" [voice]="tts.voices.es" language="es"
-                    [readOnly]="ttsReadOnly() || ttsSaving()" />
+                    [readOnly]="ttsReadOnly() || ttsSaving()" [hint]="false" />
                 </div>
               }
               <label class="lf-field">

@@ -262,8 +262,23 @@ export class TtsPageComponent {
     const favorite = this.fishFavorites().find(item => item.id === voiceName || item.alias === voiceName);
     return found?.label ?? favorite?.name ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
   });
+  /** Kokoro IDs encode language + gender (e.g. ef_dora = Spanish, female); group them so streamers pick by language. */
+  readonly kokoroVoiceGroups = computed(() => {
+    const current = this.ttsSettings()?.voices.kokoroDefault || 'ef_dora';
+    const ids = this.kokoroVoiceOptions().includes(current) ? this.kokoroVoiceOptions() : [current, ...this.kokoroVoiceOptions()];
+    const preferred = this.ttsSettings()?.defaultLanguage === 'en' ? ['a', 'b', 'e'] : ['e', 'a', 'b'];
+    const order = [...preferred, 'f', 'i', 'p', 'h', 'j', 'z'];
+    const groups = new Map<string, { id: string; label: string }[]>();
+    for (const id of ids) {
+      const code = order.includes(id[0]) && id[2] === '_' ? id[0] : '?';
+      groups.set(code, [...(groups.get(code) ?? []), { id, label: this.kokoroVoiceLabel(id) }]);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => (order.indexOf(a) + 100) % 100 - (order.indexOf(b) + 100) % 100)
+      .map(([code, voices]) => ({ code, label: this.t(`modules.tts.kokoro.languages.${code}`), voices }));
+  });
   readonly voiceSummary = computed(() => this.ttsSettings()?.provider === 'kokoro'
-    ? `${this.ttsSettings()?.voices.kokoroDefault || 'ef_dora'} · Kokoro`
+    ? `${this.kokoroVoiceName(this.ttsSettings()?.voices.kokoroDefault || 'ef_dora')} · Kokoro`
     : this.ttsSettings()?.provider === 'fish'
     ? `${this.currentCloneDefaultVoiceLabel()} · Fish Audio`
     : this.t('modules.tts.voice.piperSummary'));
@@ -354,6 +369,16 @@ export class TtsPageComponent {
   updateTtsProvider(provider: TtsProvider): void {
     this.voiceBrowserOpen.set(false);
     this.patchTtsSettings((settings) => ({ ...settings, provider }));
+  }
+
+  kokoroVoiceName(id: string): string {
+    const name = id.includes('_') ? id.slice(id.indexOf('_') + 1) : id;
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  kokoroVoiceLabel(id: string): string {
+    const gender = id[1] === 'f' || id[1] === 'm' ? ` (${this.t(`modules.tts.kokoro.genders.${id[1]}`)})` : '';
+    return `${this.kokoroVoiceName(id)}${gender}`;
   }
 
   updateTtsKokoroVoice(voice: string): void {

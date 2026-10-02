@@ -623,13 +623,15 @@
         "engineLabel": "Motor",
         "kokoroTag": "1 crédito / 15 caracteres",
         "kokoroCopy": "Voces predefinidas. Los créditos se redondean hacia arriba; Piper toma el relevo si se agotan o falla la síntesis.",
-        "kokoroVoiceLabel": "Voz predefinida de Kokoro",
+        "kokoroVoiceLabel": "Voz de Kokoro",
         "kokoroSyntax": "AST: $(tts.kokoro nombre_de_voz texto)",
         "piperTag": "1 crédito / 50 caracteres",
         "piperCopy": "Voz sencilla que sigue disponible con créditos en cero o negativos.",
         "fishTag": "Usa créditos",
         "fishCopy": "Voces de personajes como Gojo, y miles más que puedes buscar.",
-        "piperSummary": "Piper · disponible al agotar los créditos"
+        "piperSummary": "Piper",
+        "comingSoon": "Próximamente",
+        "dimaCopy": "Nuestras propias voces naturales, alojadas por DomDimaBot."
       },
       "rules": {
         "title": "Límites de mensajes",
@@ -659,6 +661,24 @@
         "fish": "usa 1,5 créditos por carácter, redondeando hacia arriba.",
         "fallback": "¿Sin créditos o falla la síntesis? TTS cambia a Piper automáticamente. Tu voz seleccionada sigue guardada.",
         "usageLink": "Ver uso de créditos"
+      },
+      "kokoro": {
+        "languages": {
+          "a": "Inglés (EE. UU.)",
+          "b": "Inglés (Reino Unido)",
+          "e": "Español",
+          "f": "Francés",
+          "i": "Italiano",
+          "p": "Portugués (Brasil)",
+          "h": "Hindi",
+          "j": "Japonés",
+          "z": "Chino (mandarín)",
+          "?": "Otras"
+        },
+        "genders": {
+          "f": "femenina",
+          "m": "masculina"
+        }
       }
     },
     "referrals": {

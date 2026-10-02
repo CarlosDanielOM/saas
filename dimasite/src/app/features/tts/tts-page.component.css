@@ -474,6 +474,35 @@
   font-weight: 800;
 }
 
+.lf-engine__name .lf-chip {
+  margin-left: auto;
+}
+
+.lf-engines legend {
+  grid-column: 1 / -1;
+}
+
+/* Announced but not selectable yet */
+.lf-engine--soon {
+  border-style: dashed;
+  background: transparent;
+  cursor: default;
+}
+
+.lf-engine__radio {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+  border: 2px dashed var(--muted);
+  border-radius: 999px;
+}
+
+@media (min-width: 560px) {
+  .lf-engines {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .lf-engine__copy {
   color: var(--muted);
   font-size: 0.82rem;
@@ -923,9 +952,6 @@
     padding: 1.35rem;
   }
 
-  .lf-engines {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 
   .lf-engines legend {
     margin-bottom: 0.5rem;
