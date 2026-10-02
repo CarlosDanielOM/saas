@@ -1147,19 +1147,26 @@
   "moderation": {
     "spam": {
       "title": "Protección del chat",
-      "free": "Primer mensaje · Gratis en todos los planes",
-      "description": "Revisa el primer mensaje que Dima observa de cada usuario en este canal para detectar las conductas seleccionadas. Las revisiones del primer mensaje nunca consumen créditos de IA. El registro se conserva tras reiniciar el bot.",
+      "free": "Primer mensaje · Todos los planes",
+      "description": "Revisa el primer mensaje que Dima observa de cada participante en este canal para detectar las conductas seleccionadas. El seguimiento continúa tras reiniciar el bot.",
       "action": "Una conducta seleccionada que supere el umbral provoca un baneo inmediato solo si su puntuación supera la de contenido seguro. Las revisiones dudosas se permiten y se registran. La protección está activada por defecto y tiene su propio interruptor, independiente del filtro de reglas. Se aplican límites de revisión.",
       "continuous": "Revisar los mensajes posteriores",
       "paid": "Premium · Pro",
-      "continuousDescription": "Revisa también los mensajes posteriores para detectar las conductas seleccionadas. Disponible en Premium y Pro, con consumo de créditos de IA. Las revisiones del primer mensaje siguen siendo gratuitas.",
-      "firstDecision": "Protección del primer mensaje · Gratis",
+      "continuousDescription": "Revisa también los mensajes posteriores para detectar las conductas seleccionadas. Disponible en Premium y Pro. Las revisiones continúan con Span-1 Lite si se agotan los créditos de IA.",
+      "firstDecision": "Protección del primer mensaje",
       "continuousDecision": "Protección continua del chat",
       "categoriesTitle": "Qué detectar",
       "categoriesHint": "El spam, los anuncios y la autopromoción están seleccionados por defecto. Las palabrotas y los insultos son opcionales. Si no seleccionas ninguna categoría, estas revisiones se detienen. Tus otras reglas de moderación siguen vigentes.",
       "exemptionsTitle": "Roles exentos",
       "exemptionsHint": "Omite las revisiones de protección para quienes tengan un rol seleccionado, en cualquier plan. Se aplica al primer mensaje y a los posteriores. Moderadores, editores y administradores del canal están exentos por defecto. El streamer y el bot siempre están excluidos.",
-      "exemptions": { "vip": "VIPs", "mod": "Moderadores", "sub": "Suscriptores", "founder": "Fundadores", "editor": "Editores", "admin": "Administradores del canal" },
+      "exemptions": {
+        "vip": "VIPs",
+        "mod": "Moderadores",
+        "sub": "Suscriptores",
+        "founder": "Fundadores",
+        "editor": "Editores",
+        "admin": "Administradores del canal"
+      },
       "threshold": "Confianza para banear (%)",
       "thresholdHint": "Por defecto: 85 %. Premium y Pro pueden elegir entre 80 y 100 %. Los valores altos reducen los baneos automáticos. Una puntuación segura superior siempre impide el baneo. Los planes gratis usan el 85 %.",
       "thresholdInvalid": "La confianza para banear debe ser un número entre 80 y 100.",
@@ -1171,7 +1178,10 @@
         "profanity": "Palabrotas",
         "insults": "Insultos",
         "safe": "Seguro para las categorías seleccionadas"
-      }
+      },
+      "modelHint": "Las cuentas gratuitas usan Span-1 sin consumir créditos de IA. Premium y Pro usan Jev para mayor precisión; cada revisión completada consume créditos, incluidos los primeros mensajes y los resultados inciertos. Si los créditos se agotan o no se pueden verificar, las cuentas de pago continúan con Span-1 Lite, que puede ser menos preciso con textos complejos o ambiguos.",
+      "reviewCredits": "Créditos de IA consumidos: {{credits}}",
+      "noReviewCredits": "Sin consumo de créditos de IA."
     },
     "badge": "Filtro de chat",
     "title": "Moderación del Chat",

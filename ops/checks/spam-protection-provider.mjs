@@ -90,20 +90,21 @@ const cases = [
     ['profanity-discussion', 'Does the filter block the word "fuck"?', false, [], ['profanity']]
 
 ];
+const model = process.env.SPAM_EVAL_MODEL || 'typesafe/jev-1.13';
 const failures = [];
 let totalCost = 0;
-const selected = process.env.SPAM_EVAL_CASES ? cases.filter(item => process.env.SPAM_EVAL_CASES.split(',').includes(item[0])) : cases;
+const selected = process.env.SPAM_EVAL_CASES ? cases.filter(item => process.env.SPAM_EVAL_CASES.split(',').includes(item[0])) : process.env.SPAM_EVAL_SAFETY_ONLY === '1' ? cases.filter(item => item[2] === false) : cases;
 const repeats = Number(process.env.SPAM_EVAL_REPEATS || 1);
 assert.ok(selected.length > 0 && Number.isInteger(repeats) && repeats >= 1 && repeats <= 10);
 const evaluations = Array.from({ length: repeats }, () => selected).flat();
 for (const [label, messageText, ban, context = [], categories] of evaluations) {
     const started = Date.now();
-    const result = await evaluateSemanticDecision({ rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) });
+    const result = await evaluateSemanticDecision({ rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) }, model);
     console.log(JSON.stringify({ label, verdict: result.verdict, status: result.status, scores: result.scores, model: result.model, inputTokens: result.inputTokens, providerCost: result.cost, latencyMs: Date.now() - started }));
     assert.ok(['completed', 'uncertain'].includes(result.status), `${label}: ${result.status}`);
     const valid = ban === 'flag_or_uncertain' ? result.verdict !== 'allow' : (result.verdict === 'violation') === ban;
     if (!valid) failures.push({ label, scores: result.scores, expectedBan: ban });
-    assert.ok(result.model.startsWith('typesafe/jev-1.13'), 'expected production spam classifier');
+    assert.ok(result.model.startsWith(model), 'expected production spam classifier');
     totalCost += result.cost;
 }
 assert.deepEqual(failures, [], 'synthetic advertising behavior');

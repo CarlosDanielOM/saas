@@ -1152,7 +1152,8 @@ export async function createCustomerPortalSession(request: CreatePortalSessionRe
 
 export async function getAiCredits(
     user: Pick<IUsers, 'polar_sh_customer_id' | 'plan_tier'>,
-    twitchUserId: string
+    twitchUserId: string,
+    options: { requireVerified?: boolean; signal?: AbortSignal } = {}
 ): Promise<AiCreditsData> {
     const channelID = twitchUserId;
 
@@ -1178,6 +1179,8 @@ export async function getAiCredits(
         try {
             const parsed = JSON.parse(cached) as Partial<AiCreditsData>;
             if (parsed.version === AI_CREDITS_CACHE_SCHEMA_VERSION && typeof parsed.used === 'number' && typeof parsed.limit === 'number') {
+                // Paid moderation must not treat a cached unavailable estimate as verified credit.
+                const available = !options.requireVerified || (parsed.available === true && parsed.status !== 'unavailable');
                 const payload: AiCreditsData = {
                     version: AI_CREDITS_CACHE_SCHEMA_VERSION,
                     used: parsed.used,
@@ -1185,8 +1188,8 @@ export async function getAiCredits(
                     balance: typeof parsed.balance === 'number' ? parsed.balance : Math.max(0, parsed.limit - parsed.used),
                     meterId: parsed.meterId || AI_CREDITS_METER_ID,
                     updatedAt: parsed.updatedAt || new Date().toISOString(),
-                    available: true,
-                    status: parsed.status === 'exhausted' || (parsed.balance ?? parsed.limit - parsed.used) <= 0
+                    available,
+                    status: !available ? 'unavailable' : parsed.status === 'exhausted' || (parsed.balance ?? parsed.limit - parsed.used) <= 0
                         ? 'exhausted'
                         : 'available'
                 };
@@ -1200,10 +1203,14 @@ export async function getAiCredits(
 
     // Cache miss: fetch fresh from Polar (webhook is preferred source of truth, this is fallback)
     try {
-        const state = await polarRequest<any>(`/v1/customers/${user.polar_sh_customer_id}/state`, { method: 'GET' });
+        const state = await polarRequest<any>(`/v1/customers/${user.polar_sh_customer_id}/state`, { method: 'GET', signal: options.signal });
         const activeMeters = Array.isArray(state?.active_meters) ? state.active_meters : [];
         const aiMeter = activeMeters.find((m: any) => m?.meter_id === AI_CREDITS_METER_ID);
         const payload = buildAiCreditsDataFromMeter(aiMeter, user.plan_tier);
+        if (options.requireVerified && !aiMeter) {
+            payload.available = false;
+            payload.status = 'unavailable';
+        }
 
         await cacheClient.set(cacheKey, JSON.stringify(payload), { EX: AI_CREDITS_CACHE_TTL_SECONDS });
 

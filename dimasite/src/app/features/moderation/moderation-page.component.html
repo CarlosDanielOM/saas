@@ -144,6 +144,7 @@
             </div>
             <p class="lf-copy">{{ t('moderation.spam.description') }}</p>
             <p class="lf-note">{{ t('moderation.spam.action') }}</p>
+            <p class="lf-note" data-moderation-model-note>{{ t('moderation.spam.modelHint') }}</p>
             <fieldset class="lf-spam-categories" [disabled]="!canManage() || cfg.spamProtection?.enabled === false">
               <legend>{{ t('moderation.spam.categoriesTitle') }}</legend>
               @for (category of spamCategories; track category) {
@@ -834,6 +835,9 @@
                       <p class="lf-note">{{ t(decision.reviewSource === 'first_message' ? 'moderation.spam.firstDecision' : 'moderation.spam.continuousDecision') }}</p>
                     }
                     <p class="lf-note">{{ formatTimestamp(decision.createdAt) }} · {{ t('moderation.decisions.modes.' + decision.mode) }} · {{ decisionStatus(decision.status) }}</p>
+                    @if (decision.mode === 'semantic') {
+                      <p class="lf-note" data-moderation-credits>{{ decision.charge.credits ? t('moderation.spam.reviewCredits', { credits: decision.charge.credits }) : t('moderation.spam.noReviewCredits') }}</p>
+                    }
                     @for (score of spamScores(decision); track score.category) {
                       <p class="lf-note lf-spam-score">{{ t('moderation.spam.categories.' + score.category) }}: {{ (score.score * 100).toFixed(1) }}%</p>
                     }

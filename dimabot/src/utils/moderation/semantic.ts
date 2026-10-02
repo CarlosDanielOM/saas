@@ -10,9 +10,15 @@ export function semanticPrice(inputTokens: number) {
     return { billableCostUSD, credits, pricingVersion: SEMANTIC_PRICING_VERSION, usdPerMillionInputTokens: SEMANTIC_USD_PER_MILLION_INPUT_TOKENS };
 }
 
-import { ALLOW_THRESHOLD, SEMANTIC_MODEL } from './advanced.js';
+import { ALLOW_THRESHOLD, SEMANTIC_MODEL, paidModeration } from './advanced.js';
 import { SPAM_RULE_ID } from './spam.js';
 import { categoryQuestions, type SpamCategory } from './spam_categories.js';
+
+export const FREE_MODERATION_MODEL = 'respan/span-01';
+
+export function moderationModelForAccount(planTier: unknown, hasCredits: boolean): string {
+    return paidModeration(planTier) ? (hasCredits ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL) : FREE_MODERATION_MODEL;
+}
 
 export interface SemanticResult {
     verdict: 'allow' | 'violation' | 'uncertain';
@@ -73,10 +79,10 @@ export function parseSpamResponse(raw: unknown, categories: SpamCategory[], thre
 
 type SemanticState = string | { input: Array<{ role: 'user'; content: string }>; output: { role: 'assistant'; content: string } };
 
-export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: SemanticState } {
+export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'messageText' | 'username' | 'context' | 'matches'>, model?: string): { model: string; questions: Record<string, { type: string; instructions: string; criteria: { true: string; false: string } }>; state: SemanticState } {
     const semantic = decision.rule.semantic!;
     return {
-        model: decision.rule.id === SPAM_RULE_ID && semantic.categories ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL,
+        model: model ?? (decision.rule.id === SPAM_RULE_ID && semantic.categories ? SPAM_CLASSIFIER_MODEL : SEMANTIC_MODEL),
         questions: decision.rule.id === SPAM_RULE_ID && semantic.categories
             ? categoryQuestions(semantic.categories, semantic.broadcasterInvitation === true) : {
             violation: {
@@ -101,8 +107,8 @@ export function semanticRequest(decision: Pick<IModerationDecision, 'rule' | 'me
     };
 }
 
-export async function evaluateSemanticDecision(decision: IModerationDecision): Promise<SemanticResult> {
-    const request = semanticRequest(decision);
+export async function evaluateSemanticDecision(decision: IModerationDecision, model?: string): Promise<SemanticResult> {
+    const request = semanticRequest(decision, model);
     const remaining = decision.deadline.getTime() - Date.now();
     if (remaining <= 0) return fallbackResult('timeout', request.model);
     if (!process.env.OPENROUTER_API_KEY) return fallbackResult('unavailable', request.model);

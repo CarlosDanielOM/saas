@@ -3,8 +3,9 @@ import { ModerationDecision } from '../../schemas/moderation_decision.schema.js'
 import { ChannelModerationSettingsSchema } from '../../schemas/channel_moderation_settings.schema.js';
 import { getAiCredits, isAiCreditsExhausted } from '../billing.js';
 import { ingestPolarSHEvent } from '../polarsh.js';
-import { paidModeration } from './advanced.js';
-import { evaluateSemanticDecision, fallbackResult, semanticPrice } from './semantic.js';
+import { paidModeration, SEMANTIC_MODEL } from './advanced.js';
+import { SPAM_CLASSIFIER_MODEL } from './spam_categories.js';
+import { evaluateSemanticDecision, fallbackResult, semanticPrice, moderationModelForAccount } from './semantic.js';
 import { isSpamDecision, semanticPolicyActive } from './spam.js';
 
 /** One atomic claim per request. Expired work is never reclaimed for punishment. */
@@ -14,34 +15,43 @@ export async function processNextSemanticDecision(): Promise<boolean> {
     if (!decision) return false;
     const started = Date.now();
     try {
-        const freeFirstMessage = isSpamDecision(decision) && decision.reviewSource === 'first_message';
-        const owner = freeFirstMessage ? null : await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id').lean();
+        const spamProtection = isSpamDecision(decision);
+        const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: decision.channelID } } }).select('plan_tier polar_sh_customer_id').lean();
         const settings = await ChannelModerationSettingsSchema.findOne({ channelID: decision.channelID }).lean();
         let result = fallbackResult('policy_changed');
         let customerID = '';
+        let model: string = SEMANTIC_MODEL;
+        let hasCredits = false;
+        let creditStatus = 'credits_unavailable';
         if (semanticPolicyActive(settings, decision)) {
-            if (freeFirstMessage) {
-                result = await evaluateSemanticDecision(decision);
-            } else {
+            if (!spamProtection && !paidModeration(owner?.plan_tier)) {
                 result = fallbackResult('plan_required');
-                if (owner && paidModeration(owner.plan_tier)) {
-                    customerID = owner.polar_sh_customer_id || '';
-                    result = fallbackResult('credits_unavailable');
-                    if (await isAiCreditsExhausted(decision.channelID)) result = fallbackResult('quota_exhausted');
-                    else {
-                        const credits = await getAiCredits(owner, decision.channelID);
-                        if (credits.status === 'exhausted') result = fallbackResult('quota_exhausted');
-                        else if (credits.available && credits.balance > 0) result = await evaluateSemanticDecision(decision);
+            } else {
+                if (owner && paidModeration(owner.plan_tier) && owner.polar_sh_customer_id) {
+                    try {
+                        if (await isAiCreditsExhausted(decision.channelID)) creditStatus = 'quota_exhausted';
+                        else {
+                            const credits = await getAiCredits(owner, decision.channelID, { requireVerified: true, signal: AbortSignal.timeout(750) });
+                            hasCredits = credits.available && credits.status === 'available' && credits.balance > 0;
+                            if (credits.status === 'exhausted') creditStatus = 'quota_exhausted';
+                        }
+                    } catch {
+                        // Chat protection uses Lite when balances cannot be verified.
                     }
                 }
+                model = spamProtection ? moderationModelForAccount(owner?.plan_tier, hasCredits) : SEMANTIC_MODEL;
+                customerID = hasCredits ? owner?.polar_sh_customer_id || '' : '';
+                result = !spamProtection && !hasCredits ? fallbackResult(creditStatus) : await evaluateSemanticDecision(decision, model);
             }
         }
-        const usable = result.verdict !== 'uncertain';
-        const price = semanticPrice(freeFirstMessage ? 0 : result.inputTokens);
-        const credits = usable && !freeFirstMessage ? price.credits : 0;
+        // Successful paid inference consumes credits even when the safe verdict
+        // is uncertain. Free fallback and failed/late reviews never charge.
+        const billable = hasCredits && (model === SPAM_CLASSIFIER_MODEL || !spamProtection) && ['completed', 'uncertain'].includes(result.status);
+        const price = semanticPrice(billable ? result.inputTokens : 0);
+        const credits = price.credits;
         const update = await ModerationDecision.updateOne({ _id: decision._id, state: 'processing', deadline: { $gt: new Date() } }, { $set: {
             ...result, state: 'completed', latencyMs: Date.now() - started,
-            charge: { ...price, billableCostUSD: usable && !freeFirstMessage ? price.billableCostUSD : 0, status: usable && !freeFirstMessage ? (credits > 0 ? 'pending' : 'recorded') : 'none', credits, externalID: `moderation:${decision._id}`, customerID }
+            charge: { ...price, status: credits > 0 ? 'pending' : 'none', credits, externalID: `moderation:${decision._id}`, customerID }
         } });
         if (!update.modifiedCount) {
             // Retain late teacher scores for audit, but never change the effective
@@ -64,7 +74,7 @@ export async function maintainSemanticDecisions(): Promise<void> {
     await ModerationDecision.updateMany({ state: { $in: ['pending', 'processing'] }, deadline: { $lte: new Date() } }, {
         $set: { state: 'completed', verdict: 'uncertain', status: 'timeout', 'consequence.status': 'allowed_fallback' }
     });
-    const billable = await ModerationDecision.find({ 'charge.status': 'pending', 'consequence.status': { $in: ['allowed', 'scheduled', 'executed'] } }).sort({ createdAt: 1 }).limit(10).lean();
+    const billable = await ModerationDecision.find({ 'charge.status': 'pending', 'consequence.status': { $in: ['allowed', 'allowed_fallback', 'scheduled', 'executed'] } }).sort({ createdAt: 1 }).limit(10).lean();
     for (const decision of billable) {
         const result = await ingestPolarSHEvent({
             customerId: decision.charge.customerID, channelID: decision.channelID,

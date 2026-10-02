@@ -37,7 +37,7 @@ try {
                 }
                 data = settings;
             } else if (url.pathname.endsWith('/logs')) data = { logs: [{ username: 'adbot', ruleID: 'builtin-spam-protection', ruleType: 'blacklist', action: 'ban', offenseNumber: 1, messageExcerpt: 'Buy viewers!', reason: 'Unsolicited ads', success: true, createdAt: new Date().toISOString() }], total: 1, limit: 10, skip: 0 };
-            else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'first', username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'violation', status: 'completed', scores: { violation: 0.995, spam: 0.995, ads: 0.96, self_promotion: 0.01, safe: 0.01 }, consequence: { action: 'ban', offenseNumber: 1, success: true }, charge: { credits: 0 }, createdAt: new Date().toISOString() }] };
+            else if (url.pathname.endsWith('/decisions')) data = { total: 1, limit: 10, skip: 0, decisions: [{ _id: 'first', username: 'adbot', messageText: 'Buy viewers!', ruleID: 'builtin-spam-protection', reviewSource: 'first_message', mode: 'semantic', verdict: 'violation', status: 'completed', scores: { violation: 0.995, spam: 0.995, ads: 0.96, self_promotion: 0.01, safe: 0.01 }, consequence: { action: 'ban', offenseNumber: 1, success: true }, charge: { credits: tier === 'free' ? 0 : 5 }, createdAt: new Date().toISOString() }] };
             return route.fulfill({ status: 200, json: { error: false, status: 200, data } });
         });
         if (context.routeWebSocket) await context.routeWebSocket('**/*', socket => socket.close());
@@ -59,7 +59,8 @@ try {
         for (const category of ['profanity', 'insults']) assert.equal(await tile.locator(`[data-spam-category=${category}]`).isChecked(), false);
         assert.equal(await continuous.isChecked(), false);
         assert.equal(await continuous.isDisabled(), tier === 'free', 'continuous review tier gate');
-        assert.match(await tile.innerText(), language === 'en' ? /never use AI credits/ : /nunca consumen créditos/);
+        assert.match(await tile.locator('[data-moderation-model-note]').innerText(), /Span-1.*Jev.*Span-1 Lite/s);
+        assert.match(await tile.innerText(), language === 'en' ? /complex or ambiguous/ : /complejos o ambiguos/);
         const save = host.locator('.lf-save-bar button');
         for (const tag of ['mod', 'editor', 'admin']) assert.equal(await tile.locator(`[data-spam-exempt=${tag}]`).isChecked(), true);
         for (const tag of ['vip', 'sub', 'founder']) assert.equal(await tile.locator(`[data-spam-exempt=${tag}]`).isChecked(), false);
@@ -101,7 +102,8 @@ try {
         }
         const axe = await new AxeBuilder({ page }).include('app-moderation-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
         assert.deepEqual(axe.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) })), []);
-        assert.match(await host.innerText(), language === 'en' ? /First-message protection · Free/ : /Protección del primer mensaje · Gratis/);
+        assert.match(await host.innerText(), language === 'en' ? /First-message protection/ : /Protección del primer mensaje/);
+        assert.match(await host.locator('[data-moderation-credits]').innerText(), tier === 'free' ? /No AI credits/ : /5/);
         assert.match(await host.locator('.lf-spam-score').allTextContents().then(items => items.join(' ')), /99.5%/);
         assert.equal(await host.locator('.lf-spam-score').count(), 4);
         assert.deepEqual(errors, []);

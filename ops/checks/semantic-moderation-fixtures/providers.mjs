@@ -28,8 +28,8 @@ globalThis.fetch = async (input, options = {}) => {
         if (text.includes('INVALID')) return json({ answers: { violation: { type: 'noul', noul: 'yes' } } });
         const allowed = /awesome/.test(text) || (/Don't call/.test(text) && !instructions.includes('any mention'));
         const score = text.includes('SCORE87') ? 0.87 : text.includes('UNCERTAIN') ? 0.5 : allowed ? 0.01 : 0.99;
-        return json({ model: 'respan/span-01-lite-test', provider: 'Respan', id: 'fixture-generation',
-            answers: { violation: { type: 'noul', noul: score } }, usage: { cost: 0, input_tokens: 150 } });
+        return json({ model: payload.model, provider: 'Respan', id: 'fixture-generation',
+            answers: { violation: { type: 'noul', noul: score } }, usage: { cost: payload.model === 'respan/span-01-lite' ? 0 : 0.0000063, input_tokens: 150 } });
     }
     if (url.hostname === 'us.i.posthog.com') return json({ status: 1 });
     if (url.hostname === 'api.polar.sh') return json({ inserted: 1, duplicates: 0 });

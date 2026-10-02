@@ -1147,19 +1147,26 @@
   "moderation": {
     "spam": {
       "title": "Chat protection",
-      "free": "First message · Free on every plan",
-      "description": "Reviews each chatter’s first message Dima observes in this channel for your selected behaviors. First-message reviews never use AI credits. Tracking continues across bot restarts.",
+      "free": "First message · Every plan",
+      "description": "Reviews each chatter’s first message Dima observes in this channel for your selected behaviors. Tracking continues across bot restarts.",
       "action": "A selected behavior above the ban threshold results in an immediate ban only when its score exceeds the safe score. Uncertain reviews are allowed and logged. Protection is on by default and has its own switch, independent of the rule filter. Review limits apply.",
       "continuous": "Review subsequent messages",
       "paid": "Premium · Pro",
-      "continuousDescription": "Also review later messages for your selected behaviors. Available on Premium and Pro, using AI credits. First-message reviews stay free.",
-      "firstDecision": "First-message protection · Free",
+      "continuousDescription": "Also review later messages for your selected behaviors. Available on Premium and Pro. Reviews continue with Span-1 Lite if AI credits run out.",
+      "firstDecision": "First-message protection",
       "continuousDecision": "Continuous chat protection",
       "categoriesTitle": "What to detect",
       "categoriesHint": "Spam, ads and self-promotion are selected by default. Profanity and insults are optional. Selecting none stops these reviews. Your separate moderation rules still apply.",
       "exemptionsTitle": "Exempt roles",
       "exemptionsHint": "Skip protection reviews for anyone with a selected role, on any plan. Applies to first and subsequent messages. Moderators, editors and channel admins are exempt by default. The broadcaster and bot are always excluded.",
-      "exemptions": { "vip": "VIPs", "mod": "Moderators", "sub": "Subscribers", "founder": "Founders", "editor": "Editors", "admin": "Channel admins" },
+      "exemptions": {
+        "vip": "VIPs",
+        "mod": "Moderators",
+        "sub": "Subscribers",
+        "founder": "Founders",
+        "editor": "Editors",
+        "admin": "Channel admins"
+      },
       "threshold": "Ban confidence (%)",
       "thresholdHint": "Default: 85%. Premium and Pro can choose 80–100%. Higher values reduce automatic bans. A higher safe score always prevents a ban. Free plans use 85%.",
       "thresholdInvalid": "Ban confidence must be a number from 80 to 100.",
@@ -1171,7 +1178,10 @@
         "profanity": "Profanity",
         "insults": "Insults",
         "safe": "Safe for selected categories"
-      }
+      },
+      "modelHint": "Free accounts use Span-1 without AI credits. Premium and Pro use Jev for higher accuracy; each completed review uses credits, including first messages and uncertain verdicts. When credits run out or cannot be verified, paid accounts continue with Span-1 Lite, which can be less accurate on complex or ambiguous text.",
+      "reviewCredits": "AI credits used: {{credits}}",
+      "noReviewCredits": "No AI credits used."
     },
     "badge": "Chat filter",
     "title": "Chat Moderation",

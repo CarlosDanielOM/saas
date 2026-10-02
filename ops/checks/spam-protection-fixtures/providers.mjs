@@ -9,7 +9,7 @@ globalThis.fetch = async (input, options = {}) => {
     if (url.hostname !== 'openrouter.ai' || url.pathname !== '/api/alpha/decisions') return base(input, options);
     const request = JSON.parse(options.body);
     if (!request.questions.unsafe) return base(input, options);
-    assert.equal(request.model, 'typesafe/jev-1.13');
+    assert.ok(['typesafe/jev-1.13', 'respan/span-01', 'respan/span-01-lite'].includes(request.model));
     assert.equal(request.state.output.role, 'assistant');
     const state = { targetMessage: { text: request.state.output.content }, precedingMessages: request.state.input.map(message => JSON.parse(message.content)) };
     const text = state.targetMessage.text;
@@ -18,7 +18,7 @@ globalThis.fetch = async (input, options = {}) => {
     if (text.includes('SLOW')) await new Promise(resolve => setTimeout(resolve, 700));
     if (text.includes('UNAVAILABLE')) return new Response('{}', { status: 503 });
     const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
-    const replay = replays.find(item => item.messageText === text
+    const replay = request.model === 'typesafe/jev-1.13' && replays.find(item => item.messageText === text
         && JSON.stringify(item.context.map(message => message.message)) === JSON.stringify(state.precedingMessages.map(message => message.message)));
     if (replay) {
         const answers = Object.fromEntries(Object.keys(request.questions).map(category => [category, {
@@ -48,5 +48,5 @@ globalThis.fetch = async (input, options = {}) => {
     const safe = text.includes('SAFE-WINS') ? 0.99 : text.includes('TIED') ? 0.95 : text.includes('UNCERTAIN') ? 0.5 : highest > 0.1 ? 0.01 : 0.995;
     answers.unsafe = { type: 'noul', noul: 1 - safe };
     return json({ model: request.model, provider: 'Respan', id: 'synthetic-spam', answers,
-        usage: { cost: 0.000021, input_tokens: 500 } });
+        usage: { cost: request.model === 'respan/span-01-lite' ? 0 : 0.000021, input_tokens: 500 } });
 };

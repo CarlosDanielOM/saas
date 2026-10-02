@@ -132,7 +132,7 @@ async function reviewPromotionalSpam(channelID: string, message: IChatMessage, i
     }
     const current = await ChannelModerationSettingsSchema.findOne({ channelID }).lean();
     let stillPaid = true;
-    if (reviewSource === 'spam_continuous' || decision.rule.semantic?.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
+    if (reviewSource === 'spam_continuous' || decision.charge.credits > 0 || decision.rule.semantic?.thresholdPercent !== DEFAULT_SPAM_THRESHOLD) {
         const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
         stillPaid = paidModeration(owner?.plan_tier);
     }

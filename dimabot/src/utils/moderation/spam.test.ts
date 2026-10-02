@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { broadcasterInvitedPromotion, spamRuleForContext, spamReviewSource, spamRule, semanticPolicyActive } from './spam.js';
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
 import type { IChannelModerationSettings, IModerationRule } from '../../schemas/channel_moderation_settings.schema.js';
-import { semanticRequest, parseSpamResponse } from './semantic.js';
+import { semanticRequest, parseSpamResponse, moderationModelForAccount } from './semantic.js';
 import { ruleExempt, createUserIdentity } from '../permissions/index.js';
 
 test('only a verified broadcaster invitation permits channel promotion; negated invitations never grant permission', () => {
@@ -22,7 +22,7 @@ test('only a verified broadcaster invitation permits channel promotion; negated 
     assert.equal(spamRuleForContext(context('Please share your channel!', false)).semantic.broadcasterInvitation, false);
 });
 
-test('first-message scope is free on all tiers while subsequent scope requires paid plan and opt-in', () => {
+test('first-message scope is available on all tiers while subsequent scope requires paid plan and opt-in', () => {
     const settings = { enabled: true, spamProtection: { enabled: true, reviewAllMessages: true } } as IChannelModerationSettings;
     for (const tier of ['free', 'premium', 'pro', undefined]) assert.equal(spamReviewSource(true, settings, tier), 'first_message');
     assert.equal(spamReviewSource(false, settings, 'free'), null);
@@ -30,6 +30,20 @@ test('first-message scope is free on all tiers while subsequent scope requires p
     assert.equal(spamReviewSource(false, { ...settings, spamProtection: { enabled: true, reviewAllMessages: false } }, 'pro'), null);
     assert.equal(spamReviewSource(true, { ...settings, enabled: false }, 'free'), 'first_message');
     assert.equal(spamReviewSource(true, { ...settings, spamProtection: { enabled: false, reviewAllMessages: true } }, 'pro'), null);
+});
+
+test('paid accounts use Jev only with credits; free accounts use Span and exhausted paid accounts use Span Lite', () => {
+    for (const tier of ['free', undefined, 'unknown']) {
+        assert.equal(moderationModelForAccount(tier, true), 'respan/span-01');
+        assert.equal(moderationModelForAccount(tier, false), 'respan/span-01');
+    }
+    for (const tier of ['premium', 'pro']) {
+        assert.equal(moderationModelForAccount(tier, true), 'typesafe/jev-1.13');
+        assert.equal(moderationModelForAccount(tier, false), 'respan/span-01-lite');
+    }
+    const request = semanticRequest({ rule: spamRuleForContext([]), username: 'viewer', messageText: 'Hello!', context: [], matches: [] }, 'respan/span-01-lite');
+    assert.equal(request.model, 'respan/span-01-lite');
+    assert.equal(request.questions.ads.type, 'noul');
 });
 
 test('unsaved channels have active first-message protection and saves cancel pending defaults', () => {

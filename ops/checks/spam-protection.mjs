@@ -51,7 +51,8 @@ try {
     assert.equal(first.charge.status, 'none');
     assert.equal(first.charge.credits, 0);
     assert.equal(first.charge.billableCostUSD, 0);
-    assert.ok(first.cost > 0, 'service absorbs provider cost for first-message protection');
+    assert.ok(first.cost > 0, 'service absorbs normal Span cost for Free accounts');
+    assert.equal(first.model, 'respan/span-01');
     assert.equal(await redis.get('twitch:spam-free:ai:credits'), exhausted);
     assert.equal(await redis.get(`moderation:spam-free:offenses:${SPAM_RULE_ID}:advertiser`), null, 'ban never touches ladder');
     const bans = calls().filter(call => call.ban === 'advertiser');
@@ -112,12 +113,13 @@ try {
     await Promise.all([review('spam-free', 'race-hello', 'Hello!', 'race'), review('spam-free', 'race-ad', 'Want to buy viewers?', 'race')]);
     assert.equal(await Decisions.countDocuments({ channelID: 'spam-free', userID: 'race' }), 1);
 
-    // Premium and Pro can opt into later reviews; their first review is still free.
+    // Premium and Pro can opt into later reviews; all successful Jev reviews consume credits.
     for (const tier of ['premium', 'pro']) {
         const channel = `spam-${tier}`;
         await seed(channel, tier, { enabled: true, reviewAllMessages: true });
         await review(channel, `${tier}-hello`, 'Hello everyone!');
-        assert.equal((await decision(`${tier}-hello`)).charge.status, 'none');
+        assert.ok((await decision(`${tier}-hello`)).charge.credits > 0);
+        assert.equal((await decision(`${tier}-hello`)).model, 'typesafe/jev-1.13');
         assert.equal((await review(channel, `${tier}-ad`, 'Want to buy viewers? viewerbuy.com')).actionTaken, true);
         await until(async () => (await decision(`${tier}-ad`))?.consequence.status === 'executed', `${tier} ban`);
         const paid = await decision(`${tier}-ad`);
@@ -130,6 +132,50 @@ try {
         await review(channel, `${tier}-new-first`, 'Hello!', 'newviewer');
         assert.equal((await decision(`${tier}-new-first`)).charge.status, 'none', 'downgrade keeps first review free');
     }
+
+    // The last paid review exhausts credits; all subsequent checks use Lite.
+    await seed('tier-switch', 'premium', { enabled: true, reviewAllMessages: true });
+    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 999, limit: 1000, balance: 1, available: true, status: 'available' }));
+    await review('tier-switch', 'last-paid', 'Hello everyone!');
+    await until(async () => (await decision('last-paid'))?.charge.status === 'recorded', 'last credit charged');
+    assert.equal((await decision('last-paid')).model, 'typesafe/jev-1.13');
+    assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).balance, 0);
+    await review('tier-switch', 'exhausted-later', 'Do not buy viewers; those sites are scams.');
+    await review('tier-switch', 'exhausted-first', 'Hello everyone!', 'new-exhausted');
+    for (const id of ['exhausted-later', 'exhausted-first']) {
+        const row = await decision(id);
+        assert.equal(row.model, 'respan/span-01-lite');
+        assert.equal(row.charge.credits, 0);
+        assert.equal(row.verdict, 'allow');
+    }
+    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
+    await redis.del(['twitch:tier-switch:ai:exhaust', 'tier-switch:ai:exhaust']);
+    await review('tier-switch', 'recharged', 'Want to buy viewers? UNCERTAIN');
+    assert.equal((await decision('recharged')).verdict, 'uncertain');
+    assert.equal((await decision('recharged')).consequence.status, 'allowed_fallback');
+    await until(async () => (await decision('recharged'))?.charge.status === 'recorded', 'uncertain review billed');
+    assert.equal((await decision('recharged')).model, 'typesafe/jev-1.13');
+    const used = JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).used;
+    await review('tier-switch', 'recharged', 'Want to buy viewers? UNCERTAIN');
+    assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).used, used, 'retry never double charges');
+    for (const marker of ['INVALID', 'UNAVAILABLE', 'TIMEOUT']) {
+        await review('tier-switch', `paid-${marker}`, `Want to buy viewers? ${marker}`);
+        assert.equal((await decision(`paid-${marker}`)).charge.credits, 0, 'failed Jev reviews do not charge');
+    }
+    await seed('missing-customer', 'premium');
+    await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'missing-customer' }, { $unset: { polar_sh_customer_id: '' } });
+    await review('missing-customer', 'missing-customer', 'Hello everyone!');
+    assert.equal((await decision('missing-customer')).model, 'respan/span-01-lite');
+    assert.equal((await decision('missing-customer')).charge.credits, 0);
+
+    await seed('unverifiable-credits', 'premium');
+    await redis.del('twitch:unverifiable-credits:ai:credits');
+    await review('unverifiable-credits', 'unverifiable-credits', 'Hello everyone!');
+    assert.equal((await decision('unverifiable-credits')).model, 'respan/span-01-lite');
+    assert.equal((await decision('unverifiable-credits')).charge.credits, 0);
+    await review('unverifiable-credits', 'unverifiable-cached', 'Hello everyone!', 'another-unverified');
+    assert.equal((await decision('unverifiable-cached')).model, 'respan/span-01-lite', 'cached unavailable estimates never upgrade to Jev');
+    assert.equal((await decision('unverifiable-cached')).charge.credits, 0);
 
     await seed('spam-errors');
     for (const marker of ['UNCERTAIN', 'BORDERLINE', 'INVALID', 'UNAVAILABLE', 'TIMEOUT']) {
@@ -263,7 +309,7 @@ try {
     assert.equal((await decision('tied')).verdict, 'uncertain');
     await seed('spam-threshold', 'premium', { enabled: true, reviewAllMessages: true, categories: ['ads'], thresholdPercent: 80 });
     assert.equal((await review('spam-threshold', 'custom-first', 'Want to buy viewers? BORDERLINE')).actionTaken, true);
-    assert.equal((await decision('custom-first')).charge.credits, 0, 'paid first review remains free with custom threshold');
+    assert.ok((await decision('custom-first')).charge.credits > 0, 'paid first review consumes credits');
     await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'spam-threshold' }, { $set: { plan_tier: 'free' } });
     assert.equal((await review('spam-threshold', 'downgraded-threshold', 'Want to buy viewers? BORDERLINE', 'another')).actionTaken, false);
     assert.equal((await decision('downgraded-threshold')).rule.semantic.thresholdPercent, 85, 'free downgrade uses default threshold');
@@ -277,7 +323,7 @@ try {
     const replayCases = JSON.parse(fs.readFileSync('/tmp/saas-fixtures/classifier-replay.json', 'utf8')).cases;
     for (const fixture of replayCases) {
         const channel = `classifier-${fixture.label}`;
-        await seed(channel);
+        await seed(channel, 'premium');
         for (const prior of fixture.context) {
             await ChatHistory.addMessage(channel, prior.username, prior.message, prior.isBroadcaster ? ['[STREAMER]'] : [], 'twitch', prior.messageID, Date.now() - 100);
         }
@@ -287,8 +333,7 @@ try {
         const row = await decision(id);
         assert.equal(row.model, fixture.model, fixture.label);
         assert.deepEqual(row.scores, fixture.scores, fixture.label);
-        assert.equal(row.charge.status, 'none', fixture.label);
-        assert.equal(row.charge.credits, 0, fixture.label);
+        assert.ok(row.charge.credits > 0, fixture.label);
         if (fixture.expectedBan) {
             await until(async () => (await decision(id))?.consequence.status === 'executed', id);
             assert.equal(calls().filter(call => call.ban === user).length, 1, fixture.label);
@@ -297,6 +342,13 @@ try {
             assert.equal(await Actions.countDocuments({ channelID: channel }), 0, fixture.label);
         }
     }
+    await seed('paid-first-downgrade', 'premium');
+    const downgrade = review('paid-first-downgrade', 'paid-first-downgrade', 'Want to buy viewers? SLOW');
+    await until(() => reviews().some(call => call.spamReview === 'Want to buy viewers? SLOW' && call.model === 'typesafe/jev-1.13'), 'paid first review starts');
+    await mongo.connection.db.collection('users').updateOne({ 'accounts.id': 'paid-first-downgrade' }, { $set: { plan_tier: 'free' } });
+    assert.equal((await downgrade).actionTaken, false);
+    assert.equal((await decision('paid-first-downgrade')).consequence.status, 'cancelled');
+    assert.equal((await decision('paid-first-downgrade')).charge.credits, 0);
     for (let i = 0; i < 30; i++) assert.equal(await claimSpamReviewBudget('budget-channel'), true);
     assert.equal(await claimSpamReviewBudget('budget-channel'), false);
     const window = Math.floor(Number(await redis.eval("return redis.call('TIME')[1]", { keys: [], arguments: [] })) / 60);
@@ -306,9 +358,9 @@ try {
     assert.equal((await review('spam-capped', 'budget-skipped', 'Want to buy viewers?')).actionTaken, false);
     assert.equal(reviews().length, reviewCount);
     assert.equal(await decision('budget-skipped'), null, 'budget blocks queue admission');
-    assert.equal(await Decisions.countDocuments({ reviewSource: 'first_message', 'charge.status': { $ne: 'none' } }), 0);
+    assert.equal(await Decisions.countDocuments({ model: { $regex: '^respan/' }, 'charge.credits': { $gt: 0 } }), 0);
     assert.equal(await Actions.countDocuments({ ruleID: SPAM_RULE_ID, action: { $ne: 'ban' } }), 0);
-    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, free first-message reviews, zero credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
+    console.log('PASS unsaved-channel Spanish VIP review, 85% default, selectable role exemptions, independent protection switch, tiered Span/Jev/Lite routing, exhaustion/recharge, first-message and uncertain billing, deduped credits, immediate bans, durable/atomic tracking, Premium/Pro continuation, downgrades, quotes/context, category selection, safe veto/ties, paid thresholds/downgrades, permits, policy cancellation, failure fallback, legacy rules, API authorization and bounded admission');
 } finally {
     if (worker) { worker.kill('SIGTERM'); await new Promise(resolve => worker.once('exit', resolve)); }
 }

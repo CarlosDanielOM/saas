@@ -84,7 +84,7 @@ try {
         assert.equal(await count('semantic-paid', semantic), 1, `${status} never increments`);
         const logged = await decision(`fallback-${status}`);
         assert.equal(logged.verdict, 'uncertain');
-        assert.equal(logged.charge.credits, 0);
+        assert.equal(logged.charge.credits, status === 'UNCERTAIN' ? 1 : 0);
     }
     await sleep(700);
     assert.equal((await decision('fallback-TIMEOUT')).verdict, 'uncertain', 'late violation does not overwrite timeout');
@@ -148,11 +148,11 @@ try {
     await until(async () => (await decision('billable')).charge.status === 'recorded', 'credit receipt');
     const bill = await decision('billable');
     assert.equal(bill.charge.credits, 1);
-    assert.equal(bill.cost, 0, 'actual free provider cost retained');
+    assert.equal(bill.cost, 0, 'actual custom-rule provider cost retained');
     assert.equal(bill.charge.billableCostUSD, 150 * 0.042 / 1_000_000);
     assert.equal(bill.charge.pricingVersion, 'span-lite-jev-equivalent-v1');
     await runChatModeration('semantic-paid', message('billable', 'fuck BILLABLE', 'billing-viewer'), identity);
-    assert.equal(JSON.parse(await redis.get('twitch:semantic-paid:ai:credits')).used, 3, 'two completed reviews and billable review charged once; uncertain reviews are free');
+    assert.equal(JSON.parse(await redis.get('twitch:semantic-paid:ai:credits')).used, 4, 'completed and uncertain reviews charged once');
 
     // Automatic patterns support every word in a rule; both modes use the same
     // independently optional semantic gate and offense ladder.
