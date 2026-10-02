@@ -1,0 +1,453 @@
+<div class="lf" [class.lf--live]="liveChannels().length > 0">
+  <header class="lf-nav">
+    <a class="lf-nav__brand" routerLink="/" aria-label="DomDimaBot">
+      <app-brand-logo />
+    </a>
+
+    <nav class="lf-nav__links" aria-label="Primary">
+      <button type="button" (click)="scrollTo('product')">{{ t('nav_product') }}</button>
+      <button type="button" (click)="scrollTo('how')">{{ t('nav_how') }}</button>
+      <button type="button" (click)="scrollTo('pricing')">{{ t('nav_pricing') }}</button>
+      <a [href]="docsBase() + '/'">{{ t('nav_docs') }}</a>
+    </nav>
+
+    <div class="lf-nav__actions">
+      <button type="button" class="lf-btn lf-btn--icon" (click)="toggleLanguage()" [attr.aria-label]="t('lang')">
+        {{ lang() === 'en' ? 'EN' : 'ES' }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--icon"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDark() ? t('themeLight') : t('themeDark')"
+      >
+        <lucide-icon [name]="isDark() ? icons.Sun : icons.Moon" [size]="16" aria-hidden="true" />
+      </button>
+      <a class="lf-btn lf-btn--text lf-nav__login" routerLink="/login">{{ t('login') }}</a>
+      <a class="lf-btn lf-btn--primary lf-btn--sm" routerLink="/login">{{ t('getStarted') }}</a>
+    </div>
+  </header>
+
+  <main class="lf-main">
+    <!-- Hero: promise + product -->
+    <section class="lf-bento lf-bento--hero" aria-labelledby="lf-hero-title">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker lf-kicker--live" aria-live="polite">
+          <span class="lf-pulse" [class.lf-pulse--off]="connection() !== 'connected'" aria-hidden="true"></span>
+          @if (connection() === 'connected') {
+            {{ t('heroLive', { n: stats().liveUsers }) }}
+          } @else {
+            {{ t('heroLiveOff') }}
+          }
+        </p>
+        <h1 id="lf-hero-title" class="lf-title">
+          {{ t('heroTitle') }}
+          <span>{{ t('heroTitleAccent') }}</span>
+        </h1>
+        <p class="lf-copy lf-copy--lead">{{ t('heroCopy') }}</p>
+        <div class="lf-actions">
+          <a class="lf-btn lf-btn--primary lf-btn--lg" routerLink="/login">
+            {{ t('heroPrimary') }}
+            <lucide-icon [name]="icons.ArrowRight" [size]="16" aria-hidden="true" />
+          </a>
+          <button type="button" class="lf-btn lf-btn--lg" (click)="scrollTo('pricing')">{{ t('heroSecondary') }}</button>
+        </div>
+        <p class="lf-note">{{ t('heroFine') }}</p>
+      </article>
+
+      <!-- Product preview (sample data) -->
+      <article class="lf-tile lf-tile--product" [attr.aria-label]="t('pvLabel')">
+        <div class="lf-pv__bar">
+          <span class="lf-pv__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="lf-pv__title">{{ t('pvLabel') }}</span>
+          <span class="lf-chip lf-chip--muted">{{ t('pvSample') }}</span>
+        </div>
+
+        <div class="lf-pv__body">
+          <div class="lf-pv__head">
+            <div class="lf-pv__channel">
+              <span class="lf-pv__avatar" aria-hidden="true">C</span>
+              <div>
+                <p class="lf-pv__name">cdom201</p>
+                <p class="lf-pv__uptime">
+                  <span class="lf-chip lf-chip--live lf-chip--xs"><span class="lf-pulse lf-pulse--sm"></span>{{ t('pvLive') }}</span>
+                  02:14:33
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <dl class="lf-pv__kpis">
+            <div>
+              <dt>{{ t('pvChatters') }}</dt>
+              <dd>312</dd>
+            </div>
+            <div>
+              <dt>{{ t('pvMsgs') }}</dt>
+              <dd>48</dd>
+            </div>
+            <div>
+              <dt>{{ t('pvCmds') }}</dt>
+              <dd>126</dd>
+            </div>
+          </dl>
+
+          <div class="lf-pv__chart">
+            <p class="lf-label">{{ t('pvActivity') }}</p>
+            <svg viewBox="0 0 320 72" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="lf-spark-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="currentColor" stop-opacity="0.28" />
+                  <stop offset="1" stop-color="currentColor" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path [attr.d]="sparkArea" fill="url(#lf-spark-fill)" />
+              <path [attr.d]="sparkPath" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />
+            </svg>
+          </div>
+
+          <div class="lf-pv__log">
+            <p class="lf-label">{{ t('pvLog') }}</p>
+            <ul>
+              <li>
+                <span class="lf-pv__ico lf-pv__ico--warn"><lucide-icon [name]="icons.ShieldCheck" [size]="13" /></span>
+                <span class="lf-pv__text">{{ t('pv1') }}</span>
+                <time>{{ t('now') }}</time>
+              </li>
+              <li>
+                <span class="lf-pv__ico"><lucide-icon [name]="icons.MessageSquareText" [size]="13" /></span>
+                <span class="lf-pv__text">{{ t('pv2') }}</span>
+                <time>2m</time>
+              </li>
+              <li>
+                <span class="lf-pv__ico"><lucide-icon [name]="icons.Terminal" [size]="13" /></span>
+                <span class="lf-pv__text">{{ t('pv3') }}</span>
+                <time>6m</time>
+              </li>
+              <li class="lf-pv__extra">
+                <span class="lf-pv__ico"><lucide-icon [name]="icons.Volume2" [size]="13" /></span>
+                <span class="lf-pv__text">{{ t('pv4') }}</span>
+                <time>11m</time>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Proof: live board -->
+    <section class="lf-tile lf-proof" aria-labelledby="lf-proof-title">
+      <div class="lf-proof__head">
+        <div>
+          <p class="lf-kicker">{{ t('proofKicker') }}</p>
+          <h2 id="lf-proof-title" class="lf-h3">{{ t('proofTitle') }}</h2>
+        </div>
+      </div>
+
+      <dl class="lf-stats">
+        <div class="lf-stat">
+          <dt>{{ t('st_messages') }}</dt>
+          <dd [countUp]="stats().messagesReceived">0</dd>
+        </div>
+        <div class="lf-stat">
+          <dt>{{ t('st_commands') }}</dt>
+          <dd [countUp]="stats().totalCommands" [staggerDelay]="80">0</dd>
+        </div>
+        <div class="lf-stat">
+          <dt>{{ t('st_live') }}</dt>
+          <dd [countUp]="stats().liveUsers" [staggerDelay]="160">0</dd>
+        </div>
+        <div class="lf-stat">
+          <dt>{{ t('st_viewers') }}</dt>
+          <dd [countUp]="stats().totalLiveViewer" [staggerDelay]="240">0</dd>
+        </div>
+      </dl>
+
+      <div class="lf-strip">
+        <p class="lf-label">{{ t('liveStrip') }}</p>
+        @if (stripChannels().length > 0) {
+          <ul class="lf-strip__list">
+            @for (ch of stripChannels(); track ch.channelID) {
+              <li class="lf-strip__item">
+                <img
+                  [src]="ch.profileImageUrl || fallbackAvatar"
+                  [alt]="''"
+                  width="28"
+                  height="28"
+                  loading="lazy"
+                />
+                <span class="lf-strip__name">{{ ch.channel }}</span>
+                <span class="lf-strip__viewers">{{ t('viewers', { n: formatViewers(ch.viewers) }) }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="lf-note">{{ t('liveEmpty') }}</p>
+        }
+      </div>
+    </section>
+
+    <!-- Product -->
+    <section id="product" class="lf-section" aria-labelledby="lf-product-title">
+      <header class="lf-section__head">
+        <p class="lf-kicker">{{ t('productKicker') }}</p>
+        <h2 id="lf-product-title" class="lf-h2">{{ t('productTitle') }}</h2>
+        <p class="lf-copy">{{ t('productCopy') }}</p>
+      </header>
+
+      <div class="lf-bento lf-bento--features">
+        <!-- Follow Defense -->
+        <a class="lf-tile lf-feature lf-feature--wide" [href]="docsBase() + '/follow-defense/'">
+          <div class="lf-feature__text">
+            <p class="lf-feature__kicker">
+              <lucide-icon [name]="icons.ShieldCheck" [size]="14" aria-hidden="true" />
+              {{ t('f_defense_k') }}
+            </p>
+            <h3 class="lf-h3">{{ t('f_defense_t') }}</h3>
+            <p class="lf-copy">{{ t('f_defense_c') }}</p>
+            <span class="lf-link">{{ t('guide') }} <lucide-icon [name]="icons.ArrowRight" [size]="14" aria-hidden="true" /></span>
+          </div>
+          <div class="lf-viz lf-viz--defense" aria-hidden="true">
+            <div class="lf-viz__modes">
+              <span>Normal</span>
+              <span class="is-on">Silent</span>
+              <span>Protection</span>
+              <span>Attack</span>
+            </div>
+            <div class="lf-viz__bars">
+              <span class="lf-viz__threshold"><em>{{ t('f_defense_threshold') }} · 10 / 5s</em></span>
+              @for (h of follows; track $index) {
+                <i [style.height.%]="h" [class.is-hot]="h > 20"></i>
+              }
+            </div>
+          </div>
+        </a>
+
+        <!-- Commands -->
+        <a class="lf-tile lf-feature" [href]="docsBase() + '/commands/'">
+          <div class="lf-viz lf-viz--cmd" aria-hidden="true">
+            <div class="lf-cmd"><span class="lf-cmd__name">!so</span><span class="lf-cmd__arg">{{ '{' }}user{{ '}' }}</span></div>
+            <p class="lf-cmd__out">Go follow <b>LunaByte</b>, last seen playing <b>Hades II</b></p>
+            <div class="lf-cmd__meta"><span>cooldown 5s</span><span>mods + VIPs</span></div>
+          </div>
+          <p class="lf-feature__kicker">
+            <lucide-icon [name]="icons.Terminal" [size]="14" aria-hidden="true" />
+            {{ t('f_cmd_k') }}
+          </p>
+          <h3 class="lf-h3">{{ t('f_cmd_t') }}</h3>
+          <p class="lf-copy">{{ t('f_cmd_c') }}</p>
+          <span class="lf-link">{{ t('guide') }} <lucide-icon [name]="icons.ArrowRight" [size]="14" aria-hidden="true" /></span>
+        </a>
+
+        <!-- Analytics -->
+        <a class="lf-tile lf-feature" [href]="docsBase() + '/analytics/'">
+          <div class="lf-viz lf-viz--bars" aria-hidden="true">
+            @for (h of attendance; track $index; let last = $last) {
+              <i [style.height.%]="h" [class.is-now]="last"></i>
+            }
+          </div>
+          <p class="lf-feature__kicker">
+            <lucide-icon [name]="icons.BarChart3" [size]="14" aria-hidden="true" />
+            {{ t('f_an_k') }}
+          </p>
+          <h3 class="lf-h3">{{ t('f_an_t') }}</h3>
+          <p class="lf-copy">{{ t('f_an_c') }}</p>
+          <span class="lf-link">{{ t('guide') }} <lucide-icon [name]="icons.ArrowRight" [size]="14" aria-hidden="true" /></span>
+        </a>
+
+        <!-- TTS -->
+        <a class="lf-tile lf-feature" [href]="docsBase() + '/tts/'">
+          <div class="lf-viz lf-viz--wave" aria-hidden="true">
+            <span class="lf-viz__wave">
+              @for (h of wave; track $index) {
+                <i [style.--h]="h"></i>
+              }
+            </span>
+          </div>
+          <p class="lf-feature__kicker">
+            <lucide-icon [name]="icons.Volume2" [size]="14" aria-hidden="true" />
+            {{ t('f_tts_k') }}
+          </p>
+          <h3 class="lf-h3">{{ t('f_tts_t') }}</h3>
+          <p class="lf-copy">{{ t('f_tts_c') }}</p>
+          <span class="lf-link">{{ t('guide') }} <lucide-icon [name]="icons.ArrowRight" [size]="14" aria-hidden="true" /></span>
+        </a>
+
+        <!-- Module catalog -->
+        <div class="lf-tile lf-modules">
+          <div class="lf-modules__head">
+            <p class="lf-label">{{ t('alsoIncluded') }}</p>
+            <a class="lf-link" [href]="docsBase() + '/modules/'">
+              {{ t('allModules') }} <lucide-icon [name]="icons.ArrowRight" [size]="14" aria-hidden="true" />
+            </a>
+          </div>
+          <ul class="lf-modules__list">
+            @for (m of modules; track m.key) {
+              <li class="lf-module">
+                {{ t(m.key) }}
+                @if (m.tier) {
+                  <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t(m.tier) }}</span>
+                }
+                @if (m.status) {
+                  <span class="lf-chip lf-chip--xs lf-chip--muted">{{ t(m.status) }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how" class="lf-section" aria-labelledby="lf-how-title">
+      <header class="lf-section__head">
+        <p class="lf-kicker">{{ t('howKicker') }}</p>
+        <h2 id="lf-how-title" class="lf-h2">{{ t('howTitle') }}</h2>
+      </header>
+      <ol class="lf-bento lf-bento--steps">
+        @for (n of [1, 2, 3]; track n) {
+          <li class="lf-tile lf-step">
+            <span class="lf-step__n">{{ n }}</span>
+            <h3 class="lf-h3">{{ t('s' + n + '_t') }}</h3>
+            <p class="lf-copy">{{ t('s' + n + '_c') }}</p>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="lf-section" aria-labelledby="lf-pricing-title">
+      <header class="lf-section__head">
+        <p class="lf-kicker">{{ t('pricingKicker') }}</p>
+        <h2 id="lf-pricing-title" class="lf-h2">{{ t('pricingTitle') }}</h2>
+        <p class="lf-copy">{{ t('pricingCopy') }}</p>
+      </header>
+
+      <div class="lf-bento lf-bento--pricing">
+        @for (plan of plans; track plan.key) {
+          <article class="lf-tile lf-plan" [class.lf-plan--hot]="plan.key === 'premium'" [attr.data-plan]="plan.key">
+            <div class="lf-plan__top">
+              <h3 class="lf-plan__name">{{ t('plan_' + plan.key) }}</h3>
+              @if (plan.key === 'premium') {
+                <span class="lf-chip lf-chip--accent">{{ t('popular') }}</span>
+              }
+            </div>
+            <p class="lf-plan__price">{{ plan.price }}<span>{{ t('perMonth') }}</span></p>
+            <p class="lf-plan__desc">{{ t('desc_' + plan.key) }}</p>
+            <a
+              class="lf-btn lf-plan__cta"
+              [class.lf-btn--primary]="plan.key === 'premium'"
+              routerLink="/login"
+            >
+              {{ t('cta_' + plan.key) }}
+            </a>
+            @if (plan.key !== 'free') {
+              <p class="lf-plan__inherit">{{ t('everythingIn', { plan: previousPlan(plan.key) }) }}</p>
+            }
+            <ul class="lf-plan__list">
+              @for (b of plan.bullets; track b) {
+                <li><lucide-icon [name]="icons.Check" [size]="14" aria-hidden="true" />{{ t(b) }}</li>
+              }
+            </ul>
+          </article>
+        }
+      </div>
+
+      <div class="lf-compare">
+        <button
+          type="button"
+          class="lf-btn lf-compare__toggle"
+          [attr.aria-expanded]="showMatrix()"
+          aria-controls="lf-matrix"
+          (click)="showMatrix.set(!showMatrix())"
+        >
+          {{ showMatrix() ? t('compareHide') : t('compare') }}
+        </button>
+
+        @if (showMatrix()) {
+          <div id="lf-matrix" class="lf-tile lf-matrix">
+            <div class="lf-matrix__tabs" role="group" [attr.aria-label]="t('compare')">
+              @for (k of planKeys; track k) {
+                <button type="button" [attr.aria-pressed]="matrixPlan() === k" (click)="matrixPlan.set(k)">
+                  {{ t('plan_' + k) }}
+                </button>
+              }
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">{{ t('capability') }}</th>
+                  @for (k of planKeys; track k) {
+                    <th scope="col" [class.is-hidden-sm]="matrixPlan() !== k">{{ t('plan_' + k) }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of matrix; track row.key) {
+                  <tr>
+                    <th scope="row">{{ t(row.key) }}</th>
+                    @for (k of planKeys; track k) {
+                      <td [class.is-hidden-sm]="matrixPlan() !== k">
+                        @switch (cell(row, k)) {
+                          @case ('✓') {
+                            <lucide-icon [name]="icons.Check" [size]="15" class="lf-yes" aria-label="Yes" />
+                          }
+                          @case ('—') {
+                            <lucide-icon [name]="icons.Minus" [size]="15" class="lf-no" aria-label="No" />
+                          }
+                          @default {
+                            {{ cell(row, k) }}
+                          }
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Closing CTA -->
+    <section class="lf-tile lf-cta" aria-labelledby="lf-cta-title">
+      <div>
+        <h2 id="lf-cta-title" class="lf-h2">{{ t('ctaTitle') }}</h2>
+        <p class="lf-copy">{{ t('ctaCopy') }}</p>
+      </div>
+      <div class="lf-actions">
+        <a class="lf-btn lf-btn--primary lf-btn--lg" routerLink="/login">{{ t('heroPrimary') }}</a>
+        <a class="lf-btn lf-btn--lg" [href]="discordUrl" target="_blank" rel="noopener">{{ t('ctaDiscord') }}</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lf-footer">
+    <div class="lf-footer__inner">
+      <div class="lf-footer__brand">
+        <app-brand-logo />
+        <p>{{ t('footRights') }}</p>
+      </div>
+      <nav class="lf-footer__cols" aria-label="Footer">
+        <div>
+          <p class="lf-label">{{ t('footProduct') }}</p>
+          <button type="button" (click)="scrollTo('product')">{{ t('nav_product') }}</button>
+          <button type="button" (click)="scrollTo('pricing')">{{ t('nav_pricing') }}</button>
+          <button type="button" (click)="scrollTo('lf-proof-title')">{{ t('footLive') }}</button>
+        </div>
+        <div>
+          <p class="lf-label">{{ t('footDocs') }}</p>
+          <a [href]="docsBase() + '/getting-started/'">{{ t('footGetting') }}</a>
+          <a [href]="docsBase() + '/commands/'">{{ t('footCommands') }}</a>
+          <a [href]="docsBase() + '/tts/'">{{ t('footTts') }}</a>
+          <a [href]="docsBase() + '/plans/'">{{ t('footPlans') }}</a>
+        </div>
+        <div>
+          <p class="lf-label">{{ t('footCommunity') }}</p>
+          <a [href]="discordUrl" target="_blank" rel="noopener">Discord</a>
+        </div>
+      </nav>
+    </div>
+  </footer>
+</div>

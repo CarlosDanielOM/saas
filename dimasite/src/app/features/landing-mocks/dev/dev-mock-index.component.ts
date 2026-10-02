@@ -148,6 +148,13 @@ export class DevMockIndexComponent {
 
   readonly mocks: DevMockCard[] = [
     {
+      id: 'landing',
+      title: 'Landing · B2B proposal',
+      badge: 'Design mock',
+      description:
+        'Streamer-focused landing: promise + dashboard preview hero, live proof band, product bento with visuals, setup steps, plan bullets and comparison.'
+    },
+    {
       id: 'tip',
       title: 'Tip page · Mobile-first',
       badge: 'Design mock',
