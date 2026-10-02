@@ -12,7 +12,7 @@ interface QueueDefaultTtsInput {
     channelID: string;
     rawMessage: string;
     source: 'chat-command' | 'ast' | 'redemption';
-    preferredMode?: 'default' | 'speak' | 'clone';
+    preferredMode?: 'default' | 'speak' | 'clone' | 'kokoro';
     cloneName?: string;
     userID?: string;
     userLogin?: string;
@@ -42,11 +42,15 @@ function resolveTtsMode(input: QueueDefaultTtsInput, settings: ChannelTtsSetting
         return { mode: 'clone', provider: 'fish' };
     }
 
-    if (preferredMode === 'speak' || settings.provider !== 'fish') {
+    if (preferredMode === 'kokoro') return { mode: 'speak', provider: 'kokoro' };
+
+    if (preferredMode === 'speak') {
         return { mode: 'speak', provider: 'piper' };
     }
 
-    return { mode: 'clone', provider: 'fish' };
+    return settings.provider === 'fish'
+        ? { mode: 'clone', provider: 'fish' }
+        : { mode: 'speak', provider: settings.provider };
 }
 
 export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<QueueDefaultTtsResult> {
@@ -104,7 +108,8 @@ export async function queueDefaultTts(input: QueueDefaultTtsInput): Promise<Queu
     const payload: TtsRequestBody = {
         mode: resolvedMode.mode,
         provider: resolvedMode.provider,
-        ...(input.cloneName ? { cloneName: input.cloneName } : {}),
+        ...(input.cloneName ? resolvedMode.provider === 'kokoro'
+            ? { voice: input.cloneName } : { cloneName: input.cloneName } : {}),
         text: spokenMessage,
         language,
         requestedBy: {

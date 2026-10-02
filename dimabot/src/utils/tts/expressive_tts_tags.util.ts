@@ -61,7 +61,7 @@ export function reinforceFishTtsTags(text: string): string {
 
 export function filterExpressiveTtsTags(
   rawText: string,
-  options: { provider: 'piper' | 'fish'; enabledTags?: ExpressiveTtsTagSettings } = { provider: 'piper' },
+  options: { provider: 'piper' | 'fish' | 'kokoro'; enabledTags?: ExpressiveTtsTagSettings } = { provider: 'piper' },
 ): string {
   return String(rawText || '')
     .replace(LEGACY_WRAPPERS, '')

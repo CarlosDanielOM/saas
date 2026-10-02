@@ -67,6 +67,13 @@
 
             <fieldset class="lf-engines" [disabled]="ttsReadOnly() || ttsSaving()">
               <legend class="lf-label">{{ t('modules.tts.voice.engineLabel') }}</legend>
+              <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'kokoro'">
+                <input type="radio" name="tts-provider" value="kokoro" [checked]="tts.provider === 'kokoro'" (change)="updateTtsProvider('kokoro')" />
+                <span class="lf-engine__body">
+                  <span class="lf-engine__name">Kokoro <span class="lf-chip lf-chip--xs">{{ t('modules.tts.voice.kokoroTag') }}</span></span>
+                  <span class="lf-engine__copy">{{ t('modules.tts.voice.kokoroCopy') }}</span>
+                </span>
+              </label>
               <label class="lf-engine" [class.lf-engine--on]="tts.provider === 'piper'">
                 <input type="radio" name="tts-provider" value="piper" [checked]="tts.provider === 'piper'" (change)="updateTtsProvider('piper')" />
                 <span class="lf-engine__body">
@@ -84,7 +91,18 @@
             </fieldset>
 
             <div class="lf-form-grid lf-form-grid--2">
-              @if (showCloneSettings()) {
+              @if (tts.provider === 'kokoro') {
+                <label class="lf-field" for="kokoro-default-voice">
+                  <span class="lf-label">{{ t('modules.tts.voice.kokoroVoiceLabel') }}</span>
+                  <select id="kokoro-default-voice" class="lf-select" [disabled]="ttsReadOnly() || ttsSaving()"
+                    (change)="updateTtsKokoroVoice($any($event.target).value)">
+                    @for (voice of kokoroVoiceOptions(); track voice) {
+                      <option [value]="voice" [selected]="voice === (tts.voices.kokoroDefault || 'ef_dora')">{{ voice }}</option>
+                    }
+                  </select>
+                  <span class="lf-note">{{ t('modules.tts.voice.kokoroSyntax') }}</span>
+                </label>
+              } @else if (showCloneSettings()) {
                 <div class="lf-voice-picker">
                   <label class="lf-label" for="fish-default-voice">{{ t('modules.tts.fields.cloneVoiceLabel') }}</label>
                   <div class="lf-voice-picker__controls">
@@ -303,6 +321,7 @@
             <dl class="lf-cheats">
               <div><dt><code>$(tts …)</code></dt><dd>{{ t('modules.tts.cheats.default') }}</dd></div>
               <div><dt><code>$(tts.speak …)</code></dt><dd>{{ t('modules.tts.cheats.piper') }}</dd></div>
+              <div><dt><code>$(tts.kokoro af_heart …)</code></dt><dd>{{ t('modules.tts.cheats.kokoro') }}</dd></div>
               <div><dt><code>$(tts.fish voice …)</code></dt><dd>{{ t('modules.tts.cheats.fish') }}</dd></div>
               <div><dt><code>[whisper]</code></dt><dd>{{ t('modules.tts.cheats.tags') }}</dd></div>
             </dl>
@@ -326,6 +345,7 @@
           <section class="lf-tile lf-card lf-credits" aria-labelledby="tts-credits-title">
             <h2 class="lf-h3" id="tts-credits-title"><app-lf-icon name="zap" [size]="15"></app-lf-icon> {{ t('modules.tts.credits.title') }}</h2>
             <ul class="lf-credits__list">
+              <li><strong>Kokoro</strong> {{ t('modules.tts.credits.kokoro') }}</li>
               <li><strong>Piper</strong> {{ t('modules.tts.credits.piper') }}</li>
               <li><strong>Fish Audio</strong> {{ t('modules.tts.credits.fish') }}</li>
             </ul>

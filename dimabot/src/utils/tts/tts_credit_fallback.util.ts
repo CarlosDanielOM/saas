@@ -22,7 +22,7 @@ export function resolveTtsForCreditStatus<T extends TtsCreditFallbackRequest>(
   request: T,
   creditStatus: AiCreditStatus,
 ): T {
-  if (request.provider !== 'fish' || creditStatus === 'available') {
+  if (request.provider === 'piper' || creditStatus === 'available') {
     return request;
   }
 

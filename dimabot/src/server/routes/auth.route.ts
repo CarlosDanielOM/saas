@@ -980,6 +980,7 @@ router.post('/login', async (req: Request, res: Response) => {
             const encryptedRefreshToken = encrypt('');
 
             const newUser = new UsersSchema({
+                tts_default_provider: 'kokoro',
                 name: normalizedLogin,
                 email: email,
                 language: persistedLanguage,

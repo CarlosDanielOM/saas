@@ -9,7 +9,7 @@ interface QueueTtsResult {
     output: string;
     success: boolean;
     mode: 'speak' | 'clone';
-    provider?: 'piper' | 'fish';
+    provider?: 'piper' | 'fish' | 'kokoro';
     errorMessage?: string;
 }
 
@@ -55,7 +55,7 @@ function parseCloneArgument(args: unknown[], fallback?: string): { cloneName: st
 }
 
 async function queueTts(
-    mode: 'default' | 'speak' | 'clone',
+    mode: 'default' | 'speak' | 'clone' | 'kokoro',
     message: string,
     ctx: Parameters<FunctionHandler>[1],
     cloneName?: string
@@ -79,7 +79,7 @@ async function queueTts(
         output: result.error ? result.message : '',
         success: !result.error,
         mode: mode === 'clone' ? 'clone' : 'speak',
-        provider: mode === 'clone' ? 'fish' : 'piper',
+        provider: mode === 'clone' ? 'fish' : mode === 'kokoro' ? 'kokoro' : undefined,
         errorMessage: result.error ? result.message : undefined
     };
 }
@@ -192,7 +192,24 @@ function createCloneHandler(ttsType: 'tts.clone' | 'tts.fish'): FunctionHandler 
 const ttsCloneHandler = createCloneHandler('tts.clone');
 const ttsFishHandler = createCloneHandler('tts.fish');
 
+const ttsKokoroHandler: FunctionHandler = async (args, ctx) => {
+    const { cloneName: voice, message } = parseCloneArgument(args, ctx.argument);
+    if (!voice || !message) return 'Usage: $(tts.kokoro voice_name text)';
+    const result = await queueTts('kokoro', message, ctx, voice);
+    trackTts({ channelID: ctx.broadcasterId, channelName: ctx.streamer?.name || ctx.broadcasterId,
+        source: 'ast', ttsType: 'tts.kokoro', characters: message.length, message,
+        status: result.success ? 'success' : 'error', mode: 'speak', provider: 'kokoro',
+        ...resolveTrackingIdentity(ctx), errorMessage: result.errorMessage });
+    return result.output;
+};
+
 export function registerTtsFunctions(): void {
+    registerFunction('tts.kokoro', ttsKokoroHandler, {
+        description: 'Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.',
+        syntax: 'tts.kokoro voice_name text', category: 'tts',
+        examples: ['tts.kokoro af_heart Hello chat!', 'tts.kokoro ef_dora Hola chat!'],
+        keywords: ['kokoro', 'preset voice', 'deepinfra', 'tts', 'voz']
+    });
     const ttsMetadata = {
         description: 'Speaks a message out loud using the channel default TTS voice.',
         syntax: 'tts message',
@@ -201,7 +218,8 @@ export function registerTtsFunctions(): void {
         keywords: ['tts', 'speak', 'text to speech', 'hablar', 'voz', 'di esto']
     };
     registerFunction('tts', ttsSpeakHandler, ttsMetadata);
-    registerFunction('tts.speak', ttsExplicitSpeakHandler, { ...ttsMetadata, aliasOf: 'tts' });
+    registerFunction('tts.speak', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using the free Piper voice.', syntax: 'tts.speak message' });
+    registerFunction('tts.piper', ttsExplicitSpeakHandler, { ...ttsMetadata, description: 'Speaks a message using the free Piper voice.', syntax: 'tts.piper message', aliasOf: 'tts.speak' });
     registerFunction('tts.ai', ttsAiHandler, { ...ttsMetadata, aliasOf: 'tts' });
     const cloneMetadata = {
         description: 'Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message.',

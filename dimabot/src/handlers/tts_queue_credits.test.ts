@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
+let queuedProvider = 'fish';
 let creditStatus = 'exhausted';
 let lookupFails = false;
 let pending = true;
@@ -20,7 +21,7 @@ const cache = {
     return { value: 'speech-test' };
   },
   get: async (key: string): Promise<string | null> => key.includes(':queue:data:')
-    ? JSON.stringify({ channelID: 'test', speechID: 'speech-test', provider: 'fish',
+    ? JSON.stringify({ channelID: 'test', speechID: 'speech-test', provider: queuedProvider,
       mode: 'clone', language: 'en', voice: 'fish-id', piperFallbackVoice: 'piper-en', text: rawText })
     : 'pending',
   set: async () => {},
@@ -43,7 +44,7 @@ mock.module('../utils/billing.js', { namedExports: {
   getAiCredits: async () => ({ status: creditStatus }),
 } });
 mock.module('../utils/tts_usage.js', { namedExports: { trackTtsUsage: async () => {} } });
-for (const provider of ['fish', 'piper']) {
+for (const provider of ['fish', 'piper', 'kokoro']) {
   synthesizeImpls[provider] = async (request: { text: string; voice: string }) => {
     synthesis.push({ provider, text: request.text, voice: request.voice });
     return { error: true, message: 'test stops before playback' };
@@ -336,4 +337,22 @@ test('dropping a failed item retains the producer lock through cleanup', async (
     playbackAvailable = false;
     scriptedQueue = null;
   }
+});
+
+
+test('queued Kokoro uses Piper without charging when credits are exhausted or synthesis fails', async () => {
+  queuedProvider = 'kokoro';
+  lookupFails = false;
+  playbackAvailable = true;
+  rawText = 'Hello';
+  try {
+    for (const status of ['exhausted', 'unavailable', 'available']) {
+      pending = true;
+      creditStatus = status;
+      const before = synthesis.length;
+      await ttsQueueHandler.processNext('kokoro-fallback');
+      assert.deepEqual(synthesis.slice(before).map(item => item.provider), status === 'available'
+        ? ['kokoro', 'piper'] : ['piper']);
+    }
+  } finally { queuedProvider = 'fish'; }
 });

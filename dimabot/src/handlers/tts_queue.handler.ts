@@ -16,6 +16,7 @@ import {
   piperTtsService,
   PIPER_PUBLIC_SPEECH_DIR,
 } from "../server/services/tts/piper_tts.service.js";
+import { kokoroTtsService } from "../server/services/tts/kokoro_tts.service.js";
 import { fishTtsService } from "../server/services/tts/fish_tts.service.js";
 import type {
   RuntimeTtsProvider,
@@ -93,6 +94,7 @@ class TtsQueueHandler {
   private readonly services: Record<RuntimeTtsProvider, TtsServiceContract> = {
     piper: piperTtsService,
     fish: fishTtsService,
+    kokoro: kokoroTtsService,
   };
 
   async init(): Promise<void> {
@@ -290,7 +292,7 @@ class TtsQueueHandler {
           console.error("Failed to load TTS billing account; using free voice", { channelID, error });
         }
         let creditStatus: AiCreditStatus = "available";
-        if (queueItem.provider === "fish") {
+        if (queueItem.provider !== "piper") {
           creditStatus = "unavailable";
           try {
             const exhausted = await isAiCreditsExhausted(channelID, this.cache!);
@@ -375,17 +377,18 @@ class TtsQueueHandler {
 
         let synthesisResult = await synthesize();
         if ((synthesisResult.error || !synthesisResult.outputPath || !synthesisResult.publicPath)
-          && queueItem.provider === "fish") {
-          const fishError = synthesisResult.message;
+          && queueItem.provider !== "piper") {
+          const failedProvider = queueItem.provider;
+          const providerError = synthesisResult.message;
           queueItem = resolveTtsForCreditStatus(queueItem, "unavailable");
-          fallbackReason = "fish_synthesis_failed";
+          fallbackReason = `${failedProvider}_synthesis_failed`;
           if (queueItem.text.trim()) {
             synthesisResult = await synthesize();
           }
-          console.warn("Fish TTS unavailable; used Piper fallback", {
+          console.warn(`${failedProvider} TTS unavailable; used Piper fallback`, {
             channelID,
             speechID,
-            fishError,
+            providerError,
             piperError: synthesisResult.error ? synthesisResult.message : undefined,
           });
         }
@@ -435,7 +438,8 @@ class TtsQueueHandler {
               plan_tier: streamer?.plan_tier,
             },
             provider: queueItem.provider,
-            characters: queueItem.text.length,
+            // Kokoro bills Unicode characters, so a surrogate pair counts once.
+            characters: queueItem.provider === 'kokoro' ? Array.from(queueItem.text).length : queueItem.text.length,
             text: queueItem.text,
             usage: {
               entryId: usageEntryID,

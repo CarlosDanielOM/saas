@@ -95,3 +95,21 @@ test('redemption reproducer strips repeated ethand14Gojoseggs before truncation'
     assert.equal(String((await evaluate(parse('$(tts)').ast, context)).value), '');
     assert.equal(requests.at(-1)!.text, 'Ahuevo ya vengo voy al baño');
 });
+
+test('Kokoro AST accepts a preset voice and text, respects filters and never changes saved provider', async () => {
+    settings = createDefaultChannelTtsSettings('fixture');
+    const context = createExecutionContext({ broadcasterId: 'fixture' });
+    assert.equal(String((await evaluate(parse('$(tts.kokoro af_heart Hello [happy] Kappa)').ast, context)).value), '');
+    assert.equal(requests.at(-1)!.provider, 'kokoro');
+    assert.equal(requests.at(-1)!.voice, 'af_heart');
+    assert.equal(requests.at(-1)!.text, 'Hello');
+    assert.equal(settings.provider, 'piper');
+    const count = requests.length;
+    assert.match(String((await evaluate(parse('$(tts.kokoro af_heart)').ast, context)).value), /Usage/);
+    assert.equal(requests.length, count);
+    settings.provider = 'kokoro';
+    assert.equal(String((await evaluate(parse('$(tts Hello)').ast, context)).value), '');
+    assert.equal(requests.at(-1)!.provider, 'kokoro');
+    assert.equal(String((await evaluate(parse('$(tts.piper Hello)').ast, context)).value), '');
+    assert.equal(requests.at(-1)!.provider, 'piper');
+});

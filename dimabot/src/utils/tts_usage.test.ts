@@ -52,3 +52,17 @@ test('Fish speech retains its credit rate and queues durable billing before retu
     },
   });
 });
+
+test('Kokoro charges one credit per 15 characters, always rounding up', async () => {
+  const { calculateTtsUsage } = await import('./tts_usage.js');
+  for (const [characters, expected] of [[0, 0], [1, 1], [15, 1], [16, 2], [30, 2], [31, 3], [45, 3], [46, 4], [500, 34]]) {
+    assert.equal(calculateTtsUsage('kokoro', characters).creditsConsumed, expected);
+  }
+  const usage = await trackTtsUsage({ channelID: 'test', streamer: { polar_sh_customer_id: 'customer' },
+    provider: 'kokoro', characters: 16, text: '0123456789abcdef', usage: { entryId: 'kokoro-entry' } });
+  assert.equal(usage.creditsConsumed, 2);
+  const event = ingest.mock.calls.at(-1)!.arguments[0] as { reason: string; cost: number; externalId: string };
+  assert.equal(event.reason, 'tts_kokoro');
+  assert.equal(event.cost, 0.00002);
+  assert.equal(event.externalId, 'kokoro-entry');
+});

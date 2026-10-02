@@ -1,9 +1,11 @@
 import { Schema, model, type HydratedDocument, type Model, Types } from 'mongoose';
+import UsersSchema from './users.schema.js';
+import { DEFAULT_KOKORO_VOICES, resolveKokoroVoice } from '../utils/tts/kokoro_voices.util.js';
 import { EXPRESSIVE_TTS_TAGS, normalizeExpressiveTtsTags, type ExpressiveTtsTagSettings } from '../utils/tts/expressive_tts_tags.util.js';
 
 export type TtsLanguage = 'en' | 'es';
 export type TtsMode = 'speak' | 'ai' | 'clone';
-export type TtsProvider = 'piper' | 'fish';
+export type TtsProvider = 'piper' | 'fish' | 'kokoro';
 
 export interface ChannelTtsSettingsData {
     channelID: string;
@@ -15,6 +17,7 @@ export interface ChannelTtsSettingsData {
         en: string;
         es: string;
         cloneDefault?: string;
+        kokoroDefault?: string;
     };
     filters: {
         skipEmotes: boolean;
@@ -43,7 +46,8 @@ export const DEFAULT_TTS_SETTINGS: Omit<ChannelTtsSettingsData, 'channelID' | 'c
     voices: {
         en: 'en_US-ryan-medium',
         es: 'es_MX-ald-medium',
-        cloneDefault: 'gojo'
+        cloneDefault: 'gojo',
+        kokoroDefault: DEFAULT_KOKORO_VOICES.es
     },
     filters: {
         skipEmotes: true,
@@ -58,8 +62,8 @@ export const DEFAULT_TTS_SETTINGS: Omit<ChannelTtsSettingsData, 'channelID' | 'c
 };
 
 function sanitizeProvider(value: unknown, fallback: TtsProvider): TtsProvider {
-    if (value === 'fish') {
-        return 'fish';
+    if (value === 'fish' || value === 'kokoro') {
+        return value;
     }
 
     if (value === 'piper' || value === 'xai' || value === 'openrouter') {
@@ -119,7 +123,8 @@ export function normalizeChannelTtsSettings(
             es: String(input?.voices?.es || defaults.voices.es).trim() || defaults.voices.es,
             cloneDefault: typeof input?.voices?.cloneDefault === 'string' && input.voices.cloneDefault.trim() !== ''
                 ? input.voices.cloneDefault.trim()
-                : defaults.voices.cloneDefault ?? 'gojo'
+                : defaults.voices.cloneDefault ?? 'gojo',
+            kokoroDefault: resolveKokoroVoice(input?.voices?.kokoroDefault) ?? DEFAULT_KOKORO_VOICES.es
         },
         filters: {
             skipEmotes: input?.filters?.skipEmotes ?? defaults.filters.skipEmotes,
@@ -138,12 +143,13 @@ const channelTtsSettingsSchema = new Schema<IChannelTtsSettings>({
     channelID: { type: String, required: true, unique: true },
     channel: { type: String, default: '' },
     enabled: { type: Boolean, default: DEFAULT_TTS_SETTINGS.enabled },
-    provider: { type: String, enum: ['piper', 'fish'], default: DEFAULT_TTS_SETTINGS.provider },
+    provider: { type: String, enum: ['piper', 'fish', 'kokoro'], default: DEFAULT_TTS_SETTINGS.provider },
     defaultLanguage: { type: String, enum: ['en', 'es'], default: DEFAULT_TTS_SETTINGS.defaultLanguage },
     voices: {
         en: { type: String, default: DEFAULT_TTS_SETTINGS.voices.en },
         es: { type: String, default: DEFAULT_TTS_SETTINGS.voices.es },
-        cloneDefault: { type: String, default: 'gojo' }
+        cloneDefault: { type: String, default: 'gojo' },
+        kokoroDefault: { type: String, default: DEFAULT_KOKORO_VOICES.es }
     },
     filters: {
         skipEmotes: { type: Boolean, default: DEFAULT_TTS_SETTINGS.filters.skipEmotes },
@@ -163,7 +169,12 @@ export const ChannelTtsSettingsSchema = model<IChannelTtsSettings>('channel_tts_
 
 export async function getChannelTtsSettings(channelID: string, channel: string = ''): Promise<ChannelTtsSettingsData> {
     const doc = await ChannelTtsSettingsSchema.findOne({ channelID }).lean<ChannelTtsSettingsData | null>();
-    return normalizeChannelTtsSettings(doc, channelID, channel);
+    if (doc) return normalizeChannelTtsSettings(doc, channelID, channel);
+    // Only new registrations carry this marker. Existing accounts without a
+    // settings document retain Piper; saved settings always take precedence.
+    const user = await UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelID } } })
+        .select('tts_default_provider').lean();
+    return normalizeChannelTtsSettings({ provider: user?.tts_default_provider === 'kokoro' ? 'kokoro' : 'piper' }, channelID, channel);
 }
 
 export async function upsertChannelTtsSettings(

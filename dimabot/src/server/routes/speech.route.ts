@@ -18,6 +18,7 @@ import {
     type TtsLanguage,
     type TtsMode
 } from '../../schemas/channel_tts_settings.schema.js';
+import { KOKORO_VOICES, resolveKokoroVoice } from '../../utils/tts/kokoro_voices.util.js';
 import { FISH_VOICES } from '../services/tts/fish_tts.service.js';
 import { resolveFishVoice, getFishVoice, searchFishVoices, parseVoiceSearch, VoiceRequestError } from '../services/tts/fish_voice_catalog.service.js';
 import { createPreviewTicket } from '../services/tts/fish_preview.service.js';
@@ -62,18 +63,13 @@ function resolveRequestedProvider(
     mode: TtsMode,
     requestedProvider?: TtsProvider
 ): RuntimeTtsProvider {
-    if (mode === 'clone' || requestedProvider === 'fish') {
-        return 'fish';
-    }
-
-    if (mode === 'speak' && settings.provider === 'fish') {
-        return 'fish';
-    }
-
-    return 'piper';
+    if (requestedProvider === 'kokoro' || requestedProvider === 'piper' || requestedProvider === 'fish') return requestedProvider;
+    if (mode === 'clone') return 'fish';
+    return settings.provider;
 }
 
-async function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string): Promise<string | null> {
+async function resolveVoice(settings: ChannelTtsSettingsData, mode: TtsMode, provider: RuntimeTtsProvider, language: TtsLanguage, cloneName?: string, voice?: string): Promise<string | null> {
+    if (provider === 'kokoro') return resolveKokoroVoice(voice ?? settings.voices.kokoroDefault);
     if (provider === 'fish') {
         const requested = mode === 'clone' && cloneName ? cloneName : settings.voices.cloneDefault;
         const builtIn = resolveFishVoice(requested);
@@ -146,7 +142,8 @@ router.get('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             status: 200,
             data: {
                 role,
-                settings
+                settings,
+                kokoroVoices: KOKORO_VOICES
             }
         });
     } catch (error) {
@@ -201,6 +198,9 @@ router.put('/settings/:channelID', authMiddleware as any, async (req: AuthReques
             });
         }
 
+        if (req.body?.voices?.kokoroDefault !== undefined && !resolveKokoroVoice(req.body.voices.kokoroDefault)) {
+            return res.status(400).json({ error: true, message: 'Invalid Kokoro voice', status: 400 });
+        }
         const nextSettings = normalizeChannelTtsSettings(req.body as Partial<ChannelTtsSettingsData>, channelID, streamer.name);
         const previous = await getChannelTtsSettings(channelID, streamer.name);
         const selected = nextSettings.voices.cloneDefault!;
@@ -444,7 +444,7 @@ router.post('/:channelID', async (req: Request, res: Response) => {
             });
         }
 
-        const voice = await resolveVoice(settings, mode, provider, language, body.cloneName);
+        const voice = await resolveVoice(settings, mode, provider, language, body.cloneName, body.voice);
         if (!voice) {
             return res.status(400).json({
                 error: true,

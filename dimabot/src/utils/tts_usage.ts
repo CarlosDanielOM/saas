@@ -10,6 +10,7 @@ import type { AiUsageResourceType } from "./ai_usage_event.js";
  */
 const TTS_CREDITS_PER_CHARACTER: Record<string, number> = {
   piper: 0, // Local free voice, including fallback after credit exhaustion
+  kokoro: 15, // One credit per 15 characters, rounded up
   fish: 1.5, // 1.5 credits per character
 };
 
@@ -31,7 +32,7 @@ export interface TtsUsageTrackOptions {
     polar_sh_customer_id?: string;
     plan_tier?: string;
   };
-  provider: "piper" | "fish";
+  provider: "piper" | "fish" | "kokoro";
   characters: number;
   text: string;
   usage?: {

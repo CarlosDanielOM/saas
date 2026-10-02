@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: f9b25389fb63
+# Catalog version: ce4cad52bbb2
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -280,11 +280,16 @@
 #   Example: $(set.voice gojo)
 #   Example: $(set.voice rias_gremory)
 #   Example: $(set.voice favorite_alias)
-# $(tts message) - Speaks a message out loud using the channel default TTS voice. (aliases: tts.speak, tts.ai)
+# $(tts message) - Speaks a message out loud using the channel default TTS voice. (aliases: tts.ai)
 #   Example: $(tts Hello chat!)
 # $(tts.clone voice_name message) - Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message. (aliases: tts.fish)
 #   Example: $(tts.clone gojo Hello chat!)
 #   Example: $(tts.clone rias_gremory Welcome!)
+# $(tts.kokoro voice_name text) - Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.
+#   Example: $(tts.kokoro af_heart Hello chat!)
+#   Example: $(tts.kokoro ef_dora Hola chat!)
+# $(tts.speak message) - Speaks a message using the free Piper voice. (aliases: tts.piper)
+#   Example: $(tts Hello chat!)
 #
 # --- twitch-data ---
 # $(followage [username]) - Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.

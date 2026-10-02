@@ -1,9 +1,9 @@
 {
-  "version": "f9b25389fb63",
-  "generatedAt": "2026-10-01T03:09:36.181Z",
+  "version": "ce4cad52bbb2",
+  "generatedAt": "2026-10-02T19:40:05.047Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 105,
+  "functionCount": 107,
   "entries": [
     {
       "name": "overlay.skip",
@@ -1907,6 +1907,30 @@
       ]
     },
     {
+      "name": "tts.kokoro",
+      "description": "Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.",
+      "syntax": "tts.kokoro voice_name text",
+      "category": "tts",
+      "examples": [
+        "tts.kokoro af_heart Hello chat!",
+        "tts.kokoro ef_dora Hola chat!"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "kokoro",
+        "preset voice",
+        "deepinfra",
+        "tts",
+        "voz"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
       "name": "tts",
       "description": "Speaks a message out loud using the channel default TTS voice.",
       "syntax": "tts message",
@@ -1915,8 +1939,33 @@
         "tts Hello chat!"
       ],
       "aliases": [
-        "tts.speak",
         "tts.ai"
+      ],
+      "minUserLevel": 1,
+      "keywords": [
+        "tts",
+        "speak",
+        "text to speech",
+        "hablar",
+        "voz",
+        "di esto"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts.speak",
+      "description": "Speaks a message using the free Piper voice.",
+      "syntax": "tts.speak message",
+      "category": "tts",
+      "examples": [
+        "tts Hello chat!"
+      ],
+      "aliases": [
+        "tts.piper"
       ],
       "minUserLevel": 1,
       "keywords": [

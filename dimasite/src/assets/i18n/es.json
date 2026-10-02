@@ -434,7 +434,7 @@
           "sounds": "Sonidos vocales",
           "effects": "Pausas y efectos"
         },
-        "piperNote": "Las etiquetas solo funcionan con Fish Audio. Piper las quita y lee el resto.",
+        "piperNote": "Las etiquetas solo funcionan con Fish Audio. Piper y Kokoro las quitan y leen el resto.",
         "offList": "Apagadas: {{tags}}",
         "allOn": "Todas activas",
         "turnAllOn": "Activar todas",
@@ -565,6 +565,10 @@
         "onHint": "El chat puede usar !s y $(tts …) ahora mismo.",
         "offHint": "Apagado: se rechazan las solicitudes de !s y $(tts …).",
         "engineLabel": "Motor",
+        "kokoroTag": "1 crédito / 15 caracteres",
+        "kokoroCopy": "Voces predefinidas. Los créditos se redondean hacia arriba; Piper toma el relevo si se agotan o falla la síntesis.",
+        "kokoroVoiceLabel": "Voz predefinida de Kokoro",
+        "kokoroSyntax": "AST: $(tts.kokoro nombre_de_voz texto)",
         "piperTag": "Gratis",
         "piperCopy": "Voz sencilla que nunca usa créditos.",
         "fishTag": "Usa créditos",
@@ -587,15 +591,17 @@
       "cheats": {
         "title": "Úsalo en comandos",
         "default": "Lee con la voz elegida arriba.",
+        "kokoro": "Una voz predefinida de Kokoro. Prueba ef_dora para español.",
         "piper": "Siempre la voz gratis de Piper.",
         "fish": "Una voz de Fish o el apodo de una favorita.",
         "tags": "Los espectadores añaden etiquetas así para cambiar la entonación (solo Fish)."
       },
       "credits": {
         "title": "Créditos",
+        "kokoro": "usa 1 crédito por cada 15 caracteres, redondeando hacia arriba (16–30 = 2 créditos).",
         "piper": "siempre es gratis.",
         "fish": "usa créditos de IA por cada mensaje que lee.",
-        "fallback": "¿Sin créditos? TTS cambia a Piper automáticamente y quita las etiquetas de voz. Tu voz de Fish sigue guardada.",
+        "fallback": "¿Sin créditos o falla la síntesis? TTS cambia a Piper automáticamente. Tu voz seleccionada sigue guardada.",
         "usageLink": "Ver uso de créditos"
       }
     },

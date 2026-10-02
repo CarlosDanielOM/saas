@@ -244,6 +244,7 @@ export class TtsPageComponent {
       this.t('modules.tts.fields.savedValueOption', { value: this.ttsSettings()?.voices.es ?? '' })
     )
   );
+  readonly kokoroVoiceOptions = signal<string[]>([]);
   readonly showCloneSettings = computed(() => this.ttsSettings()?.provider === 'fish');
   readonly cloneDefaultVoiceOptions = computed(() => {
     const current = this.ttsSettings()?.voices.cloneDefault;
@@ -260,7 +261,9 @@ export class TtsPageComponent {
     const favorite = this.fishFavorites().find(item => item.id === voiceName || item.alias === voiceName);
     return found?.label ?? favorite?.name ?? this.discoveredVoiceNames()[voiceName] ?? voiceName;
   });
-  readonly voiceSummary = computed(() => this.ttsSettings()?.provider === 'fish'
+  readonly voiceSummary = computed(() => this.ttsSettings()?.provider === 'kokoro'
+    ? `${this.ttsSettings()?.voices.kokoroDefault || 'ef_dora'} · Kokoro`
+    : this.ttsSettings()?.provider === 'fish'
     ? `${this.currentCloneDefaultVoiceLabel()} · Fish Audio`
     : this.t('modules.tts.voice.piperSummary'));
   readonly tagGroupStats = computed(() => {
@@ -350,6 +353,10 @@ export class TtsPageComponent {
   updateTtsProvider(provider: TtsProvider): void {
     this.voiceBrowserOpen.set(false);
     this.patchTtsSettings((settings) => ({ ...settings, provider }));
+  }
+
+  updateTtsKokoroVoice(voice: string): void {
+    this.patchTtsSettings(settings => ({ ...settings, voices: { ...settings.voices, kokoroDefault: voice } }));
   }
 
   updateTtsVoice(language: TtsLanguage, voiceValue: string): void {
@@ -539,6 +546,7 @@ export class TtsPageComponent {
       const response = await firstValueFrom(this.ttsSettingsApi.updateSettings(channelID, settings));
       const normalized = this.normalizeTtsSettings(response.settings);
       this.ttsRole.set(response.role);
+      this.kokoroVoiceOptions.set(response.kokoroVoices ?? this.kokoroVoiceOptions());
       this.ttsSettings.set(normalized);
       this.initialTtsSettings.set(this.cloneTtsSettings(normalized));
 
@@ -566,6 +574,7 @@ export class TtsPageComponent {
     try {
       const response = await firstValueFrom(this.ttsSettingsApi.getSettings(channelID));
       this.ttsRole.set(response.role);
+      this.kokoroVoiceOptions.set(response.kokoroVoices ?? this.kokoroVoiceOptions());
       const settings = this.normalizeTtsSettings(response.settings);
       this.ttsSettings.set(settings);
       this.initialTtsSettings.set(this.deepCloneSettings(settings));
@@ -612,7 +621,7 @@ export class TtsPageComponent {
 
   private normalizeTtsSettings(settings: TtsSettings): TtsSettings {
     const defaults = this.createDefaultTtsSettings(settings.channelID, settings.channel);
-    const provider: TtsProvider = settings.provider === 'fish' ? 'fish' : 'piper';
+    const provider: TtsProvider = settings.provider === 'fish' || settings.provider === 'kokoro' ? settings.provider : 'piper';
 
     return {
       ...defaults,
@@ -622,7 +631,8 @@ export class TtsPageComponent {
       voices: {
         en: settings.voices.en?.trim() || defaults.voices.en,
         es: settings.voices.es?.trim() || defaults.voices.es,
-        cloneDefault: settings.voices.cloneDefault ?? defaults.voices.cloneDefault ?? 'gojo'
+        cloneDefault: settings.voices.cloneDefault ?? defaults.voices.cloneDefault ?? 'gojo',
+        kokoroDefault: settings.voices.kokoroDefault ?? 'ef_dora'
       },
       filters: {
         skipEmotes: settings.filters.skipEmotes ?? defaults.filters.skipEmotes,
@@ -647,7 +657,8 @@ export class TtsPageComponent {
       voices: {
         en: DEFAULT_PIPER_EN_VOICE,
         es: DEFAULT_PIPER_ES_VOICE,
-        cloneDefault: 'gojo'
+        cloneDefault: 'gojo',
+        kokoroDefault: 'ef_dora'
       },
       filters: {
         skipEmotes: true,

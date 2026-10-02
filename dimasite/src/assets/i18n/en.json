@@ -434,7 +434,7 @@
           "sounds": "Vocal sounds",
           "effects": "Pauses & effects"
         },
-        "piperNote": "Tags only work with Fish Audio. Piper removes them and reads the rest.",
+        "piperNote": "Tags only work with Fish Audio. Piper and Kokoro remove them and read the rest.",
         "offList": "Off: {{tags}}",
         "allOn": "All on",
         "turnAllOn": "Turn all on",
@@ -565,6 +565,10 @@
         "onHint": "Chat can use !s and $(tts …) right now.",
         "offHint": "Off: !s and $(tts …) requests are rejected.",
         "engineLabel": "Engine",
+        "kokoroTag": "1 credit / 15 characters",
+        "kokoroCopy": "Preset voices. Credits round up; Piper takes over if credits run out or synthesis fails.",
+        "kokoroVoiceLabel": "Kokoro preset voice",
+        "kokoroSyntax": "AST: $(tts.kokoro voice_name text)",
         "piperTag": "Free",
         "piperCopy": "Simple voice that never uses credits.",
         "fishTag": "Uses credits",
@@ -587,15 +591,17 @@
       "cheats": {
         "title": "Use in commands",
         "default": "Reads with the voice chosen above.",
+        "kokoro": "A Kokoro preset voice. Try ef_dora for Spanish.",
         "piper": "Always the free Piper voice.",
         "fish": "A Fish voice or a favorite nickname.",
         "tags": "Viewers add tags like this to change the delivery (Fish only)."
       },
       "credits": {
         "title": "Credits",
+        "kokoro": "uses 1 credit per 15 characters, rounded up (16–30 = 2 credits).",
         "piper": "is always free.",
         "fish": "uses AI credits for every message it reads.",
-        "fallback": "Out of credits? TTS switches to Piper automatically and drops voice tags. Your Fish voice stays saved.",
+        "fallback": "Out of credits or synthesis unavailable? TTS switches to Piper automatically. Your selected voice stays saved.",
         "usageLink": "See credit usage"
       }
     },

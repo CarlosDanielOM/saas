@@ -26,6 +26,7 @@ export interface IUsers {
     email: string;
     accounts: IAccounts[];
     language?: 'en' | 'es' | null;
+    tts_default_provider?: 'kokoro';
     polar_sh_customer_id: string;
     polar_plan_event_at?: Date;
     polar_plan_event_key?: string;
@@ -81,6 +82,7 @@ const usersSchema = new Schema<IUsers>({
     email: String,
     accounts: [accountsSchema],
     language: { type: String, enum: ['en', 'es'], default: null },
+    tts_default_provider: { type: String, enum: ['kokoro'] },
     polar_sh_customer_id: { type: String, default: null },
     polar_plan_event_at: { type: Date },
     polar_plan_event_key: { type: String },
