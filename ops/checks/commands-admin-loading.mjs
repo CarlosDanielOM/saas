@@ -53,7 +53,7 @@ try {
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base + '/' + target.login + '/commands?view=table');
-    await page.locator('.lf-code').first().waitFor();
+    await page.locator('.lf-trigger').first().waitFor();
     await page.waitForTimeout(1200);
     console.log(`Observed ${failure} admin requests`, counts);
     assert.equal(counts.commands, 1, 'one command fetch per initial channel load');
@@ -66,20 +66,20 @@ try {
       await page.waitForTimeout(40);
     }
     assert.deepEqual(counts, initial, 'session refreshes do not refetch cached commands or timers');
-    await page.locator('.lf-search input').fill('hormiga');
-    await page.locator('.lf-view button').nth(1).click();
-    await page.locator('.lf-cmd-grid').waitFor();
-    await page.locator('.lf-actions button').first().click();
+    await page.locator('input.lf-search').fill('hormiga');
+    await page.locator('.lf-cmd-row').first().waitFor();
+    await page.getByRole('button', { name: 'Built-in', exact: false }).first().click();
+    await page.getByRole('button', { name: 'New command', exact: true }).click();
     const modal = page.locator('app-command-modal');
     await modal.getByRole('tab').nth(1).click();
     await modal.locator('#keyword-type-tab[aria-selected="true"]').waitFor();
     assert.equal(await modal.locator('[formControlName="cooldown"]').getAttribute('min'), '1',
       'admin editor uses the target streamer Pro tier rather than the admin Free tier');
-    await modal.locator('.lf-modal__close').click();
+    await modal.locator('.lf-modal__primary .lf-modal__close').click();
     await page.waitForTimeout(300);
-    assert.deepEqual(counts, initial, 'search, view, and modal changes do not fetch lists');
+    assert.deepEqual(counts, initial, 'search, filter, and modal changes do not fetch lists');
     // A deliberate reload remains supported and is not an automatic retry.
-    await page.locator('.lf-actions button').nth(1).click();
+    await page.locator('.lf-head__chips .lf-chip--button').click();
     await page.waitForTimeout(300);
     assert.equal(counts.commands, 2);
     assert.equal(counts.timers, 1);

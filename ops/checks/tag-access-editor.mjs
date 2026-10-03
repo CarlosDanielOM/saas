@@ -95,7 +95,7 @@ const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }
 try {
   {
     const { context, page, writes, errors } = await testContext(browser, 1440, 900);
-    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Edit !/ }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('.lf-access-desktop').getByRole('button', { name: 'Tags and accounts' }).waitFor();
     await modal.getByRole('button', { name: 'VIP: Allowed' }).click();
@@ -121,7 +121,7 @@ try {
     assert.ok(hasUserId(writes[0].body.permissionExpression, '222'), 'existing exclusion preserved');
     assert.equal(JSON.stringify(writes[0].body.permissionExpression).includes('"level"'), false,
       'tag mode does not combine with user level');
-    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Edit !/ }).first().click();
     await modal.locator('.lf-access-desktop').getByRole('button', { name: 'User level' }).click();
     await modal.locator('.lf-level-field select').selectOption('7');
     await modal.getByRole('button', { name: 'Save', exact: true }).click();
@@ -135,7 +135,7 @@ try {
   }
   {
     const { context, page, writes, errors } = await testContext(browser, 390, 844);
-    await page.getByRole('button', { name: /create new/i }).first().click();
+    await page.getByRole('button', { name: 'New command', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('[formControlName="name"]').fill('Greeting');
     await modal.locator('[formControlName="cmd"]').fill('greet');
@@ -168,7 +168,7 @@ try {
   }
   {
     const { context, page, errors } = await testContext(browser, 320, 700);
-    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Edit !/ }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('.lf-mobile-access-trigger').click();
     assert.equal(await modal.locator('.lf-mobile-tags-view').getByRole('button', { name: 'Tags and accounts' }).getAttribute('aria-pressed'), 'true');
@@ -181,7 +181,7 @@ try {
   }
   {
     const { context, page, writes, errors } = await testContext(browser, 390, 844);
-    await page.getByRole('button', { name: /create new/i }).first().click();
+    await page.getByRole('button', { name: 'New command', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('[formControlName="name"]').fill('Private greeting');
     await modal.locator('[formControlName="cmd"]').fill('privategreet');
@@ -209,7 +209,7 @@ try {
   }
   {
     const { context, page, writes, errors } = await testContext(browser, 390, 844);
-    await page.getByRole('button', { name: /create new/i }).first().click();
+    await page.getByRole('button', { name: 'New command', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('[formControlName="name"]').fill('VIP or Mod greeting');
     await modal.locator('[formControlName="cmd"]').fill('staffgreet');
@@ -236,7 +236,7 @@ try {
   {
     const legacyMixed = { or: [{ level: 5 }, { role: 'vip' }] };
     const { context, page, writes, errors } = await testContext(browser, 1440, 900, legacyMixed);
-    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Edit !/ }).first().click();
     const modal = page.locator('app-command-modal');
     await modal.locator('.lf-access-desktop').getByText('This older command combines user level with tags.').waitFor();
     await modal.getByRole('button', { name: 'Save', exact: true }).click();

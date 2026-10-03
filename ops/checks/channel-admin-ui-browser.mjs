@@ -80,7 +80,7 @@ try {
   assert.equal(await view.page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'module hub fits 320px');
   await visit(view.page, 'commands');
   await view.page.getByText('Speech Chat', { exact: true }).waitFor();
-  assert.equal(await view.page.getByRole('button', { name: 'Create new', exact: true }).count(), 0, 'Commands View cannot add');
+  assert.equal(await view.page.getByRole('button', { name: 'New command', exact: true }).count(), 0, 'Commands View cannot add');
   await visit(view.page, 'modules/tts');
   await view.page.locator('section[data-testid="tts-command"]').waitFor();
   await view.page.locator('.lf-toggle-row input[type="checkbox"]').first().waitFor({ state: 'attached' });
@@ -104,7 +104,7 @@ try {
   assert.ok(await full.page.locator('.lf-mod').filter({ hasText: 'DimaFX' }).count() > 0, 'Full access sees granted modules');
   assert.equal(await full.page.locator('.lf-mod').filter({ hasText: 'Overlay Studio' }).count(), 0, 'Full access still respects owner-only modules');
   await visit(full.page, 'commands');
-  await full.page.getByRole('button', { name: 'Create new', exact: true }).waitFor();
+  await full.page.getByRole('button', { name: 'New command', exact: true }).waitFor();
   await visit(full.page, 'modules/tts');
   await full.page.locator('.lf-toggle-row input[type="checkbox"]').first().waitFor({ state: 'attached' });
   assert.equal(await full.page.locator('.lf-toggle-row input[type="checkbox"]').first().isEnabled(), true, 'Full access can edit TTS settings');

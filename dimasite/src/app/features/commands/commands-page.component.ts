@@ -7,11 +7,10 @@ import {
   signal,
   untracked
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { List, LayoutGrid, Edit3, Trash2, Power, PowerOff } from 'lucide-angular';
-import { LucideAngularModule } from 'lucide-angular';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
@@ -21,9 +20,21 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { TimersApiService } from '../../services/timers-api.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
+import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import {
+  BUILTIN_GROUP_ORDER,
+  BuiltinGroup,
+  ReplyPart,
+  builtinInfo,
+  customUsage,
+  formatUsage,
+  realDescription,
+  replyParts
+} from './builtin-commands';
 import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
 
-type ViewMode = 'table' | 'card';
+export type CommandFilter = 'all' | 'custom' | 'keyword' | 'timer' | 'builtin' | 'off';
+type CommandKind = 'reserved' | 'timer' | 'normal' | 'keyword';
 type PendingOperation = 'create' | 'update' | 'enable' | 'disable' | 'delete';
 type CommandFeedbackState = 'success' | 'error';
 
@@ -34,7 +45,7 @@ interface CommandListItem extends Command {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, LucideAngularModule, ConfirmationModalComponent, CommandModalComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,20 +55,11 @@ interface CommandListItem extends Command {
 })
 export class CommandsPageComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly commandsApi = inject(CommandsApiService);
   private readonly timersApi = inject(TimersApiService);
   private readonly toastService = inject(ToastService);
-
-  // Icons
-  readonly listIcon = List;
-  readonly gridIcon = LayoutGrid;
-  readonly editIcon = Edit3;
-  readonly trashIcon = Trash2;
-  readonly powerIcon = Power;
-  readonly powerOffIcon = PowerOff;
 
   // Route params - resolved to channelID
   readonly channelID = signal<string | null>(null);
@@ -111,15 +113,11 @@ export class CommandsPageComponent {
   // Search state
   readonly searchInput = signal('');
 
-  // Sort state
-  readonly sortBy = signal('name');
-  readonly sortOrder = signal<'asc' | 'desc'>('asc');
-
-  // View state
-  readonly viewMode = signal<ViewMode>(this.resolveInitialViewMode());
-  readonly currentPage = signal(1);
-  readonly itemsPerPage = signal(10);
-  readonly itemsPerPageOptions = [5, 10, 15, 20] as const;
+  // Filter state
+  readonly filter = signal<CommandFilter>('all');
+  readonly builtinGroupOrder = BUILTIN_GROUP_ORDER;
+  readonly publicCopied = signal(false);
+  readonly newItemKind = signal<'command' | 'keyword'>('command');
   /** Timer names from GET /timers/:channelID — used for list styling + modal prefill. */
   readonly timerNames = signal<Set<string>>(new Set());
   /** Timer interval (minutes) keyed by timer name. */
@@ -176,77 +174,64 @@ export class CommandsPageComponent {
     return fromRoute || this.sessionAuth.session()?.twitchUser.login || '—';
   });
   readonly totalCommands = computed(() => this.commands().length);
-  readonly enabledCommands = computed(
-    () => this.commands().filter((command) => command.enabled !== false).length
-  );
-  readonly disabledCommands = computed(
-    () => this.commands().filter((command) => command.enabled === false).length
-  );
-  readonly reservedCommands = computed(
-    () => this.commands().filter((command) => Boolean(command.reserved)).length
-  );
-  readonly timerLinkedCommands = computed(
-    () => this.commands().filter((command) => this.isTimerLinked(command)).length
-  );
-  readonly keywordCount = computed(() => this.commands().filter(command => command.activation === 'keyword').length);
-  readonly normalCommandCount = computed(() => this.commands().filter(command => this.commandKind(command) === 'normal').length);
+  readonly enabledCommands = computed(() => this.commands().filter((command) => command.enabled !== false).length);
+  readonly disabledCommands = computed(() => this.commands().filter((command) => command.enabled === false).length);
 
-  readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.filteredCommands().length / this.itemsPerPage()) || 1)
-  );
+  /** Commands the streamer wrote (including ones that repeat on a timer). */
+  readonly customList = computed(() =>
+    this.byName(this.commands().filter((command) => command.activation !== 'keyword' && !command.reserved)));
+  readonly keywordList = computed(() => this.byName(this.commands().filter((command) => command.activation === 'keyword')));
+  readonly builtinList = computed(() => this.commands().filter((command) => command.reserved && command.activation !== 'keyword'));
+  readonly timerList = computed(() => this.customList().filter((command) => this.isTimerLinked(command)));
+  readonly offList = computed(() => this.byName(this.commands().filter((command) => command.enabled === false)));
 
-  readonly filteredCommands = computed(() => {
-    const query = this.searchInput().trim().toLowerCase();
-    const commands = this.commands();
-
-    const matched = query
-      ? commands.filter(
-          (command) =>
-            (command.name ?? '').toLowerCase().includes(query) ||
-            (command.cmd ?? '').toLowerCase().includes(query)
-        )
-      : commands;
-
-    return this.sortCommands(matched);
+  readonly builtinGroups = computed(() => {
+    const groups = new Map<BuiltinGroup, CommandListItem[]>();
+    for (const command of this.builtinList()) {
+      const group = builtinInfo(command).group;
+      groups.set(group, [...(groups.get(group) ?? []), command]);
+    }
+    return BUILTIN_GROUP_ORDER
+      .filter((group) => groups.has(group))
+      .map((group) => {
+        const items = [...(groups.get(group) ?? [])].sort((a, b) => a.cmd.localeCompare(b.cmd));
+        return { group, items, on: items.filter((c) => c.enabled !== false).length };
+      });
   });
 
-  readonly searchHint = computed(() => {
-    if (!this.searchInput().trim()) {
-      return null;
-    }
+  readonly filterCounts = computed<Record<CommandFilter, number>>(() => ({
+    all: this.totalCommands(),
+    custom: this.customList().length,
+    keyword: this.keywordList().length,
+    timer: this.timerList().length,
+    builtin: this.builtinList().length,
+    off: this.offList().length
+  }));
 
-    return this.filteredCommands().length === 0
-      ? this.t('commands.search.noResultsInCache')
-      : null;
+  /** Flat results while searching: name, trigger, reply or built-in description. */
+  readonly searchResults = computed(() => {
+    const query = this.searchInput().trim().toLowerCase().replace(/^!/, '');
+    if (!query) return [];
+    return this.byName(this.commands().filter((command) =>
+      [command.name, command.cmd, command.message, command.reserved ? this.builtinDescription(command) : '']
+        .join(' ')
+        .toLowerCase()
+        .includes(query)));
   });
 
-  readonly paginatedCommands = computed(() => {
-    const perPage = this.itemsPerPage();
-    const safePage = Math.min(Math.max(1, this.currentPage()), this.totalPages());
-    const start = (safePage - 1) * perPage;
-    return this.filteredCommands().slice(start, start + perPage);
+  readonly isSearching = computed(() => this.searchInput().trim().length > 0);
+
+  /** Always-useful filters, plus the others once they have something to show. */
+  readonly visibleFilters = computed(() => {
+    const counts = this.filterCounts();
+    return (['all', 'custom', 'keyword', 'timer', 'builtin', 'off'] as const)
+      .filter((option) => option === 'all' || option === 'custom' || option === 'builtin' || counts[option] > 0);
   });
 
-  readonly pages = computed(() => {
-    const total = this.totalPages();
-    const current = this.currentPage();
-
-    if (total <= 5) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-
-    let start = current - 2;
-    let end = current + 2;
-
-    if (start < 1) {
-      start = 1;
-      end = 5;
-    } else if (end > total) {
-      end = total;
-      start = total - 4;
-    }
-
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  readonly publicUrl = computed(() => {
+    const streamer = this.streamerLabel();
+    if (!streamer || streamer === '—' || typeof window === 'undefined') return '';
+    return `${window.location.origin}/commands/${encodeURIComponent(streamer)}`;
   });
 
   // Effects
@@ -275,24 +260,6 @@ export class CommandsPageComponent {
       }
     });
   });
-
-  private readonly persistViewModeEffect = effect(() => {
-    const mode = this.viewMode();
-    this.saveToSession('viewMode', mode);
-    this.updateURL(mode, this.currentPage());
-  });
-
-  private readonly persistPageEffect = effect(() => {
-    const page = this.currentPage();
-    if (this.viewMode() === 'table') {
-      this.saveToSession('currentPage', page);
-      this.updateURL(this.viewMode(), page);
-    }
-  });
-
-  constructor() {
-    this.initializeFromURL();
-  }
 
   ngOnDestroy(): void {
     this.clearAllCommandFeedbackTimers();
@@ -346,104 +313,22 @@ export class CommandsPageComponent {
   }
 
   private syncCurrentPage(): void {
-    const totalPages = this.totalPages();
-    if (totalPages === 0) {
-      this.currentPage.set(1);
-      return;
-    }
-
-    if (this.currentPage() > totalPages) {
-      this.currentPage.set(totalPages);
-    }
+    // Lists aren't paginated any more; kept so create/delete flows read the same.
   }
 
-  // ========== Search ==========
+  // ========== Search + filters ==========
 
   onSearchInput(value: string): void {
     this.searchInput.set(value);
-    this.currentPage.set(1);
   }
 
-  onSearchSubmit(): void {
-    this.currentPage.set(1);
+  setFilter(filter: CommandFilter): void {
+    this.filter.set(filter);
+    this.searchInput.set('');
   }
 
-  // ========== Sort ==========
-
-  onSort(column: string): void {
-    if (this.sortBy() === column) {
-      this.sortOrder.update((order) => order === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.sortBy.set(column);
-      this.sortOrder.set('asc');
-    }
-    this.currentPage.set(1);
-  }
-
-  getSortIcon(column: string): string {
-    if (this.sortBy() !== column) return '↕';
-    return this.sortOrder() === 'asc' ? '↑' : '↓';
-  }
-
-  private sortCommands(commands: CommandListItem[]): CommandListItem[] {
-    const column = this.sortBy();
-    const order = this.sortOrder();
-
-    return [...commands].sort((a, b) => {
-      let aVal: string | number = 0;
-      let bVal: string | number = 0;
-
-      switch (column) {
-        case 'name':
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-          break;
-        case 'cmd':
-          aVal = a.cmd.toLowerCase();
-          bVal = b.cmd.toLowerCase();
-          break;
-        case 'cooldown':
-          aVal = a.cooldown;
-          bVal = b.cooldown;
-          break;
-        case 'userLevel':
-          aVal = a.userLevel;
-          bVal = b.userLevel;
-          break;
-        case 'enabled':
-          aVal = a.enabled ? 1 : 0;
-          bVal = b.enabled ? 1 : 0;
-          break;
-        case 'createdAt':
-          aVal = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          bVal = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          break;
-        default:
-          return 0;
-      }
-
-      if (aVal === bVal) return 0;
-
-      const comparison = aVal < bVal ? -1 : 1;
-      return order === 'asc' ? comparison : -comparison;
-    });
-  }
-
-  // ========== Pagination ==========
-
-  changePage(page: number): void {
-    if (page >= 1 && page <= this.totalPages()) {
-      this.currentPage.set(page);
-    }
-  }
-
-  onItemsPerPageChange(event: Event): void {
-    const value = Number((event.target as HTMLSelectElement).value);
-    if (this.itemsPerPageOptions.includes(value as 5 | 10 | 15 | 20)) {
-      this.itemsPerPage.set(value);
-      this.currentPage.set(1);
-      this.saveToSession('itemsPerPage', value);
-    }
+  private byName<T extends Command>(commands: T[]): T[] {
+    return [...commands].sort((a, b) => (a.name || a.cmd).localeCompare(b.name || b.cmd, undefined, { sensitivity: 'base' }));
   }
 
   isTimerLinked(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): boolean {
@@ -459,7 +344,7 @@ export class CommandsPageComponent {
     return (cmd !== '' && names.has(cmd)) || (name !== '' && names.has(name));
   }
 
-  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): 'reserved' | 'timer' | 'normal' | 'keyword' {
+  commandKind(command: Pick<Command, 'cmd' | 'name' | 'reserved' | 'activation'>): CommandKind {
     if (command.activation === 'keyword') return 'keyword';
     if (command.reserved) {
       return 'reserved';
@@ -468,13 +353,6 @@ export class CommandsPageComponent {
       return 'timer';
     }
     return 'normal';
-  }
-
-  // ========== View Mode ==========
-
-  setViewMode(mode: ViewMode): void {
-    this.viewMode.set(mode);
-    this.currentPage.set(1);
   }
 
   // ========== Modal Handlers ==========
@@ -610,7 +488,7 @@ export class CommandsPageComponent {
 
   // ========== Enable/Disable ==========
 
-  enableCommand(commandId: string): void {
+  enableCommand(commandId: string, onFail?: () => void): void {
     if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     if (this.isPending(commandId)) return;
@@ -637,13 +515,14 @@ export class CommandsPageComponent {
         this.toastService.success(this.t('commands.toast.enabledTitle'), this.t('commands.toast.enabledMessage'));
       } else {
         this.restoreCommandSnapshot(commandId);
+        onFail?.();
         this.setCommandFeedbackState(commandId, 'error');
         this.toastService.error(this.t('commands.toast.saveErrorTitle'), this.t('commands.toast.saveErrorMessage'));
       }
     });
   }
 
-  disableCommand(commandId: string): void {
+  disableCommand(commandId: string, onFail?: () => void): void {
     if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     if (this.isPending(commandId)) return;
@@ -670,6 +549,7 @@ export class CommandsPageComponent {
         this.toastService.success(this.t('commands.toast.disabledTitle'), this.t('commands.toast.disabledMessage'));
       } else {
         this.restoreCommandSnapshot(commandId);
+        onFail?.();
         this.setCommandFeedbackState(commandId, 'error');
         this.toastService.error(this.t('commands.toast.saveErrorTitle'), this.t('commands.toast.saveErrorMessage'));
       }
@@ -880,36 +760,83 @@ export class CommandsPageComponent {
     return this.whoCanUse(command.userLevel);
   }
 
-  private initializeFromURL(): void {
-    const queryParams = this.route.snapshot.queryParams;
-    const view = queryParams['view'] as ViewMode | undefined;
-    const page = parseInt(queryParams['page'], 10);
+  // ========== View helpers ==========
 
-    if (view === 'table' || view === 'card') {
-      this.viewMode.set(view);
-    } else {
-      const sessionMode = this.getFromSession('viewMode') as ViewMode | null;
-      if (sessionMode === 'table' || sessionMode === 'card') {
-        this.viewMode.set(sessionMode);
-      }
+  /** Switch handler; resets the box itself on failure because the binding may never have changed. */
+  toggleCommand(command: CommandListItem, input: HTMLInputElement): void {
+    const id = this.commandTrackId(command);
+    const wasOn = command.enabled !== false;
+    const reset = () => { input.checked = wasOn; };
+    if (!this.canManage() || this.isPending(id)) {
+      reset();
+      return;
     }
+    if (wasOn) this.disableCommand(id, reset);
+    else this.enableCommand(id, reset);
+    // Rate limit or a missing channel returns early without a request.
+    if (!this.isPending(id)) reset();
+  }
 
-    if (!isNaN(page) && page > 0) {
-      this.currentPage.set(page);
-    } else {
-      const sessionPage = Number(this.getFromSession('currentPage'));
-      if (Number.isFinite(sessionPage) && sessionPage > 0) {
-        this.currentPage.set(sessionPage);
-      }
-    }
+  openCreate(kind: 'command' | 'keyword'): void {
+    this.newItemKind.set(kind);
+    this.openCreateModal();
+  }
 
-    const sessionItemsPerPage = Number(this.getFromSession('itemsPerPage'));
-    if (
-      Number.isFinite(sessionItemsPerPage) &&
-      this.itemsPerPageOptions.includes(sessionItemsPerPage as 5 | 10 | 15 | 20)
-    ) {
-      this.itemsPerPage.set(sessionItemsPerPage);
+  builtinTitle(command: Command): string {
+    const key = `commands.builtin.name.${command.func}`;
+    const title = this.t(key);
+    return title === key ? command.name : title;
+  }
+
+  builtinDescription(command: Command): string {
+    const key = `commands.builtin.desc.${command.func}`;
+    const text = this.t(key);
+    return text === key ? realDescription(command) ?? this.t('commands.builtin.noDescription') : text;
+  }
+
+  /** "!so <username>" — null when the command takes nothing. */
+  usageLine(command: Command): string | null {
+    if (command.activation === 'keyword') return null;
+    const args = command.reserved ? builtinInfo(command).usage : customUsage(command.message);
+    return args ? `!${command.cmd} ${formatUsage(args, (key, params) => this.t(key, params))}` : null;
+  }
+
+  replyParts(command: Command): ReplyPart[] {
+    return replyParts(command.message || '');
+  }
+
+  groupLabel(group: BuiltinGroup): string {
+    return this.t(`commands.builtin.groups.${group}`);
+  }
+
+  groupPreview(items: Command[]): string {
+    return items.slice(0, 4).map((command) => `!${command.cmd}`).join(' ') + (items.length > 4 ? ' …' : '');
+  }
+
+  timerMinutes(command: Command): number | null {
+    return this.isTimerLinked(command) ? this.getTimerMinutesForCommand(command) : null;
+  }
+
+  keywordRule(command: Command): string {
+    return this.t(`commands.keywordRule.${command.keywordSettings?.matchMode ?? 'start'}`, { word: command.cmd });
+  }
+
+  kindLabel(command: Command): string {
+    switch (this.commandKind(command)) {
+      case 'keyword': return this.t('commands.kinds.keyword');
+      case 'reserved': return this.t('commands.kinds.builtin');
+      case 'timer': return this.t('commands.kinds.timer');
+      default: return this.t('commands.kinds.command');
     }
+  }
+
+  copyPublicUrl(): void {
+    const url = this.publicUrl();
+    if (!url || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(url).then(() => {
+      this.publicCopied.set(true);
+      window.setTimeout(() => this.publicCopied.set(false), 1800);
+    });
   }
 
   private loadTimerNames(channelID: string): void {
@@ -1050,51 +977,13 @@ export class CommandsPageComponent {
       .subscribe((result) => finishOk(result.ok, result.message));
   }
 
-  private saveToSession(key: string, value: unknown): void {
-    try {
-      const data = JSON.parse(sessionStorage.getItem('commandsState') || '{}');
-      data[key] = value;
-      sessionStorage.setItem('commandsState', JSON.stringify(data));
-    } catch {
-      // Ignore storage errors
-    }
-  }
-
-  private getFromSession(key: string): unknown {
-    try {
-      const data = JSON.parse(sessionStorage.getItem('commandsState') || '{}');
-      return data[key];
-    } catch {
-      return null;
-    }
-  }
-
-  private updateURL(view: ViewMode, page?: number): void {
-    const queryParams: Record<string, string | number | undefined> = { view };
-    if (view === 'table' && page && page > 1) {
-      queryParams['page'] = page;
-    }
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-      replaceUrl: true
-    });
-  }
-
   // ========== Event Handlers ==========
 
   onDocumentEscape(): void {
     if (this.showCommandModal()) {
       this.closeModal();
+    } else if (this.showDeleteModal()) {
+      this.closeDeleteModal();
     }
-  }
-
-  private resolveInitialViewMode(): ViewMode {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return 'card';
-    }
-
-    return window.matchMedia('(min-width: 960px)').matches ? 'table' : 'card';
   }
 }

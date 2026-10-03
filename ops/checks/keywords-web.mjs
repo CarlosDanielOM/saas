@@ -57,34 +57,27 @@ try {
     const page = await context.newPage(), errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base + '/test/commands');
-    await page.locator('.lf-code').first().waitFor();
+    await page.locator('.lf-cmd-row .lf-trigger').first().waitFor();
     assert.equal(await page.locator('.lf-activation-tabs').count(), 0);
-    const createButton = page.locator('.lf-actions button').first();
-    assert.equal(await createButton.innerText(), language === 'es' ? 'Crear nuevo' : 'Create new');
+    const createButton = page.getByRole('button', { name: language === 'es' ? 'Nuevo comando' : 'New command', exact: true });
+    await createButton.waitFor();
     for (const width of [320, 390, 1280]) {
       await page.setViewportSize({ width, height: width < 640 ? 740 : 900 });
-      for (const [view, index] of [['cards', 1], ['table', 0]]) {
-        await page.locator('.lf-view button').nth(index).click();
-        const root = page.locator(view === 'cards' ? '.lf-cmd-grid' : '.lf-matrix');
-        await root.waitFor();
-        assert.equal(await root.locator('.lf-code').count(), 3, 'one list includes commands, keywords and repeatables');
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-        const keywordColor = await root.locator('.lf-code--keyword').evaluate(el => getComputedStyle(el).color);
-        const repeatColor = await root.locator('.lf-code--timer').evaluate(el => getComputedStyle(el).color);
-        const commandColor = await root.locator('.lf-code:not(.lf-code--keyword):not(.lf-code--timer)').evaluate(el => getComputedStyle(el).color);
-        assert.equal(new Set([keywordColor, repeatColor, commandColor]).size, 3, 'distinct blue, green and purple');
-        if (view === 'table') assert.equal(await root.locator('.lf-kind-dot--keyword').evaluate(el => getComputedStyle(el).backgroundColor), keywordColor);
-        else assert.equal(await root.locator('.lf-chip--keyword').evaluate(el => getComputedStyle(el).color), keywordColor);
-        assert.equal(keywordColor, tier === 'premium' ? 'rgb(29, 78, 216)' : 'rgb(147, 197, 253)');
-        assert.equal(repeatColor, tier === 'premium' ? 'rgb(21, 128, 61)' : 'rgb(134, 239, 172)');
-        assert.equal(commandColor, tier === 'premium' ? 'rgb(109, 40, 217)' : 'rgb(196, 181, 253)');
-        if (width === 1280) {
-          const axe = await new AxeBuilder({ page }).include('app-commands-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-          assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
-        }
-        await page.evaluate(() => window.scrollTo(0, 0));
-        if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/commands-unified-${tier}-${width}-${view}.png`, fullPage: true });
+      const root = page.locator('app-commands-page .lf-col--main');
+      assert.equal(await root.locator('.lf-cmd-row .lf-trigger').count(), 3, 'one page lists commands, keywords and repeatables');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      const color = kind => root.locator(`.lf-cmd-row .lf-trigger[data-kind="${kind}"]`).evaluate(el => getComputedStyle(el).color);
+      const keywordColor = await color('keyword'), repeatColor = await color('timer'), commandColor = await color('normal');
+      assert.equal(new Set([keywordColor, repeatColor, commandColor]).size, 3, 'distinct blue, green and purple');
+      assert.equal(keywordColor, tier === 'premium' ? 'rgb(29, 78, 216)' : 'rgb(147, 197, 253)');
+      assert.equal(repeatColor, tier === 'premium' ? 'rgb(22, 101, 52)' : 'rgb(134, 239, 172)');
+      assert.equal(commandColor, tier === 'premium' ? 'rgb(124, 58, 237)' : 'rgb(167, 139, 250)');
+      if (width === 1280) {
+        const axe = await new AxeBuilder({ page }).include('app-commands-page').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+        assert.deepEqual(axe.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []);
       }
+      await page.evaluate(() => window.scrollTo(0, 0));
+      if (process.env.SAAS_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/commands-unified-${tier}-${width}.png`, fullPage: true });
     }
     await createButton.click();
     const modal = page.locator('app-command-modal');
@@ -140,11 +133,11 @@ try {
     assert.equal(writes[0].activation, 'keyword');
     assert.equal(writes[0].cooldown, min);
     assert.equal(writes[0].keywordSettings.matchMode, 'anywhere');
-    const keywordRow = page.locator('.lf-matrix__row--keyword').filter({ hasText: 'Ant keyword' });
+    const keywordRow = page.locator('.lf-cmd-row[data-kind="keyword"]').filter({ hasText: 'Ant keyword' });
     await keywordRow.waitFor();
-    assert.equal(await keywordRow.locator('.lf-code').innerText(), 'hormiga');
-    assert.equal(await page.locator('.lf-code').count(), 4);
-    await keywordRow.getByRole('button', { name: language === 'es' ? 'Editar' : 'Edit', exact: true }).click();
+    assert.equal(await keywordRow.locator('.lf-trigger').innerText(), 'hormiga');
+    assert.equal(await page.locator('.lf-cmd-row .lf-trigger').count(), 4);
+    await keywordRow.getByRole('button', { name: /^(Edit|Editar) / }).click();
     assert.equal(await modal.getByRole('tab').count(), 0, 'editing preserves the existing activation type');
     assert.equal(await modal.locator('[formControlName="matchMode"]').inputValue(), 'anywhere');
     await modal.locator('[formControlName="matchMode"]').selectOption('exact');
@@ -158,14 +151,17 @@ try {
     await modal.getByRole('dialog').waitFor({ state: 'hidden' });
     assert.equal(writes.at(-1).keywordSettings.matchMode, 'exact');
     assert.deepEqual(writes.at(-1).permissionExpression, { and: [{ role: 'vip' }, { not: { role: 'everyone' } }] }, 'keyword edit persists independent VIP tag access');
-    await keywordRow.getByRole('button', { name: language === 'es' ? 'Deshabilitar' : 'Disable', exact: true }).click();
-    await keywordRow.getByRole('button', { name: language === 'es' ? 'Habilitar' : 'Enable', exact: true }).click();
-    await keywordRow.getByRole('button', { name: language === 'es' ? 'Eliminar' : 'Delete', exact: true }).click();
+    const keywordSwitch = keywordRow.getByRole('checkbox');
+    await keywordSwitch.uncheck();
+    await page.locator('.lf-cmd-row.lf-item--off[data-kind="keyword"]').filter({ hasText: 'Ant keyword' }).waitFor();
+    await keywordSwitch.check({ timeout: 5000 });
+    await page.locator('.lf-cmd-row:not(.lf-item--off)[data-kind="keyword"]').filter({ hasText: 'Ant keyword' }).waitFor();
+    await keywordRow.getByRole('button', { name: /^(Delete|Eliminar) / }).click();
     await page.locator('app-confirmation-modal .modal-btn--confirm').click();
     await keywordRow.waitFor({ state: 'hidden' });
     assert.equal(commands.length, 3);
     assert.deepEqual(timerWrites, [], 'keyword CRUD does not mutate a same-named command timer');
-    assert.equal(await page.locator('.lf-matrix__row--timer .lf-code').innerText(), '!repeats');
+    assert.equal(await page.locator('.lf-cmd-row[data-kind="timer"] .lf-trigger').innerText(), '!repeats');
     await createButton.click();
     assert.equal(await commandTab.getAttribute('aria-selected'), 'true', 'a new modal starts on Command');
     await modal.locator('[formControlName="name"]').fill('Created command');
@@ -175,9 +171,9 @@ try {
     await modal.getByRole('dialog').waitFor({ state: 'hidden' });
     assert.notEqual(writes.at(-1).activation, 'keyword');
     assert.equal(writes.at(-1).keywordSettings, undefined);
-    await page.locator('.lf-code').filter({ hasText: '!hello' }).waitFor();
+    await page.locator('.lf-cmd-row .lf-trigger').filter({ hasText: '!hello' }).waitFor();
     assert.deepEqual(errors, []);
-    console.log(`PASS ${tier}/${language}: unified table/cards, blue/purple/green, modal tabs and keyboard navigation, command/keyword creation and CRUD, ${min}s keyword minimum/no zero, timer isolation, 320/390/1280px and modal accessibility`);
+    console.log(`PASS ${tier}/${language}: unified list, blue/purple/green, modal tabs and keyboard navigation, command/keyword creation and CRUD, ${min}s keyword minimum/no zero, timer isolation, 320/390/1280px and modal accessibility`);
     await context.close();
   }
 } finally { await browser.close(); }

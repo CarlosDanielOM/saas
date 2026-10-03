@@ -83,6 +83,8 @@ export class CommandModalComponent {
   readonly isSpeech = computed(() => ['speach', 'speech'].includes(this.command()?.func || ''));
   /** Existing timer interval for this command (minutes), if linked. */
   readonly existingTimerMinutes = input<number | null>(null);
+  /** Tab a new item opens on. */
+  readonly startAs = input<'command' | 'keyword'>('command');
 
   readonly isEditMode = signal(false);
   readonly isSaving = signal(false);
@@ -457,7 +459,7 @@ export class CommandModalComponent {
         this.commandForm.get('timerMinutes')?.enable({ emitEvent: false });
       }
     } else {
-      this.selectedActivation.set('command');
+      this.selectedActivation.set(this.startAs());
       this.accessDraft.set(emptyAccessDraft());
       this.accessMode.set('level');
       this.commandForm.reset({

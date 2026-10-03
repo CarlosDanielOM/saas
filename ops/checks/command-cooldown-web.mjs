@@ -47,7 +47,7 @@ try {
     const page = await context.newPage();
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + '/test/commands');
-    await page.getByRole('button', { name: /create new/i }).first().click();
+    await page.getByRole('button', { name: 'New command', exact: true }).first().click();
     const modal = page.locator('app-command-modal');
     const cooldown = modal.locator('[formControlName="cooldown"]');
     await modal.locator('[formControlName="name"]').fill('Boundary');
@@ -100,7 +100,7 @@ try {
     assert.equal(writes.at(-1).cooldown, min, 'create sends the exact tier minimum');
     assert.equal(writes.at(-1).userLevel, 7, 'create sends the selected user level');
     assert.equal(writes.at(-1).userLevelName, 'mod', 'create sends the matching level name');
-    await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Edit !/ }).first().click();
     await cooldown.waitFor();
     assert.equal(await cooldown.inputValue(), String(min));
     assert.equal(await level.inputValue(), '7', 'edit rehydrates the selected level');

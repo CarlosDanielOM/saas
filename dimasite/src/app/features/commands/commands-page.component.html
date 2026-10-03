@@ -1,419 +1,285 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('commands.heading')">
-      <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">{{ t('commands.heading') }}</p>
-        <h1 class="lf-title">{{ t('commands.heading') }}</h1>
-
-        <div class="lf-hero__chips">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
-          <span class="lf-chip lf-chip--soft">{{ streamerLabel() }}</span>
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">{{ t('commands.title') }}</h1>
+          <p class="lf-copy">{{ t('commands.subtitle') }}</p>
         </div>
-
-        <p class="lf-copy">{{ t('commands.subtitle') }}</p>
-
-        <ol class="plain-guide" [attr.aria-label]="t('commands.guide.label')">
-          <li><span>1</span><p>{{ t('commands.guide.add') }}</p></li>
-          <li><span>2</span><p>{{ t('commands.guide.who') }}</p></li>
-          <li><span>3</span><p>{{ t('commands.guide.off') }}</p></li>
-        </ol>
-
-        <div class="lf-actions">
-          @if (canManage()) {
-            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-              {{ t('commands.createNew') }}
+        @if (canManage()) {
+          <div class="lf-head__actions">
+            <button type="button" class="lf-btn" (click)="openCreate('keyword')">
+              <app-lf-icon name="chat" [size]="15"></app-lf-icon> {{ t('commands.newKeyword') }}
             </button>
-          }
-          <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="loading()">
-            {{ t('commands.refresh') }}
-          </button>
-        </div>
-
-        <div class="lf-metrics">
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ totalCommands() }}</span>
-            <span class="lf-metric__label">{{ t('commands.metrics.total') }}</span>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">
+              <app-lf-icon name="plus"></app-lf-icon> {{ t('commands.newCommand') }}
+            </button>
           </div>
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ enabledCommands() }}</span>
-            <span class="lf-metric__label">{{ t('commands.metrics.enabled') }}</span>
-          </div>
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ disabledCommands() }}</span>
-            <span class="lf-metric__label">{{ t('commands.metrics.disabled') }}</span>
-          </div>
-        </div>
-
-        <div class="lf-type-chips">
-          <span class="lf-type-chip">
-            <i class="lf-legend__swatch lf-legend__swatch--normal" aria-hidden="true"></i>
-            <strong>{{ normalCommandCount() }}</strong>
-            {{ t('commands.types.command') }}
-          </span>
-          <span class="lf-type-chip">
-            <i class="lf-legend__swatch lf-legend__swatch--keyword" aria-hidden="true"></i>
-            <strong>{{ keywordCount() }}</strong>
-            {{ t('keywords.heading') }}
-          </span>
-          <span class="lf-type-chip">
-            <i class="lf-legend__swatch lf-legend__swatch--reserved" aria-hidden="true"></i>
-            <strong>{{ reservedCommands() }}</strong>
-            {{ t('commands.metrics.reserved') }}
-          </span>
-          <span class="lf-type-chip">
-            <i class="lf-legend__swatch lf-legend__swatch--timer" aria-hidden="true"></i>
-            <strong>{{ timerLinkedCommands() }}</strong>
-            {{ t('commands.metrics.timer') }}
-          </span>
-        </div>
-      </article>
-    </section>
-
-    <section class="lf-section" [attr.aria-label]="t('commands.heading')">
-      <div class="lf-toolbar">
-        <label class="lf-search">
-          <span class="visually-hidden">{{ t('commands.search.placeholder') }}</span>
-          <input
-            type="search"
-            [placeholder]="t('commands.search.placeholder')"
-            [value]="searchInput()"
-            (input)="onSearchInput($any($event.target).value)"
-            (keyup.enter)="onSearchSubmit()"
-          />
-        </label>
-        <div class="lf-view">
-          <button
-            type="button"
-            class="lf-view__btn"
-            [class.lf-view__btn--active]="viewMode() === 'table'"
-            [attr.aria-label]="t('commands.viewTable')"
-            [title]="t('commands.viewTable')"
-            (click)="setViewMode('table')"
-          >
-            <lucide-icon [name]="listIcon"></lucide-icon>
-          </button>
-          <button
-            type="button"
-            class="lf-view__btn"
-            [class.lf-view__btn--active]="viewMode() === 'card'"
-            [attr.aria-label]="t('commands.viewCard')"
-            [title]="t('commands.viewCard')"
-            (click)="setViewMode('card')"
-          >
-            <lucide-icon [name]="gridIcon"></lucide-icon>
-          </button>
-        </div>
+        }
       </div>
+      <div class="lf-head__chips">
+        @if (!showInitialLoading()) {
+          <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span>{{ t('commands.onCount', { on: enabledCommands(), total: totalCommands() }) }}</span>
+        }
+        <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
+        @if (!canManage() && channelID()) {
+          <span class="lf-chip lf-chip--warn"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('commands.viewOnly') }}</span>
+        }
+        <button type="button" class="lf-chip lf-chip--button" [disabled]="loading()" (click)="hardRefreshCommands()">
+          <span [class.lf-spin]="loading()"><app-lf-icon name="refresh" [size]="13"></app-lf-icon></span>{{ t('common.refresh') }}
+        </button>
+      </div>
+    </header>
 
-      @if (searchHint()) {
-        <p class="lf-copy lf-copy--tight">{{ searchHint() }}</p>
-      }
-
-      @if (showInitialLoading()) {
-        <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
-      } @else if (showLoadError()) {
-        <div class="lf-tile lf-empty lf-empty--warn">
-          <p>{{ error() }}</p>
-          <button type="button" class="lf-btn" (click)="hardRefreshCommands()">
-            {{ t('common.retry') }}
-          </button>
+    @if (publicUrl()) {
+      <section class="lf-tile lf-setup" aria-labelledby="commands-public-title">
+        <span class="lf-setup__icon" aria-hidden="true"><app-lf-icon name="users"></app-lf-icon></span>
+        <div class="lf-setup__copy">
+          <h2 class="lf-h3" id="commands-public-title">{{ t('commands.publicStrip.title') }}</h2>
+          <p class="lf-note">{{ t('commands.publicStrip.hint') }}</p>
         </div>
-      } @else if (viewMode() === 'table') {
-        <div class="lf-tile lf-matrix">
-          <div class="lf-matrix__scroller">
-            <div class="lf-matrix__row lf-matrix__row--head lf-matrix__row--cmds">
-              <span class="sortable" (click)="onSort('name')">
-                {{ t('commands.placeholder.name') }} {{ getSortIcon('name') }}
-              </span>
-              <span class="sortable" (click)="onSort('cmd')">
-                {{ t('commands.placeholder.command') }} {{ getSortIcon('cmd') }}
-              </span>
-              <span>{{ t('commands.placeholder.function') }}</span>
-              <span class="sortable" (click)="onSort('cooldown')">
-                {{ t('commands.placeholder.cooldown') }} {{ getSortIcon('cooldown') }}
-              </span>
-              <span class="sortable" (click)="onSort('userLevel')">
-                {{ t('commands.placeholder.userLevel') }} {{ getSortIcon('userLevel') }}
-              </span>
-              <span class="sortable" (click)="onSort('enabled')">
-                {{ t('commands.placeholder.status') }} {{ getSortIcon('enabled') }}
-              </span>
-              <span>{{ canManage() ? t('commands.placeholder.actions') : '' }}</span>
-            </div>
+        <div class="lf-setup__url">
+          <input class="lf-url-input" type="text" readonly [value]="publicUrl()" [attr.aria-label]="t('commands.publicStrip.title')"
+            (focus)="$any($event.target).select()" />
+          <button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--ok]="publicCopied()" (click)="copyPublicUrl()">
+            <app-lf-icon [name]="publicCopied() ? 'check' : 'copy'" [size]="14"></app-lf-icon>
+            {{ publicCopied() ? t('commands.publicStrip.copied') : t('commands.publicStrip.copy') }}
+          </button>
+          <a class="lf-btn lf-btn--compact" [href]="publicUrl()" target="_blank" rel="noopener noreferrer">{{ t('commands.publicStrip.open') }}</a>
+        </div>
+      </section>
+    }
 
-            @if (paginatedCommands().length === 0) {
-              <div class="lf-matrix__row lf-matrix__row--cmds">
-                <span class="lf-empty-inline">{{ t('commands.placeholder.noCommandsFound') }}</span>
-              </div>
-            }
-
-            @for (command of paginatedCommands(); track commandTrackId(command)) {
-              <div
-                class="lf-matrix__row lf-matrix__row--cmds"
-                [class.lf-matrix__row--off]="command.enabled === false"
-                [class.lf-matrix__row--reserved]="commandKind(command) === 'reserved'"
-                [class.lf-matrix__row--timer]="commandKind(command) === 'timer'"
-                [class.lf-matrix__row--keyword]="commandKind(command) === 'keyword'"
-                [class.lf-matrix__row--normal]="commandKind(command) === 'normal'"
-                [class.lf-matrix__row--pending]="isPending(commandTrackId(command))"
-                [class.lf-matrix__row--optimistic]="command.optimistic || isPendingDelete(commandTrackId(command))"
-                [class.lf-matrix__row--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                [class.lf-matrix__row--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
-              >
-                <span class="lf-matrix__primary">
-                  <i
-                    class="lf-kind-dot"
-                    [class.lf-kind-dot--reserved]="commandKind(command) === 'reserved'"
-                    [class.lf-kind-dot--timer]="commandKind(command) === 'timer'"
-                    [class.lf-kind-dot--normal]="commandKind(command) === 'normal'"
-                    [class.lf-kind-dot--keyword]="commandKind(command) === 'keyword'"
-                    [attr.title]="
-                      commandKind(command) === 'keyword'
-                        ? t('commands.types.keyword')
-                        : commandKind(command) === 'reserved'
-                        ? t('commands.legend.reserved')
-                        : commandKind(command) === 'timer'
-                          ? t('commands.legend.timer')
-                          : t('commands.legend.normal')
-                    "
-                    aria-hidden="true"
-                  ></i>
-                  <span class="lf-matrix__name" [attr.title]="command.name">{{ command.name }}</span>
-                </span>
-
-                <span>
-                  <code class="lf-code" [class.lf-code--keyword]="command.activation === 'keyword'" [class.lf-code--timer]="isTimerLinked(command)">{{ activationLabel(command) }}</code>
-                  @if (command.activation === 'keyword') { <small class="lf-keyword-match">{{ matchModeLabel(command) }}</small> }
-                </span>
-
-                <span class="lf-clip">
-                  @if (command.reserved) {
-                    {{ t('commands.placeholder.reservedCommand') }}
-                  } @else {
-                    {{ command.message || command.description || '—' }}
-                  }
-                </span>
-
-                <span>{{ command.cooldown }}s</span>
-
-                <span class="lf-matrix__who">{{ commandAccessLabel(command) }}</span>
-
-                <span class="lf-status-cell">
-                  <span
-                    class="lf-chip lf-chip--status"
-                    [class.lf-chip--live]="command.enabled !== false"
-                    [class.lf-chip--muted]="command.enabled === false"
-                  >
-                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-                  </span>
-                </span>
-
-                <span class="lf-actions-cell">
-                  @if (isPending(commandTrackId(command))) {
-                    <span class="lf-chip lf-chip--muted lf-chip--status">{{ getPendingLabel(commandTrackId(command)) }}</span>
-                  } @else if (canManage()) {
-                    <button type="button" class="lf-text-link" (click)="openEditModal(command)">
-                      {{ t('common.edit') }}
-                    </button>
-                    @if (command.enabled === false) {
-                      <button type="button" class="lf-text-link" (click)="enableCommand(commandTrackId(command))">
-                        {{ t('common.enable') }}
-                      </button>
-                    } @else {
-                      <button type="button" class="lf-text-link" (click)="disableCommand(commandTrackId(command))">
-                        {{ t('common.disable') }}
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      class="lf-text-link"
-                      [disabled]="command.reserved || isPending(commandTrackId(command))"
-                      (click)="command.reserved ? null : promptDeleteCommand(command)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  }
-                </span>
-              </div>
-            }
-          </div>
-
-          @if (filteredCommands().length > 0) {
-            <div class="lf-pager">
-              <div class="lf-pager__meta">
-                <span>{{ t('common.show') }}</span>
-                <select
-                  class="lf-select-compact"
-                  [attr.aria-label]="t('commands.entriesPerPage')"
-                  [value]="itemsPerPage()"
-                  (change)="onItemsPerPageChange($event)"
-                >
-                  @for (option of itemsPerPageOptions; track option) {
-                    <option [value]="option" [selected]="itemsPerPage() === option">
-                      {{ option }}
-                    </option>
-                  }
-                </select>
-                <span>{{ t('common.entries') }}</span>
-              </div>
-              @if (totalPages() > 1) {
-                <nav class="lf-pager__pages" aria-label="Pagination">
-                  <button
-                    type="button"
-                    class="lf-pager__btn"
-                    [disabled]="currentPage() === 1"
-                    (click)="changePage(currentPage() - 1)"
-                  >
-                    {{ t('common.previous') }}
-                  </button>
-                  @for (page of pages(); track page) {
-                    <button
-                      type="button"
-                      class="lf-pager__btn"
-                      [class.lf-pager__btn--active]="currentPage() === page"
-                      (click)="changePage(page)"
-                    >
-                      {{ page }}
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    class="lf-pager__btn"
-                    [disabled]="currentPage() === totalPages()"
-                    (click)="changePage(currentPage() + 1)"
-                  >
-                    {{ t('common.next') }}
-                  </button>
-                </nav>
+    <div class="lf-panels">
+      <div class="lf-col lf-col--main">
+        <section class="lf-tile lf-panel" aria-labelledby="commands-list-title">
+          <h2 class="visually-hidden" id="commands-list-title">{{ t('commands.title') }}</h2>
+          <div class="lf-tools">
+            <input type="search" class="lf-search" [placeholder]="t('commands.search.placeholder')"
+              [attr.aria-label]="t('commands.search.placeholder')" [value]="searchInput()"
+              (input)="onSearchInput($any($event.target).value)" />
+            <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('commands.filters.label')">
+              @for (option of visibleFilters(); track option) {
+                <button type="button" class="lf-filter-tab" [attr.data-kind]="option"
+                  [class.lf-filter-tab--active]="!isSearching() && filter() === option"
+                  [attr.aria-pressed]="!isSearching() && filter() === option" (click)="setFilter(option)">
+                  {{ t('commands.filters.' + option) }} <span class="lf-filter-tab__n">{{ filterCounts()[option] }}</span>
+                </button>
               }
             </div>
-          }
-        </div>
-      } @else {
-        @if (paginatedCommands().length === 0) {
-          <div class="lf-tile lf-empty">{{ t('commands.placeholder.noCommandsFound') }}</div>
-        } @else {
-          <div class="lf-cmd-grid">
-            @for (command of paginatedCommands(); track commandTrackId(command)) {
-              <article
-                class="lf-tile lf-cmd"
-                [class.lf-cmd--off]="command.enabled === false"
-                [class.lf-cmd--reserved]="commandKind(command) === 'reserved'"
-                [class.lf-cmd--timer]="commandKind(command) === 'timer'"
-                [class.lf-cmd--keyword]="commandKind(command) === 'keyword'"
-                [class.lf-cmd--normal]="commandKind(command) === 'normal'"
-                [class.lf-cmd--pending]="isPending(commandTrackId(command))"
-                [class.lf-cmd--success]="getCommandFeedbackState(commandTrackId(command)) === 'success'"
-                [class.lf-cmd--error]="getCommandFeedbackState(commandTrackId(command)) === 'error'"
-              >
-                <div class="lf-cmd__top">
-                  <code class="lf-code" [class.lf-code--keyword]="command.activation === 'keyword'" [class.lf-code--timer]="isTimerLinked(command)">{{ activationLabel(command) }}</code>
-                  <span
-                    class="lf-chip lf-chip--status"
-                    [class.lf-chip--live]="command.enabled !== false"
-                    [class.lf-chip--muted]="command.enabled === false"
-                  >
-                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-                  </span>
-                </div>
-
-                <h3 class="lf-cmd__name">
-                  {{ command.name }}
-                  @if (command.activation === 'keyword') {
-                    <span class="lf-chip lf-chip--keyword">{{ t('commands.types.keyword') }}</span>
-                  } @else if (command.reserved) {
-                    <span class="lf-chip lf-chip--reserved">{{ t('commands.placeholder.reservedCommand') }}</span>
-                  } @else if (isTimerLinked(command)) {
-                    <span class="lf-chip lf-chip--timer">{{ t('commands.legend.timer') }}</span>
-                  }
-                </h3>
-                @if (command.activation === 'keyword') { <p class="lf-copy lf-copy--tight">{{ matchModeLabel(command) }}</p> }
-
-                <p class="lf-cmd__desc">
-                  @if (command.reserved) {
-                    {{ t('commands.placeholder.reservedCommand') }}
-                  } @else {
-                    {{ command.message || command.description || '—' }}
-                  }
-                </p>
-
-                <div class="lf-cmd__meta">
-                  <span class="lf-meta-pill">
-                    <span class="lf-meta-pill__label">{{ t('commands.placeholder.cooldown') }}</span>
-                    <span class="lf-meta-pill__value">{{ command.cooldown }}s</span>
-                  </span>
-                  <span class="lf-meta-pill">
-                    <span class="lf-meta-pill__label">{{ t('commands.placeholder.userLevel') }}</span>
-                    <span class="lf-meta-pill__value">{{ commandAccessLabel(command) }}</span>
-                  </span>
-                </div>
-
-                <div class="lf-cmd__actions">
-                  @if (isPending(commandTrackId(command))) {
-                    <span class="lf-chip lf-chip--muted">{{ getPendingLabel(commandTrackId(command)) }}</span>
-                  } @else if (canManage()) {
-                    <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(command)">
-                      {{ t('common.edit') }}
-                    </button>
-                    @if (command.enabled === false) {
-                      <button type="button" class="lf-btn lf-btn--compact" (click)="enableCommand(commandTrackId(command))">
-                        {{ t('common.enable') }}
-                      </button>
-                    } @else {
-                      <button type="button" class="lf-btn lf-btn--compact" (click)="disableCommand(commandTrackId(command))">
-                        {{ t('common.disable') }}
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--compact lf-btn--danger"
-                      [disabled]="command.reserved"
-                      (click)="command.reserved ? null : promptDeleteCommand(command)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  }
-                </div>
-              </article>
-            }
           </div>
 
-          @if (totalPages() > 1) {
-            <div class="lf-pager">
-              <nav class="lf-pager__pages" aria-label="Pagination">
-                <button
-                  type="button"
-                  class="lf-pager__btn"
-                  [disabled]="currentPage() === 1"
-                  (click)="changePage(currentPage() - 1)"
-                >
-                  {{ t('common.previous') }}
-                </button>
-                @for (page of pages(); track page) {
-                  <button
-                    type="button"
-                    class="lf-pager__btn"
-                    [class.lf-pager__btn--active]="currentPage() === page"
-                    (click)="changePage(page)"
-                  >
-                    {{ page }}
-                  </button>
-                }
-                <button
-                  type="button"
-                  class="lf-pager__btn"
-                  [disabled]="currentPage() === totalPages()"
-                  (click)="changePage(currentPage() + 1)"
-                >
-                  {{ t('common.next') }}
-                </button>
-              </nav>
+          @if (showInitialLoading()) {
+            <div class="lf-skeleton-list" aria-hidden="true">
+              @for (placeholder of [1, 2, 3, 4]; track placeholder) { <div class="lf-skeleton"></div> }
             </div>
+          } @else if (showLoadError()) {
+            <div class="lf-banner lf-banner--error" role="alert">
+              <p class="lf-banner__title">{{ error() }}</p>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="hardRefreshCommands()">{{ t('common.retry') }}</button>
+            </div>
+          } @else if (isSearching()) {
+            <p class="lf-note" role="status">{{ t('commands.search.results', { count: searchResults().length, query: searchInput().trim() }) }}</p>
+            <ul class="lf-item-list">
+              @for (command of searchResults(); track commandTrackId(command)) {
+                <ng-container *ngTemplateOutlet="row; context: { $implicit: command, showKind: true }"></ng-container>
+              } @empty {
+                <li class="lf-empty lf-empty--compact"><p>{{ t('commands.search.none') }}</p></li>
+              }
+            </ul>
+          } @else {
+            <!-- Your commands -->
+            @if (filter() === 'all' || filter() === 'custom') {
+              <section class="lf-group" aria-labelledby="commands-custom-title">
+                <div class="lf-group__head">
+                  <h3 class="lf-h3" id="commands-custom-title">{{ t('commands.sections.custom') }} <span class="lf-count">{{ customList().length }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.customHint') }}</p>
+                </div>
+                <ul class="lf-item-list">
+                  @for (command of customList(); track commandTrackId(command)) {
+                    <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                  } @empty {
+                    <li class="lf-empty">
+                      <span class="lf-empty__icon" aria-hidden="true"><app-lf-icon name="chat"></app-lf-icon></span>
+                      <h4 class="lf-h3">{{ t('commands.empty.customTitle') }}</h4>
+                      <p>{{ t('commands.empty.customHint') }}</p>
+                      @if (canManage()) {
+                        <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate('command')">{{ t('commands.empty.customCta') }}</button>
+                      }
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+
+            <!-- Keywords -->
+            @if ((filter() === 'all' && keywordList().length) || filter() === 'keyword') {
+              <section class="lf-group" aria-labelledby="commands-keyword-title">
+                <div class="lf-group__head">
+                  <h3 class="lf-h3" id="commands-keyword-title">{{ t('commands.sections.keyword') }} <span class="lf-count">{{ keywordList().length }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.keywordHint') }}</p>
+                </div>
+                <ul class="lf-item-list">
+                  @for (command of keywordList(); track commandTrackId(command)) {
+                    <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (filter() === 'timer') {
+              <section class="lf-group" aria-labelledby="commands-timer-title">
+                <div class="lf-group__head">
+                  <h3 class="lf-h3" id="commands-timer-title">{{ t('commands.sections.timer') }} <span class="lf-count">{{ timerList().length }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.timerHint') }}</p>
+                </div>
+                <ul class="lf-item-list">
+                  @for (command of timerList(); track commandTrackId(command)) {
+                    <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (filter() === 'off') {
+              <section class="lf-group" aria-labelledby="commands-off-title">
+                <div class="lf-group__head">
+                  <h3 class="lf-h3" id="commands-off-title">{{ t('commands.sections.off') }} <span class="lf-count">{{ offList().length }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.offHint') }}</p>
+                </div>
+                <ul class="lf-item-list">
+                  @for (command of offList(); track commandTrackId(command)) {
+                    <ng-container *ngTemplateOutlet="row; context: { $implicit: command, showKind: true }"></ng-container>
+                  }
+                </ul>
+              </section>
+            }
+
+            <!-- Built-in, grouped by what they're for -->
+            @if ((filter() === 'all' || filter() === 'builtin') && builtinList().length) {
+              <section class="lf-group" aria-labelledby="commands-builtin-title">
+                <div class="lf-group__head">
+                  <h3 class="lf-h3" id="commands-builtin-title">{{ t('commands.sections.builtin') }} <span class="lf-count">{{ builtinList().length }}</span></h3>
+                  <p class="lf-note">{{ t('commands.sections.builtinHint') }}</p>
+                </div>
+                @for (group of builtinGroups(); track group.group) {
+                  <details class="lf-fold" [open]="filter() === 'builtin'">
+                    <summary>
+                      <span class="lf-fold__title">{{ groupLabel(group.group) }}</span>
+                      <span class="lf-fold__meta">{{ t('commands.builtin.groupCount', { on: group.on, total: group.items.length }) }}</span>
+                      <code class="lf-fold__preview" aria-hidden="true">{{ groupPreview(group.items) }}</code>
+                    </summary>
+                    <ul class="lf-item-list">
+                      @for (command of group.items; track commandTrackId(command)) {
+                        <ng-container *ngTemplateOutlet="row; context: { $implicit: command }"></ng-container>
+                      }
+                    </ul>
+                  </details>
+                }
+              </section>
+            }
           }
-        }
-      }
-    </section>
+        </section>
+      </div>
+
+      <aside class="lf-col lf-col--side">
+        <section class="lf-tile lf-panel" aria-labelledby="commands-kinds-title">
+          <h2 class="lf-h3" id="commands-kinds-title">{{ t('commands.kinds.title') }}</h2>
+          <dl class="lf-kinds">
+            <div><dt><code class="lf-trigger" data-kind="normal">!discord</code></dt><dd><strong>{{ t('commands.kinds.command') }}</strong> {{ t('commands.kinds.commandHint') }}</dd></div>
+            <div><dt><code class="lf-trigger" data-kind="keyword">hola</code></dt><dd><strong>{{ t('commands.kinds.keyword') }}</strong> {{ t('commands.kinds.keywordHint') }}</dd></div>
+            <div><dt><code class="lf-trigger" data-kind="timer">!socials</code></dt><dd><strong>{{ t('commands.kinds.timer') }}</strong> {{ t('commands.kinds.timerHint') }}</dd></div>
+            <div><dt><code class="lf-trigger" data-kind="reserved">!so</code></dt><dd><strong>{{ t('commands.kinds.builtin') }}</strong> {{ t('commands.kinds.builtinHint') }}</dd></div>
+          </dl>
+
+          <h3 class="lf-h3 lf-cheats__title">{{ t('commands.cheats.title') }}</h3>
+          <dl class="lf-cheats">
+            <div><dt><code>$(user)</code></dt><dd>{{ t('commands.cheats.user') }}</dd></div>
+            <div><dt><code>&amp;p1</code></dt><dd>{{ t('commands.cheats.word') }}</dd></div>
+            <div><dt><code>&amp;t</code></dt><dd>{{ t('commands.cheats.text') }}</dd></div>
+            <div><dt><code>$(random 10)</code></dt><dd>{{ t('commands.cheats.random') }}</dd></div>
+          </dl>
+          <a class="lf-link" href="https://docs.domdimabot.com/commands/advanced/" target="_blank" rel="noopener noreferrer">{{ t('commands.cheats.more') }}</a>
+        </section>
+
+        <section class="lf-tile lf-panel" aria-labelledby="commands-chat-title">
+          <h2 class="lf-h3" id="commands-chat-title">{{ t('commands.fromChat.title') }}</h2>
+          <p class="lf-note">{{ t('commands.fromChat.hint') }}</p>
+          <dl class="lf-cheats">
+            <div><dt><code>!cc discord {{ t('commands.fromChat.example') }}</code></dt><dd>{{ t('commands.fromChat.create') }}</dd></div>
+            <div><dt><code>!ec discord …</code></dt><dd>{{ t('commands.fromChat.edit') }}</dd></div>
+            <div><dt><code>!dc discord</code></dt><dd>{{ t('commands.fromChat.delete') }}</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </div>
   </main>
+
+  <!-- One row for every kind: trigger, what it does, how to use it, who, cooldown, actions -->
+  <ng-template #row let-command let-showKind="showKind">
+    @let id = commandTrackId(command);
+    @let kind = commandKind(command);
+    <li class="lf-item lf-cmd-row" [attr.data-kind]="kind"
+      [class.lf-item--off]="command.enabled === false"
+      [class.lf-item--pending]="isPending(id)"
+      [class.lf-item--success]="getCommandFeedbackState(id) === 'success'"
+      [class.lf-item--error]="getCommandFeedbackState(id) === 'error'">
+      <div class="lf-item__body">
+        <div class="lf-item__name">
+          <code class="lf-trigger" [attr.data-kind]="kind">{{ activationLabel(command) }}</code>
+          <h4 [title]="command.reserved ? builtinTitle(command) : command.name">{{ command.reserved ? builtinTitle(command) : command.name }}</h4>
+          @if (showKind) { <span class="lf-chip lf-chip--xs">{{ kindLabel(command) }}</span> }
+          @if (timerMinutes(command); as minutes) {
+            <span class="lf-chip lf-chip--xs lf-chip--timer"><app-lf-icon name="timer" [size]="11"></app-lf-icon>{{ t('commands.repeatsEvery', { minutes }) }}</span>
+          }
+          @if (command.enabled === false) { <span class="lf-chip lf-chip--xs">{{ t('common.statusOff') }}</span> }
+          @if (isPending(id)) { <span class="lf-chip lf-chip--xs" role="status">{{ getPendingLabel(id) }}</span> }
+        </div>
+
+        @if (command.reserved) {
+          <p class="lf-item__what">{{ builtinDescription(command) }}</p>
+        } @else if (command.activation === 'keyword') {
+          <p class="lf-item__what">{{ keywordRule(command) }}</p>
+        }
+        @if (!command.reserved && command.message) {
+          <p class="lf-reply" [title]="command.message">
+            <span class="visually-hidden">{{ t('commands.replies') }}</span>
+            @for (part of replyParts(command); track $index) {
+              @if (part.code) { <code>{{ part.text }}</code> } @else { {{ part.text }} }
+            }
+          </p>
+        }
+
+        <p class="lf-item__meta">
+          @if (usageLine(command); as usage) {
+            <span class="lf-usage"><span class="visually-hidden">{{ t('commands.usage') }}</span><code>{{ usage }}</code></span>
+          }
+          <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ commandAccessLabel(command) }}</span>
+          <span class="lf-tag"><app-lf-icon name="timer" [size]="12"></app-lf-icon>{{ command.cooldown ? t('commands.cooldownShort', { seconds: command.cooldown }) : t('commands.noCooldown') }}</span>
+        </p>
+      </div>
+
+      @if (canManage()) {
+        <div class="lf-item__actions">
+          <button type="button" class="lf-btn lf-btn--compact" [disabled]="isPending(id)" (click)="openEditModal(command)"
+            [attr.aria-label]="t('commands.editNamed', { name: activationLabel(command) })">{{ t('common.edit') }}</button>
+          <label class="lf-switch" [title]="t('commands.onToggle')">
+            <input type="checkbox" [checked]="command.enabled !== false" [disabled]="isPending(id)"
+              (change)="toggleCommand(command, $any($event.target))" [attr.aria-label]="t('commands.onNamed', { name: activationLabel(command) })" />
+            <span class="lf-switch__track"></span>
+          </label>
+          @if (!command.reserved) {
+            <button type="button" class="lf-icon-btn lf-icon-btn--danger" [disabled]="isPending(id)" (click)="promptDeleteCommand(command)"
+              [attr.aria-label]="t('commands.deleteNamed', { name: activationLabel(command) })">
+              <app-lf-icon name="trash" [size]="15"></app-lf-icon>
+            </button>
+          } @else {
+            <span class="lf-icon-btn lf-icon-btn--ghost" [title]="t('commands.builtinNoDelete')" aria-hidden="true"><app-lf-icon name="lock" [size]="14"></app-lf-icon></span>
+          }
+        </div>
+      }
+    </li>
+  </ng-template>
 
   <app-confirmation-modal
     [isOpen]="showDeleteModal()"
@@ -432,6 +298,7 @@
     [planTier]="planTier()"
     [commands]="commands()"
     [existingTimerMinutes]="editingTimerMinutes()"
+    [startAs]="newItemKind()"
     (save)="onModalSave($event)"
     (cancel)="closeModal()"
   />

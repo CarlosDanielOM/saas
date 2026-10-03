@@ -5,27 +5,14 @@
     </a>
 
     <div class="lf-nav__actions">
-      <button
-        type="button"
-        class="lf-btn lf-btn--ghost lf-btn--tool"
-        (click)="toggleLanguage()"
-        [attr.aria-label]="t('commands.public.languageToggle')"
-        [title]="t('commands.public.languageToggle')"
-      >
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="toggleLanguage()"
+        [attr.aria-label]="t('commands.public.languageToggle')" [title]="t('commands.public.languageToggle')">
         {{ languageLabel() }}
       </button>
-      <button
-        type="button"
-        class="lf-btn lf-btn--ghost lf-btn--tool"
-        (click)="toggleTheme()"
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="toggleTheme()"
         [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
-        [title]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
-      >
-        <lucide-icon
-          [name]="isDarkMode() ? moonIcon : sunIcon"
-          [size]="16"
-          aria-hidden="true"
-        ></lucide-icon>
+        [title]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')">
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true"></lucide-icon>
         <span class="lf-btn__label">{{ isDarkMode() ? t('navbar.dark') : t('navbar.light') }}</span>
       </button>
       <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">
@@ -35,206 +22,121 @@
   </header>
 
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('commands.public.title', { streamer: streamer() })">
-      <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">{{ t('commands.public.eyebrow') }}</p>
-        <h1 class="lf-title">{{ t('commands.public.title', { streamer: streamer() }) }}</h1>
-        <p class="lf-copy">{{ t('commands.public.subtitle') }}</p>
-
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="loading() || !channelID()">
-            {{ refreshButtonLabel() }}
-          </button>
+    <header class="lf-head">
+      <div class="lf-channel">
+        <span class="lf-avatar" aria-hidden="true">
+          @if (profile()?.avatar; as avatar) {
+            <img [src]="avatar" alt="" width="64" height="64" />
+          } @else {
+            {{ (displayName() || '?').charAt(0).toUpperCase() }}
+          }
+        </span>
+        <div class="lf-channel__text">
+          <h1 class="lf-title">{{ t('commands.public.title', { streamer: displayName() }) }}</h1>
+          <p class="lf-copy">{{ t('commands.public.subtitle', { streamer: displayName() }) }}</p>
         </div>
-      </article>
-
-      <article class="lf-tile lf-metric">
-        <p class="lf-label">{{ t('commands.public.metrics.total') }}</p>
-        <p class="lf-value">{{ totalCommands() }}</p>
-      </article>
-      <article class="lf-tile lf-metric lf-metric--accent">
-        <p class="lf-label">{{ t('commands.public.metrics.enabled') }}</p>
-        <p class="lf-value">{{ enabledCommands() }}</p>
-      </article>
-      <article class="lf-tile lf-metric">
-        <p class="lf-label">{{ t('commands.public.metrics.disabled') }}</p>
-        <p class="lf-value">{{ disabledCommands() }}</p>
-      </article>
-    </section>
-
-    <section class="lf-section" [attr.aria-label]="t('commands.public.listTitle')">
-      <div class="lf-section__head">
-        <div>
-          <h2 class="lf-h2">{{ t('commands.public.listTitle') }}</h2>
+      </div>
+      @if (streamer()) {
+        <div class="lf-head__chips">
+          @if (!showInitialLoading() && !showLoadError()) {
+            <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span>{{ t('commands.public.count', { count: commands().length }) }}</span>
+          }
+          <a class="lf-chip lf-chip--button" [href]="'https://www.twitch.tv/' + streamer()" target="_blank" rel="noopener noreferrer">
+            {{ t('commands.public.openChat') }}
+          </a>
         </div>
+      }
+    </header>
 
-        <div class="lf-section__tools">
-          <label class="lf-search">
-            <span class="sr-only">{{ t('commands.public.searchPlaceholder') }}</span>
-            <lucide-icon [name]="searchIcon" [size]="16" aria-hidden="true"></lucide-icon>
-            <input
-              type="search"
-              [placeholder]="t('commands.public.searchPlaceholder')"
-              [value]="searchInput()"
-              (input)="onSearchInput($any($event.target).value)"
-            />
-          </label>
+    <section class="lf-tile lf-panel" aria-labelledby="public-commands-title">
+      <h2 class="visually-hidden" id="public-commands-title">{{ t('commands.public.listTitle') }}</h2>
 
-          <div class="lf-view">
-            <button
-              type="button"
-              class="lf-view__btn"
-              [class.lf-view__btn--active]="viewMode() === 'table'"
-              (click)="setViewMode('table')"
-              [attr.aria-label]="t('commands.viewTable')"
-              [title]="t('commands.viewTable')"
-            >
-              <lucide-icon [name]="listIcon" [size]="16" aria-hidden="true"></lucide-icon>
-            </button>
-            <button
-              type="button"
-              class="lf-view__btn"
-              [class.lf-view__btn--active]="viewMode() === 'card'"
-              (click)="setViewMode('card')"
-              [attr.aria-label]="t('commands.viewCard')"
-              [title]="t('commands.viewCard')"
-            >
-              <lucide-icon [name]="gridIcon" [size]="16" aria-hidden="true"></lucide-icon>
-            </button>
-          </div>
+      <div class="lf-tools">
+        <input type="search" class="lf-search" [placeholder]="t('commands.public.searchPlaceholder')"
+          [attr.aria-label]="t('commands.public.searchPlaceholder')" [value]="searchInput()"
+          (input)="searchInput.set($any($event.target).value)" />
+        <div class="lf-filter-tabs" role="group" [attr.aria-label]="t('commands.public.audienceLabel')">
+          @for (audience of audiences; track audience) {
+            @if (audienceCounts()[audience] > 0) {
+              <button type="button" class="lf-filter-tab" [class.lf-filter-tab--active]="audienceFilter() === audience"
+                [attr.aria-pressed]="audienceFilter() === audience" (click)="setAudience(audience)">
+                {{ t('commands.public.audience.' + audience) }} <span class="lf-filter-tab__n">{{ audienceCounts()[audience] }}</span>
+              </button>
+            }
+          }
         </div>
       </div>
 
       @if (showInitialLoading()) {
-        <div class="lf-tile lf-empty" role="status" aria-live="polite">
-          <div class="lf-spinner" aria-hidden="true"></div>
-          <p>{{ t('commands.loading') }}</p>
+        <div class="lf-skeleton-list" role="status" [attr.aria-label]="t('commands.loading')">
+          @for (placeholder of [1, 2, 3, 4]; track placeholder) { <div class="lf-skeleton"></div> }
         </div>
       } @else if (showLoadError()) {
-        <div class="lf-tile lf-empty lf-empty--warn" role="alert">
-          <p>{{ loadErrorMessage() }}</p>
-          <button type="button" class="lf-btn" (click)="hardRefreshCommands()" [disabled]="!channelID() || loading()">
-            {{ t('common.retry') }}
-          </button>
+        <div class="lf-banner lf-banner--error" role="alert">
+          <p class="lf-banner__title">{{ loadErrorMessage() }}</p>
+          @if (!streamerNotFound()) {
+            <button type="button" class="lf-btn lf-btn--compact" (click)="retry()" [disabled]="loading()">{{ t('common.retry') }}</button>
+          }
         </div>
-      } @else if (filteredCommands().length === 0) {
-        <div class="lf-tile lf-empty">
+      } @else if (!sections().length) {
+        <div class="lf-empty">
           <p>{{ searchInput().trim() ? t('commands.public.noMatch') : t('commands.public.empty') }}</p>
         </div>
-      } @else if (viewMode() === 'table') {
-        <div class="lf-tile lf-matrix">
-          <div class="lf-matrix__scroller">
-            <div class="lf-matrix__row lf-matrix__row--head">
-              <span>{{ t('commands.placeholder.name') }}</span>
-              <span>{{ t('commands.placeholder.command') }}</span>
-              <span>{{ t('commands.placeholder.function') }}</span>
-              <span>{{ t('commands.placeholder.description') }}</span>
-              <span>{{ t('commands.placeholder.cooldown') }}</span>
-              <span>{{ t('commands.placeholder.userLevel') }}</span>
-              <span>{{ t('commands.placeholder.status') }}</span>
-            </div>
-
-            @for (command of paginatedCommands(); track commandTrackId(command)) {
-              <div class="lf-matrix__row" [class.lf-matrix__row--off]="command.enabled === false">
-                <span class="lf-matrix__primary">
-                  <strong>{{ command.name }}</strong>
-                  @if (command.reserved) {
-                    <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
-                  }
-                </span>
-                <span class="lf-clip"><code class="lf-code">!{{ command.cmd }}</code></span>
-                <span class="lf-clip">
-                  @if (command.reserved) {
-                    {{ t('commands.placeholder.reservedCommand') }}
-                  } @else {
-                    {{ command.message || t('commands.placeholder.public') }}
-                  }
-                </span>
-                <span class="lf-clip">{{ command.description || t('common.notAvailable') }}</span>
-                <span>{{ command.cooldown }}s</span>
-                <span class="lf-matrix__who">{{ getUserLevelLabel(command) }}</span>
-                <span>
-                  <span class="lf-chip" [class.lf-chip--ok]="command.enabled !== false" [class.lf-chip--muted]="command.enabled === false">
-                    {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-                  </span>
-                </span>
-              </div>
-            }
-          </div>
-        </div>
       } @else {
-        <div class="lf-bento lf-bento--cmds">
-          @for (command of paginatedCommands(); track commandTrackId(command)) {
-            <article class="lf-tile lf-cmd" [class.lf-cmd--off]="command.enabled === false">
-              <div class="lf-cmd__top">
-                <code class="lf-code">!{{ command.cmd }}</code>
-                <span class="lf-chip" [class.lf-chip--ok]="command.enabled !== false" [class.lf-chip--muted]="command.enabled === false">
-                  {{ command.enabled === false ? t('common.statusOff') : t('common.statusOn') }}
-                </span>
-              </div>
-              <h3 class="lf-cmd__name">
-                {{ command.name }}
-                @if (command.reserved) {
-                  <span class="lf-chip lf-chip--muted">{{ t('commands.placeholder.reservedCommand') }}</span>
-                }
-              </h3>
-              <p class="lf-cmd__desc">
-                @if (command.reserved) {
-                  {{ command.description || t('commands.placeholder.reservedCommand') }}
-                } @else {
-                  {{ command.message || command.description || t('commands.placeholder.public') }}
-                }
-              </p>
-              <div class="lf-cmd__meta">
-                <span>{{ command.cooldown }}s</span>
-                <span class="lf-matrix__who">{{ getUserLevelLabel(command) }}</span>
-              </div>
-            </article>
-          }
-        </div>
-      }
-
-      @if (filteredCommands().length > 0 && !showInitialLoading() && !showLoadError()) {
-        <div class="lf-pager">
-          <label class="lf-pager__size">
-            {{ t('common.show') }}
-            <select [value]="itemsPerPage()" (change)="onItemsPerPageChange($event)">
-              @for (option of itemsPerPageOptions; track option) {
-                <option [value]="option" [selected]="option === itemsPerPage()">{{ option }}</option>
+        @for (section of sections(); track section.audience) {
+          <details class="lf-fold" [open]="section.audience !== 'mods' || audienceFilter() === 'mods' || !!searchInput().trim()">
+            <summary>
+              <span class="lf-fold__title">{{ t('commands.public.audience.' + section.audience) }}</span>
+              <span class="lf-count">{{ section.items.length }}</span>
+              <span class="lf-fold__meta">{{ t('commands.public.audienceHint.' + section.audience) }}</span>
+            </summary>
+            <ul class="lf-item-list">
+              @for (command of section.items; track commandTrackId(command)) {
+                <li class="lf-item lf-pub-row">
+                  <div class="lf-item__body">
+                    <div class="lf-pub-row__head">
+                      <button type="button" class="lf-trigger" [attr.data-kind]="command.reserved ? 'reserved' : 'normal'"
+                        [class.is-copied]="copiedId() === commandTrackId(command)" (click)="copyCommand(command)"
+                        [attr.aria-label]="t('commands.public.copyNamed', { name: '!' + command.cmd })">
+                        <span>!{{ command.cmd }}</span>
+                        <app-lf-icon [name]="copiedId() === commandTrackId(command) ? 'check' : 'copy'" [size]="12"></app-lf-icon>
+                      </button>
+                      <h3 class="lf-pub-row__title">{{ title(command) }}</h3>
+                    </div>
+                    @if (description(command); as text) {
+                      <p class="lf-item__what">{{ text }}</p>
+                    } @else if (command.message) {
+                      <p class="lf-reply" [title]="command.message">
+                        @for (part of replyParts(command); track $index) {
+                          @if (part.code) { <code>{{ part.text }}</code> } @else { {{ part.text }} }
+                        }
+                      </p>
+                    }
+                    <p class="lf-item__meta">
+                      @if (usageLine(command); as usage) { <code class="lf-usage">{{ usage }}</code> }
+                      @if (section.audience !== 'anyone') {
+                        <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ whoLabel(command) }}</span>
+                      }
+                      @if (command.cooldown > 0) {
+                        <span class="lf-tag"><app-lf-icon name="timer" [size]="12"></app-lf-icon>{{ t('commands.cooldownShort', { seconds: command.cooldown }) }}</span>
+                      }
+                    </p>
+                  </div>
+                </li>
               }
-            </select>
-            {{ t('common.entries') }}
-          </label>
-
-          @if (totalPages() > 1) {
-            <nav class="lf-pager__pages" aria-label="Pagination">
-              <button type="button" class="lf-btn lf-btn--ghost lf-btn--compact" [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)">
-                {{ t('common.previous') }}
-              </button>
-
-              @for (page of pages(); track page) {
-                <button
-                  type="button"
-                  class="lf-page"
-                  [class.lf-page--active]="currentPage() === page"
-                  (click)="changePage(page)"
-                >
-                  {{ page }}
-                </button>
-              }
-
-              <button
-                type="button"
-                class="lf-btn lf-btn--ghost lf-btn--compact"
-                [disabled]="currentPage() === totalPages()"
-                (click)="changePage(currentPage() + 1)"
-              >
-                {{ t('common.next') }}
-              </button>
-            </nav>
-          }
-        </div>
+            </ul>
+          </details>
+        }
+        <p class="lf-note lf-sr-status" role="status">{{ copiedId() ? t('commands.public.copied') : '' }}</p>
       }
+    </section>
+
+    <section class="lf-tile lf-cta" aria-labelledby="public-cta-title">
+      <div>
+        <h2 class="lf-h3" id="public-cta-title">{{ t('commands.public.ctaTitle') }}</h2>
+        <p class="lf-note">{{ t('commands.public.ctaHint') }}</p>
+      </div>
+      <button type="button" class="lf-btn" (click)="loginWithTwitch()">{{ t('landing.hero.loginWith') }}</button>
     </section>
   </main>
 </div>
