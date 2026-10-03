@@ -1,5 +1,7 @@
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { TimeoutError } from 'rxjs';
 import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
@@ -11,6 +13,9 @@ import { LanguageService } from '../../services/language.service';
 import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { clipPlaybackLimit } from './overlay-clip-motion';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
+interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
+const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
+const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
   selector: 'app-overlay-runtime', imports: [OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,6 +59,7 @@ export class OverlayRuntimeComponent {
   private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: { clientId: this.clientId }, transports: ['websocket'], autoConnect: false });
   private queue: Event[] = [];
   private inFlight = new Map<string, Event>();
+  private eventRetries = new Map<string, Retry>();
   private queueState: QueueState = { revision: -1, all: false, platforms: {} };
   private commands = new Set<string>();
   private batching = false;
@@ -62,6 +68,9 @@ export class OverlayRuntimeComponent {
   private active: string | null = null;
   private disposed = false;
   private revision = -1;
+  private targetRevision = -1;
+  private refreshing = false;
+  private snapshotRetry: Retry = { attempts: 0 };
   private generation = 0;
   private issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null = null;
   constructor() {
@@ -70,14 +79,17 @@ export class OverlayRuntimeComponent {
     const referrer = doc.createElement('meta'); referrer.name = 'referrer'; referrer.content = 'no-referrer'; doc.head.append(referrer);
     this.socket.on('overlay-state', state => {
       this.batching = true;
-      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); if (this.issue === 'snapshot') this.issue = null; }
+      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.snapshotRecovered(); }
       this.applyQueueState(state.controls);
       for (const command of state.commands ?? []) this.applyControl(command);
       this.batching = false; this.next(); this.reportHealth(); this.reportPlayback();
     });
     this.socket.on('overlay-queue-state', (state: QueueState) => this.applyQueueState(state));
     this.socket.on('overlay-control', (command: QueueCommand) => this.applyControl(command));
-    this.socket.on('overlay-updated', () => void this.refresh());
+    this.socket.on('overlay-updated', (state?: { revision: number }) => {
+      this.targetRevision = Math.max(this.targetRevision, state?.revision ?? this.revision + 1);
+      void this.refresh();
+    });
     this.socket.on('overlay-event', (event: Event) => this.enqueue(event));
     this.socket.on('overlay-revoked', () => this.clear());
     this.socket.on('disconnect', reason => { if (reason === 'io server disconnect') this.clear(); });
@@ -94,9 +106,38 @@ export class OverlayRuntimeComponent {
   indexOfId(id: string) { return (w: OverlayWidget) => w.id === id; }
   designWidth(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.width || 800; }
   designHeight(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.height || 240; }
+  private snapshotRecovered(): void {
+    if (this.revision < this.targetRevision) return;
+    clearTimeout(this.snapshotRetry.timer);
+    this.snapshotRetry = { attempts: 0 };
+    if (this.issue === 'snapshot') this.issue = null;
+  }
   private async refresh() {
-    try { const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`); if (!this.disposed && state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); if (this.issue === 'snapshot') this.issue = null; this.reportHealth(); } }
-    catch { if (!this.disposed) this.reportIssue('snapshot'); /* Keep the last published version on fetch failure. */ }
+    if (this.disposed || this.refreshing || this.revision >= this.targetRevision) return;
+    clearTimeout(this.snapshotRetry.timer);
+    this.refreshing = true;
+    const generation = this.generation;
+    let shouldRetry = true;
+    try {
+      const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`);
+      if (this.disposed || generation !== this.generation) return;
+      if (state.revision >= this.revision) {
+        this.revision = state.revision; this.snapshot.set(state.snapshot);
+        this.snapshotRecovered(); this.reportHealth();
+      }
+    } catch (error) {
+      if (this.disposed || generation !== this.generation) return;
+      if (this.revision < this.targetRevision) this.reportIssue('snapshot');
+      shouldRetry = retryable(error);
+    } finally {
+      if (!this.disposed && generation === this.generation) {
+        this.refreshing = false;
+        // A newer publication can arrive while the previous request is still running.
+        if (shouldRetry && this.revision < this.targetRevision) {
+          this.snapshotRetry.timer = setTimeout(() => void this.refresh(), retryDelay(this.snapshotRetry.attempts++));
+        }
+      }
+    }
   }
   private reportPlayback(): void {
     if (this.socket.connected) this.socket.emit('overlay-playback', { active: [...this.inFlight.keys(), ...this.playing().map(job => job.event.id)].slice(0, 5000), queued: this.queue.map(event => event.id).slice(0, 5000) });
@@ -145,7 +186,8 @@ export class OverlayRuntimeComponent {
       const full = await this.api.request<Event>('GET', `public/${this.publicId}/events/${event.id}`);
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
       this.inFlight.delete(event.id);
-      if (this.issue === 'event') { this.issue = null; this.reportHealth(); }
+      this.cancelEventRetry(event.id);
+      if (this.issue === 'event' && !this.eventRetries.size) { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
       const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)));
       if (!widgets.length) { this.finish(event.id); return; }
@@ -156,7 +198,21 @@ export class OverlayRuntimeComponent {
         const seconds = full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
         job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), seconds * 1000));
       }
-    } catch { if (!this.disposed && generation === this.generation && !this.completed.has(event.id)) { this.reportIssue('event'); this.finish(event.id); } }
+    } catch (error) {
+      if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
+      this.reportIssue('event');
+      if (!retryable(error)) { this.finish(event.id); return; }
+      // Keep the serial slot and server receipt until playback succeeds or the user skips it.
+      const retry = this.eventRetries.get(event.id) ?? { attempts: 0 };
+      this.eventRetries.set(event.id, retry);
+      retry.timer = setTimeout(() => {
+        if (generation === this.generation && this.inFlight.has(event.id)) void this.start(event);
+      }, retryDelay(retry.attempts++));
+    }
+  }
+  private cancelEventRetry(id: string): void {
+    clearTimeout(this.eventRetries.get(id)?.timer);
+    this.eventRetries.delete(id);
   }
   started(id: string, widget: string, duration?: number) {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
@@ -173,6 +229,7 @@ export class OverlayRuntimeComponent {
   }
   private finish(id: string) {
     if (this.completed.has(id)) return;
+    this.cancelEventRetry(id);
     this.seen.add(id); this.inFlight.delete(id); this.queue = this.queue.filter(event => event.id !== id);
     const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout);
     this.playing.update(all => all.filter(p => p.event.id !== id)); this.completed.add(id); this.socket.emit('overlay-ended', id);
@@ -180,5 +237,5 @@ export class OverlayRuntimeComponent {
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();
   }
-  private clear() { this.generation++; this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
+  private clear() { this.generation++; clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
 }
