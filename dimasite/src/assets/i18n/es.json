@@ -4098,6 +4098,7 @@
     }
   },
   "overlayStudio": {
+    "textFitHint": "El texto se reduce cuando hace falta para caber en su recuadro.",
     "savePublish": "Guardar y publicar en vivo",
     "unpublishedChanges": "Esta superposición tiene cambios sin publicar. Guardar conserva un borrador; Publicar en vivo actualiza OBS.",
     "designEventDisabled": "{{event}} no está activado para este diseño en «{{overlay}}». Editar el diseño no activa el evento.",

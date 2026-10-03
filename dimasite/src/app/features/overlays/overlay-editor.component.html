@@ -270,7 +270,7 @@
             }
           }
           @if (item.kind === 'text' || item.kind === 'animation') { <label class="property-field"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({color:value($event)})" /></label> }
-          @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (input)="patchSelected({fontSize:+value($event)})" /></label> }
+          @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (input)="patchSelected({fontSize:+value($event)})" /></label><p class="field-hint">{{ t('textFitHint') }}</p> }
           <div class="danger-actions"><button type="button" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="16" aria-hidden="true" />{{ t('duplicate') }}</button><button type="button" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" />{{ t('delete') }}</button></div>
         } @else { <div class="empty-selection"><lucide-icon [name]="icons.Layers3" [size]="28" aria-hidden="true" /><p>{{ t('selectPrompt') }}</p></div> }
         <button type="button" class="reset-button" (click)="resetDraft()"><lucide-icon [name]="icons.RotateCcw" [size]="15" aria-hidden="true" />{{ t('reset') }}</button>

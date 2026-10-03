@@ -87,12 +87,12 @@ try {
   const snapshot=structuredClone(state.scenes[0].published);
   await runtime.routeWebSocket('**/*',ws=>{if(!ws.url().includes('/socket.io/'))return ws.close();socket=ws;ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');ws.onMessage(m=>{m=String(m);if(m.startsWith('40/overlay-studio/')){ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`);send('overlay-state',{revision:1,snapshot});}if(m.includes('overlay-ended'))ended.push(JSON.parse(m.slice(m.indexOf(',')+1))[1]);});});
   function send(name,value){socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name,value])}`);}
-  await runtime.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===new URL(base).origin)return route.continue();if(u.pathname.includes('/assets/'))return route.fulfill(broken?{status:404,body:''}:{body:png,contentType:'image/png'});if(u.pathname.includes('/events/'))return route.fulfill({json:{data:{id:u.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{starter:{duration:10,widgets:[art,{...text,text:'Luna nos ha seguido, bienvenido!'}]}}}}});return route.abort();});
+  await runtime.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===new URL(base).origin)return route.continue();if(u.pathname.includes('/assets/'))return route.fulfill(broken?{status:404,body:''}:{body:png,contentType:'image/png'});if(u.pathname.includes('/events/'))return route.fulfill({json:{data:{id:u.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{starter:{duration:10,widgets:[art,{...text,text:'CDOM201 nos ha seguido, bienvenido!'}]}}}}});return route.abort();});
   const source=await runtime.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('.canvas').waitFor();
   send('overlay-event',{id:'follow-good',kind:'follow'});await source.waitForFunction(()=>document.querySelector('[data-event="follow"] img')?.naturalWidth>0);
-  const liveText=source.locator('[data-event="follow"] app-overlay-layer').filter({hasText:'Luna nos ha seguido, bienvenido!'});
+  const liveText=source.locator('[data-event="follow"] app-overlay-layer').filter({hasText:'CDOM201 nos ha seguido, bienvenido!'});
   const m=await metrics(liveText);assert(Math.abs(m.scale-.8)<.02);assert(m.textHeight<=m.hostHeight+1);
-  assert.equal(m.color,editorMetrics.color);assert.equal(m.font,editorMetrics.font);
+  assert.equal(m.color,editorMetrics.color);assert(m.font<=editorMetrics.font && m.font>=8,'long names shrink within the requested font size');
   broken=true;send('overlay-event',{id:'follow-broken',kind:'follow'});await source.waitForTimeout(500);
   assert.equal(await source.locator('[data-event="follow"]').count(),2,'a failed image must not remove the follower text or end the alert');assert(!ended.includes('follow-broken'));
   assert.deepEqual(errors,[]);await runtime.close();

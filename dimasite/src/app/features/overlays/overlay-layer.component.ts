@@ -1,11 +1,11 @@
-import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import type { OverlayWidget } from './overlay.model';
 import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.component';
 import { LinksService } from '../../services/links.service';
 @Component({
   selector: 'app-overlay-layer', imports: [AssetPreviewComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()">@switch (layer().kind) {
-    @case ('text') { <span [style.color]="layer().color || '#ffffff'" [style.font-size.px]="layer().fontSize || 40">{{ text() ?? layer().text }}</span> }
+    @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'">{{ text() ?? layer().text }}</span> }
     @case ('image') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
     @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" kind="video" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <video [src]="layer().mediaUrl" autoplay muted loop playsinline (error)="failed.emit()"></video> } }
     @case ('animation') { <span class="spark" [style.color]="layer().color || '#a78bfa'">✦</span> }
@@ -18,6 +18,7 @@ export class OverlayLayerComponent {
   readonly owner = input('');
   readonly publicId = input('');
   readonly failed = output<void>();
+  private readonly textElement = viewChild<ElementRef<HTMLSpanElement>>('textElement');
   private readonly size = signal({ width: 0, height: 0 });
   readonly scale = computed(() => `scale(${this.size().width / this.layer().width}, ${this.size().height / this.layer().height})`);
   private readonly base = inject(LinksService).getApiUrl();
@@ -26,6 +27,30 @@ export class OverlayLayerComponent {
   constructor() {
     const host = inject(ElementRef<HTMLElement>).nativeElement;
     const destroy = inject(DestroyRef);
+    afterRenderEffect(cleanup => {
+      const element = this.textElement()?.nativeElement, layer = this.layer();
+      this.text();
+      if (!element) return;
+      const fit = () => {
+        const requested = layer.fontSize || 40;
+        const fits = () => element.offsetHeight <= layer.height && element.scrollWidth <= layer.width;
+        element.style.fontSize = `${requested}px`;
+        if (fits()) return;
+        // Event names vary in length. Treat the chosen size as a maximum and
+        // fit at design resolution, before applying the placement scale.
+        let low = 1, high = requested;
+        while (high - low > .25) {
+          const middle = (low + high) / 2;
+          element.style.fontSize = `${middle}px`;
+          if (fits()) low = middle; else high = middle;
+        }
+        element.style.fontSize = `${low}px`;
+      };
+      fit();
+      const observer = new ResizeObserver(fit);
+      observer.observe(element);
+      cleanup(() => observer.disconnect());
+    });
     afterNextRender(() => {
       // Lay out text at design resolution, then scale the entire layer. This
       // preserves wrapping in thumbnails, the editor and resized OBS alerts.
