@@ -67,3 +67,50 @@ test('Fish cues are removed from text when a request falls back to Piper', () =>
     'Hello',
   );
 });
+
+for (const plan of ['premium', 'pro']) {
+  test(`${plan} exhausted Fish requests use the configured Kokoro preset`, () => {
+    const item = { ...fishItem(), text: '[happy] Hello [laugh]', kokoroFallbackVoice: 'am_michael' };
+    const resolved = resolveTtsForCreditStatus(item, 'exhausted', plan);
+    assert.equal(resolved.provider, 'kokoro');
+    assert.equal(resolved.mode, 'speak');
+    assert.equal(resolved.voice, 'am_michael');
+    assert.equal(resolved.text, 'Hello');
+    assert.equal(resolved.cloneName, undefined);
+    assert.equal(resolved.model, undefined);
+    assert.equal(item.provider, 'fish');
+  });
+
+  test(`${plan} exhausted Kokoro requests preserve their selected preset`, () => {
+    const item = { ...fishItem('speak'), provider: 'kokoro' as const, voice: 'af_bella', kokoroFallbackVoice: 'ef_dora' };
+    assert.equal(resolveTtsForCreditStatus(item, 'exhausted', plan).voice, 'af_bella');
+    assert.equal(resolveTtsForCreditStatus(item, 'exhausted', plan).provider, 'kokoro');
+  });
+
+  test(`${plan} unavailable credits and synthesis failures still use Piper`, () => {
+    assert.equal(resolveTtsForCreditStatus(fishItem(), 'unavailable', plan).provider, 'piper');
+    const exhausted = resolveTtsForCreditStatus(fishItem(), 'exhausted', plan);
+    assert.equal(resolveTtsForCreditStatus(exhausted, 'unavailable').voice, 'en_US-ryan-medium');
+    assert.equal(resolveTtsForCreditStatus(exhausted, 'unavailable').provider, 'piper');
+  });
+
+  test(`${plan} requests with available credits or explicit Piper remain unchanged`, () => {
+    assert.deepEqual(resolveTtsForCreditStatus(fishItem(), 'available', plan), fishItem());
+    const piper = { ...fishItem('speak'), provider: 'piper' as const };
+    assert.deepEqual(resolveTtsForCreditStatus(piper, 'exhausted', plan), piper);
+  });
+}
+
+for (const [language, voice] of [['en', 'af_heart'], ['es', 'ef_dora']] as const) {
+  test(`legacy and invalid Kokoro fallbacks use the ${language} default`, () => {
+    const item = { ...fishItem(), language };
+    assert.equal(resolveTtsForCreditStatus(item, 'exhausted', 'pro').voice, voice);
+    assert.equal(resolveTtsForCreditStatus({ ...item, kokoroFallbackVoice: 'fish-id' }, 'exhausted', 'pro').voice, voice);
+  });
+}
+
+for (const plan of ['free', undefined, 'unknown']) {
+  test(`exhausted ${plan} accounts keep Piper`, () => {
+    assert.equal(resolveTtsForCreditStatus(fishItem(), 'exhausted', plan).provider, 'piper');
+  });
+}

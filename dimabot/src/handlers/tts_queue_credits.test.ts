@@ -4,6 +4,7 @@ import { mock, test } from 'node:test';
 let queuedProvider = 'fish';
 let creditStatus = 'exhausted';
 let lookupFails = false;
+let planTier = 'free';
 let pending = true;
 let rawText = '[happy] Hello';
 let scriptedQueue: Array<{ value: string }> | null = null;
@@ -36,7 +37,7 @@ mock.module('../server/websocket.js', { namedExports: { getIO: () => playbackAva
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
   getTwitchAccountById: async () => {
     if (lookupFails) throw new Error('account unavailable');
-    return { polar_sh_customer_id: 'customer', plan_tier: 'free' };
+    return { polar_sh_customer_id: 'customer', plan_tier: planTier };
   },
 } });
 mock.module('../utils/billing.js', { namedExports: {
@@ -355,4 +356,43 @@ test('queued Kokoro uses Piper without charging when credits are exhausted or sy
         ? ['kokoro', 'piper'] : ['piper']);
     }
   } finally { queuedProvider = 'fish'; }
+});
+
+test('queued paid requests recheck the current tier and try Kokoro only after confirmed exhaustion', async () => {
+  lookupFails = false;
+  playbackAvailable = true;
+  rawText = '[happy] Hello';
+  try {
+    for (const plan of ['premium', 'pro', 'free']) {
+      planTier = plan;
+      for (const provider of ['fish', 'kokoro', 'piper']) {
+        queuedProvider = provider;
+        for (const status of ['exhausted', 'unavailable', 'available']) {
+          creditStatus = status;
+          pending = true;
+          const before = synthesis.length;
+          await ttsQueueHandler.processNext('paid-exhaustion');
+          const expected = provider === 'piper' ? ['piper']
+            : status === 'available' ? [provider, 'piper']
+            : status === 'exhausted' && plan !== 'free' ? ['kokoro', 'piper'] : ['piper'];
+          assert.deepEqual(synthesis.slice(before).map(item => item.provider), expected, `${plan}/${provider}/${status}`);
+          if (status === 'exhausted' && plan !== 'free' && provider !== 'piper') {
+            assert.deepEqual(synthesis[before], { provider: 'kokoro', voice: 'af_heart', text: 'Hello' });
+          }
+        }
+      }
+    }
+    planTier = 'pro';
+    creditStatus = 'exhausted';
+    queuedProvider = 'fish';
+    lookupFails = true;
+    pending = true;
+    const before = synthesis.length;
+    await ttsQueueHandler.processNext('missing-paid-account');
+    assert.deepEqual(synthesis.slice(before).map(item => item.provider), ['piper']);
+  } finally {
+    planTier = 'free';
+    queuedProvider = 'fish';
+    lookupFails = false;
+  }
 });

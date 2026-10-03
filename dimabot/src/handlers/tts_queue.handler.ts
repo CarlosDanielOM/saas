@@ -64,6 +64,7 @@ export interface TtsQueueItem extends TtsRequestPayload {
   speechID: string;
   timestamp: number;
   piperFallbackVoice?: string;
+  kokoroFallbackVoice?: string;
   usageRequestID?: string;
   usageEntryID?: string;
 }
@@ -173,6 +174,7 @@ class TtsQueueHandler {
       speechID,
       timestamp: Date.now(),
       piperFallbackVoice: settings.voices[payload.language],
+      kokoroFallbackVoice: settings.voices.kokoroDefault,
       usageRequestID,
       usageEntryID: randomUUID(),
     };
@@ -313,7 +315,7 @@ class TtsQueueHandler {
             });
           }
 
-          queueItem = resolveTtsForCreditStatus(queueItem, creditStatus);
+          queueItem = resolveTtsForCreditStatus(queueItem, creditStatus, streamer?.plan_tier);
           if (queueItem.provider !== requestedProvider) {
             fallbackReason = creditStatus;
           }
