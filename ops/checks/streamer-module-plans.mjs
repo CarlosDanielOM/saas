@@ -59,11 +59,12 @@ try {
       assert.equal(clipPayload.streamer, channel, 'clip test targets viewed streamer');
       if (!own && targetTier === 'free') await page.screenshot({ path: `/tmp/streamer-plans-${width}.png`, fullPage: true });
       await page.goto(`${base}/${channel}/modules/redemptions`);
-      await page.getByRole('button', { name: /create reward/i }).first().click();
+      await page.getByRole('button', { name: /new reward|create your first reward/i }).first().click();
       const modal = page.locator('app-create-reward-modal');
-      await modal.locator('[formControlName="originalCost"]').waitFor();
+      await modal.locator('[formControlName="costChange"]').waitFor();
       assert.equal(await modal.locator('.lf-premium--locked').count(), targetTier === 'free' ? 1 : 0);
-      assert.equal(await modal.locator('[formControlName="originalCost"]').isDisabled(), targetTier === 'free');
+      assert.equal(await modal.locator('[formControlName="costChange"]').isDisabled(), targetTier === 'free');
+      assert.equal(await modal.locator('[formControlName="returnToOriginalCost"]').isDisabled(), targetTier === 'free');
       await page.goto(`${base}/${channel}/modules/chat-events`);
       await page.locator('app-event-card').first().waitFor();
       assert.equal(await page.locator('app-event-card .lf-btn--gold').count(), targetTier === 'free' ? 2 : targetTier === 'premium' ? 1 : 0, 'event access follows streamer tier');

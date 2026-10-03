@@ -24,6 +24,16 @@ export interface Redemption {
   userInput?: boolean;
   skipQueue?: boolean;
   background_color?: string;
+  /** Twitch reward icon (custom image or Twitch's default), hydrated from Twitch. */
+  imageUrl?: string;
+  /** Paused on Twitch: visible to viewers but can't be redeemed. */
+  isPaused?: boolean;
+}
+
+export interface TwitchRewardImage {
+  url_1x: string;
+  url_2x: string;
+  url_4x: string;
 }
 
 export interface TwitchRedemption {
@@ -35,7 +45,13 @@ export interface TwitchRedemption {
   cost: number;
   is_enabled: boolean;
   background_color: string;
+  is_paused?: boolean;
+  is_user_input_required?: boolean;
+  should_redemptions_skip_request_queue?: boolean;
+  image?: TwitchRewardImage | null;
+  default_image?: TwitchRewardImage | null;
   global_cooldown_setting?: {
+    is_enabled?: boolean;
     global_cooldown_seconds: number;
   };
 }

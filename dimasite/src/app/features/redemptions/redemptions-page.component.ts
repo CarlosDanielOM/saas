@@ -9,15 +9,14 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Lock, LucideAngularModule, RefreshCw } from 'lucide-angular';
 import { firstValueFrom, map } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
-import { ConfirmationModalComponent } from '../../shared/confirmation-modal/confirmation-modal.component';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { TriggersService } from '../triggers/triggers.service';
 import { CreateRewardModalComponent } from './components/create-reward-modal.component';
 import {
   PlanTier,
@@ -28,9 +27,12 @@ import {
 } from './redemptions.model';
 import { RedemptionsService } from './redemptions.service';
 
+const REFRESH_COOLDOWN_SECONDS = 30;
+const SEARCH_THRESHOLD = 6;
+
 @Component({
   selector: 'app-redemptions-page',
-  imports: [RouterLink, CreateRewardModalComponent, ConfirmationModalComponent, LucideAngularModule, LfIconComponent],
+  imports: [RouterLink, CreateRewardModalComponent, LfIconComponent],
   styleUrl: './redemptions-page.component.css',
   templateUrl: './redemptions-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,12 +45,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly redemptionsService = inject(RedemptionsService);
+  private readonly triggersService = inject(TriggersService);
   private readonly toastService = inject(ToastService);
 
   private cooldownTimer: number | null = null;
-
-  readonly refreshIcon = RefreshCw;
-  readonly lockIcon = Lock;
 
   readonly streamer = toSignal(
     this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer'))),
@@ -58,18 +58,22 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   readonly customRedemptions = signal<Redemption[]>([]);
   readonly twitchRedemptions = signal<TwitchRedemption[]>([]);
+  /** rewardID -> trigger name, for rewards that play a trigger. */
+  readonly triggerByReward = signal<Record<string, string>>({});
   readonly isLoading = signal(true);
   readonly isLoadingTwitch = signal(false);
+  readonly loadFailed = signal(false);
   readonly canManage = signal(false);
   readonly permissionLoaded = signal(false);
 
   readonly refreshCooldown = signal(0);
-  readonly twitchRefreshCooldown = signal(0);
+  readonly searchQuery = signal('');
+  readonly togglingId = signal<string | null>(null);
 
   readonly isCreateModalOpen = signal(false);
   readonly redemptionToEdit = signal<Redemption | null>(null);
-  readonly showDeleteModal = signal(false);
   readonly redemptionToDelete = signal<Redemption | null>(null);
+  readonly deleting = signal(false);
 
   readonly userPlan = computed<PlanTier>(() => {
     const tier = this.sessionAuth.getPlanTierForStreamer(this.streamer());
@@ -78,27 +82,51 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   readonly canEditPremiumFields = computed(() => this.userPlan() !== 'none');
 
-  readonly uniqueTwitchRedemptions = computed(() => {
-    const customTitles = new Set(
-      this.customRedemptions()
-        .map((redemption) => redemption.title.toLowerCase().trim())
-        .filter((title) => title.length > 0),
-    );
+  /** Our rewards with Twitch's live copy merged in (colour, icon, flags DomDimaBot doesn't store). */
+  readonly rewards = computed(() => {
+    const twitchById = new Map(this.twitchRedemptions().map((reward) => [reward.id, reward]));
+    return this.customRedemptions().map((reward) => {
+      const live = twitchById.get(reward.rewardID || reward.id);
+      if (!live) return reward;
+      return {
+        ...reward,
+        background_color: live.background_color || reward.background_color,
+        userInput: live.is_user_input_required ?? reward.userInput,
+        skipQueue: live.should_redemptions_skip_request_queue ?? reward.skipQueue,
+        imageUrl: live.image?.url_2x || live.default_image?.url_2x || undefined,
+        isPaused: Boolean(live.is_paused),
+      };
+    });
+  });
 
-    return this.twitchRedemptions().filter(
-      (redemption) => !customTitles.has(redemption.title.toLowerCase().trim()),
+  readonly filteredRewards = computed(() => {
+    const query = this.searchQuery().trim().toLowerCase();
+    if (!query) return this.rewards();
+    return this.rewards().filter(
+      (reward) => reward.title.toLowerCase().includes(query) || reward.prompt.toLowerCase().includes(query),
     );
   });
 
-  readonly enabledCustomCount = computed(
-    () => this.customRedemptions().filter((r) => r.isEnabled).length,
+  readonly showSearch = computed(() => this.customRedemptions().length > SEARCH_THRESHOLD);
+
+  /** Rewards made in the Twitch dashboard: Twitch only lets the app that made a reward change it. */
+  readonly twitchOnlyRewards = computed(() => {
+    const ownIds = new Set(this.customRedemptions().map((reward) => reward.rewardID || reward.id));
+    const ownTitles = new Set(this.customRedemptions().map((reward) => reward.title.toLowerCase().trim()));
+    return this.twitchRedemptions().filter(
+      (reward) => !ownIds.has(reward.id) && !ownTitles.has(reward.title.toLowerCase().trim()),
+    );
+  });
+
+  readonly enabledCustomCount = computed(() => this.customRedemptions().filter((r) => r.isEnabled).length);
+
+  readonly twitchDashboardUrl = computed(
+    () => `https://dashboard.twitch.tv/u/${encodeURIComponent(this.streamer() || '')}/viewer-rewards/channel-points/rewards`,
   );
 
-  readonly deleteModalMessage = computed(() => {
-    const redemption = this.redemptionToDelete();
-    return redemption
-      ? this.t('redemptions.deleteConfirmation', { title: redemption.title })
-      : this.t('redemptions.deleteFallback');
+  readonly deleteTrigger = computed(() => {
+    const reward = this.redemptionToDelete();
+    return reward ? this.linkedTrigger(reward) : null;
   });
 
   async ngOnInit(): Promise<void> {
@@ -109,7 +137,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
     if (!resolvedChannelId) {
       this.isLoading.set(false);
-      this.toastService.error(this.t('redemptions.errors.loadTitle'), this.t('redemptions.errors.loadMessage'));
+      this.loadFailed.set(true);
       return;
     }
 
@@ -117,17 +145,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     void this.loadPermission(resolvedChannelId);
     this.loadRedemptions(resolvedChannelId);
     this.loadTwitchRedemptions(resolvedChannelId);
-    this.startCooldownTimers();
-  }
-
-  private async loadPermission(channelID: string): Promise<void> {
-    try {
-      this.canManage.set(await firstValueFrom(this.sessionAuth.checkPermission(channelID, 'rewards:manage')));
-    } catch {
-      this.canManage.set(false);
-    } finally {
-      this.permissionLoaded.set(true);
-    }
+    this.loadLinkedTriggers(resolvedChannelId);
+    this.startCooldownTimer();
   }
 
   ngOnDestroy(): void {
@@ -145,8 +164,19 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     return redemption.id || redemption.rewardID || redemption.eventsubID || redemption.title;
   }
 
+  private async loadPermission(channelID: string): Promise<void> {
+    try {
+      this.canManage.set(await firstValueFrom(this.sessionAuth.checkPermission(channelID, 'rewards:manage')));
+    } catch {
+      this.canManage.set(false);
+    } finally {
+      this.permissionLoaded.set(true);
+    }
+  }
+
   loadRedemptions(channelId: string, forceRefresh = false): void {
     this.isLoading.set(true);
+    this.loadFailed.set(false);
 
     this.redemptionsService.getRedemptions(channelId, forceRefresh).subscribe({
       next: (redemptions) => {
@@ -155,7 +185,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.isLoading.set(false);
-        this.toastService.error(this.t('redemptions.errors.loadTitle'), this.t('redemptions.errors.loadMessage'));
+        this.loadFailed.set(true);
       },
     });
   }
@@ -178,53 +208,50 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  refreshAll(): void {
-    if (this.refreshCooldown() > 0) {
-      this.toastService.warning(
-        this.t('redemptions.cooldownTitle'),
-        this.t('redemptions.cooldownMessage', { seconds: this.refreshCooldown() }),
-      );
-      return;
-    }
+  /** Optional cross-link; editors without trigger access simply don't see it. */
+  private loadLinkedTriggers(channelId: string): void {
+    this.triggersService.getTriggers(channelId).subscribe({
+      next: (triggers) => {
+        const linked: Record<string, string> = {};
+        for (const trigger of triggers) {
+          if (trigger.rewardID) linked[trigger.rewardID] = trigger.name;
+        }
+        this.triggerByReward.set(linked);
+      },
+      error: () => this.triggerByReward.set({}),
+    });
+  }
 
+  linkedTrigger(reward: Redemption): string | null {
+    return this.triggerByReward()[reward.rewardID || reward.id] ?? null;
+  }
+
+  refreshAll(): void {
     const channelId = this.channelID();
-    if (!channelId) return;
+    if (!channelId || this.refreshCooldown() > 0) return;
 
     this.loadRedemptions(channelId, true);
     this.loadTwitchRedemptions(channelId, true);
-    this.refreshCooldown.set(30);
-    this.twitchRefreshCooldown.set(30);
-
-    this.toastService.success(this.t('redemptions.refreshSuccessTitle'), this.t('redemptions.refreshSuccessMessage'));
+    this.loadLinkedTriggers(channelId);
+    this.refreshCooldown.set(REFRESH_COOLDOWN_SECONDS);
   }
 
-  refreshTwitch(): void {
-    if (this.twitchRefreshCooldown() > 0) {
-      this.toastService.warning(
-        this.t('redemptions.cooldownTitle'),
-        this.t('redemptions.cooldownMessage', { seconds: this.twitchRefreshCooldown() }),
-      );
-      return;
-    }
-
-    const channelId = this.channelID();
-    if (!channelId) return;
-
-    this.loadTwitchRedemptions(channelId, true);
-    this.twitchRefreshCooldown.set(30);
-
-    this.toastService.success(this.t('redemptions.refreshSuccessTitle'), this.t('redemptions.refreshSuccessMessage'));
-  }
-
-  private startCooldownTimers(): void {
+  private startCooldownTimer(): void {
     if (this.cooldownTimer !== null) {
       window.clearInterval(this.cooldownTimer);
     }
 
     this.cooldownTimer = window.setInterval(() => {
-      this.refreshCooldown.update((v) => Math.max(0, v - 1));
-      this.twitchRefreshCooldown.update((v) => Math.max(0, v - 1));
+      if (this.refreshCooldown() > 0) this.refreshCooldown.update((v) => Math.max(0, v - 1));
     }, 1000);
+  }
+
+  retry(): void {
+    const channelId = this.channelID();
+    if (channelId) {
+      this.loadRedemptions(channelId, true);
+      this.loadTwitchRedemptions(channelId, true);
+    }
   }
 
   openCreateModal(): void {
@@ -259,7 +286,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     this.redemptionsService.createRedemption(channelId, data).subscribe({
       next: () => {
         this.loadRedemptions(channelId, true);
-        this.toastService.success(this.t('redemptions.createSuccessTitle'), this.t('redemptions.createSuccessMessage'));
+        this.loadTwitchRedemptions(channelId, true);
+        this.toastService.success(this.t('redemptions.createSuccessTitle'), this.t('redemptions.createSuccessMessage', { title: data.title }));
       },
       error: () => {},
     });
@@ -274,11 +302,20 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
       next: () => {
         this.customRedemptions.update((reds) =>
           reds.map((redemption) =>
-            this.getRedemptionId(redemption) === event.id ||
-            redemption.rewardID === event.id ||
-            redemption.id === event.id
-              ? { ...redemption, ...event.data }
-              : redemption,
+            (redemption.rewardID || redemption.id) === event.id ? { ...redemption, ...event.data } : redemption,
+          ),
+        );
+        // Keep the merged Twitch copy in step so the row shows the saved colour and flags.
+        this.twitchRedemptions.update((reds) =>
+          reds.map((reward) =>
+            reward.id === event.id
+              ? {
+                  ...reward,
+                  background_color: event.data.background_color ?? reward.background_color,
+                  is_user_input_required: event.data.userInput ?? reward.is_user_input_required,
+                  should_redemptions_skip_request_queue: event.data.skipQueue ?? reward.should_redemptions_skip_request_queue,
+                }
+              : reward,
           ),
         );
         this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
@@ -287,81 +324,107 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  toggleEnabled(redemption: Redemption): void {
-    if (!this.canManage()) return;
+  /** Optimistic on/off with rollback. */
+  toggleEnabled(redemption: Redemption, input?: HTMLInputElement): void {
+    if (!this.canManage() || this.togglingId()) return;
     const channelId = this.channelID();
     if (!channelId) return;
-    const redemptionId = this.getRedemptionId(redemption);
-
+    const rewardId = redemption.rewardID || redemption.id;
     const newValue = !redemption.isEnabled;
+    const setEnabled = (value: boolean) =>
+      this.customRedemptions.update((reds) =>
+        reds.map((r) => ((r.rewardID || r.id) === rewardId ? { ...r, isEnabled: value } : r)),
+      );
 
-    this.redemptionsService
-      .updateRedemptionField(channelId, redemption.rewardID || redemption.id, 'isEnabled', newValue)
-      .subscribe({
-        next: () => {
-          this.customRedemptions.update((reds) =>
-            reds.map((r) => (this.getRedemptionId(r) === redemptionId ? { ...r, isEnabled: newValue } : r)),
-          );
-          const title = newValue ? this.t('redemptions.enabledTitle') : this.t('redemptions.disabledTitle');
-          const message = newValue ? this.t('redemptions.enabledMessage') : this.t('redemptions.disabledMessage');
-          this.toastService.success(title, message);
-        },
-        error: () => {},
-      });
+    setEnabled(newValue);
+    this.togglingId.set(rewardId);
+    this.redemptionsService.updateRedemptionField(channelId, rewardId, 'isEnabled', newValue).subscribe({
+      next: () => this.togglingId.set(null),
+      error: () => {
+        setEnabled(!newValue);
+        // The binding may never have seen the optimistic value, so reset the box itself.
+        if (input) input.checked = !newValue;
+        this.togglingId.set(null);
+      },
+    });
   }
 
   deleteRedemption(redemption: Redemption): void {
     if (!this.canManage()) return;
     this.redemptionToDelete.set(redemption);
-    this.showDeleteModal.set(true);
   }
 
   closeDeleteModal(): void {
-    this.showDeleteModal.set(false);
+    if (this.deleting()) return;
     this.redemptionToDelete.set(null);
   }
 
   confirmDeleteRedemption(): void {
     if (!this.canManage()) return;
     const redemption = this.redemptionToDelete();
-    if (!redemption) {
-      this.closeDeleteModal();
-      return;
-    }
-
     const channelId = this.channelID();
-    if (!channelId) {
-      this.closeDeleteModal();
+    if (!redemption || !channelId) {
+      this.redemptionToDelete.set(null);
       return;
     }
-    const redemptionId = this.getRedemptionId(redemption);
+    const rewardId = redemption.rewardID || redemption.id;
 
-    this.redemptionsService.deleteRedemption(channelId, redemption.rewardID || redemption.id).subscribe({
+    this.deleting.set(true);
+    this.redemptionsService.deleteRedemption(channelId, rewardId).subscribe({
       next: () => {
-        this.customRedemptions.update((reds) => reds.filter((r) => this.getRedemptionId(r) !== redemptionId));
-        this.closeDeleteModal();
-        this.toastService.success(this.t('redemptions.deleteSuccessTitle'), this.t('redemptions.deleteSuccessMessage'));
+        this.customRedemptions.update((reds) => reds.filter((r) => (r.rewardID || r.id) !== rewardId));
+        this.twitchRedemptions.update((reds) => reds.filter((r) => r.id !== rewardId));
+        this.deleting.set(false);
+        this.redemptionToDelete.set(null);
+        this.toastService.success(this.t('redemptions.deleteSuccessTitle'), this.t('redemptions.deleteSuccessMessage', { title: redemption.title }));
       },
       error: () => {
-        this.closeDeleteModal();
+        this.deleting.set(false);
+        this.redemptionToDelete.set(null);
       },
     });
   }
 
   onDocumentEscape(): void {
-    if (this.isCreateModalOpen()) {
+    if (this.redemptionToDelete()) {
+      this.closeDeleteModal();
+    } else if (this.isCreateModalOpen()) {
       this.closeRewardModal();
     }
   }
 
-  getCardColor(redemption: Redemption): string {
-    const color = redemption.background_color?.trim();
-    if (!color) return '#6366f1';
+  formatPoints(cost: number): string {
+    return this.t('redemptions.points', { count: Number(cost || 0).toLocaleString(this.languageService.currentLanguage()) });
+  }
 
-    const hexPattern = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-    const rgbPattern = /^rgb\((\s*\d+\s*,){2}\s*\d+\s*\)$/;
-    const rgbaPattern = /^rgba\((\s*\d+\s*,){3}\s*(0|0?\.\d+|1)\s*\)$/;
+  formatCooldown(seconds: number): string {
+    const total = Math.max(0, Math.round(Number(seconds) || 0));
+    if (total < 60) return this.t('redemptions.time.seconds', { n: total });
+    if (total < 3600) {
+      const minutes = Math.floor(total / 60);
+      const rest = total % 60;
+      return rest ? this.t('redemptions.time.minutesSeconds', { m: minutes, s: rest }) : this.t('redemptions.time.minutes', { n: minutes });
+    }
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    return minutes ? this.t('redemptions.time.hoursMinutes', { h: hours, m: minutes }) : this.t('redemptions.time.hours', { n: hours });
+  }
 
-    return hexPattern.test(color) || rgbPattern.test(color) || rgbaPattern.test(color) ? color : '#6366f1';
+  rewardColor(color: string | undefined): string {
+    const value = color?.trim() || '';
+    return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value) ? value : '#9146ff';
+  }
+
+  /** Dark or light icon/text on the reward colour, like Twitch does. */
+  rewardInk(color: string | undefined): string {
+    let hex = this.rewardColor(color).slice(1);
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luminance > 0.55 ? '#14151a' : '#ffffff';
+  }
+
+  twitchImage(reward: TwitchRedemption): string | null {
+    return reward.image?.url_2x || reward.default_image?.url_2x || null;
   }
 }

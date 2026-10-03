@@ -1,241 +1,240 @@
 <div class="lf" [attr.data-plan]="canEditPremiumFields() ? 'premium' : 'free'">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('redemptions.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('redemptions.heroBadge') }}</p>
-        <h1 class="lf-title">{{ t('redemptions.title') }} <span>{{ t('redemptions.customTag') }}</span></h1>
-        <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
-        <div class="lf-actions">
-          @if (canManage()) {
-          <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-            + {{ t('redemptions.createRewardButton') }}
-          </button>
-          }
-          <button
-            type="button"
-            class="lf-btn"
-            [disabled]="isLoading() || refreshCooldown() > 0"
-            (click)="refreshAll()"
-          >
-            <lucide-icon class="lf-icon" [class.lf-spin]="isLoading()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
-            @if (refreshCooldown() > 0) {
-              {{ t('redemptions.cooldown', { seconds: refreshCooldown() }) }}
-            } @else {
-              {{ t('common.refresh') }}
-            }
-          </button>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer() || '', 'modules']"><app-lf-icon name="back"></app-lf-icon> {{ t('redemptions.backToModules') }}</a>
+      <div class="lf-head__row">
+        <div>
+          <h1 class="lf-title">{{ t('redemptions.title') }}</h1>
+          <p class="lf-copy">{{ t('redemptions.subtitle') }}</p>
         </div>
-        @if (permissionLoaded() && !canManage()) {
-          <p class="lf-note lf-note--warn">{{ t('redemptions.permission.readOnly') }}</p>
-        }
-        <div class="lf-metrics">
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ customRedemptions().length }}</span>
-            <span class="lf-metric__label">{{ t('redemptions.customTag') }}</span>
-          </div>
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ enabledCustomCount() }}</span>
-            <span class="lf-metric__label">{{ t('common.enabled') }}</span>
-          </div>
-          <div class="lf-metric">
-            <span class="lf-metric__value">{{ uniqueTwitchRedemptions().length }}</span>
-            <span class="lf-metric__label">Twitch</span>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    @if (isLoading()) {
-      <section class="lf-tile lf-empty">
-        <p>{{ t('redemptions.loading') }}</p>
-      </section>
-    } @else {
-      <!-- Custom redemptions -->
-      <section class="lf-tile">
-        <div class="lf-section-head">
-          <div>
-            <p class="lf-kicker">{{ t('redemptions.customTag') }}</p>
-            <h2 class="lf-h2">
-              {{ t('redemptions.customRedemptions') }}
-              <span class="lf-count">({{ customRedemptions().length }})</span>
-            </h2>
-          </div>
-          @if (canEditPremiumFields()) {
-            <span class="lf-chip lf-chip--gold">{{ t('common.premiumFeature') }}</span>
-          }
-        </div>
-
-        @if (customRedemptions().length === 0) {
-          <div class="lf-empty">
-            <p>{{ t('redemptions.noCustomRedemptions') }}</p>
-            @if (canManage()) {
+        @if (canManage()) {
+          <div class="lf-head__actions">
             <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">
-              {{ t('redemptions.createFirstReward') }}
+              <app-lf-icon name="plus"></app-lf-icon> {{ t('redemptions.createRewardButton') }}
             </button>
-            }
-          </div>
-        } @else {
-          <div class="lf-reward-grid">
-            @for (redemption of customRedemptions(); track getRedemptionId(redemption)) {
-              <article class="lf-reward-card" [class.lf-reward-card--disabled]="!redemption.isEnabled">
-                <div class="lf-reward-color" [style.background-color]="getCardColor(redemption)"></div>
-                <div class="lf-reward-body">
-                  <div class="lf-reward-head">
-                    <h3 class="lf-reward-title" [title]="redemption.title">{{ redemption.title }}</h3>
-                    <span
-                      class="lf-chip"
-                      [class.lf-chip--ok]="redemption.isEnabled"
-                      [class.lf-chip--muted]="!redemption.isEnabled"
-                    >
-                      {{ redemption.isEnabled ? t('common.enabled') : t('common.disabled') }}
-                    </span>
-                  </div>
-
-                  <p class="lf-reward-prompt">{{ redemption.prompt || t('redemptions.noPrompt') }}</p>
-
-                  <div class="lf-reward-meta">
-                    <span class="lf-meta-pill">
-                      <span class="lf-meta-pill__label">{{ t('common.cost') }}</span>
-                      <span class="lf-meta-pill__value">{{ redemption.cost }}</span>
-                    </span>
-                    <span class="lf-meta-pill">
-                      <span class="lf-meta-pill__label">{{ t('common.cooldown') }}</span>
-                      <span class="lf-meta-pill__value">{{ redemption.cooldown }}s</span>
-                    </span>
-                  </div>
-
-                  @if (canManage()) {
-                  <div class="lf-reward-actions">
-                    <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(redemption)">
-                      {{ t('common.edit') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--compact"
-                      [class.lf-btn--ok]="!redemption.isEnabled"
-                      [class.lf-btn--warn]="redemption.isEnabled"
-                      (click)="toggleEnabled(redemption)"
-                    >
-                      {{ redemption.isEnabled ? t('common.disable') : t('common.enable') }}
-                    </button>
-                    <button
-                      type="button"
-                      class="lf-btn lf-btn--compact lf-btn--danger"
-                      (click)="deleteRedemption(redemption)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
-                  }
-                </div>
-              </article>
-            }
           </div>
         }
-      </section>
-
-      <!-- Twitch native -->
-      <section class="lf-tile">
-        <div class="lf-section-head">
-          <div>
-            <p class="lf-kicker">Twitch</p>
-            <h2 class="lf-h2">
-              {{ t('redemptions.twitchRedemptions') }}
-              <span class="lf-count">({{ uniqueTwitchRedemptions().length }})</span>
-            </h2>
-          </div>
-          <button
-            type="button"
-            class="lf-btn lf-btn--compact lf-btn--twitch"
-            [disabled]="twitchRefreshCooldown() > 0"
-            (click)="refreshTwitch()"
-          >
-            <lucide-icon class="lf-icon" [class.lf-spin]="isLoadingTwitch()" [name]="refreshIcon" aria-hidden="true"></lucide-icon>
-            @if (twitchRefreshCooldown() > 0) {
-              {{ t('redemptions.cooldown', { seconds: twitchRefreshCooldown() }) }}
-            } @else {
-              {{ t('common.refresh') }}
-            }
-          </button>
-        </div>
-
-        @if (isLoadingTwitch()) {
-          <div class="lf-empty">
-            <p>{{ t('redemptions.loadingTwitch') }}</p>
-          </div>
-        } @else if (uniqueTwitchRedemptions().length === 0) {
-          <div class="lf-empty">
-            <p>{{ t('redemptions.noUniqueTwitchRedemptions') }}</p>
-          </div>
-        } @else {
-          <div class="lf-reward-grid">
-            @for (redemption of uniqueTwitchRedemptions(); track redemption.id) {
-              <article class="lf-reward-card lf-reward-card--twitch">
-                <div class="lf-reward-color" [style.background-color]="redemption.background_color || '#9146ff'"></div>
-                <div class="lf-reward-body">
-                  <div class="lf-reward-head">
-                    <h3 class="lf-reward-title" [title]="redemption.title">{{ redemption.title }}</h3>
-                    <span
-                      class="lf-chip"
-                      [class.lf-chip--ok]="redemption.is_enabled"
-                      [class.lf-chip--muted]="!redemption.is_enabled"
-                    >
-                      {{ redemption.is_enabled ? t('common.enabled') : t('common.disabled') }}
-                    </span>
-                  </div>
-
-                  <div class="lf-reward-badges">
-                    <span class="lf-chip lf-chip--muted">
-                      <lucide-icon class="lf-icon" [name]="lockIcon" aria-hidden="true"></lucide-icon>
-                      {{ t('redemptions.readOnly') }}
-                    </span>
-                  </div>
-
-                  <p class="lf-reward-prompt">{{ redemption.prompt || t('redemptions.noPrompt') }}</p>
-
-                  <div class="lf-reward-meta">
-                    <span class="lf-meta-pill">
-                      <span class="lf-meta-pill__label">{{ t('common.cost') }}</span>
-                      <span class="lf-meta-pill__value">{{ redemption.cost }}</span>
-                    </span>
-                    <span class="lf-meta-pill">
-                      <span class="lf-meta-pill__label">{{ t('common.cooldown') }}</span>
-                      <span class="lf-meta-pill__value">
-                        {{ redemption.global_cooldown_setting?.global_cooldown_seconds || 0 }}s
-                      </span>
-                    </span>
-                  </div>
-
-                  <p class="lf-twitch-hint">{{ t('redemptions.manageOnTwitch') }}</p>
-                </div>
-              </article>
-            }
-          </div>
+      </div>
+      <div class="lf-head__chips">
+        @if (!isLoading()) {
+          <span class="lf-chip" [class.lf-chip--ok]="enabledCustomCount() > 0">
+            <span class="lf-dot" aria-hidden="true"></span>{{ t('redemptions.onCount', { on: enabledCustomCount(), total: customRedemptions().length }) }}
+          </span>
+          @if (twitchOnlyRewards().length) {
+            <span class="lf-chip">{{ t('redemptions.twitchOnlyCount', { count: twitchOnlyRewards().length }) }}</span>
+          }
         }
+        @if (permissionLoaded() && !canManage()) {
+          <span class="lf-chip lf-chip--warn"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('redemptions.viewOnly') }}</span>
+        }
+        <button type="button" class="lf-chip lf-chip--button" [disabled]="isLoading() || refreshCooldown() > 0" (click)="refreshAll()">
+          <span [class.lf-spin]="isLoading() || isLoadingTwitch()"><app-lf-icon name="refresh" [size]="13"></app-lf-icon></span>
+          @if (refreshCooldown() > 0) {
+            {{ t('redemptions.refreshIn', { seconds: refreshCooldown() }) }}
+          } @else {
+            {{ t('common.refresh') }}
+          }
+        </button>
+      </div>
+      @if (permissionLoaded() && !canManage()) {
+        <p class="lf-note">{{ t('redemptions.permission.readOnly') }}</p>
+      }
+    </header>
+
+    @if (loadFailed()) {
+      <section class="lf-banner lf-banner--error" role="alert">
+        <p class="lf-banner__title">{{ t('redemptions.errors.loadMessage') }}</p>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retry()">{{ t('common.retry') }}</button>
       </section>
     }
+
+    <div class="lf-panels">
+      <div class="lf-col lf-col--main">
+        <section class="lf-tile lf-panel" aria-labelledby="rewards-title">
+          <div class="lf-panel__head">
+            <div>
+              <h2 class="lf-h2" id="rewards-title">{{ t('redemptions.customRedemptions') }} <span class="lf-count">{{ customRedemptions().length }}</span></h2>
+              <p class="lf-note">{{ t('redemptions.listHint') }}</p>
+            </div>
+            @if (showSearch()) {
+              <input type="search" class="lf-search lf-search--sm" [placeholder]="t('redemptions.searchPlaceholder')"
+                [attr.aria-label]="t('redemptions.searchPlaceholder')" [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)" />
+            }
+          </div>
+
+          @if (isLoading() && !customRedemptions().length) {
+            <div class="lf-skeleton-list" aria-hidden="true">
+              @for (placeholder of [1, 2, 3]; track placeholder) { <div class="lf-skeleton"></div> }
+            </div>
+          } @else {
+            <ul class="lf-item-list">
+              @for (reward of filteredRewards(); track getRedemptionId(reward)) {
+                <li class="lf-item lf-reward" [class.lf-item--off]="!reward.isEnabled">
+                  <span class="lf-reward-icon" [style.background-color]="rewardColor(reward.background_color)"
+                    [style.color]="rewardInk(reward.background_color)" aria-hidden="true">
+                    @if (reward.imageUrl) {
+                      <img [src]="reward.imageUrl" alt="" loading="lazy" />
+                    } @else {
+                      <app-lf-icon name="star"></app-lf-icon>
+                    }
+                  </span>
+                  <div class="lf-item__body">
+                    <div class="lf-item__name">
+                      <h3 [title]="reward.title">{{ reward.title }}</h3>
+                      <span class="lf-points">{{ formatPoints(reward.cost) }}</span>
+                      @if (!reward.isEnabled) {
+                        <span class="lf-chip lf-chip--xs">{{ t('redemptions.hidden') }}</span>
+                      } @else if (reward.isPaused) {
+                        <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('redemptions.paused') }}</span>
+                      }
+                    </div>
+                    <p class="lf-item__meta">
+                      @if (linkedTrigger(reward); as triggerName) {
+                        <a class="lf-tag lf-tag--link" [routerLink]="['/', streamer() || '', 'modules', 'triggers']"
+                          [attr.aria-label]="t('redemptions.playsTriggerNamed', { name: triggerName })">
+                          <app-lf-icon name="zap" [size]="12"></app-lf-icon>{{ t('redemptions.playsTrigger', { name: triggerName }) }}
+                        </a>
+                      } @else if (reward.message) {
+                        <span class="lf-tag"><app-lf-icon name="chat" [size]="12"></app-lf-icon>{{ t('redemptions.postsMessage') }}</span>
+                      }
+                      @if (reward.costChange && reward.costChange > 0) {
+                        <span class="lf-tag lf-tag--gold"><app-lf-icon name="trend" [size]="12"></app-lf-icon>{{ t('redemptions.risesBy', { count: reward.costChange }) }}</span>
+                      }
+                      @if (reward.cooldown > 0) {
+                        <span class="lf-tag"><app-lf-icon name="timer" [size]="12"></app-lf-icon>{{ formatCooldown(reward.cooldown) }}</span>
+                      }
+                      @if (reward.userInput) {
+                        <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ t('redemptions.asksText') }}</span>
+                      }
+                      @if (reward.prompt) {
+                        <span class="lf-item__desc" [title]="reward.prompt">{{ reward.prompt }}</span>
+                      }
+                    </p>
+                  </div>
+                  @if (canManage()) {
+                    <div class="lf-item__actions">
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(reward)"
+                        [attr.aria-label]="t('redemptions.editNamed', { name: reward.title })">{{ t('common.edit') }}</button>
+                      <label class="lf-switch" [title]="t('redemptions.visibleToggle')">
+                        <input type="checkbox" [checked]="reward.isEnabled" [disabled]="togglingId() === (reward.rewardID || reward.id)"
+                          (change)="toggleEnabled(reward, $any($event.target))" [attr.aria-label]="t('redemptions.onNamed', { name: reward.title })" />
+                        <span class="lf-switch__track"></span>
+                      </label>
+                      <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="deleteRedemption(reward)"
+                        [attr.aria-label]="t('redemptions.deleteNamed', { name: reward.title })">
+                        <app-lf-icon name="trash" [size]="15"></app-lf-icon>
+                      </button>
+                    </div>
+                  }
+                </li>
+              } @empty {
+                @if (searchQuery()) {
+                  <li class="lf-empty lf-empty--compact"><p>{{ t('redemptions.noMatches', { query: searchQuery() }) }}</p></li>
+                } @else {
+                  <li class="lf-empty">
+                    <span class="lf-empty__icon" aria-hidden="true"><app-lf-icon name="star"></app-lf-icon></span>
+                    <h3 class="lf-h3">{{ t('redemptions.emptyTitle') }}</h3>
+                    <p>{{ t('redemptions.noCustomRedemptions') }}</p>
+                    @if (canManage()) {
+                      <button type="button" class="lf-btn lf-btn--primary" (click)="openCreateModal()">{{ t('redemptions.createFirstReward') }}</button>
+                    }
+                  </li>
+                }
+              }
+            </ul>
+          }
+        </section>
+      </div>
+
+      <div class="lf-col lf-col--side">
+        <section class="lf-tile lf-panel" aria-labelledby="rewards-how-title">
+          <h2 class="lf-h3" id="rewards-how-title">{{ t('redemptions.how.title') }}</h2>
+          <ol class="lf-how">
+            <li>{{ t('redemptions.how.step1') }}</li>
+            <li>{{ t('redemptions.how.step2') }}</li>
+            <li>
+              {{ t('redemptions.how.step3') }}
+              @if (!canEditPremiumFields()) { <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('redemptions.premiumReset') }}</span> }
+            </li>
+          </ol>
+          <h3 class="lf-h3 lf-cheats__title">{{ t('redemptions.cheats.title') }}</h3>
+          <dl class="lf-cheats">
+            <div><dt><code>$(user)</code></dt><dd>{{ t('redemptions.cheats.user') }}</dd></div>
+            <div><dt><code>&amp;t</code></dt><dd>{{ t('redemptions.cheats.text') }}</dd></div>
+            <div><dt><code>$(tts &amp;t)</code></dt><dd>{{ t('redemptions.cheats.tts') }}</dd></div>
+            <div><dt><code>$(trigger.send …)</code></dt><dd>{{ t('redemptions.cheats.trigger') }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="lf-tile lf-panel" aria-labelledby="rewards-twitch-title">
+          <div class="lf-panel__head">
+            <div>
+              <h2 class="lf-h3" id="rewards-twitch-title">{{ t('redemptions.twitchRedemptions') }} <span class="lf-count">{{ twitchOnlyRewards().length }}</span></h2>
+              <p class="lf-note">{{ t('redemptions.twitchHint') }}</p>
+            </div>
+          </div>
+          @if (isLoadingTwitch() && !twitchRedemptions().length) {
+            <div class="lf-skeleton-list" aria-hidden="true"><div class="lf-skeleton lf-skeleton--sm"></div></div>
+          } @else if (twitchOnlyRewards().length) {
+            <ul class="lf-mini-list">
+              @for (reward of twitchOnlyRewards(); track reward.id) {
+                <li class="lf-mini" [class.lf-mini--off]="!reward.is_enabled">
+                  <span class="lf-reward-icon lf-reward-icon--sm" [style.background-color]="rewardColor(reward.background_color)"
+                    [style.color]="rewardInk(reward.background_color)" aria-hidden="true">
+                    @if (twitchImage(reward); as img) { <img [src]="img" alt="" loading="lazy" /> } @else { <app-lf-icon name="star" [size]="14"></app-lf-icon> }
+                  </span>
+                  <span class="lf-mini__name" [title]="reward.title">{{ reward.title }}</span>
+                  @if (!reward.is_enabled) { <span class="lf-chip lf-chip--xs">{{ t('redemptions.hidden') }}</span> }
+                  <span class="lf-points lf-points--sm">{{ formatPoints(reward.cost) }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="lf-note lf-note--empty">{{ t('redemptions.noUniqueTwitchRedemptions') }}</p>
+          }
+          @if (streamer()) {
+            <a class="lf-btn lf-btn--compact" [href]="twitchDashboardUrl()" target="_blank" rel="noopener noreferrer">{{ t('redemptions.manageOnTwitch') }}</a>
+          }
+        </section>
+      </div>
+    </div>
   </main>
 </div>
 
 @if (canManage()) {
-<app-create-reward-modal
-  [userPlan]="userPlan()"
-  [isOpen]="isCreateModalOpen()"
-  [redemption]="redemptionToEdit()"
-  (isOpenChange)="onRewardModalOpenChange($event)"
-  (rewardCreated)="onRewardCreated($event)"
-  (rewardUpdated)="onRewardUpdated($event)"
-/>
+  <app-create-reward-modal
+    [userPlan]="userPlan()"
+    [isOpen]="isCreateModalOpen()"
+    [redemption]="redemptionToEdit()"
+    (isOpenChange)="onRewardModalOpenChange($event)"
+    (rewardCreated)="onRewardCreated($event)"
+    (rewardUpdated)="onRewardUpdated($event)"
+  />
+}
 
-<app-confirmation-modal
-  [isOpen]="showDeleteModal()"
-  [title]="t('redemptions.deleteModal.title')"
-  [message]="deleteModalMessage()"
-  [confirmText]="t('common.delete')"
-  [cancelText]="t('common.cancel')"
-  variant="danger"
-  (confirm)="confirmDeleteRedemption()"
-  (cancel)="closeDeleteModal()"
-/>
+@if (redemptionToDelete(); as reward) {
+  <div class="lf-modal-overlay" (click)="closeDeleteModal()">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="reward-delete-title"
+      aria-describedby="reward-delete-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="reward-delete-title">{{ t('redemptions.deleteModal.title', { title: reward.title }) }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeDeleteModal()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close"></app-lf-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body" id="reward-delete-desc">
+        <p class="lf-delete-copy">{{ t('redemptions.deleteModal.body') }}</p>
+        @if (deleteTrigger(); as triggerName) {
+          <p class="lf-note lf-note--gold">{{ t('redemptions.deleteModal.trigger', { name: triggerName }) }}</p>
+        }
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" [disabled]="deleting()" (click)="closeDeleteModal()">{{ t('common.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--danger" [disabled]="deleting()" (click)="confirmDeleteRedemption()">
+          {{ deleting() ? t('redemptions.deleting') : t('redemptions.deleteModal.confirm') }}
+        </button>
+      </footer>
+    </section>
+  </div>
 }
