@@ -4879,6 +4879,25 @@
     "cancel": "Cancel",
     "browse": "Browse Asset Library",
     "privateSelected": "Private library asset selected",
-    "detach": "Remove from this layer"
+    "detach": "Remove from this layer",
+    "pickImage": "Pick an image for this layer, or upload a new one.",
+    "pickVideo": "Pick a video for this layer, or upload a new one.",
+    "pickAny": "Pick an image or video, or upload a new one.",
+    "freeAnswer": "{{free}} free",
+    "fullAnswer": "Storage full",
+    "planPro": "Pro plan · 5 GB",
+    "clearSearch": "Clear search",
+    "uploadingShort": "Uploading…",
+    "nearlyFull": "Almost full. Delete assets you no longer use or upgrade for more space.",
+    "showAll": "Show all assets",
+    "emptyImage": "Upload an image to use it on this layer.",
+    "emptyVideo": "Upload a video to use it on this layer.",
+    "dropHint": "Tip: you can also drag a file into this window.",
+    "selected": "Selected asset",
+    "image": "Image",
+    "deleteExplain": "This removes the file for good and frees its space. Files used in a saved design or published overlay can't be deleted.",
+    "pickedLabel": "Selected: {{name}}",
+    "pickPrompt": "Choose an asset to continue.",
+    "done": "Done"
   }
 }

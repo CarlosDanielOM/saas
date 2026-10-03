@@ -1,48 +1,160 @@
-<dialog #dialog aria-labelledby="asset-library-title" aria-describedby="asset-library-description" (cancel)="close($event)" (keydown)="trapFocus($event)">
-  <header>
-    <div><span class="kicker"><lucide-icon [img]="icons.LockKeyhole" [size]="14" /> {{ t('private') }}</span><h2 id="asset-library-title">{{ t('title') }}</h2></div>
+<dialog
+  #dialog
+  [class.dragging]="dragging()"
+  aria-labelledby="asset-library-title"
+  aria-describedby="asset-library-description"
+  (cancel)="close($event)"
+  (keydown)="trapFocus($event)"
+  (dragover)="dragOver($event)"
+  (dragleave)="dragLeave($event)"
+  (drop)="drop($event)"
+>
+  <header class="head">
+    <div class="head__copy">
+      <h2 id="asset-library-title">{{ t('title') }}</h2>
+      <p id="asset-library-description">
+        {{ selectable() ? t(kind() === 'video' ? 'pickVideo' : kind() === 'image' ? 'pickImage' : 'pickAny') : t('description') }}
+      </p>
+    </div>
     <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="busy()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" /></button>
   </header>
-  <p id="asset-library-description" class="description">{{ t('description') }}</p>
+
   @if (library(); as data) {
-    <section class="quota" [attr.data-plan]="data.planTier" [attr.aria-label]="t('storage')">
-      <div><strong>{{ t('storage') }}</strong><span>{{ t('usage', { used: size(data.usedBytes), total: size(data.quotaBytes) }) }}</span></div>
+    <section class="quota" [class.quota--warn]="nearlyFull()" [class.quota--full]="full()" [attr.data-plan]="data.planTier" [attr.aria-label]="t('storage')">
+      <div class="quota__row">
+        <strong class="quota__answer">{{ full() ? t('fullAnswer') : t('freeAnswer', { free: size(freeBytes()) }) }}</strong>
+        <span class="chip"><lucide-icon [img]="icons.LockKeyhole" [size]="12" /> {{ t('private') }}</span>
+      </div>
       <progress [value]="usage()" max="100" [attr.aria-label]="t('storage')"></progress>
-      <p>{{ t('allowances') }}</p>
+      <div class="quota__row quota__meta">
+        <span>{{ t('usage', { used: size(data.usedBytes), total: size(data.quotaBytes) }) }}</span>
+        <span>{{ data.planTier === 'pro' ? t('planPro') : t('allowances') }}</span>
+      </div>
     </section>
+
     <div class="tools">
-      <label class="search"><lucide-icon [img]="icons.Search" [size]="18" /><input type="search" autofocus [attr.aria-label]="t('search')" [placeholder]="t('search')" [value]="query()" (input)="search($event)" /></label>
-      @if (kind() === 'all') { <select [attr.aria-label]="t('filter')" [value]="filter()" (change)="setFilter($event)"><option value="all">{{ t('all') }}</option><option value="image">{{ t('images') }}</option><option value="video">{{ t('videos') }}</option></select> }
-      <input #fileInput type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" (change)="upload($event)" />
-      <button class="primary" type="button" [disabled]="busy() || full()" (click)="fileInput.click()"><lucide-icon [img]="icons.Upload" [size]="17" />{{ t(busy() ? 'working' : 'upload') }}</button>
-    </div>
-    <p class="hint">{{ t('formats') }}</p>
-    @if (full()) { <p class="warning" role="status">{{ t('quotaExceeded') }}</p> }
-  }
-  @if (error()) { <div class="warning" role="alert">{{ t(error()) }} @if (!library()) { <button type="button" (click)="retry()">{{ t('retry') }}</button> }</div> }
-  <section class="body" [attr.aria-busy]="loading() || busy()" [attr.aria-label]="t('title')">
-    @if (loading()) { <div class="empty" role="status">{{ t('loading') }}</div> }
-    @else if (library()) {
-      @if (visible().length) {
-        <div class="grid">
-          @for (asset of visible(); track asset.id) {
-            <button type="button" class="asset" [class.chosen]="chosen()?.id === asset.id" [attr.aria-pressed]="chosen()?.id === asset.id" [disabled]="busy()" (click)="choose(asset)">
-              <div class="thumbnail">@if (asset.kind === 'image') { <app-asset-preview [assetId]="asset.id" [owner]="owner()" /> } @else { <lucide-icon [img]="icons.Image" [size]="32" /> <span>{{ t('video') }}</span> }</div>
-              <strong>{{ asset.name }}</strong><span>{{ size(asset.bytes) }} · {{ asset.width }} × {{ asset.height }}</span>
-            </button>
-          }
+      @if (showFilters()) {
+        <div class="chips" role="group" [attr.aria-label]="t('filter')">
+          <button type="button" class="filter" [attr.aria-pressed]="filter() === 'all'" (click)="setFilter('all')">{{ t('all') }} <span>{{ counts().all }}</span></button>
+          <button type="button" class="filter" [attr.aria-pressed]="filter() === 'image'" (click)="setFilter('image')">{{ t('images') }} <span>{{ counts().image }}</span></button>
+          <button type="button" class="filter" [attr.aria-pressed]="filter() === 'video'" (click)="setFilter('video')">{{ t('videos') }} <span>{{ counts().video }}</span></button>
         </div>
-        @if (visible().length < filtered().length) { <button class="more" type="button" (click)="showMore()">{{ t('more') }}</button> }
-      } @else { <div class="empty"><lucide-icon [img]="icons.Image" [size]="34" /><h3>{{ t(library()!.assets.length ? 'noResults' : 'empty') }}</h3><p>{{ t('emptyHelp') }}</p></div> }
+      }
+      @if (showSearch()) {
+        <label class="search">
+          <lucide-icon [img]="icons.Search" [size]="17" />
+          <input type="search" [attr.aria-label]="t('search')" [placeholder]="t('search')" [value]="query()" (input)="search($event)" />
+          @if (query()) {
+            <button type="button" class="search__clear" [attr.aria-label]="t('clearSearch')" (click)="clearSearch()"><lucide-icon [img]="icons.X" [size]="14" /></button>
+          }
+        </label>
+      }
+      <input #fileInput type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" (change)="upload($event)" />
+      <button class="primary upload" type="button" [disabled]="busy() || full()" (click)="fileInput.click()">
+        <lucide-icon [img]="icons.Upload" [size]="17" />{{ t(uploading() ? 'uploadingShort' : 'upload') }}
+      </button>
+    </div>
+
+    @if (full()) { <p class="warning" role="status">{{ t('quotaExceeded') }}</p> }
+    @else if (nearlyFull()) { <p class="notice" role="status">{{ t('nearlyFull') }}</p> }
+  }
+
+  @if (error()) {
+    <div class="warning" role="alert">
+      <span>{{ t(error()) }}</span>
+      @if (!library()) { <button type="button" (click)="retry()">{{ t('retry') }}</button> }
+    </div>
+  }
+
+  <div class="body" [class.body--split]="!!chosen()">
+    <section class="gallery" [attr.aria-busy]="loading() || busy()" [attr.aria-label]="t('title')">
+      @if (loading()) {
+        <div class="grid" role="status" [attr.aria-label]="t('loading')">
+          @for (n of [1, 2, 3, 4]; track n) { <div class="ghost ghost--skeleton" aria-hidden="true"><span class="thumbnail"></span><span class="line"></span></div> }
+        </div>
+      } @else if (library()) {
+        @if (visible().length || uploading()) {
+          <div class="grid">
+            @if (uploading()) {
+              <div class="ghost ghost--pending" role="status">
+                <span class="thumbnail"><lucide-icon [img]="icons.Upload" [size]="24" /></span>
+                <strong>{{ uploading() }}</strong><span>{{ t('working') }}</span>
+              </div>
+            }
+            @for (asset of visible(); track asset.id) {
+              <button type="button" class="asset" [class.chosen]="chosen()?.id === asset.id" [attr.aria-pressed]="chosen()?.id === asset.id" [disabled]="busy()" (click)="choose(asset)">
+                <span class="thumbnail">
+                  <app-asset-preview [assetId]="asset.id" [owner]="owner()" [kind]="asset.kind" [name]="asset.name" [still]="true" />
+                  @if (asset.kind === 'video') { <span class="badge"><lucide-icon [img]="icons.Film" [size]="12" /> {{ t('video') }}</span> }
+                  @if (chosen()?.id === asset.id) { <span class="tick" aria-hidden="true"><lucide-icon [img]="icons.Check" [size]="14" /></span> }
+                </span>
+                <strong>{{ asset.name }}</strong>
+                <span>{{ dimensions(asset) }}@if (dimensions(asset)) { · }{{ size(asset.bytes) }}</span>
+              </button>
+            }
+          </div>
+          @if (visible().length < filtered().length) {
+            <button class="more" type="button" (click)="showMore()">{{ t('more') }} ({{ filtered().length - visible().length }})</button>
+          }
+        } @else if (pool().length) {
+          <div class="empty">
+            <lucide-icon [img]="icons.Search" [size]="30" />
+            <h3>{{ t('noResults') }}</h3>
+            <button type="button" (click)="clearSearch(); setFilter('all')">{{ t('showAll') }}</button>
+          </div>
+        } @else {
+          <div class="empty drop">
+            <lucide-icon [img]="icons.Upload" [size]="32" />
+            <h3>{{ t('empty') }}</h3>
+            <p>{{ selectable() && kind() !== 'all' ? t(kind() === 'video' ? 'emptyVideo' : 'emptyImage') : t('emptyHelp') }}</p>
+            <p class="drop__hint">{{ t('dropHint') }}</p>
+          </div>
+        }
+      }
+    </section>
+
+    @if (wide() && chosen()) {
+      <ng-container *ngTemplateOutlet="selectionPanel; context: { $implicit: chosen() }" />
     }
-  </section>
-  @if (chosen(); as asset) {
-    <section class="selection"><div class="selected-preview"><app-asset-preview [assetId]="asset.id" [owner]="owner()" [kind]="asset.kind" [name]="asset.name" [controls]="true" /></div><div><strong>{{ asset.name }}</strong><p>{{ size(asset.bytes) }} · {{ asset.width }} × {{ asset.height }}</p></div></section>
+  </div>
+
+  @if (library()) { <p class="hint">{{ t('formats') }}</p> }
+
+  <div class="dock">
+  @if (!wide() && chosen()) {
+    <ng-container *ngTemplateOutlet="selectionPanel; context: { $implicit: chosen() }" />
   }
   <footer>
-    @if (chosen()) { <button type="button" class="danger" [disabled]="busy()" (click)="remove()">{{ t(confirming() ? 'confirmDelete' : 'delete') }}</button> }
-    @if (confirming()) { <button type="button" [disabled]="busy()" (click)="confirming.set(false)">{{ t('cancel') }}</button> }
-    @if (selectable()) { <button type="button" class="primary use" [disabled]="!chosen() || busy() || (kind() !== 'all' && chosen()?.kind !== kind())" (click)="use()">{{ t('use') }}</button> }
-    @else { <button type="button" class="primary use" [disabled]="busy()" (click)="close()">{{ t('close') }}</button> }
+    @if (selectable()) {
+      <p class="picked" aria-live="polite">
+        @if (chosen(); as asset) { {{ canUse() ? t('pickedLabel', { name: asset.name }) : t(kind() === 'video' ? 'pickVideo' : 'pickImage') }} }
+        @else { {{ t('pickPrompt') }} }
+      </p>
+      <button type="button" class="primary use" [disabled]="!canUse()" (click)="use()">{{ t('use') }}</button>
+    } @else {
+      <button type="button" class="primary use" [disabled]="busy()" (click)="close()">{{ t('done') }}</button>
+    }
   </footer>
+  </div>
 </dialog>
+
+<ng-template #selectionPanel let-asset>
+  <aside class="selection" [attr.aria-label]="t('selected')">
+    <div class="selected-preview"><app-asset-preview [assetId]="asset.id" [owner]="owner()" [kind]="asset.kind" [name]="asset.name" [controls]="true" /></div>
+    <div class="selection__info">
+      <strong>{{ asset.name }}</strong>
+      <p>{{ t(asset.kind === 'video' ? 'video' : 'image') }} · {{ dimensions(asset) }}@if (dimensions(asset)) { · }{{ size(asset.bytes) }}</p>
+    </div>
+    @if (confirming()) {
+      <div class="confirm">
+        <p>{{ t('deleteExplain') }}</p>
+        <div class="confirm__actions">
+          <button type="button" class="danger" [disabled]="busy()" (click)="remove()">{{ t('confirmDelete') }}</button>
+          <button type="button" [disabled]="busy()" (click)="confirming.set(false)">{{ t('cancel') }}</button>
+        </div>
+      </div>
+    } @else {
+      <button type="button" class="delete" [disabled]="busy()" (click)="remove()"><lucide-icon [img]="icons.Trash2" [size]="16" />{{ t('delete') }}</button>
+    }
+  </aside>
+</ng-template>

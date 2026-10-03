@@ -76,8 +76,9 @@ try {
     await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/asset-library-mobile.png` });
     await page.setViewportSize({ width: 1440, height: 1000 });
   }
-  await dialog.getByRole('searchbox', { name: 'Search assets' }).fill('missing'); await dialog.getByText('No matching assets', { exact: true }).waitFor();
-  await dialog.getByRole('searchbox', { name: 'Search assets' }).fill('');
+  assert.equal(await dialog.getByRole('searchbox', { name: 'Search assets' }).count(), 0, 'search stays hidden for a short library');
+  assert.match(await dialog.locator('.quota').innerText(), /5 GB free/, 'storage answers how much space is left');
+  assert.match(await dialog.locator('footer').innerText(), /Selected: Stream background\.png/, 'footer names the picked asset');
   await dialog.getByRole('button', { name: 'Use asset', exact: true }).click(); await dialog.waitFor({ state: 'detached' });
   assert.equal(await browse.evaluate(b => document.activeElement === b), true, 'focus returns to opener');
   await page.getByText('Private library asset selected', { exact: true }).waitFor();
@@ -125,7 +126,7 @@ try {
     assert.equal(await dialog.getByRole('button', { name: 'Upload asset', exact: true }).isEnabled(), true);
     await page.setViewportSize({ width: 375, height: 850 });
     assert.equal(await dialog.evaluate(d => d.scrollWidth > d.clientWidth), false);
-    await dialog.locator('footer').getByRole('button', { name: 'Close asset library', exact: true }).click();
+    await dialog.locator('footer').getByRole('button', { name: 'Done', exact: true }).click();
     if (process.env.SAAS_SCREENSHOT_DIR && tier === 'free') {
       await page.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/asset-settings-mobile.png`, fullPage: true });
       await page.setViewportSize({ width: 1440, height: 1000 });

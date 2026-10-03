@@ -4879,6 +4879,25 @@
     "cancel": "Cancelar",
     "browse": "Explorar biblioteca de recursos",
     "privateSelected": "Recurso privado seleccionado",
-    "detach": "Quitar de esta capa"
+    "detach": "Quitar de esta capa",
+    "pickImage": "Elige una imagen para esta capa o sube una nueva.",
+    "pickVideo": "Elige un video para esta capa o sube uno nuevo.",
+    "pickAny": "Elige una imagen o un video, o sube uno nuevo.",
+    "freeAnswer": "{{free}} libres",
+    "fullAnswer": "Almacenamiento lleno",
+    "planPro": "Plan Pro · 5 GB",
+    "clearSearch": "Borrar búsqueda",
+    "uploadingShort": "Subiendo…",
+    "nearlyFull": "Casi lleno. Elimina recursos que ya no uses o mejora tu plan para tener más espacio.",
+    "showAll": "Mostrar todos los recursos",
+    "emptyImage": "Sube una imagen para usarla en esta capa.",
+    "emptyVideo": "Sube un video para usarlo en esta capa.",
+    "dropHint": "Consejo: también puedes arrastrar un archivo a esta ventana.",
+    "selected": "Recurso seleccionado",
+    "image": "Imagen",
+    "deleteExplain": "Esto elimina el archivo para siempre y libera su espacio. Los archivos usados en un diseño guardado o en un overlay publicado no se pueden eliminar.",
+    "pickedLabel": "Seleccionado: {{name}}",
+    "pickPrompt": "Elige un recurso para continuar.",
+    "done": "Listo"
   }
 }
