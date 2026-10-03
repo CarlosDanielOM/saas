@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   computed,
   effect,
   inject,
-  signal
+  signal,
+  viewChild
 } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -23,7 +25,8 @@ import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
-type MemoryFilterStatus = 'all' | Exclude<MemoryStatus, 'archived'> | 'archived';
+type MemoryFilterStatus = 'all' | 'pending_review' | 'confirmed' | 'rejected' | 'archived';
+type MemoryAction = 'approve' | 'deny' | 'archive' | 'restore' | 'delete';
 
 interface EditFormState {
   content: string;
@@ -32,17 +35,21 @@ interface EditFormState {
   risk: MemoryRisk;
 }
 
-interface PendingAction {
-  memoryId: string;
-  action: 'approve' | 'deny' | 'archive' | 'delete';
-}
+const REVIEW_STATUSES: MemoryStatus[] = ['candidate', 'pending_review'];
+const MEMORY_TYPES: MemoryType[] = ['preference', 'running_joke', 'known_user_fact', 'channel_lore', 'boundary'];
+const MEMORY_RISKS: MemoryRisk[] = ['low', 'medium', 'high'];
+/** Search only earns its space once the list is long enough to scan. */
+const SEARCH_THRESHOLD = 6;
 
 @Component({
   selector: 'app-memories-page',
   imports: [RouterLink, LfIconComponent],
   templateUrl: './memories-page.component.html',
   styleUrl: './memories-page.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'handleEscape()'
+  }
 })
 export class MemoriesPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -50,6 +57,8 @@ export class MemoriesPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly toastService = inject(ToastService);
+  private readonly editDialog = viewChild<ElementRef<HTMLElement>>('editDialog');
+  private readonly deleteDialog = viewChild<ElementRef<HTMLElement>>('deleteDialog');
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => getRouteParam(this.route, 'streamer') ?? '')
@@ -74,6 +83,9 @@ export class MemoriesPageComponent {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly hasLoaded = signal(false);
+  /** Channel-wide counts, independent of the current filter. */
+  readonly reviewCount = signal(0);
+  readonly activeCount = signal(0);
 
   readonly filterStatus = signal<MemoryFilterStatus>('all');
   readonly filterType = signal<MemoryType | 'all'>('all');
@@ -84,82 +96,38 @@ export class MemoriesPageComponent {
   readonly pageSize = signal(50);
   readonly hasMore = computed(() => this.memories().length < this.total());
 
-  readonly editModalOpen = signal(false);
   readonly editingMemory = signal<Memory | null>(null);
-  readonly editForm = signal<EditFormState>({
-    content: '',
-    summary: '',
-    type: 'preference',
-    risk: 'low'
-  });
+  readonly editForm = signal<EditFormState>({ content: '', summary: '', type: 'preference', risk: 'low' });
   readonly editSaving = signal(false);
+  readonly editAttempted = signal(false);
+  readonly editContentMissing = computed(() => !this.editForm().content.trim());
 
-  readonly pendingActions = signal<Map<string, PendingAction>>(new Map());
+  readonly deletingMemory = signal<Memory | null>(null);
+  readonly pendingActions = signal<Set<string>>(new Set());
 
-  readonly confirmDialogOpen = signal(false);
-  readonly confirmAction = signal<'approve' | 'deny' | 'archive' | 'delete' | null>(null);
-  readonly confirmMemory = signal<Memory | null>(null);
+  readonly memoryTypes = MEMORY_TYPES;
+  readonly memoryRisks = MEMORY_RISKS;
+  readonly statusFilters: MemoryFilterStatus[] = ['all', 'pending_review', 'confirmed', 'rejected', 'archived'];
 
-  readonly planTier = computed(() => {
-    return this.sessionAuth.getPlanTierForStreamer(this.streamer());
+  readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
+  readonly modulePath = computed(() => {
+    const streamer = this.streamer();
+    return streamer ? ['/', streamer, 'modules'] : ['/'];
   });
+  readonly summariesPath = computed(() => ['/', this.streamer(), 'modules', 'stream-summaries']);
 
-  readonly pendingCount = computed(
-    () =>
-      this.memories().filter(
-        (m) => m.status === 'pending_review' || m.status === 'candidate'
-      ).length
-  );
-
-  readonly activeCount = computed(
-    () => this.memories().filter((m) => m.status === 'confirmed').length
-  );
-
-  readonly filterStatusOptions = computed<Array<{ value: MemoryFilterStatus; labelKey: string }>>(
-    () => [
-      { value: 'all', labelKey: 'modules.memories.filters.all' },
-      { value: 'pending_review', labelKey: 'modules.memories.status.pending_review' },
-      { value: 'confirmed', labelKey: 'modules.memories.status.confirmed' },
-      { value: 'rejected', labelKey: 'modules.memories.status.rejected' },
-      { value: 'archived', labelKey: 'modules.memories.status.archived' }
-    ]
-  );
-
-  readonly memoryTypeOptions = computed<Array<{ value: MemoryType | 'all'; labelKey: string }>>(
-    () => [
-      { value: 'all', labelKey: 'modules.memories.filters.allTypes' },
-      { value: 'preference', labelKey: 'modules.memories.type.preference' },
-      { value: 'running_joke', labelKey: 'modules.memories.type.running_joke' },
-      { value: 'known_user_fact', labelKey: 'modules.memories.type.known_user_fact' },
-      { value: 'channel_lore', labelKey: 'modules.memories.type.channel_lore' },
-      { value: 'boundary', labelKey: 'modules.memories.type.boundary' }
-    ]
-  );
-
-  readonly memoryRiskOptions = computed<Array<{ value: MemoryRisk | 'all'; labelKey: string }>>(
-    () => [
-      { value: 'all', labelKey: 'modules.memories.filters.allRisks' },
-      { value: 'low', labelKey: 'modules.memories.risk.low' },
-      { value: 'medium', labelKey: 'modules.memories.risk.medium' },
-      { value: 'high', labelKey: 'modules.memories.risk.high' }
-    ]
-  );
+  readonly showSearch = computed(() => this.total() > SEARCH_THRESHOLD || this.searchQuery().length > 0);
+  readonly filtersActive = computed(() => this.filterType() !== 'all' || this.filterRisk() !== 'all' || this.filterStatus() !== 'all' || !!this.searchQuery());
 
   readonly displayedMemories = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     if (!query) return this.memories();
-
     return this.memories().filter(
       (m) =>
         m.content.toLowerCase().includes(query) ||
         m.summary.toLowerCase().includes(query) ||
-        m.subject.username.toLowerCase().includes(query)
+        (m.subject.username || '').toLowerCase().includes(query)
     );
-  });
-
-  readonly modulePath = computed(() => {
-    const streamer = this.streamer();
-    return streamer ? ['/', streamer, 'modules'] : ['/'];
   });
 
   private lastLoadedChannelID = '';
@@ -171,7 +139,6 @@ export class MemoriesPageComponent {
         this.channelID.set(null);
         return;
       }
-
       void firstValueFrom(this.sessionAuth.resolveChannelID(streamer)).then((channelID) => {
         this.channelID.set(channelID);
       });
@@ -179,26 +146,170 @@ export class MemoriesPageComponent {
 
     effect(() => {
       const channelID = this.channelID();
-      if (!channelID) return;
-
-      if (this.lastLoadedChannelID === channelID) return;
+      if (!channelID || this.lastLoadedChannelID === channelID) return;
       this.lastLoadedChannelID = channelID;
       void this.loadMemories(true);
+      void this.refreshCounts();
     });
 
     effect(() => {
       this.filterStatus();
       this.filterType();
       this.filterRisk();
-
       if (this.hasLoaded() && this.channelID()) {
         void this.loadMemories(true);
       }
+    });
+
+    effect(() => {
+      const target = this.deleteDialog() ?? this.editDialog();
+      if (target) queueMicrotask(() => target.nativeElement.focus());
     });
   }
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.languageService.translate(key, params);
+  }
+
+  handleEscape(): void {
+    if (this.deletingMemory()) {
+      this.deletingMemory.set(null);
+      return;
+    }
+    if (this.editingMemory()) this.closeEditModal();
+  }
+
+  async loadMemories(reset = false): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+
+    if (reset) {
+      this.page.set(1);
+      this.memories.set([]);
+    }
+
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      const statusFilter = this.filterStatus();
+      const statuses: MemoryStatus[] =
+        statusFilter === 'all'
+          ? ['candidate', 'pending_review', 'confirmed', 'rejected', 'archived']
+          : statusFilter === 'pending_review'
+            ? REVIEW_STATUSES
+            : [statusFilter];
+      const types: MemoryType[] = this.filterType() === 'all' ? [] : [this.filterType() as MemoryType];
+      const risks: MemoryRisk[] = this.filterRisk() === 'all' ? [] : [this.filterRisk() as MemoryRisk];
+      const skip = (this.page() - 1) * this.pageSize();
+
+      const result = await firstValueFrom(
+        this.memoriesApi.listMemories(channelID, { statuses, types, risks, limit: this.pageSize(), skip })
+      );
+
+      if (reset) {
+        this.memories.set(result.items);
+      } else {
+        this.memories.update((current) => [...current, ...result.items]);
+      }
+      this.total.set(result.total);
+      this.hasLoaded.set(true);
+    } catch {
+      this.error.set(this.t('modules.memories.v2.loadFailed'));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  private async refreshCounts(): Promise<void> {
+    const channelID = this.channelID();
+    if (!channelID) return;
+    try {
+      const [review, active] = await Promise.all([
+        firstValueFrom(this.memoriesApi.listMemories(channelID, { statuses: REVIEW_STATUSES, limit: 1 })),
+        firstValueFrom(this.memoriesApi.listMemories(channelID, { statuses: ['confirmed'], limit: 1 }))
+      ]);
+      this.reviewCount.set(review.total);
+      this.activeCount.set(active.total);
+    } catch {
+      // Counts are a convenience; the list itself reports load errors.
+    }
+  }
+
+  async loadMore(): Promise<void> {
+    if (this.loading() || !this.hasMore()) return;
+    this.page.update((p) => p + 1);
+    await this.loadMemories(false);
+  }
+
+  setStatus(status: MemoryFilterStatus): void {
+    this.filterStatus.set(status);
+  }
+
+  setType(type: MemoryType | 'all'): void {
+    this.filterType.set(type);
+  }
+
+  onRiskFilterChange(event: Event): void {
+    this.filterRisk.set((event.target as HTMLSelectElement).value as MemoryRisk | 'all');
+  }
+
+  onSearchChange(event: Event): void {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  clearFilters(): void {
+    this.searchQuery.set('');
+    this.filterType.set('all');
+    this.filterRisk.set('all');
+    this.filterStatus.set('all');
+  }
+
+  isReview(memory: Memory): boolean {
+    return REVIEW_STATUSES.includes(memory.status);
+  }
+
+  statusLabel(status: MemoryStatus): string {
+    return this.t('modules.memories.v2.status.' + (status === 'candidate' ? 'pending_review' : status));
+  }
+
+  typeLabel(type: MemoryType): string {
+    return this.t('modules.memories.v2.type.' + type);
+  }
+
+  subjectLabel(memory: Memory): string {
+    if (memory.subject.scope === 'channel' || !memory.subject.username) return this.t('modules.memories.v2.wholeChannel');
+    return this.t('modules.memories.v2.aboutUser', { username: memory.subject.username });
+  }
+
+  usedLabel(memory: Memory): string {
+    if (!memory.useCount) return this.t('modules.memories.v2.neverUsed');
+    return this.t(memory.useCount === 1 ? 'modules.memories.v2.usedOnce' : 'modules.memories.v2.used', { count: memory.useCount });
+  }
+
+  formatDate(dateStr: string | undefined): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString(this.languageService.currentLanguage() === 'es' ? 'es' : 'en', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  isPending(memory: Memory): boolean {
+    return this.pendingActions().has(memory._id);
+  }
+
+  // Editing
+
+  openEditModal(memory: Memory): void {
+    if (!this.canManage()) return;
+    this.editingMemory.set(memory);
+    this.editAttempted.set(false);
+    this.editForm.set({ content: memory.content, summary: memory.summary, type: memory.type, risk: memory.risk });
+  }
+
+  closeEditModal(): void {
+    if (this.editSaving()) return;
+    this.editingMemory.set(null);
   }
 
   onEditContentChange(event: Event): void {
@@ -216,316 +327,83 @@ export class MemoriesPageComponent {
     this.editForm.update((f) => ({ ...f, type: value }));
   }
 
-  onEditRiskChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as MemoryRisk;
-    this.editForm.update((f) => ({ ...f, risk: value }));
-  }
-
-  async loadMemories(reset = false): Promise<void> {
-    const channelID = this.channelID();
-    if (!channelID) return;
-
-    if (reset) {
-      this.page.set(1);
-      this.memories.set([]);
-    }
-
-    this.loading.set(true);
-    this.error.set(null);
-
-    try {
-      const statusFilter = this.filterStatus();
-      const typeFilter = this.filterType();
-      const riskFilter = this.filterRisk();
-
-      const statuses: MemoryStatus[] =
-        statusFilter === 'all'
-          ? ['candidate', 'pending_review', 'confirmed', 'rejected', 'archived']
-          : [statusFilter as MemoryStatus];
-
-      const types: MemoryType[] = typeFilter === 'all' ? [] : [typeFilter as MemoryType];
-      const risks: MemoryRisk[] = riskFilter === 'all' ? [] : [riskFilter as MemoryRisk];
-      const skip = (this.page() - 1) * this.pageSize();
-
-      const result = await firstValueFrom(
-        this.memoriesApi.listMemories(channelID, {
-          statuses,
-          types,
-          risks,
-          limit: this.pageSize(),
-          skip
-        })
-      );
-
-      if (reset) {
-        this.memories.set(result.items);
-      } else {
-        this.memories.update((current) => [...current, ...result.items]);
-      }
-      this.total.set(result.total);
-      this.hasLoaded.set(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load memories';
-      this.error.set(message);
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async loadMore(): Promise<void> {
-    if (this.loading() || !this.hasMore()) return;
-    this.page.update((p) => p + 1);
-    await this.loadMemories(false);
-  }
-
-  onStatusFilterChange(status: MemoryFilterStatus): void {
-    this.filterStatus.set(status);
-  }
-
-  onTypeFilterChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as MemoryType | 'all';
-    this.filterType.set(value);
-  }
-
-  onRiskFilterChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as MemoryRisk | 'all';
-    this.filterRisk.set(value);
-  }
-
-  onSearchChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.searchQuery.set(value);
-  }
-
-  clearSearch(): void {
-    this.searchQuery.set('');
-  }
-
-  openEditModal(memory: Memory): void {
-    if (!this.canManage()) return;
-    this.editingMemory.set(memory);
-    this.editForm.set({
-      content: memory.content,
-      summary: memory.summary,
-      type: memory.type,
-      risk: memory.risk
-    });
-    this.editModalOpen.set(true);
-  }
-
-  closeEditModal(): void {
-    if (this.editSaving()) return;
-    this.editModalOpen.set(false);
-    this.editingMemory.set(null);
-  }
-
-  onEditBackdrop(event: Event): void {
-    if (event.target === event.currentTarget) {
-      this.closeEditModal();
-    }
+  setEditRisk(risk: MemoryRisk): void {
+    this.editForm.update((f) => ({ ...f, risk }));
   }
 
   async saveEdit(): Promise<void> {
     if (!this.canManage()) return;
+    this.editAttempted.set(true);
     const memory = this.editingMemory();
     const channelID = this.channelID();
-    if (!memory || !channelID) return;
+    if (!memory || !channelID || this.editContentMissing()) return;
 
     this.editSaving.set(true);
-
     try {
       const form = this.editForm();
       const updated = await firstValueFrom(
         this.memoriesApi.updateMemory(channelID, memory._id, {
-          content: form.content,
-          summary: form.summary,
+          content: form.content.trim(),
+          summary: form.summary.trim() || form.content.trim(),
           type: form.type,
           risk: form.risk
         })
       );
-
       this.memories.update((list) => list.map((m) => (m._id === updated._id ? updated : m)));
-
+      this.editSaving.set(false);
       this.closeEditModal();
-      this.toastService.success(
-        this.t('modules.memories.toasts.updateSuccessTitle'),
-        this.t('modules.memories.toasts.updateSuccessMessage')
-      );
+      this.toastService.success(this.t('modules.memories.toasts.updateSuccessTitle'), this.t('modules.memories.toasts.updateSuccessMessage'));
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update memory';
-      this.toastService.error(this.t('modules.memories.toasts.updateSuccessTitle'), message);
+      const message = err instanceof Error ? err.message : this.t('modules.memories.v2.actionFailed');
+      this.toastService.error(this.t('modules.memories.v2.actionFailed'), message);
     } finally {
       this.editSaving.set(false);
     }
   }
 
-  openConfirmDialog(action: 'approve' | 'deny' | 'archive' | 'delete', memory: Memory): void {
-    if (!this.canManage()) return;
-    this.confirmAction.set(action);
-    this.confirmMemory.set(memory);
-    this.confirmDialogOpen.set(true);
+  // Status changes and delete
+
+  askDelete(memory: Memory): void {
+    if (this.canManage()) this.deletingMemory.set(memory);
   }
 
-  closeConfirmDialog(): void {
-    this.confirmDialogOpen.set(false);
-    this.confirmAction.set(null);
-    this.confirmMemory.set(null);
+  async confirmDelete(): Promise<void> {
+    const memory = this.deletingMemory();
+    if (!memory) return;
+    this.deletingMemory.set(null);
+    await this.runAction('delete', memory);
   }
 
-  onConfirmBackdrop(event: Event): void {
-    if (event.target === event.currentTarget) {
-      this.closeConfirmDialog();
-    }
-  }
-
-  async confirmActionHandler(): Promise<void> {
-    if (!this.canManage()) {
-      this.closeConfirmDialog();
-      return;
-    }
-    const action = this.confirmAction();
-    const memory = this.confirmMemory();
+  async runAction(action: MemoryAction, memory: Memory): Promise<void> {
     const channelID = this.channelID();
+    if (!this.canManage() || !channelID || this.isPending(memory)) return;
 
-    if (!action || !memory || !channelID) {
-      this.closeConfirmDialog();
-      return;
-    }
-
-    const pendingKey = `${action}-${memory._id}`;
-    this.pendingActions.update((m) => new Map(m).set(pendingKey, { memoryId: memory._id, action }));
-
-    this.closeConfirmDialog();
-
+    this.pendingActions.update((set) => new Set(set).add(memory._id));
     try {
-      switch (action) {
-        case 'approve':
-          await firstValueFrom(
-            this.memoriesApi.updateMemoryStatus(channelID, memory._id, 'confirmed')
-          );
-          this.toastService.success(
-            this.t('modules.memories.toasts.approveSuccessTitle'),
-            this.t('modules.memories.toasts.approveSuccessMessage')
-          );
-          break;
-        case 'deny':
-          await firstValueFrom(
-            this.memoriesApi.updateMemoryStatus(channelID, memory._id, 'rejected')
-          );
-          this.toastService.success(
-            this.t('modules.memories.toasts.denySuccessTitle'),
-            this.t('modules.memories.toasts.denySuccessMessage')
-          );
-          break;
-        case 'archive':
-          await firstValueFrom(
-            this.memoriesApi.updateMemoryStatus(channelID, memory._id, 'archived')
-          );
-          this.toastService.success(
-            this.t('modules.memories.toasts.archiveSuccessTitle'),
-            this.t('modules.memories.toasts.archiveSuccessMessage')
-          );
-          break;
-        case 'delete':
-          await firstValueFrom(this.memoriesApi.deleteMemory(channelID, memory._id));
-          this.toastService.success(
-            this.t('modules.memories.toasts.deleteSuccessTitle'),
-            this.t('modules.memories.toasts.deleteSuccessMessage')
-          );
-          break;
-      }
-
       if (action === 'delete') {
+        await firstValueFrom(this.memoriesApi.deleteMemory(channelID, memory._id));
         this.memories.update((list) => list.filter((m) => m._id !== memory._id));
+        this.total.update((count) => Math.max(0, count - 1));
       } else {
-        const newStatus: MemoryStatus =
-          action === 'approve' ? 'confirmed' : action === 'deny' ? 'rejected' : 'archived';
-        this.memories.update((list) =>
-          list.map((m) => (m._id === memory._id ? { ...m, status: newStatus } : m))
-        );
+        const status: MemoryStatus = action === 'deny' ? 'rejected' : action === 'archive' ? 'archived' : 'confirmed';
+        await firstValueFrom(this.memoriesApi.updateMemoryStatus(channelID, memory._id, status));
+        const stillMatches = this.filterStatus() === 'all' || (this.filterStatus() === status);
+        this.memories.update((list) => stillMatches
+          ? list.map((m) => (m._id === memory._id ? { ...m, status } : m))
+          : list.filter((m) => m._id !== memory._id));
+        if (!stillMatches) this.total.update((count) => Math.max(0, count - 1));
       }
+      this.toastService.success(this.t(`modules.memories.v2.done.${action}`), memory.summary || memory.content);
+      void this.refreshCounts();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Action failed';
-      this.toastService.error(this.t('modules.memories.actions.confirm'), message);
+      const message = err instanceof Error ? err.message : this.t('modules.memories.v2.actionFailed');
+      this.toastService.error(this.t('modules.memories.v2.actionFailed'), message);
     } finally {
-      this.pendingActions.update((m) => {
-        const newMap = new Map(m);
-        newMap.delete(pendingKey);
-        return newMap;
+      this.pendingActions.update((set) => {
+        const next = new Set(set);
+        next.delete(memory._id);
+        return next;
       });
     }
-  }
-
-  isActionPending(memoryId: string, action: 'approve' | 'deny' | 'archive' | 'delete'): boolean {
-    return this.pendingActions().has(`${action}-${memoryId}`);
-  }
-
-  riskChipClass(risk: MemoryRisk): string {
-    return `lf-chip lf-chip--risk-${risk}`;
-  }
-
-  statusChipClass(status: MemoryStatus): string {
-    return `lf-chip lf-chip--status-${status.replace('_', '-')}`;
-  }
-
-  riskLabelKey(risk: MemoryRisk): string {
-    return `modules.memories.risk.${risk}`;
-  }
-
-  statusLabelKey(status: MemoryStatus): string {
-    return `modules.memories.status.${status}`;
-  }
-
-  typeLabelKey(type: MemoryType): string {
-    return `modules.memories.type.${type}`;
-  }
-
-  getConfirmMessage(action: 'approve' | 'deny' | 'archive' | 'delete'): string {
-    switch (action) {
-      case 'approve':
-        return this.t('modules.memories.confirmApprove');
-      case 'deny':
-        return this.t('modules.memories.confirmDeny');
-      case 'archive':
-        return this.t('modules.memories.confirmArchive');
-      case 'delete':
-        return this.t('modules.memories.confirmDelete');
-    }
-  }
-
-  getConfirmTitle(action: 'approve' | 'deny' | 'archive' | 'delete'): string {
-    switch (action) {
-      case 'approve':
-        return this.t('modules.memories.actions.approve');
-      case 'deny':
-        return this.t('modules.memories.actions.deny');
-      case 'archive':
-        return this.t('modules.memories.actions.archive');
-      case 'delete':
-        return this.t('modules.memories.actions.delete');
-    }
-  }
-
-  formatDate(dateStr: string | undefined): string {
-    if (!dateStr) return '—';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  formatConfidence(confidence: number): string {
-    return `${Math.round(confidence * 100)}%`;
-  }
-
-  getSubjectLabel(memory: Memory): string {
-    if (memory.subject.scope === 'channel') {
-      return this.t('modules.memories.fields.channelwide');
-    }
-    return this.t('modules.memories.fields.userSpecific', {
-      username: memory.subject.username
-    });
   }
 }

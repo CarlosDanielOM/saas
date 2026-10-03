@@ -1016,6 +1016,88 @@
         "deleteSuccessMessage": "La memoria ha sido eliminada permanentemente.",
         "updateSuccessTitle": "Memoria actualizada",
         "updateSuccessMessage": "Tus cambios han sido guardados."
+      },
+      "v2": {
+        "title": "Memorias de IA",
+        "subtitle": "Lo que el bot recuerda de tu canal y tus espectadores. En el chat solo usa las memorias activas.",
+        "reviewChip": "{{count}} por revisar",
+        "activeChip": "{{count}} activas",
+        "viewOnly": "Solo lectura",
+        "summariesLink": "Resúmenes de stream",
+        "reviewTitle": "{{count}} memorias esperan tu revisión",
+        "reviewTitleOne": "1 memoria espera tu revisión",
+        "reviewCopy": "El bot no las usará en el chat hasta que las apruebes.",
+        "reviewNow": "Revisar ahora",
+        "filter": {
+          "all": "Todas",
+          "pending_review": "Por revisar",
+          "confirmed": "Activas",
+          "rejected": "Rechazadas",
+          "archived": "Archivadas"
+        },
+        "allTypes": "Todos los tipos",
+        "type": {
+          "preference": "Preferencia",
+          "running_joke": "Broma recurrente",
+          "known_user_fact": "Dato de un espectador",
+          "channel_lore": "Historia del canal",
+          "boundary": "Límite"
+        },
+        "typeHint": {
+          "preference": "Algo que al streamer le gusta o prefiere.",
+          "running_joke": "Una broma interna de la comunidad.",
+          "known_user_fact": "Algo cierto sobre un espectador concreto.",
+          "channel_lore": "Historia, tradiciones o datos del canal.",
+          "boundary": "Un tema o comportamiento que el bot debe evitar."
+        },
+        "status": {
+          "pending_review": "Por revisar",
+          "confirmed": "Activa",
+          "rejected": "Rechazada",
+          "archived": "Archivada"
+        },
+        "risk": {
+          "low": "Normal",
+          "medium": "Con cuidado",
+          "high": "Delicada"
+        },
+        "careLabel": "Nivel de cuidado",
+        "careAll": "Cualquiera",
+        "careHint": "Las memorias delicadas tratan temas personales. El bot tiene más cuidado al mencionarlas.",
+        "wholeChannel": "Sobre el canal",
+        "aboutUser": "Sobre @{{username}}",
+        "neverUsed": "Aún sin usar",
+        "usedOnce": "Usada una vez",
+        "used": "Usada {{count}} veces",
+        "added": "Añadida el {{date}}",
+        "approve": "Aprobar",
+        "deny": "Rechazar",
+        "archive": "Archivar",
+        "restore": "Volver a activar",
+        "deleteAria": "Eliminar memoria: {{summary}}",
+        "noMatches": "Ninguna memoria coincide con estos filtros",
+        "clearFilters": "Quitar filtros",
+        "emptyCopy": "El bot aprende del chat y de tus resúmenes de stream. Las memorias nuevas aparecen aquí y algunas esperarán tu revisión.",
+        "loadFailed": "No pudimos cargar las memorias. Revisa tu conexión e inténtalo de nuevo.",
+        "actionFailed": "No funcionó. Inténtalo de nuevo.",
+        "done": {
+          "approve": "Memoria aprobada, el bot ya puede usarla",
+          "deny": "Memoria rechazada",
+          "archive": "Memoria archivada",
+          "restore": "La memoria vuelve a estar activa",
+          "delete": "Memoria eliminada"
+        },
+        "editTitle": "Editar memoria",
+        "contentLabel": "Lo que el bot recuerda",
+        "contentHint": "Escríbelo como se lo explicarías a un mod nuevo.",
+        "contentRequired": "Escribe lo que el bot debe recordar.",
+        "summaryLabel": "Versión corta",
+        "summaryHint": "Se muestra en esta lista. Déjalo vacío para usar el texto de arriba.",
+        "typeLabel": "Tipo de memoria",
+        "deleteTitle": "¿Eliminar esta memoria?",
+        "deleteCopy": "El bot la olvidará para siempre. Si quizá la quieras después, archívala: las memorias archivadas se guardan pero no se usan en el chat.",
+        "archiveInstead": "Archivar en su lugar",
+        "deleteConfirm": "Eliminar para siempre"
       }
     },
     "analytics": {

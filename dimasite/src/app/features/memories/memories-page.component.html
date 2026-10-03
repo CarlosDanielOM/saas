@@ -1,289 +1,219 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.memories.title')">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.memories.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('modules.memories.eyebrow') }}</p>
-        <h1 class="lf-title">
-          {{ t('modules.memories.title') }}
-          <span>{{ streamer() || '—' }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('modules.memories.subtitle') }}</p>
-        <p class="lf-feed">{{ total() }} · {{ displayedMemories().length }}</p>
-      </article>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.memories.backToModules') }}</a>
+      <h1 class="lf-title">{{ t('modules.memories.v2.title') }}</h1>
+      <p class="lf-copy">{{ t('modules.memories.v2.subtitle') }}</p>
+      <div class="lf-head__chips">
+        @if (reviewCount()) {
+          <button type="button" class="lf-chip lf-chip--warn lf-chip--link" (click)="setStatus('pending_review')">
+            <span class="lf-dot" aria-hidden="true"></span> {{ t('modules.memories.v2.reviewChip', { count: reviewCount() }) }}
+          </button>
+        }
+        <span class="lf-chip lf-chip--ok">{{ t('modules.memories.v2.activeChip', { count: activeCount() }) }}</span>
+        @if (!canManage() && channelID()) {
+          <span class="lf-chip"><app-lf-icon name="lock" [size]="12"></app-lf-icon> {{ t('modules.memories.v2.viewOnly') }}</span>
+        }
+        <a class="lf-chip lf-chip--link" [routerLink]="summariesPath()"><app-lf-icon name="list" [size]="12"></app-lf-icon> {{ t('modules.memories.v2.summariesLink') }}</a>
+      </div>
+    </header>
 
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip">{{ t('modules.memories.eyebrow') }}</span>
-          <span class="lf-spotlight__count">{{ t('modules.memories.filters.status') }}</span>
-        </div>
-        <div class="lf-stats-strip">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.memories.filters.all') }}</span>
-            <strong class="lf-stats-strip__value">{{ total() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.memories.status.pending_review') }}</span>
-            <strong class="lf-stats-strip__value">{{ pendingCount() }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.memories.status.confirmed') }}</span>
-            <strong class="lf-stats-strip__value">{{ activeCount() }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    @if (!canManage()) {
-      <div class="lf-banner" role="status">{{ t('permissions.viewOnly') }}</div>
+    @if (reviewCount() && filterStatus() !== 'pending_review' && canManage()) {
+      <section class="lf-review" role="status">
+        <span class="lf-review__copy">
+          <strong>{{ reviewCount() === 1 ? t('modules.memories.v2.reviewTitleOne') : t('modules.memories.v2.reviewTitle', { count: reviewCount() }) }}</strong>
+          <span>{{ t('modules.memories.v2.reviewCopy') }}</span>
+        </span>
+        <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" (click)="setStatus('pending_review')">{{ t('modules.memories.v2.reviewNow') }}</button>
+      </section>
     }
 
-    <section class="lf-section" [attr.aria-label]="t('modules.memories.filters.status')">
+    <section class="lf-tile lf-card" aria-labelledby="memories-list-title">
+      <h2 class="visually-hidden" id="memories-list-title">{{ t('modules.memories.v2.title') }}</h2>
+
       <div class="lf-filters">
-        <div class="lf-tabs" role="tablist">
-          @for (option of filterStatusOptions(); track option.value) {
-            <button
-              type="button"
-              class="lf-tabs__btn"
-              role="tab"
-              [class.lf-tabs__btn--active]="filterStatus() === option.value"
-              [attr.aria-selected]="filterStatus() === option.value"
-              (click)="onStatusFilterChange(option.value)"
-            >
-              {{ t(option.labelKey) }}
+        <div class="lf-chipset" role="group" [attr.aria-label]="t('modules.memories.filters.status')">
+          @for (status of statusFilters; track status) {
+            <button type="button" class="lf-filter" [attr.aria-pressed]="filterStatus() === status" (click)="setStatus(status)">
+              {{ t('modules.memories.v2.filter.' + status) }}
+              @if (status === 'pending_review' && reviewCount()) { <span class="lf-filter__count">{{ reviewCount() }}</span> }
             </button>
           }
         </div>
-
+        <div class="lf-chipset" role="group" [attr.aria-label]="t('modules.memories.filters.type')">
+          <button type="button" class="lf-filter lf-filter--soft" [attr.aria-pressed]="filterType() === 'all'" (click)="setType('all')">{{ t('modules.memories.v2.allTypes') }}</button>
+          @for (type of memoryTypes; track type) {
+            <button type="button" class="lf-filter lf-filter--soft" [attr.aria-pressed]="filterType() === type" (click)="setType(type)">{{ typeLabel(type) }}</button>
+          }
+        </div>
         <div class="lf-filters__row">
+          @if (showSearch()) {
+            <label class="lf-search">
+              <app-lf-icon name="search" [size]="16"></app-lf-icon>
+              <span class="visually-hidden">{{ t('modules.memories.filters.search') }}</span>
+              <input type="search" [placeholder]="t('modules.memories.filters.search')" [value]="searchQuery()" (input)="onSearchChange($event)" />
+            </label>
+          }
           <label class="lf-select">
-            <span class="visually-hidden">{{ t('modules.memories.filters.type') }}</span>
-            <select [value]="filterType()" (change)="onTypeFilterChange($event)">
-              @for (option of memoryTypeOptions(); track option.value) {
-                <option [value]="option.value">{{ t(option.labelKey) }}</option>
-              }
-            </select>
-          </label>
-
-          <label class="lf-select">
-            <span class="visually-hidden">{{ t('modules.memories.filters.risk') }}</span>
+            <span>{{ t('modules.memories.v2.careLabel') }}</span>
             <select [value]="filterRisk()" (change)="onRiskFilterChange($event)">
-              @for (option of memoryRiskOptions(); track option.value) {
-                <option [value]="option.value">{{ t(option.labelKey) }}</option>
-              }
+              <option value="all">{{ t('modules.memories.v2.careAll') }}</option>
+              @for (risk of memoryRisks; track risk) { <option [value]="risk">{{ t('modules.memories.v2.risk.' + risk) }}</option> }
             </select>
-          </label>
-
-          <label class="lf-search">
-            <span class="visually-hidden">{{ t('modules.memories.filters.search') }}</span>
-            <input
-              type="search"
-              [placeholder]="t('modules.memories.filters.search')"
-              [value]="searchQuery()"
-              (input)="onSearchChange($event)"
-            />
-            @if (searchQuery()) {
-              <button type="button" class="lf-search__clear" (click)="clearSearch()" [attr.aria-label]="t('common.close')">
-                <app-lf-icon name="close"></app-lf-icon>
-              </button>
-            }
           </label>
         </div>
       </div>
 
       @if (loading() && memories().length === 0) {
-        <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
+        <p class="lf-note" role="status">{{ t('common.loading') }}</p>
       } @else if (error() && memories().length === 0) {
-        <div class="lf-tile lf-empty lf-empty--error" role="alert">
-          <h3 class="lf-empty__title">{{ error() }}</h3>
-          <button type="button" class="lf-btn" (click)="loadMemories(true)">{{ t('common.retry') }}</button>
+        <div class="lf-banner" role="alert">
+          <p class="lf-banner__title">{{ error() }}</p>
+          <button type="button" class="lf-btn lf-btn--compact" (click)="loadMemories(true)">{{ t('common.retry') }}</button>
         </div>
-      } @else if (!loading() && displayedMemories().length === 0 && hasLoaded()) {
-        <div class="lf-tile lf-empty" role="status">
-          <h3 class="lf-empty__title">{{ t('modules.memories.empty.title') }}</h3>
-          <p class="lf-empty__copy">{{ t('modules.memories.empty.description') }}</p>
-        </div>
-      } @else if (displayedMemories().length > 0) {
-        <div class="lf-bento lf-bento--cards">
-          @for (memory of displayedMemories(); track memory._id) {
-            <article class="lf-tile lf-mem">
-              <header class="lf-mem__head">
-                <div class="lf-mem__badges">
-                  <span class="lf-chip" [class]="riskChipClass(memory.risk)">{{ t(riskLabelKey(memory.risk)) }}</span>
-                  <span class="lf-chip" [class]="statusChipClass(memory.status)">{{ t(statusLabelKey(memory.status)) }}</span>
-                  <span class="lf-chip lf-chip--soft">{{ t(typeLabelKey(memory.type)) }}</span>
-                </div>
-                <span class="lf-mem__confidence" [attr.title]="t('modules.memories.fields.confidence')">
-                  {{ formatConfidence(memory.confidence) }}
-                </span>
-              </header>
-
-              <h3 class="lf-mem__summary">{{ memory.summary }}</h3>
-              <p class="lf-mem__content">{{ memory.content }}</p>
-
-              <div class="lf-mem__meta">
-                <span>{{ t('modules.memories.fields.subject') }}: {{ getSubjectLabel(memory) }}</span>
-                <span>{{ t('modules.memories.fields.useCount') }}: {{ memory.useCount }}×</span>
-                <span>{{ t('modules.memories.fields.created') }}: {{ formatDate(memory.createdAt) }}</span>
-              </div>
-
-              @if (canManage()) {
-              <div class="lf-mem__actions">
-                @if (memory.status === 'pending_review' || memory.status === 'candidate') {
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--primary lf-btn--compact"
-                    [disabled]="isActionPending(memory._id, 'approve')"
-                    (click)="openConfirmDialog('approve', memory)"
-                  >
-                    {{ t('modules.memories.actions.approve') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--compact"
-                    [disabled]="isActionPending(memory._id, 'deny')"
-                    (click)="openConfirmDialog('deny', memory)"
-                  >
-                    {{ t('modules.memories.actions.deny') }}
-                  </button>
-                }
-                @if (memory.status === 'confirmed' || memory.status === 'pending_review') {
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--compact"
-                    [disabled]="isActionPending(memory._id, 'archive')"
-                    (click)="openConfirmDialog('archive', memory)"
-                  >
-                    {{ t('modules.memories.actions.archive') }}
-                  </button>
-                }
-                <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(memory)">
-                  {{ t('modules.memories.actions.edit') }}
-                </button>
-                <button
-                  type="button"
-                  class="lf-btn lf-btn--danger lf-btn--compact"
-                  [disabled]="isActionPending(memory._id, 'delete')"
-                  (click)="openConfirmDialog('delete', memory)"
-                >
-                  {{ t('modules.memories.actions.delete') }}
-                </button>
-              </div>
-              }
-            </article>
+      } @else if (hasLoaded() && displayedMemories().length === 0) {
+        <div class="lf-empty-state" role="status">
+          @if (filtersActive()) {
+            <strong>{{ t('modules.memories.v2.noMatches') }}</strong>
+            <button type="button" class="lf-btn lf-btn--compact" (click)="clearFilters()">{{ t('modules.memories.v2.clearFilters') }}</button>
+          } @else {
+            <strong>{{ t('modules.memories.empty.title') }}</strong>
+            <span>{{ t('modules.memories.v2.emptyCopy') }}</span>
           }
         </div>
+      } @else {
+        <ul class="lf-mems">
+          @for (memory of displayedMemories(); track memory._id) {
+            <li class="lf-mem" [attr.data-status]="isReview(memory) ? 'review' : memory.status">
+              <div class="lf-mem__top">
+                <span class="lf-chip lf-chip--xs lf-chip--accent">{{ typeLabel(memory.type) }}</span>
+                @if (memory.risk !== 'low') {
+                  <span class="lf-chip lf-chip--xs lf-chip--warn"><app-lf-icon name="alert" [size]="11"></app-lf-icon> {{ t('modules.memories.v2.risk.' + memory.risk) }}</span>
+                }
+                <span class="lf-mem__status">{{ statusLabel(memory.status) }}</span>
+              </div>
+              <strong class="lf-mem__summary">{{ memory.summary || memory.content }}</strong>
+              @if (memory.content && memory.content !== memory.summary) {
+                <p class="lf-mem__content">{{ memory.content }}</p>
+              }
+              <p class="lf-mem__meta">{{ subjectLabel(memory) }} · {{ usedLabel(memory) }} · {{ t('modules.memories.v2.added', { date: formatDate(memory.createdAt) }) }}</p>
+
+              @if (canManage()) {
+                <div class="lf-mem__actions">
+                  @if (isReview(memory)) {
+                    <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" [disabled]="isPending(memory)" (click)="runAction('approve', memory)">
+                      <app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('modules.memories.v2.approve') }}
+                    </button>
+                    <button type="button" class="lf-btn lf-btn--compact" [disabled]="isPending(memory)" (click)="runAction('deny', memory)">{{ t('modules.memories.v2.deny') }}</button>
+                  } @else if (memory.status === 'confirmed') {
+                    <button type="button" class="lf-btn lf-btn--compact" [disabled]="isPending(memory)" (click)="runAction('archive', memory)">{{ t('modules.memories.v2.archive') }}</button>
+                  } @else {
+                    <button type="button" class="lf-btn lf-btn--compact" [disabled]="isPending(memory)" (click)="runAction('restore', memory)">{{ t('modules.memories.v2.restore') }}</button>
+                  }
+                  <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" [disabled]="isPending(memory)" (click)="openEditModal(memory)">{{ t('modules.memories.actions.edit') }}</button>
+                  <button
+                    type="button"
+                    class="lf-icon-btn"
+                    [disabled]="isPending(memory)"
+                    [attr.aria-label]="t('modules.memories.v2.deleteAria', { summary: memory.summary || memory.content })"
+                    (click)="askDelete(memory)"
+                  >
+                    <app-lf-icon name="trash" [size]="16"></app-lf-icon>
+                  </button>
+                </div>
+              }
+            </li>
+          }
+        </ul>
 
         @if (hasMore() && !loading()) {
-          <div class="lf-load-more">
-            <button type="button" class="lf-btn" (click)="loadMore()">
-              {{ t('modules.memories.actions.loadMore') }}
-            </button>
-          </div>
+          <button type="button" class="lf-btn lf-more" (click)="loadMore()">{{ t('modules.memories.actions.loadMore') }} ({{ total() - memories().length }})</button>
         }
-
         @if (loading() && memories().length > 0) {
-          <p class="lf-loading-more">{{ t('common.loading') }}</p>
+          <p class="lf-note" role="status">{{ t('common.loading') }}</p>
         }
       }
     </section>
   </main>
-
-  @if (canManage() && editModalOpen()) {
-    <div class="lf-modal-overlay" (click)="onEditBackdrop($event)">
-      <div
-        class="lf-modal lf-modal--edit"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-modal-title"
-        (click)="$event.stopPropagation()"
-      >
-        <div class="lf-modal__scroll">
-          <div class="lf-modal__head">
-            <h2 id="edit-modal-title" class="lf-modal__title">{{ t('modules.memories.actions.edit') }}</h2>
-            <button
-              type="button"
-              class="lf-modal__close"
-              (click)="closeEditModal()"
-              [attr.aria-label]="t('modules.memories.actions.cancel')"
-            >
-              <app-lf-icon name="close"></app-lf-icon>
-            </button>
-          </div>
-
-          <form class="lf-form" (submit)="$event.preventDefault(); saveEdit()">
-            <label class="lf-field">
-              <span>{{ t('modules.memories.fields.content') }}</span>
-              <textarea rows="4" [value]="editForm().content" (input)="onEditContentChange($event)"></textarea>
-            </label>
-
-            <label class="lf-field">
-              <span>{{ t('modules.memories.fields.summary') }}</span>
-              <input type="text" [value]="editForm().summary" (input)="onEditSummaryChange($event)" />
-            </label>
-
-            <div class="lf-form-grid">
-              <label class="lf-field">
-                <span>{{ t('modules.memories.fields.type') }}</span>
-                <select [value]="editForm().type" (change)="onEditTypeChange($event)">
-                  @for (option of memoryTypeOptions(); track option.value) {
-                    @if (option.value !== 'all') {
-                      <option [value]="option.value">{{ t(option.labelKey) }}</option>
-                    }
-                  }
-                </select>
-              </label>
-
-              <label class="lf-field">
-                <span>{{ t('modules.memories.fields.risk') }}</span>
-                <select [value]="editForm().risk" (change)="onEditRiskChange($event)">
-                  @for (option of memoryRiskOptions(); track option.value) {
-                    @if (option.value !== 'all') {
-                      <option [value]="option.value">{{ t(option.labelKey) }}</option>
-                    }
-                  }
-                </select>
-              </label>
-            </div>
-          </form>
-        </div>
-
-        <div class="lf-save-bar lf-save-bar--modal">
-          <button type="button" class="lf-btn" (click)="closeEditModal()">
-            {{ t('modules.memories.actions.cancel') }}
-          </button>
-          <button type="button" class="lf-btn lf-btn--primary" [disabled]="editSaving()" (click)="saveEdit()">
-            @if (editSaving()) {
-              {{ t('modules.memories.actions.saving') }}
-            } @else {
-              {{ t('modules.memories.actions.save') }}
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  }
-
-  @if (canManage() && confirmDialogOpen() && confirmAction(); as action) {
-    <div class="lf-modal-overlay" (click)="onConfirmBackdrop($event)">
-      <div class="lf-modal lf-modal--confirm" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
-        <h2 class="lf-modal__title">{{ getConfirmTitle(action) }}</h2>
-        <p class="lf-modal__copy">{{ getConfirmMessage(action) }}</p>
-        <div class="lf-form__actions">
-          <button type="button" class="lf-btn" (click)="closeConfirmDialog()">
-            {{ t('modules.memories.actions.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="lf-btn"
-            [class.lf-btn--primary]="action !== 'delete'"
-            [class.lf-btn--danger]="action === 'delete'"
-            (click)="confirmActionHandler()"
-          >
-            {{ t('modules.memories.actions.confirm') }}
-          </button>
-        </div>
-      </div>
-    </div>
-  }
 </div>
+
+@if (canManage() && editingMemory(); as memory) {
+  <div class="lf-modal-overlay" (click)="closeEditModal()">
+    <section #editDialog class="lf-modal lf-modal--form" role="dialog" aria-modal="true" aria-labelledby="edit-memory-title" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="edit-memory-title">{{ t('modules.memories.v2.editTitle') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="closeEditModal()" [disabled]="editSaving()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+      <form class="lf-modal__body" id="edit-memory-form" (submit)="$event.preventDefault(); saveEdit()">
+        <label class="lf-field">
+          <span class="lf-field__label">{{ t('modules.memories.v2.contentLabel') }}</span>
+          <textarea
+            rows="4"
+            [value]="editForm().content"
+            [attr.aria-invalid]="editAttempted() && editContentMissing()"
+            aria-describedby="edit-content-hint"
+            (input)="onEditContentChange($event)"
+          ></textarea>
+          @if (editAttempted() && editContentMissing()) {
+            <span class="lf-field__error" id="edit-content-hint">{{ t('modules.memories.v2.contentRequired') }}</span>
+          } @else {
+            <span class="lf-field__hint" id="edit-content-hint">{{ t('modules.memories.v2.contentHint') }}</span>
+          }
+        </label>
+        <label class="lf-field">
+          <span class="lf-field__label">{{ t('modules.memories.v2.summaryLabel') }}</span>
+          <input type="text" [value]="editForm().summary" aria-describedby="edit-summary-hint" (input)="onEditSummaryChange($event)" />
+          <span class="lf-field__hint" id="edit-summary-hint">{{ t('modules.memories.v2.summaryHint') }}</span>
+        </label>
+        <label class="lf-field">
+          <span class="lf-field__label">{{ t('modules.memories.v2.typeLabel') }}</span>
+          <select [value]="editForm().type" aria-describedby="edit-type-hint" (change)="onEditTypeChange($event)">
+            @for (type of memoryTypes; track type) { <option [value]="type">{{ typeLabel(type) }}</option> }
+          </select>
+          <span class="lf-field__hint" id="edit-type-hint">{{ t('modules.memories.v2.typeHint.' + editForm().type) }}</span>
+        </label>
+        <fieldset class="lf-field">
+          <legend class="lf-field__label">{{ t('modules.memories.v2.careLabel') }}</legend>
+          <span class="lf-seg">
+            @for (risk of memoryRisks; track risk) {
+              <label class="lf-seg__opt">
+                <input type="radio" name="edit-risk" [checked]="editForm().risk === risk" (change)="setEditRisk(risk)" />
+                <span>{{ t('modules.memories.v2.risk.' + risk) }}</span>
+              </label>
+            }
+          </span>
+          <span class="lf-field__hint">{{ t('modules.memories.v2.careHint') }}</span>
+        </fieldset>
+      </form>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="closeEditModal()" [disabled]="editSaving()">{{ t('modules.memories.actions.cancel') }}</button>
+        <button type="submit" form="edit-memory-form" class="lf-btn lf-btn--primary" [disabled]="editSaving()">
+          {{ editSaving() ? t('modules.memories.actions.saving') : t('modules.memories.actions.save') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (deletingMemory(); as memory) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="deletingMemory.set(null)">
+    <section #deleteDialog class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="delete-memory-title" aria-describedby="delete-memory-desc" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="delete-memory-title">{{ t('modules.memories.v2.deleteTitle') }}</h2>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-quote">“{{ memory.summary || memory.content }}”</p>
+        <p class="lf-copy" id="delete-memory-desc">{{ t('modules.memories.v2.deleteCopy') }}</p>
+      </div>
+      <footer class="lf-modal__footer">
+        @if (memory.status === 'confirmed') {
+          <button type="button" class="lf-btn" (click)="deletingMemory.set(null); runAction('archive', memory)">{{ t('modules.memories.v2.archiveInstead') }}</button>
+        }
+        <button type="button" class="lf-btn" (click)="deletingMemory.set(null)">{{ t('modules.memories.actions.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--danger" (click)="confirmDelete()">{{ t('modules.memories.v2.deleteConfirm') }}</button>
+      </footer>
+    </section>
+  </div>
+}

@@ -1016,6 +1016,88 @@
         "deleteSuccessMessage": "The memory has been permanently removed.",
         "updateSuccessTitle": "Memory updated",
         "updateSuccessMessage": "Your changes have been saved."
+      },
+      "v2": {
+        "title": "AI memories",
+        "subtitle": "What the bot remembers about your channel and viewers. It only uses Active memories in chat.",
+        "reviewChip": "{{count}} need review",
+        "activeChip": "{{count}} active",
+        "viewOnly": "View only",
+        "summariesLink": "Stream summaries",
+        "reviewTitle": "{{count}} memories are waiting for you",
+        "reviewTitleOne": "1 memory is waiting for you",
+        "reviewCopy": "The bot won't use them in chat until you approve them.",
+        "reviewNow": "Review now",
+        "filter": {
+          "all": "All",
+          "pending_review": "Needs review",
+          "confirmed": "Active",
+          "rejected": "Denied",
+          "archived": "Archived"
+        },
+        "allTypes": "All kinds",
+        "type": {
+          "preference": "Preference",
+          "running_joke": "Running joke",
+          "known_user_fact": "Viewer fact",
+          "channel_lore": "Channel lore",
+          "boundary": "Boundary"
+        },
+        "typeHint": {
+          "preference": "Something the streamer likes or prefers.",
+          "running_joke": "An inside joke the community shares.",
+          "known_user_fact": "Something true about a specific viewer.",
+          "channel_lore": "History, traditions or facts about the channel.",
+          "boundary": "A topic or behavior the bot should avoid."
+        },
+        "status": {
+          "pending_review": "Needs review",
+          "confirmed": "Active",
+          "rejected": "Denied",
+          "archived": "Archived"
+        },
+        "risk": {
+          "low": "Normal",
+          "medium": "Handle with care",
+          "high": "Sensitive"
+        },
+        "careLabel": "Care level",
+        "careAll": "Any",
+        "careHint": "Sensitive memories are about personal topics. The bot is more careful about when it brings them up.",
+        "wholeChannel": "About the channel",
+        "aboutUser": "About @{{username}}",
+        "neverUsed": "Not used yet",
+        "usedOnce": "Used once",
+        "used": "Used {{count}} times",
+        "added": "Added {{date}}",
+        "approve": "Approve",
+        "deny": "Deny",
+        "archive": "Archive",
+        "restore": "Make active again",
+        "deleteAria": "Delete memory: {{summary}}",
+        "noMatches": "No memories match these filters",
+        "clearFilters": "Clear filters",
+        "emptyCopy": "The bot learns from chat and your stream summaries. New memories show up here, and some will wait for your review.",
+        "loadFailed": "We couldn't load memories. Check your connection and try again.",
+        "actionFailed": "That didn't work. Try again.",
+        "done": {
+          "approve": "Memory approved, the bot can use it now",
+          "deny": "Memory denied",
+          "archive": "Memory archived",
+          "restore": "Memory is active again",
+          "delete": "Memory deleted"
+        },
+        "editTitle": "Edit memory",
+        "contentLabel": "What the bot remembers",
+        "contentHint": "Write it the way you would explain it to a new mod.",
+        "contentRequired": "Write what the bot should remember.",
+        "summaryLabel": "Short version",
+        "summaryHint": "Shown in this list. Leave empty to reuse the text above.",
+        "typeLabel": "Kind of memory",
+        "deleteTitle": "Delete this memory?",
+        "deleteCopy": "The bot forgets it for good. If you might want it later, archive it instead: archived memories are kept but not used in chat.",
+        "archiveInstead": "Archive instead",
+        "deleteConfirm": "Delete for good"
       }
     },
     "analytics": {
