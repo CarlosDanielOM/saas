@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const api = 'https://api.domdimabot.com', publicId = 'a'.repeat(48), errors = [];
 const user = { id: '991003', login: 'fixture', display_name: 'Fixture' };
@@ -108,7 +109,7 @@ try {
   await dialog.getByText('Your creative space starts here', { exact: true }).waitFor(); assert.equal(assets.length, 0);
   await page.keyboard.press('Escape');
   // Spanish strings and focus confinement.
-  await page.locator('.topbar__actions .icon-button').first().click(); await page.getByRole('button', { name: 'Explorar biblioteca de recursos' }).click();
+  await navToggle(page,'lang'); await page.getByRole('button', { name: 'Explorar biblioteca de recursos' }).click();
   const spanish = page.getByRole('dialog', { name: 'Biblioteca de recursos' }); await spanish.waitFor();
   for (let i = 0; i < 14; i++) { await page.keyboard.press('Tab'); assert(await spanish.evaluate(d => d.contains(document.activeElement)), 'native dialog traps focus: ' + JSON.stringify(await spanish.evaluate(d => ({active:document.activeElement.outerHTML.slice(0,200),open:d.open,buttons:[...d.querySelectorAll('button')].map(b=>({text:b.textContent,disabled:b.disabled}))})))); }
   assert.deepEqual(errors, []);

@@ -77,7 +77,7 @@ try {
   if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alerts-desktop.png',fullPage:true});await page.setViewportSize({width:375,height:1000});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alerts-mobile.png',fullPage:true});}
   await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});
   const axe=await page.evaluate(()=>window.axe.run(document.querySelector('app-overlay-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(axe.violations.map(v=>v.id),[]);
-  await page.getByRole('button',{name:'← Save & back to overlay',exact:true}).click();
+  await page.getByRole('button',{name:'Save & back to overlay',exact:true}).click();
   await page.locator('.publish-settings summary').click();
   await page.getByRole('button',{name:'Send test alert to OBS',exact:true}).click();
   await page.getByText('Test alert sent to connected published overlays.',{exact:true}).waitFor();assert.equal(tests,1);

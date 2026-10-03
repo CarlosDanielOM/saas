@@ -1,291 +1,437 @@
-<div class="editor">
+<div class="lf editor" [class.lf--design]="!!designDraft()">
+<main class="lf-main">
 @if (!owner()) {
-  <main class="main"><p class="eyebrow">{{ t('prototype') }}</p><h1>{{ t('studio') }}</h1><p>{{ t('ownerRequired') }}</p><a [routerLink]="['/', streamer, 'modules']">{{ t('back') }}</a></main>
-} @else if (loading() && !loaded()) { <main class="main" role="status">{{ t('loading') }}</main> } @else {
-@if(error()) { <p class="notice" role="alert">{{ error() }}</p> }
-@if(storageError()) { <p class="notice" role="alert">{{ t('localRecoveryFailed') }}</p> }
-@if(recovery()) {
-  <section class="recovery-banner" [attr.aria-label]="t('localRecovery')">
-    <div><h2>{{ t('localRecovery') }}</h2><p>{{ t('localRecoveryHint') }}</p></div>
-    <div class="recovery-actions"><button type="button" class="save-button" [disabled]="busy() || loading()" (click)="restoreRecovery()">{{ t('restoreDraft') }}</button><button type="button" class="toolbar-button" [disabled]="busy() || loading()" (click)="discardRecovery()">{{ t('discardRecovery') }}</button></div>
-  </section>
-}
-@if (!loaded()) {
-  <main class="main"><h1>{{ t('studio') }}</h1><p>{{ t('loadFailed') }}</p><button type="button" class="save-button" [disabled]="loading()" (click)="resetDraft()">{{ t('tryAgain') }}</button></main>
-} @else {
-@if(astError()) { <p class="notice" role="alert">{{ astError() }}</p> }
-<fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
-  <header class="topbar">
-    <div class="topbar__brand">
-      <a [routerLink]="['/', streamer, 'modules']" class="icon-button" [attr.aria-label]="t('back')"><lucide-icon [name]="icons.ArrowLeft" [size]="19" aria-hidden="true" /></a>
-      <span class="topbar__section">{{ t('studio') }}</span>
-      <span class="mock-chip">{{ t('prototype') }}</span>
-    </div>
-    <div class="topbar__actions">
-      <button class="icon-button" type="button" (click)="toggleLanguage()" [attr.aria-label]="t('switchLanguage')">{{ language.currentLanguage() === 'en' ? 'ES' : 'EN' }}</button>
-      <button class="icon-button" type="button" (click)="toggleTheme()" [attr.aria-label]="t('switchTheme')"><lucide-icon [name]="isDark() ? icons.Moon : icons.Sun" [size]="18" aria-hidden="true" /></button>
-      <button class="save-button" type="button" (click)="saveDraft()"><lucide-icon [name]="icons.Save" [size]="16" aria-hidden="true" />{{ saved() && !dirty() ? t('saved') : designDraft() ? t('saveDesign') : t('saveDraft') }}</button>
-    </div>
+  <header class="lf-head">
+    <a class="lf-back" [routerLink]="['/', streamer, 'modules']"><lucide-icon [name]="icons.ArrowLeft" [size]="16" aria-hidden="true" />{{ t('back') }}</a>
+    <h1 class="lf-title">{{ t('studio') }}</h1>
+    <p class="lf-copy">{{ t('ownerRequired') }}</p>
   </header>
-
-  <main class="main">
-    <div class="intro">
-      <div>
-        <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>{{ t('eyebrow') }}</p>
-        <h1>{{ designDraft() ? t('designEditor') : t('title') }}</h1>
-        <p class="intro__copy">{{ t('description') }}</p>
+} @else if (loading() && !loaded()) {
+  <header class="lf-head">
+    <a class="lf-back" [routerLink]="['/', streamer, 'modules']"><lucide-icon [name]="icons.ArrowLeft" [size]="16" aria-hidden="true" />{{ t('back') }}</a>
+    <h1 class="lf-title">{{ t('studio') }}</h1>
+    <p class="lf-copy" role="status">{{ t('loading') }}</p>
+  </header>
+} @else {
+  @if (recovery()) {
+    <section class="lf-banner lf-banner--accent" [attr.aria-label]="t('localRecovery')">
+      <div><h2 class="lf-banner__title">{{ t('localRecovery') }}</h2><p class="lf-note">{{ t('localRecoveryHint') }}</p></div>
+      <div class="lf-banner__actions">
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="busy() || loading()" (click)="restoreRecovery()">{{ t('restoreDraft') }}</button>
+        <button type="button" class="lf-btn" [disabled]="busy() || loading()" (click)="discardRecovery()">{{ t('discardRecovery') }}</button>
       </div>
-      <div class="intro__meta"><span>{{ canvasWidth() }} × {{ canvasHeight() }}</span><span class="meta-separator" aria-hidden="true">·</span><span aria-live="polite">{{ loading() ? t('loading') : busy() ? t('saving') : dirty() ? t('unsavedChanges') : t('localOnly') }}</span></div>
-    </div>
-
-
-    <div class="studio-nav">
-      @if (designDraft()) {
-        <button type="button" class="toolbar-button" (click)="closeDesign()">← {{ t('backToOverlay') }}</button>
-        <span class="shared-badge">{{ t('sharedDesign') }}</span>
-        <button type="button" class="toolbar-button" (click)="saveDesign(true)">{{ t('saveCopy') }}</button>
-        @if (designLinked()) { <button type="button" class="save-button publish-button" (click)="publish()">{{ t('savePublish') }}</button> }
-      } @else {
-        <label class="scene-picker"><span>{{ t('globalOverlay') }}</span><select [attr.aria-label]="t('globalOverlay')" [value]="sceneId()" (change)="switchScene($event)">@for (overlay of scenes(); track overlay.id) { <option [value]="overlay.id" [selected]="overlay.id === sceneId()">{{ overlay.name }}</option> }</select></label>
-        <button type="button" class="toolbar-button" (click)="newScene()">+ {{ t('newOverlay') }}</button>
-        <button type="button" class="toolbar-button" [attr.aria-pressed]="libraryOpen()" (click)="libraryOpen.set(!libraryOpen())">{{ t('savedDesigns') }} <span class="panel-count">{{ designs().length }}</span></button>
-        <button type="button" class="save-button publish-button" (click)="publish()">{{ t('publishMock') }} · v{{ scene().revision }}</button>
-      }
-    </div>
-    @if (unpublished()) { <p class="notice publish-status" role="status">{{ t('unpublishedChanges') }}</p> }
-    @if (notice()) { <p class="notice" role="status">{{ t(notice()) }}</p> }
-    @if (libraryOpen() && !designDraft()) {
-      <section class="design-library" [attr.aria-label]="t('savedDesigns')">
-        <div class="library-heading"><div><p class="panel-kicker">{{ t('reusable') }}</p><h2>{{ t('savedDesigns') }}</h2><p>{{ t('libraryDesignHint') }}</p></div><button type="button" class="save-button" (click)="openDesign()">+ {{ t('newDesign') }}</button></div>
-        <div class="design-cards">
-          @for (design of designs(); track design.id) {
-            <article class="design-card">
-              <div class="design-thumbnail"><div class="design-mini-canvas" [style.aspect-ratio]="design.width + ' / ' + design.height">
-                @for (layer of design.events.follow.widgets; track layer.id) { @if (layer.visible) {
-                  <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                    <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
-                  </div>
-                } }
-              </div></div>
-              <h3>{{ design.name }}</h3><p>{{ design.width }} × {{ design.height }} · {{ t('usedIn', { count: usage(design.id) }) }} · v{{ design.revision }}</p>
-              <div class="order-actions"><button type="button" (click)="openDesign(design.id)">{{ t('editDesign') }}</button><button type="button" (click)="useDesign(design.id)">{{ t('useDesign') }}</button></div>
-            </article>
-          }
-        </div>
-      </section>
-    }
-    <div class="history-toolbar" role="group" [attr.aria-label]="t('editHistory')">
-      <button type="button" class="toolbar-button" [disabled]="!canUndo()" (click)="undo()" [title]="t('undoShortcut')" aria-keyshortcuts="Control+z Meta+z"><lucide-icon [name]="icons.Undo2" [size]="16" aria-hidden="true" />{{ t('undo') }}</button>
-      <button type="button" class="toolbar-button" [disabled]="!canRedo()" (click)="redo()" [title]="t('redoShortcut')" aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y"><lucide-icon [name]="icons.Redo2" [size]="16" aria-hidden="true" />{{ t('redo') }}</button>
-      <span>{{ t('historyHint') }}</span>
-    </div>
-    <div class="document-settings">
-      <label class="name-field"><span>{{ designDraft() ? t('designName') : t('overlayName') }}</span><input [value]="designDraft()?.name ?? scene().name" maxlength="80" (input)="rename($event)" /></label>
-      <label><span>{{ t('canvasWidth') }}</span><input type="number" min="100" max="7680" [value]="canvasWidth()" (input)="updateCanvas('width', $event)" /></label>
-      <label><span>{{ t('canvasHeight') }}</span><input type="number" min="100" max="7680" [value]="canvasHeight()" (input)="updateCanvas('height', $event)" /></label>
-      <p>{{ t('canvasResizeHint') }}</p>
-    </div>
-    @if (designDraft()) {
-      <div class="design-event-tabs" [attr.aria-label]="t('eventDesigns')">
-        @for (event of alertEvents; track event) { <button type="button" [class.active]="designEvent() === event" [attr.aria-pressed]="designEvent() === event" (click)="setDesignEvent(event)">{{ t(event + 'Name') }}</button> }
+    </section>
+  }
+  @if (!loaded()) {
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer, 'modules']"><lucide-icon [name]="icons.ArrowLeft" [size]="16" aria-hidden="true" />{{ t('back') }}</a>
+      <h1 class="lf-title">{{ t('studio') }}</h1>
+      <p class="lf-copy">{{ t('loadFailed') }}</p>
+      @if (error()) { <p class="lf-banner" role="alert">{{ error() }}</p> }
+      <div><button type="button" class="lf-btn lf-btn--primary" [disabled]="loading()" (click)="resetDraft()">{{ t('tryAgain') }}</button></div>
+    </header>
+  } @else {
+<fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
+  @if (designDraft(); as design) {
+    <!-- Alert design mode: the same editor, scoped to one reusable alert. -->
+    <header class="lf-head">
+      <button type="button" class="lf-back" (click)="closeDesign()"><lucide-icon [name]="icons.ArrowLeft" [size]="16" aria-hidden="true" />{{ t('backToOverlay') }}</button>
+      <h1 class="lf-title">{{ t('designHeadTitle') }}</h1>
+      <p class="lf-copy">{{ t('designHeadSubtitle') }}</p>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--accent">{{ t('sharedDesign') }}</span>
+        <span class="lf-chip">{{ t('usedIn', { count: designUsage() }) }}</span>
+        <span class="lf-chip mock-chip">{{ t('prototype') }}</span>
       </div>
-      <p class="design-context">{{ t('designContext') }}</p>
-      @if (!designEventEnabled()) {
-        <div class="notice event-disabled" role="status">
-          <p>{{ t('designEventDisabled', { event: t(designEvent() + 'Name'), overlay: scene().name }) }}</p>
-          @if (designLinked()) { <button type="button" class="toolbar-button" (click)="enableDesignEvent()">{{ t('enableDesignEvent', { event: t(designEvent() + 'Name') }) }}</button> }
-        </div>
-      }
-    }
+    </header>
+  } @else {
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer, 'modules']"><lucide-icon [name]="icons.ArrowLeft" [size]="16" aria-hidden="true" />{{ t('back') }}</a>
+      <h1 class="lf-title">{{ t('studio') }}</h1>
+      <p class="lf-copy">{{ t('headSubtitle') }}</p>
+      <div class="lf-head__chips">
+        <span class="lf-chip" [class.lf-chip--ok]="connection().state === 'ready'" [class.lf-chip--warn]="obsWarning()"><span class="lf-dot" aria-hidden="true"></span>{{ t('chipObs_' + connection().state, { count: connection().connected }) }}</span>
+        @if (unpublished()) {
+          <span class="lf-chip lf-chip--warn publish-status" role="status">{{ t('chipUnpublished') }}</span>
+        } @else {
+          <span class="lf-chip lf-chip--ok">{{ t('chipLive', { revision: scene().revision }) }}</span>
+        }
+        <span class="lf-chip mock-chip">{{ t('prototype') }}</span>
+      </div>
+    </header>
 
-    <nav class="mobile-tabs" [attr.aria-label]="t('sections')">
-      <button type="button" [class.active]="panel() === 'library'" [attr.aria-pressed]="panel() === 'library'" (click)="setPanel('library')">{{ t('library') }}</button>
-      <button type="button" [class.active]="panel() === 'canvas'" [attr.aria-pressed]="panel() === 'canvas'" (click)="setPanel('canvas')">{{ t('canvas') }}</button>
-      <button type="button" [class.active]="panel() === 'properties'" [attr.aria-pressed]="panel() === 'properties'" (click)="setPanel('properties')">{{ t('properties') }}</button>
+    <nav class="scene-tabs" [attr.aria-label]="t('globalOverlay')">
+      @for (overlay of scenes(); track overlay.id) {
+        <button type="button" class="scene-tab" [attr.data-id]="overlay.id" [class.active]="overlay.id === sceneId()" [attr.aria-pressed]="overlay.id === sceneId()" (click)="switchScene(overlay.id)">{{ overlay.name }}</button>
+      }
+      <button type="button" class="scene-tab scene-tab--new" (click)="newScene()"><lucide-icon [name]="icons.Plus" [size]="15" aria-hidden="true" />{{ t('newOverlay') }}</button>
     </nav>
 
-    <div class="workspace">
-      <aside class="side-panel library" [class.mobile-open]="panel() === 'library'" [attr.aria-label]="t('library')">
-        <div class="panel-heading"><div><p class="panel-kicker">01 / {{ t('build') }}</p><h2>{{ t('addSource') }}</h2></div><span class="panel-count">{{ palette().length }}</span></div>
-        <p class="panel-description">{{ t('libraryHint') }}</p>
-        <div class="palette">
-          @for (kind of palette(); track kind) {
-            <button type="button" class="palette-item" [attr.data-kind]="kind" draggable="true" (dragstart)="onPaletteDrag($event, kind)" (click)="addWidget(kind)">
-              <span class="palette-item__icon"><lucide-icon [name]="widgetIcon(kind)" [size]="20" aria-hidden="true" /></span>
-              <span class="palette-item__text"><strong>{{ t(kind + 'Name') }}</strong><small>{{ t(designDraft() && (kind === 'image' || kind === 'video') ? 'eventMediaDescription' : kind + 'Description') }}</small></span>
-              <lucide-icon class="palette-item__add" [name]="icons.Plus" [size]="17" aria-hidden="true" />
-            </button>
-          }
+    <section class="lf-tile lf-setup" [class.lf-setup--warn]="obsWarning()" aria-labelledby="overlay-setup-title">
+      <span class="lf-setup__icon" aria-hidden="true"><lucide-icon [name]="icons.Monitor" [size]="20" /></span>
+      <div class="lf-setup__copy">
+        <h2 class="lf-h3" id="overlay-setup-title">{{ t('setupTitle') }}</h2>
+        <p class="lf-note">{{ t('setupHint_' + connection().state, { width: scene().width, height: scene().height }) }}</p>
+      </div>
+      <div class="url-row">
+        <code>{{ scene().publicId ? overlayUrl() : t('saveFirst') }}</code>
+        <div class="url-row__actions">
+          <button type="button" class="lf-btn lf-btn--compact" [disabled]="!scene().publicId" (click)="copyUrl()"><lucide-icon [name]="icons.Copy" [size]="15" aria-hidden="true" />{{ t('copyUrl') }}</button>
+          @if (scene().publicId) { <a class="lf-btn lf-btn--compact" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="t('openOverlay')"><lucide-icon [name]="icons.ExternalLink" [size]="15" aria-hidden="true" />{{ t('openShort') }}</a> }
         </div>
-        <div class="library-note"><lucide-icon [name]="icons.Grip" [size]="17" aria-hidden="true" /><span>{{ t('dragHint') }}</span></div>
-        <div class="layers">
-          <div class="layers__heading"><h3>{{ t('layers') }}</h3><span>{{ widgets().length }}</span></div>
-          @for (widget of widgets().slice().reverse(); track widget.id) {
-            <button type="button" class="layer" [class.selected]="widget.id === selectedId()" (click)="select(widget.id); setPanel('properties')">
-              <lucide-icon [name]="widgetIcon(widget.kind)" [size]="15" aria-hidden="true" />
-              <span>{{ widgetName(widget) }}</span>
-              @if (!widget.visible) { <lucide-icon [name]="icons.EyeOff" [size]="14" [attr.aria-label]="t('hidden')" /> }
-              @if (widget.locked) { <lucide-icon [name]="icons.LockKeyhole" [size]="14" [attr.aria-label]="t('locked')" /> }
-            </button>
-          }
-        </div>
-      </aside>
+      </div>
+      <app-overlay-connections class="lf-setup__more" [channel]="channel" [scene]="scene()" (stateChange)="connection.set($event)" />
+    </section>
+  }
 
-      <section class="canvas-panel" [class.mobile-open]="panel() === 'canvas'" [attr.aria-label]="t('canvas')">
-        <div class="canvas-toolbar">
-          <div><p class="panel-kicker">02 / {{ t('compose') }}</p><h2>{{ t('stageTitle') }}</h2></div>
-          <div class="canvas-toolbar__tools"><span class="resolution">{{ canvasWidth() }} × {{ canvasHeight() }}</span><button type="button" class="toolbar-button" [attr.aria-pressed]="snap()" (click)="toggleSnap()">{{ snap() ? t('snapOn') : t('snapOff') }}</button></div>
+  <!-- Editor: canvas + the selected source. On phones the canvas stays pinned while you scroll its settings. -->
+  <section class="lf-tile studio" [attr.aria-label]="designDraft() ? t('designEditorLabel') : t('canvas')">
+    <div class="studio__tools">
+      <label class="name-field">
+        <input [value]="designDraft()?.name ?? scene().name" maxlength="80" (input)="rename($event)" [attr.aria-label]="designDraft() ? t('designName') : t('overlayName')" />
+      </label>
+      <div class="studio__toolbar">
+        <div class="history-toolbar" role="group" [attr.aria-label]="t('editHistory')">
+          <button type="button" class="tool-btn" [disabled]="!canUndo()" (click)="undo()" [title]="t('undoShortcut')" aria-keyshortcuts="Control+z Meta+z"><lucide-icon [name]="icons.Undo2" [size]="16" aria-hidden="true" /><span>{{ t('undo') }}</span></button>
+          <button type="button" class="tool-btn" [disabled]="!canRedo()" (click)="redo()" [title]="t('redoShortcut')" aria-keyshortcuts="Control+Shift+z Meta+Shift+z Control+y"><lucide-icon [name]="icons.Redo2" [size]="16" aria-hidden="true" /><span>{{ t('redo') }}</span></button>
         </div>
-        <div class="stage-scroll">
-          <div class="stage-frame" [style.aspect-ratio]="canvasWidth() + ' / ' + canvasHeight()">
-            <div class="stage" (dragover)="onCanvasDragOver($event)" (drop)="onCanvasDrop($event)">
-              <div class="stage__crosshair" aria-hidden="true"></div>
-              <div class="stage__label">{{ t('streamPreview') }}</div>
-              <div class="stage__safe" aria-hidden="true"></div>
-              @for (widget of widgets(); track widget.id; let layerIndex = $index) {
-                @if (widget.visible) {
-                  <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
-                    [style.left.%]="widget.x / canvasWidth() * 100" [style.top.%]="widget.y / canvasHeight() * 100" [style.width.%]="widget.width / canvasWidth() * 100" [style.height.%]="widget.height / canvasHeight() * 100" [style.z-index]="layerIndex"
-                    (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
-                    <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
-                      @switch (widget.kind) {
-                        @case ('alert') {
-                          @if (designFor(widget); as design) {
-                            <div class="alert-render">
-                              @for (layer of alertLayout(widget); track layer.id) {
-                                @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                  <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
-                                </div> }
-                              }
-                            </div>
-                            <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
-                          }
-                        }
-                        @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [text]="renderText(widget.text)" /> }
-                        @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
-                        @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
-                        @case ('animation') { <app-overlay-layer [layer]="widget" /> }
-                        @case ('tts') {
-                          <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
-                          <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>
-                          <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-                        }
-                        @case ('trigger') {
-                          <span class="widget__icon"><lucide-icon [name]="icons.Zap" [size]="18" aria-hidden="true" /></span>
-                          <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
-                        }
-                        @case ('clip') {
-                          @if (!mediaEvents(widget).length) { <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" /> }
+        <button type="button" class="tool-btn snap-toggle" [attr.aria-pressed]="snap()" (click)="toggleSnap()"><lucide-icon [name]="icons.Magnet" [size]="16" aria-hidden="true" /><span>{{ t('snapLabel') }}</span></button>
+        <span class="studio__size">{{ canvasWidth() }} × {{ canvasHeight() }}</span>
+      </div>
+    </div>
+
+    @if (designDraft(); as design) {
+      <div class="studio__events">
+      <div class="design-event-tabs" role="group" [attr.aria-label]="t('eventDesigns')">
+        @for (event of alertEvents; track event) { <button type="button" [class.active]="designEvent() === event" [attr.aria-pressed]="designEvent() === event" (click)="setDesignEvent(event)">{{ t(event + 'Name') }}</button> }
+      </div>
+      @if (!designEventEnabled()) {
+        <div class="lf-note lf-note--warn event-disabled" role="status">
+          <span>{{ t('designEventDisabled', { event: t(designEvent() + 'Name'), overlay: scene().name }) }}</span>
+          @if (designLinked()) { <button type="button" class="lf-btn lf-btn--compact" (click)="enableDesignEvent()">{{ t('enableDesignEvent', { event: t(designEvent() + 'Name') }) }}</button> }
+        </div>
+      }
+      </div>
+    }
+
+    <div class="studio__add" role="group" [attr.aria-label]="t('addSource')">
+      <span class="studio__add-label" aria-hidden="true">{{ t('addLabel') }}</span>
+      <div class="palette">
+        @for (kind of palette(); track kind) {
+          <button type="button" class="palette-item" [attr.data-kind]="kind" draggable="true" (dragstart)="onPaletteDrag($event, kind)" (click)="addWidget(kind)" [title]="t(designDraft() && (kind === 'image' || kind === 'video') ? 'eventMediaDescription' : kind + 'Description')">
+            <span class="palette-item__icon"><lucide-icon [name]="widgetIcon(kind)" [size]="16" aria-hidden="true" /></span>{{ t(kind + 'Name') }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="studio__canvas">
+      <div class="stage-scroll">
+        <div class="stage-frame" [style.aspect-ratio]="canvasWidth() + ' / ' + canvasHeight()">
+          <div class="stage" (dragover)="onCanvasDragOver($event)" (drop)="onCanvasDrop($event)">
+            <div class="stage__crosshair" aria-hidden="true"></div>
+            <div class="stage__label">{{ t('streamPreview') }}</div>
+            <div class="stage__safe" aria-hidden="true"></div>
+            @if (!widgets().length) { <p class="stage__empty">{{ t('stageEmpty') }}</p> }
+            @for (widget of widgets(); track widget.id; let layerIndex = $index) {
+              @if (widget.visible) {
+                <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
+                  [style.left.%]="widget.x / canvasWidth() * 100" [style.top.%]="widget.y / canvasHeight() * 100" [style.width.%]="widget.width / canvasWidth() * 100" [style.height.%]="widget.height / canvasHeight() * 100" [style.z-index]="layerIndex"
+                  (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
+                  <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
+                    @switch (widget.kind) {
+                      @case ('alert') {
+                        @if (designFor(widget); as design) {
+                          <div class="alert-render">
+                            @for (layer of alertLayout(widget); track layer.id) {
+                              @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
+                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
+                              </div> }
+                            }
+                          </div>
+                          <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
                         }
                       }
-                    </div>
-                    @for (event of mediaEvents(widget); track event.id) {
-                      @if (event.media; as media) {
-                        @if (event.kind === 'clip') {
-                          <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [media]="media" [muted]="mediaMuted(event, widget.id)"
-                            (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
-                        } @else {
-                        <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [playLabel]="t('tapToPlay')"
-                          (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
-                        }
+                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [text]="renderText(widget.text)" /> }
+                      @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
+                      @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
+                      @case ('animation') { <app-overlay-layer [layer]="widget" /> }
+                      @case ('tts') {
+                        <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
+                        <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>
+                        <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                      }
+                      @case ('trigger') {
+                        <span class="widget__icon"><lucide-icon [name]="icons.Zap" [size]="18" aria-hidden="true" /></span>
+                        <div><small>{{ t('triggerPreviewLabel') }}</small><strong>{{ t('triggerPreviewText') }}</strong></div>
+                      }
+                      @case ('clip') {
+                        @if (!mediaEvents(widget).length) { <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" /> }
                       }
                     }
-                    @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
                   </div>
-                }
+                  @for (event of mediaEvents(widget); track event.id) {
+                    @if (event.media; as media) {
+                      @if (event.kind === 'clip') {
+                        <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [media]="media" [muted]="mediaMuted(event, widget.id)"
+                          (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
+                      } @else {
+                      <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [playLabel]="t('tapToPlay')"
+                        (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
+                      }
+                    }
+                  }
+                  @if (selectedId() === widget.id && !widget.locked) { <button type="button" class="resize-handle" (pointerdown)="startPointer($event, widget, 'resize')" [attr.aria-label]="t('resize')"></button> }
+                </div>
               }
-            </div>
+            }
           </div>
         </div>
-        @if (offCanvas()) { <p class="off-canvas" role="status">{{ t('offCanvas', { count: offCanvas() }) }}</p> }
-        <div class="canvas-footer"><span><span class="footer-dot" aria-hidden="true"></span>{{ t('previewNote') }}</span><span>{{ widgets().length }} {{ t('sources') }}</span></div>
-        <p class="canvas-swipe-hint">{{ t('scrollCanvas') }}</p>
-        @if (designDraft(); as design) {
-          <div class="event-tester"><div><p class="panel-kicker">{{ t('testDesign') }}</p><p>{{ t('contextHint') }}</p></div>
-            <label class="compact-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
-            <label class="compact-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
-            <label class="compact-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="60" [value]="design.events[designEvent()].duration" (input)="updateDuration($event)" /></label>
-            <button type="button" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="14" aria-hidden="true" />{{ t('testDesign') }}</button>
+      </div>
+    </div>
+    <p class="studio__hint">{{ t('canvasHint') }}</p>
+    @if (offCanvas()) { <p class="lf-note lf-note--warn off-canvas" role="status">{{ t('offCanvas', { count: offCanvas() }) }}</p> }
+
+    <!-- The selected source -->
+    <aside class="properties" [attr.aria-label]="t('properties')">
+      @if (selected(); as item) {
+        <div class="selected-card" [attr.data-kind]="item.kind" [attr.data-widget-id]="item.id">
+          <span class="selected-card__icon"><lucide-icon [name]="widgetIcon(item.kind)" [size]="18" aria-hidden="true" /></span>
+          <div class="selected-card__body"><strong>{{ t(item.kind + 'Name') }}</strong></div>
+        </div>
+        <label class="lf-field"><span>{{ t('layerName') }}</span><input [value]="widgetName(item)" maxlength="80" (input)="patchSelected({ name: value($event) })" /></label>
+
+        @if (item.kind === 'alert') {
+          <div class="lf-field">
+            <label class="lf-field"><span>{{ t('savedDesign') }}</span>
+              <span class="field-row">
+                <select [attr.aria-label]="t('savedDesign')" [value]="item.designId" (change)="patchSelected({ designId: value($event) })">@for (design of designs(); track design.id) { <option [value]="design.id" [selected]="design.id === item.designId">{{ design.name }}</option> }</select>
+                <button type="button" class="lf-btn lf-btn--compact" (click)="openDesign(item.designId)">{{ t('editDesign') }}</button>
+              </span>
+            </label>
           </div>
-        } @else {
-          <div class="test-account">
-            @if (testChannel(); as channel) {
-              <label class="property-field"><span>{{ t('testStreamer') }}</span><select [attr.aria-label]="t('testStreamer')" [value]="channel.id" (change)="changeTestChannel($event)">
-                @for (option of testChannels(); track option.id) { <option [value]="option.id" [selected]="option.id === channel.id">{{ option.login }}</option> }
-              </select></label>
-              <p>{{ t('realTestHint') }}</p>
-            } @else { <p>{{ t('testSignIn') }} <a routerLink="/login">{{ t('signIn') }}</a></p> }
+          <fieldset class="pill-group">
+            <legend>{{ t('receiveEvents') }}</legend>
+            <div class="pills">@for (event of alertEvents; track event) { <label class="pill"><input type="checkbox" [checked]="item.events?.includes(event)" (change)="toggleEvent(event)" /><span>{{ t(event + 'Name') }}</span></label> }</div>
+            <p class="lf-note">{{ t('instanceHint') }}</p>
+          </fieldset>
+        }
+        @if (item.kind === 'clip') {
+          <label class="lf-field"><span>{{ t('clipDesign') }}</span><select [attr.aria-label]="t('clipDesign')" [value]="item.clipDesign ?? 'classic'" (change)="selectClipDesign($event)">
+            @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked" [selected]="design.variant === (item.clipDesign ?? 'classic')">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }
+          </select></label>
+          <p class="lf-note">{{ t('clipDesignHint') }}</p>
+        }
+        @if (item.kind === 'trigger') {
+          <app-overlay-trigger-filter [channel]="channel" [ids]="item.triggerIds" (changed)="patchSelected({ triggerIds: $event })" />
+        }
+        @if (item.kind === 'tts') { <p class="lf-note">{{ t('ttsInspectorHint') }}</p> }
+        @if (item.kind === 'text') {
+          <label class="lf-field"><span>{{ t('textTemplate') }}</span><textarea [value]="item.text" (input)="patchSelected({ text: value($event) })"></textarea></label>
+          <p class="lf-note">{{ t('tokensHint') }}</p>
+          @if (astError()) { <p class="lf-note lf-note--warn" role="alert">{{ astError() }}</p> }
+          <div class="field-pair">
+            <label class="lf-field"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({ color: value($event) })" /></label>
+            <label class="lf-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (input)="patchSelected({ fontSize: +value($event) })" /></label>
           </div>
-          <div class="event-tester"><div><p class="panel-kicker">{{ t('testEvents') }}</p><p>{{ t('testDescription') }}</p></div><div class="event-tester__actions">@for (kind of eventKinds; track kind) { <button type="button" [disabled]="testBusy(kind)" (click)="previewWidget(kind)"><lucide-icon [name]="icons.Play" [size]="13" aria-hidden="true" />{{ t(kind + 'Name') }}</button> }</div></div>
-          <div class="queue-panel">
-            <div class="queue-heading"><h3>{{ t('waitTogether') }}</h3><span>{{ t('pendingCount', { count: queue().length }) }}</span></div>
-            <p>{{ t('waitHint') }}</p><div class="event-checks">@for (kind of eventKinds; track kind) { <label><input type="checkbox" [checked]="scene().waitFor.includes(kind)" (change)="toggleWait(kind)" />{{ t(kind + 'Name') }}</label> }</div>
-            <div class="queue-status" aria-live="polite"><span>{{ t('nowPlaying') }}: {{ active() ? t(active()!.kind + 'Name') : t('idle') }}</span><span>{{ t('parallelCount', { count: parallel().length }) }}</span><button type="button" class="toolbar-button" [disabled]="!active()" (click)="failMedia()">{{ t('simulateError') }}</button></div>
+          <p class="lf-note">{{ t('textFitHint') }}</p>
+        }
+        @if (item.kind === 'animation') {
+          <label class="lf-field lf-field--color"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({ color: value($event) })" /></label>
+        }
+        @if (item.kind === 'image' || item.kind === 'video') {
+          <div class="asset-pick">
+            <button type="button" class="lf-btn" [disabled]="!channel || busy()" (click)="assetPickerOpen.set(true)">{{ language.translate('assetLibrary.browse') }}</button>
+            @if (item.assetId) {
+              <p class="lf-note">{{ language.translate('assetLibrary.privateSelected') }}</p>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="patchSelected({ assetId: undefined })">{{ language.translate('assetLibrary.detach') }}</button>
+            } @else {
+              <label class="lf-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (input)="patchSelected({ mediaUrl: value($event), assetId: undefined })" placeholder="https://" /></label>
+            }
+            <p class="lf-note">{{ designDraft() ? t('eventAssetHint') : t('permanentAssetHint') }}</p>
           </div>
         }
 
-      </section>
+        <div class="switch-rows">
+          <label class="switch-row"><span>{{ t('showOnStream') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.visible" (change)="toggleVisibility(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
+          <label class="switch-row"><span>{{ t('lockPosition') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.locked" (change)="toggleLock(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
+        </div>
 
-      <aside class="side-panel properties" [class.mobile-open]="panel() === 'properties'" [attr.aria-label]="t('properties')">
-        <div class="panel-heading"><div><p class="panel-kicker">03 / {{ t('fineTune') }}</p><h2>{{ t('properties') }}</h2></div><lucide-icon [name]="icons.Layers3" [size]="19" aria-hidden="true" /></div>
-        @if (selected(); as item) {
-          <div class="selected-card" [attr.data-kind]="item.kind"><span class="selected-card__icon"><lucide-icon [name]="widgetIcon(item.kind)" [size]="19" aria-hidden="true" /></span><div><strong>{{ t(item.kind + 'Name') }}</strong><small>{{ item.id }}</small></div></div>
-          <label class="property-field"><span>{{ t('layerName') }}</span><input [value]="widgetName(item)" maxlength="80" (input)="patchSelected({ name: value($event) })" /></label>
-          @if (item.kind === 'alert') {
-            <div class="property-group alert-properties"><label class="property-field"><span>{{ t('savedDesign') }}</span><select [attr.aria-label]="t('savedDesign')" [value]="item.designId" (change)="patchSelected({ designId: value($event) })">@for (design of designs(); track design.id) { <option [value]="design.id" [selected]="design.id === item.designId">{{ design.name }}</option> }</select></label>
-              <button type="button" class="toolbar-button" (click)="openDesign(item.designId)">{{ t('editDesign') }}</button>
-              <h3>{{ t('receiveEvents') }}</h3><div class="event-checks">@for (event of alertEvents; track event) { <label><input type="checkbox" [checked]="item.events?.includes(event)" (change)="toggleEvent(event)" />{{ t(event + 'Name') }}</label> }</div><p class="field-hint">{{ t('instanceHint') }}</p>
-            </div>
-          }
-          @if (item.kind === 'clip') {
-            <label class="property-field"><span>{{ t('clipDesign') }}</span><select [attr.aria-label]="t('clipDesign')" [value]="item.clipDesign ?? 'classic'" (change)="selectClipDesign($event)">
-              @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }
-            </select></label><p class="field-hint">{{ t('clipDesignHint') }}</p>
-          }
-          @if (item.kind === 'trigger') {
-            <app-overlay-trigger-filter [channel]="channel" [ids]="item.triggerIds" (changed)="patchSelected({ triggerIds: $event })" />
-          }
-          @if (item.kind === 'text') {
-            <label class="property-field"><span>{{ t('textTemplate') }}</span><textarea [value]="item.text" (input)="patchSelected({ text: value($event) })"></textarea></label>
-            <p class="field-hint">{{ t('tokensHint') }}</p>
-          }
-          @if (item.kind === 'image' || item.kind === 'video') { <p class="field-hint">{{ designDraft() ? t('eventAssetHint') : t('permanentAssetHint') }}</p> }
-          <div class="property-group"><div class="property-group__heading"><h3>{{ t('position') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
+        <div class="mover" role="group" [attr.aria-label]="t('move')">
+          <div class="mover__head"><span class="mover__title">{{ t('move') }}</span><span class="lf-note">{{ item.locked ? t('lockedMoveHint') : t('moveStep', { step: nudgeStep() }) }}</span></div>
+          <div class="mover__pad">
+            <button type="button" class="pad-btn pad-btn--up" [disabled]="item.locked" (click)="nudge(0, -1)" [attr.aria-label]="t('moveUp')"><lucide-icon [name]="icons.ArrowUp" [size]="18" aria-hidden="true" /></button>
+            <button type="button" class="pad-btn pad-btn--left" [disabled]="item.locked" (click)="nudge(-1, 0)" [attr.aria-label]="t('moveLeft')"><lucide-icon [name]="icons.ArrowLeft" [size]="18" aria-hidden="true" /></button>
+            <button type="button" class="pad-btn pad-btn--right" [disabled]="item.locked" (click)="nudge(1, 0)" [attr.aria-label]="t('moveRight')"><lucide-icon [name]="icons.ArrowRight" [size]="18" aria-hidden="true" /></button>
+            <button type="button" class="pad-btn pad-btn--down" [disabled]="item.locked" (click)="nudge(0, 1)" [attr.aria-label]="t('moveDown')"><lucide-icon [name]="icons.ArrowDown" [size]="18" aria-hidden="true" /></button>
+          </div>
+          <div class="mover__center">
+            <button type="button" class="tool-btn" [disabled]="item.locked" (click)="center('x')"><lucide-icon [name]="icons.AlignCenterVertical" [size]="16" aria-hidden="true" /><span>{{ t('centerH') }}</span></button>
+            <button type="button" class="tool-btn" [disabled]="item.locked" (click)="center('y')"><lucide-icon [name]="icons.AlignCenterHorizontal" [size]="16" aria-hidden="true" /><span>{{ t('centerV') }}</span></button>
+          </div>
+        </div>
+
+        <details class="lf-more exact" [open]="exactOpen()" (toggle)="setExactOpen($event)">
+          <summary>{{ t('exactTitle') }}</summary>
+          <div class="number-grid">
             <label><span>X</span><input type="number" [value]="item.x" min="-16000" max="16000" (input)="updateDimension('x', $event)" /></label>
             <label><span>Y</span><input type="number" [value]="item.y" min="-16000" max="16000" (input)="updateDimension('y', $event)" /></label>
-          </div></div>
-          <div class="property-group"><div class="property-group__heading"><h3>{{ t('size') }}</h3><span>{{ t('pixels') }}</span></div><div class="number-grid">
             <label><span>W</span><input type="number" [value]="item.width" min="20" max="16000" (input)="updateDimension('width', $event)" /></label>
             <label><span>H</span><input type="number" [value]="item.height" min="20" max="16000" (input)="updateDimension('height', $event)" /></label>
-          </div></div>
-          <div class="property-group"><h3>{{ t('layerOptions') }}</h3><div class="option-row"><span>{{ t('visible') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('visible')" [attr.aria-pressed]="item.visible" (click)="toggleVisibility(item.id)"><lucide-icon [name]="item.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" />{{ item.visible ? t('on') : t('off') }}</button></div><div class="option-row"><span>{{ t('lockPosition') }}</span><button type="button" class="switch-button" [attr.aria-label]="t('lockPosition')" [attr.aria-pressed]="item.locked" (click)="toggleLock(item.id)"><lucide-icon [name]="icons.LockKeyhole" [size]="15" aria-hidden="true" />{{ item.locked ? t('on') : t('off') }}</button></div></div>
-          <div class="property-group"><h3>{{ t('stackOrder') }}</h3><div class="order-actions"><button type="button" (click)="moveLayer(1)">{{ t('bringForward') }}</button><button type="button" (click)="moveLayer(-1)">{{ t('sendBackward') }}</button></div></div>
-          @if (item.kind === 'image' || item.kind === 'video') {
-            <button type="button" class="toolbar-button" [disabled]="!channel || busy()" (click)="assetPickerOpen.set(true)">{{ language.translate('assetLibrary.browse') }}</button>
-            @if (item.assetId) {
-              <p>{{ language.translate('assetLibrary.privateSelected') }}</p>
-              <button type="button" class="toolbar-button" (click)="patchSelected({assetId:undefined})">{{ language.translate('assetLibrary.detach') }}</button>
-            } @else {
-              <label class="property-field"><span>{{ t('mediaUrl') }}</span><input type="url" [value]="item.mediaUrl || ''" (input)="patchSelected({mediaUrl:value($event),assetId:undefined})" placeholder="https://" /></label>
+          </div>
+          <p class="lf-note">{{ t('pixelsHint', { width: canvasWidth(), height: canvasHeight() }) }}</p>
+          <div class="pair-actions">
+            <button type="button" class="lf-btn lf-btn--compact" (click)="moveLayer(1)">{{ t('bringForward') }}</button>
+            <button type="button" class="lf-btn lf-btn--compact" (click)="moveLayer(-1)">{{ t('sendBackward') }}</button>
+          </div>
+        </details>
+
+        <div class="pair-actions item-actions">
+          <button type="button" class="lf-btn lf-btn--compact" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="15" aria-hidden="true" />{{ t('duplicate') }}</button>
+          <button type="button" class="lf-btn lf-btn--compact lf-btn--danger" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="15" aria-hidden="true" />{{ t('delete') }}</button>
+        </div>
+      } @else {
+        <div class="empty-selection"><lucide-icon [name]="icons.Layers3" [size]="26" aria-hidden="true" /><p>{{ t('selectPrompt') }}</p></div>
+      }
+    </aside>
+
+    <section class="layers" [attr.aria-label]="t('layers')">
+      <div class="layers__heading"><h3>{{ t('layers') }} <span>{{ widgets().length }}</span></h3><span class="lf-note">{{ t('layersHint') }}</span></div>
+      <ul class="layers__list">
+        @for (widget of layersTopFirst(); track widget.id) {
+          <li class="layer-row" [class.selected]="widget.id === selectedId()" [class.is-hidden]="!widget.visible">
+            <button type="button" class="layer" [class.selected]="widget.id === selectedId()" [attr.aria-current]="widget.id === selectedId() ? 'true' : null" (click)="select(widget.id)"><lucide-icon [name]="widgetIcon(widget.kind)" [size]="15" aria-hidden="true" /><span>{{ widgetName(widget) }}</span>@if (!widget.visible) { <lucide-icon class="layer__hidden" [name]="icons.EyeOff" [size]="14" aria-hidden="true" /> }</button>
+            <button type="button" class="layer-toggle" [attr.aria-label]="t(widget.visible ? 'hideLayer' : 'showLayer', { name: widgetName(widget) })" (click)="toggleVisibility(widget.id)"><lucide-icon [name]="widget.visible ? icons.Eye : icons.EyeOff" [size]="16" aria-hidden="true" /></button>
+            <button type="button" class="layer-toggle" [class.on]="widget.locked" [attr.aria-label]="t(widget.locked ? 'unlockLayer' : 'lockLayer', { name: widgetName(widget) })" (click)="toggleLock(widget.id)"><lucide-icon [name]="widget.locked ? icons.LockKeyhole : icons.LockOpen" [size]="16" aria-hidden="true" /></button>
+          </li>
+        } @empty { <li class="lf-note">{{ t('layersEmpty') }}</li> }
+      </ul>
+    </section>
+  </section>
+
+  <div class="lf-panels">
+    <div class="lf-col">
+      <!-- Try it -->
+      <section class="lf-tile lf-card tester" aria-labelledby="overlay-test-title">
+        @if (designDraft(); as design) {
+          <div class="lf-card__head"><h2 class="lf-h2" id="overlay-test-title">{{ t('testDesign') }}</h2><p class="lf-note">{{ t('contextHint') }}</p></div>
+          <div class="event-tester">
+            <label class="lf-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
+            <label class="lf-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
+            <label class="lf-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="60" [value]="design.events[designEvent()].duration" (input)="updateDuration($event)" /></label>
+          </div>
+          <div><button type="button" class="lf-btn lf-btn--primary" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('previewEvent', { event: t(designEvent() + 'Name') }) }}</button></div>
+          <details class="lf-more"><summary>{{ t('variablesTitle') }}</summary><p class="lf-note">{{ t('designContext') }}</p></details>
+        } @else {
+          <div class="lf-card__head"><h2 class="lf-h2" id="overlay-test-title">{{ t('testTitle') }}</h2><p class="lf-note">{{ t('testHint') }}</p></div>
+          @if (!testChannel()) { <p class="lf-note">{{ t('testSignIn') }} <a routerLink="/login">{{ t('signIn') }}</a></p> }
+          @if (testChannels().length > 1) {
+            @if (testChannel(); as channel) {
+              <label class="lf-field"><span>{{ t('testStreamer') }}</span><select [attr.aria-label]="t('testStreamer')" [value]="channel.id" (change)="changeTestChannel($event)">
+                @for (option of testChannels(); track option.id) { <option [value]="option.id" [selected]="option.id === channel.id">{{ option.login }}</option> }
+              </select></label>
             }
           }
-          @if (item.kind === 'text' || item.kind === 'animation') { <label class="property-field"><span>{{ t('color') }}</span><input type="color" [value]="item.color || '#ffffff'" (input)="patchSelected({color:value($event)})" /></label> }
-          @if (item.kind === 'text') { <label class="property-field"><span>{{ t('fontSize') }}</span><input type="number" min="8" max="300" [value]="item.fontSize || 40" (input)="patchSelected({fontSize:+value($event)})" /></label><p class="field-hint">{{ t('textFitHint') }}</p> }
-          <div class="danger-actions"><button type="button" (click)="duplicateSelected()"><lucide-icon [name]="icons.Copy" [size]="16" aria-hidden="true" />{{ t('duplicate') }}</button><button type="button" (click)="deleteSelected()"><lucide-icon [name]="icons.Trash2" [size]="16" aria-hidden="true" />{{ t('delete') }}</button></div>
-        } @else { <div class="empty-selection"><lucide-icon [name]="icons.Layers3" [size]="28" aria-hidden="true" /><p>{{ t('selectPrompt') }}</p></div> }
-        <button type="button" class="reset-button" (click)="resetDraft()"><lucide-icon [name]="icons.RotateCcw" [size]="15" aria-hidden="true" />{{ t('reset') }}</button>
-      </aside>
+          <div class="event-tester__actions">
+            @for (kind of eventKinds; track kind) { <button type="button" class="test-btn" [disabled]="testBusy(kind)" (click)="previewWidget(kind)"><lucide-icon [name]="icons.Play" [size]="13" aria-hidden="true" />{{ t(kind + 'Name') }}</button> }
+          </div>
+          <p class="lf-note">{{ t('realTestHint') }}</p>
+          <div class="obs-test">
+            <div class="obs-test__copy"><h3 class="lf-h3">{{ t('testObsTitle') }}</h3><p class="lf-note">{{ t('testObsHint') }}</p></div>
+            <div class="field-row">
+              <select [attr.aria-label]="t('testLiveEvent')" [value]="designEvent()" (change)="selectAlertKind($event)">@for (kind of alertEvents; track kind) { <option [value]="kind" [selected]="kind === designEvent()">{{ t(kind + 'Name') }}</option> }</select>
+              <button type="button" class="lf-btn" (click)="testLiveAlert()"><lucide-icon [name]="icons.Radio" [size]="15" aria-hidden="true" />{{ t('testLiveAlert') }}</button>
+            </div>
+          </div>
+          <details class="lf-more queue-panel">
+            <summary>{{ t('queueOrder') }} <span class="lf-chip lf-chip--xs">{{ t('pendingCount', { count: queue().length }) }}</span></summary>
+            <p class="lf-note">{{ t('waitHint') }}</p>
+            <fieldset class="pill-group">
+              <legend class="sr-only">{{ t('waitTogether') }}</legend>
+              <div class="pills">@for (kind of eventKinds; track kind) { <label class="pill"><input type="checkbox" [checked]="scene().waitFor.includes(kind)" (change)="toggleWait(kind)" /><span>{{ t(kind + 'Name') }}</span></label> }</div>
+            </fieldset>
+            <div class="queue-status" aria-live="polite"><span>{{ t('nowPlaying') }}: {{ active() ? t(active()!.kind + 'Name') : t('idle') }}</span><span>{{ t('parallelCount', { count: parallel().length }) }}</span></div>
+            <div><button type="button" class="lf-btn lf-btn--compact" [disabled]="!active()" (click)="failMedia()">{{ t('simulateError') }}</button></div>
+          </details>
+        }
+      </section>
+
+      <!-- Settings -->
+      <details class="lf-tile publish-settings">
+        <summary><lucide-icon [name]="icons.Settings2" [size]="17" aria-hidden="true" />{{ designDraft() ? t('designSettingsTitle') : t('settingsTitle') }}</summary>
+        <div class="settings-body">
+          <div class="field-pair">
+            <label class="lf-field"><span>{{ t('canvasWidth') }}</span><input type="number" min="100" max="7680" [value]="canvasWidth()" (input)="updateCanvas('width', $event)" /></label>
+            <label class="lf-field"><span>{{ t('canvasHeight') }}</span><input type="number" min="100" max="7680" [value]="canvasHeight()" (input)="updateCanvas('height', $event)" /></label>
+          </div>
+          <p class="lf-note">{{ t('canvasResizeHint') }}</p>
+          @if (designDraft()) {
+            <div class="settings-row"><div><strong>{{ t('saveCopy') }}</strong><p class="lf-note">{{ t('saveCopyHint') }}</p></div><button type="button" class="lf-btn lf-btn--compact" (click)="saveDesign(true)">{{ t('saveCopy') }}</button></div>
+          } @else {
+            <div class="settings-row"><div><strong>{{ t('regenerateUrl') }}</strong><p class="lf-note">{{ t('rotateHint') }}</p></div><button type="button" class="lf-btn lf-btn--compact" [class.lf-btn--danger]="confirmRotate()" [disabled]="!scene().publicId" (click)="regenerateUrl()">{{ confirmRotate() ? t('confirmRotate') : t('regenerateUrl') }}</button></div>
+          }
+          <div class="settings-row"><div><strong>{{ t('reset') }}</strong><p class="lf-note">{{ t('resetHint') }}</p></div><button type="button" class="lf-btn lf-btn--compact" (click)="resetDraft()">{{ t('reset') }}</button></div>
+          @if (!designDraft()) {
+            <div class="settings-row"><div><strong>{{ t('deleteOverlay') }}</strong><p class="lf-note">{{ scenes().length < 2 ? t('deleteLastHint') : t('deleteHint') }}</p></div><button type="button" class="lf-btn lf-btn--compact lf-btn--danger" [disabled]="scenes().length < 2" (click)="deleteScene()">{{ t(confirmDelete() ? 'confirmDelete' : 'deleteOverlay') }}</button></div>
+          }
+        </div>
+      </details>
     </div>
+
     @if (!designDraft()) {
-      <app-overlay-queue [channel]="channel" />
-      <app-overlay-connections [channel]="channel" [scene]="scene()" />
-      <details class="publish-settings"><summary>{{ t('browserSource') }}</summary><p>{{ t('urlHint') }}</p><div class="url-row"><code>{{ scene().publicId ? overlayUrl() : t('saveFirst') }}</code><button type="button" [disabled]="!scene().publicId" (click)="copyUrl()">{{ t('copyUrl') }}</button><a [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{ t('openOverlay') }}</a><button type="button" class="toolbar-button" [disabled]="!scene().publicId" (click)="regenerateUrl()">{{ confirmRotate() ? t('confirmRotate') : t('regenerateUrl') }}</button></div><p>{{ t('publishHint') }}</p><label class="property-field"><span>{{ t('testLiveEvent') }}</span><select [value]="designEvent()" (change)="selectAlertKind($event)">@for(kind of alertEvents; track kind) { <option [value]="kind">{{ t(kind + 'Name') }}</option> }</select></label><button type="button" (click)="testLiveAlert()">{{ t('testLiveAlert') }}</button><button type="button" [disabled]="scenes().length < 2" (click)="deleteScene()">{{ t(confirmDelete() ? 'confirmDelete' : 'deleteOverlay') }}</button></details>
+      <div class="lf-col">
+        <!-- Reusable alert designs -->
+        <section class="lf-tile lf-card designs" aria-labelledby="overlay-designs-title">
+          <div class="lf-card__bar">
+            <div class="lf-card__head"><h2 class="lf-h2" id="overlay-designs-title">{{ t('savedDesigns') }}</h2><p class="lf-note">{{ t('libraryDesignHint') }}</p></div>
+            <button type="button" class="lf-btn lf-btn--compact" (click)="openDesign()"><lucide-icon [name]="icons.Plus" [size]="14" aria-hidden="true" />{{ t('newDesignShort') }}</button>
+          </div>
+          <ul class="design-rows">
+            @for (design of designs(); track design.id) {
+              <li class="design-row">
+                <div class="design-thumbnail" aria-hidden="true"><div class="design-mini-canvas" [style.aspect-ratio]="design.width + ' / ' + design.height">
+                  @for (layer of design.events.follow.widgets; track layer.id) { @if (layer.visible) {
+                    <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
+                      <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
+                    </div>
+                  } }
+                </div></div>
+                <div class="design-row__body"><strong>{{ design.name }}</strong><span class="lf-note">{{ t('usedIn', { count: usage(design.id) }) }}</span></div>
+                <div class="design-row__actions">
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="openDesign(design.id)" [attr.aria-label]="t('editDesignAria', { name: design.name })">{{ t('editShort') }}</button>
+                  <button type="button" class="lf-btn lf-btn--compact" (click)="useDesign(design.id)" [attr.aria-label]="t('useDesignAria', { name: design.name })">{{ t('useShort') }}</button>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+        <app-overlay-queue [channel]="channel" />
+      </div>
     }
-    <p class="mock-disclaimer">{{ t('disclaimer') }}</p>
-  </main>
+  </div>
+
+  <p class="lf-note mock-disclaimer">{{ t('disclaimer') }}</p>
+
+  <!-- Feedback sits next to the buttons that caused it. -->
+  <div class="lf-dock">
+    @if (error()) { <p class="lf-toast lf-toast--error" role="alert">{{ error() }}</p> }
+    @if (storageError()) { <p class="lf-toast lf-toast--error" role="alert">{{ t('localRecoveryFailed') }}</p> }
+    @if (notice()) { <p class="lf-toast" role="status"><span>{{ t(notice()) }}</span><button type="button" class="lf-toast__close" (click)="notice.set('')" [attr.aria-label]="t('dismiss')"><lucide-icon [name]="icons.X" [size]="15" aria-hidden="true" /></button></p> }
+    <div class="lf-save-bar">
+      <span class="lf-save-bar__status" aria-live="polite"><span class="lf-dot" [class.lf-dot--warn]="dirty() || (!designDraft() && unpublished())" aria-hidden="true"></span>{{ t(saveStatus()) }}</span>
+      @if (designDraft()) {
+        <button class="lf-btn save-button" [class.lf-btn--primary]="!designLinked()" type="button" (click)="saveDraft()">{{ saved() && !dirty() ? t('saved') : t('saveDesign') }}</button>
+        @if (designLinked()) { <button type="button" class="lf-btn lf-btn--primary publish-button" (click)="publish()">{{ t('savePublish') }}</button> }
+      } @else {
+        <button class="lf-btn save-button" type="button" (click)="saveDraft()">{{ saved() && !dirty() ? t('saved') : t('saveDraft') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary publish-button" (click)="publish()">{{ t('publishMock') }}</button>
+      }
+    </div>
+  </div>
 </fieldset>
+  }
 }
-}
+</main>
 </div>
 
 @if (assetPickerOpen() && channel) {

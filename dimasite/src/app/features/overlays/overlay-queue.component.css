@@ -1,23 +1,33 @@
 :host { display:block; min-width:0 }
-.live-controls { padding:1rem; border:1px solid var(--line); border-radius:var(--radius,16px); background:var(--tile); color:var(--fg) }
-.heading,.counts { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap }
-h2 { margin:0; font-size:1rem; font-weight:800 }
-p { margin:.65rem 0; font-size:.8rem; line-height:1.5; color:var(--muted) }
-.badge,.platform { padding:.2rem .5rem; border:1px solid var(--line); border-radius:999px; font-size:.7rem; color:var(--fg) }
-label { display:grid; gap:.4rem; font-size:.8rem; font-weight:700 }
-select,button { min-height:44px; padding:.6rem .75rem; border:1px solid var(--line); border-radius:.65rem; background:var(--tile); color:var(--fg); font:inherit }
-select { width:100% }
-button { font-size:.8rem; font-weight:700; cursor:pointer }
+.live-controls { display:grid; gap:.7rem; padding:1.1rem; border:1px solid var(--line); border-radius:var(--radius,1.3rem); background:var(--tile); box-shadow:var(--shadow); color:var(--fg) }
+.heading { display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; flex-wrap:wrap }
+h2 { margin:0; font-size:1.05rem; font-weight:800 }
+p { margin:0; font-size:.8rem; line-height:1.5; color:var(--muted) }
+.lead { margin-top:.25rem }
+.state { display:inline-flex; align-items:center; gap:.35rem; min-height:28px; padding:.2rem .65rem; border-radius:999px; font-size:.74rem; font-weight:750; color:var(--ok); background:var(--ok-soft) }
+.state::before { content:''; width:.45rem; height:.45rem; border-radius:999px; background:currentColor }
+.state.paused { color:var(--warn); background:var(--warn-soft) }
+.platform { padding:.15rem .5rem; border:1px solid var(--line); border-radius:999px; font-size:.7rem; color:var(--fg) }
+label { display:grid; gap:.4rem; font-size:.8rem; font-weight:700; color:var(--fg) }
+select,button { min-height:44px; padding:.55rem .85rem; border:1px solid var(--btn-border,var(--line)); border-radius:999px; background:var(--btn); color:var(--fg); font:inherit }
+select { width:100%; border-radius:.8rem; background:var(--input-bg,var(--tile)) }
+button { font-size:.8rem; font-weight:750; cursor:pointer }
 button:disabled { opacity:.45; cursor:default }
 button:hover:not(:disabled) { border-color:var(--accent) }
-button:focus-visible,select:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
-.actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem }
-.state { color:var(--fg); font-weight:700 }
-.warning { color:var(--fg) }
-.counts { font-size:.8rem; font-weight:700; margin-top:.8rem }
-ul { list-style:none; padding:0; margin:.6rem 0 }
-li { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; padding:.5rem 0; border-bottom:1px solid var(--line); font-size:.75rem }
+button:focus-visible,select:focus-visible,summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+.actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem }
+.warning { color:var(--warn) }
+.counts { display:flex; gap:1.2rem; font-size:.8rem; font-weight:700 }
+ul { list-style:none; padding:0; margin:0 }
+li { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; padding:.45rem 0; border-bottom:1px solid var(--line); font-size:.76rem }
 li>span:last-child { margin-left:auto; color:var(--muted) }
+.options { display:grid; gap:.6rem; border-top:1px solid var(--line); padding-top:.2rem }
+.options[open] { padding-bottom:.2rem }
+.options > :not(summary) { margin-top:.55rem }
+summary { display:flex; align-items:center; gap:.5rem; min-height:44px; cursor:pointer; color:var(--muted); font-size:.82rem; font-weight:750; list-style:none }
+summary::-webkit-details-marker { display:none }
+summary::before { content:''; width:.42rem; height:.42rem; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform 160ms ease }
+.options[open] summary::before { transform:rotate(45deg) }
 .ast { display:flex; flex-wrap:wrap; gap:.4rem; overflow-wrap:anywhere }
-code { color:var(--fg); font-size:.75rem }
-@media(min-width:960px) { .live-controls { padding:1.2rem } .actions { grid-template-columns:repeat(4,minmax(0,1fr)); max-width:760px } label { max-width:360px } .counts { justify-content:flex-start; gap:1.5rem } }
+code { color:var(--fg); font-size:.76rem }
+@media (prefers-reduced-motion:reduce) { summary::before { transition:none } }

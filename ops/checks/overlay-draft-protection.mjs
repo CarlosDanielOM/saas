@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL;
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 assert(base);
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const api = 'https://api.domdimabot.com';
@@ -52,7 +53,7 @@ try {
   page.setDefaultTimeout(12000);
   page.on('pageerror', error => errors.push(error.message));
   const editor = page.locator('app-overlay-editor');
-  const click = name => editor.getByRole('button', { name, exact: true }).click();
+  const click = async name => { if (name === 'Reload saved draft') await editor.locator('.publish-settings').evaluate(d => { d.open = true; }); await editor.getByRole('button', { name, exact: true }).click(); };
   const field = async (name, value) => { await page.getByLabel(name, { exact: true }).fill(value); await page.getByLabel(name, { exact: true }).blur(); };
   const load = async () => { await page.goto(base + '/fixture/modules/overlays'); await editor.locator('.stage').waitFor(); };
   const backups = () => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('domdimabot-overlay-draft:')).map(key => ({ key, value: JSON.parse(localStorage.getItem(key)) })));
@@ -69,8 +70,7 @@ try {
   };
 
   await load();
-  await editor.locator('.studio-nav').getByRole('button', { name: /Alert design library/ }).click();
-  await click('+ New alert design');
+  await click('New design');
   await field('Text template', 'Unsaved recovery fixture');
   loadFailure = true;
   // Before the fix, reload immediately destroys this unsaved design, even when GET fails.
@@ -89,13 +89,13 @@ try {
   await chooseDialog(false, () => click('Reload saved draft'));
   assert.equal(reads, readsBeforeCancel);
   assert.equal(await page.getByLabel('Text template', { exact: true }).inputValue(), 'Unsaved recovery fixture');
-  await chooseDialog(false, () => editor.getByRole('link', { name: 'Back to modules', exact: true }).click());
+  await chooseDialog(false, () => page.locator('.auth-navbar__nav').getByRole('link', { name: 'Modules', exact: true }).click());
   assert(page.url().endsWith('/fixture/modules/overlays'));
   await click('Save design');
   await editor.getByRole('button', { name: 'Saved', exact: true }).waitFor();
   assert.equal(await blocksUnload(), false);
   await page.waitForFunction(() => !Object.keys(localStorage).some(key => key.startsWith('domdimabot-overlay-draft:')));
-  await click('← Save & back to overlay');
+  await click('Save & back to overlay');
   assert.equal(await blocksUnload(), false);
   console.log('PASS cancelled reload/navigation keep edits; successful save clears protection and backup.');
 
@@ -131,9 +131,9 @@ try {
     await page.setViewportSize({ width, height: 1000 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `recovery banner overflow at ${width}`);
   }
-  await click('Switch language');
+  await navToggle(page, 'lang');
   await editor.getByRole('button', { name: 'Restaurar borrador local', exact: true }).waitFor();
-  await editor.getByRole('button', { name: 'Cambiar idioma', exact: true }).click();
+  await navToggle(page, 'lang');
   await editor.getByRole('button', { name: 'Restore local draft', exact: true }).waitFor();
   if (process.env.SAAS_SCREENSHOT_DIR) {
     await mkdir(process.env.SAAS_SCREENSHOT_DIR, { recursive: true });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL;
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 assert(base);
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const user = { id: '990091', login: 'fixture', display_name: 'Fixture' };
@@ -50,10 +51,10 @@ try {
   page.setDefaultTimeout(15000);
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base + '/fixture/modules');
-  const card = page.locator('article.lf-mod').filter({ has: page.getByRole('heading', { name: 'Overlay studio', exact: true }) });
+  const card = page.locator('a.lf-mod').filter({ has: page.locator('.lf-mod__name', { hasText: 'Overlay studio' }) }).first();
   await card.getByText('Alpha', { exact: true }).waitFor();
   assert.equal(await card.getByText('Pro', { exact: true }).count(), 0, 'Free overlay card keeps Alpha without the Pro badge');
-  await card.getByRole('button', { name: 'Open Module', exact: true }).click();
+  await card.click();
   await page.locator('app-overlay-editor .stage').waitFor();
   await page.locator('.mock-chip').getByText('Alpha', { exact: true }).waitFor();
   assert(!await page.locator('app-overlay-editor').innerText().then(text => text.includes('Alpha · Pro')));
@@ -75,7 +76,7 @@ try {
   await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
   const axe = await page.evaluate(() => window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
   assert.deepEqual(axe.violations.map(violation => violation.id), []);
-  await page.locator('.topbar__actions button').first().click();
+  await navToggle(page,'lang');
   await page.locator('.mock-chip').getByText('Alfa', { exact: true }).waitFor();
   for (const tier of ['premium', 'pro', 'free']) {
     app.plan_tier = tier;

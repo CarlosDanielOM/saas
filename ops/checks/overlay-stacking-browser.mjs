@@ -77,7 +77,6 @@ function bootstrap(config) {
           assert(document.body.style.background === 'transparent', 'OBS transparency'); passed.push('transparent OBS canvas');
         } else {
           await wait(() => document.querySelector('.stage'), 'Editor missing');
-          if (mode === 'mobile') await click(button('Canvas', document.querySelector('.mobile-tabs')));
           document.querySelector('.stage').scrollIntoView({ block: 'center' });
           await click(button('Trigger alerts', document.querySelector('.event-tester__actions')));
           await wait(() => document.querySelector('.widget[data-kind="trigger"] video')?.readyState >= 2, 'Preview video missing');

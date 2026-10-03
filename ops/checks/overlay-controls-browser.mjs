@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base=process.env.SAAS_PREVIEW_URL;assert(base);const api='https://api.domdimabot.com', publicId='b'.repeat(48);
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser=await chromium.launch({args:['--no-sandbox','--autoplay-policy=no-user-gesture-required']});
 const user={id:'990081',login:'fixture',display_name:'Fixture'},app={name:'Fixture',email:'fixture@example.invalid',language:'en',plan_tier:'pro',actived:true,chat_enabled:true,twitch_user_id:user.id,has_permissions:true,up_to_date_permissions:true,administrating:[]};
 const text={id:'text',kind:'text',x:0,y:0,width:600,height:120,visible:true,locked:false,text:'$(user)',color:'#ffffff',fontSize:30};
@@ -54,7 +55,7 @@ try {
   return route.fulfill({json:{error:false,status:200,data}});
  });
  const source=await context.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('.canvas').waitFor();
- const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');const panel=editor.locator('app-overlay-queue');await panel.getByText('Queue is running',{exact:true}).waitFor();
+ const editor=await context.newPage();editor.on('pageerror',e=>errors.push(e.message));await editor.goto(base+'/fixture/modules/overlays');const panel=editor.locator('app-overlay-queue');await panel.getByText('Queue is running',{exact:true}).waitFor();await panel.locator('details.options').evaluate(d=>{d.open=true;});
  emit('tw-current');await until(()=>report.active.includes('tw-current'));
  emit('tw-wait');emit('kick-wait','kick');await until(()=>report.queued.length===2);
  await panel.getByLabel('Event platform').selectOption('twitch');await panel.getByRole('button',{name:'Pause queue',exact:true}).click();
@@ -97,6 +98,6 @@ try {
  const axe=async()=>{const result=await editor.evaluate(()=>window.axe.run(document.querySelector('app-overlay-queue'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};await axe();
  failControl=true;await panel.getByRole('button',{name:'Pause queue',exact:true}).click();await panel.getByText('Control failed. Check the connection and try again.',{exact:true}).waitFor();failControl=false;
  failQueue=true;await panel.getByText('Could not load the live queue.',{exact:false}).waitFor();assert.equal(await panel.getByRole('button',{name:'Pause queue',exact:true}).isDisabled(),true);failQueue=false;await panel.getByRole('button',{name:'Retry',exact:true}).click();await until(async()=>!(await panel.getByRole('button',{name:'Pause queue',exact:true}).isDisabled()));
- await editor.locator('app-overlay-editor .topbar__actions button').first().click();await panel.getByText('Controles de la overlay en vivo',{exact:true}).waitFor();await axe();
+ await navToggle(editor,'lang');await panel.getByText('Controles de la overlay en vivo',{exact:true}).waitFor();await axe();
  assert.deepEqual(errors,[]);await context.close();console.log('PASS Studio controls: same API actions, scoped AST example, visible platform labels, mobile/desktop, en/es, accessible controls, failure recovery and stale polling protection.');
 } finally {await browser.close();}

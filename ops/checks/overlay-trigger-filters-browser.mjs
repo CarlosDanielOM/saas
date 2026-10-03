@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const api = 'https://api.domdimabot.com', publicId = 'a'.repeat(48), errors = [], triggerA = '1'.repeat(24), triggerB = '2'.repeat(24), deleted = 'd'.repeat(24);
 const user = { id: '990191', login: 'fixture', display_name: 'Fixture' };
@@ -40,7 +41,7 @@ try {
     return route.fulfill({ json: { error: false, data } });
   });
   const page = await context.newPage(); page.setDefaultTimeout(12000); page.on('pageerror', e => errors.push(e.message));
-  const selectWidget = async index => { await page.locator('.widget[data-kind="trigger"]').nth(index).click(); await page.waitForFunction(id => document.querySelector('.selected-card small')?.textContent === id, state.scenes[0].widgets[index].id); await page.getByLabel('Receive triggers', { exact: true }).waitFor(); };
+  const selectWidget = async index => { await page.locator('.widget[data-kind="trigger"]').nth(index).click(); await page.waitForFunction(id => document.querySelector('.selected-card')?.dataset.widgetId === id, state.scenes[0].widgets[index].id); await page.getByLabel('Receive triggers', { exact: true }).waitFor(); };
   await page.goto(base + '/fixture/modules/overlays'); await page.locator('.stage').waitFor(); await selectWidget(0);
   const mode = page.getByLabel('Receive triggers', { exact: true }); assert.equal(await mode.inputValue(), 'all');
   await mode.selectOption('selected'); await page.getByText('No triggers selected. This widget will not play triggers.', { exact: true }).waitFor();
@@ -50,7 +51,7 @@ try {
   page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('app-overlay-trigger-filter input[type="checkbox"]')?.checked);
   assert.equal(await mode.inputValue(), 'selected'); assert(await page.getByLabel('Airhorn', { exact: true }).isChecked());
-  const save = async () => { await page.locator('.topbar').getByRole('button', { name: 'Save draft', exact: true }).click(); await page.locator('.topbar').getByRole('button', { name: 'Saved', exact: true }).waitFor(); };
+  const save = async () => { await page.locator('.lf-save-bar').getByRole('button', { name: 'Save draft', exact: true }).click(); await page.locator('.lf-save-bar').getByRole('button', { name: 'Saved', exact: true }).waitFor(); };
   const publish = async () => { const response = page.waitForResponse(r => r.url().endsWith('/publish')); await page.locator('.publish-button').click(); await response; await page.waitForFunction(() => !document.querySelector('.editor-fields').disabled); };
   await save(); assert.deepEqual(state.scenes[0].widgets[0].triggerIds, [triggerA]); await publish();
   await mode.selectOption('all'); await save(); assert.equal(state.scenes[0].widgets[0].triggerIds, undefined); assert.deepEqual(state.scenes[0].published.widgets[0].triggerIds, [triggerA]);
@@ -73,11 +74,11 @@ try {
   await page.getByText('Could not load your triggers. Your selection is preserved.', { exact: true }).waitFor(); assert.equal(await mode.inputValue(), 'selected');
   catalogMode = 'ok'; nameA = 'Renamed horn'; await page.getByRole('button', { name: 'Retry loading triggers', exact: true }).click(); await page.getByLabel('Renamed horn', { exact: true }).waitFor(); assert(await page.getByLabel('Renamed horn', { exact: true }).isChecked());
   await page.getByText('Unavailable trigger (dddddd)', { exact: true }).waitFor(); await page.getByRole('button', { name: 'Remove unavailable trigger (dddddd)', exact: true }).click(); await save(); assert.deepEqual(state.scenes[0].widgets[0].triggerIds, [triggerA]);
-  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); if (width < 780) await page.locator('.mobile-tabs').getByRole('button', { name: 'Properties', exact: true }).click(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/trigger-filter-${width}.png` }); } }
+  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/trigger-filter-${width}.png` }); } }
   await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
   const axe = async () => { const report = await page.evaluate(() => window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })); assert.deepEqual(report.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), []); }; await axe();
-  await page.locator('.topbar__actions button').first().click(); await page.getByLabel('Recibir triggers', { exact: true }).waitFor(); await page.getByText('1 triggers seleccionados.', { exact: true }).waitFor(); await axe();
-  await page.locator('.topbar__actions button').nth(1).click(); await axe();
+  await navToggle(page,'lang'); await page.getByLabel('Recibir triggers', { exact: true }).waitFor(); await page.getByText('1 triggers seleccionados.', { exact: true }).waitFor(); await axe();
+  await navToggle(page,'theme'); await axe();
   catalogMode = 'empty'; await page.reload(); await page.locator('.stage').waitFor(); await page.locator('.widget').first().click(); await page.getByText('No triggers yet. Create one in the Triggers module.', { exact: true }).waitFor(); assert.equal(state.scenes[0].widgets[0].triggerIds[0], triggerA);
   await context.close(); console.log('PASS filter editor: all/selected/none, independent widgets, search, disabled/deleted/renamed entries, loading error/retry/empty states, local recovery, save/publish isolation, eligible native previews with one audio copy, en/es, themes, 320–1440px and axe.');
 

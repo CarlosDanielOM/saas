@@ -35,10 +35,11 @@ await context.route('**/*',async route=>{
 const page=await context.newPage();page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
 await page.goto(base+'/fixture/modules/overlays');await page.locator('app-overlay-editor .stage').waitFor().catch(async e=>{console.log(page.url(),await page.locator('body').innerText(),errors);throw e;});
 const click=name=>page.locator('app-overlay-editor').getByRole('button',{name,exact:true}).click();
+const openSettings=()=>page.locator('.publish-settings').evaluate(d=>{d.open=true;});
 const field=async(name,value)=>{const input=page.getByLabel(name,{exact:true});await input.fill(String(value));await input.blur();};
 assert(await page.locator('.mock-chip').getByText('Alpha',{exact:true}).isVisible());
 if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alpha-desktop.png',fullPage:true});}
-const before=structuredClone(state.scenes[0].widgets);await field('Canvas width',800);await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.deepEqual(state.scenes[0].widgets,before);
+const before=structuredClone(state.scenes[0].widgets);await openSettings();await field('Canvas width',800);await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.deepEqual(state.scenes[0].widgets,before);
 await field('Canvas width',1920);await page.getByRole('button',{name:/Publish live/}).click();await page.getByText('Published. Connected browser sources are updating.',{exact:true}).waitFor();
 const frozen=structuredClone(state.scenes[0].published);
 await page.locator('.layers').getByRole('button',{name:'Alerts',exact:true}).click();await click('Edit design');
@@ -49,13 +50,13 @@ assert(templates.some(r=>r.texts.includes('$(user) sent $(cheer.amount) bits')&&
 await click('Save design');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();
 await page.waitForFunction(()=>!document.querySelector('.editor-fields')?.disabled);
 assert.deepEqual(state.scenes[0].published,frozen);
-await click('← Save & back to overlay');await page.locator('.scene-picker').waitFor();
-await click('+ New overlay');await page.locator('.palette-item[data-kind="alert"]').click();await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.equal(state.scenes.length,2);assert.equal(state.scenes[1].widgets[0].designId,'starter');
+await click('Save & back to overlay');await page.locator('.scene-tabs').waitFor();
+await click('New overlay');await page.locator('.palette-item[data-kind="alert"]').click();await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert.equal(state.scenes.length,2);assert.equal(state.scenes[1].widgets[0].designId,'starter');
 await field('Overlay name','Changed draft');conflict=true;await click('Save draft');await page.getByText('This draft changed in another tab. Reload the saved draft before saving again.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Overlay name',{exact:true}).inputValue(),'Changed draft');conflict=false;
-page.once('dialog',dialog=>dialog.accept());await click('Reload saved draft');await page.locator('.stage').waitFor();
-await page.locator('summary').click();const old=await page.locator('.url-row code').innerText();await click('Replace overlay URL');assert.equal(await page.locator('.url-row code').innerText(),old);await click('Yes, invalidate the previous URL');await page.waitForFunction(()=>document.querySelector('.url-row code')?.textContent.includes('cccc'));
+page.once('dialog',dialog=>dialog.accept());await openSettings();await click('Reload saved draft');await page.locator('.stage').waitFor();
+await openSettings();const old=await page.locator('.url-row code').innerText();await click('Replace overlay URL');assert.equal(await page.locator('.url-row code').innerText(),old);await click('Yes, invalidate the previous URL');await page.waitForFunction(()=>document.querySelector('.url-row code')?.textContent.includes('cccc'));
 for(const width of [320,375,768,1440]){await page.setViewportSize({width,height:1000});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${width}`);}
-await page.setViewportSize({width:375,height:1000});await page.locator('.mobile-tabs').getByRole('button',{name:'Library',exact:true}).click();await page.locator('.palette-item[data-kind="image"]').click();await page.locator('.mobile-tabs').getByRole('button',{name:'Properties',exact:true}).click();await page.getByLabel('Media URL (HTTPS)',{exact:true}).fill('https://fixture.invalid/background.png');await page.getByLabel('Media URL (HTTPS)',{exact:true}).blur();await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert(state.scenes.some(s=>s.widgets.some(w=>w.mediaUrl==='https://fixture.invalid/background.png')));
+await page.setViewportSize({width:375,height:1000});await page.locator('.palette-item[data-kind="image"]').click();await page.getByLabel('Media URL (HTTPS)',{exact:true}).fill('https://fixture.invalid/background.png');await page.getByLabel('Media URL (HTTPS)',{exact:true}).blur();await click('Save draft');await page.getByRole('button',{name:'Saved',exact:true}).waitFor();assert(state.scenes.some(s=>s.widgets.some(w=>w.mediaUrl==='https://fixture.invalid/background.png')));
 assert((await page.getByRole('button',{name:'Send test alert to OBS',exact:true}).boundingBox()).height >= 44);
 if(process.env.SAAS_SCREENSHOT_DIR){await mkdir(process.env.SAAS_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:process.env.SAAS_SCREENSHOT_DIR+'/alpha-mobile.png',fullPage:true});}
 await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});const axe=await page.evaluate(()=>window.axe.run(document.querySelector('app-overlay-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);

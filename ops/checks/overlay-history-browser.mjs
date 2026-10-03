@@ -68,13 +68,20 @@ try {
   const undo = toolbar.getByRole('button', { name: 'Undo', exact: true });
   const redo = toolbar.getByRole('button', { name: 'Redo', exact: true });
   const props = page.locator('.properties');
+  const openDetails = selector => page.locator(selector).evaluate(d => { d.open = true; });
+  const openExact = () => openDetails('.properties details.exact');
+  const openSettings = () => openDetails('.publish-settings');
+  const sceneValue = () => page.locator('.scene-tab[aria-pressed="true"]').getAttribute('data-id');
+  const sceneCount = () => page.locator('.scene-tab[data-id]').count();
+  const toggleLanguage = async () => { await page.evaluate(() => document.querySelector('.auth-navbar__avatar-btn').click()); await page.locator('.auth-navbar__dropdown-item .auth-navbar__lang-icon').first().waitFor({ state: 'attached' }); await page.evaluate(() => document.querySelector('.auth-navbar__dropdown-item .auth-navbar__lang-icon').closest('button').click()); };
+  const toggleTheme = async () => { await page.evaluate(() => document.querySelector('.auth-navbar__avatar-btn').click()); await page.locator('.auth-navbar__dropdown-item .auth-navbar__theme-icon').first().waitFor({ state: 'attached' }); await page.evaluate(() => document.querySelector('.auth-navbar__dropdown-item .auth-navbar__theme-icon').closest('button').click()); };
   const dimensions = key => props.getByLabel(key, { exact: true });
   const widgetIds = () => page.locator('.layers .layer').evaluateAll(els => els.map(el => el.textContent.trim()));
   const selectTts = () => page.locator('.layers').getByRole('button', { name: 'Text to speech', exact: true }).click();
-  const save = async () => { const response = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await page.locator('.topbar .save-button').click(); await response; await until(() => page.locator('.editor-fields').isEnabled(), 'save finished'); };
+  const save = async () => { const response = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await page.locator('.lf-save-bar .save-button').click(); await response; await until(() => page.locator('.editor-fields').isEnabled(), 'save finished'); };
   const originalPublished = clones(state.scenes[0].published);
   await eventually('equal', async () => await undo.isDisabled(), true); await eventually('equal', async () => await redo.isDisabled(), true);
-  await selectTts();
+  await selectTts(); await openExact();
   await props.getByRole('button', { name: 'Duplicate', exact: true }).click();
   await until(async () => await page.locator('.layers .layer').count() === 3, 'duplicate reflected in DOM; errors: ' + JSON.stringify(errors));
   await undo.click(); await eventually('equal', async () => await page.locator('.layers .layer').count(), 2);
@@ -85,10 +92,10 @@ try {
   await dimensions('X').fill('333'); await undo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '100');
   await redo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '333');
   await undo.click();
-  await props.getByRole('button', { name: 'Lock position', exact: true }).click();
+  await props.getByRole('switch', { name: 'Lock position', exact: true }).click();
   await eventually('equal', async () => await redo.isDisabled(), true, 'a new edit clears the redo branch');
-  await undo.click(); await eventually('equal', async () => await props.getByRole('button', { name: 'Lock position', exact: true }).getAttribute('aria-pressed'), 'false');
-  await props.getByRole('button', { name: 'Visible', exact: true }).click();
+  await undo.click(); await eventually('equal', async () => await props.getByRole('switch', { name: 'Lock position', exact: true }).isChecked(), false);
+  await props.getByRole('switch', { name: 'Show on stream', exact: true }).click();
   await eventually('equal', async () => await page.locator('.widget[data-kind="tts"]').count(), 0);
   await undo.click(); await eventually('equal', async () => await page.locator('.widget[data-kind="tts"]').count(), 1);
   const beforeOrder = await widgetIds();
@@ -117,7 +124,7 @@ try {
   await name.press('Control+z'); await eventually('equal', async () => await page.locator('.layers .layer').count(), 2, 'input shortcuts must not undo canvas commands');
   await name.fill('Renamed'); await name.pressSequentially(' overlay');
   await undo.click(); await eventually('equal', async () => await name.inputValue(), 'Main', 'one focused typing session is one undo step');
-  const width = page.getByLabel('Canvas width', { exact: true });
+  await openSettings(); const width = page.getByLabel('Canvas width', { exact: true });
   await width.fill('1600'); await undo.click(); await eventually('equal', async () => await width.inputValue(), '1920'); await redo.click(); await eventually('equal', async () => await width.inputValue(), '1600');
   await save(); assert.equal(state.scenes[0].width, 1600);
   const afterSave = state.revision;
@@ -129,7 +136,7 @@ try {
   const publishResponse = page.waitForResponse(r => r.url().endsWith('/publish'));
   await page.locator('.publish-button').click(); await publishResponse; await page.getByText('Published. Connected browser sources are updating.', { exact: true }).waitFor(); await until(() => page.locator('.editor-fields').isEnabled(), 'published');
   const publication = clones(state.scenes[0].published), publishedRevision = state.scenes[0].revision;
-  await page.locator('.publish-settings summary').click();
+  await openSettings();
   await page.getByRole('button', { name: 'Replace overlay URL', exact: true }).click();
   await page.getByRole('button', { name: 'Yes, invalidate the previous URL', exact: true }).click();
   await until(() => state.scenes[0].publicId === 'd'.repeat(48), 'rotated');
@@ -143,15 +150,15 @@ try {
   assert.deepEqual(mutations.at(-1).scenes[0].published, publication, 'history never restores an older local publication');
   await redo.click();
   // Scene creation/deletion are reversible, even when deletion was already saved.
-  await page.getByRole('button', { name: '+ New overlay', exact: true }).click(); await eventually('equal', async () => await page.getByLabel('Global overlay', { exact: true }).locator('option').count(), 3);
-  await undo.click(); await eventually('equal', async () => await page.getByLabel('Global overlay', { exact: true }).inputValue(), 'main');
-  await redo.click(); await save(); const newSceneId = await page.getByLabel('Global overlay', { exact: true }).inputValue();
+  await page.getByRole('button', { name: 'New overlay', exact: true }).click(); await eventually('equal', async () => await sceneCount(), 3);
+  await undo.click(); await eventually('equal', async () => await sceneValue(), 'main');
+  await redo.click(); await save(); const newSceneId = await sceneValue();
   await page.getByRole('button', { name: 'Delete this overlay', exact: true }).click(); const deleteResponse = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await page.getByRole('button', { name: 'Yes, delete this overlay and its URL', exact: true }).click(); await deleteResponse;
   await until(() => page.locator('.editor-fields').isEnabled(), 'scene deleted'); assert(!state.scenes.some(s => s.id === newSceneId));
-  await undo.click(); await eventually('equal', async () => await page.getByLabel('Global overlay', { exact: true }).inputValue(), newSceneId);
+  await undo.click(); await eventually('equal', async () => await sceneValue(), newSceneId);
   await eventually('equal', async () => await page.locator('.url-row code').textContent(), 'Save this overlay to create its URL.');
   await save(); assert(state.scenes.some(s => s.id === newSceneId));
-  await page.getByLabel('Global overlay', { exact: true }).selectOption('main');
+  await page.locator('.scene-tab[data-id="main"]').click();
   await page.locator('.layers').getByRole('button', { name: 'Alerts', exact: true }).click();
   await props.getByRole('button', { name: 'Edit design', exact: true }).click();
   const textInput = props.getByLabel('Text template', { exact: true }); await textInput.fill('Hello $(user)');
@@ -161,9 +168,9 @@ try {
   await redo.click(); await save(); assert.equal(state.designs[0].events.bits.duration, 12);
   await undo.click(); await eventually('equal', async () => await duration.inputValue(), '5'); await save(); assert.equal(state.designs[0].events.bits.duration, 5);
   // A design copy is one undo operation; shared design revisions continue forward.
-  const copyResponse = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await page.getByRole('button', { name: 'Save as a new design', exact: true }).click(); await copyResponse; await until(() => page.locator('.editor-fields').isEnabled(), 'copy saved');
+  const copyResponse = page.waitForResponse(r => r.url() === api + '/overlay-studio/' + user.id && r.request().method() === 'PUT'); await openSettings(); await page.getByRole('button', { name: 'Save as a new design', exact: true }).click(); await copyResponse; await until(() => page.locator('.editor-fields').isEnabled(), 'copy saved');
   assert.equal(state.designs.length, 2); await undo.click(); await save(); assert.equal(state.designs.length, 1);
-  await page.getByRole('button', { name: '← Save & back to overlay', exact: true }).click(); await until(() => page.locator('.scene-picker').isVisible(), 'back to scene');
+  await page.getByRole('button', { name: 'Save & back to overlay', exact: true }).click(); await until(() => page.locator('.scene-tabs').isVisible(), 'back to scene');
   // Save failure leaves history/recovery intact; no edits while a save is in flight.
   await selectTts(); await dimensions('X').fill('250'); failSave = true; await save(); failSave = false;
   await eventually('equal', async () => await undo.isEnabled(), true); await undo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '100');
@@ -174,19 +181,19 @@ try {
   await dimensions('X').fill('270'); await undo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '250'); await redo.click();
   await until(() => page.evaluate(() => Object.keys(localStorage).some(key => key.startsWith('domdimabot-overlay-draft:') && JSON.parse(localStorage.getItem(key)).scenes[0].widgets[0].x === 270)), 'recovery after redo');
   page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click();
-  await eventually('equal', async () => await undo.isDisabled(), true); await eventually('equal', async () => await redo.isDisabled(), true); await selectTts(); await eventually('equal', async () => await dimensions('X').inputValue(), '270');
+  await eventually('equal', async () => await undo.isDisabled(), true); await eventually('equal', async () => await redo.isDisabled(), true); await selectTts(); await openExact(); await eventually('equal', async () => await dimensions('X').inputValue(), '270');
   await dimensions('X').fill('280'); await undo.click(); await eventually('equal', async () => await dimensions('X').inputValue(), '270');
-  failLoad = true; page.once('dialog', d => d.accept()); await props.getByRole('button', { name: 'Reload saved draft', exact: true }).click();
+  failLoad = true; page.once('dialog', d => d.accept()); await openSettings(); await page.getByRole('button', { name: 'Reload saved draft', exact: true }).click();
   await until(() => page.locator('.editor-fields').isEnabled(), 'failed reload complete'); await eventually('equal', async () => await redo.isEnabled(), true, 'failed reload preserves history'); failLoad = false;
-  page.once('dialog', d => d.accept()); await props.getByRole('button', { name: 'Reload saved draft', exact: true }).click();
+  page.once('dialog', d => d.accept()); await page.getByRole('button', { name: 'Reload saved draft', exact: true }).click();
   await until(() => page.locator('.editor-fields').isEnabled(), 'reload finished'); await eventually('equal', async () => await undo.isDisabled(), true); await eventually('equal', async () => await redo.isDisabled(), true);
-  await selectTts(); await props.getByRole('button', { name: 'Lock position', exact: true }).evaluate(button => { for (let i = 0; i < 110; i++) button.click(); });
+  await selectTts(); await props.getByRole('switch', { name: 'Lock position', exact: true }).evaluate(button => { for (let i = 0; i < 110; i++) button.click(); });
   await undo.evaluate(button => { for (let i = 0; i < 100; i++) button.click(); }); await eventually('equal', async () => await undo.isDisabled(), true, 'history is bounded to 100 steps'); await eventually('equal', async () => await redo.isEnabled(), true);
   console.log('PASS editing: grouped move/resize/nudges/typing, add/delete/order/settings/designs/scenes, redo branching, shortcuts, native text undo and bounded history.');
   console.log('PASS draft protection: save/publish/rotate retain current revisions and URLs; save/reload failures and recovery preserve intended state.');
   // Responsive, keyboard-accessible controls with English/Spanish and both themes.
   for (const language of ['en', 'es']) {
-    if (language === 'es') await page.locator('.topbar').getByRole('button', { name: 'Switch language', exact: true }).click();
+    if (language === 'es') await toggleLanguage();
     for (const size of [320, 375, 768, 1440]) {
       await page.setViewportSize({ width: size, height: 1100 });
       await eventually('equal', async () => await toolbar.getByRole('button').count(), 2);
@@ -198,7 +205,7 @@ try {
       if (process.env.SAAS_SCREENSHOT_DIR) { await mkdir(process.env.SAAS_SCREENSHOT_DIR, { recursive: true }); await toolbar.screenshot({ path: `${process.env.SAAS_SCREENSHOT_DIR}/history-${language}-${size}.png` }); }
     }
   }
-  await page.locator('.topbar').getByRole('button', { name: 'Cambiar tema', exact: true }).click();
+  await toggleTheme();
   await page.addScriptTag({ path: process.env.AXE_MODULE || '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
   await eventually('deepEqual', async () => await page.evaluate(async () => (await axe.run(document.querySelector('.history-toolbar'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => v.id)), []);
   assert.deepEqual(errors, []); await context.close();

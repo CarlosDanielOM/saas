@@ -1,6 +1,6 @@
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
-import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, TestChannel, TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
@@ -13,15 +13,14 @@ import { OverlayLayerComponent } from './overlay-layer.component';
 import { clipPlaybackLimit } from './overlay-clip-motion';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
 import type { DesignAsset } from '../../shared/asset-library/asset-library.service';
-import { OverlayConnectionsComponent } from './overlay-connections.component';
+import { OverlayConnectionsComponent, type ConnectionState } from './overlay-connections.component';
 import { OverlayApi, StudioState } from './overlay-api.service';
 import { OverlayDraftStorage, type LocalOverlayDraft, type OverlayRecovery } from './overlay-draft-storage.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { firstValueFrom } from 'rxjs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ArrowLeft, Bell, Clapperboard, Copy, Eye, EyeOff, Grip, Image, Undo2, Redo2, Layers3, LockKeyhole, Moon, Play, Plus, RotateCcw, Save, Sparkles, Sun, Trash2, Type, Volume2, Zap, LucideAngularModule } from 'lucide-angular';
+import { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Image, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Type, Volume2, X, Zap, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
-import { ThemeService } from '../../services/theme.service';
 import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayScene, OverlayWidget, WidgetKind, clone, makeDesign, makeScene, matchesTrigger } from './overlay.model';
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
@@ -37,6 +36,7 @@ interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>;
 })
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
   readonly owner = computed(() => this.auth.session()?.twitchUser.login.toLowerCase() === this.streamer.toLowerCase());
   readonly loading = signal(true);
@@ -65,7 +65,6 @@ export class OverlayEditorComponent {
   readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
   private disposed = false;
   readonly language = inject(LanguageService);
-  private readonly theme = inject(ThemeService);
   readonly auth = inject(SessionAuthService);
   private readonly clips = inject(ClipsService);
   readonly clipDesigns = computed(() => this.clips.getDesigns({ channelID: this.channel, login: this.streamer, planTier: this.auth.getPlanTierForStreamer(this.streamer) }));
@@ -86,7 +85,7 @@ export class OverlayEditorComponent {
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private nextId = Date.now();
-  readonly icons = { Undo2, Redo2, ArrowLeft, Bell, Clapperboard, Copy, Eye, EyeOff, Grip, Layers3, LockKeyhole, Moon, Play, Plus, RotateCcw, Save, Sun, Trash2, Volume2, Zap };
+  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Trash2, Volume2, X, Zap };
   readonly alertEvents = ALERT_EVENTS;
   readonly eventKinds = EVENT_KINDS;
   readonly designs = signal<AlertDesign[]>([]);
@@ -95,16 +94,21 @@ export class OverlayEditorComponent {
   readonly scene = computed(() => this.scenes().find(s => s.id === this.sceneId())!);
   readonly designDraft = signal<AlertDesign | null>(null);
   readonly designEvent = signal<AlertEvent>('follow');
-  readonly libraryOpen = signal(false);
   readonly canvasWidth = computed(() => this.designDraft()?.width ?? this.scene()?.width ?? 1920);
   readonly canvasHeight = computed(() => this.designDraft()?.height ?? this.scene()?.height ?? 1080);
   readonly widgets = computed(() => this.designDraft()?.events[this.designEvent()].widgets ?? this.scene()?.widgets ?? []);
   readonly palette = computed<WidgetKind[]>(() => this.designDraft() ? ['text', 'image', 'video', 'animation'] : ['tts', 'trigger', 'clip', 'alert', 'image', 'video']);
   readonly selectedId = signal<string | null>('alert-1');
-  readonly panel = signal<'library' | 'canvas' | 'properties'>('canvas');
+  /** Remembered so the exact-numbers section stays open while hopping between sources. */
+  readonly exactOpen = signal(false);
+  readonly connection = signal<{ state: ConnectionState; connected: number }>({ state: 'checking', connected: 0 });
+  /** OBS states where viewers can't see this overlay yet; the setup strip turns amber. */
+  readonly obsWarning = computed(() => ['unsaved', 'unpublished', 'offline', 'attention'].includes(this.connection().state));
+  readonly layersTopFirst = computed(() => this.widgets().slice().reverse());
   readonly snap = signal(true);
   readonly saved = signal(false);
   readonly notice = signal('');
+  readonly nudgeStep = computed(() => this.snap() ? 10 : 1);
   readonly selected = computed(() => this.widgets().find(w => w.id === this.selectedId()) ?? null);
   readonly offCanvas = computed(() => this.widgets().filter(w => w.x < 0 || w.y < 0 || w.x + w.width > this.canvasWidth() || w.y + w.height > this.canvasHeight()).length);
   readonly queue = signal<MockEvent[]>([]);
@@ -129,6 +133,9 @@ export class OverlayEditorComponent {
     const content = (value: typeof snapshot) => JSON.stringify({ ...value, designs: value.designs.map(({ revision: _revision, ...d }) => d) });
     return content(snapshot) !== content(scene.published);
   });
+  readonly saveStatus = computed(() => this.loading() ? 'loading' : this.busy() ? 'saving' : this.dirty() ? 'unsavedChanges'
+    : this.designDraft() ? 'statusDesignSaved' : this.unpublished() ? 'statusNotLive' : 'statusLive');
+  readonly designUsage = computed(() => { const id = this.designDraft()?.id; return id ? this.usage(id) : 0; });
   readonly designEventEnabled = computed(() => this.scene()?.widgets.some(w => w.visible && w.kind === 'alert'
     && w.designId === this.designDraft()?.id && w.events?.includes(this.designEvent())) ?? false);
 
@@ -161,15 +168,17 @@ export class OverlayEditorComponent {
       }, 200);
       onCleanup(() => { valid = false; clearTimeout(timer); });
     });
+    effect(onCleanup => {
+      // Notices sit next to the save bar; they fade on their own instead of piling up.
+      if (!this.notice()) return;
+      const timer = setTimeout(() => this.notice.set(''), 8000);
+      onCleanup(() => clearTimeout(timer));
+    });
     inject(DestroyRef).onDestroy(() => { this.flushRecovery(); this.disposed = true; this.resetSimulation(); });
   }
   t(key: string, params?: Record<string, string | number>): string {
     this.language.currentLanguage(); return this.language.translate(`overlayStudio.${key}`, params);
   }
-  isDark(): boolean { return this.theme.isDarkMode(); }
-  toggleTheme(): void { this.theme.toggleTheme(); }
-  toggleLanguage(): void { this.language.toggleLanguage(); }
-  setPanel(panel: 'library' | 'canvas' | 'properties'): void { this.panel.set(panel); }
   toggleSnap(): void { this.snap.update(v => !v); }
   select(id: string): void { if (this.selectedId() !== id) this.endHistoryGroup(); this.selectedId.set(id); }
   value(event: Event): string { return (event.target as HTMLInputElement).value; }
@@ -210,7 +219,7 @@ export class OverlayEditorComponent {
     const height = kind === 'tts' ? 160 : kind === 'alert' ? 192 : kind === 'text' ? 80 : 180;
     const widget: OverlayWidget = { id: this.id(kind), kind, x: position?.x ?? 40, y: position?.y ?? 40, width, height, visible: true, locked: false,
       ...(kind === 'alert' ? { designId: this.designs()[0].id, events: [...ALERT_EVENTS] } : {}), ...(kind === 'text' ? { text: '$(user)' } : {}) };
-    this.updateWidgets(all => [...all, widget]); this.select(widget.id); this.panel.set('canvas');
+    this.updateWidgets(all => [...all, widget]); this.select(widget.id);
   }
   onPaletteDrag(event: DragEvent, kind: WidgetKind): void { event.dataTransfer?.setData('application/x-overlay-widget', kind); }
   onCanvasDragOver(event: DragEvent): void { event.preventDefault(); }
@@ -222,6 +231,8 @@ export class OverlayEditorComponent {
   }
   startPointer(event: PointerEvent, widget: OverlayWidget, action: 'move' | 'resize'): void {
     if (this.busy() || widget.locked || event.button !== 0) return;
+    // Touch: the first tap only selects, so swiping across the canvas still scrolls the page.
+    if (event.pointerType === 'touch' && action === 'move' && this.selectedId() !== widget.id) { this.select(widget.id); return; }
     event.preventDefault(); event.stopPropagation();
     const canvas = (event.currentTarget as HTMLElement).closest('.stage')?.getBoundingClientRect();
     if (canvas) { this.select(widget.id); this.pointer = { id: widget.id, action, startX: event.clientX, startY: event.clientY, original: { ...widget }, canvas }; }
@@ -242,6 +253,18 @@ export class OverlayEditorComponent {
     event.preventDefault(); this.select(widget.id); const step = this.snap() ? 10 : 1;
     this.edit(() => this.patch(widget.id, { x: current.x+move[0]*step, y: current.y+move[1]*step }), 'nudge:' + widget.id);
   }
+  /** Touch-friendly alternative to dragging: consecutive taps are one undo step. */
+  nudge(dx: number, dy: number): void {
+    const item = this.selected(); if (!item || item.locked) return;
+    const step = this.nudgeStep();
+    this.edit(() => this.patch(item.id, { x: item.x + dx * step, y: item.y + dy * step }), 'nudge:' + item.id);
+  }
+  center(axis: 'x' | 'y'): void {
+    const item = this.selected(); if (!item || item.locked) return;
+    this.endHistoryGroup();
+    this.patch(item.id, axis === 'x' ? { x: Math.round((this.canvasWidth() - item.width) / 2) } : { y: Math.round((this.canvasHeight() - item.height) / 2) });
+  }
+  setExactOpen(event: Event): void { this.exactOpen.set((event.target as HTMLDetailsElement).open); }
   updateDimension(field: Dimension, event: Event): void {
     const number = Number(this.value(event)); if (!Number.isFinite(number) || !this.value(event)) return;
     this.patchSelected({ [field]: Math.max(field === 'width' || field === 'height' ? 20 : -16000, Math.min(16000, Math.round(number))) });
@@ -270,7 +293,7 @@ export class OverlayEditorComponent {
     if(index<0||next<0||next>=all.length) return;
     [all[index],all[next]]=[all[next],all[index]]; this.updateWidgets(()=>all);
   }
-  switchScene(event: Event): void { this.stopPointer(); this.endHistoryGroup(); this.confirmRotate.set(false); this.confirmDelete.set(false); this.resetSimulation(); this.sceneId.set(this.value(event)); this.selectedId.set(this.widgets()[0]?.id ?? null); this.saved.set(false); }
+  switchScene(id: string): void { if (id === this.sceneId()) return; this.stopPointer(); this.endHistoryGroup(); this.confirmRotate.set(false); this.confirmDelete.set(false); this.resetSimulation(); this.sceneId.set(id); this.selectedId.set(this.widgets()[0]?.id ?? null); this.saved.set(false); }
   newScene(): void {
     const scene=makeScene(this.id('overlay'),this.t('newOverlay'),this.designs()[0].id); scene.widgets=[]; scene.publicId='';
     this.stopPointer(); this.edit(() => { this.scenes.update(all=>[...all,scene]); this.sceneId.set(scene.id); this.selectedId.set(null); this.resetSimulation(); }, null);
@@ -279,7 +302,7 @@ export class OverlayEditorComponent {
     if (this.designDraft() && this.dirty() && !window.confirm(this.t('discardDesign'))) return;
     this.stopPointer(); this.endHistoryGroup(); this.resetSimulation();
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
-    this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.libraryOpen.set(false); this.panel.set('canvas'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
+    this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
   }
   async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
   setDesignEvent(event: AlertEvent): void { this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
@@ -293,7 +316,7 @@ export class OverlayEditorComponent {
     if (asCopy) this.edit(update, null); else update();
     if (!await this.persist()) return false; this.notice.set('designSaved'); return true;
   }
-  useDesign(id: string): void { this.edit(() => { this.libraryOpen.set(false); this.addWidget('alert'); this.patchSelected({designId:id}); this.panel.set('properties'); }, null); }
+  useDesign(id: string): void { this.edit(() => { this.addWidget('alert'); this.patchSelected({designId:id}); }, null); }
   designFor(widget: OverlayWidget): AlertDesign | undefined { return this.designs().find(d=>d.id===widget.designId); }
   usage(id: string): number { return this.scenes().filter(s=>s.widgets.some(w=>w.designId===id)).length; }
   toggleEvent(event: AlertEvent): void { const events=this.selected()?.events??[]; this.patchSelected({events:events.includes(event)?events.filter(e=>e!==event):[...events,event]}); }
@@ -331,9 +354,18 @@ export class OverlayEditorComponent {
     const firstVisible = event.targets?.find(id => this.widgets().some(w => w.id === id && w.visible));
     return firstVisible !== widgetId;
   }
+  /** Tests play on the canvas; on phones the test buttons sit below it, so bring it back into view. */
+  private revealStage(): void {
+    const stage = this.host.querySelector('.stage');
+    if (!stage || typeof window === 'undefined') return;
+    const box = stage.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) return;
+    stage.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
   previewWidget(kind: EventKind): void {
     if (ALERT_EVENTS.includes(kind as AlertEvent)) this.designEvent.set(kind as AlertEvent);
     if (this.testBusy(kind)) return;
+    this.revealStage();
     const real = kind === 'clip' || kind === 'trigger';
     const channel = this.testChannel();
     if (real && (!this.auth.hasValidSession() || !channel)) { this.notice.set('testSignIn'); return; }
@@ -420,7 +452,7 @@ export class OverlayEditorComponent {
     const active = this.active(); if (!active) return;
     this.notice.set('mediaReleased'); this.finishEvent(active.id);
   }
-  testDesign(): void { this.previewDesign.set(true); this.later(()=>this.previewDesign.set(false),(this.designDraft()?.events[this.designEvent()].duration??5)*1000); }
+  testDesign(): void { this.revealStage(); this.previewDesign.set(true); this.later(()=>this.previewDesign.set(false),(this.designDraft()?.events[this.designEvent()].duration??5)*1000); }
   private resetSimulation(): void { this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   async publish(): Promise<void> {
     if (!(this.designDraft() ? await this.saveDesign() : await this.persist())) return;
@@ -533,7 +565,7 @@ export class OverlayEditorComponent {
     if (snapshot) this.restoreEdit(snapshot, 'redone');
   }
   private restoreEdit(snapshot: OverlayEditSnapshot, notice: string): void {
-    this.resetSimulation(); this.previewDesign.set(false); this.libraryOpen.set(false); this.assetPickerOpen.set(false);
+    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false);
     this.confirmRotate.set(false); this.confirmDelete.set(false);
     this.scenes.set(snapshot.document.scenes.map(scene => {
       const remote = this.serverScenes.get(scene.id);

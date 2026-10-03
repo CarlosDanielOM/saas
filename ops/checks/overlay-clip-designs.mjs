@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/tmp/saas-cooldown-browser/node_modules/playwright/index.mjs');
 const base = process.env.SAAS_PREVIEW_URL; assert(base);
+const navToggle=async(p,which)=>{const icon=`.auth-navbar__dropdown-item .auth-navbar__${which}-icon`;await p.evaluate(()=>document.querySelector('.auth-navbar__avatar-btn').click());await p.locator(icon).first().waitFor({state:'attached'});await p.evaluate(sel=>document.querySelector(sel).closest('button').click(),icon);};
 const browser = await chromium.launch({ args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 const api = 'https://api.domdimabot.com', publicId = 'a'.repeat(48), errors = [];
 // One-second H.264/AAC fixture generated with ffmpeg in an isolated candidate container.
@@ -81,7 +82,7 @@ try {
   await select.selectOption('pill');
   await page.waitForFunction(() => Object.keys(localStorage).some(k => k.startsWith('domdimabot-overlay-draft:') && JSON.parse(localStorage.getItem(k)).scenes[0].widgets[0].clipDesign === 'pill'));
   page.once('dialog', d => d.accept()); await page.reload(); await page.getByRole('button', { name: 'Restore local draft', exact: true }).click(); await select.waitFor(); await page.waitForFunction(() => document.querySelector('[aria-label="Clip design"]').value === 'pill').catch(async e=>{console.log('Restored variant', await page.locator('.widget .clip-design').getAttribute('data-variant'));throw e;}); assert.equal(await select.inputValue(), 'pill');
-  const save = async () => { await page.locator('app-overlay-editor .topbar').getByRole('button', { name: 'Save draft', exact: true }).click(); await page.locator('app-overlay-editor .topbar').getByRole('button', { name: 'Saved', exact: true }).waitFor(); };
+  const save = async () => { await page.locator('app-overlay-editor .lf-save-bar').getByRole('button', { name: 'Save draft', exact: true }).click(); await page.locator('app-overlay-editor .lf-save-bar').getByRole('button', { name: 'Saved', exact: true }).waitFor(); };
   await save(); assert.equal(state.scenes[0].widgets[0].clipDesign, 'pill');
   const publish = async () => { const response = page.waitForResponse(r => r.url().endsWith('/publish')); await page.locator('.publish-button').click(); await response; await page.waitForFunction(() => !document.querySelector('.editor-fields').disabled); await page.getByText('Published. Connected browser sources are updating.', { exact: true }).waitFor(); };
   await publish(); assert.equal(state.scenes[0].published.widgets[0].clipDesign, 'pill');
@@ -110,10 +111,10 @@ try {
   await until(() => editorEnded.length === 2, 'Orbit completion restores its sample card');
   await select.selectOption('slash');
   await page.locator('.widget[data-kind="clip"]').last().click();
-  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); if (width < 780) await page.locator('.mobile-tabs').getByRole('button', { name: 'Properties', exact: true }).click(); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
+  for (const width of [320, 375, 768, 1440]) { await page.setViewportSize({ width, height: 1000 }); await select.waitFor(); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow ${width}`); if (shots && [375, 1440].includes(width)) { await mkdir(shots, { recursive: true }); await page.locator('.properties').screenshot({ path: `${shots}/clip-selector-${width}.png` }); } }
   await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
   const axe = async () => { const result = await page.evaluate(() => window.axe.run(document.querySelector('app-overlay-editor'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })); assert.deepEqual(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), []); }; await axe();
-  await page.locator('app-overlay-editor .topbar__actions button').first().click(); await page.getByLabel('Diseño de clips', { exact: true }).waitFor(); await axe();
+  await navToggle(page,'lang'); await page.getByLabel('Diseño de clips', { exact: true }).waitFor(); await axe();
   assert.equal(await page.getByLabel('Diseño de clips', { exact: true }).inputValue(), 'slash'); await context.close();
   console.log('PASS editor: eight distinct designs, default for older widgets, local recovery/save, publish isolation, independent placements, real native clip preview with metadata and single audio, en/es, mobile and axe.');
 
