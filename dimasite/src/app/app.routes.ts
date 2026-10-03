@@ -362,6 +362,14 @@ export const routes: Routes = [
         title: 'Landing Proposal | DomDimaBot'
       },
       {
+        path: 'landing-next',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/landing-next-mock.component').then(
+            (m) => m.LandingNextMockComponent
+          ),
+        title: 'Landing proposal | DomDimaBot'
+      },
+      {
         path: '',
         loadComponent: () =>
           import('./features/landing-mocks/dev/dev-mock-shell.component').then(
@@ -375,6 +383,22 @@ export const routes: Routes = [
                 (m) => m.ProdDashboardMockComponent
               ),
             title: 'Dashboard | DomDimaBot'
+          },
+          {
+            path: 'dashboard-refresh',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-refresh-mock.component').then(
+                (m) => m.DashboardRefreshMockComponent
+              ),
+            title: 'Dashboard proposal A | DomDimaBot'
+          },
+          {
+            path: 'dashboard-studio',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-studio-mock.component').then(
+                (m) => m.DashboardStudioMockComponent
+              ),
+            title: 'Dashboard proposal B | DomDimaBot'
           },
           {
             path: 'prod-commands',

@@ -4681,6 +4681,293 @@
       "settingsBlurb": "Preferencias del canal, comportamiento del bot y controles del streamer.",
       "profileTitle": "Perfil",
       "profileBlurb": "Ajustes personales. En desktop también vive bajo el menú del avatar con tema e idioma."
+    },
+    "landingNext": {
+      "nav": {
+        "start": "Cómo empezar"
+      },
+      "hero": {
+        "copy": "Moderación, comandos, TTS, alertas y un co-host con IA para tu chat de Twitch. Funciona mientras transmites, así no tienes que vigilar el chat.",
+        "check1": "Plan gratis, sin tarjeta",
+        "check2": "Listo en unos 2 minutos",
+        "check3": "Inglés y español"
+      },
+      "live": {
+        "count": "{{channels}} en directo · {{viewers}} espectadores",
+        "empty": "Nadie que use DomDimaBot está en directo ahora. Esto es lo que hace en un chat:"
+      },
+      "demo": {
+        "label": "Chat de ejemplo",
+        "m1": "!uptime",
+        "m2": "En directo desde hace 2h 14m. Hidrátate, streamer 💧",
+        "m3": "Se eliminó un enlace de spam y el autor quedó en timeout 10 minutos.",
+        "m4": "@DomDimaBot ¿quién ganó la ruleta de anoche?",
+        "m5": "taco_fan, con la casilla de 1 entre 50. El chat sigue enojado.",
+        "m6": "Mensaje de bits leído en voz alta en el directo"
+      },
+      "metrics": {
+        "streamers": "Streamers registrados",
+        "active": "Canales con el bot activo",
+        "messages": "Mensajes de chat atendidos",
+        "commands": "Comandos personalizados"
+      },
+      "features": {
+        "title": "Todo lo que un chat necesita, en un solo bot",
+        "guide": "Guía",
+        "moderation": {
+          "title": "Moderación",
+          "copy": "Bloquea spam, enlaces y abusos, desde filtros simples hasta IA que entiende el contexto."
+        },
+        "commands": {
+          "title": "Comandos y timers",
+          "copy": "Comandos ilimitados con variables, contadores y temporizadores."
+        },
+        "tts": {
+          "title": "Texto a voz",
+          "copy": "Los mensajes de tus espectadores leídos en voz alta, con muchas voces."
+        },
+        "triggers": {
+          "title": "Alertas y triggers",
+          "copy": "Sonidos, imágenes y videos en tu OBS cuando el chat o las recompensas se activan."
+        },
+        "defense": {
+          "title": "Follow Defense",
+          "copy": "Pausa las alertas durante oleadas de bots de follows y banea hate raids."
+        },
+        "personality": {
+          "title": "Co-host con IA",
+          "copy": "Una personalidad para el chat que tú escribes, que conoce a tus habituales y tus reglas."
+        },
+        "clips": {
+          "title": "Buscador de clips",
+          "copy": "La IA revisa tus VODs y elige los momentos que vale la pena clipear."
+        },
+        "analytics": {
+          "title": "Analíticas",
+          "copy": "Quién chatea, quién vuelve y qué directos hicieron crecer tu canal."
+        }
+      },
+      "start": {
+        "kicker": "Cómo empezar",
+        "title": "En directo en tres pasos",
+        "s1Title": "Inicia sesión con Twitch",
+        "s1Copy": "Tu cuenta empieza en el plan gratis. Sin tarjeta.",
+        "s2Title": "Activa el bot",
+        "s2Copy": "Aprueba los permisos de Twitch y toca \"Encender el bot\" para que entre a tu chat.",
+        "s3Title": "Activa lo que necesites",
+        "s3Copy": "Elige módulos como moderación, TTS o alertas. Lo demás queda apagado."
+      },
+      "plans": {
+        "title": "Empieza gratis, mejora cuando crezca el chat",
+        "subtitle": "Todos los planes tienen todas las voces de TTS. Los planes de pago suman créditos de IA, almacenamiento y más historial.",
+        "bestValue": "Más créditos de IA por dólar",
+        "credits": "{{credits}} créditos de IA / mes",
+        "cueFree": "Todas las voces de TTS incluidas, sin tarjeta",
+        "cuePaid": "{{times}}× los créditos de Free · {{perDollar}}k créditos por $1",
+        "freeFor": "Para probarlo todo y para canales pequeños.",
+        "premiumFor": "Para canales en crecimiento que quieren moderación más inteligente y más historial.",
+        "proFor": "Para canales con mucho movimiento que usan IA y TTS en cada directo."
+      },
+      "cta": {
+        "copy": "Inicia sesión con Twitch, activa el bot y estará en tu chat hoy mismo."
+      },
+      "footer": {
+        "plans": "Planes"
+      },
+      "devbar": {
+        "label": "Vista de mock",
+        "real": "Datos reales",
+        "live": "Alguien en directo"
+      }
+    },
+    "dashA": {
+      "live": "En directo",
+      "offline": "Desconectado",
+      "botIn": "Bot en tu chat",
+      "botOut": "Bot fuera del chat",
+      "answerBotOff": "El bot no está en tu chat, así que los comandos, el TTS y la moderación no funcionarán. Enciéndelo antes de transmitir.",
+      "answerLive": "En directo desde hace {{time}} con {{viewers}} espectadores.",
+      "answerLiveRest": "Es un {{pct}}% más que tu promedio de 30 días.",
+      "answerOffline": "Último directo el {{date}}: {{length}} con {{viewers}} espectadores de media.",
+      "answerVsAvg": "Es un {{pct}}% más que tu promedio de 30 días.",
+      "kpisLabel": "Últimos 30 días",
+      "kpi": {
+        "viewers": "Espectadores medios · 30 días",
+        "follows": "Nuevos seguidores · 30 días",
+        "hours": "Horas por semana",
+        "bits": "Bits · 30 días"
+      },
+      "vsBefore": "frente a los 30 días anteriores",
+      "perStreamVsBefore": "por directo frente a antes",
+      "perWeek": "{{count}} directos en 30 días",
+      "thisStream": "Este directo",
+      "lastStream": "Último directo",
+      "readRecap": "Leer el resumen",
+      "f": {
+        "viewers": "Espectadores",
+        "chat": "Chat",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "commands": "Comandos",
+        "avgViewers": "Espectadores medios",
+        "peak": "Pico",
+        "tips": "Propinas"
+      },
+      "setupTitle": "Tu configuración",
+      "check": {
+        "bot": "El bot está en tu chat",
+        "botOff": "El bot no está en tu chat",
+        "alerts": "El overlay de alertas está conectado en OBS",
+        "tts": "El overlay de TTS no está abierto en OBS, así que los mensajes no se leerán en voz alta.",
+        "fix": "Arreglarlo",
+        "defense": "Follow Defense está activado"
+      },
+      "creditsTitle": "Créditos de IA",
+      "left": "restante",
+      "creditsOk": "A tu ritmo duran hasta el reinicio en {{days}} días.",
+      "creditsShort": "A tu ritmo se acaban en unos {{days}} días, antes del reinicio en {{reset}} días.",
+      "creditsDetail": "Quedan {{left}} · usas unos {{perDay}} al día.",
+      "seeUsage": "Ver uso",
+      "getCredits": "Conseguir créditos",
+      "chartTitle": "Por directo",
+      "rangeLabel": "Periodo",
+      "metricLabel": "Qué mostrar",
+      "m": {
+        "viewers": "Espectadores medios",
+        "follows": "Nuevos seguidores",
+        "bits": "Bits",
+        "hours": "Horas"
+      },
+      "unit": {
+        "viewers": "espectadores",
+        "follows": "follows",
+        "bits": "bits",
+        "hours": "horas"
+      },
+      "chartNote": "{{count}} directos. Pasa el cursor o usa Tab por el gráfico para ver cada uno.",
+      "goalsTitle": "Metas del mes",
+      "goalFollows": "Seguidores",
+      "goalSubs": "Subs",
+      "goalToGo": "Faltan {{count}}, unos {{streams}} directos más a tu ritmo.",
+      "goalDone": "Meta alcanzada",
+      "totalFollowers": "Seguidores totales",
+      "totalSubs": "Subs activos",
+      "historyTitle": "Directos anteriores",
+      "historyHint": "Los más recientes primero",
+      "r": {
+        "avg": "media",
+        "peak": "pico",
+        "follows": "follows",
+        "subs": "subs"
+      },
+      "best": "Mejor directo",
+      "devbar": "Vista de mock"
+    },
+    "dashB": {
+      "liveFor": "En directo · {{time}}",
+      "answerLive": "{{viewers}} viéndote ahora mismo.",
+      "answerLiveRest": "Todo lo que pide una reacción aparece abajo.",
+      "answerReady": "Estás listo para transmitir.",
+      "answerAlmost": "Casi listo: 1 cosa por revisar antes de transmitir.", "answerAlmostMany": "Casi listo: {{count}} cosas por revisar antes de transmitir.",
+      "answerAlmostRest": "Todo lo demás está bien.",
+      "readyTitle": "¿Listo para transmitir?",
+      "readyCount": "{{done}} de {{total}} listos",
+      "check": {
+        "bot": {
+          "ok": "El bot está en tu chat",
+          "okHint": "Los comandos, el TTS y la moderación funcionarán.",
+          "bad": "El bot no está en tu chat",
+          "badHint": "Nada responderá en el chat hasta que lo enciendas."
+        },
+        "alerts": {
+          "ok": "Overlay de alertas conectado",
+          "okHint": "Los triggers se verán en el directo.",
+          "bad": "Overlay de alertas sin conectar",
+          "badHint": "Añade la fuente de navegador en OBS."
+        },
+        "tts": {
+          "ok": "Overlay de TTS listo",
+          "okHint": "Pega el enlace como fuente de navegador en OBS.",
+          "bad": "El overlay de TTS no está abierto en OBS",
+          "badHint": "Los mensajes no se leerán en voz alta."
+        },
+        "credits": {
+          "ok": "Los créditos de IA alcanzan",
+          "okHint": "Duran hasta el reinicio.",
+          "bad": "Los créditos de IA pueden acabarse",
+          "badHint": "Quedan unos {{days}} días a tu ritmo y el reinicio es en {{reset}} días."
+        },
+        "defense": {
+          "ok": "Follow Defense está activado",
+          "okHint": "Las oleadas de bots pausan las alertas solas.",
+          "bad": "Follow Defense está desactivado",
+          "badHint": ""
+        }
+      },
+      "copyObs": "Copiar enlace de OBS",
+      "inboxTitle": "Te esperan",
+      "inbox": {
+        "clips": "Momentos para clip de tu último directo",
+        "clipsHint": "La IA los eligió de tu VOD. Quédate con los buenos.",
+        "memories": "Cosas que aprendió el bot",
+        "memoriesHint": "Solo las usa en el chat cuando las apruebas.",
+        "raid": "Raid por revisar",
+        "raidHint": "El raid de pixel_pancho trajo 23 follows en 40 segundos.",
+        "review": "Revisar",
+        "open": "Abrir"
+      },
+      "recapTitle": "Tu último directo",
+      "recap": {
+        "headline": "Llegaste a Diamante en la última partida de la noche y el chat explotó.",
+        "h1": "Mejor momento: el clutch 1v3 en 1:02:05, 14 personas spamearon POG.",
+        "h2": "luna_v regaló 3 subs después del clutch.",
+        "h3": "El chat pidió 6 veces un directo dúo con TacoTactics."
+      },
+      "vsAverage": "Comparado con tu promedio por directo de 30 días.",
+      "growthTitle": "¿Estás creciendo?",
+      "growthAnswer": "Sí. {{avg}} espectadores de media, un {{pct}}% más que los 30 días anteriores.",
+      "allStats": "Todas las estadísticas",
+      "stripLabel": "Números en directo",
+      "viewersNow": "Espectadores ahora",
+      "minIn": "minuto {{min}}",
+      "feedTitle": "Qué está pasando",
+      "feedHint": "Reacciona con un toque; el bot lo publica en el chat.",
+      "ev": {
+        "raid": "{{who}} hizo raid con {{amount}} espectadores",
+        "sub": "{{who}} regaló {{amount}} subs",
+        "bits": "{{who}} dio {{amount}} bits",
+        "redeem": "{{who}} canjeó ¡Hidrátate!",
+        "follow": "{{who}} te siguió"
+      },
+      "ago": "hace {{min}} min",
+      "act": {
+        "shoutout": "Shoutout",
+        "shoutoutDone": "Shoutout enviado",
+        "thank": "Agradecer",
+        "thankDone": "Agradecido",
+        "done": "Marcar hecho",
+        "doneDone": "Hecho"
+      },
+      "controlsTitle": "Controles",
+      "ctl": {
+        "bot": "Bot",
+        "botOn": "En tu chat",
+        "botOff": "Fuera del chat",
+        "turnOff": "Apagar",
+        "turnOn": "Encender",
+        "tts": "Texto a voz",
+        "ttsPaused": "En pausa, los mensajes esperan en cola",
+        "ttsQueue": "{{count}} mensajes en cola",
+        "skip": "Saltar",
+        "pause": "Pausar",
+        "resume": "Reanudar",
+        "alerts": "Alertas",
+        "alertsPaused": "En pausa",
+        "alertsOn": "Se muestran en el directo",
+        "defense": "Todo tranquilo",
+        "open": "Abrir"
+      }
     }
   },
   "raidSessions": {

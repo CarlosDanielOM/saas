@@ -1,0 +1,227 @@
+<div class="lf" [class.lf--live]="live()">
+  <main class="lf-main">
+    <div class="devbar" role="group" [attr.aria-label]="t('devMocks.dashA.devbar')">
+      <span>{{ t('devMocks.dashA.devbar') }}</span>
+      <div class="seg">
+        <button type="button" [attr.aria-pressed]="!live()" (click)="live.set(false)">{{ t('devMocks.dashA.offline') }}</button>
+        <button type="button" [attr.aria-pressed]="live()" (click)="live.set(true)">{{ t('devMocks.dashA.live') }}</button>
+      </div>
+    </div>
+    <header class="dh">
+      <span class="dh__avatar" [class.dh__avatar--live]="live()" aria-hidden="true">N</span>
+      <div class="dh__copy">
+        <h1 class="dh__title">{{ channel.name }}</h1>
+        <div class="chips">
+          @if (live()) {
+            <span class="chip chip--live"><span class="dot dot--pulse" aria-hidden="true"></span> {{ t('devMocks.dashB.liveFor', { time: '1h 12m' }) }}</span>
+          } @else {
+            <span class="chip">{{ t('devMocks.dashA.offline') }}</span>
+          }
+          <span class="chip chip--gold">Pro</span>
+        </div>
+      </div>
+      <p class="dh__answer">
+        @if (live()) {
+          <strong>{{ t('devMocks.dashB.answerLive', { viewers: liveNow }) }}</strong> {{ t('devMocks.dashB.answerLiveRest') }}
+        } @else if (readyCount() === checks().length) {
+          <strong>{{ t('devMocks.dashB.answerReady') }}</strong>
+        } @else {
+          <strong>{{ checks().length - readyCount() === 1 ? t('devMocks.dashB.answerAlmost') : t('devMocks.dashB.answerAlmostMany', { count: checks().length - readyCount() }) }}</strong> {{ t('devMocks.dashB.answerAlmostRest') }}
+        }
+      </p>
+    </header>
+
+    @if (!live()) {
+      <div class="sb-grid">
+        <div class="sb-col">
+          <!-- Ready to go live? -->
+          <section class="lf-tile lf-card sb-ready" aria-labelledby="sb-ready-title">
+            <div class="lf-card__bar">
+              <h2 class="lf-h2" id="sb-ready-title">{{ t('devMocks.dashB.readyTitle') }}</h2>
+              <span class="chip" [class.chip--ok]="readyCount() === checks().length" [class.chip--warn]="readyCount() < checks().length">
+                {{ t('devMocks.dashB.readyCount', { done: readyCount(), total: checks().length }) }}
+              </span>
+            </div>
+            <div class="bar" aria-hidden="true"><span [style.width.%]="(readyCount() / checks().length) * 100"></span></div>
+            <ul class="sb-checks">
+              @for (c of checks(); track c.key) {
+                <li class="sb-check" [attr.data-ok]="c.ok">
+                  <span class="sb-check__icon" aria-hidden="true"><app-lf-icon [name]="c.ok ? 'check' : 'alert'" [size]="16"></app-lf-icon></span>
+                  <span class="sb-check__copy">
+                    <strong>{{ t('devMocks.dashB.check.' + c.key + (c.ok ? '.ok' : '.bad')) }}</strong>
+                    <span>{{ t('devMocks.dashB.check.' + c.key + (c.ok ? '.okHint' : '.badHint'), { days: credits.daysLeftAtPace, reset: credits.daysToReset }) }}</span>
+                  </span>
+                  @if (!c.ok) {
+                    @switch (c.key) {
+                      @case ('bot') { <button type="button" class="btn btn--sm btn--primary" (click)="botOn.set(true)">{{ t('dashboard.quickActions.joinBot') }}</button> }
+                      @case ('tts') { <button type="button" class="btn btn--sm btn--primary" (click)="ttsLinkCopied.set(true)">{{ t('devMocks.dashB.copyObs') }}</button> }
+                      @case ('credits') { <a class="btn btn--sm" [routerLink]="path('prod-settings')">{{ t('devMocks.dashA.getCredits') }}</a> }
+                    }
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+
+          <!-- Things waiting for you since the last stream -->
+          <section class="lf-tile lf-card" aria-labelledby="sb-inbox-title">
+            <h2 class="lf-h2" id="sb-inbox-title">{{ t('devMocks.dashB.inboxTitle') }}</h2>
+            <ul class="sb-inbox">
+              <li>
+                <span class="sb-inbox__count">3</span>
+                <span class="sb-inbox__copy"><strong>{{ t('devMocks.dashB.inbox.clips') }}</strong><span>{{ t('devMocks.dashB.inbox.clipsHint') }}</span></span>
+                <a class="btn btn--sm" [routerLink]="path('prod-modules')">{{ t('devMocks.dashB.inbox.review') }}</a>
+              </li>
+              <li>
+                <span class="sb-inbox__count">2</span>
+                <span class="sb-inbox__copy"><strong>{{ t('devMocks.dashB.inbox.memories') }}</strong><span>{{ t('devMocks.dashB.inbox.memoriesHint') }}</span></span>
+                <a class="btn btn--sm" [routerLink]="path('prod-modules')">{{ t('devMocks.dashB.inbox.review') }}</a>
+              </li>
+              <li>
+                <span class="sb-inbox__count">1</span>
+                <span class="sb-inbox__copy"><strong>{{ t('devMocks.dashB.inbox.raid') }}</strong><span>{{ t('devMocks.dashB.inbox.raidHint') }}</span></span>
+                <a class="btn btn--sm" [routerLink]="path('prod-modules')">{{ t('devMocks.dashB.inbox.open') }}</a>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <div class="sb-col">
+          <!-- Last stream, in words -->
+          <section class="lf-tile lf-card sb-recap" aria-labelledby="sb-recap-title">
+            <div class="lf-card__bar">
+              <h2 class="lf-h2" id="sb-recap-title">{{ t('devMocks.dashB.recapTitle') }}</h2>
+              <span class="chip">{{ date(last.date) }} · {{ hours(last.hours) }}</span>
+            </div>
+            <p class="sb-recap__headline">{{ t('devMocks.dashB.recap.headline') }}</p>
+            <ul class="sb-recap__list">
+              <li>{{ t('devMocks.dashB.recap.h1') }}</li>
+              <li>{{ t('devMocks.dashB.recap.h2') }}</li>
+              <li>{{ t('devMocks.dashB.recap.h3') }}</li>
+            </ul>
+            <dl class="sb-vs">
+              <div>
+                <dt>{{ t('devMocks.dashA.f.avgViewers') }}</dt>
+                <dd>{{ last.avgViewers }} <span class="delta" [class.delta--up]="lastVsAvg.viewers > 0" [class.delta--down]="lastVsAvg.viewers <= 0">{{ delta(lastVsAvg.viewers) }}</span></dd>
+              </div>
+              <div>
+                <dt>{{ t('devMocks.dashA.f.follows') }}</dt>
+                <dd>{{ last.follows }} <span class="delta" [class.delta--up]="lastVsAvg.follows > 0" [class.delta--down]="lastVsAvg.follows <= 0">{{ delta(lastVsAvg.follows) }}</span></dd>
+              </div>
+              <div>
+                <dt>{{ t('devMocks.dashA.f.bits') }}</dt>
+                <dd>{{ n(last.bits) }} <span class="delta" [class.delta--up]="lastVsAvg.bits > 0" [class.delta--down]="lastVsAvg.bits <= 0">{{ delta(lastVsAvg.bits) }}</span></dd>
+              </div>
+            </dl>
+            <p class="lf-note">{{ t('devMocks.dashB.vsAverage') }}</p>
+          </section>
+
+          <!-- Growth, one question at a time -->
+          <section class="lf-tile lf-card" aria-labelledby="sb-growth-title">
+            <div class="lf-card__head">
+              <h2 class="lf-h2" id="sb-growth-title">{{ t('devMocks.dashB.growthTitle') }}</h2>
+              <p class="sb-growth__answer">{{ t('devMocks.dashB.growthAnswer', { avg: s.avgViewers, pct: s.avgViewersDelta }) }}</p>
+            </div>
+            <app-mock-trend-chart [data]="viewerTrend()" [label]="t('devMocks.dashA.m.viewers')" [unit]="t('devMocks.dashA.unit.viewers')" [format]="intFormat"></app-mock-trend-chart>
+            <div class="sb-goals">
+              <div class="sb-goal">
+                <span>{{ t('devMocks.dashA.goalFollows') }}</span>
+                <div class="bar" aria-hidden="true"><span [style.width.%]="goals.followsPct"></span></div>
+                <strong>{{ goals.follows }} / {{ goalTargets.followersGoal }}</strong>
+              </div>
+              <div class="sb-goal">
+                <span>{{ t('devMocks.dashA.goalSubs') }}</span>
+                <div class="bar bar--gold" aria-hidden="true"><span [style.width.%]="goals.subsPct"></span></div>
+                <strong>{{ goals.subs }} / {{ goalTargets.subsGoal }}</strong>
+              </div>
+            </div>
+            <a class="lnk" [routerLink]="path('prod-modules')">{{ t('devMocks.dashB.allStats') }} →</a>
+          </section>
+        </div>
+      </div>
+    } @else {
+      <!-- Live control room -->
+      <section class="sb-strip" [attr.aria-label]="t('devMocks.dashB.stripLabel')">
+        <div class="lf-tile sb-strip__chart">
+          <div class="lf-card__bar">
+            <span class="kpi__label">{{ t('devMocks.dashB.viewersNow') }}</span>
+            <span class="kpi__value">{{ liveNow }}</span>
+          </div>
+          <app-mock-trend-chart class="sb-spark" [data]="liveTrend()" [label]="t('devMocks.dashB.viewersNow')" [unit]="t('devMocks.dashA.unit.viewers')" [format]="intFormat"></app-mock-trend-chart>
+        </div>
+        <dl class="lf-tile sb-strip__facts">
+          <div><dt>{{ t('devMocks.dashA.f.chat') }}</dt><dd>34/min</dd></div>
+          <div><dt>{{ t('devMocks.dashA.f.follows') }}</dt><dd>6</dd></div>
+          <div><dt>{{ t('devMocks.dashA.f.subs') }}</dt><dd>2</dd></div>
+          <div><dt>{{ t('devMocks.dashA.f.bits') }}</dt><dd>800</dd></div>
+        </dl>
+      </section>
+
+      <div class="sb-grid">
+        <section class="lf-tile lf-card" aria-labelledby="sb-feed-title">
+          <div class="lf-card__head">
+            <h2 class="lf-h2" id="sb-feed-title">{{ t('devMocks.dashB.feedTitle') }}</h2>
+            <p class="lf-note">{{ t('devMocks.dashB.feedHint') }}</p>
+          </div>
+          <ul class="sb-feed">
+            @for (e of events; track $index) {
+              <li class="sb-event" [attr.data-kind]="e.kind">
+                <span class="sb-event__icon" aria-hidden="true">
+                  <app-lf-icon [name]="e.kind === 'raid' ? 'users' : e.kind === 'bits' ? 'bits' : e.kind === 'sub' ? 'star' : e.kind === 'redeem' ? 'zap' : 'plus'" [size]="15"></app-lf-icon>
+                </span>
+                <span class="sb-event__copy">
+                  <strong>{{ t('devMocks.dashB.ev.' + e.kind, { who: e.who, amount: e.amount }) }}</strong>
+                  <span>{{ t('devMocks.dashB.ago', { min: e.ago }) }}</span>
+                </span>
+                @if (eventAction(e.kind); as action) {
+                  @if (isHandled($index)) {
+                    <span class="chip chip--ok chip--xs">{{ t('devMocks.dashB.act.' + action + 'Done') }}</span>
+                  } @else {
+                    <button type="button" class="btn btn--sm" [attr.aria-label]="t('devMocks.dashB.act.' + action) + ' ' + e.who" (click)="handle($index)">{{ t('devMocks.dashB.act.' + action) }}</button>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        <div class="sb-col">
+          <section class="lf-tile lf-card" aria-labelledby="sb-controls-title">
+            <h2 class="lf-h2" id="sb-controls-title">{{ t('devMocks.dashB.controlsTitle') }}</h2>
+            <div class="sb-controls">
+              <div class="sb-control">
+                <span class="sb-control__copy"><strong>{{ t('devMocks.dashB.ctl.bot') }}</strong><span>{{ botOn() ? t('devMocks.dashB.ctl.botOn') : t('devMocks.dashB.ctl.botOff') }}</span></span>
+                <button type="button" class="btn btn--sm" [attr.aria-pressed]="botOn()" (click)="botOn.set(!botOn())">{{ botOn() ? t('devMocks.dashB.ctl.turnOff') : t('devMocks.dashB.ctl.turnOn') }}</button>
+              </div>
+              <div class="sb-control">
+                <span class="sb-control__copy"><strong>{{ t('devMocks.dashB.ctl.tts') }}</strong><span>{{ ttsPaused() ? t('devMocks.dashB.ctl.ttsPaused') : t('devMocks.dashB.ctl.ttsQueue', { count: 2 }) }}</span></span>
+                <span class="chips">
+                  <button type="button" class="btn btn--sm" [disabled]="ttsPaused()">{{ t('devMocks.dashB.ctl.skip') }}</button>
+                  <button type="button" class="btn btn--sm" [attr.aria-pressed]="ttsPaused()" (click)="ttsPaused.set(!ttsPaused())">{{ ttsPaused() ? t('devMocks.dashB.ctl.resume') : t('devMocks.dashB.ctl.pause') }}</button>
+                </span>
+              </div>
+              <div class="sb-control">
+                <span class="sb-control__copy"><strong>{{ t('devMocks.dashB.ctl.alerts') }}</strong><span>{{ alertsPaused() ? t('devMocks.dashB.ctl.alertsPaused') : t('devMocks.dashB.ctl.alertsOn') }}</span></span>
+                <button type="button" class="btn btn--sm" [attr.aria-pressed]="alertsPaused()" (click)="alertsPaused.set(!alertsPaused())">{{ alertsPaused() ? t('devMocks.dashB.ctl.resume') : t('devMocks.dashB.ctl.pause') }}</button>
+              </div>
+              <div class="sb-control">
+                <span class="sb-control__copy"><strong>{{ t('followDefense.title') }}</strong><span>{{ t('devMocks.dashB.ctl.defense') }}</span></span>
+                <a class="btn btn--sm btn--ghost" [routerLink]="path('prod-modules')">{{ t('devMocks.dashB.ctl.open') }}</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="lf-tile lf-card">
+            <div class="lf-card__bar">
+              <h2 class="lf-h2">{{ t('devMocks.dashA.creditsTitle') }}</h2>
+              <span class="chip" [class.chip--warn]="!credits.lastsUntilReset">{{ credits.pctLeft }}% {{ t('devMocks.dashA.left') }}</span>
+            </div>
+            <div class="bar" [class.bar--warn]="!credits.lastsUntilReset" aria-hidden="true"><span [style.width.%]="credits.pctLeft"></span></div>
+            <p class="lf-note">{{ t('devMocks.dashA.creditsShort', { days: credits.daysLeftAtPace, reset: credits.daysToReset }) }}</p>
+          </section>
+        </div>
+      </div>
+    }
+  </main>
+
+</div>

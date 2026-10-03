@@ -1,0 +1,53 @@
+/* Dashboard proposal A — refresh of the current bento */
+
+.ra-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.kpi--accent { background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--tile); }
+
+.ra-ops, .ra-mid { display: grid; gap: 1rem; }
+
+.ra-stream--live { border-color: rgba(239, 68, 68, 0.35); }
+.ra-stream__title { margin: 0; font-size: 0.9rem; font-weight: 650; overflow-wrap: anywhere; }
+
+.ra-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem 0.8rem;
+  margin: 0;
+}
+
+.ra-facts div { display: grid; gap: 0.05rem; }
+.ra-facts dt { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.ra-facts dd { margin: 0; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.ra-checks { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
+.ra-checks li { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.55rem; font-size: 0.88rem; line-height: 1.45; }
+.ra-checks li[data-ok='true'] app-lf-icon { color: var(--ok); }
+.ra-checks li[data-ok='false'] app-lf-icon { color: var(--warn); }
+.ra-checks li[data-ok='false'] span { color: var(--fg); font-weight: 650; }
+.ra-checks app-lf-icon { margin-top: 0.15rem; }
+
+.ra-forecast { margin: 0; font-size: 0.95rem; font-weight: 750; line-height: 1.45; }
+
+.seg--metrics { justify-self: start; }
+
+.ra-goal { display: grid; gap: 0.35rem; }
+.ra-goal__head { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.88rem; }
+.ra-goal__head strong { font-variant-numeric: tabular-nums; }
+.ra-goal__done { color: var(--ok); font-weight: 700; }
+
+.ra-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin: 0; padding-top: 0.7rem; border-top: 1px solid var(--line); }
+.ra-totals div { display: grid; }
+.ra-totals dt { color: var(--muted); font-size: 0.74rem; font-weight: 700; }
+.ra-totals dd { margin: 0; font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+@media (min-width: 640px) {
+  .ra-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ra-ops { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ra-stream { grid-column: 1 / -1; }
+}
+
+@media (min-width: 960px) {
+  .ra-ops { grid-template-columns: 1.3fr 1fr 1fr; }
+  .ra-stream { grid-column: auto; }
+  .ra-mid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; }
+}

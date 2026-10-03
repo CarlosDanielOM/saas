@@ -148,6 +148,27 @@ export class DevMockIndexComponent {
 
   readonly mocks: DevMockCard[] = [
     {
+      id: 'landing-next',
+      title: 'Landing · Live First polish',
+      badge: 'For approval',
+      description:
+        'Current landing kept as is: chat demo when nobody is live, 2×2 counters, 8 features, 3-step start, honest plan value cues. Toggle "Someone live" at the bottom.'
+    },
+    {
+      id: 'dashboard-refresh',
+      title: 'Dashboard A · Refresh',
+      badge: 'For approval',
+      description:
+        'Current bento tightened: one bot control, plain answers, 30-day numbers with comparisons, setup health, credit forecast, one-metric chart, goals with pace.'
+    },
+    {
+      id: 'dashboard-studio',
+      title: 'Dashboard B · Stream studio',
+      badge: 'For approval',
+      description:
+        'Organised around your day: go-live checklist, what is waiting for you, last stream recap, growth answer; live mode becomes a control room with an event feed.'
+    },
+    {
       id: 'landing',
       title: 'Landing · B2B proposal',
       badge: 'Design mock',

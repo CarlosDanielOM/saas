@@ -1,0 +1,208 @@
+<div class="lf" [class.lf--live]="live()">
+  <main class="lf-main">
+    <div class="devbar" role="group" [attr.aria-label]="t('devMocks.dashA.devbar')">
+      <span>{{ t('devMocks.dashA.devbar') }}</span>
+      <div class="seg">
+        <button type="button" [attr.aria-pressed]="!live()" (click)="live.set(false)">{{ t('devMocks.dashA.offline') }}</button>
+        <button type="button" [attr.aria-pressed]="live()" (click)="live.set(true)">{{ t('devMocks.dashA.live') }}</button>
+      </div>
+    </div>
+    <!-- Header: who, state, the one control, and a plain answer -->
+    <header class="dh">
+      <span class="dh__avatar" [class.dh__avatar--live]="live()" aria-hidden="true">N</span>
+      <div class="dh__copy">
+        <h1 class="dh__title">{{ channel.name }}</h1>
+        <div class="chips">
+          @if (live()) {
+            <span class="chip chip--live"><span class="dot dot--pulse" aria-hidden="true"></span> {{ t('devMocks.dashA.live') }}</span>
+          } @else {
+            <span class="chip">{{ t('devMocks.dashA.offline') }}</span>
+          }
+          <span class="chip" [class.chip--ok]="botOn()" [class.chip--warn]="!botOn()">
+            <span class="dot" aria-hidden="true"></span> {{ botOn() ? t('devMocks.dashA.botIn') : t('devMocks.dashA.botOut') }}
+          </span>
+          <span class="chip chip--gold">Pro</span>
+        </div>
+      </div>
+      <p class="dh__answer">
+        @if (!botOn()) {
+          <strong>{{ t('devMocks.dashA.answerBotOff') }}</strong>
+        } @else if (live()) {
+          <strong>{{ t('devMocks.dashA.answerLive', { viewers: liveViewers, time: '1h 12m' }) }}</strong> {{ t('devMocks.dashA.answerLiveRest', { pct: liveVsAvg }) }}
+        } @else {
+          {{ t('devMocks.dashA.answerOffline', { date: date(last.date), length: hours(last.hours), viewers: last.avgViewers }) }}
+          <strong>{{ t('devMocks.dashA.answerVsAvg', { pct: lastVsAvg }) }}</strong>
+        }
+      </p>
+      <div class="dh__actions">
+        <button type="button" class="btn" [class.btn--primary]="!botOn()" (click)="botOn.set(!botOn())">
+          {{ botOn() ? t('dashboard.quickActions.leaveChat') : t('dashboard.quickActions.joinBot') }}
+        </button>
+      </div>
+    </header>
+
+    <!-- 30-day numbers that matter, each with an honest comparison -->
+    <section class="ra-kpis" [attr.aria-label]="t('devMocks.dashA.kpisLabel')">
+      <article class="lf-tile kpi">
+        <p class="kpi__label">{{ t('devMocks.dashA.kpi.viewers') }}</p>
+        <p class="kpi__value">{{ n(s.avgViewers) }}</p>
+        <p class="kpi__sub"><span class="delta" [class.delta--up]="s.avgViewersDelta > 0" [class.delta--down]="s.avgViewersDelta <= 0">{{ delta(s.avgViewersDelta) }}</span> {{ t('devMocks.dashA.vsBefore') }}</p>
+      </article>
+      <article class="lf-tile kpi">
+        <p class="kpi__label">{{ t('devMocks.dashA.kpi.follows') }}</p>
+        <p class="kpi__value">{{ n(s.follows) }}</p>
+        <p class="kpi__sub"><span class="delta delta--up">{{ delta(s.followsDelta) }}</span> {{ t('devMocks.dashA.perStreamVsBefore') }}</p>
+      </article>
+      <article class="lf-tile kpi">
+        <p class="kpi__label">{{ t('devMocks.dashA.kpi.hours') }}</p>
+        <p class="kpi__value">{{ n(s.hoursPerWeek, 1) }}h</p>
+        <p class="kpi__sub">{{ t('devMocks.dashA.perWeek', { count: s.count }) }}</p>
+      </article>
+      <article class="lf-tile kpi kpi--accent">
+        <p class="kpi__label">{{ t('devMocks.dashA.kpi.bits') }}</p>
+        <p class="kpi__value">{{ n(s.bits) }}</p>
+        <p class="kpi__sub"><span class="delta delta--up">{{ delta(s.bitsDelta) }}</span> {{ t('devMocks.dashA.perStreamVsBefore') }}</p>
+      </article>
+    </section>
+
+    <section class="ra-ops">
+      <!-- Live or last stream -->
+      <article class="lf-tile lf-card ra-stream" [class.ra-stream--live]="live()">
+        @if (live()) {
+          <div class="lf-card__bar">
+            <h2 class="lf-h2">{{ t('devMocks.dashA.thisStream') }}</h2>
+            <span class="chip chip--live">1h 12m</span>
+          </div>
+          <p class="ra-stream__title">{{ channel.lastTitle }}</p>
+          <dl class="ra-facts">
+            <div><dt>{{ t('devMocks.dashA.f.viewers') }}</dt><dd>{{ liveViewers }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.chat') }}</dt><dd>34/min</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.follows') }}</dt><dd>6</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.subs') }}</dt><dd>2</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.bits') }}</dt><dd>800</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.commands') }}</dt><dd>41</dd></div>
+          </dl>
+        } @else {
+          <div class="lf-card__bar">
+            <h2 class="lf-h2">{{ t('devMocks.dashA.lastStream') }}</h2>
+            <span class="chip">{{ date(last.date) }} · {{ hours(last.hours) }}</span>
+          </div>
+          <p class="ra-stream__title">{{ channel.lastTitle }}</p>
+          <dl class="ra-facts">
+            <div><dt>{{ t('devMocks.dashA.f.avgViewers') }}</dt><dd>{{ last.avgViewers }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.peak') }}</dt><dd>{{ last.peakViewers }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.follows') }}</dt><dd>{{ last.follows }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.subs') }}</dt><dd>{{ last.subs }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.bits') }}</dt><dd>{{ n(last.bits) }}</dd></div>
+            <div><dt>{{ t('devMocks.dashA.f.tips') }}</dt><dd>${{ last.tips }}</dd></div>
+          </dl>
+          <a class="lnk" [routerLink]="path('prod-modules')">{{ t('devMocks.dashA.readRecap') }} →</a>
+        }
+      </article>
+
+      <!-- Setup health: what works and what needs a fix -->
+      <article class="lf-tile lf-card">
+        <h2 class="lf-h2">{{ t('devMocks.dashA.setupTitle') }}</h2>
+        <ul class="ra-checks">
+          <li [attr.data-ok]="botOn()">
+            <app-lf-icon [name]="botOn() ? 'check' : 'alert'" [size]="16"></app-lf-icon>
+            <span>{{ botOn() ? t('devMocks.dashA.check.bot') : t('devMocks.dashA.check.botOff') }}</span>
+          </li>
+          <li data-ok="true"><app-lf-icon name="check" [size]="16"></app-lf-icon><span>{{ t('devMocks.dashA.check.alerts') }}</span></li>
+          <li data-ok="false">
+            <app-lf-icon name="alert" [size]="16"></app-lf-icon>
+            <span>{{ t('devMocks.dashA.check.tts') }} <a class="lnk" [routerLink]="path('prod-modules')">{{ t('devMocks.dashA.check.fix') }}</a></span>
+          </li>
+          <li data-ok="true"><app-lf-icon name="check" [size]="16"></app-lf-icon><span>{{ t('devMocks.dashA.check.defense') }}</span></li>
+        </ul>
+      </article>
+
+      <!-- AI credits with a forecast -->
+      <article class="lf-tile lf-card">
+        <div class="lf-card__bar">
+          <h2 class="lf-h2">{{ t('devMocks.dashA.creditsTitle') }}</h2>
+          <span class="chip" [class.chip--warn]="!credits.lastsUntilReset">{{ credits.pctLeft }}% {{ t('devMocks.dashA.left') }}</span>
+        </div>
+        <div class="bar" [class.bar--warn]="!credits.lastsUntilReset" aria-hidden="true"><span [style.width.%]="credits.pctLeft"></span></div>
+        <p class="ra-forecast">
+          @if (credits.lastsUntilReset) {
+            {{ t('devMocks.dashA.creditsOk', { days: credits.daysToReset }) }}
+          } @else {
+            {{ t('devMocks.dashA.creditsShort', { days: credits.daysLeftAtPace, reset: credits.daysToReset }) }}
+          }
+        </p>
+        <p class="lf-note">{{ t('devMocks.dashA.creditsDetail', { left: n(credits.left), perDay: n(credits.perDay) }) }}</p>
+        <div class="chips">
+          <a class="btn btn--sm" [routerLink]="path('prod-settings')">{{ t('devMocks.dashA.seeUsage') }}</a>
+          @if (!credits.lastsUntilReset) {
+            <a class="btn btn--sm btn--primary" [routerLink]="path('prod-settings')">{{ t('devMocks.dashA.getCredits') }}</a>
+          }
+        </div>
+      </article>
+    </section>
+
+    <section class="ra-mid">
+      <!-- One metric at a time -->
+      <article class="lf-tile lf-card ra-chart">
+        <div class="lf-card__bar">
+          <h2 class="lf-h2">{{ t('devMocks.dashA.chartTitle') }}</h2>
+          <div class="seg" role="group" [attr.aria-label]="t('devMocks.dashA.rangeLabel')">
+            @for (r of ranges; track r) {
+              <button type="button" [attr.aria-pressed]="range() === r" (click)="range.set(r)">{{ r }}d</button>
+            }
+          </div>
+        </div>
+        <div class="seg seg--metrics" role="group" [attr.aria-label]="t('devMocks.dashA.metricLabel')">
+          @for (m of metrics; track m) {
+            <button type="button" [attr.aria-pressed]="metric() === m" (click)="metric.set(m)">{{ t('devMocks.dashA.m.' + m) }}</button>
+          }
+        </div>
+        <app-mock-trend-chart [data]="chartData()" [label]="t('devMocks.dashA.m.' + metric())" [unit]="t('devMocks.dashA.unit.' + metric())" [format]="chartFormat()"></app-mock-trend-chart>
+        <p class="lf-note">{{ t('devMocks.dashA.chartNote', { count: shownStreams().length }) }}</p>
+      </article>
+
+      <!-- Goals that say how close you are -->
+      <article class="lf-tile lf-card">
+        <h2 class="lf-h2">{{ t('devMocks.dashA.goalsTitle') }}</h2>
+        <div class="ra-goal">
+          <div class="ra-goal__head"><span>{{ t('devMocks.dashA.goalFollows') }}</span><strong>{{ goals.follows }} / {{ goalTargets.followersGoal }}</strong></div>
+          <div class="bar" aria-hidden="true"><span [style.width.%]="goals.followsPct"></span></div>
+          <p class="lf-note">{{ t('devMocks.dashA.goalToGo', { count: followsToGo, streams: streamsToGoal }) }}</p>
+        </div>
+        <div class="ra-goal">
+          <div class="ra-goal__head"><span>{{ t('devMocks.dashA.goalSubs') }}</span><strong>{{ goals.subs }} / {{ goalTargets.subsGoal }}</strong></div>
+          <div class="bar bar--gold" aria-hidden="true"><span [style.width.%]="goals.subsPct"></span></div>
+          <p class="lf-note ra-goal__done">{{ t('devMocks.dashA.goalDone') }}</p>
+        </div>
+        <dl class="ra-totals">
+          <div><dt>{{ t('devMocks.dashA.totalFollowers') }}</dt><dd>{{ n(channel.followers) }}</dd></div>
+          <div><dt>{{ t('devMocks.dashA.totalSubs') }}</dt><dd>{{ channel.subs }}</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <!-- Past streams as dense rows -->
+    <section class="lf-tile lf-card" aria-labelledby="ra-history">
+      <div class="lf-card__bar">
+        <h2 class="lf-h2" id="ra-history">{{ t('devMocks.dashA.historyTitle') }}</h2>
+        <span class="lf-note">{{ t('devMocks.dashA.historyHint') }}</span>
+      </div>
+      <ul class="rows">
+        @for (x of shownStreams(); track x.date) {
+          <li class="srow">
+            <span class="srow__date"><strong>{{ date(x.date) }}</strong><span>{{ day(x.date) }}</span></span>
+            <span class="srow__nums">
+              <span><b>{{ hours(x.hours) }}</b></span>
+              <span><b>{{ x.avgViewers }}</b> {{ t('devMocks.dashA.r.avg') }} · {{ x.peakViewers }} {{ t('devMocks.dashA.r.peak') }}</span>
+              <span><b>+{{ x.follows }}</b> {{ t('devMocks.dashA.r.follows') }}</span>
+              <span><b>{{ x.subs }}</b> {{ t('devMocks.dashA.r.subs') }}</span>
+              <span><b>{{ n(x.bits) }}</b> bits</span>
+              @if (isBest(x)) { <span class="chip chip--xs chip--accent">{{ t('devMocks.dashA.best') }}</span> }
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+  </main>
+
+</div>

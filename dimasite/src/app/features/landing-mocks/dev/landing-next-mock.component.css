@@ -1,0 +1,194 @@
+/* Landing proposal additions, layered on the production landing stylesheet. */
+
+.ln-checks {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.ln-checks li { display: flex; align-items: center; gap: 0.45rem; }
+.ln-checks lucide-icon { color: var(--ok); }
+
+/* Four counters as a compact 2×2 block (phones included). */
+.ln-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+}
+
+.ln-metrics .lf-metric { min-width: 0; }
+.ln-metrics .lf-value { font-size: clamp(1.35rem, 5vw, 1.9rem); overflow-wrap: anywhere; }
+
+/* Live tile when nobody is live: a short chat demo instead of an empty box. */
+.ln-empty { margin: 0.4rem 0 0.7rem; color: var(--muted); font-size: 0.88rem; }
+
+.ln-chat {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  list-style: none;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.ln-msg { overflow-wrap: anywhere; }
+.ln-msg--bot { padding: 0.35rem 0.55rem; border-radius: 0.7rem; background: var(--accent-soft); }
+.ln-u { margin-right: 0.3rem; font-weight: 800; }
+.ln-u--a { color: #0e7490; }
+.ln-u--b { color: #b45309; }
+.ln-u--bot { color: var(--kicker); }
+.ln-sys { color: var(--muted); font-size: 0.8rem; font-style: italic; }
+:host-context(html.dark) .ln-u--a { color: #67e8f9; }
+:host-context(html.dark) .ln-u--b { color: #fbbf24; }
+
+.ln-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--fg);
+  background: var(--accent-soft);
+  font-weight: 800;
+}
+
+.ln-avatar--lg { width: 72px; height: 72px; font-size: 1.6rem; }
+
+/* Features: a dense list on phones, 8 cards from tablet up. */
+.ln-features {
+  display: grid;
+  gap: 0;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--tile);
+  box-shadow: var(--shadow);
+}
+
+.ln-features .ln-feature {
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  column-gap: 0.7rem;
+  padding: 0.7rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ln-features .ln-feature:first-child { border-top: 0; }
+.ln-features .ln-feature .lf-chip { grid-row: span 2; align-self: start; justify-self: start; }
+.ln-features .ln-feature h3 { margin: 0; }
+.ln-features .ln-feature .lf-text-link { display: none; }
+
+.ln-feature {
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ln-feature .lf-chip { justify-self: start; }
+.ln-feature h3 { margin: 0.2rem 0 0; font-size: 0.98rem; font-weight: 750; }
+.ln-feature p { margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+.ln-feature:hover h3, .ln-feature:focus-visible h3 { color: var(--accent); }
+.ln-feature:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Three steps. */
+.ln-steps {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ln-step { display: grid; gap: 0.35rem; }
+.ln-step h3 { margin: 0; font-size: 1.02rem; font-weight: 800; }
+.ln-step p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+
+.ln-step__num {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #7c3aed;
+  font-weight: 800;
+}
+
+/* Plan value cues. */
+.ln-plan__credits { margin: 0.1rem 0 0; font-weight: 750; }
+.ln-plan__cue { margin: 0; color: var(--gold); font-size: 0.82rem; font-weight: 700; }
+
+/* Mock-only switch to preview the "someone is live" state. */
+.ln-devbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--tile);
+  box-shadow: var(--shadow);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ln-devbar button {
+  min-height: 36px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ln-devbar button[aria-pressed='true'] { color: #fff; background: #7c3aed; }
+.ln-devbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (min-width: 640px) {
+  .ln-features { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; padding: 0; border: 0; background: none; box-shadow: none; }
+  .ln-features .ln-feature {
+    grid-template-columns: none;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--tile);
+    box-shadow: var(--shadow);
+  }
+  .ln-features .ln-feature .lf-chip { grid-row: auto; }
+  .ln-features .ln-feature .lf-text-link { display: inline; }
+  .ln-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ln-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 960px) {
+  .ln-hero.lf-bento--hero { grid-template-columns: 1.15fr 1.2fr 1.7fr; }
+  .ln-metrics {
+    grid-column: 3 / 4;
+    grid-row: 1 / 4;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ln-features { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Filled buttons: solid #7c3aed in both themes (dark --accent #8b5cf6 fails AA under white text). */
+.lf-btn--primary:not(.lf-cta .lf-btn--primary) { background: #7c3aed; border-color: #7c3aed; }

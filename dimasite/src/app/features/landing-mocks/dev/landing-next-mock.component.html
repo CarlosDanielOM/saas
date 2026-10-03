@@ -1,0 +1,266 @@
+<div class="lf" [class.lf--live]="channels().length > 0">
+  <header class="lf-nav" [class.lf-nav--scrolled]="navScrolled()">
+    <a class="lf-brand" href="#home" aria-label="DomDimaBot home">
+      <app-brand-logo />
+    </a>
+
+    <nav class="lf-nav__links" aria-label="Primary">
+      <button type="button" (click)="scrollTo('features')">{{ t('landing.nav.features') }}</button>
+      <button type="button" (click)="scrollTo('start')">{{ t('devMocks.landingNext.nav.start') }}</button>
+      <button type="button" (click)="scrollTo('pricing')">{{ t('landing.nav.pricing') }}</button>
+      <a href="https://docs.domdimabot.com/">{{ t('landing.nav.docs') }}</a>
+    </nav>
+
+    <div class="lf-nav__actions">
+      <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="toggleLanguage()" [attr.aria-label]="t('commands.public.languageToggle')" [title]="t('commands.public.languageToggle')">
+        {{ languageLabel() }}
+      </button>
+      <button
+        type="button"
+        class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+        (click)="toggleTheme()"
+        [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+        [title]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+      >
+        <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" class="lf-theme-icon" aria-hidden="true"></lucide-icon>
+        <span class="lf-btn__label">{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
+      </button>
+      <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">
+        {{ t('landing.hero.loginWith') }}
+      </button>
+    </div>
+  </header>
+
+  <main id="home" class="lf-main">
+  <div class="ln-devbar" role="group" [attr.aria-label]="t('devMocks.landingNext.devbar.label')">
+    <span>{{ t('devMocks.landingNext.devbar.label') }}</span>
+    <button type="button" [attr.aria-pressed]="simulate() === 'real'" (click)="simulate.set('real')">{{ t('devMocks.landingNext.devbar.real') }}</button>
+    <button type="button" [attr.aria-pressed]="simulate() === 'live'" (click)="simulate.set('live')">{{ t('devMocks.landingNext.devbar.live') }}</button>
+  </div>
+    <section class="lf-bento lf-bento--hero ln-hero" aria-label="Hero">
+      <article class="lf-tile lf-tile--intro">
+        <p class="lf-kicker">{{ t('landing.hero.kicker') }}</p>
+        <h1 class="lf-title">
+          {{ t('landing.hero.title') }}
+          <span>{{ t('landing.hero.titleAccent') }}</span>
+        </h1>
+        <p class="lf-copy">{{ t('devMocks.landingNext.hero.copy') }}</p>
+        <ul class="ln-checks">
+          <li><lucide-icon [name]="checkIcon" [size]="15" aria-hidden="true"></lucide-icon> {{ t('devMocks.landingNext.hero.check1') }}</li>
+          <li><lucide-icon [name]="checkIcon" [size]="15" aria-hidden="true"></lucide-icon> {{ t('devMocks.landingNext.hero.check2') }}</li>
+          <li><lucide-icon [name]="checkIcon" [size]="15" aria-hidden="true"></lucide-icon> {{ t('devMocks.landingNext.hero.check3') }}</li>
+        </ul>
+        <div class="lf-actions">
+          <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">{{ t('landing.hero.loginWith') }}</button>
+          <button type="button" class="lf-btn" (click)="openDiscord()">{{ t('landing.hero.join') }}</button>
+        </div>
+      </article>
+
+      <article class="lf-tile lf-tile--spotlight" id="live">
+        <div class="lf-spotlight__head">
+          <span class="lf-chip lf-chip--live">{{ t('landing.liveNow.chip') }}</span>
+          <span class="lf-spotlight__count">
+            {{ tp('devMocks.landingNext.live.count', { channels: channels().length, viewers: formatViewers(liveViewers()) }) }}
+          </span>
+        </div>
+
+        @if (featured(); as channel) {
+          <div class="lf-spotlight__main">
+            @if (channel.profileImageUrl) {
+              <img [src]="channel.profileImageUrl" [alt]="channel.channel + ' avatar'" loading="lazy" width="72" height="72" />
+            } @else {
+              <span class="ln-avatar ln-avatar--lg" aria-hidden="true">{{ initial(channel.channel) }}</span>
+            }
+            <div>
+              <p class="lf-spotlight__name">{{ channel.channel }}</p>
+              <p class="lf-spotlight__meta">{{ formatViewers(channel.viewers) }} {{ t('landing.liveNow.viewers') }}</p>
+              <div class="lf-tags">
+                @for (platform of channel.botPlatforms; track platform) {
+                  <span>{{ platform === 'twitch' ? t('landing.liveNow.platforms.twitch') : t('landing.liveNow.platforms.kick') }}</span>
+                }
+                @if (channel.planTier !== 'free') {
+                  <span [class.lf-tag--premium]="channel.planTier === 'premium'" [class.lf-tag--pro]="channel.planTier === 'pro'">{{ t('landing.liveNow.tiers.' + channel.planTier) }}</span>
+                }
+              </div>
+            </div>
+          </div>
+          @if (others().length > 0) {
+            <div class="lf-spotlight__list">
+              @for (channel of others(); track channel.channelID) {
+                <div class="lf-spotlight__row">
+                  @if (channel.profileImageUrl) {
+                    <img [src]="channel.profileImageUrl" [alt]="channel.channel + ' avatar'" loading="lazy" width="32" height="32" />
+                  } @else {
+                    <span class="ln-avatar" aria-hidden="true">{{ initial(channel.channel) }}</span>
+                  }
+                  <span class="lf-spotlight__row-name">{{ channel.channel }}</span>
+                  <span class="lf-spotlight__row-viewers">{{ formatViewers(channel.viewers) }}</span>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <!-- Nobody live: show what the bot does instead of an empty box. -->
+          <p class="ln-empty">{{ t('devMocks.landingNext.live.empty') }}</p>
+          <ol class="ln-chat" [attr.aria-label]="t('devMocks.landingNext.demo.label')">
+            <li class="ln-msg"><b class="ln-u ln-u--a">luna_v</b> {{ t('devMocks.landingNext.demo.m1') }}</li>
+            <li class="ln-msg ln-msg--bot"><b class="ln-u ln-u--bot">DomDimaBot</b> {{ t('devMocks.landingNext.demo.m2') }}</li>
+            <li class="ln-msg ln-msg--mod"><span class="ln-sys">{{ t('devMocks.landingNext.demo.m3') }}</span></li>
+            <li class="ln-msg"><b class="ln-u ln-u--b">taco_fan</b> {{ t('devMocks.landingNext.demo.m4') }}</li>
+            <li class="ln-msg ln-msg--bot"><b class="ln-u ln-u--bot">DomDimaBot</b> {{ t('devMocks.landingNext.demo.m5') }}</li>
+            <li class="ln-msg ln-msg--tts"><span class="ln-sys">🔊 {{ t('devMocks.landingNext.demo.m6') }}</span></li>
+          </ol>
+        }
+      </article>
+
+      <div class="ln-metrics">
+        <article class="lf-tile lf-metric">
+          <lucide-icon [name]="usersIcon" class="lf-icon"></lucide-icon>
+          <p class="lf-label">{{ t('devMocks.landingNext.metrics.streamers') }}</p>
+          <p class="lf-value" [countUp]="siteStats().registeredUsers">0</p>
+        </article>
+        <article class="lf-tile lf-metric">
+          <lucide-icon [name]="activityIcon" class="lf-icon"></lucide-icon>
+          <p class="lf-label">{{ t('devMocks.landingNext.metrics.active') }}</p>
+          <p class="lf-value" [countUp]="siteStats().botActiveAccounts" [staggerDelay]="80">0</p>
+        </article>
+        <article class="lf-tile lf-metric lf-metric--accent">
+          <lucide-icon [name]="messageCircleIcon" class="lf-icon"></lucide-icon>
+          <p class="lf-label">{{ t('devMocks.landingNext.metrics.messages') }}</p>
+          <p class="lf-value" [countUp]="siteStats().messagesReceived" [staggerDelay]="160">0</p>
+        </article>
+        <article class="lf-tile lf-metric">
+          <lucide-icon [name]="zapIcon" class="lf-icon"></lucide-icon>
+          <p class="lf-label">{{ t('devMocks.landingNext.metrics.commands') }}</p>
+          <p class="lf-value" [countUp]="siteStats().totalCommands" [staggerDelay]="240">0</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="features" class="lf-section">
+      <div class="lf-section__head">
+        <p class="lf-kicker">{{ t('landing.features.title') }}</p>
+        <h2 class="lf-h2">{{ t('devMocks.landingNext.features.title') }}</h2>
+      </div>
+      <div class="ln-features">
+        @for (feature of features(); track feature.key) {
+          <a class="lf-tile ln-feature" [href]="feature.href">
+            <span class="lf-chip">{{ feature.chip }}</span>
+            <h3>{{ t('devMocks.landingNext.features.' + feature.key + '.title') }}</h3>
+            <p>{{ t('devMocks.landingNext.features.' + feature.key + '.copy') }}</p>
+            <span class="lf-text-link">{{ t('devMocks.landingNext.features.guide') }} →</span>
+          </a>
+        }
+      </div>
+    </section>
+
+    <section id="start" class="lf-section">
+      <div class="lf-section__head">
+        <p class="lf-kicker">{{ t('devMocks.landingNext.start.kicker') }}</p>
+        <h2 class="lf-h2">{{ t('devMocks.landingNext.start.title') }}</h2>
+      </div>
+      <ol class="ln-steps">
+        @for (n of [1, 2, 3]; track n) {
+          <li class="lf-tile ln-step">
+            <span class="ln-step__num" aria-hidden="true">{{ n }}</span>
+            <h3>{{ t('devMocks.landingNext.start.s' + n + 'Title') }}</h3>
+            <p>{{ t('devMocks.landingNext.start.s' + n + 'Copy') }}</p>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <section id="pricing" class="lf-section">
+      <div class="lf-section__head">
+        <p class="lf-kicker">{{ t('landing.pricing.title') }}</p>
+        <h2 class="lf-h2">{{ t('devMocks.landingNext.plans.title') }}</h2>
+        <p class="lf-copy">{{ t('devMocks.landingNext.plans.subtitle') }}</p>
+      </div>
+
+      <div class="lf-bento lf-bento--pricing">
+        @for (plan of planKeys; track plan) {
+          <article class="lf-tile lf-plan" [class.lf-plan--hot]="bestValue(plan)" [class.lf-plan--active]="activePricingTier() === plan">
+            @if (bestValue(plan)) {
+              <span class="lf-chip lf-chip--gold">{{ t('devMocks.landingNext.plans.bestValue') }}</span>
+            }
+            <p class="lf-plan__name">{{ t('landing.pricing.' + (plan === 'premium' ? 'premium' : plan)) }}</p>
+            <p class="lf-plan__price">{{ price(plan) }}<span>{{ t('landing.pricing.perMonth') }}</span></p>
+            <p class="ln-plan__credits">{{ tp('devMocks.landingNext.plans.credits', { credits: credits(plan) }) }}</p>
+            <p class="ln-plan__cue">{{ planCue(plan) }}</p>
+            <p class="lf-plan__desc">{{ t('devMocks.landingNext.plans.' + plan + 'For') }}</p>
+            <button type="button" class="lf-btn" [class.lf-btn--primary]="bestValue(plan)" (click)="choosePlan(plan)">
+              {{ t(plan === 'free' ? 'landing.pricing.getStarted' : plan === 'premium' ? 'landing.pricing.choosePremium' : 'landing.pricing.choosePro') }}
+            </button>
+          </article>
+        }
+      </div>
+
+      <div class="lf-tile lf-matrix">
+        <div class="lf-matrix__tabs" role="tablist" aria-label="Pricing tiers">
+          @for (tier of pricingTiers; track tier.key) {
+            <button type="button" role="tab" class="lf-matrix__tab" [class.lf-matrix__tab--active]="activePricingTier() === tier.key" [attr.aria-selected]="activePricingTier() === tier.key" (click)="setActivePricingTier(tier.key)">
+              {{ tier.label }}
+            </button>
+          }
+        </div>
+        <div class="lf-matrix__row lf-matrix__row--head">
+          <span>{{ t('landing.pricing.capability') }}</span>
+          @for (tier of pricingTiers; track tier.key) {
+            <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">{{ tier.label }}</span>
+          }
+        </div>
+        <p class="lf-matrix__section">{{ t('landing.pricing.capabilities') }}</p>
+        @for (row of visibleCapabilities(); track row.label) {
+          <div class="lf-matrix__row">
+            <span>{{ row.label }}</span>
+            @for (tier of pricingTiers; track tier.key) {
+              <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">
+                @if (isCheckValue(pricingValue(row, tier.key))) {
+                  <lucide-icon [name]="checkIcon" class="lf-icon-sm" aria-hidden="true"></lucide-icon><span class="sr-only">Yes</span>
+                } @else {
+                  {{ pricingValue(row, tier.key) }}
+                }
+              </span>
+            }
+          </div>
+          @if (row.note) { <p class="lf-matrix__note">{{ row.note }}</p> }
+        }
+        <p class="lf-matrix__section">{{ t('landing.pricing.limits') }}</p>
+        @for (row of visibleLimits(); track row.label) {
+          <div class="lf-matrix__row">
+            <span>{{ row.label }}</span>
+            @for (tier of pricingTiers; track tier.key) {
+              <span [class.lf-matrix__col--hidden]="activePricingTier() !== tier.key">{{ pricingValue(row, tier.key) }}</span>
+            }
+          </div>
+          @if (row.note) { <p class="lf-matrix__note">{{ row.note }}</p> }
+        }
+        <div class="lf-matrix__toggle">
+          <button type="button" class="lf-btn" (click)="togglePricingRows()">
+            {{ showAllPricingRows() ? t('landing.pricing.showLessFeatures') : t('landing.pricing.showMoreFeatures') }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="lf-tile lf-cta" aria-label="Call to action">
+      <div>
+        <h2 class="lf-h2">{{ t('landing.callToAction.title') }}</h2>
+        <p class="lf-copy">{{ t('devMocks.landingNext.cta.copy') }}</p>
+      </div>
+      <button type="button" class="lf-btn lf-btn--primary" (click)="loginWithTwitch()">{{ t('landing.callToAction.button') }}</button>
+    </section>
+  </main>
+
+  <footer class="lf-footer">
+    <span>{{ t('landing.footer.copyright') }}</span>
+    <nav class="lf-footer__links" [attr.aria-label]="t('landing.footer.documentation')">
+      <a href="https://docs.domdimabot.com/">{{ t('landing.footer.docs') }}</a>
+      <a href="https://docs.domdimabot.com/getting-started/">{{ t('landing.footer.gettingStarted') }}</a>
+      <a href="https://docs.domdimabot.com/commands/">{{ t('landing.footer.commands') }}</a>
+      <a href="https://docs.domdimabot.com/plans/">{{ t('devMocks.landingNext.footer.plans') }}</a>
+      <a href="https://docs.domdimabot.com/tts/">{{ t('landing.footer.tts') }}</a>
+    </nav>
+  </footer>
+
+</div>

@@ -4681,6 +4681,293 @@
       "settingsBlurb": "Channel preferences, bot behavior, and account-level streamer controls.",
       "profileTitle": "Profile",
       "profileBlurb": "Personal account settings. On desktop this also lives under the avatar menu with theme + language."
+    },
+    "landingNext": {
+      "nav": {
+        "start": "How to start"
+      },
+      "hero": {
+        "copy": "Moderation, commands, TTS, alerts and an AI co-host for your Twitch chat. It runs while you stream, so you don't have to babysit chat.",
+        "check1": "Free plan, no card needed",
+        "check2": "Set up in about 2 minutes",
+        "check3": "English and Spanish"
+      },
+      "live": {
+        "count": "{{channels}} live · {{viewers}} viewers",
+        "empty": "Nobody using DomDimaBot is live right now. This is what it does in a chat:"
+      },
+      "demo": {
+        "label": "Example chat",
+        "m1": "!uptime",
+        "m2": "Live for 2h 14m. Hydrate, streamer 💧",
+        "m3": "A spam link was removed and the sender timed out for 10 minutes.",
+        "m4": "@DomDimaBot who won last night's roulette?",
+        "m5": "taco_fan did, with the 1-in-50 slot. Chat is still mad.",
+        "m6": "Bits message read aloud on stream"
+      },
+      "metrics": {
+        "streamers": "Streamers signed up",
+        "active": "Channels with the bot on",
+        "messages": "Chat messages handled",
+        "commands": "Custom commands"
+      },
+      "features": {
+        "title": "Everything a chat needs, in one bot",
+        "guide": "Guide",
+        "moderation": {
+          "title": "Moderation",
+          "copy": "Blocks spam, links and abuse, from simple filters to AI that understands context."
+        },
+        "commands": {
+          "title": "Commands & timers",
+          "copy": "Unlimited commands with variables, counters and timers."
+        },
+        "tts": {
+          "title": "Text to speech",
+          "copy": "Viewers' messages read aloud on stream, with many voices."
+        },
+        "triggers": {
+          "title": "Alerts & triggers",
+          "copy": "Sounds, images and videos on your OBS when chat or rewards fire."
+        },
+        "defense": {
+          "title": "Follow Defense",
+          "copy": "Pauses alerts during follow-bot floods and bans hate raids."
+        },
+        "personality": {
+          "title": "AI co-host",
+          "copy": "A chat personality you write, that knows your regulars and rules."
+        },
+        "clips": {
+          "title": "Clip finder",
+          "copy": "AI watches your VODs and picks the moments worth clipping."
+        },
+        "analytics": {
+          "title": "Analytics",
+          "copy": "Who chats, who returns and which streams grew your channel."
+        }
+      },
+      "start": {
+        "kicker": "How to start",
+        "title": "Live in three steps",
+        "s1Title": "Log in with Twitch",
+        "s1Copy": "Your account starts on the Free plan. No card needed.",
+        "s2Title": "Activate the bot",
+        "s2Copy": "Approve the Twitch permissions, then tap \"Turn the bot on\" so it joins your chat.",
+        "s3Title": "Turn on what you need",
+        "s3Copy": "Pick modules like moderation, TTS or alerts. Everything else stays off."
+      },
+      "plans": {
+        "title": "Start free, upgrade when chat grows",
+        "subtitle": "Every plan has every TTS voice. Paid plans add AI credits, storage and longer history.",
+        "bestValue": "Most AI credits per dollar",
+        "credits": "{{credits}} AI credits / month",
+        "cueFree": "Every TTS voice included, no card needed",
+        "cuePaid": "{{times}}× Free's credits · {{perDollar}}k credits per $1",
+        "freeFor": "For trying everything and small channels.",
+        "premiumFor": "For growing channels that want smarter moderation and more history.",
+        "proFor": "For busy channels that use AI and TTS every stream."
+      },
+      "cta": {
+        "copy": "Log in with Twitch, activate the bot and it's in your chat today."
+      },
+      "footer": {
+        "plans": "Plans"
+      },
+      "devbar": {
+        "label": "Mock preview",
+        "real": "Real data",
+        "live": "Someone live"
+      }
+    },
+    "dashA": {
+      "live": "Live",
+      "offline": "Offline",
+      "botIn": "Bot in your chat",
+      "botOut": "Bot not in chat",
+      "answerBotOff": "The bot isn't in your chat, so commands, TTS and moderation won't work. Turn it on before you go live.",
+      "answerLive": "Live for {{time}} with {{viewers}} viewers.",
+      "answerLiveRest": "That's {{pct}}% above your 30-day average.",
+      "answerOffline": "Last stream {{date}}: {{length}} with {{viewers}} average viewers.",
+      "answerVsAvg": "That's {{pct}}% above your 30-day average.",
+      "kpisLabel": "Last 30 days",
+      "kpi": {
+        "viewers": "Average viewers · 30 days",
+        "follows": "New followers · 30 days",
+        "hours": "Streamed per week",
+        "bits": "Bits · 30 days"
+      },
+      "vsBefore": "vs the 30 days before",
+      "perStreamVsBefore": "per stream vs before",
+      "perWeek": "{{count}} streams in 30 days",
+      "thisStream": "This stream",
+      "lastStream": "Last stream",
+      "readRecap": "Read the recap",
+      "f": {
+        "viewers": "Viewers",
+        "chat": "Chat",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "commands": "Commands",
+        "avgViewers": "Avg viewers",
+        "peak": "Peak",
+        "tips": "Tips"
+      },
+      "setupTitle": "Your setup",
+      "check": {
+        "bot": "Bot is in your chat",
+        "botOff": "Bot isn't in your chat",
+        "alerts": "Alerts overlay is connected in OBS",
+        "tts": "TTS overlay isn't open in OBS, so viewers' messages won't be read aloud.",
+        "fix": "Fix it",
+        "defense": "Follow Defense is on"
+      },
+      "creditsTitle": "AI credits",
+      "left": "left",
+      "creditsOk": "At your pace they last until the reset in {{days}} days.",
+      "creditsShort": "At your pace they run out in about {{days}} days, before the reset in {{reset}} days.",
+      "creditsDetail": "{{left}} left · you use about {{perDay}} a day.",
+      "seeUsage": "See usage",
+      "getCredits": "Get credits",
+      "chartTitle": "Per stream",
+      "rangeLabel": "Time range",
+      "metricLabel": "What to show",
+      "m": {
+        "viewers": "Average viewers",
+        "follows": "New followers",
+        "bits": "Bits",
+        "hours": "Hours"
+      },
+      "unit": {
+        "viewers": "viewers",
+        "follows": "follows",
+        "bits": "bits",
+        "hours": "hours"
+      },
+      "chartNote": "{{count}} streams. Hover or tab through the chart to see each one.",
+      "goalsTitle": "Monthly goals",
+      "goalFollows": "Followers",
+      "goalSubs": "Subs",
+      "goalToGo": "{{count}} to go, about {{streams}} more streams at your pace.",
+      "goalDone": "Goal reached",
+      "totalFollowers": "Total followers",
+      "totalSubs": "Active subs",
+      "historyTitle": "Past streams",
+      "historyHint": "Newest first",
+      "r": {
+        "avg": "avg",
+        "peak": "peak",
+        "follows": "follows",
+        "subs": "subs"
+      },
+      "best": "Best stream",
+      "devbar": "Mock preview"
+    },
+    "dashB": {
+      "liveFor": "Live · {{time}}",
+      "answerLive": "{{viewers}} watching right now.",
+      "answerLiveRest": "Everything that needs a reaction shows up in the feed below.",
+      "answerReady": "You're ready to go live.",
+      "answerAlmost": "Almost ready: 1 thing to check before you go live.", "answerAlmostMany": "Almost ready: {{count}} things to check before you go live.",
+      "answerAlmostRest": "Everything else is set.",
+      "readyTitle": "Ready to go live?",
+      "readyCount": "{{done}} of {{total}} ready",
+      "check": {
+        "bot": {
+          "ok": "Bot is in your chat",
+          "okHint": "Commands, TTS and moderation will work.",
+          "bad": "Bot isn't in your chat",
+          "badHint": "Nothing will answer in chat until you turn it on."
+        },
+        "alerts": {
+          "ok": "Alerts overlay connected",
+          "okHint": "Triggers will show on stream.",
+          "bad": "Alerts overlay not connected",
+          "badHint": "Add the browser source in OBS."
+        },
+        "tts": {
+          "ok": "TTS overlay ready",
+          "okHint": "Paste the link as a browser source in OBS.",
+          "bad": "TTS overlay isn't open in OBS",
+          "badHint": "Viewers' messages won't be read aloud."
+        },
+        "credits": {
+          "ok": "AI credits are fine",
+          "okHint": "They last until the reset.",
+          "bad": "AI credits may run out",
+          "badHint": "About {{days}} days left at your pace, the reset is in {{reset}} days."
+        },
+        "defense": {
+          "ok": "Follow Defense is on",
+          "okHint": "Follow-bot floods pause alerts automatically.",
+          "bad": "Follow Defense is off",
+          "badHint": ""
+        }
+      },
+      "copyObs": "Copy OBS link",
+      "inboxTitle": "Waiting for you",
+      "inbox": {
+        "clips": "Clip moments from your last stream",
+        "clipsHint": "AI picked them from your VOD. Keep the good ones.",
+        "memories": "Things the bot learned",
+        "memoriesHint": "It only uses them in chat after you approve.",
+        "raid": "Raid to check",
+        "raidHint": "pixel_pancho's raid brought 23 follows in 40 seconds.",
+        "review": "Review",
+        "open": "Open"
+      },
+      "recapTitle": "Your last stream",
+      "recap": {
+        "headline": "You hit Diamond on the last game of the night, and chat went wild.",
+        "h1": "Biggest moment: the 1v3 clutch at 1:02:05, 14 chatters spammed POG.",
+        "h2": "luna_v gifted 3 subs after the clutch.",
+        "h3": "Chat asked for a duo stream with TacoTactics 6 times."
+      },
+      "vsAverage": "Compared with your 30-day average per stream.",
+      "growthTitle": "Are you growing?",
+      "growthAnswer": "Yes. {{avg}} average viewers, {{pct}}% more than the 30 days before.",
+      "allStats": "All stats",
+      "stripLabel": "Live numbers",
+      "viewersNow": "Viewers now",
+      "minIn": "{{min}} min in",
+      "feedTitle": "What's happening",
+      "feedHint": "React with one tap; the bot posts it in chat.",
+      "ev": {
+        "raid": "{{who}} raided with {{amount}} viewers",
+        "sub": "{{who}} gifted {{amount}} subs",
+        "bits": "{{who}} cheered {{amount}} bits",
+        "redeem": "{{who}} redeemed Hydrate!",
+        "follow": "{{who}} followed"
+      },
+      "ago": "{{min}} min ago",
+      "act": {
+        "shoutout": "Shout out",
+        "shoutoutDone": "Shouted out",
+        "thank": "Thank",
+        "thankDone": "Thanked",
+        "done": "Mark done",
+        "doneDone": "Done"
+      },
+      "controlsTitle": "Controls",
+      "ctl": {
+        "bot": "Bot",
+        "botOn": "In your chat",
+        "botOff": "Not in chat",
+        "turnOff": "Turn off",
+        "turnOn": "Turn on",
+        "tts": "Text to speech",
+        "ttsPaused": "Paused, messages wait in line",
+        "ttsQueue": "{{count}} messages in line",
+        "skip": "Skip",
+        "pause": "Pause",
+        "resume": "Resume",
+        "alerts": "Alerts",
+        "alertsPaused": "Paused",
+        "alertsOn": "Showing on stream",
+        "defense": "All quiet",
+        "open": "Open"
+      }
     }
   },
   "raidSessions": {
