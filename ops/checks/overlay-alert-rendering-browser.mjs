@@ -14,7 +14,7 @@ const scene = { id:'main', name:'My overlay', width:1920, height:1080, revision:
 scene.published = structuredClone({width:scene.width,height:scene.height,widgets:scene.widgets,waitFor:[],designs:[design]});
 scene.published.designs[0].events.follow.widgets=[{...text,text:'$(user)'}];
 let state = {schemaVersion:1,revision:1,designs:[design],scenes:[scene]}, tests=0;
-const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+const artwork = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1042" height="1024"><rect width="1042" height="1024" fill="#7c3aed"/></svg>');
 try {
   const context=await browser.newContext({viewport:{width:1440,height:1100},reducedMotion:'reduce'});
   await context.addInitScript(({user,app})=>localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,createdAt:new Date().toISOString(),token:'fixture-only',expiresAt:new Date(Date.now()+3600000).toISOString(),twitchUser:user,appUser:app,permissions:{}})),{user,app});
@@ -24,7 +24,7 @@ try {
     if(u.origin===new URL(base).origin)return route.continue();
     if(u.origin!==api)return route.abort();
     let data={};
-    if(u.pathname.startsWith('/asset-library/content/'))return route.fulfill({body:png,contentType:'image/png'});
+    if(u.pathname.startsWith('/asset-library/content/'))return route.fulfill({body:artwork,contentType:'image/svg+xml'});
     if(u.pathname.startsWith('/asset-library/') && u.pathname.endsWith('/access')) data={path:'/asset-library/content/'+assetId+'?ticket=fixture'};
     else if(u.pathname==='/auth/session')data={twitch:user,app};
     else if(u.pathname.includes('/access'))data={allowed:true,role:'owner',planTier:'pro'};
@@ -87,9 +87,11 @@ try {
   const snapshot=structuredClone(state.scenes[0].published);
   await runtime.routeWebSocket('**/*',ws=>{if(!ws.url().includes('/socket.io/'))return ws.close();socket=ws;ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');ws.onMessage(m=>{m=String(m);if(m.startsWith('40/overlay-studio/')){ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`);send('overlay-state',{revision:1,snapshot});}if(m.includes('overlay-ended'))ended.push(JSON.parse(m.slice(m.indexOf(',')+1))[1]);});});
   function send(name,value){socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name,value])}`);}
-  await runtime.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===new URL(base).origin)return route.continue();if(u.pathname.includes('/assets/'))return route.fulfill(broken?{status:404,body:''}:{body:png,contentType:'image/png'});if(u.pathname.includes('/events/'))return route.fulfill({json:{data:{id:u.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{starter:{duration:10,widgets:[art,{...text,text:'CDOM201 nos ha seguido, bienvenido!'}]}}}}});return route.abort();});
+  await runtime.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===new URL(base).origin)return route.continue();if(u.pathname.includes('/assets/'))return route.fulfill(broken?{status:404,body:''}:{body:artwork,contentType:'image/svg+xml'});if(u.pathname.includes('/events/'))return route.fulfill({json:{data:{id:u.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{starter:{duration:10,widgets:[art,{...text,text:'CDOM201 nos ha seguido, bienvenido!'}]}}}}});return route.abort();});
   const source=await runtime.newPage();source.on('pageerror',e=>errors.push(e.message));await source.goto(base+'/overlays/'+publicId);await source.locator('.canvas').waitFor();
   send('overlay-event',{id:'follow-good',kind:'follow'});await source.waitForFunction(()=>document.querySelector('[data-event="follow"] img')?.naturalWidth>0);
+  const imageBounds=await source.locator('[data-event="follow"] img').evaluate(e=>({image:e.getBoundingClientRect().height,box:e.closest('app-overlay-layer').getBoundingClientRect().height}));
+  assert(imageBounds.image<=imageBounds.box+1,'full-size images must fit the saved box without cropping');
   const liveText=source.locator('[data-event="follow"] app-overlay-layer').filter({hasText:'CDOM201 nos ha seguido, bienvenido!'});
   const m=await metrics(liveText);assert(Math.abs(m.scale-.8)<.02);assert(m.textHeight<=m.hostHeight+1);
   assert.equal(m.color,editorMetrics.color);assert(m.font<=editorMetrics.font && m.font>=8,'long names shrink within the requested font size');

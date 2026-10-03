@@ -8,7 +8,7 @@ import { LanguageService } from '../../services/language.service';
     @if (kind() === 'image') { <img [src]="source" [alt]="name()" loading="lazy" referrerpolicy="no-referrer" (error)="onError()" /> }
     @else { <video [src]="source" [attr.aria-label]="name()" [controls]="controls()" [autoplay]="!controls()" [loop]="!controls()" muted playsinline preload="metadata" (error)="onError()"></video> }
   } @else { <span role="status">{{ language.translate(broken() ? 'assetLibrary.previewFailed' : 'assetLibrary.loading') }}</span> }`,
-  styles: `:host { display:grid; place-items:center; width:100%; height:100%; min-width:0 } img, video { width:100%; height:100%; max-height:100%; object-fit:contain } span { font-size:.75rem; padding:.5rem; text-align:center; color:inherit }`
+  styles: `:host { display:grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items:center; width:100%; height:100%; min-width:0; min-height:0 } img, video { display:block; width:100%; height:100%; min-width:0; min-height:0; max-height:100%; object-fit:contain } span { font-size:.75rem; padding:.5rem; text-align:center; color:inherit }`
 })
 export class AssetPreviewComponent {
   readonly assetId = input.required<string>();
