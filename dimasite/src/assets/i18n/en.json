@@ -1765,8 +1765,8 @@
     "testHint": "Plays a sample clip here. If the overlay is also open in OBS, it plays there too."
   },
   "profile": {
-    "title": "Profile Settings",
-    "subtitle": "Manage your account, subscription, and preferences.",
+    "title": "Your account",
+    "subtitle": "Your Twitch identity, preferences and plan, plus quick links to everything else.",
     "subscription": {
       "eyebrow": "Current plan",
       "title": "Subscription",
@@ -1776,7 +1776,9 @@
       "maxTierNote": "You're on the top-tier plan — thanks for the support!",
       "benefitCredits": "Up to 800,000 AI credits / month",
       "benefitTts": "All TTS providers, billed from AI credits",
-      "benefitSupport": "Priority+ support"
+      "benefitSupport": "Priority+ support",
+      "proIncludes": "Pro includes",
+      "yourPlanIncludes": "Your plan includes"
     },
     "meta": {
       "twitchId": "Twitch ID",
@@ -1788,7 +1790,44 @@
     "email": {
       "label": "Email",
       "show": "Show",
-      "hide": "Hide"
+      "hide": "Hide",
+      "showAria": "Show email address",
+      "hideAria": "Hide email address"
+    },
+    "back": "Dashboard",
+    "twitchChip": "Signed in with Twitch",
+    "identity": {
+      "title": "Twitch account",
+      "channel": "Channel",
+      "syncNote": "Your name, picture and email come from Twitch and update the next time you log in.",
+      "twitchLink": "Change them on Twitch"
+    },
+    "prefs": {
+      "title": "Preferences",
+      "hint": "Saved on this device.",
+      "language": "Language",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "shortcuts": {
+      "title": "Looking for something?",
+      "settings": {
+        "title": "Team and channel settings",
+        "hint": "Add mods and choose what they can do"
+      },
+      "usage": {
+        "title": "AI credits and usage",
+        "hint": "See what's left and what used it"
+      },
+      "credits": {
+        "title": "Buy credits",
+        "hint": "Top up AI credits without changing plan"
+      },
+      "modules": {
+        "title": "All modules",
+        "hint": "Commands, triggers, TTS, moderation and more"
+      }
     }
   },
   "referrals": {
@@ -2908,7 +2947,176 @@
     "premiumSubscriptionRequired": "Premium subscription required"
   },
   "settings": {
-    "title": "Bot settings",
+    "title": "Channel settings",
+    "team": {
+      "back": "Dashboard",
+      "subtitle": "Choose who can help run your channel and exactly what they can touch.",
+      "count": "{{count}} helpers",
+      "countOne": "1 helper",
+      "ownerChip": "You own this channel",
+      "viewOnlyChip": "View only",
+      "refresh": "Refresh",
+      "title": "Team",
+      "hint": "People you trust to moderate, run commands or manage pages for you.",
+      "addLabel": "Add a helper",
+      "searchPlaceholder": "Type a Twitch name",
+      "addHint": "Only people who have logged in to DomDimaBot at least once show up here.",
+      "notFoundHint": "Can't find them? Ask them to log in to DomDimaBot once with Twitch, then search again.",
+      "add": "Add",
+      "addAria": "Add {{name}} to your team",
+      "listLabel": "Your team",
+      "edit": "Edit access",
+      "editAria": "Edit access for {{name}}",
+      "removeAria": "Remove {{name}} from your team",
+      "paused": "Paused",
+      "emptyTitle": "No helpers yet",
+      "emptyOwner": "Search above to add a mod you trust. You choose what they can do.",
+      "summary": {
+        "full": "Full access",
+        "fullHint": "Can use and change everything except billing and your account",
+        "chatOnly": "Bot admin in chat",
+        "chatAndOnePage": "Chat + 1 page",
+        "chatAndPages": "Chat + {{count}} pages",
+        "onePage": "1 page",
+        "pages": "{{count}} pages",
+        "dashboardOnly": "Dashboard only",
+        "noPages": "Can't open your channel pages",
+        "more": "{{names}} +{{count}} more"
+      },
+      "help": {
+        "title": "How access works",
+        "fullTitle": "Full access",
+        "fullCopy": "For trusted mods. They can use and change everything, and run admin commands in chat.",
+        "chatTitle": "Bot admin in chat",
+        "chatCopy": "Lets them use admin-only bot commands in your Twitch chat. It does not open the website.",
+        "pagesTitle": "Pages: View or Edit",
+        "pagesCopy": "View lets them look around. Edit lets them change things on that page.",
+        "ownerOnly": "Billing, your plan and your account always stay with you."
+      },
+      "editor": {
+        "addTitle": "Add {{name}}",
+        "editTitle": "Access for {{name}}",
+        "modeTitle": "How much can they do?",
+        "fullName": "Full access",
+        "fullTag": "Trusted mods",
+        "fullCopy": "Everything you can do, except billing and your account. Includes bot admin in chat.",
+        "customName": "Choose what they can do",
+        "customTag": "Safer",
+        "customCopy": "Pick chat powers and exactly which pages they can open.",
+        "chatStep": "Twitch chat",
+        "chatName": "Bot admin in chat",
+        "chatHint": "Use admin-only bot commands in your chat. Doesn't open the website.",
+        "pagesStep": "Website pages",
+        "pagesHint": "Off hides the page. View lets them look. Edit lets them change things.",
+        "dashboardLocked": "Included automatically while they can open another page.",
+        "fineTitle": "What can they change?",
+        "oneRequired": "Turn on bot admin in chat or give them at least one page.",
+        "summaryLabel": "They can:",
+        "save": "Save access",
+        "addSave": "Add to team"
+      },
+      "sections": {
+        "stream": "Stream tools",
+        "ai": "AI",
+        "insights": "Stats and money",
+        "channel": "Channel"
+      },
+      "level": {
+        "off": "Off",
+        "view": "View",
+        "manage": "Edit"
+      },
+      "areas": {
+        "commands": {
+          "name": "Commands and timers",
+          "hint": "Chat commands, timers and keywords."
+        },
+        "triggers": {
+          "name": "Triggers and media",
+          "hint": "Sounds, videos and images that play on stream."
+        },
+        "tts": {
+          "name": "Text to Speech",
+          "hint": "Voices and rules for messages read aloud."
+        },
+        "rewards": {
+          "name": "Rewards and redemptions",
+          "hint": "Channel point rewards and the redemption queue."
+        },
+        "dimafx": {
+          "name": "DimaFX shop",
+          "hint": "Items viewers buy with Bits in the extension."
+        },
+        "clips": {
+          "name": "Clips",
+          "hint": "Clip carousel and clip suggestions."
+        },
+        "eventsubs": {
+          "name": "Chat events",
+          "hint": "Messages for follows, subs, raids and cheers."
+        },
+        "moderation": {
+          "name": "Moderation",
+          "hint": "Chat filters, spam protection and Follow Defense."
+        },
+        "ai": {
+          "name": "AI personality",
+          "hint": "How the bot talks and answers in chat."
+        },
+        "memories": {
+          "name": "AI memories",
+          "hint": "What the bot remembers about your stream and viewers."
+        },
+        "summaries": {
+          "name": "Stream summaries",
+          "hint": "Recaps of past streams."
+        },
+        "analytics": {
+          "name": "Analytics",
+          "hint": "Viewers, follows and stream stats."
+        },
+        "billing": {
+          "name": "AI credits and usage",
+          "hint": "See how many AI credits are left and what used them."
+        },
+        "referrals": {
+          "name": "Referrals",
+          "hint": "Your referral link and earnings."
+        },
+        "dashboard": {
+          "name": "Dashboard",
+          "hint": "The home page with live status and quick stats."
+        },
+        "settings": {
+          "name": "Channel settings",
+          "hint": "This page. Edit lets them change channel settings."
+        },
+        "admins": {
+          "name": "Team list",
+          "hint": "See who else is on your team. Only you can add or remove people."
+        }
+      },
+      "fine": {
+        "triggers_upload": "Upload media",
+        "triggers_attach": "Attach to commands",
+        "triggers_edit": "Edit triggers",
+        "triggers_delete": "Delete",
+        "dimafx_edit": "Edit items",
+        "dimafx_delete": "Delete items"
+      },
+      "remove": {
+        "title": "Remove {{name}}?",
+        "copy": "They'll lose bot admin powers in chat and can't open your channel pages anymore. You can add them again any time.",
+        "confirm": "Remove"
+      }
+    },
+    "files": {
+      "plan": {
+        "free": "Your plan: 100 MB",
+        "premium": "Your plan: 500 MB",
+        "pro": "Your plan: 5 GB"
+      }
+    },
     "subtitle": "Settings are permission-protected and ready for feature wiring.",
     "hero": {
       "eyebrow": "Channel bot controls",

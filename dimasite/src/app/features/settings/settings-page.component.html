@@ -1,100 +1,59 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('settings.title')">
-      <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">{{ t('settings.hero.eyebrow') }}</p>
-        <h1 class="lf-title">
-          {{ t('settings.title') }}
-          <span>{{ streamer() || '—' }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('settings.hero.subtitle') }}</p>
-
-        <div class="lf-actions">
-          <button
-            type="button"
-            class="lf-btn"
-            (click)="retryLoad()"
-            [disabled]="loading() || !channelID()"
-          >
-            {{ t('common.retry') }}
-          </button>
-        </div>
-
-        <p class="lf-feed" [class.lf-feed--on]="isOwnerView()">
-          {{
-            isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode')
-          }}
-          @if (channelID()) {
-            · {{ channelID() }}
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="backPath()"><app-lf-icon name="back"></app-lf-icon> {{ t('settings.team.back') }}</a>
+      <h1 class="lf-title">{{ t('settings.title') }}</h1>
+      <p class="lf-copy">{{ t('settings.team.subtitle') }}</p>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--accent">
+          <app-lf-icon name="users" [size]="13"></app-lf-icon>
+          {{ admins().length === 1 ? t('settings.team.countOne') : t('settings.team.count', { count: admins().length }) }}
+        </span>
+        @if (!isChannelResolving()) {
+          @if (isOwnerView()) {
+            <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span> {{ t('settings.team.ownerChip') }}</span>
+          } @else {
+            <span class="lf-chip"><app-lf-icon name="lock" [size]="12"></app-lf-icon> {{ t('settings.team.viewOnlyChip') }}</span>
           }
-        </p>
-      </article>
+        }
+        <button type="button" class="lf-chip lf-chip--link" (click)="retryLoad()" [disabled]="loading() || !channelID()">
+          <app-lf-icon name="refresh" [size]="12"></app-lf-icon> {{ t('settings.team.refresh') }}
+        </button>
+      </div>
+      @if (!isOwnerView() && !isChannelResolving()) {
+        <p class="lf-note lf-note--info">{{ t('settings.admins.states.adminReadOnly') }}</p>
+      }
+    </header>
 
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="isOwnerView()">
-            {{ isOwnerView() ? t('settings.admins.ownerMode') : t('settings.admins.adminMode') }}
-          </span>
-          <span class="lf-spotlight__count">{{ t('settings.admins.current.kicker') }}</span>
-        </div>
-
-        <div class="lf-stats-strip" [attr.aria-label]="t('settings.admins.current.title')">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('settings.admins.current.countLabel') }}</span>
-            <strong class="lf-stats-strip__value">{{ admins().length }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('settings.admins.search.kicker') }}</span>
-            <strong class="lf-stats-strip__value">{{ isOwnerView() ? candidates().length : '—' }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('settings.hero.eyebrow') }}</span>
-            <strong class="lf-stats-strip__value lf-stats-strip__value--text">
-              {{ streamer() || '—' }}
-            </strong>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    @if (isOwnerView() && ownerChannelID()) {
-      <section class="lf-tile lf-section" aria-labelledby="settings-asset-title">
-        <p class="lf-kicker">{{ t('assetLibrary.private') }}</p>
-        <h2 class="lf-h2" id="settings-asset-title">{{ t('assetLibrary.title') }}</h2>
-        <p class="lf-copy lf-copy--tight">{{ t('assetLibrary.description') }}</p>
-        <p class="lf-note">{{ t('assetLibrary.allowances') }}</p>
-        <div class="lf-actions"><button type="button" class="lf-btn lf-btn--primary" (click)="assetsOpen.set(true)">{{ t('assetLibrary.browse') }}</button></div>
+    @if (errorMessage()) {
+      <section class="lf-banner lf-banner--error" role="alert">
+        <p class="lf-banner__title">{{ errorMessage() }}</p>
+        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">{{ t('common.retry') }}</button>
       </section>
     }
 
-    @if (errorMessage()) {
-      <div class="lf-banner lf-banner--error" role="alert">
-        <p>{{ errorMessage() }}</p>
-        <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">
-          {{ t('common.retry') }}
-        </button>
-      </div>
-    }
-
-    <section class="lf-section" [attr.aria-label]="t('settings.admins.current.title')">
-      <div class="lf-section__head">
-        <div>
-          <p class="lf-kicker">{{ t('settings.admins.current.kicker') }}</p>
-          <h2 class="lf-h2">{{ t('settings.admins.current.title') }}</h2>
-          <p class="lf-copy lf-copy--tight">{{ t('settings.admins.current.subtitle') }}</p>
-        </div>
-
-        <div class="lf-section__tools">
-          <span class="lf-chip">{{ admins().length }} {{ t('settings.admins.current.countLabel') }}</span>
+    <div class="lf-panels">
+      <div class="lf-col lf-col--main">
+        <section class="lf-tile lf-card" aria-labelledby="team-title">
+          <div class="lf-card-head">
+            <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="users"></app-lf-icon></span>
+            <div class="lf-card-head__copy">
+              <h2 class="lf-h2" id="team-title">{{ t('settings.team.title') }}</h2>
+              <p class="lf-note">{{ t('settings.team.hint') }}</p>
+            </div>
+          </div>
 
           @if (isOwnerView()) {
-            <div class="lf-search-stack">
-              <label class="lf-search" [attr.aria-label]="t('settings.admins.search.inputLabel')">
-                <span class="visually-hidden">{{ t('settings.admins.search.inputLabel') }}</span>
+            <div class="lf-add">
+              <label class="lf-label" for="team-search">{{ t('settings.team.addLabel') }}</label>
+              <div class="lf-search">
+                <app-lf-icon name="search" [size]="16"></app-lf-icon>
                 <input
+                  id="team-search"
                   type="search"
+                  autocomplete="off"
                   [value]="searchQuery()"
-                  [placeholder]="t('settings.admins.search.placeholder')"
+                  [placeholder]="t('settings.team.searchPlaceholder')"
                   (input)="onSearchInput($event)"
                 />
                 @if (searchQuery()) {
@@ -104,172 +63,313 @@
                     [attr.aria-label]="t('settings.admins.search.clearAriaLabel')"
                     (click)="clearSearch()"
                   >
-                    <app-lf-icon name="close"></app-lf-icon>
+                    <app-lf-icon name="close" [size]="14"></app-lf-icon>
                   </button>
                 }
-              </label>
+              </div>
 
               @if (showSearchDropdown()) {
-                <div
-                  class="lf-dropdown"
-                  role="listbox"
-                  [attr.aria-label]="t('settings.admins.search.dropdownLabel')"
-                >
+                <div class="lf-results" role="region" aria-live="polite" [attr.aria-label]="t('settings.admins.search.dropdownLabel')">
                   @if (hasCandidateResults()) {
-                    <p class="lf-dropdown__meta">
-                      {{ t('settings.admins.search.matchesMeta', { count: searchResultCount() }) }}
-                    </p>
-                    @for (candidate of filteredCandidates(); track candidate.id) {
-                      <article class="lf-dropdown__item">
-                        <div>
-                          <p class="lf-person__name">{{ candidate.display_name }}</p>
-                          <p class="lf-person__meta">{{ candidate.login }} · {{ candidate.id }}</p>
-                        </div>
-                        <button
-                          type="button"
-                          class="lf-btn lf-btn--primary lf-btn--compact"
-                          [disabled]="isAdding(candidate.id)"
-                          (click)="openPermissionEditor(candidate)"
-                        >
-                          {{
-                            isAdding(candidate.id)
-                              ? t('settings.admins.actions.adding')
-                              : t('settings.admins.actions.add')
-                          }}
-                        </button>
-                      </article>
-                    }
+                    <p class="lf-results__meta">{{ t('settings.admins.search.matchesMeta', { count: searchResultCount() }) }}</p>
+                    <ul class="lf-rows">
+                      @for (candidate of filteredCandidates(); track candidate.id) {
+                        <li class="lf-row lf-row--result">
+                          <span class="lf-avatar" aria-hidden="true">{{ initialFor(candidate.display_name || candidate.login) }}</span>
+                          <span class="lf-row__body">
+                            <strong>{{ candidate.display_name || candidate.login }}</strong>
+                            <span class="lf-row__meta">&#64;{{ candidate.login }}</span>
+                          </span>
+                          <button
+                            type="button"
+                            class="lf-btn lf-btn--primary lf-btn--compact"
+                            [disabled]="isAdding(candidate.id)"
+                            [attr.aria-label]="t('settings.team.addAria', { name: candidate.display_name || candidate.login })"
+                            (click)="openPermissionEditor(candidate)"
+                          >
+                            <app-lf-icon name="plus" [size]="14"></app-lf-icon>
+                            {{ isAdding(candidate.id) ? t('settings.admins.actions.adding') : t('settings.team.add') }}
+                          </button>
+                        </li>
+                      }
+                    </ul>
                   } @else {
-                    <p class="lf-dropdown__empty">{{ t('settings.admins.states.noSearchMatches') }}</p>
+                    <p class="lf-results__empty">{{ t('settings.admins.states.noSearchMatches') }}</p>
                   }
+                  <p class="lf-note">{{ t('settings.team.notFoundHint') }}</p>
                 </div>
+              } @else {
+                <p class="lf-note">{{ t('settings.team.addHint') }}</p>
               }
             </div>
-          } @else if (isChannelResolving()) {
-            <p class="lf-note">{{ t('settings.admins.states.resolvingViewer') }}</p>
-          } @else {
-            <p class="lf-note">{{ t('settings.admins.states.adminReadOnly') }}</p>
           }
-        </div>
+
+          @if (loading() && !admins().length) {
+            <p class="lf-empty-inline">{{ t('settings.admins.states.loadingAdmins') }}</p>
+          } @else {
+            <ul class="lf-rows lf-rows--team" [attr.aria-label]="t('settings.team.listLabel')">
+              @for (admin of admins(); track admin.adminID) {
+                <li class="lf-row">
+                  @if (avatarFor(admin.adminName); as avatar) {
+                    <img class="lf-avatar lf-avatar--img" [src]="avatar" alt="" width="40" height="40" loading="lazy" />
+                  } @else {
+                    <span class="lf-avatar" aria-hidden="true">{{ initialFor(admin.adminName) }}</span>
+                  }
+                  <span class="lf-row__body">
+                    <span class="lf-row__title">
+                      <strong>{{ admin.adminName }}</strong>
+                      <span class="lf-chip lf-chip--xs" [class.lf-chip--accent]="admin.permissions.includes('*')">
+                        {{ accessLabel(admin.permissions) }}
+                      </span>
+                      @if (!admin.actived) {
+                        <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('settings.team.paused') }}</span>
+                      }
+                    </span>
+                    <span class="lf-row__meta">{{ accessAreas(admin.permissions) }}</span>
+                  </span>
+                  @if (isOwnerView()) {
+                    <span class="lf-row__actions">
+                      <button
+                        type="button"
+                        class="lf-btn lf-btn--compact"
+                        [attr.aria-label]="t('settings.team.editAria', { name: admin.adminName })"
+                        (click)="openPermissionEditor(admin)"
+                      >
+                        {{ t('settings.team.edit') }}
+                      </button>
+                      <button
+                        type="button"
+                        class="lf-icon-btn lf-icon-btn--danger"
+                        [disabled]="isDeleting(admin.adminID)"
+                        [attr.aria-label]="t('settings.team.removeAria', { name: admin.adminName })"
+                        (click)="askRemove(admin)"
+                      >
+                        <app-lf-icon name="trash" [size]="16"></app-lf-icon>
+                      </button>
+                    </span>
+                  }
+                </li>
+              } @empty {
+                <li class="lf-empty-state">
+                  <strong>{{ t('settings.team.emptyTitle') }}</strong>
+                  <span>{{ isOwnerView() ? t('settings.team.emptyOwner') : t('settings.admins.states.noAdmins') }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
       </div>
 
-      @if (isOwnerView() && isSearchIdle()) {
-        <p class="lf-note lf-note--pad">{{ t('settings.admins.search.ownerHint') }}</p>
-      }
-
-      @if (editingCandidate() || editingAdmin()) {
-        <section class="lf-tile lf-permission-editor" [attr.aria-label]="t('settings.admins.permissions.title')">
-          <div class="lf-permission-editor__head">
+      <aside class="lf-col lf-col--side">
+        <section class="lf-tile lf-card" aria-labelledby="access-help-title">
+          <h2 class="lf-h2" id="access-help-title">{{ t('settings.team.help.title') }}</h2>
+          <dl class="lf-help">
             <div>
-              <p class="lf-kicker">{{ t('settings.admins.permissions.kicker') }}</p>
-              <h3 class="lf-h2">{{ editingCandidate()?.display_name || editingAdmin()?.adminName }}</h3>
-              <p class="lf-copy lf-copy--tight">{{ t('settings.admins.permissions.description') }}</p>
+              <dt><app-lf-icon name="star" [size]="14"></app-lf-icon> {{ t('settings.team.help.fullTitle') }}</dt>
+              <dd>{{ t('settings.team.help.fullCopy') }}</dd>
             </div>
-            <button type="button" class="lf-btn lf-btn--compact" (click)="closePermissionEditor()" [disabled]="savingPermissions()">
-              {{ t('settings.admins.permissions.cancel') }}
-            </button>
-          </div>
-          <div class="lf-permission-modes" role="group" [attr.aria-label]="t('settings.admins.permissions.mode')">
-            <button type="button" class="lf-permission-mode" [class.lf-permission-mode--active]="fullAccess()" [attr.aria-pressed]="fullAccess()" (click)="fullAccess.set(true)">
-              <code>*</code> {{ t('settings.admins.permissions.full') }}
-            </button>
-            <button type="button" class="lf-permission-mode" [class.lf-permission-mode--active]="!fullAccess()" [attr.aria-pressed]="!fullAccess()" (click)="fullAccess.set(false)">
-              {{ t('settings.admins.permissions.custom') }}
-            </button>
-          </div>
-          @if (fullAccess()) {
-            <p class="lf-note lf-permission-full-note">{{ t('settings.admins.permissions.fullDescription') }}</p>
-          } @else {
-            <div class="lf-permission-section" role="group" [attr.aria-label]="t('settings.admins.permissions.chatTitle')">
-              <div class="lf-permission-section__head">
-                <h4>{{ t('settings.admins.permissions.chatTitle') }}</h4>
-                <p class="lf-note">{{ t('settings.admins.permissions.chatDescription') }}</p>
-              </div>
-              <div class="lf-permission-pills">
-                <button type="button" class="lf-permission-pill lf-permission-pill--chat" [class.lf-permission-pill--selected]="chatAdminEnabled()" [attr.aria-pressed]="chatAdminEnabled()" [attr.title]="t('settings.admins.permissions.chatEnabled')" (click)="toggleChatAdmin(!chatAdminEnabled())">
-                  <code>chat:admin</code>
-                </button>
-              </div>
+            <div>
+              <dt><app-lf-icon name="chat" [size]="14"></app-lf-icon> {{ t('settings.team.help.chatTitle') }}</dt>
+              <dd>{{ t('settings.team.help.chatCopy') }}</dd>
             </div>
-            <div class="lf-permission-section" role="group" [attr.aria-label]="t('settings.admins.permissions.websiteTitle')">
-              <div class="lf-permission-section__head">
-                <h4>{{ t('settings.admins.permissions.websiteTitle') }}</h4>
-                <p class="lf-note">{{ t('settings.admins.permissions.websiteDescription') }}</p>
-              </div>
-              <div class="lf-permission-pills lf-permission-pills--website">
-                @for (permission of permissionPills; track permission.key) {
-                  <button type="button" class="lf-permission-pill" [class.lf-permission-pill--manage]="permission.kind === 'manage'" [class.lf-permission-pill--selected]="draftPermissions().includes(permission.key)" [attr.aria-pressed]="draftPermissions().includes(permission.key)" [attr.title]="t('settings.admins.permissions.categories.' + permission.group)" [disabled]="permission.key === 'dashboard:view' && hasWebsiteFeatureGrant()" (click)="toggleGrant(permission.key, !draftPermissions().includes(permission.key))">
-                    <code>{{ permission.key }}</code>
-                  </button>
-                }
-              </div>
-              <p class="lf-note lf-permission-hint">{{ t('settings.admins.permissions.dashboardIncluded') }}</p>
+            <div>
+              <dt><app-lf-icon name="grid" [size]="14"></app-lf-icon> {{ t('settings.team.help.pagesTitle') }}</dt>
+              <dd>{{ t('settings.team.help.pagesCopy') }}</dd>
             </div>
-            @if (!canSavePermissions()) {
-              <p class="lf-note" role="status">{{ t('settings.admins.permissions.oneRequired') }}</p>
-            }
-          }
-          <div class="lf-actions">
-            <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions() || !canSavePermissions()" (click)="savePermissions()">
-              {{ savingPermissions() ? t('settings.admins.permissions.saving') : t('settings.admins.permissions.save') }}
-            </button>
-          </div>
+          </dl>
+          <p class="lf-note lf-note--lock"><app-lf-icon name="lock" [size]="13"></app-lf-icon> {{ t('settings.team.help.ownerOnly') }}</p>
         </section>
-      }
 
-      @if (loading() && !admins().length) {
-        <div class="lf-tile lf-empty">{{ t('settings.admins.states.loadingAdmins') }}</div>
-      } @else {
-        <div class="lf-tile lf-list">
-          @for (admin of admins(); track admin.adminID) {
-            <article class="lf-list__row">
-              <div class="lf-person">
-                <div class="lf-avatar" aria-hidden="true">
-                  {{ (admin.adminName || '?').slice(0, 1).toUpperCase() }}
-                </div>
-                <div>
-                  <p class="lf-person__name">{{ admin.adminName }}</p>
-                  <p class="lf-person__meta">ID {{ admin.adminID }}</p>
-                </div>
+        @if (isOwnerView() && ownerChannelID()) {
+          <section class="lf-tile lf-card" aria-labelledby="settings-asset-title">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="image"></app-lf-icon></span>
+              <div class="lf-card-head__copy">
+                <h2 class="lf-h2" id="settings-asset-title">{{ t('assetLibrary.title') }}</h2>
+                <p class="lf-note">{{ t('assetLibrary.description') }}</p>
               </div>
-
-              <div class="lf-list__actions">
-                <span class="lf-chip">{{ accessLabel(admin.permissions) }}</span>
-                <span
-                  class="lf-chip lf-chip--status"
-                  [class.lf-chip--live]="admin.actived"
-                  [class.lf-chip--muted]="!admin.actived"
-                >
-                  {{ admin.actived ? t('common.enabled') : t('common.disabled') }}
-                </span>
-
-                @if (isOwnerView()) {
-                  <button type="button" class="lf-btn lf-btn--compact" (click)="openPermissionEditor(admin)">
-                    {{ t('settings.admins.permissions.edit') }}
-                  </button>
-                  <button
-                    type="button"
-                    class="lf-btn lf-btn--danger lf-btn--compact"
-                    [disabled]="isDeleting(admin.adminID)"
-                    (click)="deleteAdmin(admin)"
-                  >
-                    {{
-                      isDeleting(admin.adminID)
-                        ? t('settings.admins.actions.removing')
-                        : t('settings.admins.actions.remove')
-                    }}
-                  </button>
-                }
-              </div>
-            </article>
-          } @empty {
-            <div class="lf-empty-inline">{{ t('settings.admins.states.noAdmins') }}</div>
-          }
-        </div>
-      }
-    </section>
+            </div>
+            <p class="lf-files">
+              <span class="lf-chip lf-chip--xs" [class.lf-chip--gold]="planTier() !== 'free'">{{ t('settings.files.plan.' + planTier()) }}</span>
+              <span class="lf-note">{{ t('assetLibrary.allowances') }}</span>
+            </p>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="assetsOpen.set(true)">{{ t('assetLibrary.browse') }}</button>
+          </section>
+        }
+      </aside>
+    </div>
   </main>
 </div>
+
+@if (editorOpen()) {
+  <div class="lf-modal-overlay" (click)="closePermissionEditor()">
+    <section
+      #editorDialog
+      class="lf-modal lf-modal--form"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="access-editor-title"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="access-editor-title">
+          {{ isNewAdmin() ? t('settings.team.editor.addTitle', { name: editorName() }) : t('settings.team.editor.editTitle', { name: editorName() }) }}
+        </h2>
+        <button type="button" class="lf-modal__close" (click)="closePermissionEditor()" [disabled]="savingPermissions()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+
+      <div class="lf-modal__body">
+        <fieldset class="lf-step" [disabled]="savingPermissions()">
+          <legend class="lf-step__title"><span class="lf-step__num">1</span> {{ t('settings.team.editor.modeTitle') }}</legend>
+          <div class="lf-choice">
+            <label class="lf-choice__opt" [class.lf-choice__opt--on]="fullAccess()">
+              <input type="radio" name="access-mode" [checked]="fullAccess()" (change)="fullAccess.set(true)" />
+              <span class="lf-choice__body">
+                <span class="lf-choice__name">{{ t('settings.team.editor.fullName') }} <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('settings.team.editor.fullTag') }}</span></span>
+                <span class="lf-choice__copy">{{ t('settings.team.editor.fullCopy') }}</span>
+              </span>
+            </label>
+            <label class="lf-choice__opt" [class.lf-choice__opt--on]="!fullAccess()">
+              <input type="radio" name="access-mode" [checked]="!fullAccess()" (change)="fullAccess.set(false)" />
+              <span class="lf-choice__body">
+                <span class="lf-choice__name">{{ t('settings.team.editor.customName') }} <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('settings.team.editor.customTag') }}</span></span>
+                <span class="lf-choice__copy">{{ t('settings.team.editor.customCopy') }}</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        @if (!fullAccess()) {
+          <section class="lf-step" aria-labelledby="access-chat-title">
+            <h3 class="lf-step__title" id="access-chat-title"><span class="lf-step__num">2</span> {{ t('settings.team.editor.chatStep') }}</h3>
+            <div class="lf-toggle-row">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="chat"></app-lf-icon></span>
+              <span class="lf-toggle-row__copy">
+                <span class="lf-toggle-row__title">{{ t('settings.team.editor.chatName') }}</span>
+                <span class="lf-toggle-row__hint">{{ t('settings.team.editor.chatHint') }}</span>
+              </span>
+              <label class="lf-switch">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="t('settings.team.editor.chatName')"
+                  [checked]="chatAdminEnabled()"
+                  [disabled]="savingPermissions()"
+                  (change)="toggleChatAdmin($any($event.target).checked)"
+                />
+                <span class="lf-switch__track"></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="lf-step" aria-labelledby="access-pages-title">
+            <h3 class="lf-step__title" id="access-pages-title"><span class="lf-step__num">3</span> {{ t('settings.team.editor.pagesStep') }}</h3>
+            <p class="lf-note">{{ t('settings.team.editor.pagesHint') }}</p>
+
+            @for (section of areaSections; track section.key) {
+              <div class="lf-area-group">
+                <h4 class="lf-area-group__title">{{ t('settings.team.sections.' + section.key) }}</h4>
+                @for (group of section.areas; track group.key) {
+                  <div class="lf-area" [class.lf-area--on]="areaLevel(group) !== 'off'">
+                    <span class="lf-area__copy">
+                      <span class="lf-area__name" [id]="'area-' + group.key">{{ t('settings.team.areas.' + group.key + '.name') }}</span>
+                      <span class="lf-area__hint">
+                        {{ isAreaLocked(group) ? t('settings.team.editor.dashboardLocked') : t('settings.team.areas.' + group.key + '.hint') }}
+                      </span>
+                    </span>
+                    <span class="lf-seg" role="radiogroup" [attr.aria-labelledby]="'area-' + group.key">
+                      <label class="lf-seg__opt">
+                        <input type="radio" [name]="'area-level-' + group.key" [checked]="areaLevel(group) === 'off'" [disabled]="isAreaLocked(group) || savingPermissions()" (change)="setAreaLevel(group, 'off')" />
+                        <span>{{ t('settings.team.level.off') }}</span>
+                      </label>
+                      <label class="lf-seg__opt">
+                        <input type="radio" [name]="'area-level-' + group.key" [checked]="areaLevel(group) === 'view'" [disabled]="savingPermissions()" (change)="setAreaLevel(group, 'view')" />
+                        <span>{{ t('settings.team.level.view') }}</span>
+                      </label>
+                      @if (group.manage.length) {
+                        <label class="lf-seg__opt">
+                          <input type="radio" [name]="'area-level-' + group.key" [checked]="areaLevel(group) === 'manage'" [disabled]="savingPermissions()" (change)="setAreaLevel(group, 'manage')" />
+                          <span>{{ t('settings.team.level.manage') }}</span>
+                        </label>
+                      }
+                    </span>
+                    @if (group.manage.length > 1 && areaLevel(group) === 'manage') {
+                      <fieldset class="lf-area__fine" [disabled]="savingPermissions()">
+                        <legend class="lf-label">{{ t('settings.team.editor.fineTitle') }}</legend>
+                        @for (key of group.manage; track key) {
+                          <label class="lf-check">
+                            <input type="checkbox" [checked]="hasGrant(key)" (change)="toggleGrant(key, $any($event.target).checked)" />
+                            <span>{{ fineLabel(key) }}</span>
+                          </label>
+                        }
+                      </fieldset>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </section>
+
+          @if (!canSavePermissions()) {
+            <p class="lf-field-error" role="alert">{{ t('settings.team.editor.oneRequired') }}</p>
+          }
+        }
+      </div>
+
+      <footer class="lf-modal__footer lf-modal__footer--split">
+        <p class="lf-note" aria-live="polite">
+          <span class="lf-summary-label">{{ t('settings.team.editor.summaryLabel') }}</span>
+          <strong>{{ draftSummary() }}</strong>
+        </p>
+        <button type="button" class="lf-btn" (click)="closePermissionEditor()" [disabled]="savingPermissions()">
+          {{ t('settings.admins.permissions.cancel') }}
+        </button>
+        <button type="button" class="lf-btn lf-btn--primary" [disabled]="savingPermissions() || !canSavePermissions()" (click)="savePermissions()">
+          {{
+            savingPermissions()
+              ? t('settings.admins.permissions.saving')
+              : isNewAdmin()
+                ? t('settings.team.editor.addSave')
+                : t('settings.team.editor.save')
+          }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (confirmingRemoval(); as admin) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="confirmingRemoval.set(null)">
+    <section
+      #confirmDialog
+      class="lf-modal lf-modal--narrow"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="remove-title"
+      aria-describedby="remove-desc"
+      tabindex="-1"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="remove-title">{{ t('settings.team.remove.title', { name: admin.adminName }) }}</h2>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-copy" id="remove-desc">{{ t('settings.team.remove.copy') }}</p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="confirmingRemoval.set(null)" [disabled]="isDeleting(admin.adminID)">
+          {{ t('settings.admins.permissions.cancel') }}
+        </button>
+        <button type="button" class="lf-btn lf-btn--danger" (click)="confirmRemove()" [disabled]="isDeleting(admin.adminID)">
+          {{ isDeleting(admin.adminID) ? t('settings.admins.actions.removing') : t('settings.team.remove.confirm') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
 @if (assetsOpen() && isOwnerView() && ownerChannelID()) {
   <app-asset-library-dialog [owner]="ownerChannelID()" [selectable]="false" (closed)="assetsOpen.set(false)" />
 }

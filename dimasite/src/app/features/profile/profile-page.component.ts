@@ -1,19 +1,44 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { LanguageService } from '../../services/language.service';
+import { LanguageService, SupportedLanguage } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { ThemePreference, ThemeService } from '../../services/theme.service';
 import { UpgradeService } from '../../services/upgrade.service';
+import { LfIconComponent, LfIconName } from '../../shared/lf-icon/lf-icon.component';
+import { getRouteParam } from '../../shared/utils/route-param.util';
+
+interface ProfileShortcut {
+  key: string;
+  icon: LfIconName;
+  path: string;
+}
+
+const SHORTCUTS: readonly ProfileShortcut[] = [
+  { key: 'settings', icon: 'users', path: 'settings' },
+  { key: 'usage', icon: 'trend', path: 'usage' },
+  { key: 'credits', icon: 'zap', path: 'credits' },
+  { key: 'modules', icon: 'grid', path: 'modules' }
+];
 
 @Component({
   selector: 'app-profile-page',
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.css',
+  imports: [RouterLink, LfIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfilePageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
+  private readonly themeService = inject(ThemeService);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly shortcuts = SHORTCUTS;
+  readonly language = this.languageService.currentLanguage;
+  readonly theme = this.themeService.theme;
+  readonly backPath = computed(() => ['/', (getRouteParam(this.route, 'streamer') ?? this.login()).trim().toLowerCase(), 'dashboard']);
 
   readonly isLoading = computed(() => this.sessionAuth.session() === null);
   readonly planTier = computed(() => {
@@ -120,6 +145,18 @@ export class ProfilePageComponent {
       return;
     }
     this.emailVisible.update((visible) => !visible);
+  }
+
+  shortcutPath(shortcut: ProfileShortcut): string[] {
+    return ['/', this.login(), shortcut.path];
+  }
+
+  setLanguage(language: SupportedLanguage): void {
+    this.languageService.setLanguage(language);
+  }
+
+  setTheme(theme: ThemePreference): void {
+    this.themeService.setTheme(theme);
   }
 
   onUpgradeClick(): void {

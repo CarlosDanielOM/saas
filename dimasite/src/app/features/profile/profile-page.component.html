@@ -1,85 +1,156 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    @if (isLoading()) {
-      <div class="lf-tile lf-empty">{{ t('common.loading') }}</div>
-    } @else {
-      <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('profile.title')">
-        <article class="lf-tile lf-tile--intro">
-          <p class="lf-kicker">{{ t('profile.title') }}</p>
-          <h1 class="lf-title">
-            {{ displayName() }}
-            <span>@{{ login() }}</span>
-          </h1>
-          <p class="lf-copy">{{ t('profile.subtitle') }}</p>
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="backPath()"><app-lf-icon name="back"></app-lf-icon> {{ t('profile.back') }}</a>
+      <h1 class="lf-title">{{ t('profile.title') }}</h1>
+      <p class="lf-copy">{{ t('profile.subtitle') }}</p>
+      @if (!isLoading()) {
+        <div class="lf-head__chips">
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
+            <app-lf-icon name="star" [size]="12"></app-lf-icon> {{ planTierLabel() }}
+          </span>
+          @if (planUntilLabel()) {
+            <span class="lf-chip">{{ planUntilLabel() }}</span>
+          }
+          <span class="lf-chip lf-chip--accent">{{ t('profile.twitchChip') }}</span>
+        </div>
+      }
+    </header>
 
-          <div class="lf-identity">
-            @if (avatarUrl()) {
-              <img class="lf-avatar lf-avatar--img" [src]="avatarUrl()!" [alt]="displayName()" width="56" height="56" />
-            } @else {
-              <div class="lf-avatar" aria-hidden="true">{{ initials() }}</div>
-            }
-            <div class="lf-identity__body">
-              <p class="lf-identity__name">{{ displayName() }}</p>
-              <div class="lf-email">
-                <p class="lf-identity__meta" [attr.aria-label]="t('profile.email.label')">
-                  {{ emailDisplay() }}
-                </p>
-                @if (email()) {
-                  <button
-                    type="button"
-                    class="lf-email__toggle"
-                    (click)="toggleEmailVisibility()"
-                    [attr.aria-pressed]="emailVisible()"
-                    [attr.aria-label]="
-                      emailVisible() ? t('profile.email.hide') : t('profile.email.show')
-                    "
-                  >
-                    {{ emailVisible() ? t('profile.email.hide') : t('profile.email.show') }}
-                  </button>
-                }
+    @if (isLoading()) {
+      <section class="lf-tile"><p class="lf-note">{{ t('common.loading') }}</p></section>
+    } @else {
+      <div class="lf-panels">
+        <div class="lf-col lf-col--main">
+          <section class="lf-tile lf-card" aria-labelledby="profile-identity-title">
+            <h2 class="lf-visually-hidden" id="profile-identity-title">{{ t('profile.identity.title') }}</h2>
+            <div class="lf-identity">
+              @if (avatarUrl()) {
+                <img class="lf-avatar lf-avatar--img" [src]="avatarUrl()!" alt="" width="64" height="64" />
+              } @else {
+                <span class="lf-avatar" aria-hidden="true">{{ initials() }}</span>
+              }
+              <span class="lf-identity__body">
+                <strong class="lf-identity__name">{{ displayName() }}</strong>
+                <span class="lf-identity__login">&#64;{{ login() }}</span>
+              </span>
+            </div>
+
+            <dl class="lf-facts">
+              <div class="lf-fact">
+                <dt>{{ t('profile.email.label') }}</dt>
+                <dd>
+                  <span class="lf-fact__value">{{ emailDisplay() }}</span>
+                  @if (email()) {
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--compact"
+                      (click)="toggleEmailVisibility()"
+                      [attr.aria-pressed]="emailVisible()"
+                      [attr.aria-label]="emailVisible() ? t('profile.email.hideAria') : t('profile.email.showAria')"
+                    >
+                      {{ emailVisible() ? t('profile.email.hide') : t('profile.email.show') }}
+                    </button>
+                  }
+                </dd>
+              </div>
+              <div class="lf-fact">
+                <dt>{{ t('profile.identity.channel') }}</dt>
+                <dd><span class="lf-fact__value">twitch.tv/{{ login() }}</span></dd>
+              </div>
+            </dl>
+
+            <p class="lf-note">
+              {{ t('profile.identity.syncNote') }}
+              <a class="lf-link" href="https://www.twitch.tv/settings/profile" target="_blank" rel="noopener">{{ t('profile.identity.twitchLink') }}</a>
+            </p>
+          </section>
+
+          <section class="lf-tile lf-card" aria-labelledby="profile-prefs-title">
+            <div class="lf-card-head">
+              <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="settings"></app-lf-icon></span>
+              <div class="lf-card-head__copy">
+                <h2 class="lf-h2" id="profile-prefs-title">{{ t('profile.prefs.title') }}</h2>
+                <p class="lf-note">{{ t('profile.prefs.hint') }}</p>
               </div>
             </div>
-          </div>
-        </article>
 
-        <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
-          <div class="lf-spotlight__head">
-            <span
-              class="lf-chip"
-              [class.lf-chip--gold]="planTier() !== 'free'"
-              [class.lf-chip--pro]="planTier() === 'pro'"
-            >
-              {{ planTierLabel() }}
-            </span>
-            <span class="lf-spotlight__count">{{ t('profile.subscription.eyebrow') }}</span>
-          </div>
+            <div class="lf-pref">
+              <span class="lf-pref__label" id="pref-language">{{ t('profile.prefs.language') }}</span>
+              <span class="lf-seg" role="radiogroup" aria-labelledby="pref-language">
+                <label class="lf-seg__opt">
+                  <input type="radio" name="pref-language" [checked]="language() === 'en'" (change)="setLanguage('en')" />
+                  <span>English</span>
+                </label>
+                <label class="lf-seg__opt">
+                  <input type="radio" name="pref-language" [checked]="language() === 'es'" (change)="setLanguage('es')" />
+                  <span lang="es">Español</span>
+                </label>
+              </span>
+            </div>
 
-          <h2 class="lf-h2">{{ t('profile.subscription.title') }}</h2>
-          <p class="lf-copy lf-copy--tight">
-            {{ t('profile.subscription.currentLabel', { tier: planTierLabel() }) }}
-          </p>
+            <div class="lf-pref">
+              <span class="lf-pref__label" id="pref-theme">{{ t('profile.prefs.theme') }}</span>
+              <span class="lf-seg" role="radiogroup" aria-labelledby="pref-theme">
+                <label class="lf-seg__opt">
+                  <input type="radio" name="pref-theme" [checked]="theme() === 'light'" (change)="setTheme('light')" />
+                  <span>{{ t('profile.prefs.light') }}</span>
+                </label>
+                <label class="lf-seg__opt">
+                  <input type="radio" name="pref-theme" [checked]="theme() === 'dark'" (change)="setTheme('dark')" />
+                  <span>{{ t('profile.prefs.dark') }}</span>
+                </label>
+              </span>
+            </div>
+          </section>
+        </div>
 
-          @if (planUntilLabel()) {
-            <p class="lf-note">{{ planUntilLabel() }}</p>
-          }
+        <aside class="lf-col lf-col--side">
+          <section class="lf-tile lf-card lf-plan" [class.lf-plan--paid]="planTier() !== 'free'" aria-labelledby="profile-plan-title">
+            <div class="lf-plan__head">
+              <h2 class="lf-h2" id="profile-plan-title">{{ t('profile.subscription.title') }}</h2>
+              <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planTierLabel() }}</span>
+            </div>
+            <p class="lf-plan__answer">{{ t('profile.subscription.currentLabel', { tier: planTierLabel() }) }}</p>
+            @if (planUntilLabel()) {
+              <p class="lf-note">{{ planUntilLabel() }}</p>
+            }
 
-          <ul class="lf-benefits">
-            <li>{{ t('profile.subscription.benefitCredits') }}</li>
-            <li>{{ t('profile.subscription.benefitTts') }}</li>
-            <li>{{ t('profile.subscription.benefitSupport') }}</li>
-          </ul>
+            <p class="lf-label">{{ planTier() === 'pro' ? t('profile.subscription.yourPlanIncludes') : t('profile.subscription.proIncludes') }}</p>
+            <ul class="lf-benefits">
+              <li><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('profile.subscription.benefitCredits') }}</li>
+              <li><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('profile.subscription.benefitTts') }}</li>
+              <li><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('profile.subscription.benefitSupport') }}</li>
+            </ul>
 
-          @if (showUpgradeCta()) {
-            <div class="lf-actions">
+            @if (showUpgradeCta()) {
               <button type="button" class="lf-btn lf-btn--primary lf-btn--gold" (click)="onUpgradeClick()">
                 {{ upgradeCtaLabel() }}
               </button>
-            </div>
-          } @else {
-            <p class="lf-note lf-note--ok">{{ t('profile.subscription.maxTierNote') }}</p>
-          }
-        </article>
-      </section>
+            } @else {
+              <p class="lf-note lf-note--ok">{{ t('profile.subscription.maxTierNote') }}</p>
+            }
+          </section>
+
+          <nav class="lf-tile lf-card" aria-labelledby="profile-shortcuts-title">
+            <h2 class="lf-h2" id="profile-shortcuts-title">{{ t('profile.shortcuts.title') }}</h2>
+            <ul class="lf-links">
+              @for (shortcut of shortcuts; track shortcut.key) {
+                <li>
+                  <a class="lf-links__item" [routerLink]="shortcutPath(shortcut)">
+                    <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon [name]="shortcut.icon" [size]="16"></app-lf-icon></span>
+                    <span class="lf-links__copy">
+                      <strong>{{ t('profile.shortcuts.' + shortcut.key + '.title') }}</strong>
+                      <span>{{ t('profile.shortcuts.' + shortcut.key + '.hint') }}</span>
+                    </span>
+                    <app-lf-icon name="forward" [size]="16"></app-lf-icon>
+                  </a>
+                </li>
+              }
+            </ul>
+          </nav>
+        </aside>
+      </div>
     }
   </main>
 </div>

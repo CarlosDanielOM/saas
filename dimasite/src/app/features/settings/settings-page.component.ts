@@ -1,17 +1,29 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
 import { AdminCandidate, AdminRecord } from '../../models/admin.model';
 import { AdminApiService } from '../../services/admin-api.service';
 import { LanguageService } from '../../services/language.service';
+import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { AssetLibraryDialogComponent } from '../../shared/asset-library/asset-library-dialog.component';
-import { CHANNEL_ADMIN_PERMISSION_GROUPS } from './channel-admin-permissions';
+import { CHANNEL_ADMIN_PERMISSION_GROUPS, ChannelAdminPermissionGroup } from './channel-admin-permissions';
+
+type AreaLevel = 'off' | 'view' | 'manage';
+
+/** Website areas grouped by what the helper will do, in the order streamers think about them. */
+const AREA_SECTIONS: readonly { key: string; areas: readonly string[] }[] = [
+  { key: 'stream', areas: ['commands', 'triggers', 'tts', 'rewards', 'dimafx', 'clips', 'eventsubs', 'moderation'] },
+  { key: 'ai', areas: ['ai', 'memories', 'summaries'] },
+  { key: 'insights', areas: ['analytics', 'billing', 'referrals'] },
+  { key: 'channel', areas: ['dashboard', 'settings', 'admins'] }
+];
 
 interface ChannelResolutionState {
   streamer: string;
@@ -23,8 +35,11 @@ interface ChannelResolutionState {
   selector: 'app-settings-page',
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.css',
-  imports: [LfIconComponent, AssetLibraryDialogComponent],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  imports: [LfIconComponent, AssetLibraryDialogComponent, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'handleEscape()'
+  }
 })
 export class SettingsPageComponent {
   readonly assetsOpen = signal(false);
@@ -33,6 +48,10 @@ export class SettingsPageComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly adminApi = inject(AdminApiService);
   private readonly toastService = inject(ToastService);
+  private readonly http = inject(HttpClient);
+  private readonly links = inject(LinksService);
+  private readonly editorDialog = viewChild<ElementRef<HTMLElement>>('editorDialog');
+  private readonly confirmDialog = viewChild<ElementRef<HTMLElement>>('confirmDialog');
 
   readonly admins = signal<AdminRecord[]>([]);
   readonly candidates = signal<AdminCandidate[]>([]);
@@ -57,6 +76,24 @@ export class SettingsPageComponent {
   );
   readonly canSavePermissions = computed(() => this.fullAccess() || this.draftPermissions().length > 0);
   readonly savingPermissions = signal(false);
+  readonly confirmingRemoval = signal<AdminRecord | null>(null);
+  readonly avatars = signal<Record<string, string>>({});
+  readonly editorOpen = computed(() => Boolean(this.editingCandidate() || this.editingAdmin()));
+  readonly editorName = computed(
+    () => this.editingCandidate()?.display_name || this.editingCandidate()?.login || this.editingAdmin()?.adminName || ''
+  );
+  readonly isNewAdmin = computed(() => Boolean(this.editingCandidate()));
+  readonly areaSections = AREA_SECTIONS.map((section) => ({
+    key: section.key,
+    areas: section.areas
+      .map((key) => CHANNEL_ADMIN_PERMISSION_GROUPS.find((group) => group.key === key))
+      .filter((group): group is ChannelAdminPermissionGroup => Boolean(group))
+  }));
+  readonly draftAreaCount = computed(() => this.grantedAreas(this.draftPermissions()).length);
+  readonly draftSummary = computed(() => {
+    if (this.fullAccess()) return this.t('settings.team.summary.full');
+    return this.summaryFor(this.chatAdminEnabled(), this.draftAreaCount());
+  });
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -154,10 +191,21 @@ export class SettingsPageComponent {
   readonly hasCandidateResults = computed(() => this.filteredCandidates().length > 0);
   readonly isSearchIdle = computed(() => this.normalizedSearchQuery().length === 0);
   readonly showSearchDropdown = computed(() => this.isOwnerView() && !this.isSearchIdle());
+  readonly backPath = computed(() => ['/', this.streamer(), 'dashboard']);
 
   private lastLoadedKey = '';
 
   constructor() {
+    effect(() => {
+      const target = this.confirmDialog() ?? this.editorDialog();
+      if (target) queueMicrotask(() => target.nativeElement.focus());
+    });
+
+    effect(() => {
+      const admins = this.admins();
+      untracked(() => admins.forEach((admin) => this.loadAvatar(admin.adminName)));
+    });
+
     effect(() => {
       const resolution = this.channelResolution();
 
@@ -261,14 +309,109 @@ export class SettingsPageComponent {
     this.editingCandidate.set(null);
   }
 
+  handleEscape(): void {
+    if (this.confirmingRemoval()) {
+      this.confirmingRemoval.set(null);
+      return;
+    }
+    if (this.editorOpen()) this.closePermissionEditor();
+  }
+
+  /** Plain-language access summary shown on each helper row. */
   accessLabel(permissions: string[]): string {
-    if (permissions.includes('*')) return this.t('settings.admins.permissions.full');
-    const chat = permissions.includes('chat:admin');
-    const website = permissions.some((permission) => permission !== 'chat:admin');
-    if (chat && !website) return this.t('settings.admins.permissions.chatOnly');
-    if (website && !chat) return this.t('settings.admins.permissions.websiteOnly');
-    if (chat && website) return this.t('settings.admins.permissions.websiteAndChat');
-    return this.t('settings.admins.permissions.custom');
+    if (permissions.includes('*')) return this.t('settings.team.summary.full');
+    return this.summaryFor(permissions.includes('chat:admin'), this.grantedAreas(permissions).length);
+  }
+
+  /** Names of the website areas a helper can open, e.g. "Commands, Text to Speech +2 more". */
+  accessAreas(permissions: string[]): string {
+    if (permissions.includes('*')) return this.t('settings.team.summary.fullHint');
+    const names = this.grantedAreas(permissions).map((key) => this.t('settings.admins.permissions.categories.' + key));
+    if (!names.length) return this.t('settings.team.summary.noPages');
+    const shown = names.slice(0, 3).join(', ');
+    return names.length > 3 ? this.t('settings.team.summary.more', { names: shown, count: names.length - 3 }) : shown;
+  }
+
+  areaLevel(group: ChannelAdminPermissionGroup): AreaLevel {
+    const draft = this.draftPermissions();
+    if (group.manage.some((key) => draft.includes(key))) return 'manage';
+    if (group.view.some((key) => draft.includes(key))) return 'view';
+    return 'off';
+  }
+
+  setAreaLevel(group: ChannelAdminPermissionGroup, level: AreaLevel): void {
+    if (this.fullAccess()) return;
+    if (level === 'off') {
+      for (const key of group.view) this.toggleGrant(key, false);
+      return;
+    }
+    for (const key of group.view) this.toggleGrant(key, true);
+    if (level === 'view') {
+      for (const key of group.manage) this.toggleGrant(key, false);
+    } else {
+      for (const key of group.manage) this.toggleGrant(key, true);
+    }
+  }
+
+  isAreaLocked(group: ChannelAdminPermissionGroup): boolean {
+    return group.key === 'dashboard' && this.hasWebsiteFeatureGrant();
+  }
+
+  fineLabel(key: string): string {
+    return this.t('settings.team.fine.' + key.replace(':', '_'));
+  }
+
+  hasGrant(key: string): boolean {
+    return this.draftPermissions().includes(key);
+  }
+
+  askRemove(admin: AdminRecord): void {
+    if (!this.isOwnerView()) return;
+    this.confirmingRemoval.set(admin);
+  }
+
+  async confirmRemove(): Promise<void> {
+    const admin = this.confirmingRemoval();
+    if (!admin) return;
+    await this.deleteAdmin(admin);
+    this.confirmingRemoval.set(null);
+  }
+
+  avatarFor(login: string): string | null {
+    return this.avatars()[login.trim().toLowerCase()] || null;
+  }
+
+  initialFor(name: string): string {
+    return (name || '?').slice(0, 1).toUpperCase();
+  }
+
+  private summaryFor(chat: boolean, areas: number): string {
+    if (chat && areas) return this.t(areas === 1 ? 'settings.team.summary.chatAndOnePage' : 'settings.team.summary.chatAndPages', { count: areas });
+    if (chat) return this.t('settings.team.summary.chatOnly');
+    if (areas) return this.t(areas === 1 ? 'settings.team.summary.onePage' : 'settings.team.summary.pages', { count: areas });
+    return this.t('settings.team.summary.dashboardOnly');
+  }
+
+  private grantedAreas(permissions: string[]): string[] {
+    const prefixes = new Set(permissions.map((permission) => permission.split(':')[0]));
+    return CHANNEL_ADMIN_PERMISSION_GROUPS
+      .map((group) => group.key)
+      .filter((key) => key !== 'chat' && key !== 'dashboard' && prefixes.has(key));
+  }
+
+  private loadAvatar(rawLogin: string): void {
+    const login = rawLogin.trim().toLowerCase();
+    if (!/^[a-z0-9_]{1,25}$/.test(login) || login in this.avatars()) return;
+    this.avatars.update((map) => ({ ...map, [login]: '' }));
+    this.http
+      .get<{ data?: { profile_image_url?: string } }>(`${this.links.getApiUrl()}/users?username=${encodeURIComponent(login)}`)
+      .subscribe({
+        next: (response) => {
+          const url = response.data?.profile_image_url?.trim();
+          if (url) this.avatars.update((map) => ({ ...map, [login]: url }));
+        },
+        error: () => undefined
+      });
   }
 
   toggleGrant(key: string, enabled: boolean): void {

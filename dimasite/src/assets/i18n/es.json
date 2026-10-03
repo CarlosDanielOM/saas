@@ -1765,8 +1765,8 @@
     "testHint": "Reproduce un clip de ejemplo aquí. Si el overlay también está abierto en OBS, se reproduce allí."
   },
   "profile": {
-    "title": "Configuracion de Perfil",
-    "subtitle": "Gestiona tu cuenta, suscripcion y preferencias.",
+    "title": "Tu cuenta",
+    "subtitle": "Tu identidad de Twitch, preferencias y plan, con accesos rápidos a todo lo demás.",
     "subscription": {
       "eyebrow": "Plan actual",
       "title": "Suscripcion",
@@ -1776,7 +1776,9 @@
       "maxTierNote": "Estas en el plan mas alto — gracias por el apoyo!",
       "benefitCredits": "Hasta 800,000 creditos de IA / mes",
       "benefitTts": "Todos los proveedores TTS, cobrados con creditos de IA",
-      "benefitSupport": "Soporte prioritario+"
+      "benefitSupport": "Soporte prioritario+",
+      "proIncludes": "Pro incluye",
+      "yourPlanIncludes": "Tu plan incluye"
     },
     "meta": {
       "twitchId": "ID de Twitch",
@@ -1788,7 +1790,44 @@
     "email": {
       "label": "Correo",
       "show": "Mostrar",
-      "hide": "Ocultar"
+      "hide": "Ocultar",
+      "showAria": "Mostrar correo electrónico",
+      "hideAria": "Ocultar correo electrónico"
+    },
+    "back": "Panel",
+    "twitchChip": "Sesión iniciada con Twitch",
+    "identity": {
+      "title": "Cuenta de Twitch",
+      "channel": "Canal",
+      "syncNote": "Tu nombre, foto y correo vienen de Twitch y se actualizan la próxima vez que inicies sesión.",
+      "twitchLink": "Cámbialos en Twitch"
+    },
+    "prefs": {
+      "title": "Preferencias",
+      "hint": "Se guardan en este dispositivo.",
+      "language": "Idioma",
+      "theme": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "shortcuts": {
+      "title": "¿Buscas algo?",
+      "settings": {
+        "title": "Equipo y ajustes del canal",
+        "hint": "Añade mods y elige qué pueden hacer"
+      },
+      "usage": {
+        "title": "Créditos de IA y uso",
+        "hint": "Mira cuánto queda y en qué se usó"
+      },
+      "credits": {
+        "title": "Comprar créditos",
+        "hint": "Recarga créditos de IA sin cambiar de plan"
+      },
+      "modules": {
+        "title": "Todos los módulos",
+        "hint": "Comandos, triggers, TTS, moderación y más"
+      }
     }
   },
   "referrals": {
@@ -2908,7 +2947,176 @@
     "premiumSubscriptionRequired": "Se requiere suscripcion Premium"
   },
   "settings": {
-    "title": "Configuracion del bot",
+    "title": "Ajustes del canal",
+    "team": {
+      "back": "Panel",
+      "subtitle": "Elige quién puede ayudarte con tu canal y exactamente qué puede tocar.",
+      "count": "{{count}} ayudantes",
+      "countOne": "1 ayudante",
+      "ownerChip": "Eres dueño de este canal",
+      "viewOnlyChip": "Solo lectura",
+      "refresh": "Actualizar",
+      "title": "Equipo",
+      "hint": "Personas de confianza que moderan, usan comandos o gestionan páginas por ti.",
+      "addLabel": "Añadir ayudante",
+      "searchPlaceholder": "Escribe un nombre de Twitch",
+      "addHint": "Solo aparecen las personas que han iniciado sesión en DomDimaBot al menos una vez.",
+      "notFoundHint": "¿No aparece? Pídele que inicie sesión una vez en DomDimaBot con Twitch y vuelve a buscar.",
+      "add": "Añadir",
+      "addAria": "Añadir a {{name}} a tu equipo",
+      "listLabel": "Tu equipo",
+      "edit": "Editar acceso",
+      "editAria": "Editar acceso de {{name}}",
+      "removeAria": "Quitar a {{name}} de tu equipo",
+      "paused": "En pausa",
+      "emptyTitle": "Aún no hay ayudantes",
+      "emptyOwner": "Busca arriba para añadir a un mod de confianza. Tú eliges qué puede hacer.",
+      "summary": {
+        "full": "Acceso total",
+        "fullHint": "Puede usar y cambiar todo excepto la facturación y tu cuenta",
+        "chatOnly": "Admin del bot en el chat",
+        "chatAndOnePage": "Chat + 1 página",
+        "chatAndPages": "Chat + {{count}} páginas",
+        "onePage": "1 página",
+        "pages": "{{count}} páginas",
+        "dashboardOnly": "Solo el panel",
+        "noPages": "No puede abrir las páginas de tu canal",
+        "more": "{{names}} +{{count}} más"
+      },
+      "help": {
+        "title": "Cómo funciona el acceso",
+        "fullTitle": "Acceso total",
+        "fullCopy": "Para mods de confianza. Pueden usar y cambiar todo, y usar comandos de admin en el chat.",
+        "chatTitle": "Admin del bot en el chat",
+        "chatCopy": "Permite usar comandos del bot solo para admins en tu chat de Twitch. No da acceso a la web.",
+        "pagesTitle": "Páginas: Ver o Editar",
+        "pagesCopy": "Ver les deja mirar. Editar les deja cambiar cosas en esa página.",
+        "ownerOnly": "La facturación, tu plan y tu cuenta siempre quedan contigo."
+      },
+      "editor": {
+        "addTitle": "Añadir a {{name}}",
+        "editTitle": "Acceso de {{name}}",
+        "modeTitle": "¿Cuánto puede hacer?",
+        "fullName": "Acceso total",
+        "fullTag": "Mods de confianza",
+        "fullCopy": "Todo lo que tú puedes hacer, excepto la facturación y tu cuenta. Incluye admin del bot en el chat.",
+        "customName": "Elegir qué puede hacer",
+        "customTag": "Más seguro",
+        "customCopy": "Elige los poderes en el chat y exactamente qué páginas puede abrir.",
+        "chatStep": "Chat de Twitch",
+        "chatName": "Admin del bot en el chat",
+        "chatHint": "Usa comandos del bot solo para admins en tu chat. No da acceso a la web.",
+        "pagesStep": "Páginas de la web",
+        "pagesHint": "Con «No» la página queda oculta. «Ver» les deja mirar. «Editar» les deja cambiar cosas.",
+        "dashboardLocked": "Se incluye automáticamente mientras pueda abrir otra página.",
+        "fineTitle": "¿Qué puede cambiar?",
+        "oneRequired": "Activa admin del bot en el chat o dale al menos una página.",
+        "summaryLabel": "Puede:",
+        "save": "Guardar acceso",
+        "addSave": "Añadir al equipo"
+      },
+      "sections": {
+        "stream": "Herramientas de stream",
+        "ai": "IA",
+        "insights": "Estadísticas y dinero",
+        "channel": "Canal"
+      },
+      "level": {
+        "off": "No",
+        "view": "Ver",
+        "manage": "Editar"
+      },
+      "areas": {
+        "commands": {
+          "name": "Comandos y temporizadores",
+          "hint": "Comandos de chat, temporizadores y palabras clave."
+        },
+        "triggers": {
+          "name": "Triggers y multimedia",
+          "hint": "Sonidos, videos e imágenes que salen en el stream."
+        },
+        "tts": {
+          "name": "Texto a voz",
+          "hint": "Voces y reglas para los mensajes leídos en voz alta."
+        },
+        "rewards": {
+          "name": "Recompensas y canjes",
+          "hint": "Recompensas de puntos del canal y la cola de canjes."
+        },
+        "dimafx": {
+          "name": "Tienda DimaFX",
+          "hint": "Artículos que los espectadores compran con Bits en la extensión."
+        },
+        "clips": {
+          "name": "Clips",
+          "hint": "Carrusel de clips y sugerencias de clips."
+        },
+        "eventsubs": {
+          "name": "Eventos del chat",
+          "hint": "Mensajes para follows, subs, raids y cheers."
+        },
+        "moderation": {
+          "name": "Moderación",
+          "hint": "Filtros del chat, protección antispam y Follow Defense."
+        },
+        "ai": {
+          "name": "Personalidad de la IA",
+          "hint": "Cómo habla y responde el bot en el chat."
+        },
+        "memories": {
+          "name": "Memorias de la IA",
+          "hint": "Lo que el bot recuerda de tu stream y tus espectadores."
+        },
+        "summaries": {
+          "name": "Resúmenes de stream",
+          "hint": "Resúmenes de streams anteriores."
+        },
+        "analytics": {
+          "name": "Analíticas",
+          "hint": "Espectadores, follows y estadísticas del stream."
+        },
+        "billing": {
+          "name": "Créditos de IA y uso",
+          "hint": "Ver cuántos créditos de IA quedan y en qué se usaron."
+        },
+        "referrals": {
+          "name": "Referidos",
+          "hint": "Tu enlace de referido y tus ganancias."
+        },
+        "dashboard": {
+          "name": "Panel",
+          "hint": "La página de inicio con el estado en vivo y estadísticas rápidas."
+        },
+        "settings": {
+          "name": "Ajustes del canal",
+          "hint": "Esta página. Editar les deja cambiar los ajustes del canal."
+        },
+        "admins": {
+          "name": "Lista del equipo",
+          "hint": "Ver quién más está en tu equipo. Solo tú puedes añadir o quitar personas."
+        }
+      },
+      "fine": {
+        "triggers_upload": "Subir multimedia",
+        "triggers_attach": "Asignar a comandos",
+        "triggers_edit": "Editar triggers",
+        "triggers_delete": "Eliminar",
+        "dimafx_edit": "Editar artículos",
+        "dimafx_delete": "Eliminar artículos"
+      },
+      "remove": {
+        "title": "¿Quitar a {{name}}?",
+        "copy": "Perderá los poderes de admin del bot en el chat y ya no podrá abrir las páginas de tu canal. Puedes volver a añadirlo cuando quieras.",
+        "confirm": "Quitar"
+      }
+    },
+    "files": {
+      "plan": {
+        "free": "Tu plan: 100 MB",
+        "premium": "Tu plan: 500 MB",
+        "pro": "Tu plan: 5 GB"
+      }
+    },
     "subtitle": "La configuracion esta protegida por permisos y lista para nuevas funciones.",
     "hero": {
       "eyebrow": "Controles del bot del canal",
