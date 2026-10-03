@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
@@ -33,7 +33,8 @@ interface ChannelResolutionState {
   imports: [RouterLink, LfIconComponent],
   templateUrl: './ai-personality-page.component.html',
   styleUrl: './ai-personality-page.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'deletingProfile.set(null)' }
 })
 export class AiPersonalityPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -44,6 +45,10 @@ export class AiPersonalityPageComponent {
 
   readonly settings = signal<AiPersonalitySettings | null>(null);
   readonly learningExpanded = signal(true);
+  /** Which personality the editor shows. Editing one never switches the bot to it. */
+  readonly editingProfileId = signal<string | null>(null);
+  readonly deletingProfile = signal<AiPersonalityProfile | null>(null);
+  private readonly deleteDialog = viewChild<ElementRef<HTMLElement>>('deleteDialog');
   readonly initialSettings = signal<AiPersonalitySettings | null>(null);
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -54,6 +59,30 @@ export class AiPersonalityPageComponent {
     { value: 'inspired', labelKey: 'modules.aiPersonality.personaModes.inspired' },
     { value: 'strict_roleplay', labelKey: 'modules.aiPersonality.personaModes.strictRoleplay' }
   ];
+
+  /** prioritizeRecentChat is not read by the bot yet, so it is left out of the page. */
+  readonly memoryKinds = ['allowUserPreferenceMemories', 'allowRunningJokes', 'allowSensitiveMemories'] as const satisfies ReadonlyArray<keyof AiMemoryPolicy>;
+  readonly autoToggles = [
+    'postStreamSummaryEnabled',
+    'autoConfirmEnabled',
+    'autoApplyCreates',
+    'autoApplyEdits',
+    'autoApplyArchives',
+    'weeklyMaintenanceEnabled',
+    'monthlyMaintenanceEnabled',
+    'autoApplyPermanentDeletes'
+  ] as const satisfies ReadonlyArray<keyof AiLearningConfig>;
+  readonly percentFields = ['autoConfirmThreshold', 'createMinConfidence', 'editMinConfidence', 'archiveMinConfidence', 'deleteMinConfidence'] as const satisfies ReadonlyArray<keyof AiLearningConfig>;
+  readonly countFields = [
+    'summaryMinDurationMinutes',
+    'summaryMinChatMessages',
+    'maxPendingMemories',
+    'maxConfirmedMemories',
+    'maxActionsPerRun',
+    'maxDeletesPerRun',
+    'minMemoryAgeDaysForDelete',
+    'minUnusedDaysForDelete'
+  ] as const satisfies ReadonlyArray<keyof AiLearningConfig>;
 
   readonly tonePresets: Array<{ value: TonePreset; labelKey: string }> = [
     { value: 'family_friendly', labelKey: 'modules.aiPersonality.tonePresets.familyFriendly' },
@@ -124,6 +153,24 @@ export class AiPersonalityPageComponent {
       null
     );
   });
+  readonly editingProfile = computed(() => {
+    const settings = this.settings();
+    const id = this.editingProfileId();
+    return settings?.profiles.find((profile) => profile.profileID === id) ?? this.activeProfile();
+  });
+  readonly memoriesPath = computed(() => ['/', this.streamer(), 'modules', 'memories']);
+  readonly planLabel = computed(() => this.t('navbar.plan' + this.planTier().charAt(0).toUpperCase() + this.planTier().slice(1)));
+  readonly limitsLine = computed(() => {
+    const limits = this.tier().limits;
+    return this.t('modules.aiPersonality.v2.limitsLine', {
+      plan: this.planLabel(),
+      profiles: limits.profiles,
+      rules: this.limitLabel(limits.rules).toLowerCase(),
+      users: this.limitLabel(limits.knownUsers).toLowerCase(),
+      context: limits.contextWindow
+    });
+  });
+  readonly filledRules = computed(() => (this.settings()?.rules ?? []).filter((rule) => rule.trim()).length);
   readonly hasSettings = computed(() => this.settings() !== null);
   readonly profileCount = computed(() => this.settings()?.profiles.length ?? 0);
   readonly profileLimitReached = computed(() => this.profileCount() >= this.tier().limits.profiles);
@@ -142,6 +189,10 @@ export class AiPersonalityPageComponent {
   private lastLoadedKey = '';
 
   constructor() {
+    effect(() => {
+      const dialog = this.deleteDialog();
+      if (dialog) queueMicrotask(() => dialog.nativeElement.focus());
+    });
     effect(() => {
       const resolution = this.channelResolution();
 
@@ -196,8 +247,47 @@ export class AiPersonalityPageComponent {
     this.learningExpanded.update((expanded) => !expanded);
   }
 
-  selectProfile(profileID: string): void {
+  /** Makes this personality the one the bot uses in chat (after saving). */
+  useProfile(profileID: string): void {
     this.settings.update((settings) => (settings ? { ...settings, activeProfileId: profileID } : settings));
+  }
+
+  editProfile(profileID: string): void {
+    this.editingProfileId.set(profileID);
+  }
+
+  askRemoveProfile(profile: AiPersonalityProfile): void {
+    if ((this.settings()?.profiles.length ?? 0) <= 1) return;
+    this.deletingProfile.set(profile);
+  }
+
+  confirmRemoveProfile(): void {
+    const profile = this.deletingProfile();
+    this.deletingProfile.set(null);
+    if (profile) this.removeProfile(profile.profileID);
+  }
+
+  discardChanges(): void {
+    this.settings.set(this.cloneSettings(this.initialSettings()));
+    this.editingProfileId.set(null);
+  }
+
+  profilePreview(profile: AiPersonalityProfile): string {
+    const text = profile.personality.replace(/\s+/g, ' ').trim();
+    if (!text) return this.t('modules.aiPersonality.v2.noDescription');
+    return text.length > 120 ? `${text.slice(0, 119)}…` : text;
+  }
+
+  /** Confidence thresholds are stored 0–1; people edit them as percentages. */
+  learningPercent(field: keyof AiLearningConfig): number {
+    return Math.round(Number(this.settings()?.learningConfig[field] ?? 0) * 100);
+  }
+
+  updateLearningPercent(field: keyof AiLearningConfig, value: string): void {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = Math.min(100, Math.max(0, parsed)) / 100;
+    this.patchSettings((settings) => ({ ...settings, learningConfig: { ...settings.learningConfig, [field]: clamped } }));
   }
 
   addProfile(): void {
@@ -209,9 +299,9 @@ export class AiPersonalityPageComponent {
     const profile = this.createProfile(settings.profiles.length + 1);
     this.settings.set({
       ...settings,
-      profiles: [...settings.profiles, profile],
-      activeProfileId: profile.profileID
+      profiles: [...settings.profiles, profile]
     });
+    this.editingProfileId.set(profile.profileID);
   }
 
   removeProfile(profileID: string): void {
@@ -229,6 +319,7 @@ export class AiPersonalityPageComponent {
       profiles,
       activeProfileId
     });
+    if (this.editingProfileId() === profileID) this.editingProfileId.set(null);
   }
 
   updateActiveProfileField(field: keyof AiPersonalityProfile, value: string): void {
@@ -478,6 +569,7 @@ export class AiPersonalityPageComponent {
       const normalized = this.normalizeSettings(response);
       this.settings.set(normalized);
       this.initialSettings.set(this.cloneSettings(normalized));
+      this.editingProfileId.set(null);
     } catch (error) {
       this.settings.set(null);
       this.initialSettings.set(null);
@@ -491,16 +583,16 @@ export class AiPersonalityPageComponent {
 
   private patchActiveProfile(updater: (profile: AiPersonalityProfile) => AiPersonalityProfile): void {
     const settings = this.settings();
-    const activeProfile = this.activeProfile();
+    const editing = this.editingProfile();
 
-    if (!settings || !activeProfile) {
+    if (!settings || !editing) {
       return;
     }
 
     this.settings.set({
       ...settings,
       profiles: settings.profiles.map((profile) =>
-        profile.profileID === activeProfile.profileID ? updater(profile) : profile
+        profile.profileID === editing.profileID ? updater(profile) : profile
       )
     });
   }

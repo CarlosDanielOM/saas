@@ -1,522 +1,397 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('modules.aiPersonality.title')">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.aiPersonality.backToModules') }}</a>
-        <p class="lf-kicker">{{ t('modules.aiPersonality.eyebrow') }}</p>
-        <h1 class="lf-title">
-          {{ t('modules.aiPersonality.title') }}
-          <span>{{ streamer() || '—' }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('modules.aiPersonality.subtitle') }}</p>
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" (click)="retryLoad()" [disabled]="loading()">
-            {{ t('common.retry') }}
-          </button>
-        </div>
-        <p class="lf-feed" [class.lf-feed--on]="isAiEnabled()" [class.lf-feed--off]="!isAiEnabled()">
-          {{
-            isAiEnabled()
-              ? t('modules.aiPersonality.masterToggle.enabledHint')
-              : t('modules.aiPersonality.masterToggle.disabledHint')
-          }}
-        </p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() !== 'free'">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">
-            {{ planTier() }}
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="modulePath()"><app-lf-icon name="back"></app-lf-icon> {{ t('modules.aiPersonality.backToModules') }}</a>
+      <h1 class="lf-title">{{ t('modules.aiPersonality.title') }}</h1>
+      <p class="lf-copy">{{ t('modules.aiPersonality.v2.subtitle') }}</p>
+      @if (settings()) {
+        <div class="lf-head__chips">
+          <span class="lf-chip" [class.lf-chip--ok]="isAiEnabled()" [class.lf-chip--off]="!isAiEnabled()">
+            <span class="lf-dot" aria-hidden="true"></span>
+            {{ isAiEnabled() ? t('modules.aiPersonality.v2.chatOn') : t('modules.aiPersonality.v2.chatOff') }}
           </span>
-          <span class="lf-spotlight__count">{{ t('modules.aiPersonality.overview.title') }}</span>
+          @if (activeProfile(); as active) {
+            <span class="lf-chip lf-chip--accent">{{ t('modules.aiPersonality.v2.usingChip', { name: active.name }) }}</span>
+          }
+          <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
+          @if (!canManage() && channelID()) {
+            <span class="lf-chip"><app-lf-icon name="lock" [size]="12"></app-lf-icon> {{ t('modules.aiPersonality.v2.viewOnly') }}</span>
+          }
+          <a class="lf-chip lf-chip--link" [routerLink]="memoriesPath()"><app-lf-icon name="list" [size]="12"></app-lf-icon> {{ t('modules.aiPersonality.v2.memoriesLink') }}</a>
         </div>
-        <div class="lf-stats-strip lf-stats-strip--4">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.aiPersonality.overview.contextWindow') }}</span>
-            <strong class="lf-stats-strip__value">{{ tier().limits.contextWindow }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.aiPersonality.overview.profileLimit') }}</span>
-            <strong class="lf-stats-strip__value">{{ tier().limits.profiles }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.aiPersonality.overview.rulesLimit') }}</span>
-            <strong class="lf-stats-strip__value">{{ limitLabel(tier().limits.rules) }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('modules.aiPersonality.overview.knownUsersLimit') }}</span>
-            <strong class="lf-stats-strip__value">{{ limitLabel(tier().limits.knownUsers) }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
+      }
+    </header>
 
     @if (errorMessage()) {
-      <div class="lf-banner lf-banner--error" role="alert">
-        <div>
-          <p class="lf-banner__title">{{ errorMessage() }}</p>
-        </div>
+      <div class="lf-banner" role="alert">
+        <p class="lf-banner__title">{{ errorMessage() }}</p>
         <button type="button" class="lf-btn lf-btn--compact" (click)="retryLoad()">{{ t('common.retry') }}</button>
       </div>
     }
 
     @if (loading() && !hasSettings()) {
-      <div class="lf-tile lf-empty">{{ t('modules.aiPersonality.states.loading') }}</div>
+      <p class="lf-note" role="status">{{ t('modules.aiPersonality.states.loading') }}</p>
     } @else if (settings(); as settings) {
-      <!-- Master toggles -->
-      <section class="lf-tile">
-        <div class="lf-row-head">
-          <div>
-            <p class="lf-kicker">{{ t('modules.aiPersonality.masterToggle.kicker') }}</p>
-            <h2 class="lf-h2">{{ t('modules.aiPersonality.masterToggle.title') }}</h2>
-            <p class="lf-copy lf-copy--tight">
-              {{
-                isAiEnabled()
-                  ? t('modules.aiPersonality.masterToggle.enabledHint')
-                  : t('modules.aiPersonality.masterToggle.disabledHint')
-              }}
-            </p>
-          </div>
-          <label class="lf-switch">
-            <input
-              type="checkbox"
-              [checked]="isAiEnabled()"
-              [disabled]="saving() || !canManage()"
-              (change)="updateEnabled($any($event.target).checked)"
-              [attr.aria-label]="t('modules.aiPersonality.masterToggle.title')"
-            />
-            <span class="lf-switch__track" aria-hidden="true"></span>
-          </label>
-        </div>
-
-        <div class="lf-toggle-grid">
-          <label class="lf-toggle-card">
-            <div>
-              <strong>{{ t('modules.aiPersonality.featureToggles.streamSummaries') }}</strong>
-              <p>{{ t('modules.aiPersonality.featureToggles.streamSummariesHint') }}</p>
-            </div>
-            <input
-              type="checkbox"
-              [checked]="settings.streamSummariesEnabled"
-              [disabled]="saving() || !canManage()"
-              (change)="updateFeatureToggle('streamSummariesEnabled', $any($event.target).checked)"
-            />
-          </label>
-          <label class="lf-toggle-card">
-            <div>
-              <strong>{{ t('modules.aiPersonality.featureToggles.recommendations') }}</strong>
-              <p>{{ t('modules.aiPersonality.featureToggles.recommendationsHint') }}</p>
-            </div>
-            <input
-              type="checkbox"
-              [checked]="settings.recommendationsEnabled"
-              [disabled]="saving() || !canManage()"
-              (change)="updateFeatureToggle('recommendationsEnabled', $any($event.target).checked)"
-            />
-          </label>
-        </div>
-      </section>
-
-      <!-- Help -->
-      <section class="lf-tile">
-        <p class="lf-kicker">{{ t('modules.aiPersonality.help.kicker') }}</p>
-        <h2 class="lf-h2">{{ t('modules.aiPersonality.help.title') }}</h2>
-        <p class="lf-copy lf-copy--tight">{{ t('modules.aiPersonality.help.intro') }}</p>
-        <div class="lf-help-grid">
-          <div class="lf-help-tip">
-            <strong>{{ t('modules.aiPersonality.help.tips.profiles.title') }}</strong>
-            <p>{{ t('modules.aiPersonality.help.tips.profiles.description') }}</p>
-          </div>
-          <div class="lf-help-tip">
-            <strong>{{ t('modules.aiPersonality.help.tips.personality.title') }}</strong>
-            <p>{{ t('modules.aiPersonality.help.tips.personality.description') }}</p>
-          </div>
-          <div class="lf-help-tip">
-            <strong>{{ t('modules.aiPersonality.help.tips.learning.title') }}</strong>
-            <p>{{ t('modules.aiPersonality.help.tips.learning.description') }}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Profiles -->
-      <section class="lf-tile">
-        <div class="lf-row-head">
-          <div>
-            <p class="lf-kicker">{{ t('modules.aiPersonality.profiles.kicker') }}</p>
-            <h2 class="lf-h2">{{ t('modules.aiPersonality.profiles.title') }}</h2>
-          </div>
-          <button type="button" class="lf-btn lf-btn--compact" [disabled]="profileLimitReached() || saving() || !canManage()" (click)="addProfile()">
-            {{ t('modules.aiPersonality.profiles.add') }}
-          </button>
-        </div>
-        <div class="lf-profile-pills">
-          @for (profile of settings.profiles; track profile.profileID) {
-            <button
-              type="button"
-              class="lf-pill"
-              [class.lf-pill--active]="profile.profileID === settings.activeProfileId"
-              (click)="selectProfile(profile.profileID)"
-            >
-              <span>{{ profile.name || t('modules.aiPersonality.defaults.profileName') }}</span>
-              @if (settings.profiles.length > 1 && canManage()) {
-                <span
-                  class="lf-pill__remove"
-                  role="button"
-                  tabindex="0"
-                  (click)="$event.stopPropagation(); removeProfile(profile.profileID)"
-                  (keydown.enter)="$event.stopPropagation(); removeProfile(profile.profileID)"
-                ><app-lf-icon name="close"></app-lf-icon></span>
+      <div class="lf-panels">
+        <div class="lf-col">
+          <!-- Personalities -->
+          <section class="lf-tile lf-card lf-o2" aria-labelledby="ai-profiles-title">
+            <div class="lf-card__bar">
+              <div class="lf-card__head">
+                <h2 class="lf-h2" id="ai-profiles-title">{{ t('modules.aiPersonality.v2.profilesTitle') }}</h2>
+                <p class="lf-note">{{ t('modules.aiPersonality.v2.profilesHint') }}</p>
+              </div>
+              @if (canManage()) {
+                <button type="button" class="lf-btn lf-btn--compact" [disabled]="profileLimitReached() || saving()" (click)="addProfile()">
+                  <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('modules.aiPersonality.v2.addProfile') }}
+                </button>
               }
-            </button>
+            </div>
+            <ul class="lf-profiles">
+              @for (profile of settings.profiles; track profile.profileID) {
+                <li class="lf-profile" [class.lf-profile--active]="profile.profileID === settings.activeProfileId" [class.lf-profile--editing]="profile.profileID === editingProfile()?.profileID">
+                  <span class="lf-profile__avatar" aria-hidden="true">{{ (profile.name || '?').charAt(0).toUpperCase() }}</span>
+                  <span class="lf-profile__body">
+                    <span class="lf-profile__top">
+                      <strong>{{ profile.name || t('modules.aiPersonality.defaults.profileName') }}</strong>
+                      @if (profile.profileID === settings.activeProfileId) {
+                        <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('modules.aiPersonality.v2.inChat') }}</span>
+                      }
+                    </span>
+                    <span class="lf-profile__preview">{{ profilePreview(profile) }}</span>
+                  </span>
+                  <span class="lf-profile__actions">
+                    @if (profile.profileID !== editingProfile()?.profileID) {
+                      <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="editProfile(profile.profileID)" [attr.aria-label]="(canManage() ? t('modules.aiPersonality.v2.edit') : t('modules.aiPersonality.v2.view')) + ' ' + profile.name">
+                        {{ canManage() ? t('modules.aiPersonality.v2.edit') : t('modules.aiPersonality.v2.view') }}
+                      </button>
+                    } @else {
+                      <span class="lf-profile__editing">{{ t('modules.aiPersonality.v2.editingNow') }}</span>
+                    }
+                    @if (canManage() && profile.profileID !== settings.activeProfileId) {
+                      <button type="button" class="lf-btn lf-btn--compact" (click)="useProfile(profile.profileID)" [attr.aria-label]="t('modules.aiPersonality.v2.useAria', { name: profile.name })">{{ t('modules.aiPersonality.v2.use') }}</button>
+                    }
+                    @if (canManage() && settings.profiles.length > 1) {
+                      <button type="button" class="lf-icon-btn lf-icon-btn--danger" (click)="askRemoveProfile(profile)" [attr.aria-label]="t('modules.aiPersonality.v2.deleteAria', { name: profile.name })">
+                        <app-lf-icon name="trash" [size]="16"></app-lf-icon>
+                      </button>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+            @if (profileLimitReached() && canManage()) {
+              <p class="lf-note">{{ t('modules.aiPersonality.v2.profileLimit', { count: tier().limits.profiles }) }}</p>
+            }
+          </section>
+
+          <!-- Editor -->
+          @if (editingProfile(); as profile) {
+            <section class="lf-tile lf-card lf-o3" aria-labelledby="ai-editor-title">
+              <div class="lf-card__head">
+                <h2 class="lf-h2" id="ai-editor-title">{{ t('modules.aiPersonality.v2.editorTitle', { name: profile.name }) }}</h2>
+                @if (profile.profileID !== settings.activeProfileId) {
+                  <p class="lf-note lf-note--info">{{ t('modules.aiPersonality.v2.notInUse') }}</p>
+                }
+              </div>
+              <label class="lf-field">
+                <span class="lf-field__label">{{ t('modules.aiPersonality.fields.profileName') }}</span>
+                <input [value]="profile.name" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('name', $any($event.target).value)" />
+              </label>
+              <label class="lf-field">
+                <span class="lf-field__label">{{ t('modules.aiPersonality.v2.promptLabel') }}</span>
+                <textarea rows="8" [value]="profile.personality" [disabled]="saving() || !canManage()" aria-describedby="ai-prompt-hint" [placeholder]="t('modules.aiPersonality.v2.promptPlaceholder')" (input)="updateActiveProfileField('personality', $any($event.target).value)"></textarea>
+                <span class="lf-field__hint" id="ai-prompt-hint">{{ t('modules.aiPersonality.v2.promptHint') }}</span>
+              </label>
+
+              <details class="lf-more">
+                <summary>{{ t('modules.aiPersonality.v2.styleTitle') }}</summary>
+                <div class="lf-more__body">
+                  <p class="lf-note lf-note--info">{{ t('modules.aiPersonality.v2.styleNote') }}</p>
+                  <div class="lf-grid-2">
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.fields.personaMode') }}</span>
+                      <select [value]="profile.personaMode" [disabled]="saving() || !canManage()" (change)="updateActivePersonaMode($any($event.target).value)">
+                        @for (mode of personaModes; track mode.value) {
+                          <option [value]="mode.value">{{ t(mode.labelKey) }}</option>
+                        }
+                      </select>
+                    </label>
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.fields.tonePreset') }}</span>
+                      <select [value]="profile.tonePreset" [disabled]="saving() || !canManage()" (change)="updateActiveTonePreset($any($event.target).value)">
+                        @for (preset of tonePresets; track preset.value) {
+                          <option [value]="preset.value">{{ t(preset.labelKey) }}</option>
+                        }
+                      </select>
+                    </label>
+                  </div>
+                  <label class="lf-field">
+                    <span class="lf-field__label">{{ t('modules.aiPersonality.v2.referenceLabel') }}</span>
+                    <input [value]="profile.personaReference" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('personaReference', $any($event.target).value)" />
+                  </label>
+                  <div class="lf-grid-3">
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.fields.voiceTone') }}</span>
+                      <input [value]="profile.voiceProfile.tone" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('tone', $any($event.target).value)" />
+                    </label>
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.fields.voiceCadence') }}</span>
+                      <input [value]="profile.voiceProfile.cadence" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('cadence', $any($event.target).value)" />
+                    </label>
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.fields.voiceStyle') }}</span>
+                      <input [value]="profile.voiceProfile.style" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('style', $any($event.target).value)" />
+                    </label>
+                  </div>
+                  <div class="lf-list">
+                    <span class="lf-field__label">{{ t('modules.aiPersonality.voice.catchphrasesTitle') }}</span>
+                    @for (catchphrase of profile.voiceProfile.catchphrases; track $index) {
+                      <div class="lf-list__row">
+                        <input [value]="catchphrase" [disabled]="saving() || !canManage()" [attr.aria-label]="t('modules.aiPersonality.v2.catchphraseAria', { n: $index + 1 })" (input)="updateCatchphrase($index, $any($event.target).value)" />
+                        @if (canManage()) {
+                          <button type="button" class="lf-icon-btn lf-icon-btn--danger" [disabled]="saving()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('modules.aiPersonality.v2.removeCatchphrase', { n: $index + 1 })"><app-lf-icon name="trash" [size]="16"></app-lf-icon></button>
+                        }
+                      </div>
+                    }
+                    @if (canManage()) {
+                      <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost lf-list__add" [disabled]="saving()" (click)="addCatchphrase()">
+                        <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('modules.aiPersonality.voice.addCatchphrase') }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              </details>
+            </section>
           }
+
+          <!-- Rules -->
+          <section class="lf-tile lf-card lf-o4" aria-labelledby="ai-rules-title">
+            <div class="lf-card__head">
+              <h2 class="lf-h2" id="ai-rules-title">{{ t('modules.aiPersonality.v2.rulesTitle') }}</h2>
+              <p class="lf-note">{{ t('modules.aiPersonality.v2.rulesHint') }}</p>
+            </div>
+            <ol class="lf-list lf-list--numbered">
+              @for (rule of settings.rules; track $index) {
+                <li class="lf-list__row">
+                  <span class="lf-list__num" aria-hidden="true">{{ $index + 1 }}</span>
+                  <input [value]="rule" [disabled]="saving() || !canManage()" [attr.aria-label]="t('modules.aiPersonality.v2.ruleAria', { n: $index + 1 })" [placeholder]="t('modules.aiPersonality.v2.rulePlaceholder')" (input)="updateRule($index, $any($event.target).value)" />
+                  @if (canManage()) {
+                    <button type="button" class="lf-icon-btn lf-icon-btn--danger" [disabled]="saving() || settings.rules.length <= 1" (click)="removeRule($index)" [attr.aria-label]="t('modules.aiPersonality.v2.removeRule', { n: $index + 1 })"><app-lf-icon name="trash" [size]="16"></app-lf-icon></button>
+                  }
+                </li>
+              }
+            </ol>
+            @if (canManage()) {
+              @if (rulesLimitReached()) {
+                <p class="lf-note">{{ t('modules.aiPersonality.rules.limitReached') }}</p>
+              } @else {
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost lf-list__add" [disabled]="saving()" (click)="addRule()">
+                  <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('modules.aiPersonality.rules.add') }}
+                </button>
+              }
+            }
+          </section>
+
+          <!-- Known users -->
+          <section class="lf-tile lf-card lf-o5" aria-labelledby="ai-users-title">
+            <div class="lf-card__head">
+              <h2 class="lf-h2" id="ai-users-title">{{ t('modules.aiPersonality.v2.usersTitle') }}</h2>
+              <p class="lf-note">{{ t('modules.aiPersonality.v2.usersHint') }}</p>
+            </div>
+            @if (settings.knownUsers.length === 0) {
+              <p class="lf-empty-inline">{{ t('modules.aiPersonality.knownUsers.empty') }}</p>
+            }
+            <ul class="lf-users">
+              @for (knownUser of settings.knownUsers; track $index) {
+                <li class="lf-user">
+                  <span class="lf-profile__avatar lf-user__avatar" aria-hidden="true">{{ (knownUser.username || '?').charAt(0).toUpperCase() }}</span>
+                  <div class="lf-user__fields">
+                    <div class="lf-grid-2">
+                      <label class="lf-field">
+                        <span class="lf-field__label">{{ t('modules.aiPersonality.fields.username') }}</span>
+                        <input [value]="knownUser.username" [disabled]="saving() || !canManage()" placeholder="luna_v" (input)="updateKnownUserField($index, 'username', $any($event.target).value)" />
+                      </label>
+                      <label class="lf-field">
+                        <span class="lf-field__label">{{ t('modules.aiPersonality.v2.relationshipLabel') }}</span>
+                        <input [value]="knownUser.relationship" [disabled]="saving() || !canManage()" [placeholder]="t('modules.aiPersonality.v2.relationshipPlaceholder')" (input)="updateKnownUserField($index, 'relationship', $any($event.target).value)" />
+                      </label>
+                    </div>
+                    <label class="lf-field">
+                      <span class="lf-field__label">{{ t('modules.aiPersonality.v2.aboutLabel') }}</span>
+                      <textarea rows="2" [value]="knownUser.description" [disabled]="saving() || !canManage()" [placeholder]="t('modules.aiPersonality.v2.aboutPlaceholder')" (input)="updateKnownUserField($index, 'description', $any($event.target).value)"></textarea>
+                    </label>
+                  </div>
+                  @if (canManage()) {
+                    <button type="button" class="lf-icon-btn lf-icon-btn--danger" [disabled]="saving()" (click)="removeKnownUser($index)" [attr.aria-label]="t('modules.aiPersonality.v2.removeUser', { name: knownUser.username || ($index + 1) })"><app-lf-icon name="trash" [size]="16"></app-lf-icon></button>
+                  }
+                </li>
+              }
+            </ul>
+            @if (canManage()) {
+              @if (knownUsersLimitReached()) {
+                <p class="lf-note">{{ t('modules.aiPersonality.knownUsers.limitReached') }}</p>
+              } @else {
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost lf-list__add" [disabled]="saving()" (click)="addKnownUser()">
+                  <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('modules.aiPersonality.knownUsers.add') }}
+                </button>
+              }
+            }
+          </section>
         </div>
-        @if (profileLimitReached()) {
-          <p class="lf-note">{{ t('modules.aiPersonality.profiles.limitReached') }}</p>
-        }
-      </section>
 
-      @if (activeProfile(); as activeProfile) {
-        <!-- Editor -->
-        <section class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.aiPersonality.editor.kicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.aiPersonality.editor.title') }}</h2>
-          <div class="lf-form-grid">
-            <label class="lf-field">
-              <span>{{ t('modules.aiPersonality.fields.profileName') }}</span>
-              <input [value]="activeProfile.name" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('name', $any($event.target).value)" />
-            </label>
-            <label class="lf-field">
-              <span>{{ t('modules.aiPersonality.fields.personaMode') }}</span>
-              <select [value]="activeProfile.personaMode" [disabled]="saving() || !canManage()" (change)="updateActivePersonaMode($any($event.target).value)">
-                @for (mode of personaModes; track mode.value) {
-                  <option [value]="mode.value">{{ t(mode.labelKey) }}</option>
-                }
-              </select>
-            </label>
-            <label class="lf-field">
-              <span>{{ t('modules.aiPersonality.fields.tonePreset') }}</span>
-              <select [value]="activeProfile.tonePreset" [disabled]="saving() || !canManage()" (change)="updateActiveTonePreset($any($event.target).value)">
-                @for (preset of tonePresets; track preset.value) {
-                  <option [value]="preset.value">{{ t(preset.labelKey) }}</option>
-                }
-              </select>
-            </label>
-            <label class="lf-field lf-field--full">
-              <span>{{ t('modules.aiPersonality.fields.personaReference') }}</span>
-              <input [value]="activeProfile.personaReference" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('personaReference', $any($event.target).value)" />
-            </label>
-            <label class="lf-field lf-field--full">
-              <span>{{ t('modules.aiPersonality.fields.personalityPrompt') }}</span>
-              <textarea rows="8" [value]="activeProfile.personality" [disabled]="saving() || !canManage()" (input)="updateActiveProfileField('personality', $any($event.target).value)"></textarea>
-            </label>
-          </div>
-        </section>
-
-        <!-- Voice -->
-        <section class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.aiPersonality.voice.kicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.aiPersonality.voice.title') }}</h2>
-          <div class="lf-form-grid">
-            <label class="lf-field">
-              <span>{{ t('modules.aiPersonality.fields.voiceTone') }}</span>
-              <input [value]="activeProfile.voiceProfile.tone" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('tone', $any($event.target).value)" />
-            </label>
-            <label class="lf-field">
-              <span>{{ t('modules.aiPersonality.fields.voiceCadence') }}</span>
-              <input [value]="activeProfile.voiceProfile.cadence" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('cadence', $any($event.target).value)" />
-            </label>
-            <label class="lf-field lf-field--full">
-              <span>{{ t('modules.aiPersonality.fields.voiceStyle') }}</span>
-              <input [value]="activeProfile.voiceProfile.style" [disabled]="saving() || !canManage()" (input)="updateActiveVoiceField('style', $any($event.target).value)" />
-            </label>
-          </div>
-
-          <div class="lf-list-head">
-            <h3 class="lf-h3">{{ t('modules.aiPersonality.voice.catchphrasesTitle') }}</h3>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || !canManage()" (click)="addCatchphrase()">
-              {{ t('modules.aiPersonality.voice.addCatchphrase') }}
-            </button>
-          </div>
-          <div class="lf-stack">
-            @for (catchphrase of activeProfile.voiceProfile.catchphrases; track $index) {
-              <div class="lf-stack-row">
-                <input [value]="catchphrase" [disabled]="saving() || !canManage()" (input)="updateCatchphrase($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving() || !canManage()" (click)="removeCatchphrase($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
+        <div class="lf-col">
+          <!-- On/off -->
+          <section class="lf-tile lf-card lf-o1" aria-labelledby="ai-switches-title">
+            <h2 class="lf-h2" id="ai-switches-title">{{ t('modules.aiPersonality.v2.switchesTitle') }}</h2>
+            <div class="lf-toggles">
+              <div class="lf-toggle-row">
+                <span class="lf-toggle-row__copy">
+                  <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.masterToggle.title') }}</span>
+                  <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.v2.chatHint') }}</span>
+                </span>
+                <label class="lf-switch">
+                  <input type="checkbox" [checked]="isAiEnabled()" [disabled]="saving() || !canManage()" (change)="updateEnabled($any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.masterToggle.title')" />
+                  <span class="lf-switch__track" aria-hidden="true"></span>
+                </label>
               </div>
-            } @empty {
-              <p class="lf-note">{{ t('modules.aiPersonality.voice.noCatchphrases') }}</p>
-            }
-          </div>
-        </section>
-
-        <!-- Rules -->
-        <section class="lf-tile">
-          <div class="lf-list-head">
-            <div>
-              <p class="lf-kicker">{{ t('modules.aiPersonality.rules.kicker') }}</p>
-              <h2 class="lf-h2">{{ t('modules.aiPersonality.rules.title') }}</h2>
-            </div>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || rulesLimitReached() || !canManage()" (click)="addRule()">
-              {{ t('modules.aiPersonality.rules.add') }}
-            </button>
-          </div>
-          @if (rulesLimitReached()) {
-            <p class="lf-note">{{ t('modules.aiPersonality.rules.limitReached') }}</p>
-          }
-          <div class="lf-stack">
-            @for (rule of settings.rules; track $index) {
-              <div class="lf-stack-row">
-                <input [value]="rule" [disabled]="saving() || !canManage()" (input)="updateRule($index, $any($event.target).value)" />
-                <button type="button" class="lf-icon-btn" [disabled]="saving() || settings.rules.length <= 1 || !canManage()" (click)="removeRule($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
+              <div class="lf-toggle-row">
+                <span class="lf-toggle-row__copy">
+                  <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.featureToggles.streamSummaries') }}</span>
+                  <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.v2.summariesHint') }}</span>
+                </span>
+                <label class="lf-switch">
+                  <input type="checkbox" [checked]="settings.streamSummariesEnabled" [disabled]="saving() || !canManage()" (change)="updateFeatureToggle('streamSummariesEnabled', $any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.featureToggles.streamSummaries')" />
+                  <span class="lf-switch__track" aria-hidden="true"></span>
+                </label>
               </div>
-            }
-          </div>
-        </section>
-
-        <!-- Known users -->
-        <section class="lf-tile">
-          <div class="lf-list-head">
-            <div>
-              <p class="lf-kicker">{{ t('modules.aiPersonality.knownUsers.kicker') }}</p>
-              <h2 class="lf-h2">{{ t('modules.aiPersonality.knownUsers.title') }}</h2>
+              <div class="lf-toggle-row">
+                <span class="lf-toggle-row__copy">
+                  <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.featureToggles.recommendations') }}</span>
+                  <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.featureToggles.recommendationsHint') }}</span>
+                </span>
+                <label class="lf-switch">
+                  <input type="checkbox" [checked]="settings.recommendationsEnabled" [disabled]="saving() || !canManage()" (change)="updateFeatureToggle('recommendationsEnabled', $any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.featureToggles.recommendations')" />
+                  <span class="lf-switch__track" aria-hidden="true"></span>
+                </label>
+              </div>
             </div>
-            <button type="button" class="lf-btn lf-btn--compact" [disabled]="saving() || knownUsersLimitReached() || !canManage()" (click)="addKnownUser()">
-              {{ t('modules.aiPersonality.knownUsers.add') }}
-            </button>
-          </div>
-          @if (knownUsersLimitReached()) {
-            <p class="lf-note">{{ t('modules.aiPersonality.knownUsers.limitReached') }}</p>
-          }
-          <div class="lf-known-users">
-            @for (knownUser of settings.knownUsers; track $index) {
-              <article class="lf-known-user">
-                <div class="lf-form-grid">
-                  <label class="lf-field">
-                    <span>{{ t('modules.aiPersonality.fields.username') }}</span>
-                    <input [value]="knownUser.username" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'username', $any($event.target).value)" />
-                  </label>
-                  <label class="lf-field">
-                    <span>{{ t('modules.aiPersonality.fields.relationship') }}</span>
-                    <input [value]="knownUser.relationship" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'relationship', $any($event.target).value)" />
-                  </label>
-                  <label class="lf-field lf-field--full">
-                    <span>{{ t('modules.aiPersonality.fields.description') }}</span>
-                    <textarea rows="3" [value]="knownUser.description" [disabled]="saving() || !canManage()" (input)="updateKnownUserField($index, 'description', $any($event.target).value)"></textarea>
+          </section>
+
+          <!-- Memory -->
+          <section class="lf-tile lf-card lf-o6" aria-labelledby="ai-memory-title">
+            <div class="lf-card__head">
+              <h2 class="lf-h2" id="ai-memory-title">{{ t('modules.aiPersonality.v2.memoryTitle') }}</h2>
+              <p class="lf-note">{{ t('modules.aiPersonality.v2.memoryHint') }}</p>
+            </div>
+            <div class="lf-toggles">
+              <div class="lf-toggle-row">
+                <span class="lf-toggle-row__copy">
+                  <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.v2.learnTitle') }}</span>
+                  <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.v2.learnHint') }}</span>
+                </span>
+                <label class="lf-switch">
+                  <input type="checkbox" [checked]="settings.learningConfig.enabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('enabled', $any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.v2.learnTitle')" />
+                  <span class="lf-switch__track" aria-hidden="true"></span>
+                </label>
+              </div>
+              @for (key of memoryKinds; track key) {
+                <div class="lf-toggle-row lf-toggle-row--sub">
+                  <span class="lf-toggle-row__copy">
+                    <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.v2.kind.' + key + '.title') }}</span>
+                    <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.v2.kind.' + key + '.hint') }}</span>
+                  </span>
+                  <label class="lf-switch">
+                    <input type="checkbox" [checked]="settings.memoryPolicy[key]" [disabled]="saving() || !canManage() || !settings.learningConfig.enabled" (change)="updateMemoryPolicy(key, $any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.v2.kind.' + key + '.title')" />
+                    <span class="lf-switch__track" aria-hidden="true"></span>
                   </label>
                 </div>
-                <button type="button" class="lf-icon-btn lf-icon-btn--corner" [disabled]="saving() || !canManage()" (click)="removeKnownUser($index)" [attr.aria-label]="t('common.delete')"><app-lf-icon name="close"></app-lf-icon></button>
-              </article>
-            } @empty {
-              <p class="lf-note">{{ t('modules.aiPersonality.knownUsers.empty') }}</p>
-            }
-          </div>
-        </section>
-
-        <!-- Learning (collapsible) -->
-        <section class="lf-tile">
-          <button type="button" class="lf-collapse-head" (click)="toggleLearning()" [attr.aria-expanded]="learningExpanded()">
-            <div>
-              <p class="lf-kicker">{{ t('modules.aiPersonality.learning.kicker') }}</p>
-              <h2 class="lf-h2">{{ t('modules.aiPersonality.learning.title') }}</h2>
+              }
             </div>
-            <span class="lf-collapse-chevron" aria-hidden="true">{{ learningExpanded() ? '▴' : '▾' }}</span>
-          </button>
+            <a class="lf-btn lf-btn--compact lf-btn--ghost lf-list__add" [routerLink]="memoriesPath()">{{ t('modules.aiPersonality.v2.reviewMemories') }}</a>
+          </section>
 
-          @if (learningExpanded()) {
-            <div class="lf-collapse-body">
-              <div class="lf-toggle-grid">
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.enabled') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.enabled') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.enabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('enabled', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.autoConfirmEnabled') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.autoConfirmEnabled') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoConfirmEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoConfirmEnabled', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.postStreamSummaryEnabled') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.postStreamSummaryEnabled') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.postStreamSummaryEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('postStreamSummaryEnabled', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.weeklyMaintenanceEnabled') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.weeklyMaintenanceEnabled') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.weeklyMaintenanceEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('weeklyMaintenanceEnabled', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.monthlyMaintenanceEnabled') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.monthlyMaintenanceEnabled') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.monthlyMaintenanceEnabled" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('monthlyMaintenanceEnabled', $any($event.target).checked)" />
-                </label>
-              </div>
-
-              <h3 class="lf-h3 lf-h3--pad">{{ t('modules.aiPersonality.learning.autoApplyTitle') }}</h3>
-              <div class="lf-toggle-grid">
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyCreates') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.autoApplyCreates') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyCreates" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyCreates', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyEdits') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.autoApplyEdits') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyEdits" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyEdits', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyArchives') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.autoApplyArchives') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyArchives" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyArchives', $any($event.target).checked)" />
-                </label>
-                <label class="lf-toggle-card">
-                  <div>
-                    <strong>{{ t('modules.aiPersonality.learning.fields.autoApplyPermanentDeletes') }}</strong>
-                    <p>{{ t('modules.aiPersonality.learning.hints.autoApplyPermanentDeletes') }}</p>
-                  </div>
-                  <input type="checkbox" [checked]="settings.learningConfig.autoApplyPermanentDeletes" [disabled]="saving() || !canManage()" (change)="updateLearningToggle('autoApplyPermanentDeletes', $any($event.target).checked)" />
-                </label>
-              </div>
-
-              <div class="lf-form-grid lf-form-grid--dense">
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.autoConfirmThreshold') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.autoConfirmThreshold" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('autoConfirmThreshold', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.minMessageLength') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.minMessageLength" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minMessageLength', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.maxPendingMemories') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxPendingMemories" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxPendingMemories', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.maxConfirmedMemories') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxConfirmedMemories" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxConfirmedMemories', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.summaryMinDurationMinutes') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinDurationMinutes" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('summaryMinDurationMinutes', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.summaryMinChatMessages') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.summaryMinChatMessages" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('summaryMinChatMessages', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.createMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.createMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('createMinConfidence', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.editMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.editMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('editMinConfidence', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.archiveMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.archiveMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('archiveMinConfidence', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.deleteMinConfidence') }}</span>
-                  <input type="number" min="0" max="1" step="0.01" [value]="settings.learningConfig.deleteMinConfidence" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('deleteMinConfidence', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.maxActionsPerRun') }}</span>
-                  <input type="number" min="1" step="1" [value]="settings.learningConfig.maxActionsPerRun" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxActionsPerRun', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.maxDeletesPerRun') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.maxDeletesPerRun" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('maxDeletesPerRun', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.minMemoryAgeDaysForDelete') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minMemoryAgeDaysForDelete" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minMemoryAgeDaysForDelete', $any($event.target).value)" />
-                </label>
-                <label class="lf-field">
-                  <span>{{ t('modules.aiPersonality.learning.fields.minUnusedDaysForDelete') }}</span>
-                  <input type="number" min="0" step="1" [value]="settings.learningConfig.minUnusedDaysForDelete" [disabled]="saving() || !canManage()" (input)="updateLearningNumber('minUnusedDaysForDelete', $any($event.target).value)" />
-                </label>
-              </div>
+          <!-- Learning automation -->
+          <section class="lf-tile lf-card lf-o7" aria-labelledby="ai-auto-title">
+            <div class="lf-card__head">
+              <h2 class="lf-h2" id="ai-auto-title">{{ t('modules.aiPersonality.v2.autoTitle') }}</h2>
+              <p class="lf-note">{{ t('modules.aiPersonality.v2.autoHint') }}</p>
             </div>
-          }
-        </section>
+            <div class="lf-toggles">
+              @for (key of autoToggles; track key) {
+                <div class="lf-toggle-row" [class.lf-toggle-row--risk]="key === 'autoApplyPermanentDeletes'">
+                  <span class="lf-toggle-row__copy">
+                    <span class="lf-toggle-row__title">{{ t('modules.aiPersonality.v2.auto.' + key + '.title') }}</span>
+                    <span class="lf-toggle-row__hint">{{ t('modules.aiPersonality.v2.auto.' + key + '.hint') }}</span>
+                  </span>
+                  <label class="lf-switch">
+                    <input type="checkbox" [checked]="settings.learningConfig[key]" [disabled]="saving() || !canManage() || !settings.learningConfig.enabled" (change)="updateLearningToggle(key, $any($event.target).checked)" [attr.aria-label]="t('modules.aiPersonality.v2.auto.' + key + '.title')" />
+                    <span class="lf-switch__track" aria-hidden="true"></span>
+                  </label>
+                </div>
+              }
+            </div>
+            <details class="lf-more">
+              <summary>{{ t('modules.aiPersonality.v2.advancedTitle') }}</summary>
+              <div class="lf-more__body">
+                <p class="lf-note">{{ t('modules.aiPersonality.v2.advancedHint') }}</p>
+                <div class="lf-grid-2">
+                  @for (key of percentFields; track key) {
+                    <label class="lf-num">
+                      <span>{{ t('modules.aiPersonality.v2.num.' + key) }}</span>
+                      <span class="lf-num__wrap">
+                        <input type="number" min="0" max="100" step="1" inputmode="numeric" [value]="learningPercent(key)" [disabled]="saving() || !canManage()" (change)="updateLearningPercent(key, $any($event.target).value)" />
+                        <span aria-hidden="true">%</span>
+                      </span>
+                    </label>
+                  }
+                  @for (key of countFields; track key) {
+                    <label class="lf-num">
+                      <span>{{ t('modules.aiPersonality.v2.num.' + key) }}</span>
+                      <input type="number" min="0" step="1" inputmode="numeric" [value]="settings.learningConfig[key]" [disabled]="saving() || !canManage()" (change)="updateLearningNumber(key, $any($event.target).value)" />
+                    </label>
+                  }
+                </div>
+              </div>
+            </details>
+          </section>
 
-        <!-- Memory policy -->
-        <section class="lf-tile">
-          <p class="lf-kicker">{{ t('modules.aiPersonality.memory.kicker') }}</p>
-          <h2 class="lf-h2">{{ t('modules.aiPersonality.memory.title') }}</h2>
-          <p class="lf-copy lf-copy--tight">{{ t('modules.aiPersonality.memory.subtitle') }}</p>
-          <div class="lf-toggle-grid">
-            <label class="lf-toggle-card">
-              <div>
-                <strong>{{ t('modules.aiPersonality.memory.fields.prioritizeRecentChat') }}</strong>
-                <p>{{ t('modules.aiPersonality.memory.hints.prioritizeRecentChat') }}</p>
-              </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.prioritizeRecentChat" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('prioritizeRecentChat', $any($event.target).checked)" />
-            </label>
-            <label class="lf-toggle-card">
-              <div>
-                <strong>{{ t('modules.aiPersonality.memory.fields.allowSensitiveMemories') }}</strong>
-                <p>{{ t('modules.aiPersonality.memory.hints.allowSensitiveMemories') }}</p>
-              </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowSensitiveMemories" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowSensitiveMemories', $any($event.target).checked)" />
-            </label>
-            <label class="lf-toggle-card">
-              <div>
-                <strong>{{ t('modules.aiPersonality.memory.fields.allowUserPreferenceMemories') }}</strong>
-                <p>{{ t('modules.aiPersonality.memory.hints.allowUserPreferenceMemories') }}</p>
-              </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowUserPreferenceMemories" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowUserPreferenceMemories', $any($event.target).checked)" />
-            </label>
-            <label class="lf-toggle-card">
-              <div>
-                <strong>{{ t('modules.aiPersonality.memory.fields.allowRunningJokes') }}</strong>
-                <p>{{ t('modules.aiPersonality.memory.hints.allowRunningJokes') }}</p>
-              </div>
-              <input type="checkbox" [checked]="settings.memoryPolicy.allowRunningJokes" [disabled]="saving() || !canManage()" (change)="updateMemoryPolicy('allowRunningJokes', $any($event.target).checked)" />
-            </label>
-          </div>
-        </section>
-      }
+          <p class="lf-note lf-plan-line lf-o8">{{ limitsLine() }}</p>
+        </div>
+      </div>
 
-      <p class="lf-footer-note">{{ t('modules.aiPersonality.footer') }}</p>
-
-      <!-- Sticky save (heavy settings pattern) -->
       @if (canManage()) {
-      <div class="lf-save-bar">
-        <button
-          type="button"
-          class="lf-btn lf-btn--primary"
-          [disabled]="saving() || !dirty() || !canManage()"
-          (click)="saveSettings()"
-        >
-          @if (saving()) {
-            {{ t('modules.aiPersonality.actions.saving') }}
-          } @else {
-            {{ t('modules.aiPersonality.actions.save') }}
+        <div class="lf-save-bar" role="region" [attr.aria-label]="t('modules.aiPersonality.v2.saveRegion')">
+          <span class="lf-save-bar__status" role="status">{{ dirty() ? t('modules.aiPersonality.v2.unsaved') : t('modules.aiPersonality.v2.saved') }}</span>
+          @if (dirty()) {
+            <button type="button" class="lf-btn lf-btn--ghost" [disabled]="saving()" (click)="discardChanges()">{{ t('modules.aiPersonality.v2.discard') }}</button>
           }
-        </button>
-      </div>
+          <button type="button" class="lf-btn lf-btn--primary" [disabled]="saving() || !dirty()" (click)="saveSettings()">
+            {{ saving() ? t('modules.aiPersonality.actions.saving') : t('modules.aiPersonality.v2.save') }}
+          </button>
+        </div>
       }
-    } @else {
-      <div class="lf-tile lf-empty">
-        <p>{{ t('modules.aiPersonality.states.empty') }}</p>
-      </div>
+    } @else if (!errorMessage()) {
+      <p class="lf-note">{{ t('modules.aiPersonality.states.empty') }}</p>
     }
   </main>
 </div>
+
+@if (deletingProfile(); as profile) {
+  <div class="lf-modal-overlay" (click)="deletingProfile.set(null)">
+    <section #deleteDialog class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="ai-delete-title" aria-describedby="ai-delete-desc" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="ai-delete-title">{{ t('modules.aiPersonality.v2.deleteTitle', { name: profile.name }) }}</h2>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-copy" id="ai-delete-desc">
+          {{ profile.profileID === settings()?.activeProfileId ? t('modules.aiPersonality.v2.deleteActiveCopy') : t('modules.aiPersonality.v2.deleteCopy') }}
+        </p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="deletingProfile.set(null)">{{ t('common.cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--danger" (click)="confirmRemoveProfile()">{{ t('modules.aiPersonality.v2.deleteConfirm') }}</button>
+      </footer>
+    </section>
+  </div>
+}

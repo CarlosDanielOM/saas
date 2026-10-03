@@ -935,7 +935,134 @@
         "savedMessage": "La configuracion activa de personalidad ya fue actualizada para este canal.",
         "errorTitle": "Error al actualizar la personalidad IA"
       },
-      "footer": "Guarda cuando estes conforme con el perfil actual, la politica de memoria, la automatizacion de aprendizaje, las reglas y el contexto de usuarios conocidos."
+      "footer": "Guarda cuando estes conforme con el perfil actual, la politica de memoria, la automatizacion de aprendizaje, las reglas y el contexto de usuarios conocidos.",
+      "v2": {
+        "subtitle": "Decide cómo habla el bot en el chat, qué reglas sigue siempre y a qué habituales conoce.",
+        "chatOn": "Chat IA activado",
+        "chatOff": "Chat IA desactivado",
+        "usingChip": "En el chat: {{name}}",
+        "viewOnly": "Solo lectura",
+        "memoriesLink": "Memorias de IA",
+        "profilesTitle": "Personalidades",
+        "profilesHint": "El bot habla como una de ellas a la vez. Puedes editar cualquiera sin cambiarla.",
+        "addProfile": "Nueva personalidad",
+        "inChat": "En el chat ahora",
+        "edit": "Editar",
+        "view": "Ver",
+        "editingNow": "Editando",
+        "use": "Usar en el chat",
+        "useAria": "Usar {{name}} en el chat",
+        "deleteAria": "Eliminar {{name}}",
+        "noDescription": "Aún sin descripción",
+        "profileLimit": "Tu plan incluye {{count}} personalidades.",
+        "editorTitle": "Editando {{name}}",
+        "notInUse": "Esta personalidad no está en el chat. Toca \"Usar en el chat\" para que el bot cambie a ella.",
+        "promptLabel": "Cómo habla el bot",
+        "promptPlaceholder": "p. ej. Eres un co-host sarcástico pero amable. Responde en español, sé breve y búrlate del streamer cuando muera.",
+        "promptHint": "Esto es lo que el bot sigue en cada respuesta: personalidad, idioma, humor y qué evitar.",
+        "styleTitle": "Detalles de estilo",
+        "styleNote": "Se guardan con esta personalidad. Las respuestas del chat ahora solo siguen \"Cómo habla el bot\", así que escribe ahí lo importante. El modo y el tono también guían los resúmenes de directos.",
+        "referenceLabel": "Inspirado en (personaje o persona)",
+        "catchphraseAria": "Frase típica {{n}}",
+        "removeCatchphrase": "Quitar frase típica {{n}}",
+        "rulesTitle": "Reglas que siempre sigue",
+        "rulesHint": "Cortas y concretas funcionan mejor, como \"Nada de spoilers del juego actual\".",
+        "ruleAria": "Regla {{n}}",
+        "rulePlaceholder": "Escribe una regla",
+        "removeRule": "Quitar regla {{n}}",
+        "usersTitle": "Habituales que conoce el bot",
+        "usersHint": "Mods, amigos y habituales. El bot lo usa como contexto cuando escriben.",
+        "relationshipLabel": "Quién es",
+        "relationshipPlaceholder": "Mod, amigo, sub…",
+        "aboutLabel": "Qué debe saber el bot",
+        "aboutPlaceholder": "Le encantan los juegos de terror, siempre saluda en portugués",
+        "removeUser": "Quitar a {{name}}",
+        "switchesTitle": "Activar o desactivar",
+        "chatHint": "Responde cuando alguien menciona al bot y hace funcionar los comandos $(ai).",
+        "summariesHint": "Escribe un resumen después de cada directo y guarda lo que aprendió el bot.",
+        "memoryTitle": "Qué puede recordar",
+        "memoryHint": "El bot puede aprender del chat. Tú revisas lo que aprende en Memorias de IA.",
+        "learnTitle": "Aprender del chat",
+        "learnHint": "Desactivado, el bot solo sabe lo que escribas en esta página.",
+        "kind": {
+          "allowUserPreferenceMemories": {
+            "title": "Gustos de los espectadores",
+            "hint": "\"luna_v odia los spoilers\", juegos favoritos, preferencias."
+          },
+          "allowRunningJokes": {
+            "title": "Bromas recurrentes",
+            "hint": "Chistes y referencias que comparte tu comunidad."
+          },
+          "allowSensitiveMemories": {
+            "title": "Datos sensibles",
+            "hint": "Cosas personales que comparten los espectadores. Desactivado es más seguro."
+          }
+        },
+        "reviewMemories": "Revisar lo que aprendió",
+        "autoTitle": "Mantenimiento automático",
+        "autoHint": "Lo que el bot puede hacer por su cuenta después de los directos, sin preguntarte.",
+        "auto": {
+          "postStreamSummaryEnabled": {
+            "title": "Aprender después de cada directo",
+            "hint": "Repasa el directo y sugiere memorias."
+          },
+          "autoConfirmEnabled": {
+            "title": "Saltar la revisión cuando está muy seguro",
+            "hint": "Las memorias de las que está muy seguro se activan sin tu aprobación."
+          },
+          "autoApplyCreates": {
+            "title": "Añadir memorias nuevas",
+            "hint": "Guarda memorias nuevas por su cuenta."
+          },
+          "autoApplyEdits": {
+            "title": "Actualizar memorias",
+            "hint": "Corrige memorias que cambiaron."
+          },
+          "autoApplyArchives": {
+            "title": "Archivar memorias viejas",
+            "hint": "Guarda memorias que dejaron de ser ciertas. Puedes recuperarlas."
+          },
+          "weeklyMaintenanceEnabled": {
+            "title": "Limpieza semanal",
+            "hint": "Un repaso ligero cada semana."
+          },
+          "monthlyMaintenanceEnabled": {
+            "title": "Limpieza mensual",
+            "hint": "Un repaso más profundo cada mes."
+          },
+          "autoApplyPermanentDeletes": {
+            "title": "Eliminar memorias para siempre",
+            "hint": "Es permanente y no se puede deshacer. Déjalo desactivado salvo que estés seguro."
+          }
+        },
+        "advancedTitle": "Ajustar los números",
+        "advancedHint": "Los valores por defecto sirven para la mayoría de canales. Un porcentaje más alto significa que el bot debe estar más seguro antes de actuar.",
+        "num": {
+          "autoConfirmThreshold": "Saltar revisión por encima de",
+          "createMinConfidence": "Añadir memoria por encima de",
+          "editMinConfidence": "Actualizar memoria por encima de",
+          "archiveMinConfidence": "Archivar memoria por encima de",
+          "deleteMinConfidence": "Eliminar memoria por encima de",
+          "summaryMinDurationMinutes": "Resumir directos de más de (minutos)",
+          "summaryMinChatMessages": "Resumir directos con al menos (mensajes)",
+          "maxPendingMemories": "Máximo de memorias por revisar",
+          "maxConfirmedMemories": "Máximo de memorias activas",
+          "maxActionsPerRun": "Máximo de cambios por pasada",
+          "maxDeletesPerRun": "Máximo de eliminaciones por pasada",
+          "minMemoryAgeDaysForDelete": "Solo eliminar memorias de más de (días)",
+          "minUnusedDaysForDelete": "Solo eliminar si no se usó en (días)"
+        },
+        "limitsLine": "{{plan}}: {{profiles}} personalidades · {{rules}} reglas · {{users}} habituales · lee los últimos {{context}} mensajes del chat.",
+        "saveRegion": "Guardar personalidad de IA",
+        "unsaved": "Cambios sin guardar",
+        "saved": "Todos los cambios guardados",
+        "discard": "Descartar",
+        "save": "Guardar cambios",
+        "deleteTitle": "¿Eliminar {{name}}?",
+        "deleteCopy": "Su descripción y detalles de estilo se eliminan al guardar.",
+        "deleteActiveCopy": "El bot está usando esta personalidad en el chat. Al guardar, cambiará a tu primera personalidad restante.",
+        "deleteConfirm": "Eliminar"
+      }
     },
     "memories": {
       "description": "Revisa, edita y gestiona lo que el bot ha aprendido de tus resumenes de transmision y chat.",

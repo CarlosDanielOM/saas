@@ -935,7 +935,134 @@
         "savedMessage": "Your active personality setup is now updated for this channel.",
         "errorTitle": "AI personality update failed"
       },
-      "footer": "Save when you are happy with the current profile, memory policy, learning automation, rules, and known-user context."
+      "footer": "Save when you are happy with the current profile, memory policy, learning automation, rules, and known-user context.",
+      "v2": {
+        "subtitle": "Decide how the bot talks in chat, which rules it always follows and which regulars it knows.",
+        "chatOn": "AI chat on",
+        "chatOff": "AI chat off",
+        "usingChip": "In chat: {{name}}",
+        "viewOnly": "View only",
+        "memoriesLink": "AI memories",
+        "profilesTitle": "Personalities",
+        "profilesHint": "The bot talks as one of them at a time. Edit any of them without switching.",
+        "addProfile": "New personality",
+        "inChat": "In chat now",
+        "edit": "Edit",
+        "view": "View",
+        "editingNow": "Editing",
+        "use": "Use in chat",
+        "useAria": "Use {{name}} in chat",
+        "deleteAria": "Delete {{name}}",
+        "noDescription": "No description yet",
+        "profileLimit": "Your plan includes {{count}} personalities.",
+        "editorTitle": "Editing {{name}}",
+        "notInUse": "This personality isn't in chat. Tap \"Use in chat\" to switch the bot to it.",
+        "promptLabel": "How the bot talks",
+        "promptPlaceholder": "e.g. You're a sarcastic but kind co-host. Reply in Spanish, keep it short, roast the streamer when they die.",
+        "promptHint": "This is what the bot follows in every chat reply: personality, language, humor and what to avoid.",
+        "styleTitle": "Style details",
+        "styleNote": "Saved with this personality. Chat replies currently follow only \"How the bot talks\" above, so write anything important there. Mode and tone also guide stream summaries.",
+        "referenceLabel": "Inspired by (character or person)",
+        "catchphraseAria": "Catchphrase {{n}}",
+        "removeCatchphrase": "Remove catchphrase {{n}}",
+        "rulesTitle": "Rules it always follows",
+        "rulesHint": "Short and specific works best, like \"No spoilers for the current game\".",
+        "ruleAria": "Rule {{n}}",
+        "rulePlaceholder": "Write a rule",
+        "removeRule": "Remove rule {{n}}",
+        "usersTitle": "Regulars the bot knows",
+        "usersHint": "Mods, friends and regulars. The bot uses this as background when they chat.",
+        "relationshipLabel": "Who they are",
+        "relationshipPlaceholder": "Mod, friend, sub…",
+        "aboutLabel": "What the bot should know",
+        "aboutPlaceholder": "Loves horror games, always says hi in Portuguese",
+        "removeUser": "Remove {{name}}",
+        "switchesTitle": "On or off",
+        "chatHint": "Replies when someone mentions the bot and powers $(ai) commands.",
+        "summariesHint": "Writes a recap after each stream and saves what the bot learned.",
+        "memoryTitle": "What it can remember",
+        "memoryHint": "The bot can learn from chat. You review what it learns in AI memories.",
+        "learnTitle": "Learn from chat",
+        "learnHint": "Off means the bot only knows what you write on this page.",
+        "kind": {
+          "allowUserPreferenceMemories": {
+            "title": "Viewer likes and dislikes",
+            "hint": "\"luna_v hates spoilers\", favorite games, inside preferences."
+          },
+          "allowRunningJokes": {
+            "title": "Running jokes",
+            "hint": "Recurring bits and references your community shares."
+          },
+          "allowSensitiveMemories": {
+            "title": "Sensitive details",
+            "hint": "Personal things viewers share. Off is safer."
+          }
+        },
+        "reviewMemories": "Review what it learned",
+        "autoTitle": "Automatic upkeep",
+        "autoHint": "What the bot may do on its own after streams, without asking you first.",
+        "auto": {
+          "postStreamSummaryEnabled": {
+            "title": "Learn after each stream",
+            "hint": "Looks back at the stream and suggests memories."
+          },
+          "autoConfirmEnabled": {
+            "title": "Skip review when it's very sure",
+            "hint": "Memories the bot is very sure about go live without your approval."
+          },
+          "autoApplyCreates": {
+            "title": "Add new memories",
+            "hint": "Saves new memories on its own."
+          },
+          "autoApplyEdits": {
+            "title": "Update memories",
+            "hint": "Corrects memories that changed."
+          },
+          "autoApplyArchives": {
+            "title": "Archive old memories",
+            "hint": "Puts away memories that stopped being true. You can bring them back."
+          },
+          "weeklyMaintenanceEnabled": {
+            "title": "Weekly cleanup",
+            "hint": "Light tidy-up every week."
+          },
+          "monthlyMaintenanceEnabled": {
+            "title": "Monthly cleanup",
+            "hint": "Deeper tidy-up every month."
+          },
+          "autoApplyPermanentDeletes": {
+            "title": "Delete memories forever",
+            "hint": "Permanent and can't be undone. Leave off unless you're sure."
+          }
+        },
+        "advancedTitle": "Fine-tune the numbers",
+        "advancedHint": "Defaults work for most channels. Higher percentages mean the bot needs to be more sure before acting.",
+        "num": {
+          "autoConfirmThreshold": "Skip review above",
+          "createMinConfidence": "Add a memory above",
+          "editMinConfidence": "Update a memory above",
+          "archiveMinConfidence": "Archive a memory above",
+          "deleteMinConfidence": "Delete a memory above",
+          "summaryMinDurationMinutes": "Recap streams longer than (minutes)",
+          "summaryMinChatMessages": "Recap streams with at least (messages)",
+          "maxPendingMemories": "Max memories waiting for review",
+          "maxConfirmedMemories": "Max active memories",
+          "maxActionsPerRun": "Max changes per run",
+          "maxDeletesPerRun": "Max deletions per run",
+          "minMemoryAgeDaysForDelete": "Only delete memories older than (days)",
+          "minUnusedDaysForDelete": "Only delete if unused for (days)"
+        },
+        "limitsLine": "{{plan}}: {{profiles}} personalities · {{rules}} rules · {{users}} regulars · reads the last {{context}} chat messages.",
+        "saveRegion": "Save AI personality",
+        "unsaved": "Unsaved changes",
+        "saved": "All changes saved",
+        "discard": "Discard",
+        "save": "Save changes",
+        "deleteTitle": "Delete {{name}}?",
+        "deleteCopy": "Its description and style details are removed when you save.",
+        "deleteActiveCopy": "The bot is using this personality in chat. After you save, it switches to your first remaining personality.",
+        "deleteConfirm": "Delete"
+      }
     },
     "memories": {
       "description": "Review, edit, and manage what the bot has learned from your stream summaries and chat.",
