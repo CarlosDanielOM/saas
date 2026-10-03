@@ -119,6 +119,18 @@ export class OverlayEditorComponent {
     const draft = this.designDraft();
     return !!draft && this.designFingerprint(draft) !== this.designFingerprint(this.designs().find(d => d.id === draft.id));
   });
+  readonly unpublished = computed(() => {
+    const scene = this.scene();
+    if (!scene?.published) return true;
+    const designs = this.designs().map(d => this.designDraft()?.id === d.id ? this.designDraft()! : d);
+    const snapshot = { width: scene.width, height: scene.height, widgets: scene.widgets, waitFor: scene.waitFor,
+      designs: designs.filter(d => scene.widgets.some(w => w.designId === d.id)) };
+    // Saving increments design revisions even if no artwork changed.
+    const content = (value: typeof snapshot) => JSON.stringify({ ...value, designs: value.designs.map(({ revision: _revision, ...d }) => d) });
+    return content(snapshot) !== content(scene.published);
+  });
+  readonly designEventEnabled = computed(() => this.scene()?.widgets.some(w => w.visible && w.kind === 'alert'
+    && w.designId === this.designDraft()?.id && w.events?.includes(this.designEvent())) ?? false);
 
   constructor() {
     this.seed();
@@ -285,6 +297,14 @@ export class OverlayEditorComponent {
   designFor(widget: OverlayWidget): AlertDesign | undefined { return this.designs().find(d=>d.id===widget.designId); }
   usage(id: string): number { return this.scenes().filter(s=>s.widgets.some(w=>w.designId===id)).length; }
   toggleEvent(event: AlertEvent): void { const events=this.selected()?.events??[]; this.patchSelected({events:events.includes(event)?events.filter(e=>e!==event):[...events,event]}); }
+  enableDesignEvent(): void {
+    const design = this.designDraft(); if (!design) return;
+    const widget = this.scene().widgets.find(w => w.kind === 'alert' && w.designId === design.id);
+    if (!widget) return;
+    this.updateScene({ widgets: this.scene().widgets.map(w => w.id === widget.id
+      ? { ...w, visible: true, events: [...new Set([...(w.events ?? []), this.designEvent()])] } : w) });
+  }
+  designLinked(): boolean { return this.scene().widgets.some(w => w.kind === 'alert' && w.designId === this.designDraft()?.id); }
   toggleWait(kind: EventKind): void { const wait=this.scene().waitFor; this.updateScene({waitFor:wait.includes(kind)?wait.filter(e=>e!==kind):[...wait,kind]}); }
   updateDuration(event: Event): void {
     const value=Number(this.value(event)); if(!Number.isFinite(value)) return;
@@ -403,7 +423,7 @@ export class OverlayEditorComponent {
   testDesign(): void { this.previewDesign.set(true); this.later(()=>this.previewDesign.set(false),(this.designDraft()?.events[this.designEvent()].duration??5)*1000); }
   private resetSimulation(): void { this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   async publish(): Promise<void> {
-    if (!await this.persist()) return;
+    if (!(this.designDraft() ? await this.saveDesign() : await this.persist())) return;
     this.busy.set(true);
     try { this.accept(await this.api.action(this.channel, this.sceneId(), this.revision, 'publish')); this.notice.set('publishedNotice'); }
     catch (e) { this.report(e); } finally { this.busy.set(false); }
@@ -607,6 +627,10 @@ export class OverlayEditorComponent {
   }
   selectAlertKind(event: Event): void { const kind = this.value(event) as AlertEvent; if (ALERT_EVENTS.includes(kind)) this.designEvent.set(kind); }
   async testLiveAlert(): Promise<void> {
+    if (this.unpublished()) { this.error.set(this.t('testPublishFirst')); return; }
+    if (!this.scene().published?.widgets.some(w => w.visible && w.kind === 'alert' && w.events?.includes(this.designEvent()))) {
+      this.error.set(this.t('testEventDisabled', { event: this.t(this.designEvent() + 'Name') })); return;
+    }
     try { await this.api.request('POST', `${this.channel}/test-alert`, { kind: this.designEvent() }); this.notice.set('testSent'); }
     catch(e) { this.report(e); }
   }

@@ -39,6 +39,6 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
       { id: 'trigger-1', kind: 'trigger', x: 75, y: 755, width: 510, height: 230, visible: true, locked: false },
       { id: 'clip-1', kind: 'clip', x: 1410, y: 775, width: 430, height: 250, visible: true, locked: false },
       { id: 'alert-1', kind: 'alert', x: 640, y: 450, width: 640, height: 192, visible: true, locked: false,
-        designId, events: id === 'chatting' ? ['follow', 'raid'] : ['sub', 'bits'] }
+        designId, events: [...ALERT_EVENTS] }
     ] };
 }

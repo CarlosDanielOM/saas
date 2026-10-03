@@ -4098,6 +4098,13 @@
     }
   },
   "overlayStudio": {
+    "savePublish": "Save & publish live",
+    "unpublishedChanges": "This overlay has unpublished changes. Save keeps a draft; Publish live updates OBS.",
+    "designEventDisabled": "{{event}} is not enabled for this design in “{{overlay}}”. Editing the design does not enable the event.",
+    "enableDesignEvent": "Enable {{event}} in this overlay",
+    "testPublishFirst": "Publish this overlay’s changes before sending a test to OBS.",
+    "testEventDisabled": "{{event}} is disabled in this published overlay. Enable it and publish before testing.",
+
     "editHistory": "Edit history",
     "undo": "Undo",
     "redo": "Redo",

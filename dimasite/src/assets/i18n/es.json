@@ -4098,6 +4098,13 @@
     }
   },
   "overlayStudio": {
+    "savePublish": "Guardar y publicar en vivo",
+    "unpublishedChanges": "Esta superposición tiene cambios sin publicar. Guardar conserva un borrador; Publicar en vivo actualiza OBS.",
+    "designEventDisabled": "{{event}} no está activado para este diseño en «{{overlay}}». Editar el diseño no activa el evento.",
+    "enableDesignEvent": "Activar {{event}} en esta superposición",
+    "testPublishFirst": "Publica los cambios de esta superposición antes de enviar una prueba a OBS.",
+    "testEventDisabled": "{{event}} está desactivado en esta superposición publicada. Actívalo y publica antes de probar.",
+
     "editHistory": "Historial de edición",
     "undo": "Deshacer",
     "redo": "Rehacer",

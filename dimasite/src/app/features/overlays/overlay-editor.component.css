@@ -230,3 +230,7 @@ select:focus-visible,textarea:focus-visible { outline:3px solid var(--accent); o
 .editor-fields { border:0; padding:0; margin:0; min-width:0 } .editor-fields:disabled { opacity:.7 } .widget__content app-overlay-layer { display:block; width:100%; height:100% } .publish-settings a { color:var(--accent); overflow-wrap:anywhere }
 
 .url-row code { flex:1 1 100%; } .mock-chip { display:inline-flex; } @media(min-width:960px) { .url-row code { flex:1 1 20rem; } }
+
+/* Artwork uses the same unpadded bounds as the published renderer. */
+.widget:is([data-kind="text"], [data-kind="image"], [data-kind="video"], [data-kind="animation"], [data-kind="alert"]) { border:0; border-radius:0; background:transparent; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25) }
+.widget:is([data-kind="text"], [data-kind="image"], [data-kind="video"], [data-kind="animation"]) .widget__content { padding:0 }

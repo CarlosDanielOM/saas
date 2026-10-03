@@ -44,6 +44,7 @@
         <button type="button" class="toolbar-button" (click)="closeDesign()">← {{ t('backToOverlay') }}</button>
         <span class="shared-badge">{{ t('sharedDesign') }}</span>
         <button type="button" class="toolbar-button" (click)="saveDesign(true)">{{ t('saveCopy') }}</button>
+        @if (designLinked()) { <button type="button" class="save-button publish-button" (click)="publish()">{{ t('savePublish') }}</button> }
       } @else {
         <label class="scene-picker"><span>{{ t('globalOverlay') }}</span><select [attr.aria-label]="t('globalOverlay')" [value]="sceneId()" (change)="switchScene($event)">@for (overlay of scenes(); track overlay.id) { <option [value]="overlay.id" [selected]="overlay.id === sceneId()">{{ overlay.name }}</option> }</select></label>
         <button type="button" class="toolbar-button" (click)="newScene()">+ {{ t('newOverlay') }}</button>
@@ -51,6 +52,7 @@
         <button type="button" class="save-button publish-button" (click)="publish()">{{ t('publishMock') }} · v{{ scene().revision }}</button>
       }
     </div>
+    @if (unpublished()) { <p class="notice publish-status" role="status">{{ t('unpublishedChanges') }}</p> }
     @if (notice()) { <p class="notice" role="status">{{ t(notice()) }}</p> }
     @if (libraryOpen() && !designDraft()) {
       <section class="design-library" [attr.aria-label]="t('savedDesigns')">
@@ -61,7 +63,7 @@
               <div class="design-thumbnail"><div class="design-mini-canvas" [style.aspect-ratio]="design.width + ' / ' + design.height">
                 @for (layer of design.events.follow.widgets; track layer.id) { @if (layer.visible) {
                   <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                    @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [owner]="channel" [layer]="layer" /> }
+                    <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
                   </div>
                 } }
               </div></div>
@@ -88,6 +90,12 @@
         @for (event of alertEvents; track event) { <button type="button" [class.active]="designEvent() === event" [attr.aria-pressed]="designEvent() === event" (click)="setDesignEvent(event)">{{ t(event + 'Name') }}</button> }
       </div>
       <p class="design-context">{{ t('designContext') }}</p>
+      @if (!designEventEnabled()) {
+        <div class="notice event-disabled" role="status">
+          <p>{{ t('designEventDisabled', { event: t(designEvent() + 'Name'), overlay: scene().name }) }}</p>
+          @if (designLinked()) { <button type="button" class="toolbar-button" (click)="enableDesignEvent()">{{ t('enableDesignEvent', { event: t(designEvent() + 'Name') }) }}</button> }
+        </div>
+      }
     }
 
     <nav class="mobile-tabs" [attr.aria-label]="t('sections')">
@@ -146,17 +154,17 @@
                             <div class="alert-render">
                               @for (layer of alertLayout(widget); track layer.id) {
                                 @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                  @if (layer.kind === 'text') { <strong [style.color]="layer.color" [style.font-size.px]="layer.fontSize">{{ renderText(layer.text) }}</strong> } @else { <app-overlay-layer [owner]="channel" [layer]="layer" /> }
+                                  <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
                                 </div> }
                               }
                             </div>
                             <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
                           }
                         }
-                        @case ('text') { <strong class="text-preview" [style.color]="widget.color" [style.font-size.px]="widget.fontSize">{{ renderText(widget.text) }}</strong> }
+                        @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [text]="renderText(widget.text)" /> }
                         @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
                         @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" /> }
-                        @case ('animation') { <span class="design-spark" [class.spark-playing]="previewDesign()" aria-hidden="true">✦</span> }
+                        @case ('animation') { <app-overlay-layer [layer]="widget" /> }
                         @case ('tts') {
                           <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
                           <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>

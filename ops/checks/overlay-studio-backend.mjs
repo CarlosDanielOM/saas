@@ -29,6 +29,7 @@ await request('GET', '990092', undefined, 200, 'overlay-other-fixture');
 let state = await request('GET', channel);
 const id = state.scenes[0].id, publicId = state.scenes[0].publicId;
 assert.match(publicId, /^[a-f0-9]{48}$/);
+assert.deepEqual(state.scenes[0].widgets.find(w=>w.kind==='alert').events, ['sub','bits','follow','raid'], 'new overlays receive all alert types');
 let diagnostics=await request('GET', channel+'/connections');
 assert.equal(diagnostics.scenes[0].published,false);assert.deepEqual(diagnostics.scenes[0].sources,[]);
 await request('GET', `public/${publicId}`, undefined, 404, '');
@@ -70,7 +71,7 @@ const sources=result=>result.scenes.find(s=>s.id===id).sources;
 diagnostics=await waitDiagnostics(d=>sources(d).length===2);assert(sources(diagnostics).every(s=>s.connected&&s.status==='loading'));
 a.health({revision:state.scenes[0].revision,issue:null});b.health({revision:state.scenes[0].revision,issue:null});
 diagnostics=await waitDiagnostics(d=>sources(d).every(s=>s.status==='ready'));
-assert.deepEqual(diagnostics.scenes[0].receives,['tts','trigger','clip','sub','bits']);
+assert.deepEqual(diagnostics.scenes[0].receives,['tts','trigger','clip','sub','bits','follow','raid']);
 assert(!JSON.stringify(diagnostics).includes(publicId));assert(!JSON.stringify(diagnostics).includes(a.clientId));
 a.health({revision:state.scenes[0].revision,issue:'media'});
 await waitDiagnostics(d=>sources(d).some(s=>s.issue==='media'));
@@ -97,6 +98,13 @@ await DomainEventSchema.create({ eventKey:'overlay-cheer-fixture', source:'twitc
 await a.wait(m=>m.includes('overlay-event') && !m.includes(eventId));
 const journalId=a.events().filter(e=>e[0]==='overlay-event').at(-1)[1].id;
 const journal = await request('GET',`public/${publicId}/events/${journalId}`,undefined,200,''); assert.equal(journal.layouts.starter.widgets[1].text,'New Journal viewer / 321');
+// Follows use the same durable EventSub journal as real stream activity.
+await DomainEventSchema.create({ eventKey:'overlay-follow-fixture', source:'twitch-eventsub',sourceEventId:'overlay-follow-fixture',type:'channel.follow.received',topic:'channel',channelID:channel,schemaVersion:1,occurredAt:new Date(),journaledAt:new Date(),expiresAt:new Date(Date.now()+600000),payload:{event:{user_name:'New follower'}},metadata:{} });
+await a.wait(m=>m.includes('overlay-event') && m.includes('follow'));
+const followId=a.events().filter(e=>e[0]==='overlay-event' && e[1].kind==='follow').at(-1)[1].id;
+const follow=await request('GET',`public/${publicId}/events/${followId}`,undefined,200,'');
+assert.equal(follow.layouts.starter.widgets[1].text,'New follower');
+console.log('PASS new overlay defaults and real journal follower delivery/rendering.');
 // URL rotation immediately revokes old HTTP and socket access, including recovery.
 state = await request('POST',`${channel}/scenes/${id}/rotate`,{revision:state.revision});
 await request('GET',`public/${publicId}`,undefined,404,'');
