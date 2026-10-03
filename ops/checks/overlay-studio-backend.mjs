@@ -105,6 +105,22 @@ const followId=a.events().filter(e=>e[0]==='overlay-event' && e[1].kind==='follo
 const follow=await request('GET',`public/${publicId}/events/${followId}`,undefined,200,'');
 assert.equal(follow.layouts.starter.widgets[1].text,'New follower');
 console.log('PASS new overlay defaults and real journal follower delivery/rendering.');
+// Journal arrivals during a disconnect retain only the original subscriber lease.
+b.ws.close(); await waitDiagnostics(d=>sources(d).some(s=>!s.connected));
+const offlineFollow=await DomainEventSchema.create({ eventKey:'overlay-offline-follow',source:'twitch-eventsub',sourceEventId:'overlay-offline-follow',type:'channel.follow.received',topic:'channel',channelID:channel,schemaVersion:1,occurredAt:new Date(),journaledAt:new Date(),expiresAt:new Date(Date.now()+600000),payload:{event:{user_name:'Offline follower'}},metadata:{} });
+const offlineId=`alert-${offlineFollow._id}`;
+await a.wait(m=>m.includes(offlineId)); a.ack(offlineId); await new Promise(r=>setTimeout(r,100));
+await request('GET',`public/${publicId}/events/${offlineId}`,undefined,200,'');
+const newcomer=await connect(publicId); await newcomer.wait(m=>m.includes('overlay-state'));
+assert(!newcomer.events().some(e=>e[1]?.id===offlineId),'new sources do not receive historical alerts');
+const recovered=await connect(publicId,b.clientId); await recovered.wait(m=>m.includes(offlineId));
+assert.equal(recovered.events().filter(e=>e[1]?.id===offlineId).length,1);
+const recoveredEvent=await request('GET',`public/${publicId}/events/${offlineId}`,undefined,200,'');
+assert.equal(recoveredEvent.layouts.starter.widgets[1].text,'Offline follower');
+recovered.ack(offlineId); await new Promise(r=>setTimeout(r,100));
+await request('GET',`public/${publicId}/events/${offlineId}`,undefined,404,'');
+recovered.ws.close(); newcomer.ws.close();
+console.log('PASS real journal alerts survive a source disconnect, retain independent receipts and exclude new subscribers.');
 // URL rotation immediately revokes old HTTP and socket access, including recovery.
 state = await request('POST',`${channel}/scenes/${id}/rotate`,{revision:state.revision});
 await request('GET',`public/${publicId}`,undefined,404,'');
@@ -200,6 +216,27 @@ await c.wait(m=>m.includes('Producer fixture'));
 const produced=c.events().find(e=>e[0]==='overlay-event'&&e[1].media?.title==='Producer fixture')[1];
 const producedMedia=await request('GET',`public/${nextId}/events/${produced.id}`,undefined,200,'');assert.deepEqual(producedMedia.media.clip,{streamer:'Fixture streamer',game:'Fixture game',description:'Fixture caption',profileImage:'https://fixture.invalid/avatar.png',streamerColor:'#22c55e'});assert.equal(await(await fetch(base+producedMedia.media.url)).text(),'clip-fixture-bytes');
 await clipQueueHandler.handleClipEnded(channel,'clip-producer-fixture');assert.equal(await redis.get(`twitch:${channel}:clip:processing`),null);
+// Lease expiry is also enforced on reconnect before the next polling sweep.
+const leaseChannel='990195'; await Users.collection.insertOne({accounts:[{type:'twitch',id:leaseChannel}],plan_tier:'free'});
+await redis.hSet('token:overlay-lease-fixture',{id:leaseChannel,login:'lease',display_name:'Lease'});
+let leaseState=await request('GET',leaseChannel,undefined,200,'overlay-lease-fixture'); leaseState.scenes[0].widgets=leaseState.scenes[0].widgets.filter(w=>w.kind==='alert');
+leaseState=await request('PUT',leaseChannel,leaseState,200,'overlay-lease-fixture'); leaseState=await request('POST',`${leaseChannel}/scenes/${leaseState.scenes[0].id}/publish`,{revision:leaseState.revision},200,'overlay-lease-fixture');
+const leasePublic=leaseState.scenes[0].publicId;
+const leaseClient=await connect(leasePublic); await leaseClient.wait(m=>m.includes('overlay-state')); leaseClient.ws.close();
+for(let i=0;i<100&&live.studioConnections(leaseChannel,leaseState.scenes).scenes[0].sources.some(s=>s.connected);i++)await new Promise(r=>setTimeout(r,20));
+assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'manual-offline'),0,'manual test requires a connected source');
+assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'retained-offline',Date.now(),'twitch',true),1,'journal delivery retains an offline-only source');
+assert(await live.eventFor(leasePublic,'alert-retained-offline'));
+const leaseNow=Date.now;
+try {
+  Date.now=()=>leaseNow()+120001;
+  assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'expired-offline',Date.now(),'twitch',true),0);
+  const expired=await connect(leasePublic,leaseClient.clientId); await expired.wait(m=>m.includes('overlay-state'));
+  assert(!expired.events().some(e=>e[1]?.id==='alert-retained-offline'));
+  assert.equal(await live.eventFor(leasePublic,'alert-retained-offline'),null);
+  expired.ws.close();
+} finally { Date.now=leaseNow; }
+console.log('PASS disconnected-only alert retention, manual-test semantics and reconnect lease expiration.');
 for (const tier of ['premium', 'pro', 'free']) {
   await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:tier}});
   await request('GET',channel+'/connections');

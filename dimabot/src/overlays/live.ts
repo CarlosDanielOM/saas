@@ -24,6 +24,8 @@ const peers = new Map<string, Peer>();
 let pollingFailed = false;
 const pending = new Map<string, Pending>();
 const channels = new Map<string, { after: Types.ObjectId; busy: boolean }>();
+const RECONNECT_GRACE_MS = 120000;
+const reconnecting = (peer: Peer) => !peer.socket?.connected && peer.disconnectedAt !== undefined && Date.now() - peer.disconnectedAt < RECONNECT_GRACE_MS;
 const directory = path.join(tmpdir(), 'domdimabot-overlay-media');
 const types: Record<string, AlertEvent> = { 'channel.follow.received': 'follow', 'channel.bits.received': 'bits', 'channel.subscription.received': 'sub', 'channel.subscription.gifted': 'sub', 'channel.raid.received': 'raid' };
 const accepts = (peer: Peer, kind: EventKind) => peer.state.snapshot.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
@@ -44,12 +46,12 @@ export function studioConnections(channel: string, scenes: OverlayScene[]) {
   })) };
 }
 async function discard(id: string) { const item = pending.get(id); if (!item) return; pending.delete(id); if (item.file) await unlink(item.file).catch(() => {}); }
-async function dropPeer(key: string) {
+function dropPeer(key: string) {
   const peer = peers.get(key); peers.delete(key); peer?.socket?.disconnect(true);
-  for (const [id, item] of pending) { item.recipients.delete(key); if (!item.recipients.size) await discard(id); }
+  for (const [id, item] of pending) { item.recipients.delete(key); if (!item.recipients.size) void discard(id); }
   if (peer && ![...peers.values()].some(p => p.channel === peer.channel)) channels.delete(peer.channel);
 }
-function recipients(channel: string, kind: EventKind): Peer[] { return [...peers.values()].filter(p => p.channel === channel && p.socket?.connected && accepts(p, kind)); }
+function recipients(channel: string, kind: EventKind, retainDisconnected = false): Peer[] { return [...peers.values()].filter(p => p.channel === channel && (p.socket?.connected || retainDisconnected && reconnecting(p)) && accepts(p, kind)); }
 function deliver(item: Pending, selected: Peer[]) { pending.set(item.event.id, item); for (const peer of selected) peer.socket?.emit('overlay-event', item.event); }
 /** Copy generated media BEFORE releasing its producer. Files live until every subscriber finishes. */
 export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform: OverlayPlatform = 'twitch'): Promise<void> {
@@ -66,8 +68,9 @@ export function publishStudioTrigger(channel: string, body: Record<string, unkno
   const id = randomUUID(); const volume = Number(body.volume ?? 100);
   deliver({ channel, event: { id, platform, kind: 'trigger', triggerId, media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
-export function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now(), platform: OverlayPlatform = 'twitch'): number {
-  const selected = recipients(channel, kind).filter(p => p.since <= since); if (!selected.length) return 0;
+export function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now(), platform: OverlayPlatform = 'twitch', retainDisconnected = false): number {
+  const selected = recipients(channel, kind, retainDisconnected).filter(p => p.since <= since); if (!selected.length) return 0;
+  // Journal alerts retain recipients during their reconnect lease; manual tests still require a live source.
   // Provider receipt IDs protect clients against duplicate poll delivery.
   const id = `alert-${sourceId}`; if (pending.has(id)) return 0;
   deliver({ channel, event: { id, kind, platform }, raw, recipients: new Set(selected.map(p => p.key)) }, selected);
@@ -156,7 +159,10 @@ export function registerStudio(io: Server): void {
   });
   namespace.on('connection', socket => {
     const state = socket.data.studioState as Public; const key = `${state.publicId}:${socket.handshake.auth.clientId}`;
-    const previous = peers.get(key); previous?.socket?.disconnect(true);
+    let previous = peers.get(key);
+    // Enforce the lease here too: a reconnect can race the periodic expiry sweep.
+    if (previous && !previous.socket?.connected && !reconnecting(previous)) { dropPeer(key); previous = undefined; }
+    previous?.socket?.disconnect(true);
     const peer: Peer = { commands: previous?.commands ?? [], playback: previous?.playback, connectedAt: Date.now(), key, channel: state.channel, publicId: state.publicId, state, socket, since: previous?.since ?? Date.now() };
     peers.set(key, peer);
     if (!channels.has(peer.channel)) channels.set(peer.channel, { after: Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000)), busy: false });
@@ -180,7 +186,7 @@ export function registerStudio(io: Server): void {
       peer.health = { revision, issue: issue as RuntimeIssue | null, reportedAt: now, issueAt: issue === null ? null : peer.health && peer.health.issue === issue ? peer.health.issueAt : now };
     });
     socket.on('overlay-ended', (id: unknown) => {
-      if (typeof id !== 'string') return; const item = pending.get(id); if (!item) return;
+      if (peers.get(key) !== peer || typeof id !== 'string') return; const item = pending.get(id); if (!item) return;
       item.recipients.delete(key); if (!item.recipients.size) void discard(id);
     });
     socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) { peer.socket = undefined; peer.disconnectedAt = Date.now(); } });
@@ -192,7 +198,7 @@ export function registerStudio(io: Server): void {
     try {
       const states = new Map<string, Public>();
       for (const [key, peer] of peers) {
-        if (!peer.socket && Date.now() - (peer.disconnectedAt ?? 0) > 120000) { await dropPeer(key); continue; }
+        if (!peer.socket?.connected && !reconnecting(peer)) { dropPeer(key); continue; }
         try {
           let state = states.get(peer.publicId); if (!state) { state = await publicState(peer.publicId); states.set(peer.publicId, state); }
           peer.stateFailed = false;
@@ -202,7 +208,7 @@ export function registerStudio(io: Server): void {
             if (peer.socket?.connected) await ensureSources(peer);
           } else if (peer.socket?.connected && peer.activationFailed && Date.now() >= (peer.activationRetryAt ?? 0)) await ensureSources(peer);
         } catch (e) {
-          if ([403, 404].includes((e as { status?: number }).status ?? 0)) { peer.socket?.emit('overlay-revoked'); await dropPeer(key); }
+          if ([403, 404].includes((e as { status?: number }).status ?? 0)) { peer.socket?.emit('overlay-revoked'); dropPeer(key); }
           else peer.stateFailed = true;
           // A transient database failure keeps the current version and queue.
         }
@@ -214,7 +220,7 @@ export function registerStudio(io: Server): void {
         try {
           const events = await DomainEventSchema.find({ channelID: channel, source: 'twitch-eventsub', schemaVersion: 1, _id: { $gt: cursor.after }, type: { $in: Object.keys(types) } }).sort({ _id: 1 }).limit(100).lean();
           for (const event of events) {
-            publishStudioAlert(channel, types[event.type], event.payload.event as Record<string, unknown>, String(event._id), event.journaledAt.getTime());
+            publishStudioAlert(channel, types[event.type], event.payload.event as Record<string, unknown>, String(event._id), event.journaledAt.getTime(), 'twitch', true);
             cursor.after = event._id;
           }
         } finally { cursor.busy = false; }
