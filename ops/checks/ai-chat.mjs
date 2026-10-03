@@ -1,10 +1,13 @@
-// Exercise the compiled chat pipeline with disposable Mongo/Redis and mocked providers.
+// Verify exhausted-credit routing through compiled AI commands with isolated providers.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import { chat } from '/app/dist/utils/ai/openrouter/ai.js';
+import { executeAiCommand } from '/app/dist/utils/ai/openrouter/command.ai.js';
+import { AiResponse } from '/app/dist/utils/ai/openrouter/messages.ai.js';
+import { parseSpecialCommands } from '/app/dist/handlers/special_parser.handler.js';
 import { getThreadLimitsForTier } from '/app/dist/utils/ai/threading/thread_limits.js';
 import { createThread, appendThreadTurn, getThreadPromptContext } from '/app/dist/utils/ai/threading/thread_store.js';
 
@@ -31,13 +34,14 @@ if (process.env.SAAS_TARGET === 'cron') {
     });
     assert.ok(cmdlines.some(cmd => cmd.includes('dist/workers/timer.worker.js')), 'cron supervisor starts timer consumer');
 }
-const tests = spawnSync(process.execPath, ['--test', 'dist/utils/ai/chat_context.test.js', 'dist/utils/ai/prompts.ai.test.js'], { encoding: 'utf8' });
+const tests = spawnSync(process.execPath, ['--test', 'dist/utils/ai/constants.test.js', 'dist/utils/ai_credit_status.test.js', 'dist/utils/ai/chat_context.test.js', 'dist/utils/ai/prompts.ai.test.js'], { encoding: 'utf8' });
 assert.equal(tests.status, 0, tests.stdout + tests.stderr);
 const memoryTests = spawnSync(process.execPath, ['dist/scripts/test_ai_memory_context.script.js'], { encoding: 'utf8' });
 assert.equal(memoryTests.status, 0, memoryTests.stdout + memoryTests.stderr);
 
 await getMongoDBConnection('ai-chat-behavior');
 const redis = await getDragonflyClient('ai-chat-behavior');
+await redis.set('app:twitch:token', 'dummy-app-token', { EX: 36000 });
 await redis.hSet('accounts:twitch:698614112:data', {
     id: '698614112', access_token: 'dummy-token', expires_at: String(Math.floor(Date.now() / 1000) + 36000)
 });
@@ -71,6 +75,7 @@ for (const [tier, expected] of [['free', 10], ['premium', 40], ['pro', 100]]) {
     const result = await chat(options);
     assert.equal(result.error, false);
     const request = calls().filter(call => call.provider === 'openrouter').at(-1).body;
+    assert.equal(request.model, 'deepseek/deepseek-v4.1-flash', `${tier} non-exhausted routing stays unchanged`);
     assert.equal(request.messages.filter(msg => msg.role === 'assistant').length, expected / 2);
     assert.match(JSON.stringify(request.messages), /Direct message 4/);
     assert.match(request.messages[0].content, /Dry humor in Spanish/);
@@ -99,7 +104,31 @@ for (const [tier, expected] of [['free', 10], ['premium', 40], ['pro', 100]]) {
         assert.equal(announcement.tools.length, 0);
         assert.doesNotMatch(announcement.messages[0].content, /AST_PARSER|create_memory/);
     }
+
+    await redis.set(`twitch:${channelID}:ai:exhaust`, 'true');
+    const exhausted = await executeAiCommand({ ...streamer, user_id: channelID },
+        { username: 'Viewer', userLevel: 1 }, 'Congratulate Viewer on a 15-stream streak.');
+    assert.equal(exhausted.error, false, `${tier} exhausted AI command returns text`);
+    const exhaustedRequest = calls().filter(call => call.provider === 'openrouter').at(-1).body;
+    assert.equal(exhaustedRequest.model, 'meta/muse-spark-1.3-contributor');
+    assert.equal(exhaustedRequest.tools.length, 8, 'fallback retains the normal tool definitions');
+
+    const simpleResponse = await AiResponse(channelID, 'Congratulate Viewer on a 15-stream streak.');
+    assert.equal(simpleResponse, '@Alice Fixture response.');
+    assert.equal(calls().filter(call => call.provider === 'openrouter').at(-1).body.model,
+        'meta/muse-spark-1.3-contributor', 'simple AI messages also use the exhausted fallback');
+
+    const streak = await parseSpecialCommands('$(ai $(user) tiene una racha de $(twitch.streak) días, felicitalo!)', {
+        channelID,
+        eventData: { notice_type: 'watch_streak', chatter_user_name: 'Viewer',
+            chatter_user_login: 'viewer', chatter_user_id: 'viewer-id',
+            watch_streak: { streak_count: 15, channel_points_awarded: 450 } }
+    });
+    assert.equal(streak.parsedText, '@Alice Fixture response.');
+    const streakRequest = calls().filter(call => call.provider === 'openrouter').at(-1).body;
+    assert.equal(streakRequest.model, 'meta/muse-spark-1.3-contributor');
+    assert.match(streakRequest.messages.at(-1).content, /racha de 15 días/);
 }
-console.log(`PASS ${process.env.SAAS_TARGET}: 10/40/100 stored turns, full chat requests, roles, busy-chat continuity, viewer denial, moderator action, no-tool mode, prompt and memory regressions`);
+console.log(`PASS ${process.env.SAAS_TARGET}: exhausted Muse Spark routing and actual streak template for all tiers; unchanged non-exhausted routing; chat/tool/credit regressions`);
 await redis.quit();
 process.exit(0);

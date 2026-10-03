@@ -6,7 +6,7 @@
 
 export const MODELS = {
   free: "deepseek/deepseek-v4.1-flash",
-  exhausted: "sao10k/l3-lunaris-8b:nitro",
+  exhausted: "meta/muse-spark-1.3-contributor",
   premium: "deepseek/deepseek-v4.1-flash",
   pro: "deepseek/deepseek-v4.1-flash",
 } as const;
