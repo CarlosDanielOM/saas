@@ -1410,6 +1410,91 @@
       "ready": "Dynamic attack threshold: {{count}} follows in a sustained wave. Manual attack remains available during protection.",
       "learning": "Dynamic sensitivity is learning or awaiting fresh data. Automatic attack is paused until there are 7 days of follow activity and 3 completed streams. Silence, protection, and manual attack remain available.",
       "averages": "30-day averages: {{daily}} follows/day · {{stream}} follows/completed stream · {{days}} days with activity."
+    },
+    "v2": {
+      "subtitle": "Stops follow-bot floods and hate raids. It pauses follow alerts as soon as a wave starts and only bans when a wave turns into an attack.",
+      "viewOnly": "View only",
+      "rightNow": "Right now",
+      "justNow": "a moment",
+      "soon": "soon",
+      "chip": {
+        "disabled": "Off",
+        "normal": "All quiet",
+        "silent": "Watching a wave",
+        "protection": "Alerts paused",
+        "attack": "Attack mode: banning",
+        "raid": "Watching a raid"
+      },
+      "now": {
+        "disabled": "Follow Defense is off",
+        "normal": "All quiet. No follow wave right now.",
+        "silent": "A small follow wave started {{age}} ago",
+        "protection": "A big follow wave is being tracked: {{count}} followers",
+        "attack": "Attack Mode is on: banning {{count}} tracked followers",
+        "raid": "A raid is being watched: {{count}} followers tracked so far"
+      },
+      "nowDetail": {
+        "disabled": "DimaBot won't pause follow alerts or ban anyone. Turn it on to protect your channel.",
+        "normal": "If a wave starts, follow alerts pause automatically. Nobody gets banned unless a wave turns into an attack.",
+        "silent": "Follow alerts are paused while DimaBot watches who follows. Nobody is banned.",
+        "protection": "Follow alerts are off and every new follower is tracked. Nobody is banned unless you activate Attack Mode.",
+        "attack": "Every tracked follower in this wave is being banned, and new follows are banned until it ends.",
+        "raid": "Follows from this raid are grouped below so you can ban them later if it was a hate raid."
+      },
+      "startedBy": {
+        "threshold": "Started automatically.",
+        "manual": "Started by a moderator."
+      },
+      "raidLine": "Raid from {{name}} ({{viewers}} viewers). Tracked for {{time}} more.",
+      "turnOn": "Turn on Follow Defense",
+      "stopAttack": "Stop Attack Mode",
+      "attackHint": "Only if you're sure this wave is hostile. Bans can't be undone in bulk.",
+      "historyTitle": "Past waves",
+      "historyHint": "Every time a mode kicked in, newest first.",
+      "historyPages": "Past wave pages",
+      "noHistory": "No follow waves yet",
+      "noHistoryCopy": "When a wave triggers a mode, it shows up here with how many follows came in and how many were banned.",
+      "log": {
+        "follows": "{{count}} follows ({{rate}}/s)",
+        "raid": "raid from {{name}}",
+        "banned": "{{count}} banned"
+      },
+      "mode": {
+        "normal": "Normal",
+        "silent": "Silent",
+        "protection": "Protection",
+        "attack": "Attack"
+      },
+      "rulesTitle": "How it reacts",
+      "rulesHint": "Three steps, from quiet to strict. Each one only starts if the step before wasn't enough.",
+      "silentCopy": "Pauses follow alerts so bots don't spam your screen.",
+      "protectionCopy": "Keeps alerts off and tracks every follower. No bans.",
+      "attackCopy": "Bans everyone tracked in the wave and new follows until it ends.",
+      "followsLabel": "Follows",
+      "withinLabel": "Within (seconds)",
+      "waveLabel": "Follows in the wave",
+      "attackLabel": "Ban when the wave reaches (follows)",
+      "durationLabel": "Stay on after the last burst (seconds)",
+      "rule": {
+        "silent": "Starts when {{count}} people follow within {{seconds}} seconds.",
+        "protection": "Starts when a wave reaches {{count}} follows.",
+        "duration": "Each mode switches off {{time}} after follows calm down. New bursts restart the timer."
+      },
+      "howAuto": "How the automatic number is calculated",
+      "commandHint": "Mods can also start it from chat with",
+      "attackChipAuto": "Bans at {{count}} follows (auto)",
+      "attackChipCustom": "Bans at {{count}} follows",
+      "attackChipLearning": "Auto ban: still learning",
+      "sourcesHint": "Channels whose raids you marked as hostile by using Attack Mode.",
+      "sourceOnce": "Raided once",
+      "sourceTimes": "Raided {{count}} times",
+      "sourceLast": "last {{date}}",
+      "sourceViewers": "{{count}} viewers",
+      "saveRegion": "Save Follow Defense settings",
+      "unsaved": "Unsaved changes",
+      "saved": "All changes saved",
+      "save": "Save changes",
+      "attackDialogCount": "{{count}} tracked followers will be banned."
     }
   },
   "moderation": {
@@ -4528,6 +4613,11 @@
       "free": "Free: view sessions and followers. You can still activate attack mode while live protection is active.",
       "premium": "Premium: ban whole sessions from history. Individual bans from history are available with Pro.",
       "pro": "Pro: ban whole sessions or individual followers from history."
+    },
+    "v2": {
+      "hint": "Follows that arrive during a raid are grouped here, so you can ban a hate raid afterwards.",
+      "emptyTitle": "No raids in the last 72 hours",
+      "emptyCopy": "When someone raids you, the follows that come with it show up here."
     }
   },
   "overlayMock": {

@@ -1410,6 +1410,91 @@
       "ready": "Umbral de ataque dinámico: {{count}} follows en una ola sostenida. El ataque manual sigue disponible durante la protección.",
       "learning": "La sensibilidad dinámica está aprendiendo o esperando datos recientes. El ataque automático se pausa hasta tener 7 días de actividad y 3 streams finalizados. Silencio, protección y ataque manual siguen disponibles.",
       "averages": "Promedios de 30 días: {{daily}} follows/día · {{stream}} follows/stream finalizado · {{days}} días con actividad."
+    },
+    "v2": {
+      "subtitle": "Detiene oleadas de bots de follows y hate raids. Pausa las alertas de follow en cuanto empieza una oleada y solo banea cuando la oleada se convierte en un ataque.",
+      "viewOnly": "Solo lectura",
+      "rightNow": "Ahora mismo",
+      "justNow": "un momento",
+      "soon": "poco",
+      "chip": {
+        "disabled": "Desactivado",
+        "normal": "Todo tranquilo",
+        "silent": "Vigilando una oleada",
+        "protection": "Alertas en pausa",
+        "attack": "Modo ataque: baneando",
+        "raid": "Vigilando un raid"
+      },
+      "now": {
+        "disabled": "Follow Defense está desactivado",
+        "normal": "Todo tranquilo. No hay ninguna oleada de follows.",
+        "silent": "Empezó una pequeña oleada de follows hace {{age}}",
+        "protection": "Se está siguiendo una gran oleada de follows: {{count}} seguidores",
+        "attack": "El Modo Ataque está activo: baneando a {{count}} seguidores registrados",
+        "raid": "Se está vigilando un raid: {{count}} seguidores registrados hasta ahora"
+      },
+      "nowDetail": {
+        "disabled": "DimaBot no pausará las alertas de follow ni baneará a nadie. Actívalo para proteger tu canal.",
+        "normal": "Si empieza una oleada, las alertas de follow se pausan solas. Nadie es baneado salvo que la oleada se convierta en un ataque.",
+        "silent": "Las alertas de follow están en pausa mientras DimaBot vigila quién te sigue. Nadie es baneado.",
+        "protection": "Las alertas de follow están apagadas y se registra cada nuevo seguidor. Nadie es baneado salvo que actives el Modo Ataque.",
+        "attack": "Se está baneando a cada seguidor registrado en esta oleada, y los nuevos follows se banean hasta que termine.",
+        "raid": "Los follows de este raid se agrupan abajo para que puedas banearlos después si fue un hate raid."
+      },
+      "startedBy": {
+        "threshold": "Se activó automáticamente.",
+        "manual": "Lo activó un moderador."
+      },
+      "raidLine": "Raid de {{name}} ({{viewers}} espectadores). Se vigila durante {{time}} más.",
+      "turnOn": "Activar Follow Defense",
+      "stopAttack": "Detener Modo Ataque",
+      "attackHint": "Solo si estás seguro de que esta oleada es hostil. Los baneos no se pueden deshacer en bloque.",
+      "historyTitle": "Oleadas anteriores",
+      "historyHint": "Cada vez que se activó un modo, la más reciente primero.",
+      "historyPages": "Páginas de oleadas anteriores",
+      "noHistory": "Aún no hay oleadas de follows",
+      "noHistoryCopy": "Cuando una oleada active un modo, aparecerá aquí con cuántos follows llegaron y cuántos se banearon.",
+      "log": {
+        "follows": "{{count}} follows ({{rate}}/s)",
+        "raid": "raid de {{name}}",
+        "banned": "{{count}} baneados"
+      },
+      "mode": {
+        "normal": "Normal",
+        "silent": "Silencio",
+        "protection": "Protección",
+        "attack": "Ataque"
+      },
+      "rulesTitle": "Cómo reacciona",
+      "rulesHint": "Tres pasos, de tranquilo a estricto. Cada uno solo empieza si el anterior no fue suficiente.",
+      "silentCopy": "Pausa las alertas de follow para que los bots no llenen tu pantalla.",
+      "protectionCopy": "Mantiene las alertas apagadas y registra a cada seguidor. Sin baneos.",
+      "attackCopy": "Banea a todos los registrados en la oleada y a los nuevos follows hasta que termine.",
+      "followsLabel": "Follows",
+      "withinLabel": "En (segundos)",
+      "waveLabel": "Follows en la oleada",
+      "attackLabel": "Banear cuando la oleada llegue a (follows)",
+      "durationLabel": "Seguir activo tras la última ráfaga (segundos)",
+      "rule": {
+        "silent": "Empieza cuando {{count}} personas te siguen en {{seconds}} segundos.",
+        "protection": "Empieza cuando una oleada llega a {{count}} follows.",
+        "duration": "Cada modo se apaga {{time}} después de que los follows se calman. Las nuevas ráfagas reinician el tiempo."
+      },
+      "howAuto": "Cómo se calcula el número automático",
+      "commandHint": "Los mods también pueden activarlo desde el chat con",
+      "attackChipAuto": "Banea al llegar a {{count}} follows (auto)",
+      "attackChipCustom": "Banea al llegar a {{count}} follows",
+      "attackChipLearning": "Baneo automático: aún aprendiendo",
+      "sourcesHint": "Canales cuyos raids marcaste como hostiles al usar el Modo Ataque.",
+      "sourceOnce": "Hizo raid una vez",
+      "sourceTimes": "Hizo raid {{count}} veces",
+      "sourceLast": "última {{date}}",
+      "sourceViewers": "{{count}} espectadores",
+      "saveRegion": "Guardar ajustes de Follow Defense",
+      "unsaved": "Cambios sin guardar",
+      "saved": "Todos los cambios guardados",
+      "save": "Guardar cambios",
+      "attackDialogCount": "Se banearán {{count}} seguidores registrados."
     }
   },
   "moderation": {
@@ -4528,6 +4613,11 @@
       "free": "Gratis: consulta sesiones y seguidores. Puedes activar el modo ataque mientras la protección en vivo esté activa.",
       "premium": "Premium: banea sesiones completas desde el historial. Los bans individuales desde el historial están disponibles con Pro.",
       "pro": "Pro: banea sesiones completas o seguidores individuales desde el historial."
+    },
+    "v2": {
+      "hint": "Los follows que llegan durante un raid se agrupan aquí para que puedas banear un hate raid después.",
+      "emptyTitle": "No hay raids en las últimas 72 horas",
+      "emptyCopy": "Cuando alguien te haga raid, los follows que lleguen con él aparecerán aquí."
     }
   },
   "overlayMock": {

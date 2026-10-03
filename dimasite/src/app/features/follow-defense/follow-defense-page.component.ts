@@ -1,7 +1,10 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   OnDestroy,
+  effect,
+  viewChild,
   OnInit,
   computed,
   inject,
@@ -53,7 +56,8 @@ interface PaginationState {
   imports: [RouterLink, RaidSessionsComponent, LfIconComponent],
   templateUrl: './follow-defense-page.component.html',
   styleUrl: './follow-defense-page.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '(document:keydown.escape)': 'onEscape()' }
 })
 export class FollowDefensePageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
@@ -82,6 +86,11 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   readonly showAttackDialog = signal(false);
   readonly attackConfirmText = signal('');
+  private readonly attackDialog = viewChild<ElementRef<HTMLElement>>('attackDialog');
+  private attackOpener: HTMLElement | null = null;
+  /** Re-evaluated every 15s so "for 2m" / "ends in 40s" stay current. */
+  readonly now = signal(Date.now());
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map(() => (getRouteParam(this.route, 'streamer') ?? '').trim().toLowerCase()),
@@ -131,6 +140,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   });
 
   readonly currentStatusMode = computed((): FollowDefenseMode | 'disabled' | 'raid' => {
+    this.now();
     const s = this.status();
     const settings = this.settings();
     if (!settings?.enabled) return 'disabled';
@@ -160,6 +170,69 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     return dynamic != null ? this.t('followDefense.dynamic.ready', { count: dynamic }) : this.t('followDefense.dynamic.learning');
   });
 
+  readonly trackedCount = computed(() => this.status()?.trackedCount ?? 0);
+
+  readonly activeRaid = computed(() => {
+    const raid = this.status()?.raid;
+    this.now();
+    return raid?.expiresAt && raid.expiresAt > Date.now() ? raid : null;
+  });
+
+  /** Short label for the header chip. */
+  readonly modeChip = computed(() => this.t('followDefense.v2.chip.' + this.currentStatusMode()));
+
+  readonly modeTone = computed(() => {
+    const mode = this.currentStatusMode();
+    if (mode === 'attack') return 'danger';
+    if (mode === 'silent' || mode === 'protection' || mode === 'raid') return 'warn';
+    if (mode === 'disabled') return 'off';
+    return 'ok';
+  });
+
+  /** Plain sentence answering "is anything happening right now?". */
+  readonly nowHeadline = computed(() => {
+    this.now();
+    const mode = this.currentStatusMode();
+    const status = this.status();
+    const params = {
+      count: this.formatNumber(this.trackedCount()),
+      age: this.getStatusAge(status) || this.t('followDefense.v2.justNow'),
+      ends: this.getExpiresIn(status?.expiresAt) || this.t('followDefense.v2.soon')
+    };
+    return this.t('followDefense.v2.now.' + mode, params);
+  });
+
+  readonly nowDetail = computed(() => {
+    const mode = this.currentStatusMode();
+    if (mode === 'disabled') return this.t('followDefense.v2.nowDetail.disabled');
+    if (mode === 'normal') return this.t('followDefense.v2.nowDetail.normal');
+    const by = this.status()?.triggeredBy === 'manual' ? 'manual' : 'threshold';
+    return this.t('followDefense.v2.nowDetail.' + mode) + ' ' + this.t('followDefense.v2.startedBy.' + by);
+  });
+
+  /** Live one-liners under each mode so the numbers read as rules. */
+  readonly silentRule = computed(() => {
+    const s = this.settings();
+    if (!s) return '';
+    return this.t('followDefense.v2.rule.silent', { count: s.silentThresholdX, seconds: s.silentWindowYSeconds });
+  });
+  readonly protectionRule = computed(() => {
+    const s = this.settings();
+    return s ? this.t('followDefense.v2.rule.protection', { count: this.formatNumber(s.protectionThresholdB) }) : '';
+  });
+  readonly durationRule = computed(() => {
+    const s = this.settings();
+    return s ? this.t('followDefense.v2.rule.duration', { time: this.formatDuration(s.silentDurationSeconds) }) : '';
+  });
+  readonly attackChip = computed(() => {
+    const custom = this.settings()?.attackThreshold;
+    if (custom != null) return this.t('followDefense.v2.attackChipCustom', { count: this.formatNumber(custom) });
+    const dynamic = this.status()?.dynamicBaseline?.attackThreshold;
+    return dynamic != null
+      ? this.t('followDefense.v2.attackChipAuto', { count: this.formatNumber(dynamic) })
+      : this.t('followDefense.v2.attackChipLearning');
+  });
+
   readonly canActivateAttack = computed(() => {
     const settings = this.settings();
     return Boolean(
@@ -169,7 +242,15 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   private lastLoadedChannelID = '';
 
+  constructor() {
+    effect(() => {
+      const dialog = this.attackDialog();
+      if (dialog) queueMicrotask(() => dialog.nativeElement.focus());
+    });
+  }
+
   ngOnInit(): void {
+    this.clockTimer = setInterval(() => this.now.set(Date.now()), 15000);
     this.channelID$.pipe(takeUntil(this.destroy$)).subscribe((resolution) => {
       this.channelResolution.set(resolution);
 
@@ -201,6 +282,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.clockTimer) clearInterval(this.clockTimer);
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -297,8 +379,8 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
       const limit = this.logsPagination().limit;
       const response = await firstValueFrom(this.followDefenseApi.getAttackLogs(channelID, page, limit));
       if (!response.error && response.data) {
-        this.attackLogs.set(response.data.entries);
-        this.logsPagination.update((p) => ({ ...p, total: response.data!.total }));
+        this.attackLogs.set(response.data.entries ?? []);
+        this.logsPagination.update((p) => ({ ...p, total: response.data!.total ?? 0 }));
       }
     } catch {
       // non-critical
@@ -315,8 +397,8 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
         this.followDefenseApi.getHateRaidSources(channelID, page, limit)
       );
       if (!response.error && response.data) {
-        this.hateRaidSources.set(response.data.sources);
-        this.hateRaidsPagination.update((p) => ({ ...p, total: response.data!.total }));
+        this.hateRaidSources.set(response.data.sources ?? []);
+        this.hateRaidsPagination.update((p) => ({ ...p, total: response.data!.total ?? 0 }));
       }
     } catch {
       // non-critical
@@ -441,8 +523,13 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
     this.settings.update((s) => (s ? { ...s, baselineFollowsPerHour: parsed } : s));
   }
 
+  onEscape(): void {
+    if (this.showAttackDialog() && !this.activatingAttack()) this.closeAttackDialog();
+  }
+
   openAttackDialog(): void {
     if (!this.canManage()) return;
+    this.attackOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.showAttackDialog.set(true);
     this.attackConfirmText.set('');
   }
@@ -450,6 +537,46 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
   closeAttackDialog(): void {
     this.showAttackDialog.set(false);
     this.attackConfirmText.set('');
+    const opener = this.attackOpener;
+    this.attackOpener = null;
+    if (opener?.isConnected) queueMicrotask(() => opener.focus());
+  }
+
+  discardChanges(): void {
+    const initial = this.initialSettings();
+    if (initial) this.settings.set(JSON.parse(JSON.stringify(initial)));
+  }
+
+  modeLabel(mode: FollowDefenseMode): string {
+    return this.t('followDefense.v2.mode.' + mode);
+  }
+
+  logSummary(log: FollowDefenseAttackLogEntry): string {
+    const parts = [
+      this.t('followDefense.v2.log.follows', { count: this.formatNumber(log.totalFollows), rate: log.velocity }),
+      this.t('followDefense.v2.startedBy.' + (log.triggeredBy === 'manual' ? 'manual' : 'threshold'))
+    ];
+    if (log.isRaid) parts.push(this.t('followDefense.v2.log.raid', { name: log.raiderChannelName || log.raiderChannelLogin || '?' }));
+    if (log.bannedCount) parts.push(this.t('followDefense.v2.log.banned', { count: this.formatNumber(log.bannedCount) }));
+    return parts.join(' · ');
+  }
+
+  formatNumber(value: number): string {
+    return Math.round(Number(value) || 0).toLocaleString(this.languageService.getCurrentLanguage() === 'es' ? 'es' : 'en');
+  }
+
+  formatShortDate(timestamp: number): string {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(this.languageService.getCurrentLanguage() === 'es' ? 'es' : 'en', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  getExpiresIn(expiresAt: number | undefined): string {
+    if (!expiresAt) return '';
+    const seconds = Math.floor((expiresAt - Date.now()) / 1000);
+    return seconds > 0 ? this.formatDuration(seconds) : '';
   }
 
   onAttackBackdrop(event: Event): void {
@@ -529,7 +656,7 @@ export class FollowDefensePageComponent implements OnInit, OnDestroy {
 
   formatDuration(seconds: number): string {
     if (seconds < 60) return `${seconds}s`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    if (seconds < 3600) return seconds % 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${Math.floor(seconds / 60)}m`;
     return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
   }
 

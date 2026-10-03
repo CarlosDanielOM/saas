@@ -1,30 +1,36 @@
-<section class="lf-tile" aria-labelledby="raid-sessions-title" [attr.aria-busy]="loading()">
-  <header>
-    <div><h2 id="raid-sessions-title">{{ t('title') }}</h2><p>{{ t('retention') }}</p><p>{{ t('attribution') }}</p></div>
-    <button type="button" (click)="load(sessions()?.page || 1)" [disabled]="loading()">{{ t('refresh') }}</button>
+<section class="rs" aria-labelledby="raid-sessions-title" [attr.aria-busy]="loading()">
+  <header class="rs__head">
+    <div class="rs__titles">
+      <h2 id="raid-sessions-title">{{ t('title') }}</h2>
+      <p>{{ t('v2.hint') }}</p>
+    </div>
+    <button type="button" class="rs__chip" (click)="load(sessions()?.page || 1)" [disabled]="loading()">{{ t('refresh') }}</button>
   </header>
   @if (error()) { <p role="alert" class="error">{{ error() }}</p> }
   @if (loading() && !sessions()) { <p role="status">{{ t('loading') }}</p> }
   @if (sessions(); as data) {
-    <p>{{ t('plan.' + data.planTier) }}</p>
-    @if (!data.sessions.length) { <p class="empty">{{ t('empty') }}</p> }
+    @if (!data.sessions.length) {
+      <div class="empty"><strong>{{ t('v2.emptyTitle') }}</strong><span>{{ t('v2.emptyCopy') }}</span></div>
+    }
     @for (session of data.sessions; track session.id) {
-      <article class="session">
+      <article class="session" [class.session--live]="session.collecting">
         <div class="session-top">
-          <div>
+          <span class="avatar" aria-hidden="true">{{ (session.raiderName || session.raiderLogin || '?').charAt(0).toUpperCase() }}</span>
+          <div class="session-id">
             <h3>{{ session.raiderName || session.raiderLogin }}</h3>
-            <p>{{ session.startedAt | date:'medium' }} · {{ session.viewers | number }} {{ t('viewers') }}</p>
-            <details><summary>{{ t('sessionId') }} {{ session.id.slice(0, 8) }}</summary><code>{{ session.id }}</code></details>
+            <p>{{ session.startedAt | date:'MMM d, h:mm a' }} · {{ session.viewers | number }} {{ t('viewers') }}</p>
           </div>
-          <span class="chip" [class.recording]="session.collecting">{{ t(session.collecting ? 'recording' : 'ended') }}</span>
+          <span class="chip" [class.recording]="session.collecting">@if (session.collecting) {<span class="dot" aria-hidden="true"></span>} {{ t(session.collecting ? 'recording' : 'ended') }}</span>
         </div>
-        <div class="metrics">
-          <div><strong>{{ session.totalFollows | number }}</strong><span>{{ t('follows') }}</span></div>
-          <div><strong>{{ session.outcomes.succeeded || 0 | number }}</strong><span>{{ t('banned') }}</span></div>
-          <div><strong>{{ (session.outcomes.pending || 0) + (session.outcomes.processing || 0) | number }}</strong><span>{{ t('pending') }}</span></div>
-        </div>
-        <p>{{ t('expires') }} {{ session.expiresAt | date:'medium' }} · {{ session.retentionHours }} {{ t('hours') }}</p>
-        @if (session.banning) { <p role="status">{{ t('admitting') }}</p> }
+        <p class="metrics">
+          <span><strong>{{ session.totalFollows | number }}</strong> {{ t('follows') }}</span>
+          <span><strong>{{ session.outcomes.succeeded || 0 | number }}</strong> {{ t('banned') }}</span>
+          @if ((session.outcomes.pending || 0) + (session.outcomes.processing || 0)) {
+            <span><strong>{{ (session.outcomes.pending || 0) + (session.outcomes.processing || 0) | number }}</strong> {{ t('pending') }}</span>
+          }
+          <span class="metrics__exp">{{ t('expires') }} {{ session.expiresAt | date:'MMM d, h:mm a' }}</span>
+        </p>
+        @if (session.banning) { <p class="note" role="status">{{ t('admitting') }}</p> }
         @if (session.outcomes.failed || session.outcomes.expired) { <p class="error">{{ t('incomplete') }} {{ (session.outcomes.failed || 0) + (session.outcomes.expired || 0) }}</p> }
         <div class="actions">
           <button type="button" (click)="toggle(session)" [attr.aria-expanded]="expanded() === session.id" [attr.aria-controls]="'followers-' + session.id">{{ t(expanded() === session.id ? 'hideNames' : 'showNames') }}</button>
@@ -40,8 +46,8 @@
                 @for (follower of page.followers; track follower.id) {
                   <li>
                     <div><strong>{{ follower.name || follower.login }}</strong><small>{{ follower.login }} · {{ follower.followedAt | date:'shortTime' }}</small></div>
-                    <span>{{ t('status.' + follower.banStatus) }}</span>
-                    @if (canManage() && data.canBanIndividual) { <button type="button" [disabled]="session.banning || submitting() || follower.banStatus === 'succeeded' || follower.banStatus === 'pending' || follower.banStatus === 'processing'" (click)="ask(session, follower)" [attr.aria-label]="t('banName', { name: follower.name || follower.login })">{{ t('ban') }}</button> }
+                    <span class="status" [attr.data-status]="follower.banStatus">{{ t('status.' + follower.banStatus) }}</span>
+                    @if (canManage() && data.canBanIndividual) { <button type="button" class="small" [disabled]="session.banning || submitting() || follower.banStatus === 'succeeded' || follower.banStatus === 'pending' || follower.banStatus === 'processing'" (click)="ask(session, follower)" [attr.aria-label]="t('banName', { name: follower.name || follower.login })">{{ t('ban') }}</button> }
                   </li>
                 }
               </ul>
@@ -62,17 +68,18 @@
         <button type="button" (click)="load(data.page + 1)" [disabled]="data.page * data.limit >= data.total || loading()">{{ t('next') }}</button>
       </nav>
     }
+    <p class="plan" [attr.data-plan]="data.planTier">{{ t('plan.' + data.planTier) }} {{ t('retention') }}</p>
   }
 </section>
 <dialog #confirmation aria-labelledby="raid-confirm-title" aria-describedby="raid-confirm-body raid-confirm-scope" (cancel)="cancel($event)">
   @if (selection(); as selected) {
     <h2 id="raid-confirm-title">{{ t(selected.follower ? 'confirmIndividual' : 'confirmSession') }}</h2>
-    <p id="raid-confirm-body">{{ selected.follower ? t('confirmName', { name: selected.follower.name || selected.follower.login }) : t('confirmCount', { count: selected.session.totalFollows, name: selected.session.raiderName || selected.session.raiderLogin }) }}</p>
+    <p id="raid-confirm-body" class="lead">{{ selected.follower ? t('confirmName', { name: selected.follower.name || selected.follower.login }) : t('confirmCount', { count: selected.session.totalFollows, name: selected.session.raiderName || selected.session.raiderLogin }) }}</p>
     <p id="raid-confirm-scope">{{ t(!selected.follower && selected.session.canIncludeFuture ? 'futureScope' : 'recordedScope') }}</p>
     @if (confirmError()) { <p class="error" role="alert">{{ confirmError() }}</p> }
-    <div class="actions">
+    <div class="actions actions--end">
       <button type="button" autofocus [disabled]="submitting()" (click)="cancel()">{{ t('cancel') }}</button>
-      <button type="button" class="danger" [disabled]="submitting()" (click)="confirm()">{{ t(submitting() ? 'submitting' : 'confirm') }}</button>
+      <button type="button" class="danger danger--solid" [disabled]="submitting()" (click)="confirm()">{{ t(submitting() ? 'submitting' : 'confirm') }}</button>
     </div>
   }
 </dialog>
