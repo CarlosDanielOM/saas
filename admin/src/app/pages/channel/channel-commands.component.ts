@@ -10,13 +10,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ChannelApiService, type ChannelCommand } from '../../services/channel-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-channel-commands',
   templateUrl: './channel-commands.component.html',
   styleUrl: './channel-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent],
+  imports: [RouterLink, SkeletonComponent, IconComponent],
 })
 export class ChannelCommandsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -28,17 +29,25 @@ export class ChannelCommandsComponent implements OnInit {
   readonly currentPage = signal(1);
   readonly totalPages = signal(1);
   readonly totalItems = signal(0);
+  readonly channelName = signal<string | null>(null);
+  readonly filter = signal('');
 
   readonly channelID = computed(() => this.route.snapshot.paramMap.get('channelID') || '');
-
-  readonly paginationInfo = computed(() => ({
-    current: this.currentPage(),
-    total: this.totalPages(),
-    totalItems: this.totalItems(),
-  }));
+  readonly offCount = computed(() => this.commands().filter((cmd) => !cmd.enabled).length);
+  readonly visibleCommands = computed(() => {
+    const term = this.filter().trim().toLowerCase();
+    if (!term) return this.commands();
+    return this.commands().filter((cmd) =>
+      `${cmd.cmd} ${cmd.name} ${cmd.message ?? ''} ${cmd.func}`.toLowerCase().includes(term),
+    );
+  });
 
   ngOnInit(): void {
     this.loadCommands(1);
+    this.channelApi.getChannel(this.channelID()).subscribe({
+      next: (user) => this.channelName.set(user?.channel ?? null),
+      error: () => this.channelName.set(null),
+    });
   }
 
   loadCommands(page: number): void {
@@ -52,7 +61,7 @@ export class ChannelCommandsComponent implements OnInit {
     this.isLoading.set(true);
     this.error.set(null);
 
-    this.channelApi.getChannelCommands(channelID, page, 25).subscribe({
+    this.channelApi.getChannelCommands(channelID, page, 100).subscribe({
       next: (response) => {
         this.commands.set(response.data.rows);
         this.currentPage.set(response.data.pagination.page);
@@ -61,7 +70,7 @@ export class ChannelCommandsComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: (err) => {
-        this.error.set('Failed to load commands');
+        this.error.set("Couldn't load commands");
         this.isLoading.set(false);
         console.error('Error loading commands:', err);
       },
@@ -70,11 +79,14 @@ export class ChannelCommandsComponent implements OnInit {
 
   onPageChange(page: number): void {
     if (page < 1 || page > this.totalPages()) return;
+    this.filter.set('');
     this.loadCommands(page);
   }
 
-  formatDate(date: string | undefined): string {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString();
+  cooldownLabel(seconds: number): string {
+    if (!seconds) return 'No cooldown';
+    if (seconds < 60) return `${seconds}s cooldown`;
+    const minutes = Math.round(seconds / 6) / 10;
+    return `${minutes}m cooldown`;
   }
 }

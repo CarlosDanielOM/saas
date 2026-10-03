@@ -1,79 +1,114 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  signal
-} from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
+import { SessionAuthService } from '../../services/session-auth.service';
+import { IconComponent } from '../../shared/icon/icon.component';
+
+type EmailType = 'welcome' | 'activation-reminder' | 'stream-summary';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
   selector: 'app-email-test-page',
   templateUrl: './email-test-page.component.html',
   styleUrl: './email-test-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule]
+  imports: [IconComponent],
 })
 export class EmailTestPageComponent {
-  readonly emailType = signal<'welcome' | 'activation-reminder' | 'stream-summary'>('welcome');
+  private readonly sessionAuth = inject(SessionAuthService);
+
+  readonly emailType = signal<EmailType>('welcome');
   readonly language = signal<'en' | 'es'>('en');
   readonly theme = signal<'light' | 'dark'>('dark');
   readonly recipientEmail = signal('');
+  readonly submitAttempted = signal(false);
   readonly isLoading = signal(false);
-  readonly result = signal<{ success: boolean; message: string } | null>(null);
-  // When testing activation-reminder, the backend returns the activation link that feeds the standardized pendingActionsQueue on the public site.
+  readonly result = signal<{ success: boolean; message: string; to?: string } | null>(null);
+  // For activation-reminder the backend returns the real activation link (it feeds the
+  // public site's pendingActionsQueue), so it can be opened or shared from here.
   readonly activationLink = signal<string | null>(null);
   readonly copyFeedback = signal<string | null>(null);
 
-  readonly emailTypes = [
-    { value: 'welcome', label: 'Welcome' },
-    { value: 'activation-reminder', label: 'Reminder' },
-    { value: 'stream-summary', label: 'Summary' }
+  readonly myEmail = computed(() => {
+    const session = this.sessionAuth.getSessionSnapshot();
+    return session?.twitchUser?.email || session?.appUser?.email || null;
+  });
+  readonly recipientError = computed(() => {
+    const email = this.recipientEmail().trim();
+    if (!email) return 'Please enter a recipient email';
+    if (!EMAIL_PATTERN.test(email)) return "That doesn't look like an email address";
+    return null;
+  });
+
+  readonly emailTypes: { value: EmailType; label: string; icon: string; description: string }[] = [
+    {
+      value: 'welcome',
+      label: 'Welcome',
+      icon: 'sparkles',
+      description: 'Sent right after a streamer signs up.',
+    },
+    {
+      value: 'activation-reminder',
+      label: 'Reminder',
+      icon: 'bell',
+      description: "Nudges streamers who haven't activated the bot. Includes a real activation link.",
+    },
+    {
+      value: 'stream-summary',
+      label: 'Summary',
+      icon: 'chart',
+      description: 'The recap streamers get after a stream ends.',
+    },
   ];
 
   readonly languages = [
     { value: 'en', label: 'English' },
-    { value: 'es', label: 'Español' }
-  ];
+    { value: 'es', label: 'Español' },
+  ] as const;
 
   readonly themes = [
-    { value: 'light', label: 'Light Mode' },
-    { value: 'dark', label: 'Dark Mode' }
-  ];
+    { value: 'light', label: 'Light Mode', icon: 'sun' },
+    { value: 'dark', label: 'Dark Mode', icon: 'moon' },
+  ] as const;
+
+  useMyEmail(): void {
+    const email = this.myEmail();
+    if (email) this.recipientEmail.set(email);
+  }
 
   async sendTestEmail(): Promise<void> {
+    this.submitAttempted.set(true);
     const email = this.recipientEmail().trim();
-    if (!email) {
-      this.result.set({ success: false, message: 'Please enter a recipient email' });
-      return;
-    }
+    if (this.recipientError()) return;
 
     this.isLoading.set(true);
     this.result.set(null);
-
-    // Clear previous activation link before sending
     this.activationLink.set(null);
     this.copyFeedback.set(null);
 
     try {
       const response = await fetch(
-        `${environment.DIMA_API}/email/test?type=${this.emailType()}&to=${encodeURIComponent(email)}&lang=${this.language()}&theme=${this.theme()}`
+        `${environment.DIMA_API}/email/test?type=${this.emailType()}&to=${encodeURIComponent(email)}&lang=${this.language()}&theme=${this.theme()}`,
       );
-      const envelope = await response.json() as { error: boolean; message?: string; data?: any };
+      const envelope = (await response.json()) as {
+        error: boolean;
+        message?: string;
+        data?: { activationLink?: string };
+      };
 
       if (envelope.error) {
-        this.result.set({ success: false, message: envelope.message || 'Failed to send email' });
+        this.result.set({ success: false, message: envelope.message || "Couldn't send the email" });
       } else {
-        this.result.set({ success: true, message: 'Email sent successfully!' });
-
-        // Hook into the new standardized pendingActionsQueue system:
-        // For activation-reminder emails, the backend now returns the real activation link
-        // that goes through /email/auth and feeds the pendingActionsQueue (toast / redirect actions).
+        this.result.set({ success: true, message: 'Email sent successfully!', to: email });
         if (this.emailType() === 'activation-reminder' && envelope.data?.activationLink) {
           this.activationLink.set(envelope.data.activationLink);
         }
       }
     } catch (err) {
-      this.result.set({ success: false, message: err instanceof Error ? err.message : 'Failed to send email' });
+      this.result.set({
+        success: false,
+        message: err instanceof Error ? err.message : "Couldn't send the email",
+      });
     } finally {
       this.isLoading.set(false);
     }

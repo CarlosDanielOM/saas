@@ -1,70 +1,69 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
-  Output,
-  ElementRef,
-  ViewChild,
-  AfterViewInit,
   OnChanges,
+  Output,
+  ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
+import { IconComponent } from '../icon/icon.component';
+
+let nextId = 0;
 
 /**
- * Reusable confirmation modal for admin actions (e.g. sending real reminder emails).
- * Accepts plain values (not signals) for easy binding from parent components.
+ * Confirmation for admin actions with real side effects (emails, credit grants).
+ * Native <dialog>: focus is trapped, Escape cancels, bottom sheet on phones.
+ * Projected content is shown between the message and the warning.
  */
 @Component({
   selector: 'app-confirm-modal',
-  standalone: true,
-  imports: [CommonModule],
+  imports: [IconComponent],
   template: `
     <dialog
       #dialog
-      class="confirm-modal"
-      aria-labelledby="confirmation-title"
-      aria-describedby="confirmation-message"
+      class="lf-dialog confirm"
+      [attr.aria-labelledby]="id + '-title'"
+      [attr.aria-describedby]="id + '-message'"
       (cancel)="$event.preventDefault(); onCancel()"
       (click)="onBackdropClick($event)"
     >
-      <div class="confirm-modal__header">
-        <h3 id="confirmation-title" class="confirm-modal__title">{{ title }}</h3>
+      <div class="lf-dialog__head">
+        <h2 [id]="id + '-title'">{{ title }}</h2>
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm"
+          aria-label="Close"
+          (click)="onCancel()"
+          [disabled]="loading"
+        >
+          <app-icon name="x" />
+        </button>
       </div>
-
-      <div class="confirm-modal__body">
-        <p id="confirmation-message" class="confirm-modal__message">{{ message }}</p>
-
+      <div class="lf-dialog__body">
+        <p [id]="id + '-message'" class="confirm__message">{{ message }}</p>
+        <ng-content />
         @if (warning) {
-          <div class="confirm-modal__warning">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <span>{{ warning }}</span>
-          </div>
+          <p class="lf-warning"><app-icon name="alert" /><span>{{ warning }}</span></p>
         }
       </div>
-
-      <div class="confirm-modal__actions">
-        <button type="button" class="btn btn--secondary" (click)="onCancel()" [disabled]="loading">
+      <div class="lf-dialog__foot">
+        <button type="button" class="lf-btn" (click)="onCancel()" [disabled]="loading">
           {{ cancelLabel }}
         </button>
         <button
           type="button"
-          class="btn"
-          [class.btn--primary]="!isDanger"
-          [class.btn--danger]="isDanger"
+          class="lf-btn"
+          [class.lf-btn--primary]="!isDanger"
+          [class.lf-btn--danger]="isDanger"
           (click)="onConfirm()"
           [disabled]="loading"
         >
           @if (loading) {
-            <span class="btn__spinner"></span>
-            Sending...
+            <span class="lf-spin"></span>{{ busyLabel }}
           } @else {
             {{ confirmLabel }}
           }
@@ -72,11 +71,34 @@ import { CommonModule } from '@angular/common';
       </div>
     </dialog>
   `,
-  styleUrl: './confirm-modal.component.css',
+  styles: [
+    `
+      .confirm__message {
+        color: var(--fg);
+        font-size: 0.95rem;
+        overflow-wrap: anywhere;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent implements AfterViewInit, OnChanges {
   @ViewChild('dialog') private dialog?: ElementRef<HTMLDialogElement>;
+  readonly id = `confirm-${++nextId}`;
+
+  @Input({ required: true }) open = false;
+  @Input({ required: true }) title = 'Confirm';
+  @Input({ required: true }) message = '';
+  @Input() warning: string | null = null;
+  @Input() confirmLabel = 'Confirm';
+  @Input() cancelLabel = 'Cancel';
+  @Input() busyLabel = 'Working…';
+  @Input() isDanger = false;
+  @Input() loading = false;
+
+  @Output() confirmed = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
+
   ngAfterViewInit(): void {
     this.syncDialog();
   }
@@ -100,28 +122,10 @@ export class ConfirmModalComponent implements AfterViewInit, OnChanges {
     )
       this.onCancel();
   }
-
-  @Input({ required: true }) open: boolean = false;
-  @Input({ required: true }) title: string = 'Confirm';
-  @Input({ required: true }) message: string = '';
-  @Input() warning: string | null = null;
-  @Input() confirmLabel: string = 'Confirm';
-  @Input() cancelLabel: string = 'Cancel';
-  @Input() isDanger: boolean = false;
-  @Input() loading: boolean = false;
-
-  @Output() confirmed = new EventEmitter<void>();
-  @Output() cancelled = new EventEmitter<void>();
-
   onConfirm(): void {
-    if (!this.loading) {
-      this.confirmed.emit();
-    }
+    if (!this.loading) this.confirmed.emit();
   }
-
   onCancel(): void {
-    if (!this.loading) {
-      this.cancelled.emit();
-    }
+    if (!this.loading) this.cancelled.emit();
   }
 }

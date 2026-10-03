@@ -1,105 +1,231 @@
-<div class="page usage-page">
-  <a class="back-link" [routerLink]="['/channels', channelID]">← Back to user</a>
-  <header class="usage-header">
-    <div>
-      <p class="usage-kicker">AI credit usage</p>
-      <h1>{{ channelID }}</h1>
-      <p>Balance, spending, and itemized activity for this account.</p>
-    </div>
-    <button type="button" class="btn btn--secondary" (click)="load()" [disabled]="loading()">Refresh</button>
-  </header>
+<div class="lf usage-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/channels', channelID]"><app-icon name="back" />{{ channelName() || 'Channel' }}</a>
+      <div class="lf-head__row">
+        <div class="us-intro">
+          <h1 class="lf-title">AI credit usage</h1>
+          <p class="lf-sub">{{ channelName() ? channelName() + "'s" : 'This channel’s' }} balance, what it's spent on, and every charge.</p>
+        </div>
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
+            <app-icon name="refresh" [class.lf-spinning]="loading()" />Refresh
+          </button>
+        </div>
+      </div>
+      @if (summary(); as data) {
+        <div class="lf-head__chips usage-period">
+          <span class="lf-chip" [class.lf-chip--muted]="data.planTier === 'free'" [class.lf-chip--gold]="data.planTier === 'premium'" [class.lf-chip--pro]="data.planTier === 'pro'">{{
+            data.planTier === 'pro' ? 'Pro' : data.planTier === 'premium' ? 'Premium' : 'Free'
+          }}</span>
+          <span class="lf-chip"><app-icon name="calendar" />{{ shortDate(data.billingPeriod.from) }} – {{ shortDate(data.billingPeriod.to) }}</span>
+          @if (customRange()) {
+            <span class="lf-chip lf-chip--accent">Custom range</span>
+          }
+          @if (data.ledger?.status === 'pending') {
+            <span class="lf-chip lf-chip--warn">Older activity still loading</span>
+          }
+        </div>
+      }
+    </header>
 
-  <section class="usage-range" aria-label="Usage date range">
-    <label>From <input type="date" [value]="from()" (input)="onFrom($event)" /></label>
-    <label>To <input type="date" [value]="to()" (input)="onTo($event)" /></label>
-    <button type="button" class="btn btn--primary" (click)="applyRange()" [disabled]="loading()">Apply range</button>
-    @if (customRange()) {
-      <button type="button" class="btn btn--secondary" (click)="resetRange()" [disabled]="loading()">Current period</button>
+    <details class="lf-tile lf-tile--flush us-range" [open]="customRange()">
+      <summary class="us-range__summary"><span class="lf-h2"><app-icon name="calendar" />Look at different dates</span><app-icon name="down" /></summary>
+      <div class="us-range__body usage-range">
+        <label class="lf-field"><span class="lf-label">From</span><input class="lf-input" type="date" [value]="from()" (input)="onFrom($event)" /></label>
+        <label class="lf-field"><span class="lf-label">To</span><input class="lf-input" type="date" [value]="to()" (input)="onTo($event)" /></label>
+        <div class="us-range__actions">
+          <button type="button" class="lf-btn lf-btn--primary lf-btn--sm" (click)="applyRange()" [disabled]="loading()">Show these dates</button>
+          @if (customRange()) {
+            <button type="button" class="lf-btn lf-btn--sm" (click)="resetRange()" [disabled]="loading()">Back to current period</button>
+          }
+        </div>
+      </div>
+    </details>
+
+    @if (rangeError()) {
+      <p class="lf-notice" role="alert">{{ rangeError() }}</p>
     }
-  </section>
-  @if (rangeError()) { <p class="usage-notice" role="alert">{{ rangeError() }}</p> }
 
-  @if (loading() && !summary()) {
-    <p role="status">Loading usage…</p>
-  } @else if (error()) {
-    <div class="usage-notice" role="alert">{{ error() }} <button type="button" class="btn btn--secondary" (click)="load()">Retry</button></div>
-  } @else if (summary(); as data) {
-    <p class="usage-period">
-      {{ data.planTier.toUpperCase() }} · {{ data.billingPeriod.from }} to {{ data.billingPeriod.to }}
-      @if (data.ledger?.status === 'pending') { · Earlier activity is still being prepared }
-    </p>
-
-    <section class="usage-metrics" aria-label="Credit totals">
-      <article class="usage-card">
-        <h2>Balance</h2>
-        @if (data.credits.available) {
-          <strong>{{ format(data.credits.balance) }}</strong>
-          <p>{{ format(data.credits.used) }} used of {{ format(data.credits.limit) }}</p>
-        } @else { <p>No credit account is linked yet.</p> }
-      </article>
-      <article class="usage-card"><h2>Spent in range</h2><strong>{{ format(data.analytics.totalSpentCredits) }}</strong><p>{{ format(data.analytics.averageDailySpentCredits) }} per day</p></article>
-      <article class="usage-card"><h2>Transactions</h2><strong>{{ format(data.analytics.transactionCount) }}</strong><p>{{ format(data.analytics.grantedCredits) }} granted · {{ format(data.analytics.netConsumedCredits) }} net consumed</p></article>
-      <article class="usage-card"><h2>Pacing</h2>
-        @if (data.pacing; as pace) {
-          <strong>{{ format(pace.projectedPeriodCredits) }}</strong>
-          <p>Projected period spend · {{ pace.remainingPeriodDays }} days remaining</p>
-        } @else { <p>Not available</p> }
-      </article>
-    </section>
-
-    <div class="usage-breakdowns">
-      <section class="usage-card" aria-labelledby="daily-heading">
-        <h2 id="daily-heading">Daily spending</h2>
-        @if (data.analytics.daily.length) {
-          <div class="usage-days">
-            @for (point of data.analytics.daily; track point.date) {
-              <div class="usage-day">
-                <span>{{ day(point.date) }}</span>
-                <div class="usage-bar" aria-hidden="true"><span [style.width.%]="point.credits / maxDaily() * 100"></span></div>
-                <strong>{{ format(point.credits) }}</strong>
+    @if (loading() && !summary()) {
+      <div class="lf-status" role="status" aria-label="Loading usage">
+        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+        <div class="lf-status__body"><app-skeleton width="45%" height="1.1rem" /><app-skeleton width="70%" height="0.9rem" /></div>
+      </div>
+      <div class="lf-metrics">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="lf-metric"><app-skeleton width="60%" height="0.8rem" /><app-skeleton width="80%" height="1.6rem" /></div>
+        }
+      </div>
+    } @else if (error()) {
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ error() }}</p>
+          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="load()">Retry</button></div>
+        </div>
+      </div>
+    } @else if (summary(); as data) {
+      @if (forecast(); as f) {
+        <div class="lf-status us-forecast" [class]="'lf-status--' + f.tone" role="status">
+          <app-icon [name]="f.tone === 'ok' ? 'ok' : f.tone === 'muted' ? 'info' : 'alert'" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">{{ f.title }}</p>
+            <p class="lf-status__text">{{ f.text }}</p>
+            @if ((f.tone === 'live' || f.tone === 'warn') && data.credits.available) {
+              <div class="lf-status__actions">
+                <a class="lf-btn lf-btn--sm" [routerLink]="['/channels', channelID]"><app-icon name="plus" />Add credits on the channel page</a>
               </div>
             }
           </div>
-        } @else { <p>No daily usage in this range.</p> }
-      </section>
-      <section class="usage-card" aria-labelledby="categories-heading">
-        <h2 id="categories-heading">Categories</h2>
-        @if (data.analytics.categories.length) {
-          @for (item of data.analytics.categories; track item.category) {
-            <div class="usage-category"><span>{{ label(item.category) }}</span><strong>{{ format(item.credits) }} <small>({{ item.percentage }}%)</small></strong></div>
-          }
-        } @else { <p>No categorized usage in this range.</p> }
-      </section>
-    </div>
-
-    <section class="usage-card usage-ledger" aria-labelledby="ledger-heading">
-      <h2 id="ledger-heading">Itemized transactions</h2>
-      <div class="usage-filters" role="group" aria-label="Filter transactions by category">
-        <button type="button" [class.active]="category() === null" (click)="selectCategory(null)">All</button>
-        @for (item of categories; track item) {
-          <button type="button" [class.active]="category() === item" (click)="selectCategory(item)">{{ label(item) }}</button>
-        }
-      </div>
-      @if (transactionsError()) {
-        <div class="usage-notice" role="alert">{{ transactionsError() }} <button type="button" class="btn btn--secondary" (click)="loadTransactions(true)">Retry</button></div>
-      } @else if (transactionsLoading() && !transactions().length) {
-        <p role="status">Loading transactions…</p>
-      } @else if (!transactions().length) {
-        <p>No transactions in this range.</p>
-      } @else {
-        <ul class="usage-transactions">
-          @for (item of transactions(); track item.id) {
-            <li>
-              <div><strong>{{ label(item.category) }}</strong><span>{{ item.operation }} @if (item.model) { · {{ item.model }} }</span></div>
-              <div><time [attr.datetime]="item.occurredAt">{{ date(item.occurredAt) }}</time><strong>{{ item.entryKind === 'adjustment' || item.credits < 0 ? '+' : '−' }}{{ format(item.credits < 0 ? -item.credits : item.credits) }}</strong></div>
-            </li>
-          }
-        </ul>
-        @if (nextCursor()) {
-          <button type="button" class="btn btn--secondary" (click)="loadMore()" [disabled]="transactionsLoading()">{{ transactionsLoading() ? 'Loading…' : 'Load more' }}</button>
-        }
+        </div>
       }
-      <p class="usage-footnote">Itemized records are available from {{ date(data.analytics.itemizationStartedAt) }} and remain available for {{ data.planTier === 'pro' ? '90' : data.planTier === 'premium' ? '60' : '30' }} days.</p>
-    </section>
-  }
+
+      <section class="lf-metrics usage-metrics" aria-label="Credit totals">
+        <article class="lf-metric">
+          <span class="lf-metric__label">Credits left</span>
+          @if (data.credits.available) {
+            <strong class="lf-metric__value">{{ compact(data.credits.balance) }}</strong>
+            <div class="lf-bar us-mini-bar" role="progressbar" aria-label="Credits used this period" [attr.aria-valuenow]="usedPercent()" aria-valuemin="0" aria-valuemax="100">
+              <span [style.width.%]="usedPercent()"></span>
+            </div>
+            <span class="lf-metric__note">{{ format(data.credits.used) }} used of {{ format(data.credits.limit) }}</span>
+          } @else {
+            <strong class="lf-metric__value">—</strong>
+            <span class="lf-metric__note">No credit account yet</span>
+          }
+        </article>
+        <article class="lf-metric">
+          <span class="lf-metric__label">Spent {{ customRange() ? 'in range' : 'this period' }}</span>
+          <strong class="lf-metric__value">{{ compact(data.analytics.totalSpentCredits) }}</strong>
+          <span class="lf-metric__note">≈ {{ format(data.analytics.averageDailySpentCredits) }} a day</span>
+        </article>
+        <article class="lf-metric">
+          <span class="lf-metric__label">Projected by reset</span>
+          @if (data.pacing; as pace) {
+            <strong class="lf-metric__value">{{ compact(pace.projectedPeriodCredits) }}</strong>
+            <span class="lf-metric__note">{{ days(pace.remainingPeriodDays) }} left in period</span>
+          } @else {
+            <strong class="lf-metric__value">—</strong>
+            <span class="lf-metric__note">Not enough history</span>
+          }
+        </article>
+        <article class="lf-metric">
+          <span class="lf-metric__label">Charges</span>
+          <strong class="lf-metric__value">{{ format(data.analytics.transactionCount) }}</strong>
+          <span class="lf-metric__note">{{ compact(data.analytics.grantedCredits) }} granted · {{ compact(data.analytics.netConsumedCredits) }} net</span>
+        </article>
+      </section>
+
+      <div class="lf-panels">
+        <section class="lf-tile us-daily" aria-labelledby="daily-heading">
+          <div class="lf-tile__head">
+            <h2 class="lf-h2" id="daily-heading"><app-icon name="chart" />Daily spending</h2>
+            @if (data.analytics.daily.length) {
+              <span class="lf-note">Peak {{ format(maxDaily()) }}</span>
+            }
+          </div>
+          @if (data.analytics.daily.length) {
+            <div class="us-chart" aria-hidden="true">
+              @for (point of data.analytics.daily; track point.date) {
+                <span class="us-chart__col" [title]="shortDate(point.date) + ': ' + format(point.credits)">
+                  <span class="us-chart__bar" [style.height.%]="(point.credits / maxDaily()) * 100"></span>
+                </span>
+              }
+            </div>
+            <div class="us-chart__axis" aria-hidden="true">
+              <span>{{ shortDate(data.analytics.daily[0].date) }}</span>
+              <span>{{ shortDate(data.analytics.daily[data.analytics.daily.length - 1].date) }}</span>
+            </div>
+            <details class="lf-more us-days">
+              <summary>Daily numbers <app-icon name="down" /></summary>
+              <ul class="lf-rows">
+                @for (point of data.analytics.daily; track point.date) {
+                  <li class="us-day usage-day">
+                    <span>{{ shortDate(point.date) }}</span>
+                    <span class="lf-note">{{ point.transactionCount }} charges</span>
+                    <strong>{{ format(point.credits) }}</strong>
+                  </li>
+                }
+              </ul>
+            </details>
+          } @else {
+            <p class="lf-empty">No spending in this range.</p>
+          }
+        </section>
+
+        <section class="lf-tile" aria-labelledby="categories-heading">
+          <div class="lf-tile__head"><h2 class="lf-h2" id="categories-heading"><app-icon name="sparkles" />Where it goes</h2></div>
+          @if (data.analytics.categories.length) {
+            <ul class="us-cats">
+              @for (item of data.analytics.categories; track item.category) {
+                <li class="usage-category">
+                  <div class="us-cats__row">
+                    <span>{{ label(item.category) }}</span>
+                    <strong>{{ format(item.credits) }} <small>{{ item.percentage }}%</small></strong>
+                  </div>
+                  <div class="lf-bar" aria-hidden="true"><span [style.width.%]="item.percentage"></span></div>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="lf-empty">Nothing spent in this range.</p>
+          }
+        </section>
+      </div>
+
+      <section class="lf-tile lf-tile--flush usage-ledger" aria-labelledby="ledger-heading">
+        <div class="lf-tile__head">
+          <h2 class="lf-h2" id="ledger-heading"><app-icon name="history" />Every charge</h2>
+        </div>
+        <div class="us-filters usage-filters" role="group" aria-label="Filter charges by category">
+          <button type="button" class="lf-chip" [attr.aria-pressed]="category() === null" (click)="selectCategory(null)">All</button>
+          @for (item of categories; track item) {
+            <button type="button" class="lf-chip" [attr.aria-pressed]="category() === item" (click)="selectCategory(item)">{{ label(item) }}</button>
+          }
+        </div>
+        @if (transactionsError()) {
+          <div class="lf-notice us-inset" role="alert">
+            <span>{{ transactionsError() }}</span>
+            <button type="button" class="lf-btn lf-btn--sm" (click)="loadTransactions(true)">Retry</button>
+          </div>
+        } @else if (transactionsLoading() && !transactions().length) {
+          <div class="us-inset" role="status" aria-label="Loading charges">
+            @for (i of [1, 2, 3]; track i) {
+              <app-skeleton height="2.75rem" />
+            }
+          </div>
+        } @else if (!transactions().length) {
+          <p class="lf-empty">No charges {{ category() ? 'in this category' : 'in this range' }}.</p>
+        } @else {
+          <ul class="lf-rows usage-transactions">
+            @for (item of transactions(); track item.id) {
+              <li class="lf-row">
+                <div class="lf-row__main">
+                  <span class="lf-row__title">{{ label(item.category) }}</span>
+                  <span class="lf-row__meta">{{ item.operation }}@if (item.model) { · {{ item.model }} }</span>
+                </div>
+                <div class="us-tx__end">
+                  <strong class="us-amount" [class.is-credit]="isCredit(item)">{{ isCredit(item) ? '+' : '−' }}{{ format(item.credits < 0 ? -item.credits : item.credits) }}</strong>
+                  <time class="lf-note" [attr.datetime]="item.occurredAt">{{ date(item.occurredAt) }}</time>
+                </div>
+              </li>
+            }
+          </ul>
+          @if (nextCursor()) {
+            <div class="lf-pager us-more">
+              <button type="button" class="lf-btn lf-btn--sm lf-btn--block" (click)="loadMore()" [disabled]="transactionsLoading()">
+                {{ transactionsLoading() ? 'Loading…' : 'Load more' }}
+              </button>
+            </div>
+          }
+        }
+        <p class="lf-note us-footnote">
+          Itemized from {{ longDate(data.analytics.itemizationStartedAt) }} · kept for
+          {{ data.planTier === 'pro' ? '90' : data.planTier === 'premium' ? '60' : '30' }} days on this plan.
+        </p>
+      </section>
+    }
+
+  </div>
 </div>

@@ -1,186 +1,141 @@
-<div class="page channel-page">
-  <!-- Header with back link -->
-  <section class="channel-page__header">
-    <a [routerLink]="['/channels', channelID()]" class="back-link">
-      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10 19l-7-7m0 0l7-7m-7 7h18"
-        />
-      </svg>
-      Back to Channel
-    </a>
-    <h1 class="channel-page__title">Event subscriptions</h1>
-    <p class="muted">Manage the Twitch events connected to this channel.</p>
-  </section>
-
-  @if (isLoading()) {
-    <section class="channel-page__table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Version</th>
-            <th>Enabled</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of [1, 2, 3, 4, 5]; track item) {
-            <tr>
-              <td data-label="Type"><app-skeleton variant="bar" height="1rem" width="80px" /></td>
-              <td data-label="Status"><app-skeleton variant="bar" height="1rem" width="60px" /></td>
-              <td data-label="Version">
-                <app-skeleton variant="bar" height="1rem" width="40px" />
-              </td>
-              <td data-label="Enabled">
-                <app-skeleton variant="bar" height="1rem" width="50px" />
-              </td>
-              <td data-label="Created">
-                <app-skeleton variant="bar" height="1rem" width="70px" />
-              </td>
-              <td data-label="Actions">
-                <app-skeleton variant="bar" height="1rem" width="80px" />
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
-  } @else if (error()) {
-    <div class="channel-page__error">
-      <p>{{ error() }}</p>
-      <button type="button" class="btn btn--secondary" (click)="loadEventsubs()">Retry</button>
-    </div>
-  } @else if (eventsubs().length === 0) {
-    <div class="channel-page__empty">
-      <p>No eventsubs found</p>
-    </div>
-  } @else {
-    <section class="channel-page__table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Status</th>
-            <th>Version</th>
-            <th>Enabled</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (eventsub of eventsubs(); track eventsub.type) {
-            <tr [class]="getRowClass(eventsub)">
-              <td data-label="Type" class="data-table__type">{{ eventsub.type }}</td>
-              <td data-label="Status">
-                <span class="status-badge" [class]="getStatusClass(eventsub)">
-                  {{ eventsub.status }}
-                </span>
-              </td>
-              <td data-label="Version">{{ eventsub.version }}</td>
-              <td data-label="Enabled">
-                @if (eventsub.isMissing) {
-                  <span class="status-badge status-badge--missing">-</span>
-                } @else if (eventsub.enabled) {
-                  <span class="status-badge status-badge--active">Yes</span>
-                } @else {
-                  <span class="status-badge status-badge--inactive">No</span>
-                }
-              </td>
-              <td data-label="Created" class="data-table__date">
-                {{ formatDate(eventsub.created_at) }}
-              </td>
-              <td data-label="Actions" class="data-table__actions">
-                @if (eventsub.isMissing) {
-                  <button
-                    type="button"
-                    class="btn btn--small btn--success"
-                    [disabled]="isLoadingId(eventsub.type + eventsub.version)"
-                    (click)="toggleEventsub(eventsub)"
-                  >
-                    @if (isLoadingId(eventsub.type + eventsub.version)) {
-                      <span class="spinner"></span>
-                    }
-                    Subscribe
-                  </button>
-                } @else {
-                  @if (eventsub.enabled) {
-                    <button
-                      type="button"
-                      class="btn btn--small btn--danger"
-                      [disabled]="isLoadingId(eventsub.id)"
-                      (click)="toggleEventsub(eventsub)"
-                    >
-                      @if (isLoadingId(eventsub.id)) {
-                        <span class="spinner"></span>
-                      }
-                      Disable
-                    </button>
-                  } @else {
-                    <button
-                      type="button"
-                      class="btn btn--small btn--success"
-                      [disabled]="isLoadingId(eventsub.id)"
-                      (click)="toggleEventsub(eventsub)"
-                    >
-                      @if (isLoadingId(eventsub.id)) {
-                        <span class="spinner"></span>
-                      }
-                      Enable
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    class="btn btn--small btn--secondary"
-                    (click)="openTestModal(eventsub)"
-                  >
-                    Test
-                  </button>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Pagination -->
-    @if (totalPages() > 1) {
-      <div class="pagination">
-        <button
-          type="button"
-          class="pagination__btn"
-          [disabled]="currentPage() === 1"
-          (click)="onPageChange(currentPage() - 1)"
-        >
-          Previous
-        </button>
-        <span class="pagination__info">
-          Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
-        </span>
-        <button
-          type="button"
-          class="pagination__btn"
-          [disabled]="currentPage() === totalPages()"
-          (click)="onPageChange(currentPage() + 1)"
-        >
-          Next
-        </button>
+<div class="lf channel-page">
+  <div class="lf-main lf-main--narrow">
+    <header class="lf-head">
+      <a [routerLink]="['/channels', channelID()]" class="lf-back"><app-icon name="back" />{{ channelName() || 'Channel' }}</a>
+      <div class="sub-intro">
+        <h1 class="lf-title">Twitch events</h1>
+        <p class="lf-sub">The Twitch notifications the bot listens to for {{ channelName() || 'this channel' }}. Connect missing ones, turn them on or off, or send a test.</p>
       </div>
+      @if (!isLoading() && !error() && eventsubs().length) {
+        <div class="lf-head__chips">
+          <span class="lf-chip" [class.lf-chip--ok]="!attention().length">{{ healthy().length }} of {{ eventsubs().length }} on</span>
+          @if (missingCount()) {
+            <span class="lf-chip lf-chip--warn">{{ missingCount() }} missing</span>
+          }
+          @if (offCount()) {
+            <span class="lf-chip lf-chip--muted">{{ offCount() }} off</span>
+          }
+        </div>
+      }
+    </header>
+
+    @if (isLoading()) {
+      <section class="lf-tile lf-tile--flush">
+        <div class="sub-skel" role="status" aria-busy="true" aria-label="Loading Twitch events">
+          @for (item of [1, 2, 3, 4, 5, 6]; track item) {
+            <app-skeleton height="3.25rem" />
+          }
+        </div>
+      </section>
+    } @else if (error()) {
+      <div class="lf-status lf-status--live" role="alert">
+        <app-icon name="alert" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ error() }}</p>
+          <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="loadEventsubs()">Retry</button></div>
+        </div>
+      </div>
+    } @else {
+      <div class="lf-status es-summary" [class.lf-status--ok]="summary().ok" [class.lf-status--warn]="!summary().ok" role="status">
+        <app-icon [name]="summary().ok ? 'ok' : 'alert'" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ summary().title }}</p>
+          <p class="lf-status__text">{{ summary().text }}</p>
+        </div>
+      </div>
+
+      <section class="lf-tile lf-tile--flush" aria-label="Twitch events">
+        @if (attention().length) {
+          <h2 class="sub-group">Needs attention</h2>
+          <ul class="lf-rows">
+            @for (es of attention(); track key(es)) {
+              <ng-container *ngTemplateOutlet="row; context: { $implicit: es }" />
+            }
+          </ul>
+        }
+        @if (healthy().length) {
+          <h2 class="sub-group">Connected</h2>
+          <ul class="lf-rows">
+            @for (es of healthy(); track key(es)) {
+              <ng-container *ngTemplateOutlet="row; context: { $implicit: es }" />
+            }
+          </ul>
+        }
+      </section>
     }
-  }
+  </div>
 </div>
+
+<ng-template #row let-es>
+  <li class="lf-row es-row" [class.lf-row--attention]="!isHealthy(es)">
+    <div class="lf-row__main">
+      <span class="lf-row__title">
+        {{ eventName(es.type) }}
+        <span
+          class="lf-chip"
+          [class.lf-chip--ok]="isHealthy(es)"
+          [class.lf-chip--warn]="es.isMissing"
+          [class.lf-chip--muted]="!es.isMissing && !es.enabled"
+          [class.lf-chip--danger]="!es.isMissing && es.enabled && !isHealthy(es)"
+          >{{ statusLabel(es) }}</span
+        >
+      </span>
+      <span class="lf-row__meta">
+        @if (eventWhat(es.type)) {
+          {{ eventWhat(es.type) }} ·
+        }
+        <span class="es-type">{{ es.type }} v{{ es.version }}</span>
+      </span>
+    </div>
+    <div class="lf-row__end">
+      @if (es.isMissing) {
+        <button
+          type="button"
+          class="lf-btn lf-btn--sm lf-btn--primary"
+          [disabled]="isBusy(es)"
+          (click)="toggleEventsub(es)"
+          [attr.aria-label]="'Connect ' + eventName(es.type)"
+        >
+          @if (isBusy(es)) {
+            <span class="lf-spin"></span>
+          } @else {
+            <app-icon name="plus" />
+          }
+          Connect
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="lf-btn lf-btn--sm"
+          (click)="openTestModal(es)"
+          [attr.aria-label]="'Test ' + eventName(es.type)"
+        >
+          Test
+        </button>
+        <label class="lf-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            [checked]="es.enabled"
+            [disabled]="isBusy(es)"
+            (change)="toggleEventsub(es)"
+            [attr.aria-label]="eventName(es.type) + ' on'"
+          />
+          <span class="lf-switch__track"></span>
+        </label>
+      }
+    </div>
+  </li>
+</ng-template>
 
 @if (showTestModal()) {
   <app-test-event-modal
     [eventType]="testEventType()"
+    [eventName]="eventName(testEventType())"
     [channelID]="channelID()"
+    [channelName]="channelName()"
     [initialPayload]="testPayload()"
+    [sending]="isSendingTest()"
     (sendTest)="sendTestEvent($event)"
     (closeModal)="closeTestModal()"
   />

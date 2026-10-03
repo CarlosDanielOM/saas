@@ -20,10 +20,12 @@ export interface UsageSummary {
   billingPeriod: UsagePeriod;
   ledger: { status: 'ready' | 'pending'; coverageStart: string | null } | null;
   pacing: {
-    status: string;
+    status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted' | string;
     averageDailyCredits: number;
     projectedPeriodCredits: number;
     remainingPeriodDays: number;
+    expectedToExhaustWithinPeriod?: boolean;
+    estimatedDaysUntilExhaustion?: number | null;
   } | null;
   analytics: {
     itemizationStartedAt: string;

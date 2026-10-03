@@ -1,58 +1,64 @@
-<div class="page settings-page">
-  <header class="page-header">
-    <div>
-      <span class="eyebrow">Make yourself at home</span>
-      <h1>Settings</h1>
-      <p>Your workspace, in your colors.</p>
-    </div>
-  </header>
-  <section class="appearance panel" aria-labelledby="appearance-title">
-    <div class="appearance-heading">
-      <span class="appearance-icon"><app-icon name="palette" /></span>
-      <div>
-        <h2 id="appearance-title">Appearance</h2>
-        <p>Pick a palette. The whole workspace changes with it.</p>
+<div class="lf settings-page">
+  <div class="lf-main lf-main--narrow">
+    <header class="lf-head">
+      <h1 class="lf-title">Settings</h1>
+      <p class="lf-sub">How the admin site looks on this browser.</p>
+    </header>
+
+    <section class="lf-tile st-section" aria-labelledby="mode-title">
+      <div class="st-head">
+        <h2 class="lf-h2" id="mode-title"><app-icon name="sun" />Light or dark</h2>
+        <p class="lf-note">You can also flip this any time from the sun/moon button in the top bar.</p>
       </div>
-    </div>
-    <fieldset>
-      <legend class="sr-only">Workspace theme</legend>
-      <div class="theme-options">
-        @for (option of theme.themes; track option.id) {
-          <label
-            class="theme-option"
-            [style.--preview-accent]="option.accent"
-            [style.--preview-canvas]="option.canvas"
-          >
+      <fieldset class="lf-choices st-modes">
+        <legend class="sr-only">Light or dark</legend>
+        @for (option of theme.modes; track option.id) {
+          <label class="lf-choice st-mode">
             <input
               type="radio"
-              name="admin-theme"
+              name="admin-mode"
               [value]="option.id"
-              [checked]="theme.selected() === option.id"
-              (change)="theme.select(option.id)"
-              [attr.aria-label]="option.name + ' theme'"
+              [checked]="theme.mode() === option.id"
+              (change)="theme.setMode(option.id)"
+              [attr.aria-label]="option.name"
             />
-            <span class="theme-choice">
-              <span class="theme-preview" aria-hidden="true"
-                ><span class="preview-nav"><i></i><i></i><i></i></span
-                ><span class="preview-content"
-                  ><span class="preview-title"></span
-                  ><span class="preview-hero"><i></i><i></i></span
-                  ><span class="preview-metrics"><i></i><i></i><i></i></span></span
-              ></span>
-              <span class="theme-label"
-                ><strong>{{ option.name }}</strong
-                ><span class="theme-check"><app-icon name="check" /></span
-              ></span>
-              <span class="theme-description">{{ option.description }}</span>
+            <span class="st-preview" [attr.data-mode]="option.id" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="lf-choice__body">
+              <span class="lf-choice__title"><app-icon [name]="modeIcons[option.id]" />{{ option.name }}</span>
+              <span class="lf-choice__copy">{{ option.description }}</span>
             </span>
           </label>
         }
+      </fieldset>
+    </section>
+
+    <section class="lf-tile st-section" aria-labelledby="accent-title">
+      <div class="st-head">
+        <h2 class="lf-h2" id="accent-title"><app-icon name="palette" />Accent colour</h2>
+        <p class="lf-note">Used for buttons, links and highlights. Live, warning and plan colours never change.</p>
       </div>
-    </fieldset>
-    <p class="theme-status" role="status">
-      <app-icon name="check" />{{ selectedName() }} theme selected<span
-        >Saved automatically on this browser.</span
-      >
-    </p>
-  </section>
+      <fieldset class="lf-choices st-accents">
+        <legend class="sr-only">Accent colour</legend>
+        @for (option of theme.accents; track option.id) {
+          <label class="lf-choice theme-option" [style.--swatch]="option.swatch">
+            <input
+              type="radio"
+              name="admin-accent"
+              [value]="option.id"
+              [checked]="theme.accent() === option.id"
+              (change)="theme.setAccent(option.id)"
+              [attr.aria-label]="option.name + ' accent'"
+            />
+            <span class="st-swatch" aria-hidden="true"><app-icon name="check" /></span>
+            <span class="lf-choice__body">
+              <span class="lf-choice__title">{{ option.name }}</span>
+              <span class="lf-choice__copy">{{ option.description }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+    </section>
+
+    <p class="lf-note st-status theme-status" role="status"><app-icon name="check" />{{ summary() }} — saved automatically on this browser.</p>
+  </div>
 </div>

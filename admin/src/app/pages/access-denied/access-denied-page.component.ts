@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { SessionAuthService } from '../../services/session-auth.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 @Component({
   selector: 'app-access-denied-page',
   templateUrl: './access-denied-page.component.html',
   styleUrl: '../auth-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [IconComponent],
 })
 export class AccessDeniedPageComponent {
   private readonly router = inject(Router);

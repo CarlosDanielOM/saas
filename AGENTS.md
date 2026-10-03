@@ -106,6 +106,7 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 **Admin Site**:
 - Pages/services: `admin/src/app/**`
 - Internal-only tooling and moderation interfaces
+- **Design system: Live First** — read the `live-first` skill (section "Admin site") before any admin UI work; tokens + shared primitives in `admin/src/styles.css`
 
 **Documentation**:
 - MDX content: `dimadocs/src/content/docs/**/*.mdx`

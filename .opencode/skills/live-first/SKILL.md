@@ -1,17 +1,35 @@
 ---
 name: live-first
-description: Live First (OC3c) design language for dimasite production UI. Use when building, migrating, restyling, or reviewing any dimasite page/component — landing, tip, dashboard, auth shell, commands, modules, settings, or new frontend surfaces. Keywords: Live First, OC3c, bento, lf-tile, lf-bento, design system, dimasite UI, navbar, dashboard layout, module page, settings page, editor dialog, save bar, item rows.
+description: Live First (OC3c) design language and UX rules for dimasite and the admin site. Use when building, migrating, restyling, or reviewing any dimasite or admin page/component — landing, tip, dashboard, auth shell, commands, modules, settings, admin overview/users/channel tools, or new frontend surfaces. UX first, and mobile is a first-class citizen equal to desktop. Keywords: Live First, OC3c, bento, lf-tile, lf-bento, design system, dimasite UI, admin UI, navbar, dashboard layout, module page, settings page, editor dialog, save bar, item rows, mobile-first, UX.
 ---
 
-# Live First Design Language (dimasite)
+# Live First Design Language (dimasite + admin)
 
-**Canonical production design system for DomDimaBot’s public site + authenticated app.**
+**Canonical production design system for DomDimaBot’s public site, authenticated app and internal admin site (`admin/`).**
 
 - Origin: OpenCode mock **OC3c · Live First** (`/mocks/grok/oc3c`)
 - Productized: landing, tip, dashboard, authenticated layout
 - Reference mocks: `/mocks/dev/prod-dashboard`, `/mocks/dev/prod-commands`
 
-When working on **any** `dimasite/` UI, follow this skill by default. Do **not** invent a new visual language or revert to aurora/glassmorphic cyan shells.
+When working on **any** `dimasite/` or `admin/` UI, follow this skill by default. Do **not** invent a new visual language or revert to aurora/glassmorphic cyan shells.
+
+## The two non-negotiables
+
+**1. UX first.** Every page exists to answer one question for the person using it ("Is my bot working?", "Will I run out of credits?", "Does this streamer need help?"). Before touching markup, write that question down, then design so the answer is the first thing on screen, in plain words, with the next action right next to it. Looks come second: a beautiful page that hides the answer or the next step is a failed redesign. Concretely:
+
+- Lead with a plain-language status line, not raw numbers ("2 Twitch events are missing — the bot won't see follows"), and put the fix button beside it.
+- Group by the user's goal, not by the data model or API shape.
+- Every real-world side effect (sends an email, grants credits, spends money, changes a live subscription) gets an explicit confirmation that says exactly what will happen, to whom, and how much. One tap must never do something irreversible.
+- Show loading, empty and error states on purpose: what happened, whether data is stale, and one Retry. Keep the user's input (search, filters, drafts) through errors.
+- Keep advanced features, but tuck rare ones behind well-labelled `<details>`; never remove a capability to make a page look simpler.
+
+**2. Mobile is a first-class citizen, equal to desktop.** A phone layout is not a squeezed desktop and not an afterthought: many users (and the owner) run the product from a phone. Design the 320–480px layout first, then give desktop its own deliberate layout; neither is allowed to be the "lesser" version.
+
+- Every feature and action available on desktop must be reachable on a phone (no hover-only controls, no desktop-only tables without a phone row layout).
+- Put primary navigation and primary actions in thumb reach on phones (bottom tab bar, sticky bottom save/confirm bars, bottom-sheet dialogs at `92dvh`), touch targets ≥ 44px, inputs ≥ 16px font (no iOS zoom).
+- Phones get *more* affordances where touch is harder (chip strips instead of tiny selects, tap-to-select, move pads), not fewer.
+- Pages should get much shorter on phones: dense rows, collapsible secondary info, no stacked identical cards.
+- Verify both every time: screenshots at 320/390 and 1280px, light and dark, plus a no-horizontal-overflow check. A change is not done until the phone layout has been looked at.
 
 ## When to use
 
@@ -27,10 +45,10 @@ When working on **any** `dimasite/` UI, follow this skill by default. Do **not**
 2. **Full-bleed app chrome** — authenticated pages fill the site; layout owns background. No nested “page card” with outer site padding.
 3. **Proof / live first** — live state, channel identity, metrics are first-class (chips, spotlight, pulse dots).
 4. **Tokens only** — `:host` LF CSS variables; no one-off hard-coded palette in templates.
-5. **Mobile-first** — base 320–480px; enhance with `min-width` (640 / 960).
+5. **Mobile-first, mobile-equal** — base 320–480px; enhance with `min-width` (640 / 960). See "The two non-negotiables" above.
 6. **Keep data wiring** — restyle/restructure markup; do not rewrite working services/APIs unless asked.
 7. **i18n** — all user strings via `LanguageService` + `en.json` / `es.json` (toasts and aria-labels too).
-8. **Answer the streamer's real question first** — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
+8. **Answer the user's real question first** (streamer on dimasite, operator on admin) — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
 
 ## Design tokens
 
@@ -219,6 +237,33 @@ Preview URLs:
 
 ---
 
+## Admin site (`admin/`)
+
+Same language, same tokens, same two non-negotiables. The admin is internal and English-only, but it is used from a phone as much as from a desk.
+
+- **Tokens + shared pieces live in `admin/src/styles.css`** (the admin is small and every page shares them): `.lf-main`, `.lf-head`, `.lf-tile`, `.lf-status` (plain-language answer with tone `--ok/--warn/--live/--muted`), `.lf-chip`, `.lf-btn`, `.lf-row(s)`, `.lf-switch`, `.lf-input`, `.lf-seg`, `.lf-choice`, `.lf-step`, `.lf-more`, `.lf-dl`, `.lf-bar`, `.lf-metrics`, `dialog.lf-dialog`. Page-only layout goes in the page's component CSS.
+- **Theme:** `ThemeService` (`admin/src/app/services/theme.service.ts`) — mode `system|light|dark` (default dark) + accent `violet|green|blue|cyan` on `html.dark` / `data-accent`. Accent tokens are AA-checked per mode; live/warn/plan colours never follow the accent.
+- **Shell:** sticky top bar (brand pulse, pill links ≥960px, sun/moon toggle, account menu) + phone bottom tab bar (`.bottom-nav`). Content has no outer padding; pages own their gutters via `.lf-main`.
+- **Answer the operator's question first:** Overview = "does anyone need me?" (attention rows link to Users pre-sorted), Users = find + status chips that double as sort shortcuts, Channel = health line listing what's wrong and the fix, Twitch events = "is the bot hearing everything?" with problems grouped first, Usage = "will they run out, and when?".
+- **Real side effects always confirm:** reminder emails, AI credit grants (amount → reason → "balance goes from X to Y" → confirm), EventSub test events (warn that alerts can really appear on stream). Validation inline; toasts only for server results.
+- **Raw ids are secondary:** show the plain name first ("Follows") and the raw value small/monospace (`channel.follow v2`, channel ID with a copy button).
+- **State in the URL:** list pages keep search/sort/page in query params so links and Back restore the view.
+- `app-avatar` (`shared/avatar`) shows real Twitch images (cached `GET /users?username=`) with letter fallback; pass `[fetch]="false"` in long lists.
+- Admin is zoneless; checks must poll after clicks. Behaviour check: `ops/checks/admin-ui.mjs` (all APIs mocked, axe + overflow at 320/390/768/1280 in dark and light). Preview/build/deploy with `scripts/saas-ops preview|build admin`.
+
+| Admin surface | Path |
+|---------------|------|
+| Tokens + shared primitives | `admin/src/styles.css` |
+| Shell | `admin/src/app/shared/navbar/*`, `features/layout/*` |
+| Overview (status + attention + live) | `admin/src/app/pages/dashboard/*` |
+| Directory with chip shortcuts + URL state | `admin/src/app/pages/users/*` |
+| Detail page: health line, credits, confirmed grant dialog | `admin/src/app/pages/channel/channel-detail.component.*` |
+| Grouped toggles + test dialog | `admin/src/app/pages/channel/channel-eventsubs.component.*`, `shared/test-event-modal/*` |
+| Forecast + chart + ledger | `admin/src/app/pages/channel/channel-usage.component.*` |
+| Stepped form with choice cards | `admin/src/app/pages/email-test/*` |
+
+---
+
 ## Migration checklist (legacy → Live First)
 
 1. Identify page owner under `dimasite/src/app/features/...`.
@@ -325,5 +370,6 @@ If unsure between “looks like old site with new colors” vs “true bento Liv
 ## Related docs
 
 - `dimasite/AGENTS.md` — Angular + styling policy (points here)
+- `admin/AGENTS.md` — admin site (points here)
 - Root `AGENTS.md` — monorepo map
 - Design mock catalogue: `landing-mocks/grok/grok-mock-index.component.ts` (OC3c entry)

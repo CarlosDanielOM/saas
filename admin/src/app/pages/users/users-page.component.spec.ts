@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { UsersPageComponent } from './users-page.component';
 import { LinksService } from '../../services/links.service';
@@ -26,6 +27,7 @@ describe('User directory queries', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: LinksService, useValue: { getApiUrl: () => 'https://api.example.test' } },
       ],
     });

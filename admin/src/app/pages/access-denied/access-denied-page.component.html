@@ -1,17 +1,19 @@
-<div class="auth-shell denied-shell">
-  <header class="auth-brand">
-    <img src="/assets/brand/mark-on-dark.png" alt="" width="30" height="32" /><span>dima</span
-    ><span class="auth-brand__tag">admin</span>
+<div class="auth">
+  <header class="auth__nav">
+    <span class="auth__brand">
+      <span class="auth__mark"><img src="/assets/brand/mark-on-dark.png" alt="" width="20" height="22" /></span>
+      dima<span class="auth__tag">admin</span>
+    </span>
   </header>
-  <section class="auth-card panel denied-card">
-    <span class="eyebrow">Admin access required</span>
-    <h1>This workspace<br />is private.</h1>
-    <p class="auth-description">
-      Your account doesn’t have access to Dima Admin. Contact an administrator if you need access.
-    </p>
-    <button class="button button--primary auth-button" (click)="logout()">Sign out</button
-    ><button class="auth-home" (click)="goHome()">
-      Go to Dima <span aria-hidden="true">↗</span>
-    </button>
-  </section>
+  <main class="auth__main auth__main--single">
+    <section class="lf-tile auth__card" aria-labelledby="denied-heading">
+      <span class="lf-kicker">Admin access required</span>
+      <h1 id="denied-heading" class="auth__title">This workspace is private.</h1>
+      <p class="lf-sub">
+        Your Twitch account doesn’t have access to Dima Admin. If you should have access, ask an administrator to add you — then sign in again.
+      </p>
+      <button type="button" class="lf-btn lf-btn--primary auth__twitch" (click)="logout()"><app-icon name="logout" />Sign out</button>
+      <button type="button" class="lf-btn auth__twitch" (click)="goHome()"><app-icon name="external" />Go to Dima</button>
+    </section>
+  </main>
 </div>

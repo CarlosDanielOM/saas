@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NgTemplateOutlet } from '@angular/common';
 import { forkJoin, catchError, of } from 'rxjs';
 
 import {
@@ -17,17 +18,46 @@ import {
 } from '../../services/channel-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 import {
   TestEventModalComponent,
   type TestEventPayload,
 } from '../../shared/test-event-modal/test-event-modal.component';
+
+/** Plain names for Twitch EventSub types; the raw type stays visible as secondary text. */
+const EVENT_NAMES: Record<string, { name: string; what: string }> = {
+  'channel.chat.message': { name: 'Chat messages', what: 'Commands, AI replies and moderation' },
+  'channel.chat.notification': { name: 'Chat notifications', what: 'Sub, raid and announcement notices in chat' },
+  'channel.follow': { name: 'Follows', what: 'Follow alerts and follow defense' },
+  'stream.online': { name: 'Stream goes live', what: 'Go-live messages and stream tracking' },
+  'stream.offline': { name: 'Stream ends', what: 'Stream summaries and wrap-up' },
+  'channel.raid': { name: 'Raids', what: 'Raid alerts and shoutouts' },
+  'channel.poll.progress': { name: 'Polls', what: 'Poll updates on overlays' },
+  'channel.prediction.progress': { name: 'Predictions', what: 'Prediction updates on overlays' },
+  'channel.hype_train.begin': { name: 'Hype train starts', what: 'Hype train alerts' },
+  'channel.hype_train.progress': { name: 'Hype train progress', what: 'Hype train level updates' },
+  'channel.hype_train.end': { name: 'Hype train ends', what: 'Hype train results' },
+  'channel.shoutout.receive': { name: 'Shoutouts received', what: 'Thank-you messages for shoutouts' },
+  'channel.ad_break.begin': { name: 'Ad breaks', what: 'Ad break warnings in chat' },
+  'user.update': { name: 'Profile changes', what: 'Keeps their name and email in sync' },
+  'channel.subscribe': { name: 'New subs', what: 'Sub alerts' },
+  'channel.subscription.gift': { name: 'Gifted subs', what: 'Gift sub alerts' },
+  'channel.subscription.message': { name: 'Resubs', what: 'Resub alerts with messages' },
+  'channel.subscription.end': { name: 'Subs ending', what: 'Subscriber tracking' },
+  'channel.update': { name: 'Title & category changes', what: 'Game and title tracking' },
+  'channel.bits.use': { name: 'Bits', what: 'Bit alerts, TTS and bit-powered features' },
+  'channel.cheer': { name: 'Cheers', what: 'Bit alerts (older event)' },
+  'automod.message.hold': { name: 'AutoMod held messages', what: 'Moderation queue' },
+  'channel.channel_points_custom_reward_redemption.add': { name: 'Channel point redemptions', what: 'Rewards and triggers' },
+  'channel.ban': { name: 'Bans', what: 'Moderation history' },
+};
 
 @Component({
   selector: 'app-channel-eventsubs',
   templateUrl: './channel-eventsubs.component.html',
   styleUrl: './channel-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SkeletonComponent, TestEventModalComponent],
+  imports: [RouterLink, NgTemplateOutlet, SkeletonComponent, TestEventModalComponent, IconComponent],
 })
 export class ChannelEventsubsComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -37,22 +67,78 @@ export class ChannelEventsubsComponent implements OnInit {
   readonly isLoading = signal(true);
   readonly error = signal<string | null>(null);
   readonly eventsubs = signal<MergedEventsub[]>([]);
-  readonly currentPage = signal(1);
-  readonly totalPages = signal(1);
-  readonly totalItems = signal(0);
+  readonly channelName = signal<string | null>(null);
 
-  /** IDs of eventsubs currently being toggled */
+  /** type:version keys of eventsubs currently being changed */
   readonly loadingIds = signal<Set<string>>(new Set());
 
   /** Test modal state */
   readonly showTestModal = signal(false);
   readonly testPayload = signal<string>('');
   readonly testEventType = signal<string>('');
+  readonly isSendingTest = signal(false);
 
   readonly channelID = computed(() => this.route.snapshot.paramMap.get('channelID') || '');
 
+  readonly attention = computed(() => this.eventsubs().filter((es) => !this.isHealthy(es)));
+  readonly healthy = computed(() => this.eventsubs().filter((es) => this.isHealthy(es)));
+  readonly missingCount = computed(() => this.eventsubs().filter((es) => es.isMissing).length);
+  readonly offCount = computed(
+    () => this.eventsubs().filter((es) => !es.isMissing && !es.enabled).length,
+  );
+  /** The page's answer in one sentence. */
+  readonly summary = computed(() => {
+    const total = this.eventsubs().length;
+    const problems = this.attention();
+    if (!problems.length) {
+      return { ok: true, title: `All ${total} events are connected and on`, text: 'The bot hears everything it needs from Twitch for this channel.' };
+    }
+    const names = problems.slice(0, 3).map((es) => this.eventName(es.type).toLowerCase());
+    const more = problems.length > 3 ? ` and ${problems.length - 3} more` : '';
+    const parts = [];
+    if (this.missingCount()) parts.push(`${this.missingCount()} missing`);
+    if (this.offCount()) parts.push(`${this.offCount()} turned off`);
+    const other = problems.length - this.missingCount() - this.offCount();
+    if (other > 0) parts.push(`${other} not confirmed by Twitch`);
+    return {
+      ok: false,
+      title: `${problems.length} of ${total} events need attention`,
+      text: `${parts.join(', ')} — the bot won't react to ${names.join(', ')}${more} until they're connected and on.`,
+    };
+  });
+
   ngOnInit(): void {
     this.loadEventsubs();
+    this.channelApi.getChannel(this.channelID()).subscribe({
+      next: (user) => this.channelName.set(user?.channel ?? null),
+      error: () => this.channelName.set(null),
+    });
+  }
+
+  eventName(type: string): string {
+    return EVENT_NAMES[type]?.name ?? type;
+  }
+
+  eventWhat(type: string): string {
+    return EVENT_NAMES[type]?.what ?? '';
+  }
+
+  isHealthy(es: MergedEventsub): boolean {
+    return !es.isMissing && es.enabled && ['enabled', 'active'].includes(es.status.toLowerCase());
+  }
+
+  statusLabel(es: MergedEventsub): string {
+    if (es.isMissing) return 'Missing';
+    if (!es.enabled) return 'Off';
+    const status = es.status.toLowerCase();
+    if (status === 'enabled' || status === 'active') return 'On';
+    if (status.includes('verification_pending')) return 'Waiting for Twitch';
+    if (status.includes('revoked')) return 'Access revoked';
+    return status.replaceAll('_', ' ');
+  }
+
+  key(es: MergedEventsub): string {
+    return `${es.type}:${es.version}`;
   }
 
   loadEventsubs(): void {
@@ -64,20 +150,19 @@ export class ChannelEventsubsComponent implements OnInit {
       return;
     }
 
-    this.isLoading.set(true);
+    if (!this.eventsubs().length) this.isLoading.set(true);
     this.error.set(null);
 
-    // Use forkJoin to call both APIs simultaneously
     forkJoin({
       standard: this.channelApi.getStandardEventsubs().pipe(
         catchError(() => {
-          this.toast.error('Failed to load standard eventsub types');
+          this.toast.error("Couldn't load the list of Twitch events");
           return of({ data: { standardTypes: [] as StandardEventsub[] } });
         }),
       ),
       channel: this.channelApi.getChannelEventsubs(channelID, 1, 100).pipe(
         catchError(() => {
-          this.toast.error('Failed to load channel eventsubs');
+          this.toast.error("Couldn't load this channel's events");
           return of({
             data: {
               rows: [] as ChannelEventsub[],
@@ -88,11 +173,9 @@ export class ChannelEventsubsComponent implements OnInit {
       ),
     }).subscribe({
       next: ({ standard, channel }) => {
-        // Check if the response structure is what we expect
         if (!standard.data || !standard.data.standardTypes) {
-          this.toast.error('Standard API returned unexpected format');
           console.error('Unexpected standard response structure:', standard);
-          this.error.set('Unexpected API response format');
+          this.error.set('The server sent an unexpected response. Try again in a moment.');
           this.isLoading.set(false);
           return;
         }
@@ -100,214 +183,158 @@ export class ChannelEventsubsComponent implements OnInit {
         const standardTypes = standard.data.standardTypes;
         const dbEventsubs = channel.data.rows;
 
-        // If no standard types at all, that's a problem - we should always have 20
+        // There should always be a standard list; without it we can't tell what's missing.
         if (standardTypes.length === 0) {
-          this.error.set('Failed to load standard eventsub types - API returned empty list');
-          this.toast.error('Standard eventsub types API returned empty - is the server running?');
+          this.error.set("Couldn't load the list of Twitch events the bot needs. Is the API running?");
           this.isLoading.set(false);
           return;
         }
 
-        // Create a map of DB eventsubs by type+version for quick lookup
         const dbEventsubMap = new Map<string, ChannelEventsub>();
         for (const es of dbEventsubs) {
-          const key = `${es.type}:${es.version}`;
-          dbEventsubMap.set(key, es);
+          dbEventsubMap.set(`${es.type}:${es.version}`, es);
         }
 
-        // Merge: iterate through standard types in order, check if DB has them
-        const merged: MergedEventsub[] = [];
-
-        for (const std of standardTypes) {
-          const key = `${std.type}:${std.version}`;
-          const dbEs = dbEventsubMap.get(key);
-
-          if (dbEs) {
-            // Found in DB
-            merged.push({
-              id: dbEs.id,
-              type: dbEs.type,
-              version: dbEs.version,
-              status: dbEs.status,
-              enabled: dbEs.enabled,
-              created_at: dbEs.created_at,
-              isMissing: false,
-              condition: std.condition,
-              config: std.config,
-            });
-          } else {
-            // Missing from DB
-            merged.push({
-              type: std.type,
-              version: std.version,
-              status: 'Missing',
-              enabled: false,
-              created_at: '',
-              isMissing: true,
-              condition: std.condition,
-              config: std.config,
-            });
-          }
-        }
-
-        // If we got no standard types and no DB types, show error
-        if (standardTypes.length === 0 && dbEventsubs.length === 0) {
-          this.error.set('Failed to load eventsub data');
-          this.toast.error('Failed to load eventsub data - check console for details');
-          this.isLoading.set(false);
-          return;
-        }
+        const merged: MergedEventsub[] = standardTypes.map((std: StandardEventsub) => {
+          const dbEs = dbEventsubMap.get(`${std.type}:${std.version}`);
+          return dbEs
+            ? {
+                id: dbEs.id,
+                type: dbEs.type,
+                version: dbEs.version,
+                status: dbEs.status,
+                enabled: dbEs.enabled,
+                created_at: dbEs.created_at,
+                isMissing: false,
+                condition: std.condition,
+                config: std.config,
+              }
+            : {
+                type: std.type,
+                version: std.version,
+                status: 'Missing',
+                enabled: false,
+                created_at: '',
+                isMissing: true,
+                condition: std.condition,
+                config: std.config,
+              };
+        });
 
         this.eventsubs.set(merged);
-        this.currentPage.set(1);
-        this.totalPages.set(1);
-        this.totalItems.set(merged.length);
         this.isLoading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load eventsubs');
-        this.toast.error('Failed to load eventsubs');
+        this.error.set("Couldn't load Twitch events");
         this.isLoading.set(false);
       },
     });
   }
 
-  onPageChange(page: number): void {
-    if (page < 1 || page > this.totalPages()) return;
-    this.loadEventsubs();
+  isBusy(es: MergedEventsub): boolean {
+    return this.loadingIds().has(this.key(es));
   }
 
-  formatDate(date: string | undefined): string {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString();
-  }
-
-  getStatusClass(eventsub: MergedEventsub): string {
-    if (eventsub.isMissing) {
-      return 'status-badge--missing';
-    }
-    switch (eventsub.status.toLowerCase()) {
-      case 'enabled':
-      case 'active':
-        return 'status-badge--active';
-      case 'disabled':
-      case 'inactive':
-        return 'status-badge--inactive';
-      default:
-        return '';
-    }
-  }
-
-  getRowClass(eventsub: MergedEventsub): string {
-    return eventsub.isMissing ? 'eventsub-row--missing' : '';
-  }
-
-  isLoadingId(id: string | undefined): boolean {
-    return id ? this.loadingIds().has(id) : false;
+  private setBusy(es: MergedEventsub, busy: boolean): void {
+    const next = new Set(this.loadingIds());
+    if (busy) next.add(this.key(es));
+    else next.delete(this.key(es));
+    this.loadingIds.set(next);
   }
 
   toggleEventsub(eventsub: MergedEventsub): void {
     const channelID = this.channelID();
-    const loadingSet = new Set(this.loadingIds());
-    // Use type:version as loading key for both missing and existing
-    const loadingKey = `${eventsub.type}:${eventsub.version}`;
+    if (this.isBusy(eventsub)) return;
+    const name = this.eventName(eventsub.type);
 
     if (eventsub.isMissing) {
-      // Subscribe to this standard eventsub type
       const standardType: StandardEventsub = {
         type: eventsub.type,
         version: eventsub.version,
         condition: eventsub.condition || {},
         config: eventsub.config,
       };
-
-      loadingSet.add(loadingKey);
-      this.loadingIds.set(loadingSet);
-
+      this.setBusy(eventsub, true);
       this.channelApi.subscribeStandardEventsub(channelID, standardType).subscribe({
         next: (response) => {
-          loadingSet.delete(loadingKey);
-          this.loadingIds.set(loadingSet);
+          this.setBusy(eventsub, false);
           if (response.error) {
             this.toast.error(response.message);
           } else {
-            this.toast.success(`Subscribed to ${eventsub.type}`);
+            this.toast.success(`${name} connected`);
             this.loadEventsubs();
           }
         },
-        error: () => {
-          loadingSet.delete(loadingKey);
-          this.loadingIds.set(loadingSet);
-          this.toast.error('Could not create eventsub');
+        error: (err) => {
+          this.setBusy(eventsub, false);
+          this.toast.error(err?.error?.message || `Couldn't connect ${name}`);
         },
       });
     } else if (eventsub.id) {
-      // Toggle enabled/disabled for existing eventsub
       const newEnabled = !eventsub.enabled;
-
-      loadingSet.add(loadingKey);
-      this.loadingIds.set(loadingSet);
-
+      // Optimistic: flip now, roll back if the server says no.
+      this.patchLocal(eventsub, newEnabled);
+      this.setBusy(eventsub, true);
       this.channelApi
         .patchChannelEventsub(channelID, eventsub.id, { enabled: newEnabled })
         .subscribe({
           next: (response) => {
-            loadingSet.delete(loadingKey);
-            this.loadingIds.set(loadingSet);
+            this.setBusy(eventsub, false);
             if (response.error) {
+              this.patchLocal(eventsub, !newEnabled);
               this.toast.error(response.message);
             } else {
-              this.toast.success(`${eventsub.type} ${newEnabled ? 'enabled' : 'disabled'}`);
+              this.toast.success(`${name} turned ${newEnabled ? 'on' : 'off'}`);
               this.loadEventsubs();
             }
           },
-          error: () => {
-            loadingSet.delete(loadingKey);
-            this.loadingIds.set(loadingSet);
-            this.toast.error('Could not update eventsub');
+          error: (err) => {
+            this.setBusy(eventsub, false);
+            this.patchLocal(eventsub, !newEnabled);
+            this.toast.error(err?.error?.message || `Couldn't update ${name}`);
           },
         });
     }
   }
 
-  /**
-   * Open the test modal for a given eventsub
-   */
+  private patchLocal(eventsub: MergedEventsub, enabled: boolean): void {
+    this.eventsubs.update((list) =>
+      list.map((es) => (this.key(es) === this.key(eventsub) ? { ...es, enabled } : es)),
+    );
+  }
+
   openTestModal(eventsub: MergedEventsub): void {
     if (!eventsub.id) return;
-
-    const channelID = this.channelID();
-    const payload = this.generateTestPayload(eventsub.type, channelID);
-
+    const payload = this.generateTestPayload(eventsub.type, this.channelID());
     this.testEventType.set(eventsub.type);
     this.testPayload.set(JSON.stringify(payload, null, 2));
+    this.isSendingTest.set(false);
     this.showTestModal.set(true);
   }
 
-  /**
-   * Close the test modal
-   */
   closeTestModal(): void {
+    if (this.isSendingTest()) return;
     this.showTestModal.set(false);
     this.testPayload.set('');
     this.testEventType.set('');
   }
 
-  /**
-   * Send the test event to the fake EventSub API endpoint
-   */
+  /** Send the test event to the fake EventSub API endpoint */
   sendTestEvent(payload: TestEventPayload): void {
+    this.isSendingTest.set(true);
     this.channelApi.testEventsubEvent(this.channelID(), payload).subscribe({
       next: (result) => {
+        this.isSendingTest.set(false);
         if (result.success) {
-          this.toast.success(`Test event "${payload.subscription['type']}" sent successfully`);
+          this.toast.success(`Test ${this.eventName(String(payload.subscription['type'])).toLowerCase()} event sent`);
           this.closeTestModal();
         } else {
-          this.toast.error(result.error || 'Failed to send test event');
+          this.toast.error(result.error || "Couldn't send the test event");
         }
       },
       error: (err) => {
-        this.toast.error('Failed to send test event: ' + (err.message || 'Unknown error'));
+        this.isSendingTest.set(false);
+        this.toast.error("Couldn't send the test event: " + (err.message || 'unknown error'));
       },
     });
   }

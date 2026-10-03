@@ -1,107 +1,236 @@
-<div class="page dashboard">
-  <header class="page-header">
-    <div>
-      <span class="eyebrow">The big picture</span>
-      <h1>Platform overview<span class="title-dot">.</span></h1>
-      <p>Welcome back, {{ user()?.display_name || 'Admin' }}. Here's where things stand.</p>
-    </div>
-    <span
-      class="connection"
-      [class.connection--live]="analyticsConnectionStatus() === 'connected'"
-      role="status"
-      ><span></span
-      >{{
-        analyticsConnectionStatus() === 'connected'
-          ? 'Live updates'
-          : analyticsConnectionStatus() === 'reconnecting'
-            ? 'Connecting…'
-            : 'Updates offline'
-      }}</span
-    >
-  </header>
-
-  @if (snapshotError()) {
-    <div class="notice dashboard-notice" role="alert">
-      <span>{{
-        hasSnapshot()
-          ? 'Showing the last available figures. We could not refresh the data.'
-          : 'Platform data is unavailable right now.'
-      }}</span
-      ><button class="btn btn--secondary" (click)="refreshAnalytics()">Retry</button>
-    </div>
-  }
-  <section class="live-panel" aria-labelledby="live-heading">
-    <div class="live-panel__intro">
-      <span class="live-kicker"><app-icon name="pulse" /> RIGHT NOW</span>
-      <h2 id="live-heading">
-        A pulse on your<br class="desktop-break" />
-        community.
-      </h2>
-      <p>Streamers and viewers, at a glance.</p>
-      <a routerLink="/users" class="live-link">Explore users <app-icon name="arrow" /></a>
-    </div>
-    <div class="live-figures">
-      <div class="live-figure">
-        <span class="live-figure__label"><span class="live-dot"></span> Live streamers</span>
-        @if (isInitialLoading()) {
-          <app-skeleton width="90px" height="50px" />
-        } @else {
-          <strong>{{ hasSnapshot() ? formatNumber(analytics().liveUsers) : '—' }}</strong>
-        }
-        <span class="live-figure__foot">Broadcasting on Twitch</span>
-      </div>
-      <div class="live-figure">
-        <span class="live-figure__label"><app-icon name="viewers" /> Live viewers</span>
-        @if (isInitialLoading()) {
-          <app-skeleton width="90px" height="50px" />
-        } @else {
-          <strong>{{ hasSnapshot() ? formatNumber(analytics().totalLiveViewers) : '—' }}</strong>
-        }
-        <span class="live-figure__foot">Watching across channels</span>
-      </div>
-    </div>
-  </section>
-
-  <section class="metrics" aria-label="Platform totals">
-    @for (metric of metrics(); track metric.label) {
-      <article class="metric panel">
-        <div class="metric__head">
-          <span>{{ metric.label }}</span
-          ><app-icon [name]="metric.icon" />
+<div class="lf overview">
+  <div class="lf-main">
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div class="ov-intro">
+          <h1 class="lf-title">Overview</h1>
+          <p class="lf-sub">Hi {{ firstName() }} — here's how Dima is doing right now and who might need a hand.</p>
         </div>
-        @if (isInitialLoading()) {
-          <app-skeleton width="70%" height="38px" />
-        } @else {
-          <strong>{{ hasSnapshot() ? formatNumber(metric.value) : '—' }}</strong>
-        }
-        <span class="metric__note">{{ metric.note }}</span>
-      </article>
-    }
-  </section>
-
-  <section class="workspace" aria-labelledby="workspace-heading">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow">Get things done</span>
-        <h2 id="workspace-heading">Your workspace</h2>
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn lf-btn--sm" (click)="refreshAll()">
+            <app-icon name="refresh" [class.lf-spinning]="healthLoading()" />Refresh
+          </button>
+        </div>
       </div>
-      <span class="section-caption">A shortcut to the everyday.</span>
-    </div>
-    <div class="quick-links">
-      @for (link of quickLinks; track link.route) {
-        <a [routerLink]="link.route" class="quick-link panel"
-          ><span class="quick-link__icon"><app-icon [name]="link.icon" /></span>
-          <div>
-            <h3>{{ link.label }}</h3>
-            <p>{{ link.description }}</p>
-            <span class="quick-link__action">{{ link.action }} <app-icon name="arrow" /></span>
+      <div class="lf-head__chips">
+        <span
+          class="lf-chip connection"
+          [class.lf-chip--ok]="analyticsConnectionStatus() === 'connected'"
+          [class.lf-chip--warn]="analyticsConnectionStatus() === 'disconnected'"
+          [class.lf-chip--muted]="analyticsConnectionStatus() === 'reconnecting'"
+          role="status"
+          ><span class="lf-dot"></span
+          >{{
+            analyticsConnectionStatus() === 'connected'
+              ? 'Live updates'
+              : analyticsConnectionStatus() === 'reconnecting'
+                ? 'Connecting…'
+                : 'Updates offline'
+          }}</span
+        >
+        @if (hasSnapshot()) {
+          <span class="lf-chip" [class.lf-chip--live]="analytics().liveUsers > 0"
+            >@if (analytics().liveUsers > 0) {<span class="lf-dot lf-dot--live"></span>}
+            {{ formatNumber(analytics().liveUsers) }} live</span
+          >
+        }
+      </div>
+    </header>
+
+    @if (snapshotError()) {
+      <div class="lf-notice dashboard-notice" role="alert">
+        <span>{{
+          hasSnapshot()
+            ? 'Showing the last available figures. We could not refresh the data.'
+            : 'Platform data is unavailable right now.'
+        }}</span
+        ><button type="button" class="lf-btn lf-btn--sm" (click)="refreshAnalytics()">Retry</button>
+      </div>
+    }
+
+    <!-- The answer first: does anyone need me? -->
+    @if (healthLoading() && !health()) {
+      <div class="lf-status" aria-busy="true">
+        <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+        <div class="lf-status__body">
+          <app-skeleton width="45%" height="1.1rem" /><app-skeleton width="75%" height="0.9rem" />
+        </div>
+      </div>
+    } @else if (healthError()) {
+      <div class="lf-status lf-status--muted health-status" role="alert">
+        <app-icon name="info" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">Couldn't check channel health</p>
+          <p class="lf-status__text">Platform numbers below still work. Try again in a moment.</p>
+          <div class="lf-status__actions">
+            <button type="button" class="lf-btn lf-btn--sm" (click)="loadHealth()">Try again</button>
           </div>
-          <app-icon class="quick-link__arrow" name="chevron"
-        /></a>
+        </div>
+      </div>
+    } @else if (health(); as h) {
+      @if (attentionTotal() > 0) {
+        <div class="lf-status lf-status--warn health-status" role="status">
+          <app-icon name="alert" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">Some streamers might need a hand</p>
+            <p class="lf-status__text">
+              {{ h.inactiveBots }} {{ h.inactiveBots === 1 ? "bot isn't" : "bots aren't" }} active and
+              {{ h.permissionsNeedUpdate }}
+              {{ h.permissionsNeedUpdate === 1 ? 'channel needs' : 'channels need' }} to reconnect Twitch, out of
+              {{ formatNumber(h.totalChannels) }} channels.
+            </p>
+          </div>
+        </div>
+      } @else {
+        <div class="lf-status lf-status--ok health-status" role="status">
+          <app-icon name="ok" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">Everything looks good</p>
+            <p class="lf-status__text">
+              All {{ formatNumber(h.totalChannels) }} bots are active and every channel's Twitch access is up to date.
+            </p>
+          </div>
+        </div>
       }
+    }
+
+    <div class="ov-grid">
+      <section class="lf-tile lf-tile--flush ov-attention" aria-labelledby="attention-heading">
+        <div class="lf-tile__head">
+          <h2 class="lf-h2" id="attention-heading"><app-icon name="bell" />Needs attention</h2>
+          @if (health()) {
+            <span class="lf-chip" [class.lf-chip--warn]="attentionTotal() > 0" [class.lf-chip--ok]="attentionTotal() === 0">{{
+              attentionTotal() > 0 ? attentionTotal() + ' to review' : 'All clear'
+            }}</span>
+          }
+        </div>
+        @if (healthLoading() && !health()) {
+          <div class="ov-skel-rows">
+            @for (item of [1, 2]; track item) {
+              <app-skeleton height="3rem" />
+            }
+          </div>
+        } @else if (health()) {
+          <ul class="lf-rows">
+            @for (item of attention(); track item.key) {
+              <li>
+                <a
+                  class="lf-row"
+                  [class.lf-row--attention]="item.count > 0"
+                  routerLink="/users"
+                  [queryParams]="item.query"
+                  [attr.aria-label]="item.count + ' ' + item.label + ' — review in Users'"
+                >
+                  <app-icon [name]="item.icon" class="ov-attention__icon" [class.is-warn]="item.count > 0" />
+                  <span class="lf-row__main">
+                    <span class="lf-row__title">{{ item.label }}</span>
+                    <span class="lf-row__meta">{{ item.meta }}</span>
+                  </span>
+                  <span class="lf-row__end">
+                    <span class="lf-row__value">{{ formatNumber(item.count) }}</span>
+                    <app-icon class="lf-row__chev" name="chevron" />
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="lf-empty ov-empty"><span>Not available right now.</span></p>
+        }
+      </section>
+      <section class="lf-tile lf-tile--flush ov-live" aria-labelledby="live-heading">
+        <div class="lf-tile__head">
+          <h2 class="lf-h2" id="live-heading"><span class="lf-dot lf-dot--live"></span>Live right now</h2>
+        </div>
+        <div class="ov-figures">
+          <div class="live-figure">
+            <span class="lf-metric__label">Streamers live</span>
+            @if (isInitialLoading()) {
+              <app-skeleton width="4rem" height="2.1rem" />
+            } @else {
+              <strong>{{ hasSnapshot() ? formatNumber(analytics().liveUsers) : '—' }}</strong>
+            }
+          </div>
+          <div class="live-figure">
+            <span class="lf-metric__label">Watching</span>
+            @if (isInitialLoading()) {
+              <app-skeleton width="4rem" height="2.1rem" />
+            } @else {
+              <strong>{{ hasSnapshot() ? formatNumber(analytics().totalLiveViewers) : '—' }}</strong>
+            }
+          </div>
+        </div>
+        @if (healthLoading() && !health()) {
+          <div class="ov-skel-rows">
+            @for (item of [1, 2, 3]; track item) {
+              <app-skeleton height="2.5rem" />
+            }
+          </div>
+        } @else if (liveRows().length) {
+          <ul class="lf-rows" aria-label="Biggest live channels">
+            @for (row of liveRows(); track row.channelID) {
+              <li>
+                <a class="lf-row" [routerLink]="['/channels', row.channelID]">
+                  <app-avatar [name]="row.channel" [live]="true" />
+                  <span class="lf-row__main">
+                    <span class="lf-row__title">{{ row.channel }}
+                      @if (row.plan_tier !== 'free') {
+                        <span class="lf-chip" [class.lf-chip--gold]="row.plan_tier === 'premium'" [class.lf-chip--pro]="row.plan_tier === 'pro'">{{ row.plan_tier === 'pro' ? 'Pro' : 'Premium' }}</span>
+                      }
+                    </span>
+                  </span>
+                  <span class="lf-row__end">
+                    <span class="lf-row__value">{{ formatNumber(row.liveViewers) }}</span>
+                    <span class="lf-note">watching</span>
+                    <app-icon class="lf-row__chev" name="chevron" />
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        } @else if (!healthError()) {
+          <p class="lf-empty ov-empty"><span>Nobody with Dima is live right now.</span></p>
+        }
+        <a class="ov-more" routerLink="/users" [queryParams]="{ sort: 'isLive' }"
+          >See everyone who's live<app-icon name="chevron"
+        /></a>
+      </section>
+
     </div>
-  </section>
-  <footer class="dashboard-foot">
-    <span>DIMA / ADMINISTRATION</span><span>Made for the people behind the streams.</span>
-  </footer>
+
+    <section aria-labelledby="totals-heading" class="ov-totals">
+      <h2 class="lf-h2 ov-section-title" id="totals-heading">Platform totals</h2>
+      <div class="lf-metrics metrics">
+        @for (metric of metrics(); track metric.label) {
+          <article class="lf-metric metric">
+            <span class="lf-metric__label">{{ metric.label }}</span>
+            @if (isInitialLoading()) {
+              <app-skeleton width="70%" height="1.75rem" />
+            } @else {
+              <strong class="lf-metric__value">{{ hasSnapshot() ? formatNumber(metric.value) : '—' }}</strong>
+            }
+            <span class="lf-metric__note">{{ metric.note }}</span>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="lf-tile lf-tile--flush" aria-labelledby="tools-heading">
+      <div class="lf-tile__head"><h2 class="lf-h2" id="tools-heading"><app-icon name="settings" />Tools</h2></div>
+      <ul class="lf-rows">
+        @for (tool of tools; track tool.route) {
+          <li>
+            <a class="lf-row" [routerLink]="tool.route">
+              <span class="lf-choice__icon"><app-icon [name]="tool.icon" /></span>
+              <span class="lf-row__main">
+                <span class="lf-row__title">{{ tool.label }}</span>
+                <span class="lf-row__meta">{{ tool.description }}</span>
+              </span>
+              <app-icon class="lf-row__chev" name="chevron" />
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  </div>
 </div>

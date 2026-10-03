@@ -1,126 +1,86 @@
-<div class="page channel-page">
-  <!-- Header with back link -->
-  <section class="channel-page__header">
-    <a [routerLink]="['/channels', channelID()]" class="back-link">
-      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10 19l-7-7m0 0l7-7m-7 7h18"
-        />
-      </svg>
-      Back to Channel
-    </a>
-    <h1 class="channel-page__title">Channel commands</h1>
-    <p class="muted">Review commands, cooldowns and access levels.</p>
-  </section>
-
-  @if (isLoading()) {
-    <section class="channel-page__table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Command</th>
-            <th>Function</th>
-            <th>Cooldown</th>
-            <th>User Level</th>
-            <th>Enabled</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of [1, 2, 3, 4, 5]; track item) {
-            <tr>
-              <td data-label="Name"><app-skeleton variant="bar" height="1rem" width="60px" /></td>
-              <td data-label="Command">
-                <app-skeleton variant="bar" height="1rem" width="40px" />
-              </td>
-              <td data-label="Function">
-                <app-skeleton variant="bar" height="1rem" width="80px" />
-              </td>
-              <td data-label="Cooldown">
-                <app-skeleton variant="bar" height="1rem" width="40px" />
-              </td>
-              <td data-label="User level">
-                <app-skeleton variant="bar" height="1rem" width="50px" />
-              </td>
-              <td data-label="Enabled">
-                <app-skeleton variant="bar" height="1rem" width="40px" />
-              </td>
-            </tr>
+<div class="lf channel-page">
+  <div class="lf-main lf-main--narrow">
+    <header class="lf-head">
+      <a [routerLink]="['/channels', channelID()]" class="lf-back"><app-icon name="back" />{{ channelName() || 'Channel' }}</a>
+      <div class="sub-intro">
+        <h1 class="lf-title">Channel commands</h1>
+        <p class="lf-sub">What viewers can type in {{ channelName() || 'this channel' }}'s chat, who can use it, and whether it's on.</p>
+      </div>
+      @if (!isLoading() && !error()) {
+        <div class="lf-head__chips">
+          <span class="lf-chip">{{ totalItems() }} {{ totalItems() === 1 ? 'command' : 'commands' }}</span>
+          @if (offCount()) {
+            <span class="lf-chip lf-chip--muted">{{ offCount() }} off{{ totalPages() > 1 ? ' on this page' : '' }}</span>
           }
-        </tbody>
-      </table>
-    </section>
-  } @else if (error()) {
-    <div class="channel-page__error">
-      <p>{{ error() }}</p>
-      <button type="button" class="btn btn--secondary" (click)="loadCommands(currentPage())">
-        Retry
-      </button>
-    </div>
-  } @else if (commands().length === 0) {
-    <div class="channel-page__empty">
-      <p>No commands found</p>
-    </div>
-  } @else {
-    <section class="channel-page__table-section">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Command</th>
-            <th>Function</th>
-            <th>Cooldown</th>
-            <th>User Level</th>
-            <th>Enabled</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (cmd of commands(); track cmd.id) {
-            <tr>
-              <td data-label="Name" class="data-table__name">{{ cmd.name }}</td>
-              <td data-label="Command" class="data-table__cmd">{{ cmd.cmd }}</td>
-              <td data-label="Function" class="data-table__func">{{ cmd.func }}</td>
-              <td data-label="Cooldown">{{ cmd.cooldown }}s</td>
-              <td data-label="User level">{{ cmd.userLevelName || '-' }}</td>
-              <td data-label="Enabled">
-                @if (cmd.enabled) {
-                  <span class="status-badge status-badge--active">Yes</span>
-                } @else {
-                  <span class="status-badge status-badge--inactive">No</span>
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
+        </div>
+      }
+    </header>
 
-    <!-- Pagination -->
-    @if (totalPages() > 1) {
-      <div class="pagination">
-        <button
-          type="button"
-          class="pagination__btn"
-          [disabled]="currentPage() === 1"
-          (click)="onPageChange(currentPage() - 1)"
-        >
-          Previous
-        </button>
-        <span class="pagination__info">
-          Page {{ currentPage() }} of {{ totalPages() }} ({{ totalItems() }} items)
-        </span>
-        <button
-          type="button"
-          class="pagination__btn"
-          [disabled]="currentPage() === totalPages()"
-          (click)="onPageChange(currentPage() + 1)"
-        >
-          Next
-        </button>
+    @if (error()) {
+      <div class="lf-notice" role="alert">
+        <span>{{ error() }}</span>
+        <button type="button" class="lf-btn lf-btn--sm" (click)="loadCommands(currentPage())">Retry</button>
       </div>
     }
-  }
+
+    <section class="lf-tile lf-tile--flush" aria-label="Commands">
+      @if (isLoading()) {
+        <div class="sub-skel" role="status" aria-busy="true" aria-label="Loading commands">
+          @for (item of [1, 2, 3, 4, 5]; track item) {
+            <app-skeleton height="3.25rem" />
+          }
+        </div>
+      } @else if (!error() && commands().length === 0) {
+        <div class="lf-empty">
+          <app-icon name="command" />
+          <strong>No commands yet</strong>
+          <p>This streamer hasn't created any chat commands.</p>
+        </div>
+      } @else if (!error()) {
+        @if (commands().length > 6) {
+          <div class="sub-filter">
+            <div class="lf-search">
+              <app-icon name="search" />
+              <input
+                type="search"
+                class="lf-input"
+                aria-label="Filter commands"
+                placeholder="Filter by command, name or reply"
+                [value]="filter()"
+                (input)="filter.set($any($event.target).value)"
+              />
+            </div>
+          </div>
+        }
+        @if (visibleCommands().length === 0) {
+          <p class="lf-empty">No commands match “{{ filter() }}”.</p>
+        }
+        <ul class="lf-rows">
+          @for (cmd of visibleCommands(); track cmd.id) {
+            <li class="lf-row" [class.row-off]="!cmd.enabled">
+              <div class="lf-row__main">
+                <span class="lf-row__title">
+                  <span class="cmd-trigger">{{ cmd.cmd }}</span>
+                  <span class="lf-chip">{{ cmd.userLevelName || 'Everyone' }}</span>
+                  <span class="lf-chip lf-chip--muted">{{ cooldownLabel(cmd.cooldown) }}</span>
+                </span>
+                @if (cmd.message) {
+                  <span class="cmd-message">{{ cmd.message }}</span>
+                }
+                <span class="lf-row__meta">{{ cmd.name }} · <span class="cmd-name">{{ cmd.func }}</span></span>
+              </div>
+              <span class="lf-chip" [class.lf-chip--ok]="cmd.enabled" [class.lf-chip--muted]="!cmd.enabled">{{ cmd.enabled ? 'On' : 'Off' }}</span>
+            </li>
+          }
+        </ul>
+        @if (totalPages() > 1) {
+          <div class="lf-pager">
+            <button type="button" class="lf-btn lf-btn--sm" [disabled]="currentPage() === 1" (click)="onPageChange(currentPage() - 1)">Previous</button>
+            <span class="lf-pager__info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+            <button type="button" class="lf-btn lf-btn--sm" [disabled]="currentPage() === totalPages()" (click)="onPageChange(currentPage() + 1)">Next</button>
+          </div>
+        }
+      }
+    </section>
+  </div>
 </div>

@@ -10,7 +10,7 @@ import {
 import { Subscription } from 'rxjs';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   AdminApiService,
@@ -20,17 +20,38 @@ import {
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { ToastService } from '../../shared/toast/toast.service';
 import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
+import { AvatarComponent } from '../../shared/avatar/avatar.component';
+
+const SORTS = [
+  'created_at',
+  'channel',
+  'plan_tier',
+  'actived',
+  'isLive',
+  'liveViewers',
+  'commandsCount',
+  'has_permissions',
+];
 
 @Component({
   selector: 'app-users-page',
   templateUrl: './users-page.component.html',
   styleUrl: './users-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [IconComponent, FormsModule, SkeletonComponent, RouterLink, ConfirmModalComponent],
+  imports: [
+    IconComponent,
+    FormsModule,
+    SkeletonComponent,
+    RouterLink,
+    ConfirmModalComponent,
+    AvatarComponent,
+  ],
 })
 export class UsersPageComponent implements OnInit, OnDestroy {
   private readonly adminApi = inject(AdminApiService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly currentPage = signal(1);
   readonly totalPages = signal(1);
@@ -60,20 +81,80 @@ export class UsersPageComponent implements OnInit, OnDestroy {
     return { asc: 'Lowest first', desc: 'Highest first' };
   });
 
-  // Stats
-  readonly stats = computed(() => {
+  /** Header chips double as shortcuts: each one sorts the matching users to the top. */
+  readonly quickSorts = computed(() => {
     const s = this.summary();
-    if (!s) return null;
+    if (!s) return [];
     return [
-      { label: 'Total Users', value: s.totalChannels, icon: 'users' },
-      { label: 'Live Now', value: s.liveChannels, icon: 'live' },
-      { label: 'Active Bots', value: s.activeBots, icon: 'active' },
-      { label: 'Live Viewers', value: s.liveViewers, icon: 'viewers' },
+      { key: 'live', label: `${this.formatNumber(s.liveChannels)} live`, sortBy: 'isLive', order: 'desc' as const, tone: s.liveChannels ? 'live' : '' },
+      { key: 'bots', label: `${this.formatNumber(s.inactiveBots ?? 0)} bots off`, sortBy: 'actived', order: 'asc' as const, tone: s.inactiveBots ? 'warn' : '' },
+      { key: 'perms', label: `${this.formatNumber(s.permissionsNeedUpdate ?? 0)} need Twitch access`, sortBy: 'has_permissions', order: 'asc' as const, tone: s.permissionsNeedUpdate ? 'warn' : '' },
     ];
+  });
+  readonly sortLabel = computed(() => {
+    const labels: Record<string, string> = {
+      created_at: 'joined date',
+      channel: 'name',
+      plan_tier: 'plan',
+      actived: 'bot status',
+      isLive: 'live now',
+      liveViewers: 'viewers',
+      commandsCount: 'commands',
+      has_permissions: 'Twitch access',
+    };
+    return `${labels[this.sortBy()] ?? this.sortBy()} · ${this.orderOptions()[this.sortOrder()].toLowerCase()}`;
   });
 
   ngOnInit(): void {
+    // Links from the overview (and coming back from a channel) restore search and order.
+    const query = this.route.snapshot.queryParamMap;
+    const sort = query.get('sort');
+    if (sort && SORTS.includes(sort)) {
+      this.sortBy.set(sort);
+      this.sortOrder.set(
+        query.get('order') === 'asc' || query.get('order') === 'desc'
+          ? (query.get('order') as 'asc' | 'desc')
+          : ['channel', 'plan_tier'].includes(sort)
+            ? 'asc'
+            : 'desc',
+      );
+    }
+    this.searchInput.set(query.get('q') ?? '');
+    const page = Number(query.get('page'));
+    this.loadPage(Number.isInteger(page) && page > 1 ? page : 1);
+  }
+
+  applyQuickSort(sortBy: string, order: 'asc' | 'desc'): void {
+    this.sortBy.set(sortBy);
+    this.sortOrder.set(order);
     this.loadPage(1);
+  }
+
+  isQuickSort(sortBy: string, order: 'asc' | 'desc'): boolean {
+    return this.sortBy() === sortBy && this.sortOrder() === order;
+  }
+
+  private syncUrl(page: number): void {
+    const q = this.searchInput().trim();
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        q: q || null,
+        sort: this.sortBy() === 'created_at' ? null : this.sortBy(),
+        order: this.sortBy() === 'created_at' && this.sortOrder() === 'desc' ? null : this.sortOrder(),
+        page: page > 1 ? page : null,
+      },
+    });
+  }
+
+  async copyId(user: AdminUserRow): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(user.channelID);
+      this.toast.success(`Copied ${user.channel}'s channel ID`);
+    } catch {
+      this.toast.error('Could not copy — select the ID and copy it manually');
+    }
   }
 
   ngOnDestroy(): void {
@@ -93,6 +174,7 @@ export class UsersPageComponent implements OnInit, OnDestroy {
     this.isLoading.set(true);
     this.error.set(null);
     this.displayedUsers.set([]);
+    this.syncUrl(page);
     // The API ranks the entire filtered directory before taking this 100-user page.
     this.request = this.adminApi
       .getUsers({
@@ -114,7 +196,7 @@ export class UsersPageComponent implements OnInit, OnDestroy {
         },
         error: () => {
           if (requestId !== this.requestId) return;
-          this.error.set('Could not load users. Your search and sort are kept — try again.');
+          this.error.set("Couldn't load users. Your search and sort are kept — try again.");
           this.isLoading.set(false);
         },
       });
@@ -201,8 +283,17 @@ export class UsersPageComponent implements OnInit, OnDestroy {
   }
 
   getReminderLabel(row: AdminUserRow): string {
-    if (!row.reminder_sent_at) return '-';
-    return this.formatDate(row.reminder_sent_at as any);
+    if (!row.reminder_sent_at) return 'Never';
+    return this.formatDate(row.reminder_sent_at as Date);
+  }
+
+  planLabel(plan: string): string {
+    return plan === 'pro' ? 'Pro' : plan === 'premium' ? 'Premium' : 'Free';
+  }
+
+  accessLabel(row: AdminUserRow): string {
+    if (!row.has_permissions) return 'No Twitch access';
+    return row.up_to_date_permissions ? 'Twitch access OK' : 'Reconnect Twitch';
   }
 
   formatNumber(value: number): string {
@@ -211,8 +302,12 @@ export class UsersPageComponent implements OnInit, OnDestroy {
     return value.toLocaleString();
   }
 
-  formatDate(date: Date | undefined): string {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString();
+  formatDate(date: Date | string | undefined): string {
+    if (!date) return '—';
+    return new Date(date).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   }
 }

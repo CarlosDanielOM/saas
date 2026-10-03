@@ -1,248 +1,228 @@
-<div class="page users-page">
-  <header class="page-header">
-    <div>
-      <span class="eyebrow">People & channels</span>
-      <h1>User directory</h1>
-      <p>Keep your streamers connected and ready to go live.</p>
-    </div>
-    <button type="button" class="refresh-btn" (click)="onRefresh()" [disabled]="isLoading()">
-      <app-icon name="refresh" [class.refresh-btn__icon--spinning]="isLoading()" /> Refresh
-    </button>
-  </header>
-  <section class="users-stats" aria-label="Directory totals">
-    @if (isLoading() && !summary()) {
-      @for (item of [1, 2, 3, 4]; track item) {
-        <div class="users-stat"><app-skeleton height="32px" /><app-skeleton height="12px" /></div>
-      }
-    } @else {
-      @for (stat of stats(); track stat.label) {
-        <div class="users-stat">
-          <span>{{ stat.label }}</span
-          ><strong>{{ formatNumber(stat.value) }}</strong>
+<div class="lf users-page">
+  <div class="lf-main">
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div class="u-intro">
+          <h1 class="lf-title">Users</h1>
+          <p class="lf-sub">Find a streamer, check they're set up, and open their channel tools.</p>
         </div>
-      }
-    }
-  </section>
-  <section class="directory-tools" aria-label="Search and sort users">
-    <form class="search-box" (submit)="$event.preventDefault(); onSearchSubmit()">
-      <app-icon name="search" /><input
-        type="search"
-        aria-label="Search users by name, email or ID"
-        placeholder="Name, email or channel ID"
-        [value]="searchInput()"
-        (input)="onSearchInput($any($event.target).value)"
-      />
-      @if (searchInput()) {
-        <button
-          class="search-clear"
-          type="button"
-          aria-label="Clear search"
-          (click)="onClearSearch()"
-        >
-          ×
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn lf-btn--sm" (click)="onRefresh()" [disabled]="isLoading()">
+            <app-icon name="refresh" [class.lf-spinning]="isLoading()" />Refresh
+          </button>
+        </div>
+      </div>
+      <div class="lf-head__chips" role="group" aria-label="Directory totals — tap to sort">
+        @if (summary(); as s) {
+          <span class="lf-chip">{{ formatNumber(s.totalChannels) }} users</span>
+          @for (chip of quickSorts(); track chip.key) {
+            <button
+              type="button"
+              class="lf-chip"
+              [class.lf-chip--live]="chip.tone === 'live' && !isQuickSort(chip.sortBy, chip.order)"
+              [class.lf-chip--warn]="chip.tone === 'warn' && !isQuickSort(chip.sortBy, chip.order)"
+              [attr.aria-pressed]="isQuickSort(chip.sortBy, chip.order)"
+              (click)="applyQuickSort(chip.sortBy, chip.order)"
+            >
+              @if (chip.key === 'live') {<span class="lf-dot" [class.lf-dot--live]="chip.tone === 'live'"></span>}
+              {{ chip.label }}
+            </button>
+          }
+        } @else {
+          <app-skeleton width="16rem" height="2.25rem" />
+        }
+      </div>
+    </header>
+
+    <section class="lf-tile u-tools" aria-label="Search and sort users">
+      <form class="u-search" (submit)="$event.preventDefault(); onSearchSubmit()">
+        <div class="lf-search">
+          <app-icon name="search" />
+          <input
+            type="search"
+            class="lf-input"
+            aria-label="Search users by name, email or ID"
+            placeholder="Name, email or ID"
+            enterkeyhint="search"
+            [value]="searchInput()"
+            (input)="onSearchInput($any($event.target).value)"
+          />
+          @if (searchInput()) {
+            <button
+              class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm lf-search__clear"
+              type="button"
+              aria-label="Clear search"
+              (click)="onClearSearch()"
+            >
+              <app-icon name="x" />
+            </button>
+          }
+        </div>
+        <button type="submit" class="lf-btn lf-btn--primary u-search__go" [disabled]="isLoading()">
+          {{ isLoading() ? 'Searching…' : 'Search' }}
         </button>
-      }
-      <button type="submit" class="btn btn--primary" [disabled]="isLoading()">
-        {{ isLoading() ? 'Searching…' : 'Search' }}
-      </button>
-    </form>
-    <div class="sort-tools">
-      <label for="user-sort">Sort by</label
-      ><select id="user-sort" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
-        <option value="created_at">Joined date</option>
-        <option value="channel">Name</option>
-        <option value="plan_tier">Plan</option>
-        <option value="actived">Status</option>
-        <option value="isLive">Live now</option>
-        <option value="liveViewers">Viewers</option>
-        <option value="commandsCount">Commands</option>
-        <option value="has_permissions">Permissions</option>
-      </select>
-      <label class="sr-only" for="user-sort-order">Sort order</label>
-      <select id="user-sort-order" [ngModel]="sortOrder()" (ngModelChange)="onSortOrder($event)">
-        <option value="desc">{{ orderOptions().desc }}</option>
-        <option value="asc">{{ orderOptions().asc }}</option>
-      </select>
-    </div>
-  </section>
-  <div class="directory-caption" role="status">
-    <span>{{
-      isLoading()
-        ? 'Updating directory…'
-        : displayedUsers().length +
-          ' of ' +
-          totalUsers() +
-          (searchInput().trim() ? ' matches' : ' users')
-    }}</span>
-    <span
-      >Sorted across all {{ searchInput().trim() ? 'matching users' : 'users' }} · 100 per
-      page</span
-    >
-  </div>
-  @if (error()) {
-    <div class="notice" role="alert">
-      {{ error() }} <button class="btn" (click)="onRetry()">Retry</button>
-    </div>
-  }
-  @if (isLoading()) {
-    <div class="user-list" aria-label="Loading users" aria-busy="true">
-      @for (item of [1, 2, 3, 4]; track item) {
-        <div class="user-card panel skeleton-card">
-          <app-skeleton width="55%" height="24px" /><app-skeleton
-            width="80%"
-            height="16px"
-          /><app-skeleton width="100%" height="32px" />
+      </form>
+      <div class="u-sort">
+        <div class="lf-field">
+          <label class="lf-label" for="user-sort">Sort by</label>
+          <select id="user-sort" class="lf-input" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
+            <option value="created_at">Joined date</option>
+            <option value="channel">Name</option>
+            <option value="plan_tier">Plan</option>
+            <option value="actived">Bot status</option>
+            <option value="isLive">Live now</option>
+            <option value="liveViewers">Viewers</option>
+            <option value="commandsCount">Commands</option>
+            <option value="has_permissions">Twitch access</option>
+          </select>
         </div>
-      }
-    </div>
-  } @else if (!displayedUsers().length && !error()) {
-    <div class="empty-state panel">
-      <app-icon name="users" />
-      <h2>No users found</h2>
-      <p>
-        {{
-          searchInput()
-            ? 'Try another name, email or channel ID.'
-            : 'Registered users will appear here.'
-        }}
-      </p>
-      @if (searchInput()) {
-        <button class="btn" (click)="onClearSearch()">Clear search</button>
-      }
-    </div>
-  } @else {
-    <section class="user-list" aria-label="Users">
-      @for (user of displayedUsers(); track user.channelID) {
-        <article class="user-card panel" [class.user-card--live]="user.isLive">
-          <div class="user-card__main">
-            <a [routerLink]="['/channels', user.channelID]" class="user-identity"
-              ><span class="user-avatar">{{ user.channel.charAt(0).toUpperCase() }}</span
-              ><span class="user-identity__text"
-                ><strong>{{ user.channel }}</strong
-                ><span>{{ user.email || 'No email address' }}</span></span
-              ></a
-            >
-            <span class="user-plan"
-              ><span class="plan-badge" [class]="'plan-badge--' + user.plan_tier">{{
-                user.plan_tier
-              }}</span></span
-            >
-            <div class="user-status">
-              <span class="status-badge" [class.status-badge--active]="user.actived">{{
-                user.actived ? 'Active' : 'Inactive'
-              }}</span>
-              @if (user.isLive) {
-                <span class="live-badge"><span class="live-badge__dot"></span>Live</span>
-              } @else {
-                <span class="offline-label">Offline</span>
-              }
-            </div>
-            <div class="user-activity">
-              <span
-                ><strong>{{ user.isLive ? formatNumber(user.liveViewers) : '—' }}</strong>
-                viewers</span
-              ><span
-                ><strong>{{ user.commandsCount }}</strong> commands</span
-              >
-            </div>
-            <a
-              [routerLink]="['/channels', user.channelID]"
-              class="open-channel"
-              [attr.aria-label]="'Open channel for ' + user.channel"
-              ><span>Open channel</span><app-icon name="arrow"
-            /></a>
-          </div>
-          <details class="user-details">
-            <summary>Account details <app-icon name="down" /></summary>
-            <div class="user-details__body">
-              <dl>
-                <div>
-                  <dt>Channel ID</dt>
-                  <dd>{{ user.channelID }}</dd>
-                </div>
-                <div>
-                  <dt>Permissions</dt>
-                  <dd>
-                    <span
-                      class="status-badge"
-                      [class.status-badge--ok]="user.has_permissions && user.up_to_date_permissions"
-                      [class.status-badge--warning]="
-                        user.has_permissions && !user.up_to_date_permissions
-                      "
-                      [class.status-badge--error]="!user.has_permissions"
-                      >{{
-                        !user.has_permissions
-                          ? 'Missing'
-                          : user.up_to_date_permissions
-                            ? 'Up to date'
-                            : 'Update needed'
-                      }}</span
-                    >
-                  </dd>
-                </div>
-                <div>
-                  <dt>Joined</dt>
-                  <dd>{{ formatDate(user.created_at) }}</dd>
-                </div>
-                <div>
-                  <dt>Last reminder</dt>
-                  <dd>{{ getReminderLabel(user) }}</dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                class="btn btn--small"
-                [class.btn--primary]="!user.actived"
-                [class.btn--warning]="user.actived"
-                (click)="openSendReminder(user)"
-                [disabled]="isSendingReminder()"
-              >
-                <app-icon name="mail" />Send reminder
-              </button>
-            </div>
-          </details>
-        </article>
-      }
+        <div class="lf-field">
+          <label class="lf-label" for="user-sort-order">Sort order</label>
+          <select id="user-sort-order" class="lf-input" [ngModel]="sortOrder()" (ngModelChange)="onSortOrder($event)">
+            <option value="desc">{{ orderOptions().desc }}</option>
+            <option value="asc">{{ orderOptions().asc }}</option>
+          </select>
+        </div>
+      </div>
     </section>
-    @if (totalPages() > 1) {
-      <div class="pagination">
-        <button
-          class="pagination__btn"
-          [disabled]="currentPage() === 1 || isLoading()"
-          (click)="onPageChange(currentPage() - 1)"
-        >
-          Previous</button
-        ><span class="pagination__info"
-          >Page {{ currentPage() }} of {{ totalPages() }}<br />{{
-            formatNumber(totalUsers())
-          }}
-          users</span
-        ><button
-          class="pagination__btn"
-          [disabled]="currentPage() >= totalPages() || isLoading()"
-          (click)="onPageChange(currentPage() + 1)"
-        >
-          Next
-        </button>
+
+    @if (error()) {
+      <div class="lf-notice" role="alert">
+        <span>{{ error() }}</span>
+        <button type="button" class="lf-btn lf-btn--sm" (click)="onRetry()">Retry</button>
       </div>
     }
-  }
+
+    <section class="lf-tile lf-tile--flush u-list" aria-labelledby="users-heading">
+      <div class="lf-tile__head">
+        <h2 class="lf-h2" id="users-heading">
+          {{ searchInput().trim() ? 'Matches' : 'Everyone' }}
+        </h2>
+        <span class="lf-note directory-caption" role="status">{{
+          isLoading()
+            ? 'Updating…'
+            : displayedUsers().length + ' of ' + formatNumber(totalUsers()) + ' · by ' + sortLabel()
+        }}</span>
+      </div>
+
+      @if (isLoading()) {
+        <div class="u-skel" role="status" aria-label="Loading users" aria-busy="true">
+          @for (item of [1, 2, 3, 4, 5]; track item) {
+            <div class="u-skel__row">
+              <app-skeleton variant="circle" width="2.5rem" height="2.5rem" />
+              <div class="u-skel__text"><app-skeleton width="40%" /><app-skeleton width="65%" height="0.8rem" /></div>
+            </div>
+          }
+        </div>
+      } @else if (!displayedUsers().length && !error()) {
+        <div class="lf-empty">
+          <app-icon name="users" />
+          <h2><strong>No users found</strong></h2>
+          <p>{{ searchInput() ? 'Try another name, email or channel ID.' : 'Registered users will appear here.' }}</p>
+          @if (searchInput()) {
+            <button type="button" class="lf-btn lf-btn--sm" (click)="onClearSearch()">Clear search</button>
+          }
+        </div>
+      } @else if (displayedUsers().length) {
+        <div class="u-cols" aria-hidden="true">
+          <span>User</span><span>Status</span><span>Commands</span><span>Joined</span><span></span>
+        </div>
+        <ul class="lf-rows" aria-label="Users">
+          @for (user of displayedUsers(); track user.channelID) {
+            <li class="user-card" [class.user-card--live]="user.isLive">
+              <div class="u-row">
+                <a [routerLink]="['/channels', user.channelID]" class="user-identity">
+                  <app-avatar [name]="user.channel" [live]="user.isLive" [fetch]="false" />
+                  <span class="user-identity__text">
+                    <strong>{{ user.channel }}</strong>
+                    <span>{{ user.email || 'No email address' }}</span>
+                  </span>
+                </a>
+                <div class="u-status">
+                  <span class="lf-chip" [class.lf-chip--muted]="user.plan_tier === 'free'" [class.lf-chip--gold]="user.plan_tier === 'premium'" [class.lf-chip--pro]="user.plan_tier === 'pro'">{{ planLabel(user.plan_tier) }}</span>
+                  @if (user.isLive) {
+                    <span class="lf-chip lf-chip--live"><span class="lf-dot lf-dot--live"></span>Live · {{ formatNumber(user.liveViewers) }}</span>
+                  }
+                  <span class="lf-chip" [class.lf-chip--ok]="user.actived" [class.lf-chip--warn]="!user.actived">{{ user.actived ? 'Bot on' : 'Bot off' }}</span>
+                  @if (!user.has_permissions || !user.up_to_date_permissions) {
+                    <span class="lf-chip" [class.lf-chip--danger]="!user.has_permissions" [class.lf-chip--warn]="user.has_permissions">{{ accessLabel(user) }}</span>
+                  }
+                </div>
+                <span class="u-num"><strong>{{ user.commandsCount }}</strong><span class="u-num__label"> commands</span></span>
+                <span class="u-joined">{{ formatDate(user.created_at) }}</span>
+                <a
+                  [routerLink]="['/channels', user.channelID]"
+                  class="lf-btn lf-btn--sm lf-btn--icon open-channel"
+                  [attr.aria-label]="'Open channel for ' + user.channel"
+                  ><app-icon name="chevron"
+                /></a>
+              </div>
+              <details class="lf-more user-details">
+                <summary>Account details <app-icon name="down" /></summary>
+                <div class="lf-more__body user-details__body">
+                  <dl class="lf-dl">
+                    <div>
+                      <dt>Channel ID</dt>
+                      <dd>
+                        <span class="mono">{{ user.channelID }}</span>
+                        <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" [attr.aria-label]="'Copy channel ID for ' + user.channel" (click)="copyId(user)"><app-icon name="copy" /></button>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Twitch access</dt>
+                      <dd>{{ accessLabel(user) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Joined</dt>
+                      <dd>{{ formatDate(user.created_at) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Last reminder</dt>
+                      <dd>{{ getReminderLabel(user) }}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    class="lf-btn lf-btn--sm"
+                    [class.lf-btn--primary]="!user.actived"
+                    (click)="openSendReminder(user)"
+                    [disabled]="isSendingReminder()"
+                  >
+                    <app-icon name="mail" />Send reminder
+                  </button>
+                </div>
+              </details>
+            </li>
+          }
+        </ul>
+        @if (totalPages() > 1) {
+          <div class="lf-pager">
+            <button type="button" class="lf-btn lf-btn--sm" [disabled]="currentPage() === 1 || isLoading()" (click)="onPageChange(currentPage() - 1)">
+              Previous
+            </button>
+            <span class="lf-pager__info">Page {{ currentPage() }} of {{ totalPages() }}<br />{{ formatNumber(totalUsers()) }} users</span>
+            <button type="button" class="lf-btn lf-btn--sm" [disabled]="currentPage() >= totalPages() || isLoading()" (click)="onPageChange(currentPage() + 1)">
+              Next
+            </button>
+          </div>
+        }
+      }
+    </section>
+  </div>
+
   <app-confirm-modal
     [open]="showReminderModal()"
     title="Send activation reminder?"
     [message]="
-      'An activation reminder email will be sent to ' +
+      'This sends a real activation reminder email to ' +
       (reminderTarget()?.channel || '') +
-      ' (' +
-      (reminderTarget()?.email || 'no email') +
-      ').'
+      ' at ' +
+      (reminderTarget()?.email || 'their account address') +
+      '.'
     "
-    [warning]="
-      reminderTarget()?.actived
-        ? 'This user is already active. The reminder will still be sent.'
-        : null
-    "
+    [warning]="reminderTarget()?.actived ? 'Their bot is already active. The reminder will still be sent.' : null"
     confirmLabel="Send reminder"
+    busyLabel="Sending…"
     cancelLabel="Cancel"
     [isDanger]="false"
     [loading]="isSendingReminder()"

@@ -11,7 +11,10 @@ import { IconComponent } from '../../shared/icon/icon.component';
 })
 export class SettingsPageComponent {
   readonly theme = inject(ThemeService);
-  readonly selectedName = computed(
-    () => this.theme.themes.find((option) => option.id === this.theme.selected())!.name,
-  );
+  readonly modeIcons: Record<string, string> = { system: 'monitor', light: 'sun', dark: 'moon' };
+  readonly summary = computed(() => {
+    const mode = this.theme.modes.find((option) => option.id === this.theme.mode())!.name;
+    const accent = this.theme.accents.find((option) => option.id === this.theme.accent())!.name;
+    return `${mode} · ${accent}`;
+  });
 }

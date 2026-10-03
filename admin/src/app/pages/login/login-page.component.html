@@ -1,43 +1,34 @@
-<div class="auth-shell">
-  <header class="auth-brand">
-    <img src="/assets/brand/mark-on-dark.png" alt="" width="30" height="32" /><span>dima</span
-    ><span class="auth-brand__tag">admin</span>
+<div class="auth">
+  <header class="auth__nav">
+    <span class="auth__brand">
+      <span class="auth__mark"><img src="/assets/brand/mark-on-dark.png" alt="" width="20" height="22" /></span>
+      dima<span class="auth__tag">admin</span>
+    </span>
+    <a class="lf-btn lf-btn--sm lf-btn--ghost" href="https://domdimabot.com">Dima site<app-icon name="external" /></a>
   </header>
-  <div class="auth-layout">
-    <section class="auth-intro">
-      <span class="eyebrow">Behind the streams</span>
-      <h1>Your platform.<br /><span>In good hands.</span></h1>
-      <p>
-        The workspace for keeping your community connected, supported and ready for what’s next.
-      </p>
-      <div class="auth-art" aria-hidden="true"><span></span><span></span><span></span><i>✳</i></div>
-      <span class="auth-intro__foot">DIMA / ADMINISTRATION</span>
-    </section>
-    <section class="auth-card panel" aria-labelledby="login-heading">
-      <span class="eyebrow">Private workspace</span>
-      <h2 id="login-heading">Welcome back.</h2>
-      <p class="auth-description">
-        Sign in to take care of the things<br />that keep Dima running.
-      </p>
+  <main class="auth__main">
+    <section class="lf-tile auth__card" aria-labelledby="login-heading">
+      <span class="lf-kicker">Private workspace</span>
+      <h1 id="login-heading" class="auth__title">Welcome back.</h1>
+      <p class="lf-sub">Sign in with the Twitch account that has admin access.</p>
       @if (stage() === 'idle') {
-        <button class="button button--primary auth-button" (click)="loginWithTwitch()">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path
-              d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"
-            /></svg
-          >Continue with Twitch<span aria-hidden="true">↗</span>
+        <button type="button" class="lf-btn lf-btn--primary auth__twitch" (click)="loginWithTwitch()">
+          <app-icon name="twitch" />Continue with Twitch
         </button>
       } @else if (stage() === 'error') {
-        <div class="auth-error" role="alert">
-          <strong>We couldn’t sign you in.</strong>
-          <p>{{ errorMessage() }}</p>
+        <div class="lf-status lf-status--live auth__error" role="alert">
+          <app-icon name="alert" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">We couldn’t sign you in.</p>
+            <p class="lf-status__text">{{ errorMessage() }}</p>
+          </div>
         </div>
-        <button class="button button--primary auth-button" (click)="loginWithTwitch()">
-          Try again
+        <button type="button" class="lf-btn lf-btn--primary auth__twitch" (click)="loginWithTwitch()">
+          <app-icon name="twitch" />Try again
         </button>
       } @else {
-        <div class="auth-loading" role="status">
-          <span class="spinner"></span>
+        <p class="auth__loading" role="status">
+          <span class="lf-spin"></span>
           @switch (stage()) {
             @case ('validating') {
               Checking your session…
@@ -49,25 +40,19 @@
               Opening your workspace…
             }
           }
-        </div>
+        </p>
       }
-      <p class="auth-note">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          aria-hidden="true"
-        >
-          <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11M9 12l2 2 4-4" /></svg
-        >Authorized administrators only
-      </p>
-      <a class="auth-home" href="https://domdimabot.com"
-        >Back to Dima <span aria-hidden="true">↗</span></a
-      >
+      <p class="lf-note auth__note"><app-icon name="shield" />Authorized administrators only. You'll come back here after Twitch.</p>
     </section>
-  </div>
-  <footer class="auth-footer">
-    <span>Tools for the people behind the streams.</span><span>Secure sign-in with Twitch</span>
-  </footer>
+
+    <section class="lf-tile auth__intro" aria-labelledby="intro-heading">
+      <span class="lf-kicker"><span class="lf-dot lf-dot--live"></span>Behind the streams</span>
+      <h2 id="intro-heading" class="auth__intro-title">Keep every stream <span>running smoothly.</span></h2>
+      <ul class="auth__points">
+        <li><app-icon name="pulse" /><span>See who's live and who needs a hand</span></li>
+        <li><app-icon name="credits" /><span>Fix channel setup, Twitch events and AI credits</span></li>
+        <li><app-icon name="mail" /><span>Send reminders and test every email</span></li>
+      </ul>
+    </section>
+  </main>
 </div>

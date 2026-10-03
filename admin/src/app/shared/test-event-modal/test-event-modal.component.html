@@ -1,69 +1,60 @@
 <dialog
   #dialog
-  class="modal"
+  class="lf-dialog test-dialog"
   aria-labelledby="test-event-title"
+  aria-describedby="test-event-warning"
   (cancel)="$event.preventDefault(); onCancel()"
 >
-  <header class="modal__header">
-    <h2 id="test-event-title" class="modal__title">Test Event: {{ eventType() }}</h2>
-    <button type="button" class="modal__close" aria-label="Close event editor" (click)="onCancel()">
-      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M6 18L18 6M6 6l12 12"
-        />
-      </svg>
+  <header class="lf-dialog__head">
+    <div class="test-dialog__title">
+      <span class="lf-kicker">Send a test event</span>
+      <h2 id="test-event-title">{{ eventName() || eventType() }}</h2>
+    </div>
+    <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" aria-label="Close event editor" (click)="onCancel()" [disabled]="sending()">
+      <app-icon name="x" />
     </button>
   </header>
 
-  <div class="modal__body">
-    <p class="modal__description">
-      Edit the payload below and click Send to trigger the event handler. Changes will be processed
-      as if from Twitch.
+  <div class="lf-dialog__body">
+    <p class="lf-warning" id="test-event-warning">
+      <app-icon name="alert" />
+      <span>
+        This runs the bot's real handler for <strong>{{ channelName() || channelID() }}</strong> as if Twitch sent it.
+        Alerts, chat messages and overlays can really appear on their stream.
+      </span>
     </p>
-
-    <div class="form-group">
-      <label for="payload-editor" class="form-label">Event Payload (JSON)</label>
+    <div class="lf-field">
+      <div class="test-dialog__label-row">
+        <label for="payload-editor" class="lf-label">Event payload (JSON)</label>
+        <button type="button" class="lf-btn lf-btn--ghost lf-btn--sm" (click)="onReset()" [disabled]="sending()">
+          <app-icon name="refresh" />Reset
+        </button>
+      </div>
       <textarea
         id="payload-editor"
-        class="payload-editor"
+        class="lf-input payload-editor"
         [value]="payloadText()"
         (input)="onPayloadChange($event)"
         spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+        [attr.aria-invalid]="!!jsonError()"
       ></textarea>
       @if (jsonError()) {
-        <p class="form-error">{{ jsonError() }}</p>
+        <p class="lf-error" role="alert">{{ jsonError() }}</p>
       }
-    </div>
-
-    <div class="modal__info">
-      <p><strong>Channel ID:</strong> {{ channelID() }}</p>
+      <p class="lf-hint"><span class="mono">{{ eventType() }}</span> · channel <span class="mono">{{ channelID() }}</span></p>
     </div>
   </div>
 
-  <footer class="modal__footer">
-    <button type="button" class="btn btn--secondary" (click)="onReset()" [disabled]="isSending()">
-      Reset
+  <footer class="lf-dialog__foot">
+    <button type="button" class="lf-btn" (click)="onCancel()" [disabled]="sending()">Cancel</button>
+    <button type="button" class="lf-btn lf-btn--primary" (click)="onSend()" [disabled]="sending()">
+      @if (sending()) {
+        <span class="lf-spin"></span>Sending…
+      } @else {
+        <app-icon name="send" />Send test event
+      }
     </button>
-    <div class="modal__footer-actions">
-      <button
-        type="button"
-        class="btn btn--secondary"
-        (click)="onCancel()"
-        [disabled]="isSending()"
-      >
-        Cancel
-      </button>
-      <button type="button" class="btn btn--primary" (click)="onSend()" [disabled]="isSending()">
-        @if (isSending()) {
-          <span class="spinner"></span>
-          Sending...
-        } @else {
-          Send Test Event
-        }
-      </button>
-    </div>
   </footer>
 </dialog>

@@ -1,68 +1,70 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
-<header class="topbar">
-  <a class="brand" routerLink="/dashboard" aria-label="Dima Admin overview">
-    <span class="brand-mark"
-      ><img src="/assets/brand/mark-on-dark.png" alt="" width="26" height="28"
-    /></span>
-    <span class="brand-name">dima<span class="brand-label">admin</span></span>
-  </a>
-  <div class="workspace-label">
-    <span class="workspace-dot"></span> Administration
-    <span class="workspace-separator">/</span> Workspace
+<header class="nav">
+  <div class="nav__inner">
+    <a class="brand" routerLink="/dashboard" aria-label="Dima Admin overview">
+      <span class="brand__mark"><img src="/assets/brand/mark-on-dark.png" alt="" width="20" height="22" /></span>
+      <span class="brand__name">dima</span>
+      <span class="brand__tag">admin</span>
+    </a>
+    <nav class="nav__links" aria-label="Main navigation">
+      @for (item of navItems; track item.route) {
+        <a
+          [routerLink]="item.route"
+          class="nav__link"
+          [class.is-active]="isActive(item.route)"
+          [attr.aria-current]="isActive(item.route) ? 'page' : null"
+          ><app-icon [name]="item.icon" />{{ item.label }}</a
+        >
+      }
+    </nav>
+    <div class="nav__tools">
+      <button
+        type="button"
+        class="nav__icon-btn"
+        (click)="theme.toggleDark()"
+        [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        [title]="theme.isDark() ? 'Light mode' : 'Dark mode'"
+      >
+        <app-icon [name]="theme.isDark() ? 'sun' : 'moon'" />
+      </button>
+      <button
+        type="button"
+        class="account-trigger"
+        (click)="accountOpen.set(!accountOpen())"
+        [attr.aria-expanded]="accountOpen()"
+        aria-controls="account-menu"
+        aria-label="Account menu"
+      >
+        <span class="account-trigger__avatar">
+          @if (user()?.profile_image_url) {
+            <img [src]="user()!.profile_image_url" alt="" />
+          } @else {
+            {{ user()?.display_name?.charAt(0) || 'A' }}
+          }
+        </span>
+        <span class="account-trigger__name">{{ user()?.display_name || 'Admin' }}</span>
+        <app-icon name="down" />
+      </button>
+    </div>
   </div>
-  <button
-    class="account-trigger"
-    (click)="accountOpen.set(!accountOpen())"
-    [attr.aria-expanded]="accountOpen()"
-    aria-controls="account-menu"
-    aria-label="Account menu"
-  >
-    <span class="avatar">{{ user()?.display_name?.charAt(0) || 'A' }}</span>
-    <span class="account-name">{{ user()?.display_name || 'Admin' }}</span>
-    <app-icon name="down" />
-  </button>
   @if (accountOpen()) {
-    <button
-      class="account-backdrop"
-      aria-label="Close account menu"
-      (click)="closeAccount()"
-    ></button>
+    <button class="account-backdrop" aria-label="Close account menu" (click)="closeAccount()"></button>
     <div id="account-menu" class="account-menu">
-      <strong>{{ user()?.display_name }}</strong
-      ><span>Administrator</span>
-      <a class="btn" routerLink="/settings" (click)="closeAccount()"
+      <div class="account-menu__who">
+        <strong>{{ user()?.display_name || 'Admin' }}</strong><span>Administrator</span>
+      </div>
+      <a class="account-menu__item" routerLink="/settings" (click)="closeAccount()"
         ><app-icon name="settings" />Settings</a
       >
-      <button class="btn" (click)="logout()"><app-icon name="logout" /> Sign out</button>
+      <a class="account-menu__item" href="https://domdimabot.com" target="_blank" rel="noopener"
+        ><app-icon name="external" />Open Dima site<span class="sr-only"> (opens in new tab)</span></a
+      >
+      <button type="button" class="account-menu__item" (click)="logout()">
+        <app-icon name="logout" />Sign out
+      </button>
     </div>
   }
 </header>
-<aside class="sidebar">
-  <div class="sidebar-intro">
-    <span class="eyebrow">Your workspace</span
-    ><span class="sidebar-caption">Behind every great stream.</span>
-  </div>
-  <nav aria-label="Main navigation" class="sidebar-nav">
-    @for (item of navItems; track item.route) {
-      @if (item.icon === 'files') {
-        <span class="nav-group">Tools</span>
-      }
-      <a
-        [routerLink]="item.route"
-        [class.is-active]="isActive(item.route)"
-        [attr.aria-current]="isActive(item.route) ? 'page' : null"
-        class="nav-link"
-        ><app-icon [name]="item.icon" />{{ item.label }}<span class="nav-indicator"></span
-      ></a>
-    }
-  </nav>
-  <a class="site-link" href="https://domdimabot.com" target="_blank" rel="noopener"
-    >Open Dima site<app-icon name="arrow" /><span class="sr-only"> (opens in new tab)</span></a
-  >
-  <div class="sidebar-foot">
-    <app-icon name="shield" /><span>Admin access<br /><strong>Private workspace</strong></span>
-  </div>
-</aside>
 <nav class="bottom-nav" aria-label="Mobile navigation">
   @for (item of navItems; track item.route) {
     <a

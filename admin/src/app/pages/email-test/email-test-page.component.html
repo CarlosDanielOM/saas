@@ -1,251 +1,115 @@
-<div class="page email-test">
-  <section class="page-header">
-    <div>
-      <span class="eyebrow">Workspace tools / Email</span>
-      <h1>Email studio</h1>
-      <p class="email-test__subtitle">Check how your emails look and land.</p>
-    </div>
-  </section>
+<div class="lf email-test">
+  <div class="lf-main lf-main--narrow">
+    <header class="lf-head">
+      <h1 class="lf-title">Email studio</h1>
+      <p class="lf-sub">Send a real copy of any Dima email to check how it looks and that it lands.</p>
+    </header>
 
-  <div class="email-test__card panel">
-    <section class="email-test__form">
-      <div class="form-group">
-        <span class="form-label">Email Type</span>
-        <div class="email-test__email-types">
-          <div class="email-type-option">
-            <input
-              type="radio"
-              id="type-welcome"
-              name="emailType"
-              value="welcome"
-              [ngModel]="emailType()"
-              (ngModelChange)="emailType.set($event)"
-            />
-            <label for="type-welcome">
-              <svg
-                class="email-type-option__icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                />
-              </svg>
-              <span class="email-type-option__label">Welcome</span>
+    <form class="lf-tile em-form" (submit)="$event.preventDefault(); sendTestEmail()" novalidate>
+      <fieldset class="lf-step">
+        <legend class="lf-step__label"><span class="lf-step__num">1</span>Which email?</legend>
+        <div class="lf-choices em-types">
+          @for (type of emailTypes; track type.value) {
+            <label class="lf-choice">
+              <input type="radio" name="emailType" [value]="type.value" [checked]="emailType() === type.value" (change)="emailType.set(type.value)" />
+              <span class="lf-choice__icon"><app-icon [name]="type.icon" /></span>
+              <span class="lf-choice__body">
+                <span class="lf-choice__title">{{ type.label }}</span>
+                <span class="lf-choice__copy">{{ type.description }}</span>
+              </span>
             </label>
-          </div>
-
-          <div class="email-type-option">
-            <input
-              type="radio"
-              id="type-reminder"
-              name="emailType"
-              value="activation-reminder"
-              [ngModel]="emailType()"
-              (ngModelChange)="emailType.set($event)"
-            />
-            <label for="type-reminder">
-              <svg
-                class="email-type-option__icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-              <span class="email-type-option__label">Reminder</span>
-            </label>
-          </div>
-
-          <div class="email-type-option">
-            <input
-              type="radio"
-              id="type-summary"
-              name="emailType"
-              value="stream-summary"
-              [ngModel]="emailType()"
-              (ngModelChange)="emailType.set($event)"
-            />
-            <label for="type-summary">
-              <svg
-                class="email-type-option__icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <span class="email-type-option__label">Summary</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <span class="form-label">Language</span>
-        <div class="email-test__email-types email-test__email-types--2cols">
-          @for (lang of languages; track lang.value) {
-            <div class="email-type-option email-type-option--compact">
-              <input
-                type="radio"
-                id="lang-{{ lang.value }}"
-                name="language"
-                [value]="lang.value"
-                [ngModel]="language()"
-                (ngModelChange)="language.set($event)"
-              />
-              <label for="lang-{{ lang.value }}">
-                <span class="email-type-option__label">{{ lang.label }}</span>
-              </label>
-            </div>
           }
         </div>
-      </div>
+      </fieldset>
 
-      <div class="form-group">
-        <span class="form-label">Theme Mode</span>
-        <div class="email-test__email-types email-test__email-types--2cols">
-          @for (t of themes; track t.value) {
-            <div class="email-type-option email-type-option--compact">
-              <input
-                type="radio"
-                id="theme-{{ t.value }}"
-                name="theme"
-                [value]="t.value"
-                [ngModel]="theme()"
-                (ngModelChange)="theme.set($event)"
-              />
-              <label for="theme-{{ t.value }}">
-                <span class="email-type-option__label">{{ t.label }}</span>
-              </label>
+      <fieldset class="lf-step">
+        <legend class="lf-step__label"><span class="lf-step__num">2</span>How should it look?</legend>
+        <div class="em-looks">
+          <div class="lf-field">
+            <span class="lf-label" id="lang-label">Language</span>
+            <div class="lf-seg" role="radiogroup" aria-labelledby="lang-label">
+              @for (lang of languages; track lang.value) {
+                <label><input type="radio" name="language" [value]="lang.value" [checked]="language() === lang.value" (change)="language.set(lang.value)" /><span>{{ lang.label }}</span></label>
+              }
             </div>
+          </div>
+          <div class="lf-field">
+            <span class="lf-label" id="theme-label">Theme</span>
+            <div class="lf-seg" role="radiogroup" aria-labelledby="theme-label">
+              @for (t of themes; track t.value) {
+                <label><input type="radio" name="theme" [value]="t.value" [checked]="theme() === t.value" (change)="theme.set(t.value)" /><span><app-icon [name]="t.icon" />{{ t.label }}</span></label>
+              }
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="lf-step">
+        <label class="lf-step__label" for="recipient-email"><span class="lf-step__num">3</span>Who gets it?</label>
+        <div class="em-to">
+          <input
+            id="recipient-email"
+            type="email"
+            class="lf-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            inputmode="email"
+            aria-label="Recipient Email"
+            [value]="recipientEmail()"
+            (input)="recipientEmail.set($any($event.target).value)"
+            [attr.aria-invalid]="submitAttempted() && !!recipientError()"
+            aria-describedby="recipient-help"
+          />
+          @if (myEmail() && recipientEmail().trim() !== myEmail()) {
+            <button type="button" class="lf-btn lf-btn--sm" (click)="useMyEmail()"><app-icon name="user" />Use my email</button>
           }
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="recipient-email" class="form-label">Recipient Email</label>
-        <input
-          id="recipient-email"
-          type="email"
-          class="input"
-          placeholder="your@email.com"
-          [ngModel]="recipientEmail()"
-          (ngModelChange)="recipientEmail.set($event)"
-        />
-      </div>
-
-      <button class="button button--primary" (click)="sendTestEmail()" [disabled]="isLoading()">
-        @if (isLoading()) {
-          <svg class="button__icon animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          Sending...
+        @if (submitAttempted() && recipientError()) {
+          <p class="lf-error" role="alert">{{ recipientError() }}</p>
         } @else {
-          <svg class="button__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-            />
-          </svg>
-          Send Test Email
+          <p class="lf-hint" id="recipient-help">A real email is sent — only use an address you control.</p>
         }
-      </button>
-      <p class="email-note">A real email will be sent to the recipient above.</p>
-    </section>
+      </div>
+
+      <div class="em-send">
+        <button type="submit" class="lf-btn lf-btn--primary em-send__btn" [disabled]="isLoading()">
+          @if (isLoading()) {
+            <span class="lf-spin"></span>Sending…
+          } @else {
+            <app-icon name="send" />Send Test Email
+          }
+        </button>
+        <p class="lf-note em-send__what">
+          {{ language() === 'es' ? 'Spanish' : 'English' }}, {{ theme() }} theme{{ recipientEmail().trim() ? ' → ' + recipientEmail().trim() : '' }}
+        </p>
+      </div>
+    </form>
 
     @if (result(); as res) {
-      <div
-        role="status"
-        class="email-test__result"
-        [class.result--success]="res.success"
-        [class.result--error]="!res.success"
-      >
-        @if (res.success) {
-          <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        } @else {
-          <svg class="result__icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        }
-        <span>{{ res.message }}</span>
+      <div class="lf-status email-test__result" [class.lf-status--ok]="res.success" [class.lf-status--live]="!res.success" [attr.role]="res.success ? 'status' : 'alert'">
+        <app-icon [name]="res.success ? 'ok' : 'alert'" />
+        <div class="lf-status__body">
+          <p class="lf-status__title">{{ res.message }}</p>
+          @if (res.success && res.to) {
+            <p class="lf-status__text">Check {{ res.to }} in a minute — and the spam folder if it isn't there.</p>
+          }
+        </div>
       </div>
     }
 
-    <!-- Activation link hook for the new standardized pendingActionsQueue system -->
     @if (activationLink(); as link) {
-      <div class="email-test__activation-link">
-        <div class="activation-link__header">
-          <span class="activation-link__label">Activation link</span>
-          <button
-            type="button"
-            class="activation-link__clear"
-            (click)="clearActivationLink()"
-            aria-label="Clear activation link"
-          >
-            ×
-          </button>
+      <section class="lf-tile em-link" aria-labelledby="activation-title">
+        <div class="lf-tile__head">
+          <h2 class="lf-h2" id="activation-title"><app-icon name="key" />Activation link</h2>
+          <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" (click)="clearActivationLink()" aria-label="Clear activation link"><app-icon name="x" /></button>
         </div>
-        <p class="activation-link__hint">
-          Open this link to continue account activation on the public site.
-        </p>
-        <div class="activation-link__row">
-          <a [href]="link" target="_blank" rel="noopener" class="activation-link__url">{{
-            link
-          }}</a>
-          <button
-            type="button"
-            class="button button--secondary activation-link__copy"
-            (click)="copyActivationLink()"
-          >
-            @if (copyFeedback()) {
-              {{ copyFeedback() }}
-            } @else {
-              Copy
-            }
-          </button>
+        <p class="lf-note">The same link that's in the email. Opening it continues account activation on the public site.</p>
+        <a [href]="link" target="_blank" rel="noopener" class="activation-link__url mono">{{ link }}</a>
+        <div class="lf-head__actions">
+          <button type="button" class="lf-btn lf-btn--sm" (click)="copyActivationLink()"><app-icon name="copy" />{{ copyFeedback() || 'Copy' }}</button>
+          <a class="lf-btn lf-btn--sm" [href]="link" target="_blank" rel="noopener"><app-icon name="external" />Open<span class="sr-only"> (opens in new tab)</span></a>
         </div>
-      </div>
+      </section>
     }
   </div>
 </div>

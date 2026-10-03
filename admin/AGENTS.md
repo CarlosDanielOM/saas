@@ -19,9 +19,15 @@
 - All API calls go through the shared backend (`dimabot`).
 - Keep sensitive operations behind proper admin role checks.
 
+## Design system & UX
+
+- **Read the `live-first` skill before any admin UI work** (`.claude/skills/live-first/SKILL.md`, section "Admin site"). The admin uses the same Live First language as dimasite: light/dark + accent via `ThemeService`, tokens and shared `.lf-*` primitives in `src/styles.css`, page layout in component CSS.
+- UX first: every page leads with a plain-language answer to the operator's question and puts the next action beside it. Anything with a real side effect (emails, credit grants, EventSub tests) is confirmed with exactly what will happen.
+- Mobile is a first-class citizen equal to desktop: bottom tab bar, bottom-sheet dialogs, 44px targets; check 320/390 and 1280px in both themes (`ops/checks/admin-ui.mjs`).
+
 ## Styling
 
-Follow the hybrid styling policy defined in root `AGENTS.md`. Component-scoped `.css` files are encouraged for page-level layouts.
+Follow the hybrid styling policy defined in root `AGENTS.md`: shared admin primitives in `src/styles.css`, page-level layouts in component-scoped `.css` files.
 
 ## Responsive Design Priority
 

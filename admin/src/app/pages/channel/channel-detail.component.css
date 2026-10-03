@@ -1,0 +1,72 @@
+.ch-title {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.ch-issues {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.ch-issues strong {
+  color: var(--fg);
+}
+.ch-issues li.is-live strong {
+  color: var(--live);
+}
+.ch-credits {
+  display: grid;
+  gap: 0.6rem;
+}
+.ch-credits .lf-tile__head {
+  margin-bottom: 0.15rem;
+}
+.ch-credits__line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+.ch-credits__line strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.ch-credits__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.2rem;
+}
+.ch-icon--muted {
+  background: var(--btn);
+  color: var(--muted);
+}
+.ch-chev-space {
+  width: 1.1rem;
+}
+.ch-help {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+.ch-account-title {
+  margin-bottom: 0.4rem;
+}
+.grant-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.grant-presets .lf-chip {
+  min-height: 2.75rem;
+  min-width: 5.5rem;
+  justify-content: center;
+  font-size: 0.9rem;
+}

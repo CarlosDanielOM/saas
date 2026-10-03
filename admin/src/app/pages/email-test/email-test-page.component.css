@@ -1,148 +1,82 @@
-.email-test__card {
-  max-width: 760px;
-  padding: 22px 16px;
-}
-.email-test__form {
+.em-form {
   display: grid;
-  gap: 26px;
+  gap: 1.35rem;
 }
-.email-test__email-types {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.email-test__email-types--2cols {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.email-type-option {
-  position: relative;
+fieldset.lf-step {
+  margin: 0;
+  padding: 0;
+  border: 0;
   min-width: 0;
 }
-.email-type-option input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
+fieldset.lf-step > legend {
+  margin-bottom: 0.6rem;
+  padding: 0;
 }
-.email-type-option label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 4px;
-  min-height: 48px;
-  background: var(--canvas);
-  border: 1px solid var(--control-border);
-  border-radius: 12px;
-  cursor: pointer;
+.em-looks {
+  display: grid;
+  gap: 0.85rem;
 }
-.email-type-option--compact label {
-  padding: 12px 4px;
+.em-looks .lf-seg {
+  justify-self: start;
 }
-.email-type-option input:checked + label {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+.em-to {
+  display: grid;
+  gap: 0.5rem;
 }
-.email-type-option input:focus-visible + label {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+.em-send {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
 }
-.email-type-option__icon {
-  width: 22px;
-  height: 22px;
+.em-send__btn {
+  width: 100%;
 }
-.email-type-option__label {
-  font-size: 0.75rem;
+.em-send__what {
+  text-align: center;
+  overflow-wrap: anywhere;
 }
-.button__icon {
-  width: 18px;
-  height: 18px;
+.em-link {
+  display: grid;
+  gap: 0.6rem;
 }
-.email-test__result {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 10px;
-  margin-top: 20px;
-  font-size: 0.85rem;
-}
-.result--success {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.result--error {
-  background: #382423;
-  color: var(--danger);
-}
-.result__icon {
-  width: 20px;
-  height: 20px;
-}
-.email-test__activation-link {
-  margin-top: 20px;
-  padding: 18px;
-  background: var(--canvas);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.activation-link__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.activation-link__label {
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-.activation-link__clear {
-  width: 44px;
-  height: 44px;
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  font-size: 22px;
-}
-.activation-link__hint {
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.activation-link__row {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.em-link .lf-tile__head {
+  margin-bottom: 0;
 }
 .activation-link__url {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--tile-2);
+  border: 1px solid var(--line);
   color: var(--accent);
+  font-size: 0.8rem;
   overflow-wrap: anywhere;
-  font-size: 0.8rem;
 }
-.email-note {
-  color: var(--muted);
-  font-size: 0.8rem;
-  margin: -14px 0 0;
-  text-align: center;
-}
-@media (min-width: 768px) {
-  .email-test__card {
-    padding: 32px;
+@media (min-width: 640px) {
+  .em-types {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .email-test__form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px 24px;
+  .em-types .lf-choice {
+    flex-direction: column;
   }
-  .form-group:first-child,
-  .form-group:has(#recipient-email),
-  .email-test__form > .button,
-  .email-note {
-    grid-column: 1 / -1;
+  .em-looks {
+    grid-template-columns: auto auto;
+    justify-content: start;
+    gap: 1.5rem;
   }
-  .activation-link__row {
-    flex-direction: row;
+  .em-to {
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
+  }
+  .em-send {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+  }
+  .em-send__btn {
+    width: auto;
+  }
+  .em-send__what {
+    text-align: left;
   }
 }

@@ -10,6 +10,7 @@ import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { ThemeService } from '../../services/theme.service';
 import { IconComponent } from '../icon/icon.component';
 
 @Component({
@@ -22,6 +23,7 @@ import { IconComponent } from '../icon/icon.component';
 export class NavbarComponent {
   private readonly router = inject(Router);
   private readonly sessionAuth = inject(SessionAuthService);
+  readonly theme = inject(ThemeService);
   readonly user = computed(() => this.sessionAuth.getSessionSnapshot()?.twitchUser);
   readonly accountOpen = signal(false);
   private readonly currentPath = toSignal(

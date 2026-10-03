@@ -11,6 +11,7 @@ import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { SessionAuthService } from '../../services/session-auth.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 type LoginStage = 'idle' | 'validating' | 'syncing' | 'redirecting' | 'error';
 
@@ -19,7 +20,7 @@ type LoginStage = 'idle' | 'validating' | 'syncing' | 'redirecting' | 'error';
   templateUrl: './login-page.component.html',
   styleUrl: '../auth-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [],
+  imports: [IconComponent],
 })
 export class LoginPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);

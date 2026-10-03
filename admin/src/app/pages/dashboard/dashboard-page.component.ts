@@ -8,11 +8,18 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { environment } from '../../../environments/environment';
 
 import { SessionAuthService } from '../../services/session-auth.service';
+import {
+  AdminApiService,
+  type AdminUserRow,
+  type AdminUsersSummary,
+} from '../../services/admin-api.service';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { AvatarComponent } from '../../shared/avatar/avatar.component';
 
 interface SiteAnalyticsSnapshot {
   registeredUsers: number;
@@ -28,10 +35,11 @@ interface SiteAnalyticsSnapshot {
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SkeletonComponent, RouterLink, IconComponent],
+  imports: [SkeletonComponent, RouterLink, IconComponent, AvatarComponent],
 })
 export class DashboardPageComponent implements OnInit, OnDestroy {
   private readonly sessionAuth = inject(SessionAuthService);
+  private readonly adminApi = inject(AdminApiService);
 
   readonly user = computed(() => this.sessionAuth.getSessionSnapshot()?.twitchUser);
   readonly appUser = computed(() => this.sessionAuth.getSessionSnapshot()?.appUser);
@@ -51,57 +59,91 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   readonly isInitialLoading = signal(true);
   readonly hasSnapshot = signal(false);
   readonly snapshotError = signal(false);
-  readonly quickLinks = [
-    {
-      route: '/users',
-      icon: 'users',
-      label: 'Manage users',
-      description: 'Accounts, permissions & channel controls',
-      action: 'Open directory',
-    },
+  // Channel health comes from the admin directory (top live channels + totals).
+  readonly health = signal<AdminUsersSummary | null>(null);
+  readonly liveRows = signal<AdminUserRow[]>([]);
+  readonly healthLoading = signal(true);
+  readonly healthError = signal(false);
+  private healthRequest?: Subscription;
+
+  readonly tools = [
     {
       route: '/email-test',
       icon: 'mail',
       label: 'Test an email',
-      description: 'Check templates, languages & delivery',
-      action: 'Open email tools',
+      description: 'Send yourself any email to check how it looks.',
     },
     {
       route: '/read-tool',
       icon: 'files',
-      label: 'Inspect a file',
-      description: 'Read server files from your workspace',
-      action: 'Open file reader',
+      label: 'Read a server file',
+      description: 'Open a file on the server without SSH.',
     },
   ];
   readonly metrics = computed(() => [
-    {
-      label: 'Registered users',
-      value: this.analytics().registeredUsers,
-      icon: 'users',
-      note: 'Across the platform',
-    },
+    { label: 'Registered users', value: this.analytics().registeredUsers, note: 'Signed up' },
     {
       label: 'Authorized accounts',
       value: this.analytics().authorizedAccounts,
-      icon: 'shield',
-      note: 'Connected to Dima',
+      note: 'Connected to Twitch',
     },
-    {
-      label: 'Messages processed',
-      value: this.analytics().totalMessages,
-      icon: 'message',
-      note: 'Platform total',
-    },
-    {
-      label: 'Commands executed',
-      value: this.analytics().totalCommands,
-      icon: 'command',
-      note: 'Platform total',
-    },
+    { label: 'Messages processed', value: this.analytics().totalMessages, note: 'All time' },
+    { label: 'Commands executed', value: this.analytics().totalCommands, note: 'All time' },
   ]);
+  /** Problems an admin can act on, with where to go to fix them. */
+  readonly attention = computed(() => {
+    const s = this.health();
+    if (!s) return [];
+    return [
+      {
+        key: 'bots',
+        count: s.inactiveBots,
+        label: s.inactiveBots === 1 ? 'Bot not active' : 'Bots not active',
+        meta: "They signed up but the bot isn't on in their channel. A reminder email can help.",
+        icon: 'power',
+        query: { sort: 'actived', order: 'asc' },
+      },
+      {
+        key: 'permissions',
+        count: s.permissionsNeedUpdate,
+        label: 'Twitch access out of date',
+        meta: 'They need to sign in again so the bot gets the Twitch permissions it needs.',
+        icon: 'key',
+        query: { sort: 'has_permissions', order: 'asc' },
+      },
+    ];
+  });
+  readonly attentionTotal = computed(() =>
+    this.attention().reduce((sum, item) => sum + item.count, 0),
+  );
+  readonly firstName = computed(() => this.user()?.display_name || 'there');
+
   refreshAnalytics(): void {
     void this.fetchAnalyticsSnapshot();
+  }
+
+  refreshAll(): void {
+    this.refreshAnalytics();
+    this.loadHealth();
+  }
+
+  loadHealth(): void {
+    this.healthRequest?.unsubscribe();
+    this.healthLoading.set(true);
+    this.healthError.set(false);
+    this.healthRequest = this.adminApi
+      .getUsers({ page: 1, limit: 6, sortBy: 'liveViewers', sortOrder: 'desc' })
+      .subscribe({
+        next: (response) => {
+          this.health.set(response.data.summary);
+          this.liveRows.set(response.data.rows.filter((row) => row.isLive));
+          this.healthLoading.set(false);
+        },
+        error: () => {
+          this.healthError.set(true);
+          this.healthLoading.set(false);
+        },
+      });
   }
 
   private eventSource: EventSource | null = null;
@@ -111,9 +153,11 @@ export class DashboardPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.fetchAnalyticsSnapshot();
     this.connectAnalyticsStream();
+    this.loadHealth();
   }
 
   ngOnDestroy(): void {
+    this.healthRequest?.unsubscribe();
     this.eventSource?.close();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
