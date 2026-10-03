@@ -1,273 +1,330 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('clipRecommendations.title')">
-      <article class="lf-tile lf-tile--intro">
-        <a class="lf-back" [routerLink]="['/', streamer(), 'modules']">
-          <app-lf-icon name="back"></app-lf-icon> {{ t('clipRecommendations.backToModules') }}
-        </a>
-        <p class="lf-kicker">{{ t('clipRecommendations.heroBadge') }}</p>
-        <h1 class="lf-title">
-          {{ t('clipRecommendations.title') }}
-          <span>{{ planTierLabel() }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('clipRecommendations.subtitle') }}</p>
-
-        <div class="lf-actions">
-          <button type="button" class="lf-btn" (click)="loadAll()" [disabled]="loading()">
-            {{ t('clipRecommendations.actions.refresh') }}
-          </button>
-          <button type="button" class="lf-btn" (click)="loadVods()" [disabled]="loadingVods()">
-            {{ t('clipRecommendations.actions.refreshVods') }}
-          </button>
-        </div>
-
-        <p class="lf-feed">
-          {{ streamer() || '—' }}
-          · {{ approvedCandidates().length }} {{ t('clipRecommendations.pricing.ready') }}
-        </p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight" [class.lf-tile--gold]="planTier() === 'pro'">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip lf-chip--alpha">{{ t('clipRecommendations.alphaBadge') }}</span>
-          <span class="lf-spotlight__count">{{ t('clipRecommendations.auto.kicker') }}</span>
-        </div>
-
-        <div class="lf-stats-strip">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clipRecommendations.pricing.base') }}</span>
-            <strong class="lf-stats-strip__value">2,750</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clipRecommendations.pricing.extra') }}</span>
-            <strong class="lf-stats-strip__value">50</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('clipRecommendations.pricing.ready') }}</span>
-            <strong class="lf-stats-strip__value">{{ approvedCandidates().length }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    @if (!canManage()) {
-      <div class="lf-banner" role="status">{{ t('permissions.viewOnly') }}</div>
-    }
-
-    <section
-      class="lf-tile lf-auto"
-      [class.lf-auto--locked]="!canAutoAnalyze()"
-      [attr.aria-label]="t('clipRecommendations.auto.title')"
-    >
-      <div class="lf-auto__body">
-        <p class="lf-kicker">{{ t('clipRecommendations.auto.kicker') }}</p>
-        <h2 class="lf-h2">{{ t('clipRecommendations.auto.title') }}</h2>
-        <p class="lf-copy lf-copy--tight">
-          {{ canAutoAnalyze() ? t('clipRecommendations.auto.description') : t('clipRecommendations.auto.proOnly') }}
-        </p>
-      </div>
-      <label class="lf-switch" [class.lf-switch--locked]="!canAutoAnalyze()">
-        <input
-          type="checkbox"
-          [checked]="autoAnalyzeEnabled()"
-          (change)="toggleAutoAnalyze()"
-          [disabled]="!canManage() || !canAutoAnalyze() || savingConfig()"
-          [attr.aria-label]="t('clipRecommendations.auto.title')"
-        />
-        <span class="lf-switch__track" aria-hidden="true"></span>
-      </label>
-    </section>
-
-    <section class="lf-section" [attr.aria-label]="t('clipRecommendations.vods.title')">
-      <div class="lf-section__head">
-        <div>
-          <p class="lf-kicker">{{ t('clipRecommendations.vods.title') }}</p>
-          <h2 class="lf-h2">{{ t('clipRecommendations.vods.title') }}</h2>
-        </div>
-        <button
-          type="button"
-          class="lf-btn lf-btn--compact"
-          (click)="loadVods()"
-          [disabled]="loadingVods()"
-        >
-          {{ t('clipRecommendations.actions.refreshVods') }}
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="modulesPath()"><app-lf-icon name="back"></app-lf-icon> {{ t('clipRecommendations.backToModules') }}</a>
+      <h1 class="lf-title">{{ t('clipRecommendations.title') }}</h1>
+      <p class="lf-copy">{{ t('clipRecommendations.v2.subtitle') }}</p>
+      <div class="lf-head__chips">
+        @if (toReviewCount()) {
+          <span class="lf-chip lf-chip--warn"><span class="lf-dot" aria-hidden="true"></span> {{ t('clipRecommendations.v2.reviewChip', { count: toReviewCount() }) }}</span>
+        }
+        @if (keptCount()) {
+          <span class="lf-chip lf-chip--ok">{{ t('clipRecommendations.v2.keptChip', { count: keptCount() }) }}</span>
+        }
+        @if (hasProcessingJob()) {
+          <span class="lf-chip lf-chip--accent"><span class="lf-dot lf-dot--pulse" aria-hidden="true"></span> {{ t('clipRecommendations.v2.analyzingChip') }}</span>
+        }
+        <span class="lf-chip" [class.lf-chip--ok]="autoAnalyzeEnabled()">
+          {{ autoAnalyzeEnabled() ? t('clipRecommendations.v2.autoChipOn') : t('clipRecommendations.v2.autoChipOff') }}
+        </span>
+        @if (creditBalance() !== null) {
+          <a class="lf-chip lf-chip--link" [routerLink]="creditsPath()">{{ t('clipRecommendations.v2.balanceChip', { credits: formatNumber(creditBalance()!) }) }}</a>
+        }
+        <span class="lf-chip lf-chip--muted">{{ t('clipRecommendations.alphaBadge') }}</span>
+        @if (!canManage() && channelID()) {
+          <span class="lf-chip"><app-lf-icon name="lock" [size]="12"></app-lf-icon> {{ t('clipRecommendations.v2.viewOnly') }}</span>
+        }
+        <button type="button" class="lf-chip lf-chip--link" (click)="refresh()" [disabled]="loading() || loadingVods()">
+          <app-lf-icon name="refresh" [size]="12"></app-lf-icon> {{ t('clipRecommendations.actions.refresh') }}
         </button>
       </div>
+    </header>
 
-      @if (loadingVods() && !hasVods() && !hasRecommendations()) {
-        <div class="lf-tile lf-empty">{{ t('clipRecommendations.states.loadingVods') }}</div>
-      } @else if (!hasVods()) {
-        <div class="lf-tile lf-empty" role="status">
-          <h3 class="lf-empty__title">{{ t('clipRecommendations.states.noVodsTitle') }}</h3>
-          <p class="lf-empty__copy">{{ t('clipRecommendations.states.noVodsMessage') }}</p>
-        </div>
-      } @else {
-        <div class="lf-bento lf-bento--vods">
-          @for (vod of vods(); track trackVod($index, vod)) {
-            <article class="lf-tile lf-vod" [class.lf-vod--queued]="isQueued(vod)">
-              <div class="lf-vod__thumb">
-                @if (vod.thumbnailUrl) {
-                  <img [src]="vod.thumbnailUrl" [alt]="vod.title" loading="lazy" width="320" height="180" />
-                } @else {
-                  <div class="lf-vod__thumb-fallback" aria-hidden="true"></div>
-                }
-                <span class="lf-vod__duration">{{ formatDurationLabel(vod.duration) }}</span>
-              </div>
-              <div class="lf-vod__body">
-                <h3 class="lf-vod__title" [title]="vod.title">
-                  {{ vod.title || t('clipRecommendations.states.untitled') }}
-                </h3>
-                <p class="lf-vod__meta">
-                  {{ vod.createdAt | date: 'mediumDate' }}
-                  · {{ formatDurationLabel(vod.duration) }}
-                </p>
-                <p class="lf-vod__cost">
-                  {{
-                    t('clipRecommendations.vods.estimatedCost', {
-                      credits: calculateEstimatedCredits(vod.durationMinutes)
-                    })
-                  }}
-                </p>
-                @if (canManage()) {
-                <button
-                  type="button"
-                  class="lf-btn lf-btn--primary lf-btn--block"
-                  (click)="queueAnalysis(vod)"
-                  [disabled]="isQueued(vod)"
-                >
-                  @if (isQueued(vod)) {
-                    {{ t('clipRecommendations.actions.queueing') }}
-                  } @else {
-                    {{ t('clipRecommendations.actions.analyze') }}
-                  }
-                </button>
-                }
-              </div>
-            </article>
-          }
-        </div>
-      }
-    </section>
+    <div class="lf-panels">
+      <div class="lf-col">
+        <section class="lf-tile lf-card" aria-labelledby="clip-moments-title">
+          <div class="lf-card__head">
+            <h2 class="lf-h2" id="clip-moments-title">{{ t('clipRecommendations.v2.momentsTitle') }}</h2>
+            <p class="lf-note">{{ t('clipRecommendations.v2.momentsHint') }}</p>
+          </div>
 
-    <section class="lf-section" [attr.aria-label]="t('clipRecommendations.past.title')">
-      <div class="lf-section__head">
-        <div>
-          <p class="lf-kicker">{{ t('clipRecommendations.past.title') }}</p>
-          <h2 class="lf-h2">
-            {{ t('clipRecommendations.past.title') }}
-            @if (total() > 0) {
-              <span class="lf-count">{{ total() }}</span>
-            }
-          </h2>
-        </div>
-      </div>
-
-      @if (loading() && !hasRecommendations()) {
-        <div class="lf-tile lf-empty">{{ t('clipRecommendations.states.loading') }}</div>
-      } @else if (!hasRecommendations()) {
-        <div class="lf-tile lf-empty" role="status">
-          <h3 class="lf-empty__title">{{ t('clipRecommendations.states.emptyTitle') }}</h3>
-          <p class="lf-empty__copy">{{ t('clipRecommendations.states.emptyMessage') }}</p>
-        </div>
-      } @else {
-        <div class="lf-jobs">
-          @for (recommendation of recommendations(); track trackRecommendation($index, recommendation)) {
-            <article class="lf-tile lf-job">
-              <header class="lf-job__head">
-                <div>
-                  <span
-                    class="lf-chip lf-chip--status"
-                    [class.lf-chip--ok]="recommendation.status === 'completed'"
-                    [class.lf-chip--warn]="recommendation.status === 'processing' || recommendation.status === 'pending'"
-                    [class.lf-chip--danger]="recommendation.status === 'failed'"
-                  >
-                    {{ t('clipRecommendations.status.' + recommendation.status) }}
-                  </span>
-                  <h3 class="lf-job__title">{{ recommendation.created_at | date: 'mediumDate' }}</h3>
-                </div>
-                <div class="lf-job__meta">
-                  <span class="lf-chip lf-chip--soft">{{ recommendation.vodDurationMinutes }}m</span>
-                  <span class="lf-chip lf-chip--soft">
-                    {{ recommendation.costCredits | number }} {{ t('clipRecommendations.credits') }}
-                  </span>
-                  <span class="lf-chip lf-chip--soft">
-                    {{ recommendation.approvedCount }}/{{ recommendation.candidateCount }}
-                    {{ t('clipRecommendations.approved') }}
-                  </span>
-                </div>
-              </header>
-
-              @if (recommendation.status === 'failed') {
-                <p class="lf-error">
-                  {{ recommendation.errorMessage || t('clipRecommendations.errors.genericJob') }}
-                </p>
-              }
-
-              <div class="lf-candidates">
-                @for (candidate of recommendation.candidates; track trackCandidate($index, candidate)) {
-                  <article
-                    class="lf-candidate"
-                    [class.lf-candidate--rejected]="!candidate.videoApproved"
-                  >
-                    @if (candidate.previewUrl) {
-                      <video
-                        class="lf-candidate__video"
-                        controls
-                        preload="metadata"
-                        [src]="candidate.previewUrl"
-                      ></video>
-                    } @else {
-                      <div class="lf-candidate__placeholder">
-                        {{
-                          candidate.videoApproved
-                            ? t('clipRecommendations.states.previewPending')
-                            : t('clipRecommendations.states.notApproved')
-                        }}
-                      </div>
-                    }
-
-                    <div class="lf-candidate__body">
-                      <div class="lf-candidate__time">
-                        <span>
-                          {{ formatTimestamp(candidate.startSeconds) }} –
-                          {{ formatTimestamp(candidate.endSeconds) }}
-                        </span>
-                        <span class="lf-candidate__score">
-                          {{ candidate.audioConfidence | number: '1.0-2' }}
-                        </span>
-                      </div>
-                      <p class="lf-candidate__reason">{{ candidate.reason }}</p>
-                      @if (candidate.videoWhy) {
-                        <p class="lf-candidate__why">{{ candidate.videoWhy }}</p>
+          @if (loading() && recommendations().length === 0) {
+            <p class="lf-note" role="status">{{ t('clipRecommendations.states.loading') }}</p>
+          } @else if (loadError() && recommendations().length === 0) {
+            <div class="lf-banner" role="alert">
+              <p class="lf-banner__title">{{ t('clipRecommendations.errors.loadMessage') }}</p>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="loadAll(false)">{{ t('common.retry') }}</button>
+            </div>
+          } @else if (recommendations().length === 0) {
+            <div class="lf-empty-state" role="status">
+              <strong>{{ t('clipRecommendations.states.emptyTitle') }}</strong>
+              <span>{{ t('clipRecommendations.v2.emptyCopy') }}</span>
+            </div>
+          } @else {
+            <div class="lf-analyses">
+              @for (item of recommendations(); track item._id; let first = $first) {
+                <details class="lf-analysis" [attr.data-status]="item.status" [open]="first || reviewable(item).length > 0 || isRunning(item)">
+                  <summary class="lf-analysis__summary">
+                    <span class="lf-analysis__thumb" aria-hidden="true">
+                      @if (analysisThumb(item)) {
+                        <img [src]="analysisThumb(item)" alt="" loading="lazy" width="320" height="180" />
+                      } @else {
+                        <app-lf-icon name="video" [size]="18"></app-lf-icon>
                       }
-                      @if (canManage()) {
-                      <div class="lf-candidate__actions">
-                        <button
-                          type="button"
-                          class="lf-btn lf-btn--primary lf-btn--compact"
-                          [disabled]="!candidate.videoApproved || candidate.status === 'confirmed'"
-                          (click)="setCandidateStatus(recommendation._id, candidate._id, 'confirm')"
-                        >
-                          {{ t('clipRecommendations.actions.confirm') }}
-                        </button>
-                        <button
-                          type="button"
-                          class="lf-btn lf-btn--danger lf-btn--compact"
-                          [disabled]="candidate.status === 'denied'"
-                          (click)="setCandidateStatus(recommendation._id, candidate._id, 'deny')"
-                        >
-                          {{ t('clipRecommendations.actions.deny') }}
-                        </button>
-                      </div>
+                    </span>
+                    <span class="lf-analysis__copy">
+                      <strong class="lf-analysis__title">{{ analysisTitle(item) }}</strong>
+                      <span class="lf-analysis__meta">
+                        {{ formatDate(item.created_at) }} · {{ formatMinutes(item.vodDurationMinutes) }}
+                        @if (analysisCostLabel(item)) { · {{ analysisCostLabel(item) }} }
+                      </span>
+                      <span class="lf-analysis__outcome">
+                        @if (isRunning(item)) { <span class="lf-dot lf-dot--pulse" aria-hidden="true"></span> }
+                        {{ analysisOutcome(item) }}
+                      </span>
+                    </span>
+                    <app-lf-icon class="lf-analysis__caret" name="forward" [size]="16"></app-lf-icon>
+                  </summary>
+
+                  @if (item.status === 'failed') {
+                    <div class="lf-analysis__fail">
+                      <span>{{ t('clipRecommendations.v2.noCharge') }}</span>
+                      @if (failedForCredits(item)) {
+                        <a class="lf-btn lf-btn--compact" [routerLink]="creditsPath()">{{ t('clipRecommendations.v2.getCredits') }}</a>
                       }
                     </div>
-                  </article>
-                }
-              </div>
-            </article>
+                  } @else if (isRunning(item)) {
+                    <p class="lf-note lf-analysis__wait">{{ t('clipRecommendations.v2.runningHint') }}</p>
+                  } @else {
+                    @if (shownCandidates(item).length) {
+                      <ul class="lf-moments">
+                        @for (candidate of shownCandidates(item); track candidate._id) {
+                          <li class="lf-moment" [attr.data-state]="candidateState(candidate)">
+                            <button
+                              type="button"
+                              class="lf-moment__thumb"
+                              [disabled]="!candidate.previewUrl"
+                              [attr.aria-label]="t('clipRecommendations.v2.playAria', { time: formatTimestamp(candidate.startSeconds) })"
+                              (click)="openPreview(item, candidate)"
+                            >
+                              @if (candidate.previewUrl) {
+                                <video [appLazyVideoFrame]="candidate.previewUrl"></video>
+                                <span class="lf-moment__play" aria-hidden="true"><app-lf-icon name="preview" [size]="16"></app-lf-icon></span>
+                              } @else {
+                                <app-lf-icon name="video" [size]="18"></app-lf-icon>
+                              }
+                              <span class="lf-moment__len">{{ clipLength(candidate) }}s</span>
+                            </button>
+                            <div class="lf-moment__body">
+                              <div class="lf-moment__top">
+                                <strong class="lf-moment__time">{{ formatTimestamp(candidate.startSeconds) }} – {{ formatTimestamp(candidate.endSeconds) }}</strong>
+                                <span class="lf-moment__state">{{ t('clipRecommendations.v2.state.' + candidateState(candidate)) }}</span>
+                              </div>
+                              <p class="lf-moment__reason">{{ candidate.reason }}</p>
+                              @if (candidate.videoWhy) {
+                                <p class="lf-moment__why">{{ candidate.videoWhy }}</p>
+                              }
+                            </div>
+                            <div class="lf-moment__actions">
+                                @if (canManage() && candidate.videoApproved) {
+                                  @if (candidate.status !== 'confirmed') {
+                                    <button type="button" class="lf-btn lf-btn--primary lf-btn--compact" [disabled]="isPending(candidate)" (click)="setCandidateStatus(item, candidate, 'confirm')">
+                                      <app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('clipRecommendations.v2.keep') }}
+                                    </button>
+                                  }
+                                  @if (candidate.status !== 'denied') {
+                                    <button type="button" class="lf-btn lf-btn--compact" [disabled]="isPending(candidate)" (click)="setCandidateStatus(item, candidate, 'deny')">
+                                      {{ t('clipRecommendations.v2.skip') }}
+                                    </button>
+                                  }
+                                }
+                                @if (vodLink(item, candidate)) {
+                                  <a class="lf-btn lf-btn--compact lf-btn--ghost" [href]="vodLink(item, candidate)" target="_blank" rel="noopener">
+                                    {{ t('clipRecommendations.v2.openVod') }}
+                                    <span class="visually-hidden">{{ t('clipRecommendations.v2.openVodAria', { time: formatTimestamp(candidate.startSeconds) }) }}</span>
+                                  </a>
+                                }
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    }
+                    @if (rejectedCount(item)) {
+                      <button type="button" class="lf-link-btn" [attr.aria-expanded]="showRejected().has(item._id)" (click)="toggleRejected(item._id)">
+                        {{
+                          showRejected().has(item._id)
+                            ? t('clipRecommendations.v2.hideRejected')
+                            : t('clipRecommendations.v2.showRejected', { count: rejectedCount(item) })
+                        }}
+                      </button>
+                    }
+                  }
+                </details>
+              }
+            </div>
           }
-        </div>
-      }
-    </section>
+        </section>
+      </div>
+
+      <div class="lf-col">
+        <section class="lf-tile lf-card" aria-labelledby="clip-vods-title">
+          <div class="lf-card__head">
+            <h2 class="lf-h2" id="clip-vods-title">{{ t('clipRecommendations.v2.vodsTitle') }}</h2>
+            <p class="lf-note">{{ t('clipRecommendations.v2.vodsHint') }}</p>
+          </div>
+
+          @if (loadingVods() && vods().length === 0) {
+            <p class="lf-note" role="status">{{ t('clipRecommendations.states.loadingVods') }}</p>
+          } @else if (vods().length === 0) {
+            <div class="lf-empty-state" role="status">
+              <strong>{{ t('clipRecommendations.states.noVodsTitle') }}</strong>
+              <span>{{ t('clipRecommendations.v2.noVodsCopy') }}</span>
+            </div>
+          } @else {
+            <ul class="lf-vods">
+              @for (vod of vods(); track vod.id) {
+                <li class="lf-vod">
+                  <span class="lf-vod__thumb" aria-hidden="true">
+                    @if (vod.thumbnailUrl) {
+                      <img [src]="thumb(vod.thumbnailUrl)" alt="" loading="lazy" width="320" height="180" />
+                    } @else {
+                      <app-lf-icon name="video" [size]="18"></app-lf-icon>
+                    }
+                    <span class="lf-moment__len">{{ formatDuration(vod.duration) }}</span>
+                  </span>
+                  <div class="lf-vod__body">
+                    <strong class="lf-vod__title" [title]="vod.title">{{ vod.title || t('clipRecommendations.states.untitled') }}</strong>
+                    <span class="lf-vod__meta">
+                      {{ formatDate(vod.createdAt) }} · {{ t('clipRecommendations.v2.costAbout', { credits: formatNumber(estimate(vod.durationMinutes)) }) }}
+                    </span>
+                    @if (vodState(vod) === 'done') {
+                      <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('clipRecommendations.v2.analyzed') }}</span>
+                    } @else if (vodState(vod) === 'running') {
+                      <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('clipRecommendations.v2.analyzing') }}</span>
+                    } @else if (!canAfford(vod)) {
+                      <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('clipRecommendations.v2.notEnough') }}</span>
+                    }
+                  </div>
+                  @if (canManage() && vodState(vod) !== 'running') {
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--compact"
+                      [class.lf-btn--primary]="vodState(vod) === 'new'"
+                      [disabled]="queueingVodId() !== null"
+                      [attr.aria-label]="(vodState(vod) === 'done' ? t('clipRecommendations.v2.analyzeAgain') : t('clipRecommendations.v2.findClips')) + ': ' + (vod.title || t('clipRecommendations.states.untitled'))"
+                      (click)="askAnalyze(vod)"
+                    >
+                      {{ queueingVodId() === vod.id ? t('clipRecommendations.actions.queueing') : vodState(vod) === 'done' ? t('clipRecommendations.v2.analyzeAgain') : t('clipRecommendations.v2.findClips') }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="lf-tile lf-card" aria-labelledby="clip-auto-title">
+          <div class="lf-toggle-row">
+            <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="zap" [size]="18"></app-lf-icon></span>
+            <span class="lf-toggle-row__copy">
+              <span class="lf-toggle-row__title" id="clip-auto-title">
+                {{ t('clipRecommendations.v2.autoTitle') }}
+                @if (!canAutoAnalyze()) { <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('navbar.planPro') }}</span> }
+              </span>
+              <span class="lf-toggle-row__hint">
+                {{ canAutoAnalyze() ? t('clipRecommendations.v2.autoHint') : t('clipRecommendations.v2.autoProOnly') }}
+              </span>
+            </span>
+            @if (canAutoAnalyze()) {
+              <label class="lf-switch">
+                <input
+                  type="checkbox"
+                  [checked]="autoAnalyzeEnabled()"
+                  [disabled]="!canManage() || savingConfig()"
+                  [attr.aria-label]="t('clipRecommendations.v2.autoTitle')"
+                  (change)="toggleAutoAnalyze()"
+                />
+                <span class="lf-switch__track" aria-hidden="true"></span>
+              </label>
+            }
+          </div>
+        </section>
+
+        <section class="lf-tile lf-card" aria-labelledby="clip-how-title">
+          <h2 class="lf-h2" id="clip-how-title">{{ t('clipRecommendations.v2.howTitle') }}</h2>
+          <dl class="lf-help">
+            <div>
+              <dt><app-lf-icon name="search" [size]="14"></app-lf-icon> {{ t('clipRecommendations.v2.how1Title') }}</dt>
+              <dd>{{ t('clipRecommendations.v2.how1Copy') }}</dd>
+            </div>
+            <div>
+              <dt><app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('clipRecommendations.v2.how2Title') }}</dt>
+              <dd>{{ t('clipRecommendations.v2.how2Copy') }}</dd>
+            </div>
+            <div>
+              <dt><app-lf-icon name="bits" [size]="14"></app-lf-icon> {{ t('clipRecommendations.v2.how3Title') }}</dt>
+              <dd>
+                {{
+                  t('clipRecommendations.v2.how3Copy', {
+                    base: formatNumber(pricing().baseCredits),
+                    minutes: pricing().baseMinutes,
+                    extra: pricing().extraCreditsPerMinute
+                  })
+                }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+    </div>
   </main>
 </div>
+
+@if (confirmingVod(); as vod) {
+  <div class="lf-modal-overlay" (click)="confirmingVod.set(null)">
+    <section #confirmDialog class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="clip-confirm-title" aria-describedby="clip-confirm-desc" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="clip-confirm-title">{{ t('clipRecommendations.v2.confirmTitle') }}</h2>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-quote">{{ vod.title || t('clipRecommendations.states.untitled') }} · {{ formatDuration(vod.duration) }}</p>
+        <div id="clip-confirm-desc" class="lf-confirm">
+          <p class="lf-confirm__cost">{{ t('clipRecommendations.v2.confirmCost', { credits: formatNumber(estimate(vod.durationMinutes)) }) }}</p>
+          <p class="lf-copy">{{ t('clipRecommendations.v2.confirmCopy') }}</p>
+          @if (creditBalance() !== null) {
+            @if (canAfford(vod)) {
+              <p class="lf-note">{{ t('clipRecommendations.v2.confirmBalance', { credits: formatNumber(creditBalance()!) }) }}</p>
+            } @else {
+              <p class="lf-note lf-note--warn" role="alert">{{ t('clipRecommendations.v2.confirmShort', { credits: formatNumber(creditBalance()!) }) }}</p>
+            }
+          }
+        </div>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="confirmingVod.set(null)">{{ t('common.cancel') }}</button>
+        @if (canAfford(vod)) {
+          <button type="button" class="lf-btn lf-btn--primary" (click)="confirmAnalyze()">{{ t('clipRecommendations.v2.confirmGo') }}</button>
+        } @else {
+          <a class="lf-btn lf-btn--primary" [routerLink]="creditsPath()">{{ t('clipRecommendations.v2.getCredits') }}</a>
+        }
+      </footer>
+    </section>
+  </div>
+}
+
+@if (preview(); as current) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="closePreview()">
+    <section #previewDialog class="lf-modal lf-modal--video" role="dialog" aria-modal="true" aria-labelledby="clip-preview-title" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="clip-preview-title">
+          {{ formatTimestamp(current.candidate.startSeconds) }} – {{ formatTimestamp(current.candidate.endSeconds) }}
+        </h2>
+        <button type="button" class="lf-modal__close" (click)="closePreview()" [attr.aria-label]="t('common.close')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body">
+        <video class="lf-player" [src]="current.candidate.previewUrl" controls autoplay playsinline></video>
+        <p class="lf-copy">{{ current.candidate.reason }}</p>
+      </div>
+      @if (canManage() && current.candidate.videoApproved) {
+        <footer class="lf-modal__footer">
+          <button type="button" class="lf-btn" (click)="setCandidateStatus(current.recommendation, current.candidate, 'deny'); closePreview()">{{ t('clipRecommendations.v2.skip') }}</button>
+          <button type="button" class="lf-btn lf-btn--primary" (click)="setCandidateStatus(current.recommendation, current.candidate, 'confirm'); closePreview()">
+            <app-lf-icon name="check" [size]="14"></app-lf-icon> {{ t('clipRecommendations.v2.keep') }}
+          </button>
+        </footer>
+      }
+    </section>
+  </div>
+}
