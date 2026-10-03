@@ -1146,7 +1146,72 @@
       "backToSessions": "Back to sessions",
       "memoryTotals": "Proposed {{proposed}} · Applied {{applied}}"
     },
-    "demoMode": "Demo sandbox"
+    "demoMode": "Demo sandbox",
+    "v2": {
+      "subtitle": "After each stream, the bot writes a short recap and saves what it learned to its AI memories.",
+      "count": "{{count}} summaries",
+      "countOne": "1 summary",
+      "openMemories": "AI memories",
+      "refresh": "Refresh",
+      "loadFailed": "We couldn't load your summaries. Check your connection and try again.",
+      "emptyTitle": "No summaries yet",
+      "emptyCopy": "Your first recap appears a few minutes after your next stream ends. Streams need about 20 minutes and some chat activity to be summarized.",
+      "listTitle": "Past streams",
+      "newer": "Newer",
+      "older": "Older",
+      "minutes": "{{m}} min",
+      "hoursMinutes": "{{h}}h {{m}}m",
+      "weeklyCleanup": "Weekly memory cleanup",
+      "monthlyCleanup": "Monthly memory cleanup",
+      "shortTitle": "Stream too short to summarize",
+      "outcome": {
+        "saved": "{{count}} memories saved",
+        "savedOne": "1 memory saved",
+        "nothing": "Nothing new to remember",
+        "short": "Too short",
+        "processing": "Still writing…",
+        "failed": "Couldn't finish",
+        "cleanup": "No changes needed"
+      },
+      "facts": {
+        "length": "Length",
+        "avg": "Avg viewers",
+        "peak": "Peak",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "tips": "Tips"
+      },
+      "shortCopy": "This stream ran {{minutes}} min with {{messages}} chat messages, which is too short or quiet to summarize. By default the bot needs about 20 minutes and 30 chat messages.",
+      "processingCopy": "The bot is still writing this recap. Check back in a few minutes.",
+      "failedCopy": "Something went wrong while writing this recap, so nothing was saved to memories. The next stream will be summarized as usual.",
+      "recapTitle": "What happened",
+      "learnedTitle": "What the bot learned",
+      "learnedNone": "Nothing new worth remembering from this one.",
+      "why": "Why:",
+      "evidence": "From chat ({{count}})",
+      "action": {
+        "create": "New memory",
+        "edit": "Updated memory",
+        "archive": "Archived memory",
+        "delete": "Removed memory",
+        "noop": "No change"
+      },
+      "result": {
+        "saved": "Saved",
+        "failed": "Couldn't save",
+        "notTried": "Not saved (limit per stream)"
+      },
+      "skip": {
+        "learningOff": "Not saved: learning is off",
+        "notSure": "Not saved: the bot was not sure enough",
+        "autoOff": "Not saved: auto-save is off for this",
+        "stillUsed": "Kept: still in use",
+        "limit": "Not saved: limit per stream reached",
+        "gone": "Skipped: memory no longer exists",
+        "other": "Not saved"
+      }
+    }
   },
   "followDefense": {
     "badge": "Protection",

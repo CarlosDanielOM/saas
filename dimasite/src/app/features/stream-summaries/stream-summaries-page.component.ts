@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { distinctUntilChanged, firstValueFrom, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 
-import { StreamSummary } from '../../models/stream-summary.model';
+import { MemoryActionResult, MemoryProposal, StreamSummary } from '../../models/stream-summary.model';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { StreamSummaryApiService } from '../../services/stream-summary-api.service';
@@ -17,142 +17,23 @@ interface ChannelResolutionState {
   status: 'idle' | 'loading' | 'resolved';
 }
 
-const MOCK_SUMMARIES: StreamSummary[] = [
-  {
-    _id: 'mock-session-1',
-    channelID: 'mock-channel',
-    channel: 'streamer',
-    stream_session_id: 'mock-session-id-1',
-    stream_id: 'mock-stream-id-1',
-    started_at: new Date(Date.now() - 24 * 60 * 60 * 1000 - 3 * 60 * 60 * 1000).toISOString(),
-    ended_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    duration_minutes: 180,
-    average_viewers: 128,
-    peak_viewers: 245,
-    follows: 15,
-    subs: 8,
-    bits: 1500,
-    donations: 50.0,
-    headline: 'Completed Minecraft in under 30 minutes!',
-    recap:
-      'The streamer spent the first 10 minutes gathering resources in the Nether, then successfully located the Stronghold at 20 minutes. After a tense fight with the Ender Dragon, they finished the run at 28:45, achieving a new speedrun personal best. Chat was extremely hype and cheered with bits.',
-    highlights: [
-      'Gathered 12 ender pearls in record time',
-      'Defeated Ender Dragon with bed method',
-      'New personal best speedrun achieved'
-    ],
-    chat_messages_sampled: 420,
-    snapshot_count: 36,
-    proposed_actions: [
-      {
-        action: 'create',
-        type: 'fact',
-        summary: 'Minecraft speedrun PB is 28 minutes and 45 seconds',
-        reason: 'Streamer set a new speedrun personal best during the stream.',
-        evidence: ['Defeated dragon at 28:45'],
-        confidence: 0.95,
-        risk: 'low'
-      }
-    ],
-    applied_actions: [
-      {
-        action: 'create',
-        status: 'applied',
-        reason: 'Added to chatbot facts database'
-      }
-    ],
-    totals: { proposed: 1, applied: 1, skipped: 0, failed: 0 },
-    status: 'applied',
-    error_message: '',
-    source: 'stream_offline',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    _id: 'mock-session-2',
-    channelID: 'mock-channel',
-    channel: 'streamer',
-    stream_session_id: 'mock-session-id-2',
-    stream_id: 'mock-stream-id-2',
-    started_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000).toISOString(),
-    ended_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    duration_minutes: 120,
-    average_viewers: 95,
-    peak_viewers: 150,
-    follows: 5,
-    subs: 3,
-    bits: 500,
-    donations: 0.0,
-    headline: 'Discussing AI bot upgrades and testing voice configurations',
-    recap:
-      'Streamer showed viewers the new glassmorphic UI designs. Chat was very active testing the new xAI rex voice commands. The streamer also talked about target plans for the next week and requested feedback on features.',
-    highlights: [
-      'Showcased new TTS page design',
-      'Tested the Rex voice live in chat',
-      'Discussed weekly sub goal targets'
-    ],
-    chat_messages_sampled: 250,
-    snapshot_count: 24,
-    proposed_actions: [
-      {
-        action: 'create',
-        type: 'preference',
-        summary: 'Streamer prefers using xAI Rex voice for alerts',
-        reason: 'Streamer explicitly stated they like the Rex voice during testing.',
-        evidence: ['Said "Rex voice is amazing, let\'s keep it"'],
-        confidence: 0.92,
-        risk: 'low'
-      }
-    ],
-    applied_actions: [
-      {
-        action: 'create',
-        status: 'applied',
-        reason: 'Saved preference'
-      }
-    ],
-    totals: { proposed: 1, applied: 1, skipped: 0, failed: 0 },
-    status: 'applied',
-    error_message: '',
-    source: 'stream_offline',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    _id: 'mock-session-3',
-    channelID: 'mock-channel',
-    channel: 'streamer',
-    stream_session_id: 'mock-session-id-3',
-    stream_id: 'mock-stream-id-3',
-    started_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 - 2.5 * 60 * 60 * 1000).toISOString(),
-    ended_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    duration_minutes: 150,
-    average_viewers: 82,
-    peak_viewers: 110,
-    follows: 2,
-    subs: 1,
-    bits: 200,
-    donations: 5.0,
-    headline: 'Playing classic Donkey Kong Country on SNES',
-    recap:
-      'A fun nostalgia trip playing SNES classics. Viewers redeemed several triggers causing custom overlay alerts. Streamer struggled a bit in the minecart levels but completed World 1 successfully.',
-    highlights: [
-      'Completed World 1 without losing a life',
-      'Viewer triggers triggered the monkey screech alert multiple times',
-      'Nostalgic game discussion in chat'
-    ],
-    chat_messages_sampled: 180,
-    snapshot_count: 30,
-    proposed_actions: [],
-    applied_actions: [],
-    totals: { proposed: 0, applied: 0, skipped: 0, failed: 0 },
-    status: 'noop',
-    error_message: '',
-    source: 'stream_offline',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
+/** Plain-language outcome of one summary, shown as its status chip. */
+export type SummaryOutcome = 'saved' | 'nothing' | 'short' | 'processing' | 'failed' | 'cleanup';
+
+/** The runner stores this English placeholder when a stream is under the length/chat thresholds. */
+const BELOW_THRESHOLD_PREFIX = 'Stream did not meet summary thresholds';
+
+/** Skip reasons from the memory runner, grouped into explanations a streamer understands. */
+function skipReasonKey(reason: string | undefined): string {
+  const value = reason ?? '';
+  if (value === 'learning_disabled') return 'learningOff';
+  if (value.endsWith('_confidence_below_threshold')) return 'notSure';
+  if (value.startsWith('auto_apply_') && value.endsWith('_disabled')) return 'autoOff';
+  if (value === 'memory_too_new_for_delete' || value === 'memory_recently_used_or_updated') return 'stillUsed';
+  if (value === 'max_deletes_per_run_reached') return 'limit';
+  if (value === 'memory_not_found' || value === 'missing_target_memory_id') return 'gone';
+  return 'other';
+}
 
 @Component({
   selector: 'app-stream-summaries-page',
@@ -215,9 +96,10 @@ export class StreamSummariesPageComponent {
   readonly pageSize = signal(10);
   readonly isLoading = signal(false);
   readonly selectedSummary = signal<StreamSummary | null>(null);
-  readonly detailTab = signal<'recap' | 'memories'>('recap');
-  readonly isUsingMockData = signal(false);
   readonly showDetailOnMobile = signal(false);
+  readonly loadError = signal(false);
+  readonly loaded = signal(false);
+  readonly memoriesPath = computed(() => ['/', this.streamer(), 'modules', 'memories']);
 
   readonly hasSummaries = computed(() => this.summaries().length > 0);
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.totalCount() / this.pageSize()) || 1));
@@ -238,26 +120,96 @@ export class StreamSummariesPageComponent {
     return this.languageService.translate(key, params);
   }
 
+  private locale(): string {
+    return this.languageService.currentLanguage() === 'es' ? 'es' : 'en';
+  }
+
   formatDate(dateString: string): string {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString(this.locale(), { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  confidencePercent(value: number): number {
-    return Math.trunc(value * 100);
+  formatTime(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString(this.locale(), { hour: 'numeric', minute: '2-digit' });
+  }
+
+  formatDuration(minutes: number): string {
+    const total = Math.max(0, Math.round(minutes || 0));
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    if (!hours) return this.t('streamSummaries.v2.minutes', { m: rest });
+    return this.t('streamSummaries.v2.hoursMinutes', { h: hours, m: rest });
+  }
+
+  formatNumber(value: number): string {
+    return (value || 0).toLocaleString(this.locale());
+  }
+
+  isMaintenance(summary: StreamSummary): boolean {
+    return summary.source === 'weekly_maintenance' || summary.source === 'monthly_maintenance';
+  }
+
+  isBelowThreshold(summary: StreamSummary): boolean {
+    return summary.status === 'noop' && !summary.proposed_actions.length && (summary.recap || '').startsWith(BELOW_THRESHOLD_PREFIX);
+  }
+
+  outcome(summary: StreamSummary): SummaryOutcome {
+    if (summary.status === 'pending') return 'processing';
+    if (summary.status === 'failed') return 'failed';
+    if (this.isBelowThreshold(summary)) return 'short';
+    if (summary.status === 'applied') return 'saved';
+    return this.isMaintenance(summary) ? 'cleanup' : 'nothing';
+  }
+
+  outcomeLabel(summary: StreamSummary): string {
+    const outcome = this.outcome(summary);
+    if (outcome === 'saved') {
+      const count = summary.totals?.applied ?? 0;
+      return this.t(count === 1 ? 'streamSummaries.v2.outcome.savedOne' : 'streamSummaries.v2.outcome.saved', { count });
+    }
+    return this.t('streamSummaries.v2.outcome.' + outcome);
+  }
+
+  title(summary: StreamSummary): string {
+    if (this.isMaintenance(summary)) {
+      return this.t(summary.source === 'weekly_maintenance' ? 'streamSummaries.v2.weeklyCleanup' : 'streamSummaries.v2.monthlyCleanup');
+    }
+    if (this.isBelowThreshold(summary)) return this.t('streamSummaries.v2.shortTitle');
+    return summary.headline || this.t('streamSummaries.list.noHeadline');
+  }
+
+  resultFor(summary: StreamSummary, index: number): MemoryActionResult | null {
+    return summary.applied_actions?.[index] ?? null;
+  }
+
+  resultLabel(summary: StreamSummary, index: number): string {
+    const result = this.resultFor(summary, index);
+    if (!result) return this.t('streamSummaries.v2.result.notTried');
+    if (result.status === 'applied') return this.t('streamSummaries.v2.result.saved');
+    if (result.status === 'failed') return this.t('streamSummaries.v2.result.failed');
+    return this.t('streamSummaries.v2.skip.' + skipReasonKey(result.reason));
+  }
+
+  actionLabel(proposal: MemoryProposal): string {
+    return this.t('streamSummaries.v2.action.' + (proposal.action || 'noop'));
   }
 
   selectSummary(summary: StreamSummary): void {
     this.selectedSummary.set(summary);
-    this.detailTab.set('recap');
     this.showDetailOnMobile.set(true);
+    if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 960px)').matches) {
+      window.scrollTo({ top: 0 });
+    }
+  }
+
+  retry(): void {
+    const channelID = this.channelID();
+    if (channelID) void this.loadSummaries(channelID, this.currentPage(), this.pageSize());
   }
 
   closeDetailMobile(): void {
@@ -271,37 +223,25 @@ export class StreamSummariesPageComponent {
 
   private async loadSummaries(channelID: string, page: number, limit: number): Promise<void> {
     this.isLoading.set(true);
+    this.loadError.set(false);
     const skip = (page - 1) * limit;
 
     try {
       const result = await firstValueFrom(this.summariesApi.getSummaries(channelID, limit, skip));
-      if (result.items && result.items.length > 0) {
-        this.summaries.set(result.items);
-        this.totalCount.set(result.total);
-        this.isUsingMockData.set(false);
+      const items = result.items ?? [];
+      this.summaries.set(items);
+      this.totalCount.set(result.total ?? items.length);
 
-        const selected = this.selectedSummary();
-        const stillVisible = selected && result.items.some((item) => item._id === selected._id);
-        if (!stillVisible) {
-          this.selectedSummary.set(result.items[0] ?? null);
-        }
-      } else {
-        this.loadMockData();
+      const selected = this.selectedSummary();
+      const stillVisible = selected && items.some((item) => item._id === selected._id);
+      if (!stillVisible) {
+        this.selectedSummary.set(items[0] ?? null);
       }
     } catch {
-      this.loadMockData();
+      this.loadError.set(true);
     } finally {
       this.isLoading.set(false);
-    }
-  }
-
-  private loadMockData(): void {
-    this.summaries.set(MOCK_SUMMARIES);
-    this.totalCount.set(MOCK_SUMMARIES.length);
-    this.isUsingMockData.set(true);
-
-    if (!this.selectedSummary() && MOCK_SUMMARIES[0]) {
-      this.selectedSummary.set(MOCK_SUMMARIES[0]);
+      this.loaded.set(true);
     }
   }
 }

@@ -1146,7 +1146,72 @@
       "backToSessions": "Volver a sesiones",
       "memoryTotals": "Propuestas {{proposed}} · Aplicadas {{applied}}"
     },
-    "demoMode": "Modo demo"
+    "demoMode": "Modo demo",
+    "v2": {
+      "subtitle": "Después de cada stream, el bot escribe un resumen corto y guarda lo que aprendió en sus memorias de IA.",
+      "count": "{{count}} resúmenes",
+      "countOne": "1 resumen",
+      "openMemories": "Memorias de IA",
+      "refresh": "Actualizar",
+      "loadFailed": "No pudimos cargar tus resúmenes. Revisa tu conexión e inténtalo de nuevo.",
+      "emptyTitle": "Aún no hay resúmenes",
+      "emptyCopy": "Tu primer resumen aparecerá unos minutos después de que termine tu próximo stream. Los streams necesitan unos 20 minutos y algo de actividad en el chat para resumirse.",
+      "listTitle": "Streams anteriores",
+      "newer": "Más recientes",
+      "older": "Más antiguos",
+      "minutes": "{{m}} min",
+      "hoursMinutes": "{{h}} h {{m}} min",
+      "weeklyCleanup": "Limpieza semanal de memorias",
+      "monthlyCleanup": "Limpieza mensual de memorias",
+      "shortTitle": "Stream demasiado corto para resumir",
+      "outcome": {
+        "saved": "{{count}} memorias guardadas",
+        "savedOne": "1 memoria guardada",
+        "nothing": "Nada nuevo que recordar",
+        "short": "Demasiado corto",
+        "processing": "Escribiendo…",
+        "failed": "No se pudo terminar",
+        "cleanup": "Sin cambios necesarios"
+      },
+      "facts": {
+        "length": "Duración",
+        "avg": "Media de espectadores",
+        "peak": "Pico",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "tips": "Propinas"
+      },
+      "shortCopy": "Este stream duró {{minutes}} min con {{messages}} mensajes en el chat, demasiado corto o tranquilo para resumirlo. Por defecto el bot necesita unos 20 minutos y 30 mensajes.",
+      "processingCopy": "El bot aún está escribiendo este resumen. Vuelve en unos minutos.",
+      "failedCopy": "Algo salió mal al escribir este resumen, así que no se guardó nada en las memorias. El próximo stream se resumirá con normalidad.",
+      "recapTitle": "Qué pasó",
+      "learnedTitle": "Qué aprendió el bot",
+      "learnedNone": "Nada nuevo que valga la pena recordar de este stream.",
+      "why": "Por qué:",
+      "evidence": "Del chat ({{count}})",
+      "action": {
+        "create": "Memoria nueva",
+        "edit": "Memoria actualizada",
+        "archive": "Memoria archivada",
+        "delete": "Memoria eliminada",
+        "noop": "Sin cambios"
+      },
+      "result": {
+        "saved": "Guardada",
+        "failed": "No se pudo guardar",
+        "notTried": "No guardada (límite por stream)"
+      },
+      "skip": {
+        "learningOff": "No guardada: el aprendizaje está apagado",
+        "notSure": "No guardada: el bot no estaba lo bastante seguro",
+        "autoOff": "No guardada: el guardado automático está apagado para esto",
+        "stillUsed": "Se mantiene: aún se usa",
+        "limit": "No guardada: se alcanzó el límite por stream",
+        "gone": "Omitida: la memoria ya no existe",
+        "other": "No guardada"
+      }
+    }
   },
   "followDefense": {
     "badge": "Proteccion",
