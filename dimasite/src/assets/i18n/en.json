@@ -1983,8 +1983,33 @@
     },
     "errors": {
       "title": "Unable to switch channel",
-      "noAccess": "You do not have dashboard access for this channel.",
+      "noAccess": "This streamer gave you chat powers only, so their website pages are closed to you.",
       "failed": "Unable to switch channel right now."
+    },
+    "hub": {
+      "subtitle": "Channels where other streamers made you a helper. Open one to manage it for them.",
+      "yourChannel": "Your own channel",
+      "listTitle": "Channels you help with",
+      "listHint": "Each streamer chooses what you can do. Here is what you have on each channel.",
+      "websiteCount": "{{count}} with website access",
+      "openAria": "Open {{name}} dashboard",
+      "access": {
+        "website": "Website access",
+        "chat": "Chat only",
+        "checking": "Checking…"
+      },
+      "hint": {
+        "website": "You can open their dashboard and the pages they gave you.",
+        "chat": "You can use admin bot commands in {{name}}'s chat. Ask them for page access if you need the website.",
+        "unknown": "We couldn't check your access right now. Try opening it.",
+        "checking": "Checking what you can do…"
+      },
+      "help": {
+        "title": "What the badges mean",
+        "website": "Open their dashboard and the pages they shared, like commands or triggers.",
+        "chat": "Use admin-only bot commands in their Twitch chat. Their website pages stay closed.",
+        "who": "Only the streamer can change your access, from their Channel settings."
+      }
     }
   },
   "dashboard": {

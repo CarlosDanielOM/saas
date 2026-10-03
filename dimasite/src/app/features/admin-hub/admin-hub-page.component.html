@@ -1,141 +1,140 @@
 <div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
-    <section class="lf-bento lf-bento--hero" [attr.aria-label]="t('adminHub.title')">
-      <article class="lf-tile lf-tile--intro">
-        <p class="lf-kicker">{{ t('adminHub.badge') }}</p>
-        <h1 class="lf-title">
-          {{ t('adminHub.title') }}
-          <span>{{ ownerLogin() || '—' }}</span>
-        </h1>
-        <p class="lf-copy">{{ t('adminHub.subtitle') }}</p>
-
-        <div class="lf-actions">
-          @if (ownerDashboardLink(); as ownerLink) {
-            <a class="lf-btn lf-btn--primary" [routerLink]="ownerLink">
-              {{ t('adminHub.panel.myDashboard') }}
-            </a>
+    <header class="lf-head">
+      <h1 class="lf-title">{{ t('adminHub.title') }}</h1>
+      <p class="lf-copy">{{ t('adminHub.hub.subtitle') }}</p>
+      @if (channels().length) {
+        <div class="lf-head__chips">
+          <span class="lf-chip lf-chip--accent">
+            <app-lf-icon name="users" [size]="13"></app-lf-icon> {{ channelCountLabel() }}
+          </span>
+          @if (!checking()) {
+            <span class="lf-chip lf-chip--ok"><span class="lf-dot" aria-hidden="true"></span> {{ t('adminHub.hub.websiteCount', { count: websiteCount() }) }}</span>
           }
         </div>
-
-        <p class="lf-feed lf-feed--on">{{ channelCountLabel() }}</p>
-      </article>
-
-      <article class="lf-tile lf-tile--spotlight">
-        <div class="lf-spotlight__head">
-          <span class="lf-chip">{{ t('adminHub.chips.quickSwitch') }}</span>
-          <span class="lf-spotlight__count">{{ t('adminHub.panel.kicker') }}</span>
-        </div>
-
-        <div class="lf-stats-strip" [attr.aria-label]="t('adminHub.panel.kicker')">
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('adminHub.panel.kicker') }}</span>
-            <strong class="lf-stats-strip__value">{{ channels().length }}</strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('adminHub.chips.dashboardAccess') }}</span>
-            <strong class="lf-stats-strip__value lf-stats-strip__value--text">
-              {{ t('adminHub.labels.admin') }}
-            </strong>
-          </div>
-          <div class="lf-stats-strip__item">
-            <span class="lf-stats-strip__label">{{ t('adminHub.search.label') }}</span>
-            <strong class="lf-stats-strip__value">{{ filteredChannels().length }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
+      }
+    </header>
 
     @if (errorMessage()) {
-      <div class="lf-banner lf-banner--error" role="alert">
+      <section class="lf-banner" role="alert">
         <div>
           <p class="lf-banner__title">{{ t('adminHub.errors.title') }}</p>
           <p class="lf-banner__copy">{{ errorMessage() }}</p>
         </div>
-      </div>
+      </section>
     }
 
-    <section class="lf-section" [attr.aria-label]="t('adminHub.panel.kicker')">
-      @if (channels().length) {
-        <div class="lf-section__head">
-          <div>
-            <p class="lf-kicker">{{ t('adminHub.panel.kicker') }}</p>
-            <h2 class="lf-h2">{{ t('adminHub.panel.kicker') }}</h2>
-            <p class="lf-copy lf-copy--tight">{{ t('adminHub.panel.description') }}</p>
+    <div class="lf-panels">
+      <div class="lf-col lf-col--main">
+        @if (ownerDashboardLink(); as ownerLink) {
+          <section class="lf-tile lf-own" [attr.aria-label]="t('adminHub.hub.yourChannel')">
+            @if (ownerAvatar(); as avatar) {
+              <img class="lf-avatar" [src]="avatar" alt="" width="44" height="44" />
+            } @else {
+              <span class="lf-avatar" aria-hidden="true">{{ channelInitial(ownerName()) }}</span>
+            }
+            <span class="lf-row__body">
+              <span class="lf-row__title"><strong>{{ ownerName() }}</strong> <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('adminHub.labels.owner') }}</span></span>
+              <span class="lf-row__meta">{{ t('adminHub.hub.yourChannel') }}</span>
+            </span>
+            <a class="lf-btn lf-btn--compact" [routerLink]="ownerLink">{{ t('adminHub.panel.myDashboard') }}</a>
+          </section>
+        }
+
+        <section class="lf-tile lf-card" aria-labelledby="hub-channels-title">
+          <div class="lf-card-head">
+            <span class="lf-card-head__icon" aria-hidden="true"><app-lf-icon name="users"></app-lf-icon></span>
+            <div class="lf-card-head__copy">
+              <h2 class="lf-h2" id="hub-channels-title">{{ t('adminHub.hub.listTitle') }}</h2>
+              <p class="lf-note">{{ t('adminHub.hub.listHint') }}</p>
+            </div>
           </div>
 
-          <div class="lf-section__tools">
-            <span class="lf-chip">{{ filteredChannels().length }}</span>
-            <label class="lf-search" [attr.aria-label]="t('adminHub.search.label')">
+          @if (showSearch()) {
+            <label class="lf-search">
+              <app-lf-icon name="search" [size]="16"></app-lf-icon>
               <span class="visually-hidden">{{ t('adminHub.search.label') }}</span>
-              <input
-                type="search"
-                [value]="searchQuery()"
-                [placeholder]="t('adminHub.search.placeholder')"
-                (input)="onSearchInput($event)"
-              />
+              <input type="search" [value]="searchQuery()" [placeholder]="t('adminHub.search.placeholder')" (input)="onSearchInput($event)" />
               @if (searchQuery()) {
-                <button
-                  type="button"
-                  class="lf-search__clear"
-                  [attr.aria-label]="t('adminHub.search.clear')"
-                  (click)="clearSearch()"
-                >
-                  <app-lf-icon name="close"></app-lf-icon>
+                <button type="button" class="lf-search__clear" [attr.aria-label]="t('adminHub.search.clear')" (click)="clearSearch()">
+                  <app-lf-icon name="close" [size]="14"></app-lf-icon>
                 </button>
               }
             </label>
-          </div>
-        </div>
-
-        @if (filteredChannels().length) {
-          <div class="lf-bento lf-bento--channels">
-            @for (channel of filteredChannels(); track channel.channelID) {
-              <article class="lf-tile lf-channel">
-                <div class="lf-channel__top">
-                  <div class="lf-avatar" aria-hidden="true">
-                    {{ channelInitial(channel.channelName) }}
-                  </div>
-                  <span class="lf-chip lf-chip--admin">{{ t('adminHub.labels.admin') }}</span>
-                </div>
-
-                <h3 class="lf-channel__name">{{ channel.channelName }}</h3>
-                <p class="lf-channel__meta">{{ t('adminHub.panel.description') }}</p>
-
-                <button
-                  type="button"
-                  class="lf-btn lf-btn--primary lf-btn--block"
-                  [disabled]="switchingChannelID() === channel.channelID"
-                  (click)="openChannel(channel)"
-                >
-                  @if (switchingChannelID() === channel.channelID) {
-                    {{ t('adminHub.actions.opening') }}
-                  } @else {
-                    {{ t('adminHub.actions.openDashboard') }}
-                  }
-                </button>
-              </article>
-            }
-          </div>
-        } @else {
-          <div class="lf-tile lf-empty" role="status">
-            <h3 class="lf-empty__title">{{ t('adminHub.search.noResultsTitle') }}</h3>
-            <p class="lf-empty__copy">{{ t('adminHub.search.noResultsDescription') }}</p>
-            <button type="button" class="lf-btn" (click)="clearSearch()">
-              {{ t('adminHub.search.clear') }}
-            </button>
-          </div>
-        }
-      } @else {
-        <div class="lf-tile lf-empty lf-empty--hero" role="status">
-          <h3 class="lf-empty__title">{{ t('adminHub.empty.title') }}</h3>
-          <p class="lf-empty__copy">{{ t('adminHub.empty.description') }}</p>
-          @if (ownerDashboardLink(); as ownerLink) {
-            <a class="lf-btn lf-btn--primary" [routerLink]="ownerLink">
-              {{ t('adminHub.panel.myDashboard') }}
-            </a>
           }
-        </div>
-      }
-    </section>
+
+          @if (!channels().length) {
+            <div class="lf-empty-state" role="status">
+              <strong>{{ t('adminHub.empty.title') }}</strong>
+              <span>{{ t('adminHub.empty.description') }}</span>
+            </div>
+          } @else if (!filteredChannels().length) {
+            <div class="lf-empty-state" role="status">
+              <strong>{{ t('adminHub.search.noResultsTitle') }}</strong>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="clearSearch()">{{ t('adminHub.search.clear') }}</button>
+            </div>
+          } @else {
+            <ul class="lf-rows" [attr.aria-label]="t('adminHub.hub.listTitle')">
+              @for (channel of filteredChannels(); track channel.channelID) {
+                <li class="lf-row" [attr.data-access]="accessOf(channel)">
+                  @if (avatarFor(channel.channelName); as avatar) {
+                    <img class="lf-avatar" [src]="avatar" alt="" width="44" height="44" loading="lazy" />
+                  } @else {
+                    <span class="lf-avatar" aria-hidden="true">{{ channelInitial(channel.channelName) }}</span>
+                  }
+                  <span class="lf-row__body">
+                    <span class="lf-row__title">
+                      <strong>{{ channel.channelName }}</strong>
+                      @switch (accessOf(channel)) {
+                        @case ('website') { <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('adminHub.hub.access.website') }}</span> }
+                        @case ('chat') { <span class="lf-chip lf-chip--xs">{{ t('adminHub.hub.access.chat') }}</span> }
+                        @case ('checking') { <span class="lf-chip lf-chip--xs lf-chip--muted">{{ t('adminHub.hub.access.checking') }}</span> }
+                      }
+                    </span>
+                    <span class="lf-row__meta">
+                      @switch (accessOf(channel)) {
+                        @case ('website') { {{ t('adminHub.hub.hint.website') }} }
+                        @case ('chat') { {{ t('adminHub.hub.hint.chat', { name: channel.channelName }) }} }
+                        @case ('unknown') { {{ t('adminHub.hub.hint.unknown') }} }
+                        @default { {{ t('adminHub.hub.hint.checking') }} }
+                      }
+                    </span>
+                  </span>
+                  @if (accessOf(channel) !== 'chat') {
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--primary lf-btn--compact"
+                      [disabled]="switchingChannelID() === channel.channelID || accessOf(channel) === 'checking'"
+                      [attr.aria-label]="t('adminHub.hub.openAria', { name: channel.channelName })"
+                      (click)="openChannel(channel)"
+                    >
+                      {{ switchingChannelID() === channel.channelID ? t('adminHub.actions.opening') : t('adminHub.actions.openDashboard') }}
+                      <app-lf-icon name="forward" [size]="14"></app-lf-icon>
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+
+      <aside class="lf-col lf-col--side">
+        <section class="lf-tile lf-card" aria-labelledby="hub-help-title">
+          <h2 class="lf-h2" id="hub-help-title">{{ t('adminHub.hub.help.title') }}</h2>
+          <dl class="lf-help">
+            <div>
+              <dt><app-lf-icon name="grid" [size]="14"></app-lf-icon> {{ t('adminHub.hub.access.website') }}</dt>
+              <dd>{{ t('adminHub.hub.help.website') }}</dd>
+            </div>
+            <div>
+              <dt><app-lf-icon name="chat" [size]="14"></app-lf-icon> {{ t('adminHub.hub.access.chat') }}</dt>
+              <dd>{{ t('adminHub.hub.help.chat') }}</dd>
+            </div>
+          </dl>
+          <p class="lf-note lf-note--lock"><app-lf-icon name="lock" [size]="13"></app-lf-icon> <span>{{ t('adminHub.hub.help.who') }}</span></p>
+        </section>
+      </aside>
+    </div>
   </main>
 </div>

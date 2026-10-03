@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
+import { LinksService } from '../../services/links.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 
@@ -10,6 +12,12 @@ interface ChannelOption {
   channelID: string;
   channelName: string;
 }
+
+/** What the helper can do on a channel: open its website pages, or only use admin commands in chat. */
+type ChannelAccess = 'checking' | 'website' | 'chat' | 'unknown';
+
+/** Search only earns its space once the list is long enough to scan. */
+const SEARCH_THRESHOLD = 6;
 
 @Component({
   selector: 'app-admin-hub-page',
@@ -22,6 +30,11 @@ export class AdminHubPageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
+  private readonly links = inject(LinksService);
+
+  readonly access = signal<Record<string, ChannelAccess>>({});
+  readonly avatars = signal<Record<string, string>>({});
 
   readonly errorMessage = signal<string | null>(null);
   readonly switchingChannelID = signal<string | null>(null);
@@ -94,8 +107,61 @@ export class AdminHubPageComponent {
     return this.t(key).replace('{count}', String(count));
   });
 
-  t(key: string): string {
-    return this.languageService.translate(key);
+  readonly ownerName = computed(() => {
+    const current = this.sessionAuth.session();
+    return current?.twitchUser.display_name || current?.twitchUser.login || '';
+  });
+  readonly ownerAvatar = computed(() => this.sessionAuth.session()?.twitchUser.profile_image_url || null);
+  readonly showSearch = computed(() => this.channels().length > SEARCH_THRESHOLD || this.searchQuery().length > 0);
+  readonly websiteCount = computed(() => this.channels().filter((channel) => this.access()[channel.channelID] === 'website').length);
+  readonly checking = computed(() => this.channels().some((channel) => (this.access()[channel.channelID] ?? 'checking') === 'checking'));
+
+  constructor() {
+    effect(() => {
+      const channels = this.channels();
+      untracked(() => {
+        for (const channel of channels) {
+          this.checkAccess(channel);
+          this.loadAvatar(channel.channelName);
+        }
+      });
+    });
+  }
+
+  t(key: string, params?: Record<string, string | number>): string {
+    return this.languageService.translate(key, params);
+  }
+
+  accessOf(channel: ChannelOption): ChannelAccess {
+    return this.access()[channel.channelID] ?? 'checking';
+  }
+
+  avatarFor(channelName: string): string | null {
+    return this.avatars()[channelName.trim().toLowerCase()] || null;
+  }
+
+  private checkAccess(channel: ChannelOption): void {
+    if (channel.channelID in this.access()) return;
+    this.access.update((map) => ({ ...map, [channel.channelID]: 'checking' }));
+    this.sessionAuth.checkPermission(channel.channelID, 'dashboard:view').subscribe({
+      next: (allowed) => this.access.update((map) => ({ ...map, [channel.channelID]: allowed ? 'website' : 'chat' })),
+      error: () => this.access.update((map) => ({ ...map, [channel.channelID]: 'unknown' }))
+    });
+  }
+
+  private loadAvatar(rawLogin: string): void {
+    const login = rawLogin.trim().toLowerCase();
+    if (!/^[a-z0-9_]{1,25}$/.test(login) || login in this.avatars()) return;
+    this.avatars.update((map) => ({ ...map, [login]: '' }));
+    this.http
+      .get<{ data?: { profile_image_url?: string } }>(`${this.links.getApiUrl()}/users?username=${encodeURIComponent(login)}`)
+      .subscribe({
+        next: (response) => {
+          const url = response.data?.profile_image_url?.trim();
+          if (url) this.avatars.update((map) => ({ ...map, [login]: url }));
+        },
+        error: () => undefined
+      });
   }
 
   channelInitial(channelName: string): string {
@@ -126,6 +192,7 @@ export class AdminHubPageComponent {
       );
 
       if (!allowed) {
+        this.access.update((map) => ({ ...map, [channel.channelID]: 'chat' }));
         this.errorMessage.set(this.t('adminHub.errors.noAccess'));
         return;
       }

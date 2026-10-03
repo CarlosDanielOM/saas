@@ -1983,8 +1983,33 @@
     },
     "errors": {
       "title": "No se pudo cambiar de canal",
-      "noAccess": "No tienes acceso al panel para este canal.",
+      "noAccess": "Este streamer solo te dio poderes en el chat, así que sus páginas web están cerradas para ti.",
       "failed": "No se pudo cambiar de canal en este momento."
+    },
+    "hub": {
+      "subtitle": "Canales donde otros streamers te hicieron ayudante. Abre uno para gestionarlo por ellos.",
+      "yourChannel": "Tu propio canal",
+      "listTitle": "Canales en los que ayudas",
+      "listHint": "Cada streamer elige qué puedes hacer. Esto es lo que tienes en cada canal.",
+      "websiteCount": "{{count}} con acceso a la web",
+      "openAria": "Abrir el panel de {{name}}",
+      "access": {
+        "website": "Acceso a la web",
+        "chat": "Solo chat",
+        "checking": "Comprobando…"
+      },
+      "hint": {
+        "website": "Puedes abrir su panel y las páginas que te compartió.",
+        "chat": "Puedes usar comandos de admin del bot en el chat de {{name}}. Pídele acceso a páginas si necesitas la web.",
+        "unknown": "No pudimos comprobar tu acceso ahora. Intenta abrirlo.",
+        "checking": "Comprobando qué puedes hacer…"
+      },
+      "help": {
+        "title": "Qué significan las etiquetas",
+        "website": "Abre su panel y las páginas que compartió, como comandos o triggers.",
+        "chat": "Usa comandos del bot solo para admins en su chat de Twitch. Sus páginas web siguen cerradas.",
+        "who": "Solo el streamer puede cambiar tu acceso, desde sus Ajustes del canal."
+      }
     }
   },
   "dashboard": {
