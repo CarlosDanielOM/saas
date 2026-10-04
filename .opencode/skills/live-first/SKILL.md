@@ -1,17 +1,17 @@
 ---
 name: live-first
-description: Live First (OC3c) design language and UX rules for dimasite and the admin site. Use when building, migrating, restyling, or reviewing any dimasite or admin page/component — landing, tip, dashboard, auth shell, commands, modules, settings, admin overview/users/channel tools, or new frontend surfaces. UX first, and mobile is a first-class citizen equal to desktop. Keywords: Live First, OC3c, bento, lf-tile, lf-bento, design system, dimasite UI, admin UI, navbar, dashboard layout, module page, settings page, editor dialog, save bar, item rows, mobile-first, UX.
+description: Live First (OC3c) design language and UX rules for dimasite, the admin site and the DimaFX Twitch extension viewer UI. Use when building, migrating, restyling, or reviewing any dimasite, admin or dimafx panel/mobile/config page — landing, tip, dashboard, auth shell, commands, modules, settings, admin overview/users/channel tools, or new frontend surfaces. UX first, and mobile is a first-class citizen equal to desktop. Keywords: Live First, OC3c, bento, lf-tile, lf-bento, design system, dimasite UI, admin UI, navbar, dashboard layout, module page, settings page, editor dialog, save bar, item rows, storefront, viewer shop, Twitch extension panel, DimaFX, mobile-first, UX.
 ---
 
-# Live First Design Language (dimasite + admin)
+# Live First Design Language (dimasite + admin + DimaFX extension)
 
-**Canonical production design system for DomDimaBot’s public site, authenticated app and internal admin site (`admin/`).**
+**Canonical production design system for DomDimaBot’s public site, authenticated app, internal admin site (`admin/`) and the viewer-facing DimaFX Twitch extension (`dimafx/`).**
 
 - Origin: OpenCode mock **OC3c · Live First** (`/mocks/grok/oc3c`)
 - Productized: landing, tip, dashboard, authenticated layout
 - Reference mocks: `/mocks/dev/prod-dashboard`, `/mocks/dev/prod-commands`
 
-When working on **any** `dimasite/` or `admin/` UI, follow this skill by default. Do **not** invent a new visual language or revert to aurora/glassmorphic cyan shells.
+When working on **any** `dimasite/`, `admin/` or `dimafx/` client UI, follow this skill by default. Do **not** invent a new visual language or revert to aurora/glassmorphic cyan shells.
 
 ## The two non-negotiables
 
@@ -19,7 +19,7 @@ When working on **any** `dimasite/` or `admin/` UI, follow this skill by default
 
 - Lead with a plain-language status line, not raw numbers ("2 Twitch events are missing — the bot won't see follows"), and put the fix button beside it.
 - Group by the user's goal, not by the data model or API shape.
-- Every real-world side effect (sends an email, grants credits, spends money, changes a live subscription) gets an explicit confirmation that says exactly what will happen, to whom, and how much. One tap must never do something irreversible.
+- Every real-world side effect (sends an email, grants credits, spends money, changes a live subscription) gets an explicit confirmation that says exactly what will happen, to whom, and how much. One tap must never do something irreversible. For a single in-app purchase, a two-tap button is enough (see "Viewer storefronts"); bigger or multi-part effects get a dialog.
 - Show loading, empty and error states on purpose: what happened, whether data is stale, and one Retry. Keep the user's input (search, filters, drafts) through errors.
 - Keep advanced features, but tuck rare ones behind well-labelled `<details>`; never remove a capability to make a page look simpler.
 
@@ -37,6 +37,7 @@ When working on **any** `dimasite/` or `admin/` UI, follow this skill by default
 - Migrating legacy pages to production design
 - Navbar / shell / layout work
 - Dashboard, commands, modules, settings, tip, landing, login polish
+- DimaFX extension panel, mobile view and streamer config page (`dimafx/*.html`)
 - Mentions of “Live First”, “bento”, “OC3c”, or “match the new design”
 
 ## Core principles
@@ -79,7 +80,7 @@ Put these on the page/shell `:host` (and dark via `:host-context(html.dark)`):
 | `--glow-a` | violet soft | violet soft |
 | `--glow-b` | red soft | red soft |
 
-**Contrast:** light-mode `--muted/--ok/--warn/--danger/--gold` above are the AA-safe values (axe passes on white and `--input-bg`); don't lighten them. Filled primary buttons, switches and step numbers use solid `#7c3aed` with white text in **both** themes (the lighter dark-mode accent fails contrast under white text).
+**Contrast:** light-mode `--muted/--ok/--warn/--danger/--gold` above are the AA-safe values (axe passes on white and `--input-bg`); don't lighten them. Filled primary buttons, switches and step numbers use solid `#7c3aed` with white text in **both** themes (the lighter dark-mode accent fails contrast under white text). White text on `--live` (`#ef4444`) fails AA at small sizes: filled badges, tags and counters with white text use `#dc2626`; keep `--live` for the pulse dot and soft washes.
 
 **Font:** Plus Jakarta Sans is loaded in `dimasite/src/index.html`.
 
@@ -147,14 +148,14 @@ Used by every redesigned `/:streamer/modules/*` page and the credits/usage pages
 
 **Panels** — at ≥960px, `.lf-panels` is `minmax(0,1.5–1.6fr) minmax(0,1fr)`: main column (what you change) and side column (how to use it: command, cheat sheet of `$(...)` functions, credits). `.lf-col` is `display: contents` on phones so cards simply stack.
 
-**Dense rows over identical cards** — list items are rows, not tiles:
+**Dense rows over identical cards** — when the user *manages* a list, items are rows, not tiles (when they *browse and buy*, use the tile grid in "Viewer storefronts"):
 
 ```
 [16:9 thumb] Name  [price/status chips]          [Test] [Edit] [switch] [🗑]
              type · one-line description / command
 ```
 
-- Thumbs show **real previews**: `<img>` for images/GIFs, first video frame via `LazyVideoFrameDirective` (`features/triggers/lazy-video-frame.directive.ts`: loads the source near the viewport, seeks `#t=0.1`), media-type icon + tint (`--t-audio/--t-video/--t-image`) otherwise. Tap thumb = preview; audio plays inline and the icon becomes pause. Never replace real previews with icons to save space.
+- Thumbs show **real previews**: `<img>` for images/GIFs, first video frame via `LazyVideoFrameDirective` (`features/triggers/lazy-video-frame.directive.ts`: loads the source near the viewport, seeks `#t=0.1`), media-type icon + tint (`--t-audio/--t-video/--t-image`) otherwise. Tap thumb = preview; audio plays inline and the icon becomes pause. Never replace real previews with icons to save space. Only use a URL as `<img src>` when the media is visual (image/GIF or a generated thumbnail): an audio file's playback URL renders as a broken image, so audio falls back to the tinted tile with a waveform/icon.
 - Quick on/off is an `.lf-switch` in the row (optimistic update + rollback), labelled "{{name}} on".
 - Destructive actions are an icon button; row actions get `aria-label`s with the item name ("Edit Airhorn").
 - Search appears only once a list is long (e.g. > 6 items); type filters as `aria-pressed` chips.
@@ -180,6 +181,7 @@ Used by every redesigned `/:streamer/modules/*` page and the credits/usage pages
 - **Sliders**: never ship a bare native `<input type=range>` (Chrome leaves track past the thumb at 0/100%). Use `.lf-range` with `appearance: none`, a track gradient that ends at the thumb centre via `[style.--pct]="value / max"`, a styled thumb and focus ring; make sure field input styles exclude `[type='range']`.
 - **Selects of ids**: show human labels (group with `<optgroup>`, e.g. Kokoro voices by language: "Spanish → Dora (female)"); keep the id as the value.
 - **Prices**: Bits as a gold pill with the `bits` icon; Free as a green pill.
+- **Segmented choices** (`.lf-seg`, two-option toggles): the selected option is a solid `#7c3aed` fill with white text. A "lighter card on a grey track" selected state is nearly invisible in dark mode.
 - `app-lf-icon` (`shared/lf-icon`) is the icon set for LF pages; add names there instead of importing ad-hoc icons.
 
 ### Brand pulse
@@ -224,6 +226,7 @@ Used in public brand marks and auth navbar (`.auth-navbar__live`).
 | **Module page: shop + delete choices** | `dimasite/src/app/features/dimafx/dimafx-page.component.*` | Price pills, on-sale switches, kind choice, refund alertdialog |
 | **Browse/add dialog** | `dimasite/src/app/features/triggers/components/public-library-modal.component.*` | Search + type chips + result count, inline audio, Add → next step |
 | **Gallery + stage** | `dimasite/src/app/features/clips/clips-page.component.*` | One live stage + compact gallery |
+| **Viewer storefront (Twitch extension)** | `dimafx/panel.html`, `dimafx/panel.js`, `dimafx/storefront.css` | Tile grid, price pills, credits two-tap, Twitch theme/language |
 | **Billing pages** | `dimasite/src/app/features/credit-packs/*`, `features/usage/*` | Plain-language forecasts, honest value cues |
 | **Hub pages** | `dimasite/src/app/features/modules/*`, `features/analytics/*` | Essentials + goal groups, finder |
 
@@ -236,6 +239,29 @@ Preview URLs:
 - `/mocks/grok/oc3c` — original Live First landing mock  
 
 ---
+
+## Viewer storefronts (selling surfaces)
+
+Pages where **viewers** spend Bits or credits (DimaFX panel, tip page, any future shop) answer a different question from streamer pages: *"What can I make happen, and how much does it cost?"* They should make buying easy and attractive while staying honest; the goal is a viewer who buys again, not one who feels tricked.
+
+- **Lead with what's possible right now:** channel name in the title ("Play something on **Dima**'s stream"), a live/paused chip, and when buying is blocked, the consequence in plain words ("Purchases are paused, you won't be charged") before any grid.
+- **Browse = tile grid, manage = rows.** Shop tiles: real preview on top (image/GIF, video first frame with muted hover motion for mouse users, waveform tile for audio, speech-bubble quote for voice items), name (2-line clamp), then a full-width price button. 2 columns on the 318px panel and phones, 3 at ≥480px, 4 at ≥640px.
+- **Price buttons say the price, not "Buy":** gold Bits pill with the gem icon, green "Free", violet credits. The detail sheet's main button says the action + price ("Play now · 150 Bits").
+- **Put a consequence line right under the pay button** ("Plays on Dima's stream for everyone as soon as you pay" / "Goes to your Saved tab").
+- **Honest cues only:** "New" from a real `createdAt` window, "2 saved" from the viewer's inventory, refund/trust lines only when the backend guarantees them (DimaFX refunds failed plays as credits only for viewers who shared their Twitch ID, so the line is conditional). Never fake popularity, scarcity ("only 2 left"), countdowns or invented discounts.
+- **Spending confirmation without friction:** Twitch shows its own confirmation for Bits, so a Bits button may start checkout directly. Credits or other in-app balances need a **two-tap button**: the first tap turns it into "Spend 50?" (solid accent, focused, resets after ~4s), the second pays. Free items may play on one tap.
+- **Explain what an opt-in unlocks** at the point it's needed ("Share your Twitch ID to save items, use credits and get refunds as credits") with a button that triggers it, instead of a bare disabled control.
+- **Hide filters and search the store doesn't need:** type chips with counts only when there are 2+ types; search only for long stores (> 8 items).
+
+## Twitch extension (`dimafx/`)
+
+The viewer extension uses the same language, adapted to Twitch:
+
+- **Stack:** plain HTML/JS (no Angular, no `LanguageService`). `panel.html` and `mobile.html` share one markup and `panel.js`; `body.fx--mobile` widens the layout. Tokens and styles live in `dimafx/storefront.css` (on `:root` / `html.dark`, not `:host`); `config.html` (streamer setup) reuses it.
+- **Size:** design for the **318×500 Twitch panel** first (compact header, scrollable middle, bottom tab bar, bottom-sheet detail), then the full-width phone view. Every check runs at 318, 320 and 390.
+- **Theme and language come from Twitch:** `Twitch.ext.onContext` → toggle `html.dark` (no theme switcher of our own); English/Spanish from the `?language=` query Twitch adds, via the `STRINGS` table in `panel.js`.
+- **Purchase safety is part of the design:** buttons are disabled while the overlay is offline, and every purchase re-checks the overlay before calling Twitch. Keep both when restyling.
+- **Publishing:** files are served straight from the checkout, so prepare in a separate worktree and publish per `dimafx/AGENTS.md`. Behaviour check: `ops/checks/dimafx-client.mjs` (mocked Twitch + API; filters, credits two-tap, custom voice message, saved items, Spanish/no-ID, axe + overflow in dark and light).
 
 ## Admin site (`admin/`)
 
@@ -294,6 +320,9 @@ Same language, same tokens, same two non-negotiables. The admin is internal and 
 - Replacing real image/video previews with generic icons
 - Native range sliders and native-looking controls next to LF pills
 - Showing controls the API ignores (e.g. "Change media" on edit)
+- Fake urgency or popularity on viewer shops ("only 2 left", "trending" without data, invented discounts)
+- One-tap spending of credits or other in-app balances
+- Audio/video playback URLs used as `<img>` thumbnails (broken images)
 
 ---
 
@@ -371,5 +400,6 @@ If unsure between “looks like old site with new colors” vs “true bento Liv
 
 - `dimasite/AGENTS.md` — Angular + styling policy (points here)
 - `admin/AGENTS.md` — admin site (points here)
+- `dimafx/AGENTS.md` — Twitch extension publishing + viewer UX rules
 - Root `AGENTS.md` — monorepo map
 - Design mock catalogue: `landing-mocks/grok/grok-mock-index.component.ts` (OC3c entry)
