@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { CLIP_DESIGN_VARIANTS, ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 
@@ -30,6 +30,13 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
     if (!(nested ? ['text', 'image', 'video', 'animation'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video']).includes(kind)) throw new OverlayError('Invalid layer type');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
+    if (w.motion !== undefined) {
+      if (!nested) throw new OverlayError('Object animations require an alert design');
+      const motion = object(w.motion);
+      if (!ALERT_TRANSITIONS.includes(motion.enter as never) || !ALERT_TRANSITIONS.includes(motion.exit as never) || !ALERT_LOOPS.includes(motion.loop as never)) throw new OverlayError('Invalid object animation');
+      item.motion = { enter: motion.enter as NonNullable<OverlayWidget['motion']>['enter'], exit: motion.exit as NonNullable<OverlayWidget['motion']>['exit'], loop: motion.loop as NonNullable<OverlayWidget['motion']>['loop'],
+        delay: number(motion.delay, 0, 120), enterDuration: number(motion.enterDuration, .1, 5), exitDuration: number(motion.exitDuration, .1, 5), loopDuration: number(motion.loopDuration, .2, 10) };
+    }
     if (w.name !== undefined) item.name = typeof w.name === 'string' && w.name.length <= 80 ? w.name : string(w.name, 80);
     if (w.clipDesign !== undefined) {
       if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');

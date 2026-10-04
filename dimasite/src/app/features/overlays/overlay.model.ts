@@ -2,10 +2,17 @@ import type { ClipDesignVariant } from '../clips/clips.model';
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
 export type WidgetKind = 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation';
+export const ALERT_TRANSITIONS = ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'bounce', 'flip', 'spin'] as const;
+export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
+export interface AlertMotion {
+  enter: typeof ALERT_TRANSITIONS[number]; exit: typeof ALERT_TRANSITIONS[number]; loop: typeof ALERT_LOOPS[number];
+  delay: number; enterDuration: number; exitDuration: number; loopDuration: number;
+}
 export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
+  motion?: AlertMotion;
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
 }

@@ -1,20 +1,26 @@
 import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { playObjectMotion } from './overlay-object-motion';
 import type { OverlayWidget } from './overlay.model';
 import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.component';
 import { LinksService } from '../../services/links.service';
 @Component({
   selector: 'app-overlay-layer', imports: [AssetPreviewComponent], changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()">@switch (layer().kind) {
+  template: `<div #entrance class="motion-shell"><div #exit class="motion-shell"><div #loop class="motion-shell"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()">@switch (layer().kind) {
     @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'">{{ text() ?? layer().text }}</span> }
     @case ('image') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
     @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" kind="video" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <video [src]="layer().mediaUrl" autoplay muted loop playsinline (error)="failed.emit()"></video> } }
-    @case ('animation') { <span class="spark" [style.color]="layer().color || '#a78bfa'">✦</span> }
-  }</div>`,
-  styles: `:host { position:relative; display:block; width:100%; height:100%; overflow:hidden } .layer-content { position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; transform-origin:top left; overflow:hidden } img,video { width:100%; height:100%; object-fit:contain } span { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; text-align:center; font-family:inherit; font-weight:400; line-height:1.2 } .spark { font-size:100px; animation:pulse 1s ease-in-out infinite alternate } @keyframes pulse { to { transform:scale(.7) rotate(20deg); opacity:.5 } } @media(prefers-reduced-motion:reduce){ .spark { animation:none } }`
+    @case ('animation') { <span class="spark" [class.spark--custom]="!!layer().motion" [style.color]="layer().color || '#a78bfa'">✦</span> }
+  }</div></div></div></div>`,
+  styles: `:host { position:relative; display:block; width:100%; height:100%; overflow:hidden } .motion-shell { width:100%; height:100%; transform-origin:center } .spark.spark--custom { animation:none } .layer-content { position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; transform-origin:top left; overflow:hidden } img,video { width:100%; height:100%; object-fit:contain } span { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; text-align:center; font-family:inherit; font-weight:400; line-height:1.2 } .spark { font-size:100px; animation:pulse 1s ease-in-out infinite alternate } @keyframes pulse { to { transform:scale(.7) rotate(20deg); opacity:.5 } } @media(prefers-reduced-motion:reduce){ .spark { animation:none } }`
 })
 export class OverlayLayerComponent {
   readonly layer = input.required<OverlayWidget>();
   readonly text = input<string>();
+  readonly playbackKey = input<string | number>(0);
+  readonly duration = input(5);
+  private readonly entrance = viewChild<ElementRef<HTMLElement>>('entrance');
+  private readonly exit = viewChild<ElementRef<HTMLElement>>('exit');
+  private readonly loop = viewChild<ElementRef<HTMLElement>>('loop');
   readonly owner = input('');
   readonly publicId = input('');
   readonly failed = output<void>();
@@ -27,6 +33,16 @@ export class OverlayLayerComponent {
   constructor() {
     const host = inject(ElementRef<HTMLElement>).nativeElement;
     const destroy = inject(DestroyRef);
+    afterRenderEffect(cleanup => {
+      const key = this.playbackKey(), motion = this.layer().motion, duration = this.duration();
+      const entrance = this.entrance()?.nativeElement, exit = this.exit()?.nativeElement, loop = this.loop()?.nativeElement;
+      if (!key || !motion || !entrance || !exit || !loop) return;
+      const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let stop = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches);
+      const changed = () => { stop(); stop = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches); };
+      preference.addEventListener('change', changed);
+      cleanup(() => { stop(); preference.removeEventListener('change', changed); });
+    });
     afterRenderEffect(cleanup => {
       const element = this.textElement()?.nativeElement, layer = this.layer();
       this.text();

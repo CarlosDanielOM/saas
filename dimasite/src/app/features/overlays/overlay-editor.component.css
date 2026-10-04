@@ -896,7 +896,7 @@ app-overlay-queue { order: 3; }
 .clip-play { width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,.23); backdrop-filter:blur(4px) }
 .clip-caption { position:absolute; bottom:0; left:0; right:0; padding:5px 7px; background:linear-gradient(transparent,rgba(0,0,0,.68)) }
 .resize-handle { position:absolute; right:-5px; bottom:-5px; width:12px; height:12px; background:#a78bfa; border:2px solid white; border-radius:3px; cursor:nwse-resize; padding:0; touch-action:none }
-.widget.is-preview { animation:preview-pulse 1s ease-in-out 3 }
+.widget.is-preview { outline:2px solid var(--accent) }
 @keyframes preview-pulse { 50% { transform:scale(1.045); box-shadow:0 0 25px rgba(167,139,250,.8) } }
 .widget[data-kind="alert"] { background:radial-gradient(ellipse at 20% 40%,#543788,transparent),#151824; border-color:#a78bfa }
 .widget__content.widget__content--alert { padding:0; display:block }
@@ -923,3 +923,7 @@ app-overlay-queue { order: 3; }
 .widget:is([data-kind="text"], [data-kind="image"], [data-kind="video"], [data-kind="animation"]) .widget__content { padding:0 }
 @media (prefers-reduced-motion: reduce) { .widget.is-preview { animation: none; outline: 3px solid #a78bfa; } .spark-playing { animation: none; } }
 .widget__content app-overlay-layer { display: block; width: 100%; height: 100%; }
+
+.object-motion { display:grid; gap:.75rem; border-block:1px solid var(--line); padding-block:1rem }
+.object-motion h3 { font-size:.9rem; margin:0 }
+.object-motion .lf-more[open] { display:grid; gap:.75rem }

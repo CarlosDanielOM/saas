@@ -1,3 +1,5 @@
+import { defaultMotion } from './overlay-object-motion';
+import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
@@ -117,6 +119,11 @@ export class OverlayEditorComponent {
   readonly active = signal<MockEvent | null>(null);
   readonly parallel = signal<MockEvent[]>([]);
   readonly previewDesign = signal(false);
+  readonly motionReplay = signal(0);
+  readonly motionTransitions = ALERT_TRANSITIONS;
+  readonly motionLoops = ALERT_LOOPS;
+  readonly selectedMotion = computed(() => this.selected()?.motion ?? defaultMotion(this.selected()?.kind));
+  private designPreviewTimer?: ReturnType<typeof setTimeout>;
   readonly sampleUser = signal('Luna');
   readonly sampleAmount = signal('100');
   readonly dirty = computed(() => {
@@ -208,6 +215,24 @@ export class OverlayEditorComponent {
     const design = this.value(event) as ClipDesignVariant;
     if (this.selected()?.kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(design) || this.clipDesigns().find(d => d.variant === design)?.isLocked !== false) return;
     this.patchSelected({ clipDesign: design });
+  }
+  setMotionChoice(field: 'enter' | 'exit' | 'loop', event: Event): void {
+    const value = this.value(event);
+    if (!(field === 'loop' ? ALERT_LOOPS : ALERT_TRANSITIONS).includes(value as never)) return;
+    this.patchSelected({ motion: { ...this.selectedMotion(), [field]: value } });
+  }
+  setMotionTime(field: 'delay' | 'enterDuration' | 'exitDuration' | 'loopDuration', event: Event): void {
+    const value = Number(this.value(event)); if (!Number.isFinite(value)) return;
+    const min = field === 'delay' ? 0 : field === 'loopDuration' ? .2 : .1;
+    const max = field === 'delay' ? 120 : field === 'loopDuration' ? 10 : 5;
+    this.patchSelected({ motion: { ...this.selectedMotion(), [field]: Math.max(min, Math.min(max, value)) } });
+  }
+  objectPlaybackKey(widget: OverlayWidget): number {
+    if (this.designDraft()) return this.previewDesign() ? this.motionReplay() : 0;
+    return [this.active(), ...this.parallel()].find(event => event && widget.events?.includes(event.kind as AlertEvent))?.id ?? 0;
+  }
+  objectPlaybackDuration(widget: OverlayWidget): number {
+    return this.designDraft()?.events[this.designEvent()].duration ?? this.designFor(widget)?.events[this.eventFor(widget)].duration ?? 5;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
   useAsset(asset: DesignAsset): void {
@@ -307,7 +332,7 @@ export class OverlayEditorComponent {
     this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
   }
   async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
-  setDesignEvent(event: AlertEvent): void { this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
+  setDesignEvent(event: AlertEvent): void { this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
   async saveDesign(asCopy=false): Promise<boolean> {
     const draft=this.designDraft(); if(!draft) return false;
     const saved={...clone(draft),id:asCopy?this.id('design'):draft.id,name:asCopy?`${draft.name} · ${this.t('copy')}`:draft.name,revision:asCopy?1:draft.revision+1};
@@ -382,7 +407,10 @@ export class OverlayEditorComponent {
     const [event, ...rest] = this.queue(); this.queue.set(rest); this.active.set(event); this.startEvent(event);
   }
   private startEvent(event: MockEvent): void {
-    if (!event.channel) { this.later(() => this.finishEvent(event.id), 2500); return; }
+    if (!event.channel) {
+      const durations = this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => this.designFor(w)?.events[event.kind as AlertEvent]?.duration ?? 5);
+      this.later(() => this.finishEvent(event.id), Math.max(1, ...durations) * 1000); return;
+    }
     const visible = new Set(this.widgets().filter(w => w.visible).map(w => w.id));
     const targets = event.targets?.filter(id => visible.has(id)) ?? [];
     if (!targets.length) { this.finishEvent(event.id); return; }
@@ -454,8 +482,13 @@ export class OverlayEditorComponent {
     const active = this.active(); if (!active) return;
     this.notice.set('mediaReleased'); this.finishEvent(active.id);
   }
-  testDesign(): void { this.revealStage(); this.previewDesign.set(true); this.later(()=>this.previewDesign.set(false),(this.designDraft()?.events[this.designEvent()].duration??5)*1000); }
-  private resetSimulation(): void { this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
+  testDesign(): void {
+    this.revealStage();
+    if (this.designPreviewTimer) { clearTimeout(this.designPreviewTimer); this.timers.delete(this.designPreviewTimer); }
+    this.motionReplay.update(value => value + 1); this.previewDesign.set(true);
+    this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.designDraft()?.events[this.designEvent()].duration ?? 5) * 1000);
+  }
+  private resetSimulation(): void { this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   async publish(): Promise<void> {
     if (!(this.designDraft() ? await this.saveDesign() : await this.persist())) return;
     this.busy.set(true);

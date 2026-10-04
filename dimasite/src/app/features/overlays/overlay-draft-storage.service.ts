@@ -1,7 +1,7 @@
 import { CLIP_DESIGN_VARIANTS } from '../clips/clips.model';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
-import { ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
+import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
 
 export type DraftScene = Omit<OverlayScene, 'publicId' | 'published' | 'revision'>;
 export interface LocalOverlayDraft {
@@ -20,6 +20,13 @@ export interface OverlayRecovery { key: string; serialized: string; draft: Local
 const PREFIX = 'domdimabot-overlay-draft:';
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+function validMotion(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!record(value) || !ALERT_TRANSITIONS.includes(value['enter'] as never) || !ALERT_TRANSITIONS.includes(value['exit'] as never) || !ALERT_LOOPS.includes(value['loop'] as never)) return false;
+  return ([['delay', 0, 120], ['enterDuration', .1, 5], ['exitDuration', .1, 5], ['loopDuration', .2, 10]] as [string, number, number][]).every(([key, min, max]) => {
+    const n = value[key]; return finite(n) && n >= Number(min) && n <= Number(max);
+  });
+}
 function validWidgets(value: unknown): value is OverlayWidget[] {
   return Array.isArray(value) && value.length <= 1000 && value.every(w => record(w)
     && typeof w['id'] === 'string' && typeof w['kind'] === 'string'
@@ -29,6 +36,7 @@ function validWidgets(value: unknown): value is OverlayWidget[] {
     && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
     && (w['clipDesign'] === undefined || w['kind'] === 'clip' && CLIP_DESIGN_VARIANTS.includes(w['clipDesign'] as never))
     && (w['triggerIds'] === undefined || w['kind'] === 'trigger' && Array.isArray(w['triggerIds']) && w['triggerIds'].length <= 1000 && new Set(w['triggerIds']).size === w['triggerIds'].length && w['triggerIds'].every(value => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value)))
+    && validMotion(w['motion'])
     && (w['fontSize'] === undefined || finite(w['fontSize']))
     && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
 }
