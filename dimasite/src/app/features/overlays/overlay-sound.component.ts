@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, inject, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterRenderEffect, inject, input, output, signal, untracked, viewChild } from '@angular/core';
 import { AssetLibraryService } from '../../shared/asset-library/asset-library.service';
 import { LinksService } from '../../services/links.service';
 import { LanguageService } from '../../services/language.service';
 import type { AlertSound } from './overlay.model';
+
+export interface AlertTransport { time: number; playing: boolean; seek: number }
 
 /** One instance per alert design/event, shared by preview and the OBS renderer. */
 @Component({
@@ -15,6 +17,8 @@ export class OverlaySoundComponent {
   readonly duration = input.required<number>();
   readonly playbackKey = input.required<string | number>();
   readonly owner = input('');
+  readonly transport = input<AlertTransport | null>(null);
+  private syncTimeline?: () => void;
   readonly publicId = input('');
   readonly failed = output<void>();
   readonly playbackBlocked = output<void>();
@@ -29,6 +33,7 @@ export class OverlaySoundComponent {
   constructor() {
     afterRenderEffect(cleanup => {
       const sound = this.sound(), duration = this.duration(), owner = this.owner(), publicId = this.publicId(); this.playbackKey();
+      if (untracked(this.transport)) { this.timelineAudio(sound, duration, owner, publicId, cleanup); return; }
       const audio = this.audio().nativeElement, began = performance.now();
       let disposed = false, playing = false, done = false, timer: ReturnType<typeof setTimeout> | undefined;
       this.blocked.set(false); audio.loop = false; audio.volume = 0;
@@ -66,5 +71,37 @@ export class OverlaySoundComponent {
       const source = publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
       void source.then(url => { if (!disposed && !done) { audio.src = url; audio.load(); } }).catch(fail);
     });
+    afterRenderEffect(() => { this.transport(); this.syncTimeline?.(); });
+  }
+  private timelineAudio(sound: AlertSound, duration: number, owner: string, publicId: string, cleanup: (fn: () => void) => void): void {
+    const audio = this.audio().nativeElement;
+    let disposed = false, broken = false, ready = false, playing = false, blocked = false, seek = -1, attempt = 0;
+    this.blocked.set(false); audio.volume = 0; audio.loop = false;
+    const pause = () => { if (playing || !audio.paused) { attempt++; audio.pause(); } playing = false; };
+    const fail = () => { if (!disposed && !broken) { broken = true; pause(); this.failed.emit(); } };
+    const sync = () => {
+      const clock = untracked(this.transport); if (disposed || broken || !clock || !ready) return;
+      const position = Math.max(0, clock.time - sound.delay), inside = clock.time >= sound.delay && clock.time < duration && position < audio.duration;
+      const target = Math.min(position, Math.max(0, audio.duration - .001));
+      if (clock.seek !== seek || !clock.playing || Math.abs(audio.currentTime - target) > .25) { audio.currentTime = target; seek = clock.seek; }
+      const remaining = Math.max(0, Math.min(audio.duration - position, duration - clock.time));
+      audio.volume = Math.max(0, Math.min(1, sound.volume * Math.min(sound.fadeIn ? position / sound.fadeIn : 1, sound.fadeOut ? remaining / sound.fadeOut : 1, 1)));
+      if (document.hidden || !clock.playing || !inside || sound.volume === 0) { pause(); return; }
+      if (playing || blocked) return;
+      playing = true; const run = ++attempt;
+      void audio.play().then(() => { if (disposed) { audio.pause(); return; } if (run === attempt) { this.blocked.set(false); this.started.emit(); } }).catch(error => {
+        if (disposed || run !== attempt) return; playing = false;
+        if (error?.name === 'NotAllowedError') { blocked = true; this.blocked.set(true); this.playbackBlocked.emit(); }
+        else if (error?.name !== 'AbortError') fail();
+      });
+    };
+    const visibility = () => { if (document.hidden) pause(); };
+    document.addEventListener('visibilitychange', visibility);
+    this.syncTimeline = sync; this.playAgain = () => { blocked = false; sync(); };
+    audio.onloadedmetadata = () => { ready = Number.isFinite(audio.duration) && audio.duration > 0; if (ready) sync(); else fail(); };
+    audio.onerror = fail;
+    cleanup(() => { document.removeEventListener('visibilitychange', visibility); disposed = true; attempt++; this.syncTimeline = undefined; this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
+    const source = publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
+    void source.then(url => { if (!disposed) { audio.src = url; audio.load(); } }).catch(fail);
   }
 }

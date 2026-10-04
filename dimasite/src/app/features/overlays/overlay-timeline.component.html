@@ -1,0 +1,50 @@
+<section class="timeline" [attr.aria-label]="t('timelineTitle')">
+  <header><div><h3>{{ t('timelineTitle') }}</h3><p>{{ t('timelineHint') }}</p></div><output>{{ (transport()?.time ?? 0).toFixed(2) }} / {{ layout().duration }} s</output></header>
+  <div class="transport">
+    <button type="button" class="primary" (click)="toggle.emit()">{{ t(transport()?.playing ? 'timelinePause' : 'timelinePlay') }}</button>
+    <button type="button" (click)="seek.emit(0)">{{ t('timelineStart') }}</button>
+    @if (transport()) { <button type="button" (click)="closed.emit()">{{ t('timelineClose') }}</button> }
+  </div>
+  <label class="scrubber"><span>{{ t('timelinePlayhead') }}</span><input class="lf-range" type="range" min="0" [max]="layout().duration" step="0.01" [value]="transport()?.time ?? 0" [style.--pct]="(transport()?.time ?? 0) / layout().duration" (input)="seek.emit(inputValue($event))" /></label>
+  <div class="ruler" aria-hidden="true">@for (tick of ticks(); track $index) { <span>{{ tick }}s</span> }</div>
+  <div class="tracks">
+    @for (w of layout().widgets; track w.id) {
+      <div class="row" [class.selected]="!soundSelected() && selectedId() === w.id" [class.hidden-row]="!w.visible" [attr.data-track]="w.id">
+        <button type="button" class="name" [attr.aria-pressed]="!soundSelected() && selectedId() === w.id" (click)="select(w.id)">{{ name(w) }}@if (!w.visible) { <small>{{ t('timelineHidden') }}</small> }</button>
+        <div class="track">
+          <div class="bar" [style.left.%]="percent(delay(w.id))" [style.width.%]="100 - percent(delay(w.id))"></div>
+          <div class="phase entrance" [style.left.%]="percent(delay(w.id))" [style.width.%]="phases(w).enter"></div>
+          <div class="phase exit" [style.right.%]="0" [style.width.%]="phases(w).exit"></div>
+          <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>
+          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="delay(w.id) > layout().duration ? layout().duration : delay(w.id)" [attr.aria-valuetext]="delay(w.id) + ' s'" [attr.aria-label]="name(w) + ' · ' + t('timelineDelay')" [style.left]="'min(' + percent(delay(w.id)) + '%, calc(100% - 44px))'" (pointerdown)="down($event, w.id)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, w.id)" (keyup)="editEnded.emit()">↔</button>
+        </div>
+      </div>
+    }
+    @if (layout().sound; as sound) {
+      <div class="row" [class.selected]="soundSelected()" data-track="$sound">
+        <button type="button" class="name" [attr.aria-pressed]="soundSelected()" (click)="select('$sound')">{{ t('alertSound') }}<small>{{ sound.name || t('soundSelected') }}</small></button>
+        <div class="track sound-track">
+          <div class="bar" [style.left.%]="percent(delay('$sound'))" [style.width.%]="100 - percent(delay('$sound'))"></div>
+          <span class="playhead" [style.left.%]="percent(transport()?.time ?? 0)"></span>
+          <button type="button" class="handle" role="slider" aria-valuemin="0" [attr.aria-valuemax]="layout().duration" [attr.aria-valuenow]="delay('$sound') > layout().duration ? layout().duration : delay('$sound')" [attr.aria-valuetext]="delay('$sound') + ' s'" [attr.aria-label]="t('soundDelay')" [style.left]="'min(' + percent(delay('$sound')) + '%, calc(100% - 44px))'" (pointerdown)="down($event, '$sound')" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event, true)" (lostpointercapture)="up($event, true)" (keydown)="key($event, '$sound')" (keyup)="editEnded.emit()">↔</button>
+        </div>
+      </div>
+    } @else { <p class="empty">{{ t('timelineNoSound') }}</p> }
+  </div>
+  <p class="legend"><span class="entrance-key">{{ t('motionEnter') }}</span><span>{{ t('motionLoop') }}</span><span class="exit-key">{{ t('motionExit') }}</span></p>
+  @if (soundSelected() && layout().sound; as sound) {
+    <div class="timing" (focusout)="editEnded.emit()">
+      <label><span>{{ t('soundDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="sound.delay" (change)="change('$sound', 'delay', inputValue($event))" /></label>
+      <label><span>{{ t('soundFadeIn') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeIn" (change)="change('$sound', 'fadeIn', inputValue($event))" /></label>
+      <label><span>{{ t('soundFadeOut') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeOut" (change)="change('$sound', 'fadeOut', inputValue($event))" /></label>
+    </div>
+    <p>{{ t('timelineSoundHint') }}</p>
+  } @else if (item(); as w) {
+    <div class="timing" (focusout)="editEnded.emit()">
+      <label><span>{{ t('timelineDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="motion().delay" (change)="change(w.id, 'delay', inputValue($event))" /></label>
+      <label><span>{{ t('motionEnterDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [disabled]="motion().enter === 'none'" [value]="motion().enterDuration" (change)="change(w.id, 'enterDuration', inputValue($event))" /></label>
+      <label><span>{{ t('motionExitDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [disabled]="motion().exit === 'none'" [value]="motion().exitDuration" (change)="change(w.id, 'exitDuration', inputValue($event))" /></label>
+    </div>
+  }
+  <p>{{ t('timelineTimingHint') }}</p>
+</section>

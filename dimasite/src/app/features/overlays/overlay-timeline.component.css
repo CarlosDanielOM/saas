@@ -1,0 +1,42 @@
+:host { display:block; min-width:0; color:var(--fg) }
+* { box-sizing:border-box }
+.timeline { border-top:1px solid var(--line); padding-block:1rem; display:grid; gap:.75rem; min-width:0 }
+header { display:flex; align-items:start; gap:.75rem; flex-wrap:wrap; justify-content:space-between }
+h3 { margin:0; font-size:1rem } p { margin:.35rem 0 0; font-size:.8rem; color:var(--muted); line-height:1.5 }
+output { font-size:.85rem; font-variant-numeric:tabular-nums; white-space:nowrap; padding:.4rem 0 }
+button,input { font:inherit; color:inherit; min-height:44px }
+button { cursor:pointer; border:1px solid var(--btn-border); background:var(--btn); border-radius:1rem; padding:.5rem .75rem }
+button.primary { background:#7c3aed; color:white; border-color:#7c3aed }
+button:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+button:disabled,input:disabled { opacity:.55; cursor:default }
+.transport { display:flex; gap:.5rem; flex-wrap:wrap; font-size:.8rem }
+.scrubber { display:grid; gap:.25rem; font-size:.8rem }
+.lf-range { appearance:none; height:44px; width:100%; border:0; padding:0; background:transparent; cursor:pointer; --pct:0 }
+.lf-range::-webkit-slider-runnable-track { height:6px; border-radius:99px; background:linear-gradient(to right,#7c3aed calc(var(--pct) * (100% - 20px) + 10px),var(--line) 0) }
+.lf-range::-moz-range-track { height:6px; border-radius:99px; background:var(--line) }
+.lf-range::-moz-range-progress { height:6px; background:#7c3aed }
+.lf-range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; border:2px solid var(--tile); border-radius:50%; background:#7c3aed }
+.lf-range::-moz-range-thumb { width:18px; height:18px; border:2px solid var(--tile); border-radius:50%; background:#7c3aed }
+.ruler { display:flex; justify-content:space-between; margin-left:6rem; font-size:.65rem; color:var(--muted) }
+.tracks { display:grid; gap:.3rem }
+.row { display:grid; grid-template-columns:5.5rem minmax(0,1fr); gap:.5rem; align-items:center; border-radius:.65rem; padding:.2rem 0 }
+.row.selected { background:var(--accent-soft) }
+.name { border:0; background:transparent; border-radius:.5rem; text-align:left; padding:.4rem; overflow-wrap:anywhere; font-size:.8rem; min-width:0 }
+.name small { display:block; font-size:.65rem; color:var(--muted); max-width:100%; overflow:hidden; text-overflow:ellipsis }
+.track { height:44px; position:relative; min-width:0; background:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px 25%); border-bottom:1px solid var(--line) }
+.bar,.phase { position:absolute; top:12px; height:20px; pointer-events:none }
+.bar { background:var(--accent-soft); border:1px solid var(--accent); border-radius:.3rem }
+.phase.entrance { background:var(--accent); opacity:.6; border-radius:.3rem 0 0 .3rem }
+.phase.exit { background:var(--muted); opacity:.65; border-radius:0 .3rem .3rem 0 }
+.sound-track .bar { border-color:var(--ok); background:var(--ok-soft) }
+.handle { position:absolute; top:0; width:44px; padding:0; border:0; border-radius:.5rem; background:transparent; color:var(--fg); touch-action:none; cursor:ew-resize; z-index:2; font-size:1.25rem; text-shadow:0 0 4px var(--tile) }
+.handle:hover,.handle:focus-visible { background:var(--btn) }
+.playhead { position:absolute; top:0; bottom:0; border-left:2px solid var(--accent); pointer-events:none; z-index:1 }
+.hidden-row .bar,.hidden-row .phase { opacity:.3 }
+.legend { display:flex; flex-wrap:wrap; gap:.75rem; font-size:.7rem }
+.legend span::before { content:''; display:inline-block; width:.6rem; height:.6rem; margin-right:.3rem; background:var(--accent-soft); border:1px solid var(--accent); border-radius:.15rem }
+.legend .entrance-key::before { background:var(--accent) }.legend .exit-key::before { background:var(--muted); border-color:var(--muted) }
+.timing { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem }
+.timing label { display:grid; gap:.35rem; font-size:.75rem; color:var(--muted); min-width:0 }
+.timing input { width:100%; min-width:0; border:1px solid var(--btn-border); border-radius:.75rem; padding:.5rem; background:var(--input-bg); font-size:16px; color:var(--fg) }
+@media(min-width:640px) { .row { grid-template-columns:9rem minmax(0,1fr) } .ruler { margin-left:9.5rem } .timing { grid-template-columns:repeat(3,minmax(0,1fr)) } }

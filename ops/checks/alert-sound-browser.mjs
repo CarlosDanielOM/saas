@@ -19,6 +19,10 @@ function initialState() {
   return { schemaVersion: 1, revision: 4, scenes: [main, chat], designs: [design] };
 }
 const wave=Buffer.alloc(44+16000*20);wave.write('RIFF');wave.writeUInt32LE(wave.length-8,4);wave.write('WAVEfmt ',8);wave.writeUInt32LE(16,16);wave.writeUInt16LE(1,20);wave.writeUInt16LE(1,22);wave.writeUInt32LE(8000,24);wave.writeUInt32LE(16000,28);wave.writeUInt16LE(2,32);wave.writeUInt16LE(16,34);wave.write('data',36);wave.writeUInt32LE(wave.length-44,40);
+function waveResponse(route) {
+ const range=route.request().headers().range?.match(/bytes=(\d+)-(\d*)/),start=range?Number(range[1]):0,end=range && range[2]?Math.min(Number(range[2]),wave.length-1):wave.length-1;
+ return route.fulfill({status:range?206:200,contentType:'audio/wav',headers:{'accept-ranges':'bytes','content-length':String(end-start+1),...(range?{'content-range':`bytes ${start}-${end}/${wave.length}`}:{})},body:wave.subarray(start,end+1)});
+}
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 const errors = [];
 async function until(predicate, label, tries = 200) { for (let i = 0; i < tries; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 25)); } throw new Error('Timed out: ' + label); }
@@ -34,10 +38,10 @@ async function fixture({ width = 1280, height = 900, dark = false, touch = false
   await context.route('**/*', route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin === new URL(base).origin) return route.continue();
-    if(url.hostname==='fixture.invalid')return route.fulfill({contentType:'audio/wav',body:wave});
+    if(url.hostname==='fixture.invalid')return waveResponse(route);
     if (url.origin !== api) return route.abort();
     let data = {}; const body = req.headers()['content-type']?.includes('application/json') ? req.postDataJSON() : undefined;
-    if(url.pathname.startsWith('/asset-library/content/'))return route.fulfill({contentType:'audio/wav',body:wave});
+    if(url.pathname.startsWith('/asset-library/content/'))return waveResponse(route);
     if(url.pathname===`/asset-library/${user.id}`){if(req.method()==='POST'){ctx.uploads++;const asset={...assets[0],id:'3'.repeat(24),name:'Uploaded.wav'};assets.push(asset);data=asset;}else data={assets,usedBytes:wave.length,quotaBytes:5000000000,maxFileBytes:50000000,planTier:'pro'};}
     else if(url.pathname.startsWith('/asset-library/') && url.pathname.endsWith('/access'))data={path:'/asset-library/content/'+url.pathname.split('/').at(-2)};
     else if (url.pathname === '/auth/session') data = { twitch: user, app: {...app,language:lang} };
@@ -111,7 +115,7 @@ const exactValue = (page, key) => page.locator('.properties').getByLabel(key, { 
  const context=await browser.newContext({viewport:{width:1280,height:720}});let socket;const ended=[],health=[];let fail=false;
  const send=(name,value)=>socket.send(`42/overlay-studio/${publicId},${JSON.stringify([name,value])}`);
  await context.routeWebSocket('**/*',ws=>{if(!ws.url().includes('/socket.io/'))return ws.close();socket=ws;ws.send('0{"sid":"fixture","upgrades":[],"pingInterval":1000000000,"pingTimeout":1000000000}');ws.onMessage(m=>{m=String(m);if(m.startsWith('40/overlay-studio/')){ws.send(`40/overlay-studio/${publicId},{"sid":"fixture"}`);send('overlay-state',{revision:1,snapshot});}if(m.includes('overlay-ended'))ended.push(JSON.parse(m.slice(m.indexOf(',')+1))[1]);if(m.includes('overlay-health'))health.push(m);});});
- await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===new URL(base).origin)return route.continue();if(url.pathname.includes('/events/'))return route.fulfill({json:{data:{id:url.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{sound:{duration:3,widgets:[layer('text','text',0,0,600,150,{text:'Sound alert'})],sound}}}}});if(url.pathname.includes('/assets/'))return route.fulfill(fail?{status:404,body:'missing'}:{contentType:'audio/wav',body:wave});return route.abort();});
+ await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===new URL(base).origin)return route.continue();if(url.pathname.includes('/events/'))return route.fulfill({json:{data:{id:url.pathname.split('/').at(-1),kind:'follow',snapshot,layouts:{sound:{duration:3,widgets:[layer('text','text',0,0,600,150,{text:'Sound alert'})],sound}}}}});if(url.pathname.includes('/assets/'))return fail?route.fulfill({status:404,body:'missing'}):waveResponse(route);return route.abort();});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/overlays/'+publicId);await page.locator('.canvas').waitFor();
  // Explicitly exercise autoplay rejection without relying on host browser policy.
  await page.evaluate(()=>{const play=HTMLMediaElement.prototype.play;window.allowSound=false;HTMLMediaElement.prototype.play=function(){return window.allowSound?play.call(this):Promise.reject(new DOMException('blocked','NotAllowedError'));};});

@@ -18,7 +18,7 @@ function loopFrames(name: AlertMotion['loop']): Keyframe[] {
   return [{ transform: 'none' }, { transform: middle }, { transform: 'none' }];
 }
 /** Separate wrappers keep entrance, idle and exit transforms independent of layout scaling. */
-export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLElement; loop: HTMLElement }, motion: AlertMotion, seconds: number, reduced: boolean): () => void {
+export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLElement; loop: HTMLElement }, motion: AlertMotion, seconds: number, reduced: boolean): { cancel: () => void; seek: (seconds: number) => void } {
   const total = Math.max(1, seconds * 1000);
   const delay = Math.min(motion.delay * 1000, total - 1);
   const available = total - delay;
@@ -37,5 +37,5 @@ export function playObjectMotion(elements: { entrance: HTMLElement; exit: HTMLEl
   animate(elements.entrance, enter, { duration: reduced ? 1 : enterTime, delay, fill: 'both', easing: motion.enter === 'none' || reduced ? 'steps(1, end)' : 'ease-out' }, 'enter');
   if (motion.exit !== 'none') animate(elements.exit, reduced ? [{ opacity: 1 }, { opacity: 0 }] : transition(motion.exit).reverse().map(frame => ({ ...frame, ...(frame.offset == null ? {} : { offset: 1 - frame.offset }) })), { duration: reduced ? 1 : exitTime, delay: total - (reduced ? 1 : exitTime), fill: 'both', easing: reduced ? 'steps(1, end)' : 'ease-in' }, 'exit');
   if (!reduced && motion.loop !== 'none' && idleTime > 0) animate(elements.loop, loopFrames(motion.loop), { duration: motion.loopDuration * 1000, delay: delay + enterTime, iterations: idleTime / (motion.loopDuration * 1000), fill: 'none', easing: motion.loop === 'spin' ? 'linear' : 'ease-in-out' }, 'loop');
-  return () => animations.forEach(animation => animation.cancel());
+  return { cancel: () => animations.forEach(animation => animation.cancel()), seek: seconds => animations.forEach(animation => { animation.pause(); animation.currentTime = Math.max(0, Math.min(seconds * 1000, total)); }) };
 }

@@ -1,5 +1,5 @@
-import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal, viewChild } from '@angular/core';
-import { playObjectMotion } from './overlay-object-motion';
+import { Component, ChangeDetectionStrategy, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, input, output, signal, untracked, viewChild } from '@angular/core';
+import { defaultMotion, playObjectMotion } from './overlay-object-motion';
 import type { OverlayWidget } from './overlay.model';
 import { AssetPreviewComponent } from '../../shared/asset-library/asset-preview.component';
 import { LinksService } from '../../services/links.service';
@@ -8,7 +8,7 @@ import { LinksService } from '../../services/links.service';
   template: `<div #entrance class="motion-shell"><div #exit class="motion-shell"><div #loop class="motion-shell"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()">@switch (layer().kind) {
     @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'">{{ text() ?? layer().text }}</span> }
     @case ('image') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
-    @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" kind="video" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <video [src]="layer().mediaUrl" autoplay muted loop playsinline (error)="failed.emit()"></video> } }
+    @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" kind="video" [seekTime]="seekTime()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <video [src]="layer().mediaUrl" [autoplay]="seekTime() === null" muted loop playsinline (loadedmetadata)="seekVideo()" (error)="failed.emit()"></video> } }
     @case ('animation') { <span class="spark" [class.spark--custom]="!!layer().motion" [style.color]="layer().color || '#a78bfa'">✦</span> }
   }</div></div></div></div>`,
   styles: `:host { position:relative; display:block; width:100%; height:100%; overflow:hidden } .motion-shell { width:100%; height:100%; transform-origin:center } .spark.spark--custom { animation:none } .layer-content { position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; transform-origin:top left; overflow:hidden } img,video { width:100%; height:100%; object-fit:contain } span { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; text-align:center; font-family:inherit; font-weight:400; line-height:1.2 } .spark { font-size:100px; animation:pulse 1s ease-in-out infinite alternate } @keyframes pulse { to { transform:scale(.7) rotate(20deg); opacity:.5 } } @media(prefers-reduced-motion:reduce){ .spark { animation:none } }`
@@ -18,6 +18,11 @@ export class OverlayLayerComponent {
   readonly text = input<string>();
   readonly playbackKey = input<string | number>(0);
   readonly duration = input(5);
+  readonly seekTime = input<number | null>(null);
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private legacySeek = false;
+  private videoWasControlled = false;
+  private motionPlayer?: ReturnType<typeof playObjectMotion>;
   private readonly entrance = viewChild<ElementRef<HTMLElement>>('entrance');
   private readonly exit = viewChild<ElementRef<HTMLElement>>('exit');
   private readonly loop = viewChild<ElementRef<HTMLElement>>('loop');
@@ -30,18 +35,36 @@ export class OverlayLayerComponent {
   private readonly base = inject(LinksService).getApiUrl();
   readonly publicAssetUrl = computed(() => this.publicId() && this.layer().assetId
     ? `${this.base}/overlay-studio/public/${encodeURIComponent(this.publicId())}/assets/${encodeURIComponent(this.layer().assetId!)}` : '');
+  seekVideo(): void {
+    const time = this.seekTime(), video = this.host.nativeElement.querySelector('.layer-content > video');
+    if (time === null) { if (this.videoWasControlled && video instanceof HTMLVideoElement) void video.play().catch(() => {}); this.videoWasControlled = false; return; }
+    this.videoWasControlled = true;
+    if (!(video instanceof HTMLVideoElement) || !Number.isFinite(video.duration) || !video.duration) return;
+    video.pause(); video.currentTime = time % video.duration;
+  }
   constructor() {
     const host = inject(ElementRef<HTMLElement>).nativeElement;
     const destroy = inject(DestroyRef);
     afterRenderEffect(cleanup => {
-      const key = this.playbackKey(), motion = this.layer().motion, duration = this.duration();
+      const key = this.playbackKey(), motion = this.layer().motion ?? (untracked(this.seekTime) !== null ? defaultMotion() : undefined), duration = this.duration();
       const entrance = this.entrance()?.nativeElement, exit = this.exit()?.nativeElement, loop = this.loop()?.nativeElement;
       if (!key || !motion || !entrance || !exit || !loop) return;
       const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-      let stop = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches);
-      const changed = () => { stop(); stop = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches); };
+      let player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches);
+      this.motionPlayer = player;
+      const seek = () => { const time = untracked(this.seekTime); if (time !== null) player.seek(time); }; seek();
+      const changed = () => { player.cancel(); player = playObjectMotion({ entrance, exit, loop }, motion, duration, preference.matches); this.motionPlayer = player; seek(); };
       preference.addEventListener('change', changed);
-      cleanup(() => { stop(); preference.removeEventListener('change', changed); });
+      cleanup(() => { player.cancel(); this.motionPlayer = undefined; preference.removeEventListener('change', changed); });
+    });
+    afterRenderEffect(() => {
+      const time = this.seekTime();
+      if (time !== null) this.motionPlayer?.seek(time);
+      for (const animation of this.host.nativeElement.querySelector('.spark')?.getAnimations() ?? []) {
+        if (time !== null) { animation.pause(); animation.currentTime = time * 1000; }
+        else if (this.legacySeek) animation.play();
+      }
+      this.legacySeek = time !== null; this.seekVideo();
     });
     afterRenderEffect(cleanup => {
       const element = this.textElement()?.nativeElement, layer = this.layer();

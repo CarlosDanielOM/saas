@@ -5308,6 +5308,18 @@
     }
   },
   "overlayStudio": {
+    "timelineTitle": "Línea de tiempo",
+    "timelineHint": "¿Cuándo empieza cada objeto y sonido? Arrastra una pista o introduce el tiempo exacto.",
+    "timelinePlay": "Reproducir línea de tiempo",
+    "timelinePause": "Pausar línea de tiempo",
+    "timelineStart": "Volver al inicio",
+    "timelineClose": "Salir de la vista temporal",
+    "timelinePlayhead": "Posición de vista previa (segundos)",
+    "timelineDelay": "Inicio (s)",
+    "timelineHidden": "Oculto",
+    "timelineNoSound": "Añade un sonido en Sonido de la alerta para verlo en esta línea de tiempo.",
+    "timelineSoundHint": "La barra muestra el tiempo disponible para el sonido. Un archivo más corto termina antes. Mover el cursor no reproduce audio; pulsa Reproducir para escucharlo.",
+    "timelineTimingHint": "Las pistas terminan con la alerta. Las fases de entrada y salida se acortan para caber en alertas breves. Elige los estilos en Animación del objeto.",
     "alertSound": "Sonido de la alerta",
     "soundHint": "Elige un sonido para este evento. MP3, WAV u Ogg · hasta 10 minutos y 50 MB.",
     "soundSelected": "Sonido seleccionado",

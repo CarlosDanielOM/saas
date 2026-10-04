@@ -5308,6 +5308,18 @@
     }
   },
   "overlayStudio": {
+    "timelineTitle": "Alert timeline",
+    "timelineHint": "When should each object and sound start? Drag a track or enter an exact time.",
+    "timelinePlay": "Play timeline",
+    "timelinePause": "Pause timeline",
+    "timelineStart": "Back to start",
+    "timelineClose": "Exit timeline preview",
+    "timelinePlayhead": "Preview position (seconds)",
+    "timelineDelay": "Start time (s)",
+    "timelineHidden": "Hidden",
+    "timelineNoSound": "Add a sound in Alert sound to place it on this timeline.",
+    "timelineSoundHint": "The sound bar shows the available playback window. A shorter file ends earlier. Scrubbing is silent; press Play to listen.",
+    "timelineTimingHint": "Tracks end with the alert. Entrance and exit phases shrink to fit short alerts. Choose animation styles in Object animation.",
     "alertSound": "Alert sound",
     "soundHint": "Choose a sound for this event. MP3, WAV or Ogg · up to 10 minutes and 50 MB.",
     "soundSelected": "Selected sound",

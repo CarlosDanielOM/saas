@@ -1,3 +1,5 @@
+import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
+import type { AlertTransport } from './overlay-sound.component';
 import { OverlaySoundComponent } from './overlay-sound.component';
 import type { AlertSound } from './overlay.model';
 import { defaultMotion } from './overlay-object-motion';
@@ -32,10 +34,10 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
+  host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
 })
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
@@ -74,7 +76,7 @@ export class OverlayEditorComponent {
   readonly alertSound = computed(() => this.designDraft()?.events[this.designEvent()].sound);
   readonly previewSounds = computed(() => {
     const draft = this.designDraft();
-    if (draft) { const layout = draft.events[this.designEvent()]; return this.previewDesign() && layout.sound ? [{ key: 'design-' + this.motionReplay(), config: layout.sound, duration: layout.duration }] : []; }
+    if (draft) { const layout = draft.events[this.designEvent()]; return (this.previewDesign() || this.timeline()) && layout.sound ? [{ key: (this.timeline() ? 'timeline-' : 'design-') + this.motionReplay(), config: layout.sound, duration: layout.duration }] : []; }
     return [this.active(), ...this.parallel()].flatMap(event => {
       if (!event || !ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
       const ids = new Set(this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.designId));
@@ -134,6 +136,9 @@ export class OverlayEditorComponent {
   readonly parallel = signal<MockEvent[]>([]);
   readonly previewDesign = signal(false);
   readonly motionReplay = signal(0);
+  readonly timeline = signal<AlertTransport | null>(null);
+  private timelineFrame = 0;
+  private timelineSeek = 0;
   readonly motionTransitions = ALERT_TRANSITIONS;
   readonly motionLoops = ALERT_LOOPS;
   readonly selectedMotion = computed(() => this.selected()?.motion ?? defaultMotion(this.selected()?.kind));
@@ -242,7 +247,7 @@ export class OverlayEditorComponent {
     this.patchSelected({ motion: { ...this.selectedMotion(), [field]: Math.max(min, Math.min(max, value)) } });
   }
   objectPlaybackKey(widget: OverlayWidget): number {
-    if (this.designDraft()) return this.previewDesign() ? this.motionReplay() : 0;
+    if (this.designDraft()) return this.previewDesign() || this.timeline() ? this.motionReplay() : 0;
     return [this.active(), ...this.parallel()].find(event => event && widget.events?.includes(event.kind as AlertEvent))?.id ?? 0;
   }
   objectPlaybackDuration(widget: OverlayWidget): number {
@@ -357,7 +362,7 @@ export class OverlayEditorComponent {
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
     this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
   }
-  async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
+  async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.closeTimeline(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
   setDesignEvent(event: AlertEvent): void { this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
   async saveDesign(asCopy=false): Promise<boolean> {
     const draft=this.designDraft(); if(!draft) return false;
@@ -384,6 +389,7 @@ export class OverlayEditorComponent {
   toggleWait(kind: EventKind): void { const wait=this.scene().waitFor; this.updateScene({waitFor:wait.includes(kind)?wait.filter(e=>e!==kind):[...wait,kind]}); }
   updateDuration(event: Event): void {
     const value=Number(this.value(event)); if(!Number.isFinite(value)) return;
+    this.resetSimulation();
     this.edit(() => this.designDraft.update(d=>d?{...d,events:{...d.events,[this.designEvent()]:{...d.events[this.designEvent()],duration:Math.max(1,Math.min(60,value))}}}:d));
   }
   renderText(text='$(user)'): string { return this.rendered()[text] ?? text; }
@@ -508,13 +514,46 @@ export class OverlayEditorComponent {
     const active = this.active(); if (!active) return;
     this.notice.set('mediaReleased'); this.finishEvent(active.id);
   }
+  seekTimeline(time: number): void {
+    if (!this.designDraft()) return;
+    if (!this.timeline()) { this.resetSimulation(); this.motionReplay.update(n => n + 1); }
+    if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame);
+    this.timeline.set({ time: Math.max(0, Math.min(this.designDraft()!.events[this.designEvent()].duration, time)), playing: false, seek: ++this.timelineSeek });
+  }
+  toggleTimeline(): void {
+    const current = this.timeline();
+    if (current?.playing) { this.seekTimeline(current.time); return; }
+    const duration = this.designDraft()?.events[this.designEvent()].duration ?? 5;
+    this.seekTimeline(current && current.time < duration ? current.time : 0);
+    const start = this.timeline()!.time, began = performance.now(), seek = this.timelineSeek;
+    this.timeline.set({ time: start, playing: true, seek });
+    const tick = () => {
+      const time = Math.min(duration, start + (performance.now() - began) / 1000);
+      this.timeline.set({ time, playing: time < duration, seek });
+      if (time < duration) this.timelineFrame = requestAnimationFrame(tick);
+    };
+    this.timelineFrame = requestAnimationFrame(tick);
+  }
+  pauseHiddenTimeline(): void { const clock = this.timeline(); if (document.hidden && clock?.playing) this.seekTimeline(clock.time); }
+  closeTimeline(): void { if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
+  editTimeline(change: TimelineEdit): void {
+    this.resetSimulation();
+    this.edit(() => this.designDraft.update(d => {
+      if (!d) return d;
+      const event = this.designEvent(), layout = d.events[event];
+      const next = change.id === '$sound'
+        ? { ...layout, sound: layout.sound ? { ...layout.sound, [change.field]: change.value } : undefined }
+        : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: { ...(w.motion ?? defaultMotion(w.kind)), [change.field]: change.value } } : w) };
+      return { ...d, events: { ...d.events, [event]: next } };
+    }), 'timeline:' + change.id + ':' + change.field);
+  }
   testDesign(): void {
-    this.revealStage();
+    this.closeTimeline(); this.revealStage();
     if (this.designPreviewTimer) { clearTimeout(this.designPreviewTimer); this.timers.delete(this.designPreviewTimer); }
     this.motionReplay.update(value => value + 1); this.previewDesign.set(true);
     this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.designDraft()?.events[this.designEvent()].duration ?? 5) * 1000);
   }
-  private resetSimulation(): void { this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
+  private resetSimulation(): void { this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   async publish(): Promise<void> {
     if (!(this.designDraft() ? await this.saveDesign() : await this.persist())) return;
     this.busy.set(true);

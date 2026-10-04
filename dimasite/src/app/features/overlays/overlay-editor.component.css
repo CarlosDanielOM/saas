@@ -939,3 +939,7 @@ app-overlay-queue { order: 3; }
 .lf-range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
 .lf-range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
 .lf-range:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
+
+app-overlay-timeline { grid-area:timeline; min-width:0 }
+.studio:has(app-overlay-timeline) { grid-template-areas:'tools' 'events' 'add' 'canvas' 'hint' 'layers' 'timeline' 'off' 'props' }
+@media(min-width:960px) { .studio:has(app-overlay-timeline) { grid-template-areas:'tools props' 'events props' 'add props' 'canvas props' 'hint props' 'off props' 'layers props' 'timeline props'; grid-template-rows:auto auto auto auto auto auto auto 1fr } }

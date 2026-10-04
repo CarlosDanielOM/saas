@@ -1,4 +1,4 @@
-@for (sound of previewSounds(); track sound.key) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="sound.key" [owner]="channel" (failed)="notice.set('soundFailed')" (playbackBlocked)="notice.set('soundBlocked')" /> }
+@for (sound of previewSounds(); track sound.key) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="sound.key" [transport]="timeline()" [owner]="channel" (failed)="notice.set('soundFailed')" (playbackBlocked)="notice.set('soundBlocked')" /> }
 <div class="lf editor" [class.lf--design]="!!designDraft()">
 <main class="lf-main">
 @if (!owner()) {
@@ -156,17 +156,17 @@
                           <div class="alert-render">
                             @for (layer of alertLayout(widget); track layer.id) {
                               @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" />
+                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" />
                               </div> }
                             }
                           </div>
                           <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
                         }
                       }
-                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [text]="renderText(widget.text)" /> }
-                      @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" /> }
-                      @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" /> }
-                      @case ('animation') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" /> }
+                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" [text]="renderText(widget.text)" /> }
+                      @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
+                      @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
+                      @case ('animation') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('tts') {
                         <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
                         <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>
@@ -200,6 +200,11 @@
         </div>
       </div>
     </div>
+    @if (designDraft(); as draft) {
+      <app-overlay-timeline [layout]="draft.events[designEvent()]" [eventKey]="draft.id + ':' + designEvent()" [selectedId]="selectedId()" [transport]="timeline()"
+        (selected)="selectedId.set($event)" (edited)="editTimeline($event)" (editEnded)="endHistoryGroup()"
+        (seek)="seekTimeline($event)" (toggle)="toggleTimeline()" (closed)="closeTimeline()" />
+    }
     <p class="studio__hint">{{ t('canvasHint') }}</p>
     @if (offCanvas()) { <p class="lf-note lf-note--warn off-canvas" role="status">{{ t('offCanvas', { count: offCanvas() }) }}</p> }
 
