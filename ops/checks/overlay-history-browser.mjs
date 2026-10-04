@@ -117,6 +117,9 @@ try {
   await target.focus(); await page.keyboard.press('Meta+z'); await eventually('equal', async () => await dimensions('X').inputValue(), '100');
   await target.focus(); await page.keyboard.press('Control+y'); await eventually('equal', async () => await dimensions('X').inputValue(), '130');
   await undo.click();
+  // Wait for undo to render before testing an unchanged input; filling the stale value can create a new edit.
+  await eventually('equal', async () => await dimensions('X').inputValue(), '100');
+  await eventually('equal', async () => await redo.isEnabled(), true);
   // An unchanged dimension is a no-op and must preserve redo.
   await dimensions('X').fill('100'); await target.focus(); await eventually('equal', async () => await redo.isEnabled(), true);
   const name = page.locator('.name-field input');

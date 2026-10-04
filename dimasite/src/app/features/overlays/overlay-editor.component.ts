@@ -1,3 +1,4 @@
+import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
 import { OverlayAppearanceComponent } from './overlay-appearance.component';
 import { OverlayVariantsComponent } from './overlay-variants.component';
 import { matchingVariant, selectAlertLayout, designLayouts, type AlertLayout, type AlertVariant } from './overlay.model';
@@ -37,7 +38,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -291,8 +292,11 @@ export class OverlayEditorComponent {
   setMotionChoice(field: 'enter' | 'exit' | 'loop', event: Event): void {
     const value = this.value(event);
     if (!(field === 'loop' ? ALERT_LOOPS : ALERT_TRANSITIONS).includes(value as never)) return;
-    this.patchSelected({ motion: { ...this.selectedMotion(), [field]: value } });
+    const keyframes = {...this.selected()?.keyframes}; delete keyframes[field];
+    this.patchSelected({ keyframes:Object.keys(keyframes).length ? keyframes : undefined, motion: { ...this.selectedMotion(), [field]: value } });
   }
+  prepareAnimationCatalog(): void { this.resetSimulation(); }
+  editKeyframes(changes: Partial<OverlayWidget>): void { this.resetSimulation(); this.patchSelected(changes); }
   setMotionTime(field: 'delay' | 'enterDuration' | 'exitDuration' | 'loopDuration', event: Event): void {
     const value = Number(this.value(event)); if (!Number.isFinite(value)) return;
     const min = field === 'delay' ? 0 : field === 'loopDuration' ? .2 : .1;

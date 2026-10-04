@@ -1,0 +1,37 @@
+<section class="keyframes" [attr.aria-label]="t('kfTitle')">
+  <header><div><h3>{{ t('kfTitle') }}</h3><p>{{ widget().name || t(widget().kind + 'Name') }} · {{ t('kfIntro') }}</p></div><button type="button" class="primary" (click)="opened.emit(); catalog.set(true)">{{ t('kfBrowse') }}</button></header>
+  <div class="phases" role="group" [attr.aria-label]="t('kfPhase')">@for (item of phases; track item) { <button type="button" [attr.aria-pressed]="phase() === item" (click)="setPhase(item)">{{ phaseName(item) }} @if (widget().keyframes?.[item]) { <span class="dot" [attr.aria-label]="t('kfCustom')">◆</span> }</button> }</div>
+  <details [open]="expanded()" (toggle)="toggleDetails($event)">
+    <summary>{{ t('kfEditTracks') }} <span>{{ sequence()?.tracks?.length || 0 }}/5</span></summary>
+    <div class="detail-body">
+      <p>{{ t('kfTrackHint') }}</p>
+      <div class="properties" role="group" [attr.aria-label]="t('kfTracks')">@for (item of properties; track item) { <button type="button" [attr.data-property]="item" [attr.aria-pressed]="!!sequence() && activeProperty() === item" (click)="addTrack(item)">{{ t('kfProperty_' + item) }}</button> }</div>
+      @if (track(); as active) {
+        <div class="track-chart" aria-hidden="true"><svg viewBox="0 0 300 70" preserveAspectRatio="none"><path [attr.d]="graph()" /></svg></div>
+        <div class="frame-rail" [attr.aria-label]="t('kfPoints')" role="group">
+          @for (frame of points(); track $index; let i = $index) {
+            <button type="button" class="frame" role="slider" [class.selected]="index() === i" [style.left.%]="frame.offset * 100" [attr.aria-label]="t('kfPointNumber', {number:i + 1})" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="frame.offset * 100" [attr.aria-valuetext]="(frame.offset * 100).toFixed(1) + '%'" [attr.aria-readonly]="i === 0 || i === points().length - 1" (click)="selectPoint(i)" (pointerdown)="down($event,i)" (pointermove)="move($event)" (pointerup)="up($event)" (pointercancel)="up($event,true)" (lostpointercapture)="up($event,true)" (keydown)="key($event,i)"><span>◆</span></button>
+          }
+        </div>
+        <div class="rail-labels"><span>0%</span><span>{{ t('kfPhaseProgress') }}</span><span>100%</span></div>
+        <p class="keyboard-hint">{{ t('kfDragHint') }}</p>
+        <div class="frame-fields">
+          <label><span>{{ t('kfPoint') }}</span><select [value]="index()" (change)="selectFromList($event)">@for (frame of points(); track $index) { <option [value]="$index" [selected]="index() === $index">{{ $index + 1 }} · {{ (frame.offset * 100).toFixed(1) }}%</option> }</select></label>
+          <label><span>{{ t('kfTimePercent') }}</span><input data-field="offset" type="number" min="0" max="100" step=".1" [value]="((dragOffset() ?? point()!.offset) * 100).toFixed(1)" [disabled]="isEndpoint()" (change)="offset($event)" /></label>
+          <label><span>{{ t('kfProperty_' + activeProperty()) }} ({{ activeProperty() === 'rotation' ? '°' : '%' }})</span><input data-field="value" type="number" [min]="bounds()[0]" [max]="bounds()[1]" step=".1" [value]="displayedValue()" (change)="value($event)" /></label>
+          <label><span>{{ t('kfEasing') }}</span><select data-field="easing" [value]="point()!.easing" [disabled]="index() === points().length - 1" (change)="easing($event)">@for (item of easings; track item) { <option [value]="item" [selected]="point()!.easing === item">{{ t('kfEasing_' + item) }}</option> }</select></label>
+        </div>
+        <div class="curve"><svg viewBox="0 0 60 60" aria-hidden="true"><path [attr.d]="curve()" /></svg><p>{{ t('kfEasingHint') }} @if (phase() === 'loop') { {{ t('kfLoopClosed') }} }</p></div>
+        <div class="actions"><button type="button" [disabled]="points().length >= 24" (click)="addPoint()">{{ t('kfAddPoint') }}</button><button type="button" [disabled]="time() === null || points().length >= 24" (click)="addPoint(true)">{{ t('kfAddAtPlayhead') }}</button><button type="button" [disabled]="isEndpoint()" (click)="removePoint()">{{ t('kfRemovePoint') }}</button></div>
+        <div class="timing">
+          <label><span>{{ t('motionDelay') }}</span><input data-field="delay" type="number" min="0" max="120" step=".1" [value]="motion().delay" (change)="timing('delay',$event)" /></label>
+          <label><span>{{ t(phase() === 'loop' ? 'kfCycleDuration' : 'kfPhaseDuration') }}</span><input data-field="duration" type="number" [min]="phase() === 'loop' ? .2 : .1" [max]="phase() === 'loop' ? 10 : 5" step=".1" [value]="phase() === 'enter' ? motion().enterDuration : phase() === 'loop' ? motion().loopDuration : motion().exitDuration" (change)="timing(phase() === 'enter' ? 'enterDuration' : phase() === 'loop' ? 'loopDuration' : 'exitDuration',$event)" /></label>
+        </div>
+        @if (phase() === 'loop') { <p>{{ t('kfLoopTiming') }}</p> }
+        <div class="actions"><button type="button" (click)="removeTrack()">{{ t('kfRemoveTrack') }}</button><button type="button" (click)="removePhase()">{{ t('kfClearPhase') }}</button></div>
+      } @else { <p class="empty">{{ t('kfEmpty') }}</p> }
+    </div>
+  </details>
+  <footer><button type="button" (click)="replay.emit()">{{ t('kfReplay') }}</button><button type="button" [disabled]="!widget().keyframes" (click)="copy()">{{ t('kfCopy') }}</button><button type="button" [disabled]="!clipboard()" (click)="paste()">{{ t('kfPaste') }}</button></footer>
+</section>
+@if (catalog()) { <app-overlay-motion-catalog [initialPhase]="phase()" [existing]="widget().keyframes" (applied)="apply($event)" (closed)="catalog.set(false)" /> }

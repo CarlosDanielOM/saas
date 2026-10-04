@@ -1,3 +1,4 @@
+import type { AlertKeyframes } from './overlay-keyframes.model';
 import type { ClipDesignVariant } from '../clips/clips.model';
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
@@ -13,6 +14,7 @@ export interface OverlayWidget {
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   motion?: AlertMotion;
+  keyframes?: AlertKeyframes;
   fontFamily?: 'sans' | 'serif' | 'mono'; fontWeight?: 400 | 700; italic?: boolean; textAlign?: 'left' | 'center' | 'right';
   shape?: 'rectangle' | 'ellipse'; borderColor?: string; borderWidth?: number; radius?: number; opacity?: number;
   shadow?: { color: string; blur: number; x: number; y: number };

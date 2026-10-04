@@ -1,3 +1,4 @@
+import { validKeyframes } from './keyframes.js';
 import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
@@ -30,6 +31,11 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
     if (!(nested ? ['text', 'image', 'video', 'animation', 'shape'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video', 'shape']).includes(kind)) throw new OverlayError('Invalid layer type');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
+    if (w.keyframes !== undefined) {
+      if (!nested || !validKeyframes(w.keyframes)) throw new OverlayError('Invalid object keyframes');
+      // Rebuild the accepted data rather than storing unrecognized client fields.
+      item.keyframes = Object.fromEntries(Object.entries(w.keyframes).map(([phase, sequence]) => [phase, { tracks: sequence.tracks.map(track => ({ property: track.property, points: track.points.map(({offset, value, easing}) => ({offset, value, easing})) })) }]));
+    }
     if (w.motion !== undefined) {
       if (!nested) throw new OverlayError('Object animations require an alert design');
       const motion = object(w.motion);

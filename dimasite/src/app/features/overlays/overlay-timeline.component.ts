@@ -1,3 +1,4 @@
+import { motionWindows } from './overlay-motion-timing';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { LanguageService } from '../../services/language.service';
 import { defaultMotion } from './overlay-object-motion';
@@ -33,11 +34,10 @@ export class OverlayTimelineComponent {
   delay(id: string): number { return this.dragging()?.id === id ? this.dragging()!.value : id === '$sound' ? this.layout().sound?.delay ?? 0 : this.layout().widgets.find(w => w.id === id)?.motion?.delay ?? 0; }
   percent(n: number): number { return Math.max(0, Math.min(100, n / this.layout().duration * 100)); }
   phases(w: OverlayWidget): { enter: number; exit: number } {
-    const motion = w.motion ?? defaultMotion(w.kind), available = Math.max(0, this.layout().duration - this.delay(w.id));
-    const entrance = motion.enter === 'none' ? .001 : motion.enterDuration, exit = motion.exit === 'none' ? 0 : motion.exitDuration;
-    const fit = Math.min(1, available / (entrance + exit));
-    return { enter: this.percent(entrance * fit), exit: this.percent(exit * fit) };
+    const windows = motionWindows({...w.motion ?? defaultMotion(w.kind), delay: this.delay(w.id)}, this.layout().duration, w.keyframes);
+    return { enter: this.percent(windows.enter.span), exit: this.percent(windows.exit.span) };
   }
+
   inputValue(event: Event): number { return Number((event.target as HTMLInputElement).value); }
   change(id: string, field: TimelineEdit['field'], value: number): void {
     if (!Number.isFinite(value)) return;

@@ -1,0 +1,28 @@
+<dialog #dialog role="dialog" aria-labelledby="motion-catalog-title" (cancel)="close($event)" (click)="$event.target === dialog && close()">
+  <header><div><h2 id="motion-catalog-title">{{ t('kfCatalog') }}</h2><p>{{ t('kfCatalogHint') }}</p></div><button type="button" class="close" (click)="close()" [attr.aria-label]="t('kfCloseCatalog')">×</button></header>
+  <div class="catalog-body">
+    <section class="library" [attr.aria-label]="t('kfPresets')">
+      <div class="library-tools"><div class="phases" role="group" [attr.aria-label]="t('kfPhase')">@for (item of phases; track item) { <button type="button" [attr.aria-pressed]="phase() === item" (click)="setPhase(item)">{{ phaseName(item) }}</button> }</div>
+      <label class="search"><span>{{ t('kfSearch') }}</span><input type="search" [value]="query()" (input)="search($event)" /></label>
+      <div class="moods" role="group" [attr.aria-label]="t('kfMood')">@for (item of moods; track item) { <button type="button" [attr.aria-pressed]="mood() === item" (click)="mood.set(item)">{{ t('kfMood_' + item) }}</button> }</div>
+      </div><div class="preset-grid">
+        @for (preset of presets(); track preset.id) {
+          <button type="button" class="preset" [attr.data-preset]="preset.id" [attr.aria-pressed]="chosenId() === preset.id" (click)="choose(preset)">
+            <span class="thumbnail" aria-hidden="true"><span class="sample"><app-overlay-layer [layer]="thumbs.get(preset.id)!.layer" [duration]="thumbs.get(preset.id)!.duration" [playbackKey]="1" [seekTime]="thumbs.get(preset.id)!.time" /></span></span>
+            <strong>{{ t('kfPreset_' + preset.id) }}</strong><small>{{ t('kfMood_' + preset.mood) }}</small>
+          </button>
+        } @empty { <p class="empty">{{ t('kfNoResults') }}</p> }
+      </div>
+    </section>
+    <section class="detail" [attr.aria-label]="t('kfPresetPreview')">
+      <div class="preview-stage" aria-hidden="true"><span class="rest-guide"></span><span class="sample"><app-overlay-layer [layer]="preview().layer" [duration]="preview().duration" [playbackKey]="replay()" [seekTime]="paused() || hidden() ? preview().time : null" /></span></div>
+      <h3 class="preview-title">{{ t('kfPreset_' + chosenId()) }}</h3><p class="preview-description">{{ t('kfDesc_' + chosenId()) }}</p>
+      <div class="channels">@for (track of chosen().sequence.tracks; track track.property) { <span>{{ t('kfProperty_' + track.property) }}</span> }</div>
+      <div class="kf-preview-actions"><button type="button" (click)="replayPreview()">{{ t('kfReplay') }}</button><label class="check"><input type="checkbox" [checked]="paused()" (change)="paused.set(!paused())" />{{ t('kfPausePreviews') }}</label></div>
+      <details class="preview-settings" [open]="settingsOpen()" (toggle)="toggleSettings($event)"><summary>{{ t('kfPreviewSettings') }}</summary><div class="settings"><label><span>{{ t(phase() === 'loop' ? 'kfCycleDuration' : 'kfPhaseDuration') }}</span><input type="number" [min]="phase() === 'loop' ? .2 : .1" [max]="phase() === 'loop' ? 10 : 5" step=".1" [value]="speed()" (change)="number('speed', $event)" /></label><label><span>{{ t('kfStrength') }}</span><input type="number" min="25" max="200" step="5" [value]="strength()" (change)="number('strength', $event)" /></label></div>
+      <p>{{ t('kfStrengthHint') }}</p>
+      @if (existing()?.[phase()]) { <p class="combine-hint">{{ t('kfCombineHint') }}</p> }</details>
+    </section>
+  </div>
+  <footer><button type="button" (click)="close()">{{ t('kfCancel') }}</button>@if (existing()?.[phase()]) { <button type="button" (click)="use(true)">{{ t('kfCombine') }}</button> }<button type="button" class="primary" (click)="use(false)">{{ t(existing()?.[phase()] ? 'kfReplace' : 'kfUse') }}</button></footer>
+</dialog>
