@@ -34,6 +34,12 @@ try {
       data = catalogMode === 'empty' ? [] : catalog();
     } else if (url.pathname.startsWith('/triggers/library/')) data = [];
     else if (url.pathname.endsWith('/send')) { sends++; throw new Error('Studio previews must not send live trigger events'); }
+    else if (url.pathname.endsWith('/test')) {
+      const body=req.postDataJSON(); assert.equal(body.destination,'preview');
+      const trigger=catalog().find(t=>body.triggerIds===undefined||body.triggerIds.includes(t._id));
+      if(!trigger)return route.fulfill({status:404,json:{error:true,message:'No matching trigger'}});
+      data={triggerId:trigger._id,media:{url:trigger.file,type:'video',title:trigger.name,volume:trigger.volume/100}};
+    }
     else if (url.pathname.endsWith('/preview')) data = req.postDataJSON().texts;
     else if (url.pathname.endsWith('/connections')) data = { checkedAt: Date.now(), pollingFailed: false, scenes: [] };
     else if (url.pathname === `/overlay-studio/${user.id}`) { if (req.method() === 'PUT') { state = structuredClone(req.postDataJSON()); state.revision++; writes++; } data = state; }

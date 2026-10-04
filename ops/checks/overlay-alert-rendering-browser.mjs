@@ -35,7 +35,7 @@ try {
     } else if(u.pathname.endsWith('/publish')){
       assert.equal(r.postDataJSON().revision,state.revision);
       const s=state.scenes[0];s.revision++;s.published=structuredClone({width:s.width,height:s.height,widgets:s.widgets,waitFor:s.waitFor,designs:state.designs});state.revision++;data=state;
-    } else if(u.pathname.endsWith('/test-alert')){tests++;data={sent:true,clients:1};}
+    } else if(u.pathname.endsWith('/test')){tests++;data={sent:true,clients:1};}
     else if(u.pathname.endsWith('/connections'))data={checkedAt:Date.now(),pollingFailed:false,scenes:[]};
     else if(u.pathname.endsWith('/queue'))data={state:{revision:0,all:false,platforms:{}},events:[],connected:0,needsRefresh:0};
     return route.fulfill({json:{data}});
@@ -44,7 +44,7 @@ try {
   await page.goto(base+'/fixture/modules/overlays');await page.locator('.stage').waitFor();
   await page.locator('.publish-status').waitFor();
   await page.locator('.publish-settings summary').click();
-  await page.getByRole('button',{name:'Send test alert to OBS',exact:true}).click();
+  await page.getByRole('button',{name:'Test this overlay in OBS',exact:true}).click();
   await page.getByRole('alert').getByText('Publish this overlay’s changes before sending a test to OBS.',{exact:true}).waitFor();assert.equal(tests,0);
   await page.getByRole('button',{name:'Edit design',exact:true}).click();
   await page.locator('.event-disabled').getByText('Follows is not enabled for this design in “My overlay”. Editing the design does not enable the event.',{exact:true}).waitFor();
@@ -79,8 +79,10 @@ try {
   const axe=await page.evaluate(()=>window.axe.run(document.querySelector('app-overlay-editor'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(axe.violations.map(v=>v.id),[]);
   await page.getByRole('button',{name:'Save & back to overlay',exact:true}).click();
   await page.locator('.publish-settings summary').click();
-  await page.getByRole('button',{name:'Send test alert to OBS',exact:true}).click();
-  await page.getByText('Test alert sent to connected published overlays.',{exact:true}).waitFor();assert.equal(tests,1);
+  await page.getByLabel('Event to test in OBS',{exact:true}).selectOption('follow');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'Test this overlay in OBS',exact:true}).click();
+  await page.getByText('Test sent to this overlay’s connected sources.',{exact:true}).waitFor();assert.equal(tests,1);
   await context.close();
   console.log('PASS draft persistence, disabled-event feedback, explicit enable + save/publish, OBS test guard, image loading, proportional text and mobile/desktop accessibility.');
   const runtime=await browser.newContext({viewport:{width:1920,height:1080},reducedMotion:'reduce'});let socket,broken=false;const ended=[];

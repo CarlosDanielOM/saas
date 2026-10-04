@@ -66,7 +66,7 @@ async function connect(clientId=crypto.randomUUID()) {
 }
 async function until(fn) {for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,30));}throw new Error('condition timeout');}
 const a=await connect(),b=await connect();
-for(const platform of ['twitch','kick','other']) live.publishStudioAlert(channel,'follow',{user_name:platform},platform,Date.now(),platform);
+for(const platform of ['twitch','kick','other']) await live.publishStudioAlert(channel,'follow',{user_name:platform},platform,Date.now(),platform);
 await until(()=>a.messages.filter(m=>m[0]==='overlay-event').length===3);
 const events=a.messages.filter(m=>m[0]==='overlay-event').map(m=>m[1]);assert.deepEqual(events.map(e=>e.platform),['twitch','kick','other']);
 const [tw,ki,ot]=events.map(e=>e.id);

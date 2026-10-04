@@ -8,7 +8,7 @@ export interface StudioState { schemaVersion: 1; revision: number; scenes: Overl
 export interface OverlaySourceConnection {
   connected: boolean; connectedAt: number; disconnectedAt: number | null; lastReportAt: number | null; revision: number | null;
   status: 'reconnecting' | 'loading' | 'unresponsive' | 'updating' | 'ready';
-  issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null; issueAt: number | null; activationFailed: boolean; stateFailed: boolean;
+  issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null; issueAt: number | null; activationFailed: boolean; stateFailed: boolean; dropped?: number;
 }
 export interface OverlayConnections {
   checkedAt: number; pollingFailed: boolean;
@@ -19,8 +19,8 @@ export type Snapshot = NonNullable<OverlayScene['published']>;
 export class OverlayApi {
   private readonly http = inject(HttpClient);
   readonly base = inject(LinksService).getApiUrl();
-  request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    return firstValueFrom(this.http.request<{ data: T }>(method, `${this.base}/overlay-studio/${path}`, { body }).pipe(timeout(20000), map(r => r.data)));
+  request<T>(method: string, path: string, body?: unknown, timeoutMs = 20000): Promise<T> {
+    return firstValueFrom(this.http.request<{ data: T }>(method, `${this.base}/overlay-studio/${path}`, { body }).pipe(timeout(timeoutMs), map(r => r.data)));
   }
   load(channel: string) { return this.request<StudioState>('GET', channel); }
   connections(channel: string) { return this.request<OverlayConnections>('GET', `${channel}/connections`); }

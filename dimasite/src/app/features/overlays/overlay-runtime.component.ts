@@ -55,7 +55,10 @@ export class OverlayRuntimeComponent {
   private readonly api = inject(OverlayApi);
   private readonly language = inject(LanguageService);
   readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
-  private readonly clientId = crypto.randomUUID();
+  private readonly receiptKey = 'overlay-playback:' + this.publicId;
+  private readonly receipts = this.readReceipts();
+  private clientId = this.receipts.clientId;
+  private releaseIdentity?: () => void;
   private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: { clientId: this.clientId }, transports: ['websocket'], autoConnect: false });
   private queue: Event[] = [];
   private inFlight = new Map<string, Event>();
@@ -64,7 +67,7 @@ export class OverlayRuntimeComponent {
   private commands = new Set<string>();
   private batching = false;
   private seen = new Set<string>();
-  private completed = new Set<string>();
+  private completed = new Set<string>(this.receipts.completed);
   private active: string | null = null;
   private disposed = false;
   private revision = -1;
@@ -80,6 +83,10 @@ export class OverlayRuntimeComponent {
     this.socket.on('overlay-state', state => {
       this.batching = true;
       if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.snapshotRecovered(); }
+      if (Array.isArray(state.pendingIds)) {
+        const retained = new Set<string>(state.pendingIds);
+        for (const event of [...this.queue, ...this.inFlight.values()]) if (!retained.has(event.id)) this.finish(event.id);
+      }
       this.applyQueueState(state.controls);
       for (const command of state.commands ?? []) this.applyControl(command);
       this.batching = false; this.next(); this.reportHealth(); this.reportPlayback();
@@ -91,11 +98,37 @@ export class OverlayRuntimeComponent {
       void this.refresh();
     });
     this.socket.on('overlay-event', (event: Event) => this.enqueue(event));
+    this.socket.on('overlay-expired', (ids: string[]) => { for (const id of ids) this.finish(id); });
     this.socket.on('overlay-revoked', () => this.clear());
     this.socket.on('disconnect', reason => { if (reason === 'io server disconnect') this.clear(); });
-    const healthTimer = setInterval(() => { this.reportHealth(); this.reportPlayback(); }, 15000);
-    if (/^[a-f0-9]{48}$/.test(this.publicId)) this.socket.connect();
-    inject(DestroyRef).onDestroy(() => { this.disposed = true; clearInterval(healthTimer); this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
+    this.saveReceipts();
+    const healthTimer = setInterval(() => { this.saveReceipts(); this.reportHealth(); this.reportPlayback(); }, 15000);
+    if (/^[a-f0-9]{48}$/.test(this.publicId)) this.connectSource();
+    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.releaseIdentity?.(); clearInterval(healthTimer); this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
+  }
+  private connectSource(): void {
+    // Duplicated tabs inherit sessionStorage. A live tab holds its identity;
+    // refreshing releases the lock, while a second source receives a fresh ID.
+    if (!navigator.locks) { this.socket.connect(); return; }
+    void navigator.locks.request('overlay-source:' + this.clientId, { ifAvailable: true }, async lock => {
+      if (this.disposed) return;
+      if (!lock) {
+        this.clientId = crypto.randomUUID(); this.completed.clear(); this.seen.clear();
+        this.socket.auth = { clientId: this.clientId }; this.saveReceipts(); this.connectSource(); return;
+      }
+      await new Promise<void>(resolve => { this.releaseIdentity = resolve; this.saveReceipts(); this.socket.connect(); });
+    }).catch(() => { if (!this.disposed) this.socket.connect(); });
+  }
+  private readReceipts(): { clientId: string; completed: string[] } {
+    try {
+      const value = JSON.parse(sessionStorage.getItem(this.receiptKey) || 'null');
+      if (value && typeof value.clientId === 'string' && /^[a-f0-9-]{36}$/.test(value.clientId) && Array.isArray(value.completed)
+        && Date.now() - value.at < 30 * 60 * 1000) return { clientId: value.clientId, completed: value.completed.filter((id: unknown) => typeof id === 'string').slice(-512) };
+    } catch { /* Storage is optional; live reconnect still works. */ }
+    return { clientId: crypto.randomUUID(), completed: [] };
+  }
+  private saveReceipts(): void {
+    try { sessionStorage.setItem(this.receiptKey, JSON.stringify({ clientId: this.clientId, completed: [...this.completed], at: Date.now() })); } catch { /* Restricted browser storage. */ }
   }
   private reportHealth(): void {
     if (this.socket.connected && this.revision >= 0) this.socket.emit('overlay-health', { revision: this.revision, issue: this.issue });
@@ -151,6 +184,7 @@ export class OverlayRuntimeComponent {
     if (!command || !['skip', 'clear'].includes(command.action) || !Array.isArray(command.eventIds)) return;
     if (!this.commands.has(command.id)) {
       this.commands.add(command.id);
+      if (this.commands.size > 512) this.commands.delete(this.commands.values().next().value!);
       const previous = this.batching; this.batching = true;
       const ids = new Set(command.eventIds);
       const active = new Set([...this.inFlight.keys(), ...this.playing().map(job => job.event.id)]);
@@ -164,7 +198,8 @@ export class OverlayRuntimeComponent {
     this.socket.emit('overlay-control-ack', command.id);
   }
   private enqueue(event: Event) {
-    if (this.seen.has(event.id)) { if (this.completed.has(event.id)) this.socket.emit('overlay-ended', event.id); return; } this.seen.add(event.id);
+    if (this.completed.has(event.id)) { this.socket.emit('overlay-ended', event.id); return; }
+    if (this.seen.has(event.id)) return; this.seen.add(event.id);
     this.queue.push({ ...event, platform: event.platform ?? 'twitch', serialized: this.snapshot()?.waitFor.includes(event.kind) ?? false });
     this.next(); this.reportPlayback();
   }
@@ -232,7 +267,9 @@ export class OverlayRuntimeComponent {
     this.cancelEventRetry(id);
     this.seen.add(id); this.inFlight.delete(id); this.queue = this.queue.filter(event => event.id !== id);
     const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout);
-    this.playing.update(all => all.filter(p => p.event.id !== id)); this.completed.add(id); this.socket.emit('overlay-ended', id);
+    this.playing.update(all => all.filter(p => p.event.id !== id)); this.completed.add(id);
+    while (this.completed.size > 512) { const oldest = this.completed.values().next().value!; this.completed.delete(oldest); this.seen.delete(oldest); }
+    this.saveReceipts(); this.socket.emit('overlay-ended', id);
     // Retain receipts for this connection; reconnect replay must not play completed events twice.
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();

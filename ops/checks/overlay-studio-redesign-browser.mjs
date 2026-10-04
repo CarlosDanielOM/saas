@@ -174,7 +174,7 @@ try {
     const before = await exactValue(page, 'X');
     await page.locator('.widget[data-kind="trigger"]').tap();
     await until(async () => await page.locator('.selected-card').getAttribute('data-widget-id') === 'trigger-1', 'tap selected');
-    assert.equal(await exactValue(page, 'X'), '80'); assert.notEqual(before, '80');
+    await until(async () => await exactValue(page, 'X') === '80', 'selected coordinates render'); assert.notEqual(before, '80');
     // Move pad buttons are thumb-sized.
     for (const name of ['Move up', 'Move down', 'Move left', 'Move right']) {
       const box = await page.getByRole('button', { name, exact: true }).boundingBox(); assert(box.width >= 44 && box.height >= 44, name + ' size');

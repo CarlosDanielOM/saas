@@ -5,7 +5,7 @@ import type { LiveMedia } from './live.js';
 interface Bridge {
   hasSource(channel: string, kind: EventKind): boolean;
   media(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform?: OverlayPlatform): Promise<void>;
-  trigger(channel: string, body: Record<string, unknown>, platform?: OverlayPlatform): void;
+  trigger(channel: string, body: Record<string, unknown>, platform?: OverlayPlatform): Promise<void>;
 }
 let bridge: Bridge | undefined;
 export function registerStudioBridge(value: Bridge) { bridge = value; }

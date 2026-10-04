@@ -1649,7 +1649,7 @@ router.post('/:channelID/send', authMiddleware as any, async (req: TriggerReques
 
         try {
             namespace.emit('trigger', body);
-            publishStudioTrigger(channelIdStr, studioBody);
+            await publishStudioTrigger(channelIdStr, studioBody);
         } catch (emitError) {
             await error({
                 error: 'Internal Server Error',

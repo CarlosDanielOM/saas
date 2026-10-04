@@ -1,9 +1,8 @@
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
 import { OverlayQueueComponent } from './overlay-queue.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
-import { OverlayTestMediaService, TestChannel, TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
+import { OverlayTestMediaService, type TestChannel, type TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
 import { OverlayClipComponent } from './overlay-clip.component';
 import { OverlayTriggerFilterComponent } from './overlay-trigger-filter.component';
 import { ClipsService } from '../clips/clips.service';
@@ -43,9 +42,13 @@ export class OverlayEditorComponent {
   readonly loaded = signal(false);
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly conflict = signal(false);
+  private recoveryRequestId: string | null = null;
   readonly astError = signal('');
   readonly rendered = signal<Record<string, string>>({});
   readonly confirmRotate = signal(false);
+  readonly liveTestKind = signal<EventKind>('tts');
+  readonly liveTesting = signal(false);
   readonly confirmDelete = signal(false);
   readonly recovery = signal<OverlayRecovery | null>(null);
   readonly storageError = signal(false);
@@ -68,7 +71,6 @@ export class OverlayEditorComponent {
   readonly auth = inject(SessionAuthService);
   private readonly clips = inject(ClipsService);
   readonly clipDesigns = computed(() => this.clips.getDesigns({ channelID: this.channel, login: this.streamer, planTier: this.auth.getPlanTierForStreamer(this.streamer) }));
-  private readonly testMedia = inject(OverlayTestMediaService);
   private readonly jobs = new Map<number, MediaJob>();
   private readonly channelChoice = signal('');
   readonly testChannels = computed<TestChannel[]>(() => {
@@ -344,7 +346,7 @@ export class OverlayEditorComponent {
   }
   changeTestChannel(event: Event): void { this.resetSimulation(); this.channelChoice.set(this.value(event)); }
   testBusy(kind: EventKind): boolean {
-    return (kind === 'clip' || kind === 'trigger') && [...this.queue(), this.active(), ...this.parallel()].some(e => e?.kind === kind);
+    return (kind === 'clip' || kind === 'trigger' || kind === 'tts') && [...this.queue(), this.active(), ...this.parallel()].some(e => e?.kind === kind);
   }
   mediaEvents(widget: OverlayWidget): MockEvent[] {
     if (this.designDraft()) return [];
@@ -366,7 +368,7 @@ export class OverlayEditorComponent {
     if (ALERT_EVENTS.includes(kind as AlertEvent)) this.designEvent.set(kind as AlertEvent);
     if (this.testBusy(kind)) return;
     this.revealStage();
-    const real = kind === 'clip' || kind === 'trigger';
+    const real = kind === 'clip' || kind === 'trigger' || kind === 'tts';
     const channel = this.testChannel();
     if (real && (!this.auth.hasValidSession() || !channel)) { this.notice.set('testSignIn'); return; }
     const targets = this.widgets().filter(w => w.visible && w.kind === kind).map(w => w.id);
@@ -386,24 +388,24 @@ export class OverlayEditorComponent {
     if (!targets.length) { this.finishEvent(event.id); return; }
     const job: MediaJob = { pending: new Set(targets), started: new Set() };
     this.jobs.set(event.id, job);
-    this.notice.set(event.kind === 'clip' ? 'clipLoading' : 'triggerLoading');
-    if (event.kind === 'clip') {
-      job.cancel = this.testMedia.startClip(event.channel, media => this.showMedia(event.id, media), () => {
-        if (this.jobs.has(event.id)) { this.notice.set('clipTestError'); this.finishEvent(event.id); }
-      });
-    } else {
-      const widgets = this.widgets().filter(w => targets.includes(w.id));
-      const triggerIds = widgets.some(w => w.triggerIds === undefined) ? undefined : [...new Set(widgets.flatMap(w => w.triggerIds ?? []))];
-      const request: Subscription = this.testMedia.randomTrigger(event.channel, triggerIds).subscribe({
-        next: media => {
-          if (!this.jobs.has(event.id)) return;
-          if (media) this.showMedia(event.id, media);
-          else { this.notice.set(triggerIds === undefined ? 'noTriggers' : 'noMatchingTriggers'); job.timer = this.later(() => this.finishEvent(event.id), 2500); }
-        },
-        error: () => { if (this.jobs.has(event.id)) { this.notice.set('triggerTestError'); this.finishEvent(event.id); } }
-      });
-      job.cancel = () => request.unsubscribe();
-    }
+    this.notice.set('preparingTest');
+    const widgets = this.widgets().filter(w => targets.includes(w.id));
+    const triggerIds = widgets.some(w => w.triggerIds === undefined) ? undefined : [...new Set(widgets.flatMap(w => w.triggerIds ?? []))];
+    if (event.kind === 'trigger' && triggerIds?.length === 0) { this.notice.set('noMatchingTriggers'); this.finishEvent(event.id); return; }
+    let canceled = false; job.cancel = () => { canceled = true; };
+    void this.api.request<{ media?: TestMedia; triggerId?: string }>('POST', `${this.channel}/test`, {
+      kind: event.kind, destination: 'preview', sceneId: this.sceneId(), triggerIds,
+      language: this.language.currentLanguage()
+    }, 90000).then(result => {
+      if (canceled || !this.jobs.has(event.id)) return;
+      if (!result.media) throw new Error(this.t('testPlaybackError'));
+      const media = { ...result.media, triggerId: result.triggerId };
+      if (media.url.startsWith('/')) media.url = this.api.base + media.url;
+      this.showMedia(event.id, media);
+    }).catch(error => {
+      if (canceled || !this.jobs.has(event.id)) return;
+      this.error.set(error?.error?.message || this.t('testPlaybackError')); this.finishEvent(event.id);
+    });
   }
   private showMedia(id: number, media: TestMedia): void {
     const job = this.jobs.get(id); if (!job) return;
@@ -481,13 +483,38 @@ export class OverlayEditorComponent {
     if (!state.scenes.some(s => s.id === this.sceneId())) this.sceneId.set(state.scenes[0].id);
     this.loaded.set(true);
     this.savedDocument.set(this.documentFingerprint());
-    this.recovered.set(false);
+    this.recovered.set(false); this.conflict.set(false); this.recoveryRequestId = null;
     if (!preserveRecovery) { this.recovery.set(null); this.clearRecovery(); }
     this.saved.set(true);
   }
   private report(e: unknown): void {
     const error = e as { status?: number; error?: { message?: string } };
+    this.conflict.set(error.status === 409);
     this.error.set(error.status === 409 ? this.t('conflict') : error.error?.message || this.t('saveFailed')); this.saved.set(false);
+  }
+  exportLocalDraft(): void {
+    this.flushRecovery();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(this.localDraft(), null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'overlay-draft-recovery.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async recoverAsCopies(): Promise<void> {
+    if (this.busy() || this.loading() || !this.loaded()) return;
+    this.flushRecovery(); this.busy.set(true); this.error.set('');
+    const draft = this.designDraft();
+    const designs = draft ? [...this.designs().filter(d => d.id !== draft.id), draft] : this.designs();
+    const existingIds = new Set(this.scenes().map(s => s.id));
+    this.recoveryRequestId ??= crypto.randomUUID();
+    try {
+      const state = await this.api.request<StudioState>('POST', `${this.channel}/recover`, { recoveryId: this.recoveryRequestId, scenes: this.scenes(), designs });
+      const copy = state.scenes.find(s => !existingIds.has(s.id) && s.id.startsWith('recovered-'));
+      this.designDraft.set(null); this.accept(state); this.history.clear();
+      if (copy) this.switchScene(copy.id);
+      this.notice.set('recoveryCopiesSaved');
+    } catch (e) {
+      const error = e as { error?: { message?: string } };
+      this.error.set(error.error?.message || this.t('saveFailed')); this.conflict.set(true);
+    } finally { this.busy.set(false); }
   }
   async resetDraft(): Promise<void> {
     if (this.busy() || this.loading()) return;
@@ -529,7 +556,7 @@ export class OverlayEditorComponent {
     try { change(); }
     finally {
       this.editDepth--;
-      if (this.history.record(before, this.editSnapshot(), group)) this.saved.set(false);
+      if (this.history.record(before, this.editSnapshot(), group)) { this.saved.set(false); this.recoveryRequestId = null; }
     }
   }
   private historyGroup(): object | null {
@@ -641,6 +668,7 @@ export class OverlayEditorComponent {
     this.history.clear();
     this.loaded.set(true); this.recovered.set(true); this.saved.set(false);
     this.consumedRecovery = recovery; this.recovery.set(null);
+    this.conflict.set(draft.revision !== currentRevision);
     this.error.set(draft.revision !== currentRevision ? this.t('conflict') : ''); this.notice.set('draftRestored');
     this.flushRecovery();
   }
@@ -658,13 +686,20 @@ export class OverlayEditorComponent {
     if (await this.persist()) this.confirmDelete.set(false);
   }
   selectAlertKind(event: Event): void { const kind = this.value(event) as AlertEvent; if (ALERT_EVENTS.includes(kind)) this.designEvent.set(kind); }
+  selectLiveTest(event: Event): void {
+    const kind = this.value(event) as EventKind; if (EVENT_KINDS.includes(kind)) this.liveTestKind.set(kind);
+  }
   async testLiveAlert(): Promise<void> {
+    if (this.liveTesting()) return;
     if (this.unpublished()) { this.error.set(this.t('testPublishFirst')); return; }
-    if (!this.scene().published?.widgets.some(w => w.visible && w.kind === 'alert' && w.events?.includes(this.designEvent()))) {
-      this.error.set(this.t('testEventDisabled', { event: this.t(this.designEvent() + 'Name') })); return;
-    }
-    try { await this.api.request('POST', `${this.channel}/test-alert`, { kind: this.designEvent() }); this.notice.set('testSent'); }
-    catch(e) { this.report(e); }
+    const kind = this.liveTestKind();
+    if (!window.confirm(this.t('confirmObsTest', { overlay: this.scene().name, event: this.t(kind + 'Name') }))) return;
+    this.liveTesting.set(true); this.error.set('');
+    try {
+      await this.api.request('POST', `${this.channel}/test`, { kind, sceneId: this.sceneId(), destination: 'obs', confirmed: true, language: this.language.currentLanguage() }, 90000);
+      this.notice.set('testSent');
+    } catch(e) { this.error.set((e as {error?: {message?: string}})?.error?.message || this.t('testPlaybackError')); }
+    finally { this.liveTesting.set(false); }
   }
   private round(value:number):number{return this.snap()?Math.round(value/10)*10:Math.round(value);}
 }

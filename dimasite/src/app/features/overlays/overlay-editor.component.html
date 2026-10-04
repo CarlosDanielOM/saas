@@ -31,6 +31,16 @@
       <div><button type="button" class="lf-btn lf-btn--primary" [disabled]="loading()" (click)="resetDraft()">{{ t('tryAgain') }}</button></div>
     </header>
   } @else {
+@if (conflict()) {
+  <section class="lf-banner lf-banner--accent" role="alert">
+    <div><h2 class="lf-banner__title">{{ t('conflictRecoveryTitle') }}</h2><p class="lf-note">{{ t('conflictRecoveryHint') }}</p></div>
+    <div class="lf-banner__actions">
+      <button type="button" class="lf-btn lf-btn--primary" [disabled]="busy() || loading()" (click)="recoverAsCopies()">{{ t('recoverAsCopies') }}</button>
+      <button type="button" class="lf-btn" [disabled]="busy()" (click)="exportLocalDraft()">{{ t('exportLocalDraft') }}</button>
+      <button type="button" class="lf-btn" [disabled]="busy() || loading()" (click)="resetDraft()">{{ t('reloadSaved') }}</button>
+    </div>
+  </section>
+}
 <fieldset class="editor-fields" [disabled]="busy() || loading()" [attr.aria-label]="t('studio')">
   @if (designDraft(); as design) {
     <!-- Alert design mode: the same editor, scoped to one reusable alert. -->
@@ -339,8 +349,8 @@
           <div class="obs-test">
             <div class="obs-test__copy"><h3 class="lf-h3">{{ t('testObsTitle') }}</h3><p class="lf-note">{{ t('testObsHint') }}</p></div>
             <div class="field-row">
-              <select [attr.aria-label]="t('testLiveEvent')" [value]="designEvent()" (change)="selectAlertKind($event)">@for (kind of alertEvents; track kind) { <option [value]="kind" [selected]="kind === designEvent()">{{ t(kind + 'Name') }}</option> }</select>
-              <button type="button" class="lf-btn" (click)="testLiveAlert()"><lucide-icon [name]="icons.Radio" [size]="15" aria-hidden="true" />{{ t('testLiveAlert') }}</button>
+              <select [attr.aria-label]="t('testLiveEvent')" [value]="liveTestKind()" (change)="selectLiveTest($event)">@for (kind of eventKinds; track kind) { <option [value]="kind" [selected]="kind === liveTestKind()">{{ t(kind + 'Name') }}</option> }</select>
+              <button type="button" class="lf-btn" [disabled]="liveTesting()" (click)="testLiveAlert()"><lucide-icon [name]="icons.Radio" [size]="15" aria-hidden="true" />{{ t('testLiveAlert') }}</button>
             </div>
           </div>
           <details class="lf-more queue-panel">

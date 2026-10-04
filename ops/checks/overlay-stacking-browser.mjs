@@ -125,6 +125,7 @@ const server = createServer(async (req, res) => {
       if (path === '/auth/session') data = { twitch: user, app };
       else if (path.endsWith('/access') || path.startsWith('/auth/access/')) data = { allowed: true, role: 'owner', planTier: 'pro' };
       else if (path === `/triggers/${user.id}`) data = [{ _id: '1'.repeat(24), name: 'Video fixture', file: `http://127.0.0.1:${server.address().port}/__video.mp4`, mediaType: 'video/mp4', volume: 0 }];
+      else if (path === `/overlay-studio/${user.id}/test`) data = {triggerId:'1'.repeat(24),media:{type:'video',url:`http://127.0.0.1:${server.address().port}/__video.mp4`,title:'Native video fixture',volume:0,duration:60}};
       else if (path.startsWith('/triggers/library/')) data = [];
       else if (path.endsWith('/preview')) data = (await body()).texts.map(text => text.replace('$(user)', 'Luna'));
       else if (path.endsWith('/connections')) data = { checkedAt: Date.now(), pollingFailed: false, scenes: [] };

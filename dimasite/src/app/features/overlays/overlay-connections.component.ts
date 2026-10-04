@@ -45,6 +45,7 @@ export type ConnectionState = 'checking' | 'unknown' | 'unsaved' | 'waiting' | '
                 <li>
                   <div class="source-heading"><strong>{{ t('connectionsSource', { number: $index + 1 }) }}</strong><span class="status" [class.good]="source.status === 'ready'" [class.warning]="source.status !== 'ready'">{{ t('connectionStatus_' + source.status) }}</span></div>
                   <p>{{ t('connectionsSourceRevision', { revision: source.revision ?? '—' }) }} · {{ t('connectionsLastReport', { time: time(source.lastReportAt) }) }}</p>
+                  @if (source.dropped) { <p class="warning">{{ t('backlogDropped', { count: source.dropped }) }}</p> }
                   @if (source.status === 'reconnecting') { <p>{{ t('connectionsReconnectHelp') }}</p> }
                   @if (source.status === 'loading' || source.status === 'unresponsive') { <p>{{ t('connectionsRefreshHelp') }}</p> }
                   @if (source.status === 'updating') { <p>{{ t('connectionsUpdateHelp') }}</p> }

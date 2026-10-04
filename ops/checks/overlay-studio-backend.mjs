@@ -224,13 +224,13 @@ leaseState=await request('PUT',leaseChannel,leaseState,200,'overlay-lease-fixtur
 const leasePublic=leaseState.scenes[0].publicId;
 const leaseClient=await connect(leasePublic); await leaseClient.wait(m=>m.includes('overlay-state')); leaseClient.ws.close();
 for(let i=0;i<100&&live.studioConnections(leaseChannel,leaseState.scenes).scenes[0].sources.some(s=>s.connected);i++)await new Promise(r=>setTimeout(r,20));
-assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'manual-offline'),0,'manual test requires a connected source');
-assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'retained-offline',Date.now(),'twitch',true),1,'journal delivery retains an offline-only source');
+assert.equal(await live.publishStudioAlert(leaseChannel,'follow',{},'manual-offline'),0,'manual test requires a connected source');
+assert.equal(await live.publishStudioAlert(leaseChannel,'follow',{},'retained-offline',Date.now(),'twitch',true),1,'journal delivery retains an offline-only source');
 assert(await live.eventFor(leasePublic,'alert-retained-offline'));
 const leaseNow=Date.now;
 try {
   Date.now=()=>leaseNow()+120001;
-  assert.equal(live.publishStudioAlert(leaseChannel,'follow',{},'expired-offline',Date.now(),'twitch',true),0);
+  assert.equal(await live.publishStudioAlert(leaseChannel,'follow',{},'expired-offline',Date.now(),'twitch',true),0);
   const expired=await connect(leasePublic,leaseClient.clientId); await expired.wait(m=>m.includes('overlay-state'));
   assert(!expired.events().some(e=>e[1]?.id==='alert-retained-offline'));
   assert.equal(await live.eventFor(leasePublic,'alert-retained-offline'),null);
