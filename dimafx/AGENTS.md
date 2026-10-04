@@ -9,7 +9,7 @@
 ## Key Entry Points
 
 - `panel.html`, `config.html`, `mobile.html` – Extension UI entry points
-- `panel.js`, `config.js`, `mobile.js` – Client-side logic
+- `panel.js` – Viewer storefront runtime shared by `panel.html` and `mobile.html` (same markup; `body.fx--mobile` widens the layout). `config.html` has its own inline script.
 - `server/src/server.ts` – Extension backend (authentication, API proxy)
 - `server/src/routes/extension.routes.ts` – Extension-specific endpoints
 
@@ -37,7 +37,10 @@
 
 ## Styling
 
-- Component/page styles live alongside their HTML/JS files (e.g., `panel.css`, `mobile.css`).
+- `storefront.css` holds the Live First tokens and styles for `panel.html`, `mobile.html` and `config.html`. Design for the 318×500 Twitch panel first, then the phone view.
+- Theme follows Twitch (`Twitch.ext.onContext` → `html.dark`); copy is English/Spanish from Twitch's `?language=` via the `STRINGS` table in `panel.js`.
+- Viewer UX rules: answer "can I play something on stream right now, and for how much?" first; Bits prices are gold pills, free is green; one tap never spends credits (tile asks to confirm); only claim what the backend guarantees (e.g. failed plays refund as credits only with a shared Twitch ID).
+- Behaviour check: `ops/checks/dimafx-client.mjs` (mocked Twitch + API, axe and overflow at 318/320/390 in dark and light).
 - Follow the hybrid styling policy from root `AGENTS.md` when adding new CSS.
 
 ---

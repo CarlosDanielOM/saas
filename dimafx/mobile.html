@@ -1,329 +1,155 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <title>DimaFX Mobile Extension</title>
-    <!-- Modern Typography -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DimaFX</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- External Modular Stylesheet -->
-    <link rel="stylesheet" href="mobile.css?v=42" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="storefront.css?v=50" />
   </head>
-  <body>
-    <!-- Toast Notification -->
-    <div id="toast" class="toast-alert">
-      <div class="toast-alert-icon">
-        <svg viewBox="0 0 24 24">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      </div>
-      <div class="toast-text">
-        <div id="toast-title" class="toast-alert-title">
-          Purchase Successful
+  <body class="fx fx--mobile">
+    <div class="fx-app">
+      <header class="fx-head">
+        <div class="fx-brand">
+          <img src="assets/logo-mark-white.png" alt="" width="18" height="20" />
+          <span class="fx-brand__name">DimaFX</span>
         </div>
-        <div id="toast-desc" class="toast-alert-desc">
-          Item is now available in your inventory.
-        </div>
-      </div>
-    </div>
-
-    <!-- Header -->
-    <header>
-      <div class="header-top">
-        <div class="logo">
-          <img src="assets/logo-mark-white.png" alt="" width="26" height="28" />
-          DimaFX
-        </div>
-        <div class="header-controls">
-          <div class="balance-badge">
-            <svg viewBox="0 0 24 24">
-              <polygon points="12 2 22 12 12 22 2 12"></polygon>
-            </svg>
-            <span id="header-balance">1,250</span>
-          </div>
-        </div>
-      </div>
-    </header>
-    <p id="dimafx-connection-status" role="status" style="margin:8px 12px;font-size:12px;color:var(--text-muted);">Checking DimaFX overlay connection…</p>
-
-    <!-- Navigation Views Viewport -->
-    <div class="app-viewport">
-      <!-- Screen 1: Store (Media Library) -->
-      <div id="screen-store" class="app-screen active">
-        <div class="screen-header">
-          <h2 class="screen-title">Media Store</h2>
-          <p class="screen-desc">
-            Unlock custom sound effects, overlay frames, and streaming alerts.
-          </p>
-        </div>
-
-        <div class="search-filter-wrapper">
-          <div class="search-input-box">
-            <svg class="search-icon" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              type="text"
-              id="store-search"
-              placeholder="Search library..."
-              oninput="handleSearch(this.value)"
-            />
-          </div>
-
-          <div class="category-scroll">
-            <button
-              class="category-pill active"
-              onclick="filterCategory('all', this)"
-            >
-              All Items
-            </button>
-            <button
-              class="category-pill"
-              onclick="filterCategory('video', this)"
-            >
-              Video
-            </button>
-            <button class="category-pill" onclick="filterCategory('gif', this)">
-              Gifs
-            </button>
-            <button
-              class="category-pill"
-              onclick="filterCategory('audio', this)"
-            >
-              Audio
-            </button>
-            <button class="category-pill" onclick="filterCategory('tts', this)">
-              TTS
-            </button>
-          </div>
-        </div>
-
-        <!-- Shimmering Skeleton Loader Screen Overlay -->
-        <div id="skeleton-loader" class="mobile-skeleton-overlay">
-          <div class="sk-card">
-            <div class="sk-thumb shimmer"></div>
-            <div class="sk-body">
-              <div class="sk-line sk-title shimmer"></div>
-              <div class="sk-line sk-desc shimmer"></div>
-            </div>
-            <div class="sk-btn shimmer"></div>
-          </div>
-          <div class="sk-card">
-            <div class="sk-thumb shimmer"></div>
-            <div class="sk-body">
-              <div class="sk-line sk-title shimmer"></div>
-              <div class="sk-line sk-desc shimmer"></div>
-            </div>
-            <div class="sk-btn shimmer"></div>
-          </div>
-          <div class="sk-card">
-            <div class="sk-thumb shimmer"></div>
-            <div class="sk-body">
-              <div class="sk-line sk-title shimmer"></div>
-              <div class="sk-line sk-desc shimmer"></div>
-            </div>
-            <div class="sk-btn shimmer"></div>
-          </div>
-          <div class="sk-card">
-            <div class="sk-thumb shimmer"></div>
-            <div class="sk-body">
-              <div class="sk-line sk-title shimmer"></div>
-              <div class="sk-line sk-desc shimmer"></div>
-            </div>
-            <div class="sk-btn shimmer"></div>
-          </div>
-        </div>
-
-        <!-- Store Grid of Items -->
-        <div id="store-grid" class="mobile-grid">
-          <!-- populated dynamically -->
-        </div>
-      </div>
-
-      <!-- Screen 2: My Inventory -->
-      <div id="screen-inventory" class="app-screen">
-        <div class="screen-header">
-          <h2 class="screen-title">My Inventory</h2>
-          <p class="screen-desc">
-            Manage and trigger unlocked effects on the broadcast overlay.
-          </p>
-        </div>
-
-        <!-- Inventory Lists -->
-        <div id="inventory-list" class="inventory-list">
-          <!-- populated dynamically -->
-        </div>
-      </div>
-
-      <!-- Screen 3: Settings -->
-      <div id="screen-settings" class="app-screen">
-        <div class="screen-header">
-          <h2 class="screen-title">Preferences</h2>
-          <p class="screen-desc">
-            Local preview volume for this panel only.
-          </p>
-        </div>
-
-        <div class="settings-group">
-          <div class="settings-row">
-            <div>
-              <div class="settings-label">Sound FX Volume</div>
-              <div class="settings-desc">
-                Preview volume only. Stream overlay uses the item volume.
-              </div>
-            </div>
-            <div
-              style="
-                font-size: 11px;
-                font-weight: 700;
-                color: var(--accent-purple);
-              "
-              id="val-volume"
-            >
-              80%
-            </div>
-          </div>
-          <input
-            id="preview-volume"
-            type="range"
-            class="volume-slider"
-            min="0"
-            max="100"
-            value="80"
-            oninput="onPreviewVolumeInput(this)"
-          />
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Bottom Sheet Backdrop -->
-    <div
-      id="sheet-backdrop"
-      class="sheet-backdrop"
-      onclick="closeSheet()"
-    ></div>
-
-    <!-- Bottom Sheet Detail Drawer -->
-    <div id="bottom-sheet" class="mobile-bottom-sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <div>
-          <div id="sheet-title" class="sheet-title">Title</div>
-          <div id="sheet-category" class="sheet-category">Category</div>
-        </div>
-        <button class="sheet-close-btn" onclick="closeSheet()">
-          <svg viewBox="0 0 24 24" fill="none">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+        <span id="fx-live-chip" class="fx-chip fx-chip--muted" data-state="checking">
+          <span class="fx-dot"></span><span id="fx-live-label" data-i18n="status.checkingShort">Checking…</span>
+        </span>
+        <button id="fx-balance" class="fx-chip fx-chip--gold fx-balance" type="button" onclick="showBitsBalance()" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9 12h6M12 9v6"></path></svg>
+          <span id="header-balance">0</span>
         </button>
-      </div>
+      </header>
 
-      <!-- Mobile Audio widget -->
-      <div id="mobile-player" class="mobile-player-box">
+      <main class="fx-view">
+        <!-- Store -->
+        <section id="screen-store" class="app-screen active" aria-labelledby="fx-store-title">
+          <div class="fx-intro">
+            <h1 id="fx-store-title" class="fx-title" data-i18n="store.title">Play something on stream</h1>
+            <p id="dimafx-connection-status" class="fx-status" role="status" data-i18n="status.checking">Checking the stream overlay…</p>
+          </div>
+
+          <div class="fx-tools">
+            <label class="fx-search" id="fx-search" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+              <span class="fx-sr" data-i18n="store.searchLabel">Search items</span>
+              <input type="search" id="search-bar" autocomplete="off" data-i18n-placeholder="store.search" placeholder="Search" oninput="handleSearch(this.value)" />
+            </label>
+            <div id="fx-filters" class="fx-filters" role="group" data-i18n-aria="store.filters" aria-label="Filter by type"></div>
+          </div>
+
+          <div id="skeleton-loader" class="fx-grid fx-skeleton active" aria-hidden="true">
+            <div class="fx-sk"></div><div class="fx-sk"></div><div class="fx-sk"></div><div class="fx-sk"></div>
+          </div>
+
+          <div id="media-grid" class="fx-grid"></div>
+
+          <div id="empty-state" class="fx-empty" hidden>
+            <div class="fx-empty__title" id="fx-empty-title" data-i18n="store.emptyTitle">Nothing for sale yet</div>
+            <div class="fx-empty__desc" id="fx-empty-desc" data-i18n="store.emptyDesc">The streamer hasn't added any items.</div>
+          </div>
+        </section>
+
+        <!-- Saved items -->
+        <section id="screen-inventory" class="app-screen" aria-labelledby="fx-saved-title">
+          <div class="fx-intro">
+            <h1 id="fx-saved-title" class="fx-title" data-i18n="saved.title">Your saved items</h1>
+            <p class="fx-sub" data-i18n="saved.sub">Already paid for. Play them on stream whenever you want.</p>
+          </div>
+          <div id="inventory-list" class="fx-rows"></div>
+        </section>
+
+        <!-- Settings -->
+        <section id="screen-config" class="app-screen" aria-labelledby="fx-settings-title">
+          <div class="fx-intro">
+            <h1 id="fx-settings-title" class="fx-title" data-i18n="settings.title">Settings</h1>
+          </div>
+
+          <div class="fx-card">
+            <div class="fx-row-head">
+              <label for="preview-volume" class="fx-label" data-i18n="settings.volume">Preview volume</label>
+              <span class="fx-value" id="val-volume">80%</span>
+            </div>
+            <input id="preview-volume" type="range" class="fx-range volume-slider" min="0" max="100" value="80" style="--pct: 0.8" oninput="onPreviewVolumeInput(this)" />
+            <p class="fx-note" data-i18n="settings.volumeNote">Only for previews in this panel. The stream uses the streamer's volume.</p>
+          </div>
+
+          <div id="fx-quick-settings" class="fx-card"></div>
+
+          <div class="fx-card">
+            <div class="fx-label" data-i18n="settings.creditsTitle">What are credits?</div>
+            <p class="fx-note" data-i18n="settings.creditsNote">If something you paid for can't play, you get it back as credits for this channel. Spend them like Bits on any item.</p>
+          </div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav fx-tabs" data-i18n-aria="nav.label" aria-label="DimaFX sections">
+        <button class="nav-tab active" type="button" aria-current="page" onclick="switchTab('store', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16l-1.5 12.5a1 1 0 0 1-1 .5h-11a1 1 0 0 1-1-.5L4 7Z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
+          <span data-i18n="nav.store">Store</span>
+        </button>
+        <button class="nav-tab" type="button" onclick="switchTab('inventory', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Z"></path></svg>
+          <span data-i18n="nav.saved">Saved</span>
+          <span id="fx-saved-count" class="fx-badge" hidden>0</span>
+        </button>
+        <button class="nav-tab" type="button" onclick="switchTab('config', this)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+          <span data-i18n="nav.settings">Settings</span>
+        </button>
+      </nav>
+    </div>
+
+    <div id="drawer-backdrop" class="fx-backdrop" onclick="closeDrawer()"></div>
+
+    <div id="preview-drawer" class="fx-sheet" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden>
+      <div class="fx-sheet__handle" aria-hidden="true"></div>
+      <div id="player-widget" class="fx-stage" data-preview-kind="audio">
         <div class="preview-visual" hidden></div>
-        <button class="btn-play-sheet" onclick="togglePlayPreview()">
-          <svg id="play-icon-svg" viewBox="0 0 24 24">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-        </button>
-        <div class="waveform-bars">
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
-          <div class="w-bar"></div>
+        <div class="fx-stage__audio" aria-hidden="true">
+          <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
         </div>
-        <div id="player-time" class="player-time-label">0:00</div>
-      </div>
-
-      <p id="sheet-desc" class="sheet-desc">
-        Detail description showing what this item is.
-      </p>
-
-      <div id="tts-input-wrap" class="tts-input-wrap" hidden>
-        <textarea
-          id="tts-text-input"
-          maxlength="280"
-          rows="3"
-          placeholder="Type the message spoken on stream..."
-          oninput="onTtsTextInput()"
-        ></textarea>
-        <div id="tts-char-count" class="tts-char-count">0 / 280</div>
-      </div>
-
-      <div class="drawer-actions">
-        <button
-          id="sheet-buy-btn"
-          class="sheet-btn-buy"
-          onclick="triggerPurchase()"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            style="width: 14px; height: 14px; fill: currentColor"
-          >
-            <polygon points="12 2 22 12 12 22 2 12"></polygon>
-          </svg>
-          <span>Unlock for 150 Bits</span>
+        <div class="fx-stage__tts"><span class="fx-quote" id="fx-stage-quote"></span></div>
+        <button class="fx-stage__play" type="button" id="player-play" onclick="togglePlayPreview()" data-i18n-aria="sheet.preview" aria-label="Preview">
+          <svg class="fx-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"></path></svg>
+          <svg class="fx-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"></path></svg>
         </button>
+        <span id="player-time" class="fx-stage__time">0:00</span>
+        <button class="fx-sheet__close" type="button" onclick="closeDrawer()" data-i18n-aria="sheet.close" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+
+      <div class="fx-sheet__body">
+        <div class="fx-sheet__head">
+          <h2 id="drawer-title" class="fx-sheet__title">Item</h2>
+          <div id="drawer-subtitle" class="fx-sheet__meta"></div>
+        </div>
+        <p id="drawer-desc" class="fx-sheet__desc"></p>
+
+        <div id="tts-input-wrap" class="fx-tts" hidden>
+          <label for="tts-text-input" class="fx-label" data-i18n="sheet.ttsLabel">Your message</label>
+          <textarea id="tts-text-input" maxlength="280" rows="3" data-i18n-placeholder="sheet.ttsPlaceholder" placeholder="Type what the voice will say on stream…" oninput="onTtsTextInput()"></textarea>
+          <div id="tts-char-count" class="fx-tts__count">0 / 280</div>
+        </div>
+
+        <div class="drawer-actions"></div>
       </div>
     </div>
 
-    <!-- Bottom Navigation Tab Bar -->
-    <nav class="bottom-nav">
-      <button class="nav-tab active" onclick="switchTab('store', this)">
-        <svg viewBox="0 0 24 24">
-          <rect x="3" y="3" width="7" height="9"></rect>
-          <rect x="14" y="3" width="7" height="5"></rect>
-          <rect x="14" y="12" width="7" height="9"></rect>
-          <rect x="3" y="16" width="7" height="5"></rect>
-        </svg>
-        Store
-      </button>
-      <button class="nav-tab" onclick="switchTab('inventory', this)">
-        <svg viewBox="0 0 24 24">
-          <path
-            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-          ></path>
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-          <line x1="12" y1="22.08" x2="12" y2="12"></line>
-        </svg>
-        Inventory
-      </button>
-      <button class="nav-tab" onclick="switchTab('settings', this)">
-        <svg viewBox="0 0 24 24">
-          <line x1="4" y1="21" x2="4" y2="14"></line>
-          <line x1="4" y1="10" x2="4" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12" y2="3"></line>
-          <line x1="20" y1="21" x2="20" y2="16"></line>
-          <line x1="20" y1="12" x2="20" y2="3"></line>
-          <line x1="1" y1="14" x2="7" y2="14"></line>
-          <line x1="9" y1="8" x2="15" y2="8"></line>
-          <line x1="17" y1="16" x2="23" y2="16"></line>
-        </svg>
-        Settings
-      </button>
-    </nav>
+    <div id="toast" class="fx-toast" role="status" aria-live="polite">
+      <div class="toast-icon" aria-hidden="true"></div>
+      <div>
+        <div class="toast-title"></div>
+        <div id="toast-desc" class="toast-desc"></div>
+      </div>
+    </div>
 
-    <!-- Twitch Extension Helper -->
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-
-    <!-- External Modular Scripts -->
-    <script src="mobile.js?v=42"></script>
+    <script src="panel.js?v=50"></script>
   </body>
 </html>
