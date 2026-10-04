@@ -37,11 +37,12 @@ Good UX here also has to earn money. Every surface has a revenue job alongside t
 
 | Surface | Who it serves | What it should grow |
 |---------|---------------|---------------------|
-| Viewer surfaces: DimaFX extension, tip page, future viewer shops | Viewers | **Bits spent on the streamer's channel.** DomDimaBot automatically keeps 20% of DimaFX Bits revenue, so every extra Bits purchase also earns us money. |
+| DimaFX Twitch extension (viewer shop) | Viewers | **Bits spent on the streamer's channel.** Twitch rewards extension developers with a 20% share of the Bits used in their extensions, so every extra DimaFX Bits purchase also earns DomDimaBot money. This is our only direct revenue from viewers. |
+| Tip page | Viewers | **Tips for the streamer, not revenue for us.** The streamer receives 100% minus PayPal fees and DomDimaBot takes nothing. Its value to us is indirect: a tip page that earns well keeps streamers on the platform. Optimise for the streamer's tips; don't add DomDimaBot upsells or fees here. |
 | Streamer surfaces: dimasite dashboard, modules, settings | Streamers | **(a) Upgrades to Premium/Pro tiers** and **(b) use of credit-consuming features** (premium TTS voices, AI, etc.) that lead to **credit pack purchases**. |
 | Admin site | Operator (us) | Spotting streamers who are about to run out of credits, hitting plan limits, or stuck in setup, so we can help them (and keep them paying). |
 
-**Viewer surfaces: more Bits, more often**
+**DimaFX extension: more Bits, more often**
 - Make the first purchase easy: price on every tile, buy from the grid, a cheap or free item visible near the top, no account or setup steps before paying.
 - Make buying feel worth it: real previews (video motion, sound playback), the channel name, and "plays for everyone right away".
 - Bring people back: the Saved tab, "N saved" tags, credits that stay on the channel, a clear "On its way!" right after paying.
@@ -78,7 +79,7 @@ Good UX here also has to earn money. Every surface has a revenue job alongside t
 5. **Mobile-first, mobile-equal** — base 320–480px; enhance with `min-width` (640 / 960). See "The two non-negotiables" above.
 6. **Keep data wiring** — restyle/restructure markup; do not rewrite working services/APIs unless asked.
 7. **i18n** — all user strings via `LanguageService` + `en.json` / `es.json` (toasts and aria-labels too).
-8. **Answer the user's real question first, and serve the surface's business goal** (see "Business goals": Bits on viewer surfaces, tier upgrades and credit packs on streamer surfaces). Use the user's own words (streamer on dimasite, operator on admin, viewer on the extension) — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
+8. **Answer the user's real question first, and serve the surface's business goal** (see "Business goals": Bits in the DimaFX extension, tier upgrades and credit packs on streamer surfaces; the tip page serves the streamer only). Use the user's own words (streamer on dimasite, operator on admin, viewer on the extension) — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
 
 ## Design tokens
 
@@ -271,7 +272,7 @@ Preview URLs:
 
 ## Viewer storefronts (selling surfaces)
 
-Pages where **viewers** spend Bits or credits (DimaFX panel, tip page, any future shop) answer a different question from streamer pages: *"What can I make happen, and how much does it cost?"* They should make buying easy and attractive while staying honest; the goal is a viewer who buys again, not one who feels tricked.
+Pages where **viewers** spend money (DimaFX panel, tip page, any future shop) answer a different question from streamer pages: *"What can I make happen, and how much does it cost?"* They should make buying easy and attractive while staying honest; the goal is a viewer who buys again, not one who feels tricked.
 
 - **Lead with what's possible right now:** channel name in the title ("Play something on **Dima**'s stream"), a live/paused chip, and when buying is blocked, the consequence in plain words ("Purchases are paused, you won't be charged") before any grid.
 - **Browse = tile grid, manage = rows.** Shop tiles: real preview on top (image/GIF, video first frame with muted hover motion for mouse users, waveform tile for audio, speech-bubble quote for voice items), name (2-line clamp), then a full-width price button. 2 columns on the 318px panel and phones, 3 at ≥480px, 4 at ≥640px.
