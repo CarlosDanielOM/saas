@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
-import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
+import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 
@@ -28,7 +28,7 @@ function canvas(v: Record<string, unknown>) { return { width: number(v.width, 10
 function widgets(value: unknown, nested: boolean): OverlayWidget[] {
   return unique(list(value, 60).map(raw => {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
-    if (!(nested ? ['text', 'image', 'video', 'animation'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video']).includes(kind)) throw new OverlayError('Invalid layer type');
+    if (!(nested ? ['text', 'image', 'video', 'animation', 'shape'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video', 'shape']).includes(kind)) throw new OverlayError('Invalid layer type');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
     if (w.motion !== undefined) {
       if (!nested) throw new OverlayError('Object animations require an alert design');
@@ -58,21 +58,53 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     } else if (w.mediaUrl) { const url = string(w.mediaUrl, 2048); if (!/^https:\/\//i.test(url) || new URL(url).username || new URL(url).password) throw new OverlayError('Media requires an HTTPS URL'); item.mediaUrl = url; }
     if (w.color) { if (!/^#[0-9a-f]{6}$/i.test(String(w.color))) throw new OverlayError('Invalid color'); item.color = String(w.color); }
     if (w.fontSize !== undefined) item.fontSize = number(w.fontSize, 8, 300);
+    for (const [key, choices] of Object.entries({ fontFamily: ['sans', 'serif', 'mono'], fontWeight: [400, 700], textAlign: ['left', 'center', 'right'], shape: ['rectangle', 'ellipse'] })) {
+      if (w[key] !== undefined) { if (!(choices as unknown[]).includes(w[key])) throw new OverlayError('Invalid object style'); Object.assign(item, { [key]: w[key] }); }
+    }
+    if (w.italic !== undefined) item.italic = boolean(w.italic);
+    for (const [key, max] of [['borderWidth', 40], ['radius', 500], ['opacity', 1]] as const) if (w[key] !== undefined) item[key] = number(w[key], 0, max);
+    if (w.borderColor !== undefined) item.borderColor = color(w.borderColor);
+    if (w.shadow !== undefined) { const shadow = object(w.shadow); item.shadow = { color: color(shadow.color), blur: number(shadow.blur, 0, 100), x: number(shadow.x, -100, 100), y: number(shadow.y, -100, 100) }; }
     return item;
   }));
+}
+function color(value: unknown): string { if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw new OverlayError('Invalid color'); return value; }
+function alertLayout(raw: unknown): AlertLayout {
+  const layout = object(raw), result: AlertLayout = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true) };
+  if (layout.sound !== undefined) {
+    const sound = object(layout.sound);
+    if (typeof sound.assetId !== 'string' || !/^[a-f0-9]{24}$/.test(sound.assetId)) throw new OverlayError('Invalid alert sound');
+    result.sound = { assetId: sound.assetId, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
+      volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10) };
+  }
+  return result;
 }
 export function validateState(raw: unknown, previous: StudioState): Pick<StudioState, 'scenes' | 'designs'> {
   const body = object(raw);
   const designs = unique(list(body.designs, 50).map(raw => {
     const d = object(raw); const events = object(d.events); const old = previous.designs.find(x => x.id === d.id);
     const design: AlertDesign = { id: id(d.id), name: string(d.name, 80), ...canvas(d), revision: (old?.revision ?? 0) + 1, events: {} as AlertDesign['events'] };
-    for (const kind of ALERT_EVENTS) {
-      const layout = object(events[kind]); design.events[kind] = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true) };
-      if (layout.sound !== undefined) {
-        const sound = object(layout.sound);
-        if (typeof sound.assetId !== 'string' || !/^[a-f0-9]{24}$/.test(sound.assetId)) throw new OverlayError('Invalid alert sound');
-        design.events[kind].sound = { assetId: sound.assetId, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
-          volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10) };
+    for (const kind of ALERT_EVENTS) design.events[kind] = alertLayout(events[kind]);
+    if (d.variants !== undefined) {
+      const variants = object(d.variants); design.variants = {};
+      if (Object.keys(variants).some(key => !['sub', 'bits', 'raid'].includes(key))) throw new OverlayError('Invalid variant event');
+      for (const kind of ['sub', 'bits', 'raid'] as const) if (variants[kind] !== undefined) {
+        design.variants[kind] = unique(list(variants[kind], 10).map(raw => {
+          const v = object(raw);
+          const result: AlertVariant = { id: id(v.id), name: string(v.name, 80), enabled: boolean(v.enabled), layout: alertLayout(v.layout) };
+          if (kind === 'sub') {
+            if (!['1000', '2000', '3000'].includes(v.tier as string) || v.min !== undefined || v.max !== undefined) throw new OverlayError('Choose a subscription tier');
+            result.tier = v.tier as AlertVariant['tier'];
+          } else {
+            if (v.tier !== undefined) throw new OverlayError('Invalid amount rule');
+            for (const key of ['min', 'max'] as const) if (v[key] !== undefined) {
+              result[key] = number(v[key], 0, 1000000000);
+              if (!Number.isInteger(result[key])) throw new OverlayError('Use a whole amount');
+            }
+            if (result.min === undefined || (result.max !== undefined && result.max < result.min)) throw new OverlayError('Invalid amount range');
+          }
+          return result;
+        }));
       }
     }
     return design;

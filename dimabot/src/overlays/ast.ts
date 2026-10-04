@@ -42,7 +42,7 @@ export async function renderTemplate(text: string, channel: string, event: Recor
 export async function renderLayout(layout: AlertLayout, channel: string, event: Record<string, unknown>): Promise<AlertLayout> {
   return { ...layout, widgets: await Promise.all(layout.widgets.map(async w => w.kind === 'text' ? { ...w, text: await renderTemplate(w.text || '', channel, event) } : w)) };
 }
-export function sampleEvent(kind: AlertEvent, user = 'Luna', amount = 100): Record<string, unknown> {
+export function sampleEvent(kind: AlertEvent, user = 'Luna', amount = 100, tier = '1000'): Record<string, unknown> {
   return { user_name: user, user_login: user.toLowerCase(), user_id: '0', bits: kind === 'bits' ? amount : 0,
-    tier: '1000', cumulative_months: amount, from_broadcaster_user_name: user, from_broadcaster_user_login: user.toLowerCase(), viewers: amount, message: 'Thank you!' };
+    tier, cumulative_months: amount, from_broadcaster_user_name: user, from_broadcaster_user_login: user.toLowerCase(), viewers: amount, message: 'Thank you!' };
 }

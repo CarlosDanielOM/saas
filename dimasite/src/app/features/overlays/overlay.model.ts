@@ -1,7 +1,7 @@
 import type { ClipDesignVariant } from '../clips/clips.model';
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
-export type WidgetKind = 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation';
+export type WidgetKind = 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation' | 'shape';
 export const ALERT_TRANSITIONS = ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'bounce', 'flip', 'spin'] as const;
 export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
 export interface AlertMotion {
@@ -13,15 +13,20 @@ export interface OverlayWidget {
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   motion?: AlertMotion;
+  fontFamily?: 'sans' | 'serif' | 'mono'; fontWeight?: 400 | 700; italic?: boolean; textAlign?: 'left' | 'center' | 'right';
+  shape?: 'rectangle' | 'ellipse'; borderColor?: string; borderWidth?: number; radius?: number; opacity?: number;
+  shadow?: { color: string; blur: number; x: number; y: number };
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
 }
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number }
 export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
+export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; layout: AlertLayout }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
   events: Record<AlertEvent, AlertLayout>;
+  variants?: Partial<Record<AlertEvent, AlertVariant[]>>;
 }
 export interface OverlayScene {
   id: string; name: string; width: number; height: number;
@@ -50,3 +55,21 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
         designId, events: [...ALERT_EVENTS] }
     ] };
 }
+
+/** Ordered rules: the first enabled match wins; malformed/missing event data uses the default. */
+export function matchingVariant(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>): AlertVariant | undefined {
+  if (kind === 'follow') return undefined;
+  return design.variants?.[kind]?.find(v => {
+    if (!v.enabled) return false;
+    if (kind === 'sub') return !!v.tier && raw['tier'] === v.tier;
+    const amount = raw[kind === 'bits' ? 'bits' : 'viewers'];
+    return typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0
+      && amount >= (v.min ?? 0) && (v.max === undefined || amount <= v.max);
+  });
+}
+export function selectAlertLayout(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>): AlertLayout {
+  return matchingVariant(design, kind, raw)?.layout ?? design.events[kind];
+}
+export const designLayouts = (design: AlertDesign): AlertLayout[] => [
+  ...Object.values(design.events), ...Object.values(design.variants ?? {}).flatMap(variants => variants.map(v => v.layout))
+];

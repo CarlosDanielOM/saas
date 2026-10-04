@@ -901,7 +901,7 @@ app-overlay-queue { order: 3; }
 .widget[data-kind="alert"] { background:radial-gradient(ellipse at 20% 40%,#543788,transparent),#151824; border-color:#a78bfa }
 .widget__content.widget__content--alert { padding:0; display:block }
 .widget__content>.alert-render { display:block!important; position:relative; width:100%; height:100% }
-.alert-part { position:absolute; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#e0d0ff }
+.alert-part { position:absolute; display:flex; align-items:center; justify-content:center; overflow:visible; color:#e0d0ff }
 .alert-part[data-kind="image"],.alert-part[data-kind="video"] { background:linear-gradient(145deg,#5c4391,#213849); border-radius:8px }
 .alert-part strong { color:white; font-size:clamp(8px,1.3vw,19px) }
 .alert-event-label { position:absolute; bottom:4px; right:6px; color:#d7cbed; font-size:7px; text-transform:uppercase }
@@ -943,3 +943,6 @@ app-overlay-queue { order: 3; }
 app-overlay-timeline { grid-area:timeline; min-width:0 }
 .studio:has(app-overlay-timeline) { grid-template-areas:'tools' 'events' 'add' 'canvas' 'hint' 'layers' 'timeline' 'off' 'props' }
 @media(min-width:960px) { .studio:has(app-overlay-timeline) { grid-template-areas:'tools props' 'events props' 'add props' 'canvas props' 'hint props' 'off props' 'layers props' 'timeline props'; grid-template-rows:auto auto auto auto auto auto auto 1fr } }
+
+.widget[data-kind="shape"] { background:transparent; box-shadow:none }
+.widget:is([data-kind="shape"],[data-kind="text"],[data-kind="image"],[data-kind="video"],[data-kind="animation"]) .widget__content { padding:0; overflow:visible }

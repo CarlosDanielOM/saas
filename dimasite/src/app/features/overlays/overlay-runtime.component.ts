@@ -22,8 +22,8 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
   selector: 'app-overlay-runtime', imports: [OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
-      @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text'].includes(w.kind)) {
-        <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
+      @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text','shape'].includes(w.kind)) {
+        <div class="placement art" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
       } }
       @for (job of playing(); track job.event.id) {
         @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
@@ -40,7 +40,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
+                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
                 } }
               }
             }
@@ -49,7 +49,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
       }
     </div>
   }`,
-  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
+  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);

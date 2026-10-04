@@ -116,6 +116,10 @@
       <div class="design-event-tabs" role="group" [attr.aria-label]="t('eventDesigns')">
         @for (event of alertEvents; track event) { <button type="button" [class.active]="designEvent() === event" [attr.aria-pressed]="designEvent() === event" (click)="setDesignEvent(event)">{{ t(event + 'Name') }}</button> }
       </div>
+    @if (designDraft() && designEvent() !== 'follow') {
+      <app-overlay-variants [kind]="designEvent()" [variants]="variants()" [selected]="variantId()" (selectedChange)="selectVariant($event)" (added)="addVariant()" (changed)="patchVariant($event)" (moved)="moveVariant($event)" (removed)="removeVariant()" />
+    }
+
       @if (!designEventEnabled()) {
         <div class="lf-note lf-note--warn event-disabled" role="status">
           <span>{{ t('designEventDisabled', { event: t(designEvent() + 'Name'), overlay: scene().name }) }}</span>
@@ -166,6 +170,7 @@
                       @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" [text]="renderText(widget.text)" /> }
                       @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
+                      @case ('shape') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('animation') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('tts') {
                         <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
@@ -201,7 +206,7 @@
       </div>
     </div>
     @if (designDraft(); as draft) {
-      <app-overlay-timeline [layout]="draft.events[designEvent()]" [eventKey]="draft.id + ':' + designEvent()" [selectedId]="selectedId()" [transport]="timeline()"
+      <app-overlay-timeline [layout]="editingLayout()!" [eventKey]="draft.id + ':' + designEvent() + ':' + variantId()" [selectedId]="selectedId()" [transport]="timeline()"
         (selected)="selectedId.set($event)" (edited)="editTimeline($event)" (editEnded)="endHistoryGroup()"
         (seek)="seekTimeline($event)" (toggle)="toggleTimeline()" (closed)="closeTimeline()" />
     }
@@ -268,6 +273,9 @@
           </div>
         }
 
+        @if (['text','shape','image','video','animation'].includes(item.kind)) {
+          <app-overlay-appearance [widget]="item" (changed)="patchSelected($event)" (aligned)="alignEdge($event)" />
+        }
         @if (designDraft()) {
           <section class="object-motion" [attr.aria-label]="t('objectMotion')">
             <h3>{{ t('objectMotion') }}</h3>
@@ -353,7 +361,8 @@
           <div class="event-tester">
             <label class="lf-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
             <label class="lf-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
-            <label class="lf-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="60" [value]="design.events[designEvent()].duration" (input)="updateDuration($event)" /></label>
+            @if (designEvent() === 'sub') { <label class="lf-field"><span>{{ t('sampleTier') }}</span><select [value]="sampleTier()" (change)="sampleTier.set(value($event))">@for (tier of ['1000','2000','3000']; track tier) { <option [value]="tier" [selected]="tier === sampleTier()">{{ t('tier_' + tier) }}</option> }</select></label> }
+            <label class="lf-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="120" [value]="editingLayout()!.duration" (input)="updateDuration($event)" /></label>
           </div>
           <section class="alert-sound" [attr.aria-label]="t('alertSound')">
             <h3 class="lf-h3">{{ t('alertSound') }}</h3>
@@ -373,6 +382,10 @@
             }
           </section>
           <div><button type="button" class="lf-btn lf-btn--primary" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('previewEvent', { event: t(designEvent() + 'Name') }) }}</button></div>
+          @if (designEvent() !== 'follow') {
+            <p class="lf-note" role="status">{{ t('variantMatches', {name: matchedVariantName()}) }}</p>
+            <button type="button" class="lf-btn" (click)="previewMatchingVariant()">{{ t('previewMatchingVariant') }}</button>
+          }
           <details class="lf-more"><summary>{{ t('variablesTitle') }}</summary><p class="lf-note">{{ t('designContext') }}</p></details>
         } @else {
           <div class="lf-card__head"><h2 class="lf-h2" id="overlay-test-title">{{ t('testTitle') }}</h2><p class="lf-note">{{ t('testHint') }}</p></div>

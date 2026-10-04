@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 const dir = process.env.SAAS_OVERLAY_CHECK_DIR || '/root/saas/ops/checks';
 const checks = [
-  'alert-timeline-browser.mjs', 'alert-sound-browser.mjs', 'alert-object-motion-browser.mjs',
+  'alert-design-tools-browser.mjs', 'alert-design-runtime-browser.mjs', 'alert-timeline-browser.mjs', 'alert-sound-browser.mjs', 'alert-object-motion-browser.mjs',
   'overlay-studio-redesign-browser.mjs', 'overlay-studio-browser.mjs', 'overlay-history-browser.mjs',
   'overlay-trigger-filters-browser.mjs', 'overlay-connections-browser.mjs', 'overlay-controls-browser.mjs',
   'overlay-free-browser.mjs', 'overlay-alert-rendering-browser.mjs', 'overlay-draft-protection.mjs',

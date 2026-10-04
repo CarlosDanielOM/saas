@@ -1,3 +1,4 @@
+import { selectAlertLayout } from './model.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
 import { registerStudioBridge } from './bridge.js';
 import { randomUUID } from 'node:crypto';
@@ -149,7 +150,7 @@ export async function eventFor(publicId: string, eventId: string) {
   if (!item || item.channel !== state.channel || ![...item.recipients].some(k => k.startsWith(`${publicId}:`))) return null;
   const layouts: Record<string, unknown> = {};
   if (item.raw) for (const design of state.snapshot.designs) {
-    const layout = design.events[item.event.kind as AlertEvent];
+    const layout = selectAlertLayout(design, item.event.kind as AlertEvent, item.raw);
     if (layout) layouts[design.id] = await renderLayout(layout, state.channel, item.raw);
   }
   return { ...item.event, snapshot: state.snapshot, revision: state.revision, ...(item.mediaId ? { media: { ...item.event.media!, url: `/overlay-studio/public/${publicId}/media/${eventId}` } } : {}), layouts };

@@ -70,7 +70,7 @@ overlayStudioRoute.post('/:channelID/scenes/:sceneId/:action', wrap(async (req, 
 overlayStudioRoute.post('/:channelID/preview', wrap(async (req, res) => {
   const body = object(req.body); const kind = body.kind as AlertEvent; if (!ALERT_EVENTS.includes(kind)) throw new OverlayError('Invalid alert event');
   if (!Array.isArray(body.texts) || body.texts.length > 100) throw new OverlayError('Invalid templates');
-  const event = sampleEvent(kind, string(body.user || 'Luna', 80), Math.min(1000000, Math.max(0, Number(body.amount) || 0)));
+  const event = sampleEvent(kind, string(body.user || 'Luna', 80), Math.min(1000000000, Math.max(0, Number(body.amount) || 0)), ['1000', '2000', '3000'].includes(body.tier as string) ? body.tier as string : '1000');
   try { return ok(res, await Promise.all(body.texts.map(text => renderTemplate(typeof text === 'string' ? text : '', param(req, 'channelID'), event)))); }
   catch (e) { throw new OverlayError((e as Error).message); }
 }));

@@ -1,3 +1,6 @@
+import { OverlayAppearanceComponent } from './overlay-appearance.component';
+import { OverlayVariantsComponent } from './overlay-variants.component';
+import { matchingVariant, selectAlertLayout, designLayouts, type AlertLayout, type AlertVariant } from './overlay.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
 import type { AlertTransport } from './overlay-sound.component';
 import { OverlaySoundComponent } from './overlay-sound.component';
@@ -34,7 +37,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -73,14 +76,14 @@ export class OverlayEditorComponent {
   readonly assetPickerOpen = signal(false);
   readonly soundPickerOpen = signal(false);
   readonly soundPercent = computed(() => Math.round((this.alertSound()?.volume ?? 1) * 100));
-  readonly alertSound = computed(() => this.designDraft()?.events[this.designEvent()].sound);
+  readonly alertSound = computed(() => this.editingLayout()?.sound);
   readonly previewSounds = computed(() => {
     const draft = this.designDraft();
-    if (draft) { const layout = draft.events[this.designEvent()]; return (this.previewDesign() || this.timeline()) && layout.sound ? [{ key: (this.timeline() ? 'timeline-' : 'design-') + this.motionReplay(), config: layout.sound, duration: layout.duration }] : []; }
+    if (draft) { const layout = this.editingLayout()!; return (this.previewDesign() || this.timeline()) && layout.sound ? [{ key: (this.timeline() ? 'timeline-' : 'design-') + this.motionReplay(), config: layout.sound, duration: layout.duration }] : []; }
     return [this.active(), ...this.parallel()].flatMap(event => {
       if (!event || !ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
       const ids = new Set(this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.designId));
-      return this.designs().filter(d => ids.has(d.id)).flatMap(d => { const layout = d.events[event.kind as AlertEvent]; return layout.sound ? [{ key: event.id + ':' + d.id, config: layout.sound, duration: layout.duration }] : []; });
+      return this.designs().filter(d => ids.has(d.id)).flatMap(d => { const layout = selectAlertLayout(d, event.kind as AlertEvent, this.sampleRaw()); return layout.sound ? [{ key: event.id + ':' + d.id, config: layout.sound, duration: layout.duration }] : []; });
     });
   });
   readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
@@ -114,10 +117,18 @@ export class OverlayEditorComponent {
   readonly scene = computed(() => this.scenes().find(s => s.id === this.sceneId())!);
   readonly designDraft = signal<AlertDesign | null>(null);
   readonly designEvent = signal<AlertEvent>('follow');
+  readonly variantId = signal<string | null>(null);
+  readonly variants = computed(() => this.designDraft()?.variants?.[this.designEvent()] ?? []);
+  readonly editingLayout = computed(() => this.variants().find(v => v.id === this.variantId())?.layout ?? this.designDraft()?.events[this.designEvent()]);
+  readonly sampleTier = signal('1000');
+  readonly sampleRaw = computed(() => ({ tier: this.sampleTier(), bits: Number(this.sampleAmount()), viewers: Number(this.sampleAmount()) }));
+  readonly matchedVariantName = computed(() => {
+    const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw())?.name ?? this.t('defaultVariant') : '';
+  });
   readonly canvasWidth = computed(() => this.designDraft()?.width ?? this.scene()?.width ?? 1920);
   readonly canvasHeight = computed(() => this.designDraft()?.height ?? this.scene()?.height ?? 1080);
-  readonly widgets = computed(() => this.designDraft()?.events[this.designEvent()].widgets ?? this.scene()?.widgets ?? []);
-  readonly palette = computed<WidgetKind[]>(() => this.designDraft() ? ['text', 'image', 'video', 'animation'] : ['tts', 'trigger', 'clip', 'alert', 'image', 'video']);
+  readonly widgets = computed(() => this.editingLayout()?.widgets ?? this.scene()?.widgets ?? []);
+  readonly palette = computed<WidgetKind[]>(() => this.designDraft() ? ['text', 'image', 'video', 'animation', 'shape'] : ['tts', 'trigger', 'clip', 'alert', 'image', 'video', 'shape']);
   readonly selectedId = signal<string | null>('alert-1');
   /** Remembered so the exact-numbers section stays open while hopping between sources. */
   readonly exactOpen = signal(false);
@@ -183,14 +194,14 @@ export class OverlayEditorComponent {
     });
     effect(onCleanup => {
       const ownTexts = this.widgets().filter(w => w.kind === 'text').map(w => w.text || '');
-      const designTexts = this.designs().flatMap(d => Object.values(d.events).flatMap(e => e.widgets.filter(w => w.kind === 'text').map(w => w.text || '')));
+      const designTexts = this.designs().flatMap(d => designLayouts(d).flatMap(e => e.widgets.filter(w => w.kind === 'text').map(w => w.text || '')));
       const texts = [...new Set([...ownTexts, ...designTexts])].slice(0, 100);
-      const kind = this.designEvent(), user = this.sampleUser(), amount = this.sampleAmount();
+      const kind = this.designEvent(), user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
       this.loading();
       if (!this.channel || !texts.length) return;
       let valid = true;
       const timer = setTimeout(() => {
-        void this.api.render(this.channel, texts, kind, user, amount).then(values => {
+        void this.api.render(this.channel, texts, kind, user, amount, tier).then(values => {
           if (valid) { this.rendered.set(Object.fromEntries(texts.map((text, i) => [text, values[i]]))); this.astError.set(''); }
         }).catch(e => { if (valid) this.astError.set(e?.error?.message || this.t('astFailed')); });
       }, 200);
@@ -219,9 +230,51 @@ export class OverlayEditorComponent {
   private later(fn: () => void, ms: number): ReturnType<typeof setTimeout> {
     const timer = setTimeout(() => { this.timers.delete(timer); fn(); }, ms); this.timers.add(timer); return timer;
   }
+  private updateLayout(update: (layout: AlertLayout) => AlertLayout): void {
+    this.edit(() => this.designDraft.update(d => {
+      if (!d) return d;
+      const kind = this.designEvent(), id = this.variantId();
+      if (id && d.variants?.[kind]?.some(v => v.id === id)) return {...d, variants: {...d.variants, [kind]: d.variants[kind]!.map(v => v.id === id ? {...v, layout: update(v.layout)} : v)}};
+      return {...d, events: {...d.events, [kind]: update(d.events[kind])}};
+    }));
+  }
+  selectVariant(id: string | null): void {
+    this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.variantId.set(id);
+    this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null);
+  }
+  private updateVariants(update: (variants: AlertVariant[]) => AlertVariant[]): void {
+    this.resetSimulation();
+    this.edit(() => this.designDraft.update(d => d ? {...d, variants: {...d.variants, [this.designEvent()]: update(d.variants?.[this.designEvent()] ?? [])}} : d));
+  }
+  addVariant(): void {
+    if (this.designEvent() === 'follow' || this.variants().length >= 10 || !this.editingLayout()) return;
+    const source = this.variants().find(v => v.id === this.variantId()), id = this.id('variant');
+    this.edit(() => {
+      const variant: AlertVariant = {id, name: source ? source.name.slice(0, 60) + ' · ' + this.t('copy') : this.t('newVariant'), enabled: true,
+        ...(this.designEvent() === 'sub' ? {tier: source?.tier ?? '2000'} : {min: source?.min ?? (this.designEvent() === 'bits' ? 100 : 10), ...(source?.max === undefined ? {} : {max: source.max})}), layout: clone(this.editingLayout()!)};
+      this.updateVariants(all => [...all, variant]); this.selectVariant(id);
+    }, null);
+  }
+  patchVariant(change: Partial<AlertVariant>): void { this.updateVariants(all => all.map(v => v.id === this.variantId() ? {...v, ...change} : v)); }
+  moveVariant(direction: -1 | 1): void {
+    this.edit(() => this.updateVariants(all => { const next = [...all], index = next.findIndex(v => v.id === this.variantId()), target = index + direction;
+      if (index >= 0 && target >= 0 && target < next.length) [next[index], next[target]] = [next[target], next[index]]; return next; }), null);
+  }
+  removeVariant(): void { this.edit(() => { this.updateVariants(all => all.filter(v => v.id !== this.variantId())); this.selectVariant(null); }, null); }
+  previewMatchingVariant(): void {
+    const draft = this.designDraft(); if (!draft) return;
+    this.selectVariant(matchingVariant(draft, this.designEvent(), this.sampleRaw())?.id ?? null); this.testDesign();
+  }
+  alignEdge(edge: 'left' | 'right' | 'top' | 'bottom'): void {
+    const w = this.selected(); if (!w || w.locked) return;
+    this.patchSelected(edge === 'left' || edge === 'right' ? {x: edge === 'left' ? 0 : this.canvasWidth() - w.width} : {y: edge === 'top' ? 0 : this.canvasHeight() - w.height});
+  }
+  private playingLayout(widget: OverlayWidget, kind = this.eventFor(widget)): AlertLayout | undefined {
+    const design = this.designFor(widget); return design ? selectAlertLayout(design, kind, this.sampleRaw()) : undefined;
+  }
   private updateWidgets(update: (widgets: OverlayWidget[]) => OverlayWidget[]): void {
     this.edit(() => {
-      if (this.designDraft()) this.designDraft.update(d => d ? { ...d, events: { ...d.events, [this.designEvent()]: { ...d.events[this.designEvent()], widgets: update(d.events[this.designEvent()].widgets) } } } : d);
+      if (this.designDraft()) this.updateLayout(layout => ({...layout, widgets: update(layout.widgets)}));
       else this.updateScene({ widgets: update(this.widgets()) });
       this.reconcileTests();
     });
@@ -251,7 +304,7 @@ export class OverlayEditorComponent {
     return [this.active(), ...this.parallel()].find(event => event && widget.events?.includes(event.kind as AlertEvent))?.id ?? 0;
   }
   objectPlaybackDuration(widget: OverlayWidget): number {
-    return this.designDraft()?.events[this.designEvent()].duration ?? this.designFor(widget)?.events[this.eventFor(widget)].duration ?? 5;
+    return this.editingLayout()?.duration ?? this.playingLayout(widget)?.duration ?? 5;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
   useSound(asset: DesignAsset): void {
@@ -260,7 +313,7 @@ export class OverlayEditorComponent {
   }
   setSound(sound: AlertSound | undefined): void {
     this.resetSimulation();
-    this.edit(() => this.designDraft.update(d => d ? { ...d, events: { ...d.events, [this.designEvent()]: { ...d.events[this.designEvent()], sound } } } : d));
+    this.updateLayout(layout => ({...layout, sound}));
   }
   soundValue(field: 'volume' | 'delay' | 'fadeIn' | 'fadeOut', event: Event): void {
     const sound = this.alertSound(), value = Number(this.value(event)); if (!sound || !Number.isFinite(value)) return;
@@ -270,7 +323,7 @@ export class OverlayEditorComponent {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
     this.assetPickerOpen.set(false);
   }
-  widgetIcon(kind: WidgetKind) { return ({ tts: Volume2, trigger: Zap, clip: Clapperboard, alert: Bell, text: Type, image: Image, video: Play, animation: Sparkles })[kind]; }
+  widgetIcon(kind: WidgetKind) { return ({ tts: Volume2, trigger: Zap, clip: Clapperboard, alert: Bell, text: Type, image: Image, video: Play, animation: Sparkles, shape: Layers3 })[kind]; }
   widgetName(widget: OverlayWidget): string { return widget.name || this.t(`${widget.kind}Name`); }
   addWidget(kind: WidgetKind, position?: { x: number; y: number }): void {
     const width = kind === 'tts' ? 580 : kind === 'alert' ? 640 : kind === 'text' ? 400 : 300;
@@ -360,10 +413,10 @@ export class OverlayEditorComponent {
     if (this.designDraft() && this.dirty() && !window.confirm(this.t('discardDesign'))) return;
     this.stopPointer(); this.endHistoryGroup(); this.resetSimulation();
     const design=this.designs().find(d=>d.id===id) ?? makeDesign(this.id('design'),this.t('newDesign'));
-    this.designDraft.set(clone(design)); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
+    this.designDraft.set(clone(design)); this.variantId.set(null); this.designEvent.set('follow'); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); this.saved.set(false);
   }
   async closeDesign(): Promise<void> { if (!await this.saveDesign()) return; this.stopPointer(); this.endHistoryGroup(); this.closeTimeline(); this.designDraft.set(null); this.selectedId.set('alert-1'); this.previewDesign.set(false); this.saved.set(false); }
-  setDesignEvent(event: AlertEvent): void { this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
+  setDesignEvent(event: AlertEvent): void { this.resetSimulation(); this.stopPointer(); this.endHistoryGroup(); this.designEvent.set(event); this.variantId.set(null); this.selectedId.set(this.widgets()[1]?.id ?? this.widgets()[0]?.id ?? null); }
   async saveDesign(asCopy=false): Promise<boolean> {
     const draft=this.designDraft(); if(!draft) return false;
     const saved={...clone(draft),id:asCopy?this.id('design'):draft.id,name:asCopy?`${draft.name} · ${this.t('copy')}`:draft.name,revision:asCopy?1:draft.revision+1};
@@ -390,10 +443,10 @@ export class OverlayEditorComponent {
   updateDuration(event: Event): void {
     const value=Number(this.value(event)); if(!Number.isFinite(value)) return;
     this.resetSimulation();
-    this.edit(() => this.designDraft.update(d=>d?{...d,events:{...d.events,[this.designEvent()]:{...d.events[this.designEvent()],duration:Math.max(1,Math.min(60,value))}}}:d));
+    this.updateLayout(layout => ({...layout, duration: Math.max(1,Math.min(120,value))}));
   }
   renderText(text='$(user)'): string { return this.rendered()[text] ?? text; }
-  alertLayout(widget: OverlayWidget): OverlayWidget[] { return this.designFor(widget)?.events[this.eventFor(widget)].widgets ?? []; }
+  alertLayout(widget: OverlayWidget): OverlayWidget[] { return this.playingLayout(widget)?.widgets ?? []; }
   eventFor(widget: OverlayWidget): AlertEvent {
     const playing=[this.active(),...this.parallel()].find(e=>e&&widget.events?.includes(e.kind as AlertEvent));
     return playing?.kind as AlertEvent ?? widget.events?.[0] ?? 'follow';
@@ -440,7 +493,7 @@ export class OverlayEditorComponent {
   }
   private startEvent(event: MockEvent): void {
     if (!event.channel) {
-      const durations = this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => this.designFor(w)?.events[event.kind as AlertEvent]?.duration ?? 5);
+      const durations = this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => this.playingLayout(w, event.kind as AlertEvent)?.duration ?? 5);
       this.later(() => this.finishEvent(event.id), Math.max(1, ...durations) * 1000); return;
     }
     const visible = new Set(this.widgets().filter(w => w.visible).map(w => w.id));
@@ -518,12 +571,12 @@ export class OverlayEditorComponent {
     if (!this.designDraft()) return;
     if (!this.timeline()) { this.resetSimulation(); this.motionReplay.update(n => n + 1); }
     if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame);
-    this.timeline.set({ time: Math.max(0, Math.min(this.designDraft()!.events[this.designEvent()].duration, time)), playing: false, seek: ++this.timelineSeek });
+    this.timeline.set({ time: Math.max(0, Math.min(this.editingLayout()!.duration, time)), playing: false, seek: ++this.timelineSeek });
   }
   toggleTimeline(): void {
     const current = this.timeline();
     if (current?.playing) { this.seekTimeline(current.time); return; }
-    const duration = this.designDraft()?.events[this.designEvent()].duration ?? 5;
+    const duration = this.editingLayout()?.duration ?? 5;
     this.seekTimeline(current && current.time < duration ? current.time : 0);
     const start = this.timeline()!.time, began = performance.now(), seek = this.timelineSeek;
     this.timeline.set({ time: start, playing: true, seek });
@@ -538,20 +591,15 @@ export class OverlayEditorComponent {
   closeTimeline(): void { if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
   editTimeline(change: TimelineEdit): void {
     this.resetSimulation();
-    this.edit(() => this.designDraft.update(d => {
-      if (!d) return d;
-      const event = this.designEvent(), layout = d.events[event];
-      const next = change.id === '$sound'
-        ? { ...layout, sound: layout.sound ? { ...layout.sound, [change.field]: change.value } : undefined }
-        : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: { ...(w.motion ?? defaultMotion(w.kind)), [change.field]: change.value } } : w) };
-      return { ...d, events: { ...d.events, [event]: next } };
-    }), 'timeline:' + change.id + ':' + change.field);
+    this.edit(() => this.updateLayout(layout => change.id === '$sound'
+      ? { ...layout, sound: layout.sound ? { ...layout.sound, [change.field]: change.value } : undefined }
+      : { ...layout, widgets: layout.widgets.map(w => w.id === change.id ? { ...w, motion: { ...(w.motion ?? defaultMotion(w.kind)), [change.field]: change.value } } : w) }), 'timeline:' + change.id + ':' + change.field);
   }
   testDesign(): void {
     this.closeTimeline(); this.revealStage();
     if (this.designPreviewTimer) { clearTimeout(this.designPreviewTimer); this.timers.delete(this.designPreviewTimer); }
     this.motionReplay.update(value => value + 1); this.previewDesign.set(true);
-    this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.designDraft()?.events[this.designEvent()].duration ?? 5) * 1000);
+    this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.editingLayout()?.duration ?? 5) * 1000);
   }
   private resetSimulation(): void { this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
   async publish(): Promise<void> {
@@ -670,7 +718,7 @@ export class OverlayEditorComponent {
         designs: this.designs().map(({ revision: _revision, ...draft }) => draft),
         designDraft: this.designDraft() ? (({ revision: _revision, ...draft }) => draft)(this.designDraft()!) : null
       },
-      sceneId: this.sceneId(), designEvent: this.designEvent(), selectedId: this.selectedId()
+      sceneId: this.sceneId(), designEvent: this.designEvent(), variantId: this.variantId(), selectedId: this.selectedId()
     };
   }
   private rememberServerState(state: StudioState): void {
@@ -699,7 +747,7 @@ export class OverlayEditorComponent {
     this.designs.set(snapshot.document.designs.map(design => ({ ...design, revision: this.serverDesigns.get(design.id)?.revision ?? 1 })));
     const draft = snapshot.document.designDraft;
     this.designDraft.set(draft ? { ...draft, revision: this.serverDesigns.get(draft.id)?.revision ?? 1 } : null);
-    this.sceneId.set(snapshot.sceneId); this.designEvent.set(snapshot.designEvent);
+    this.sceneId.set(snapshot.sceneId); this.designEvent.set(snapshot.designEvent); this.variantId.set(snapshot.variantId ?? null);
     this.selectedId.set(this.widgets().some(widget => widget.id === snapshot.selectedId) ? snapshot.selectedId : this.widgets()[0]?.id ?? null);
     this.saved.set(!this.dirty()); this.notice.set(notice); this.flushRecovery();
   }
@@ -726,7 +774,7 @@ export class OverlayEditorComponent {
   private localDraft(): LocalOverlayDraft {
     return { schemaVersion: 1, channelID: this.channel, updatedAt: Date.now(), revision: this.revision,
       scenes: this.scenes().map(({ publicId: _publicId, published: _published, revision: _revision, ...draft }) => draft),
-      designs: this.designs(), designDraft: this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), selectedId: this.selectedId() };
+      designs: this.designs(), designDraft: this.designDraft(), sceneId: this.sceneId(), designEvent: this.designEvent(), variantId: this.variantId(), selectedId: this.selectedId() };
   }
   private writeRecovery(draft: LocalOverlayDraft): void {
     try { this.draftStorage.write(this.channel, draft); this.storageError.set(false); }
@@ -762,7 +810,7 @@ export class OverlayEditorComponent {
       return { ...scene, publicId: saved?.publicId ?? '', revision: saved?.revision ?? 0, ...(saved?.published ? { published: saved.published } : {}) };
     }));
     this.designs.set(draft.designs); this.designDraft.set(draft.designDraft); this.sceneId.set(draft.sceneId);
-    this.designEvent.set(draft.designEvent); this.selectedId.set(draft.selectedId); this.revision = draft.revision;
+    this.designEvent.set(draft.designEvent); this.variantId.set(draft.variantId ?? null); this.selectedId.set(draft.selectedId); this.revision = draft.revision;
     this.history.clear();
     this.loaded.set(true); this.recovered.set(true); this.saved.set(false);
     this.consumedRecovery = recovery; this.recovery.set(null);

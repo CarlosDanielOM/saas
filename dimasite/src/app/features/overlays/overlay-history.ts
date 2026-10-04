@@ -7,6 +7,7 @@ export interface OverlayEditSnapshot {
   document: { scenes: DraftScene[]; designs: DraftDesign[]; designDraft: DraftDesign | null };
   sceneId: string;
   designEvent: AlertEvent;
+  variantId?: string | null;
   selectedId: string | null;
 }
 
