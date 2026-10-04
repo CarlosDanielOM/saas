@@ -48,7 +48,7 @@ export interface CommandModalSavePayload {
   };
 }
 
-const FREE_INTERVALS = [15, 30, 45, 60] as const;
+const FREE_INTERVALS: readonly number[] = [10, 20, 30, 40, 50, 60];
 const PREMIUM_QUICK = [5, 10, 15, 30, 45, 60, 90, 120, 180] as const;
 const PRO_QUICK = [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180] as const;
 
@@ -336,7 +336,7 @@ export class CommandModalComponent {
     this.commandForm.patchValue({ timerEnabled: enabled });
     if (enabled && !this.commandForm.value.timerMinutes) {
       this.commandForm.patchValue({
-        timerMinutes: this.planTier() === 'free' ? 15 : this.planTier() === 'premium' ? 15 : 5
+        timerMinutes: this.planTier() === 'free' ? 10 : this.planTier() === 'premium' ? 15 : 5
       });
     }
     this.formError.set(null);
@@ -479,7 +479,7 @@ export class CommandModalComponent {
   }
 
   private defaultTimerMinutes(): number {
-    return this.planTier() === 'free' ? 15 : 15;
+    return this.planTier() === 'free' ? 10 : 15;
   }
 
   private validateTimerMinutes(
@@ -504,7 +504,7 @@ export class CommandModalComponent {
       return { valid: true };
     }
 
-    if (![15, 30, 45, 60].includes(minutes)) {
+    if (!FREE_INTERVALS.includes(minutes)) {
       return { valid: false, error: this.t('commands.modal.timerHintFree') };
     }
     return { valid: true };

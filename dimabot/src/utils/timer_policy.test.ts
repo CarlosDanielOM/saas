@@ -19,11 +19,11 @@ test('parses bare numbers, minute suffixes, and hour suffixes as minutes', () =>
 });
 
 test('validates the free interval allow-list', () => {
-    for (const minutes of [15, 30, 45, 60]) {
+    for (const minutes of [10, 20, 30, 40, 50, 60]) {
         assert.equal(validateTimerInterval(minutes, 'free').valid, true);
     }
 
-    for (const minutes of [5, 10, 20, 61]) {
+    for (const minutes of [0, 5, 15, 25, 45, 55, 61, 70, 10.5]) {
         assert.equal(validateTimerInterval(minutes, 'free').valid, false);
     }
 });
@@ -68,12 +68,30 @@ test('normalizes legacy heartbeat ticks once while preserving minute heartbeats'
 test('grandfathers running intervals but requires a valid interval for edits', () => {
     const legacyFiveMinuteTimer = { frequency: 1 };
     assert.equal(validateTimerEditInterval(legacyFiveMinuteTimer, undefined, 'free').valid, false);
-    assert.equal(validateTimerEditInterval(legacyFiveMinuteTimer, 15, 'free').valid, true);
+    assert.equal(validateTimerEditInterval(legacyFiveMinuteTimer, 10, 'free').valid, true);
 
     const downgradedProTimer = { frequency: 7, frequencyUnit: TIMER_FREQUENCY_UNIT };
     assert.equal(validateTimerEditInterval(downgradedProTimer, undefined, 'free').valid, false);
     assert.equal(validateTimerEditInterval(downgradedProTimer, 30, 'free').valid, true);
 
-    const validLegacyFreeTimer = { frequency: 3 };
+    const validLegacyFreeTimer = { frequency: 2 };
     assert.equal(validateTimerEditInterval(validLegacyFreeTimer, undefined, 'free').valid, true);
+});
+
+
+test('preserves all paid-plan intervals and falls back to free for unknown tiers', () => {
+    for (let minutes = 1; minutes <= 181; minutes++) {
+        assert.equal(validateTimerInterval(minutes, 'premium').valid, minutes <= 180 && minutes % 5 === 0);
+        assert.equal(validateTimerInterval(minutes, 'pro').valid, minutes <= 180);
+        assert.equal(validateTimerInterval(minutes, 'unknown').valid, minutes <= 60 && minutes % 10 === 0);
+    }
+});
+
+test('keeps old free timers running but requires ten-minute steps when editing', () => {
+    for (const minutes of [15, 45]) {
+        const timer = { frequency: minutes, frequencyUnit: TIMER_FREQUENCY_UNIT };
+        assert.equal(getTimerIntervalMinutes(timer), minutes);
+        assert.equal(validateTimerEditInterval(timer, undefined, 'free').valid, false);
+        assert.equal(validateTimerEditInterval(timer, 10, 'free').valid, true);
+    }
 });

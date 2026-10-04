@@ -470,8 +470,8 @@
       "userLevelName": "mod",
       "userLevel": 7,
       "description": {
-        "en": "Creates a repeating timer command that sends a message while you are live | Example: !cct mytimer 15 Hello world! | Example: !cct socials 30m #(discord) | Timer messages support the full AST parser | Free: 15/30/45/60min | Premium: 5min intervals up to 180min | Pro: any whole minute up to 180min",
-        "es": "Crea un comando de temporizador repetitivo que envia un mensaje mientras estes en vivo | Ejemplo: !cct mitemporizador 15 Hola mundo! | Ejemplo: !cct redes 30m #(discord) | Los mensajes admiten todo el analizador AST | Gratis: 15/30/45/60min | Premium: intervalos de 5min hasta 180min | Pro: cualquier minuto entero hasta 180min"
+        "en": "Creates a repeating timer command that sends a message while you are live | Example: !cct mytimer 10 Hello world! | Example: !cct socials 30m #(discord) | Timer messages support the full AST parser | Free: 10/20/30/40/50/60min | Premium: 5min intervals up to 180min | Pro: any whole minute up to 180min",
+        "es": "Crea un comando de temporizador repetitivo que envia un mensaje mientras estes en vivo | Ejemplo: !cct mitemporizador 10 Hola mundo! | Ejemplo: !cct redes 30m #(discord) | Los mensajes admiten todo el analizador AST | Gratis: 10/20/30/40/50/60min | Premium: intervalos de 5min hasta 180min | Pro: cualquier minuto entero hasta 180min"
       }
     },
     {

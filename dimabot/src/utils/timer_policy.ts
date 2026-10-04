@@ -18,7 +18,7 @@ export interface TimerEditIntervalValidation extends TimerIntervalValidation {
     minutes: number;
 }
 
-const FREE_INTERVALS = new Set([15, 30, 45, 60]);
+const FREE_INTERVALS = new Set([10, 20, 30, 40, 50, 60]);
 const MAX_CURRENT_TIMER_MINUTES = 180;
 const MAX_LEGACY_FREQUENCY_TICKS = MAX_GRANDFATHERED_TIMER_MINUTES / 5;
 
@@ -95,7 +95,7 @@ export function validateTimerInterval(
         case 'free':
         default:
             if (!FREE_INTERVALS.has(minutes)) {
-                return { valid: false, error: 'Free timers must use 15, 30, 45, or 60 minutes' };
+                return { valid: false, error: 'Free timers must use 10, 20, 30, 40, 50, or 60 minutes' };
             }
             return { valid: true };
     }

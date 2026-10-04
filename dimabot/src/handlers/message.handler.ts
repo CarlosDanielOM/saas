@@ -175,7 +175,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     if (!timerName || !timerFrequencyRaw || !timerMessage || timerFrequency === null) {
                         timerResponse = {
                             error: true,
-                            message: 'Usage: !timer create <name> <minutes> <message> | Free: 15/30/45/60 | Premium: 5-minute intervals up to 180 | Pro: any whole minute up to 180'
+                            message: 'Usage: !timer create <name> <minutes> <message> | Free: 10/20/30/40/50/60 | Premium: 5-minute intervals up to 180 | Pro: any whole minute up to 180'
                         };
                         break;
                     }

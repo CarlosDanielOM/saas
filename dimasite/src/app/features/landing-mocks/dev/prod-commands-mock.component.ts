@@ -46,7 +46,7 @@ interface CommandDraft {
 const LIVE_API = 'https://api.domdimabot.com';
 const CHANNEL_ID = '533538623';
 const CHANNEL_NAME = 'cdom201';
-const FREE_INTERVALS = [15, 30, 45, 60] as const;
+const FREE_INTERVALS = [10, 20, 30, 40, 50, 60] as const;
 const MAX_TIMER_MINUTES = 180;
 
 const TIER_TIMER_LIMITS: Record<PlanTier, number> = {
