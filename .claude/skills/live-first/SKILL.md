@@ -31,6 +31,35 @@ When working on **any** `dimasite/`, `admin/` or `dimafx/` client UI, follow thi
 - Pages should get much shorter on phones: dense rows, collapsible secondary info, no stacked identical cards.
 - Verify both every time: screenshots at 320/390 and 1280px, light and dark, plus a no-horizontal-overflow check. A change is not done until the phone layout has been looked at.
 
+## Business goals: what each surface should grow
+
+Good UX here also has to earn money. Every surface has a revenue job alongside the user's question; design for both, and never trade honesty for a short-term sale (see "Honest selling" below).
+
+| Surface | Who it serves | What it should grow |
+|---------|---------------|---------------------|
+| Viewer surfaces: DimaFX extension, tip page, future viewer shops | Viewers | **Bits spent on the streamer's channel.** DomDimaBot automatically keeps 20% of DimaFX Bits revenue, so every extra Bits purchase also earns us money. |
+| Streamer surfaces: dimasite dashboard, modules, settings | Streamers | **(a) Upgrades to Premium/Pro tiers** and **(b) use of credit-consuming features** (premium TTS voices, AI, etc.) that lead to **credit pack purchases**. |
+| Admin site | Operator (us) | Spotting streamers who are about to run out of credits, hitting plan limits, or stuck in setup, so we can help them (and keep them paying). |
+
+**Viewer surfaces: more Bits, more often**
+- Make the first purchase easy: price on every tile, buy from the grid, a cheap or free item visible near the top, no account or setup steps before paying.
+- Make buying feel worth it: real previews (video motion, sound playback), the channel name, and "plays for everyone right away".
+- Bring people back: the Saved tab, "N saved" tags, credits that stay on the channel, a clear "On its way!" right after paying.
+- Never let a viewer get charged for something that can't play (overlay-offline gating). One bad purchase costs more future Bits than it earns.
+- The streamer's DimaFX module on dimasite should help them sell: is the overlay connected, which items sell, how many Bits came in, and what's missing to sell more (e.g. no cheap item, no voice item).
+
+**Streamer surfaces: upgrades and credit packs**
+- **Show paid features where they'd help, don't hide them.** On a free plan, Premium/Pro options appear in context (choice card or row with the gold plan-tier treatment, a one-line benefit in the streamer's terms, and an "Upgrade" action beside it), not only on a pricing page.
+- **Credit-powered options are first-class choices**, shown next to the free option as choice cards with a gold "uses credits" tag and the real cost per use ("~2 credits per message"). Let the streamer try them, not just read about them.
+- **Pair every credit balance with a forecast and a way to top up:** "~3 days left at this rate" plus "Buy credits" right there, never a bare number on a separate page.
+- **Upsell at moments of success or need:** after something worked ("your alerts played 40 times this week"), when a limit is near, or on an empty state ("Add an AI voice: viewers tip more when it speaks"). Not on every screen.
+- **Admin:** list streamers who are near their credit runway or plan limits, or have half-finished setup, as actionable rows.
+
+**Honest selling (non-negotiable)**
+- Every value claim is computed from real data (bonus %, per-$ rates, "best value"); no fake "most popular", scarcity, countdowns or invented discounts.
+- At most one upsell block per screen; never cover or block a free core feature with a nag. Paid prompts can be dismissed or tucked away, and stay away once dismissed.
+- No dark patterns: no pre-selected paid options, no confirmshaming ("No thanks, I hate growth"), no hidden free option, and every charge goes through the explicit confirmation rules above.
+
 ## When to use
 
 - New pages/components in `dimasite/`
@@ -49,7 +78,7 @@ When working on **any** `dimasite/`, `admin/` or `dimafx/` client UI, follow thi
 5. **Mobile-first, mobile-equal** — base 320–480px; enhance with `min-width` (640 / 960). See "The two non-negotiables" above.
 6. **Keep data wiring** — restyle/restructure markup; do not rewrite working services/APIs unless asked.
 7. **i18n** — all user strings via `LanguageService` + `en.json` / `es.json` (toasts and aria-labels too).
-8. **Answer the user's real question first** (streamer on dimasite, operator on admin) — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
+8. **Answer the user's real question first, and serve the surface's business goal** (see "Business goals": Bits on viewer surfaces, tier upgrades and credit packs on streamer surfaces). Use the user's own words (streamer on dimasite, operator on admin, viewer on the extension) — in plain language ("Viewers can only buy while the overlay is open", "you'll run out in ~3 days"), not internal jargon (AST, endpoints, runtime, provider ids).
 
 ## Design tokens
 
