@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { Check, Film, Image, LockKeyhole, Search, Trash2, Upload, X, LucideAngularModule } from 'lucide-angular';
+import { Check, Film, Image, Music2, LockKeyhole, Search, Trash2, Upload, X, LucideAngularModule } from 'lucide-angular';
 import { LanguageService } from '../../services/language.service';
 import { AssetLibraryService, AssetLibrary, DesignAsset, assetSize } from './asset-library.service';
 import { AssetPreviewComponent } from './asset-preview.component';
 
-type AssetFilter = 'all' | 'image' | 'video';
+type AssetFilter = 'all' | 'image' | 'video' | 'audio';
 
 /** Search only earns its space once the library is long enough to scan. */
 const SEARCH_THRESHOLD = 6;
@@ -17,7 +17,7 @@ const SEARCH_THRESHOLD = 6;
 })
 export class AssetLibraryDialogComponent {
   readonly owner = input.required<string>();
-  readonly kind = input<'image' | 'video' | 'all'>('all');
+  readonly kind = input<'image' | 'video' | 'audio' | 'all'>('all');
   readonly selectable = input(true);
   readonly selected = output<DesignAsset>();
   readonly closed = output<void>();
@@ -37,7 +37,7 @@ export class AssetLibraryDialogComponent {
   readonly chosen = signal<DesignAsset | null>(null);
   readonly confirming = signal(false);
   readonly pageSize = signal(24);
-  readonly icons = { Check, Film, Image, LockKeyhole, Search, Trash2, Upload, X };
+  readonly icons = { Check, Film, Image, Music2, LockKeyhole, Search, Trash2, Upload, X };
   readonly size = assetSize;
   private generation = 0;
   private disposed = false;
@@ -46,12 +46,12 @@ export class AssetLibraryDialogComponent {
   readonly pool = computed(() => (this.library()?.assets ?? []).filter(a => this.kind() === 'all' || a.kind === this.kind()));
   readonly counts = computed(() => {
     const pool = this.pool();
-    return { all: pool.length, image: pool.filter(a => a.kind === 'image').length, video: pool.filter(a => a.kind === 'video').length };
+    return { all: pool.length, image: pool.filter(a => a.kind === 'image').length, video: pool.filter(a => a.kind === 'video').length, audio: pool.filter(a => a.kind === 'audio').length };
   });
   readonly filtered = computed(() => this.pool().filter(a => (this.filter() === 'all' || a.kind === this.filter()) && a.name.toLowerCase().includes(this.query().trim().toLowerCase())));
   readonly visible = computed(() => this.filtered().slice(0, this.pageSize()));
   readonly showSearch = computed(() => this.pool().length > SEARCH_THRESHOLD || this.query().length > 0);
-  readonly showFilters = computed(() => this.kind() === 'all' && this.counts().image > 0 && this.counts().video > 0);
+  readonly showFilters = computed(() => this.kind() === 'all' && [this.counts().image, this.counts().video, this.counts().audio].filter(n => n > 0).length > 1);
   readonly full = computed(() => !!this.library() && this.library()!.usedBytes >= this.library()!.quotaBytes);
   readonly usage = computed(() => Math.min(100, (this.library()?.usedBytes ?? 0) / (this.library()?.quotaBytes || 1) * 100));
   readonly freeBytes = computed(() => Math.max(0, (this.library()?.quotaBytes ?? 0) - (this.library()?.usedBytes ?? 0)));
@@ -82,7 +82,7 @@ export class AssetLibraryDialogComponent {
   showMore() { this.pageSize.update(count => count + 24); }
   trapFocus(event: KeyboardEvent) {
     if (event.key !== 'Tab') return;
-    const elements = [...this.dialog().nativeElement.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([hidden]), select:not(:disabled), video[controls]')].filter(element => element.getClientRects().length);
+    const elements = [...this.dialog().nativeElement.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([hidden]), select:not(:disabled), video[controls], audio[controls]')].filter(element => element.getClientRects().length);
     const first = elements[0], last = elements.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -93,7 +93,7 @@ export class AssetLibraryDialogComponent {
   setFilter(filter: AssetFilter) { this.filter.set(filter); this.pageSize.set(24); }
   close(event?: Event) { if (this.busy()) { event?.preventDefault(); return; } this.closed.emit(); }
   use() { const asset = this.chosen(); if (asset && this.canUse()) this.selected.emit(asset); }
-  dimensions(asset: DesignAsset) { return asset.width && asset.height ? `${asset.width} × ${asset.height}` : ''; }
+  dimensions(asset: DesignAsset) { if (asset.kind === 'audio') return asset.duration ? `${Math.round(asset.duration)} s` : ''; return asset.width && asset.height ? `${asset.width} × ${asset.height}` : ''; }
   private report(error: unknown) {
     const code = (error as { error?: { code?: string } })?.error?.code;
     this.error.set(({ quota_exceeded: 'quotaExceeded', file_size: 'fileSize', unsupported_type: 'unsupported', invalid_media: 'unsupported', in_use: 'inUse', upload_busy: 'uploadBusy' } as Record<string, string>)[code ?? ''] ?? 'operationFailed');
@@ -118,7 +118,7 @@ export class AssetLibraryDialogComponent {
   private async uploadFile(file: File) {
     const library = this.library(); if (!library || this.busy()) return;
     this.error.set('');
-    if (file.type && !/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm))$/.test(file.type)) { this.error.set('unsupported'); return; }
+    if (file.type && !/^(image\/(png|jpeg|gif|webp)|video\/(mp4|webm)|audio\/(mpeg|mp3|wav|x-wav|wave|ogg))$/.test(file.type)) { this.error.set('unsupported'); return; }
     if (!file.size || file.size > library.maxFileBytes) { this.error.set('fileSize'); return; }
     if (file.size + library.usedBytes > library.quotaBytes) { this.error.set('quotaExceeded'); return; }
     this.busy.set(true); this.uploading.set(file.name);

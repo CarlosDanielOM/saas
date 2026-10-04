@@ -40,13 +40,19 @@ function validWidgets(value: unknown): value is OverlayWidget[] {
     && (w['fontSize'] === undefined || finite(w['fontSize']))
     && (w['events'] === undefined || Array.isArray(w['events']) && w['events'].every(event => ALERT_EVENTS.includes(event))));
 }
+function validSound(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!record(value) || typeof value['assetId'] !== 'string' || !/^[a-f0-9]{24}$/.test(value['assetId'])) return false;
+  if (value['name'] !== undefined && (typeof value['name'] !== 'string' || !value['name'].trim() || value['name'].length > 120)) return false;
+  return ([['volume', 1], ['delay', 120], ['fadeIn', 10], ['fadeOut', 10]] as [string, number][]).every(([key, max]) => finite(value[key]) && value[key] >= 0 && value[key] <= max);
+}
 function validDesign(value: unknown): value is AlertDesign {
   if (!record(value) || typeof value['id'] !== 'string' || typeof value['name'] !== 'string'
     || !finite(value['width']) || !finite(value['height']) || !finite(value['revision'])) return false;
   const events = value['events'];
   return record(events) && ALERT_EVENTS.every(kind => {
     const layout = events[kind];
-    return record(layout) && finite(layout['duration']) && validWidgets(layout['widgets']);
+    return record(layout) && finite(layout['duration']) && validWidgets(layout['widgets']) && validSound(layout['sound']);
   });
 }
 function parseDraft(serialized: string, channel: string): LocalOverlayDraft | null {

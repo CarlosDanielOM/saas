@@ -4,8 +4,8 @@ import { firstValueFrom, map, timeout } from 'rxjs';
 import { LinksService } from '../../services/links.service';
 
 export interface DesignAsset {
-  id: string; name: string; kind: 'image' | 'video'; mime: string;
-  bytes: number; width: number; height: number; createdAt: string;
+  id: string; name: string; kind: 'image' | 'video' | 'audio'; mime: string;
+  bytes: number; width: number; height: number; duration?: number; createdAt: string;
 }
 export interface AssetLibrary {
   assets: DesignAsset[]; usedBytes: number; quotaBytes: number;

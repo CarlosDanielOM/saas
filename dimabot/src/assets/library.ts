@@ -15,12 +15,12 @@ export class AssetError extends Error {
   constructor(readonly code: string, readonly status = 400) { super(code); }
 }
 export interface Asset {
-  id: string; name: string; kind: 'image' | 'video'; mime: string;
-  bytes: number; width: number; height: number; createdAt: string;
+  id: string; name: string; kind: 'image' | 'video' | 'audio'; mime: string;
+  bytes: number; width: number; height: number; duration?: number; createdAt: string;
   state: 'uploading' | 'ready' | 'deleting';
 }
 interface Library { _id: string; usedBytes: number; assets: Asset[] }
-const assetSchema = new Schema<Asset>({ id: String, name: String, kind: String, mime: String, bytes: Number, width: Number, height: Number, createdAt: String, state: String }, { _id: false });
+const assetSchema = new Schema<Asset>({ id: String, name: String, kind: String, mime: String, bytes: Number, width: Number, height: Number, duration: Number, createdAt: String, state: String }, { _id: false });
 const schema = new Schema<Library>({ _id: String, usedBytes: { type: Number, default: 0 }, assets: { type: [assetSchema], default: [] } }, { versionKey: false, collection: 'asset_libraries' });
 export const Libraries = model<Library>('AssetLibrary', schema);
 
@@ -75,7 +75,7 @@ export async function listAssets(owner: string) {
     return { ...quota, usedBytes: library?.usedBytes ?? 0, assets: (library?.assets ?? []).filter(a => a.state === 'ready').reverse() };
   });
 }
-async function inspectFile(path: string): Promise<Pick<Asset, 'mime' | 'kind' | 'width' | 'height'>> {
+async function inspectFile(path: string): Promise<Pick<Asset, 'mime' | 'kind' | 'width' | 'height' | 'duration'>> {
   const file = await open(path, 'r'); const bytes = Buffer.alloc(32);
   try { await file.read(bytes, 0, bytes.length, 0); } finally { await file.close(); }
   let mime = '';
@@ -85,8 +85,20 @@ async function inspectFile(path: string): Promise<Pick<Asset, 'mime' | 'kind' | 
   else if (bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') mime = 'image/webp';
   else if (bytes.toString('ascii', 4, 8) === 'ftyp') mime = 'video/mp4';
   else if (bytes.subarray(0, 4).equals(Buffer.from([26,69,223,163]))) mime = 'video/webm';
+  else if (bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WAVE') mime = 'audio/wav';
+  else if (bytes.toString('ascii', 0, 4) === 'OggS') mime = 'audio/ogg';
+  else if (bytes.toString('ascii', 0, 3) === 'ID3' || bytes[0] === 255 && (bytes[1] & 0xe0) === 0xe0) mime = 'audio/mpeg';
   if (!mime) throw new AssetError('unsupported_type', 415);
   try {
+    if (mime.startsWith('audio/')) {
+      const { stdout } = await promisify(execFile)('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file', '-show_entries', 'stream=codec_type,codec_name:format=duration', '-of', 'json', path], { timeout: 10_000, maxBuffer: 65536 });
+      const probe = JSON.parse(stdout), audio = probe.streams?.find((s: { codec_type: string }) => s.codec_type === 'audio');
+      const duration = Number(probe.format?.duration);
+      const codecs: Record<string, string[]> = { 'audio/wav': ['pcm_u8', 'pcm_s16le', 'pcm_s24le', 'pcm_s32le', 'pcm_f32le'], 'audio/mpeg': ['mp3'], 'audio/ogg': ['opus', 'vorbis'] };
+      if (!audio || !codecs[mime].includes(audio.codec_name) || !Number.isFinite(duration) || duration <= 0 || duration > 600
+        || probe.streams.some((s: { codec_type: string }) => s.codec_type === 'video')) throw new Error('Invalid audio');
+      return { mime, kind: 'audio', width: 0, height: 0, duration };
+    }
     const { stdout } = await promisify(execFile)('ffprobe', ['-v', 'error', '-protocol_whitelist', 'file', '-select_streams', 'v:0', '-show_entries', 'stream=width,height,codec_name', '-of', 'json', path], { timeout: 10_000, maxBuffer: 65536 });
     const stream = JSON.parse(stdout).streams?.[0];
     if (!stream || !Number.isInteger(stream.width) || !Number.isInteger(stream.height) || stream.width < 1 || stream.height < 1 || stream.width > 16384 || stream.height > 16384) throw new Error('Invalid dimensions');

@@ -927,3 +927,15 @@ app-overlay-queue { order: 3; }
 .object-motion { display:grid; gap:.75rem; border-block:1px solid var(--line); padding-block:1rem }
 .object-motion h3 { font-size:.9rem; margin:0 }
 .object-motion .lf-more[open] { display:grid; gap:.75rem }
+
+.alert-sound { display:grid; gap:.75rem; border-block:1px solid var(--line); padding-block:1rem; margin-block:1rem; min-width:0 }
+.alert-sound .field-row { flex-wrap:wrap }
+.alert-sound strong { overflow-wrap:anywhere; min-width:0 }
+.alert-sound details[open] .event-tester { margin-top:.75rem }
+.alert-sound input.lf-range { appearance:none; width:100%; height:44px; border:0; padding:0; background:transparent; cursor:pointer }
+.lf-range::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:linear-gradient(to right, #7c3aed calc(var(--pct) * (100% - 20px) + 10px), var(--line) 0) }
+.lf-range::-moz-range-track { height:6px; border-radius:999px; background:var(--line) }
+.lf-range::-moz-range-progress { height:6px; background:#7c3aed }
+.lf-range::-webkit-slider-thumb { appearance:none; width:20px; height:20px; margin-top:-7px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
+.lf-range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
+.lf-range:focus-visible { outline:2px solid var(--accent); outline-offset:3px }

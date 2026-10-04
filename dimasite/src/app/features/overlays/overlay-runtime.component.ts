@@ -1,3 +1,4 @@
+import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -18,13 +19,14 @@ const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
-  selector: 'app-overlay-runtime', imports: [OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-overlay-runtime', imports: [OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text'].includes(w.kind)) {
         <div class="placement" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
       } }
       @for (job of playing(); track job.event.id) {
+        @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
         @for (w of job.widgets; track w.id) {
           <div class="placement" [attr.data-event]="job.event.kind" [attr.data-platform]="job.event.platform ?? 'twitch'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
             @if (job.event.media; as media) {
@@ -47,7 +49,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
       }
     </div>
   }`,
-  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
+  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
@@ -257,6 +259,12 @@ export class OverlayRuntimeComponent {
       : job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
     job.timers.set(widget, setTimeout(() => this.finishPlacement(id, widget), seconds * 1000));
   }
+  soundsFor(job: Playing) {
+    return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
+      const layout = job.event.layouts?.[id]; return layout?.sound ? [{ id, config: layout.sound, duration: layout.duration }] : [];
+    });
+  }
+  soundStarted(): void { if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); } }
   finishPlacement(id: string, widget: string) {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
     job.pending.delete(widget); clearTimeout(job.timers.get(widget));

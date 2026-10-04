@@ -1,3 +1,5 @@
+import { OverlaySoundComponent } from './overlay-sound.component';
+import type { AlertSound } from './overlay.model';
 import { defaultMotion } from './overlay-object-motion';
 import { ALERT_TRANSITIONS, ALERT_LOOPS } from './overlay.model';
 import { OverlayHistory, type OverlayEditSnapshot } from './overlay-history';
@@ -30,7 +32,7 @@ interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; target
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -67,6 +69,18 @@ export class OverlayEditorComponent {
   private serverDesigns = new Map<string, AlertDesign>();
   channel = '';
   readonly assetPickerOpen = signal(false);
+  readonly soundPickerOpen = signal(false);
+  readonly soundPercent = computed(() => Math.round((this.alertSound()?.volume ?? 1) * 100));
+  readonly alertSound = computed(() => this.designDraft()?.events[this.designEvent()].sound);
+  readonly previewSounds = computed(() => {
+    const draft = this.designDraft();
+    if (draft) { const layout = draft.events[this.designEvent()]; return this.previewDesign() && layout.sound ? [{ key: 'design-' + this.motionReplay(), config: layout.sound, duration: layout.duration }] : []; }
+    return [this.active(), ...this.parallel()].flatMap(event => {
+      if (!event || !ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
+      const ids = new Set(this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.designId));
+      return this.designs().filter(d => ids.has(d.id)).flatMap(d => { const layout = d.events[event.kind as AlertEvent]; return layout.sound ? [{ key: event.id + ':' + d.id, config: layout.sound, duration: layout.duration }] : []; });
+    });
+  });
   readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
   private disposed = false;
   readonly language = inject(LanguageService);
@@ -235,6 +249,18 @@ export class OverlayEditorComponent {
     return this.designDraft()?.events[this.designEvent()].duration ?? this.designFor(widget)?.events[this.eventFor(widget)].duration ?? 5;
   }
   patchSelected(changes: Partial<OverlayWidget>): void { const id = this.selectedId(); if (id) this.patch(id, changes); }
+  useSound(asset: DesignAsset): void {
+    if (asset.kind !== 'audio') return;
+    this.setSound({ assetId: asset.id, name: asset.name, volume: 1, delay: 0, fadeIn: 0, fadeOut: 0 }); this.soundPickerOpen.set(false);
+  }
+  setSound(sound: AlertSound | undefined): void {
+    this.resetSimulation();
+    this.edit(() => this.designDraft.update(d => d ? { ...d, events: { ...d.events, [this.designEvent()]: { ...d.events[this.designEvent()], sound } } } : d));
+  }
+  soundValue(field: 'volume' | 'delay' | 'fadeIn' | 'fadeOut', event: Event): void {
+    const sound = this.alertSound(), value = Number(this.value(event)); if (!sound || !Number.isFinite(value)) return;
+    this.setSound({ ...sound, [field]: Math.max(0, Math.min(field === 'volume' ? 1 : field === 'delay' ? 120 : 10, field === 'volume' ? value / 100 : value)) });
+  }
   useAsset(asset: DesignAsset): void {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
     this.assetPickerOpen.set(false);
@@ -625,7 +651,7 @@ export class OverlayEditorComponent {
     if (snapshot) this.restoreEdit(snapshot, 'redone');
   }
   private restoreEdit(snapshot: OverlayEditSnapshot, notice: string): void {
-    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false);
+    this.resetSimulation(); this.previewDesign.set(false); this.assetPickerOpen.set(false); this.soundPickerOpen.set(false);
     this.confirmRotate.set(false); this.confirmDelete.set(false);
     this.scenes.set(snapshot.document.scenes.map(scene => {
       const remote = this.serverScenes.get(scene.id);
@@ -644,7 +670,7 @@ export class OverlayEditorComponent {
     if (key !== 'z' && key !== 'y') return;
     const target = event.target instanceof Element ? event.target : null;
     if (!target?.closest('app-overlay-editor') || target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"]')) return;
-    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen()) return;
+    if (!this.loaded() || this.busy() || this.loading() || this.assetPickerOpen() || this.soundPickerOpen()) return;
     event.preventDefault();
     if (key === 'y' || event.shiftKey) this.redo(); else this.undo();
   }

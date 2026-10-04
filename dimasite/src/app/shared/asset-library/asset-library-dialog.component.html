@@ -13,7 +13,7 @@
     <div class="head__copy">
       <h2 id="asset-library-title">{{ t('title') }}</h2>
       <p id="asset-library-description">
-        {{ selectable() ? t(kind() === 'video' ? 'pickVideo' : kind() === 'image' ? 'pickImage' : 'pickAny') : t('description') }}
+        {{ selectable() ? t(kind() === 'audio' ? 'pickAudio' : kind() === 'video' ? 'pickVideo' : kind() === 'image' ? 'pickImage' : 'pickAny') : t('description') }}
       </p>
     </div>
     <button type="button" class="icon-button" [attr.aria-label]="t('close')" [disabled]="busy()" (click)="close()"><lucide-icon [img]="icons.X" [size]="20" /></button>
@@ -37,6 +37,7 @@
         <div class="chips" role="group" [attr.aria-label]="t('filter')">
           <button type="button" class="filter" [attr.aria-pressed]="filter() === 'all'" (click)="setFilter('all')">{{ t('all') }} <span>{{ counts().all }}</span></button>
           <button type="button" class="filter" [attr.aria-pressed]="filter() === 'image'" (click)="setFilter('image')">{{ t('images') }} <span>{{ counts().image }}</span></button>
+          <button type="button" class="filter" [attr.aria-pressed]="filter() === 'audio'" (click)="setFilter('audio')">{{ t('sounds') }} <span>{{ counts().audio }}</span></button>
           <button type="button" class="filter" [attr.aria-pressed]="filter() === 'video'" (click)="setFilter('video')">{{ t('videos') }} <span>{{ counts().video }}</span></button>
         </div>
       }
@@ -49,7 +50,7 @@
           }
         </label>
       }
-      <input #fileInput type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" (change)="upload($event)" />
+      <input #fileInput type="file" hidden [attr.accept]="kind() === 'audio' ? 'audio/mpeg,audio/wav,audio/ogg' : 'image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/ogg'" (change)="upload($event)" />
       <button class="primary upload" type="button" [disabled]="busy() || full()" (click)="fileInput.click()">
         <lucide-icon [img]="icons.Upload" [size]="17" />{{ t(uploading() ? 'uploadingShort' : 'upload') }}
       </button>
@@ -106,7 +107,7 @@
           <div class="empty drop">
             <lucide-icon [img]="icons.Upload" [size]="32" />
             <h3>{{ t('empty') }}</h3>
-            <p>{{ selectable() && kind() !== 'all' ? t(kind() === 'video' ? 'emptyVideo' : 'emptyImage') : t('emptyHelp') }}</p>
+            <p>{{ selectable() && kind() !== 'all' ? t(kind() === 'audio' ? 'emptyAudio' : kind() === 'video' ? 'emptyVideo' : 'emptyImage') : t('emptyHelp') }}</p>
             <p class="drop__hint">{{ t('dropHint') }}</p>
           </div>
         }
@@ -127,7 +128,7 @@
   <footer>
     @if (selectable()) {
       <p class="picked" aria-live="polite">
-        @if (chosen(); as asset) { {{ canUse() ? t('pickedLabel', { name: asset.name }) : t(kind() === 'video' ? 'pickVideo' : 'pickImage') }} }
+        @if (chosen(); as asset) { {{ canUse() ? t('pickedLabel', { name: asset.name }) : t(kind() === 'audio' ? 'pickAudio' : kind() === 'video' ? 'pickVideo' : 'pickImage') }} }
         @else { {{ t('pickPrompt') }} }
       </p>
       <button type="button" class="primary use" [disabled]="!canUse()" (click)="use()">{{ t('use') }}</button>
@@ -143,7 +144,7 @@
     <div class="selected-preview"><app-asset-preview [assetId]="asset.id" [owner]="owner()" [kind]="asset.kind" [name]="asset.name" [controls]="true" /></div>
     <div class="selection__info">
       <strong>{{ asset.name }}</strong>
-      <p>{{ t(asset.kind === 'video' ? 'video' : 'image') }} · {{ dimensions(asset) }}@if (dimensions(asset)) { · }{{ size(asset.bytes) }}</p>
+      <p>{{ t(asset.kind) }} · {{ dimensions(asset) }}@if (dimensions(asset)) { · }{{ size(asset.bytes) }}</p>
     </div>
     @if (confirming()) {
       <div class="confirm">

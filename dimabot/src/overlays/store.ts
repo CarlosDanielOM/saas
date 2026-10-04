@@ -66,7 +66,15 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
   const designs = unique(list(body.designs, 50).map(raw => {
     const d = object(raw); const events = object(d.events); const old = previous.designs.find(x => x.id === d.id);
     const design: AlertDesign = { id: id(d.id), name: string(d.name, 80), ...canvas(d), revision: (old?.revision ?? 0) + 1, events: {} as AlertDesign['events'] };
-    for (const kind of ALERT_EVENTS) { const layout = object(events[kind]); design.events[kind] = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true) }; }
+    for (const kind of ALERT_EVENTS) {
+      const layout = object(events[kind]); design.events[kind] = { duration: number(layout.duration, 1, 120), widgets: widgets(layout.widgets, true) };
+      if (layout.sound !== undefined) {
+        const sound = object(layout.sound);
+        if (typeof sound.assetId !== 'string' || !/^[a-f0-9]{24}$/.test(sound.assetId)) throw new OverlayError('Invalid alert sound');
+        design.events[kind].sound = { assetId: sound.assetId, ...(sound.name === undefined ? {} : { name: string(sound.name, 120) }),
+          volume: number(sound.volume, 0, 1), delay: number(sound.delay, 0, 120), fadeIn: number(sound.fadeIn, 0, 10), fadeOut: number(sound.fadeOut, 0, 10) };
+      }
+    }
     return design;
   }));
   const scenes = unique(list(body.scenes, 25).map(raw => {

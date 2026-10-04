@@ -19,7 +19,8 @@ export interface OverlayWidget {
 }
 /** An omitted selection receives all triggers; an empty selection receives none. */
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
-export interface AlertLayout { duration: number; widgets: OverlayWidget[] }
+export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number }
+export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
   events: Record<AlertEvent, AlertLayout>;
