@@ -35,9 +35,9 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
                 <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="job.widgets[0].id !== w.id"
                   (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
               } @else {
-              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
+              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [showTitle]="job.event.kind !== 'tts'" [showAudioLabel]="job.event.kind !== 'tts'" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
               }
-              @if (job.event.kind === 'tts') { <div class="speech-text">{{ job.event.text }}</div> }
+              @if (job.event.kind === 'tts' && w.showTtsText === true) { <div class="speech-text">{{ job.event.text }}</div> }
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {

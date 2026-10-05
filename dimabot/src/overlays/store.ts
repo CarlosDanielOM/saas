@@ -44,6 +44,10 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
         delay: number(motion.delay, 0, 120), enterDuration: number(motion.enterDuration, .1, 5), exitDuration: number(motion.exitDuration, .1, 5), loopDuration: number(motion.loopDuration, .2, 10) };
     }
     if (w.name !== undefined) item.name = typeof w.name === 'string' && w.name.length <= 80 ? w.name : string(w.name, 80);
+    if (w.showTtsText !== undefined) {
+      if (kind !== 'tts') throw new OverlayError('Spoken text settings require a TTS widget');
+      item.showTtsText = boolean(w.showTtsText);
+    }
     if (w.clipDesign !== undefined) {
       if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');
       item.clipDesign = w.clipDesign as OverlayWidget['clipDesign'];

@@ -11,7 +11,7 @@ export interface TestMedia { triggerId?: string; clip?: ClipMetadata; url: strin
       <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
         (canplay)="play()" (playing)="onPlaying()" (ended)="ended.emit()" (error)="failed.emit()"></video>
       @if (blocked()) { <button type="button" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation(); play()">{{ playLabel() }}</button> }
-      @if (media().type === 'audio') { <span class="audio-label">{{ media().title }}</span> }
+      @if (media().type === 'audio' && showAudioLabel()) { <span class="audio-label">{{ media().title }}</span> }
     }
     @if (showTitle()) { <span class="media-title">{{ media().title }}</span> }
   `,
@@ -29,6 +29,7 @@ export class OverlayMediaComponent {
   readonly media = input.required<TestMedia>();
   readonly muted = input(false);
   readonly showTitle = input(true);
+  readonly showAudioLabel = input(true);
   readonly fit = input<'contain' | 'cover'>('contain');
   readonly playLabel = input.required<string>();
   readonly ended = output<void>();

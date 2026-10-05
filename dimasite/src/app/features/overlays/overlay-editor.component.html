@@ -180,7 +180,7 @@
                       @case ('animation') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('tts') {
                         <span class="widget__icon"><lucide-icon [name]="icons.Volume2" [size]="18" aria-hidden="true" /></span>
-                        <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t('ttsPreviewText') }}</strong></div>
+                        <div><small>{{ t('ttsPreviewLabel') }}</small><strong>{{ t(widget.showTtsText === true ? 'ttsPreviewText' : 'ttsAudioOnly') }}</strong></div>
                         <span class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
                       }
                       @case ('trigger') {
@@ -198,7 +198,7 @@
                         <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [media]="media" [muted]="mediaMuted(event, widget.id)"
                           (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
                       } @else {
-                      <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [playLabel]="t('tapToPlay')"
+                      <app-overlay-media [media]="media" [muted]="mediaMuted(event, widget.id)" [showTitle]="event.kind !== 'tts' || widget.showTtsText === true" [showAudioLabel]="event.kind !== 'tts' || widget.showTtsText === true" [playLabel]="t('tapToPlay')"
                         (started)="mediaStarted(event.id, widget.id, $event)" (ended)="mediaFinished(event.id, widget.id)" (failed)="mediaFinished(event.id, widget.id, true)" />
                       }
                     }
@@ -289,7 +289,10 @@
             @if (randomPlacementAdjusted()) { <p class="lf-note lf-note--warn" role="status">{{ t('triggerPlacementAdjusted') }}</p> }
           }
         }
-        @if (item.kind === 'tts') { <p class="lf-note">{{ t('ttsInspectorHint') }}</p> }
+        @if (item.kind === 'tts') {
+          <label class="switch-row"><span>{{ t('ttsShowText') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.showTtsText === true" (change)="patchSelected({ showTtsText: item.showTtsText !== true })" aria-describedby="tts-text-hint" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
+          <p class="lf-note" id="tts-text-hint">{{ t('ttsInspectorHint') }}</p>
+        }
         @if (item.kind === 'text') {
           <label class="lf-field"><span>{{ t('textTemplate') }}</span><textarea [value]="item.text" (input)="patchSelected({ text: value($event) })"></textarea></label>
           <p class="lf-note">{{ t('tokensHint') }}</p>
@@ -346,7 +349,7 @@
         }
 
         <div class="switch-rows">
-          <label class="switch-row"><span>{{ t('showOnStream') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.visible" (change)="toggleVisibility(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
+          <label class="switch-row"><span>{{ t(item.kind === 'tts' ? 'ttsEnablePlayback' : 'showOnStream') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.visible" (change)="toggleVisibility(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
           <label class="switch-row"><span>{{ t('lockPosition') }}</span><span class="lf-switch"><input type="checkbox" role="switch" [checked]="item.locked" (change)="toggleLock(item.id)" /><span class="lf-switch__track" aria-hidden="true"></span></span></label>
         </div>
 

@@ -35,6 +35,7 @@ function validWidgets(value: unknown): value is OverlayWidget[] {
     && ['tts', 'trigger', 'clip', 'alert', 'text', 'image', 'video', 'animation', 'shape'].includes(w['kind'])
     && ['x', 'y', 'width', 'height'].every(key => finite(w[key]))
     && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
+    && (w['showTtsText'] === undefined || w['kind'] === 'tts' && typeof w['showTtsText'] === 'boolean')
     && ['name', 'mediaUrl', 'assetId', 'color', 'designId', 'text'].every(key => w[key] === undefined || typeof w[key] === 'string')
     && (w['clipDesign'] === undefined || w['kind'] === 'clip' && CLIP_DESIGN_VARIANTS.includes(w['clipDesign'] as never))
     && (w['triggerIds'] === undefined || w['kind'] === 'trigger' && Array.isArray(w['triggerIds']) && w['triggerIds'].length <= 1000 && new Set(w['triggerIds']).size === w['triggerIds'].length && w['triggerIds'].every(value => typeof value === 'string' && /^[a-f0-9]{24}$/.test(value)))

@@ -13,6 +13,8 @@ export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
+  /** TTS stays active when captions are off; omitted settings default to audio-only. */
+  showTtsText?: boolean;
   motion?: AlertMotion;
   keyframes?: AlertKeyframes;
   fontFamily?: 'sans' | 'serif' | 'mono'; fontWeight?: 400 | 700; italic?: boolean; textAlign?: 'left' | 'center' | 'right';
