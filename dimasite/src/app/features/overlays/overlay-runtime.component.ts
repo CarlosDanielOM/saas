@@ -1,3 +1,4 @@
+import { OverlayImageCache, type PreparedImage } from './overlay-image-cache';
 import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
@@ -18,7 +19,7 @@ interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; 
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
-interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
+interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
   selector: 'app-overlay-runtime', imports: [OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
@@ -41,7 +42,7 @@ interface Playing { event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; 
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
+                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [preparedImage]="job.images.get(part.assetId || '')?.url || ''" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
                 } }
               }
             }
@@ -56,6 +57,7 @@ export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
+  private readonly imageCache = new OverlayImageCache();
   private readonly language = inject(LanguageService);
   readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
   private readonly receiptKey = 'overlay-playback:' + this.publicId;
@@ -85,7 +87,7 @@ export class OverlayRuntimeComponent {
     const referrer = doc.createElement('meta'); referrer.name = 'referrer'; referrer.content = 'no-referrer'; doc.head.append(referrer);
     this.socket.on('overlay-state', state => {
       this.batching = true;
-      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.snapshotRecovered(); }
+      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot); this.snapshotRecovered(); }
       if (Array.isArray(state.pendingIds)) {
         const retained = new Set<string>(state.pendingIds);
         for (const event of [...this.queue, ...this.inFlight.values()]) if (!retained.has(event.id)) this.finish(event.id);
@@ -158,7 +160,7 @@ export class OverlayRuntimeComponent {
       const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`);
       if (this.disposed || generation !== this.generation) return;
       if (state.revision >= this.revision) {
-        this.revision = state.revision; this.snapshot.set(state.snapshot);
+        this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot);
         this.snapshotRecovered(); this.reportHealth();
       }
     } catch (error) {
@@ -223,7 +225,6 @@ export class OverlayRuntimeComponent {
     try {
       const full = await this.api.request<Event>('GET', `public/${this.publicId}/events/${event.id}`);
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
-      this.inFlight.delete(event.id);
       this.cancelEventRetry(event.id);
       if (this.issue === 'event' && !this.eventRetries.size) { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
@@ -231,7 +232,20 @@ export class OverlayRuntimeComponent {
         .map(w => placeTrigger(w, snapshot, full.id));
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
-      const job: Playing = { event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
+      const images = new Map<string, PreparedImage>();
+      if (!full.media) {
+        const ids = new Set(widgets.flatMap(w => full.layouts?.[w.designId || '']?.widgets ?? [])
+          .filter(part => part.visible && part.kind === 'image' && part.assetId).map(part => part.assetId!));
+        await Promise.all([...ids].map(async id => {
+          const image = await this.imageCache.prepare(this.imageUrl(id));
+          if (image) images.set(id, image);
+        }));
+      }
+      if (this.disposed || generation !== this.generation || this.completed.has(event.id)) {
+        images.forEach(image => image.release()); return;
+      }
+      this.inFlight.delete(event.id);
+      const job: Playing = { images, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
       this.playing.update(all => [...all, job]); this.reportPlayback();
       for (const w of widgets) {
         const seconds = full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
@@ -248,6 +262,18 @@ export class OverlayRuntimeComponent {
         if (generation === this.generation && this.inFlight.has(event.id)) void this.start(event);
       }, retryDelay(retry.attempts++));
     }
+  }
+  private imageUrl(id: string): string {
+    return `${this.api.base}/overlay-studio/public/${encodeURIComponent(this.publicId)}/assets/${encodeURIComponent(id)}`;
+  }
+  private warmImages(snapshot: Snapshot): void {
+    const layouts = snapshot.widgets.filter(w => w.visible && w.kind === 'alert').flatMap(w => {
+      const design = snapshot.designs.find(d => d.id === w.designId);
+      return design ? (w.events ?? []).flatMap(event => [design.events?.[event],
+        ...(design.variants?.[event] ?? []).filter(v => v.enabled).map(v => v.layout)]) : [];
+    });
+    this.imageCache.warm(layouts.flatMap(layout => layout?.widgets ?? [])
+      .filter(w => w.visible && w.kind === 'image' && w.assetId).map(w => this.imageUrl(w.assetId!)));
   }
   private cancelEventRetry(id: string): void {
     clearTimeout(this.eventRetries.get(id)?.timer);
@@ -276,7 +302,7 @@ export class OverlayRuntimeComponent {
     if (this.completed.has(id)) return;
     this.cancelEventRetry(id);
     this.seen.add(id); this.inFlight.delete(id); this.queue = this.queue.filter(event => event.id !== id);
-    const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout);
+    const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout); job?.images.forEach(image => image.release());
     this.playing.update(all => all.filter(p => p.event.id !== id)); this.completed.add(id);
     while (this.completed.size > 512) { const oldest = this.completed.values().next().value!; this.completed.delete(oldest); this.seen.delete(oldest); }
     this.saveReceipts(); this.socket.emit('overlay-ended', id);
@@ -284,5 +310,5 @@ export class OverlayRuntimeComponent {
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();
   }
-  private clear() { this.generation++; clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
+  private clear() { this.generation++; this.imageCache.clear(); this.playing().forEach(p => p.images.forEach(image => image.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
 }

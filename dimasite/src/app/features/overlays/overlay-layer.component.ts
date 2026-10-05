@@ -9,7 +9,7 @@ import { LinksService } from '../../services/links.service';
   template: `<div #entrance class="motion-shell"><app-overlay-keyframe-phase phase="enter" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #exit class="motion-shell"><app-overlay-keyframe-phase phase="exit" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div #loop class="motion-shell"><app-overlay-keyframe-phase phase="loop" [keyframes]="layer().keyframes" [motion]="resolvedMotion()" [duration]="duration()" [playbackKey]="playbackKey()" [seekTime]="seekTime()"><div class="layer-content" [style.width.px]="layer().width" [style.height.px]="layer().height" [style.transform]="scale()" [style.opacity]="layer().opacity ?? 1" [style.filter]="shadow()">@switch (layer().kind) {
     @case ('text') { <span #textElement [style.color]="layer().color || '#ffffff'" [style.font-family]="font()" [style.font-weight]="layer().fontWeight ?? 400" [style.font-style]="layer().italic ? 'italic' : 'normal'" [style.text-align]="layer().textAlign ?? 'center'">{{ text() ?? layer().text }}</span> }
     @case ('shape') { <div class="shape" [style.background]="layer().color ?? '#7c3aed'" [style.border-color]="layer().borderColor ?? '#ffffff'" [style.border-width.px]="layer().borderWidth ?? 0" [style.border-radius]="layer().shape === 'ellipse' ? '50%' : (layer().radius ?? 0) + 'px'"></div> }
-    @case ('image') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
+    @case ('image') { @if (preparedImage(); as source) { <img [src]="source" alt="" loading="eager" (error)="failed.emit()" /> } @else if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" [eager]="!!publicId()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <img [src]="layer().mediaUrl" alt="" (error)="failed.emit()" /> } }
     @case ('video') { @if (layer().assetId; as id) { <app-asset-preview [assetId]="id" [owner]="owner()" [accessUrl]="publicAssetUrl()" kind="video" [seekTime]="seekTime()" (failed)="failed.emit()" /> } @else if (layer().mediaUrl) { <video [src]="layer().mediaUrl" [autoplay]="seekTime() === null" muted loop playsinline (loadedmetadata)="seekVideo()" (error)="failed.emit()"></video> } }
     @case ('animation') { <span class="spark" [class.spark--custom]="!!layer().motion || !!layer().keyframes" [style.color]="layer().color || '#a78bfa'">✦</span> }
   }</div></app-overlay-keyframe-phase></div></app-overlay-keyframe-phase></div></app-overlay-keyframe-phase></div>`,
@@ -33,6 +33,7 @@ export class OverlayLayerComponent {
   private readonly loop = viewChild<ElementRef<HTMLElement>>('loop');
   readonly owner = input('');
   readonly publicId = input('');
+  readonly preparedImage = input('');
   readonly failed = output<void>();
   private readonly textElement = viewChild<ElementRef<HTMLSpanElement>>('textElement');
   private readonly size = signal({ width: 0, height: 0 });

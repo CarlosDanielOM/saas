@@ -22,7 +22,7 @@ overlayStudioRoute.get('/public/:publicId/assets/:assetId', wrap(async (req, res
   const state = await publicState(param(req, 'publicId'));
   const id = param(req, 'assetId');
   if (!snapshotAssets(state.snapshot).some(w => w.assetId === id)) throw new OverlayError('Asset unavailable', 404);
-  return serveAsset(req, res, state.channel, id);
+  return serveAsset(req, res, state.channel, id, true);
 }));
 overlayStudioRoute.get('/public/:publicId/events/:eventId', wrap(async (req, res) => { const event = await eventFor(param(req, 'publicId'), param(req, 'eventId')); if (!event) throw new OverlayError('Event unavailable', 404); return ok(res, event); }));
 overlayStudioRoute.get('/public/:publicId/media/:eventId', wrap(async (req, res) => { const file = await fileFor(param(req, 'publicId'), param(req, 'eventId')); if (!file) throw new OverlayError('Media unavailable', 404); res.type(file.mime); res.setHeader('Accept-Ranges', 'bytes');

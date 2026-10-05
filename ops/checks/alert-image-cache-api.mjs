@@ -1,0 +1,37 @@
+// Requires saas-ops disposable Mongo/Redis and overlay-fixtures provider mocks.
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
+const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
+await getMongoDBConnection('image-cache-check');
+const redis = await getDragonflyClient('image-cache-check');
+const { default: Users } = await import('/app/dist/schemas/users.schema.js');
+const owner='992317';
+await Users.collection.insertOne({accounts:[{type:'twitch',id:owner}],plan_tier:'pro'});
+await redis.hSet('token:image-cache',{id:owner,login:'fixture',display_name:'Fixture'});
+const base='http://127.0.0.1:3000';
+const data=async(method,path,body)=>{ const r=await fetch(base+path,{method,headers:{Authorization:'Bearer image-cache',...(!(body instanceof FormData)?{'Content-Type':'application/json'}:{})},...(body?{body:body instanceof FormData?body:JSON.stringify(body)}:{})});assert.equal(r.status,200,await r.clone().text());return (await r.json()).data; };
+// Raw HTTP avoids fetch's automatic cache/request directives obscuring conditional responses.
+const get=(path,headers={},method='GET')=>new Promise((resolve,reject)=>{http.request(base+path,{method,headers},r=>{const chunks=[];r.on('data',b=>chunks.push(b));r.on('end',()=>resolve({status:r.statusCode,headers:r.headers,body:Buffer.concat(chunks)}));}).on('error',reject).end();});
+execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=red:s=32x32','-frames:v','1','-threads','1','/tmp/cache-image.png']);
+const bytes=await readFile('/tmp/cache-image.png'),form=new FormData();form.append('file',new Blob([bytes]),'cache.png');
+const asset=await data('POST','/asset-library/'+owner,form);
+let state=await data('GET','/overlay-studio/'+owner);
+state.designs[0].events.follow.widgets.push({id:'cached-image',kind:'image',assetId:asset.id,x:0,y:0,width:100,height:100,visible:true,locked:false});
+state=await data('PUT','/overlay-studio/'+owner,state);
+const scene=state.scenes[0],path='/overlay-studio/public/'+scene.publicId+'/assets/'+asset.id;
+assert.equal((await get(path)).status,404);
+state=await data('POST','/overlay-studio/'+owner+'/scenes/'+scene.id+'/publish',{revision:state.revision});
+const first=await get(path);assert.equal(first.status,200);assert.deepEqual(first.body,bytes);assert.equal(first.headers['cache-control'],'private, no-cache');assert(first.headers.etag);
+const cached=await get(path,{'If-None-Match':first.headers.etag});assert.equal(cached.status,304);assert.equal(cached.body.length,0);
+assert.equal((await get(path,{'If-None-Match':'"different"'})).status,200);
+assert.equal((await get(path,{'If-None-Match':'W/'+first.headers.etag})).status,304);
+const head=await get(path,{},'HEAD');assert.equal(head.status,200);assert.equal(head.body.length,0);assert.equal(Number(head.headers['content-length']),bytes.length);
+const range=await get(path,{Range:'bytes=0-7'});assert.equal(range.status,206);assert.deepEqual(range.body,bytes.subarray(0,8));
+const access=await data('GET','/asset-library/'+owner+'/'+asset.id+'/access');assert.match((await get(access.path)).headers['cache-control'],/no-store/);
+await data('POST','/overlay-studio/'+owner+'/scenes/'+scene.id+'/rotate',{revision:state.revision});
+assert.equal((await get(path,{'If-None-Match':first.headers.etag})).status,404,'revocation checked before conditional reuse');
+console.log('PASS actual API: uploaded alert image 200/304, ETag mismatch/weak validator, HEAD/range, private preview unchanged, revoked URL rejects cached validator');
+process.exit(0);

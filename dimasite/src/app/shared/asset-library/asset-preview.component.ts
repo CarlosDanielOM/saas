@@ -8,7 +8,7 @@ import { LanguageService } from '../../services/language.service';
   template: `@if (kind() === 'audio' && still()) { <lucide-icon [img]="music" [size]="32" aria-hidden="true" /> }
   @else if (url(); as source) {
     @if (kind() === 'audio') { <audio [src]="source" controls preload="metadata" [attr.aria-label]="name()" (error)="onError()"></audio> }
-    @else if (kind() === 'image') { <img [src]="source" [alt]="still() ? '' : name()" loading="lazy" referrerpolicy="no-referrer" (error)="onError()" /> }
+    @else if (kind() === 'image') { <img [src]="source" [alt]="still() ? '' : name()" [loading]="eager() ? 'eager' : 'lazy'" referrerpolicy="no-referrer" (error)="onError()" /> }
     @else if (still()) { <video [src]="source + '#t=0.1'" muted playsinline preload="metadata" tabindex="-1" aria-hidden="true" (error)="onError()"></video> }
     @else { <video [src]="source" [attr.aria-label]="name()" [controls]="controls()" [autoplay]="!controls() && seekTime() === null" (loadedmetadata)="seekVideo()" [loop]="!controls()" muted playsinline preload="metadata" (error)="onError()"></video> }
   } @else { <span role="status">{{ language.translate(broken() ? 'assetLibrary.previewFailed' : 'assetLibrary.loading') }}</span> }`,
@@ -23,6 +23,7 @@ export class AssetPreviewComponent {
   readonly kind = input<'image' | 'video' | 'audio'>('image');
   readonly name = input('');
   readonly controls = input(false);
+  readonly eager = input(false);
   /** Paused first frame for gallery thumbnails, so many videos don't play at once. */
   readonly still = input(false);
   readonly seekTime = input<number | null>(null);
