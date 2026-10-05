@@ -2,6 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LinksService } from '../../services/links.service';
+export type RouletteDesign = 'wheel' | 'reel' | 'cards' | 'elimination';
+export const ROULETTE_DESIGNS: RouletteDesign[] = ['wheel', 'reel', 'cards', 'elimination'];
+/** Mirrors dimabot roulette/model.ts capacity(): how many copies (slots) a design can show. */
+export function capacityFor(design: RouletteDesign, cardSize: 'large' | 'medium' | 'small'): number {
+  if (design === 'reel') return 60;
+  if (design === 'elimination') return 100;
+  return design === 'cards' ? { large: 50, medium: 75, small: 100 }[cardSize] : 10000;
+}
 export interface RouletteItem {
   action?: string;
   id: string;
@@ -22,7 +30,7 @@ export interface Roulette {
   id: string;
   alias: string;
   name: string;
-  design: 'wheel' | 'cards' | 'reel';
+  design: RouletteDesign;
   cardSize: 'large' | 'medium' | 'small';
   colors: string[];
   durationSeconds: number;

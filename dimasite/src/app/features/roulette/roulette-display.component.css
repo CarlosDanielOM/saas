@@ -1,131 +1,408 @@
+/* The stage viewers see in OBS; identical in the dashboard preview. Always dark. */
 :host {
   display: block;
   min-width: 0;
+  --gold: #f6c453;
+  --stage: #10131b;
+  --stage-2: #1a1f2c;
+  --ink-soft: #c5c9d6;
 }
 .display {
-  color: #f6f3ec;
-  background: radial-gradient(ellipse at top, #302a1b, #12151d 70%);
-  border: 1px solid #343743;
-  border-radius: 22px;
-  padding: 20px 0;
+  position: relative;
+  display: grid;
+  gap: 4px;
   overflow: hidden;
-  min-height: 220px;
+  min-height: 240px;
+  padding: 14px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  color: #f6f4ef;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 0%, color-mix(in srgb, var(--glow) 26%, transparent), transparent 70%),
+    radial-gradient(ellipse at 50% 120%, rgba(246, 196, 83, 0.12), transparent 60%),
+    linear-gradient(180deg, var(--stage-2), var(--stage));
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
 }
-.empty,
-.result {
-  text-align: center;
-  padding: 12px 20px;
-  margin: 0;
-  overflow-wrap: anywhere;
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 18px;
 }
-.result {
-  font-size: 20px;
+.name {
+  overflow: hidden;
+  font-size: 14px;
   font-weight: 800;
-  min-height: 50px;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.count {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
 }
 .empty {
+  margin: 0;
   padding: 70px 20px;
-  color: #b5b6c2;
-}
-.reel {
-  position: relative;
-  height: 220px;
-  overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-.reel-card {
-  position: absolute;
-  left: calc(50% - 74px);
-  top: 28px;
-  width: 148px;
-  height: 168px;
-  border: 2px solid var(--prize);
-  border-radius: 16px;
-  background: #1d2230;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  box-sizing: border-box;
+  color: var(--ink-soft);
   text-align: center;
-  gap: 14px;
+}
+
+/* Result line / winner banner */
+.result {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  margin: 0;
+  padding: 8px 20px 0;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
   overflow-wrap: anywhere;
 }
-.copy {
-  color: #c2c4ce;
-  font: 11px monospace;
+.result--win {
+  gap: 2px;
+  color: #fff;
+  animation: pop 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
 }
-.reel-card strong {
-  font-size: 17px;
+.result-kicker {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
-.marker {
-  position: absolute;
-  z-index: 2;
-  left: calc(50% - 9px);
-  top: 4px;
-  width: 18px;
-  height: 18px;
-  background: #f4b942;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+.result-label {
+  font-size: clamp(20px, 4.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-shadow: 0 0 24px rgba(246, 196, 83, 0.45);
 }
-.winner,
-.card.highlight {
-  box-shadow:
-    0 0 0 3px #f4b942,
-    inset 0 0 30px #f4b94233;
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
 }
+
+/* Wheel */
 .wheel {
   position: relative;
-  max-width: 400px;
-  margin: auto;
-  padding: 10px 20px;
+  width: min(100%, 420px);
+  margin: 0 auto;
+  padding: 4px 18px 0;
 }
 .wheel svg {
   display: block;
   width: 100%;
   overflow: visible;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.45));
+}
+.rim {
+  fill: #0b0d13;
+  stroke: rgba(246, 196, 83, 0.55);
+  stroke-width: 2;
+}
+.bulb {
+  fill: #fff4cc;
+  opacity: 0.35;
+}
+.bulb:nth-of-type(odd) {
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px var(--gold));
+}
+[data-state='drawing'] .bulb {
+  animation: chase 0.36s steps(1) infinite;
+}
+[data-state='drawing'] .bulb:nth-of-type(odd) {
+  animation-delay: -0.18s;
+}
+[data-state='done'] .bulb {
+  fill: var(--gold);
+  opacity: 1;
+  filter: drop-shadow(0 0 4px var(--gold));
+}
+@keyframes chase {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.seg {
+  stroke: rgba(10, 12, 18, 0.35);
+  stroke-width: 1.2;
+  transition: opacity 300ms ease;
+}
+.seg--dim {
+  opacity: 0.32;
+}
+.seg--win {
+  stroke: #fff;
+  stroke-width: 3;
 }
 .wheel text {
-  font: 700 12px system-ui;
-  fill: white;
-  paint-order: stroke;
-  stroke: #000;
-  stroke-width: 2px;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 800;
 }
-.pointer {
+.hub {
+  fill: #0f121a;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 2;
+}
+.hub-ring {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2;
+}
+.hub-star {
+  fill: var(--gold);
+}
+.pointer path {
+  fill: var(--gold);
+  stroke: #6b4a07;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+}
+
+/* Reel */
+.reel {
+  position: relative;
+  height: 210px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.window {
   position: absolute;
-  z-index: 2;
-  top: 0;
-  left: calc(50% - 10px);
-  color: #f4b942;
-  font-size: 24px;
+  top: 12px;
+  bottom: 12px;
+  left: calc(50% - 82px);
+  width: 164px;
+  border: 2px solid rgba(246, 196, 83, 0.55);
+  border-radius: 20px;
+  background: rgba(246, 196, 83, 0.06);
 }
-.cards {
-  padding: 12px 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 10px;
-}
-.cards[data-size='small'] {
-  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-}
-.cards[data-size='medium'] {
-  grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
-}
-.card {
-  border: 2px solid var(--prize);
-  border-radius: 10px;
-  min-height: 75px;
-  padding: 10px;
-  background: #1d2230;
+.reel-card {
+  position: absolute;
+  top: 24px;
+  left: calc(50% - 74px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 148px;
+  height: 162px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  color: var(--ink);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--prize) 100%, #fff 18%), var(--prize) 55%, color-mix(in srgb, var(--prize) 75%, #000));
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   text-align: center;
   overflow-wrap: anywhere;
+  transition: opacity 250ms ease;
+}
+.reel-card strong {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.copy {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.reel-card.dim {
+  opacity: 0.35;
+}
+.marker {
+  position: absolute;
+  z-index: 2;
+  left: calc(50% - 10px);
+  width: 20px;
+  height: 14px;
+  background: var(--gold);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+.marker--top {
+  top: 4px;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.marker--bottom {
+  bottom: 4px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.reel-card.winner,
+.card.winner,
+.chip.winner {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 34px rgba(246, 196, 83, 0.55);
+}
+
+/* Cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+  padding: 8px 18px;
+}
+.cards[data-size='medium'] {
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+}
+.cards[data-size='small'] {
+  grid-template-columns: repeat(auto-fit, minmax(62px, 1fr));
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 72px;
+  padding: 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--prize) 60%, transparent);
+  border-radius: 12px;
+  color: #f6f4ef;
+  background: color-mix(in srgb, var(--prize) 18%, #161a25);
   font-size: 12px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.card strong {
+  font-weight: 800;
+  line-height: 1.2;
 }
 .card small {
-  color: #c2c4ce;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.cards.is-drawing .card {
+  opacity: 0.5;
+}
+.cards .card.highlight {
+  color: var(--ink);
+  background: var(--prize);
+  opacity: 1;
+  box-shadow: 0 0 0 2px #fff, 0 0 26px color-mix(in srgb, var(--prize) 70%, transparent);
+}
+
+.cards .card.winner {
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 0 34px rgba(246, 196, 83, 0.55);
+}
+[data-state='done'] .card:not(.winner) {
+  opacity: 0.55;
+}
+
+/* Last one standing */
+.royale {
+  display: grid;
+  gap: 10px;
+  padding: 6px 18px;
+}
+.royale-count {
+  justify-self: center;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.royale-count strong {
+  color: #fff;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.royale-count--final strong {
+  color: var(--gold);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 15rem;
+  min-height: 34px;
+  padding: 6px 12px 6px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--prize) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--prize) 16%, #161a25);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease,
+    filter 260ms ease;
+}
+.chip-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--prize);
+}
+.chip.out {
+  opacity: 0.2;
+  filter: grayscale(1);
+  text-decoration: line-through;
+  transform: scale(0.92);
+}
+.chip.final {
+  animation: tense 0.7s ease-in-out infinite;
+}
+.chip.winner {
+  color: var(--ink);
+  background: var(--prize);
+  transform: scale(1.12);
+}
+.chip.winner .chip-dot {
+  background: var(--ink);
+}
+@keyframes tense {
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--prize) 70%, transparent);
+  }
+}
+
+@media (min-width: 640px) {
+  .result {
+    font-size: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result--win,
+  .chip.final,
+  [data-state='drawing'] .bulb {
+    animation: none;
+  }
+  .chip,
+  .seg,
+  .reel-card {
+    transition: none;
+  }
 }

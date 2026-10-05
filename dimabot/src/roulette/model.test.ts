@@ -73,3 +73,11 @@ test('item scripts are optional, editable, bounded and never expanded into visua
   assert.throws(()=>r.add(roulette,{label:'Silence',action:'different'}));
   r.add(roulette,{label:'Silence'});assert.equal(item.action,'$(timer 30 Done)');
 });
+test('last-one-standing design is accepted and holds up to 100 copies', () => {
+  const r_roulette = r.create({ name: 'Royale', alias: 'royale' });
+  r.configure(r_roulette, { design: 'elimination' }); assert.equal(r_roulette.design, 'elimination');
+  r.add(r_roulette, { label: 'Viewer', multiplier: 100 });
+  assert.throws(() => r.add(r_roulette, { label: 'One more' }));
+  assert.throws(() => r.configure(r_roulette, { design: 'reel' }));
+  assert.throws(() => r.configure(r_roulette, { design: 'plinko' }));
+});

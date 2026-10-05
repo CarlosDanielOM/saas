@@ -12,7 +12,7 @@ export interface Settings {
   showOnStart: boolean; hideAfterSeconds: number | null; winnerAction: 'keep' | 'remove-copy' | 'remove-item';
 }
 export interface Roulette {
-  id: string; alias: string; name: string; design: 'wheel' | 'cards' | 'reel';
+  id: string; alias: string; name: string; design: 'wheel' | 'cards' | 'reel' | 'elimination';
   cardSize: 'large' | 'medium' | 'small'; colors: string[]; durationSeconds: number;
   settings: Settings; items: Item[]; order: string[];
 }
@@ -69,7 +69,11 @@ export function slots(roulette: Roulette): Slot[] {
   }));
   return roulette.order.map(key => byKey.get(key)!);
 }
-export function capacity(r: Roulette): number { return r.design === 'reel' ? 60 : r.design === 'cards' ? { large: 50, medium: 75, small: 100 }[r.cardSize] : 10000; }
+export function capacity(r: Roulette): number {
+  if (r.design === 'reel') return 60;
+  if (r.design === 'elimination') return 100;
+  return r.design === 'cards' ? { large: 50, medium: 75, small: 100 }[r.cardSize] : 10000;
+}
 export function validate(r: Roulette): void {
   const count = r.items.reduce((n, item) => n + item.multiplier, 0);
   if (count > capacity(r)) fail('capacity', `This design supports ${capacity(r)} copies; requested ${count}`);
@@ -84,7 +88,7 @@ export function configure(r: Roulette, data: Record<string, unknown>): void {
     r.alias = text(data.alias, 'alias', 40);
     if (!/^[a-z][a-z0-9_-]*$/.test(r.alias)) fail('invalid', 'Alias must start with a lowercase letter and use letters, numbers, _ or -');
   }
-  if (data.design !== undefined) r.design = choice(data.design, ['wheel', 'cards', 'reel'], 'design');
+  if (data.design !== undefined) r.design = choice(data.design, ['wheel', 'cards', 'reel', 'elimination'], 'design');
   if (data.cardSize !== undefined) r.cardSize = choice(data.cardSize, ['large', 'medium', 'small'], 'cardSize');
   if (data.durationSeconds !== undefined) r.durationSeconds = integer(data.durationSeconds, 'durationSeconds', 1, 120);
   if (data.colors !== undefined) {

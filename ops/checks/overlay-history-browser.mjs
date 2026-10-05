@@ -191,6 +191,8 @@ try {
   page.once('dialog', d => d.accept()); await page.getByRole('button', { name: 'Reload saved draft', exact: true }).click();
   await until(() => page.locator('.editor-fields').isEnabled(), 'reload finished'); await eventually('equal', async () => await undo.isDisabled(), true); await eventually('equal', async () => await redo.isDisabled(), true);
   await selectTts(); await props.getByRole('switch', { name: 'Lock position', exact: true }).evaluate(button => { for (let i = 0; i < 110; i++) button.click(); });
+  // Synthetic clicks share one browser task; wait for Angular to enable Undo before clicking it.
+  await eventually('equal', async () => await undo.isEnabled(), true, 'bounded history edits render before undo');
   await undo.evaluate(button => { for (let i = 0; i < 100; i++) button.click(); }); await eventually('equal', async () => await undo.isDisabled(), true, 'history is bounded to 100 steps'); await eventually('equal', async () => await redo.isEnabled(), true);
   console.log('PASS editing: grouped move/resize/nudges/typing, add/delete/order/settings/designs/scenes, redo branching, shortcuts, native text undo and bounded history.');
   console.log('PASS draft protection: save/publish/rotate retain current revisions and URLs; save/reload failures and recovery preserve intended state.');

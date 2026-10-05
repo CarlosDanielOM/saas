@@ -1,421 +1,938 @@
-<div class="lf-main" data-plan="pro">
-  <header>
-    <div>
-      <a [routerLink]="['/', streamer, 'modules']">← {{ t('modules') }}</a>
-      <p class="eyebrow">{{ t('alpha') }} · {{ t('pro') }}</p>
-      <h1>{{ t('title') }}</h1>
-      <p class="subtitle">{{ t('subtitle') }}</p>
-    </div>
-  </header>
-  @if (!pro()) {
-    <section class="lf-tile">
-      <h2>{{ t('proOnly') }}</h2>
-      <p>{{ t('proDescription') }}</p>
-      <button class="primary" (click)="upgradePlan()">{{ t('upgrade') }}</button>
-    </section>
-  } @else if (!owner()) {
-    <section class="lf-tile">
-      <h2>{{ t('ownerOnly') }}</h2>
-      <p>{{ t('ownerDescription') }}</p>
-    </section>
-  } @else {
-    @if (error()) {
-      <div class="feedback error" role="alert">
-        {{ error() }} <button (click)="init()" [disabled]="busy()">{{ t('refresh') }}</button>
+<div class="lf" data-plan="pro">
+  <main class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="['/', streamer, 'modules']"
+        ><app-lf-icon name="back"></app-lf-icon> {{ t('modules') }}</a
+      >
+      <div class="lf-head__row">
+        <h1 class="lf-title">{{ t('title') }}</h1>
+        @if (state() && pro() && owner()) {
+          <button
+            type="button"
+            class="lf-btn lf-btn--primary"
+            (click)="openCreate()"
+            [disabled]="busy() || state()!.roulettes.length >= 20"
+          >
+            <app-lf-icon name="plus" [size]="16"></app-lf-icon> {{ t('new') }}
+          </button>
+        }
       </div>
-    }
-    @if (notice()) {
-      <p class="feedback" role="status">{{ notice() }}</p>
-    }
-    @if (loading()) {
-      <p role="status">{{ t('loading') }}</p>
-    } @else if (state(); as state) {
-      <div class="workspace">
-        <aside class="lf-tile library">
-          <h2>
-            {{ t('library') }} <span class="count">{{ state.roulettes.length }} / 20</span>
-          </h2>
-          <nav [attr.aria-label]="t('library')">
-            @for (r of state.roulettes; track r.id) {
-              <button
-                [class.selected]="selectedId() === r.id"
-                [attr.aria-pressed]="selectedId() === r.id"
-                (click)="select(r.id)"
-                [disabled]="busy()"
-              >
-                <strong>{{ r.name }}</strong
-                ><small
-                  >{{ r.alias }}
-                  @if (state.activeId === r.id) {
-                    · {{ t('active') }}
-                  }
-                </small>
-              </button>
-            }
-          </nav>
-          @if (!state.roulettes.length) {
-            <p>{{ t('emptyLibrary') }}</p>
-          }
-          <form [formGroup]="createForm" (ngSubmit)="create()">
-            <h3>{{ t('new') }}</h3>
-            <label>{{ t('name') }}<input formControlName="name" maxlength="120" required /></label
-            ><label
-              >{{ t('alias')
-              }}<input
-                formControlName="alias"
-                pattern="[a-z][a-z0-9_-]{0,39}"
-                required
-                aria-describedby="alias-help" /></label
-            ><small id="alias-help">{{ t('aliasHelp') }}</small
-            ><button
-              class="primary"
-              [disabled]="busy() || createForm.invalid || state.roulettes.length >= 20"
+      <p class="lf-copy">{{ t('subtitle') }}</p>
+      <div class="lf-head__chips">
+        <span class="lf-chip lf-chip--accent">{{ t('alpha') }}</span>
+        <span class="lf-chip lf-chip--gold lf-chip--pro">{{ t('pro') }}</span>
+        @if (state(); as s) {
+          @if (onStream()) {
+            <span class="lf-chip lf-chip--live"
+              ><span class="lf-dot" aria-hidden="true"></span>
+              {{ t('chipOnStream', { name: active()?.name ?? '' }) }}</span
             >
-              {{ t('create') }}
-            </button>
-          </form>
-        </aside>
-        <div class="editor">
-          @if (selected(); as r) {
-            <section class="lf-tile stage">
-              <div class="section-heading">
-                <div>
-                  <p class="eyebrow">{{ t('preview') }}</p>
-                  <h2>{{ r.name }}</h2>
-                </div>
-                <span class="badge" [class.live]="state.visible">{{
-                  state.visible ? t('visible') : t('hidden')
-                }}</span>
-              </div>
-              <app-roulette-display
-                [roulette]="r"
-                [draw]="previewDraw()"
-                [serverTime]="state.serverTime"
-              />
-              <label class="target-user"
-                >{{ t('targetUser') }}
-                <input
-                  [formControl]="targetUser"
-                  maxlength="26"
-                  [attr.aria-label]="t('targetUser')"
-                  aria-describedby="target-help"
-                />
-                <small id="target-help">{{ t('targetHelp') }}</small>
-              </label>
-              <div class="controls">
-                <button
-                  class="primary"
-                  (click)="action('start')"
-                  [disabled]="busy() || spinning() || !copies() || targetUser.invalid"
-                >
-                  {{ spinning() ? t('drawing') : t('start') }}</button
-                ><button (click)="action('shuffle')" [disabled]="busy() || spinning() || !copies()">
-                  {{ t('shuffle') }}</button
-                ><button
-                  (click)="action('switch')"
-                  [disabled]="busy() || spinning() || state.activeId === r.id"
-                >
-                  {{ t('setActive') }}</button
-                ><button
-                  (click)="action(state.visible ? 'hide' : 'show')"
-                  [disabled]="busy() || !state.activeId"
-                >
-                  {{ state.visible ? t('hide') : t('show') }}
-                </button>
-              </div>
-              <p class="hint">{{ t('visibilityHelp') }}</p>
-            </section>
-            <section class="lf-tile">
-              <div class="section-heading">
-                <h2>{{ t('items') }}</h2>
-                <span class="count">{{ copies() }} / {{ capacity() }} {{ t('copies') }}</span>
-              </div>
-              <p>{{ t('weightsHelp') }}</p>
-              <form class="item-form" [formGroup]="itemForm" (ngSubmit)="saveItem()">
-                <label
-                  >{{ t('label') }}<input formControlName="label" maxlength="120" required /></label
-                ><label
-                  >{{ t('multiplier')
-                  }}<input
-                    type="number"
-                    formControlName="multiplier"
-                    min="1"
-                    step="1"
-                    required /></label
-                ><label
-                  >{{ t('weight')
-                  }}<input
-                    type="number"
-                    formControlName="weight"
-                    min="1"
-                    step="1"
-                    required /></label
-                ><label class="item-action ph-no-capture"
-                  >{{ t('itemAction') }}
-                  <textarea
-                    formControlName="action"
-                    rows="3"
-                    maxlength="8000"
-                    spellcheck="false"
-                    [attr.aria-label]="t('itemAction')"
-                    aria-describedby="action-help"
-                  ></textarea>
-                  <small id="action-help">{{ t('actionHelp') }}</small>
-                  <code>{{ t('actionExample') }}</code> </label
-                ><button class="primary" [disabled]="busy() || itemForm.invalid">
-                  {{ editItemId() ? t('saveItem') : t('addItem') }}
-                </button>
-                @if (editItemId()) {
-                  <button type="button" (click)="cancelItem()">{{ t('cancel') }}</button>
-                }
-              </form>
-              <label class="search"
-                >{{ t('search')
-                }}<input
-                  type="search"
-                  [value]="query()"
-                  (input)="query.set($any($event.target).value); page.set(0)"
-              /></label>
-              <ul class="items">
-                @for (item of items(); track item.id) {
-                  <li>
-                    <div>
-                      <strong>{{ item.label }}</strong
-                      ><small
-                        >×{{ item.multiplier }} · {{ t('weight') }} {{ item.weight }} ·
-                        {{ odds(item) }}</small
-                      >
-                      @if (item.action) {
-                        <small class="action-badge">{{ t('hasAction') }}</small>
-                      }
-                      <button
-                        class="id-button"
-                        (click)="copy(item.id)"
-                        [attr.aria-label]="t('copyId') + ': ' + item.label"
-                      >
-                        {{ t('copyId') }}
-                      </button>
-                    </div>
-                    <div class="row-actions">
-                      <button
-                        (click)="edit(item)"
-                        [disabled]="busy()"
-                        [attr.aria-label]="t('edit') + ': ' + item.label"
-                      >
-                        {{ t('edit') }}</button
-                      ><button
-                        (click)="removeItem(item.id)"
-                        [disabled]="busy()"
-                        [attr.aria-label]="t('remove') + ': ' + item.label"
-                      >
-                        {{ t('remove') }}
-                      </button>
-                    </div>
-                  </li>
-                } @empty {
-                  <li>{{ t('noItems') }}</li>
-                }
-              </ul>
-              @if (matchingItems().length > 10) {
-                <div class="controls">
-                  <button (click)="page.set(page() - 1)" [disabled]="page() === 0">
-                    {{ t('previous') }}</button
-                  ><span>{{ page() + 1 }}</span
-                  ><button
-                    (click)="page.set(page() + 1)"
-                    [disabled]="(page() + 1) * 10 >= matchingItems().length"
-                  >
-                    {{ t('next') }}
-                  </button>
-                </div>
-              }
-            </section>
-            <section class="lf-tile">
-              <h2>{{ t('settings') }}</h2>
-              <form [formGroup]="config" (ngSubmit)="saveConfig()">
-                <fieldset [disabled]="busy() || spinning()">
-                  <div class="form-grid">
-                    <label
-                      >{{ t('name')
-                      }}<input formControlName="name" maxlength="120" required /></label
-                    ><label>{{ t('alias') }}<input formControlName="alias" required /></label>
-                    <label
-                      >{{ t('design')
-                      }}<select formControlName="design" [attr.aria-label]="t('design')">
-                        <option value="wheel">{{ t('wheel') }}</option>
-                        <option value="cards">{{ t('cards') }}</option>
-                        <option value="reel">{{ t('reel') }}</option>
-                      </select></label
-                    >
-                    <label
-                      >{{ t('cardSize')
-                      }}<select formControlName="cardSize" [attr.aria-label]="t('cardSize')">
-                        <option value="large">{{ t('large') }}</option>
-                        <option value="medium">{{ t('medium') }}</option>
-                        <option value="small">{{ t('small') }}</option>
-                      </select></label
-                    >
-                    <label
-                      >{{ t('duration')
-                      }}<input
-                        type="number"
-                        formControlName="durationSeconds"
-                        min="1"
-                        max="120"
-                        step="1"
-                        required
-                    /></label>
-                    <label
-                      >{{ t('colors') }}<input formControlName="colors" required /><small>{{
-                        t('colorsHelp')
-                      }}</small></label
-                    >
-                    <label
-                      >{{ t('insertion')
-                      }}<select formControlName="insertion" [attr.aria-label]="t('insertion')">
-                        <option value="append">{{ t('append') }}</option>
-                        <option value="random">{{ t('random') }}</option>
-                      </select></label
-                    >
-                    <label
-                      >{{ t('duplicates')
-                      }}<select formControlName="duplicate" [attr.aria-label]="t('duplicates')">
-                        <option value="separate">{{ t('separate') }}</option>
-                        <option value="increase">{{ t('increase') }}</option>
-                      </select></label
-                    >
-                    <label
-                      >{{ t('winnerAction')
-                      }}<select
-                        formControlName="winnerAction"
-                        [attr.aria-label]="t('winnerAction')"
-                      >
-                        <option value="keep">{{ t('keep') }}</option>
-                        <option value="remove-copy">{{ t('removeCopy') }}</option>
-                        <option value="remove-item">{{ t('removeItem') }}</option>
-                      </select></label
-                    >
-                    <label
-                      >{{ t('autoHide')
-                      }}<input
-                        type="number"
-                        formControlName="hideAfterSeconds"
-                        min="1"
-                        max="3600"
-                        step="1"
-                      /><small>{{ t('autoHideHelp') }}</small></label
-                    >
-                    <label class="check"
-                      ><input type="checkbox" formControlName="shuffleBeforeDraw" />{{
-                        t('shuffleBefore')
-                      }}</label
-                    ><label class="check"
-                      ><input type="checkbox" formControlName="showOnStart" />{{
-                        t('showOnStart')
-                      }}</label
-                    >
-                  </div>
-                  <button class="primary" [disabled]="config.invalid || !config.dirty">
-                    {{ t('saveSettings') }}
-                  </button>
-                </fieldset>
-              </form>
-              @if (confirmDelete()) {
-                <p>{{ t('deleteConfirm') }}</p>
-                <div class="controls">
-                  <button class="danger" (click)="remove()" [disabled]="busy() || spinning()">
-                    {{ t('confirmDelete') }}</button
-                  ><button (click)="confirmDelete.set(false)">{{ t('cancel') }}</button>
-                </div>
-              } @else {
-                <button
-                  class="danger"
-                  (click)="confirmDelete.set(true)"
-                  [disabled]="busy() || spinning()"
-                >
-                  {{ t('deleteRoulette') }}
-                </button>
-              }
-            </section>
+          } @else {
+            <span class="lf-chip lf-chip--off"
+              ><span class="lf-dot" aria-hidden="true"></span> {{ t('chipHidden') }}</span
+            >
           }
-          <!-- Exclude private source links from autocapture and session recordings. -->
-          <section class="lf-tile ph-no-capture">
-            <h2>{{ t('overlay') }}</h2>
-            <p>{{ t('overlayHelp') }}</p>
-            @if (overlayUrl()) {
-              <label
-                >{{ t('overlayLink')
-                }}<input readonly [value]="overlayUrl()" (focus)="$any($event.target).select()"
-              /></label>
-              <div class="controls">
-                <button (click)="copy(overlayUrl())">{{ t('copyLink') }}</button
-                ><a
-                  class="button"
-                  [href]="overlayUrl()"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >{{ t('openOverlay') }}</a
-                >
-              </div>
-            }
-            @if (confirmRotate()) {
-              <p>{{ t('rotateWarning') }}</p>
-              <div class="controls">
-                <button (click)="token()" [disabled]="busy()">{{ t('confirmRotate') }}</button
-                ><button (click)="confirmRotate.set(false)">{{ t('cancel') }}</button>
-              </div>
-            } @else {
-              <button (click)="confirmRotate.set(true)" [disabled]="busy()">
-                {{ overlayUrl() ? t('rotate') : t('generate') }}
-              </button>
-            }
-          </section>
-          @if (selected()) {
-            <section class="lf-tile">
-              <h2>{{ t('automation') }}</h2>
-              <p>{{ t('astHelp') }}</p>
-              @for (
-                name of [
-                  'add',
-                  'update',
-                  'remove',
-                  'shuffle',
-                  'start',
-                  'show',
-                  'hide',
-                  'switch',
-                  'result',
-                ];
-                track name
-              ) {
-                <div class="ast">
-                  <code>{{ ast(name) }}</code
-                  ><button
-                    (click)="copy(ast(name))"
-                    [attr.aria-label]="t('copy') + ' roulette.' + name"
-                  >
-                    {{ t('copy') }}
-                  </button>
-                </div>
-              }
-            </section>
-          }
-          <section class="lf-tile">
-            <h2>{{ t('history') }}</h2>
-            <ol class="history">
-              @for (draw of state.history.slice(0, 10); track draw.id) {
-                <li>
-                  <strong>{{ draw.winner.label }}</strong
-                  ><small>{{ draw.winner.copy }} / {{ draw.winner.multiplier }}</small
-                  ><small>{{ actionStatus(draw.id) }}</small>
-                </li>
-              } @empty {
-                <li>{{ t('noHistory') }}</li>
-              }
-            </ol>
-          </section>
-        </div>
+          <span class="lf-chip">{{ t('chipCount', { count: s.roulettes.length }) }}</span>
+          <button
+            type="button"
+            class="lf-chip lf-chip--link"
+            (click)="refresh(true)"
+            [disabled]="busy()"
+          >
+            <app-lf-icon name="refresh" [size]="12"></app-lf-icon> {{ t('refresh') }}
+          </button>
+        }
       </div>
+    </header>
+
+    @if (!pro()) {
+      <section class="lf-tile lf-card lf-gate">
+        <h2 class="lf-h2">{{ t('proOnly') }}</h2>
+        <p class="lf-copy">{{ t('proDescription') }}</p>
+        <button type="button" class="lf-btn lf-btn--primary" (click)="upgradePlan()">
+          {{ t('upgrade') }}
+        </button>
+      </section>
+    } @else if (!owner()) {
+      <section class="lf-tile lf-card lf-gate">
+        <h2 class="lf-h2">{{ t('ownerOnly') }}</h2>
+        <p class="lf-copy">{{ t('ownerDescription') }}</p>
+      </section>
+    } @else {
+      @if (error()) {
+        <div class="lf-banner" role="alert">
+          <p class="lf-banner__title">{{ error() }}</p>
+          <button type="button" class="lf-btn lf-btn--compact" (click)="init()" [disabled]="busy()">
+            {{ t('refresh') }}
+          </button>
+        </div>
+      }
+      <p class="lf-toast" role="status">{{ notice() }}</p>
+
+      @if (loading()) {
+        <p class="lf-note" role="status">{{ t('loading') }}</p>
+      } @else if (state(); as state) {
+        @if (!state.roulettes.length) {
+          <section class="lf-tile lf-card lf-empty">
+            <h2 class="lf-h2">{{ t('emptyTitle') }}</h2>
+            <p class="lf-copy">{{ t('emptyLibrary') }}</p>
+            <ul class="rl-designs-teaser">
+              @for (design of designs; track design) {
+                <li>
+                  <span class="rl-thumb" [attr.data-thumb]="design" aria-hidden="true"><i></i></span>
+                  {{ t('design.' + design + '.name') }}
+                </li>
+              }
+            </ul>
+            <button type="button" class="lf-btn lf-btn--primary" (click)="openCreate()" [disabled]="busy()">
+              <app-lf-icon name="plus" [size]="16"></app-lf-icon> {{ t('createFirst') }}
+            </button>
+          </section>
+        } @else {
+          <!-- Roulette switcher -->
+          @if (state.roulettes.length > 1) {
+            <nav class="rl-tabs" [attr.aria-label]="t('library')">
+              @for (r of state.roulettes; track r.id) {
+                <button
+                  type="button"
+                  class="rl-tab"
+                  [class.rl-tab--on]="selectedId() === r.id"
+                  [attr.aria-pressed]="selectedId() === r.id"
+                  (click)="select(r.id)"
+                  [disabled]="busy()"
+                >
+                  <span class="rl-tab__name">{{ r.name }}</span>
+                  <span class="rl-tab__meta">
+                    {{ t('design.' + r.design + '.name') }}
+                    @if (state.activeId === r.id) {
+                      · <span class="rl-tab__active">{{ t('active') }}</span>
+                    }
+                  </span>
+                </button>
+              }
+            </nav>
+          }
+
+          <!-- OBS setup strip. Private links are excluded from autocapture. -->
+          <section
+            class="lf-setup ph-no-capture"
+            [class.lf-setup--warn]="!overlayUrl()"
+            aria-labelledby="rl-setup-title"
+          >
+            <span class="lf-setup__icon" aria-hidden="true"><app-lf-icon name="monitor" [size]="20"></app-lf-icon></span>
+            <div class="lf-setup__copy">
+              <h2 class="lf-setup__title" id="rl-setup-title">
+                {{ t('overlay') }}
+                @if (overlayUrl()) {
+                  <span class="lf-chip lf-chip--xs lf-chip--ok">{{ t('overlayReady') }}</span>
+                } @else {
+                  <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('overlayMissing') }}</span>
+                }
+              </h2>
+              <p class="lf-note">{{ overlayUrl() ? t('overlayHelp') : t('overlayMissingHelp') }}</p>
+            </div>
+            <div class="lf-setup__actions">
+              @if (overlayUrl()) {
+                <input
+                  class="lf-setup__url"
+                  readonly
+                  [value]="overlayUrl()"
+                  [attr.aria-label]="t('overlayLink')"
+                  (focus)="$any($event.target).select()"
+                />
+                <button type="button" class="lf-btn lf-btn--compact" (click)="copy(overlayUrl())">
+                  <app-lf-icon name="copy" [size]="14"></app-lf-icon> {{ t('copyLink') }}
+                </button>
+                <a class="lf-btn lf-btn--compact lf-btn--ghost" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{
+                  t('openOverlay')
+                }}</a>
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="rotateOpen.set(true)" [disabled]="busy()">
+                  {{ t('rotate') }}
+                </button>
+              } @else {
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="rotateOpen.set(true)" [disabled]="busy()">
+                  {{ t('generate') }}
+                </button>
+              }
+            </div>
+          </section>
+
+          @if (selected(); as r) {
+            <div class="lf-panels">
+              <div class="lf-col">
+                <!-- Stage -->
+                <section class="lf-tile lf-card lf-o1" aria-labelledby="rl-stage-title">
+                  <div class="lf-card__bar">
+                    <div class="lf-card__head">
+                      <h2 class="lf-h2" id="rl-stage-title">{{ t('stageTitle') }}</h2>
+                      <p class="lf-note">
+                        <span class="lf-chip lf-chip--xs">{{ t('design.' + r.design + '.name') }}</span>
+                        @if (isActive() && state.visible) {
+                          <span class="lf-chip lf-chip--xs lf-chip--live"><span class="lf-dot" aria-hidden="true"></span> {{ t('visible') }}</span>
+                        } @else if (isActive()) {
+                          <span class="lf-chip lf-chip--xs">{{ t('hidden') }}</span>
+                        } @else {
+                          <span class="lf-chip lf-chip--xs lf-chip--off">{{ t('notActive') }}</span>
+                        }
+                        @if (dirty() && !spinning()) {
+                          <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('previewUnsaved') }}</span>
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <app-roulette-display
+                    [roulette]="previewRoulette()"
+                    [draw]="previewDraw()"
+                    [serverTime]="state.serverTime"
+                  />
+                  @if (hasActions()) {
+                    <label class="lf-field rl-target">
+                      <span class="lf-field__label">{{ t('targetUser') }}</span>
+                      <span class="rl-at">
+                        <span aria-hidden="true">&#64;</span>
+                        <input
+                          [formControl]="targetUser"
+                          maxlength="26"
+                          autocomplete="off"
+                          [placeholder]="t('targetPlaceholder')"
+                          aria-describedby="rl-target-help"
+                          [attr.aria-invalid]="targetUser.invalid"
+                        />
+                      </span>
+                      <span class="lf-field__hint" id="rl-target-help">{{ t('targetHelp') }}</span>
+                    </label>
+                  }
+                  <div class="rl-controls">
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--primary rl-start"
+                      (click)="action('start')"
+                      [disabled]="busy() || spinning() || !copies() || targetUser.invalid"
+                    >
+                      <app-lf-icon name="play" [size]="16"></app-lf-icon>
+                      {{ spinning() ? t('drawing') : t('start') }}
+                    </button>
+                    @if (isActive()) {
+                      <button
+                        type="button"
+                        class="lf-btn"
+                        (click)="action(state.visible ? 'hide' : 'show')"
+                        [disabled]="busy()"
+                      >
+                        <app-lf-icon [name]="state.visible ? 'eye-off' : 'preview'" [size]="16"></app-lf-icon>
+                        {{ state.visible ? t('hide') : t('show') }}
+                      </button>
+                    } @else {
+                      <button type="button" class="lf-btn" (click)="action('switch')" [disabled]="busy() || spinning()">
+                        <app-lf-icon name="monitor" [size]="16"></app-lf-icon> {{ t('setActive') }}
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="lf-btn lf-btn--ghost"
+                      (click)="action('shuffle')"
+                      [disabled]="busy() || spinning() || copies() < 2"
+                    >
+                      <app-lf-icon name="shuffle" [size]="16"></app-lf-icon> {{ t('shuffle') }}
+                    </button>
+                  </div>
+                  <p class="lf-note">{{ stageHint() }}</p>
+                </section>
+
+                <!-- Prizes -->
+                <section class="lf-tile lf-card lf-o2" aria-labelledby="rl-prizes-title">
+                  <div class="lf-card__bar">
+                    <div class="lf-card__head">
+                      <h2 class="lf-h2" id="rl-prizes-title">{{ t('items') }}</h2>
+                      <p class="lf-note">{{ t('itemsHint') }}</p>
+                    </div>
+                    <button type="button" class="lf-btn lf-btn--compact" (click)="openPrize(null)" [disabled]="busy()">
+                      <app-lf-icon name="plus" [size]="14"></app-lf-icon> {{ t('addItem') }}
+                    </button>
+                  </div>
+                  <div class="rl-meter" [class.rl-meter--warn]="capacityPct() >= 90">
+                    <div class="rl-meter__text">
+                      <span>{{ capacity() >= 10000 ? t('slotsCount', { count: copies() }) : t('slotsUsed', { used: copies(), max: capacity() }) }}</span>
+                      <span class="lf-note">{{ t('design.' + r.design + '.name') }}</span>
+                    </div>
+                    @if (capacity() < 10000) {
+                      <span class="rl-meter__bar" aria-hidden="true"><span [style.width.%]="capacityPct()"></span></span>
+                    }
+                  </div>
+                  @if (items().length > 6) {
+                    <label class="lf-search">
+                      <app-lf-icon name="search" [size]="16"></app-lf-icon>
+                      <input
+                        type="search"
+                        [value]="query()"
+                        [placeholder]="t('search')"
+                        [attr.aria-label]="t('search')"
+                        (input)="query.set($any($event.target).value); limit.set(20)"
+                      />
+                    </label>
+                  }
+                  <ul class="rl-prizes">
+                    @for (item of shownItems(); track item.id) {
+                      <li class="rl-prize">
+                        <span class="rl-prize__swatch" [style.background]="itemColor(item)" aria-hidden="true"></span>
+                        <div class="rl-prize__body">
+                          <span class="rl-prize__title">
+                            <strong>{{ item.label }}</strong>
+                            @if (item.multiplier > 1) {
+                              <span class="lf-chip lf-chip--xs">{{ t('slotsChip', { count: item.multiplier }) }}</span>
+                            }
+                            @if (item.weight > 1) {
+                              <span class="lf-chip lf-chip--xs lf-chip--gold">{{ t('weightChip', { count: item.weight }) }}</span>
+                            }
+                            @if (item.action) {
+                              <span class="lf-chip lf-chip--xs lf-chip--accent"><app-lf-icon name="zap" [size]="11"></app-lf-icon> {{ t('hasAction') }}</span>
+                            }
+                          </span>
+                          <span class="rl-odds">
+                            <span class="rl-odds__bar" aria-hidden="true"><span [style.width.%]="oddsWidth(item)" [style.background]="itemColor(item)"></span></span>
+                            <span class="rl-odds__text">{{ t('chance', { pct: odds(item) }) }}</span>
+                          </span>
+                        </div>
+                        <div class="rl-prize__actions">
+                          <button
+                            type="button"
+                            class="lf-btn lf-btn--compact lf-btn--ghost"
+                            (click)="openPrize(item)"
+                            [disabled]="busy()"
+                            [attr.aria-label]="t('editAria', { name: item.label })"
+                          >
+                            {{ t('edit') }}
+                          </button>
+                          <button
+                            type="button"
+                            class="lf-icon-btn lf-icon-btn--danger"
+                            (click)="removing.set(item)"
+                            [disabled]="busy()"
+                            [attr.aria-label]="t('removeAria', { name: item.label })"
+                          >
+                            <app-lf-icon name="trash" [size]="16"></app-lf-icon>
+                          </button>
+                        </div>
+                      </li>
+                    } @empty {
+                      <li class="rl-prizes__empty">
+                        <strong>{{ items().length ? t('noMatches') : t('noItems') }}</strong>
+                        @if (!items().length) {
+                          <span>{{ t('noItemsHint') }}</span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                  @if (matchingItems().length > shownItems().length) {
+                    <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost rl-more" (click)="limit.set(limit() + 20)">
+                      {{ t('showMore', { count: matchingItems().length - shownItems().length }) }}
+                    </button>
+                  }
+                  <details class="lf-more">
+                    <summary>{{ t('oddsTitle') }}</summary>
+                    <div class="lf-more__body">
+                      <p class="lf-note">{{ t('weightsHelp') }}</p>
+                    </div>
+                  </details>
+                </section>
+
+                <!-- Look -->
+                <section class="lf-tile lf-card lf-o3" aria-labelledby="rl-look-title">
+                  <div class="lf-card__head">
+                    <h2 class="lf-h2" id="rl-look-title">{{ t('lookTitle') }}</h2>
+                    <p class="lf-note">{{ t('lookHint') }}</p>
+                  </div>
+                  <fieldset class="rl-fieldset" [disabled]="busy() || spinning()">
+                    <legend class="lf-field__label">{{ t('designLabel') }}</legend>
+                    <div class="rl-design-grid">
+                      @for (design of designs; track design) {
+                        <label
+                          class="rl-design"
+                          [class.rl-design--on]="draft().design === design"
+                          [class.rl-design--blocked]="designBlocked(design)"
+                        >
+                          <input
+                            type="radio"
+                            name="rl-design"
+                            [value]="design"
+                            [checked]="draft().design === design"
+                            [disabled]="designBlocked(design)"
+                            (change)="setConfig('design', design)"
+                          />
+                          <span class="rl-thumb" [attr.data-thumb]="design" aria-hidden="true"
+                            ><i [style.--c1]="paletteAt(0)" [style.--c2]="paletteAt(1)" [style.--c3]="paletteAt(2)"></i
+                          ></span>
+                          <span class="rl-design__body">
+                            <span class="rl-design__name">
+                              {{ t('design.' + design + '.name') }}
+                              @if (design === 'elimination') {
+                                <span class="lf-chip lf-chip--xs lf-chip--accent">{{ t('newChip') }}</span>
+                              }
+                            </span>
+                            <span class="rl-design__copy">{{ t('design.' + design + '.copy') }}</span>
+                            <span class="rl-design__cap">
+                              {{
+                                designBlocked(design)
+                                  ? t('tooMany', { max: designCapacity(design) })
+                                  : designCapacity(design) >= 10000
+                                    ? t('noLimit')
+                                    : t('upTo', { max: designCapacity(design) })
+                              }}
+                            </span>
+                          </span>
+                        </label>
+                      }
+                    </div>
+                    @if (draft().design === 'cards') {
+                      <div class="lf-field">
+                        <span class="lf-field__label" id="rl-size-label">{{ t('cardSize') }}</span>
+                        <div class="lf-seg" role="radiogroup" aria-labelledby="rl-size-label">
+                          @for (size of cardSizes; track size) {
+                            <label class="lf-seg__opt">
+                              <input
+                                type="radio"
+                                name="rl-size"
+                                [checked]="draft().cardSize === size"
+                                [disabled]="sizeBlocked(size)"
+                                (change)="setConfig('cardSize', size)"
+                              />
+                              <span>{{ t('size.' + size) }}</span>
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+                    @if (overCapacity()) {
+                      <p class="lf-field-error" role="alert">{{ t('overCapacity', { used: copies(), max: draftCapacity() }) }}</p>
+                    }
+                    <div class="lf-field">
+                      <span class="rl-range-head">
+                        <label class="lf-field__label" for="rl-duration">{{ t('duration') }}</label>
+                        <span class="rl-seconds">
+                          <input
+                            type="number"
+                            min="1"
+                            max="120"
+                            step="1"
+                            inputmode="numeric"
+                            [value]="draft().durationSeconds"
+                            (change)="setDuration($any($event.target).value)"
+                            [attr.aria-label]="t('durationExact')"
+                          />
+                          <span aria-hidden="true">s</span>
+                        </span>
+                      </span>
+                      <input
+                        id="rl-duration"
+                        class="lf-range"
+                        type="range"
+                        min="1"
+                        max="60"
+                        step="1"
+                        [value]="Math.min(draft().durationSeconds, 60)"
+                        [style.--pct]="(Math.min(draft().durationSeconds, 60) - 1) / 59"
+                        (input)="setDuration($any($event.target).value)"
+                        [attr.aria-valuetext]="t('seconds', { count: draft().durationSeconds })"
+                        aria-describedby="rl-duration-hint"
+                      />
+                      <span class="lf-field__hint" id="rl-duration-hint">{{ t('durationHint') }}</span>
+                    </div>
+                    <div class="lf-field">
+                      <span class="lf-field__label" id="rl-palette-label">{{ t('colors') }}</span>
+                      <div class="rl-presets" role="group" aria-labelledby="rl-palette-label">
+                        @for (p of palettes; track p.id) {
+                          <button
+                            type="button"
+                            class="rl-preset"
+                            [attr.aria-pressed]="samePalette(p.colors)"
+                            (click)="setConfig('colors', [...p.colors])"
+                          >
+                            <span class="rl-preset__dots" aria-hidden="true">
+                              @for (c of p.colors; track $index) {
+                                <i [style.background]="c"></i>
+                              }
+                            </span>
+                            {{ t('palette.' + p.id) }}
+                          </button>
+                        }
+                      </div>
+                      <div class="rl-swatches">
+                        @for (c of draft().colors; track $index) {
+                          <span class="rl-swatch">
+                            <input
+                              type="color"
+                              [value]="c"
+                              (input)="setColor($index, $any($event.target).value)"
+                              [attr.aria-label]="t('colorAria', { n: $index + 1 })"
+                            />
+                            @if (draft().colors.length > 1) {
+                              <button
+                                type="button"
+                                class="rl-swatch__remove"
+                                (click)="removeColor($index)"
+                                [attr.aria-label]="t('removeColor', { n: $index + 1 })"
+                              >
+                                <app-lf-icon name="close" [size]="12"></app-lf-icon>
+                              </button>
+                            }
+                          </span>
+                        }
+                        @if (draft().colors.length < 12) {
+                          <button type="button" class="rl-swatch-add" (click)="addColor()" [attr.aria-label]="t('addColor')">
+                            <app-lf-icon name="plus" [size]="16"></app-lf-icon>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  </fieldset>
+                </section>
+
+                <!-- Behaviour -->
+                <section class="lf-tile lf-card lf-o4" aria-labelledby="rl-after-title">
+                  <div class="lf-card__head">
+                    <h2 class="lf-h2" id="rl-after-title">{{ t('afterTitle') }}</h2>
+                    <p class="lf-note">{{ t('afterHint') }}</p>
+                  </div>
+                  <fieldset class="rl-fieldset" [disabled]="busy() || spinning()">
+                    <legend class="lf-field__label">{{ t('winnerAction') }}</legend>
+                    <div class="lf-choice rl-choice-3">
+                      @for (option of winnerActions; track option) {
+                        <label class="lf-choice__opt" [class.lf-choice__opt--on]="draft().winnerAction === option">
+                          <input
+                            type="radio"
+                            name="rl-winner"
+                            [checked]="draft().winnerAction === option"
+                            (change)="setConfig('winnerAction', option)"
+                          />
+                          <span class="lf-choice__body">
+                            <span class="lf-choice__name">{{ t('winner.' + option + '.name') }}</span>
+                            <span class="lf-choice__copy">{{ t('winner.' + option + '.copy') }}</span>
+                          </span>
+                        </label>
+                      }
+                    </div>
+                    <div class="lf-toggles">
+                      <div class="lf-toggle-row">
+                        <span class="lf-toggle-row__copy">
+                          <span class="lf-toggle-row__title">{{ t('showOnStart') }}</span>
+                          <span class="lf-toggle-row__hint">{{ t('showOnStartHint') }}</span>
+                        </span>
+                        <label class="lf-switch">
+                          <input
+                            type="checkbox"
+                            [checked]="draft().showOnStart"
+                            (change)="setConfig('showOnStart', $any($event.target).checked)"
+                            [attr.aria-label]="t('showOnStart')"
+                          />
+                          <span class="lf-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </div>
+                      <div class="lf-toggle-row">
+                        <span class="lf-toggle-row__copy">
+                          <span class="lf-toggle-row__title">{{ t('autoHide') }}</span>
+                          <span class="lf-toggle-row__hint">{{ t('autoHideHint') }}</span>
+                        </span>
+                        <label class="lf-switch">
+                          <input
+                            type="checkbox"
+                            [checked]="draft().hideAfterSeconds !== null"
+                            (change)="setAutoHide($any($event.target).checked)"
+                            [attr.aria-label]="t('autoHide')"
+                          />
+                          <span class="lf-switch__track" aria-hidden="true"></span>
+                        </label>
+                      </div>
+                      @if (draft().hideAfterSeconds !== null) {
+                        <label class="lf-num rl-hide-after">
+                          <span>{{ t('hideAfter') }}</span>
+                          <span class="lf-num__wrap">
+                            <input
+                              type="number"
+                              min="1"
+                              max="3600"
+                              step="1"
+                              inputmode="numeric"
+                              [value]="draft().hideAfterSeconds"
+                              (change)="setHideSeconds($any($event.target).value)"
+                            />
+                            <span aria-hidden="true">s</span>
+                          </span>
+                        </label>
+                      }
+                    </div>
+                    <details class="lf-more">
+                      <summary>{{ t('moreOptions') }}</summary>
+                      <div class="lf-more__body">
+                        <div class="lf-toggle-row rl-plain-row">
+                          <span class="lf-toggle-row__copy">
+                            <span class="lf-toggle-row__title">{{ t('shuffleBefore') }}</span>
+                            <span class="lf-toggle-row__hint">{{ t('shuffleBeforeHint') }}</span>
+                          </span>
+                          <label class="lf-switch">
+                            <input
+                              type="checkbox"
+                              [checked]="draft().shuffleBeforeDraw"
+                              (change)="setConfig('shuffleBeforeDraw', $any($event.target).checked)"
+                              [attr.aria-label]="t('shuffleBefore')"
+                            />
+                            <span class="lf-switch__track" aria-hidden="true"></span>
+                          </label>
+                        </div>
+                        <div class="lf-field">
+                          <span class="lf-field__label" id="rl-insert-label">{{ t('insertion') }}</span>
+                          <div class="lf-seg" role="radiogroup" aria-labelledby="rl-insert-label">
+                            @for (opt of ['append', 'random']; track opt) {
+                              <label class="lf-seg__opt">
+                                <input type="radio" name="rl-insert" [checked]="draft().insertion === opt" (change)="setConfig('insertion', $any(opt))" />
+                                <span>{{ t(opt) }}</span>
+                              </label>
+                            }
+                          </div>
+                        </div>
+                        <div class="lf-field">
+                          <span class="lf-field__label" id="rl-dup-label">{{ t('duplicates') }}</span>
+                          <div class="lf-seg" role="radiogroup" aria-labelledby="rl-dup-label">
+                            @for (opt of ['separate', 'increase']; track opt) {
+                              <label class="lf-seg__opt">
+                                <input type="radio" name="rl-dup" [checked]="draft().duplicate === opt" (change)="setConfig('duplicate', $any(opt))" />
+                                <span>{{ t(opt) }}</span>
+                              </label>
+                            }
+                          </div>
+                          <span class="lf-field__hint">{{ t('duplicatesHint') }}</span>
+                        </div>
+                        <div class="lf-grid-2" [formGroup]="config">
+                          <label class="lf-field">
+                            <span class="lf-field__label">{{ t('name') }}</span>
+                            <input formControlName="name" maxlength="120" required [attr.aria-invalid]="config.controls.name.invalid" />
+                          </label>
+                          <label class="lf-field">
+                            <span class="lf-field__label">{{ t('alias') }}</span>
+                            <input formControlName="alias" maxlength="40" required autocapitalize="off" spellcheck="false" aria-describedby="rl-alias-hint" [attr.aria-invalid]="config.controls.alias.invalid" />
+                            <span class="lf-field__hint" id="rl-alias-hint">{{ t('aliasHelp') }}</span>
+                          </label>
+                        </div>
+                        <button type="button" class="lf-btn lf-btn--compact rl-delete" (click)="deleteOpen.set(true)" [disabled]="busy() || spinning()">
+                          <app-lf-icon name="trash" [size]="14"></app-lf-icon> {{ t('deleteRoulette') }}
+                        </button>
+                      </div>
+                    </details>
+                  </fieldset>
+                </section>
+              </div>
+
+              <div class="lf-col">
+                <!-- Recent winners -->
+                <section class="lf-tile lf-card lf-o5" aria-labelledby="rl-history-title">
+                  <h2 class="lf-h2" id="rl-history-title">{{ t('history') }}</h2>
+                  <ol class="rl-history">
+                    @for (draw of history(); track draw.id; let first = $first) {
+                      <li class="rl-history__row" [class.rl-history__row--latest]="first">
+                        <app-lf-icon [name]="first ? 'star' : 'check'" [size]="14"></app-lf-icon>
+                        <span class="rl-history__body">
+                          <strong>{{ draw.label }}</strong>
+                          <span class="lf-note">
+                            {{ draw.ago }}
+                            @if (draw.roulette) {
+                              · {{ draw.roulette }}
+                            }
+                            @if (draw.action) {
+                              · {{ draw.action }}
+                            }
+                          </span>
+                        </span>
+                      </li>
+                    } @empty {
+                      <li class="lf-empty-inline">{{ t('noHistory') }}</li>
+                    }
+                  </ol>
+                </section>
+
+                <!-- Commands -->
+                <section class="lf-tile lf-card lf-o6" aria-labelledby="rl-cmd-title">
+                  <div class="lf-card__head">
+                    <h2 class="lf-h2" id="rl-cmd-title">{{ t('automation') }}</h2>
+                    <p class="lf-note">{{ t('astHelp') }}</p>
+                  </div>
+                  <ul class="rl-cmds">
+                    @for (name of commands; track name) {
+                      <li class="rl-cmd">
+                        <span class="rl-cmd__body">
+                          <span class="rl-cmd__label">{{ t('cmd.' + name) }}</span>
+                          <code>{{ ast(name) }}</code>
+                        </span>
+                        <button
+                          type="button"
+                          class="lf-icon-btn"
+                          (click)="copy(ast(name))"
+                          [attr.aria-label]="t('copyAria', { name: t('cmd.' + name) })"
+                        >
+                          <app-lf-icon name="copy" [size]="15"></app-lf-icon>
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                  <p class="lf-note">{{ t('astIdsHelp') }}</p>
+                </section>
+              </div>
+            </div>
+
+            @if (dirty()) {
+              <div class="lf-save-bar" role="region" [attr.aria-label]="t('saveRegion')">
+                <span class="lf-save-bar__status" role="status">{{ t('unsaved') }}</span>
+                <button type="button" class="lf-btn lf-btn--ghost" [disabled]="busy()" (click)="loadConfig()">{{ t('discard') }}</button>
+                <button
+                  type="button"
+                  class="lf-btn lf-btn--primary"
+                  [disabled]="busy() || spinning() || config.invalid || overCapacity()"
+                  (click)="saveConfig()"
+                >
+                  {{ t('saveSettings') }}
+                </button>
+              </div>
+            }
+          }
+        }
+      }
     }
-  }
+  </main>
 </div>
+
+<!-- Prize editor -->
+@if (prizeDialog(); as dialog) {
+  <div class="lf-modal-overlay" (click)="prizeDialog.set(null)">
+    <form
+      class="lf-modal lf-modal--form"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rl-prize-title"
+      [formGroup]="itemForm"
+      (ngSubmit)="saveItem()"
+      (click)="$event.stopPropagation()"
+      novalidate
+    >
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="rl-prize-title">
+          {{ dialog.item ? t('editTitle', { name: dialog.item.label }) : t('addTitle') }}
+        </h2>
+        <button type="button" class="lf-modal__close" (click)="prizeDialog.set(null)" [attr.aria-label]="t('cancel')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body">
+        <fieldset class="lf-step">
+          <legend class="lf-step__title"><span class="lf-step__num">1</span>{{ t('stepPrize') }}</legend>
+          <div class="lf-field">
+            <label class="lf-field__label" for="rl-prize-label">{{ t('label') }}</label>
+            <input
+              id="rl-prize-label"
+              formControlName="label"
+              maxlength="120"
+              required
+              [placeholder]="t('labelPlaceholder')"
+              [attr.aria-invalid]="prizeSubmitted() && itemForm.controls.label.invalid"
+              aria-describedby="rl-label-error"
+            />
+            @if (prizeSubmitted() && itemForm.controls.label.invalid) {
+              <span class="lf-field-error" id="rl-label-error">{{ t('labelRequired') }}</span>
+            }
+          </div>
+        </fieldset>
+        <fieldset class="lf-step">
+          <legend class="lf-step__title"><span class="lf-step__num">2</span>{{ t('stepChance') }}</legend>
+          <div class="lf-grid-2">
+            <div class="lf-field">
+              <label class="lf-field__label" for="rl-mult">{{ t('multiplier') }}</label>
+              <span class="rl-stepper">
+                <button type="button" class="lf-icon-btn" (click)="step('multiplier', -1)" [attr.aria-label]="t('fewer', { what: t('multiplier') })">−</button>
+                <input id="rl-mult" type="number" formControlName="multiplier" min="1" max="10000" step="1" inputmode="numeric" required aria-describedby="rl-mult-hint" />
+                <button type="button" class="lf-icon-btn" (click)="step('multiplier', 1)" [attr.aria-label]="t('more', { what: t('multiplier') })">+</button>
+              </span>
+              <span class="lf-field__hint" id="rl-mult-hint">{{ t('multiplierHint') }}</span>
+            </div>
+            <div class="lf-field">
+              <label class="lf-field__label" for="rl-weight">{{ t('weight') }}</label>
+              <span class="rl-stepper">
+                <button type="button" class="lf-icon-btn" (click)="step('weight', -1)" [attr.aria-label]="t('fewer', { what: t('weight') })">−</button>
+                <input id="rl-weight" type="number" formControlName="weight" min="1" step="1" inputmode="numeric" required aria-describedby="rl-weight-hint" />
+                <button type="button" class="lf-icon-btn" (click)="step('weight', 1)" [attr.aria-label]="t('more', { what: t('weight') })">+</button>
+              </span>
+              <span class="lf-field__hint" id="rl-weight-hint">{{ t('weightHint') }}</span>
+            </div>
+          </div>
+          <p class="rl-preview" [class.rl-preview--warn]="prizePreview().over" role="status">
+            @if (prizePreview().over) {
+              {{ t('previewOver', { used: prizePreview().slots, max: capacity() }) }}
+            } @else {
+              {{ t('previewChance', { pct: prizePreview().chance }) }}
+            }
+          </p>
+          @if (prizeSubmitted() && (itemForm.controls.multiplier.invalid || itemForm.controls.weight.invalid)) {
+            <p class="lf-field-error">{{ t('wholeNumbers') }}</p>
+          }
+        </fieldset>
+        <details class="lf-more ph-no-capture" [open]="!!dialog.item?.action">
+          <summary>{{ t('itemAction') }}</summary>
+          <div class="lf-more__body">
+            <label class="lf-field">
+              <span class="lf-field__label">{{ t('itemActionLabel') }}</span>
+              <textarea
+                formControlName="action"
+                rows="3"
+                maxlength="8000"
+                spellcheck="false"
+                aria-describedby="rl-action-help"
+                [placeholder]="t('actionExample')"
+              ></textarea>
+              <span class="lf-field__hint" id="rl-action-help">{{ t('actionHelp') }}</span>
+            </label>
+            @if (dialog.item) {
+              <div class="rl-id">
+                <span class="lf-note">{{ t('itemId') }} <code>{{ dialog.item.id }}</code></span>
+                <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="copy(dialog.item.id)">
+                  <app-lf-icon name="copy" [size]="14"></app-lf-icon> {{ t('copyId') }}
+                </button>
+              </div>
+            }
+          </div>
+        </details>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="prizeDialog.set(null)">{{ t('cancel') }}</button>
+        <button type="submit" class="lf-btn lf-btn--primary" [disabled]="busy()">
+          {{ dialog.item ? t('saveItem') : t('addItem') }}
+        </button>
+      </footer>
+    </form>
+  </div>
+}
+
+<!-- Create roulette -->
+@if (createOpen()) {
+  <div class="lf-modal-overlay" (click)="createOpen.set(false)">
+    <form
+      class="lf-modal lf-modal--form"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rl-create-title"
+      [formGroup]="createForm"
+      (ngSubmit)="create()"
+      (click)="$event.stopPropagation()"
+      novalidate
+    >
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="rl-create-title">{{ t('new') }}</h2>
+        <button type="button" class="lf-modal__close" (click)="createOpen.set(false)" [attr.aria-label]="t('cancel')">
+          <app-lf-icon name="close" [size]="18"></app-lf-icon>
+        </button>
+      </header>
+      <div class="lf-modal__body">
+        <div class="lf-field">
+          <label class="lf-field__label" for="rl-create-name">{{ t('name') }}</label>
+          <input
+            id="rl-create-name"
+            formControlName="name"
+            maxlength="120"
+            required
+            [placeholder]="t('namePlaceholder')"
+            (input)="onCreateName()"
+            aria-describedby="rl-create-name-error"
+            [attr.aria-invalid]="createSubmitted() && createForm.controls.name.invalid"
+          />
+          @if (createSubmitted() && createForm.controls.name.invalid) {
+            <span class="lf-field-error" id="rl-create-name-error">{{ t('nameRequired') }}</span>
+          }
+        </div>
+        <div class="lf-field">
+          <label class="lf-field__label" for="rl-create-alias">{{ t('alias') }}</label>
+          <input
+            id="rl-create-alias"
+            formControlName="alias"
+            maxlength="40"
+            required
+            autocapitalize="off"
+            spellcheck="false"
+            (input)="onCreateAlias()"
+            aria-describedby="rl-create-alias-hint"
+            [attr.aria-invalid]="createSubmitted() && createForm.controls.alias.invalid"
+          />
+          <span class="lf-field__hint" id="rl-create-alias-hint">{{ t('aliasHelp') }}</span>
+          @if (createSubmitted() && createForm.controls.alias.invalid) {
+            <span class="lf-field-error">{{ t('aliasInvalid') }}</span>
+          }
+        </div>
+        <fieldset class="rl-fieldset">
+          <legend class="lf-field__label">{{ t('designLabel') }}</legend>
+          <div class="rl-design-grid rl-design-grid--compact">
+            @for (design of designs; track design) {
+              <label class="rl-design" [class.rl-design--on]="createForm.controls.design.value === design">
+                <input type="radio" formControlName="design" [value]="design" />
+                <span class="rl-thumb" [attr.data-thumb]="design" aria-hidden="true"><i></i></span>
+                <span class="rl-design__body">
+                  <span class="rl-design__name">{{ t('design.' + design + '.name') }}</span>
+                  <span class="rl-design__copy">{{ t('design.' + design + '.copy') }}</span>
+                </span>
+              </label>
+            }
+          </div>
+        </fieldset>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="createOpen.set(false)">{{ t('cancel') }}</button>
+        <button type="submit" class="lf-btn lf-btn--primary" [disabled]="busy()">{{ t('create') }}</button>
+      </footer>
+    </form>
+  </div>
+}
+
+<!-- Confirmations -->
+@if (removing(); as item) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="removing.set(null)">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="rl-rm-title" aria-describedby="rl-rm-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head"><h2 class="lf-modal__title" id="rl-rm-title">{{ t('removeTitle', { name: item.label }) }}</h2></header>
+      <div class="lf-modal__body">
+        <p class="lf-copy" id="rl-rm-desc">
+          {{ item.action ? t('removeCopyAction', { count: item.multiplier }) : t('removeCopy', { count: item.multiplier }) }}
+        </p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="removing.set(null)">{{ t('cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--danger" (click)="confirmRemoveItem()" [disabled]="busy()">{{ t('remove') }}</button>
+      </footer>
+    </section>
+  </div>
+}
+@if (deleteOpen() && selected(); as r) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="deleteOpen.set(false)">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="rl-del-title" aria-describedby="rl-del-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head"><h2 class="lf-modal__title" id="rl-del-title">{{ t('deleteTitle', { name: r.name }) }}</h2></header>
+      <div class="lf-modal__body">
+        <p class="lf-copy" id="rl-del-desc">
+          {{ state()?.activeId === r.id ? t('deleteConfirmActive') : t('deleteConfirm') }}
+        </p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="deleteOpen.set(false)">{{ t('cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--danger" (click)="remove()" [disabled]="busy() || spinning()">{{ t('confirmDelete') }}</button>
+      </footer>
+    </section>
+  </div>
+}
+@if (rotateOpen()) {
+  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="rotateOpen.set(false)">
+    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="rl-rot-title" aria-describedby="rl-rot-desc" (click)="$event.stopPropagation()">
+      <header class="lf-modal__head">
+        <h2 class="lf-modal__title" id="rl-rot-title">{{ overlayUrl() ? t('rotateTitle') : t('generateTitle') }}</h2>
+      </header>
+      <div class="lf-modal__body">
+        <p class="lf-copy" id="rl-rot-desc">{{ overlayUrl() ? t('rotateWarning') : t('generateWarning') }}</p>
+      </div>
+      <footer class="lf-modal__footer">
+        <button type="button" class="lf-btn" (click)="rotateOpen.set(false)">{{ t('cancel') }}</button>
+        <button type="button" class="lf-btn lf-btn--primary" (click)="token()" [disabled]="busy()">
+          {{ overlayUrl() ? t('confirmRotate') : t('confirmGenerate') }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}

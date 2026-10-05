@@ -8,6 +8,7 @@ import {
   ChevronsUpDown,
   Copy,
   Eye,
+  EyeOff,
   FlaskConical,
   Gem,
   Image as ImageIcon,
@@ -22,6 +23,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Shuffle,
   Search,
   Settings,
   Star,
@@ -68,7 +70,10 @@ export type LfIconName =
   | 'trash'
   | 'copy'
   | 'bits'
-  | 'monitor';
+  | 'monitor'
+  | 'play'
+  | 'eye-off'
+  | 'shuffle';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -102,7 +107,10 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   trash: Trash2,
   copy: Copy,
   bits: Gem,
-  monitor: MonitorPlay
+  monitor: MonitorPlay,
+  play: Play,
+  'eye-off': EyeOff,
+  shuffle: Shuffle
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */
