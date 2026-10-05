@@ -166,14 +166,14 @@
                           <div class="alert-render">
                             @for (layer of alertLayout(widget); track layer.id) {
                               @if (layer.visible) { <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" />
+                                <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text, widget)" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" />
                               </div> }
                             }
                           </div>
                           <span class="alert-event-label">{{ t(eventFor(widget) + 'Name') }}</span>
                         }
                       }
-                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" [text]="renderText(widget.text)" /> }
+                      @case ('text') { <app-overlay-layer class="text-preview" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" [text]="renderText(widget.text, widget)" /> }
                       @case ('image') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('video') { <app-overlay-layer [owner]="channel" [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }
                       @case ('shape') { <app-overlay-layer [layer]="widget" [playbackKey]="objectPlaybackKey(widget)" [duration]="objectPlaybackDuration(widget)" [seekTime]="timeline()?.time ?? null" /> }

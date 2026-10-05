@@ -36,7 +36,7 @@ import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayS
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
-interface MockEvent { preparing?: boolean; id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
+interface MockEvent { texts?: Record<string, string>; preparing?: boolean; id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
@@ -48,7 +48,7 @@ interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>;
 export class OverlayEditorComponent {
   private readonly api = inject(OverlayApi);
   private readonly injector = inject(Injector);
-  private readonly imagePreparations = new Map<string, AbortController>();
+  private readonly previewPreparations = new Map<string, AbortController>();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
   readonly owner = computed(() => this.auth.session()?.twitchUser.login.toLowerCase() === this.streamer.toLowerCase());
@@ -60,6 +60,7 @@ export class OverlayEditorComponent {
   private recoveryRequestId: string | null = null;
   readonly astError = signal('');
   readonly rendered = signal<Record<string, string>>({});
+  private readonly playbackTexts = signal<Record<string, string> | null>(null);
   readonly confirmRotate = signal(false);
   readonly liveTestKind = signal<EventKind>('tts');
   readonly liveTesting = signal(false);
@@ -474,7 +475,11 @@ export class OverlayEditorComponent {
     this.resetSimulation();
     this.updateLayout(layout => ({...layout, duration: Math.max(1,Math.min(120,value))}));
   }
-  renderText(text='$(user)'): string { return this.rendered()[text] ?? text; }
+  renderText(text='$(user)', widget?: OverlayWidget): string {
+    const event = widget && [this.active(), ...this.parallel()].find(e => e && !e.preparing && widget.events?.includes(e.kind as AlertEvent));
+    const prepared = widget && this.designDraft() && (this.previewDesign() || this.timeline()) ? this.playbackTexts() : event?.texts;
+    return prepared?.[text] ?? this.rendered()[text] ?? text;
+  }
   alertLayout(widget: OverlayWidget): OverlayWidget[] { return this.playingLayout(widget)?.widgets ?? []; }
   eventFor(widget: OverlayWidget): AlertEvent {
     const playing=[this.active(),...this.parallel()].find(e=>e&&widget.events?.includes(e.kind as AlertEvent));
@@ -525,10 +530,10 @@ export class OverlayEditorComponent {
   }
   private startEvent(event: MockEvent): void {
     if (!event.channel) {
-      void this.prepareImages('event-' + event.id).then(ready => {
+      void this.prepareAlert('event-' + event.id, event.kind as AlertEvent).then(texts => {
         if (![this.active(), ...this.parallel()].some(e => e?.id === event.id)) return;
-        if (!ready) { this.finishEvent(event.id); return; }
-        const patch = (e: MockEvent) => e.id === event.id ? { ...e, preparing: false } : e;
+        if (!texts) { this.finishEvent(event.id); return; }
+        const patch = (e: MockEvent) => e.id === event.id ? { ...e, preparing: false, texts } : e;
         this.active.update(e => e ? patch(e) : e); this.parallel.update(all => all.map(patch));
         const durations = this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => this.playingLayout(w, event.kind as AlertEvent)?.duration ?? 5);
         this.later(() => this.finishEvent(event.id), Math.max(1, ...durations) * 1000);
@@ -589,7 +594,7 @@ export class OverlayEditorComponent {
     if (!job.pending.size) this.finishEvent(id);
   }
   private finishEvent(id: number): void {
-    this.imagePreparations.get('event-' + id)?.abort();
+    this.previewPreparations.get('event-' + id)?.abort();
     const job = this.jobs.get(id);
     this.jobs.delete(id);
     if (job?.timer) { clearTimeout(job.timer); this.timers.delete(job.timer); }
@@ -609,7 +614,7 @@ export class OverlayEditorComponent {
     this.notice.set('mediaReleased'); this.finishEvent(active.id);
   }
   seekTimeline(time: number): void {
-    this.imagePreparations.get('timeline')?.abort();
+    this.previewPreparations.get('timeline')?.abort();
     if (!this.designDraft()) return;
     if (!this.timeline()) { this.resetSimulation(); this.motionReplay.update(n => n + 1); }
     if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame);
@@ -620,7 +625,9 @@ export class OverlayEditorComponent {
     if (current?.playing) { this.seekTimeline(current.time); return; }
     const duration = this.editingLayout()?.duration ?? 5;
     this.seekTimeline(current && current.time < duration ? current.time : 0);
-    if (!await this.prepareImages('timeline') || !this.timeline()) return;
+    const texts = await this.prepareAlert('timeline');
+    if (!texts || !this.timeline()) return;
+    this.playbackTexts.set(texts);
     const start = this.timeline()!.time, began = performance.now(), seek = this.timelineSeek;
     this.timeline.set({ time: start, playing: true, seek });
     const tick = () => {
@@ -631,7 +638,7 @@ export class OverlayEditorComponent {
     this.timelineFrame = requestAnimationFrame(tick);
   }
   pauseHiddenTimeline(): void { const clock = this.timeline(); if (document.hidden && clock?.playing) this.seekTimeline(clock.time); }
-  closeTimeline(): void { this.imagePreparations.get('timeline')?.abort(); if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
+  closeTimeline(): void { this.previewPreparations.get('timeline')?.abort(); if (this.timelineFrame) cancelAnimationFrame(this.timelineFrame); this.timeline.set(null); }
   editTimeline(change: TimelineEdit): void {
     this.resetSimulation();
     this.edit(() => this.updateLayout(layout => change.id === '$sound'
@@ -642,15 +649,17 @@ export class OverlayEditorComponent {
     this.closeTimeline(); this.revealStage();
     if (this.designPreviewTimer) { clearTimeout(this.designPreviewTimer); this.timers.delete(this.designPreviewTimer); }
     this.previewDesign.set(false);
-    if (!await this.prepareImages('design')) return;
+    const texts = await this.prepareAlert('design');
+    if (!texts) return;
+    this.playbackTexts.set(texts);
     this.motionReplay.update(value => value + 1); this.previewDesign.set(true);
     this.designPreviewTimer = this.later(() => this.previewDesign.set(false), (this.editingLayout()?.duration ?? 5) * 1000);
   }
-  private resetSimulation(): void { this.imagePreparations.forEach(controller => controller.abort()); this.imagePreparations.clear(); this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
-  private async prepareImages(key: string): Promise<boolean> {
-    this.imagePreparations.get(key)?.abort();
+  private resetSimulation(): void { this.playbackTexts.set(null); this.previewPreparations.forEach(controller => controller.abort()); this.previewPreparations.clear(); this.closeTimeline(); this.previewDesign.set(false); this.jobs.forEach(job => job.cancel?.()); this.jobs.clear(); this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.active.set(null);this.parallel.set([]);this.queue.set([]); }
+  private async prepareAlert(key: string, kind = this.designEvent()): Promise<Record<string, string> | null> {
+    this.previewPreparations.get(key)?.abort();
     const controller = new AbortController();
-    this.imagePreparations.set(key, controller);
+    this.previewPreparations.set(key, controller);
     this.notice.set('preparingTest');
     try {
       // The requested event/variant must be mounted before inspecting its images.
@@ -659,16 +668,41 @@ export class OverlayEditorComponent {
         const ref = afterNextRender(() => { controller.signal.removeEventListener('abort', abort); resolve(true); }, { injector: this.injector });
         controller.signal.addEventListener('abort', abort, { once: true });
       });
-      if (!rendered || controller.signal.aborted || this.disposed) return false;
+      if (!rendered || controller.signal.aborted || this.disposed) return null;
       const stage = this.host.querySelector<HTMLElement>('.stage');
-      const ready = !!stage && await waitForOverlayImages(stage, controller.signal);
-      if (controller.signal.aborted || this.disposed) return false;
+      const [ready, texts] = await Promise.all([
+        stage ? waitForOverlayImages(stage, controller.signal) : Promise.resolve(false),
+        this.resolvePlaybackTexts(kind)
+      ]);
+      if (controller.signal.aborted || this.disposed) return null;
       if (!ready) this.notice.set('testPlaybackError');
-      else if (this.notice() === 'preparingTest') this.notice.set('');
-      return ready;
+      else { this.astError.set(''); if (this.notice() === 'preparingTest') this.notice.set(''); }
+      return ready ? texts : null;
+    } catch (error) {
+      if (!controller.signal.aborted && !this.disposed) {
+        this.astError.set((error as { error?: { message?: string } })?.error?.message || this.t('astFailed'));
+        if (this.notice() === 'preparingTest') this.notice.set('');
+      }
+      controller.abort();
+      return null;
     } finally {
-      if (this.imagePreparations.get(key) === controller) this.imagePreparations.delete(key);
+      if (this.previewPreparations.get(key) === controller) this.previewPreparations.delete(key);
     }
+  }
+  private async resolvePlaybackTexts(kind: AlertEvent): Promise<Record<string, string>> {
+    const widgets = this.designDraft() ? this.widgets() : this.widgets()
+      .filter(w => w.visible && w.kind === 'alert' && w.events?.includes(kind))
+      .flatMap(w => this.playingLayout(w, kind)?.widgets ?? []);
+    const texts = [...new Set(widgets.filter(w => w.visible && w.kind === 'text').map(w => w.text ?? ''))];
+    const user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
+    // The API accepts at most 100 templates per request; never leave later layers unresolved.
+    const batches = Array.from({ length: Math.ceil(texts.length / 100) }, (_, i) => texts.slice(i * 100, (i + 1) * 100));
+    const rendered = await Promise.all(batches.map(async batch => {
+      const values = await this.api.render(this.channel, batch, kind, user, amount, tier);
+      if (!Array.isArray(values) || values.length !== batch.length || values.some(value => typeof value !== 'string')) throw new Error('Invalid AST preview response');
+      return batch.map((text, i) => [text, values[i]] as const);
+    }));
+    return Object.fromEntries(rendered.flat());
   }
   async publish(): Promise<void> {
     if (!(this.designDraft() ? await this.saveDesign() : await this.persist())) return;
