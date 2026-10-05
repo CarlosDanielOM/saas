@@ -956,3 +956,5 @@ app-overlay-queue { order: 3; }
 
 .widget[data-kind="shape"] { background:transparent; box-shadow:none }
 .widget:is([data-kind="shape"],[data-kind="text"],[data-kind="image"],[data-kind="video"],[data-kind="animation"]) .widget__content { padding:0; overflow:visible }
+
+.random-bounds { position: absolute; border: 1px dashed #c4b5fd; background: rgba(124, 58, 237, .06); pointer-events: none; }

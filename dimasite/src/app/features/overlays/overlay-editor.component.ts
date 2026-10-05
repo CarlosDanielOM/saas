@@ -15,6 +15,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { OverlayTestMediaService, type TestChannel, type TestMedia } from '../landing-mocks/dev/overlay-test-media.service';
 import { OverlayClipComponent } from './overlay-clip.component';
 import { OverlayTriggerFilterComponent } from './overlay-trigger-filter.component';
+import { placeTrigger, triggerPlacementMargin } from './overlay-trigger-placement';
 import { ClipsService } from '../clips/clips.service';
 import { CLIP_DESIGN_VARIANTS, type ClipDesignVariant } from '../clips/clips.model';
 import { OverlayMediaComponent } from './overlay-media.component';
@@ -34,7 +35,7 @@ import { ALERT_EVENTS, EVENT_KINDS, AlertDesign, AlertEvent, EventKind, OverlayS
 
 type Dimension = 'x' | 'y' | 'width' | 'height';
 interface PointerSession { id: string; action: 'move' | 'resize'; startX: number; startY: number; original: OverlayWidget; canvas: DOMRect }
-interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia }
+interface MockEvent { id: number; kind: EventKind; channel?: TestChannel; targets?: string[]; media?: TestMedia; placements?: OverlayWidget[] }
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
@@ -143,6 +144,13 @@ export class OverlayEditorComponent {
   readonly notice = signal('');
   readonly nudgeStep = computed(() => this.snap() ? 10 : 1);
   readonly selected = computed(() => this.widgets().find(w => w.id === this.selectedId()) ?? null);
+  readonly randomMargin = computed(() => triggerPlacementMargin(this.scene(), this.selected()?.triggerPlacement?.margin ?? 24));
+  readonly randomPlacementAdjusted = computed(() => {
+    const widget = this.selected();
+    if (widget?.kind !== 'trigger' || widget.triggerPlacement?.mode !== 'random') return false;
+    const placed = placeTrigger(widget, this.scene(), 'size-check');
+    return placed.width < widget.width || placed.height < widget.height || this.randomMargin() < widget.triggerPlacement.margin;
+  });
   readonly offCanvas = computed(() => this.widgets().filter(w => w.x < 0 || w.y < 0 || w.x + w.width > this.canvasWidth() || w.y + w.height > this.canvasHeight()).length);
   readonly queue = signal<MockEvent[]>([]);
   readonly active = signal<MockEvent | null>(null);
@@ -394,6 +402,17 @@ export class OverlayEditorComponent {
       else this.updateScene({ [field]: Math.round(number) });
     });
   }
+  setTriggerPlacement(event: Event): void {
+    const mode = this.value(event);
+    if (this.selected()?.kind !== 'trigger' || (mode !== 'fixed' && mode !== 'random')) return;
+    this.patchSelected({ triggerPlacement: { mode, margin: this.selected()?.triggerPlacement?.margin ?? 24 } });
+  }
+  setTriggerMargin(event: Event): void {
+    const widget = this.selected(), input = event.target as HTMLInputElement, margin = Number(input.value);
+    if (widget?.kind !== 'trigger' || widget.triggerPlacement?.mode !== 'random') return;
+    if (!input.value || !Number.isFinite(margin)) { input.value = String(widget.triggerPlacement.margin); return; }
+    this.patchSelected({ triggerPlacement: { mode: 'random', margin: Math.max(0, Math.min(500, Math.round(margin))) } });
+  }
   rename(event: Event): void {
     const name = this.value(event).trim().slice(0,80); if (!name) return;
     this.edit(() => { if (this.designDraft()) this.designDraft.update(d => d ? { ...d, name } : d); else this.updateScene({ name }); });
@@ -473,6 +492,9 @@ export class OverlayEditorComponent {
     const firstVisible = event.targets?.find(id => this.widgets().some(w => w.id === id && w.visible));
     return firstVisible !== widgetId;
   }
+  previewPlacement(widget: OverlayWidget): OverlayWidget {
+    return this.mediaEvents(widget).find(event => event.kind === 'trigger')?.placements?.find(w => w.id === widget.id) ?? widget;
+  }
   /** Tests play on the canvas; on phones the test buttons sit below it, so bring it back into view. */
   private revealStage(): void {
     const stage = this.host.querySelector('.stage');
@@ -533,7 +555,9 @@ export class OverlayEditorComponent {
     const targets = event?.kind === 'trigger' ? event.targets?.filter(target => this.widgets().some(w => w.id === target && matchesTrigger(w, media.triggerId))) : event?.targets;
     if (!targets?.length) { this.notice.set('noMatchingTriggers'); this.finishEvent(id); return; }
     job.pending = new Set(targets);
-    const patch = (e: MockEvent) => e.id === id ? { ...e, targets, media } : e;
+    const placements = event?.kind === 'trigger'
+      ? this.widgets().filter(w => targets.includes(w.id)).map(w => placeTrigger(w, this.scene(), String(id))) : undefined;
+    const patch = (e: MockEvent) => e.id === id ? { ...e, targets, media, placements } : e;
     this.active.update(e => e ? patch(e) : e); this.parallel.update(all => all.map(patch));
     this.notice.set('mediaReady');
     // Loading/autoplay failures must not hold the scheduler forever.

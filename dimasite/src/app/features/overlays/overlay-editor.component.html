@@ -147,11 +147,17 @@
             <div class="stage__crosshair" aria-hidden="true"></div>
             <div class="stage__label">{{ t('streamPreview') }}</div>
             <div class="stage__safe" aria-hidden="true"></div>
+            @if (!designDraft() && selected()?.kind === 'trigger' && selected()?.triggerPlacement?.mode === 'random') {
+              <div class="random-bounds" aria-hidden="true"
+                [style.left.%]="randomMargin() / canvasWidth() * 100" [style.top.%]="randomMargin() / canvasHeight() * 100"
+                [style.width.%]="(canvasWidth() - 2 * randomMargin()) / canvasWidth() * 100" [style.height.%]="(canvasHeight() - 2 * randomMargin()) / canvasHeight() * 100"></div>
+            }
             @if (!widgets().length) { <p class="stage__empty">{{ t('stageEmpty') }}</p> }
             @for (widget of widgets(); track widget.id; let layerIndex = $index) {
               @if (widget.visible) {
+                @let placement = previewPlacement(widget);
                 <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
-                  [style.left.%]="widget.x / canvasWidth() * 100" [style.top.%]="widget.y / canvasHeight() * 100" [style.width.%]="widget.width / canvasWidth() * 100" [style.height.%]="widget.height / canvasHeight() * 100" [style.z-index]="layerIndex"
+                  [style.left.%]="placement.x / canvasWidth() * 100" [style.top.%]="placement.y / canvasHeight() * 100" [style.width.%]="placement.width / canvasWidth() * 100" [style.height.%]="placement.height / canvasHeight() * 100" [style.z-index]="layerIndex"
                   (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
                   <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
                     @switch (widget.kind) {
@@ -268,6 +274,20 @@
         }
         @if (item.kind === 'trigger') {
           <app-overlay-trigger-filter [channel]="channel" [ids]="item.triggerIds" (changed)="patchSelected({ triggerIds: $event })" />
+          <label class="lf-field"><span>{{ t('triggerPlacement') }}</span>
+            <select [attr.aria-label]="t('triggerPlacement')" [value]="item.triggerPlacement?.mode ?? 'fixed'" (change)="setTriggerPlacement($event)" aria-describedby="trigger-placement-hint">
+              <option value="fixed">{{ t('triggerPlacementFixed') }}</option>
+              <option value="random">{{ t('triggerPlacementRandom') }}</option>
+            </select>
+          </label>
+          <p class="lf-note" id="trigger-placement-hint">{{ t(item.triggerPlacement?.mode === 'random' ? 'triggerPlacementRandomHint' : 'triggerPlacementFixedHint') }}</p>
+          @if (item.triggerPlacement?.mode === 'random') {
+            <label class="lf-field"><span>{{ t('triggerPlacementMargin') }}</span>
+              <input type="number" min="0" max="500" step="1" inputmode="numeric" [value]="item.triggerPlacement!.margin" (change)="setTriggerMargin($event)" aria-describedby="trigger-margin-hint" />
+            </label>
+            <p class="lf-note" id="trigger-margin-hint">{{ t('triggerPlacementMarginHint') }}</p>
+            @if (randomPlacementAdjusted()) { <p class="lf-note lf-note--warn" role="status">{{ t('triggerPlacementAdjusted') }}</p> }
+          }
         }
         @if (item.kind === 'tts') { <p class="lf-note">{{ t('ttsInspectorHint') }}</p> }
         @if (item.kind === 'text') {

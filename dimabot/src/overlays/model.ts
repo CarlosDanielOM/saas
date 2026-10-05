@@ -21,6 +21,7 @@ export interface OverlayWidget {
   shadow?: { color: string; blur: number; x: number; y: number };
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
+  triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
 }
 /** An omitted selection receives all triggers; an empty selection receives none. */
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);

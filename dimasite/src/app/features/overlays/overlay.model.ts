@@ -20,6 +20,7 @@ export interface OverlayWidget {
   shadow?: { color: string; blur: number; x: number; y: number };
   mediaUrl?: string; assetId?: string; color?: string; fontSize?: number;
   triggerIds?: string[]; clipDesign?: ClipDesignVariant; designId?: string; events?: AlertEvent[]; text?: string;
+  triggerPlacement?: { mode: 'fixed' | 'random'; margin: number };
 }
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number }

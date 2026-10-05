@@ -13,6 +13,7 @@ import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
 import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { clipPlaybackLimit } from './overlay-clip-motion';
+import { placeTrigger } from './overlay-trigger-placement';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
@@ -226,7 +227,8 @@ export class OverlayRuntimeComponent {
       this.cancelEventRetry(event.id);
       if (this.issue === 'event' && !this.eventRetries.size) { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
-      const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)));
+      const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)))
+        .map(w => placeTrigger(w, snapshot, full.id));
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
       const job: Playing = { event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };

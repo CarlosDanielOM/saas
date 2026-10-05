@@ -56,6 +56,12 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
       });
       if (new Set(item.triggerIds).size !== item.triggerIds.length) throw new OverlayError('Duplicate trigger selection');
     }
+    if (w.triggerPlacement !== undefined) {
+      if (nested || kind !== 'trigger') throw new OverlayError('Trigger placement requires a trigger widget');
+      const placement = object(w.triggerPlacement);
+      if (placement.mode !== 'fixed' && placement.mode !== 'random') throw new OverlayError('Invalid trigger placement');
+      item.triggerPlacement = { mode: placement.mode, margin: number(placement.margin, 0, 500) };
+    }
     if (kind === 'alert') { item.designId = id(w.designId); item.events = list(w.events, 4).map(e => { if (!ALERT_EVENTS.includes(e as never)) throw new OverlayError('Invalid event'); return e as typeof ALERT_EVENTS[number]; }); }
     if (kind === 'text') { item.text = typeof w.text === 'string' ? w.text : ''; if (nested) { try { parseTemplate(item.text); } catch (e) { throw new OverlayError((e as Error).message); } } }
     if (w.assetId) {
