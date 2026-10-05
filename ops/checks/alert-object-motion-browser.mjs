@@ -78,7 +78,7 @@ try {
     for(const preset of ['none','fade','slide-left','slide-right','slide-up','slide-down','zoom','bounce','flip','spin']){
       await controls.locator('select').nth(0).selectOption(preset);await controls.locator('select').nth(2).selectOption(preset);
       await page.evaluate(()=>window.presetMotion=document.getAnimations().filter(a=>a.id.startsWith('alert-object')));
-      await controls.locator('button').click();
+      await controls.locator('button').last().click();
       await until(()=>page.evaluate(()=>window.presetMotion.every(a=>a.playState==='idle')),'new replay '+preset);
       const object=page.locator('.stage .widget[data-kind="text"] app-overlay-layer');
       await until(async()=>await object.evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-object')).length)===(preset==='none'?1:2),'preset '+preset);
@@ -89,11 +89,11 @@ try {
   await controls.locator('select').nth(0).selectOption('bounce');
   await controls.locator('select').nth(1).selectOption('float');
   await controls.locator('select').nth(2).selectOption('flip');
-  await controls.locator('summary').click();
+  await controls.locator('.motion-timing summary').click();
   await controls.locator('input').nth(0).fill('0.6');await controls.locator('input').nth(0).press('Tab');
   await controls.locator('input').nth(1).fill('0.8');await controls.locator('input').nth(1).press('Tab');
   await controls.locator('input').nth(2).fill('1.5');await controls.locator('input').nth(2).press('Tab');
-  await controls.locator('button').click();
+  await controls.locator('button').last().click();
   const layer=page.locator('.stage .widget[data-kind="text"] app-overlay-layer');
   await until(async()=>await layer.evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id.startsWith('alert-object')).length)===3,'three motion phases');
   const config=await layer.evaluate(e=>e.getAnimations({subtree:true}).map(a=>({id:a.id,timing:a.effect.getTiming(),frames:a.effect.getKeyframes()})));
@@ -102,7 +102,7 @@ try {
   assert(config.find(a=>a.id==='alert-object-exit').frames.some(f=>f.transform.includes('rotateY')));
   assert.equal(await layer.evaluate(e=>{const a=e.getAnimations({subtree:true}).find(a=>a.id==='alert-object-enter');a.pause();a.currentTime=100;return getComputedStyle(a.effect.target).opacity;}),'0','object remains hidden during its own delay');
   await page.evaluate(()=>window.previousMotion=document.getAnimations().filter(a=>a.id.startsWith('alert-object')));
-  await controls.locator('button').click();
+  await controls.locator('button').last().click();
   await until(()=>page.evaluate(()=>window.previousMotion.every(a=>a.playState==='idle')),'replay cancels previous animations');
   // Per-object choices survive save/reload, while other objects and live snapshots stay unchanged.
   const published=structuredClone(ctx.state.scenes[0].published);
@@ -113,7 +113,7 @@ try {
   // Give the decorative object a different animation.
   await page.locator('.stage .widget[data-kind="animation"]').click();
   await controls.locator('select').nth(0).selectOption('slide-right');await controls.locator('select').nth(1).selectOption('sway');
-  await controls.locator('button').click();
+  await controls.locator('button').last().click();
   await until(async()=>await page.locator('.stage').evaluate(e=>e.getAnimations({subtree:true}).filter(a=>a.id==='alert-object-enter').length)===2,'independent object animations');
   assert.equal(await page.locator('.stage .spark').evaluate(e=>getComputedStyle(e).animationName),'none','custom motion replaces legacy sparkle loop');
   await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].events.follow.widgets[0].motion?.enter==='slide-right','published motion');

@@ -86,7 +86,7 @@ try {
   const editor=page.locator('app-overlay-keyframe-editor'),catalog=page.locator('app-overlay-motion-catalog');await editor.waitFor();
   const save=async()=>{const before=ctx.writes;await page.locator('.save-button').click();await until(()=>ctx.writes>before,'save');await until(()=>page.locator('.save-button').isDisabled().then(v=>!v),'save response');await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));};
   const widget=()=>ctx.state.designs[0].events.follow.widgets[1];
-  const open=async()=>{await editor.locator('header button').click();await catalog.locator('.preset').first().waitFor();};
+  const open=async()=>{await page.locator('.object-motion__head button').click();await catalog.locator('.preset').first().waitFor();};
   const use=async(phase,id,combine=false)=>{await open();await catalog.locator('.phases button').nth(['enter','loop','exit'].indexOf(phase)).click();await catalog.locator(`[data-preset="${id}"]`).click();await catalog.locator('footer button').nth(combine?1:-1).click();await catalog.waitFor({state:'detached'});};
   await open();assert.equal(await catalog.locator('.preset').count(),14);
   await catalog.locator('input[type=search]').fill(es?'Resorte':'Spring');await until(()=>catalog.locator('.preset').count().then(n=>n===1),'search');await catalog.locator('input[type=search]').fill('');
@@ -107,7 +107,7 @@ try {
   }
   assert(await catalog.locator('.preset').evaluateAll(items=>items.every(e=>e.querySelector('small').getBoundingClientRect().bottom<=e.getBoundingClientRect().bottom+1)),'catalog labels stay inside cards');await axe(page,'catalog '+options.width);assert.equal(await overflow(page),false);
   if(shots){await mkdir(shots,{recursive:true});await page.screenshot({path:shots+'/catalog-'+options.width+'.png'});}
-  await page.keyboard.press('Escape');await catalog.waitFor({state:'detached'});assert.equal(await editor.locator('header button').evaluate(e=>e===document.activeElement),true,'focus restored');assert.equal(ctx.writes,0);
+  await page.keyboard.press('Escape');await catalog.waitFor({state:'detached'});assert.equal(await page.locator('.object-motion__head button').evaluate(e=>e===document.activeElement),true,'focus restored');assert.equal(ctx.writes,0);
   await use('enter','spring');await save();assert.equal(widget().motion.enter,'none');assert.deepEqual(widget().keyframes.enter.tracks.map(t=>t.property),['scale','opacity']);
   await use('loop','float');await use('loop','breathe',true);await save();assert.deepEqual(widget().keyframes.loop.tracks.map(t=>t.property),['y','scale']);assert.equal(widget().motion.loopDuration,3,'combine keeps current timing');
   await use('exit','twirl-out');await save();assert.equal(widget().keyframes.exit.tracks.length,3);
@@ -133,7 +133,7 @@ try {
   await axe(page,'keyframes '+options.width);assert.equal(await overflow(page),false);
   if(shots){await editor.scrollIntoViewIfNeeded();await page.screenshot({path:shots+'/keyframes-'+options.width+'.png'});}
   await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].events.follow.widgets[0].keyframes?.loop.tracks.length===3,'published keyframes');
-  await page.reload();await page.locator('.design-row__actions button').first().click();await editor.locator('.phases button').nth(1).click();await editor.locator('summary').click();await until(()=>editor.locator('.frame').count().then(n=>n===3),'three frames');
+  await page.reload();await page.locator('.design-row__actions button').first().click();await editor.locator('summary').click();await editor.locator('.phases button').nth(1).click();await until(()=>editor.locator('.frame').count().then(n=>n===3),'three frames');
   // Choosing an older preset removes only that custom phase, preserving the others.
   await page.locator('.object-motion select').nth(1).selectOption('pulse');await save();assert.equal(widget().keyframes.loop,undefined);assert(widget().keyframes.enter);assert(widget().keyframes.exit);
   if(options.width===1280){

@@ -24,8 +24,6 @@ export class OverlayTimelineComponent {
   readonly soundSelected = signal(false);
   readonly dragging = signal<{ id: string; value: number } | null>(null);
   private pointer?: { id: string; pointerId: number; x: number; value: number; width: number; element: HTMLElement };
-  readonly item = computed(() => this.layout().widgets.find(w => w.id === this.selectedId()));
-  readonly motion = computed(() => this.item()?.motion ?? defaultMotion(this.item()?.kind));
   readonly ticks = computed(() => Array.from({ length: 5 }, (_, i) => +(this.layout().duration * i / 4).toFixed(2)));
   constructor() { effect(() => { this.selectedId(); this.soundSelected.set(false); }); effect(() => { this.eventKey(); this.soundSelected.set(false); this.dragging.set(null); this.pointer = undefined; }); }
   t(key: string): string { return this.language.translate('overlayStudio.' + key); }

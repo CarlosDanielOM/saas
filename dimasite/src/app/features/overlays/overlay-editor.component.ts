@@ -109,7 +109,7 @@ export class OverlayEditorComponent {
   private pointer: PointerSession | null = null;
   private timers = new Set<ReturnType<typeof setTimeout>>();
   private nextId = Date.now();
-  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Trash2, Volume2, X, Zap };
+  readonly icons = { AlignCenterHorizontal, AlignCenterVertical, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, ChevronDown, Clapperboard, Copy, ExternalLink, Eye, EyeOff, FlaskConical, Undo2, Redo2, Layers3, LockKeyhole, LockOpen, Magnet, Monitor, Play, Plus, Radio, Settings2, Sparkles, Trash2, Volume2, X, Zap };
   readonly alertEvents = ALERT_EVENTS;
   readonly eventKinds = EVENT_KINDS;
   readonly designs = signal<AlertDesign[]>([]);
@@ -123,6 +123,7 @@ export class OverlayEditorComponent {
   readonly editingLayout = computed(() => this.variants().find(v => v.id === this.variantId())?.layout ?? this.designDraft()?.events[this.designEvent()]);
   readonly sampleTier = signal('1000');
   readonly sampleRaw = computed(() => ({ tier: this.sampleTier(), bits: Number(this.sampleAmount()), viewers: Number(this.sampleAmount()) }));
+  readonly matchedVariantId = computed(() => { const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw())?.id ?? null : null; });
   readonly matchedVariantName = computed(() => {
     const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw())?.name ?? this.t('defaultVariant') : '';
   });
@@ -294,6 +295,8 @@ export class OverlayEditorComponent {
     if (!(field === 'loop' ? ALERT_LOOPS : ALERT_TRANSITIONS).includes(value as never)) return;
     const keyframes = {...this.selected()?.keyframes}; delete keyframes[field];
     this.patchSelected({ keyframes:Object.keys(keyframes).length ? keyframes : undefined, motion: { ...this.selectedMotion(), [field]: value } });
+    // Show the new choice straight away, like picking from the motion catalog does.
+    if (value !== 'none') this.testDesign();
   }
   prepareAnimationCatalog(): void { this.resetSimulation(); }
   editKeyframes(changes: Partial<OverlayWidget>): void { this.resetSimulation(); this.patchSelected(changes); }

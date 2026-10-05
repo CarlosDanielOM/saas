@@ -21,6 +21,7 @@ export class OverlayKeyframeEditorComponent {
   private pointer?: {id:number; index:number; left:number; width:number; element:HTMLElement};
   private readonly language = inject(LanguageService);
   readonly sequence = computed(() => this.widget().keyframes?.[this.phase()]);
+  readonly customCount = computed(() => MOTION_PHASES.filter(phase => this.widget().keyframes?.[phase]).length);
   private readonly identity = computed(() => this.contextKey() + ':' + this.widget().id);
   readonly track = computed(() => this.sequence()?.tracks.find(t => t.property === this.property()) ?? this.sequence()?.tracks[0]);
   readonly activeProperty = computed(() => this.track()?.property ?? this.property());
@@ -105,10 +106,8 @@ export class OverlayKeyframeEditorComponent {
     this.pointIndex.set(right); this.replacePoints([...points.slice(0,right), {offset,value,easing:left.easing}, ...points.slice(right)]); this.editEnded.emit();
   }
   removePoint() { if (!this.isEndpoint()) {const points=this.track()!.points.filter((_,i)=>i!==this.index()); this.pointIndex.set(Math.max(0,this.index()-1)); this.replacePoints(points); this.editEnded.emit();} }
-  timing(field: 'delay' | 'enterDuration' | 'loopDuration' | 'exitDuration', event: Event) {
-    const value=Number((event.target as HTMLInputElement).value); if (!Number.isFinite(value)) return;
-    this.changed.emit({motion:{...this.motion(), [field]:Math.max(field === 'delay' ? 0 : field === 'loopDuration' ? .2 : .1, Math.min(field === 'delay' ? 120 : field === 'loopDuration' ? 10 : 5,value))}});
-  }
+  /** The parent's "Browse animations" button opens the catalog for the phase being edited. */
+  openCatalog() { this.opened.emit(); this.catalog.set(true); }
   toggleDetails(event: Event) { this.expanded.set((event.target as HTMLDetailsElement).open); }
   down(event: PointerEvent, index: number) {
     if (event.button !== 0) return; event.preventDefault(); this.selectPoint(index);

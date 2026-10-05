@@ -21,11 +21,12 @@ import type { AlertEvent, AlertVariant } from './overlay.model';
         }
       </div>
       <div class="actions">
-        <label class="check"><input type="checkbox" [checked]="variant.enabled" (change)="changed.emit({enabled: !variant.enabled})" />{{ t('variantEnabled') }}</label>
-        <button type="button" [disabled]="index() === 0" (click)="moved.emit(-1)">{{ t('higherPriority') }}</button>
-        <button type="button" [disabled]="index() === variants().length - 1" (click)="moved.emit(1)">{{ t('lowerPriority') }}</button>
-        <button type="button" [disabled]="variants().length >= 10" (click)="added.emit()">{{ t('duplicateVariant') }}</button>
-        <button type="button" (click)="removed.emit()">{{ t('removeVariant') }}</button>
+        <label class="switch"><input type="checkbox" role="switch" [checked]="variant.enabled" (change)="changed.emit({enabled: !variant.enabled})" /><span class="switch__track" aria-hidden="true"></span>{{ t('variantEnabled') }}</label>
+        @if (variants().length > 1) {
+          <button type="button" [disabled]="index() === 0" (click)="moved.emit(-1)">{{ t('higherPriority') }}</button>
+          <button type="button" [disabled]="index() === variants().length - 1" (click)="moved.emit(1)">{{ t('lowerPriority') }}</button>
+        }
+        <button type="button" class="danger" (click)="removed.emit()">{{ t('removeVariant') }}</button>
       </div>
     }
   </section>`, styleUrl: './overlay-design-controls.css'

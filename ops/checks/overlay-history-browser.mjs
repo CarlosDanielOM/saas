@@ -167,7 +167,7 @@ try {
   const textInput = props.getByLabel('Text template', { exact: true }); await textInput.fill('Hello $(user)');
   await undo.click(); await eventually('equal', async () => await textInput.inputValue(), '$(user)'); await redo.click(); await eventually('equal', async () => await textInput.inputValue(), 'Hello $(user)');
   await page.locator('.design-event-tabs').getByRole('button', { name: 'Bits', exact: true }).click();
-  const duration = page.getByLabel('Duration (seconds)', { exact: true }); await duration.fill('12'); await undo.click(); await eventually('equal', async () => await duration.inputValue(), '5');
+  const duration = page.getByLabel('Alert length (seconds)', { exact: true }); await duration.fill('12'); await undo.click(); await eventually('equal', async () => await duration.inputValue(), '5');
   await redo.click(); await save(); assert.equal(state.designs[0].events.bits.duration, 12);
   await undo.click(); await eventually('equal', async () => await duration.inputValue(), '5'); await save(); assert.equal(state.designs[0].events.bits.duration, 5);
   // A design copy is one undo operation; shared design revisions continue forward.

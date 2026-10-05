@@ -112,8 +112,8 @@ try {
   const picker=page.locator('app-asset-library-dialog');await picker.locator('.asset').first().click();await picker.locator('.use').click();
   await sound.locator('input[type=range]').fill('35');
   const timeline=page.locator('app-overlay-timeline');
-  await page.getByLabel(es?'Duración (segundos)':'Duration (seconds)',{exact:true}).fill('7');await page.getByLabel(es?'Duración (segundos)':'Duration (seconds)',{exact:true}).press('Tab');
-  await timeline.locator('input[type=number]').first().fill('0.7');await timeline.locator('input[type=number]').first().press('Tab');
+  await page.getByLabel(es?'Duración de la alerta (segundos)':'Alert length (seconds)',{exact:true}).fill('7');await page.getByLabel(es?'Duración de la alerta (segundos)':'Alert length (seconds)',{exact:true}).press('Tab');
+  const timing=page.locator('details.motion-timing');await timing.evaluate(d=>{d.open=true;});await timing.locator('input').first().fill('0.7');await timing.locator('input').first().press('Tab');
 
   await page.locator('.palette-item[data-kind=shape]').click();
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants?.bits?.[0]?.layout.widgets.length===3,'save variant');
@@ -122,9 +122,11 @@ try {
   await variants.getByRole('button',{name:es?'Predeterminada':'Default',exact:true}).click();
   await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='$(user)'),'default content');
   await page.getByLabel(es?'Cantidad de ejemplo':'Sample amount',{exact:true}).fill('750');
-  await page.getByRole('button',{name:es?'Previsualizar versión coincidente':'Preview matching version',exact:true}).click();
+  await page.getByRole('button',{name:es?'Cambiar a Big cheers y probar':'Switch to Big cheers & preview',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'rule preview');
-  await variants.getByRole('button',{name:es?'Duplicar variante':'Duplicate variant',exact:true}).click();
+  assert.equal(await page.locator('.variant-match button').count(),0,'no switch button when the match is already open');
+  // Adding while a variant is open copies it (the old separate Duplicate button did the same thing).
+  await variants.getByRole('button',{name:es?'Añadir variante':'Add variant',exact:true}).click();
   await until(()=>variants.locator('.tabs button').count().then(n=>n===4),'duplicate');
   await variants.getByLabel(es?'Nombre de variante':'Variant name').fill('Priority');await variants.getByLabel(es?'Nombre de variante':'Variant name').press('Tab');
   await variants.getByRole('button',{name:es?'Mover antes':'Move earlier',exact:true}).click();
@@ -133,7 +135,7 @@ try {
   await page.getByRole('button',{name:es?'Deshacer':'Undo',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Priority',exact:true}).count().then(n=>n===1),'undo deletion');
   await variants.getByLabel(es?'Activada':'Enabled',{exact:true}).uncheck();
-  await page.getByRole('button',{name:es?'Previsualizar versión coincidente':'Preview matching version',exact:true}).click();
+  await page.getByRole('button',{name:es?'Cambiar a Big cheers y probar':'Switch to Big cheers & preview',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'disabled priority skipped');
   await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.bits[0].enabled===false,'disabled saved');
   await axe(page,'designs '+options.width);assert.equal(await overflow(page),false);
@@ -149,11 +151,11 @@ try {
     await page.locator('.design-event-tabs button').nth(0).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
     await variants.getByRole('combobox',{name:'Subscription tier',exact:true}).selectOption('3000');
     await page.getByRole('combobox',{name:'Sample subscription tier',exact:true}).selectOption('3000');
-    await page.getByRole('button',{name:'Preview matching version',exact:true}).click();
-    await until(()=>variants.locator('.tabs button[aria-pressed=true]').innerText().then(t=>t==='New variant'),'tier sample');
+    await until(()=>page.locator('.variant-match').innerText().then(t=>t.includes('This sample plays: New variant')),'tier sample');
+    assert.equal(await page.locator('.variant-match button').count(),0,'matching variant already open');
     await page.locator('.design-event-tabs button').nth(3).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
     await variants.getByLabel('Minimum raid viewers',{exact:true}).fill('50');await variants.getByLabel('Minimum raid viewers',{exact:true}).press('Tab');
-    await page.getByLabel('Sample amount',{exact:true}).fill('49');await page.getByRole('button',{name:'Preview matching version',exact:true}).click();
+    await page.getByLabel('Sample amount',{exact:true}).fill('49');await page.getByRole('button',{name:'Switch to Default & preview',exact:true}).click();
     await until(()=>variants.getByRole('button',{name:'Default',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'raid fallback');
     await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].variants?.raid?.[0]?.min===50,'published all variants');
     assert.equal(ctx.state.scenes[0].published.designs[0].variants.sub[0].tier,'3000');

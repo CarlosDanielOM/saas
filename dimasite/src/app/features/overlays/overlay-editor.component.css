@@ -546,7 +546,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 .lf-field { display: grid; gap: 0.35rem; min-width: 0; color: var(--muted); font-size: 0.8rem; font-weight: 700; }
 
-.lf-field input:not([type='color']), .lf-field select, .lf-field textarea, .field-row select {
+.lf-field input:not([type='color']):not([type='range']), .lf-field select, .lf-field textarea, .field-row select {
   width: 100%;
   min-width: 0;
   min-height: 44px;
@@ -841,7 +841,7 @@ app-overlay-queue { order: 3; }
   .studio:not(:has(.studio__events)) { grid-template-areas: 'tools props' 'add props' 'canvas props' 'hint props' 'off props' 'layers props'; grid-template-rows: auto auto auto auto auto 1fr; }
   .studio__canvas { position: static; margin: 0; padding: 0; }
   .studio__hint { margin: -0.35rem 0 0; }
-  .layers { display: grid; gap: 0.45rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+  .layers { display: grid; align-content: start; gap: 0.45rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
   .layers__heading h3 { color: var(--fg); font-size: 0.9rem; text-transform: none; letter-spacing: 0; }
   .layers__heading .lf-note { display: inline; }
   .layers__list { display: grid; gap: 0.2rem; margin: 0; padding: 0; overflow: visible; }
@@ -926,12 +926,22 @@ app-overlay-queue { order: 3; }
 
 .object-motion { display:grid; gap:.75rem; border-block:1px solid var(--line); padding-block:1rem }
 .object-motion h3 { font-size:.9rem; margin:0 }
+.object-motion__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem }
+.variant-match { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem }
 .object-motion .lf-more[open] { display:grid; gap:.75rem }
 
-.alert-sound { display:grid; gap:.75rem; border-block:1px solid var(--line); padding-block:1rem; margin-block:1rem; min-width:0 }
-.alert-sound .field-row { flex-wrap:wrap }
-.alert-sound strong { overflow-wrap:anywhere; min-width:0 }
-.alert-sound details[open] .event-tester { margin-top:.75rem }
+/* Alert sound + length sit under the timeline: everything about "when" in one place. */
+.studio__timeline { grid-area:timeline; display:grid; gap:.75rem; min-width:0; padding-bottom:.25rem }
+.alert-sound { display:grid; gap:.6rem; min-width:0; padding:.75rem; border:1px solid var(--line); border-radius:1rem; background:var(--btn) }
+.alert-sound__row { display:flex; align-items:center; gap:.6rem; min-width:0 }
+.alert-sound__icon { display:grid; place-items:center; flex:none; width:2.25rem; height:2.25rem; border-radius:.7rem; color:var(--ok); background:var(--tile) }
+.alert-sound__copy { display:grid; flex:1; min-width:0 }
+.alert-sound__copy strong { font-size:.88rem }
+.alert-sound__copy .lf-note { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.alert-sound .lf-btn { flex:none }
+.lf-btn--icon { width:44px; padding:0; justify-content:center }
+.sound-timing, .motion-timing__grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem }
+.alert-length { max-width:12rem }
 .alert-sound input.lf-range { appearance:none; width:100%; height:44px; border:0; padding:0; background:transparent; cursor:pointer }
 .lf-range::-webkit-slider-runnable-track { height:6px; border-radius:999px; background:linear-gradient(to right, #7c3aed calc(var(--pct) * (100% - 20px) + 10px), var(--line) 0) }
 .lf-range::-moz-range-track { height:6px; border-radius:999px; background:var(--line) }
@@ -940,13 +950,9 @@ app-overlay-queue { order: 3; }
 .lf-range::-moz-range-thumb { width:18px; height:18px; background:#7c3aed; border:2px solid var(--tile); border-radius:50% }
 .lf-range:focus-visible { outline:2px solid var(--accent); outline-offset:3px }
 
-app-overlay-timeline { grid-area:timeline; min-width:0 }
-.studio:has(app-overlay-timeline) { grid-template-areas:'tools' 'events' 'add' 'canvas' 'hint' 'layers' 'timeline' 'off' 'props' }
-@media(min-width:960px) { .studio:has(app-overlay-timeline) { grid-template-areas:'tools props' 'events props' 'add props' 'canvas props' 'hint props' 'off props' 'layers props' 'timeline props'; grid-template-rows:auto auto auto auto auto auto auto 1fr } }
+/* Phones: the selected object's settings follow the pinned canvas; the timeline comes after. Desktop: timeline under the canvas. */
+.studio:has(.studio__timeline) { grid-template-areas:'tools' 'events' 'add' 'canvas' 'hint' 'layers' 'off' 'props' 'timeline' }
+@media(min-width:960px) { .studio:has(.studio__timeline) { grid-template-areas:'tools props' 'events props' 'add props' 'canvas props' 'hint props' 'off props' 'timeline props' 'layers props'; grid-template-rows:auto auto auto auto auto auto auto 1fr } }
 
 .widget[data-kind="shape"] { background:transparent; box-shadow:none }
 .widget:is([data-kind="shape"],[data-kind="text"],[data-kind="image"],[data-kind="video"],[data-kind="animation"]) .widget__content { padding:0; overflow:visible }
-
-app-overlay-keyframe-editor { grid-area:keyframes; min-width:0 }
-.studio:has(app-overlay-keyframe-editor) { grid-template-areas:'tools' 'events' 'add' 'canvas' 'hint' 'layers' 'timeline' 'keyframes' 'off' 'props' }
-@media(min-width:960px) { .studio:has(app-overlay-keyframe-editor) { grid-template-areas:'tools props' 'events props' 'add props' 'canvas props' 'hint props' 'off props' 'layers props' 'timeline props' 'keyframes props'; grid-template-rows:auto auto auto auto auto auto auto auto 1fr } }

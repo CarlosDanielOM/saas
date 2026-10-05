@@ -206,13 +206,32 @@
       </div>
     </div>
     @if (designDraft(); as draft) {
-      <app-overlay-timeline [layout]="editingLayout()!" [eventKey]="draft.id + ':' + designEvent() + ':' + variantId()" [selectedId]="selectedId()" [transport]="timeline()"
-        (selected)="selectedId.set($event)" (edited)="editTimeline($event)" (editEnded)="endHistoryGroup()"
-        (seek)="seekTimeline($event)" (toggle)="toggleTimeline()" (closed)="closeTimeline()" />
-      @if (selected(); as item) {
-        <app-overlay-keyframe-editor [attr.inert]="busy() ? '' : null" [widget]="item" [duration]="editingLayout()!.duration" [contextKey]="draft.id + ':' + designEvent() + ':' + variantId()" [time]="timeline()?.time ?? null"
-          (opened)="prepareAnimationCatalog()" (changed)="editKeyframes($event)" (seek)="seekTimeline($event)" (replay)="testDesign()" (editEnded)="endHistoryGroup()" />
-      }
+      <!-- When things happen: object start times, the alert sound and the alert length. -->
+      <div class="studio__timeline">
+        <app-overlay-timeline [layout]="editingLayout()!" [eventKey]="draft.id + ':' + designEvent() + ':' + variantId()" [selectedId]="selectedId()" [transport]="timeline()"
+          (selected)="selectedId.set($event)" (edited)="editTimeline($event)" (editEnded)="endHistoryGroup()"
+          (seek)="seekTimeline($event)" (toggle)="toggleTimeline()" (closed)="closeTimeline()" />
+        <section class="alert-sound" [attr.aria-label]="t('alertSound')">
+          <div class="alert-sound__row">
+            <span class="alert-sound__icon" aria-hidden="true"><lucide-icon [name]="icons.Volume2" [size]="17" /></span>
+            <div class="alert-sound__copy"><strong>{{ t('alertSound') }}</strong><span class="lf-note">{{ alertSound()?.name || t(alertSound() ? 'soundSelected' : 'soundNone') }}</span></div>
+            <button type="button" class="lf-btn lf-btn--compact" (click)="soundPickerOpen.set(true)">{{ t(alertSound() ? 'changeSound' : 'chooseSound') }}</button>
+            @if (alertSound()) { <button type="button" class="lf-btn lf-btn--compact lf-btn--icon" (click)="setSound(undefined)" [attr.aria-label]="t('removeSound')" [title]="t('removeSound')"><lucide-icon [name]="icons.Trash2" [size]="15" aria-hidden="true" /></button> }
+          </div>
+          @if (alertSound(); as sound) {
+            <label class="lf-field"><span>{{ t('soundVolume') }} · {{ soundPercent() }}%</span><input class="lf-range" type="range" min="0" max="100" step="1" [style.--pct]="sound.volume" [value]="sound.volume * 100" (input)="soundValue('volume', $event)" /></label>
+            <details class="lf-more"><summary>{{ t('soundTiming') }}</summary>
+              <div class="sound-timing">
+                <label class="lf-field"><span>{{ t('soundDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="sound.delay" (change)="soundValue('delay', $event)" /></label>
+                <label class="lf-field"><span>{{ t('soundFadeIn') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeIn" (change)="soundValue('fadeIn', $event)" /></label>
+                <label class="lf-field"><span>{{ t('soundFadeOut') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeOut" (change)="soundValue('fadeOut', $event)" /></label>
+              </div>
+              <p class="lf-note">{{ t('soundTimingHint') }}</p>
+            </details>
+          } @else { <p class="lf-note">{{ t('soundHint') }}</p> }
+        </section>
+        <label class="lf-field alert-length"><span>{{ t('duration') }}</span><input type="number" min="1" max="120" [value]="editingLayout()!.duration" (input)="updateDuration($event)" /></label>
+      </div>
     }
     <p class="studio__hint">{{ t('canvasHint') }}</p>
     @if (offCanvas()) { <p class="lf-note lf-note--warn off-canvas" role="status">{{ t('offCanvas', { count: offCanvas() }) }}</p> }
@@ -282,20 +301,27 @@
         }
         @if (designDraft()) {
           <section class="object-motion" [attr.aria-label]="t('objectMotion')">
-            <h3>{{ t('objectMotion') }}</h3>
+            <div class="object-motion__head">
+              <h3>{{ t('objectMotion') }}</h3>
+              <button type="button" class="lf-btn lf-btn--compact" (click)="keyframeEditor.openCatalog()"><lucide-icon [name]="icons.Sparkles" [size]="15" aria-hidden="true" />{{ t('kfBrowse') }}</button>
+            </div>
             <p class="lf-note">{{ t('objectMotionHint') }}</p>
             <label class="lf-field"><span>{{ t('motionEnter') }}</span><select [value]="item.keyframes?.enter ? 'keyframes' : selectedMotion().enter" (change)="setMotionChoice('enter', $event)">@if (item.keyframes?.enter) { <option value="keyframes" selected>{{ t('kfCustom') }}</option> }@for (choice of motionTransitions; track choice) { <option [value]="choice" [selected]="!item.keyframes?.enter && choice === selectedMotion().enter">{{ t('motion_' + choice) }}</option> }</select></label>
             <label class="lf-field"><span>{{ t('motionLoop') }}</span><select [value]="item.keyframes?.loop ? 'keyframes' : selectedMotion().loop" (change)="setMotionChoice('loop', $event)">@if (item.keyframes?.loop) { <option value="keyframes" selected>{{ t('kfCustom') }}</option> }@for (choice of motionLoops; track choice) { <option [value]="choice" [selected]="!item.keyframes?.loop && choice === selectedMotion().loop">{{ t('motion_' + choice) }}</option> }</select></label>
             <label class="lf-field"><span>{{ t('motionExit') }}</span><select [value]="item.keyframes?.exit ? 'keyframes' : selectedMotion().exit" (change)="setMotionChoice('exit', $event)">@if (item.keyframes?.exit) { <option value="keyframes" selected>{{ t('kfCustom') }}</option> }@for (choice of motionTransitions; track choice) { <option [value]="choice" [selected]="!item.keyframes?.exit && choice === selectedMotion().exit">{{ t('motion_' + choice) }}</option> }</select></label>
-            <details class="lf-more">
+            <details class="lf-more motion-timing">
               <summary>{{ t('motionTiming') }}</summary>
-              <label class="lf-field"><span>{{ t('motionDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="selectedMotion().delay" (change)="setMotionTime('delay', $event)" /></label>
-              @if (selectedMotion().enter !== 'none' || item.keyframes?.enter) { <label class="lf-field"><span>{{ t('motionEnterDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [value]="selectedMotion().enterDuration" (change)="setMotionTime('enterDuration', $event)" /></label> }
-              @if (selectedMotion().loop !== 'none' || item.keyframes?.loop) { <label class="lf-field"><span>{{ t('motionLoopDuration') }}</span><input type="number" min="0.2" max="10" step="0.1" [value]="selectedMotion().loopDuration" (change)="setMotionTime('loopDuration', $event)" /></label> }
-              @if (selectedMotion().exit !== 'none' || item.keyframes?.exit) { <label class="lf-field"><span>{{ t('motionExitDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [value]="selectedMotion().exitDuration" (change)="setMotionTime('exitDuration', $event)" /></label> }
+              <div class="motion-timing__grid">
+                <label class="lf-field"><span>{{ t('motionDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="selectedMotion().delay" (change)="setMotionTime('delay', $event)" /></label>
+                <label class="lf-field"><span>{{ t('motionEnterDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [disabled]="selectedMotion().enter === 'none' && !item.keyframes?.enter" [value]="selectedMotion().enterDuration" (change)="setMotionTime('enterDuration', $event)" /></label>
+                <label class="lf-field"><span>{{ t('motionLoopDuration') }}</span><input type="number" min="0.2" max="10" step="0.1" [disabled]="selectedMotion().loop === 'none' && !item.keyframes?.loop" [value]="selectedMotion().loopDuration" (change)="setMotionTime('loopDuration', $event)" /></label>
+                <label class="lf-field"><span>{{ t('motionExitDuration') }}</span><input type="number" min="0.1" max="5" step="0.1" [disabled]="selectedMotion().exit === 'none' && !item.keyframes?.exit" [value]="selectedMotion().exitDuration" (change)="setMotionTime('exitDuration', $event)" /></label>
+              </div>
               <p class="lf-note">{{ t('motionTimingHint') }}</p>
             </details>
-            <button type="button" class="lf-btn" (click)="testDesign()">{{ t('motionReplay') }}</button>
+            <app-overlay-keyframe-editor #keyframeEditor [attr.inert]="busy() ? '' : null" [widget]="item" [duration]="editingLayout()!.duration" [contextKey]="designDraft()!.id + ':' + designEvent() + ':' + variantId()" [time]="timeline()?.time ?? null"
+              (opened)="prepareAnimationCatalog()" (changed)="editKeyframes($event)" (seek)="seekTimeline($event)" (replay)="testDesign()" (editEnded)="endHistoryGroup()" />
+            <div><button type="button" class="lf-btn lf-btn--compact" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('motionReplay') }}</button></div>
           </section>
         }
 
@@ -366,29 +392,13 @@
             <label class="lf-field"><span>{{ t('sampleUser') }}</span><input [value]="sampleUser()" (input)="sampleUser.set(value($event))" /></label>
             <label class="lf-field"><span>{{ t('sampleAmount') }}</span><input [value]="sampleAmount()" (input)="sampleAmount.set(value($event))" /></label>
             @if (designEvent() === 'sub') { <label class="lf-field"><span>{{ t('sampleTier') }}</span><select [value]="sampleTier()" (change)="sampleTier.set(value($event))">@for (tier of ['1000','2000','3000']; track tier) { <option [value]="tier" [selected]="tier === sampleTier()">{{ t('tier_' + tier) }}</option> }</select></label> }
-            <label class="lf-field"><span>{{ t('duration') }}</span><input type="number" min="1" max="120" [value]="editingLayout()!.duration" (input)="updateDuration($event)" /></label>
           </div>
-          <section class="alert-sound" [attr.aria-label]="t('alertSound')">
-            <h3 class="lf-h3">{{ t('alertSound') }}</h3>
-            <p class="lf-note">{{ t('soundHint') }}</p>
-            <div class="field-row"><strong>{{ alertSound()?.name || t(alertSound() ? 'soundSelected' : 'soundNone') }}</strong><button type="button" class="lf-btn" (click)="soundPickerOpen.set(true)">{{ t('chooseSound') }}</button></div>
-            @if (alertSound(); as sound) {
-              <label class="lf-field"><span>{{ t('soundVolume') }} · {{ soundPercent() }}%</span><input class="lf-range" type="range" min="0" max="100" step="1" [style.--pct]="sound.volume" [value]="sound.volume * 100" (input)="soundValue('volume', $event)" /></label>
-              <details class="lf-more"><summary>{{ t('soundTiming') }}</summary>
-                <div class="event-tester">
-                  <label class="lf-field"><span>{{ t('soundDelay') }}</span><input type="number" min="0" max="120" step="0.1" [value]="sound.delay" (change)="soundValue('delay', $event)" /></label>
-                  <label class="lf-field"><span>{{ t('soundFadeIn') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeIn" (change)="soundValue('fadeIn', $event)" /></label>
-                  <label class="lf-field"><span>{{ t('soundFadeOut') }}</span><input type="number" min="0" max="10" step="0.1" [value]="sound.fadeOut" (change)="soundValue('fadeOut', $event)" /></label>
-                </div>
-                <p class="lf-note">{{ t('soundTimingHint') }}</p>
-              </details>
-              <button type="button" class="lf-btn lf-btn--compact" (click)="setSound(undefined)">{{ t('removeSound') }}</button>
-            }
-          </section>
           <div><button type="button" class="lf-btn lf-btn--primary" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('previewEvent', { event: t(designEvent() + 'Name') }) }}</button></div>
-          @if (designEvent() !== 'follow') {
-            <p class="lf-note" role="status">{{ t('variantMatches', {name: matchedVariantName()}) }}</p>
-            <button type="button" class="lf-btn" (click)="previewMatchingVariant()">{{ t('previewMatchingVariant') }}</button>
+          @if (designEvent() !== 'follow' && variants().length) {
+            <div class="variant-match" role="status">
+              <span class="lf-note">{{ t('variantMatches', {name: matchedVariantName()}) }}</span>
+              @if (matchedVariantId() !== variantId()) { <button type="button" class="lf-btn lf-btn--compact" (click)="previewMatchingVariant()">{{ t('previewMatchingVariant', {name: matchedVariantName()}) }}</button> }
+            </div>
           }
           <details class="lf-more"><summary>{{ t('variablesTitle') }}</summary><p class="lf-note">{{ t('designContext') }}</p></details>
         } @else {

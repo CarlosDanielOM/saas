@@ -9,7 +9,7 @@ import type { OverlayWidget } from './overlay.model';
         @for (font of ['sans','serif','mono']; track font) { <option [value]="font" [selected]="font === (widget().fontFamily ?? 'sans')">{{ t('font_' + font) }}</option> }
       </select></label>
       <div class="pair"><label>{{ t('fontWeight') }}<select [value]="widget().fontWeight ?? 400" (change)="changed.emit({fontWeight: value($event) === '700' ? 700 : 400})"><option value="400" [selected]="widget().fontWeight !== 700">{{ t('regular') }}</option><option value="700" [selected]="widget().fontWeight === 700">{{ t('bold') }}</option></select></label>
-      <label class="check"><input type="checkbox" [checked]="widget().italic" (change)="changed.emit({italic: !widget().italic})" />{{ t('italic') }}</label></div>
+      <label class="switch switch--field"><input type="checkbox" role="switch" [checked]="widget().italic" (change)="changed.emit({italic: !widget().italic})" /><span class="switch__track" aria-hidden="true"></span>{{ t('italic') }}</label></div>
       <label>{{ t('textAlign') }}<select [value]="widget().textAlign ?? 'center'" (change)="choice('textAlign', $event)">@for (align of ['left','center','right']; track align) { <option [value]="align" [selected]="align === (widget().textAlign ?? 'center')">{{ t('align_' + align) }}</option> }</select></label>
     }
     @if (widget().kind === 'shape') {
@@ -20,7 +20,7 @@ import type { OverlayWidget } from './overlay.model';
     }
     <details><summary>{{ t('appearance') }}</summary>
       <label>{{ t('opacity') }}<input type="number" min="0" max="100" [value]="(widget().opacity ?? 1) * 100" (change)="number('opacity', $event, 100, 100)" /></label>
-      <label class="check"><input type="checkbox" [checked]="!!widget().shadow" (change)="changed.emit({shadow: widget().shadow ? undefined : {color:'#000000', blur:12, x:0, y:4}})" />{{ t('objectShadow') }}</label>
+      <label class="switch"><input type="checkbox" role="switch" [checked]="!!widget().shadow" (change)="changed.emit({shadow: widget().shadow ? undefined : {color:'#000000', blur:12, x:0, y:4}})" /><span class="switch__track" aria-hidden="true"></span>{{ t('objectShadow') }}</label>
       @if (widget().shadow; as shadow) {
         <div class="pair"><label>{{ t('shadowColor') }}<input type="color" [value]="shadow.color" (input)="shadowColor($event)" /></label><label>{{ t('shadowBlur') }}<input type="number" min="0" max="100" [value]="shadow.blur" (change)="shadowNumber('blur', $event)" /></label></div>
         <div class="pair"><label>{{ t('shadowX') }}<input type="number" min="-100" max="100" [value]="shadow.x" (change)="shadowNumber('x', $event)" /></label><label>{{ t('shadowY') }}<input type="number" min="-100" max="100" [value]="shadow.y" (change)="shadowNumber('y', $event)" /></label></div>

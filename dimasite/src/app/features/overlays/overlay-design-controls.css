@@ -11,12 +11,29 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .check { display:flex; align-items:center; min-height:44px; gap:.5rem }
 input[type=checkbox] { width:20px; height:20px; accent-color:#7c3aed }
 details { border-top:1px solid var(--line); padding-top:.5rem }
-summary { min-height:44px; align-content:center; cursor:pointer; font-size:.85rem; font-weight:600 }
+summary { display:flex; align-items:center; gap:.5rem; min-height:44px; color:var(--muted); cursor:pointer; font-size:.86rem; font-weight:750; list-style:none }
+summary::-webkit-details-marker { display:none }
+summary::before { content:''; flex-shrink:0; width:.42rem; height:.42rem; border-right:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(-45deg); transition:transform 160ms ease }
+details[open] > summary::before { transform:rotate(45deg) }
+summary:hover { color:var(--fg) }
 details > :not(summary) { margin-top:.5rem }
 p { margin:0; color:var(--muted); font-size:.8rem; line-height:1.5 }
 .variants { padding:.75rem; border-top:1px solid var(--line); border-bottom:1px solid var(--line) }
 .tabs, .actions { display:flex; flex-wrap:wrap; gap:.4rem; min-width:0 }
 .tabs button { max-width:100%; overflow-wrap:anywhere }
+.variants { display:grid; gap:.6rem }
 .rule { display:grid; gap:.6rem }
+.actions { align-items:center }
+.danger { color:var(--danger,#b91c1c) }
+/* LF switch for on/off rows. */
+.switch { position:relative; display:inline-flex; align-items:center; gap:.5rem; min-height:44px; margin-right:auto; cursor:pointer }
+.switch--field { align-self:end; margin-right:0 }
+.switch input { position:absolute; inset:0; z-index:1; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
+.switch__track { position:relative; flex:none; width:2.75rem; height:1.6rem; border:1px solid var(--line); border-radius:999px; background:var(--btn); transition:background 160ms ease }
+.switch__track::after { content:''; position:absolute; top:.15rem; left:.15rem; width:1.15rem; height:1.15rem; border-radius:999px; background:var(--fg); transition:transform 160ms ease }
+.switch input:checked + .switch__track { border-color:#7c3aed; background:#7c3aed }
+.switch input:checked + .switch__track::after { transform:translateX(1.15rem); background:#fff }
+.switch input:focus-visible + .switch__track { outline:2px solid var(--accent); outline-offset:3px }
+@media (prefers-reduced-motion: reduce) { .switch__track, .switch__track::after, summary::before { transition:none } }
 .error { color:var(--danger,#b91c1c) }
 @media(min-width:640px) { .rule { grid-template-columns:repeat(3,minmax(0,1fr)); align-items:end } }

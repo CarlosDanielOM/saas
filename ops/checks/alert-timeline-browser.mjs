@@ -110,12 +110,14 @@ try {
   await page.getByRole('button',{name:es?'Deshacer':'Undo',exact:true}).click();await until(()=>handle.getAttribute('aria-valuenow').then(v=>v==='1'),'undo timing');
   await page.getByRole('button',{name:es?'Rehacer':'Redo',exact:true}).click();await until(()=>handle.getAttribute('aria-valuenow').then(v=>v==='1.1'),'redo timing');
   await timeline.locator('[data-track=follow-text] .name').click();
-  await timeline.locator('.timing input').nth(0).fill('2');await timeline.locator('.timing input').nth(0).press('Tab');
-  await timeline.locator('.timing input').nth(1).fill('.7');await timeline.locator('.timing input').nth(1).press('Tab');
-  await timeline.locator('[data-track="$sound"] .name').click();
-  await until(()=>timeline.locator('.timing input').first().inputValue().then(v=>v==='0.5'),'sound field selected');
-  await timeline.locator('.timing input').nth(0).fill('1');await timeline.locator('.timing input').nth(0).press('Tab');
-  await timeline.locator('.timing input').nth(2).fill('.8');await timeline.locator('.timing input').nth(2).press('Tab');
+  // Exact times live in one place: the selected object's "Timing & speed" and the sound strip under the timeline.
+  const timing=page.locator('details.motion-timing');await timing.evaluate(d=>{d.open=true;});
+  await timing.locator('input').nth(0).fill('2');await timing.locator('input').nth(0).press('Tab');
+  await timing.locator('input').nth(1).fill('.7');await timing.locator('input').nth(1).press('Tab');
+  const soundTiming=page.locator('.alert-sound details');await soundTiming.evaluate(d=>{d.open=true;});
+  await until(()=>soundTiming.locator('input').first().inputValue().then(v=>v==='0.5'),'sound fields shown');
+  await soundTiming.locator('input').nth(0).fill('1');await soundTiming.locator('input').nth(0).press('Tab');
+  await soundTiming.locator('input').nth(2).fill('.8');await soundTiming.locator('input').nth(2).press('Tab');
   // Pointer drag commits one undo step on mouse and touch screens.
   {
     await until(()=>handle.getAttribute('aria-valuenow').then(v=>v==='2'),'numeric delay before drag');await handle.evaluate(e=>e.scrollIntoView({block:'center',behavior:'instant'}));await handle.click({trial:true});const box=await handle.boundingBox(),track=await handle.locator('..').boundingBox();

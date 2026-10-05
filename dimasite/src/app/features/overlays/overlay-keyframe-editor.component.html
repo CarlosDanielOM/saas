@@ -1,9 +1,8 @@
 <section class="keyframes" [attr.aria-label]="t('kfTitle')">
-  <header><div><h3>{{ t('kfTitle') }}</h3><p>{{ widget().name || t(widget().kind + 'Name') }} · {{ t('kfIntro') }}</p></div><button type="button" class="primary" (click)="opened.emit(); catalog.set(true)">{{ t('kfBrowse') }}</button></header>
-  <div class="phases" role="group" [attr.aria-label]="t('kfPhase')">@for (item of phases; track item) { <button type="button" [attr.aria-pressed]="phase() === item" (click)="setPhase(item)">{{ phaseName(item) }} @if (widget().keyframes?.[item]) { <span class="dot" [attr.aria-label]="t('kfCustom')">◆</span> }</button> }</div>
   <details [open]="expanded()" (toggle)="toggleDetails($event)">
-    <summary>{{ t('kfEditTracks') }} <span>{{ sequence()?.tracks?.length || 0 }}/5</span></summary>
+    <summary>{{ t('kfCustom') }} <span>{{ customCount() ? t('kfCustomCount', {count: customCount()}) : t('kfCustomNone') }}</span></summary>
     <div class="detail-body">
+      <div class="phases" role="group" [attr.aria-label]="t('kfPhase')">@for (item of phases; track item) { <button type="button" [attr.aria-pressed]="phase() === item" (click)="setPhase(item)">{{ phaseName(item) }} @if (widget().keyframes?.[item]) { <span class="dot" [attr.aria-label]="t('kfCustom')">◆</span> }</button> }</div>
       <p>{{ t('kfTrackHint') }}</p>
       <div class="properties" role="group" [attr.aria-label]="t('kfTracks')">@for (item of properties; track item) { <button type="button" [attr.data-property]="item" [attr.aria-pressed]="!!sequence() && activeProperty() === item" (click)="addTrack(item)">{{ t('kfProperty_' + item) }}</button> }</div>
       @if (track(); as active) {
@@ -23,15 +22,10 @@
         </div>
         <div class="curve"><svg viewBox="0 0 60 60" aria-hidden="true"><path [attr.d]="curve()" /></svg><p>{{ t('kfEasingHint') }} @if (phase() === 'loop') { {{ t('kfLoopClosed') }} }</p></div>
         <div class="actions"><button type="button" [disabled]="points().length >= 24" (click)="addPoint()">{{ t('kfAddPoint') }}</button><button type="button" [disabled]="time() === null || points().length >= 24" (click)="addPoint(true)">{{ t('kfAddAtPlayhead') }}</button><button type="button" [disabled]="isEndpoint()" (click)="removePoint()">{{ t('kfRemovePoint') }}</button></div>
-        <div class="timing">
-          <label><span>{{ t('motionDelay') }}</span><input data-field="delay" type="number" min="0" max="120" step=".1" [value]="motion().delay" (change)="timing('delay',$event)" /></label>
-          <label><span>{{ t(phase() === 'loop' ? 'kfCycleDuration' : 'kfPhaseDuration') }}</span><input data-field="duration" type="number" [min]="phase() === 'loop' ? .2 : .1" [max]="phase() === 'loop' ? 10 : 5" step=".1" [value]="phase() === 'enter' ? motion().enterDuration : phase() === 'loop' ? motion().loopDuration : motion().exitDuration" (change)="timing(phase() === 'enter' ? 'enterDuration' : phase() === 'loop' ? 'loopDuration' : 'exitDuration',$event)" /></label>
-        </div>
-        @if (phase() === 'loop') { <p>{{ t('kfLoopTiming') }}</p> }
         <div class="actions"><button type="button" (click)="removeTrack()">{{ t('kfRemoveTrack') }}</button><button type="button" (click)="removePhase()">{{ t('kfClearPhase') }}</button></div>
       } @else { <p class="empty">{{ t('kfEmpty') }}</p> }
+      <div class="actions copy-actions"><button type="button" [disabled]="!widget().keyframes" (click)="copy()">{{ t('kfCopy') }}</button><button type="button" [disabled]="!clipboard()" (click)="paste()">{{ t('kfPaste') }}</button></div>
     </div>
   </details>
-  <footer><button type="button" (click)="replay.emit()">{{ t('kfReplay') }}</button><button type="button" [disabled]="!widget().keyframes" (click)="copy()">{{ t('kfCopy') }}</button><button type="button" [disabled]="!clipboard()" (click)="paste()">{{ t('kfPaste') }}</button></footer>
 </section>
 @if (catalog()) { <app-overlay-motion-catalog [initialPhase]="phase()" [existing]="widget().keyframes" (applied)="apply($event)" (closed)="catalog.set(false)" /> }
