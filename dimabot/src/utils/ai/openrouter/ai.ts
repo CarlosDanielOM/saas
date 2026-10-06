@@ -1064,8 +1064,9 @@ export async function chat(
       }
     }
 
+    // Providers may return unsolicited calls even when no tools were offered.
     const hasToolCalls =
-      assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0;
+      !disableTools && assistantMessage?.tool_calls && assistantMessage.tool_calls.length > 0;
 
     // Track usage with appropriate reason based on whether AI called tools
     if (data.usage) {

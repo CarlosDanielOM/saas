@@ -72,13 +72,15 @@ export function sanitizeOutput(output: unknown): string {
  * @param userContext.badges - Optional formatted badge string
  * @param prompt - The prompt text to send to the AI
  * @param reason - The reason for the AI command (default: 'commands')
+ * @param options.disableTools - Request text generation without tool calls.
  * @returns Result object
  */
 export async function executeAiCommand(
     streamer: IStreamerData,
     userContext: UserContext,
     prompt: string,
-    reason: string = 'commands'
+    reason: string = 'commands',
+    options: { disableTools?: boolean } = {}
 ): Promise<AiCommandResponse> {
     const channelID = streamer?.user_id;
     
@@ -111,6 +113,7 @@ export async function executeAiCommand(
             message: prompt,
             streamer: streamer as any,
             history: [],  // No history for command-style $(ai) calls
+            disableTools: options.disableTools ?? false,
             tags: {
                 badges: [],  // Command-style calls don't have badge context
                 username: userContext.username,
