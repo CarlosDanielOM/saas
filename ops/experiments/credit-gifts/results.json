@@ -1,0 +1,178 @@
+{
+  "recordedAt": "2026-10-06T19:50:00.378954+00:00",
+  "status": "local_experiments_passed_hosted_sandbox_not_tested",
+  "passedTests": 18,
+  "failedTests": 0,
+  "application": {
+    "mode": "local_application_and_sdk",
+    "node": "v26.8.2",
+    "sdkVersion": "0.42.5",
+    "sourceHashes": {
+      "src/utils/ai_usage_event.ts": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
+      "src/utils/polarsh.ts": "5164452aea1747b72a410098bb8cd54c2cc0a4312f52e40728936c9c2f6e9fec",
+      "src/utils/credit_packs.ts": "0c2214abf807730f16a89fa9aadd94b68bd851613f923c7041a6ca783d829471",
+      "src/utils/billing.ts": "89c7bd9e49bfc679574a4886ce514922dcce10bd11cd0fda7d7c412adf54baa1"
+    },
+    "tests": [
+      {
+        "name": "Actual admin helper sends negative usage, not a rollover benefit grant",
+        "status": "passed",
+        "evidence": {
+          "eventName": "ai_usage",
+          "usageCredits": -40000,
+          "rolloverField": false
+        }
+      },
+      {
+        "name": "POLARSH_ENVIRONMENT=sandbox does not switch the existing SDK helper",
+        "status": "passed",
+        "evidence": {
+          "capturedOrigin": "https://api.polar.sh",
+          "networkRequestsSent": 0
+        }
+      },
+      {
+        "name": "Explicit SDK server=sandbox selects the sandbox endpoint",
+        "status": "passed",
+        "evidence": {
+          "capturedOrigin": "https://sandbox-api.polar.sh",
+          "networkRequestsSent": 0
+        }
+      },
+      {
+        "name": "Retries preserve the recipient and caller-provided external ID",
+        "status": "passed",
+        "evidence": {
+          "externalId": "sandbox-gift-order-1",
+          "providerDeduplicationTested": false
+        }
+      },
+      {
+        "name": "Invalid grants do not call the SDK transport",
+        "status": "passed"
+      },
+      {
+        "name": "Free accounts are eligible for all three existing rollover pack definitions",
+        "status": "passed",
+        "evidence": {
+          "pricesAndUnitsAreFixtures": true
+        }
+      },
+      {
+        "name": "Current checkout ignores an extra recipient field and keeps the buyer as customer",
+        "status": "passed",
+        "evidence": {
+          "checkoutCustomer": "buyer",
+          "separateRecipientSupported": false
+        }
+      },
+      {
+        "name": "Swapping checkout user to the recipient also swaps customer email and order identity",
+        "status": "passed",
+        "evidence": {
+          "checkoutCustomer": "recipient",
+          "customerEmail": "recipient@example.invalid"
+        }
+      },
+      {
+        "name": "Existing REST checkout honors sandbox mode, unlike the shared SDK helper",
+        "status": "passed",
+        "evidence": {
+          "capturedOrigin": "https://sandbox-api.polar.sh",
+          "networkRequestsSent": 0
+        }
+      }
+    ],
+    "isolation": {
+      "nodeNetworkPermission": false,
+      "realNetworkRequests": 0,
+      "productionEnvLoaded": false,
+      "applicationBootstrap": false
+    },
+    "limitations": [
+      "Provider responses are fixtures; external deduplication and payment behavior are not tested."
+    ]
+  },
+  "upstream": {
+    "mode": "upstream_methods_with_in_memory_repositories",
+    "upstreamCommit": "313eba7144d58fc2ac22044e9d2313558b696fd5",
+    "sourceHashes": {
+      "server/polar/kit/math.py": "9175d990a76a65cb23b67585d089f0a1264019d302b01d5f11defcbd269d0d6a",
+      "server/polar/customer_meter/service.py": "19512e47e7986c7148bc376983e0752e7f42e5f38c653957470d32416489c56c",
+      "server/polar/benefit/strategies/meter_credit/service.py": "3aca70e73081dbf9bd14219afa7d809088e57f3a4897591abe4dd53207f43a02",
+      "server/polar/subscription/service.py": "57f2eba5b3fb44beab2d2dc4c268285f216685996abf05ba31922d9718f0d6ce",
+      "server/polar/models/event.py": "8e9ac7d83b043ac2ab46ca1c1e01691af3cda56dbae18700c72c775c65b8c219"
+    },
+    "tests": [
+      {
+        "name": "Negative usage grant with no rollover benefit is lost at reset",
+        "status": "passed",
+        "balanceBeforeReset": 40000,
+        "balanceAfterResetBeforeNewAllowance": 0
+      },
+      {
+        "name": "Negative gift adjustment on a paid allowance is lost at reset",
+        "status": "passed",
+        "balanceBeforeReset": 190000,
+        "balanceAfterResetBeforeNewAllowance": 0
+      },
+      {
+        "name": "Existing rollover credits do not make a negative gift adjustment permanent",
+        "status": "passed",
+        "balanceBeforeReset": 45000,
+        "balanceAfterResetBeforeNewAllowance": 10000
+      },
+      {
+        "name": "Native rollover pack survives reset",
+        "status": "passed",
+        "balanceBeforeReset": 30000,
+        "balanceAfterResetBeforeNewAllowance": 30000
+      },
+      {
+        "name": "Non-rollover allowance is spent before rollover credits",
+        "status": "passed",
+        "balanceBeforeReset": 190000,
+        "balanceAfterResetBeforeNewAllowance": 40000
+      },
+      {
+        "name": "Usage beyond the allowance reduces remaining rollover credits",
+        "status": "passed",
+        "balanceBeforeReset": 30000,
+        "balanceAfterResetBeforeNewAllowance": 30000
+      },
+      {
+        "name": "Native pack keeps 30000 remaining credits across three plan renewals",
+        "status": "passed",
+        "remainingRollover": 30000,
+        "cycles": 3
+      },
+      {
+        "name": "Native benefit revocation subtracts its last grant amount, not remaining pack usage",
+        "status": "passed",
+        "revokedUnits": -40000
+      },
+      {
+        "name": "Naming a user event meter.credited does not turn it into a native credit grant",
+        "status": "passed"
+      }
+    ],
+    "limitations": [
+      "Repository queries, persistence, timestamps, and provider infrastructure are fixtures.",
+      "This executes selected upstream methods, not the hosted Polar sandbox.",
+      "The hosted service may run a different revision.",
+      "Cancellation, upgrade, downgrade, real checkout, provider deduplication, and refund webhook delivery are not tested."
+    ]
+  },
+  "hostedPolarSandbox": {
+    "status": "not_tested",
+    "reason": "No sandbox organization access token is available."
+  },
+  "production": {
+    "servicesStartedOrChanged": false,
+    "billingRequestsSent": 0,
+    "dataMutations": 0,
+    "deployed": false
+  },
+  "decision": "Do not use negative ai_usage adjustments to deliver permanent gifts. Native recipient grants need a hosted sandbox proof; a durable application gift balance is the fallback.",
+  "cleanup": "Temporary experiment workspaces removed; no persistent test servers, databases, containers, or networks created."
+}
