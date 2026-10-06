@@ -177,6 +177,10 @@
   display: block;
 }
 
+.lf-head__gift {
+  justify-self: start;
+}
+
 /* Banners */
 
 .lf-banner {

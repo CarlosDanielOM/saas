@@ -24,6 +24,8 @@ import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
 
 import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
+import { createCreditGiftCheckout, CreditGiftRequestError, findGiftRecipient, getCreditGift } from '../../utils/credit_gifts.js';
+import { getGiftPackCatalog } from '../../utils/credit_gift_provider.js';
 
 type TargetPlan = 'premium' | 'pro';
 type BillingAction = 'auto' | 'new' | 'upgrade' | 'change' | 'reactivate';
@@ -39,8 +41,7 @@ async function getAuthenticatedUser(req: Request) {
     }
 
     return await UsersSchema.findOne({
-        'accounts.id': twitchUserId,
-        'accounts.type': 'twitch'
+        accounts: { $elemMatch: { id: twitchUserId, type: 'twitch' } }
     });
 }
 
@@ -196,6 +197,52 @@ router.get('/context', authMiddleware as any, async (req: Request, res: Response
             status: 500
         });
     }
+});
+
+async function giftRoute(req: Request, res: Response, work: (user: NonNullable<Awaited<ReturnType<typeof getAuthenticatedUser>>>) => Promise<unknown>, status = 200) {
+    try {
+        const user = await getAuthenticatedUser(req);
+        if (!user) return res.status(404).json({ error: true, message: 'A bot account is required', status: 404 });
+        const data = await work(user);
+        return res.status(status).json({ error: false, status, data });
+    } catch (error) {
+        if (error instanceof CreditGiftRequestError) {
+            return res.status(error.statusCode).json({ error: true, message: error.message, status: error.statusCode });
+        }
+        // Provider bodies can contain emails or checkout secrets; return a bounded generic error.
+        console.error('Gift billing request failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+        return res.status(502).json({ error: true, message: 'Gifting is temporarily unavailable. Retry the same gift shortly.', status: 502 });
+    }
+}
+
+router.get('/gift-packs', authMiddleware as any, async (req: Request, res: Response) => {
+    return giftRoute(req, res, async () => getGiftPackCatalog());
+});
+
+router.get('/gift-packs/recipient', authMiddleware as any, async (req: Request, res: Response) => {
+    return giftRoute(req, res, async () => findGiftRecipient(getStringQueryParam(req.query.login)));
+});
+
+router.post('/gift-packs/checkout', authMiddleware as any, async (req: Request, res: Response) => {
+    return giftRoute(req, res, async user => {
+        const body = req.body as Record<string, unknown>;
+        for (const field of ['productId', 'recipientId', 'requestId']) {
+            if (typeof body?.[field] !== 'string') throw new CreditGiftRequestError(`${field} is required`);
+        }
+        for (const field of ['successUrl', 'returnUrl']) {
+            if (body[field] !== undefined && (typeof body[field] !== 'string' || (body[field] as string).length > 2_048)) {
+                throw new CreditGiftRequestError(`Invalid ${field}`);
+            }
+        }
+        return createCreditGiftCheckout({
+            user, productId: body.productId as string, recipientId: body.recipientId as string, requestId: body.requestId as string,
+            acknowledgeNoRefunds: body.acknowledgeNoRefunds === true, successUrl: body.successUrl as string | undefined, returnUrl: body.returnUrl as string | undefined,
+        });
+    }, 201);
+});
+
+router.get('/gift-packs/:giftId', authMiddleware as any, async (req: Request, res: Response) => {
+    return giftRoute(req, res, async user => getCreditGift(String(req.params.giftId), user));
 });
 
 router.get('/credit-packs', authMiddleware as any, async (req: Request, res: Response) => {

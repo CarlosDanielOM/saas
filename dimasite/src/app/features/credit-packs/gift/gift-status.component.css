@@ -1,0 +1,233 @@
+/* Tokens inherit from the credit store page. */
+
+:host {
+  display: block;
+}
+
+.gs {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 60%);
+  border-radius: 1rem;
+  background: var(--accent-soft);
+}
+
+.gs--ok {
+  border-color: color-mix(in srgb, var(--ok), transparent 55%);
+  background: var(--ok-soft);
+}
+
+.gs--warn {
+  border-color: var(--gold-line);
+  background: var(--gold-soft);
+}
+
+.gs__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.gs__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: #7c3aed;
+}
+
+.gs--ok .gs__icon {
+  background: #15803d;
+}
+
+.gs--warn .gs__icon {
+  background: #b45309;
+}
+
+.gs__copy {
+  display: grid;
+  flex: 1;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.gs__title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.gs__copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.gs__copy .gs__announce {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.gs__announce app-lf-icon {
+  margin-top: 0.2rem;
+}
+
+.gs__copy .gs__slow {
+  color: var(--fg);
+  font-weight: 700;
+}
+
+.gs__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -0.4rem -0.4rem 0 0;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Paid → Delivering → Delivered */
+
+.gs__steps {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs__step {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.gs__step::before {
+  content: '';
+  display: block;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.gs__step--done::before {
+  background: #15803d;
+}
+
+.gs__step--current::before {
+  background: linear-gradient(90deg, #7c3aed 40%, var(--line) 40%);
+}
+
+.gs__step--problem::before {
+  background: #b45309;
+}
+
+.gs__step--done,
+.gs__step--current,
+.gs__step--problem {
+  color: var(--fg);
+}
+
+.gs__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gs__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--fg);
+  background: var(--tile);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gs__btn--primary {
+  border-color: #7c3aed;
+  color: #fff;
+  background: #7c3aed;
+}
+
+.gs__ref code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.gs__ref-label {
+  flex: none;
+}
+
+.gs__btn:focus-visible,
+.gs__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (min-width: 640px) {
+  .gs {
+    padding: 1.1rem 1.25rem;
+  }
+
+  .gs__step {
+    font-size: 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gs__step--current::before {
+    background-size: 200% 100%;
+    animation: gs-pulse 1.6s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes gs-pulse {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}

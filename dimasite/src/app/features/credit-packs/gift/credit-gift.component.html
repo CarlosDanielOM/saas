@@ -1,0 +1,274 @@
+<section #section id="gift" class="gift" tabindex="-1" aria-labelledby="gift-title">
+  <header class="gift__head">
+    <span class="gift__badge" aria-hidden="true"><app-lf-icon name="gift" [size]="20" /></span>
+    <div>
+      <h2 id="gift-title" class="gift__title">{{ t('creditGift.title') }}</h2>
+      <p class="gift__copy">{{ t('creditGift.subtitle') }}</p>
+    </div>
+  </header>
+
+  <ol class="gift__steps">
+    <!-- 1 · Who -->
+    <li class="gift__step">
+      <span class="gift__num" aria-hidden="true">1</span>
+      <div class="gift__body">
+        <h3 class="gift__label" id="gift-who">{{ t('creditGift.who.title') }}</h3>
+
+        @if (recipient(); as person) {
+          <div class="gift__person" aria-labelledby="gift-who">
+            @if (person.avatarUrl && !avatarFailed()) {
+              <img class="gift__avatar" [src]="person.avatarUrl" alt="" width="44" height="44" (error)="avatarFailed.set(true)" />
+            } @else {
+              <span class="gift__avatar gift__avatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
+            }
+            <span class="gift__person-text">
+              <strong>{{ person.displayName || person.login }}</strong>
+              <span>&#64;{{ person.login }} · {{ t('creditGift.who.usesBot') }}</span>
+            </span>
+            <button type="button" class="gift-btn gift-btn--ghost" (click)="changeRecipient()">
+              {{ t('creditGift.who.change') }}
+            </button>
+          </div>
+        } @else {
+          <form class="gift__find" (submit)="lookup($event)" novalidate>
+            <label class="visually-hidden" for="gift-login">{{ t('creditGift.who.inputLabel') }}</label>
+            <div class="gift__field" [class.gift__field--invalid]="lookupState() === 'invalid'">
+              <span class="gift__at" aria-hidden="true">&#64;</span>
+              <input
+                #loginInput
+                id="gift-login"
+                type="text"
+                name="channel"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                enterkeyhint="search"
+                maxlength="80"
+                [placeholder]="t('creditGift.who.placeholder')"
+                [value]="loginDraft()"
+                [attr.aria-invalid]="lookupState() === 'invalid' || lookupState() === 'not_found' || lookupState() === 'self'"
+                aria-describedby="gift-login-hint gift-login-status"
+                (input)="onLoginInput($any($event.target).value)"
+              />
+              <button type="submit" class="gift-btn gift-btn--find" [disabled]="lookupState() === 'searching' || !loginDraft().trim()">
+                @if (lookupState() === 'searching') {
+                  <span class="gift__spinner" aria-hidden="true"></span>
+                  {{ t('creditGift.who.searching') }}
+                } @else {
+                  <app-lf-icon name="search" />
+                  {{ t('creditGift.who.find') }}
+                }
+              </button>
+            </div>
+            <p id="gift-login-hint" class="gift__hint">{{ t('creditGift.who.hint') }}</p>
+            <p id="gift-login-status" class="gift__msg" aria-live="polite"
+              [class.gift__msg--warn]="lookupState() !== 'searching'">
+              @switch (lookupState()) {
+                @case ('invalid') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.invalid') }} }
+                @case ('self') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.self') }} }
+                @case ('not_found') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.notFound') }} }
+                @case ('error') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.error') }} }
+              }
+            </p>
+          </form>
+        }
+      </div>
+    </li>
+
+    <!-- 2 · What -->
+    <li class="gift__step">
+      <span class="gift__num" aria-hidden="true">2</span>
+      <div class="gift__body">
+        @if (offersLoading()) {
+          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
+          <div class="gift__skel" aria-busy="true" [attr.aria-label]="t('creditGift.pack.loading')"></div>
+        } @else if (offersError()) {
+          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
+          <div class="gift__msg gift__msg--warn gift__msg--row" role="alert">
+            <span><app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.pack.error') }}</span>
+            <button type="button" class="gift-btn gift-btn--ghost" (click)="retryOffers()">
+              <app-lf-icon name="refresh" /> {{ t('creditGift.pack.retry') }}
+            </button>
+          </div>
+        } @else if (!offers()?.length) {
+          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
+          <p class="gift__hint">{{ t('creditGift.pack.none') }}</p>
+        } @else {
+          <fieldset class="gift__offers">
+            <legend class="gift__label">{{ t('creditGift.pack.title') }}</legend>
+            @for (offer of offers(); track offer.id) {
+              <label class="gift__offer" [class.gift__offer--on]="offer.id === selectedOfferId()">
+                <input
+                  type="radio"
+                  name="gift-offer"
+                  [value]="offer.id"
+                  [checked]="offer.id === selectedOfferId()"
+                  (change)="selectOffer(offer.id)"
+                />
+                <span class="gift__offer-main">
+                  <span class="gift__offer-name">{{ offerName(offer) }}</span>
+                  <span class="gift__offer-credits">
+                    {{ formatCreditsExact(offer.credits) }} <span>{{ t('creditGift.pack.credits') }}</span>
+                  </span>
+                  <span class="gift__offer-fact"><app-lf-icon name="check" [size]="14" /> {{ t('creditGift.pack.permanent') }}</span>
+                </span>
+                <span class="gift__offer-price">{{ formatPrice(offer) }}</span>
+              </label>
+            }
+          </fieldset>
+        }
+      </div>
+    </li>
+
+    <!-- 3 · Review -->
+    <li class="gift__step gift__step--last">
+      <span class="gift__num" aria-hidden="true">3</span>
+      <div class="gift__body">
+        <h3 class="visually-hidden">{{ t('creditGift.review.title') }}</h3>
+        <button
+          #reviewButton
+          type="button"
+          class="gift-btn gift-btn--primary gift__review"
+          [disabled]="!canReview()"
+          aria-haspopup="dialog"
+          (click)="openReview()"
+        >
+          <app-lf-icon name="gift" />
+          @if (selectedOffer(); as offer) {
+            {{ t('creditGift.review.buttonPrice', { price: formatPrice(offer) }) }}
+          } @else {
+            {{ t('creditGift.review.button') }}
+          }
+        </button>
+        <p class="gift__hint">
+          @if (!recipient()) {
+            {{ t('creditGift.review.needRecipient') }}
+          } @else {
+            {{ t('creditGift.review.next') }}
+          }
+        </p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+@if (dialogOpen()) {
+  @let offer = selectedOffer();
+  @let person = recipient();
+  <div class="gift-overlay" (click)="closeReview()">
+    <section
+      #dialog
+      class="gift-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gift-dialog-title"
+      aria-describedby="gift-dialog-lede"
+      (click)="$event.stopPropagation()"
+      (keydown)="trapFocus($event)"
+    >
+      <header class="gift-dialog__head">
+        <h2 #dialogTitle id="gift-dialog-title" class="gift-dialog__title" tabindex="-1">{{ t('creditGift.confirm.title') }}</h2>
+        <button type="button" class="gift-icon-btn" [attr.aria-label]="t('creditGift.confirm.close')" [disabled]="submitting()" (click)="closeReview()">
+          <app-lf-icon name="close" [size]="18" />
+        </button>
+      </header>
+
+      @if (offer && person) {
+        <div class="gift-dialog__scroll">
+          <p id="gift-dialog-lede" class="gift-dialog__lede">{{ t('creditGift.confirm.lede') }}</p>
+
+          <dl class="gift-sum">
+            <div class="gift-sum__row">
+              <dt>{{ t('creditGift.confirm.to') }}</dt>
+              <dd class="gift-sum__person">
+                @if (person.avatarUrl && !avatarFailed()) {
+                  <img class="gift__avatar gift__avatar--sm" [src]="person.avatarUrl" alt="" width="32" height="32" />
+                } @else {
+                  <span class="gift__avatar gift__avatar--sm gift__avatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
+                }
+                <span>
+                  <strong data-testid="gift-confirm-recipient">{{ person.displayName || person.login }}</strong>
+                  <span class="gift-sum__sub">&#64;{{ person.login }}</span>
+                </span>
+              </dd>
+            </div>
+            <div class="gift-sum__row">
+              <dt>{{ t('creditGift.confirm.gift') }}</dt>
+              <dd>
+                <strong data-testid="gift-confirm-credits">{{ t('creditGift.confirm.credits', { credits: formatCreditsExact(offer.credits) }) }}</strong>
+                <span class="gift-sum__sub">{{ offerName(offer) }} · {{ t('creditGift.pack.permanent') }}</span>
+              </dd>
+            </div>
+            <div class="gift-sum__row">
+              <dt>{{ t('creditGift.confirm.price') }}</dt>
+              <dd>
+                <strong data-testid="gift-confirm-price">{{ formatExactPrice(offer) }}</strong>
+                <span class="gift-sum__sub">{{ t('creditGift.confirm.priceNote') }}</span>
+              </dd>
+            </div>
+            <div class="gift-sum__row">
+              <dt>{{ t('creditGift.confirm.from') }}</dt>
+              <dd>
+                <strong>{{ buyerName() }}</strong>
+                <span class="gift-sum__sub">&#64;{{ buyerLogin() }} · {{ t('creditGift.confirm.fromNote') }}</span>
+              </dd>
+            </div>
+          </dl>
+
+          <ul class="gift-terms">
+            <li>
+              <app-lf-icon name="lock" [size]="16" />
+              <span>{{ t('creditGift.confirm.termRecipient', { name: person.displayName || person.login }) }}</span>
+            </li>
+            <li>
+              <app-lf-icon name="alert" [size]="16" />
+              <span>{{ t('creditGift.confirm.termRefund') }}</span>
+            </li>
+            <li class="gift-terms__info">
+              <app-lf-icon name="chat" [size]="16" />
+              <span>{{ t('creditGift.confirm.termAnnounce', { login: person.login, buyer: buyerLogin() }) }}</span>
+            </li>
+          </ul>
+
+          <label class="gift-ack">
+            <input
+              type="checkbox"
+              data-testid="gift-ack"
+              [checked]="acknowledged()"
+              [disabled]="submitting()"
+              (change)="acknowledged.set($any($event.target).checked)"
+            />
+            <span>{{ t('creditGift.confirm.ack') }}</span>
+          </label>
+
+          @if (submitError(); as message) {
+            <p class="gift__msg gift__msg--warn gift-dialog__error" role="alert">
+              <app-lf-icon name="alert" [size]="14" /> {{ message }}
+            </p>
+          }
+        </div>
+
+        <footer class="gift-dialog__foot">
+          <button type="button" class="gift-btn gift-btn--ghost" [disabled]="submitting()" (click)="closeReview()">
+            {{ t('creditGift.confirm.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="gift-btn gift-btn--primary"
+            data-testid="gift-pay"
+            [disabled]="!acknowledged() || submitting()"
+            (click)="confirmCheckout()"
+          >
+            @if (submitting()) {
+              <span class="gift__spinner" aria-hidden="true"></span>
+              {{ t('creditGift.confirm.opening') }}
+            } @else {
+              {{ t('creditGift.confirm.pay', { price: formatPrice(offer) }) }}
+              <app-lf-icon name="forward" />
+            }
+          </button>
+        </footer>
+      }
+    </section>
+  </div>
+}

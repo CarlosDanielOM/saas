@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, injec
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, distinctUntilChanged, forkJoin, map, of, switchMap } from 'rxjs';
-import { Coins, Languages, LogOut, LucideAngularModule, Moon, RefreshCw, ShieldAlert, Sparkles, Sun, User, Zap } from 'lucide-angular';
+import { Coins, Gift, Languages, LogOut, LucideAngularModule, Moon, RefreshCw, ShieldAlert, Sparkles, Sun, User, Zap } from 'lucide-angular';
 
 import { AnalyticsService } from '../../services/analytics.service';
 import { LanguageService } from '../../services/language.service';
@@ -182,6 +182,7 @@ export class AuthenticatedLayoutComponent {
   readonly updatePermissionsIcon = RefreshCw;
   readonly sparklesIcon = Sparkles;
   readonly creditsIcon = Coins;
+  readonly giftIcon = Gift;
   readonly languageIcon = Languages;
   readonly logoutIcon = LogOut;
   readonly profileIcon = User;

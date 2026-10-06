@@ -124,6 +124,17 @@
             <span>{{ t('navbar.buyCredits') }}</span>
           </a>
 
+          <a
+            class="auth-navbar__dropdown-item"
+            [routerLink]="['/', ownerStreamer(), 'credits']"
+            fragment="gift"
+            role="menuitem"
+            (click)="closeProfileMenu()"
+          >
+            <lucide-icon [name]="giftIcon" [size]="18" class="auth-navbar__credits-icon"></lucide-icon>
+            <span>{{ t('navbar.giftCredits') }}</span>
+          </a>
+
           @if (showUpgradeOption()) {
             <button
               type="button"
@@ -224,6 +235,15 @@
             >
               <lucide-icon [name]="creditsIcon" [size]="18" class="auth-navbar__credits-icon"></lucide-icon>
               <span>{{ t('navbar.buyCredits') }}</span>
+            </a>
+            <a
+              class="auth-navbar__mobile-link"
+              [routerLink]="['/', ownerStreamer(), 'credits']"
+              fragment="gift"
+              (click)="closeMobileMenu()"
+            >
+              <lucide-icon [name]="giftIcon" [size]="18" class="auth-navbar__credits-icon"></lucide-icon>
+              <span>{{ t('navbar.giftCredits') }}</span>
             </a>
             @if (showUpgradeOption()) {
               <button

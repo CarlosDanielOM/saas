@@ -16,6 +16,8 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { CreditGiftComponent } from './gift/credit-gift.component';
+import { GiftStatusComponent } from './gift/gift-status.component';
 
 /** Credits per smallest currency unit, the basis for every value comparison on this page. */
 function packRate(pack: CreditPackOffer): number {
@@ -24,7 +26,7 @@ function packRate(pack: CreditPackOffer): number {
 
 @Component({
   selector: 'app-credit-packs-page',
-  imports: [RouterLink, LfIconComponent],
+  imports: [RouterLink, LfIconComponent, CreditGiftComponent, GiftStatusComponent],
   templateUrl: './credit-packs-page.component.html',
   styleUrl: './credit-packs-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -65,6 +67,10 @@ export class CreditPacksPageComponent {
     const streamer = this.streamer();
     return Boolean(purchaser && streamer && purchaser !== streamer);
   });
+  /** When an admin views another channel's store, suggest gifting that channel instead. */
+  readonly giftSuggestion = computed(() =>
+    this.isManagingDifferentAccount() ? this.streamer() : ''
+  );
   readonly planTier = computed(() =>
     this.catalog()?.planTier
     ?? this.sessionAuth.getPlanTierForStreamer(this.streamer())

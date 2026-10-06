@@ -35,6 +35,7 @@ interface ManagedWorker {
 }
 
 const WORKERS: WorkerDefinition[] = [
+    { name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
     { name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
     { name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
     { name: 'roulette-completion', sourceEntry: 'src/workers/roulette.worker.ts', distEntry: 'dist/workers/roulette.worker.js' },

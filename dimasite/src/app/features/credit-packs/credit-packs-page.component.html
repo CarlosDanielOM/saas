@@ -36,8 +36,19 @@
         } @else {
           <p class="lf-note"><app-lf-icon name="users" [size]="16" /> {{ t('creditPacks.recipient.account', { account }) }}</p>
         }
+        <button type="button" class="lf-link lf-head__gift" (click)="giftPanel.reveal()">
+          <app-lf-icon name="gift" [size]="16" />
+          @if (giftSuggestion()) {
+            {{ t('creditGift.headerLinkFor', { streamer: giftSuggestion() }) }}
+          } @else {
+            {{ t('creditGift.headerLink') }}
+          }
+          <app-lf-icon name="forward" [size]="14" />
+        </button>
       }
     </header>
+
+    <app-gift-status />
 
     @if (purchaseCompleted()) {
       <div class="lf-banner lf-banner--ok" role="status">
@@ -255,5 +266,7 @@
         </ul>
       </section>
     }
+
+    <app-credit-gift #giftPanel [suggestedLogin]="giftSuggestion()" />
   </main>
 </div>

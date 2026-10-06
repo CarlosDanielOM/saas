@@ -11,6 +11,7 @@ import {
   EyeOff,
   FlaskConical,
   Gem,
+  Gift,
   Image as ImageIcon,
   LayoutGrid,
   List,
@@ -73,7 +74,8 @@ export type LfIconName =
   | 'monitor'
   | 'play'
   | 'eye-off'
-  | 'shuffle';
+  | 'shuffle'
+  | 'gift';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -110,7 +112,8 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   monitor: MonitorPlay,
   play: Play,
   'eye-off': EyeOff,
-  shuffle: Shuffle
+  shuffle: Shuffle,
+  gift: Gift
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */

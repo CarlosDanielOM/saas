@@ -1,0 +1,92 @@
+@if (visible()) {
+  <section class="gs" [class.gs--ok]="tone() === 'ok'" [class.gs--warn]="tone() === 'warn'" aria-labelledby="gift-status-title">
+    <div class="gs__top">
+      <span class="gs__icon" aria-hidden="true">
+        @switch (tone()) {
+          @case ('ok') { <app-lf-icon name="check" [size]="20" /> }
+          @case ('warn') { <app-lf-icon name="alert" [size]="20" /> }
+          @default { <app-lf-icon name="gift" [size]="20" /> }
+        }
+      </span>
+      <div class="gs__copy" role="status" aria-live="polite">
+        @switch (view()) {
+          @case ('checking') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.checkingTitle') }}</h2>
+            <p>{{ t('creditGift.status.checkingBody') }}</p>
+          }
+          @case ('awaiting') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.awaitingTitle') }}</h2>
+            <p>{{ t('creditGift.status.awaitingBody') }}</p>
+          }
+          @case ('delivering') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.deliveringTitle') }}</h2>
+            <p>{{ t('creditGift.status.deliveringBody', { credits: credits(), name: recipientName() }) }}</p>
+          }
+          @case ('delivered') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.deliveredTitle') }}</h2>
+            <p>{{ t('creditGift.status.deliveredBody', { credits: credits(), name: recipientName(), login: gift()?.recipient?.login ?? '' }) }}</p>
+            <p class="gs__announce">
+              <app-lf-icon name="chat" [size]="14" />
+              {{ t('creditGift.status.announced', { login: gift()?.recipient?.login ?? '', buyer: buyerLogin() }) }}
+            </p>
+          }
+          @case ('support') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.supportTitle') }}</h2>
+            <p>{{ gift()?.paidAt ? t('creditGift.status.supportBodyPaid') : t('creditGift.status.supportBody') }}</p>
+          }
+          @case ('forbidden') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.forbiddenTitle') }}</h2>
+            <p>{{ t('creditGift.status.forbiddenBody') }}</p>
+          }
+          @case ('missing') {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.missingTitle') }}</h2>
+            <p>{{ t('creditGift.status.missingBody') }}</p>
+          }
+          @default {
+            <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.errorTitle') }}</h2>
+            <p>{{ polling() ? t('creditGift.status.errorRetrying') : t('creditGift.status.errorBody') }}</p>
+          }
+        }
+        @if (stalled() && view() !== 'error') {
+          <p class="gs__slow">{{ view() === 'awaiting' ? t('creditGift.status.slowAwaiting') : t('creditGift.status.slowDelivering') }}</p>
+        }
+      </div>
+      <button type="button" class="gs__close" [attr.aria-label]="t('creditGift.status.dismiss')" (click)="dismiss()">
+        <app-lf-icon name="close" [size]="18" />
+      </button>
+    </div>
+
+    @if (showSteps()) {
+      <ol class="gs__steps" [attr.aria-label]="t('creditGift.status.progress')">
+        @for (step of steps(); track step.key) {
+          <li [class]="'gs__step gs__step--' + step.state" [attr.aria-current]="step.state === 'current' ? 'step' : null">
+            <span>{{ t('creditGift.status.steps.' + step.key) }}</span>
+            <span class="visually-hidden">{{ t('creditGift.status.stepState.' + step.state) }}</span>
+          </li>
+        }
+      </ol>
+    }
+
+    @if (view() === 'support' || view() === 'missing' || view() === 'forbidden' || stalled() || (view() === 'error' && !polling())) {
+      <div class="gs__actions">
+        @if (stalled() || (view() === 'error' && !polling())) {
+          <button type="button" class="gs__btn gs__btn--primary" (click)="checkAgain()">
+            <app-lf-icon name="refresh" /> {{ t('creditGift.status.checkAgain') }}
+          </button>
+        }
+        @if (giftId() && (view() === 'support' || stalled())) {
+          <button type="button" class="gs__btn gs__ref" (click)="copyReference()" [attr.aria-label]="t('creditGift.status.copyRef', { id: giftId()! })">
+            <app-lf-icon [name]="copied() ? 'check' : 'copy'" />
+            <span class="gs__ref-label">{{ t('creditGift.status.reference') }}</span>
+            <code>{{ giftId() }}</code>
+          </button>
+        }
+        @if (view() !== 'forbidden') {
+          <a class="gs__btn" [href]="discordUrl" target="_blank" rel="noopener noreferrer">
+            <app-lf-icon name="chat" /> {{ t('creditGift.status.support') }}
+          </a>
+        }
+      </div>
+    }
+  </section>
+}

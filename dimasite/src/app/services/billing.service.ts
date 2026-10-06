@@ -75,6 +75,60 @@ export interface CreditPackCheckoutData {
   offer: CreditPackOffer;
 }
 
+export interface GiftPackOffer {
+  id: string;
+  name: string;
+  credits: number;
+  rollover: true;
+  priceAmount: number;
+  priceCurrency: string;
+}
+
+export interface GiftPackCatalogData {
+  offers: GiftPackOffer[];
+}
+
+export interface GiftRecipient {
+  id: string;
+  login: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}
+
+export interface GiftPackCheckoutRequest {
+  productId: string;
+  recipientId: string;
+  acknowledgeNoRefunds: true;
+  /** Stable for one purchase intent so retries never open a second checkout. */
+  requestId: string;
+  successUrl?: string;
+  returnUrl?: string;
+}
+
+export interface GiftPackCheckoutData {
+  giftId: string;
+  checkoutId: string;
+  checkoutUrl: string;
+  offer: GiftPackOffer;
+  recipient: GiftRecipient;
+}
+
+export type GiftStatus =
+  | 'awaiting_payment'
+  | 'payment_received'
+  | 'delivering'
+  | 'delivered'
+  | 'needs_support';
+
+export interface GiftStatusData {
+  id: string;
+  status: GiftStatus;
+  recipient: Pick<GiftRecipient, 'id' | 'login' | 'displayName'>;
+  credits: number;
+  paidAt: string | null;
+  deliveredAt: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -113,6 +167,32 @@ export class BillingService {
     return this.http.post<ApiEnvelope<CreditPackCheckoutData>>(
       `${this.linksService.getApiUrl()}/billing/credit-packs/checkout`,
       request
+    );
+  }
+
+  getGiftPacks(): Observable<ApiEnvelope<GiftPackCatalogData>> {
+    return this.http.get<ApiEnvelope<GiftPackCatalogData>>(
+      `${this.linksService.getApiUrl()}/billing/gift-packs`
+    );
+  }
+
+  findGiftRecipient(login: string): Observable<ApiEnvelope<GiftRecipient>> {
+    return this.http.get<ApiEnvelope<GiftRecipient>>(
+      `${this.linksService.getApiUrl()}/billing/gift-packs/recipient`,
+      { params: { login } }
+    );
+  }
+
+  createGiftPackCheckout(request: GiftPackCheckoutRequest): Observable<ApiEnvelope<GiftPackCheckoutData>> {
+    return this.http.post<ApiEnvelope<GiftPackCheckoutData>>(
+      `${this.linksService.getApiUrl()}/billing/gift-packs/checkout`,
+      request
+    );
+  }
+
+  getGift(giftId: string): Observable<ApiEnvelope<GiftStatusData>> {
+    return this.http.get<ApiEnvelope<GiftStatusData>>(
+      `${this.linksService.getApiUrl()}/billing/gift-packs/${encodeURIComponent(giftId)}`
     );
   }
 }

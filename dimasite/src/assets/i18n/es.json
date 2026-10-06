@@ -227,6 +227,7 @@
     "logout": "Cerrar sesion",
     "profileSettings": "Configuracion de Perfil",
     "buyCredits": "Comprar créditos de IA",
+    "giftCredits": "Regalar créditos",
     "planFree": "Gratis",
     "planPremium": "Premium",
     "planPro": "Pro",
@@ -2830,6 +2831,108 @@
       "checkoutTitle": "No se pudo iniciar el pago",
       "checkout": "No se pudo iniciar el pago. Inténtalo de nuevo.",
       "retry": "Reintentar"
+    }
+  },
+  "creditGift": {
+    "title": "Regala créditos a otro canal",
+    "subtitle": "Compra un paquete de créditos permanentes para un streamer que usa DomDimaBot. Los créditos nunca caducan y te damos las gracias por tu nombre en su chat de Twitch.",
+    "headerLink": "¿Compras para otra persona? Regala créditos",
+    "headerLinkFor": "Mejor regala créditos a @{{streamer}}",
+    "sizes": {
+      "sample": "Paquete de regalo de prueba"
+    },
+    "who": {
+      "title": "¿Quién recibe el regalo?",
+      "inputLabel": "Nombre del canal de Twitch",
+      "placeholder": "nombre del canal o enlace de twitch.tv",
+      "hint": "Escribe el nombre exacto del canal o pega su enlace de Twitch. Solo los canales que ya usan DomDimaBot pueden recibir regalos.",
+      "find": "Buscar",
+      "searching": "Buscando…",
+      "usesBot": "Usa DomDimaBot",
+      "change": "Cambiar",
+      "invalid": "Eso no parece un nombre de canal de Twitch. Usa solo letras, números y guiones bajos.",
+      "self": "Ese es tu propio canal. Compra un paquete arriba para añadir créditos a tu cuenta.",
+      "notFound": "Ningún canal de DomDimaBot tiene ese nombre exacto. Revisa cómo se escribe: los regalos solo llegan a canales que usan el bot.",
+      "error": "No pudimos buscar ese canal ahora mismo. Inténtalo de nuevo en un momento."
+    },
+    "pack": {
+      "title": "Elige un paquete",
+      "loading": "Cargando paquetes de regalo",
+      "error": "No se pudieron cargar los paquetes de regalo.",
+      "retry": "Reintentar",
+      "none": "Ahora mismo no hay paquetes de regalo a la venta.",
+      "credits": "créditos de IA",
+      "permanent": "Permanentes, nunca caducan"
+    },
+    "review": {
+      "title": "Revisar y pagar",
+      "button": "Revisar regalo",
+      "buttonPrice": "Revisar regalo · {{price}}",
+      "needRecipient": "Primero busca el canal. Revisarás cada detalle antes de pagar.",
+      "next": "Después confirmarás quién lo recibe y el precio, y pagarás en el pago seguro de Polar."
+    },
+    "confirm": {
+      "title": "Confirma tu regalo",
+      "close": "Cerrar",
+      "lede": "Revisa estos datos antes de pagar. No se pueden cambiar después del pago.",
+      "to": "Para",
+      "gift": "Regalo",
+      "credits": "{{credits}} créditos de IA",
+      "price": "Precio",
+      "priceNote": "Pago único en el pago seguro de Polar",
+      "from": "De",
+      "fromNote": "aparece en el agradecimiento del chat",
+      "termRecipient": "Solo {{name}} puede recibir estos créditos. El destinatario no se puede cambiar después del pago.",
+      "termRefund": "Los regalos no se reembolsan automáticamente. Puedes pedirlo a soporte, pero la solicitud puede ser rechazada.",
+      "termAnnounce": "Cuando lleguen los créditos, publicaremos un agradecimiento con tu nombre (@{{buyer}}) en el chat de Twitch de @{{login}}, aunque no esté en directo.",
+      "ack": "Entiendo que no hay reembolsos automáticos y que el destinatario no se puede cambiar después del pago.",
+      "cancel": "Cancelar",
+      "pay": "Pagar {{price}} en Polar",
+      "opening": "Abriendo el pago…"
+    },
+    "errors": {
+      "checkout": "No se pudo iniciar el pago. No se ha cobrado nada. Inténtalo de nuevo.",
+      "mismatch": "El pago volvió con datos distintos a los que confirmaste, así que lo detuvimos. No se ha cobrado nada. Inténtalo de nuevo."
+    },
+    "status": {
+      "checkingTitle": "Comprobando tu regalo…",
+      "checkingBody": "Consultando el estado más reciente en nuestro servidor.",
+      "awaitingTitle": "Esperando la confirmación del pago",
+      "awaitingBody": "Polar aún no ha confirmado tu pago. Suele tardar unos segundos. Si saliste del pago sin pagar, no se te cobrará.",
+      "deliveringTitle": "Pago recibido, entregando tu regalo",
+      "deliveringBody": "Añadiendo {{credits}} créditos al saldo de {{name}}.",
+      "deliveredTitle": "Regalo entregado",
+      "deliveredBody": "{{name}} (@{{login}}) ahora tiene {{credits}} créditos permanentes más.",
+      "announced": "Estamos publicando un agradecimiento con tu nombre (@{{buyer}}) en el chat de Twitch de @{{login}}.",
+      "supportTitle": "Tu regalo necesita ayuda de soporte",
+      "supportBodyPaid": "Tu pago se completó, pero los créditos no se pudieron añadir automáticamente. Contacta con soporte con la referencia del regalo y lo resolveremos.",
+      "supportBody": "Algo salió mal con este regalo. Contacta con soporte con la referencia del regalo.",
+      "forbiddenTitle": "No podemos mostrar este regalo",
+      "forbiddenBody": "Solo la cuenta que compró un regalo puede ver su estado. Inicia sesión con esa cuenta para comprobarlo.",
+      "missingTitle": "No encontramos la referencia de tu regalo",
+      "missingBody": "Si pagaste, Polar te envió un recibo por correo. Contacta con soporte con él si los créditos no llegan.",
+      "errorTitle": "No pudimos comprobar tu regalo",
+      "errorRetrying": "Seguiremos intentándolo un momento.",
+      "errorBody": "Un fallo de conexión detuvo la comprobación. Tu regalo no se ve afectado; vuelve a comprobarlo.",
+      "slowAwaiting": "Polar aún no lo confirma. Si completaste el pago, la entrega sigue en segundo plano; vuelve a comprobarlo en unos minutos.",
+      "slowDelivering": "Está tardando más de lo normal. La entrega sigue en segundo plano, así que puedes salir de esta página y comprobarlo más tarde.",
+      "checkAgain": "Comprobar de nuevo",
+      "reference": "Referencia del regalo",
+      "copyRef": "Copiar referencia del regalo {{id}}",
+      "support": "Contactar con soporte",
+      "dismiss": "Cerrar estado del regalo",
+      "progress": "Progreso del regalo",
+      "steps": {
+        "paid": "Pagado",
+        "delivering": "Entregando",
+        "delivered": "Entregado"
+      },
+      "stepState": {
+        "done": "hecho",
+        "current": "en curso",
+        "todo": "pendiente",
+        "problem": "necesita atención"
+      }
     }
   },
   "login": {
