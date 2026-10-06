@@ -110,6 +110,32 @@ test('common cue aliases are governed by the canonical streamer setting', () => 
   );
 });
 
+test('Fish preserves word-level angle cues alongside square cues without reinforcing angle cues', () => {
+  const input = '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.';
+  const filtered = filterExpressiveTtsTags(input, { provider: 'fish', enabledTags: normalizeExpressiveTtsTags() });
+  assert.equal(filtered, input);
+  assert.equal(reinforceFishTtsTags(filtered), '[happy] [happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.');
+});
+
+test('angle cues share the existing allowlist, aliases and streamer toggles', () => {
+  for (const tag of EXPRESSIVE_TTS_TAGS) {
+    const input = `<${tag}>word<${tag}>`;
+    assert.equal(filterExpressiveTtsTags(input, { provider: 'fish', enabledTags: normalizeExpressiveTtsTags() }), input);
+    const disabled = normalizeExpressiveTtsTags({ [tag]: false });
+    assert.equal(filterExpressiveTtsTags(input, { provider: 'fish', enabledTags: disabled }), 'word');
+    for (const provider of ['piper', 'kokoro'] as const) {
+      assert.equal(filterExpressiveTtsTags(input, { provider }), 'word');
+    }
+  }
+  assert.equal(filterExpressiveTtsTags('<WHISPERING>secret</WHISPERING> <unknown>plain</unknown>', {
+    provider: 'fish', enabledTags: normalizeExpressiveTtsTags(),
+  }), '<whisper>secret</whisper> plain');
+  assert.equal(filterExpressiveTtsTags('1 < 2 and 3 > 2', { provider: 'fish', enabledTags: normalizeExpressiveTtsTags() }), '1 < 2 and 3 > 2');
+  assert.equal(filterExpressiveTtsTags('< whisper >secret< / whisper > < long - pause >', {
+    provider: 'fish', enabledTags: normalizeExpressiveTtsTags(),
+  }), '<whisper>secret</whisper> <long-pause>');
+});
+
 test('Piper strips expressive cues without removing their spoken text', () => {
   assert.equal(
     filterExpressiveTtsTags('[whisper] Keep this <loud>message</loud> [sigh]', { provider: 'piper' }),

@@ -42,7 +42,7 @@ globalThis.fetch = async (input, options = {}) => {
       const model = typeof headers.get === 'function' ? headers.get('model') : (headers.model ?? headers.Model);
       fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload, model }) + '\n');
       if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
-      if (state.fail) return json({ message: 'Unavailable voice' }, 422);
+      if (state.fail || state.failModel === model) return json({ message: 'Unavailable voice' }, 422);
       return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
     }
   }

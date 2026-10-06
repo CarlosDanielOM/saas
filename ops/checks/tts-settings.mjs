@@ -59,6 +59,8 @@ for (const name of ['tts', 'tts.speak', 'tts.ai', 'tts.clone', 'tts.fish']) {
     assert.equal(speech().at(-1).speech.text, 'Ahuevo ya vengo voy al baño', name);
     await run(name, '[angry] Hello Kappa ethand14Gojoseggs [happy]');
     assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello' : 'Hello [happy]', name);
+    await run(name, '[happy] Hello <whisper>secret<whisper> <angry>word</angry>.');
+    assert.equal(speech().at(-1).speech.text, name === 'tts.speak' ? 'Hello secret word .' : '[happy] Hello <whisper> secret <whisper> word .', `${name} angle and square cues`);
     before = speech().length;
     await run(name, 'Kappa ethand14Gojoseggs');
     assert.equal(speech().length, before, 'emote-only redemption never queues speech');

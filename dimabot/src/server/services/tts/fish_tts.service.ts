@@ -46,7 +46,7 @@ async function convertWithBackend(
 ) {
     return await fishAudio.textToSpeech.convert(
         {
-            text: reinforceFishTtsTags(text),
+            text: backend.startsWith('s2.1-') ? reinforceFishTtsTags(text) : text,
             reference_id: referenceId,
             format: 'mp3'
         },

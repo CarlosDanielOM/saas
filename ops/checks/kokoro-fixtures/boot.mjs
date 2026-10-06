@@ -8,10 +8,13 @@ if (process.env.SAAS_AST_BOOT_KIND === 'bot') {
     add('classes/pubsub_manager.class', 'export const pubSubManager = { init: async () => {}, subscribe: async () => {} };');
     add('classes/twitch_streamers.class', 'export default { getTwitchAccountsFromDB: async () => [], getTwitchAccountById: async () => null };');
     add('bot/eventsub.twitch', 'export const twitchEventsub = () => {};');
-    add('utils/observability/bot_runtime_metrics', 'export const startBotRuntimeMetricsLoop = () => {};');
     add('utils/opentelemetry_posthog', 'export default () => ({ start: () => {} });');
     add('utils/ast_timer_runtime', 'export const startAstTimerScheduler = async () => {};');
-    add('utils/ai/ast_catalog/index', 'export const ensureAstCatalogVectors = async () => {};');
+    add('utils/ai/ast_catalog/index', `
+        export const ensureAstCatalogVectors = async () => false;
+        export const findAstCatalogEntry = () => undefined;
+        export const searchAstCatalog = async () => ({ matches: [], vectorSearchUsed: false });
+    `);
 }
 
 if (process.env.SAAS_AST_BOOT_KIND === 'cron' && process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {

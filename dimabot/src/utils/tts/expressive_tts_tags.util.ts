@@ -47,7 +47,6 @@ const ALIASES: Record<string, string> = {
   'crying loudly': 'cry', 'in a hurry tone': 'fast',
   break: 'pause', 'long-break': 'long-pause', 'crowd laughing': 'audience laughing',
 };
-const LEGACY_WRAPPERS = /<\/?(?:soft|whisper|loud|build-intensity|decrease-intensity|higher-pitch|lower-pitch|slow|fast|sing-song|singing|laugh-speak|emphasis)>/gi;
 
 /** Expand already-filtered cues only at the Fish boundary, after message length limits. */
 export function reinforceFishTtsTags(text: string): string {
@@ -64,12 +63,15 @@ export function filterExpressiveTtsTags(
   options: { provider: 'piper' | 'fish' | 'kokoro'; enabledTags?: ExpressiveTtsTagSettings } = { provider: 'piper' },
 ): string {
   return String(rawText || '')
-    .replace(LEGACY_WRAPPERS, '')
-    .replace(/\[([^\[\]]*)\]/g, (_match, rawTag: string) => {
-      const name = rawTag.trim().toLowerCase();
+    .replace(/<\s*(\/?)\s*([a-z][a-z -]*?)\s*>|\[([^\[\]]*)\]/gi, (_match, closing: string | undefined, angleTag: string | undefined, squareTag: string | undefined) => {
+      const rawTag = angleTag ?? squareTag!;
+      const name = (angleTag !== undefined ? rawTag.replace(/\s*-\s*/g, '-') : rawTag).trim().toLowerCase();
       const tag = (Object.hasOwn(ALIASES, name) ? ALIASES[name] : name) as ExpressiveTtsTag;
-      return options.provider === 'fish' && EXPRESSIVE_TTS_TAGS.includes(tag)
-        && options.enabledTags?.[tag] === true ? `[${tag}]` : ' ';
+      if (options.provider === 'fish' && EXPRESSIVE_TTS_TAGS.includes(tag)
+        && options.enabledTags?.[tag] === true) {
+        return angleTag !== undefined ? `<${closing}${tag}>` : `[${tag}]`;
+      }
+      return angleTag !== undefined ? '' : ' ';
     })
     .replace(/ {2,}/g, ' ')
     .trim();

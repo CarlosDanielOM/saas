@@ -122,12 +122,12 @@ assert.equal((await socket.send({ voiceId: '0'.repeat(32), language: 'en' })).co
 fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 const overlay = await connect(undefined, channel, 'speech');
 while (!await redis.exists(`twitch:${channel}:tts:connected`)) await new Promise(r => setTimeout(r, 10));
-const finishSpeech = async expected => {
+const finishSpeech = async (expected, backend = 'drama-3-preview') => {
   const event = await overlay.wait(`42/speech/${channel},["speech",`);
   const [, payload] = JSON.parse(event.slice(`42/speech/${channel},`.length));
   const lastSynthesis = calls().filter(c => c.synthesis).at(-1);
   assert.equal(lastSynthesis.synthesis.reference_id, expected);
-  assert.equal(lastSynthesis.model, 'drama-3-preview', 'queued speech must use the official drama-3-preview backend');
+  assert.equal(lastSynthesis.model, backend, 'queued speech must use the selected Fish backend');
   overlay.ws.send(`42/speech/${channel},${JSON.stringify(['speech-ended', { speechID: payload.speechID }])}`);
   const deadline = Date.now() + 5000;
   while (await redis.exists(`twitch:${channel}:tts:processing`)) {
@@ -135,6 +135,25 @@ const finishSpeech = async expected => {
     await new Promise(r => setTimeout(r, 10));
   }
 };
+// Mixed sentence and word-level cues survive the HTTP filter and Fish SDK boundary.
+const taggedSpeech = await request('/speech/' + channel, 'POST', {
+  mode: 'clone', text: '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.', language: 'en',
+});
+assert.equal(taggedSpeech.status, 200);
+await finishSpeech('b'.repeat(32));
+assert.equal(calls().filter(c => c.synthesis).at(-1).synthesis.text,
+  '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.');
+fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'drama-3-preview' }));
+const fallbackStart = synthCount();
+assert.equal((await request('/speech/' + channel, 'POST', {
+  mode: 'clone', text: '[happy] Hello <whisper>secret<whisper>.', language: 'en',
+})).status, 200);
+await finishSpeech('b'.repeat(32), 's2.1-pro-free');
+assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackStart).map(c => ({ model: c.model, text: c.synthesis.text })), [
+  { model: 'drama-3-preview', text: '[happy] Hello <whisper>secret<whisper>.' },
+  { model: 's2.1-pro-free', text: '[happy] [happy] Hello <whisper>secret<whisper>.' },
+]);
+fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 for (const mode of ['speak', 'clone']) {
   const queued = await request('/speech/' + channel, 'POST', { mode, text: 'Normal speech', language: 'en' });
   assert.equal(queued.status, 200);

@@ -6,12 +6,14 @@ import { mock, test } from 'node:test';
 
 const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'saas-fish-backend-'));
 const backends: string[] = [];
+const texts: string[] = [];
 let failedBackends = new Set<string>();
 mock.module('fish-audio', { namedExports: {
   FishAudioClient: class {
     textToSpeech = {
-      convert: async (_request: unknown, backend: string) => {
+      convert: async (request: { text: string }, backend: string) => {
         backends.push(backend);
+        texts.push(request.text);
         if (failedBackends.has(backend)) {
           throw new Error(`${backend} unavailable`);
         }
@@ -36,18 +38,21 @@ test('Fish speech tries Drama 3 preview, then pro-free, before returning an erro
   try {
     const request = {
       channelID: 'channel', speechID: 'speech', mode: 'clone', provider: 'fish',
-      text: 'Hello chat', language: 'en', voice: 'voice-id', outputPath: '',
+      text: '[happy] Hello <whisper>chat<whisper>', language: 'en', voice: 'voice-id', outputPath: '',
     } as const;
 
     let result = await fishTtsService.synthesize(request);
     assert.equal(result.error, false);
     assert.deepEqual(backends, ['drama-3-preview']);
+    assert.deepEqual(texts, [request.text]);
 
     backends.length = 0;
+    texts.length = 0;
     failedBackends = new Set(['drama-3-preview']);
     result = await fishTtsService.synthesize({ ...request, speechID: 'fallback' });
     assert.equal(result.error, false);
     assert.deepEqual(backends, ['drama-3-preview', 's2.1-pro-free']);
+    assert.deepEqual(texts, [request.text, '[happy] [happy] Hello <whisper>chat<whisper>']);
 
     backends.length = 0;
     failedBackends.add('s2.1-pro-free');
