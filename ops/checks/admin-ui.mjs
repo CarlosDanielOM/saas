@@ -611,10 +611,19 @@ try {
   await page.getByRole("button", { name: "Previous", exact: true }).click();
   await page.getByText("pixelpilot", { exact: true }).waitFor();
   await page.getByRole("searchbox").fill("example.test");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-  await visible(".user-identity");
-  await until(async () => (await page.locator('.user-card').count()) === 3, 'search results finish rendering');
-  assert.equal(await page.locator(".user-card").count(), 3, "Search keeps all matches");
+  const searchButton = page.getByRole("button", { name: "Search", exact: true });
+  await until(async () => searchButton.isEnabled(), "debounced search finishes");
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === "/admin-site/users" && url.searchParams.get("search") === "example.test";
+    }),
+    searchButton.click(),
+  ]);
+  await page.waitForFunction(() =>
+    document.querySelectorAll(".user-card").length === 3 &&
+    document.querySelector(".u-search__go")?.disabled === false,
+  );
   assert.match(page.url(), /q=example\.test/);
   await page.getByRole("button", { name: "Clear search" }).click();
   await visible(".user-identity");

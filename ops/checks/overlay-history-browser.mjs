@@ -95,7 +95,7 @@ try {
   await props.getByRole('switch', { name: 'Lock position', exact: true }).click();
   await eventually('equal', async () => await redo.isDisabled(), true, 'a new edit clears the redo branch');
   await undo.click(); await eventually('equal', async () => await props.getByRole('switch', { name: 'Lock position', exact: true }).isChecked(), false);
-  await props.getByRole('switch', { name: 'Show on stream', exact: true }).click();
+  await props.getByRole('switch', { name: 'Enable TTS playback', exact: true }).click();
   await eventually('equal', async () => await page.locator('.widget[data-kind="tts"]').count(), 0);
   await undo.click(); await eventually('equal', async () => await page.locator('.widget[data-kind="tts"]').count(), 1);
   const beforeOrder = await widgetIds();
